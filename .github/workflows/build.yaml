@@ -1,0 +1,61 @@
+name: build
+
+on:
+  push:
+    branches: ["main"]
+  release:
+    types: ["published"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  GOLANG_VERSION: "1.23.3"
+
+jobs:
+  build:
+    name: Build ${{ matrix.variant.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant:
+          - {"name": "srat_i386", "args": "GOARCH=386"}
+          - {"name": "srat_amd64", "args": "GOARCH=amd64"}
+          - {"name": "srat_armhf", "args": "GOARM=6 GOARCH=arm"}
+          - {"name": "srat_armv7", "args": "GOARM=7 GOARCH=arm"}
+          - {"name": "srat_aarch64", "args": "GOARCH=arm64"}
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v4.2.2
+
+    - name: Setup go ${{ env.GOLANG_VERSION }}
+      uses: actions/setup-go@v5.0.2
+      with:
+        go-version: ${{ env.GOLANG_VERSION }}
+
+    - name: Get version
+      id: version
+      uses: home-assistant/actions/helpers/version@master
+
+    - name: Build ${{ matrix.variant.name }}
+      run: |
+        CGO_ENABLED=0 ${{ matrix.variant.args }} go build -ldflags="-s -w -X main.SRATVersion=${{ steps.version.outputs.version }}" -o "${{ matrix.variant.name }}"
+
+    - name: Upload release asset
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: "${{ github.workspace }}/${{ matrix.variant.name }}"
+        asset_name: ${{ matrix.variant.name }}
+        asset_content_type: application/x-binary
+
+#    - name: Signing asset
+#      if: github.event_name == 'release'
+#      uses: home-assistant/actions/helpers/codenotary@master
+#      with:
+#        source: "${{ github.workspace }}/${{ matrix.variant.name }}"
+#        user: ${{ secrets.VCN_USER }}
+#        password: ${{ secrets.VCN_PASSWORD }}
+#        organisation: ${{ secrets.VCN_ORG }}

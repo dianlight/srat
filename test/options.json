@@ -1,0 +1,43 @@
+{
+  "workgroup": "WORKGROUP",
+  "username": "dianlight",
+  "allow_hosts": [
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "fe80::/10"
+  ],
+  "automount": true,
+  "moredisks": [],
+  "mountoptions": [
+    "nosuid",
+    "relatime",
+    "noexec"
+  ],
+  "available_disks_log": true,
+  "medialibrary": {
+    "enable": true
+  },
+  "veto_files": [
+    "._*",
+    ".DS_Store",
+    "Thumbs.db",
+    "icon?",
+    ".Trashes"
+  ],
+  "compatibility_mode": false,
+  "recyle_bin_enabled": false,
+  "wsdd2": false,
+  "wsdd": false,
+  "mqtt_nexgen_entities": false,
+  "autodiscovery": {},
+  "other_users": [],
+  "acl": [],
+  "interfaces": [],
+  "password": "hassio2010",
+  "mqtt_enable": true,
+  "enable_smart": true,
+  "bind_all_interfaces": true,
+  "multi_channel": true,
+  "hdd_idle_seconds": 10
+}
