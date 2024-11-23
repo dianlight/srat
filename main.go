@@ -12,6 +12,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	httpSwagger "github.com/swaggo/http-swagger"
+
+	_ "github.com/dianlight/srat/docs"
 )
 
 var SRATVersion string
@@ -27,16 +30,14 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func optionMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		if r.Method == http.MethodOptions {
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
+// HealthCheckHandler godoc
+// @Summary      HealthCheck
+// @Description  HealthCheck
+// @Tags         system
+// @Produce      json
+// @Success      200
+// @Failure      405  {object}  ResponseError
+// @Router       /healt [get]
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	// A very simple health check.
 	w.Header().Set("Content-Type", "application/json")
@@ -52,9 +53,23 @@ type ResponseError struct {
 	Body  any    `json:"body"`
 }
 
+//	@title			SRAT API
+//	@version		1.0
+//	@description	This are samba rest admin API
+// _termsOfService http://swagger.io/terms/
+
+//	@contact.name	Lucio Tarantino
+// _contact.url http://www.swagger.io/support
+//	@contact.email	lucio.tarantino@gmail.com
+
+//	@license.name	Apache 2.0
+//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+
+// _host petstore.swagger.io
+// _BasePath /v2
 func main() {
 
-	optionsFile := flag.String("opt", "", "Addon Options json file")
+	optionsFile := flag.String("opt", "/data/options.json", "Addon Options json file")
 	configFile := flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
 	http_port := flag.Int("port", 8080, "Http Port on listen to")
 	var wait time.Duration
@@ -82,6 +97,14 @@ func main() {
 	r.Use(mux.CORSMethodMiddleware(r))
 	r.Use(loggingMiddleware)
 	//r.Use(optionMiddleware)
+
+	// Swagger
+	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"), //The url pointing to API definition
+		httpSwagger.DeepLinking(true),
+		httpSwagger.DocExpansion("none"),
+		httpSwagger.DomID("swagger-ui"),
+	)).Methods(http.MethodGet)
 
 	// HealtCheck
 	r.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet)
@@ -133,7 +156,7 @@ func main() {
 
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
-		log.Printf("Starting Server http://localhost:%d", *http_port)
+		log.Printf("Starting Server... \n Swagger At: http://localhost:%d/swagger/index.html", *http_port)
 		if err := srv.ListenAndServe(); err != nil {
 			log.Fatal(err)
 		}

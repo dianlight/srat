@@ -1,0 +1,241 @@
+definitions:
+  main.ResponseError:
+    properties:
+      body: {}
+      error:
+        type: string
+    type: object
+  main.Share:
+    properties:
+      fs:
+        type: string
+      path:
+        type: string
+    type: object
+info:
+  contact:
+    email: lucio.tarantino@gmail.com
+    name: Lucio Tarantino
+  description: This are samba rest admin API
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: SRAT API
+  version: "1.0"
+paths:
+  /healt:
+    get:
+      description: HealthCheck
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: HealthCheck
+      tags:
+      - system
+  /share/{share_name}:
+    delete:
+      description: delere a share
+      parameters:
+      - description: Name
+        in: path
+        name: share_name
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Delere a share
+      tags:
+      - share
+    get:
+      description: get share by Name
+      parameters:
+      - description: Name
+        in: path
+        name: share_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Share'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Get a share
+      tags:
+      - share
+    patch:
+      consumes:
+      - application/json
+      description: update e new share
+      parameters:
+      - description: Name
+        in: path
+        name: share_name
+        required: true
+        type: string
+      - description: Update model
+        in: body
+        name: share
+        required: true
+        schema:
+          $ref: '#/definitions/main.Share'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Share'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Update a share
+      tags:
+      - share
+    post:
+      consumes:
+      - application/json
+      description: update e new share
+      parameters:
+      - description: Name
+        in: path
+        name: share_name
+        required: true
+        type: string
+      - description: Update model
+        in: body
+        name: share
+        required: true
+        schema:
+          $ref: '#/definitions/main.Share'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Share'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Update a share
+      tags:
+      - share
+    put:
+      consumes:
+      - application/json
+      description: create e new share
+      parameters:
+      - description: Name
+        in: path
+        name: share_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.Share'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Create a share
+      tags:
+      - share
+  /shares:
+    get:
+      description: List all configured shares
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Share'
+            type: array
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: List all configured shares
+      tags:
+      - share
+swagger: "2.0"

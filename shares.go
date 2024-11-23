@@ -9,7 +9,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// The function "listShares" returns a list of shares in JSON format over HTTP.
+// ListShares godoc
+// @Summary      List all configured shares
+// @Description  List all configured shares
+// @Tags         share
+// _Accept       json
+// @Produce      json
+// _Param        id   path      int  true  "Account ID"
+// @Success      200  {object}  []Share
+// _Failure      400  {object}  ResponseError
+// @Failure      405  {object}  ResponseError
+// @Failure      500  {object}  ResponseError
+// @Router       /shares [get]
 func listShares(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -26,6 +37,17 @@ func listShares(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// GetShare godoc
+// @Summary      Get a share
+// @Description  get share by Name
+// @Tags         share
+// _Accept       json
+// @Produce      json
+// @Param        share_name   path      string  true  "Name"
+// @Success      200  {object}  Share
+// @Failure      405  {object}  ResponseError
+// @Failure      500  {object}  ResponseError
+// @Router       /share/{share_name} [get]
 func getShare(w http.ResponseWriter, r *http.Request) {
 	share := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
@@ -49,6 +71,20 @@ func getShare(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// CreateShare godoc
+// @Summary      Create a share
+// @Description  create e new share
+// @Tags         share
+// @Accept       json
+// @Produce      json
+// @Param        share_name   path      string  true  "Name"
+// @Param        share   body      Share  true "Create model"
+// @Success      201  {object}  Share
+// @Failure      400  {object}  ResponseError
+// @Failure      405  {object}  ResponseError
+// @Failure      409  {object}  ResponseError
+// @Failure      500  {object}  ResponseError
+// @Router       /share/{share_name} [put]
 func createShare(w http.ResponseWriter, r *http.Request) {
 	share := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
@@ -90,6 +126,21 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// UpdateShare godoc
+// @Summary      Update a share
+// @Description  update e new share
+// @Tags         share
+// @Accept       json
+// @Produce      json
+// @Param        share_name   path      string  true  "Name"
+// @Param        share   body      Share  true "Update model"
+// @Success      200  {object}  Share
+// @Failure      400  {object}  ResponseError
+// @Failure      405  {object}  ResponseError
+// @Failure      404  {object}  ResponseError
+// @Failure      500  {object}  ResponseError
+// @Router       /share/{share_name} [post]
+// @Router       /share/{share_name} [patch]
 func updateShare(w http.ResponseWriter, r *http.Request) {
 	share := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
@@ -125,6 +176,19 @@ func updateShare(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// DeleteShare godoc
+// @Summary      Delere a share
+// @Description  delere a share
+// @Tags         share
+// _Accept       json
+// _Produce      json
+// @Param        share_name   path      string  true  "Name"
+// @Success      204
+// @Failure      400  {object}  ResponseError
+// @Failure      405  {object}  ResponseError
+// @Failure      404  {object}  ResponseError
+// @Failure      500  {object}  ResponseError
+// @Router       /share/{share_name} [delete]
 func deleteShare(w http.ResponseWriter, r *http.Request) {
 	share := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
