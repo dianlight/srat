@@ -104,6 +104,15 @@ const docTemplate = `{
                         "name": "share_name",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Create model",
+                        "name": "share",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.Share"
+                        }
                     }
                 ],
                 "responses": {

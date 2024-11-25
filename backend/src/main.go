@@ -31,13 +31,14 @@ func loggingMiddleware(next http.Handler) http.Handler {
 }
 
 // HealthCheckHandler godoc
-// @Summary      HealthCheck
-// @Description  HealthCheck
-// @Tags         system
-// @Produce      json
-// @Success      200
-// @Failure      405  {object}  ResponseError
-// @Router       /healt [get]
+//
+//	@Summary		HealthCheck
+//	@Description	HealthCheck
+//	@Tags			system
+//	@Produce		json
+//	@Success		200
+//	@Failure		405	{object}	ResponseError
+//	@Router			/healt [get]
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	// A very simple health check.
 	w.Header().Set("Content-Type", "application/json")

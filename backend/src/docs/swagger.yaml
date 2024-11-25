@@ -189,6 +189,12 @@ paths:
         name: share_name
         required: true
         type: string
+      - description: Create model
+        in: body
+        name: share
+        required: true
+        schema:
+          $ref: '#/definitions/main.Share'
       produces:
       - application/json
       responses:
