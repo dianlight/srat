@@ -21,7 +21,7 @@ var SRATVersion string
 var config *Config
 var options *Options
 
-func loggingMiddleware(next http.Handler) http.Handler {
+func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Do stuff here
 		log.Println(r.RequestURI)
@@ -30,15 +30,30 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func ACAOMethodMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+type Health struct {
+	Alive bool `json:"alive"`
+}
+
 // HealthCheckHandler godoc
 //
 //	@Summary		HealthCheck
 //	@Description	HealthCheck
 //	@Tags			system
 //	@Produce		json
-//	@Success		200
+//	@Success		200 {object}	Health
 //	@Failure		405	{object}	ResponseError
-//	@Router			/healt [get]
+//	@Router			/health [get]
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	// A very simple health check.
 	w.Header().Set("Content-Type", "application/json")
@@ -96,7 +111,8 @@ func main() {
 
 	r := mux.NewRouter()
 	r.Use(mux.CORSMethodMiddleware(r))
-	r.Use(loggingMiddleware)
+	r.Use(LoggingMiddleware)
+	r.Use(ACAOMethodMiddleware)
 	//r.Use(optionMiddleware)
 
 	// Swagger
@@ -123,9 +139,9 @@ func main() {
 
 	// Connections TODO:
 
-	r.PathPrefix("/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-	})
+	//r.PathPrefix("/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	//	w.Header().Set("Access-Control-Allow-Origin", "*")
+	//})
 
 	/*
 		r.HandleFunc("/books/{title}/page/{page}", func(w http.ResponseWriter, r *http.Request) {

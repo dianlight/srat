@@ -1,4 +1,3 @@
-import html from 'bun-plugin-html';
 import copy from 'bun-copy-plugin';
 import { watch } from "fs"
 import { parseArgs } from "util";
@@ -60,6 +59,7 @@ if (values.watch) {
     console.log(`Build Watch ${import.meta.dir}/src`)
     const srcwatch = watch(
         `${import.meta.dir}/src`,
+        { recursive: true },
         async (event, filename) => {
             console.log(`Detected ${event} in ${filename}`)
             await build();

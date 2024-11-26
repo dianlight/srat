@@ -1,27 +1,40 @@
 {
   "name": "srat-frontend",
+  "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
+  "author": {
+    "name": "Lucio Tarantino",
+    "url": "https://github.com/dianlight"
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/dianlight/srat"
+  },
   "devDependencies": {
     "@gtramontina.com/bun-html-live-reload": "^1.0.1",
     "@types/bun": "latest",
+    "@types/materialize-css": "^1.0.14",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "bun-copy-plugin": "^0.2.1",
-    "bun-plugin-html": "^2.1.6"
+    "swagger-typescript-api": "^13.0.23"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "axios": "^1.7.8",
     "materialize-css": "^1.0.0-rc.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-social-icons": "^6.18.0"
   },
   "scripts": {
     "build": "bun run bun.build.ts",
     "watch": "bun run --watch bun.build.ts -w",
     "clean": "rm -rf out",
-    "dev": "bun --watch run bun.build.ts -w -s ./out"
+    "dev": "bun --watch run bun.build.ts -w -s ./out",
+    "swagger": "sta -p ../backend/src/docs/swagger.json -o ./src -n srat.ts --axios"
   }
 }

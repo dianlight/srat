@@ -14,7 +14,7 @@
         "version": "1.0"
     },
     "paths": {
-        "/healt": {
+        "/health": {
             "get": {
                 "description": "HealthCheck",
                 "produces": [
@@ -26,7 +26,10 @@
                 "summary": "HealthCheck",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Health"
+                        }
                     },
                     "405": {
                         "description": "Method Not Allowed",
@@ -349,6 +352,14 @@
         }
     },
     "definitions": {
+        "main.Health": {
+            "type": "object",
+            "properties": {
+                "alive": {
+                    "type": "boolean"
+                }
+            }
+        },
         "main.ResponseError": {
             "type": "object",
             "properties": {

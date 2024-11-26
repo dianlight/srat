@@ -1,4 +1,9 @@
 definitions:
+  main.Health:
+    properties:
+      alive:
+        type: boolean
+    type: object
   main.ResponseError:
     properties:
       body: {}
@@ -23,7 +28,7 @@ info:
   title: SRAT API
   version: "1.0"
 paths:
-  /healt:
+  /health:
     get:
       description: HealthCheck
       produces:
@@ -31,6 +36,8 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/main.Health'
         "405":
           description: Method Not Allowed
           schema:

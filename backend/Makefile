@@ -14,7 +14,8 @@ build: docs test $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS)
 	mkdir dist || : 
-	go build -o $@ $^
+	#go build -o $@ $^
+	cd $(SRC_DIRS);go build -o ../$@ .
 
 .PHONY: format
 format:

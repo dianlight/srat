@@ -22,7 +22,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/healt": {
+        "/health": {
             "get": {
                 "description": "HealthCheck",
                 "produces": [
@@ -34,7 +34,10 @@ const docTemplate = `{
                 "summary": "HealthCheck",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Health"
+                        }
                     },
                     "405": {
                         "description": "Method Not Allowed",
@@ -357,6 +360,14 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "main.Health": {
+            "type": "object",
+            "properties": {
+                "alive": {
+                    "type": "boolean"
+                }
+            }
+        },
         "main.ResponseError": {
             "type": "object",
             "properties": {
