@@ -11,9 +11,11 @@ type Share struct {
 	FS   string `json:"fs"`
 }
 
+type Shares map[string]Share
+
 type Config struct {
 	Options
-	Shares map[string]Share `json:"shares"`
+	Shares Shares `json:"shares"`
 	// "_interfaces":["eth0","eth1"],
 	DockerInterface []string `json:"docker_interface"`
 	DockerNet       string   `json:"docker_net"`

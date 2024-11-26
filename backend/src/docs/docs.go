@@ -337,10 +337,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/main.Share"
-                            }
+                            "$ref": "#/definitions/main.Shares"
                         }
                     },
                     "405": {
@@ -386,6 +383,12 @@ const docTemplate = `{
                 "path": {
                     "type": "string"
                 }
+            }
+        },
+        "main.Shares": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/main.Share"
             }
         }
     }

@@ -6,16 +6,17 @@ import "./css/style.css"
 import "materialize-css/dist/css/materialize.min.css"
 import { Footer } from './Footer.tsx';
 import M from 'materialize-css'
+import { StrictMode } from 'react';
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 //root.render(<Page message="Sup!5" />)
-root.render(<Page />)
+root.render(<StrictMode><Page /></StrictMode>)
 
 const navbar = ReactDOM.createRoot(document.getElementById('navbar')!)
-navbar.render(<NavBar />)
+navbar.render(<StrictMode><NavBar /></StrictMode>)
 
 const footer = ReactDOM.createRoot(document.getElementById('footer')!)
-footer.render(<Footer />)
+footer.render(<StrictMode><Footer /></StrictMode>)
 
 
 document.addEventListener("DOMContentLoaded", function (event) {

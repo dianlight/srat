@@ -23,6 +23,8 @@ export interface MainShare {
   path?: string;
 }
 
+export type MainShares = Record<string, MainShare>;
+
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
 
@@ -279,7 +281,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/shares
      */
     sharesList: (params: RequestParams = {}) =>
-      this.request<MainShare[], MainResponseError>({
+      this.request<MainShares, MainResponseError>({
         path: `/shares`,
         method: "GET",
         format: "json",

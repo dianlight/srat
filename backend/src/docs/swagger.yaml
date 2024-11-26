@@ -17,6 +17,10 @@ definitions:
       path:
         type: string
     type: object
+  main.Shares:
+    additionalProperties:
+      $ref: '#/definitions/main.Share'
+    type: object
 info:
   contact:
     email: lucio.tarantino@gmail.com
@@ -237,9 +241,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/main.Share'
-            type: array
+            $ref: '#/definitions/main.Shares'
         "405":
           description: Method Not Allowed
           schema:

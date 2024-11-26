@@ -10,14 +10,21 @@ import (
 )
 
 // ListShares godoc
+//
 //	@Summary		List all configured shares
 //	@Description	List all configured shares
 //	@Tags			share
+//
 // _Accept       json
+//
 //	@Produce		json
+//
 // _Param        id   path      int  true  "Account ID"
-//	@Success		200	{object}	[]Share
+//
+//	@Success		200	{object}	Shares
+//
 // _Failure      400  {object}  ResponseError
+//
 //	@Failure		405	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
 //	@Router			/shares [get]
@@ -38,10 +45,13 @@ func listShares(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetShare godoc
+//
 //	@Summary		Get a share
 //	@Description	get share by Name
 //	@Tags			share
+//
 // _Accept       json
+//
 //	@Produce		json
 //	@Param			share_name	path		string	true	"Name"
 //	@Success		200			{object}	Share
@@ -72,6 +82,7 @@ func getShare(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateShare godoc
+//
 //	@Summary		Create a share
 //	@Description	create e new share
 //	@Tags			share
@@ -127,6 +138,7 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateShare godoc
+//
 //	@Summary		Update a share
 //	@Description	update e new share
 //	@Tags			share
@@ -177,11 +189,14 @@ func updateShare(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteShare godoc
+//
 //	@Summary		Delere a share
 //	@Description	delere a share
 //	@Tags			share
+//
 // _Accept       json
 // _Produce      json
+//
 //	@Param			share_name	path	string	true	"Name"
 //	@Success		204
 //	@Failure		400	{object}	ResponseError
