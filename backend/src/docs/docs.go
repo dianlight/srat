@@ -354,6 +354,29 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/ws": {
+            "get": {
+                "description": "Open the WSChannel",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "WSChannel",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "405": {
+                        "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -369,6 +392,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "body": {},
+                "code": {
+                    "type": "integer"
+                },
                 "error": {
                     "type": "string"
                 }

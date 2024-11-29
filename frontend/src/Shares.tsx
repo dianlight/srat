@@ -20,13 +20,13 @@ export function Shares() {
             })
         }
 
-        setTimeout(getShareList, 1000);
+        // setTimeout(getShareList, 1000);
     })
 
 
     return <ul className="collection" >
         {Object.entries(status).map(([share, props]) =>
-            < li className="collection-item avatar" >
+            < li className="collection-item avatar" key={share} >
                 <i className="material-icons circle" > folder </i>
                 < span className="title" > {share} </span>
                 < p > {props.fs} < br />

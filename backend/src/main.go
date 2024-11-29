@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -20,6 +19,7 @@ import (
 var SRATVersion string
 var config *Config
 var options *Options
+var globalRouter *mux.Router
 
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -41,33 +41,18 @@ func ACAOMethodMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-type Health struct {
-	Alive bool `json:"alive"`
-}
-
-// HealthCheckHandler godoc
-//
-//	@Summary		HealthCheck
-//	@Description	HealthCheck
-//	@Tags			system
-//	@Produce		json
-//	@Success		200 {object}	Health
-//	@Failure		405	{object}	ResponseError
-//	@Router			/health [get]
-func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	// A very simple health check.
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	// In the future we could report back on the status of our DB, or our cache
-	// (e.g. Redis) by performing a simple PING, and include them in the response.
-	io.WriteString(w, `{"alive": true}`)
-}
-
 type ResponseError struct {
+	Code  int    `json:"code"`
 	Error string `json:"error"`
 	Body  any    `json:"body"`
 }
+
+//type WebSocketMessageEnvelope struct {
+//	Path      string `json:"path"`      // The name of the function. Can be a path or a method
+//	Method    string `json:"method"`    // Method if the path is a REST method
+//	Body      any    `json:"body"`      // The request body
+//	Subcriber string `json:"subcriber"` // The UID of the subcriber
+//}
 
 //	@title			SRAT API
 //	@version		1.0
@@ -109,14 +94,14 @@ func main() {
 	// Get options
 	options = readOptionsFile(*optionsFile)
 
-	r := mux.NewRouter()
-	r.Use(mux.CORSMethodMiddleware(r))
-	r.Use(LoggingMiddleware)
-	r.Use(ACAOMethodMiddleware)
+	globalRouter := mux.NewRouter()
+	globalRouter.Use(mux.CORSMethodMiddleware(globalRouter))
+	globalRouter.Use(LoggingMiddleware)
+	globalRouter.Use(ACAOMethodMiddleware)
 	//r.Use(optionMiddleware)
 
 	// Swagger
-	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+	globalRouter.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"), //The url pointing to API definition
 		httpSwagger.DeepLinking(true),
 		httpSwagger.DocExpansion("none"),
@@ -124,14 +109,14 @@ func main() {
 	)).Methods(http.MethodGet)
 
 	// HealtCheck
-	r.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet)
 
 	// Shares
-	r.HandleFunc("/shares", listShares).Methods(http.MethodGet)
-	r.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet)
-	r.HandleFunc("/share/{share_name}", createShare).Methods(http.MethodPut)
-	r.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPost, http.MethodPatch)
-	r.HandleFunc("/share/{share_name}", deleteShare).Methods(http.MethodDelete)
+	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/share/{share_name}", createShare).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPost, http.MethodPatch)
+	globalRouter.HandleFunc("/share/{share_name}", deleteShare).Methods(http.MethodDelete)
 
 	// Volumes TODO:
 
@@ -139,28 +124,9 @@ func main() {
 
 	// Connections TODO:
 
-	//r.PathPrefix("/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	//	w.Header().Set("Access-Control-Allow-Origin", "*")
-	//})
+	// WebSocket
 
-	/*
-		r.HandleFunc("/books/{title}/page/{page}", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			if r.Method == http.MethodOptions {
-				return
-			}
-			vars := mux.Vars(r)
-			title := vars["title"]
-			page := vars["page"]
-
-			fmt.Fprintf(w, "You've requested the book: %s on page %s\n", title, page)
-		}).Methods(http.MethodGet, http.MethodPut, http.MethodPatch, http.MethodOptions)
-
-		r.HandleFunc("/books/{title}", CreateBook).Methods(http.MethodPost).Schemes("https")
-		r.HandleFunc("/books/{title}", ReadBook).Methods("GET")
-		r.HandleFunc("/books/{title}", UpdateBook).Methods("PUT")
-		r.HandleFunc("/books/{title}", DeleteBook).Methods("DELETE")
-	*/
+	globalRouter.HandleFunc("/ws", WSChannelHandler)
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf("0.0.0.0:%d", *http_port),
@@ -168,7 +134,7 @@ func main() {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      r, // Pass our instance of gorilla/mux in.
+		Handler:      globalRouter, // Pass our instance of gorilla/mux in.
 	}
 
 	// Run our server in a goroutine so that it doesn't block.

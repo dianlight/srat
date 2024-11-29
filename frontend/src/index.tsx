@@ -13,7 +13,8 @@ const root = ReactDOM.createRoot(document.getElementById('root')!);
 root.render(<StrictMode><Page /></StrictMode>)
 
 const navbar = ReactDOM.createRoot(document.getElementById('navbar')!)
-navbar.render(<StrictMode><NavBar /></StrictMode>)
+//navbar.render(<StrictMode><NavBar /></StrictMode>)
+navbar.render(<NavBar />)
 
 const footer = ReactDOM.createRoot(document.getElementById('footer')!)
 footer.render(<StrictMode><Footer /></StrictMode>)

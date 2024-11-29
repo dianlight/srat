@@ -15,6 +15,7 @@ export interface MainHealth {
 
 export interface MainResponseError {
   body?: any;
+  code?: number;
   error?: string;
 }
 
@@ -285,6 +286,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/shares`,
         method: "GET",
         format: "json",
+        ...params,
+      }),
+  };
+  ws = {
+    /**
+     * @description Open the WSChannel
+     *
+     * @tags system
+     * @name GetWs
+     * @summary WSChannel
+     * @request GET:/ws
+     */
+    getWs: (params: RequestParams = {}) =>
+      this.request<void, MainResponseError>({
+        path: `/ws`,
+        method: "GET",
         ...params,
       }),
   };
