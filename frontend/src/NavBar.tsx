@@ -37,6 +37,7 @@ export function NavBar() {
         })
 
         ws.onError((event) => {
+            console.error("WS error2", event.type, JSON.stringify(event))
             setErrorInfo(JSON.stringify(event));
             setStatus(false);
         })

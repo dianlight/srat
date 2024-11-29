@@ -12,41 +12,65 @@ export interface WSSubscriber<T> extends Omit<WSMessage<T>, 'data'> {
 }
 
 export class WSRouter {
-    WebSocket: WebSocket
+    WebSocket!: WebSocket
 
     subcribers: Map<string, WSSubscriber<any>> = new Map()
+    errorSubscribers: Map<string, (data: Event) => void> = new Map()
 
     lastError: string = ''
 
-    constructor(ws: WebSocket) {
-        this.WebSocket = ws
-        ws.onopen = () => {
-            console.log("WS opened")
-        }
+    constructor(url: string) {
 
-        ws.onclose = () => {
-            console.log("WS closed")
-        }
+        const startWebsocket = () => {
 
-        ws.onerror = (event) => {
-            console.error("WS error", event)
-        }
-
-        ws.onmessage = (event) => {
-            //console.log(`WS message ${event.data}`)
-            const message = JSON.parse(event.data) as WSMessage<any>
-            const subscriber = this.subcribers.get(message.uid)
-            if (subscriber) {
-                if (subscriber.dataType === typeof message.data) {
-                    subscriber.cb(message.data)
-                    this.lastError = ''
-                } else {
-                    console.error(`Data type mismatch ${subscriber.dataType} !== ${typeof message.data}`)
+            this.WebSocket = new WebSocket(url)
+            this.WebSocket.addEventListener('open', () => {
+                console.log("WS opened", this.WebSocket)
+                for (const subscriber of this.subcribers.values()) {
+                    this.send(JSON.stringify({
+                        event: subscriber.event,
+                        uid: subscriber.uid
+                    } as WSMessage<any>))
                 }
-            } else
-                console.error(`No subscriber for ${message.event} ${message.uid}`)
+                for (const subscriber of this.errorSubscribers.values()) {
+                    this.WebSocket.addEventListener('error', subscriber)
+                }
+            })
 
+            this.WebSocket.onclose = () => {
+                console.log("WS closed")
+            }
+
+            this.WebSocket.addEventListener('error', (event) => {
+                console.error("WS error", event)
+                this.lastError = JSON.stringify(event)
+                setTimeout(startWebsocket, 5000)
+
+            })
+
+            this.WebSocket.onmessage = (event) => {
+                //console.log(`WS message ${event.data}`)
+                const message = JSON.parse(event.data) as WSMessage<any>
+                const subscriber = this.subcribers.get(message.uid)
+                if (subscriber) {
+                    if (subscriber.dataType === typeof message.data) {
+                        subscriber.cb(message.data)
+                        this.lastError = ''
+                    } else {
+                        console.error(`Data type mismatch ${subscriber.dataType} !== ${typeof message.data}`)
+                    }
+                } else {
+                    console.error(`No subscriber for ${message.event} ${message.uid}`)
+                }
+            }
         }
+
+        startWebsocket();
+
+
+
+
+
     }
 
     send(data: any) {
@@ -70,6 +94,7 @@ export class WSRouter {
 
     onError(cb: (data: Event) => void) {
         this.WebSocket.addEventListener('error', cb)
+        this.errorSubscribers.set(uuidv4(), cb)
     }
 
 }
