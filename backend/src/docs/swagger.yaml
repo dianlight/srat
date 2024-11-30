@@ -358,44 +358,6 @@ paths:
       summary: List all configured shares
       tags:
       - share
-  /user/{usename}:
-    patch:
-      consumes:
-      - application/json
-      description: update e user
-      parameters:
-      - description: Update model
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/main.User'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/main.User'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-      summary: Update a user
-      tags:
-      - user
   /user/{username}:
     delete:
       description: delete a user
@@ -451,6 +413,48 @@ paths:
           schema:
             $ref: '#/definitions/main.ResponseError'
       summary: Get a user
+      tags:
+      - user
+    patch:
+      consumes:
+      - application/json
+      description: update e user
+      parameters:
+      - description: Name
+        in: path
+        name: username
+        required: true
+        type: string
+      - description: Update model
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/main.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Update a user
       tags:
       - user
     post:
