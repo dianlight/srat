@@ -3,11 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"dario.cat/mergo"
 	"github.com/gorilla/mux"
 )
+
+var sharesQueue = map[string](chan *Shares){}
 
 // ListShares godoc
 //
@@ -123,6 +126,10 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: Create Share
 
+		for _, v := range sharesQueue {
+			v <- &config.Shares
+		}
+
 		jsonResponse, jsonError := json.Marshal(share)
 
 		if jsonError != nil {
@@ -173,6 +180,10 @@ func updateShare(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: Save share as new data!
 
+		for _, v := range sharesQueue {
+			v <- &config.Shares
+		}
+
 		jsonResponse, jsonError := json.Marshal(share)
 
 		if jsonError != nil {
@@ -215,8 +226,29 @@ func deleteShare(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: Delete share
 
+		for _, v := range sharesQueue {
+			v <- &config.Shares
+		}
+
 		w.WriteHeader(http.StatusNoContent)
 
 	}
 
+}
+
+func SharesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+	if sharesQueue[request.Uid] == nil {
+		sharesQueue[request.Uid] = make(chan *Shares, 10)
+	}
+	sharesQueue[request.Uid] <- &config.Shares
+	log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
+	for {
+		smessage := &WebSocketMessageEnvelope{
+			Event: "shares",
+			Uid:   request.Uid,
+			Data:  <-sharesQueue[request.Uid],
+		}
+		log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
+		c <- smessage
+	}
 }

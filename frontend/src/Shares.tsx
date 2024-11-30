@@ -1,13 +1,14 @@
 import { useContext, useEffect, useState } from "react";
-import { apiContext } from "./Contexts";
+import { apiContext, wsContext } from "./Contexts";
 import type { Api, MainShare, MainShares } from "./srat";
 
 export function Shares() {
     const api = useContext(apiContext);
     const [status, setStatus] = useState<MainShares>({});
-    const [errorInfo, setErrorInfo] = useState('');
+    const ws = useContext(wsContext);
 
     useEffect(() => {
+        /*
         async function getShareList() {
             api.shares.sharesList().then((res) => {
                 setStatus(res.data || []);
@@ -19,9 +20,15 @@ export function Shares() {
                 setTimeout(getShareList, 5000);
             })
         }
+        */
 
         // setTimeout(getShareList, 1000);
-    })
+
+        ws.subscribe<MainShares>('shares', (data) => {
+            console.log("Got shares", data)
+            setStatus(data);
+        })
+    }, [])
 
 
     return <ul className="collection" >

@@ -77,7 +77,7 @@ export class WSRouter {
         this.WebSocket.send(data)
     }
 
-    subscribe<T>(event: 'heartbeat', cb: (data: T) => void) {
+    subscribe<T>(event: 'heartbeat' | 'shares', cb: (data: T) => void) {
         const type: T = {} as T;
         const uuid = uuidv4();
         this.subcribers.set(uuid, {

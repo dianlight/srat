@@ -76,7 +76,9 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 				log.Printf("Unable to encode JSON")
 				continue
 			}
-			log.Printf("send: %s %s", outmessage.Event, string(jsonResponse))
+			if outmessage.Event != "heartbeat" {
+				log.Printf("send: %s %s", outmessage.Event, string(jsonResponse))
+			}
 			c.WriteMessage(websocket.TextMessage, []byte(jsonResponse))
 		}
 	}()
@@ -94,6 +96,10 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 		switch message.Event {
 		case "heartbeat":
 			go HealthCheckWsHandler(message, outchan)
+		case "shares":
+			go SharesWsHandler(message, outchan)
+		default:
+			log.Printf("Unknown event: %s", message.Event)
 		}
 
 		/*
