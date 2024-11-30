@@ -29,7 +29,7 @@ clean:
 
 .PHONY: test
 test: $(ALL_SRCS)
-	cd $(SRC_DIRS);go test
+	cd $(SRC_DIRS);go test -cover
 
 docs: $(SRCS)
 	docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest init
