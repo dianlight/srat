@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { apiContext, wsContext } from "./Contexts";
 import type { Api, MainShare, MainShares } from "./srat";
 
-export function Shares() {
+export function Users() {
     const api = useContext(apiContext);
     const [status, setStatus] = useState<MainShares>({});
     const ws = useContext(wsContext);
@@ -24,8 +24,8 @@ export function Shares() {
 
         // setTimeout(getShareList, 1000);
 
-        ws.subscribe<MainShares>('shares', (data) => {
-            //console.log("Got shares", data)
+        ws.subscribe<MainShares>('users', (data) => {
+            console.log("Got users", data)
             setStatus(data);
         })
     }, [])

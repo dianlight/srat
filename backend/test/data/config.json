@@ -31,7 +31,16 @@
   "wsdd": false,
   "mqtt_nexgen_entities": false,
   "autodiscovery": {},
-  "other_users": [],
+  "other_users": [
+    {
+      "username": "backupuser",
+      "password": "<backupuser secret password>"
+    },
+    {
+      "username": "secureuser",
+      "password": "<secureuser secret password>"
+    }
+  ],
   "acl": [],
   "interfaces": [],
   "password": "hassio2010",

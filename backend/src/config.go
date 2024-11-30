@@ -20,7 +20,8 @@ type Config struct {
 	DockerInterface []string `json:"docker_interface"`
 	DockerNet       string   `json:"docker_net"`
 	// "_moredisks":["mnt/EFI","mnt/LIBRARY","mnt/Updater"],
-
+	// Redefinitions and new config elements
+	Users []User `json:"users"`
 }
 
 func readConfig(file string) *Config {

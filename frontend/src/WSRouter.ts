@@ -45,7 +45,6 @@ export class WSRouter {
                 console.error("WS error", event)
                 this.lastError = JSON.stringify(event)
                 setTimeout(startWebsocket, 5000)
-
             })
 
             this.WebSocket.onmessage = (event) => {
@@ -66,18 +65,13 @@ export class WSRouter {
         }
 
         startWebsocket();
-
-
-
-
-
     }
 
     send(data: any) {
         this.WebSocket.send(data)
     }
 
-    subscribe<T>(event: 'heartbeat' | 'shares', cb: (data: T) => void) {
+    subscribe<T>(event: 'heartbeat' | 'shares' | 'users', cb: (data: T) => void) {
         const type: T = {} as T;
         const uuid = uuidv4();
         this.subcribers.set(uuid, {

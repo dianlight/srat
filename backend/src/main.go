@@ -120,7 +120,14 @@ func main() {
 
 	// Volumes TODO:
 
-	// Users TODO:
+	// Users
+	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/admin/user", updateAdminUser).Methods(http.MethodPost, http.MethodPatch)
+	globalRouter.HandleFunc("/users", listUsers).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/user/{username}", getUser).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/user/{username}", createUser).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/user/{username}", updateUser).Methods(http.MethodPost, http.MethodPatch)
+	globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
 
 	// Connections TODO:
 

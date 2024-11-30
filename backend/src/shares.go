@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"dario.cat/mergo"
 	"github.com/gorilla/mux"
 )
 
-var sharesQueue = map[string](chan *Shares){}
+var (
+	sharesQueue      = map[string](chan *Shares){}
+	sharesQueueMutex = sync.RWMutex{}
+)
 
 // ListShares godoc
 //
@@ -126,9 +130,7 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: Create Share
 
-		for _, v := range sharesQueue {
-			v <- &config.Shares
-		}
+		notifyClient()
 
 		jsonResponse, jsonError := json.Marshal(share)
 
@@ -142,6 +144,14 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
+}
+
+func notifyClient() {
+	sharesQueueMutex.RLock()
+	for _, v := range sharesQueue {
+		v <- &config.Shares
+	}
+	sharesQueueMutex.RUnlock()
 }
 
 // UpdateShare godoc
@@ -180,9 +190,7 @@ func updateShare(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: Save share as new data!
 
-		for _, v := range sharesQueue {
-			v <- &config.Shares
-		}
+		notifyClient()
 
 		jsonResponse, jsonError := json.Marshal(share)
 
@@ -226,9 +234,7 @@ func deleteShare(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: Delete share
 
-		for _, v := range sharesQueue {
-			v <- &config.Shares
-		}
+		notifyClient()
 
 		w.WriteHeader(http.StatusNoContent)
 
@@ -237,16 +243,19 @@ func deleteShare(w http.ResponseWriter, r *http.Request) {
 }
 
 func SharesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+	sharesQueueMutex.Lock()
 	if sharesQueue[request.Uid] == nil {
 		sharesQueue[request.Uid] = make(chan *Shares, 10)
 	}
 	sharesQueue[request.Uid] <- &config.Shares
+	var queue = sharesQueue[request.Uid]
+	sharesQueueMutex.Unlock()
 	log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
 	for {
 		smessage := &WebSocketMessageEnvelope{
 			Event: "shares",
 			Uid:   request.Uid,
-			Data:  <-sharesQueue[request.Uid],
+			Data:  <-queue,
 		}
 		log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
 		c <- smessage

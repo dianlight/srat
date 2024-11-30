@@ -15,6 +15,11 @@ type OptionsAcl struct {
 	Usage       string   `json:"usage"`
 }
 
+type User struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type Options struct {
 	Workgroup        string   `json:"workgroup"`
 	Username         string   `json:"username"`
@@ -47,10 +52,7 @@ type Options struct {
 		DisablePersistent bool `json:"disable_persistent"`
 		DisableAutoremove bool `json:"disable_autoremove"`
 	} `json:"autodiscovery"`
-	OtherUsers []struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	} `json:"other_users"`
+	OtherUsers        []User       `json:"other_users,omitempty"`
 	ACL               []OptionsAcl `json:"acl"`
 	Interfaces        []string     `json:"interfaces"`
 	BindAllInterfaces bool         `json:"bind_all_interfaces"`
