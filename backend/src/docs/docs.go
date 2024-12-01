@@ -52,10 +52,8 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/adminUser": {
-            "post": {
+            },
+            "put": {
                 "description": "update admin user",
                 "consumes": [
                     "application/json"
@@ -235,69 +233,6 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "create e new share",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "share"
-                ],
-                "summary": "Create a share",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Name",
-                        "name": "share_name",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Create model",
-                        "name": "share",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.Share"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/main.Share"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/main.ResponseError"
-                        }
-                    },
-                    "405": {
-                        "description": "Method Not Allowed",
-                        "schema": {
-                            "$ref": "#/definitions/main.ResponseError"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/main.ResponseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.ResponseError"
-                        }
-                    }
-                }
-            },
-            "post": {
                 "description": "update e new share",
                 "consumes": [
                     "application/json"
@@ -348,6 +283,69 @@ const docTemplate = `{
                     },
                     "405": {
                         "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "create e new share",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "share"
+                ],
+                "summary": "Create a share",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Name",
+                        "name": "share_name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Create model",
+                        "name": "share",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.Share"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.Share"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "405": {
+                        "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/main.ResponseError"
                         }
@@ -501,47 +499,8 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/{username}": {
-            "get": {
-                "description": "get user by Name",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user"
-                ],
-                "summary": "Get a user",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Name",
-                        "name": "username",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.User"
-                        }
-                    },
-                    "405": {
-                        "description": "Method Not Allowed",
-                        "schema": {
-                            "$ref": "#/definitions/main.ResponseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.ResponseError"
-                        }
-                    }
-                }
-            },
-            "put": {
+        "/user": {
+            "post": {
                 "description": "create e new user",
                 "consumes": [
                     "application/json"
@@ -550,17 +509,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "share"
+                    "user"
                 ],
                 "summary": "Create a user",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Name",
-                        "name": "username",
-                        "in": "path",
-                        "required": true
-                    },
                     {
                         "description": "Create model",
                         "name": "user",
@@ -603,8 +555,49 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/user/{username}": {
+            "get": {
+                "description": "get user by Name",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Name",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.User"
+                        }
+                    },
+                    "405": {
+                        "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
             },
-            "post": {
+            "put": {
                 "description": "update e user",
                 "consumes": [
                     "application/json"
@@ -670,7 +663,7 @@ const docTemplate = `{
             "delete": {
                 "description": "delete a user",
                 "tags": [
-                    "share"
+                    "user"
                 ],
                 "summary": "Delete a user",
                 "parameters": [
@@ -790,7 +783,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.User"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.User"
+                            }
                         }
                     },
                     "405": {

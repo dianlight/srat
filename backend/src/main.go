@@ -114,19 +114,19 @@ func main() {
 	// Shares
 	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/share/{share_name}", createShare).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPost, http.MethodPatch)
+	globalRouter.HandleFunc("/share/{share_name}", createShare).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/share/{share_name}", deleteShare).Methods(http.MethodDelete)
 
 	// Volumes TODO:
 
 	// Users
 	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/admin/user", updateAdminUser).Methods(http.MethodPost, http.MethodPatch)
+	globalRouter.HandleFunc("/admin/user", updateAdminUser).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/users", listUsers).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/user/{username}", getUser).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/user/{username}", createUser).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/user/{username}", updateUser).Methods(http.MethodPost, http.MethodPatch)
+	globalRouter.HandleFunc("/user", createUser).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/user/{username}", updateUser).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
 
 	// Connections TODO:

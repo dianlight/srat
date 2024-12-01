@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
-	"sync"
 
 	"dario.cat/mergo"
 	"github.com/gorilla/mux"
 )
 
+/*
 var (
 	usersQueue      = map[string](chan *[]User){}
 	usersQueueMutex = sync.RWMutex{}
 )
+*/
 
 // ListUsers godoc
 //
@@ -28,7 +29,7 @@ var (
 //
 // _Param        id   path      int  true  "Account ID"
 //
-//	@Success		200	{object}	User[]
+//	@Success		200	{object}	[]User
 //
 // _Failure      400  {object}  ResponseError
 //
@@ -51,10 +52,10 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// GetUser godoc
+// GetAdminUser godoc
 //
-//	@Summary		Get a user
-//	@Description	get user by Name
+//	@Summary		Get the admin user
+//	@Description	get the admin user
 //	@Tags			user
 //
 //
@@ -122,22 +123,28 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 //
 //	@Summary		Create a user
 //	@Description	create e new user
-//	@Tags			share
+//	@Tags			user
 //	@Accept			json
 //	@Produce		json
-//	@Param			username	path		string	true	"Name"
 //	@Param			user		body		User	true	"Create model"
 //	@Success		201			{object}	User
 //	@Failure		400			{object}	ResponseError
 //	@Failure		405			{object}	ResponseError
 //	@Failure		409			{object}	ResponseError
 //	@Failure		500			{object}	ResponseError
-//	@Router			/user/{username} [put]
+//	@Router			/user [post]
 func createUser(w http.ResponseWriter, r *http.Request) {
-	user := mux.Vars(r)["username"]
 	w.Header().Set("Content-Type", "application/json")
 
-	index := slices.IndexFunc(config.OtherUsers, func(u User) bool { return u.Username == user })
+	var user User
+
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	index := slices.IndexFunc(config.OtherUsers, func(u User) bool { return u.Username == user.Username })
 	if index != -1 {
 		w.WriteHeader(http.StatusConflict)
 		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "User already exists", Body: config.OtherUsers[index]})
@@ -150,13 +157,6 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 			w.Write(jsonResponse)
 		}
 	} else {
-		var user User
-
-		err := json.NewDecoder(r.Body).Decode(&user)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 
 		// TODO: Check the new username with admin username
 
@@ -200,7 +200,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		405			{object}	ResponseError
 //	@Failure		404			{object}	ResponseError
 //	@Failure		500			{object}	ResponseError
-//	@Router			/user/{username} [post]
+//	@Router			/user/{username} [put]
 //	@Router			/user/{username} [patch]
 func updateUser(w http.ResponseWriter, r *http.Request) {
 	user := mux.Vars(r)["username"]
@@ -250,8 +250,8 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		405			{object}	ResponseError
 //	@Failure		404			{object}	ResponseError
 //	@Failure		500			{object}	ResponseError
-//	@Router			/adminUser [post]
-//	@Router			/adminUser [patch]
+//	@Router			/admin/user [put]
+//	@Router			/admin/user [patch]
 func updateAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -289,7 +289,7 @@ func updateAdminUser(w http.ResponseWriter, r *http.Request) {
 //
 //	@Summary		Delete a user
 //	@Description	delete a user
-//	@Tags			share
+//	@Tags			user
 //
 //	@Param			username	path	string	true	"Name"
 //	@Success		204

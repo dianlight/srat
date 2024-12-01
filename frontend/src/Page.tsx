@@ -1,19 +1,30 @@
+import { createPortal } from "react-dom";
 import { Shares } from "./Shares";
+import { Users } from "./Users";
+import { NavBar } from "./NavBar";
+import { Footer } from "./Footer";
+import { Tabs, AutoInit } from "@materializecss/materialize"
+import { useRef } from "react";
+
 
 export function Page(/*props: { message: string }*/) {
-    return <div className="row">
-        <div className="col s12">
-            <ul className="tabs">
-                <li className="tab col s4"><a className="active" href="#shares">Shares</a></li>
-                <li className="tab col s4"><a href="#users">Users</a></li>
-                {/*<li className="tab col s3 disabled"><a href="#test3">Disabled Tab</a></li>*/}
-                <li className="tab col s4 disabled"><a href="#settings">Settings</a></li>
-            </ul>
-        </div>
-        <div id="shares" className="col s12"><Shares /></div>
-        <div id="users" className="col s12">Users</div>
-        {/*<div id="test3" className="col s12">Test 3</div>*/}
-        <div id="settings" className="col s12">Settings</div>
+
+    function onLoadHandler() {
+        AutoInit();
+    }
+
+    return <div onLoad={onLoadHandler} className="row" style={{ marginTop: "50px" }}>
+        {createPortal(
+            <NavBar />,
+            document.getElementById('navbar')!
+        )}
+        {createPortal(
+            <Footer />,
+            document.getElementById('footer')!
+        )}
         {/*props.message*/}
+        <div id="shares" className="col s12"><Shares /></div>
+        <div id="users" className="col s12"><Users /></div>
+        <div id="settings" className="col s12">Settings</div>
     </div>
 }

@@ -14,7 +14,6 @@
   "devDependencies": {
     "@gtramontina.com/bun-html-live-reload": "^1.0.1",
     "@types/bun": "latest",
-    "@types/materialize-css": "^1.0.14",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "bun-copy-plugin": "^0.2.1",
@@ -24,10 +23,11 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@materializecss/materialize": "^2.1.1",
     "axios": "^1.7.8",
-    "materialize-css": "^1.0.0-rc.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-responsive": "^10.0.0",
     "react-social-icons": "^6.18.0",
     "uuid": "^11.0.3"
   },

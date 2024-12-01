@@ -102,7 +102,7 @@ func getShare(w http.ResponseWriter, r *http.Request) {
 //	@Failure		405			{object}	ResponseError
 //	@Failure		409			{object}	ResponseError
 //	@Failure		500			{object}	ResponseError
-//	@Router			/share/{share_name} [put]
+//	@Router			/share/{share_name} [post]
 func createShare(w http.ResponseWriter, r *http.Request) {
 	share := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
@@ -168,7 +168,7 @@ func notifyClient() {
 //	@Failure		405			{object}	ResponseError
 //	@Failure		404			{object}	ResponseError
 //	@Failure		500			{object}	ResponseError
-//	@Router			/share/{share_name} [post]
+//	@Router			/share/{share_name} [put]
 //	@Router			/share/{share_name} [patch]
 func updateShare(w http.ResponseWriter, r *http.Request) {
 	share := mux.Vars(r)["share_name"]

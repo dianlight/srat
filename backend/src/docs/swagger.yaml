@@ -62,7 +62,6 @@ paths:
       summary: Get a user
       tags:
       - user
-  /adminUser:
     patch:
       consumes:
       - application/json
@@ -100,7 +99,7 @@ paths:
       summary: Update admin user
       tags:
       - user
-    post:
+    put:
       consumes:
       - application/json
       description: update admin user
@@ -256,48 +255,6 @@ paths:
     post:
       consumes:
       - application/json
-      description: update e new share
-      parameters:
-      - description: Name
-        in: path
-        name: share_name
-        required: true
-        type: string
-      - description: Update model
-        in: body
-        name: share
-        required: true
-        schema:
-          $ref: '#/definitions/main.Share'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/main.Share'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-      summary: Update a share
-      tags:
-      - share
-    put:
-      consumes:
-      - application/json
       description: create e new share
       parameters:
       - description: Name
@@ -337,6 +294,48 @@ paths:
       summary: Create a share
       tags:
       - share
+    put:
+      consumes:
+      - application/json
+      description: update e new share
+      parameters:
+      - description: Name
+        in: path
+        name: share_name
+        required: true
+        type: string
+      - description: Update model
+        in: body
+        name: share
+        required: true
+        schema:
+          $ref: '#/definitions/main.Share'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Share'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Update a share
+      tags:
+      - share
   /shares:
     get:
       description: List all configured shares
@@ -358,6 +357,44 @@ paths:
       summary: List all configured shares
       tags:
       - share
+  /user:
+    post:
+      consumes:
+      - application/json
+      description: create e new user
+      parameters:
+      - description: Create model
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/main.User'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Create a user
+      tags:
+      - user
   /user/{username}:
     delete:
       description: delete a user
@@ -388,7 +425,7 @@ paths:
             $ref: '#/definitions/main.ResponseError'
       summary: Delete a user
       tags:
-      - share
+      - user
     get:
       description: get user by Name
       parameters:
@@ -457,7 +494,7 @@ paths:
       summary: Update a user
       tags:
       - user
-    post:
+    put:
       consumes:
       - application/json
       description: update e user
@@ -499,48 +536,6 @@ paths:
       summary: Update a user
       tags:
       - user
-    put:
-      consumes:
-      - application/json
-      description: create e new user
-      parameters:
-      - description: Name
-        in: path
-        name: username
-        required: true
-        type: string
-      - description: Create model
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/main.User'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/main.User'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-      summary: Create a user
-      tags:
-      - share
   /users:
     get:
       description: List all configured users
@@ -550,7 +545,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.User'
+            items:
+              $ref: '#/definitions/main.User'
+            type: array
         "405":
           description: Method Not Allowed
           schema:

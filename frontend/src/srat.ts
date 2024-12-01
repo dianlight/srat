@@ -26,6 +26,11 @@ export interface MainShare {
 
 export type MainShares = Record<string, MainShare>;
 
+export interface MainUser {
+  password?: string;
+  username?: string;
+}
+
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
 
@@ -169,6 +174,59 @@ export class HttpClient<SecurityDataType = unknown> {
  * This are samba rest admin API
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
+  admin = {
+    /**
+     * @description get user by Name
+     *
+     * @tags user
+     * @name UserList
+     * @summary Get a user
+     * @request GET:/admin/user
+     */
+    userList: (params: RequestParams = {}) =>
+      this.request<MainUser, MainResponseError>({
+        path: `/admin/user`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description update admin user
+     *
+     * @tags user
+     * @name UserUpdate
+     * @summary Update admin user
+     * @request PUT:/admin/user
+     */
+    userUpdate: (user: MainUser, params: RequestParams = {}) =>
+      this.request<MainUser, MainResponseError>({
+        path: `/admin/user`,
+        method: "PUT",
+        body: user,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description update admin user
+     *
+     * @tags user
+     * @name UserPartialUpdate
+     * @summary Update admin user
+     * @request PATCH:/admin/user
+     */
+    userPartialUpdate: (user: MainUser, params: RequestParams = {}) =>
+      this.request<MainUser, MainResponseError>({
+        path: `/admin/user`,
+        method: "PATCH",
+        body: user,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+  };
   health = {
     /**
      * @description HealthCheck
@@ -204,11 +262,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description create e new share
+     * @description update e new share
      *
      * @tags share
      * @name ShareUpdate
-     * @summary Create a share
+     * @summary Update a share
      * @request PUT:/share/{share_name}
      */
     shareUpdate: (shareName: string, share: MainShare, params: RequestParams = {}) =>
@@ -222,11 +280,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description update e new share
+     * @description create e new share
      *
      * @tags share
      * @name ShareCreate
-     * @summary Update a share
+     * @summary Create a share
      * @request POST:/share/{share_name}
      */
     shareCreate: (shareName: string, share: MainShare, params: RequestParams = {}) =>
@@ -284,6 +342,109 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     sharesList: (params: RequestParams = {}) =>
       this.request<MainShares, MainResponseError>({
         path: `/shares`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+  };
+  user = {
+    /**
+     * @description create e new user
+     *
+     * @tags user
+     * @name UserCreate
+     * @summary Create a user
+     * @request POST:/user
+     */
+    userCreate: (user: MainUser, params: RequestParams = {}) =>
+      this.request<MainUser, MainResponseError>({
+        path: `/user`,
+        method: "POST",
+        body: user,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description get user by Name
+     *
+     * @tags user
+     * @name UserDetail
+     * @summary Get a user
+     * @request GET:/user/{username}
+     */
+    userDetail: (username: string, params: RequestParams = {}) =>
+      this.request<MainUser, MainResponseError>({
+        path: `/user/${username}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description update e user
+     *
+     * @tags user
+     * @name UserUpdate
+     * @summary Update a user
+     * @request PUT:/user/{username}
+     */
+    userUpdate: (username: string, user: MainUser, params: RequestParams = {}) =>
+      this.request<MainUser, MainResponseError>({
+        path: `/user/${username}`,
+        method: "PUT",
+        body: user,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description delete a user
+     *
+     * @tags user
+     * @name UserDelete
+     * @summary Delete a user
+     * @request DELETE:/user/{username}
+     */
+    userDelete: (username: string, params: RequestParams = {}) =>
+      this.request<void, MainResponseError>({
+        path: `/user/${username}`,
+        method: "DELETE",
+        ...params,
+      }),
+
+    /**
+     * @description update e user
+     *
+     * @tags user
+     * @name UserPartialUpdate
+     * @summary Update a user
+     * @request PATCH:/user/{username}
+     */
+    userPartialUpdate: (username: string, user: MainUser, params: RequestParams = {}) =>
+      this.request<MainUser, MainResponseError>({
+        path: `/user/${username}`,
+        method: "PATCH",
+        body: user,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+  };
+  users = {
+    /**
+     * @description List all configured users
+     *
+     * @tags user
+     * @name UsersList
+     * @summary List all configured users
+     * @request GET:/users
+     */
+    usersList: (params: RequestParams = {}) =>
+      this.request<MainUser[], MainResponseError>({
+        path: `/users`,
         method: "GET",
         format: "json",
         ...params,
