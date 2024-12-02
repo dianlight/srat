@@ -24,7 +24,7 @@ var globalRouter *mux.Router
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Do stuff here
-		log.Println(r.RequestURI)
+		log.Printf("%s %s", r.Method, r.RequestURI)
 		// Call the next handler, which can be another middleware in the chain, or the final handler.
 		next.ServeHTTP(w, r)
 	})
@@ -33,6 +33,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 func ACAOMethodMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Access-Control-Allow-Headers
 		if r.Method == http.MethodOptions {
 			return
 		}
@@ -109,11 +110,11 @@ func main() {
 	)).Methods(http.MethodGet)
 
 	// HealtCheck
-	globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet, http.MethodOptions)
 
 	// Shares
-	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet, http.MethodOptions)
+	globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet, http.MethodOptions)
 	globalRouter.HandleFunc("/share/{share_name}", createShare).Methods(http.MethodPost)
 	globalRouter.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/share/{share_name}", deleteShare).Methods(http.MethodDelete)
@@ -121,11 +122,11 @@ func main() {
 	// Volumes TODO:
 
 	// Users
-	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet, http.MethodOptions)
 	globalRouter.HandleFunc("/admin/user", updateAdminUser).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/users", listUsers).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/user/{username}", getUser).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/user", createUser).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/users", listUsers).Methods(http.MethodGet, http.MethodOptions)
+	globalRouter.HandleFunc("/user/{username}", getUser).Methods(http.MethodGet, http.MethodOptions)
+	globalRouter.HandleFunc("/user", createUser).Methods(http.MethodPost, http.MethodOptions)
 	globalRouter.HandleFunc("/user/{username}", updateUser).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
 
