@@ -27,6 +27,7 @@
     "axios": "^1.7.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-hook-form": "^7.53.2",
     "react-responsive": "^10.0.0",
     "react-social-icons": "^6.18.0",
     "uuid": "^11.0.3"
@@ -37,5 +38,8 @@
     "clean": "rm -rf out",
     "dev": "bun --watch run bun.build.ts -w -s ./out",
     "swagger": "sta -p ../backend/src/docs/swagger.json -o ./src -n srat.ts --axios"
+  },
+  "patchedDependencies": {
+    "@materializecss/materialize@2.1.1": "patches/@materializecss%2Fmaterialize@2.1.1.patch"
   }
 }

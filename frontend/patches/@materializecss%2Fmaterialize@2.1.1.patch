@@ -1,0 +1,18 @@
+diff --git a/package.json b/package.json
+index c9a832bbcfda1bc597b2aa60578ca86e13286f91..e3f19d6c325bea5d63d4608079a83afdb5d6db24 100644
+--- a/package.json
++++ b/package.json
+@@ -11,8 +11,11 @@
+   "main": "dist/js/materialize.js",
+   "module": "./dist/js/materialize.mjs",
+   "exports": {
+-    "import": "./dist/js/materialize.mjs",
+-    "require": "./dist/js/materialize.cjs.js"
++    ".": {
++      "types": "./dist/js/materialize.d.ts",
++      "import": "./dist/js/materialize.mjs",
++      "require": "./dist/js/materialize.cjs.js"
++    }
+   },
+   "repository": {
+     "type": "git",
