@@ -30,6 +30,7 @@
     "react-hook-form": "^7.53.2",
     "react-responsive": "^10.0.0",
     "react-social-icons": "^6.18.0",
+    "swr": "^2.2.5",
     "uuid": "^11.0.3"
   },
   "scripts": {

@@ -68,7 +68,14 @@ export class WSRouter {
     }
 
     send(data: any) {
-        this.WebSocket.send(data)
+        try {
+            if (this.WebSocket.readyState !== WebSocket.OPEN) {
+                return
+            }
+            this.WebSocket.send(data)
+        } catch (e) {
+            console.error(e)
+        }
     }
 
     subscribe<T>(event: 'heartbeat' | 'shares' | 'users', cb: (data: T) => void) {
