@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"embed"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -20,6 +23,23 @@ var SRATVersion string
 var config *Config
 var options *Options
 var globalRouter *mux.Router
+
+// Static files
+//
+//go:embed static
+var content embed.FS
+
+/*
+// recursive print al fs tree of content
+	func printDir(dir []fs.DirEntry, level int) {
+		for _, f := range dir {
+			log.Printf("%s%s\n", strings.Repeat("\t", level), f.Name())
+			if f.IsDir() {
+				printDir(f, level + 1)
+			}
+		}
+	}
+*/
 
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -133,8 +153,29 @@ func main() {
 	// Connections TODO:
 
 	// WebSocket
-
 	globalRouter.HandleFunc("/ws", WSChannelHandler)
+
+	// Static files
+	globalRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/static/", http.StatusPermanentRedirect)
+	})
+	globalRouter.PathPrefix("/").Handler(http.FileServerFS(content))
+
+	// Print content directory recursively
+	fs.WalkDir(content, ".", func(p string, d fs.DirEntry, err error) error {
+		fmt.Printf("dir=%s, path=%s\n", path.Dir(p), p)
+		return nil
+	})
+
+	// Print all routes
+	globalRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		template, err := route.GetPathTemplate()
+		if err != nil {
+			return err
+		}
+		log.Printf("Route: %s\n", template)
+		return nil
+	})
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf("0.0.0.0:%d", *http_port),

@@ -16,14 +16,14 @@
     "paths": {
         "/admin/user": {
             "get": {
-                "description": "get user by Name",
+                "description": "get the admin user",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "user"
                 ],
-                "summary": "Get a user",
+                "summary": "Get the admin user",
                 "responses": {
                     "200": {
                         "description": "OK",

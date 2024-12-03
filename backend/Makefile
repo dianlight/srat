@@ -1,6 +1,8 @@
 TARGET_EXEC=srat
 BUILD_DIR := ./dist
 SRC_DIRS := ./src
+FRONTEND_DIRS := ../frontend/
+STATIC_DIRS := $(FRONTEND_DIRS)/out/
 
 #ALL_SRCS := $(shell find $(SRC_DIRS) -name '*.go')
 ALL_SRCS := $(wildcard $(SRC_DIRS)/*.go)
@@ -12,7 +14,7 @@ all: clean build
 
 build: docs test $(BUILD_DIR)/$(TARGET_EXEC)
 
-$(BUILD_DIR)/$(TARGET_EXEC): $(SRCS)
+$(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	mkdir dist || : 
 	#go build -o $@ $^
 	cd $(SRC_DIRS);go build -o ../$@ .
@@ -37,3 +39,8 @@ docs: $(SRCS)
 .PHONY: dev
 dev: 
 	cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json
+
+static: $(STATIC_DIRS)
+	rm -rf $(SRC_DIRS)/static
+	cd $(FRONTEND_DIRS);bun run build
+	cp -rv $(STATIC_DIRS) $(SRC_DIRS)/static

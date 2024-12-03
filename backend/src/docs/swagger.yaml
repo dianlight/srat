@@ -43,7 +43,7 @@ info:
 paths:
   /admin/user:
     get:
-      description: get user by Name
+      description: get the admin user
       produces:
       - application/json
       responses:
@@ -59,7 +59,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/main.ResponseError'
-      summary: Get a user
+      summary: Get the admin user
       tags:
       - user
     patch:
