@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "0.0.1-alpha",
+  "version": "0.0.3-alpha.1",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -17,7 +17,9 @@
     "@types/bun": "latest",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/semver": "^7.5.8",
     "bun-copy-plugin": "^0.2.1",
+    "semver": "^7.6.3",
     "swagger-typescript-api": "^13.0.23"
   },
   "peerDependencies": {
@@ -35,6 +37,7 @@
     "uuid": "^11.0.3"
   },
   "scripts": {
+    "version": "bun run version.ts -i alpha",
     "build": "bun run bun.build.ts",
     "watch": "bun run --watch bun.build.ts -w",
     "clean": "rm -rf out",

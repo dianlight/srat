@@ -26,20 +26,8 @@ var globalRouter *mux.Router
 
 // Static files
 //
-//go:embed static
+//go:embed static/*
 var content embed.FS
-
-/*
-// recursive print al fs tree of content
-	func printDir(dir []fs.DirEntry, level int) {
-		for _, f := range dir {
-			log.Printf("%s%s\n", strings.Repeat("\t", level), f.Name())
-			if f.IsDir() {
-				printDir(f, level + 1)
-			}
-		}
-	}
-*/
 
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +151,7 @@ func main() {
 
 	// Print content directory recursively
 	fs.WalkDir(content, ".", func(p string, d fs.DirEntry, err error) error {
-		fmt.Printf("dir=%s, path=%s\n", path.Dir(p), p)
+		log.Printf("dir=%s, path=%s\n", path.Dir(p), p)
 		return nil
 	})
 
