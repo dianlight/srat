@@ -197,7 +197,6 @@ func TestUpdateUserHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	user.Password = "/pippo"
 	expected, jsonError := json.Marshal(user)
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())

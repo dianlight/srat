@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"slices"
 
@@ -107,7 +108,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 		jsonResponse, jsonError := json.Marshal(config.OtherUsers[index])
 
 		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
+			log.Println("Unable to encode JSON")
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(jsonError.Error()))
 		} else {
@@ -150,7 +151,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "User already exists", Body: config.OtherUsers[index]})
 
 		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
+			log.Println("Unable to encode JSON")
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(jsonError.Error()))
 		} else {
@@ -167,7 +168,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		jsonResponse, jsonError := json.Marshal(user)
 
 		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
+			log.Println("Unable to encode JSON")
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(jsonError.Error()))
 		} else {
@@ -218,14 +219,16 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		mergo.Merge(&config.OtherUsers[index], user)
+		mergo.MapWithOverwrite(&config.OtherUsers[index], user)
+
+		log.Printf("User updated: %s %s", user, config.OtherUsers[index])
 
 		//notifyClient()
 
 		jsonResponse, jsonError := json.Marshal(user)
 
 		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
+			log.Println("Unable to encode JSON")
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(jsonError.Error()))
 		} else {
@@ -275,7 +278,7 @@ func updateAdminUser(w http.ResponseWriter, r *http.Request) {
 	jsonResponse, jsonError := json.Marshal(user)
 
 	if jsonError != nil {
-		fmt.Println("Unable to encode JSON")
+		log.Println("Unable to encode JSON")
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(jsonError.Error()))
 	} else {

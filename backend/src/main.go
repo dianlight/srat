@@ -147,7 +147,7 @@ func main() {
 	globalRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/static/", http.StatusPermanentRedirect)
 	})
-	globalRouter.PathPrefix("/").Handler(http.FileServerFS(content))
+	globalRouter.PathPrefix("/").Handler(http.FileServerFS(content)).Methods(http.MethodGet)
 
 	// Print content directory recursively
 	fs.WalkDir(content, ".", func(p string, d fs.DirEntry, err error) error {
