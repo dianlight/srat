@@ -1,4 +1,5 @@
-import pkg from '../package.json'
+import pkg from '../package.json';
+import { getGitCommitHash } from './macro/getGitCommitHash.ts' with { type: 'macro' };
 
 
 export function Footer() {
@@ -24,9 +25,7 @@ export function Footer() {
         <div className="footer-copyright">
             <div className="container">
                 © 2014 Copyright {pkg.author.name}
-                {/*
-                <a className="right" href="#!">More Links</a>
-                */}
+                <a className="right" href={pkg.repository.url + "/commit/" + getGitCommitHash()}>Version {pkg.version} [Git Hash {getGitCommitHash()}]</a>
             </div>
         </div>
     </>

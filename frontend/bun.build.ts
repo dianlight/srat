@@ -38,6 +38,9 @@ async function build(): Promise<BuildOutput | void> {
             copy("src/index.html", "out/index.html")
             //  html({})
         ],
+        define: {
+            "process.env.APIURL": values.watch ? '"http://localhost:8080"' : 'window.location.origin',
+        }
     }).then((result) => {
         if (!result.success) {
             console.error("Build failed");
