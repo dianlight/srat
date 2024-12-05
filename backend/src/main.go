@@ -22,12 +22,17 @@ import (
 var SRATVersion string
 var config *Config
 var options *Options
+var smbConfigFile *string
 var globalRouter *mux.Router
+var templateData []byte
 
 // Static files
 //
 //go:embed static/*
 var content embed.FS
+
+//go:embed templates/smb.gtpl
+var defaultTemplate embed.FS
 
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -56,13 +61,6 @@ type ResponseError struct {
 	Body  any    `json:"body"`
 }
 
-//type WebSocketMessageEnvelope struct {
-//	Path      string `json:"path"`      // The name of the function. Can be a path or a method
-//	Method    string `json:"method"`    // Method if the path is a REST method
-//	Body      any    `json:"body"`      // The request body
-//	Subcriber string `json:"subcriber"` // The UID of the subcriber
-//}
-
 //	@title			SRAT API
 //	@version		1.0
 //	@description	This are samba rest admin API
@@ -82,6 +80,9 @@ func main() {
 	optionsFile := flag.String("opt", "/data/options.json", "Addon Options json file")
 	configFile := flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
 	http_port := flag.Int("port", 8080, "Http Port on listen to")
+	templateFile := flag.String("template", "", "Template file")
+	smbConfigFile := flag.String("out", "", "Output file, if not defined output will be to console")
+
 	var wait time.Duration
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -96,6 +97,29 @@ func main() {
 	}
 
 	flag.Parse()
+
+	// Check template file
+	if *templateFile == "" {
+		templateDatan, err := defaultTemplate.ReadFile("templates/smb.gtpl")
+		if err != nil {
+			log.Fatal(err)
+		}
+		templateData = templateDatan
+	} else {
+		templateDatan, err := os.ReadFile(*templateFile)
+		if err != nil {
+			log.Fatalf("Cant read template file %s - %s", *templateFile, err)
+		}
+		templateData = templateDatan
+	}
+
+	if len(templateData) == 0 {
+		log.Fatal("Missing template file")
+	}
+
+	if *smbConfigFile == "" {
+		log.Println("Missing samba config going in test mode")
+	}
 
 	// Get config
 	config = readConfig(*configFile)
@@ -138,7 +162,8 @@ func main() {
 	globalRouter.HandleFunc("/user/{username}", updateUser).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
 
-	// Connections TODO:
+	// Samba
+	globalRouter.HandleFunc("/samba/apply", applySamba).Methods(http.MethodPut)
 
 	// WebSocket
 	globalRouter.HandleFunc("/ws", WSChannelHandler)

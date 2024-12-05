@@ -221,8 +221,6 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 
 		mergo.MapWithOverwrite(&config.OtherUsers[index], user)
 
-		log.Printf("User updated: %s %s", user, config.OtherUsers[index])
-
 		//notifyClient()
 
 		jsonResponse, jsonError := json.Marshal(user)

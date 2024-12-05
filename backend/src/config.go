@@ -65,3 +65,21 @@ func readConfigBuffer(buffer []byte) *Config {
 
 	return &config
 }
+
+func configToMap(in *Config) *map[string]interface{} {
+	var nconfig map[string]interface{}
+
+	// Parse json
+	buffer, err := json.Marshal(in)
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
+	err_2 := json.Unmarshal(buffer, &nconfig)
+	if err_2 != nil {
+		log.Fatal(err_2)
+		return nil
+	}
+
+	return &nconfig
+}
