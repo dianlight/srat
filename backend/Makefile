@@ -5,7 +5,7 @@ FRONTEND_DIRS := ../frontend/
 STATIC_DIRS := $(FRONTEND_DIRS)/out/
 
 #ALL_SRCS := $(shell find $(SRC_DIRS) -name '*.go')
-ALL_SRCS := $(wildcard $(SRC_DIRS)/*.go)
+ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go)  
 TEST_SRCS := $(filter %_test.go, $(ALL_SRCS))
 SRCS := $(filter-out %_test.go, $(ALL_SRCS))
 
@@ -21,18 +21,21 @@ $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 
 .PHONY: format
 format:
-	go mod tidy
 	docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
 
 .PHONY: clean
 clean:
 	go clean
+	cd $(SRC_DIRS);go mod tidy
 	rm -rf dist
 
 .PHONY: test
 test: $(ALL_SRCS)
-	cd $(SRC_DIRS);go test -cover
+	echo $(ALL_SRCS)
+	cd $(SRC_DIRS)/lsblk;go test -cover 
+	cd $(SRC_DIRS);go test -cover 
 
+ 
 docs: $(SRCS)
 	docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest init
 
