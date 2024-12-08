@@ -21,7 +21,8 @@ $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 
 .PHONY: format
 format:
-	docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
+	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
+	cd $(SRC_DIRS);swag fmt
 
 .PHONY: clean
 clean:
@@ -37,7 +38,8 @@ test: $(ALL_SRCS)
 
  
 docs: $(SRCS)
-	docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest init
+	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest init
+	cd $(SRC_DIRS);swag init --pd
 
 .PHONY: dev
 dev: 

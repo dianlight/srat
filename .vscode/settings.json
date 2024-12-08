@@ -1,5 +1,11 @@
 {
     "conventionalCommits.scopes": [
-        "api"
+      "api",
+      "gh_actions",
+      "monorepo",
+      "webapp",
+      "http_server",
+      "samba",
+      "docker"
     ]
 }

@@ -1,4 +1,85 @@
 definitions:
+  disk.UsageStat:
+    properties:
+      free:
+        type: integer
+      fstype:
+        type: string
+      inodesFree:
+        type: integer
+      inodesTotal:
+        type: integer
+      inodesUsed:
+        type: integer
+      inodesUsedPercent:
+        type: number
+      path:
+        type: string
+      total:
+        type: integer
+      used:
+        type: integer
+      usedPercent:
+        type: number
+    type: object
+  lsblk.Device:
+    properties:
+      alignment:
+        type: integer
+      children:
+        items:
+          $ref: '#/definitions/lsblk.Device'
+        type: array
+      fsavail:
+        type: integer
+      fssize:
+        type: integer
+      fstype:
+        type: string
+      fsusage:
+        description: percent that was used
+        type: integer
+      fsused:
+        type: integer
+      group:
+        type: string
+      hctl:
+        type: string
+      hotplug:
+        type: boolean
+      label:
+        type: string
+      model:
+        type: string
+      mountpoint:
+        type: string
+      name:
+        type: string
+      path:
+        type: string
+      pttype:
+        type: string
+      rev:
+        type: string
+      rm:
+        type: boolean
+      serial:
+        type: string
+      state:
+        type: string
+      subsystems:
+        type: string
+      tran:
+        type: string
+      type:
+        type: string
+      uuid:
+        type: string
+      vendor:
+        type: string
+      wwn:
+        type: string
+    type: object
   main.Health:
     properties:
       alive:
@@ -29,6 +110,27 @@ definitions:
         type: string
       username:
         type: string
+    type: object
+  main.Volume:
+    properties:
+      device:
+        type: string
+      fstype:
+        type: string
+      label:
+        type: string
+      lsbk:
+        $ref: '#/definitions/lsblk.Device'
+      mountpoint:
+        type: string
+      opts:
+        items:
+          type: string
+        type: array
+      serial_number:
+        type: string
+      stats:
+        $ref: '#/definitions/disk.UsageStat'
     type: object
 info:
   contact:
@@ -153,6 +255,33 @@ paths:
       summary: HealthCheck
       tags:
       - system
+  /samba/apply:
+    put:
+      consumes:
+      - application/json
+      description: Write the samba config and send signal ro restart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: integer
+            type: array
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Write the samba config and send signal ro restart
+      tags:
+      - samba
   /share/{share_name}:
     delete:
       description: delere a share
@@ -559,6 +688,56 @@ paths:
       summary: List all configured users
       tags:
       - user
+  /volume/{volume_name}:
+    get:
+      description: get a volume by Name
+      parameters:
+      - description: Name
+        in: path
+        name: volume_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Volume'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Get a volume
+      tags:
+      - volume
+  /volumes:
+    get:
+      description: List all available volumes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Volume'
+            type: array
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: List all available volumes
+      tags:
+      - volume
   /ws:
     get:
       description: Open the WSChannel

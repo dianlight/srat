@@ -23,9 +23,9 @@ func createConfigStream() *[]byte {
 //	@Accept			json
 //	@Produce		json
 //	@Success		204
-//	@Success		200			{object}	[]byte
-//	@Failure		400			{object}	ResponseError
-//	@Failure		500			{object}	ResponseError
+//	@Success		200	{object}	[]byte
+//	@Failure		400	{object}	ResponseError
+//	@Failure		500	{object}	ResponseError
 //	@Router			/samba/apply [put]
 func applySamba(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

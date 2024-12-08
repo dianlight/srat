@@ -61,9 +61,9 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 //
 //
 //	@Produce		json
-//	@Success		200			{object}	User
-//	@Failure		405			{object}	ResponseError
-//	@Failure		500			{object}	ResponseError
+//	@Success		200	{object}	User
+//	@Failure		405	{object}	ResponseError
+//	@Failure		500	{object}	ResponseError
 //	@Router			/admin/user [get]
 func getAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -127,12 +127,12 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Accept			json
 //	@Produce		json
-//	@Param			user		body		User	true	"Create model"
-//	@Success		201			{object}	User
-//	@Failure		400			{object}	ResponseError
-//	@Failure		405			{object}	ResponseError
-//	@Failure		409			{object}	ResponseError
-//	@Failure		500			{object}	ResponseError
+//	@Param			user	body		User	true	"Create model"
+//	@Success		201		{object}	User
+//	@Failure		400		{object}	ResponseError
+//	@Failure		405		{object}	ResponseError
+//	@Failure		409		{object}	ResponseError
+//	@Failure		500		{object}	ResponseError
 //	@Router			/user [post]
 func createUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -245,12 +245,12 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Accept			json
 //	@Produce		json
-//	@Param			user		body		User	true	"Update model"
-//	@Success		200			{object}	User
-//	@Failure		400			{object}	ResponseError
-//	@Failure		405			{object}	ResponseError
-//	@Failure		404			{object}	ResponseError
-//	@Failure		500			{object}	ResponseError
+//	@Param			user	body		User	true	"Update model"
+//	@Success		200		{object}	User
+//	@Failure		400		{object}	ResponseError
+//	@Failure		405		{object}	ResponseError
+//	@Failure		404		{object}	ResponseError
+//	@Failure		500		{object}	ResponseError
 //	@Router			/admin/user [put]
 //	@Router			/admin/user [patch]
 func updateAdminUser(w http.ResponseWriter, r *http.Request) {

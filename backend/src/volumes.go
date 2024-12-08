@@ -33,40 +33,29 @@ type Volume struct {
 	// IOStats disk.IOCountersStat `json:"io_stats"`
 }
 
-// ListVolumes godoc
-//
-//	@Summary		List all available volumes
-//	@Description	List all available volumes
-//	@Tags			volume
-//	@Produce		json
-//	@Success		200	{object}	[]Volume
-//	@Failure		405	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
-//	@Router			/volumes [get]
-func listVolumes(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func _getVolumesData() ([]Volume, []error) {
+	var errs []error
 
 	_partitions, err := disk.Partitions(false)
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
+		errs = append(errs, err)
+		return nil, errs
 	}
 	// Falbak Mode - Get also lsblk data!
-	_devices, errd := lsblk.ListDevices()
-	if errd != nil {
-		log.Println("lsblk not available", errd)
+	_devices, err := lsblk.ListDevices()
+	if err != nil {
+		log.Printf("lsblk not available %v", err)
+		errs = append(errs, err)
 	}
-	//log.Println(_devices)
 
 	var partitions = make([]Volume, 0)
 
 	for _, partition := range _partitions {
 		volume := Volume{PartitionStat: partition}
-		stats, e1 := disk.Usage(partition.Mountpoint)
-		if e1 != nil {
-			log.Println(e1)
+		stats, err := disk.Usage(partition.Mountpoint)
+		if err != nil {
+			log.Printf("Disk Usage not available %v", err)
+			errs = append(errs, err)
 		} else {
 			mergo.Merge(&volume, &Volume{Stats: *stats})
 		}
@@ -91,21 +80,22 @@ func listVolumes(w http.ResponseWriter, r *http.Request) {
 		//		mergo.Merge(&volume, &Volume{IOStats: IOStats[partition.Device]})
 		//}
 
-		volumeSerialNumber, e4 := disk.SerialNumber(partition.Device)
-		if e4 != nil {
-			log.Println("Reading Serial Number:", partition.Device, e4)
+		volumeSerialNumber, err := disk.SerialNumber(partition.Device)
+		if err != nil {
+			log.Println("Reading Serial Number:", partition.Device, err)
+			errs = append(errs, err)
 			volume.SerialNumber = strings.ToUpper(invalidCharactere.ReplaceAllLiteralString(volume.Device, ""))
 		} else if volumeSerialNumber == "" {
-			//volumeSerialNumber, e5 := lsblk.getSerial()
 			volume.SerialNumber = volume.Lsbk.UUID
 		} else {
 			volume.SerialNumber = volumeSerialNumber
 
 		}
-		volumeLabel, e3 := disk.Label(partition.Device)
-		if e3 != nil {
+		volumeLabel, err := disk.Label(partition.Device)
+		if err != nil {
 			//log.Println("Reading Label:", partition.Device, e3)
 			volume.Label = strings.ToUpper(invalidCharactere.ReplaceAllLiteralString(volume.SerialNumber, ""))
+			errs = append(errs, err)
 		} else {
 			volume.Label = volumeLabel
 		}
@@ -113,27 +103,30 @@ func listVolumes(w http.ResponseWriter, r *http.Request) {
 		partitions = append(partitions, volume)
 	}
 
-	/*
-			di = DiskInfo()
-		disks = di.get_disk_list(sorting=True)
-		regex = r"Name:\s+(\w+)\s.*\n"
-		for d in disks:
-		    if d.get_partition_table_type() == "":
-		        continue
-		    plist = d.get_partition_list()
-		    for item in plist:
-		        label = item.get_fs_label()
-		        if label.startswith("hassos"):
-		            continue
-		        elif label != "":
-		            print(item.get_fs_label())
-		        elif item.get_fs_type() == "apfs":
-		            print("id:{uuid}".format(uuid=item.get_fs_uuid()))
-		#        print(item.get_fs_label()," ",item.get_fs_type()," ",item.get_part_uuid()," ",item.get_name())
+	return partitions, errs
+}
 
-	*/
+// ListVolumes godoc
+//
+//	@Summary		List all available volumes
+//	@Description	List all available volumes
+//	@Tags			volume
+//	@Produce		json
+//	@Success		200	{object}	[]Volume
+//	@Failure		405	{object}	ResponseError
+//	@Failure		500	{object}	ResponseError
+//	@Router			/volumes [get]
+func listVolumes(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 
-	jsonResponse, jsonError := json.Marshal(partitions)
+	volumes, errs := _getVolumesData()
+	if len(errs) > 0 && volumes == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("Error fetching volumes: %v", errs)))
+		return
+	}
+
+	jsonResponse, jsonError := json.Marshal(volumes)
 
 	if jsonError != nil {
 		fmt.Println("Unable to encode JSON")
@@ -143,32 +136,37 @@ func listVolumes(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(jsonResponse)
 	}
-
 }
 
 // GetVolume godoc
 //
 //	@Summary		Get a volume
 //	@Description	get a volume by Name
-//	@Tags			share
-//
-// _Accept       json
-//
+//	@Tags			volume
 //	@Produce		json
-//	@Param			share_name	path		string	true	"Name"
-//	@Success		200			{object}	Share
+//	@Param			volume_name	path		string	true	"Name"
+//	@Success		200			{object}	Volume
 //	@Failure		405			{object}	ResponseError
 //	@Failure		500			{object}	ResponseError
-//	@Router			/share/{share_name} [get]
+//	@Router			/volume/{volume_name} [get]
 func getVolume(w http.ResponseWriter, r *http.Request) {
-	share := mux.Vars(r)["share_name"]
+	volume := mux.Vars(r)["volume_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	data, ok := config.Shares[share]
-	if !ok {
+	volumes, err := _getVolumesData()
+	if len(err) > 0 && volumes == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("Error fetching volumes: %v", err)))
+		return
+	}
+
+	volumeIdx := slices.IndexFunc(volumes, func(vool Volume) bool {
+		return vool.Label == volume
+	})
+	if volumeIdx == -1 {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
-		jsonResponse, jsonError := json.Marshal(data)
+		jsonResponse, jsonError := json.Marshal(volumes[volumeIdx])
 
 		if jsonError != nil {
 			fmt.Println("Unable to encode JSON")
@@ -178,14 +176,14 @@ func getVolume(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write(jsonResponse)
 		}
-
 	}
 
 }
 
-// CreateShare godoc
+/*
+// MountVolume godoc
 //
-//	@Summary		Create a share
+//	@Summary		mount an existing volume
 //	@Description	create e new share
 //	@Tags			share
 //	@Accept			json
@@ -198,57 +196,59 @@ func getVolume(w http.ResponseWriter, r *http.Request) {
 //	@Failure		409			{object}	ResponseError
 //	@Failure		500			{object}	ResponseError
 //	@Router			/share/{share_name} [post]
-func mountVolume(w http.ResponseWriter, r *http.Request) {
-	share := mux.Vars(r)["share_name"]
-	w.Header().Set("Content-Type", "application/json")
 
-	data, ok := config.Shares[share]
-	if ok {
-		w.WriteHeader(http.StatusConflict)
-		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "Share already exists", Body: data})
+	func mountVolume(w http.ResponseWriter, r *http.Request) {
+		share := mux.Vars(r)["share_name"]
+		w.Header().Set("Content-Type", "application/json")
 
-		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(jsonError.Error()))
+		data, ok := config.Shares[share]
+		if ok {
+			w.WriteHeader(http.StatusConflict)
+			jsonResponse, jsonError := json.Marshal(ResponseError{Error: "Share already exists", Body: data})
+
+			if jsonError != nil {
+				fmt.Println("Unable to encode JSON")
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(jsonError.Error()))
+			} else {
+				w.Write(jsonResponse)
+			}
 		} else {
-			w.Write(jsonResponse)
+			var share Share
+
+			err := json.NewDecoder(r.Body).Decode(&share)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			// TODO: Create Share
+
+			notifyVolumeClient()
+
+			jsonResponse, jsonError := json.Marshal(share)
+
+			if jsonError != nil {
+				fmt.Println("Unable to encode JSON")
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(jsonError.Error()))
+			} else {
+				w.WriteHeader(http.StatusCreated)
+				w.Write(jsonResponse)
+			}
+
 		}
-	} else {
-		var share Share
-
-		err := json.NewDecoder(r.Body).Decode(&share)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// TODO: Create Share
-
-		notifyVolumeClient()
-
-		jsonResponse, jsonError := json.Marshal(share)
-
-		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(jsonError.Error()))
-		} else {
-			w.WriteHeader(http.StatusCreated)
-			w.Write(jsonResponse)
-		}
-
 	}
+*/
+func notifyVolumeClient(volumes []Volume) {
+	volumesQueueMutex.RLock()
+	for _, v := range volumesQueue {
+		v <- &volumes
+	}
+	volumesQueueMutex.RUnlock()
 }
 
-func notifyVolumeClient() {
-	sharesQueueMutex.RLock()
-	for _, v := range sharesQueue {
-		v <- &config.Shares
-	}
-	sharesQueueMutex.RUnlock()
-}
-
+/*
 // UpdateShare godoc
 //
 //	@Summary		Update a share
@@ -336,19 +336,26 @@ func umountVolume(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+*/
 
 func VolumesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
-	sharesQueueMutex.Lock()
-	if sharesQueue[request.Uid] == nil {
-		sharesQueue[request.Uid] = make(chan *Shares, 10)
+	volumesQueueMutex.Lock()
+	if volumesQueue[request.Uid] == nil {
+		volumesQueue[request.Uid] = make(chan *[]Volume, 10)
 	}
-	sharesQueue[request.Uid] <- &config.Shares
-	var queue = sharesQueue[request.Uid]
-	sharesQueueMutex.Unlock()
-	log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
+	var data, errs = _getVolumesData()
+	if len(errs) > 0 && data == nil {
+		log.Printf("Unable to fetch volumes: %v", errs)
+		return
+	} else {
+		volumesQueue[request.Uid] <- &data
+		volumesQueueMutex.Unlock()
+		log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(volumesQueue))
+	}
+	var queue = volumesQueue[request.Uid]
 	for {
 		smessage := &WebSocketMessageEnvelope{
-			Event: "shares",
+			Event: "volumes",
 			Uid:   request.Uid,
 			Data:  <-queue,
 		}

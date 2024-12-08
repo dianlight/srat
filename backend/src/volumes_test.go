@@ -2,10 +2,13 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gorilla/mux"
 )
 
 func TestListVolumessHandler(t *testing.T) {
@@ -49,11 +52,16 @@ func TestListVolumessHandler(t *testing.T) {
 	*/
 }
 
-/*
-func TestGetShareHandler(t *testing.T) {
+func TestGetVolumeHandler(t *testing.T) {
+
+	volumes, errs := _getVolumesData()
+	if len(errs) != 0 {
+		t.Logf("Warning on _getVolumesData %v", errs)
+	}
+
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
-	req, err := http.NewRequest("GET", "/share/LIBRARY", nil)
+	req, err := http.NewRequest("GET", "/volume/"+volumes[0].Label, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +70,7 @@ func TestGetShareHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet)
+	router.HandleFunc("/volume/{volume_name}", getVolume).Methods(http.MethodGet)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -72,7 +80,7 @@ func TestGetShareHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	expected, jsonError := json.Marshal(config.Shares["LIBRARY"])
+	expected, jsonError := json.Marshal(volumes[0])
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())
 	}
@@ -82,6 +90,7 @@ func TestGetShareHandler(t *testing.T) {
 	}
 }
 
+/*
 func TestCreateShareHandler(t *testing.T) {
 
 	share := Share{

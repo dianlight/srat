@@ -98,6 +98,8 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 			go HealthCheckWsHandler(message, outchan)
 		case "shares":
 			go SharesWsHandler(message, outchan)
+		case "volumes":
+			go VolumesWsHandler(message, outchan)
 		default:
 			log.Printf("Unknown event: %s", message.Event)
 		}
