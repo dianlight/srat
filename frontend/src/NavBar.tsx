@@ -101,9 +101,9 @@ export function NavBar() {
                 {/* TABS */}
                 <div className="nav-content">
                     <ul className="tabs tabs-transparent">
-                        <li className="tab"><a href="#shares">Shares</a></li>
-                        <li className="tab"><a className="active" href="#users">Users</a></li>
-                        <li className="tab disabled"><a href="#test3">Disabled Tab</a></li>
+                        <li className="tab"><a className="active" href="#shares">Shares</a></li>
+                        <li className="tab"><a href="#volumes">Volumes</a></li>
+                        <li className="tab"><a href="#users">Users</a></li>
                         <li className="tab"><a href="#settings">Settings</a></li>
                     </ul>
                 </div>

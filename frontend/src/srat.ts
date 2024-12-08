@@ -9,6 +9,49 @@
  * ---------------------------------------------------------------
  */
 
+export interface DiskUsageStat {
+  free?: number;
+  fstype?: string;
+  inodesFree?: number;
+  inodesTotal?: number;
+  inodesUsed?: number;
+  inodesUsedPercent?: number;
+  path?: string;
+  total?: number;
+  used?: number;
+  usedPercent?: number;
+}
+
+export interface LsblkDevice {
+  alignment?: number;
+  children?: LsblkDevice[];
+  fsavail?: number;
+  fssize?: number;
+  fstype?: string;
+  /** percent that was used */
+  fsusage?: number;
+  fsused?: number;
+  group?: string;
+  hctl?: string;
+  hotplug?: boolean;
+  label?: string;
+  model?: string;
+  mountpoint?: string;
+  name?: string;
+  path?: string;
+  pttype?: string;
+  rev?: string;
+  rm?: boolean;
+  serial?: string;
+  state?: string;
+  subsystems?: string;
+  tran?: string;
+  type?: string;
+  uuid?: string;
+  vendor?: string;
+  wwn?: string;
+}
+
 export interface MainHealth {
   alive?: boolean;
 }
@@ -29,6 +72,17 @@ export type MainShares = Record<string, MainShare>;
 export interface MainUser {
   password?: string;
   username?: string;
+}
+
+export interface MainVolume {
+  device?: string;
+  fstype?: string;
+  label?: string;
+  lsbk?: LsblkDevice;
+  mountpoint?: string;
+  opts?: string[];
+  serial_number?: string;
+  stats?: DiskUsageStat;
 }
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
@@ -176,11 +230,11 @@ export class HttpClient<SecurityDataType = unknown> {
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   admin = {
     /**
-     * @description get user by Name
+     * @description get the admin user
      *
      * @tags user
      * @name UserList
-     * @summary Get a user
+     * @summary Get the admin user
      * @request GET:/admin/user
      */
     userList: (params: RequestParams = {}) =>
@@ -240,6 +294,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<MainHealth, MainResponseError>({
         path: `/health`,
         method: "GET",
+        format: "json",
+        ...params,
+      }),
+  };
+  samba = {
+    /**
+     * @description Write the samba config and send signal ro restart
+     *
+     * @tags samba
+     * @name ApplyUpdate
+     * @summary Write the samba config and send signal ro restart
+     * @request PUT:/samba/apply
+     */
+    applyUpdate: (params: RequestParams = {}) =>
+      this.request<number[], MainResponseError>({
+        path: `/samba/apply`,
+        method: "PUT",
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -445,6 +517,40 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     usersList: (params: RequestParams = {}) =>
       this.request<MainUser[], MainResponseError>({
         path: `/users`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+  };
+  volume = {
+    /**
+     * @description get a volume by Name
+     *
+     * @tags volume
+     * @name VolumeDetail
+     * @summary Get a volume
+     * @request GET:/volume/{volume_name}
+     */
+    volumeDetail: (volumeName: string, params: RequestParams = {}) =>
+      this.request<MainVolume, MainResponseError>({
+        path: `/volume/${volumeName}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+  };
+  volumes = {
+    /**
+     * @description List all available volumes
+     *
+     * @tags volume
+     * @name VolumesList
+     * @summary List all available volumes
+     * @request GET:/volumes
+     */
+    volumesList: (params: RequestParams = {}) =>
+      this.request<MainVolume[], MainResponseError>({
+        path: `/volumes`,
         method: "GET",
         format: "json",
         ...params,
