@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/jinzhu/copier v0.3.2
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/qdm12/gosettings v0.4.4
 	github.com/shirou/gopsutil/v4 v4.24.11
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag/v2 v2.0.0-rc4
@@ -32,6 +33,7 @@ require (
 	github.com/swaggo/swag v1.16.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/crypto v0.29.0 // indirect
+	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/sys v0.27.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

@@ -15,6 +15,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/jinzhu/copier"
 	"github.com/olekukonko/tablewriter"
+	gosettings "github.com/qdm12/gosettings"
 )
 
 type Device struct {
@@ -167,10 +168,9 @@ func ListDevices() (devices map[string]Device, err error) {
 		}
 
 		for i, child := range _device.Children {
-			//device.Children[i].Fsavail, _ = strconv.ParseUint(*child.Fsavail, 10, 64)
-			device.Children[i].Fsavail = *child.Fsavail
-			device.Children[i].Fsused = *child.Fsused
-			device.Children[i].Fssize = *child.Fssize
+			device.Children[i].Fsavail = gosettings.DefaultComparable(*child.Fsavail, 0)
+			device.Children[i].Fsused = gosettings.DefaultComparable(*child.Fsused, 0)
+			device.Children[i].Fssize = gosettings.DefaultComparable(*child.Fssize, 0)
 			if device.Children[i].Fssize > 0 {
 				device.Children[i].Fsusage = uint(math.Round(float64(device.Children[i].Fsused*100) / float64(device.Children[i].Fssize)))
 			}
