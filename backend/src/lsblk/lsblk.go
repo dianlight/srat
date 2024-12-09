@@ -16,15 +16,14 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/jinzhu/copier"
 	"github.com/olekukonko/tablewriter"
-	gosettings "github.com/qdm12/gosettings"
 )
 
 type Device struct {
 	Name       string   `json:"name"`
 	Path       string   `json:"path"`
-	Fsavail    uint64   `json:"fsavail"`
-	Fssize     uint64   `json:"fssize"`
-	Fsused     uint64   `json:"fsused"`
+	Fsavail    uint64   `json:"fsavail" copier:"-"`
+	Fssize     uint64   `json:"fssize" copier:"-"`
+	Fsused     uint64   `json:"fsused" copier:"-"`
 	Fsusage    uint     `json:"fsusage"` // percent that was used
 	Fstype     string   `json:"fstype"`
 	Pttype     string   `json:"pttype"`
@@ -49,32 +48,32 @@ type Device struct {
 }
 
 type _Device struct {
-	Name       string    `json:"name"`
-	Path       string    `json:"path"`
-	Fsavail    *uint64   `json:"fsavail"`
-	Fssize     *uint64   `json:"fssize"`
-	Fstype     string    `json:"fstype"`
-	Pttype     string    `json:"pttype"`
-	Fsused     *uint64   `json:"fsused"`
-	Fsuse      string    `json:"fsuse%"`
-	Mountpoint string    `json:"mountpoint"`
-	Label      string    `json:"label"`
-	UUID       string    `json:"uuid"`
-	Rm         bool      `json:"rm"`
-	Hotplug    bool      `json:"hotplug"`
-	Serial     string    `json:"serial"`
-	State      string    `json:"state"`
-	Group      string    `json:"group"`
-	Type       string    `json:"type"`
-	Alignment  int       `json:"alignment"`
-	Wwn        string    `json:"wwn"`
-	Hctl       string    `json:"hctl"`
-	Tran       string    `json:"tran"`
-	Subsystems string    `json:"subsystems"`
-	Rev        string    `json:"rev"`
-	Vendor     string    `json:"vendor"`
-	Model      string    `json:"model"`
-	Children   []_Device `json:"children"`
+	Name       string      `json:"name"`
+	Path       string      `json:"path"`
+	Fsavail    interface{} `json:"fsavail"`
+	Fssize     interface{} `json:"fssize"`
+	Fstype     string      `json:"fstype"`
+	Pttype     string      `json:"pttype"`
+	Fsused     interface{} `json:"fsused"`
+	Fsuse      string      `json:"fsuse%"`
+	Mountpoint string      `json:"mountpoint"`
+	Label      string      `json:"label"`
+	UUID       string      `json:"uuid"`
+	Rm         bool        `json:"rm"`
+	Hotplug    bool        `json:"hotplug"`
+	Serial     string      `json:"serial"`
+	State      string      `json:"state"`
+	Group      string      `json:"group"`
+	Type       string      `json:"type"`
+	Alignment  int         `json:"alignment"`
+	Wwn        string      `json:"wwn"`
+	Hctl       string      `json:"hctl"`
+	Tran       string      `json:"tran"`
+	Subsystems string      `json:"subsystems"`
+	Rev        string      `json:"rev"`
+	Vendor     string      `json:"vendor"`
+	Model      string      `json:"model"`
+	Children   []_Device   `json:"children"`
 }
 
 func runCmd(command string) (output []byte, err error) {
@@ -140,6 +139,25 @@ func create(x uint64) *uint64 {
 	return &x
 }
 
+func allToUint64WithDefault(in interface{}, def uint64) *uint64 {
+	switch v := in.(type) {
+	case nil:
+		return &def
+	case float64:
+		return create(uint64(v))
+	case int, int64, uint64:
+		return create(uint64(v.(uint64)))
+	case string:
+		val, err := strconv.ParseUint(v, 10, 64)
+		if err == nil {
+			return &val
+		}
+		return &def
+	default:
+		return &def
+	}
+}
+
 func ListDevices() (devices map[string]Device, err error) {
 	output, err := runCmd("lsblk -e7 -b -J -o name,path,fsavail,fssize,fstype,pttype,fsused,fsuse%,mountpoint,label,uuid,rm,hotplug,serial,state,group,type,alignment,wwn,hctl,tran,subsystems,rev,vendor,model")
 	if err != nil {
@@ -156,26 +174,26 @@ func ListDevices() (devices map[string]Device, err error) {
 	devices = make(map[string]Device)
 	for _, _device := range lsblkRsp["blockdevices"] {
 		var device Device
-		copier.Copy(&device, &_device)
+		var err = copier.Copy(&device, &_device)
+		if err != nil {
+			log.Println(err)
+		}
+		//log.Println(len(device.Children), len(_device.Children))
 
-		if _device.Fsavail != nil {
-			//device.Fsavail, _ = strconv.ParseUint(*_device.Fsavail, 10, 64)
-			device.Fsavail = *_device.Fsavail
-		}
-		if _device.Fsused != nil {
-			device.Fsused = *_device.Fsused
-		}
-		if _device.Fssize != nil {
-			device.Fssize = *_device.Fssize
-		}
+		device.Fsavail = *allToUint64WithDefault(_device.Fsavail, 0)
+		device.Fssize = *allToUint64WithDefault(_device.Fssize, 0)
+		device.Fsused = *allToUint64WithDefault(_device.Fsused, 0)
+
 		if device.Fssize > 0 {
 			device.Fsusage = uint(math.Round(float64(device.Fsused*100) / float64(device.Fssize)))
 		}
 
 		for i, child := range _device.Children {
-			device.Children[i].Fsavail = *gosettings.DefaultComparable(child.Fsavail, create(0))
-			device.Children[i].Fsused = *gosettings.DefaultComparable(child.Fsused, create(0))
-			device.Children[i].Fssize = *gosettings.DefaultComparable(child.Fssize, create(0))
+			//log.Println(i, len(device.Children), child, *allToUint64WithDefault(child.Fsavail, 0))
+
+			device.Children[i].Fsavail = *allToUint64WithDefault(child.Fsavail, 0)
+			device.Children[i].Fsused = *allToUint64WithDefault(child.Fsused, 0)
+			device.Children[i].Fssize = *allToUint64WithDefault(child.Fssize, 0)
 			if device.Children[i].Fssize > 0 {
 				device.Children[i].Fsusage = uint(math.Round(float64(device.Children[i].Fsused*100) / float64(device.Children[i].Fssize)))
 			}
