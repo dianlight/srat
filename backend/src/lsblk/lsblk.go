@@ -135,7 +135,10 @@ func PrintPartitions(devices map[string]Device) {
 	table.Render() // Send output
 }
 
-// NewLSSCSI is a constructor for LSSCSI
+func create(x uint64) *uint64 {
+	return &x
+}
+
 func ListDevices() (devices map[string]Device, err error) {
 	output, err := runCmd("lsblk -e7 -b -J -o name,path,fsavail,fssize,fstype,pttype,fsused,fsuse%,mountpoint,label,uuid,rm,hotplug,serial,state,group,type,alignment,wwn,hctl,tran,subsystems,rev,vendor,model")
 	if err != nil {
@@ -168,9 +171,9 @@ func ListDevices() (devices map[string]Device, err error) {
 		}
 
 		for i, child := range _device.Children {
-			device.Children[i].Fsavail = gosettings.DefaultComparable(*child.Fsavail, 0)
-			device.Children[i].Fsused = gosettings.DefaultComparable(*child.Fsused, 0)
-			device.Children[i].Fssize = gosettings.DefaultComparable(*child.Fssize, 0)
+			device.Children[i].Fsavail = *gosettings.DefaultComparable(child.Fsavail, create(0))
+			device.Children[i].Fsused = *gosettings.DefaultComparable(child.Fsused, create(0))
+			device.Children[i].Fssize = *gosettings.DefaultComparable(child.Fssize, create(0))
 			if device.Children[i].Fssize > 0 {
 				device.Children[i].Fsusage = uint(math.Round(float64(device.Children[i].Fsused*100) / float64(device.Children[i].Fssize)))
 			}

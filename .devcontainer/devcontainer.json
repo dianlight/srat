@@ -38,7 +38,8 @@
 				"sourcery.sourcery",
 				"vivaxy.vscode-conventional-commits",
 				"ms-vscode.makefile-tools",
-				"TabNine.tabnine-vscode"
+				"TabNine.tabnine-vscode",
+				"github.vscode-github-actions"
 
 			]		
 		}

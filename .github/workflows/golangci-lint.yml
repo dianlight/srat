@@ -20,3 +20,4 @@ jobs:
         with:
           version: latest
           args: -D errcheck
+          working-directory: ./backend/
