@@ -10,7 +10,7 @@ TEST_SRCS := $(filter %_test.go, $(ALL_SRCS))
 SRCS := $(filter-out %_test.go, $(ALL_SRCS))
 
 
-all: clean build
+all: clean static build
 
 build: docs test $(BUILD_DIR)/$(TARGET_EXEC)
 
