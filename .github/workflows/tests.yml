@@ -23,6 +23,6 @@ jobs:
           bun-version: latest
       - shell: bash
         run: |
-          #lsblk -e7 -b -J -o name,path,fsavail,fssize,fstype,pttype,fsused,fsuse%,mountpoint,label,uuid,rm,hotplug,serial,state,group,type,alignment,wwn,hctl,tran,subsystems,rev,vendor,model
+          GOBIN=/usr/local/bin/ go install github.com/swaggo/swag/cmd/swag@latest
           cd backend
           make test

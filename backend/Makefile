@@ -1,8 +1,8 @@
 TARGET_EXEC=srat
 BUILD_DIR := ./dist
 SRC_DIRS := ./src
-FRONTEND_DIRS := ../frontend/
-STATIC_DIRS := $(FRONTEND_DIRS)/out/
+FRONTEND_DIRS := ../frontend
+STATIC_DIRS := $(FRONTEND_DIRS)/out
 
 #ALL_SRCS := $(shell find $(SRC_DIRS) -name '*.go')
 ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go)  

@@ -8,5 +8,6 @@
       "samba",
       "docker",
       "sensors"
-    ]
+    ],
+    "makefile.configureOnOpen": false
 }
