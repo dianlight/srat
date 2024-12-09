@@ -21,4 +21,4 @@ jobs:
       - shell: bash
         run: |
           cd backend
-          go test
+          make test

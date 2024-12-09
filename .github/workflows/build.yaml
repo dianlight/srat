@@ -40,10 +40,11 @@ jobs:
       run: |
         cd frontend
         curl -fsSL https://bun.sh/install | bash 
+        source /home/runner/.bashrc 
         bun install
         cd..
+        make PREREQUISITE
         cd backend
-        make static
         CGO_ENABLED=0 ${{ matrix.variant.args }} go build -ldflags="-s -w -X main.SRATVersion=${{ steps.version.outputs.version }}" -o "${{ matrix.variant.name }}"
 
     - name: Upload release asset

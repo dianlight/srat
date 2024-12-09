@@ -49,4 +49,4 @@ static: $(STATIC_DIRS)
 	rm -rf $(SRC_DIRS)/static
 	cd $(FRONTEND_DIRS);bun run build
 	cp -rv $(STATIC_DIRS) $(SRC_DIRS)/static
-	cd $(FRONTEND_DIRS);bun run version
+	#cd $(FRONTEND_DIRS);bun run version
