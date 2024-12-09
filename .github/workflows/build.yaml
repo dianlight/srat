@@ -44,7 +44,7 @@ jobs:
       run: |
         cd frontend
         bun install
-        cd..
+        cd ..
         make PREREQUISITE
         cd backend
         CGO_ENABLED=0 ${{ matrix.variant.args }} go build -ldflags="-s -w -X main.SRATVersion=${{ steps.version.outputs.version }}" -o "${{ matrix.variant.name }}"

@@ -31,7 +31,7 @@ clean:
 	rm -rf dist
 
 .PHONY: test
-test: $(ALL_SRCS)
+test: $(ALL_SRCS) static
 	echo $(ALL_SRCS)
 	cd $(SRC_DIRS)/lsblk;go test -cover 
 	cd $(SRC_DIRS);go test -cover 
@@ -45,7 +45,10 @@ docs: $(SRCS)
 dev: 
 	cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json
 
-static: $(STATIC_DIRS)
+$(FRONTEND_DIRS)/node_modules:
+	cd $(FRONTEND_DIRS); bun install	
+
+static: $(STATIC_DIRS) $(FRONTEND_DIRS)/node_modules
 	rm -rf $(SRC_DIRS)/static
 	cd $(FRONTEND_DIRS);bun run build
 	cp -rv $(STATIC_DIRS) $(SRC_DIRS)/static
