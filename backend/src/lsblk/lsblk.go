@@ -5,6 +5,7 @@ package lsblk
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"math"
 	"os"
 	"os/exec"
@@ -148,6 +149,7 @@ func ListDevices() (devices map[string]Device, err error) {
 	lsblkRsp := make(map[string][]_Device)
 	err = json.Unmarshal(output, &lsblkRsp)
 	if err != nil {
+		log.Println(output)
 		return nil, err
 	}
 

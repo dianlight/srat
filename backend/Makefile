@@ -10,9 +10,9 @@ TEST_SRCS := $(filter %_test.go, $(ALL_SRCS))
 SRCS := $(filter-out %_test.go, $(ALL_SRCS))
 
 
-all: clean static build
+all: clean docs static build
 
-build: docs test $(BUILD_DIR)/$(TARGET_EXEC)
+build: $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	mkdir dist || : 

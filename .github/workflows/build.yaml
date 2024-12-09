@@ -9,7 +9,7 @@ on:
     branches: ["main"]
 
 env:
-  GOLANG_VERSION: "1.23.3"
+  GOLANG_VERSION: "1.23.4"
 
 jobs:
   build:
@@ -32,6 +32,10 @@ jobs:
       with:
         go-version: ${{ env.GOLANG_VERSION }}
 
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
     - name: Get version
       id: version
       uses: home-assistant/actions/helpers/version@master
@@ -39,8 +43,6 @@ jobs:
     - name: Build ${{ matrix.variant.name }}
       run: |
         cd frontend
-        curl -fsSL https://bun.sh/install | bash 
-        source /home/runner/.bashrc 
         bun install
         cd..
         make PREREQUISITE

@@ -1,10 +1,11 @@
 name: golangci-lint
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+  #push:
+  #  branches:
+  #    - main
+  #pull_request:
+  workflow_dispatch:   
 
 env:
   GOLANG_LINT_VERSION: "v1.51.2"

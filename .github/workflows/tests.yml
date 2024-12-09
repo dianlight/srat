@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  GOLANG_VERSION: "1.21"
+  GOLANG_VERSION: "1.23.4"
 
 jobs:
   test:
@@ -20,5 +20,6 @@ jobs:
           go-version: ${{ env.GOLANG_VERSION }}
       - shell: bash
         run: |
+          lsblk -e7 -b -J -o name,path,fsavail,fssize,fstype,pttype,fsused,fsuse%,mountpoint,label,uuid,rm,hotplug,serial,state,group,type,alignment,wwn,hctl,tran,subsystems,rev,vendor,model
           cd backend
           make test
