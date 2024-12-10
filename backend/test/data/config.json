@@ -1,14 +1,22 @@
 {
   "workgroup": "WORKGROUP",
   "username": "dianlight",
+  "password": "hassio2010",
   "allow_hosts": [
     "10.0.0.0/8",
+    "100.0.0.0/8",
     "172.16.0.0/12",
     "192.168.0.0/16",
-    "fe80::/10"
+    "169.254.0.0/16",
+    "fe80::/10",
+    "fc00::/7"
   ],
   "automount": true,
-  "moredisks": [],
+  "moredisks": [
+    "mnt/EFI",
+    "mnt/LIBRARY",
+    "mnt/Updater"
+  ],
   "mountoptions": [
     "nosuid",
     "relatime",
@@ -27,43 +35,73 @@
   ],
   "compatibility_mode": false,
   "recyle_bin_enabled": false,
-  "wsdd2": false,
   "wsdd": false,
-  "mqtt_nexgen_entities": false,
+  "wsdd2": false,
+  "mqtt_enable": true,
+  "mqtt_nexgen_entities": true,
+  "hdd_idle_seconds": 10,
   "autodiscovery": {},
   "other_users": [
     {
       "username": "backupuser",
-      "password": "<backupuser secret password>"
+      "password": "\u003cbackupuser secret password\u003e"
     },
     {
-      "username": "secureuser",
-      "password": "<secureuser secret password>"
+      "username": "utente2",
+      "password": "password2"
+    },
+    {
+      "username": "rouser",
+      "password": "rouser"
     }
   ],
-  "acl": [],
-  "interfaces": [],
-  "password": "hassio2010",
-  "mqtt_enable": true,
-  "enable_smart": true,
+  "acl": [
+    {
+      "share": "config",
+      "disabled": false,
+      "users": []
+    },
+    {
+      "share": "backup",
+      "disabled": false,
+      "users": [
+        "utente1"
+      ]
+    },
+    {
+      "share": "ssl",
+      "disabled": true,
+      "users": [
+        "utente2"
+      ]
+    },
+    {
+      "share": "LIBRARY",
+      "ro_users": [
+        "rouser"
+      ],
+      "timemachine": true
+    }
+  ],
+  "interfaces": [
+    "wlan0",
+    "end0"
+  ],
   "bind_all_interfaces": true,
-  "multi_channel": true,
-  "hdd_idle_seconds": 10,
-  "shares":{
-  "EFI": {
-    "path": "/mnt/EFI",
-    "fs": "vfat"
+  "shares": {
+    "EFI": {
+      "path": "/mnt/EFI",
+      "fs": "vfat"
+    },
+    "LIBRARY": {
+      "path": "/mnt/LIBRARY",
+      "fs": "ext4"
+    },
+    "UPDATER": {
+      "path": "/mnt/Updater",
+      "fs": "exfat"
+    }
   },
-  "LIBRARY": {
-    "path": "/mnt/LIBRARY",
-    "fs": "ext4"
-  },
-  "UPDATER": {
-    "path": "/mnt/Updater",
-    "fs": "exfat"
-  }},
-  "_interfaces":["eth0","eth1"],
-  "docker_interface":["en0","eth0","eth1"],
-  "docker_net": "10.0.0.1",
-  "_moredisks":["mnt/EFI","mnt/LIBRARY","mnt/Updater"]
+  "docker_interface": "hassio",
+  "docker_net": "172.30.32.0/23"
 }

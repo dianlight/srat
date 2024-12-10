@@ -17,8 +17,8 @@ type Config struct {
 	Options
 	Shares Shares `json:"shares"`
 	// "_interfaces":["eth0","eth1"],
-	DockerInterface []string `json:"docker_interface"`
-	DockerNet       string   `json:"docker_net"`
+	DockerInterface string `json:"docker_interface"`
+	DockerNet       string `json:"docker_net"`
 	// "_moredisks":["mnt/EFI","mnt/LIBRARY","mnt/Updater"],
 	// Redefinitions and new config elements
 	Users []User `json:"users"`
