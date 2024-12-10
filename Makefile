@@ -5,6 +5,9 @@ BACKEND_DIRS := ./backend/
 ALL: 
 	cd $(BACKEND_DIRS);$(MAKE) 
 
+PREREQUISITE:
+	cd $(BACKEND_DIRS);$(MAKE) PREREQUISITE	
+
 .PHONY: clean
 clean:
 	cd $(FRONTEND_DIRS); bun clean
