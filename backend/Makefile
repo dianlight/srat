@@ -41,6 +41,7 @@ test: $(ALL_SRCS) static
  
 docs: $(SRCS)
 	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest init
+	mkdir -p $(SRC_DIRS)/static && touch $(SRC_DIRS)/static/.nodelete
 	cd $(SRC_DIRS);swag init --pd
 
 .PHONY: dev
