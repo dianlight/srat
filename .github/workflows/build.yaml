@@ -47,7 +47,7 @@ jobs:
         bun install
         cd ..
         make PREREQUISITE
-        cd backend
+        cd backend/src
         CGO_ENABLED=0 ${{ matrix.variant.args }} go build -ldflags="-s -w -X main.SRATVersion=${{ steps.version.outputs.version }}" -o "${{ matrix.variant.name }}"
 
     - name: Upload release asset

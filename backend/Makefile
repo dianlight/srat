@@ -48,7 +48,7 @@ dev:
 $(FRONTEND_DIRS)/node_modules:
 	cd $(FRONTEND_DIRS); bun install	
 
-static: $(STATIC_DIRS) $(FRONTEND_DIRS)/node_modules
+static: $(FRONTEND_DIRS)/node_modules
 	rm -rf $(SRC_DIRS)/static
 	cd $(FRONTEND_DIRS);bun run build
 	cp -rv $(STATIC_DIRS) $(SRC_DIRS)/static
