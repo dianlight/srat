@@ -39,7 +39,7 @@ async function build(): Promise<BuildOutput | void> {
             //  html({})
         ],
         define: {
-            "process.env.APIURL": values.watch ? '"http://localhost:8080"' : 'window.location.origin',
+            "process.env.APIURL": values.watch ? '"http://localhost:8080"' : "window.location.href.substring(0,window.location.href.lastIndexOf('/')+1)",
         }
     }).then((result) => {
         if (!result.success) {
