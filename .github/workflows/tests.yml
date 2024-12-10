@@ -23,6 +23,6 @@ jobs:
           bun-version: latest
       - shell: bash
         run: |
-          GOBIN=/usr/local/bin/ go install github.com/swaggo/swag/cmd/swag@latest
+          GOBIN=/usr/local/bin/ go install github.com/swaggo/swag/v2/cmd/swag@latest
           cd backend
           make test

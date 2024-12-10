@@ -2,12 +2,8 @@ FRONTEND_DIRS := ./frontend/
 BACKEND_DIRS := ./backend/
 
 
-ALL: PREREQUISITE
-	cd $(BACKEND_DIRS);$(MAKE)
-
-PREREQUISITE:
-	cd $(BACKEND_DIRS);$(MAKE) docs
-	cd $(FRONTEND_DIRS); bun swagger; bun run build
+ALL: 
+	cd $(BACKEND_DIRS);$(MAKE) 
 
 .PHONY: clean
 clean:
