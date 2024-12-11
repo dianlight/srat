@@ -8,18 +8,17 @@ STATIC_DIRS := $(FRONTEND_DIRS)/out
 ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go)  
 TEST_SRCS := $(filter %_test.go, $(ALL_SRCS))
 SRCS := $(filter-out %_test.go, $(ALL_SRCS))
-
+VERSION ?= "TEST_INTERNAL"
 
 all: PREREQUISITE build
 
-PREREQUISITE: clean docs static
+PREREQUISITE: docs static
 
 build: $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	mkdir dist || : 
-	#go build -o $@ $^
-	cd $(SRC_DIRS);go build -o ../$@ .
+	cd $(SRC_DIRS);CGO_ENABLED=0 $(AARGS) go build -ldflags="-s -w -X main.SRATVersion=$(VERSION)" -o ../$(@)$(SUFFIX)
 
 .PHONY: format
 format:
