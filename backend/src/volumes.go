@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"dario.cat/mergo"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gorilla/mux"
 	"github.com/shirou/gopsutil/v4/disk"
@@ -25,10 +24,10 @@ var (
 )
 
 type Volume struct {
-	Label        string         `json:"label"`
-	SerialNumber string         `json:"serial_number"`
-	Stats        disk.UsageStat `json:"stats"`
-	Lsbk         lsblk.Device   `json:"lsbk"`
+	Label        string `json:"label"`
+	SerialNumber string `json:"serial_number"`
+	//Stats        disk.UsageStat `json:"stats"`
+	Lsbk lsblk.Device `json:"lsbk"`
 	disk.PartitionStat
 	// IOStats disk.IOCountersStat `json:"io_stats"`
 }
@@ -52,13 +51,13 @@ func _getVolumesData() ([]Volume, []error) {
 
 	for _, partition := range _partitions {
 		volume := Volume{PartitionStat: partition}
-		stats, err := disk.Usage(partition.Mountpoint)
-		if err != nil {
-			log.Printf("Disk Usage not available %v", err)
-			errs = append(errs, err)
-		} else {
-			mergo.Merge(&volume, &Volume{Stats: *stats})
-		}
+		//stats, err := disk.Usage(partition.Mountpoint)
+		//if err != nil {
+		//	log.Printf("Disk Usage not available %v", err)
+		//	errs = append(errs, err)
+		//} else {
+		//	mergo.Merge(&volume, &Volume{Stats: *stats})
+		//}
 		device, e12 := _devices[extractDeviceName.FindStringSubmatch(partition.Device)[1]]
 		if !e12 {
 			log.Printf("Unmapped device %s", extractDeviceName.FindStringSubmatch(partition.Device))
@@ -84,8 +83,8 @@ func _getVolumesData() ([]Volume, []error) {
 		if err != nil {
 			log.Println("Reading Serial Number:", partition.Device, err)
 			errs = append(errs, err)
-			volume.SerialNumber = strings.ToUpper(invalidCharactere.ReplaceAllLiteralString(volume.Device, ""))
-		} else if volumeSerialNumber == "" {
+			//	volume.SerialNumber = strings.ToUpper(invalidCharactere.ReplaceAllLiteralString(volume.Device, ""))
+			//} else if volumeSerialNumber == "" {
 			volume.SerialNumber = volume.Lsbk.UUID
 		} else {
 			volume.SerialNumber = volumeSerialNumber
@@ -93,9 +92,10 @@ func _getVolumesData() ([]Volume, []error) {
 		}
 		volumeLabel, err := disk.Label(partition.Device)
 		if err != nil {
-			//log.Println("Reading Label:", partition.Device, e3)
-			volume.Label = strings.ToUpper(invalidCharactere.ReplaceAllLiteralString(volume.SerialNumber, ""))
+			log.Println("Reading Label:", partition.Device, err)
+			//volume.Label = strings.ToUpper(invalidCharactere.ReplaceAllLiteralString(volume.SerialNumber, ""))
 			errs = append(errs, err)
+			volume.Label = volume.Lsbk.Label
 		} else {
 			volume.Label = volumeLabel
 		}
