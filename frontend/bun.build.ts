@@ -23,6 +23,8 @@ const { values, positionals } = parseArgs({
 
 
 async function build(): Promise<BuildOutput | void> {
+    const APIURL = values.watch ? "'http://localhost:8080'" : "'dynamic'"
+    console.log(`API URL: ${APIURL}`)
     return Bun.build({
         entrypoints: [/*'src/index.html',*/ 'src/index.tsx'],
         outdir: './out',  // Specify the output directory
@@ -39,7 +41,7 @@ async function build(): Promise<BuildOutput | void> {
             //  html({})
         ],
         define: {
-            "process.env.APIURL": values.watch ? '"http://localhost:8080"' : "window.location.href.substring(0,window.location.href.lastIndexOf('/')+1)",
+            "process.env.APIURL": APIURL,
         }
     }).then((result) => {
         if (!result.success) {
@@ -55,7 +57,7 @@ async function build(): Promise<BuildOutput | void> {
 
 console.log(`Build ${import.meta.dir}/src`)
 await build();
-console.log('Build complete ✅')
+console.log(`Build complete ✅ [👁️:${values.watch ? 'watching' : 'build'}]`)
 
 
 if (values.watch) {

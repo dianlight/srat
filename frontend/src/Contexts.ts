@@ -2,15 +2,22 @@ import { createContext } from 'react';
 import { Api } from './srat';
 import { WSRouter } from './WSRouter';
 
+let APIURL = process.env.APIURL;
+if (process.env.APIURL === "dynamic") {
+    APIURL = window.location.href.substring(0, window.location.href.lastIndexOf('/static/') + 1);
+    console.info(`Dynamic APIURL provided, using generated: ${APIURL}`)
+
+}
+
 export const apiContext = createContext(new Api({
-    baseURL: process.env.APIURL
+    baseURL: APIURL
 }));
-const wsUrl = new URL(process.env.APIURL || "")
-wsUrl.protocol = "ws"
-wsUrl.pathname = "/ws"
+const wsUrl = new URL(APIURL || "")
+wsUrl.protocol = window.location.protocol === 'https:' ? "wss:" : "ws:"
+wsUrl.pathname += "ws"
 
 export const wsContext = createContext(new WSRouter(wsUrl.href));
 export const AuthContext = createContext(null);
 
-console.log("API URL", process.env.APIURL)
+console.log("API URL", APIURL)
 console.log("WS URL", wsUrl.href)

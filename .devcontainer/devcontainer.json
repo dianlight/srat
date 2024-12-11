@@ -39,7 +39,8 @@
 				"vivaxy.vscode-conventional-commits",
 				"ms-vscode.makefile-tools",
 				"TabNine.tabnine-vscode",
-				"github.vscode-github-actions"
+				"github.vscode-github-actions",
+				"esbenp.prettier-vscode"
 
 			]		
 		}
