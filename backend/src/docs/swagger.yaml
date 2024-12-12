@@ -1,27 +1,4 @@
 definitions:
-  disk.UsageStat:
-    properties:
-      free:
-        type: integer
-      fstype:
-        type: string
-      inodesFree:
-        type: integer
-      inodesTotal:
-        type: integer
-      inodesUsed:
-        type: integer
-      inodesUsedPercent:
-        type: number
-      path:
-        type: string
-      total:
-        type: integer
-      used:
-        type: integer
-      usedPercent:
-        type: number
-    type: object
   lsblk.Device:
     properties:
       alignment:
@@ -120,7 +97,9 @@ definitions:
       label:
         type: string
       lsbk:
-        $ref: '#/definitions/lsblk.Device'
+        allOf:
+        - $ref: '#/definitions/lsblk.Device'
+        description: Stats        disk.UsageStat `json:"stats"`
       mountpoint:
         type: string
       opts:
@@ -129,8 +108,6 @@ definitions:
         type: array
       serial_number:
         type: string
-      stats:
-        $ref: '#/definitions/disk.UsageStat'
     type: object
 info:
   contact:

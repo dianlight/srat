@@ -9,19 +9,6 @@
  * ---------------------------------------------------------------
  */
 
-export interface DiskUsageStat {
-  free?: number;
-  fstype?: string;
-  inodesFree?: number;
-  inodesTotal?: number;
-  inodesUsed?: number;
-  inodesUsedPercent?: number;
-  path?: string;
-  total?: number;
-  used?: number;
-  usedPercent?: number;
-}
-
 export interface LsblkDevice {
   alignment?: number;
   children?: LsblkDevice[];
@@ -78,11 +65,11 @@ export interface MainVolume {
   device?: string;
   fstype?: string;
   label?: string;
+  /** Stats        disk.UsageStat `json:"stats"` */
   lsbk?: LsblkDevice;
   mountpoint?: string;
   opts?: string[];
   serial_number?: string;
-  stats?: DiskUsageStat;
 }
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";

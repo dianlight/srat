@@ -16,14 +16,17 @@ export function Volumes() {
 
 
     return <ul className="collection" >
-        {status.map((volume) =>
-            < li className="collection-item avatar" key={volume.serial_number} >
+        {status.map((volume, idx) =>
+            < li className="collection-item avatar" key={idx} >
                 <i className="material-icons circle" > disk </i>
                 < span className="title" > {volume.label} </span>
                 < p > {volume.fstype} < br />
                     {volume.mountpoint}
                 </p>
-                < a href="#!" className="secondary-content" > <i className="material-icons" > grade </i></a >
+                <div className="row secondary-content">
+                    <div className="col offset-s10 s1"><a href="#edituser" className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> folder_shared </i></a></div>
+                    <div className="col s1"><a href="#deluser" className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons"> delete_forever </i></a></div>
+                </div>
             </li>
         )}
     </ul>
