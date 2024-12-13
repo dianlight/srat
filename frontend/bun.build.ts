@@ -10,11 +10,19 @@ const { values, positionals } = parseArgs({
         watch: {
             type: 'boolean',
             default: false,
-            short: 'w'
+            short: 'w',
+            description: 'Watch for changes and rebuild automatically'
         },
         serve: {
             type: 'string',
-            short: 's'
+            short: 's',
+            description: 'Specify the host and port to serve the application'
+        },
+        apiContextUrl: {
+            type: 'string',
+            short: 'c',
+            default: 'http://localhost:8080',
+            description: 'Specify the URL of the API context (in watching mode) (default: http://localhost:8080)'
         },
     },
     strict: true,
@@ -22,8 +30,9 @@ const { values, positionals } = parseArgs({
 });
 
 
+
 async function build(): Promise<BuildOutput | void> {
-    const APIURL = values.watch ? "'http://localhost:8080'" : "'dynamic'"
+    const APIURL = values.watch ? values.apiContextUrl || "" : "'dynamic'"
     console.log(`API URL: ${APIURL}`)
     return Bun.build({
         entrypoints: [/*'src/index.html',*/ 'src/index.tsx'],

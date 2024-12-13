@@ -42,6 +42,7 @@
     "watch": "bun run --watch bun.build.ts -w",
     "clean": "rm -rf out",
     "dev": "bun --watch run bun.build.ts -w -s ./out",
+    "dev:remote": "bun --watch run bun.build.ts -w -s ./out -c http://192.168.0.250:3000/",
     "swagger": "sta -p ../backend/src/docs/swagger.json -o ./src -n srat.ts --axios"
   },
   "patchedDependencies": {
