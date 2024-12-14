@@ -58,9 +58,9 @@ func _getVolumesData() ([]Volume, []error) {
 		//} else {
 		//	mergo.Merge(&volume, &Volume{Stats: *stats})
 		//}
-		device, e12 := _devices[extractDeviceName.FindStringSubmatch(partition.Device)[1]]
+		device, e12 := _devices[extractDeviceName.FindStringSubmatch(partition.Device)[1]+"|"+partition.Mountpoint]
 		if !e12 {
-			log.Printf("Unmapped device %s", extractDeviceName.FindStringSubmatch(partition.Device))
+			log.Printf("Unmapped device %s", extractDeviceName.FindStringSubmatch(partition.Device+"|"+partition.Mountpoint))
 		} else {
 			child := slices.IndexFunc(device.Children, func(a lsblk.Device) bool {
 				return a.Name == strings.TrimPrefix(partition.Device, "/dev/")

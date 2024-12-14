@@ -203,7 +203,7 @@ func ListDevices() (devices map[string]Device, err error) {
 		if err == nil {
 			device.Serial = serial
 		}
-		devices[device.Name] = device
+		devices[device.Name+"|"+device.Mountpoint] = device
 	}
 
 	return devices, nil
