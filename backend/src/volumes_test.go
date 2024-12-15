@@ -58,9 +58,11 @@ func TestGetVolumeHandler(t *testing.T) {
 	if len(errs) != 0 {
 		t.Logf("Warning on _getVolumesData %v", errs)
 	}
+	t.Logf("got %v err %v", volumes, errs)
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
+	log.Printf("************** %s", volumes[0].Label)
 	req, err := http.NewRequest("GET", "/volume/"+volumes[0].Label, nil)
 	if err != nil {
 		t.Fatal(err)

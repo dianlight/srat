@@ -5,18 +5,24 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"regexp"
 	"slices"
-	"strings"
 	"sync"
+	"syscall"
 
+	"github.com/citilinkru/libudev"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gorilla/mux"
+	"github.com/kr/pretty"
+	"github.com/pilebones/go-udev/netlink"
 	"github.com/shirou/gopsutil/v4/disk"
 )
 
 var invalidCharactere = regexp.MustCompile(`[[:^ascii:]]|\W`)
 var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
+var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
 
 var (
 	volumesQueue      = map[string](chan *[]Volume){}
@@ -26,8 +32,10 @@ var (
 type Volume struct {
 	Label        string `json:"label"`
 	SerialNumber string `json:"serial_number"`
+	DeviceName   string `json:"device_name"`
 	//Stats        disk.UsageStat `json:"stats"`
-	Lsbk lsblk.Device `json:"lsbk"`
+	RootDevice lsblk.Device `json:"root_device"`
+	Lsbk       lsblk.Device `json:"lsbk"`
 	disk.PartitionStat
 	// IOStats disk.IOCountersStat `json:"io_stats"`
 }
@@ -40,68 +48,87 @@ func _getVolumesData() ([]Volume, []error) {
 		errs = append(errs, err)
 		return nil, errs
 	}
+	//log.Printf("_getVolumesData %v", _partitions)
 	// Falbak Mode - Get also lsblk data!
 	_devices, err := lsblk.ListDevices()
 	if err != nil {
 		log.Printf("lsblk not available %v", err)
 		errs = append(errs, err)
 	}
+	//log.Printf("_getVolumesData2 %v", _devices)
+
+	// Udev Devices
+	sc := libudev.NewScanner()
+	err, devices := sc.ScanDevices()
+	if err != nil {
+		log.Println("Scanning Devices:", err)
+		errs = append(errs, err)
+	}
+	log.Println(devices)
 
 	var partitions = make([]Volume, 0)
 
 	for _, partition := range _partitions {
 		volume := Volume{PartitionStat: partition}
-		//stats, err := disk.Usage(partition.Mountpoint)
-		//if err != nil {
-		//	log.Printf("Disk Usage not available %v", err)
-		//	errs = append(errs, err)
-		//} else {
-		//	mergo.Merge(&volume, &Volume{Stats: *stats})
-		//}
-		device, e12 := _devices[extractDeviceName.FindStringSubmatch(partition.Device)[1]+"|"+partition.Mountpoint]
-		if !e12 {
-			log.Printf("Unmapped device %s", extractDeviceName.FindStringSubmatch(partition.Device+"|"+partition.Mountpoint))
-		} else {
-			child := slices.IndexFunc(device.Children, func(a lsblk.Device) bool {
-				return a.Name == strings.TrimPrefix(partition.Device, "/dev/")
-			})
-			if child == -1 {
-				log.Printf("Unmapped child device %s of %s", device.Name, strings.TrimPrefix(partition.Device, "/dev/"))
-			} else {
-				volume.Lsbk = device.Children[child]
-			}
-		}
-		//IOStats, e2 := disk.IOCounters( /*partition.Device*/ )
-		//if e2 != nil {
-		//	log.Println(e2)
-		//} else {
-		//	log.Printf("IOStats %+v", IOStats)
-		//		mergo.Merge(&volume, &Volume{IOStats: IOStats[partition.Device]})
-		//}
+		volume.DeviceName = extractBlockName.FindStringSubmatch(partition.Device)[1]
 
-		volumeSerialNumber, err := disk.SerialNumber(partition.Device)
+		volumeSerialNumber, err := disk.SerialNumber(volume.Device)
 		if err != nil {
-			log.Println("Reading Serial Number:", partition.Device, err)
+			log.Println("Reading Serial Number:", volume.DeviceName, err)
 			errs = append(errs, err)
 			//	volume.SerialNumber = strings.ToUpper(invalidCharactere.ReplaceAllLiteralString(volume.Device, ""))
 			//} else if volumeSerialNumber == "" {
-			volume.SerialNumber = volume.Lsbk.UUID
+			//volume.SerialNumber = volume.Lsbk.UUID
 		} else {
+			//log.Printf("Serial Number %s\n", volumeSerialNumber)
 			volume.SerialNumber = volumeSerialNumber
 
 		}
-		volumeLabel, err := disk.Label(partition.Device)
+		volumeLabel, err := disk.Label(volume.DeviceName)
 		if err != nil {
-			log.Println("Reading Label:", partition.Device, err)
+			log.Println(".Reading Label:", volume.DeviceName, err)
 			//volume.Label = strings.ToUpper(invalidCharactere.ReplaceAllLiteralString(volume.SerialNumber, ""))
 			errs = append(errs, err)
-			volume.Label = volume.Lsbk.Label
+			//volume.Label = volume.Lsbk.Label
 		} else {
+			//log.Printf("Volume Label %s\n", volumeLabel)
 			volume.Label = volumeLabel
+		}
+		// Add LSBk data if available
+		device, e12 := _devices[extractDeviceName.FindStringSubmatch(partition.Device)[1]]
+		if !e12 {
+			//log.Println(_devices)
+			log.Printf("***Unmapped device %s", extractDeviceName.FindStringSubmatch(partition.Device)[1])
+		} else {
+			volume.RootDevice = device
+			child := slices.IndexFunc(device.Children, func(a lsblk.Device) bool {
+				//log.Printf("Device %s %s =?=  %s %s\n", a.Name, a.Mountpoint, partition.Device, partition.Mountpoint)
+				return a.Name == volume.DeviceName && a.Mountpoint == partition.Mountpoint
+			})
+			if child == -1 {
+				log.Printf("Unmapped child device %s of %s %s", device.Name, volume.DeviceName, partition.Mountpoint)
+			} else {
+				log.Printf("Found %d %v child devices", child, device.Children[child])
+				volume.Lsbk = device.Children[child]
+			}
+		}
+		// Create unique label if the actual label is empty
+		if volume.Label == "" {
+			if volume.Lsbk.Label == "" {
+				volume.Label = fmt.Sprintf("%s_%s", volume.DeviceName, volume.SerialNumber)
+			} else {
+				volume.Label = volume.Lsbk.Label
+			}
+		}
+		// Create unique label if the actual label is invalid
+		if invalidCharactere.MatchString(volume.Label) {
+			volume.Label = fmt.Sprintf("%s_%s", volume.DeviceName, volume.SerialNumber)
 		}
 
 		partitions = append(partitions, volume)
 	}
+
+	// Filter out non-block devices
 
 	return partitions, errs
 }
@@ -338,11 +365,49 @@ func umountVolume(w http.ResponseWriter, r *http.Request) {
 }
 */
 
+func VolumesEventHandler() {
+	log.Println("Monitoring UEvent kernel message to user-space...")
+
+	conn := new(netlink.UEventConn)
+	if err := conn.Connect(netlink.UdevEvent); err != nil {
+		log.Fatalln("Unable to connect to Netlink Kobject UEvent socket")
+	}
+	defer conn.Close()
+
+	queue := make(chan netlink.UEvent)
+	errors := make(chan error)
+	quit := conn.Monitor(queue, errors, nil /*matcher*/)
+
+	// Signal handler to quit properly monitor mode
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	go func() {
+		<-signals
+		log.Println("Exiting monitor mode...")
+		close(quit)
+		// os.Exit(0)
+	}()
+
+	// Handling message from queue
+	for {
+		select {
+		case uevent := <-queue:
+			log.Println("Handle", pretty.Sprint(uevent))
+			var data, _ = _getVolumesData()
+			notifyVolumeClient(data)
+		case err := <-errors:
+			log.Println("ERROR:", err)
+		}
+	}
+
+}
+
 func VolumesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	volumesQueueMutex.Lock()
 	if volumesQueue[request.Uid] == nil {
 		volumesQueue[request.Uid] = make(chan *[]Volume, 10)
 	}
+
 	var data, errs = _getVolumesData()
 	if len(errs) > 0 && data == nil {
 		log.Printf("Unable to fetch volumes: %v", errs)
@@ -353,6 +418,7 @@ func VolumesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessage
 		log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(volumesQueue))
 	}
 	var queue = volumesQueue[request.Uid]
+	go VolumesEventHandler()
 	for {
 		smessage := &WebSocketMessageEnvelope{
 			Event: "volumes",
