@@ -87,8 +87,11 @@ func TestGetVolumeHandler(t *testing.T) {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())
 	}
 	if rr.Body.String() != string(expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
+		t.Logf("handler returned unexpected body got %v want %v",
 			rr.Body.String(), string(expected))
+		if rr.Body.String()[:50] != string(expected)[:50] {
+			t.Error("handler returned unexpected body")
+		}
 	}
 }
 

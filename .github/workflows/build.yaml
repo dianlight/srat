@@ -52,15 +52,14 @@ jobs:
         #CGO_ENABLED=0 ${{ matrix.variant.args }} go build -ldflags="-s -w -X main.SRATVersion=${{ steps.version.outputs.version }}" -o "${{ matrix.variant.name }}"
 
     - name: Upload release asset
-      if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.2
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: "${{ github.workspace }}/${{ matrix.variant.name }}"
-        asset_name: ${{ matrix.variant.name }}
-        asset_content_type: application/x-binary
+        tag_name: ${{ github.event.release.tag_name }}
+        name: Release ${{ github.event.release.tag_name }}
+        draft: false
+        prerelease: ${{ github.event_name =='release' }}
 
 #    - name: Signing asset
 #      if: github.event_name == 'release'
