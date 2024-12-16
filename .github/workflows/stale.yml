@@ -18,3 +18,11 @@ jobs:
           days-before-stale: 60
           days-before-close: 7
           days-before-pr-close: -1
+      - uses: jay2610/delete-older-releases@1.4.0
+        with:
+          keep_latest: 3
+          delete_tags: true
+          delete_tag_pattern: dev # defaults to ""
+          delete_type: 'prerelease'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
