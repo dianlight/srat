@@ -7,8 +7,12 @@
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/dianlight/srat)](https://img.shields.io/github/issues-pr/dianlight/srat)
 [![GitHub](https://img.shields.io/github/license/dianlight/srat)](https://img.shields.io/github/license/dianlight/srat)
 
-:construction_worker:  This is a part for new SambaNas Home Assistant Addon. :construction_worker:
+SRAT (Samba REST Administration Tool) is a new system designed to provide a simplified user interface for configuring SAMBA. It has been developed to work within Home Assistant, specifically for this addon, but can also be used in other contexts.
 
+Currently under development and in an alpha state, SRAT is set to become the preferred system for configuring and using this addon, eventually "retiring" the YAML configuration.
+
+:construction_worker:  This is a part for new SambaNas Home Assistant Addon. :construction_worker:
+<!--
 # Quick Start Demo
 
 ![Demo Preview](https://picsum.photos/1920/1080)
@@ -51,7 +55,6 @@ gh repo clone navendu-pottekkat/awesome-readme
 
 Next, you have to explain how to use your project. You can create subsections under here to explain more clearly.
 
-
 # Development
 [(Back to top)](#table-of-contents)
 
@@ -69,7 +72,6 @@ command to build your project
 command to run your project in development mode
 ```
 
-
 # Contribute
 [(Back to top)](#table-of-contents)
 
@@ -77,12 +79,11 @@ You can use this section to highlight how people can contribute to your project.
 
 You can add information on how they can open issues or how they can sponsor the project.
 
+-->
 
 # License
 [(Back to top)](#table-of-contents)
 
-You can also mention what license the project uses. I usually add it like this:
-
-[MIT license](./LICENSE)
+[Apache 2.0 license](./LICENSE)
 
 
