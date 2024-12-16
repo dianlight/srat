@@ -83,7 +83,7 @@ jobs:
             github.rest.git.updateRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: 'refs/tags/v${{ steps.version.outputs.version }}',
+              ref: 'tags/v${{ steps.version.outputs.version }}',
               sha: context.sha
             })
 

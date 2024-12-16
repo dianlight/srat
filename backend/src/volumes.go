@@ -65,7 +65,7 @@ func _getVolumesData() ([]Volume, []error) {
 		errs = append(errs, err)
 	}
 	for _, dev := range devices {
-		log.Println(&dev)
+		log.Println(dev)
 	}
 
 	var partitions = make([]Volume, 0)
