@@ -15,6 +15,7 @@ import (
 	"github.com/citilinkru/libudev"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gorilla/mux"
+	"github.com/jinzhu/copier"
 	"github.com/kr/pretty"
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/shirou/gopsutil/v4/disk"
@@ -29,12 +30,34 @@ var (
 	volumesQueueMutex = sync.RWMutex{}
 )
 
+type RootDevice struct {
+	Name       string `json:"name"`
+	Path       string `json:"path"`
+	Pttype     string `json:"pttype"`
+	Label      string `json:"label"`
+	UUID       string `json:"uuid"`
+	Rm         bool   `json:"rm"`
+	Hotplug    bool   `json:"hotplug"`
+	Serial     string `json:"serial"`
+	State      string `json:"state"`
+	Group      string `json:"group"`
+	Type       string `json:"type"`
+	Alignment  int    `json:"alignment"`
+	Wwn        string `json:"wwn"`
+	Hctl       string `json:"hctl"`
+	Tran       string `json:"tran"`
+	Subsystems string `json:"subsystems"`
+	Rev        string `json:"rev"`
+	Vendor     string `json:"vendor"`
+	Model      string `json:"model"`
+}
+
 type Volume struct {
 	Label        string `json:"label"`
 	SerialNumber string `json:"serial_number"`
 	DeviceName   string `json:"device_name"`
 	//Stats        disk.UsageStat `json:"stats"`
-	RootDevice lsblk.Device `json:"root_device"`
+	RootDevice RootDevice   `json:"root_device"`
 	Lsbk       lsblk.Device `json:"lsbk"`
 	disk.PartitionStat
 	// IOStats disk.IOCountersStat `json:"io_stats"`
@@ -65,8 +88,8 @@ func _getVolumesData() ([]Volume, []error) {
 		errs = append(errs, err)
 	}
 	for _, dev := range devices {
-		if dev.Env["DEVTYPE"] == "disk" {
-			log.Println(dev)
+		if dev.Env["DEVTYPE"] == "disk" || dev.Env["DEVTYPE"] == "usb_device" {
+			log.Println(pretty.Sprint(dev))
 		}
 	}
 
@@ -104,7 +127,8 @@ func _getVolumesData() ([]Volume, []error) {
 			//log.Println(_devices)
 			log.Printf("***Unmapped device %s", extractDeviceName.FindStringSubmatch(partition.Device)[1])
 		} else {
-			volume.RootDevice = device
+			volume.RootDevice = RootDevice{}
+			copier.Copy(volume.RootDevice, device)
 			child := slices.IndexFunc(device.Children, func(a lsblk.Device) bool {
 				//log.Printf("Device %s %s =?=  %s %s\n", a.Name, a.Mountpoint, partition.Device, partition.Mountpoint)
 				return a.Name == volume.DeviceName && a.Mountpoint == partition.Mountpoint
