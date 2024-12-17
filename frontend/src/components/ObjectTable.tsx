@@ -2,14 +2,19 @@ import { useContext, useState } from "react";
 import { apiContext } from "../Contexts";
 
 function ObjectField(props: { value: any, idx?: number, nkey?: string }) {
-    console.log("ObjectField got", props.value, typeof props.value)
-    if (typeof props.value === "string" || typeof props.value === "number" || typeof props.value === "boolean" || props.value === null) {
+    console.log("ObjectField got", props.nkey, props.value, typeof props.value)
+    if (props.value === undefined || props.value === null || props.value === "") {
+        return <></>
+    } else if (typeof props.value === "string" || typeof props.value === "number") {
         return <tr key={"" + props.idx + props.nkey}>
             <td>{props.nkey}</td>
             <td>{props.value}</td>
-            <td></td>
         </tr>
-
+    } else if (typeof props.value === "boolean") {
+        return <tr key={"" + props.idx + props.nkey}>
+            <td>{props.nkey}</td>
+            <td>{props.value ? "Yes" : "No"}</td>
+        </tr>
     } else if (Array.isArray(props.value)) {
         return props.value.map((item, index) => <ObjectField value={item} idx={index} nkey={props.nkey} />)
     } else if (typeof props.value === "object") {
@@ -30,7 +35,6 @@ export function ObjectTable(props: { object: object | Array<any> | null }) {
             <tr>
                 <th>Property</th>
                 <th>Value</th>
-                <th>Action</th>
             </tr>
         </thead>
         <tbody>
