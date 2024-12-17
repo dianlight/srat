@@ -53,6 +53,6 @@ $(FRONTEND_DIRS)/node_modules:
 static: $(FRONTEND_DIRS)/node_modules
 	rm -rf $(SRC_DIRS)/static
 	cd $(FRONTEND_DIRS);bun run swagger
+	cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
 	cd $(FRONTEND_DIRS);bun run build
 	cp -rv $(STATIC_DIRS) $(SRC_DIRS)/static
-	#cd $(FRONTEND_DIRS);bun run version

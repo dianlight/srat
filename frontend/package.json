@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "0.0.3-alpha.1",
+  "version": "0.0.3-alpha.4",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -37,7 +37,8 @@
     "uuid": "^11.0.3"
   },
   "scripts": {
-    "version": "bun run version.ts -i alpha",
+    "nextversion": "bun run version.ts -i alpha",
+    "version": "bun run version.ts",
     "build": "bun run bun.build.ts",
     "watch": "bun run --watch bun.build.ts -w",
     "clean": "rm -rf out",
