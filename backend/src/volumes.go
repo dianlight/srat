@@ -12,7 +12,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/citilinkru/libudev"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/copier"
@@ -81,17 +80,19 @@ func _getVolumesData() ([]Volume, []error) {
 	//log.Printf("_getVolumesData2 %v", _devices)
 
 	// Udev Devices
-	sc := libudev.NewScanner()
-	err, devices := sc.ScanDevices()
-	if err != nil {
-		log.Println("Scanning Devices:", err)
-		errs = append(errs, err)
-	}
-	for _, dev := range devices {
-		if dev.Env["DEVTYPE"] == "disk" || dev.Env["DEVTYPE"] == "usb_device" {
-			log.Println(pretty.Sprint(dev))
+	/*
+		sc := libudev.NewScanner()
+		err, devices := sc.ScanDevices()
+		if err != nil {
+			log.Println("Scanning Devices:", err)
+			errs = append(errs, err)
 		}
-	}
+		for _, dev := range devices {
+			if dev.Env["DEVTYPE"] == "disk" || dev.Env["DEVTYPE"] == "usb_device" {
+				log.Println(pretty.Sprint(dev))
+			}
+		}
+	*/
 
 	var partitions = make([]Volume, 0)
 
