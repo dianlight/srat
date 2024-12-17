@@ -30,34 +30,39 @@ var (
 )
 
 type RootDevice struct {
-	Name       string `json:"name"`
-	Path       string `json:"path"`
-	Pttype     string `json:"pttype"`
-	Label      string `json:"label"`
-	UUID       string `json:"uuid"`
-	Rm         bool   `json:"rm"`
-	Hotplug    bool   `json:"hotplug"`
-	Serial     string `json:"serial"`
-	State      string `json:"state"`
-	Group      string `json:"group"`
-	Type       string `json:"type"`
-	Alignment  int    `json:"alignment"`
-	Wwn        string `json:"wwn"`
-	Hctl       string `json:"hctl"`
-	Tran       string `json:"tran"`
-	Subsystems string `json:"subsystems"`
-	Rev        string `json:"rev"`
-	Vendor     string `json:"vendor"`
-	Model      string `json:"model"`
+	Name      string `json:"name,omitempty"`
+	Path      string `json:"path,omitempty"`
+	Pttype    string `json:"pttype,omitempty"`
+	Label     string `json:"label,omitempty"`
+	UUID      string `json:"uuid,omitempty"`
+	Removable bool   `json:"rm,omitempty"`
+	Hotplug   bool   `json:"hotplug,omitempty"`
+	Serial    string `json:"serial,omitempty"`
+	State     string `json:"state,omitempty"`
+	Group     string `json:"group,omitempty"`
+	Type      string `json:"type,omitempty"`
+	//Alignment  int    `json:"alignment"`
+	Wwn        string `json:"wwn,omitempty"`
+	Hctl       string `json:"hctl,omitempty"`
+	Tran       string `json:"tran,omitempty"`
+	Subsystems string `json:"subsystems,omitempty"`
+	Rev        string `json:"rev,omitempty"`
+	Vendor     string `json:"vendor,omitempty"`
+	Model      string `json:"model,omitempty"`
+	Partlabel  string `json:"partlabel,omitempty"`
+	Parttype   string `json:"parttype,omitempty"`
+	Partuuid   string `json:"partuuid,omitempty"`
+	Ptuuid     string `json:"ptuuid,omitempty"`
+	ReadOnly   bool   `json:"ro,omitempty"`
 }
 
 type Volume struct {
 	Label        string `json:"label"`
-	SerialNumber string `json:"serial_number"`
-	DeviceName   string `json:"device_name"`
+	SerialNumber string `json:"serial_number,omitempty"`
+	DeviceName   string `json:"device_name,omitempty"`
 	//Stats        disk.UsageStat `json:"stats"`
-	RootDevice RootDevice   `json:"root_device"`
-	Lsbk       lsblk.Device `json:"lsbk"`
+	RootDevice RootDevice   `json:"root_device,omitempty"`
+	Lsbk       lsblk.Device `json:"lsbk,omitempty"`
 	disk.PartitionStat
 	// IOStats disk.IOCountersStat `json:"io_stats"`
 }

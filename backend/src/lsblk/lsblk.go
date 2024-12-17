@@ -19,61 +19,73 @@ import (
 )
 
 type Device struct {
-	Name       string   `json:"name"`
-	Path       string   `json:"path"`
-	Fsavail    uint64   `json:"fsavail" copier:"-"`
-	Fssize     uint64   `json:"fssize" copier:"-"`
-	Fsused     uint64   `json:"fsused" copier:"-"`
-	Fsusage    uint     `json:"fsusage"` // percent that was used
-	Fstype     string   `json:"fstype"`
-	Pttype     string   `json:"pttype"`
-	Mountpoint string   `json:"mountpoint"`
-	Label      string   `json:"label"`
-	UUID       string   `json:"uuid"`
-	Rm         bool     `json:"rm"`
-	Hotplug    bool     `json:"hotplug"`
-	Serial     string   `json:"serial"`
-	State      string   `json:"state"`
-	Group      string   `json:"group"`
-	Type       string   `json:"type"`
-	Alignment  int      `json:"alignment"`
-	Wwn        string   `json:"wwn"`
-	Hctl       string   `json:"hctl"`
-	Tran       string   `json:"tran"`
-	Subsystems string   `json:"subsystems"`
-	Rev        string   `json:"rev"`
-	Vendor     string   `json:"vendor"`
-	Model      string   `json:"model"`
-	Children   []Device `json:"children"`
+	Name        string   `json:"name,omitempty"`
+	Path        string   `json:"path,omitempty"`
+	Fsavail     uint64   `json:"fsavail,omitempty" copier:"-"`
+	Fssize      uint64   `json:"fssize,omitempty" copier:"-"`
+	Fsused      uint64   `json:"fsused,omitempty" copier:"-"`
+	Fsusage     uint     `json:"fsusage,omitempty"` // percent that was used
+	Fstype      string   `json:"fstype,omitempty"`
+	Pttype      string   `json:"pttype,omitempty"`
+	Mountpoint  string   `json:"mountpoint,omitempty"`
+	Mountpoints []string `json:"mountpoints,omitempty"`
+	Label       string   `json:"label,omitempty"`
+	UUID        string   `json:"uuid,omitempty"`
+	Removable   bool     `json:"rm,omitempty"`
+	Hotplug     bool     `json:"hotplug,omitempty"`
+	Serial      string   `json:"serial,omitempty"`
+	State       string   `json:"state,omitempty"`
+	Group       string   `json:"group,omitempty"`
+	Type        string   `json:"type,omitempty"`
+	//	Alignment  int      `json:"alignment"`
+	Wwn        string   `json:"wwn,omitempty"`
+	Hctl       string   `json:"hctl,omitempty"`
+	Tran       string   `json:"tran,omitempty"`
+	Subsystems string   `json:"subsystems,omitempty"`
+	Rev        string   `json:"rev,omitempty"`
+	Vendor     string   `json:"vendor,omitempty"`
+	Model      string   `json:"model,omitempty"`
+	Children   []Device `json:"children,omitempty"`
+	Partlabel  string   `json:"partlabel,omitempty"`
+	Parttype   string   `json:"parttype,omitempty"`
+	Partuuid   string   `json:"partuuid,omitempty"`
+	Ptuuid     string   `json:"ptuuid,omitempty"`
+	ReadOnly   bool     `json:"ro,omitempty"`
 }
 
 type _Device struct {
-	Name       string      `json:"name"`
-	Path       string      `json:"path"`
-	Fsavail    interface{} `json:"fsavail"`
-	Fssize     interface{} `json:"fssize"`
-	Fstype     string      `json:"fstype"`
-	Pttype     string      `json:"pttype"`
-	Fsused     interface{} `json:"fsused"`
-	Fsuse      string      `json:"fsuse%"`
-	Mountpoint string      `json:"mountpoint"`
-	Label      string      `json:"label"`
-	UUID       string      `json:"uuid"`
-	Rm         bool        `json:"rm"`
-	Hotplug    bool        `json:"hotplug"`
-	Serial     string      `json:"serial"`
-	State      string      `json:"state"`
-	Group      string      `json:"group"`
-	Type       string      `json:"type"`
-	Alignment  int         `json:"alignment"`
-	Wwn        string      `json:"wwn"`
-	Hctl       string      `json:"hctl"`
-	Tran       string      `json:"tran"`
-	Subsystems string      `json:"subsystems"`
-	Rev        string      `json:"rev"`
-	Vendor     string      `json:"vendor"`
-	Model      string      `json:"model"`
-	Children   []_Device   `json:"children"`
+	Name        string      `json:"name"`
+	Path        string      `json:"path"`
+	Fsavail     interface{} `json:"fsavail"`
+	Fssize      interface{} `json:"fssize"`
+	Fstype      string      `json:"fstype"`
+	Pttype      string      `json:"pttype"`
+	Fsused      interface{} `json:"fsused"`
+	Fsuse       string      `json:"fsuse%"`
+	Mountpoint  string      `json:"mountpoint"`
+	Mountpoints []string    `json:"mountpoints"`
+	Label       string      `json:"label"`
+	UUID        string      `json:"uuid"`
+	Removable   bool        `json:"rm"`
+	Hotplug     bool        `json:"hotplug"`
+	Serial      string      `json:"serial"`
+	State       string      `json:"state"`
+	Group       string      `json:"group"`
+	Type        string      `json:"type"`
+	//	Alignment  int         `json:"alignment"`
+	Wwn        string    `json:"wwn"`
+	Hctl       string    `json:"hctl"`
+	Tran       string    `json:"tran"`
+	Subsystems string    `json:"subsystems"`
+	Rev        string    `json:"rev"`
+	Vendor     string    `json:"vendor"`
+	Model      string    `json:"model"`
+	Children   []_Device `json:"children"`
+	Partlabel  string    `json:"partlabel"`
+	Parttype   string    `json:"parttype"`
+	Partuuid   string    `json:"partuuid"`
+	Ptuuid     string    `json:"ptuuid"`
+	ReadOnly   bool      `json:"ro"`
 }
 
 func runCmd(command string) (output []byte, err error) {
@@ -159,7 +171,8 @@ func allToUint64WithDefault(in interface{}, def uint64) *uint64 {
 }
 
 func ListDevices() (devices map[string]Device, err error) {
-	output, err := runCmd("lsblk -e7 -b -J -o name,path,fsavail,fssize,fstype,pttype,fsused,fsuse%,mountpoint,label,uuid,rm,hotplug,serial,state,group,type,alignment,wwn,hctl,tran,subsystems,rev,vendor,model")
+	//	output, err := runCmd("lsblk -e7 -b -J -o name,path,fsavail,fssize,fstype,pttype,fsused,fsuse%,mountpoint,label,uuid,rm,hotplug,serial,state,group,type,alignment,wwn,hctl,tran,subsystems,rev,vendor,model")
+	output, err := runCmd("lsblk -e7 -b -J -o name,path,fsavail,fssize,fstype,pttype,fsused,fsuse%,mountpoint,mountpoints,label,uuid,rm,hotplug,serial,state,group,type,wwn,hctl,tran,subsystems,rev,vendor,model,partlabel,parttype,partuuid,ptuuid,ro")
 	if err != nil {
 		return nil, err
 	}
