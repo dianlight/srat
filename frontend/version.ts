@@ -28,7 +28,7 @@ const { values, positionals } = parseArgs({
 let newVersion: string | null = packageJson.version;
 if (values.overwite && values.overwite?.trim() !== 'TEST_INTERNAL') {
     newVersion = values.overwite;
-} else {
+} else if (values.overwite?.trim() !== 'TEST_INTERNAL') {
     newVersion = semver.inc(packageJson.version, values.releaseType as semver.ReleaseType, values.identifier);
 }
 
