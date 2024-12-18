@@ -8,6 +8,7 @@ import (
 func TestMain(m *testing.M) {
 	// Get config
 	config = readConfig("../test/data/config.json")
+	config = migrateConfig(config)
 	// Get options
 	options = readOptionsFile("../test/data/options.json")
 

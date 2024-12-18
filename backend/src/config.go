@@ -13,7 +13,10 @@ type Share struct {
 
 type Shares map[string]Share
 
+const CURRENT_CONFIG_VERSION = 1
+
 type Config struct {
+	ConfigSpecVersion int8 `json:"version,omitempty,default=0"`
 	Options
 	Shares Shares `json:"shares"`
 	// "_interfaces":["eth0","eth1"],
@@ -82,4 +85,25 @@ func configToMap(in *Config) *map[string]interface{} {
 	}
 
 	return &nconfig
+}
+
+func migrateConfig(in *Config) *Config {
+	if in.ConfigSpecVersion == CURRENT_CONFIG_VERSION {
+		return in
+	}
+
+	// From version 0 to version 1
+	if in.ConfigSpecVersion == 0 {
+		log.Printf("Migrating config from version 0 to version 1")
+		in.ConfigSpecVersion = 1
+		for _, share := range []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"} {
+			_, ok := in.Shares[share]
+			if !ok {
+				in.Shares[share] = Share{Path: "/" + share + share, FS: "native"}
+				log.Printf("Added share: %s", share)
+			}
+		}
+	}
+
+	return in
 }

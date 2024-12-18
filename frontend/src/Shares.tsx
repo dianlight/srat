@@ -40,8 +40,8 @@ export function Shares() {
                     {props.path}
                 </p>
                 <div className="row secondary-content">
-                    <div className="col offset-s10 s1"><a href="#edituser" className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> folder_shared </i></a></div>
-                    <div className="col s1"><a href="#deluser" className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons"> delete_forever </i></a></div>
+                    <div className="col offset-s10 s1"><a href="#edituser" className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> settings </i></a></div>
+                    <div className="col s1"><a href="#deluser" className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons"> share_off </i></a></div>
                 </div>
             </li>
         )}

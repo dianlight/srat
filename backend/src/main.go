@@ -123,6 +123,7 @@ func main() {
 
 	// Get config
 	config = readConfig(*configFile)
+	config = migrateConfig(config)
 
 	// Get options
 	options = readOptionsFile(*optionsFile)

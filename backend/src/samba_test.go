@@ -122,3 +122,5 @@ func TestCreateConfigStream(t *testing.T) {
 	//  config.Medialibrary.SSHKEY = "<super secret key>"
 
 }
+
+// check migrate config don't duplicate share

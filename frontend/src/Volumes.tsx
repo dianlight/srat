@@ -40,9 +40,9 @@ export function Volumes() {
                         <p className="col s1">Dev: {volume.device}</p>
                     </div>
                     <div className="row secondary-content">
-                        <div className="col offset-s9 s1"><a href="#edituser" className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> folder_shared </i></a></div>
+                        <div className="col offset-s9 s1"><a href="#edituser" className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> share </i></a></div>
                         {volume.lsbk?.rm ? <div className="col s1"><a href="#edituser" className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> eject </i></a></div> : ""}
-                        <div className="col s1"><a href="#deluser" className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons"> delete_forever </i></a></div>
+                        <div className="col s1"><a href="#deluser" className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons">share</i></a></div>
                     </div>
                 </li>
             )}
