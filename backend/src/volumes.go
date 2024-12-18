@@ -20,7 +20,7 @@ import (
 	"github.com/shirou/gopsutil/v4/disk"
 )
 
-var invalidCharactere = regexp.MustCompile(`[[:^ascii:]]|\W`)
+var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
 var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
 var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
 
@@ -137,7 +137,7 @@ func _getVolumesData() ([]Volume, []error) {
 			copier.Copy(volume.RootDevice, device)
 			child := slices.IndexFunc(device.Children, func(a lsblk.Device) bool {
 				//log.Printf("Device %s %s =?=  %s %s\n", a.Name, a.Mountpoint, partition.Device, partition.Mountpoint)
-				return a.Name == volume.DeviceName && a.Mountpoint == partition.Mountpoint
+				return a.Name == volume.DeviceName && (a.Mountpoint == partition.Mountpoint || slices.IndexFunc(a.Mountpoints, func(b string) bool { return b == partition.Mountpoint }) > -1)
 			})
 			if child == -1 {
 				log.Printf("Unmapped child device %s of %s %s", device.Name, volume.DeviceName, partition.Mountpoint)
@@ -148,15 +148,18 @@ func _getVolumesData() ([]Volume, []error) {
 		}
 		// Create unique label if the actual label is empty
 		if volume.Label == "" {
-			if volume.Lsbk.Label == "" {
-				volume.Label = fmt.Sprintf("%s_%s", volume.DeviceName, volume.SerialNumber)
-			} else {
+			if volume.Lsbk.Label != "" {
 				volume.Label = volume.Lsbk.Label
+			} else if volume.Lsbk.Partlabel != "" {
+				volumeLabel = volume.Lsbk.Partlabel
+			} else {
+				volume.Label = fmt.Sprintf("%s-%s", volume.DeviceName, volume.SerialNumber)
 			}
 		}
 		// Create unique label if the actual label is invalid
 		if invalidCharactere.MatchString(volume.Label) {
-			volume.Label = fmt.Sprintf("%s_%s", volume.DeviceName, volume.SerialNumber)
+			log.Printf("Invalid label %s found for volume %s", volume.Label, volume.DeviceName)
+			volume.Label = invalidCharactere.ReplaceAllString(volumeLabel, "")
 		}
 
 		partitions = append(partitions, volume)
