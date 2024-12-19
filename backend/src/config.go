@@ -21,7 +21,7 @@ type Share struct {
 
 type Shares map[string]Share
 
-const CURRENT_CONFIG_VERSION = 2
+const CURRENT_CONFIG_VERSION = 3
 
 type Config struct {
 	ConfigSpecVersion int8 `json:"version,omitempty,default=0"`
@@ -124,6 +124,19 @@ func migrateConfig(in *Config) *Config {
 				copier.Copy(&share, &in.ACL[i])
 				//log.Printf("ACL found for dest %v", share)
 				in.ACL = slices.Delete(in.ACL, i, i+1)
+				in.Shares[shareName] = share
+			}
+		}
+		//log.Printf("Shares %v", in.Shares)
+	}
+
+	// From version 2 to version 3 - Users in share
+	if in.ConfigSpecVersion == 2 {
+		log.Printf("Migrating config from version 2 to version 3")
+		in.ConfigSpecVersion = 3
+		for shareName, share := range in.Shares {
+			if share.Users == nil {
+				share.Users = append(share.Users, in.Username)
 				in.Shares[shareName] = share
 			}
 		}

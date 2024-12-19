@@ -125,6 +125,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 		FS:          "ext4",
 		RoUsers:     []string{"rouser"},
 		TimeMachine: true,
+		Users:       []string{"dianlight"},
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
@@ -196,6 +197,7 @@ func TestUpdateShareHandler(t *testing.T) {
 	share.FS = "ext4"
 	share.RoUsers = []string{"rouser"}
 	share.TimeMachine = true
+	share.Users = []string{"dianlight"}
 	expected, jsonError := json.Marshal(share)
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())
