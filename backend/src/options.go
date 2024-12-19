@@ -7,12 +7,12 @@ import (
 )
 
 type OptionsAcl struct {
-	Share       string   `json:"share"`
-	Disabled    bool     `json:"disabled"`
-	Users       []string `json:"users"`
-	RoUsers     []string `json:"ro_users"`
-	TimeMachine bool     `json:"timemachine"`
-	Usage       string   `json:"usage"`
+	Share       string   `json:"share,omitempty"`
+	Disabled    bool     `json:"disabled,omitempty"`
+	Users       []string `json:"users,omitempty"`
+	RoUsers     []string `json:"ro_users,omitempty"`
+	TimeMachine bool     `json:"timemachine,omitempty"`
+	Usage       string   `json:"usage,omitempty"`
 }
 
 type User struct {
@@ -53,7 +53,7 @@ type Options struct {
 		DisableAutoremove bool `json:"disable_autoremove"`
 	} `json:"autodiscovery"`
 	OtherUsers        []User       `json:"other_users,omitempty"`
-	ACL               []OptionsAcl `json:"acl"`
+	ACL               []OptionsAcl `json:"acl,omitempty"`
 	Interfaces        []string     `json:"interfaces"`
 	BindAllInterfaces bool         `json:"bind_all_interfaces"`
 	LogLevel          string       `json:"log_level"`

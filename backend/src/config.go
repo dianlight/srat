@@ -4,16 +4,24 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"slices"
+
+	"github.com/jinzhu/copier"
 )
 
 type Share struct {
-	Path string `json:"path"`
-	FS   string `json:"fs"`
+	Path        string   `json:"path"`
+	FS          string   `json:"fs"`
+	Disabled    bool     `json:"disabled,omitempty"`
+	Users       []string `json:"users,omitempty"`
+	RoUsers     []string `json:"ro_users,omitempty"`
+	TimeMachine bool     `json:"timemachine,omitempty"`
+	Usage       string   `json:"usage,omitempty"`
 }
 
 type Shares map[string]Share
 
-const CURRENT_CONFIG_VERSION = 1
+const CURRENT_CONFIG_VERSION = 2
 
 type Config struct {
 	ConfigSpecVersion int8 `json:"version,omitempty,default=0"`
@@ -92,7 +100,7 @@ func migrateConfig(in *Config) *Config {
 		return in
 	}
 
-	// From version 0 to version 1
+	// From version 0 to version 1 - Default shares ain config
 	if in.ConfigSpecVersion == 0 {
 		log.Printf("Migrating config from version 0 to version 1")
 		in.ConfigSpecVersion = 1
@@ -103,6 +111,23 @@ func migrateConfig(in *Config) *Config {
 				log.Printf("Added share: %s", share)
 			}
 		}
+	}
+	// From version 1 to version 2 - ACL in Share object
+	if in.ConfigSpecVersion == 1 {
+		log.Printf("Migrating config from version 1 to version 2")
+		in.ConfigSpecVersion = 2
+		for shareName, share := range in.Shares {
+			i := slices.IndexFunc(in.ACL, func(a OptionsAcl) bool { return a.Share == shareName })
+			if i > -1 {
+				//share.OptionsAcl = OptionsAcl{}
+				//log.Printf("ACL found for share %v", in.ACL[i])
+				copier.Copy(&share, &in.ACL[i])
+				//log.Printf("ACL found for dest %v", share)
+				in.ACL = slices.Delete(in.ACL, i, i+1)
+				in.Shares[shareName] = share
+			}
+		}
+		//log.Printf("Shares %v", in.Shares)
 	}
 
 	return in

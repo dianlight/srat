@@ -3,12 +3,12 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/kr/pretty"
 )
 
 func TestListVolumessHandler(t *testing.T) {
@@ -33,7 +33,7 @@ func TestListVolumessHandler(t *testing.T) {
 			status, http.StatusOK)
 	}
 
-	log.Println(rr.Body.String())
+	t.Log(pretty.Sprint(rr.Body))
 	if len(rr.Body.String()) == 0 {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), "[]")

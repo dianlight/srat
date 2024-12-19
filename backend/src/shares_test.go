@@ -121,8 +121,10 @@ func TestCreateShareHandler(t *testing.T) {
 func TestCreateShareDuplicateHandler(t *testing.T) {
 
 	share := Share{
-		Path: "/mnt/LIBRARY",
-		FS:   "ext4",
+		Path:        "/mnt/LIBRARY",
+		FS:          "ext4",
+		RoUsers:     []string{"rouser"},
+		TimeMachine: true,
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
@@ -192,6 +194,8 @@ func TestUpdateShareHandler(t *testing.T) {
 
 	// Check the response body is what we expect.
 	share.FS = "ext4"
+	share.RoUsers = []string{"rouser"}
+	share.TimeMachine = true
 	expected, jsonError := json.Marshal(share)
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())

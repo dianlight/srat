@@ -142,7 +142,7 @@ func _getVolumesData() ([]Volume, []error) {
 			if child == -1 {
 				log.Printf("Unmapped child device %s of %s %s", device.Name, volume.DeviceName, partition.Mountpoint)
 			} else {
-				log.Printf("Found %d %v child devices", child, device.Children[child])
+				//log.Printf("Found %d %v child devices", child, device.Children[child])
 				volume.Lsbk = device.Children[child]
 			}
 		}

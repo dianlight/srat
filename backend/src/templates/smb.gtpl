@@ -122,10 +122,11 @@
 {{- $dfdisk := list "config" "addons" "ssl" "share" "backup" "media" "addon_configs" }}
 {{- $disks := $dfdisk -}}
 {{- if .moredisks -}}
-{{- $disks := concat $disks (compact .moredisks|default list) -}}
+{{- $disks = concat $disks (compact .moredisks|default list) -}}
 {{- end -}}
 {{- $root := . -}}
 {{- range $disk := $disks -}}
+{{/*
         {{- $acld := false -}}
         {{- range $dd := $root.acl -}}
                 {{- $ndisk := $disk | regexFind "[A-Za-z0-9_]+$" -}} 
@@ -146,12 +147,24 @@
                 {{- end -}}
         {{- end -}}
         {{- if not $acld -}}
-                {{- $dd := dict "share" $disk "timemachine" true -}}
+        {{
+                {{- $dd := dict "share" $disk "timemachine" true -}} 
                 {{- $_ := set $dd "usage" "media" -}}
                 {{- if has $disk $dfdisk -}}
                         {{- $_ := set $dd "timemachine" false -}}
                         {{- $_ := set $dd "usage" "" -}}
                 {{- end }}
-                {{- template "SHT" (deepCopy $root | mergeOverwrite $dd) -}}
-        {{- end -}}
+# DEBUG: Share {{ toJson .share  }}
+
+               {{- template "SHT" (deepCopy $root | mergeOverwrite $dd) -}}
+                {{- $dd := dict "share" $disk "timemachine" true -}} 
+               # DEBUG: Disk {{ $disk  }}
+                */}}
+               {{- $dd := get $root.shares $disk | default dict -}}
+               {{- if not $dd.disabled -}}
+                  {{- $root2 := deepCopy $root -}}
+                  {{- $_ := set $root2 "share" $disk -}}
+                  {{- template "SHT" $root2 -}}
+               {{- end -}}  
+        {{/* - end - */}}
 {{- end -}}

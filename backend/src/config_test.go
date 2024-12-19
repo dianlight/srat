@@ -4,6 +4,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/kr/pretty"
 )
 
 func TestReadConfig(t *testing.T) {
@@ -76,8 +78,8 @@ func TestMigrateConfigFromVersion0To1(t *testing.T) {
 	migratedConfig := migrateConfig(initialConfig)
 
 	// Check if the version has been updated
-	if migratedConfig.ConfigSpecVersion != 1 {
-		t.Errorf("Expected ConfigSpecVersion to be 1, got %d", migratedConfig.ConfigSpecVersion)
+	if migratedConfig.ConfigSpecVersion != CURRENT_CONFIG_VERSION {
+		t.Errorf("Expected ConfigSpecVersion to be %d, got %d", CURRENT_CONFIG_VERSION, migratedConfig.ConfigSpecVersion)
 	}
 
 	// Check if all required shares have been added
@@ -122,7 +124,7 @@ func TestMigrateConfigCurrentVersion(t *testing.T) {
 		t.Errorf("Expected 0 shares, got %d", len(migratedConfig.Shares))
 	}
 }
-func TestMigrateConfigSetsVersionTo1(t *testing.T) {
+func TestMigrateConfigSetsVersionToCurrent(t *testing.T) {
 	// Create a config with version 0
 	initialConfig := &Config{
 		ConfigSpecVersion: 0,
@@ -133,8 +135,8 @@ func TestMigrateConfigSetsVersionTo1(t *testing.T) {
 	migratedConfig := migrateConfig(initialConfig)
 
 	// Check if the version has been updated to 1
-	if migratedConfig.ConfigSpecVersion != 1 {
-		t.Errorf("Expected ConfigSpecVersion to be 1 after migration, got %d", migratedConfig.ConfigSpecVersion)
+	if migratedConfig.ConfigSpecVersion != CURRENT_CONFIG_VERSION {
+		t.Errorf("Expected ConfigSpecVersion to be %d after migration, got %d", CURRENT_CONFIG_VERSION, migratedConfig.ConfigSpecVersion)
 	}
 }
 func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
@@ -142,13 +144,32 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	initialConfig := &Config{
 		ConfigSpecVersion: 0,
 		Shares: Shares{
-			"config":        Share{Path: "/configconfig", FS: "native"},
-			"addons":        Share{Path: "/addonsaddons", FS: "native"},
-			"ssl":           Share{Path: "/sslssl", FS: "native"},
-			"share":         Share{Path: "/shareshare", FS: "native"},
-			"backup":        Share{Path: "/backupbackup", FS: "native"},
-			"media":         Share{Path: "/mediamedia", FS: "native"},
-			"addon_configs": Share{Path: "/addon_configsaddon_configs", FS: "native"},
+			"config":        Share{Path: "/config", FS: "native"},
+			"addons":        Share{Path: "/addons", FS: "native"},
+			"ssl":           Share{Path: "/ssl", FS: "native"},
+			"share":         Share{Path: "/share", FS: "native"},
+			"backup":        Share{Path: "/backup", FS: "native"},
+			"media":         Share{Path: "/media", FS: "native"},
+			"addon_configs": Share{Path: "/addon_configs", FS: "native"},
+		},
+		Options: Options{
+			ACL: []OptionsAcl{
+				{
+					Share:    "config",
+					Disabled: false,
+					Users:    []string{"utente1"},
+				},
+				{
+					Share:    "backup",
+					Disabled: false,
+					Users:    []string{"utente1"},
+				},
+				{
+					Share:    "ssl",
+					Disabled: true,
+					Users:    []string{"utente2"},
+				},
+			},
 		},
 	}
 
@@ -156,8 +177,8 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	migratedConfig := migrateConfig(initialConfig)
 
 	// Check if the version has been updated
-	if migratedConfig.ConfigSpecVersion != 1 {
-		t.Errorf("Expected ConfigSpecVersion to be 1, got %d", migratedConfig.ConfigSpecVersion)
+	if migratedConfig.ConfigSpecVersion != CURRENT_CONFIG_VERSION {
+		t.Errorf("Expected ConfigSpecVersion to be %d, got %d", CURRENT_CONFIG_VERSION, migratedConfig.ConfigSpecVersion)
 	}
 
 	// Check if all shares are still present and unchanged
@@ -167,7 +188,7 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 		if !exists {
 			t.Errorf("Expected share '%s' to be present, but it wasn't", shareName)
 		} else {
-			expectedPath := "/" + shareName + shareName
+			expectedPath := "/" + shareName
 			if share.Path != expectedPath {
 				t.Errorf("Expected share '%s' to have path '%s', got '%s'", shareName, expectedPath, share.Path)
 			}
@@ -181,4 +202,22 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	if len(migratedConfig.Shares) != len(expectedShares) {
 		t.Errorf("Expected %d shares, got %d", len(expectedShares), len(migratedConfig.Shares))
 	}
+
+	// Check if old acl are empty
+	if len(migratedConfig.ACL) != 0 {
+		t.Error("Expected no ACLs, got some")
+	}
+
+	// Check if acl are as share attributes
+	t.Log(pretty.Sprint(migratedConfig.Shares))
+	if migratedConfig.Shares["backup"].Users[0] != "utente1" {
+		t.Error("Expected 'backup' share to have 'utente1' user, got '" + migratedConfig.Shares["backup"].Users[0] + "'")
+	}
+	if migratedConfig.Shares["ssl"].Users[0] != "utente2" {
+		t.Error("Expected'ssl' share to have 'utente2' user, got '" + migratedConfig.Shares["ssl"].Users[0] + "'")
+	}
+	if !migratedConfig.Shares["ssl"].Disabled {
+		t.Error("Expected'ssl' share to be disabled, got enabled")
+	}
+
 }
