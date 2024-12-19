@@ -28,5 +28,6 @@ export function Page(/*props: { message: string }*/) {
         <div id="volumes" className="col s12"><Volumes /></div>
         <div id="users" className="col s12"><Users /></div>
         <div id="settings" className="col s12">Settings</div>
+        <div id="smbconf" className="col s12">smb.conf</div>
     </div>
 }

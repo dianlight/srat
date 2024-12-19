@@ -105,6 +105,7 @@ export function NavBar() {
                         <li className="tab"><a href="#volumes">Volumes</a></li>
                         <li className="tab"><a href="#users">Users</a></li>
                         <li className="tab"><a href="#settings">Settings</a></li>
+                        <li className="tab"><a href="#smbconf">smb.conf (ro)</a></li>
                     </ul>
                 </div>
             </nav>
