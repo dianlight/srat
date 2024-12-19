@@ -39,7 +39,8 @@
 				"ms-vscode.makefile-tools",
 				"github.vscode-github-actions",
 				"esbenp.prettier-vscode",
-				"GitHub.copilot"
+				"GitHub.copilot",
+				"mortenson.go-template-transpiler-extension"
 			]		
 		}
 	}
