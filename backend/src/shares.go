@@ -232,7 +232,7 @@ func deleteShare(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
 
-		// TODO: Delete share
+		delete(config.Shares, share)
 
 		notifyClient()
 

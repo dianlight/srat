@@ -226,4 +226,17 @@ func TestDeleteShareHandler(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
+
+	// Refresh shares list anche check that LIBRARY don't exists
+	req, err = http.NewRequest("GET", "/shares", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr = httptest.NewRecorder()
+	handler := http.HandlerFunc(listShares)
+	handler.ServeHTTP(rr, req)
+
+	if strings.Contains(rr.Body.String(), "LIBRARY") {
+		t.Errorf("LIBRARY share still exists")
+	}
 }
