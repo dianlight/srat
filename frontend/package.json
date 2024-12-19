@@ -14,23 +14,23 @@
   },
   "devDependencies": {
     "@gtramontina.com/bun-html-live-reload": "^1.0.1",
-    "@types/bun": "latest",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/bun": "^1.1.14",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
     "@types/semver": "^7.5.8",
     "bun-copy-plugin": "^0.2.1",
     "semver": "^7.6.3",
     "swagger-typescript-api": "^13.0.23"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.7.2"
   },
   "dependencies": {
     "@materializecss/materialize": "^2.1.1",
-    "axios": "^1.7.8",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-hook-form": "^7.53.2",
+    "axios": "^1.7.9",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.54.1",
     "react-responsive": "^10.0.0",
     "react-social-icons": "^6.18.0",
     "swr": "^2.2.5",
