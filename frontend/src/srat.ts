@@ -10,7 +10,6 @@
  */
 
 export interface LsblkDevice {
-  alignment?: number;
   children?: LsblkDevice[];
   fsavail?: number;
   fssize?: number;
@@ -24,11 +23,17 @@ export interface LsblkDevice {
   label?: string;
   model?: string;
   mountpoint?: string;
+  mountpoints?: string[];
   name?: string;
+  partlabel?: string;
+  parttype?: string;
+  partuuid?: string;
   path?: string;
   pttype?: string;
+  ptuuid?: string;
   rev?: string;
   rm?: boolean;
+  ro?: boolean;
   serial?: string;
   state?: string;
   subsystems?: string;
@@ -36,6 +41,7 @@ export interface LsblkDevice {
   type?: string;
   uuid?: string;
   vendor?: string;
+  /** Alignment  int      `json:"alignment"` */
   wwn?: string;
 }
 
@@ -49,9 +55,41 @@ export interface MainResponseError {
   error?: string;
 }
 
+export interface MainRootDevice {
+  group?: string;
+  hctl?: string;
+  hotplug?: boolean;
+  label?: string;
+  model?: string;
+  name?: string;
+  partlabel?: string;
+  parttype?: string;
+  partuuid?: string;
+  path?: string;
+  pttype?: string;
+  ptuuid?: string;
+  rev?: string;
+  rm?: boolean;
+  ro?: boolean;
+  serial?: string;
+  state?: string;
+  subsystems?: string;
+  tran?: string;
+  type?: string;
+  uuid?: string;
+  vendor?: string;
+  /** Alignment  int    `json:"alignment"` */
+  wwn?: string;
+}
+
 export interface MainShare {
+  disabled?: boolean;
   fs?: string;
   path?: string;
+  ro_users?: string[];
+  timemachine?: boolean;
+  usage?: string;
+  users?: string[];
 }
 
 export type MainShares = Record<string, MainShare>;
@@ -63,12 +101,14 @@ export interface MainUser {
 
 export interface MainVolume {
   device?: string;
+  device_name?: string;
   fstype?: string;
   label?: string;
-  /** Stats        disk.UsageStat `json:"stats"` */
   lsbk?: LsblkDevice;
   mountpoint?: string;
   opts?: string[];
+  /** Stats        disk.UsageStat `json:"stats"` */
+  root_device?: MainRootDevice;
   serial_number?: string;
 }
 

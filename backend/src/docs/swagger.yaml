@@ -1,8 +1,6 @@
 definitions:
   lsblk.Device:
     properties:
-      alignment:
-        type: integer
       children:
         items:
           $ref: '#/definitions/lsblk.Device'
@@ -30,15 +28,29 @@ definitions:
         type: string
       mountpoint:
         type: string
+      mountpoints:
+        items:
+          type: string
+        type: array
       name:
+        type: string
+      partlabel:
+        type: string
+      parttype:
+        type: string
+      partuuid:
         type: string
       path:
         type: string
       pttype:
         type: string
+      ptuuid:
+        type: string
       rev:
         type: string
       rm:
+        type: boolean
+      ro:
         type: boolean
       serial:
         type: string
@@ -55,6 +67,7 @@ definitions:
       vendor:
         type: string
       wwn:
+        description: Alignment  int      `json:"alignment"`
         type: string
     type: object
   main.Health:
@@ -70,12 +83,76 @@ definitions:
       error:
         type: string
     type: object
+  main.RootDevice:
+    properties:
+      group:
+        type: string
+      hctl:
+        type: string
+      hotplug:
+        type: boolean
+      label:
+        type: string
+      model:
+        type: string
+      name:
+        type: string
+      partlabel:
+        type: string
+      parttype:
+        type: string
+      partuuid:
+        type: string
+      path:
+        type: string
+      pttype:
+        type: string
+      ptuuid:
+        type: string
+      rev:
+        type: string
+      rm:
+        type: boolean
+      ro:
+        type: boolean
+      serial:
+        type: string
+      state:
+        type: string
+      subsystems:
+        type: string
+      tran:
+        type: string
+      type:
+        type: string
+      uuid:
+        type: string
+      vendor:
+        type: string
+      wwn:
+        description: Alignment  int    `json:"alignment"`
+        type: string
+    type: object
   main.Share:
     properties:
+      disabled:
+        type: boolean
       fs:
         type: string
       path:
         type: string
+      ro_users:
+        items:
+          type: string
+        type: array
+      timemachine:
+        type: boolean
+      usage:
+        type: string
+      users:
+        items:
+          type: string
+        type: array
     type: object
   main.Shares:
     additionalProperties:
@@ -92,20 +169,24 @@ definitions:
     properties:
       device:
         type: string
+      device_name:
+        type: string
       fstype:
         type: string
       label:
         type: string
       lsbk:
-        allOf:
-        - $ref: '#/definitions/lsblk.Device'
-        description: Stats        disk.UsageStat `json:"stats"`
+        $ref: '#/definitions/lsblk.Device'
       mountpoint:
         type: string
       opts:
         items:
           type: string
         type: array
+      root_device:
+        allOf:
+        - $ref: '#/definitions/main.RootDevice'
+        description: Stats        disk.UsageStat `json:"stats"`
       serial_number:
         type: string
     type: object
