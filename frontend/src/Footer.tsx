@@ -24,8 +24,10 @@ export function Footer() {
     </div>
         <div className="footer-copyright">
             <div className="container">
-                © 2014 Copyright {pkg.author.name}
-                <a className="right" href={pkg.repository.url + "/commit/" + getGitCommitHash()}>Version {pkg.version} [Git Hash {getGitCommitHash()}]</a>
+                <div className="row">
+                    <p className="col s4">© 2014 Copyright {pkg.author.name}</p>
+                    <a className="col s8" href={pkg.repository.url + "/commit/" + getGitCommitHash()}>Version {pkg.version} [Git Hash {getGitCommitHash()}]</a>
+                </div>
             </div>
         </div>
     </>

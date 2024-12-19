@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "0.0.3-alpha.4",
+  "version": "0.0.3-alpha.5",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -9,7 +9,9 @@
     "url": "https://github.com/dianlight"
   },
   "repository": {
+    "name": "srat",
     "type": "github",
+    "owner": "dianlight",
     "url": "https://github.com/dianlight/srat"
   },
   "devDependencies": {
@@ -27,6 +29,7 @@
   },
   "dependencies": {
     "@materializecss/materialize": "^2.1.1",
+    "@octokit/rest": "^21.0.2",
     "axios": "^1.7.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
