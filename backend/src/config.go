@@ -107,7 +107,7 @@ func migrateConfig(in *Config) *Config {
 		for _, share := range []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"} {
 			_, ok := in.Shares[share]
 			if !ok {
-				in.Shares[share] = Share{Path: "/" + share + share, FS: "native"}
+				in.Shares[share] = Share{Path: "/" + share, FS: "native"}
 				log.Printf("Added share: %s", share)
 			}
 		}
