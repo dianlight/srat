@@ -6,6 +6,7 @@ import { Footer } from "./Footer";
 import { Tabs, AutoInit } from "@materializecss/materialize"
 import { useRef } from "react";
 import { Volumes } from "./Volumes";
+import { SmbConf } from "./pages/SmbConf";
 
 
 export function Page(/*props: { message: string }*/) {
@@ -27,7 +28,7 @@ export function Page(/*props: { message: string }*/) {
         <div id="shares" className="col s12"><Shares /></div>
         <div id="volumes" className="col s12"><Volumes /></div>
         <div id="users" className="col s12"><Users /></div>
-        <div id="settings" className="col s12">Settings</div>
-        <div id="smbconf" className="col s12">smb.conf</div>
+        <div id="settings" className="col s12">Settings...</div>
+        <div id="smbconf" className="col s12"><SmbConf /></div>
     </div>
 }
