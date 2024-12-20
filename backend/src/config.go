@@ -139,7 +139,7 @@ func migrateConfig(in *Config) *Config {
 				share.Users = append(share.Users, in.Username)
 				in.Shares[shareName] = share
 			}
-			if share.Usage == "" {
+			if share.Usage == "" && in.Automount {
 				share.Usage = "media"
 				in.Shares[shareName] = share
 			}
