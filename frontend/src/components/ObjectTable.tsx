@@ -2,7 +2,7 @@ import { useContext, useState } from "react";
 import { apiContext } from "../Contexts";
 
 function ObjectField(props: { value: any, idx?: number, nkey?: string }) {
-    console.log("ObjectField got", props.nkey, props.value, typeof props.value)
+    //console.log("ObjectField got", props.nkey, props.value, typeof props.value)
     if (props.value === undefined || props.value === null || props.value === "") {
         return <></>
     } else if (typeof props.value === "string" || typeof props.value === "number") {
