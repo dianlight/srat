@@ -23,18 +23,16 @@ func createConfigStream() *[]byte {
 //	@Accept			json
 //	@Produce		json
 //	@Success		204
-//	@Success		200	{object}	[]byte
 //	@Failure		400	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
 //	@Router			/samba/apply [put]
 func applySamba(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "plain/text")
 
 	stream := createConfigStream()
 	if *smbConfigFile == "" {
-		// Only for DEBUG propose
-		w.WriteHeader(http.StatusOK)
-		w.Write(*stream)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("No file to write"))
 	} else {
 		err := os.WriteFile(*smbConfigFile, *stream, 0644)
 		if err != nil {
@@ -43,4 +41,23 @@ func applySamba(w http.ResponseWriter, r *http.Request) {
 		// TODO: Send signal to restart samba
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// GetSambaConfig godoc
+//
+//	@Summary		Get the generated samba config
+//	@Description	Get the generated samba config
+//	@Tags			samba
+//	@Accept			json
+//	@Produce		plain/text
+//	@Success		200	{object}	string
+//	@Failure		400	{object}	ResponseError
+//	@Failure		500	{object}	ResponseError
+//	@Router			/samba [get]
+func getSambaConfig(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "plain/text")
+
+	stream := createConfigStream()
+	w.WriteHeader(http.StatusOK)
+	w.Write(*stream)
 }

@@ -5,16 +5,15 @@ import (
 	"embed"
 	"flag"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	httpSwagger "github.com/swaggo/http-swagger"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 
 	_ "github.com/dianlight/srat/docs"
 )
@@ -33,15 +32,6 @@ var content embed.FS
 
 //go:embed templates/smb.gtpl
 var defaultTemplate embed.FS
-
-func LoggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Do stuff here
-		log.Printf("%s %s", r.Method, r.RequestURI)
-		// Call the next handler, which can be another middleware in the chain, or the final handler.
-		next.ServeHTTP(w, r)
-	})
-}
 
 func ACAOMethodMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +120,6 @@ func main() {
 
 	globalRouter := mux.NewRouter()
 	globalRouter.Use(mux.CORSMethodMiddleware(globalRouter))
-	globalRouter.Use(LoggingMiddleware)
 	globalRouter.Use(ACAOMethodMiddleware)
 	//r.Use(optionMiddleware)
 
@@ -141,60 +130,63 @@ func main() {
 		httpSwagger.DocExpansion("none"),
 		httpSwagger.DomID("swagger-ui"),
 	)).Methods(http.MethodGet)
+	/*
+		// HealtCheck
+		globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet, http.MethodOptions)
 
-	// HealtCheck
-	globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet, http.MethodOptions)
+		// Shares
+		globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet, http.MethodOptions)
+		globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet, http.MethodOptions)
+		globalRouter.HandleFunc("/share/{share_name}", createShare).Methods(http.MethodPost)
+		globalRouter.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPut, http.MethodPatch)
+		globalRouter.HandleFunc("/share/{share_name}", deleteShare).Methods(http.MethodDelete)
 
-	// Shares
-	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/share/{share_name}", createShare).Methods(http.MethodPost)
-	globalRouter.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/share/{share_name}", deleteShare).Methods(http.MethodDelete)
+		// Volumes
+		globalRouter.HandleFunc("/volumes", listVolumes).Methods(http.MethodGet, http.MethodOptions)
+		globalRouter.HandleFunc("/volume/{volume_name}", getVolume).Methods(http.MethodGet, http.MethodOptions)
+		//	globalRouter.HandleFunc("/volume/{volume_name}", updateVolume).Methods(http.MethodPut, http.MethodPatch)
+		//	globalRouter.HandleFunc("/volume/{volume_name}/mount", mountVolume).Methods(http.MethodPost)
+		//	globalRouter.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods(http.MethodDelete)
 
-	// Volumes
-	globalRouter.HandleFunc("/volumes", listVolumes).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/volume/{volume_name}", getVolume).Methods(http.MethodGet, http.MethodOptions)
-	//	globalRouter.HandleFunc("/volume/{volume_name}", updateVolume).Methods(http.MethodPut, http.MethodPatch)
-	//	globalRouter.HandleFunc("/volume/{volume_name}/mount", mountVolume).Methods(http.MethodPost)
-	//	globalRouter.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods(http.MethodDelete)
+		// Users
+		globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet, http.MethodOptions)
+		globalRouter.HandleFunc("/admin/user", updateAdminUser).Methods(http.MethodPut, http.MethodPatch)
+		globalRouter.HandleFunc("/users", listUsers).Methods(http.MethodGet, http.MethodOptions)
+		globalRouter.HandleFunc("/user/{username}", getUser).Methods(http.MethodGet, http.MethodOptions)
+		globalRouter.HandleFunc("/user", createUser).Methods(http.MethodPost, http.MethodOptions)
+		globalRouter.HandleFunc("/user/{username}", updateUser).Methods(http.MethodPut, http.MethodPatch)
+		globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
 
-	// Users
-	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/admin/user", updateAdminUser).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/users", listUsers).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/user/{username}", getUser).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/user", createUser).Methods(http.MethodPost, http.MethodOptions)
-	globalRouter.HandleFunc("/user/{username}", updateUser).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
+		// Samba
+		globalRouter.HandleFunc("/samba", getSambaConfig).Methods(http.MethodGet)
+		globalRouter.HandleFunc("/samba/apply", applySamba).Methods(http.MethodPut)
 
-	// Samba
-	globalRouter.HandleFunc("/samba/apply", applySamba).Methods(http.MethodPut)
+		// WebSocket
+		globalRouter.HandleFunc("/ws", WSChannelHandler)
 
-	// WebSocket
-	globalRouter.HandleFunc("/ws", WSChannelHandler)
+		// Static files
+		globalRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/static/", http.StatusPermanentRedirect)
+		})
+		globalRouter.PathPrefix("/").Handler(http.FileServerFS(content)).Methods(http.MethodGet)
 
-	// Static files
-	globalRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/static/", http.StatusPermanentRedirect)
-	})
-	globalRouter.PathPrefix("/").Handler(http.FileServerFS(content)).Methods(http.MethodGet)
+		// Print content directory recursively
+		fs.WalkDir(content, ".", func(p string, d fs.DirEntry, err error) error {
+			log.Printf("dir=%s, path=%s\n", path.Dir(p), p)
+			return nil
+		})
 
-	// Print content directory recursively
-	fs.WalkDir(content, ".", func(p string, d fs.DirEntry, err error) error {
-		log.Printf("dir=%s, path=%s\n", path.Dir(p), p)
-		return nil
-	})
-
-	// Print all routes
-	globalRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		template, err := route.GetPathTemplate()
-		if err != nil {
-			return err
-		}
-		log.Printf("Route: %s\n", template)
-		return nil
-	})
+		// Print all routes
+		globalRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+			template, err := route.GetPathTemplate()
+			if err != nil {
+				return err
+			}
+			log.Printf("Route: %s\n", template)
+			return nil
+		})
+	*/
+	loggedRouter := handlers.LoggingHandler(os.Stdout, globalRouter)
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf("0.0.0.0:%d", *http_port),
@@ -202,7 +194,7 @@ func main() {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      globalRouter, // Pass our instance of gorilla/mux in.
+		Handler:      loggedRouter, // Pass our instance of gorilla/mux in.
 	}
 
 	// Run our server in a goroutine so that it doesn't block.

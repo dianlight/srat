@@ -313,6 +313,29 @@ paths:
       summary: HealthCheck
       tags:
       - system
+  /samba:
+    get:
+      consumes:
+      - application/json
+      description: Get the generated samba config
+      produces:
+      - plain/text
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Get the generated samba config
+      tags:
+      - samba
   /samba/apply:
     put:
       consumes:
@@ -321,12 +344,6 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              type: integer
-            type: array
         "204":
           description: No Content
         "400":
