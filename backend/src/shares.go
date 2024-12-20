@@ -8,11 +8,13 @@ import (
 	"sync"
 
 	"dario.cat/mergo"
+	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/data"
 	"github.com/gorilla/mux"
 )
 
 var (
-	sharesQueue      = map[string](chan *Shares){}
+	sharesQueue      = map[string](chan *config.Shares){}
 	sharesQueueMutex = sync.RWMutex{}
 )
 
@@ -38,7 +40,7 @@ var (
 func listShares(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	jsonResponse, jsonError := json.Marshal(config.Shares)
+	jsonResponse, jsonError := json.Marshal(data.Config.Shares)
 
 	if jsonError != nil {
 		fmt.Println("Unable to encode JSON")
@@ -69,7 +71,7 @@ func getShare(w http.ResponseWriter, r *http.Request) {
 	share := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	data, ok := config.Shares[share]
+	data, ok := data.Config.Shares[share]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
@@ -107,7 +109,7 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 	share := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	data, ok := config.Shares[share]
+	data, ok := data.Config.Shares[share]
 	if ok {
 		w.WriteHeader(http.StatusConflict)
 		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "Share already exists", Body: data})
@@ -120,7 +122,7 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 			w.Write(jsonResponse)
 		}
 	} else {
-		var share Share
+		var share config.Share
 
 		err := json.NewDecoder(r.Body).Decode(&share)
 		if err != nil {
@@ -149,7 +151,7 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 func notifyClient() {
 	sharesQueueMutex.RLock()
 	for _, v := range sharesQueue {
-		v <- &config.Shares
+		v <- &data.Config.Shares
 	}
 	sharesQueueMutex.RUnlock()
 }
@@ -174,11 +176,11 @@ func updateShare(w http.ResponseWriter, r *http.Request) {
 	share_name := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	data, ok := config.Shares[share_name]
+	adata, ok := data.Config.Shares[share_name]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
-		var share Share
+		var share config.Share
 
 		err := json.NewDecoder(r.Body).Decode(&share)
 		if err != nil {
@@ -186,15 +188,15 @@ func updateShare(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err2 := mergo.MapWithOverwrite(&data, share)
+		err2 := mergo.MapWithOverwrite(&adata, share)
 		if err2 != nil {
 			http.Error(w, err2.Error(), http.StatusInternalServerError)
 			return
 		}
-		config.Shares[share_name] = data
+		data.Config.Shares[share_name] = adata
 		notifyClient()
 
-		jsonResponse, jsonError := json.Marshal(data)
+		jsonResponse, jsonError := json.Marshal(adata)
 
 		if jsonError != nil {
 			fmt.Println("Unable to encode JSON")
@@ -229,12 +231,12 @@ func deleteShare(w http.ResponseWriter, r *http.Request) {
 	share := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	_, ok := config.Shares[share]
+	_, ok := data.Config.Shares[share]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
 
-		delete(config.Shares, share)
+		delete(data.Config.Shares, share)
 
 		notifyClient()
 
@@ -247,9 +249,9 @@ func deleteShare(w http.ResponseWriter, r *http.Request) {
 func SharesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	sharesQueueMutex.Lock()
 	if sharesQueue[request.Uid] == nil {
-		sharesQueue[request.Uid] = make(chan *Shares, 10)
+		sharesQueue[request.Uid] = make(chan *config.Shares, 10)
 	}
-	sharesQueue[request.Uid] <- &config.Shares
+	sharesQueue[request.Uid] <- &data.Config.Shares
 	var queue = sharesQueue[request.Uid]
 	sharesQueueMutex.Unlock()
 	log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))

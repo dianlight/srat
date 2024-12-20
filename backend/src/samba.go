@@ -5,14 +5,16 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/data"
 	tempiogo "github.com/dianlight/srat/tempio"
 )
 
-func createConfigStream() *[]byte {
-	config_2 := configToMap(config)
+func createConfigStream() (*[]byte, error) {
+	config_2 := config.ConfigToMap(data.Config)
 	//log.Printf("New Config:\n\t%s", config_2)
-	data := tempiogo.RenderTemplateBuffer(config_2, templateData)
-	return &data
+	data, err := tempiogo.RenderTemplateBuffer(config_2, templateData)
+	return &data, err
 }
 
 // ApplySamba godoc
@@ -29,7 +31,12 @@ func createConfigStream() *[]byte {
 func applySamba(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "plain/text")
 
-	stream := createConfigStream()
+	stream, err := createConfigStream()
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
 	if *smbConfigFile == "" {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("No file to write"))
@@ -57,7 +64,13 @@ func applySamba(w http.ResponseWriter, r *http.Request) {
 func getSambaConfig(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "plain/text")
 
-	stream := createConfigStream()
+	stream, err := createConfigStream()
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+
 	w.WriteHeader(http.StatusOK)
 	w.Write(*stream)
 }

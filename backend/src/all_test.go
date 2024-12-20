@@ -3,14 +3,17 @@ package main
 import (
 	"log"
 	"testing"
+
+	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/data"
 )
 
 func TestMain(m *testing.M) {
 	// Get config
-	config = readConfig("../test/data/config.json")
-	config = migrateConfig(config)
+	data.Config = config.ReadConfig("../test/data/config.json")
+	data.Config = config.MigrateConfig(data.Config)
 	// Get options
-	options = readOptionsFile("../test/data/options.json")
+	options = config.ReadOptionsFile("../test/data/options.json")
 
 	// smbConfigFile
 	smbConfigFile = new(string)

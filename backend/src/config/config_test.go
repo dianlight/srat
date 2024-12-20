@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"os"
@@ -25,9 +25,9 @@ func TestReadConfigConsistency(t *testing.T) {
 	tempFile.Close()
 
 	// Call readConfig multiple times
-	config1 := readConfig(tempFile.Name())
-	config2 := readConfig(tempFile.Name())
-	config3 := readConfig(tempFile.Name())
+	config1 := ReadConfig(tempFile.Name())
+	config2 := ReadConfig(tempFile.Name())
+	config3 := ReadConfig(tempFile.Name())
 
 	// Compare the results
 	if !reflect.DeepEqual(config1, config2) || !reflect.DeepEqual(config2, config3) {
@@ -53,7 +53,7 @@ func TestConfigToMapWithUnicode(t *testing.T) {
 	}
 
 	// Call configToMap
-	result := configToMap(config)
+	result := ConfigToMap(config)
 
 	// Check if the result is not nil
 	if result == nil {
@@ -75,7 +75,7 @@ func TestMigrateConfigFromVersion0To1(t *testing.T) {
 	}
 
 	// Call migrateConfig
-	migratedConfig := migrateConfig(initialConfig)
+	migratedConfig := MigrateConfig(initialConfig)
 
 	// Check if the version has been updated
 	if migratedConfig.ConfigSpecVersion != CURRENT_CONFIG_VERSION {
@@ -112,7 +112,7 @@ func TestMigrateConfigCurrentVersion(t *testing.T) {
 	}
 
 	// Call migrateConfig
-	migratedConfig := migrateConfig(initialConfig)
+	migratedConfig := MigrateConfig(initialConfig)
 
 	// Check if the config is unchanged
 	if !reflect.DeepEqual(initialConfig, migratedConfig) {
@@ -132,7 +132,7 @@ func TestMigrateConfigSetsVersionToCurrent(t *testing.T) {
 	}
 
 	// Call migrateConfig
-	migratedConfig := migrateConfig(initialConfig)
+	migratedConfig := MigrateConfig(initialConfig)
 
 	// Check if the version has been updated to 1
 	if migratedConfig.ConfigSpecVersion != CURRENT_CONFIG_VERSION {
@@ -174,7 +174,7 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	}
 
 	// Call migrateConfig
-	migratedConfig := migrateConfig(initialConfig)
+	migratedConfig := MigrateConfig(initialConfig)
 
 	// Check if the version has been updated
 	if migratedConfig.ConfigSpecVersion != CURRENT_CONFIG_VERSION {

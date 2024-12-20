@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"encoding/json"
@@ -35,7 +35,7 @@ type Config struct {
 	Users []User `json:"users"`
 }
 
-func readConfig(file string) *Config {
+func ReadConfig(file string) *Config {
 	if file == "" {
 		return readConfigPipe()
 	} else {
@@ -77,7 +77,7 @@ func readConfigBuffer(buffer []byte) *Config {
 	return &config
 }
 
-func configToMap(in *Config) *map[string]interface{} {
+func ConfigToMap(in *Config) *map[string]interface{} {
 	var nconfig map[string]interface{}
 
 	// Parse json
@@ -95,7 +95,7 @@ func configToMap(in *Config) *map[string]interface{} {
 	return &nconfig
 }
 
-func migrateConfig(in *Config) *Config {
+func MigrateConfig(in *Config) *Config {
 	if in.ConfigSpecVersion == CURRENT_CONFIG_VERSION {
 		return in
 	}

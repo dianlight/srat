@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"encoding/json"
@@ -61,7 +61,7 @@ type Options struct {
 	MultiChannel      bool         `json:"multi_channel"`
 }
 
-func readOptionsFile(file string) *Options {
+func ReadOptionsFile(file string) *Options {
 	optionsFile, err := os.ReadFile(file)
 	if err != nil {
 		log.Fatal(err)

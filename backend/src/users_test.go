@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/data"
 	"github.com/gorilla/mux"
 )
 
@@ -35,7 +37,7 @@ func TestListUsersHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	expected, jsonError := json.Marshal(config.OtherUsers)
+	expected, jsonError := json.Marshal(data.Config.OtherUsers)
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())
 	}
@@ -67,11 +69,11 @@ func TestGetUserHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	index := slices.IndexFunc(config.OtherUsers, func(u User) bool { return u.Username == "backupuser" })
+	index := slices.IndexFunc(data.Config.OtherUsers, func(u config.User) bool { return u.Username == "backupuser" })
 	if index == -1 {
 		t.Error("User not found")
 	} else {
-		expected, jsonError := json.Marshal(config.OtherUsers[index])
+		expected, jsonError := json.Marshal(data.Config.OtherUsers[index])
 		if jsonError != nil {
 			t.Errorf("Unable to encode JSON %s", jsonError.Error())
 		}
@@ -84,7 +86,7 @@ func TestGetUserHandler(t *testing.T) {
 
 func TestCreateUserHandler(t *testing.T) {
 
-	user := User{
+	user := config.User{
 		Username: "PIPPO",
 		Password: "PLUTO",
 	}
@@ -126,7 +128,7 @@ func TestCreateUserHandler(t *testing.T) {
 
 func TestCreateUserDuplicateHandler(t *testing.T) {
 
-	user := User{
+	user := config.User{
 		Username: "backupuser",
 		Password: "\u003cbackupuser secret password\u003e",
 	}
@@ -168,7 +170,7 @@ func TestCreateUserDuplicateHandler(t *testing.T) {
 
 func TestUpdateUserHandler(t *testing.T) {
 
-	user := User{
+	user := config.User{
 		Password: "/pippo",
 	}
 
@@ -209,7 +211,7 @@ func TestUpdateUserHandler(t *testing.T) {
 
 func TestUpdateAdminUserHandler(t *testing.T) {
 
-	user := User{
+	user := config.User{
 		Password: "/pluto||admin",
 	}
 

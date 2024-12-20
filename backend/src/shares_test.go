@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/data"
 	"github.com/gorilla/mux"
 )
 
@@ -34,7 +36,7 @@ func TestListSharesHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	expected, jsonError := json.Marshal(config.Shares)
+	expected, jsonError := json.Marshal(data.Config.Shares)
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())
 	}
@@ -66,7 +68,7 @@ func TestGetShareHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	expected, jsonError := json.Marshal(config.Shares["LIBRARY"])
+	expected, jsonError := json.Marshal(data.Config.Shares["LIBRARY"])
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())
 	}
@@ -78,7 +80,7 @@ func TestGetShareHandler(t *testing.T) {
 
 func TestCreateShareHandler(t *testing.T) {
 
-	share := Share{
+	share := config.Share{
 		Path: "/pippo",
 		FS:   "tmpfs",
 	}
@@ -120,7 +122,7 @@ func TestCreateShareHandler(t *testing.T) {
 
 func TestCreateShareDuplicateHandler(t *testing.T) {
 
-	share := Share{
+	share := config.Share{
 		Path:        "/mnt/LIBRARY",
 		FS:          "ext4",
 		RoUsers:     []string{"rouser"},
@@ -166,7 +168,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 
 func TestUpdateShareHandler(t *testing.T) {
 
-	share := Share{
+	share := config.Share{
 		Path: "/pippo",
 	}
 

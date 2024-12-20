@@ -8,6 +8,8 @@ import (
 	"slices"
 
 	"dario.cat/mergo"
+	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/data"
 	"github.com/gorilla/mux"
 )
 
@@ -30,7 +32,7 @@ var (
 //
 // _Param        id   path      int  true  "Account ID"
 //
-//	@Success		200	{object}	[]User
+//	@Success		200	{object}	[]config.User
 //
 // _Failure      400  {object}  ResponseError
 //
@@ -40,7 +42,7 @@ var (
 func listUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	jsonResponse, jsonError := json.Marshal(config.OtherUsers)
+	jsonResponse, jsonError := json.Marshal(data.Config.OtherUsers)
 
 	if jsonError != nil {
 		fmt.Println("Unable to encode JSON")
@@ -61,16 +63,16 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 //
 //
 //	@Produce		json
-//	@Success		200	{object}	User
+//	@Success		200	{object}	config.User
 //	@Failure		405	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
 //	@Router			/admin/user [get]
 func getAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	jsonResponse, jsonError := json.Marshal(User{
-		Username: config.Username,
-		Password: config.Password,
+	jsonResponse, jsonError := json.Marshal(config.User{
+		Username: data.Config.Username,
+		Password: data.Config.Password,
 	})
 
 	if jsonError != nil {
@@ -93,7 +95,7 @@ func getAdminUser(w http.ResponseWriter, r *http.Request) {
 //
 //	@Produce		json
 //	@Param			username	path		string	true	"Name"
-//	@Success		200			{object}	User
+//	@Success		200			{object}	config.User
 //	@Failure		405			{object}	ResponseError
 //	@Failure		500			{object}	ResponseError
 //	@Router			/user/{username} [get]
@@ -101,11 +103,11 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 	user := mux.Vars(r)["username"]
 	w.Header().Set("Content-Type", "application/json")
 
-	index := slices.IndexFunc(config.OtherUsers, func(u User) bool { return u.Username == user })
+	index := slices.IndexFunc(data.Config.OtherUsers, func(u config.User) bool { return u.Username == user })
 	if index == -1 {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
-		jsonResponse, jsonError := json.Marshal(config.OtherUsers[index])
+		jsonResponse, jsonError := json.Marshal(data.Config.OtherUsers[index])
 
 		if jsonError != nil {
 			log.Println("Unable to encode JSON")
@@ -127,8 +129,8 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Accept			json
 //	@Produce		json
-//	@Param			user	body		User	true	"Create model"
-//	@Success		201		{object}	User
+//	@Param			user	body		config.User	true	"Create model"
+//	@Success		201		{object}	config.User
 //	@Failure		400		{object}	ResponseError
 //	@Failure		405		{object}	ResponseError
 //	@Failure		409		{object}	ResponseError
@@ -137,7 +139,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 func createUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var user User
+	var user config.User
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -145,10 +147,10 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := slices.IndexFunc(config.OtherUsers, func(u User) bool { return u.Username == user.Username })
+	index := slices.IndexFunc(data.Config.OtherUsers, func(u config.User) bool { return u.Username == user.Username })
 	if index != -1 {
 		w.WriteHeader(http.StatusConflict)
-		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "User already exists", Body: config.OtherUsers[index]})
+		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "User already exists", Body: data.Config.OtherUsers[index]})
 
 		if jsonError != nil {
 			log.Println("Unable to encode JSON")
@@ -161,7 +163,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: Check the new username with admin username
 
-		config.OtherUsers = append(config.OtherUsers, user)
+		data.Config.OtherUsers = append(data.Config.OtherUsers, user)
 
 		//notifyClient()
 
@@ -195,8 +197,8 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			username	path		string	true	"Name"
-//	@Param			user		body		User	true	"Update model"
-//	@Success		200			{object}	User
+//	@Param			user		body		config.User	true	"Update model"
+//	@Success		200			{object}	config.User
 //	@Failure		400			{object}	ResponseError
 //	@Failure		405			{object}	ResponseError
 //	@Failure		404			{object}	ResponseError
@@ -207,11 +209,11 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 	user := mux.Vars(r)["username"]
 	w.Header().Set("Content-Type", "application/json")
 
-	index := slices.IndexFunc(config.OtherUsers, func(u User) bool { return u.Username == user })
+	index := slices.IndexFunc(data.Config.OtherUsers, func(u config.User) bool { return u.Username == user })
 	if index == -1 {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
-		var user User
+		var user config.User
 
 		err := json.NewDecoder(r.Body).Decode(&user)
 		if err != nil {
@@ -219,7 +221,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		mergo.MapWithOverwrite(&config.OtherUsers[index], user)
+		mergo.MapWithOverwrite(&data.Config.OtherUsers[index], user)
 
 		//notifyClient()
 
@@ -245,8 +247,8 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Accept			json
 //	@Produce		json
-//	@Param			user	body		User	true	"Update model"
-//	@Success		200		{object}	User
+//	@Param			user	body		config.User	true	"Update model"
+//	@Success		200		{object}	config.User
 //	@Failure		400		{object}	ResponseError
 //	@Failure		405		{object}	ResponseError
 //	@Failure		404		{object}	ResponseError
@@ -256,7 +258,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 func updateAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var user User
+	var user config.User
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -265,10 +267,10 @@ func updateAdminUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.Username != "" {
-		config.Username = user.Username
+		data.Config.Username = user.Username
 	}
 	if user.Password != "" {
-		config.Password = user.Password
+		data.Config.Password = user.Password
 	}
 
 	//notifyClient()
@@ -303,12 +305,12 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 	user := mux.Vars(r)["username"]
 	w.Header().Set("Content-Type", "application/json")
 
-	index := slices.IndexFunc(config.OtherUsers, func(u User) bool { return u.Username == user })
+	index := slices.IndexFunc(data.Config.OtherUsers, func(u config.User) bool { return u.Username == user })
 	if index == -1 {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
 
-		config.OtherUsers = slices.Delete(config.OtherUsers, index, index+1)
+		data.Config.OtherUsers = slices.Delete(data.Config.OtherUsers, index, index+1)
 
 		//notifyClient()
 

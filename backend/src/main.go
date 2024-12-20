@@ -17,12 +17,13 @@ import (
 	"github.com/gorilla/mux"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
+	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/data"
 	_ "github.com/dianlight/srat/docs"
 )
 
 var SRATVersion string
-var config *Config
-var options *Options
+var options *config.Options
 var smbConfigFile *string
 var globalRouter *mux.Router
 var templateData []byte
@@ -114,11 +115,11 @@ func main() {
 	}
 
 	// Get config
-	config = readConfig(*configFile)
-	config = migrateConfig(config)
+	data.Config = config.ReadConfig(*configFile)
+	data.Config = config.MigrateConfig(data.Config)
 
 	// Get options
-	options = readOptionsFile(*optionsFile)
+	options = config.ReadOptionsFile(*optionsFile)
 
 	globalRouter := mux.NewRouter()
 	globalRouter.Use(mux.CORSMethodMiddleware(globalRouter))

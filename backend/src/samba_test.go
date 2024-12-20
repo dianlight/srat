@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/data"
 	"github.com/gorilla/mux"
 )
 
@@ -35,7 +37,11 @@ func TestApplySambaHandler(t *testing.T) {
 }
 
 func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) bool {
-	stream := createConfigStream()
+	stream, err := createConfigStream()
+	if err != nil {
+		t.Errorf("Error in createConfigStream %s", err.Error())
+		return false
+	}
 	rexpt := fmt.Sprintf(expected, testvalue)
 
 	if stream == nil {
@@ -60,66 +66,69 @@ func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) boo
 }
 
 func TestCreateConfigStream(t *testing.T) {
-	stream := createConfigStream()
+	stream, err := createConfigStream()
+	if err != nil {
+		t.Errorf("Error in createConfigStream %s", err.Error())
+	}
 	if stream == nil {
 		t.Errorf("handler returned stream is nil")
 	}
 
-	config.Workgroup = "WORKGROUP12"
-	if checkStringInSMBConfig(config.Workgroup, "\n\\s*workgroup = *%s\\s*\n", t) == false {
+	data.Config.Workgroup = "WORKGROUP12"
+	if checkStringInSMBConfig(data.Config.Workgroup, "\n\\s*workgroup = *%s\\s*\n", t) == false {
 		t.Errorf("Seting workgroup failed.")
 	}
 
-	config.Username = "admin"
-	if checkStringInSMBConfig(config.Username, "\n\\s*valid users =_ha_mount_user_ %s\\s*\n", t) == false {
+	data.Config.Username = "admin"
+	if checkStringInSMBConfig(data.Config.Username, "\n\\s*valid users =_ha_mount_user_ %s\\s*\n", t) == false {
 		t.Errorf("Seting username failed.")
 	}
 
-	config.Moredisks = []string{"ALPHA", "beta"}
-	config.Shares["ALPHA"] = Share{Path: "/mnt/ALPHA", FS: "ext4"}
-	config.Shares["BETA"] = Share{Path: "/mnt/BETA", FS: "ext4"}
-	if checkStringInSMBConfig(config.Moredisks[0], "\n.*.shares=map[%s:map[fs:ext4 path:/mnt/ALPHA].*\n", t) == false {
+	data.Config.Moredisks = []string{"ALPHA", "beta"}
+	data.Config.Shares["ALPHA"] = config.Share{Path: "/mnt/ALPHA", FS: "ext4"}
+	data.Config.Shares["BETA"] = config.Share{Path: "/mnt/BETA", FS: "ext4"}
+	if checkStringInSMBConfig(data.Config.Moredisks[0], "\n.*.shares=map[%s:map[fs:ext4 path:/mnt/ALPHA].*\n", t) == false {
 		t.Errorf("Setting moredisks and share failed.")
 	}
 
-	config.Medialibrary.Enable = true
-	config.ACL = []OptionsAcl{{Share: "APLHA", Usage: "media", Users: []string{"admin"}, Disabled: false}}
+	data.Config.Medialibrary.Enable = true
+	data.Config.ACL = []config.OptionsAcl{{Share: "APLHA", Usage: "media", Users: []string{"admin"}, Disabled: false}}
 
-	config.AllowHost = []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fe80::/10"}
-	config.VetoFiles = []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"}
+	data.Config.AllowHost = []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fe80::/10"}
+	data.Config.VetoFiles = []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"}
 
-	config.CompatibilityMode = false
-	config.EnableRecycleBin = false
+	data.Config.CompatibilityMode = false
+	data.Config.EnableRecycleBin = false
 
-	config.WSDD = false
-	config.WSDD2 = false
+	data.Config.WSDD = false
+	data.Config.WSDD2 = false
 
-	//config.OtherUsers = []User{{Username: "test", Password: "test"}, {Username: "test2", Password: "test2"}}
-	config.ACL = []OptionsAcl{{Share: "config", Disabled: true}}
-	config.Interfaces = []string{"eth0"}
-	config.BindAllInterfaces = false
-	config.LogLevel = "info"
-	config.MultiChannel = false
+	//data.Config.OtherUsers = []User{{Username: "test", Password: "test"}, {Username: "test2", Password: "test2"}}
+	data.Config.ACL = []config.OptionsAcl{{Share: "config", Disabled: true}}
+	data.Config.Interfaces = []string{"eth0"}
+	data.Config.BindAllInterfaces = false
+	data.Config.LogLevel = "info"
+	data.Config.MultiChannel = false
 
 	// Skip because untestable on config file
-	//  config.Password = "admin"
-	// 	config.Automount = true
-	// 	config.AvailableDiskLog = true
-	//  config.HDDIdle = 0
-	//	config.Smart = false
-	//  config.MQTTNextGen = false
-	//  config.MQTTEnable = false
-	//  config.MQTTHost = ""
-	//  config.MQTTUsername = ""
-	//  config.MQTTPassword = ""
-	//  config.MQTTPort = ""
-	//  config.MQTTTopic = ""
-	// 	config.Autodiscovery.DisableAutoremove = false
-	// 	config.Autodiscovery.DisableDiscovery = false
-	// 	config.Autodiscovery.DisablePersistent = false
-	//  config.MOF = "42"
-	//  config.Mountoptions = []string{"uid=1999, gid=1000, umask=000,iocharset=utf8"}
-	//  config.Medialibrary.SSHKEY = "<super secret key>"
+	//  data.Config.Password = "admin"
+	// 	data.Config.Automount = true
+	// 	data.Config.AvailableDiskLog = true
+	//  data.Config.HDDIdle = 0
+	//	data.Config.Smart = false
+	//  data.Config.MQTTNextGen = false
+	//  data.Config.MQTTEnable = false
+	//  data.Config.MQTTHost = ""
+	//  data.Config.MQTTUsername = ""
+	//  data.Config.MQTTPassword = ""
+	//  data.Config.MQTTPort = ""
+	//  data.Config.MQTTTopic = ""
+	// 	data.Config.Autodiscovery.DisableAutoremove = false
+	// 	data.Config.Autodiscovery.DisableDiscovery = false
+	// 	data.Config.Autodiscovery.DisablePersistent = false
+	//  data.Config.MOF = "42"
+	//  data.Config.Mountoptions = []string{"uid=1999, gid=1000, umask=000,iocharset=utf8"}
+	//  data.Config.Medialibrary.SSHKEY = "<super secret key>"
 
 }
 
