@@ -126,6 +126,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 		RoUsers:     []string{"rouser"},
 		TimeMachine: true,
 		Users:       []string{"dianlight"},
+		Usage:       "media",
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
@@ -134,7 +135,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	}
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
-	req, err := http.NewRequest("PUT", "/share/LIBRARY", strings.NewReader(string(jsonBody)))
+	req, err := http.NewRequest("POST", "/share/LIBRARY", strings.NewReader(string(jsonBody)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +144,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", createShare).Methods(http.MethodPut)
+	router.HandleFunc("/share/{share_name}", createShare).Methods(http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -198,6 +199,7 @@ func TestUpdateShareHandler(t *testing.T) {
 	share.RoUsers = []string{"rouser"}
 	share.TimeMachine = true
 	share.Users = []string{"dianlight"}
+	share.Usage = "media"
 	expected, jsonError := json.Marshal(share)
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())

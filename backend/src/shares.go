@@ -171,10 +171,10 @@ func notifyClient() {
 //	@Router			/share/{share_name} [put]
 //	@Router			/share/{share_name} [patch]
 func updateShare(w http.ResponseWriter, r *http.Request) {
-	share := mux.Vars(r)["share_name"]
+	share_name := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	data, ok := config.Shares[share]
+	data, ok := config.Shares[share_name]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
@@ -186,13 +186,15 @@ func updateShare(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		mergo.Merge(&share, data)
-
-		// TODO: Save share as new data!
-
+		err2 := mergo.MapWithOverwrite(&data, share)
+		if err2 != nil {
+			http.Error(w, err2.Error(), http.StatusInternalServerError)
+			return
+		}
+		config.Shares[share_name] = data
 		notifyClient()
 
-		jsonResponse, jsonError := json.Marshal(share)
+		jsonResponse, jsonError := json.Marshal(data)
 
 		if jsonError != nil {
 			fmt.Println("Unable to encode JSON")
