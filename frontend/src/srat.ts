@@ -327,6 +327,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
   };
   samba = {
     /**
+     * @description Get the generated samba config
+     *
+     * @tags samba
+     * @name SambaList
+     * @summary Get the generated samba config
+     * @request GET:/samba
+     */
+    sambaList: (params: RequestParams = {}) =>
+      this.request<string, MainResponseError>({
+        path: `/samba`,
+        method: "GET",
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
      * @description Write the samba config and send signal ro restart
      *
      * @tags samba
@@ -335,11 +351,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PUT:/samba/apply
      */
     applyUpdate: (params: RequestParams = {}) =>
-      this.request<number[], MainResponseError>({
+      this.request<void, MainResponseError>({
         path: `/samba/apply`,
         method: "PUT",
         type: ContentType.Json,
-        format: "json",
         ...params,
       }),
   };
