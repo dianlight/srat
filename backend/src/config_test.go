@@ -89,7 +89,7 @@ func TestMigrateConfigFromVersion0To1(t *testing.T) {
 		if !exists {
 			t.Errorf("Expected share '%s' to be added, but it wasn't", shareName)
 		} else {
-			expectedPath := "/" + shareName + shareName
+			expectedPath := "/" + shareName
 			if share.Path != expectedPath {
 				t.Errorf("Expected share '%s' to have path '%s', got '%s'", shareName, expectedPath, share.Path)
 			}
