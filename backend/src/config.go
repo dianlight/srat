@@ -139,6 +139,10 @@ func migrateConfig(in *Config) *Config {
 				share.Users = append(share.Users, in.Username)
 				in.Shares[shareName] = share
 			}
+			if share.Usage == "" {
+				share.Usage = "media"
+				in.Shares[shareName] = share
+			}
 		}
 		//log.Printf("Shares %v", in.Shares)
 	}
