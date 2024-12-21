@@ -3,19 +3,21 @@ import github from "./img/github.svg"
 import { SocialIcon } from 'react-social-icons'
 import pkg from '../package.json'
 import { useContext, useEffect, useRef, useState } from "react"
-import { apiContext, GithubContext, wsContext } from "./Contexts"
+import { apiContext, GithubContext, ModeContext, wsContext } from "./Contexts"
 import type { MainHealth } from "./srat"
 import { useMediaQuery } from "react-responsive"
 
 
-export function NavBar() {
-    const api = useContext(apiContext);
-    const ws = useContext(wsContext);
+export function NavBar(props: { error: string }) {
+    //const api = useContext(apiContext);
+    //    const ws = useContext(wsContext);
+    const mode = useContext(ModeContext);
     const octokit = useContext(GithubContext);
-    const [status, setStatus] = useState(false)
-    const [errorInfo, setErrorInfo] = useState<string>('')
+    //const [status, setStatus] = useState(false)
+    //const [errorInfo, setErrorInfo] = useState<string>('')
     const [isDark, setIsDark] = useState(false)
     const [isUpdate, setIsUpdate] = useState(false)
+    //const [mode, setMode] = useState(Mode.ro);
 
     const systemPrefersDark = useMediaQuery(
         {
@@ -59,18 +61,21 @@ export function NavBar() {
         */
     }, [isDark])
 
-
-    function onLoadHandler() {
-        ws.subscribe<MainHealth>('heartbeat', (data) => {
-            //console.log("Got heartbeat", data)
-            setStatus(data.alive || false);
-        })
-        ws.onError((event) => {
-            //  console.error("WS error2", event.type, JSON.stringify(event))
-            setErrorInfo(JSON.stringify(event));
-            setStatus(false);
-        })
-    }
+    /*
+        function onLoadHandler() {
+            ws.subscribe<MainHealth>('heartbeat', (data) => {
+                //console.log("Got heartbeat", data)
+                setStatus(data.alive || false);
+                modeContext.Provider(mode)
+    
+            })
+            ws.onError((event) => {
+                //  console.error("WS error2", event.type, JSON.stringify(event))
+                setErrorInfo(JSON.stringify(event));
+                setStatus(false);
+            })
+        }
+        */
     /*
         useEffect(() => {
             ws.subscribe<MainHealth>('heartbeat', (data) => {
@@ -90,7 +95,7 @@ export function NavBar() {
         }, []);
     */
 
-    return <header onLoad={onLoadHandler}>
+    return <header>
         <div className="navbar-fixed">
             <nav className="primary nav-extended">
                 <div className="nav-wrapper">
@@ -101,11 +106,14 @@ export function NavBar() {
                         <li><img id="logo-container" className="brand-logo" alt="SRAT -- Samba Rest Adminitration Tool" src={logo} /></li>
                     </ul>
                     <ul className="right">
+                        <li className={mode.read_only ? "pulse" : "hide"}>
+                            <a href="#"><i className="material-icons tooltipped" data-position="bottom" data-tooltip="ReadOnly Mode">preview</i></a>
+                        </li>
                         <li className={isUpdate ? "pulse" : "hide"}>
-                            <a id="do_update" href="#"><i className="material-icons tooltipped" data-position="bottom" data-tooltip={errorInfo}>system_update_alt</i></a>
+                            <a id="do_update" href="#"><i className="material-icons tooltipped" data-position="bottom" data-tooltip={props.error}>system_update_alt</i></a>
                         </li>
                         <li>
-                            <i className="material-icons tooltipped" data-position="bottom" data-tooltip={errorInfo}>{status ? "mood" : "error"}</i>
+                            <i className="material-icons tooltipped" data-position="bottom" data-tooltip={props.error}>{mode.alive ? "mood" : "error"}</i>
                         </li>
                         <li>
                             <a onClick={() => { setIsDark(!isDark) }} id="theme-switch" href="#"><i className="material-icons">{isDark ? "light_mode" : "dark_mode"}</i></a>

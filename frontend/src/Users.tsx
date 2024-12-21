@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { apiContext, wsContext } from "./Contexts";
-import type { Api, MainShare, MainShares, MainUser } from "./srat";
+import { apiContext, ModeContext, wsContext } from "./Contexts";
+import type { Api, ConfigShare, ConfigShares, ConfigUser } from "./srat";
 import { Modal } from "@materializecss/materialize"
 import { createPortal } from "react-dom";
 import { useForm, type SubmitHandler } from "react-hook-form";
@@ -8,13 +8,14 @@ import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 
 
-interface UsersProps extends MainUser {
+interface UsersProps extends ConfigUser {
     isAdmin?: boolean
     doCreate?: boolean
 }
 
 export function Users() {
     const api = useContext(apiContext);
+    const mode = useContext(ModeContext);
     const users = useSWR<UsersProps[]>('/users', () => api.users.usersList().then(res => res.data));
     const admin = useSWR<UsersProps>('/admin/user', () => api.admin.userList().then(res => res.data));
     const [errorInfo, setErrorInfo] = useState<string>('')
@@ -31,7 +32,7 @@ export function Users() {
             values: selectedUser
         },
     );
-    //    const onSubmit: SubmitHandler<MainUser> = data => console.log(data);
+    //    const onSubmit: SubmitHandler<ConfigUser> = data => console.log(data);
     const formRef = useRef<HTMLFormElement>(null);
 
     function onSubmitEditUser(data: UsersProps) {
@@ -162,7 +163,9 @@ export function Users() {
                 {/*< p > First Line < br />
                 Second Line
             </p>*/}
-                < a href="#edituser" className="secondary-content btn-floating blue waves-light red modal-trigger" onClick={() => setSelectedUser({ ...{ isAdmin: true }, ...admin.data })} > <i className="material-icons" > edit </i></a >
+                {mode.read_only ||
+                    < a href="#edituser" className="secondary-content btn-floating blue waves-light red modal-trigger" onClick={() => setSelectedUser({ ...{ isAdmin: true }, ...admin.data })} > <i className="material-icons" > edit </i></a >
+                }
             </li>
             {users.error && <p> {users.error} </p>}
             {users.data?.map((user) =>
@@ -172,22 +175,26 @@ export function Users() {
                     {/*< p > {props.fs} < br />
                    {props.path}
                 </p>*/}
-                    <div className="row secondary-content">
-                        <div className="col offset-s10 s1"><a href="#edituser" onClick={() => setSelectedUser({ ...{ isAdmin: false }, ...user })} className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> edit </i></a></div>
-                        <div className="col s1"><a href="#deluser" onClick={() => setSelectedUser({ ...{ isAdmin: false }, ...user })} className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons"> delete_forever </i></a></div>
-                    </div>
+                    {mode.read_only ||
+                        <div className="row secondary-content">
+                            <div className="col offset-s10 s1"><a href="#edituser" onClick={() => setSelectedUser({ ...{ isAdmin: false }, ...user })} className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> edit </i></a></div>
+                            <div className="col s1"><a href="#deluser" onClick={() => setSelectedUser({ ...{ isAdmin: false }, ...user })} className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons"> delete_forever </i></a></div>
+                        </div>
+                    }
                 </li>
             )}
-            < li className="collection-item avatar">
-                {/*
+            {mode.read_only ||
+                < li className="collection-item avatar">
+                    {/*
                 <i className="material-icons circle red" > account_box </i>
                 < span className="title" > {admin.username} </span>
                 <a className="waves-effect waves-light btn modal-trigger" href="#modal1">Modal</a>
                 < p > First Line < br />
                 Second Line
             </p>*/}
-                < a href="#edituser" className="secondary-content btn-floating green waves-light red modal-trigger" onClick={() => setSelectedUser({ isAdmin: false, doCreate: true })} > <i className="material-icons" > person_add </i></a >
-            </li>
+                    < a href="#edituser" className="secondary-content btn-floating green waves-light red modal-trigger" onClick={() => setSelectedUser({ isAdmin: false, doCreate: true })} > <i className="material-icons" > person_add </i></a >
+                </li>
+            }
 
         </ul>
     </>

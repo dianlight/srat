@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { apiContext, wsContext } from "./Contexts";
-import type { Api, MainShare, MainShares, MainUser } from "./srat";
+import { apiContext, ModeContext, wsContext } from "./Contexts";
+import type { Api, ConfigShare, ConfigShares, ConfigUser } from "./srat";
 import { ObjectTable } from "./components/ObjectTable";
 import { useForm } from "react-hook-form";
 import useSWR from "swr";
@@ -8,22 +8,23 @@ import { InView } from "react-intersection-observer";
 import { FormSelect } from "@materializecss/materialize";
 
 
-interface ShareEdirProps extends MainShare {
+interface ShareEditProps extends ConfigShare {
     name: string,
     doCreate?: boolean
 }
 
 export function Shares() {
     const api = useContext(apiContext);
-    const [status, setStatus] = useState<MainShares>({});
-    const [selected, setSelected] = useState<[string, MainShare] | null>(null);
+    const mode = useContext(ModeContext);
+    const [status, setStatus] = useState<ConfigShares>({});
+    const [selected, setSelected] = useState<[string, ConfigShare] | null>(null);
     const ws = useContext(wsContext);
     const [errorInfo, setErrorInfo] = useState<string>('')
     const formRef = useRef<HTMLFormElement>(null);
-    const users = useSWR<MainUser[]>('/users', () => api.users.usersList().then(res => res.data));
-    const admin = useSWR<MainUser>('/admin/user', () => api.admin.userList().then(res => res.data));
+    const users = useSWR<ConfigUser[]>('/users', () => api.users.usersList().then(res => res.data));
+    const admin = useSWR<ConfigUser>('/admin/user', () => api.admin.userList().then(res => res.data));
 
-    const { register, handleSubmit, watch, formState: { errors } } = useForm<ShareEdirProps>(
+    const { register, handleSubmit, watch, formState: { errors } } = useForm<ShareEditProps>(
         {
 
             values: { ...selected?.[1], name: selected?.[0] || "" }
@@ -47,7 +48,7 @@ export function Shares() {
 
         // setTimeout(getShareList, 1000);
 
-        ws.subscribe<MainShares>('shares', (data) => {
+        ws.subscribe<ConfigShares>('shares', (data) => {
             console.log("Got shares", data)
             setStatus(data);
         })
@@ -64,7 +65,7 @@ export function Shares() {
         })
     }
 
-    function onSubmitEditShare(data: ShareEdirProps) {
+    function onSubmitEditShare(data: ShareEditProps) {
         if (!data.name || !data.path) {
             setErrorInfo('Unable to update share!');
             return;
@@ -194,10 +195,12 @@ export function Shares() {
                     < p > {props.fs} < br />
                         {props.path}
                     </p>
-                    <div className="row secondary-content">
-                        <div className="col offset-s10 s1"><a href="#editshare" onClick={() => setSelected([share, props])} className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> settings </i></a></div>
-                        <div className="col s1"><a href="#delshare" onClick={() => setSelected([share, props])} className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons"> share </i></a></div>
-                    </div>
+                    {mode.read_only ||
+                        <div className="row secondary-content">
+                            <div className="col offset-s10 s1"><a href="#editshare" onClick={() => setSelected([share, props])} className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> settings </i></a></div>
+                            <div className="col s1"><a href="#delshare" onClick={() => setSelected([share, props])} className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons"> share </i></a></div>
+                        </div>
+                    }
                 </li>
             )}
         </ul>

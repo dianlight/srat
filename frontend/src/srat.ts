@@ -9,6 +9,23 @@
  * ---------------------------------------------------------------
  */
 
+export interface ConfigShare {
+  disabled?: boolean;
+  fs?: string;
+  path?: string;
+  ro_users?: string[];
+  timemachine?: boolean;
+  usage?: string;
+  users?: string[];
+}
+
+export type ConfigShares = Record<string, ConfigShare>;
+
+export interface ConfigUser {
+  password?: string;
+  username?: string;
+}
+
 export interface LsblkDevice {
   children?: LsblkDevice[];
   fsavail?: number;
@@ -47,6 +64,7 @@ export interface LsblkDevice {
 
 export interface MainHealth {
   alive?: boolean;
+  read_only?: boolean;
 }
 
 export interface MainResponseError {
@@ -80,23 +98,6 @@ export interface MainRootDevice {
   vendor?: string;
   /** Alignment  int    `json:"alignment"` */
   wwn?: string;
-}
-
-export interface MainShare {
-  disabled?: boolean;
-  fs?: string;
-  path?: string;
-  ro_users?: string[];
-  timemachine?: boolean;
-  usage?: string;
-  users?: string[];
-}
-
-export type MainShares = Record<string, MainShare>;
-
-export interface MainUser {
-  password?: string;
-  username?: string;
 }
 
 export interface MainVolume {
@@ -265,7 +266,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/admin/user
      */
     userList: (params: RequestParams = {}) =>
-      this.request<MainUser, MainResponseError>({
+      this.request<ConfigUser, MainResponseError>({
         path: `/admin/user`,
         method: "GET",
         format: "json",
@@ -280,8 +281,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update admin user
      * @request PUT:/admin/user
      */
-    userUpdate: (user: MainUser, params: RequestParams = {}) =>
-      this.request<MainUser, MainResponseError>({
+    userUpdate: (user: ConfigUser, params: RequestParams = {}) =>
+      this.request<ConfigUser, MainResponseError>({
         path: `/admin/user`,
         method: "PUT",
         body: user,
@@ -298,8 +299,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update admin user
      * @request PATCH:/admin/user
      */
-    userPartialUpdate: (user: MainUser, params: RequestParams = {}) =>
-      this.request<MainUser, MainResponseError>({
+    userPartialUpdate: (user: ConfigUser, params: RequestParams = {}) =>
+      this.request<ConfigUser, MainResponseError>({
         path: `/admin/user`,
         method: "PATCH",
         body: user,
@@ -368,7 +369,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/share/{share_name}
      */
     shareDetail: (shareName: string, params: RequestParams = {}) =>
-      this.request<MainShare, MainResponseError>({
+      this.request<ConfigShare, MainResponseError>({
         path: `/share/${shareName}`,
         method: "GET",
         format: "json",
@@ -383,8 +384,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update a share
      * @request PUT:/share/{share_name}
      */
-    shareUpdate: (shareName: string, share: MainShare, params: RequestParams = {}) =>
-      this.request<MainShare, MainResponseError>({
+    shareUpdate: (shareName: string, share: ConfigShare, params: RequestParams = {}) =>
+      this.request<ConfigShare, MainResponseError>({
         path: `/share/${shareName}`,
         method: "PUT",
         body: share,
@@ -401,8 +402,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Create a share
      * @request POST:/share/{share_name}
      */
-    shareCreate: (shareName: string, share: MainShare, params: RequestParams = {}) =>
-      this.request<MainShare, MainResponseError>({
+    shareCreate: (shareName: string, share: ConfigShare, params: RequestParams = {}) =>
+      this.request<ConfigShare, MainResponseError>({
         path: `/share/${shareName}`,
         method: "POST",
         body: share,
@@ -434,8 +435,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update a share
      * @request PATCH:/share/{share_name}
      */
-    sharePartialUpdate: (shareName: string, share: MainShare, params: RequestParams = {}) =>
-      this.request<MainShare, MainResponseError>({
+    sharePartialUpdate: (shareName: string, share: ConfigShare, params: RequestParams = {}) =>
+      this.request<ConfigShare, MainResponseError>({
         path: `/share/${shareName}`,
         method: "PATCH",
         body: share,
@@ -454,7 +455,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/shares
      */
     sharesList: (params: RequestParams = {}) =>
-      this.request<MainShares, MainResponseError>({
+      this.request<ConfigShares, MainResponseError>({
         path: `/shares`,
         method: "GET",
         format: "json",
@@ -470,8 +471,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Create a user
      * @request POST:/user
      */
-    userCreate: (user: MainUser, params: RequestParams = {}) =>
-      this.request<MainUser, MainResponseError>({
+    userCreate: (user: ConfigUser, params: RequestParams = {}) =>
+      this.request<ConfigUser, MainResponseError>({
         path: `/user`,
         method: "POST",
         body: user,
@@ -489,7 +490,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/user/{username}
      */
     userDetail: (username: string, params: RequestParams = {}) =>
-      this.request<MainUser, MainResponseError>({
+      this.request<ConfigUser, MainResponseError>({
         path: `/user/${username}`,
         method: "GET",
         format: "json",
@@ -504,8 +505,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update a user
      * @request PUT:/user/{username}
      */
-    userUpdate: (username: string, user: MainUser, params: RequestParams = {}) =>
-      this.request<MainUser, MainResponseError>({
+    userUpdate: (username: string, user: ConfigUser, params: RequestParams = {}) =>
+      this.request<ConfigUser, MainResponseError>({
         path: `/user/${username}`,
         method: "PUT",
         body: user,
@@ -537,8 +538,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update a user
      * @request PATCH:/user/{username}
      */
-    userPartialUpdate: (username: string, user: MainUser, params: RequestParams = {}) =>
-      this.request<MainUser, MainResponseError>({
+    userPartialUpdate: (username: string, user: ConfigUser, params: RequestParams = {}) =>
+      this.request<ConfigUser, MainResponseError>({
         path: `/user/${username}`,
         method: "PATCH",
         body: user,
@@ -557,7 +558,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/users
      */
     usersList: (params: RequestParams = {}) =>
-      this.request<MainUser[], MainResponseError>({
+      this.request<ConfigUser[], MainResponseError>({
         path: `/users`,
         method: "GET",
         format: "json",

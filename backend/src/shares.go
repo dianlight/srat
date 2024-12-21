@@ -30,7 +30,7 @@ var (
 //
 // _Param        id   path      int  true  "Account ID"
 //
-//	@Success		200	{object}	Shares
+//	@Success		200	{object}	config.Shares
 //
 // _Failure      400  {object}  ResponseError
 //
@@ -63,7 +63,7 @@ func listShares(w http.ResponseWriter, r *http.Request) {
 //
 //	@Produce		json
 //	@Param			share_name	path		string	true	"Name"
-//	@Success		200			{object}	Share
+//	@Success		200			{object}	config.Share
 //	@Failure		405			{object}	ResponseError
 //	@Failure		500			{object}	ResponseError
 //	@Router			/share/{share_name} [get]
@@ -98,8 +98,8 @@ func getShare(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			share_name	path		string	true	"Name"
-//	@Param			share		body		Share	true	"Create model"
-//	@Success		201			{object}	Share
+//	@Param			share		body		config.Share	true	"Create model"
+//	@Success		201			{object}	config.Share
 //	@Failure		400			{object}	ResponseError
 //	@Failure		405			{object}	ResponseError
 //	@Failure		409			{object}	ResponseError
@@ -164,8 +164,8 @@ func notifyClient() {
 //	@Accept			json
 //	@Produce		json
 //	@Param			share_name	path		string	true	"Name"
-//	@Param			share		body		Share	true	"Update model"
-//	@Success		200			{object}	Share
+//	@Param			share		body		config.Share	true	"Update model"
+//	@Success		200			{object}	config.Share
 //	@Failure		400			{object}	ResponseError
 //	@Failure		405			{object}	ResponseError
 //	@Failure		404			{object}	ResponseError

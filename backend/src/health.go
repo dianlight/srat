@@ -29,7 +29,7 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 
 	jsonResponse, jsonError := json.Marshal(&Health{
 		Alive:    true,
-		ReadOnly: data.ROMode,
+		ReadOnly: *data.ROMode,
 	})
 
 	if jsonError != nil {
@@ -47,7 +47,7 @@ func HealthCheckWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMes
 		var message WebSocketMessageEnvelope = WebSocketMessageEnvelope{
 			Event: "heartbeat",
 			Uid:   request.Uid,
-			Data:  Health{Alive: true},
+			Data:  Health{Alive: true, ReadOnly: *data.ROMode},
 		}
 		c <- &message
 		time.Sleep(5 * time.Second)

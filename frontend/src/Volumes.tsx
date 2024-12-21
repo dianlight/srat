@@ -1,10 +1,12 @@
 import { useContext, useEffect, useState } from "react";
-import { apiContext, wsContext } from "./Contexts";
-import type { Api, MainShare, MainVolume } from "./srat";
+import { apiContext, ModeContext, wsContext } from "./Contexts";
+import type { MainVolume } from "./srat";
 import { ObjectTable } from "./components/ObjectTable";
 
 export function Volumes() {
     const api = useContext(apiContext);
+    const mode = useContext(ModeContext);
+
     const [status, setStatus] = useState<MainVolume[]>([]);
     const [selected, setSelected] = useState<MainVolume | null>(null);
     const ws = useContext(wsContext);
@@ -39,11 +41,13 @@ export function Volumes() {
                         <p className="col s1">SN: {volume.serial_number}</p>
                         <p className="col s1">Dev: {volume.device}</p>
                     </div>
-                    <div className="row secondary-content">
-                        <div className="col offset-s9 s1"><a href="#edituser" className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> share </i></a></div>
-                        {volume.lsbk?.rm ? <div className="col s1"><a href="#edituser" className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> eject </i></a></div> : ""}
-                        <div className="col s1"><a href="#deluser" className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons">share</i></a></div>
-                    </div>
+                    {mode.read_only ||
+                        <div className="row secondary-content">
+                            <div className="col offset-s9 s1"><a href="#edituser" className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> share </i></a></div>
+                            {volume.lsbk?.rm ? <div className="col s1"><a href="#edituser" className="btn-floating blue waves-light red modal-trigger"> <i className="material-icons"> eject </i></a></div> : ""}
+                            <div className="col s1"><a href="#deluser" className="btn-floating waves-effect waves-light red modal-trigger"> <i className="material-icons">share</i></a></div>
+                        </div>
+                    }
                 </li>
             )}
         </ul>

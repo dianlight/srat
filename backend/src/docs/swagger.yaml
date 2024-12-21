@@ -1,4 +1,36 @@
 definitions:
+  config.Share:
+    properties:
+      disabled:
+        type: boolean
+      fs:
+        type: string
+      path:
+        type: string
+      ro_users:
+        items:
+          type: string
+        type: array
+      timemachine:
+        type: boolean
+      usage:
+        type: string
+      users:
+        items:
+          type: string
+        type: array
+    type: object
+  config.Shares:
+    additionalProperties:
+      $ref: '#/definitions/config.Share'
+    type: object
+  config.User:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
   lsblk.Device:
     properties:
       children:
@@ -74,6 +106,8 @@ definitions:
     properties:
       alive:
         type: boolean
+      read_only:
+        type: boolean
     type: object
   main.ResponseError:
     properties:
@@ -133,38 +167,6 @@ definitions:
         description: Alignment  int    `json:"alignment"`
         type: string
     type: object
-  main.Share:
-    properties:
-      disabled:
-        type: boolean
-      fs:
-        type: string
-      path:
-        type: string
-      ro_users:
-        items:
-          type: string
-        type: array
-      timemachine:
-        type: boolean
-      usage:
-        type: string
-      users:
-        items:
-          type: string
-        type: array
-    type: object
-  main.Shares:
-    additionalProperties:
-      $ref: '#/definitions/main.Share'
-    type: object
-  main.User:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    type: object
   main.Volume:
     properties:
       device:
@@ -210,7 +212,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.User'
+            $ref: '#/definitions/config.User'
         "405":
           description: Method Not Allowed
           schema:
@@ -232,14 +234,14 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/main.User'
+          $ref: '#/definitions/config.User'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.User'
+            $ref: '#/definitions/config.User'
         "400":
           description: Bad Request
           schema:
@@ -269,14 +271,14 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/main.User'
+          $ref: '#/definitions/config.User'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.User'
+            $ref: '#/definitions/config.User'
         "400":
           description: Bad Request
           schema:
@@ -402,7 +404,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.Share'
+            $ref: '#/definitions/config.Share'
         "405":
           description: Method Not Allowed
           schema:
@@ -429,14 +431,14 @@ paths:
         name: share
         required: true
         schema:
-          $ref: '#/definitions/main.Share'
+          $ref: '#/definitions/config.Share'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.Share'
+            $ref: '#/definitions/config.Share'
         "400":
           description: Bad Request
           schema:
@@ -471,14 +473,14 @@ paths:
         name: share
         required: true
         schema:
-          $ref: '#/definitions/main.Share'
+          $ref: '#/definitions/config.Share'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/main.Share'
+            $ref: '#/definitions/config.Share'
         "400":
           description: Bad Request
           schema:
@@ -513,14 +515,14 @@ paths:
         name: share
         required: true
         schema:
-          $ref: '#/definitions/main.Share'
+          $ref: '#/definitions/config.Share'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.Share'
+            $ref: '#/definitions/config.Share'
         "400":
           description: Bad Request
           schema:
@@ -549,7 +551,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.Shares'
+            $ref: '#/definitions/config.Shares'
         "405":
           description: Method Not Allowed
           schema:
@@ -572,14 +574,14 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/main.User'
+          $ref: '#/definitions/config.User'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/main.User'
+            $ref: '#/definitions/config.User'
         "400":
           description: Bad Request
           schema:
@@ -644,7 +646,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.User'
+            $ref: '#/definitions/config.User'
         "405":
           description: Method Not Allowed
           schema:
@@ -671,14 +673,14 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/main.User'
+          $ref: '#/definitions/config.User'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.User'
+            $ref: '#/definitions/config.User'
         "400":
           description: Bad Request
           schema:
@@ -713,14 +715,14 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/main.User'
+          $ref: '#/definitions/config.User'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.User'
+            $ref: '#/definitions/config.User'
         "400":
           description: Bad Request
           schema:
@@ -750,7 +752,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/main.User'
+              $ref: '#/definitions/config.User'
             type: array
         "405":
           description: Method Not Allowed
