@@ -75,6 +75,7 @@ func main() {
 	http_port := flag.Int("port", 8080, "Http Port on listen to")
 	templateFile := flag.String("template", "", "Template file")
 	smbConfigFile := flag.String("out", "", "Output file, if not defined output will be to console")
+	data.ROMode = *flag.Bool("ro", false, "Read only mode")
 
 	var wait time.Duration
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
