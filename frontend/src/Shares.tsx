@@ -4,6 +4,8 @@ import type { Api, MainShare, MainShares, MainUser } from "./srat";
 import { ObjectTable } from "./components/ObjectTable";
 import { useForm } from "react-hook-form";
 import useSWR from "swr";
+import { InView } from "react-intersection-observer";
+import { FormSelect } from "@materializecss/materialize";
 
 
 interface ShareEdirProps extends MainShare {
@@ -87,8 +89,8 @@ export function Shares() {
                 setErrorInfo(JSON.stringify(err));
             })
         }
+        //formRef.current?.reset();
         return false;
-        // formRef.current?.reset();
     }
 
 
@@ -115,7 +117,13 @@ export function Shares() {
                 <a href="#!" onClick={() => onSubmitDeleteShare(selected?.[0])} className="modal-close waves-effect btn-flat">Agree</a>
             </div>
         </div>
-        <div id="editshare" className="modal">
+        <InView as="div" id="editshare" className="modal modal-fixed-footer" onChange={(inView, entry) => {
+            inView && formRef.current && FormSelect.init(formRef.current.querySelectorAll('select'), {
+                dropdownOptions: {
+                    container: document.body
+                }
+            })
+        }}>
             <div className="modal-content">
                 <h4>{selected ? "Edit " + selected[0] : "New Share"}</h4>
                 <p>Share attributes:{JSON.stringify(selected?.[1])}</p>
@@ -177,7 +185,7 @@ export function Shares() {
                 <a href="#!" className="modal-close waves-effect btn-flat">Disagree</a>
                 <button type="submit" form="editshareform" className="modal-close waves-effect btn-flat">Agree</button>
             </div>
-        </div>
+        </InView>
         <ul className="collection" >
             {Object.entries(status).map(([share, props]) =>
                 < li className="collection-item avatar" key={share} >
