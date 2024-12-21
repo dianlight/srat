@@ -9,12 +9,17 @@ import { Volumes } from "./Volumes";
 import { SmbConf } from "./pages/SmbConf";
 import { ModeContext, wsContext } from "./Contexts";
 import type { MainHealth } from "./srat";
+import { ErrorBoundaryContext, useErrorBoundary } from "react-use-error-boundary";
 
 
-export function Page(/*props: { message: string }*/) {
+
+export function Page() {
     const ws = useContext(wsContext);
     const [status, setStatus] = useState<MainHealth>({ alive: false, read_only: true });
     const [errorInfo, setErrorInfo] = useState<string>('')
+    const [error, resetError] = useErrorBoundary(
+        (error, errorInfo) => console.error(error, errorInfo)
+    );
 
 
     function onLoadHandler() {
@@ -33,6 +38,24 @@ export function Page(/*props: { message: string }*/) {
             setStatus({ alive: false, read_only: true });
             setErrorInfo(JSON.stringify(event));
         })
+    }
+
+    if (error) {
+        setTimeout(() => { resetError() }, 5000);
+        return <div className="row center">
+            <h5 className="header col s12 light">Connecting to the server...</h5>
+            <div className="spinner-layer spinner-blue">
+                <div className="circle-clipper left">
+                    <div className="circle"></div>
+                </div>
+                <div className="gap-patch">
+                    <div className="circle"></div>
+                </div>
+                <div className="circle-clipper right">
+                    <div className="circle"></div>
+                </div>
+            </div>
+        </div>
     }
 
     return <ModeContext.Provider value={status}>

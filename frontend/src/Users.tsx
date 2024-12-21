@@ -156,7 +156,7 @@ export function Users() {
             </div>
         </div>
         <ul className="collection" >
-            {admin.error && <p> {admin.error} </p>}
+            {/*admin.error && <p> {admin.error} </p>*/}
             < li className="collection-item avatar" key={admin.data?.username}>
                 <i className="material-icons circle red" > account_box </i>
                 < span className="title" > {admin.data?.username} </span>
@@ -167,7 +167,7 @@ export function Users() {
                     < a href="#edituser" className="secondary-content btn-floating blue waves-light red modal-trigger" onClick={() => setSelectedUser({ ...{ isAdmin: true }, ...admin.data })} > <i className="material-icons" > edit </i></a >
                 }
             </li>
-            {users.error && <p> {users.error} </p>}
+            {/*users.error && <p> {users.error} </p>*/}
             {users.data?.map((user) =>
                 <li className="collection-item avatar" key={user.username}>
                     <i className="material-icons circle green"> account_box </i>
