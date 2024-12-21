@@ -25,6 +25,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Cant read template file %s", err)
 	}
 	templateData = templateDatan
+	data.ROMode = new(bool)
 
 	m.Run()
 }
