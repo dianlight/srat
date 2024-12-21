@@ -172,6 +172,10 @@ func main() {
 	globalRouter.HandleFunc("/samba", getSambaConfig).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/samba/apply", applySamba).Methods(http.MethodPut)
 
+	// Global
+	globalRouter.HandleFunc("/global", getGlobalConfig).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/global", updateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
+
 	// WebSocket
 	globalRouter.HandleFunc("/ws", WSChannelHandler)
 
