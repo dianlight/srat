@@ -97,7 +97,7 @@ export function Shares() {
 
 
     return <>
-        <div id="share" className="modal">
+        <div id="share" className="modal  modal-fixed-footer">
             <div className="modal-content">
                 <h4>{selected ? selected[0] : ""}</h4>
                 <p>Share Attributes:</p>
@@ -107,7 +107,7 @@ export function Shares() {
                 <a href="#!" className="modal-close waves-effect btn-flat">Close</a>
             </div>
         </div>
-        <div id="delshare" className="modal">
+        <div id="delshare" className="modal  modal-fixed-footer">
             <div className="modal-content">
                 <h4>Delete {selected?.[0]}? </h4>
                 <p>If you delete this share, all of their configurations will be deleted.</p>
