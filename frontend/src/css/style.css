@@ -26,3 +26,7 @@ main {
 .brand-logo {
   max-height: 64px;
 }
+
+.card {
+  overflow: visible !important;
+}

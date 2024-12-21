@@ -3,7 +3,7 @@ import { Shares } from "./Shares";
 import { Users } from "./Users";
 import { NavBar } from "./NavBar";
 import { Footer } from "./Footer";
-import { Tabs, AutoInit } from "@materializecss/materialize"
+import { Tabs, AutoInit, FormSelect } from "@materializecss/materialize"
 import { useRef } from "react";
 import { Volumes } from "./Volumes";
 import { SmbConf } from "./pages/SmbConf";
@@ -13,6 +13,11 @@ export function Page(/*props: { message: string }*/) {
 
     function onLoadHandler() {
         AutoInit();
+        FormSelect.init(document.querySelectorAll('select'), {
+            dropdownOptions: {
+                container: document.body
+            }
+        });
     }
 
     return <div onLoad={onLoadHandler} className="row" style={{ marginTop: "50px" }}>
