@@ -83,7 +83,7 @@ func main() {
 	flag.Usage = func() {
 		writer := flag.CommandLine.Output()
 
-		fmt.Fprint(writer, "SRAT: Samba Rest Administration Interface\n")
+		fmt.Fprint(writer, "SRAT: SambaNAS Rest Administration Interface\n")
 		fmt.Fprintf(writer, "Version: %s\n", SRATVersion)
 		fmt.Fprintf(writer, "Documentation: https://github.com/dianlight/SRAT\n\n")
 
@@ -91,6 +91,9 @@ func main() {
 	}
 
 	flag.Parse()
+
+	log.Printf("SRAT: SambaNAS Rest Administration Interface\n")
+	log.Printf("SRAT Version: %s\n", SRATVersion)
 
 	// Check template file
 	if *templateFile == "" {

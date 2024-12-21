@@ -1,5 +1,5 @@
 
-# Samba Rest Adminitration Tool
+# SambaNAS Rest Adminitration Tool
 
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/dianlight/srat?include_prereleases)](https://img.shields.io/github/v/release/dianlight/srat?include_prereleases)
 [![GitHub last commit](https://img.shields.io/github/last-commit/dianlight/srat)](https://img.shields.io/github/last-commit/dianlight/srat)
@@ -7,7 +7,7 @@
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/dianlight/srat)](https://img.shields.io/github/issues-pr/dianlight/srat)
 [![GitHub](https://img.shields.io/github/license/dianlight/srat)](https://img.shields.io/github/license/dianlight/srat)
 
-SRAT (Samba REST Administration Tool) is a new system designed to provide a simplified user interface for configuring SAMBA. It has been developed to work within Home Assistant, specifically for this addon, but can also be used in other contexts.
+SRAT (SambaNAS REST Administration Tool) is a new system designed to provide a simplified user interface for configuring SAMBA. It has been developed to work within Home Assistant, specifically for this addon, but can also be used in other contexts.
 
 Currently under development and in an alpha state, SRAT is set to become the preferred system for configuring and using this addon, eventually "retiring" the YAML configuration.
 
