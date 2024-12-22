@@ -10,6 +10,7 @@ import { SmbConf } from "./pages/SmbConf";
 import { ModeContext, wsContext } from "./Contexts";
 import type { MainHealth } from "./srat";
 import { ErrorBoundaryContext, useErrorBoundary } from "react-use-error-boundary";
+import { Settings } from "./pages/Settings";
 
 
 
@@ -73,7 +74,7 @@ export function Page() {
             <div id="shares" className="col s12"><Shares /></div>
             <div id="volumes" className="col s12"><Volumes /></div>
             <div id="users" className="col s12"><Users /></div>
-            <div id="settings" className="col s12">Settings... *****|{status.read_only}|*****</div>
+            <div id="settings" className="col s12"><Settings /></div>
             <div id="smbconf" className="col s12"><SmbConf /></div>
         </div>
     </ModeContext.Provider>
