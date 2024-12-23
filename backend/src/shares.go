@@ -104,15 +104,36 @@ func getShare(w http.ResponseWriter, r *http.Request) {
 //	@Failure		405			{object}	ResponseError
 //	@Failure		409			{object}	ResponseError
 //	@Failure		500			{object}	ResponseError
-//	@Router			/share/{share_name} [post]
+//	@Router			/share [post]
 func createShare(w http.ResponseWriter, r *http.Request) {
-	share := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	data, ok := data.Config.Shares[share]
+	var share config.Share
+
+	err := json.NewDecoder(r.Body).Decode(&share)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if share.Name == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "No Name in data"})
+
+		if jsonError != nil {
+			fmt.Println("Unable to encode JSON")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(jsonError.Error()))
+		} else {
+			w.Write(jsonResponse)
+		}
+		return
+	}
+
+	fshare, ok := data.Config.Shares[share.Name]
 	if ok {
 		w.WriteHeader(http.StatusConflict)
-		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "Share already exists", Body: data})
+		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "Share already exists", Body: fshare})
 
 		if jsonError != nil {
 			fmt.Println("Unable to encode JSON")
@@ -122,15 +143,8 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 			w.Write(jsonResponse)
 		}
 	} else {
-		var share config.Share
 
-		err := json.NewDecoder(r.Body).Decode(&share)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// TODO: Create Share
+		data.Config.Shares[share.Name] = share
 
 		notifyClient()
 

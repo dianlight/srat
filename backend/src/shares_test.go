@@ -81,6 +81,7 @@ func TestGetShareHandler(t *testing.T) {
 func TestCreateShareHandler(t *testing.T) {
 
 	share := config.Share{
+		Name: "PIPPO",
 		Path: "/pippo",
 		FS:   "tmpfs",
 	}
@@ -91,7 +92,7 @@ func TestCreateShareHandler(t *testing.T) {
 	}
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
-	req, err := http.NewRequest("PUT", "/share/PIPPO", strings.NewReader(string(jsonBody)))
+	req, err := http.NewRequest("POST", "/share", strings.NewReader(string(jsonBody)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +101,7 @@ func TestCreateShareHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", createShare).Methods(http.MethodPut)
+	router.HandleFunc("/share", createShare).Methods(http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -123,6 +124,7 @@ func TestCreateShareHandler(t *testing.T) {
 func TestCreateShareDuplicateHandler(t *testing.T) {
 
 	share := config.Share{
+		Name:        "LIBRARY",
 		Path:        "/mnt/LIBRARY",
 		FS:          "ext4",
 		RoUsers:     []string{"rouser"},
@@ -198,6 +200,7 @@ func TestUpdateShareHandler(t *testing.T) {
 
 	// Check the response body is what we expect.
 	share.FS = "ext4"
+	share.Name = "LIBRARY"
 	share.RoUsers = []string{"rouser"}
 	share.TimeMachine = true
 	share.Users = []string{"dianlight"}

@@ -10,6 +10,7 @@ import (
 )
 
 type Share struct {
+	Name        string   `json:"name,omitempty"`
 	Path        string   `json:"path"`
 	FS          string   `json:"fs"`
 	Disabled    bool     `json:"disabled,omitempty"`
@@ -119,9 +120,11 @@ func MigrateConfig(in *Config) *Config {
 		for shareName, share := range in.Shares {
 			i := slices.IndexFunc(in.ACL, func(a OptionsAcl) bool { return a.Share == shareName })
 			if i > -1 {
+
 				//share.OptionsAcl = OptionsAcl{}
 				//log.Printf("ACL found for share %v", in.ACL[i])
 				copier.Copy(&share, &in.ACL[i])
+				share.Name = shareName
 				//log.Printf("ACL found for dest %v", share)
 				in.ACL = slices.Delete(in.ACL, i, i+1)
 				in.Shares[shareName] = share
