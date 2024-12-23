@@ -148,7 +148,7 @@ func main() {
 	// Shares
 	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet, http.MethodOptions)
 	globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/share", createShare).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/share", createShare).Methods(http.MethodPost, http.MethodOptions)
 	globalRouter.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/share/{share_name}", deleteShare).Methods(http.MethodDelete)
 
