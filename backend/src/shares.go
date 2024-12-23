@@ -97,7 +97,6 @@ func getShare(w http.ResponseWriter, r *http.Request) {
 //	@Tags			share
 //	@Accept			json
 //	@Produce		json
-//	@Param			share_name	path		string	true	"Name"
 //	@Param			share		body		config.Share	true	"Create model"
 //	@Success		201			{object}	config.Share
 //	@Failure		400			{object}	ResponseError

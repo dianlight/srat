@@ -443,11 +443,6 @@ paths:
       - application/json
       description: create e new share
       parameters:
-      - description: Name
-        in: path
-        name: share_name
-        required: true
-        type: string
       - description: Create model
         in: body
         name: share
