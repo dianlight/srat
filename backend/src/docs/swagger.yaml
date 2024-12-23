@@ -5,6 +5,8 @@ definitions:
         type: boolean
       fs:
         type: string
+      name:
+        type: string
       path:
         type: string
       ro_users:
@@ -100,6 +102,37 @@ definitions:
         type: string
       wwn:
         description: Alignment  int      `json:"alignment"`
+        type: string
+    type: object
+  main.GlobalConfig:
+    properties:
+      allow_hosts:
+        items:
+          type: string
+        type: array
+      bind_all_interfaces:
+        type: boolean
+      compatibility_mode:
+        type: boolean
+      interfaces:
+        items:
+          type: string
+        type: array
+      log_level:
+        type: string
+      mountoptions:
+        items:
+          type: string
+        type: array
+      multi_channel:
+        type: boolean
+      recyle_bin_enabled:
+        type: boolean
+      veto_files:
+        items:
+          type: string
+        type: array
+      workgroup:
         type: string
     type: object
   main.Health:
@@ -298,6 +331,51 @@ paths:
       summary: Update admin user
       tags:
       - user
+  /global:
+    patch:
+      consumes:
+      - application/json
+      description: Update the configuration for the global samba settings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.GlobalConfig'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Update the configuration for the global samba settings
+      tags:
+      - samba
+    put:
+      consumes:
+      - application/json
+      description: Update the configuration for the global samba settings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.GlobalConfig'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Update the configuration for the global samba settings
+      tags:
+      - samba
   /health:
     get:
       description: HealthCheck
@@ -359,6 +437,49 @@ paths:
       summary: Write the samba config and send signal ro restart
       tags:
       - samba
+  /share:
+    post:
+      consumes:
+      - application/json
+      description: create e new share
+      parameters:
+      - description: Name
+        in: path
+        name: share_name
+        required: true
+        type: string
+      - description: Create model
+        in: body
+        name: share
+        required: true
+        schema:
+          $ref: '#/definitions/config.Share'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/config.Share'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Create a share
+      tags:
+      - share
   /share/{share_name}:
     delete:
       description: delere a share
@@ -456,48 +577,6 @@ paths:
           schema:
             $ref: '#/definitions/main.ResponseError'
       summary: Update a share
-      tags:
-      - share
-    post:
-      consumes:
-      - application/json
-      description: create e new share
-      parameters:
-      - description: Name
-        in: path
-        name: share_name
-        required: true
-        type: string
-      - description: Create model
-        in: body
-        name: share
-        required: true
-        schema:
-          $ref: '#/definitions/config.Share'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/config.Share'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-      summary: Create a share
       tags:
       - share
     put:
