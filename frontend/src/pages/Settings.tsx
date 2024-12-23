@@ -18,10 +18,10 @@ export function Settings() {
     const globalConfig = useSWR<MainGlobalConfig>('/global', () => api.global.globalList().then(res => res.data));
     const { control, handleSubmit, reset, watch, formState } = useForm({
         // mode: "onChange",
-        values: globalConfig.data
+        values: globalConfig.data,
+        disabled: mode.read_only
     });
     const bindAllWatch = watch("bind_all_interfaces")
-    const formRef = useRef<HTMLFormElement>(null);
 
     function handleCommit(data: MainGlobalConfig) {
         console.log(data);
@@ -31,13 +31,10 @@ export function Settings() {
         }).catch(err => console.log(err))
     }
 
-
-
     return (
         <InView>
             <Stack spacing={2}>
-
-                <form id="settingsform" className="row" onSubmit={handleSubmit(handleCommit)} noValidate>
+                <form id="settingsform" onSubmit={handleSubmit(handleCommit)} noValidate>
                     <Grid container spacing={2}>
                         <Grid size={4}>
                             <TextFieldElement sx={{ display: "flex" }} name="workgroup" label="Workgroup" required control={control} disabled={mode.read_only} />

@@ -100,7 +100,7 @@ export function Users() {
 
     return <InView>
         <UserEditDialog objectToEdit={selected} open={showEdit} onClose={(data) => { setSelected({}); onSubmitEditUser(data); setShowEdit(false) }} />
-        <Fab color="primary" aria-label="add" sx={{
+        {mode.read_only || <Fab color="primary" aria-label="add" sx={{
             position: 'fixed',
             top: 70,
             right: 16
@@ -108,7 +108,7 @@ export function Users() {
             onClick={() => { setSelected({ doCreate: true }); setShowEdit(true) }}
         >
             <PersonAddIcon />
-        </Fab>
+        </Fab>}
 
         <List dense={true}>
             {[{ ...admin.data, isAdmin: true }, ...users.data || []].map((user) =>

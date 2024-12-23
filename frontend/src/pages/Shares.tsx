@@ -109,7 +109,7 @@ export function Shares() {
     return <InView>
         <PreviewDialog title={selected ? selected[0] : ""} objectToDisplay={selected?.[1]} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
         <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[0] || "" }} open={showEdit} onClose={(data) => { setSelected(null); onSubmitEditShare(data); setShowEdit(false) }} />
-        <Fab color="primary" aria-label="add" sx={{
+        {mode.read_only || <Fab color="primary" aria-label="add" sx={{
             position: 'fixed',
             top: 70,
             right: 16
@@ -117,7 +117,7 @@ export function Shares() {
             onClick={() => { setSelected(null); setShowEdit(true) }}
         >
             <AddIcon />
-        </Fab>
+        </Fab>}
 
         <List dense={true}>
             {Object.entries(status).map(([share, props]) =>

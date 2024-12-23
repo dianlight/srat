@@ -11,6 +11,7 @@ import './img/favicon.ico';
 import '@mui/icons-material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { ConfirmProvider } from "material-ui-confirm";
+import { StrictMode } from 'react';
 
 
 const theme = createTheme({
@@ -25,7 +26,9 @@ root.render(
         <ThemeProvider theme={theme} noSsr>
             <CssBaseline />
             <ConfirmProvider>
-                <App />
+                <StrictMode>
+                    <App />
+                </StrictMode>
             </ConfirmProvider>
         </ThemeProvider>
     </ErrorBoundaryContext>)

@@ -59,7 +59,7 @@ export function Volumes() {
 
     return <InView>
         <PreviewDialog title={selected?.label || ""} objectToDisplay={selected} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
-        <Fab color="primary" aria-label="add" sx={{
+        {mode.read_only || <Fab color="primary" aria-label="add" sx={{
             position: 'fixed',
             top: 70,
             right: 16
@@ -67,7 +67,7 @@ export function Volumes() {
             onClick={() => { setSelected(null); /*setShowEdit(true)*/ }}
         >
             <AddIcon />
-        </Fab>
+        </Fab>}
 
         <List dense={true}>
             {status.filter((vol => vol.fstype !== 'erofs')).map((volume, idx) =>
