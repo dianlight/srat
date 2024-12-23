@@ -92,6 +92,7 @@ export function Volumes() {
                             <ListItemText
                                 primary={volume.label + " (" + volume.fstype + ")"}
                                 onClick={() => { setSelected(volume); setShowPreview(true) }}
+                                disableTypography
                                 secondary={<Stack spacing={2} direction="row">
                                     <Typography variant="caption">MountPath: {volume.mountpoint}</Typography>
                                     <Typography variant="caption">SN: {volume.serial_number}</Typography>
