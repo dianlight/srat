@@ -332,6 +332,28 @@ paths:
       tags:
       - user
   /global:
+    get:
+      consumes:
+      - application/json
+      description: Get the configuration for the global samba settings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.GlobalConfig'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Get the configuration for the global samba settings
+      tags:
+      - samba
     patch:
       consumes:
       - application/json

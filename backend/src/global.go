@@ -69,7 +69,7 @@ func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// GetSambaConfig godoc
+// GetGlobakConfig godoc
 //
 //	@Summary		Get the configuration for the global samba settings
 //	@Description	Get the configuration for the global samba settings
@@ -79,7 +79,7 @@ func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	GlobalConfig
 //	@Failure		400	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
-//	@Router			/samba [get]
+//	@Router			/global [get]
 func getGlobalConfig(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

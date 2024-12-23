@@ -169,11 +169,11 @@ func main() {
 	globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
 
 	// Samba
-	globalRouter.HandleFunc("/samba", getSambaConfig).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/samba", getSambaConfig).Methods(http.MethodGet, http.MethodOptions)
 	globalRouter.HandleFunc("/samba/apply", applySamba).Methods(http.MethodPut)
 
 	// Global
-	globalRouter.HandleFunc("/global", getGlobalConfig).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/global", getGlobalConfig).Methods(http.MethodGet, http.MethodOptions)
 	globalRouter.HandleFunc("/global", updateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
 
 	// WebSocket
