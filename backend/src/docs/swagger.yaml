@@ -358,6 +358,13 @@ paths:
       consumes:
       - application/json
       description: Update the configuration for the global samba settings
+      parameters:
+      - description: Update model
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/main.GlobalConfig'
       produces:
       - application/json
       responses:
@@ -380,6 +387,13 @@ paths:
       consumes:
       - application/json
       description: Update the configuration for the global samba settings
+      parameters:
+      - description: Update model
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/main.GlobalConfig'
       produces:
       - application/json
       responses:

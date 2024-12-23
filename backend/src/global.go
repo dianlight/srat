@@ -30,6 +30,7 @@ type GlobalConfig struct {
 //	@Tags			samba
 //	@Accept			json
 //	@Produce		json
+//	@Param			config	body	GlobalConfig	true	"Update model"
 //	@Success		200 {object}    GlobalConfig
 //	@Failure		400	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
