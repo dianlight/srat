@@ -37,6 +37,7 @@ async function build(): Promise<BuildOutput | void> {
     return Bun.build({
         entrypoints: [/*'src/index.html',*/ 'src/index.tsx'],
         outdir: './out',  // Specify the output directory
+        experimentalCss: true,
         naming: {
             entry: "[dir]/[name].[ext]",
             chunk: '[name]-[hash].[ext]',

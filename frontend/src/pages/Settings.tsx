@@ -1,38 +1,93 @@
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { DevTool } from "@hookform/devtools";
 import { useContext, useRef } from "react";
-import { ModeContext } from "../Contexts";
+import { apiContext, ModeContext } from "../Contexts";
+import { InView } from "react-intersection-observer";
+import Grid from "@mui/material/Grid2";
+import Button from "@mui/material/Button";
+import useSWR from "swr";
+import type { ConfigUser, MainGlobalConfig } from "../srat";
+import { AutocompleteElement, CheckboxElement, TextFieldElement } from "react-hook-form-mui";
+import { MuiChipsInput } from 'mui-chips-input'
+import Stack from "@mui/material/Stack";
+import Divider from "@mui/material/Divider";
 
 export function Settings() {
-    const { register, control, handleSubmit } = useForm({
-        mode: "onChange",
-    });
+    const api = useContext(apiContext);
     const mode = useContext(ModeContext);
-
+    const globalConfig = useSWR<MainGlobalConfig>('/global', () => api.global.globalList().then(res => res.data));
+    const { control, handleSubmit, reset, watch, formState } = useForm({
+        // mode: "onChange",
+        values: globalConfig.data
+    });
+    const bindAllWatch = watch("bind_all_interfaces")
     const formRef = useRef<HTMLFormElement>(null);
 
-    return (
-        <>
-            <div className="card">
-                <div className="card-content">
-                    <form id="settingsform" ref={formRef} className="row" onSubmit={handleSubmit(d => console.log(d))}>
-                        <div className="s12 m6 input-field inline">
-                            <input id="workgroup" type="text" className="validate" placeholder=" "  {...register("workgroup", { required: true })} readOnly={mode.read_only} />
-                            <label htmlFor="workgroup">Workgroup</label>
-                        </div>
-                        <div className="s12 m6">
-                            <p className="caption">Allow Host</p>
-                            <div className="chips chips-placeholder"></div>
-                        </div>
-                    </form>
-                </div>
-                <div className="card-action">
-                    <a href="#!" className="modal-close waves-effect btn-flat">Disagree</a>
-                    <input type="submit" form="settingsform" className="modal-close waves-effect btn-flat" value="Agree" />
-                </div>
-            </div>
+    function handleCommit(data: MainGlobalConfig) {
+        console.log(data);
+        api.global.globalUpdate(data).then(res => {
+            console.log(res)
+            globalConfig.mutate()
+        }).catch(err => console.log(err))
+    }
 
+
+
+    return (
+        <InView>
+            <Stack spacing={2}>
+
+                <form id="settingsform" className="row" onSubmit={handleSubmit(handleCommit)} noValidate>
+                    <Grid container spacing={2}>
+                        <Grid size={4}>
+                            <TextFieldElement sx={{ display: "flex" }} name="workgroup" label="Workgroup" required control={control} disabled={mode.read_only} />
+                        </Grid>
+                        <Grid size={8}>
+                            <Controller
+                                name="allow_hosts"
+                                control={control}
+                                disabled={mode.read_only}
+                                render={({ field }) => <MuiChipsInput label="Allow Hosts" {...field} />}
+                            />
+                        </Grid>
+                        <Grid size={4}>
+                            <CheckboxElement label="Compatibility Mode" name="compatibility_mode" control={control} disabled={mode.read_only} />
+                            <CheckboxElement label="Multi Channel Mode" name="multi_channel" control={control} disabled={mode.read_only} />
+                            <CheckboxElement label="RecycleBin" name="recyle_bin_enabled" control={control} disabled={mode.read_only} />
+                        </Grid>
+                        <Grid size={8}>
+                            <Controller
+                                name="veto_files"
+                                control={control}
+                                disabled={mode.read_only}
+                                render={({ field }) => <MuiChipsInput label="Veto Files" {...field} />}
+                            />
+                        </Grid>
+                        <Grid size={4}>
+                            <CheckboxElement label="Bind All Interfaces" name="bind_all_interfaces" control={control} disabled={mode.read_only} />
+                        </Grid>
+                        <Grid size={8}>
+                            <Controller
+                                name="interfaces"
+                                disabled={bindAllWatch || mode.read_only}
+                                control={control}
+                                render={({ field }) => <MuiChipsInput label="Interfaces" {...field} />}
+                            />
+                        </Grid>
+                    </Grid>
+                </form>
+                <Divider />
+                <Stack direction="row"
+                    spacing={2}
+                    sx={{
+                        justifyContent: "flex-end",
+                        alignItems: "center",
+                    }} >
+                    <Button onClick={() => reset()} disabled={!formState.isDirty}>Reset</Button>
+                    <Button type="submit" form="settingsform" disabled={!formState.isDirty}>Apply</Button>
+                </Stack>
+            </Stack>
             <DevTool control={control} /> {/* set up the dev tool */}
-        </>
+        </InView >
     );
 }

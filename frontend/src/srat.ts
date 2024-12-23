@@ -12,6 +12,7 @@
 export interface ConfigShare {
   disabled?: boolean;
   fs?: string;
+  name?: string;
   path?: string;
   ro_users?: string[];
   timemachine?: boolean;
@@ -60,6 +61,19 @@ export interface LsblkDevice {
   vendor?: string;
   /** Alignment  int      `json:"alignment"` */
   wwn?: string;
+}
+
+export interface MainGlobalConfig {
+  allow_hosts?: string[];
+  bind_all_interfaces?: boolean;
+  compatibility_mode?: boolean;
+  interfaces?: string[];
+  log_level?: string;
+  mountoptions?: string[];
+  multi_channel?: boolean;
+  recyle_bin_enabled?: boolean;
+  veto_files?: string[];
+  workgroup?: string;
 }
 
 export interface MainHealth {
@@ -309,6 +323,60 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         ...params,
       }),
   };
+  global = {
+    /**
+     * @description Get the configuration for the global samba settings
+     *
+     * @tags samba
+     * @name GlobalList
+     * @summary Get the configuration for the global samba settings
+     * @request GET:/global
+     */
+    globalList: (params: RequestParams = {}) =>
+      this.request<MainGlobalConfig, MainResponseError>({
+        path: `/global`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update the configuration for the global samba settings
+     *
+     * @tags samba
+     * @name GlobalUpdate
+     * @summary Update the configuration for the global samba settings
+     * @request PUT:/global
+     */
+    globalUpdate: (config: MainGlobalConfig, params: RequestParams = {}) =>
+      this.request<MainGlobalConfig, MainResponseError>({
+        path: `/global`,
+        method: "PUT",
+        body: config,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update the configuration for the global samba settings
+     *
+     * @tags samba
+     * @name GlobalPartialUpdate
+     * @summary Update the configuration for the global samba settings
+     * @request PATCH:/global
+     */
+    globalPartialUpdate: (config: MainGlobalConfig, params: RequestParams = {}) =>
+      this.request<MainGlobalConfig, MainResponseError>({
+        path: `/global`,
+        method: "PATCH",
+        body: config,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+  };
   health = {
     /**
      * @description HealthCheck
@@ -361,6 +429,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
   };
   share = {
     /**
+     * @description create e new share
+     *
+     * @tags share
+     * @name ShareCreate
+     * @summary Create a share
+     * @request POST:/share
+     */
+    shareCreate: (share: ConfigShare, params: RequestParams = {}) =>
+      this.request<ConfigShare, MainResponseError>({
+        path: `/share`,
+        method: "POST",
+        body: share,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description get share by Name
      *
      * @tags share
@@ -388,24 +474,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<ConfigShare, MainResponseError>({
         path: `/share/${shareName}`,
         method: "PUT",
-        body: share,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description create e new share
-     *
-     * @tags share
-     * @name ShareCreate
-     * @summary Create a share
-     * @request POST:/share/{share_name}
-     */
-    shareCreate: (shareName: string, share: ConfigShare, params: RequestParams = {}) =>
-      this.request<ConfigShare, MainResponseError>({
-        path: `/share/${shareName}`,
-        method: "POST",
         body: share,
         type: ContentType.Json,
         format: "json",

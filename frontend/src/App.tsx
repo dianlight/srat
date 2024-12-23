@@ -1,35 +1,60 @@
 import { createPortal } from "react-dom";
-import { Shares } from "./Shares";
-import { Users } from "./Users";
-import { NavBar } from "./NavBar";
-import { Footer } from "./Footer";
-import { Tabs, AutoInit, FormSelect } from "@materializecss/materialize"
+import { Shares } from "./pages/Shares";
+import { Users } from "./pages/Users";
+import { NavBar } from "./components/NavBar";
+import { Footer } from "./components/Footer";
 import { useContext, useRef, useState } from "react";
-import { Volumes } from "./Volumes";
+import { Volumes } from "./pages/Volumes";
 import { SmbConf } from "./pages/SmbConf";
 import { ModeContext, wsContext } from "./Contexts";
 import type { MainHealth } from "./srat";
 import { ErrorBoundaryContext, useErrorBoundary } from "react-use-error-boundary";
 import { Settings } from "./pages/Settings";
+import Container from "@mui/material/Container";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Link from "@mui/material/Link";
+import type { SvgIconProps } from "@mui/material/SvgIcon";
+import SvgIcon from "@mui/material/SvgIcon";
+
+function Copyright() {
+    return (
+        <Typography
+            variant="body2"
+            align="center"
+            sx={{
+                color: 'text.secondary',
+            }}
+        >
+            {'Copyright © '}
+            <Link color="inherit" href="https://mui.com/">
+                Your Website
+            </Link>{' '}
+            {new Date().getFullYear()}.
+        </Typography>
+    );
+}
+
+function LightBulbIcon(props: SvgIconProps) {
+    return (
+        <SvgIcon {...props}>
+            <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z" />
+        </SvgIcon>
+    );
+}
 
 
-
-export function Page() {
+export function App() {
     const ws = useContext(wsContext);
     const [status, setStatus] = useState<MainHealth>({ alive: false, read_only: true });
     const [errorInfo, setErrorInfo] = useState<string>('')
     const [error, resetError] = useErrorBoundary(
         (error, errorInfo) => console.error(error, errorInfo)
     );
+    const mainArea = useRef<HTMLDivElement>(null);
 
 
     function onLoadHandler() {
-        AutoInit();
-        FormSelect.init(document.querySelectorAll('select'), {
-            dropdownOptions: {
-                container: document.body
-            }
-        });
         ws.subscribe<MainHealth>('heartbeat', (data) => {
             //console.log("Got heartbeat", data)
             setStatus(data);
@@ -60,22 +85,10 @@ export function Page() {
     }
 
     return <ModeContext.Provider value={status}>
-        <div onLoad={onLoadHandler} className="row" style={{ marginTop: "50px" }}>
-
-            {createPortal(
-                <NavBar error={errorInfo} />,
-                document.getElementById('navbar')!
-            )}
-            {createPortal(
-                <Footer />,
-                document.getElementById('footer')!
-            )}
-            {/*props.message*/}
-            <div id="shares" className="col s12"><Shares /></div>
-            <div id="volumes" className="col s12"><Volumes /></div>
-            <div id="users" className="col s12"><Users /></div>
-            <div id="settings" className="col s12"><Settings /></div>
-            <div id="smbconf" className="col s12"><SmbConf /></div>
-        </div>
+        <Container onLoad={onLoadHandler} maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
+            <NavBar error={errorInfo} bodyRef={mainArea} />
+            <div ref={mainArea} className="fullBody"></div>
+            <Footer />
+        </Container>
     </ModeContext.Provider>
 }

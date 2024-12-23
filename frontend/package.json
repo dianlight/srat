@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2024.12.1-alpha.0",
+  "version": "v2024.12.1-alpha.1",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -23,24 +23,29 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/semver": "^7.5.8",
     "bun-copy-plugin": "^0.2.1",
-    "semver": "^7.6.3",
     "swagger-typescript-api": "^13.0.23"
   },
   "peerDependencies": {
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "@materializecss/materialize": "^2.1.1",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@fontsource/roboto": "^5.1.0",
+    "@mui/icons-material": "^6.2.1",
+    "@mui/material": "^6.2.1",
     "@octokit/rest": "^21.0.2",
     "axios": "^1.7.9",
+    "material-ui-confirm": "^3.0.16",
+    "mui-chips-input": "^4.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-hook-form": "^7.54.1",
+    "react-hook-form": "^7.54.2",
+    "react-hook-form-mui": "^7.4.1",
     "react-intersection-observer": "^9.14.0",
-    "react-responsive": "^10.0.0",
-    "react-social-icons": "^6.18.0",
     "react-syntax-highlighter": "^15.6.1",
     "react-use-error-boundary": "^3.0.0",
+    "semver": "^7.6.3",
     "swr": "^2.2.5",
     "uuid": "^11.0.3"
   },
@@ -53,8 +58,5 @@
     "dev": "bun --watch run bun.build.ts -w -s ./out",
     "dev:remote": "bun --watch run bun.build.ts -w -s ./out -c http://192.168.0.250:3000/",
     "swagger": "sta -p ../backend/src/docs/swagger.json -o ./src -n srat.ts --axios"
-  },
-  "patchedDependencies": {
-    "@materializecss/materialize@2.1.1": "patches/@materializecss%2Fmaterialize@2.1.1.patch"
   }
 }
