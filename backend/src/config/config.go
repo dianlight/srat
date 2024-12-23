@@ -118,17 +118,17 @@ func MigrateConfig(in *Config) *Config {
 		log.Printf("Migrating config from version 1 to version 2")
 		in.ConfigSpecVersion = 2
 		for shareName, share := range in.Shares {
+			share.Name = shareName
 			i := slices.IndexFunc(in.ACL, func(a OptionsAcl) bool { return a.Share == shareName })
 			if i > -1 {
 
 				//share.OptionsAcl = OptionsAcl{}
 				//log.Printf("ACL found for share %v", in.ACL[i])
 				copier.Copy(&share, &in.ACL[i])
-				share.Name = shareName
 				//log.Printf("ACL found for dest %v", share)
 				in.ACL = slices.Delete(in.ACL, i, i+1)
-				in.Shares[shareName] = share
 			}
+			in.Shares[shareName] = share
 		}
 		//log.Printf("Shares %v", in.Shares)
 	}
