@@ -2,7 +2,7 @@
 	"name": "SRAT",
 	"image": "ghcr.io/hassio-addons/base:17.0.0",
 	"runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined","--privileged" ],
-	"postCreateCommand": "./.devcontainer/postCreateCommand.sh",
+	"updateContentCommand": "./.devcontainer/postCreateCommand.sh",
 	"portsAttributes": {
 		"3000": {
 			"label": "Backend",
@@ -39,9 +39,16 @@
 				"ms-vscode.makefile-tools",
 				"github.vscode-github-actions",
 				"esbenp.prettier-vscode",
-				"GitHub.copilot",
-				"mortenson.go-template-transpiler-extension"
+				"mortenson.go-template-transpiler-extension",
+				"TabNine.tabnine-vscode"
 			]		
 		}
+	},
+	"features": {
+		"ghcr.io/cirolosapio/devcontainers-features/alpine-docker-outside-of-docker:0": {
+			"installDockerCompose": true
+		},
+		"ghcr.io/cirolosapio/devcontainers-features/alpine-gh-cli:0": {},
+		"ghcr.io/cirolosapio/devcontainers-features/alpine-jq:0": {}
 	}
 }
