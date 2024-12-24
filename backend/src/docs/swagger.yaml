@@ -141,6 +141,8 @@ definitions:
         type: boolean
       read_only:
         type: boolean
+      samba_pid:
+        type: integer
     type: object
   main.ResponseError:
     properties:
@@ -199,6 +201,29 @@ definitions:
       wwn:
         description: Alignment  int    `json:"alignment"`
         type: string
+    type: object
+  main.SambaProcessStatus:
+    properties:
+      connections:
+        type: integer
+      cpu_percent:
+        type: number
+      create_time:
+        type: string
+      is_running:
+        type: boolean
+      memory_percent:
+        type: number
+      name:
+        type: string
+      open_files:
+        type: integer
+      pid:
+        type: integer
+      status:
+        items:
+          type: string
+        type: array
     type: object
   main.Volume:
     properties:
@@ -433,14 +458,14 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get the generated samba config
+      description: Get the current samba process status
       produces:
-      - plain/text
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            type: string
+            $ref: '#/definitions/main.SambaProcessStatus'
         "400":
           description: Bad Request
           schema:
@@ -449,7 +474,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/main.ResponseError'
-      summary: Get the generated samba config
+      summary: Get the current samba process status
       tags:
       - samba
   /samba/apply:

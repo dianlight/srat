@@ -10,8 +10,9 @@ import (
 )
 
 type Health struct {
-	Alive    bool `json:"alive"`
-	ReadOnly bool `json:"read_only"`
+	Alive    bool  `json:"alive"`
+	ReadOnly bool  `json:"read_only"`
+	Samba    int32 `json:"samba_pid"`
 }
 
 // HealthCheckHandler godoc
@@ -27,9 +28,16 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	// A very simple health check.
 	w.Header().Set("Content-Type", "application/json")
 
+	sambaProcess, err := GetSambaProcess()
+	var sambaPID int32
+	if err == nil && sambaProcess != nil {
+		sambaPID = int32(sambaProcess.Pid)
+	}
+
 	jsonResponse, jsonError := json.Marshal(&Health{
 		Alive:    true,
 		ReadOnly: *data.ROMode,
+		Samba:    sambaPID,
 	})
 
 	if jsonError != nil {
@@ -44,10 +52,16 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 
 func HealthCheckWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	for {
+		sambaProcess, err := GetSambaProcess()
+		var sambaPID int32
+		if err == nil && sambaProcess != nil {
+			sambaPID = int32(sambaProcess.Pid)
+		}
+
 		var message WebSocketMessageEnvelope = WebSocketMessageEnvelope{
 			Event: "heartbeat",
 			Uid:   request.Uid,
-			Data:  Health{Alive: true, ReadOnly: *data.ROMode},
+			Data:  Health{Alive: true, ReadOnly: *data.ROMode, Samba: sambaPID},
 		}
 		c <- &message
 		time.Sleep(5 * time.Second)

@@ -171,6 +171,7 @@ func main() {
 	// Samba
 	globalRouter.HandleFunc("/samba", getSambaConfig).Methods(http.MethodGet, http.MethodOptions)
 	globalRouter.HandleFunc("/samba/apply", applySamba).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/samba/status", getSambaProcessStatus).Methods(http.MethodGet, http.MethodOptions)
 
 	// Global
 	globalRouter.HandleFunc("/global", getGlobalConfig).Methods(http.MethodGet, http.MethodOptions)
