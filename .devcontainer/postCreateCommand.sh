@@ -1,6 +1,6 @@
 #!/bin/bash
 
-apk add  --no-cache go git make lsblk eudev gcc musl-dev linux-headers
+apk add  --no-cache go git make lsblk eudev gcc musl-dev linux-headers samba
 
 #bun
 curl -fsSL https://bun.sh/install | bash 
