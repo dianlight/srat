@@ -69,7 +69,9 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     const octokit = useContext(GithubContext);
     const { mode, setMode } = useColorScheme();
     const [update, setUpdate] = useState<string | undefined>()
-    const [value, setValue] = useState(0);
+    const [value, setValue] = useState(() => {
+        return Number.parseInt(localStorage.getItem("srat_tab") || "0");
+    });
 
     if (!mode) {
         return null;
@@ -77,6 +79,8 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
         setValue(newValue);
+        localStorage.setItem("srat_tab", "" + newValue)
+
     };
 
     useEffect(() => {
