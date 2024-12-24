@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/dianlight/srat/config"
@@ -68,7 +69,27 @@ func applySamba(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		// TODO: Send signal to restart samba
+
+		// Check samba configuration with exec testparm -s
+		cmd := exec.Command("testparm", "-s", *smbConfigFile)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Printf("Error executing testparm: %v\nOutput: %s", err, out)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		// Exec smbcontrol smbd reload-config
+		cmdr := exec.Command("smbcontrol", "smbd", "reload-config")
+		err = cmdr.Run()
+		if err != nil {
+			log.Printf("Error executing smbcontrol: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
