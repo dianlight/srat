@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "v2024.12.1-alpha.1",
+  "version": "v2024.12.1-alpha.2",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
