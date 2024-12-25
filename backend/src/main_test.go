@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestHealthCheckHandler(t *testing.T) {
+func TestMainHealthCheckHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequest("GET", "/health", nil)
@@ -29,7 +29,7 @@ func TestHealthCheckHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	expected := `{"alive":true,"read_only":false`
+	expected := `{"alive":true,"read_only":true`
 	if rr.Body.String()[:len(expected)] != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), expected)

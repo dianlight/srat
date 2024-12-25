@@ -33,9 +33,9 @@ func TestGetGlobalConfigHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	expected := `{"workgroup":"WORKGROUP","mountoptions":["nosuid","relatime","noexec"],"allow_hosts":["10.0.0.0/8","100.0.0.0/8","172.16.0.0/12","192.168.0.0/16","169.254.0.0/16","fe80::/10","fc00::/7"],"veto_files":["._*",".DS_Store","Thumbs.db","icon?",".Trashes"],"compatibility_mode":false,"recyle_bin_enabled":false,"interfaces":["wlan0","end0"],"bind_all_interfaces":true,"log_level":"","multi_channel":false}`
+	expected := `{"workgroup":"WORKGROUP","mountoptions":["nosuid","relatime","noexec"],"allow_hosts":["10.0.0.0/8","100.0.0.0/8","172.16.0.0/12","192.168.0.0/16","169.254.0.0/16","fe80::/10","fc00::/7"],"veto_files":["._*",".DS_Store","Thumbs.db","icon?",".Trashes"],"compatibility_mode":false,"recyle_bin_enabled":false,"interfaces":["wlan0","end0"],"bind_all_interfaces":true,"log_level":"","multi_channel":false,"update_channel":"stable"}`
 	if rr.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
+		t.Errorf("handler returned unexpected body: go\n %v want\n %v",
 			rr.Body.String(), expected)
 	}
 }

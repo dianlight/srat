@@ -56,7 +56,7 @@ export function App() {
 
     function onLoadHandler() {
         ws.subscribe<MainHealth>('heartbeat', (data) => {
-            //console.log("Got heartbeat", data)
+            console.log("Got heartbeat", data)
             setStatus(data);
         })
         ws.onError((event) => {
@@ -86,7 +86,7 @@ export function App() {
 
     return <ModeContext.Provider value={status}>
         <Container onLoad={onLoadHandler} maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
-            <NavBar error={errorInfo} bodyRef={mainArea} />
+            <NavBar healthData={status} error={errorInfo} bodyRef={mainArea} />
             <div ref={mainArea} className="fullBody"></div>
             <Footer healthData={status} />
         </Container>

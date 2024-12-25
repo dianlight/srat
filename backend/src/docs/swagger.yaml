@@ -26,6 +26,16 @@ definitions:
     additionalProperties:
       $ref: '#/definitions/config.Share'
     type: object
+  config.UpdateChannel:
+    enum:
+    - stable
+    - prerelease
+    - none
+    type: string
+    x-enum-varnames:
+    - Stable
+    - Prerelease
+    - None
   config.User:
     properties:
       password:
@@ -128,6 +138,8 @@ definitions:
         type: boolean
       recyle_bin_enabled:
         type: boolean
+      update_channel:
+        $ref: '#/definitions/config.UpdateChannel'
       veto_files:
         items:
           type: string
@@ -139,6 +151,8 @@ definitions:
     properties:
       alive:
         type: boolean
+      last_release:
+        type: string
       read_only:
         type: boolean
       samba_pid:

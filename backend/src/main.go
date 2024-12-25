@@ -213,6 +213,8 @@ func main() {
 		Handler:      loggedRouter, // Pass our instance of gorilla/mux in.
 	}
 
+	// Run the backgrounde services
+	go HealthDataRefeshHandlers()
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
 		log.Printf("Starting Server... \n Swagger At: http://localhost:%d/swagger/index.html", *http_port)

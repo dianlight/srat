@@ -22,6 +22,12 @@ export interface ConfigShare {
 
 export type ConfigShares = Record<string, ConfigShare>;
 
+export enum ConfigUpdateChannel {
+  Stable = "stable",
+  Prerelease = "prerelease",
+  None = "none",
+}
+
 export interface ConfigUser {
   password?: string;
   username?: string;
@@ -72,12 +78,14 @@ export interface MainGlobalConfig {
   mountoptions?: string[];
   multi_channel?: boolean;
   recyle_bin_enabled?: boolean;
+  update_channel?: ConfigUpdateChannel;
   veto_files?: string[];
   workgroup?: string;
 }
 
 export interface MainHealth {
   alive?: boolean;
+  last_release?: string;
   read_only?: boolean;
   samba_pid?: number;
 }

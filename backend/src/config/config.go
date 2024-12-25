@@ -22,18 +22,24 @@ type Share struct {
 
 type Shares map[string]Share
 
+type UpdateChannel string
+
+const (
+	Stable     UpdateChannel = "stable"
+	Prerelease UpdateChannel = "prerelease"
+	None       UpdateChannel = "none"
+)
+
 const CURRENT_CONFIG_VERSION = 3
 
 type Config struct {
 	ConfigSpecVersion int8 `json:"version,omitempty,default=0"`
 	Options
-	Shares Shares `json:"shares"`
-	// "_interfaces":["eth0","eth1"],
-	DockerInterface string `json:"docker_interface"`
-	DockerNet       string `json:"docker_net"`
-	// "_moredisks":["mnt/EFI","mnt/LIBRARY","mnt/Updater"],
-	// Redefinitions and new config elements
-	Users []User `json:"users"`
+	Shares          Shares        `json:"shares"`
+	DockerInterface string        `json:"docker_interface"`
+	DockerNet       string        `json:"docker_net"`
+	Users           []User        `json:"users"`
+	UpdateChannel   UpdateChannel `json:"update_channel"`
 }
 
 func ReadConfig(file string) *Config {
@@ -105,13 +111,15 @@ func MigrateConfig(in *Config) *Config {
 	if in.ConfigSpecVersion == 0 {
 		log.Printf("Migrating config from version 0 to version 1")
 		in.ConfigSpecVersion = 1
+		in.UpdateChannel = Stable
 		for _, share := range []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"} {
 			_, ok := in.Shares[share]
 			if !ok {
 				in.Shares[share] = Share{Path: "/" + share, FS: "native", Disabled: false, Usage: "native"}
-				log.Printf("Added share: %s", share)
+				//log.Printf("Added share: %s", share)
 			}
 		}
+		//log.Println(pretty.Sprintf("Migrated config: %+v", in))
 	}
 	// From version 1 to version 2 - ACL in Share object
 	if in.ConfigSpecVersion == 1 {

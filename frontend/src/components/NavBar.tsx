@@ -64,7 +64,7 @@ function TabPanel(props: TabPanelProps) {
     );
 }
 
-export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null> }) {
+export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null>, healthData: MainHealth }) {
     const healt = useContext(ModeContext);
     const octokit = useContext(GithubContext);
     const { mode, setMode } = useColorScheme();
@@ -83,28 +83,20 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
     };
 
+    const current = pkg.version;
+    //console.log("Latest version", props.healthData?.last_release, "Current version", current)
+
+    // Normalize Version Strings
+    const currentVersion = semver.clean(current.replace(".dev", "-dev")) || "0.0.0"
+    const latestVersion = semver.clean((props.healthData?.last_release || "0.0.0").replace(".dev", "-dev")) || "0.0.0"
+
+    if (props.healthData?.last_release && update !== props.healthData.last_release && semver.compare(latestVersion, currentVersion) == 1) {
+        setUpdate(props.healthData.last_release)
+    }
+
     useEffect(() => {
-        // Rate Limit Exceltion! - move to backend!
-        /*
-        octokit.rest.repos.getLatestRelease({
-            owner: pkg.repository.owner,
-            repo: pkg.repository.name
-        }).then((res) => {
-            const latest = res.data.tag_name;
-            const current = pkg.version;
-            console.log("Latest version", latest, "Current version", current)
 
-            if (semver.compare(latest, current) == 1) {
-                setUpdate(latest)
-            }
-        }).catch(err => {
-            if (err.status != 403) {
-                console.error("Error checking for updates", err)
-            }
-        })
-        */
     }, [])
-
 
     return (<>
         <AppBar position="static">

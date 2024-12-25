@@ -5,22 +5,26 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/jinzhu/copier"
+	"golang.org/x/time/rate"
 )
 
 type GlobalConfig struct {
-	Workgroup         string   `json:"workgroup"`
-	Mountoptions      []string `json:"mountoptions"`
-	AllowHost         []string `json:"allow_hosts"`
-	VetoFiles         []string `json:"veto_files"`
-	CompatibilityMode bool     `json:"compatibility_mode"`
-	EnableRecycleBin  bool     `json:"recyle_bin_enabled"`
-	Interfaces        []string `json:"interfaces"`
-	BindAllInterfaces bool     `json:"bind_all_interfaces"`
-	LogLevel          string   `json:"log_level"`
-	MultiChannel      bool     `json:"multi_channel"`
+	Workgroup         string               `json:"workgroup"`
+	Mountoptions      []string             `json:"mountoptions"`
+	AllowHost         []string             `json:"allow_hosts"`
+	VetoFiles         []string             `json:"veto_files"`
+	CompatibilityMode bool                 `json:"compatibility_mode"`
+	EnableRecycleBin  bool                 `json:"recyle_bin_enabled"`
+	Interfaces        []string             `json:"interfaces"`
+	BindAllInterfaces bool                 `json:"bind_all_interfaces"`
+	LogLevel          string               `json:"log_level"`
+	MultiChannel      bool                 `json:"multi_channel"`
+	UpdateChannel     config.UpdateChannel `json:"update_channel"`
 }
 
 // UpdateGlobalConfig godoc
@@ -50,14 +54,17 @@ func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	//pretty.Logf("1res: %v", data.Config.Options)
 
 	copier.CopyWithOption(&data.Config.Options, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	copier.CopyWithOption(&data.Config, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 	//mergo.MapWithOverwrite(&data.Config.Options, globalConfig)
 	//pretty.Logf("2res: %v", data.Config.Options)
 
+	var retglobalConfig GlobalConfig = GlobalConfig{}
 	// Recheck the config
-	copier.CopyWithOption(&globalConfig, &data.Config.Options, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	copier.CopyWithOption(&retglobalConfig, &data.Config.Options, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	copier.CopyWithOption(&retglobalConfig, &data.Config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 	//mergo.MapWithOverwrite(&globalConfig, data.Config)
 
-	jsonResponse, jsonError := json.Marshal(globalConfig)
+	jsonResponse, jsonError := json.Marshal(retglobalConfig)
 
 	if jsonError != nil {
 		log.Println("Unable to encode JSON")
@@ -66,6 +73,7 @@ func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Write(jsonResponse)
+		UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 	}
 
 }
@@ -87,6 +95,7 @@ func getGlobalConfig(w http.ResponseWriter, _ *http.Request) {
 	var globalConfig GlobalConfig
 
 	copier.CopyWithOption(&globalConfig, &data.Config.Options, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	copier.CopyWithOption(&globalConfig, &data.Config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 	//mergo.MapWithOverwrite(&globalConfig, data.Config.Options)
 
 	jsonResponse, jsonError := json.Marshal(globalConfig)
