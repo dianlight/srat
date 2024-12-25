@@ -7,7 +7,7 @@ import Grid from "@mui/material/Grid2";
 import Button from "@mui/material/Button";
 import useSWR from "swr";
 import type { ConfigUser, MainGlobalConfig } from "../srat";
-import { AutocompleteElement, CheckboxElement, TextFieldElement } from "react-hook-form-mui";
+import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement } from "react-hook-form-mui";
 import { MuiChipsInput } from 'mui-chips-input'
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
@@ -36,6 +36,26 @@ export function Settings() {
             <Stack spacing={2}>
                 <form id="settingsform" onSubmit={handleSubmit(handleCommit)} noValidate>
                     <Grid container spacing={2}>
+                        <Grid size={4}>
+                            <SelectElement label="Update Channel" name="update_channel"
+                                options={[
+                                    {
+                                        id: 'none',
+                                        label: 'No Update',
+                                    },
+                                    {
+                                        id: 'stable',
+                                        label: 'Stable Release',
+                                    },
+                                    {
+                                        id: 'prerelease',
+                                        label: 'Beta Release',
+                                    }
+                                ]} sx={{ display: "flex" }} control={control} />
+                        </Grid>
+                        <Grid size={12}>
+                            <Divider />
+                        </Grid>
                         <Grid size={4}>
                             <TextFieldElement sx={{ display: "flex" }} name="workgroup" label="Workgroup" required control={control} disabled={mode.read_only} />
                         </Grid>
