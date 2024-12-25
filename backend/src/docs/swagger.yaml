@@ -458,14 +458,14 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get the current samba process status
+      description: Get the generated samba config
       produces:
-      - application/json
+      - plain/text
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.SambaProcessStatus'
+            type: string
         "400":
           description: Bad Request
           schema:
@@ -474,7 +474,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/main.ResponseError'
-      summary: Get the current samba process status
+      summary: Get the generated samba config
       tags:
       - samba
   /samba/apply:
@@ -496,6 +496,29 @@ paths:
           schema:
             $ref: '#/definitions/main.ResponseError'
       summary: Write the samba config and send signal ro restart
+      tags:
+      - samba
+  /samba/status:
+    get:
+      consumes:
+      - application/json
+      description: Get the current samba process status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.SambaProcessStatus'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Get the current samba process status
       tags:
       - samba
   /share:

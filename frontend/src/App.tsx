@@ -88,7 +88,7 @@ export function App() {
         <Container onLoad={onLoadHandler} maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
             <NavBar error={errorInfo} bodyRef={mainArea} />
             <div ref={mainArea} className="fullBody"></div>
-            <Footer />
+            <Footer healthData={status} />
         </Container>
     </ModeContext.Provider>
 }

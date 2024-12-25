@@ -79,6 +79,7 @@ export interface MainGlobalConfig {
 export interface MainHealth {
   alive?: boolean;
   read_only?: boolean;
+  samba_pid?: number;
 }
 
 export interface MainResponseError {
@@ -112,6 +113,18 @@ export interface MainRootDevice {
   vendor?: string;
   /** Alignment  int    `json:"alignment"` */
   wwn?: string;
+}
+
+export interface MainSambaProcessStatus {
+  connections?: number;
+  cpu_percent?: number;
+  create_time?: string;
+  is_running?: boolean;
+  memory_percent?: number;
+  name?: string;
+  open_files?: number;
+  pid?: number;
+  status?: string[];
 }
 
 export interface MainVolume {
@@ -424,6 +437,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/samba/apply`,
         method: "PUT",
         type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * @description Get the current samba process status
+     *
+     * @tags samba
+     * @name StatusList
+     * @summary Get the current samba process status
+     * @request GET:/samba/status
+     */
+    statusList: (params: RequestParams = {}) =>
+      this.request<MainSambaProcessStatus, MainResponseError>({
+        path: `/samba/status`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
         ...params,
       }),
   };

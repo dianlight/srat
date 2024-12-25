@@ -108,21 +108,6 @@ func applySamba(w http.ResponseWriter, r *http.Request) {
 func getSambaConfig(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "plain/text")
 
-	var pid, err = GetSambaProcess()
-	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-	}
-
-	if pid != nil {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Samba is running"))
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Samba is not running"))
-	}
-
 	stream, err := createConfigStream()
 	if err != nil {
 		log.Fatal(err)
@@ -156,7 +141,7 @@ type SambaProcessStatus struct {
 //	@Success		200	{object}	SambaProcessStatus
 //	@Failure		400	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
-//	@Router			/samba [get]
+//	@Router			/samba/status [get]
 func getSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
