@@ -75,9 +75,11 @@ export function Volumes() {
                     <ListItemButton>
                         <ListItem
                             secondaryAction={!mode.read_only && <>
-                                <IconButton onClick={() => { setSelected(volume);/* setShowEdit(true) */ }} edge="end" aria-label="settings">
+                                {/*
+                                <IconButton onClick={() => { setSelected(volume);setShowEdit(true) }} edge="end" aria-label="settings">
                                     <SettingsIcon />
                                 </IconButton>
+                            */}
                                 <IconButton onClick={() => onSubmitEjectVolume(volume.device)} edge="end" aria-label="delete" disabled={!volume.lsbk?.rm}>
                                     <EjectIcon />
                                 </IconButton>
