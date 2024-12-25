@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"flag"
 	"fmt"
@@ -11,15 +10,18 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/jpillora/overseer"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	_ "github.com/dianlight/srat/docs"
+	"github.com/jpillora/overseer/fetcher"
 )
 
 var SRATVersion string
@@ -27,6 +29,12 @@ var options *config.Options
 var smbConfigFile *string
 var globalRouter *mux.Router
 var templateData []byte
+var optionsFile *string
+var configFile *string
+var http_port *int
+var templateFile *string
+var sambaConfigFile *string
+var wait time.Duration
 
 // Static files
 //
@@ -69,15 +77,13 @@ type ResponseError struct {
 // _host petstore.swagger.io
 // _BasePath /v2
 func main() {
-
-	optionsFile := flag.String("opt", "/data/options.json", "Addon Options json file")
-	configFile := flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
-	http_port := flag.Int("port", 8080, "Http Port on listen to")
-	templateFile := flag.String("template", "", "Template file")
-	smbConfigFile := flag.String("out", "", "Output file, if not defined output will be to console")
+	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
+	configFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
+	http_port = flag.Int("port", 8080, "Http Port on listen to")
+	templateFile = flag.String("template", "", "Template file")
+	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
 	data.ROMode = flag.Bool("ro", false, "Read only mode")
 
-	var wait time.Duration
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
 	flag.Usage = func() {
@@ -91,6 +97,21 @@ func main() {
 	}
 
 	flag.Parse()
+
+	data.UpdateFilePath = os.TempDir() + "/" + filepath.Base(os.Args[0])
+	log.Printf("Update file: %s\n", data.UpdateFilePath)
+
+	overseer.Run(overseer.Config{
+		Program: prog,
+		Address: fmt.Sprintf(":%d", *http_port),
+		Fetcher: &fetcher.File{
+			Path:     data.UpdateFilePath,
+			Interval: 1 * time.Second,
+		},
+	})
+}
+
+func prog(state overseer.State) {
 
 	log.Printf("SRAT: SambaNAS Rest Administration Interface\n")
 	log.Printf("SRAT Version: %s\n", SRATVersion)
@@ -205,7 +226,7 @@ func main() {
 	loggedRouter := handlers.LoggingHandler(os.Stdout, globalRouter)
 
 	srv := &http.Server{
-		Addr: fmt.Sprintf("0.0.0.0:%d", *http_port),
+		//Addr: fmt.Sprintf("%s:%d",state.Address, *http_port),
 		// Good practice to set timeouts to avoid Slowloris attacks.
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
@@ -217,8 +238,8 @@ func main() {
 	go HealthDataRefeshHandlers()
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
-		log.Printf("Starting Server... \n Swagger At: http://localhost:%d/swagger/index.html", *http_port)
-		if err := srv.ListenAndServe(); err != nil {
+		log.Printf("Starting Server... \n Swagger At: http://%s:%d/swagger/index.html", state.Address, *http_port)
+		if err := srv.Serve(state.Listener); err != nil {
 			log.Fatal(err)
 		}
 	}()
@@ -230,13 +251,14 @@ func main() {
 
 	// Block until we receive our signal.
 	<-c
+	log.Println("Shutting down server...")
 
 	// Create a deadline to wait for.
-	ctx, cancel := context.WithTimeout(context.Background(), wait)
-	defer cancel()
+	//ctx, cancel := context.WithTimeout(context.Background(), wait)
+	//defer cancel()
 	// Doesn't block if no connections, but will otherwise wait
 	// until the timeout deadline.
-	srv.Shutdown(ctx)
+	// srv.Shutdown(ctx)
 	// Optionally, you could run srv.Shutdown in a goroutine and block on
 	// <-ctx.Done() if your application should wait for other services
 	// to finalize based on context cancellation.
