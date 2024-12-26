@@ -270,11 +270,11 @@ func SharesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageE
 	log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
 	for {
 		smessage := &WebSocketMessageEnvelope{
-			Event: "shares",
+			Event: EventShare,
 			Uid:   request.Uid,
 			Data:  <-queue,
 		}
-		log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
+		//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
 		c <- smessage
 	}
 }

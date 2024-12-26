@@ -8,43 +8,27 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type EventType string
+
+const (
+	EventUpdate    EventType = "update"
+	EventHeartbeat EventType = "heartbeat"
+	EventShare     EventType = "share"
+	EventVolumes   EventType = "volumes"
+)
+
+var EventTypes = []string{
+	string(EventUpdate),
+	string(EventHeartbeat),
+	string(EventShare),
+	string(EventVolumes),
+}
+
 type WebSocketMessageEnvelope struct {
-	Event string `json:"event"`
-	Uid   string `json:"uid"`
-	Data  any    `json:"data"`
-	// Path      string `json:"path"`      // The name of the function. Can be a path or a method
-	// Method    string `json:"method"`    // Method if the path is a REST method
-	// Body      any    `json:"body"`      // The request body
-	// Subcriber string `json:"subcriber"` // The UID of the subcriber
+	Event EventType `json:"event"`
+	Uid   string    `json:"uid"`
+	Data  any       `json:"data"`
 }
-
-/*
-type newresponsewriter struct {
-	w      io.WriteCloser
-	buf    bytes.Buffer
-	code   int
-	header http.Header
-}
-
-func (rw *newresponsewriter) Header() http.Header {
-	return rw.header
-}
-
-func (rw *newresponsewriter) WriteHeader(statusCode int) {
-	rw.code = statusCode
-}
-
-func (rw *newresponsewriter) Write(data []byte) (int, error) {
-	return rw.buf.Write(data)
-}
-
-func (rw *newresponsewriter) Done() (int64, error) {
-	//	if rw.code > 0 {
-	//		rw.w.WriteHeader(rw.code)
-	//	}
-	return io.Copy(rw.w, &rw.buf)
-}
-*/
 
 var upgrader = websocket.Upgrader{} // use default options
 
@@ -76,9 +60,9 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 				log.Printf("Unable to encode JSON")
 				continue
 			}
-			if outmessage.Event != "heartbeat" {
-				log.Printf("send: %s %s", outmessage.Event, string(jsonResponse))
-			}
+			//if outmessage.Event != EventHeartbeat {
+			//	log.Printf("send: %s %s", outmessage.Event, string(jsonResponse))
+			//}
 			c.WriteMessage(websocket.TextMessage, []byte(jsonResponse))
 		}
 	}()
@@ -94,57 +78,37 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 		// Dispatcher
 
 		switch message.Event {
-		case "heartbeat":
+		case EventHeartbeat:
 			go HealthCheckWsHandler(message, outchan)
-		case "shares":
+		case EventShare:
 			go SharesWsHandler(message, outchan)
-		case "volumes":
+		case EventVolumes:
 			go VolumesWsHandler(message, outchan)
+		case EventUpdate:
+			go UpdateWsHandler(message, outchan)
 		default:
 			log.Printf("Unknown event: %s", message.Event)
 		}
+	}
+}
 
-		/*
-			var found mux.RouteMatch
-
-				jsonBody, jsonError := json.Marshal(message.Body)
-
-				if jsonError != nil {
-					fmt.Println("Unable to encode JSON")
-					continue
-				}
-		*/
-
-		/*
-			bogus_request := &http.Request{
-				Method: http.MethodGet,
-				URL: &url.URL{
-					Path: message.Event,
-				},
-				//	Body: io.NopCloser(strings.NewReader(string(jsonBody))),
-			}
-
-			log.Printf("Bogus request: %s", bogus_request.URL.Path)
-			log.Printf("Router: %s", globalRouter)
-			if globalRouter.Match(bogus_request, &found) {
-				writer, _ := c.NextWriter(websocket.TextMessage)
-				httpWriter := &newresponsewriter{
-					w:      writer,
-					header: http.Header{},
-				}
-				found.Route.GetHandler().ServeHTTP(
-					httpWriter,
-					bogus_request,
-				)
-			}
-		*/
-
-		/*
-			err = c.WriteMessage(mt, message)
-			if err != nil {
-				log.Println("write:", err)
-				break
-			}
-		*/
+// WSChannelEventsList godoc
+//
+//	@Summary		WSChannelEventsList
+//	@Description	Return a list of available WSChannel events
+//	@Tags			system
+//	@Produce		json
+//	@Success		200 {object}	[]EventType
+//	@Failure		500	{object}	string
+//	@Router			/events [get]
+func WSChannelEventsList(w http.ResponseWriter, rq *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	jsonResponse, jsonError := json.Marshal(EventTypes)
+	if jsonError != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(jsonError.Error()))
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonResponse)
 	}
 }

@@ -51,6 +51,10 @@ export function Footer(props: { healthData: MainHealth }) {
                         </Typography>
                     </Tooltip>
 
+                    <Tooltip title="Restart the server" arrow>
+                        <Typography onClick={() => api.restart.restartUpdate()} variant="caption">[R]</Typography>
+                    </Tooltip>
+
                 </Stack>
             </Container>
         </Paper>

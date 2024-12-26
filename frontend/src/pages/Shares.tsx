@@ -1,6 +1,6 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { apiContext, ModeContext, wsContext } from "../Contexts";
-import type { Api, ConfigShare, ConfigShares, ConfigUser } from "../srat";
+import { MainEventType, type Api, type ConfigShare, type ConfigShares, type ConfigUser } from "../srat";
 import { set, useForm } from "react-hook-form";
 import useSWR from "swr";
 import { InView } from "react-intersection-observer";
@@ -49,7 +49,7 @@ export function Shares() {
 
 
     useEffect(() => {
-        ws.subscribe<ConfigShares>('shares', (data) => {
+        ws.subscribe<ConfigShares>(MainEventType.EventShare, (data) => {
             console.log("Got shares", data)
             setStatus(data);
         })

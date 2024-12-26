@@ -1,6 +1,6 @@
 import { Fragment, useContext, useEffect, useState } from "react";
 import { apiContext, ModeContext, wsContext } from "../Contexts";
-import type { MainVolume } from "../srat";
+import { MainEventType, type MainVolume } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
@@ -27,7 +27,7 @@ export function Volumes() {
 
 
     useEffect(() => {
-        ws.subscribe<MainVolume[]>('volumes', (data) => {
+        ws.subscribe<MainVolume[]>(MainEventType.EventVolumes, (data) => {
             console.log("Got volumes", data)
             setStatus(data);
         })

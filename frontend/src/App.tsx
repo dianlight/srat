@@ -7,7 +7,7 @@ import { useContext, useRef, useState } from "react";
 import { Volumes } from "./pages/Volumes";
 import { SmbConf } from "./pages/SmbConf";
 import { ModeContext, wsContext } from "./Contexts";
-import type { MainHealth } from "./srat";
+import { MainEventType, type MainHealth, type MainSRATReleaseAsset } from "./srat";
 import { ErrorBoundaryContext, useErrorBoundary } from "react-use-error-boundary";
 import { Settings } from "./pages/Settings";
 import Container from "@mui/material/Container";
@@ -55,7 +55,7 @@ export function App() {
 
 
     function onLoadHandler() {
-        ws.subscribe<MainHealth>('heartbeat', (data) => {
+        ws.subscribe<MainHealth>(MainEventType.EventHeartbeat, (data) => {
             console.log("Got heartbeat", data)
             setStatus(data);
         })

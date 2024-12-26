@@ -3,7 +3,7 @@ import github from "../img/github.svg"
 import pkg from '../../package.json'
 import { useContext, useEffect, useRef, useState } from "react"
 import { apiContext, GithubContext, ModeContext, wsContext } from "../Contexts"
-import type { MainHealth } from "../srat"
+import { MainEventType, type MainHealth, type MainSRATReleaseAsset } from "../srat"
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -23,13 +23,14 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import { useColorScheme } from "@mui/material/styles"
 import AutoModeIcon from '@mui/icons-material/AutoMode';
 import semver from "semver"
-import { Tab, Tabs } from "@mui/material"
+import { CircularProgress, Tab, Tabs, type CircularProgressProps } from "@mui/material"
 import { createPortal } from "react-dom"
 import { Shares } from "../pages/Shares"
 import { SmbConf } from "../pages/SmbConf"
 import { Settings } from "../pages/Settings"
 import { Volumes } from "../pages/Volumes"
 import { Users } from "../pages/Users"
+import { green } from "@mui/material/colors"
 
 function a11yProps(index: number) {
     return {
@@ -42,6 +43,34 @@ interface TabPanelProps {
     children?: React.ReactNode;
     index: number;
     value: number;
+}
+
+function CircularProgressWithLabel(
+    props: CircularProgressProps & { value: number },
+) {
+    return (
+        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+            <CircularProgress variant="determinate" {...props} />
+            <Box
+                sx={{
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    right: 0,
+                    position: 'absolute',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
+            >
+                <Typography
+                    variant="caption"
+                    component="div"
+                    sx={{ color: 'text.secondary' }}
+                >{`${Math.round(props.value)}%`}</Typography>
+            </Box>
+        </Box>
+    );
 }
 
 function TabPanel(props: TabPanelProps) {
@@ -66,7 +95,9 @@ function TabPanel(props: TabPanelProps) {
 
 export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null>, healthData: MainHealth }) {
     const healt = useContext(ModeContext);
-    const octokit = useContext(GithubContext);
+    const [updateAssetStatus, setUpdateAssetStatus] = useState<MainSRATReleaseAsset>({});
+    const ws = useContext(wsContext);
+    const api = useContext(apiContext);
     const { mode, setMode } = useColorScheme();
     const [update, setUpdate] = useState<string | undefined>()
     const [value, setValue] = useState(() => {
@@ -83,15 +114,22 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
     };
 
+    function onLoadHandler() {
+        ws.subscribe<MainSRATReleaseAsset>(MainEventType.EventUpdate, (data) => {
+            console.log("Got update", data)
+            setUpdateAssetStatus(data);
+        })
+    }
+
     const current = pkg.version;
     //console.log("Latest version", props.healthData?.last_release, "Current version", current)
 
     // Normalize Version Strings
     const currentVersion = semver.clean(current.replace(".dev", "-dev")) || "0.0.0"
-    const latestVersion = semver.clean((props.healthData?.last_release || "0.0.0").replace(".dev", "-dev")) || "0.0.0"
+    const latestVersion = semver.clean((updateAssetStatus.last_release?.tag_name || "0.0.0").replace(".dev", "-dev")) || "0.0.0"
 
-    if (props.healthData?.last_release && update !== props.healthData.last_release && semver.compare(latestVersion, currentVersion) == 1) {
-        setUpdate(props.healthData.last_release)
+    if (updateAssetStatus.last_release && update !== latestVersion && semver.compare(latestVersion, currentVersion) == 1) {
+        setUpdate(latestVersion)
     }
 
     useEffect(() => {
@@ -99,7 +137,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     }, [])
 
     return (<>
-        <AppBar position="static">
+        <AppBar position="static" onLoad={onLoadHandler}>
             <Container maxWidth="xl">
                 <Toolbar disableGutters>
                     <img id="logo-container" className="brand-logo" alt="SRAT -- Samba Rest Adminitration Tool" src={logo} />
@@ -126,12 +164,25 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                 </Tooltip>
                             </IconButton>
                         }
-                        {update &&
-                            <IconButton>
+                        {update && updateAssetStatus.update_status == -1 &&
+                            <IconButton onClick={() => api.update.updateUpdate()}>
                                 <Tooltip title={`Update ${update} available`} arrow>
                                     <SystemSecurityUpdateIcon sx={{ color: 'white' }} />
                                 </Tooltip>
                             </IconButton>
+                        }
+                        {updateAssetStatus.update_status && updateAssetStatus.update_status != -1 &&
+                            <CircularProgressWithLabel
+                                value={updateAssetStatus.update_status}
+                                size={68}
+                                sx={{
+                                    color: green[500],
+                                    position: 'absolute',
+                                    top: -6,
+                                    left: -6,
+                                    zIndex: 1,
+                                }}
+                            />
                         }
                         <IconButton onClick={() => { mode == 'light' ? setMode('dark') : (mode == 'dark' ? setMode('system') : setMode('light')) }} >
                             <Tooltip title={`Switch Mode ${mode}`} arrow>

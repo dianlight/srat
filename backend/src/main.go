@@ -1,5 +1,7 @@
 package main
 
+//go:generate swag init --pd
+
 import (
 	"embed"
 	"flag"
@@ -163,8 +165,10 @@ func prog(state overseer.State) {
 		httpSwagger.DomID("swagger-ui"),
 	)).Methods(http.MethodGet)
 
-	// HealtCheck
+	// System
 	globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet, http.MethodOptions)
+	globalRouter.HandleFunc("/update", UpdateHandler).Methods(http.MethodPut, http.MethodOptions)
+	globalRouter.HandleFunc("/restart", RestartHandler).Methods(http.MethodPut, http.MethodOptions)
 
 	// Shares
 	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet, http.MethodOptions)
@@ -199,6 +203,7 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/global", updateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
 
 	// WebSocket
+	globalRouter.HandleFunc("/events", WSChannelEventsList).Methods(http.MethodGet, http.MethodOptions)
 	globalRouter.HandleFunc("/ws", WSChannelHandler)
 
 	// Static files
@@ -235,10 +240,10 @@ func prog(state overseer.State) {
 	}
 
 	// Run the backgrounde services
-	go HealthDataRefeshHandlers()
+	go HealthAndUpdateDataRefeshHandlers()
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
-		log.Printf("Starting Server... \n Swagger At: http://%s:%d/swagger/index.html", state.Address, *http_port)
+		log.Printf("Starting Server... \n Swagger At: http://localhost:%d/swagger/index.html", *http_port)
 		if err := srv.Serve(state.Listener); err != nil {
 			log.Fatal(err)
 		}

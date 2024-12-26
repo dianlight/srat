@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import type { MainEventType } from './srat';
 
 export interface WSMessage<T> {
     event: string
@@ -78,7 +79,7 @@ export class WSRouter {
         }
     }
 
-    subscribe<T>(event: 'heartbeat' | 'shares' | 'users' | 'volumes', cb: (data: T) => void) {
+    subscribe<T>(event: MainEventType, cb: (data: T) => void) {
         const type: T = {} as T;
         const uuid = uuidv4();
         this.subcribers.set(uuid, {

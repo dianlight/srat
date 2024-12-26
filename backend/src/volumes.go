@@ -458,11 +458,11 @@ func VolumesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessage
 	go VolumesEventHandler()
 	for {
 		smessage := &WebSocketMessageEnvelope{
-			Event: "volumes",
+			Event: EventVolumes,
 			Uid:   request.Uid,
 			Data:  <-queue,
 		}
-		log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
+		//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
 		c <- smessage
 	}
 }

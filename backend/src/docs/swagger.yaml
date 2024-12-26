@@ -43,6 +43,457 @@ definitions:
       username:
         type: string
     type: object
+  github.Match:
+    properties:
+      indices:
+        items:
+          type: integer
+        type: array
+      text:
+        type: string
+    type: object
+  github.Organization:
+    properties:
+      advanced_security_enabled_for_new_repositories:
+        description: AdvancedSecurityAuditLogEnabled toggles whether the advanced
+          security audit log is enabled.
+        type: boolean
+      avatar_url:
+        type: string
+      billing_email:
+        type: string
+      blog:
+        type: string
+      collaborators:
+        type: integer
+      company:
+        type: string
+      created_at:
+        $ref: '#/definitions/github.Timestamp'
+      default_repository_permission:
+        description: |-
+          DefaultRepoPermission can be one of: "read", "write", "admin", or "none". (Default: "read").
+          It is only used in OrganizationsService.Edit.
+        type: string
+      default_repository_settings:
+        description: |-
+          DefaultRepoSettings can be one of: "read", "write", "admin", or "none". (Default: "read").
+          It is only used in OrganizationsService.Get.
+        type: string
+      dependabot_alerts_enabled_for_new_repositories:
+        description: DependabotAlertsEnabled toggles whether dependabot alerts are
+          enabled.
+        type: boolean
+      dependabot_security_updates_enabled_for_new_repositories:
+        description: DependabotSecurityUpdatesEnabled toggles whether dependabot security
+          updates are enabled.
+        type: boolean
+      dependency_graph_enabled_for_new_repositories:
+        description: DependabotGraphEnabledForNewRepos toggles whether dependabot
+          graph is enabled on new repositories.
+        type: boolean
+      description:
+        type: string
+      disk_usage:
+        type: integer
+      email:
+        type: string
+      events_url:
+        type: string
+      followers:
+        type: integer
+      following:
+        type: integer
+      has_organization_projects:
+        type: boolean
+      has_repository_projects:
+        type: boolean
+      hooks_url:
+        type: string
+      html_url:
+        type: string
+      id:
+        type: integer
+      is_verified:
+        type: boolean
+      issues_url:
+        type: string
+      location:
+        type: string
+      login:
+        type: string
+      members_allowed_repository_creation_type:
+        description: |-
+          MembersAllowedRepositoryCreationType denotes if organization members can create repositories
+          and the type of repositories they can create. Possible values are: "all", "private", or "none".
+
+          Deprecated: Use MembersCanCreatePublicRepos, MembersCanCreatePrivateRepos, MembersCanCreateInternalRepos
+          instead. The new fields overrides the existing MembersAllowedRepositoryCreationType during 'edit'
+          operation and does not consider 'internal' repositories during 'get' operation
+        type: string
+      members_can_create_internal_repositories:
+        type: boolean
+      members_can_create_pages:
+        description: MembersCanCreatePages toggles whether organization members can
+          create GitHub Pages sites.
+        type: boolean
+      members_can_create_private_pages:
+        description: MembersCanCreatePrivatePages toggles whether organization members
+          can create private GitHub Pages sites.
+        type: boolean
+      members_can_create_private_repositories:
+        type: boolean
+      members_can_create_public_pages:
+        description: MembersCanCreatePublicPages toggles whether organization members
+          can create public GitHub Pages sites.
+        type: boolean
+      members_can_create_public_repositories:
+        description: https://developer.github.com/changes/2019-12-03-internal-visibility-changes/#rest-v3-api
+        type: boolean
+      members_can_create_repositories:
+        description: MembersCanCreateRepos default value is true and is only used
+          in Organizations.Edit.
+        type: boolean
+      members_can_fork_private_repositories:
+        description: MembersCanForkPrivateRepos toggles whether organization members
+          can fork private organization repositories.
+        type: boolean
+      members_url:
+        type: string
+      name:
+        type: string
+      node_id:
+        type: string
+      owned_private_repos:
+        type: integer
+      plan:
+        $ref: '#/definitions/github.Plan'
+      private_gists:
+        type: integer
+      public_gists:
+        type: integer
+      public_members_url:
+        type: string
+      public_repos:
+        type: integer
+      repos_url:
+        type: string
+      secret_scanning_enabled_for_new_repositories:
+        description: SecretScanningEnabled toggles whether secret scanning is enabled
+          on new repositories.
+        type: boolean
+      secret_scanning_push_protection_enabled_for_new_repositories:
+        description: SecretScanningPushProtectionEnabledForNewRepos toggles whether
+          secret scanning push protection is enabled on new repositories.
+        type: boolean
+      secret_scanning_validity_checks_enabled:
+        description: SecretScanningValidityChecksEnabled toggles whether secret scanning
+          validity check is enabled.
+        type: boolean
+      total_private_repos:
+        type: integer
+      twitter_username:
+        type: string
+      two_factor_requirement_enabled:
+        type: boolean
+      type:
+        type: string
+      updated_at:
+        $ref: '#/definitions/github.Timestamp'
+      url:
+        description: API URLs
+        type: string
+      web_commit_signoff_required:
+        description: WebCommitSignoffRequire toggles
+        type: boolean
+    type: object
+  github.Plan:
+    properties:
+      collaborators:
+        type: integer
+      filled_seats:
+        type: integer
+      name:
+        type: string
+      private_repos:
+        type: integer
+      seats:
+        type: integer
+      space:
+        type: integer
+    type: object
+  github.ReleaseAsset:
+    properties:
+      browser_download_url:
+        type: string
+      content_type:
+        type: string
+      created_at:
+        $ref: '#/definitions/github.Timestamp'
+      download_count:
+        type: integer
+      id:
+        type: integer
+      label:
+        type: string
+      name:
+        type: string
+      node_id:
+        type: string
+      size:
+        type: integer
+      state:
+        type: string
+      updated_at:
+        $ref: '#/definitions/github.Timestamp'
+      uploader:
+        $ref: '#/definitions/github.User'
+      url:
+        type: string
+    type: object
+  github.RepositoryRelease:
+    properties:
+      assets:
+        items:
+          $ref: '#/definitions/github.ReleaseAsset'
+        type: array
+      assets_url:
+        type: string
+      author:
+        $ref: '#/definitions/github.User'
+      body:
+        type: string
+      created_at:
+        $ref: '#/definitions/github.Timestamp'
+      discussion_category_name:
+        type: string
+      draft:
+        type: boolean
+      generate_release_notes:
+        description: 'The following fields are not used in EditRelease:'
+        type: boolean
+      html_url:
+        type: string
+      id:
+        description: 'The following fields are not used in CreateRelease or EditRelease:'
+        type: integer
+      make_latest:
+        description: 'MakeLatest can be one of: "true", "false", or "legacy".'
+        type: string
+      name:
+        type: string
+      node_id:
+        type: string
+      prerelease:
+        type: boolean
+      published_at:
+        $ref: '#/definitions/github.Timestamp'
+      tag_name:
+        type: string
+      tarball_url:
+        type: string
+      target_commitish:
+        type: string
+      upload_url:
+        type: string
+      url:
+        type: string
+      zipball_url:
+        type: string
+    type: object
+  github.Team:
+    properties:
+      assignment:
+        description: |-
+          Assignment identifies how a team was assigned to an organization role. Its
+          possible values are: "direct", "indirect", "mixed". This is only populated when
+          calling the ListTeamsAssignedToOrgRole method.
+        type: string
+      description:
+        type: string
+      html_url:
+        type: string
+      id:
+        type: integer
+      ldap_dn:
+        description: |-
+          LDAPDN is only available in GitHub Enterprise and when the team
+          membership is synchronized with LDAP.
+        type: string
+      members_count:
+        type: integer
+      members_url:
+        type: string
+      name:
+        type: string
+      node_id:
+        type: string
+      organization:
+        $ref: '#/definitions/github.Organization'
+      parent:
+        $ref: '#/definitions/github.Team'
+      permission:
+        description: Permission specifies the default permission for repositories
+          owned by the team.
+        type: string
+      permissions:
+        additionalProperties:
+          type: boolean
+        description: |-
+          Permissions identifies the permissions that a team has on a given
+          repository. This is only populated when calling Repositories.ListTeams.
+        type: object
+      privacy:
+        description: |-
+          Privacy identifies the level of privacy this team should have.
+          Possible values are:
+              secret - only visible to organization owners and members of this team
+              closed - visible to all members of this organization
+          Default is "secret".
+        type: string
+      repos_count:
+        type: integer
+      repositories_url:
+        type: string
+      slug:
+        type: string
+      url:
+        type: string
+    type: object
+  github.TextMatch:
+    properties:
+      fragment:
+        type: string
+      matches:
+        items:
+          $ref: '#/definitions/github.Match'
+        type: array
+      object_type:
+        type: string
+      object_url:
+        type: string
+      property:
+        type: string
+    type: object
+  github.Timestamp:
+    properties:
+      time.Time:
+        type: string
+    type: object
+  github.User:
+    properties:
+      assignment:
+        description: |-
+          Assignment identifies how a user was assigned to an organization role. Its
+          possible values are: "direct", "indirect", "mixed". This is only populated when
+          calling the ListUsersAssignedToOrgRole method.
+        type: string
+      avatar_url:
+        type: string
+      bio:
+        type: string
+      blog:
+        type: string
+      collaborators:
+        type: integer
+      company:
+        type: string
+      created_at:
+        $ref: '#/definitions/github.Timestamp'
+      disk_usage:
+        type: integer
+      email:
+        type: string
+      events_url:
+        type: string
+      followers:
+        type: integer
+      followers_url:
+        type: string
+      following:
+        type: integer
+      following_url:
+        type: string
+      gists_url:
+        type: string
+      gravatar_id:
+        type: string
+      hireable:
+        type: boolean
+      html_url:
+        type: string
+      id:
+        type: integer
+      inherited_from:
+        allOf:
+        - $ref: '#/definitions/github.Team'
+        description: |-
+          InheritedFrom identifies the team that a user inherited their organization role
+          from. This is only populated when calling the ListUsersAssignedToOrgRole method.
+      ldap_dn:
+        type: string
+      location:
+        type: string
+      login:
+        type: string
+      name:
+        type: string
+      node_id:
+        type: string
+      organizations_url:
+        type: string
+      owned_private_repos:
+        type: integer
+      permissions:
+        additionalProperties:
+          type: boolean
+        description: |-
+          Permissions and RoleName identify the permissions and role that a user has on a given
+          repository. These are only populated when calling Repositories.ListCollaborators.
+        type: object
+      plan:
+        $ref: '#/definitions/github.Plan'
+      private_gists:
+        type: integer
+      public_gists:
+        type: integer
+      public_repos:
+        type: integer
+      received_events_url:
+        type: string
+      repos_url:
+        type: string
+      role_name:
+        type: string
+      site_admin:
+        type: boolean
+      starred_url:
+        type: string
+      subscriptions_url:
+        type: string
+      suspended_at:
+        $ref: '#/definitions/github.Timestamp'
+      text_matches:
+        description: |-
+          TextMatches is only populated from search results that request text matches
+          See: search.go and https://docs.github.com/rest/search/#text-match-metadata
+        items:
+          $ref: '#/definitions/github.TextMatch'
+        type: array
+      total_private_repos:
+        type: integer
+      twitter_username:
+        type: string
+      two_factor_authentication:
+        type: boolean
+      type:
+        type: string
+      updated_at:
+        $ref: '#/definitions/github.Timestamp'
+      url:
+        description: API URLs
+        type: string
+    type: object
   lsblk.Device:
     properties:
       children:
@@ -114,6 +565,18 @@ definitions:
         description: Alignment  int      `json:"alignment"`
         type: string
     type: object
+  main.EventType:
+    enum:
+    - update
+    - heartbeat
+    - share
+    - volumes
+    type: string
+    x-enum-varnames:
+    - EventUpdate
+    - EventHeartbeat
+    - EventShare
+    - EventVolumes
   main.GlobalConfig:
     properties:
       allow_hosts:
@@ -151,7 +614,7 @@ definitions:
     properties:
       alive:
         type: boolean
-      last_release:
+      last_error:
         type: string
       read_only:
         type: boolean
@@ -215,6 +678,15 @@ definitions:
       wwn:
         description: Alignment  int    `json:"alignment"`
         type: string
+    type: object
+  main.SRATReleaseAsset:
+    properties:
+      arch:
+        $ref: '#/definitions/github.ReleaseAsset'
+      last_release:
+        $ref: '#/definitions/github.RepositoryRelease'
+      update_status:
+        type: integer
     type: object
   main.SambaProcessStatus:
     properties:
@@ -370,6 +842,25 @@ paths:
       summary: Update admin user
       tags:
       - user
+  /events:
+    get:
+      description: Return a list of available WSChannel events
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.EventType'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: WSChannelEventsList
+      tags:
+      - system
   /global:
     get:
       consumes:
@@ -466,6 +957,21 @@ paths:
           schema:
             $ref: '#/definitions/main.ResponseError'
       summary: HealthCheck
+      tags:
+      - system
+  /restart:
+    put:
+      description: Restart the server ( useful in development )
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: RestartHandler
       tags:
       - system
   /samba:
@@ -735,6 +1241,23 @@ paths:
       summary: List all configured shares
       tags:
       - share
+  /update:
+    put:
+      description: Start the update process
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.SRATReleaseAsset'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: UpdateHandler
+      tags:
+      - system
   /user:
     post:
       consumes:
