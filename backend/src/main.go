@@ -117,6 +117,7 @@ func prog(state overseer.State) {
 
 	log.Printf("SRAT: SambaNAS Rest Administration Interface\n")
 	log.Printf("SRAT Version: %s\n", SRATVersion)
+	log.Printf("\nFlags: %v\n", os.Args)
 
 	// Check template file
 	if *templateFile == "" {
