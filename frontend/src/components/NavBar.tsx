@@ -116,7 +116,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
     function onLoadHandler() {
         ws.subscribe<MainSRATReleaseAsset>(MainEventType.EventUpdate, (data) => {
-            console.log("Got update", data)
+            // console.log("Got update", data)
             setUpdateAssetStatus(data);
         })
     }

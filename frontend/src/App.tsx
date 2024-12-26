@@ -56,7 +56,7 @@ export function App() {
 
     function onLoadHandler() {
         ws.subscribe<MainHealth>(MainEventType.EventHeartbeat, (data) => {
-            console.log("Got heartbeat", data)
+            // console.log("Got heartbeat", data)
             setStatus(data);
         })
         ws.onError((event) => {
