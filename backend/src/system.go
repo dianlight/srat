@@ -99,6 +99,7 @@ func HealthAndUpdateDataRefeshHandlers() {
 						break
 					}
 					log.Printf("Latest %s version is %s (Asset %s)", data.Config.UpdateChannel, *lastReleaseData.LastRelease.TagName, lastReleaseData.ArchAsset.GetName())
+					notifyUpdate()
 				} else {
 					log.Println("No Releases found")
 				}
@@ -232,7 +233,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//defer rc.Close()
-	tmpFile, err := os.OpenFile(data.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0644)
+	tmpFile, err := os.OpenFile(data.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
 		fmt.Printf("Error creating temporary file: %v\n", err)
 		w.WriteHeader(http.StatusInternalServerError)

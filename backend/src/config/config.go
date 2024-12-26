@@ -112,6 +112,9 @@ func MigrateConfig(in *Config) *Config {
 		log.Printf("Migrating config from version 0 to version 1")
 		in.ConfigSpecVersion = 1
 		in.UpdateChannel = Stable
+		if in.Shares == nil {
+			in.Shares = make(Shares)
+		}
 		for _, share := range []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"} {
 			_, ok := in.Shares[share]
 			if !ok {

@@ -110,6 +110,7 @@ func main() {
 			Path:     data.UpdateFilePath,
 			Interval: 1 * time.Second,
 		},
+		Debug: true,
 	})
 }
 
