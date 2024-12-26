@@ -68,9 +68,9 @@ export function Settings() {
                             />
                         </Grid>
                         <Grid size={4}>
-                            <CheckboxElement label="Compatibility Mode" name="compatibility_mode" control={control} disabled={mode.read_only} />
-                            <CheckboxElement label="Multi Channel Mode" name="multi_channel" control={control} disabled={mode.read_only} />
-                            <CheckboxElement label="RecycleBin" name="recyle_bin_enabled" control={control} disabled={mode.read_only} />
+                            <CheckboxElement id="compatibility_mode" label="Compatibility Mode" name="compatibility_mode" control={control} disabled={mode.read_only} />
+                            <CheckboxElement id="multi_channel" label="Multi Channel Mode" name="multi_channel" control={control} disabled={mode.read_only} />
+                            <CheckboxElement id="recyle_bin_enabled" label="RecycleBin" name="recyle_bin_enabled" control={control} disabled={mode.read_only} />
                         </Grid>
                         <Grid size={8}>
                             <Controller
@@ -81,7 +81,7 @@ export function Settings() {
                             />
                         </Grid>
                         <Grid size={4}>
-                            <CheckboxElement label="Bind All Interfaces" name="bind_all_interfaces" control={control} disabled={mode.read_only} />
+                            <CheckboxElement id="bind_all_interfaces" label="Bind All Interfaces" name="bind_all_interfaces" control={control} disabled={mode.read_only} />
                         </Grid>
                         <Grid size={8}>
                             <Controller
@@ -104,7 +104,7 @@ export function Settings() {
                     <Button type="submit" form="settingsform" disabled={!formState.isDirty}>Apply</Button>
                 </Stack>
             </Stack>
-            <DevTool control={control} /> {/* set up the dev tool */}
+            {/*   <DevTool control={control} />  set up the dev tool */}
         </InView >
     );
 }
