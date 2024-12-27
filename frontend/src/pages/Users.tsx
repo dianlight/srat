@@ -100,9 +100,9 @@ export function Users() {
         <InView>
             <UserEditDialog objectToEdit={selected} open={showEdit} onClose={(data) => { setSelected({}); onSubmitEditUser(data); setShowEdit(false) }} />
             {mode.read_only || <Fab key="fab_users" color="primary" aria-label="add" sx={{
-                position: 'fixed',
-                top: 70,
-                right: 16
+                float: 'right',
+                top: '-20px',
+                margin: '-8px'
             }} size="small"
                 onClick={() => { setSelected({ doCreate: true }); setShowEdit(true) }}
             >

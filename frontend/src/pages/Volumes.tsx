@@ -58,15 +58,15 @@ export function Volumes() {
     return <InView>
         <PreviewDialog title={selected?.label || ""} objectToDisplay={selected} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
         {mode.read_only || <Fab color="primary" aria-label="add" sx={{
-            position: 'fixed',
-            top: 70,
-            right: 16
+            float: 'right',
+            top: '-20px',
+            margin: '-8px'
         }} size="small"
             onClick={() => { setSelected(null); /*setShowEdit(true)*/ }}
         >
             <AddIcon />
         </Fab>}
-
+        <br />
         <List dense={true}>
             {status.filter((vol => vol.fstype !== 'erofs')).map((volume, idx) =>
                 <Fragment key={idx}>

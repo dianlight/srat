@@ -108,15 +108,16 @@ export function Shares() {
         <PreviewDialog title={selected ? selected[0] : ""} objectToDisplay={selected?.[1]} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
         <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[0] || "" }} open={showEdit} onClose={(data) => { setSelected(null); onSubmitEditShare(data); setShowEdit(false) }} />
         {mode.read_only || <Fab color="primary" aria-label="add" sx={{
-            position: 'fixed',
-            top: 70,
-            right: 16
+            float: 'right',
+            top: '-20px',
+            margin: '-8px'
+
         }} size="small"
             onClick={() => { setSelected(null); setShowEdit(true) }}
         >
             <AddIcon />
         </Fab>}
-
+        <br />
         <List dense={true}>
             {Object.entries(status).map(([share, props]) =>
                 <Fragment key={share}>
