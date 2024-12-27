@@ -1108,6 +1108,8 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/main.GlobalConfig'
+        "204":
+          description: No Content
         "400":
           description: Bad Request
           schema:
@@ -1137,6 +1139,8 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/main.GlobalConfig'
+        "204":
+          description: No Content
         "400":
           description: Bad Request
           schema:

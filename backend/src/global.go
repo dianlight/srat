@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/dianlight/srat/config"
@@ -29,17 +30,18 @@ type GlobalConfig struct {
 
 // UpdateGlobalConfig godoc
 //
-//	@Summary		Update the configuration for the global samba settings
-//	@Description	Update the configuration for the global samba settings
-//	@Tags			samba
-//	@Accept			json
-//	@Produce		json
-//	@Param			config	body	GlobalConfig	true	"Update model"
-//	@Success		200 {object}    GlobalConfig
-//	@Failure		400	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
-//	@Router			/global [put]
-//	@Router			/global [patch]
+//		@Summary		Update the configuration for the global samba settings
+//		@Description	Update the configuration for the global samba settings
+//		@Tags			samba
+//		@Accept			json
+//		@Produce		json
+//		@Param			config	body	GlobalConfig	true	"Update model"
+//		@Success		200 {object}    GlobalConfig
+//	 	@Success		204
+//		@Failure		400	{object}	ResponseError
+//		@Failure		500	{object}	ResponseError
+//		@Router			/global [put]
+//		@Router			/global [patch]
 func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -51,12 +53,20 @@ func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tmpConfig := config.Config{}
+	copier.CopyWithOption(&tmpConfig, &data.Config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+
 	//pretty.Logf("1res: %v", data.Config.Options)
 
-	copier.CopyWithOption(&data.Config.Options, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
-	copier.CopyWithOption(&data.Config, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
-	//mergo.MapWithOverwrite(&data.Config.Options, globalConfig)
-	//pretty.Logf("2res: %v", data.Config.Options)
+	copier.CopyWithOption(&tmpConfig.Options, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	copier.CopyWithOption(&tmpConfig, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+
+	if reflect.DeepEqual(data.Config, &tmpConfig) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	log.Printf("\n%v\n%v", data.Config, &tmpConfig)
+	copier.CopyWithOption(&data.Config, &tmpConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
 	var retglobalConfig GlobalConfig = GlobalConfig{}
 	data.DirtySectionState.Settings = true

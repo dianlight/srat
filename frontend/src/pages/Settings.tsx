@@ -1,13 +1,12 @@
-import { Controller, useForm } from "react-hook-form";
 import { DevTool } from "@hookform/devtools";
-import { useContext, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { apiContext, ModeContext } from "../Contexts";
 import { InView } from "react-intersection-observer";
 import Grid from "@mui/material/Grid2";
 import Button from "@mui/material/Button";
 import useSWR from "swr";
 import type { ConfigUser, MainGlobalConfig } from "../srat";
-import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement } from "react-hook-form-mui";
+import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement, useForm, Controller } from "react-hook-form-mui";
 import { MuiChipsInput } from 'mui-chips-input'
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
@@ -16,11 +15,12 @@ export function Settings() {
     const mode = useContext(ModeContext);
     const globalConfig = useSWR<MainGlobalConfig>('/global', () => apiContext.global.globalList().then(res => res.data));
     const { control, handleSubmit, reset, watch, formState } = useForm({
-        // mode: "onChange",
+        mode: "onBlur",
         values: globalConfig.data,
-        disabled: mode.read_only
+        disabled: mode.read_only,
     });
     const bindAllWatch = watch("bind_all_interfaces")
+    let timer: NodeJS.Timer | null = null;
 
     function handleCommit(data: MainGlobalConfig) {
         console.log(data);
@@ -29,6 +29,17 @@ export function Settings() {
             globalConfig.mutate()
         }).catch(err => console.log(err))
     }
+
+    useEffect(() => {
+        // if (!formState.isDirty) return;
+        // TypeScript users 
+        const subscription = watch(() => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(handleSubmit(handleCommit), 1000)
+        })
+        //const subscription = watch(handleSubmit(onSubmit));
+        return () => subscription.unsubscribe();
+    }, [handleSubmit, watch]);
 
     return (
         <InView>
@@ -92,6 +103,7 @@ export function Settings() {
                         </Grid>
                     </Grid>
                 </form>
+                {/*
                 <Divider />
                 <Stack direction="row"
                     spacing={2}
@@ -102,6 +114,7 @@ export function Settings() {
                     <Button onClick={() => reset()} disabled={!formState.isDirty}>Reset</Button>
                     <Button type="submit" form="settingsform" disabled={!formState.isDirty}>Apply</Button>
                 </Stack>
+                */}
             </Stack>
             {/*   <DevTool control={control} />  set up the dev tool */}
         </InView >
