@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { apiContext, ModeContext, wsContext } from "../Contexts";
+import { apiContext as api, ModeContext, wsContext as ws } from "../Contexts";
 import { MainEventType, type Api, type ConfigShare, type ConfigShares, type ConfigUser } from "../srat";
 import { set, useForm } from "react-hook-form";
 import useSWR from "swr";
@@ -36,13 +36,11 @@ interface ShareEditProps extends ConfigShare {
 
 
 export function Shares() {
-    const api = useContext(apiContext);
     const mode = useContext(ModeContext);
     const [status, setStatus] = useState<ConfigShares>({});
     const [selected, setSelected] = useState<[string, ConfigShare] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
-    const ws = useContext(wsContext);
     const [errorInfo, setErrorInfo] = useState<string>('')
     const formRef = useRef<HTMLFormElement>(null);
     const confirm = useConfirm();
@@ -155,7 +153,6 @@ export function Shares() {
 }
 
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
-    const api = useContext(apiContext);
     const admin = useSWR<ConfigUser>('/admin/user', () => api.admin.userList().then(res => res.data));
     const users = useSWR<ConfigUser[]>('/users', () => api.users.usersList().then(res => res.data));
     const [editName, setEditName] = useState(false);

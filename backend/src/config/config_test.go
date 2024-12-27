@@ -25,9 +25,18 @@ func TestReadConfigConsistency(t *testing.T) {
 	tempFile.Close()
 
 	// Call readConfig multiple times
-	config1 := ReadConfig(tempFile.Name())
-	config2 := ReadConfig(tempFile.Name())
-	config3 := ReadConfig(tempFile.Name())
+	config1, e1 := readConfigFile(tempFile.Name())
+	if e1 != nil {
+		t.Fatalf("Failed to read config: %v", e1)
+	}
+	config2, e2 := readConfigFile(tempFile.Name())
+	if e2 != nil {
+		t.Fatalf("Failed to read config: %v", e2)
+	}
+	config3, e3 := readConfigFile(tempFile.Name())
+	if e3 != nil {
+		t.Fatalf("Failed to read config: %v", e3)
+	}
 
 	// Compare the results
 	if !reflect.DeepEqual(config1, config2) || !reflect.DeepEqual(config2, config3) {

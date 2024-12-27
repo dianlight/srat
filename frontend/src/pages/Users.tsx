@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { apiContext, ModeContext, wsContext } from "../Contexts";
+import { apiContext as api, ModeContext, wsContext as ws } from "../Contexts";
 import type { Api, ConfigShare, ConfigShares, ConfigUser } from "../srat";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import useSWR from "swr";
@@ -23,13 +23,11 @@ interface UsersProps extends ConfigUser {
 }
 
 export function Users() {
-    const api = useContext(apiContext);
     const mode = useContext(ModeContext);
     const users = useSWR<UsersProps[]>('/users', () => api.users.usersList().then(res => res.data));
     const admin = useSWR<UsersProps>('/admin/user', () => api.admin.userList().then(res => res.data));
     const [errorInfo, setErrorInfo] = useState<string>('')
     const [selected, setSelected] = useState<UsersProps>({});
-    const ws = useContext(wsContext);
     const confirm = useConfirm();
     const [showEdit, setShowEdit] = useState<boolean>(false);
 
@@ -98,58 +96,58 @@ export function Users() {
             });
     }
 
-    return <InView>
-        <UserEditDialog objectToEdit={selected} open={showEdit} onClose={(data) => { setSelected({}); onSubmitEditUser(data); setShowEdit(false) }} />
-        {mode.read_only || <Fab color="primary" aria-label="add" sx={{
-            position: 'fixed',
-            top: 70,
-            right: 16
-        }} size="small"
-            onClick={() => { setSelected({ doCreate: true }); setShowEdit(true) }}
-        >
-            <PersonAddIcon />
-        </Fab>}
-
-        <List dense={true}>
-            {[{ ...admin.data, isAdmin: true }, ...users.data || []].map((user) =>
-                <Fragment key={user.username}>
-                    <ListItemButton>
-                        <ListItem
-                            secondaryAction={!mode.read_only && <>
-                                <IconButton onClick={() => { setSelected(user); setShowEdit(true) }} edge="end" aria-label="settings">
-                                    <ManageAccountsIcon />
-                                </IconButton>
-                                {user.isAdmin ||
-                                    <IconButton onClick={() => onSubmitDeleteUser(user)} edge="end" aria-label="delete">
-                                        <PersonRemoveIcon />
+    return (
+        <InView>
+            <UserEditDialog objectToEdit={selected} open={showEdit} onClose={(data) => { setSelected({}); onSubmitEditUser(data); setShowEdit(false) }} />
+            {mode.read_only || <Fab key="fab_users" color="primary" aria-label="add" sx={{
+                position: 'fixed',
+                top: 70,
+                right: 16
+            }} size="small"
+                onClick={() => { setSelected({ doCreate: true }); setShowEdit(true) }}
+            >
+                <PersonAddIcon />
+            </Fab>}
+            <List dense={true}>
+                {[{ ...admin.data, isAdmin: true }, ...users.data || []].map((user) =>
+                    <Fragment key={user.username || "admin"}>
+                        <ListItemButton>
+                            <ListItem
+                                secondaryAction={!mode.read_only && <>
+                                    <IconButton onClick={() => { setSelected(user); setShowEdit(true) }} edge="end" aria-label="settings">
+                                        <ManageAccountsIcon />
                                     </IconButton>
+                                    {user.isAdmin ||
+                                        <IconButton onClick={() => onSubmitDeleteUser(user)} edge="end" aria-label="delete">
+                                            <PersonRemoveIcon />
+                                        </IconButton>
+                                    }
+                                </>
                                 }
-                            </>
-                            }
-                        >
-                            <ListItemAvatar>
-                                <Avatar>
-                                    {user.isAdmin ?
-                                        <AdminPanelSettingsIcon /> :
-                                        <AssignmentIndIcon />}
+                            >
+                                <ListItemAvatar>
+                                    <Avatar>
+                                        {user.isAdmin ?
+                                            <AdminPanelSettingsIcon /> :
+                                            <AssignmentIndIcon />}
 
-                                </Avatar>
-                            </ListItemAvatar>
-                            <ListItemText
-                                primary={user.username}
-                            />
-                        </ListItem>
-                    </ListItemButton>
-                    <Divider component="li" />
-                </Fragment>
-            )}
-        </List>
-    </InView>
+                                    </Avatar>
+                                </ListItemAvatar>
+                                <ListItemText
+                                    primary={user.username}
+                                />
+                            </ListItem>
+                        </ListItemButton>
+                        <Divider component="li" />
+                    </Fragment>
+                )}
+            </List>
+        </InView>
+    )
 }
 
 function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => void, objectToEdit?: UsersProps }) {
     //const [isPassowrdVisible, setIsPasswordVisible] = useState(false);
-    const api = useContext(apiContext);
     //const admin = useSWR<ConfigUser>('/admin/user', () => api.admin.userList().then(res => res.data));
     //const users = useSWR<ConfigUser[]>('/users', () => api.users.usersList().then(res => res.data));
     const { control, handleSubmit, watch, formState: { errors } } = useForm<UsersProps>(

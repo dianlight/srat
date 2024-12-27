@@ -1,4 +1,141 @@
 definitions:
+  config.Config:
+    properties:
+      acl:
+        items:
+          $ref: '#/definitions/config.OptionsAcl'
+        type: array
+      allow_hosts:
+        items:
+          type: string
+        type: array
+      autodiscovery:
+        properties:
+          disable_autoremove:
+            type: boolean
+          disable_discovery:
+            type: boolean
+          disable_persistent:
+            type: boolean
+        type: object
+      automount:
+        type: boolean
+      available_disks_log:
+        type: boolean
+      bind_all_interfaces:
+        type: boolean
+      compatibility_mode:
+        type: boolean
+      currentFile:
+        type: string
+      docker_interface:
+        type: string
+      docker_net:
+        type: string
+      enable_smart:
+        type: boolean
+      hdd_idle_seconds:
+        type: integer
+      interfaces:
+        items:
+          type: string
+        type: array
+      log_level:
+        type: string
+      meaning_of_life:
+        type: string
+      medialibrary:
+        properties:
+          enable:
+            type: boolean
+          ssh_private_key:
+            type: string
+        type: object
+      moredisks:
+        items:
+          type: string
+        type: array
+      mountoptions:
+        items:
+          type: string
+        type: array
+      mqtt_enable:
+        type: boolean
+      mqtt_host:
+        type: string
+      mqtt_nexgen_entities:
+        type: boolean
+      mqtt_password:
+        type: string
+      mqtt_port:
+        type: string
+      mqtt_topic:
+        type: string
+      mqtt_username:
+        type: string
+      multi_channel:
+        type: boolean
+      other_users:
+        items:
+          $ref: '#/definitions/config.User'
+        type: array
+      password:
+        type: string
+      recyle_bin_enabled:
+        type: boolean
+      shares:
+        $ref: '#/definitions/config.Shares'
+      update_channel:
+        $ref: '#/definitions/config.UpdateChannel'
+      username:
+        type: string
+      users:
+        items:
+          $ref: '#/definitions/config.User'
+        type: array
+      version:
+        type: integer
+      veto_files:
+        items:
+          type: string
+        type: array
+      workgroup:
+        type: string
+      wsdd:
+        type: boolean
+      wsdd2:
+        type: boolean
+    type: object
+  config.ConfigSectionDirtySate:
+    properties:
+      settings:
+        type: boolean
+      shares:
+        type: boolean
+      users:
+        type: boolean
+      volumes:
+        type: boolean
+    type: object
+  config.OptionsAcl:
+    properties:
+      disabled:
+        type: boolean
+      ro_users:
+        items:
+          type: string
+        type: array
+      share:
+        type: string
+      timemachine:
+        type: boolean
+      usage:
+        type: string
+      users:
+        items:
+          type: string
+        type: array
+    type: object
   config.Share:
     properties:
       disabled:
@@ -571,12 +708,14 @@ definitions:
     - heartbeat
     - share
     - volumes
+    - dirty
     type: string
     x-enum-varnames:
     - EventUpdate
     - EventHeartbeat
     - EventShare
     - EventVolumes
+    - EventDirty
   main.GlobalConfig:
     properties:
       allow_hosts:
@@ -842,6 +981,73 @@ paths:
       summary: Update admin user
       tags:
       - user
+  /config:
+    delete:
+      consumes:
+      - application/json
+      description: Revert to the last saved samba config
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Config'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Rollback the current samba config
+      tags:
+      - samba
+    patch:
+      consumes:
+      - application/json
+      description: Save dirty changes to the disk
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Config'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Persiste the current samba config
+      tags:
+      - samba
+    put:
+      consumes:
+      - application/json
+      description: Save dirty changes to the disk
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Config'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Persiste the current samba config
+      tags:
+      - samba
   /events:
     get:
       description: Return a list of available WSChannel events
@@ -1518,6 +1724,8 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/config.ConfigSectionDirtySate'
         "405":
           description: Method Not Allowed
           schema:

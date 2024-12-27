@@ -2,7 +2,7 @@ import logo from "../img/logo.png"
 import github from "../img/github.svg"
 import pkg from '../../package.json'
 import { useContext, useEffect, useRef, useState } from "react"
-import { apiContext, GithubContext, ModeContext, wsContext } from "../Contexts"
+import { apiContext as api, DirtyDataContext, ModeContext, wsContext as ws } from "../Contexts"
 import { MainEventType, type MainHealth, type MainSRATReleaseAsset } from "../srat"
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
@@ -31,6 +31,9 @@ import { Settings } from "../pages/Settings"
 import { Volumes } from "../pages/Volumes"
 import { Users } from "../pages/Users"
 import { green } from "@mui/material/colors"
+import SaveIcon from '@mui/icons-material/Save';
+import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import UndoIcon from '@mui/icons-material/Undo';
 
 function a11yProps(index: number) {
     return {
@@ -96,13 +99,13 @@ function TabPanel(props: TabPanelProps) {
 export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null>, healthData: MainHealth }) {
     const healt = useContext(ModeContext);
     const [updateAssetStatus, setUpdateAssetStatus] = useState<MainSRATReleaseAsset>({});
-    const ws = useContext(wsContext);
-    const api = useContext(apiContext);
     const { mode, setMode } = useColorScheme();
     const [update, setUpdate] = useState<string | undefined>()
     const [value, setValue] = useState(() => {
         return Number.parseInt(localStorage.getItem("srat_tab") || "0");
     });
+    const dirty = useContext(DirtyDataContext);
+
 
     if (!mode) {
         return null;
@@ -150,13 +153,27 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                         variant="fullWidth"
                         aria-label="full width tabs example"
                     >
-                        <Tab label="Shares" {...a11yProps(0)} />
-                        <Tab label="Volumes" {...a11yProps(1)} />
-                        <Tab label="Users" {...a11yProps(2)} />
-                        <Tab label="Settings" {...a11yProps(3)} />
+                        <Tab label="Shares" {...a11yProps(0)} icon={dirty.shares ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab href="#" label="Volumes" {...a11yProps(1)} icon={dirty.volumes ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab href="#" label="Users" {...a11yProps(2)} icon={dirty.users ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab href="#" label="Settings" {...a11yProps(3)} icon={dirty.settings ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab label="smb.conf (ro)" {...a11yProps(4)} />
                     </Tabs>
                     <Box sx={{ flexGrow: 0 }}>
+                        {Object.values(dirty).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
+                            <>
+                                <IconButton onClick={() => { api.config.configDelete(); window.location.reload() }}>
+                                    <Tooltip title="Undo all modified" arrow>
+                                        <UndoIcon sx={{ color: 'white' }} />
+                                    </Tooltip>
+                                </IconButton>
+                                <IconButton onClick={() => api.config.configUpdate()}>
+                                    <Tooltip title="Save all modified" arrow>
+                                        <SaveIcon sx={{ color: 'white' }} />
+                                    </Tooltip>
+                                </IconButton>
+                            </>
+                        }
                         {healt.read_only &&
                             <IconButton>
                                 <Tooltip title="ReadOnly Mode" arrow>
@@ -199,19 +216,19 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             </Container>
         </AppBar>
         {props.bodyRef.current && createPortal(<>
-            <TabPanel value={value} index={0}>
+            <TabPanel key="tab_0" value={value} index={0}>
                 <Shares />
             </TabPanel>
-            <TabPanel value={value} index={1}>
+            <TabPanel key="tab_1" value={value} index={1}>
                 <Volumes />
             </TabPanel>
-            <TabPanel value={value} index={2}>
+            <TabPanel key="tab_2" value={value} index={2}>
                 <Users />
             </TabPanel>
-            <TabPanel value={value} index={3}>
+            <TabPanel key="tab_3" value={value} index={3}>
                 <Settings />
             </TabPanel>
-            <TabPanel value={value} index={4}>
+            <TabPanel key="tab_4" value={value} index={4}>
                 <SmbConf />
             </TabPanel></>,
             props.bodyRef.current /*document.getElementById('mainarea')!*/

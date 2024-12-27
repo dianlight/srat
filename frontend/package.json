@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "v2024.12.1-alpha.2",
+  "version": "2024.12.1-devbuild",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -34,7 +34,6 @@
     "@fontsource/roboto": "^5.1.0",
     "@mui/icons-material": "^6.2.1",
     "@mui/material": "^6.2.1",
-    "@octokit/rest": "^21.0.2",
     "axios": "^1.7.9",
     "material-ui-confirm": "^3.0.16",
     "mui-chips-input": "^4.0.1",
@@ -53,10 +52,12 @@
     "nextversion": "bun run version.ts -i alpha",
     "version": "bun run version.ts",
     "build": "bun run bun.build.ts",
-    "watch": "bun run --watch bun.build.ts -w",
     "clean": "rm -rf out",
-    "dev": "bun --watch run bun.build.ts -w -s ./out",
-    "dev:remote": "bun --watch run bun.build.ts -w -s ./out -c http://192.168.0.250:3000/",
+    "dev": "bun --hot run bun.build.ts -w -s ./out",
+    "dev:remote": "bun --hot run bun.build.ts -w -s ./out -c http://192.168.0.250:3000/",
     "swagger": "sta -p ../backend/src/docs/swagger.json -o ./src -n srat.ts --axios"
+  },
+  "patchedDependencies": {
+    "@gtramontina.com/bun-html-live-reload@1.0.1": "patches/@gtramontina.com%2Fbun-html-live-reload@1.0.1.patch"
   }
 }

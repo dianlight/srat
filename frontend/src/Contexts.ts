@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import { Api, type MainHealth } from './srat';
+import { Api, type ConfigConfigSectionDirtySate, type MainHealth } from './srat';
 import { WSRouter } from './WSRouter';
 
 let APIURL = process.env.APIURL;
@@ -9,17 +9,28 @@ if (process.env.APIURL === "dynamic") {
 
 }
 
-export const apiContext = createContext(new Api({
+export const apiContext = new Api({
     baseURL: APIURL
-}));
+});
 const wsUrl = new URL(APIURL || "")
 wsUrl.protocol = window.location.protocol === 'https:' ? "wss:" : "ws:"
 wsUrl.pathname += "ws"
 
-export const wsContext = createContext(new WSRouter(wsUrl.href));
+export const wsContext = new WSRouter(wsUrl.href);
 //export const AuthContext = createContext(null);
 
 console.log("API URL", APIURL)
 console.log("WS URL", wsUrl.href)
 
 export const ModeContext = createContext<MainHealth>({});
+
+// Dirty data  state context
+export type DirtyData = {
+    shares: boolean,
+    volumes: boolean,
+    users: boolean,
+    configs: boolean,
+    //[key: string]: boolean
+}
+export const DirtyDataContext = createContext<ConfigConfigSectionDirtySate>({});
+

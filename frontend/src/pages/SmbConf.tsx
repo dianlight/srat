@@ -1,12 +1,11 @@
 import { useContext, useEffect, useState } from 'react';
 import SyntaxHighlighter from 'react-syntax-highlighter';
-import { apiContext } from '../Contexts';
+import { apiContext as api } from '../Contexts';
 import { InView, useInView } from 'react-intersection-observer';
 import { a11yDark, a11yLight } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { useColorScheme } from '@mui/material/styles';
 
 export function SmbConf() {
-    const api = useContext(apiContext);
     const [smbConf, setSmbConf] = useState<string>('')
     const { mode, setMode } = useColorScheme();
     const { ref, inView, entry } = useInView({
