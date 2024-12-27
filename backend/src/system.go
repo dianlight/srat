@@ -17,6 +17,7 @@ import (
 	"github.com/dianlight/srat/data"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v68/github"
+	"github.com/jinzhu/copier"
 	"github.com/jpillora/overseer"
 	"golang.org/x/time/rate"
 )
@@ -53,6 +54,15 @@ var (
 	updateQueueMutex = sync.RWMutex{}
 )
 
+// HealthAndUpdateDataRefeshHandlers periodically refreshes health data and checks for updates.
+// It performs the following tasks:
+// - Updates the read-only status of the system.
+// - Checks for new releases on GitHub based on the configured update channel.
+// - Updates the lastReleaseData with the latest release information.
+// - Checks the status of the Samba process.
+//
+// This function runs indefinitely in a loop, with a 5-second pause between iterations.
+// It uses a rate limiter to manage GitHub API requests and respects the configured update channel.
 func HealthAndUpdateDataRefeshHandlers() {
 	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
 	if err != nil {
@@ -99,6 +109,7 @@ func HealthAndUpdateDataRefeshHandlers() {
 						break
 					}
 					log.Printf("Latest %s version is %s (Asset %s)", data.Config.UpdateChannel, *lastReleaseData.LastRelease.TagName, lastReleaseData.ArchAsset.GetName())
+					notifyUpdate()
 				} else {
 					log.Println("No Releases found")
 				}
@@ -139,6 +150,14 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonResponse)
 }
 
+// HealthCheckWsHandler handles WebSocket connections for health check updates.
+// It continuously sends health status updates to the client every 5 seconds.
+//
+// Parameters:
+//   - request: WebSocketMessageEnvelope containing the initial request information.
+//   - c: A channel of *WebSocketMessageEnvelope used to send messages back to the WebSocket client.
+//
+// The function runs indefinitely, sending health updates until the WebSocket connection is closed.
 func HealthCheckWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	for {
 
@@ -152,6 +171,32 @@ func HealthCheckWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMes
 	}
 }
 
+func DirtyWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+	var oldDritySectionState config.ConfigSectionDirtySate
+	for {
+		if oldDritySectionState != data.DirtySectionState {
+			var message WebSocketMessageEnvelope = WebSocketMessageEnvelope{
+				Event: EventHeartbeat,
+				Uid:   request.Uid,
+				Data:  data.DirtySectionState,
+			}
+			c <- &message
+			copier.Copy(&oldDritySectionState, data.DirtySectionState)
+			//log.Printf("%v %v\n", oldDritySectionState, data.DirtySectionState)
+		}
+		time.Sleep(1 * time.Second)
+	}
+}
+
+// notifyUpdate sends the latest release data to all registered update channels.
+// This function is used to notify all clients waiting for update information
+// when new release data becomes available.
+//
+// The function acquires a read lock on the updateQueueMutex to safely iterate
+// over the updateQueue. It then sends the lastReleaseData to each channel in
+// the queue.
+//
+// This function does not take any parameters and does not return any values.
 func notifyUpdate() {
 	updateQueueMutex.RLock()
 	for _, v := range updateQueue {
@@ -186,16 +231,19 @@ type ProgressWriter struct {
 	n atomic.Int64
 }
 
+// NewProgressWriter creates a new ProgressWriter that wraps the provided io.Writer.
 func NewProgressWriter(w io.Writer) *ProgressWriter {
 	return &ProgressWriter{w: w}
 }
 
+// Write writes the provided bytes to the underlying writer and updates the progress counter.
 func (w *ProgressWriter) Write(b []byte) (n int, err error) {
 	n, err = w.Write(b)
 	w.n.Add(int64(n))
 	return n, err
 }
 
+// N returns the total number of bytes written by the ProgressWriter.
 func (w *ProgressWriter) N() int64 {
 	return w.n.Load()
 }
@@ -232,7 +280,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//defer rc.Close()
-	tmpFile, err := os.OpenFile(data.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0644)
+	tmpFile, err := os.OpenFile(data.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
 		fmt.Printf("Error creating temporary file: %v\n", err)
 		w.WriteHeader(http.StatusInternalServerError)

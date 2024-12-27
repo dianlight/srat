@@ -15,6 +15,7 @@ const (
 	EventHeartbeat EventType = "heartbeat"
 	EventShare     EventType = "share"
 	EventVolumes   EventType = "volumes"
+	EventDirty     EventType = "dirty"
 )
 
 var EventTypes = []string{
@@ -38,7 +39,7 @@ var upgrader = websocket.Upgrader{} // use default options
 //	@Description	Open the WSChannel
 //	@Tags			system
 //	@Produce		json
-//	@Success		200
+//	@Success		200 {object}    config.ConfigSectionDirtySate
 //	@Failure		405	{object}	ResponseError
 //	@Router			/ws [get]
 func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
@@ -86,6 +87,8 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 			go VolumesWsHandler(message, outchan)
 		case EventUpdate:
 			go UpdateWsHandler(message, outchan)
+		case EventDirty:
+			go DirtyWsHandler(message, outchan)
 		default:
 			log.Printf("Unknown event: %s", message.Event)
 		}

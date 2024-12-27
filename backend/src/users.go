@@ -164,6 +164,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		// TODO: Check the new username with admin username
 
 		data.Config.OtherUsers = append(data.Config.OtherUsers, user)
+		data.DirtySectionState.Users = true
 
 		//notifyClient()
 
@@ -180,14 +181,6 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 }
-
-//func notifyClient() {
-//	sharesQueueMutex.RLock()
-//	for _, v := range sharesQueue {
-//		v <- &config.Shares
-//	}
-//	sharesQueueMutex.RUnlock()
-//}
 
 // UpdateUser godoc
 //
@@ -222,8 +215,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 		}
 
 		mergo.MapWithOverwrite(&data.Config.OtherUsers[index], user)
-
-		//notifyClient()
+		data.DirtySectionState.Users = true
 
 		jsonResponse, jsonError := json.Marshal(user)
 
@@ -273,8 +265,7 @@ func updateAdminUser(w http.ResponseWriter, r *http.Request) {
 		data.Config.Password = user.Password
 	}
 
-	//notifyClient()
-
+	data.DirtySectionState.Users = true
 	jsonResponse, jsonError := json.Marshal(user)
 
 	if jsonError != nil {
@@ -311,35 +302,10 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		data.Config.OtherUsers = slices.Delete(data.Config.OtherUsers, index, index+1)
-
-		//notifyClient()
+		data.DirtySectionState.Users = true
 
 		w.WriteHeader(http.StatusNoContent)
 
 	}
 
 }
-
-/*
-
-func UsersWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
-	sharesQueueMutex.Lock()
-	if sharesQueue[request.Uid] == nil {
-		sharesQueue[request.Uid] = make(chan *Users, 10)
-	}
-	sharesQueue[request.Uid] <- &config.Shares
-	var queue = sharesQueue[request.Uid]
-	sharesQueueMutex.Unlock()
-	log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
-	for {
-		smessage := &WebSocketMessageEnvelope{
-			Event: "shares",
-			Uid:   request.Uid,
-			Data:  <-queue,
-		}
-		log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
-		c <- smessage
-	}
-}
-
-*/

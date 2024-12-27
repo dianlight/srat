@@ -13,9 +13,8 @@ import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
 
 export function Settings() {
-    const api = useContext(apiContext);
     const mode = useContext(ModeContext);
-    const globalConfig = useSWR<MainGlobalConfig>('/global', () => api.global.globalList().then(res => res.data));
+    const globalConfig = useSWR<MainGlobalConfig>('/global', () => apiContext.global.globalList().then(res => res.data));
     const { control, handleSubmit, reset, watch, formState } = useForm({
         // mode: "onChange",
         values: globalConfig.data,
@@ -25,7 +24,7 @@ export function Settings() {
 
     function handleCommit(data: MainGlobalConfig) {
         console.log(data);
-        api.global.globalUpdate(data).then(res => {
+        apiContext.global.globalUpdate(data).then(res => {
             console.log(res)
             globalConfig.mutate()
         }).catch(err => console.log(err))
@@ -68,9 +67,9 @@ export function Settings() {
                             />
                         </Grid>
                         <Grid size={4}>
-                            <CheckboxElement label="Compatibility Mode" name="compatibility_mode" control={control} disabled={mode.read_only} />
-                            <CheckboxElement label="Multi Channel Mode" name="multi_channel" control={control} disabled={mode.read_only} />
-                            <CheckboxElement label="RecycleBin" name="recyle_bin_enabled" control={control} disabled={mode.read_only} />
+                            <CheckboxElement id="compatibility_mode" label="Compatibility Mode" name="compatibility_mode" control={control} disabled={mode.read_only} />
+                            <CheckboxElement id="multi_channel" label="Multi Channel Mode" name="multi_channel" control={control} disabled={mode.read_only} />
+                            <CheckboxElement id="recyle_bin_enabled" label="RecycleBin" name="recyle_bin_enabled" control={control} disabled={mode.read_only} />
                         </Grid>
                         <Grid size={8}>
                             <Controller
@@ -81,7 +80,7 @@ export function Settings() {
                             />
                         </Grid>
                         <Grid size={4}>
-                            <CheckboxElement label="Bind All Interfaces" name="bind_all_interfaces" control={control} disabled={mode.read_only} />
+                            <CheckboxElement id="bind_all_interfaces" label="Bind All Interfaces" name="bind_all_interfaces" control={control} disabled={mode.read_only} />
                         </Grid>
                         <Grid size={8}>
                             <Controller
@@ -104,7 +103,7 @@ export function Settings() {
                     <Button type="submit" form="settingsform" disabled={!formState.isDirty}>Apply</Button>
                 </Stack>
             </Stack>
-            <DevTool control={control} /> {/* set up the dev tool */}
+            {/*   <DevTool control={control} />  set up the dev tool */}
         </InView >
     );
 }

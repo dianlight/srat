@@ -32,7 +32,6 @@ var smbConfigFile *string
 var globalRouter *mux.Router
 var templateData []byte
 var optionsFile *string
-var configFile *string
 var http_port *int
 var templateFile *string
 var sambaConfigFile *string
@@ -80,7 +79,7 @@ type ResponseError struct {
 // _BasePath /v2
 func main() {
 	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
-	configFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
+	data.ConfigFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
 	templateFile = flag.String("template", "", "Template file")
 	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
@@ -110,6 +109,7 @@ func main() {
 			Path:     data.UpdateFilePath,
 			Interval: 1 * time.Second,
 		},
+		//Debug: true,
 	})
 }
 
@@ -147,8 +147,11 @@ func prog(state overseer.State) {
 	}
 
 	// Get config
-	data.Config = config.ReadConfig(*configFile)
-	data.Config = config.MigrateConfig(data.Config)
+	aconfig, cerr := config.LoadConfig(*data.ConfigFile)
+	if cerr != nil {
+		log.Fatalf("Cant load config file %s - %s", *data.ConfigFile, cerr)
+	}
+	data.Config = aconfig
 
 	// Get options
 	options = config.ReadOptionsFile(*optionsFile)
@@ -202,6 +205,10 @@ func prog(state overseer.State) {
 	// Global
 	globalRouter.HandleFunc("/global", getGlobalConfig).Methods(http.MethodGet, http.MethodOptions)
 	globalRouter.HandleFunc("/global", updateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
+
+	// Configuration
+	globalRouter.HandleFunc("/config", persistConfig).Methods(http.MethodPut, http.MethodPatch, http.MethodOptions)
+	globalRouter.HandleFunc("/config", rollbackConfig).Methods(http.MethodDelete)
 
 	// WebSocket
 	globalRouter.HandleFunc("/events", WSChannelEventsList).Methods(http.MethodGet, http.MethodOptions)

@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"slices"
@@ -33,6 +34,7 @@ const (
 const CURRENT_CONFIG_VERSION = 3
 
 type Config struct {
+	CurrentFile       string
 	ConfigSpecVersion int8 `json:"version,omitempty,default=0"`
 	Options
 	Shares          Shares        `json:"shares"`
@@ -42,48 +44,73 @@ type Config struct {
 	UpdateChannel   UpdateChannel `json:"update_channel"`
 }
 
-func ReadConfig(file string) *Config {
-	if file == "" {
-		return readConfigPipe()
-	} else {
-		return readConfigFile(file)
-	}
+type ConfigSectionDirtySate struct {
+	Shares   bool `json:"shares"`
+	Users    bool `json:"users"`
+	Volumes  bool `json:"volumes"`
+	Settings bool `json:"settings"`
 }
 
-func readConfigPipe() *Config {
-	var config Config
-	defer os.Stdin.Close()
-	stat, _ := os.Stdin.Stat()
-	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		err := json.NewDecoder(os.Stdin).Decode(&config)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	return &config
-}
-
-func readConfigFile(file string) *Config {
+// readConfigFile reads and parses a configuration file.
+//
+// It takes the path to a configuration file, reads its contents, and then
+// passes the data to readConfigBuffer for parsing into a Config struct.
+//
+// Parameters:
+//   - file: A string representing the path to the configuration file to be read.
+//
+// Returns:
+//   - *Config: A pointer to the parsed Config struct.
+//     If reading the file fails, the function will log a fatal error and terminate the program.
+func readConfigFile(file string) (*Config, error) {
 	configFile, err := os.ReadFile(file)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return nil, err
 	}
-
 	// Parse json
-	return readConfigBuffer(configFile)
+	config, err := readConfigBuffer(configFile)
+	if err != nil {
+		return nil, err
+	}
+	config.CurrentFile = file
+	return config, nil
 }
 
-func readConfigBuffer(buffer []byte) *Config {
+// readConfigBuffer parses a JSON-encoded byte slice into a Config struct.
+//
+// This function takes a byte slice containing JSON data and attempts to unmarshal it
+// into a Config struct. If the unmarshaling process fails, the function will log
+// a fatal error and terminate the program.
+//
+// Parameters:
+//   - buffer: A byte slice containing the JSON-encoded configuration data to be parsed.
+//
+// Returns:
+//   - *Config: A pointer to the parsed Config struct.
+//     If parsing fails, the function will log a fatal error and terminate the program.
+func readConfigBuffer(buffer []byte) (*Config, error) {
 	var config Config
 	// Parse json
 	err := json.Unmarshal(buffer, &config)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return nil, err
 	}
 
-	return &config
+	return &config, nil
 }
 
+// ConfigToMap converts a Config struct to a map[string]interface{}.
+// This function is useful for converting a strongly-typed Config object
+// into a more flexible map representation.
+//
+// Parameters:
+//   - in: A pointer to the Config struct to be converted.
+//
+// Returns:
+//   - *map[string]interface{}: A pointer to the resulting map.
+//     If the conversion process fails at any step, the function returns nil.
 func ConfigToMap(in *Config) *map[string]interface{} {
 	var nconfig map[string]interface{}
 
@@ -102,6 +129,16 @@ func ConfigToMap(in *Config) *map[string]interface{} {
 	return &nconfig
 }
 
+// MigrateConfig upgrades the configuration to the latest version.
+// It performs a series of migrations based on the current ConfigSpecVersion,
+// updating the configuration structure and data as needed.
+//
+// Parameters:
+//   - in: A pointer to the Config struct that needs to be migrated.
+//
+// Returns:
+//   - *Config: A pointer to the migrated Config struct. If the input config
+//     is already at the latest version, it returns the input unchanged.
 func MigrateConfig(in *Config) *Config {
 	if in.ConfigSpecVersion == CURRENT_CONFIG_VERSION {
 		return in
@@ -112,14 +149,15 @@ func MigrateConfig(in *Config) *Config {
 		log.Printf("Migrating config from version 0 to version 1")
 		in.ConfigSpecVersion = 1
 		in.UpdateChannel = Stable
+		if in.Shares == nil {
+			in.Shares = make(Shares)
+		}
 		for _, share := range []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"} {
 			_, ok := in.Shares[share]
 			if !ok {
 				in.Shares[share] = Share{Path: "/" + share, FS: "native", Disabled: false, Usage: "native"}
-				//log.Printf("Added share: %s", share)
 			}
 		}
-		//log.Println(pretty.Sprintf("Migrated config: %+v", in))
 	}
 	// From version 1 to version 2 - ACL in Share object
 	if in.ConfigSpecVersion == 1 {
@@ -129,16 +167,11 @@ func MigrateConfig(in *Config) *Config {
 			share.Name = shareName
 			i := slices.IndexFunc(in.ACL, func(a OptionsAcl) bool { return a.Share == shareName })
 			if i > -1 {
-
-				//share.OptionsAcl = OptionsAcl{}
-				//log.Printf("ACL found for share %v", in.ACL[i])
 				copier.Copy(&share, &in.ACL[i])
-				//log.Printf("ACL found for dest %v", share)
 				in.ACL = slices.Delete(in.ACL, i, i+1)
 			}
 			in.Shares[shareName] = share
 		}
-		//log.Printf("Shares %v", in.Shares)
 	}
 
 	// From version 2 to version 3 - Users in share
@@ -155,8 +188,28 @@ func MigrateConfig(in *Config) *Config {
 				in.Shares[shareName] = share
 			}
 		}
-		//log.Printf("Shares %v", in.Shares)
 	}
 
 	return in
+}
+
+func LoadConfig(file string) (*Config, error) {
+	config, err := readConfigFile(file)
+	if err != nil {
+		return nil, err
+	}
+	config = MigrateConfig(config)
+	return config, nil
+}
+
+func SaveConfig(in *Config) (*Config, error) {
+	// TODO: Implement save config
+	return in, nil
+}
+
+func RollbackConfig(in *Config) (*Config, error) {
+	if in.CurrentFile == "" {
+		return nil, errors.New("current file not found")
+	}
+	return LoadConfig(in.CurrentFile)
 }

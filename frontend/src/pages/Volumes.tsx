@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useState } from "react";
-import { apiContext, ModeContext, wsContext } from "../Contexts";
+import { apiContext, ModeContext, wsContext as ws } from "../Contexts";
 import { MainEventType, type MainVolume } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
@@ -15,14 +15,12 @@ import { useConfirm } from "material-ui-confirm";
 
 
 export function Volumes() {
-    const api = useContext(apiContext);
     const mode = useContext(ModeContext);
     const [showPreview, setShowPreview] = useState<boolean>(false);
 
 
     const [status, setStatus] = useState<MainVolume[]>([]);
     const [selected, setSelected] = useState<MainVolume | null>(null);
-    const ws = useContext(wsContext);
     const confirm = useConfirm();
 
 

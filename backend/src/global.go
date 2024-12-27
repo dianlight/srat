@@ -59,6 +59,8 @@ func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	//pretty.Logf("2res: %v", data.Config.Options)
 
 	var retglobalConfig GlobalConfig = GlobalConfig{}
+	data.DirtySectionState.Settings = true
+
 	// Recheck the config
 	copier.CopyWithOption(&retglobalConfig, &data.Config.Options, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 	copier.CopyWithOption(&retglobalConfig, &data.Config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
