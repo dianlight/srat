@@ -26,7 +26,7 @@ export function SmbConf() {
     }, []);
 
     return <InView as="div" onChange={(inView, entry) => { inView && updateSmbConf() }}>
-        <SyntaxHighlighter language="ini" style={mode === 'light' ? a11yLight : a11yDark} wrapLines wrapLongLines>
+        <SyntaxHighlighter customStyle={{ fontSize: '0.7rem' }} language="ini" style={mode === 'light' ? a11yLight : a11yDark} wrapLines wrapLongLines>
             {smbConf}
         </SyntaxHighlighter>
     </InView>
