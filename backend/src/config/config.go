@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"slices"
@@ -33,6 +34,7 @@ const (
 const CURRENT_CONFIG_VERSION = 3
 
 type Config struct {
+	CurrentFile       string
 	ConfigSpecVersion int8 `json:"version,omitempty,default=0"`
 	Options
 	Shares          Shares        `json:"shares"`
@@ -49,48 +51,6 @@ type ConfigSectionDirtySate struct {
 	Settings bool `json:"settings"`
 }
 
-// ReadConfig reads and parses the configuration from either a file or standard input.
-// It determines the source based on the provided file parameter.
-//
-// Parameters:
-//   - file: A string representing the path to the configuration file.
-//     If empty, the function will read from standard input.
-//
-// Returns:
-//   - *Config: A pointer to the parsed Config struct.
-//     If reading or parsing fails, the function will log a fatal error and terminate the program.
-func ReadConfig(file string) *Config {
-	if file == "" {
-		return readConfigPipe()
-	} else {
-		return readConfigFile(file)
-	}
-}
-
-// readConfigPipe reads and parses the configuration from standard input.
-// It attempts to decode JSON data from stdin into a Config struct.
-// This function is typically used when the configuration is piped into the program.
-//
-// The function will close stdin after reading, regardless of success or failure.
-//
-// If stdin is not a pipe (i.e., it's a terminal), the function will return an empty Config.
-//
-// Returns:
-//   - *Config: A pointer to the parsed Config struct.
-//     If parsing fails, the function will log a fatal error and terminate the program.
-func readConfigPipe() *Config {
-	var config Config
-	defer os.Stdin.Close()
-	stat, _ := os.Stdin.Stat()
-	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		err := json.NewDecoder(os.Stdin).Decode(&config)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	return &config
-}
-
 // readConfigFile reads and parses a configuration file.
 //
 // It takes the path to a configuration file, reads its contents, and then
@@ -102,14 +62,19 @@ func readConfigPipe() *Config {
 // Returns:
 //   - *Config: A pointer to the parsed Config struct.
 //     If reading the file fails, the function will log a fatal error and terminate the program.
-func readConfigFile(file string) *Config {
+func readConfigFile(file string) (*Config, error) {
 	configFile, err := os.ReadFile(file)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return nil, err
 	}
-
 	// Parse json
-	return readConfigBuffer(configFile)
+	config, err := readConfigBuffer(configFile)
+	if err != nil {
+		return nil, err
+	}
+	config.CurrentFile = file
+	return config, nil
 }
 
 // readConfigBuffer parses a JSON-encoded byte slice into a Config struct.
@@ -124,15 +89,16 @@ func readConfigFile(file string) *Config {
 // Returns:
 //   - *Config: A pointer to the parsed Config struct.
 //     If parsing fails, the function will log a fatal error and terminate the program.
-func readConfigBuffer(buffer []byte) *Config {
+func readConfigBuffer(buffer []byte) (*Config, error) {
 	var config Config
 	// Parse json
 	err := json.Unmarshal(buffer, &config)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return nil, err
 	}
 
-	return &config
+	return &config, nil
 }
 
 // ConfigToMap converts a Config struct to a map[string]interface{}.
@@ -225,4 +191,25 @@ func MigrateConfig(in *Config) *Config {
 	}
 
 	return in
+}
+
+func LoadConfig(file string) (*Config, error) {
+	config, err := readConfigFile(file)
+	if err != nil {
+		return nil, err
+	}
+	config = MigrateConfig(config)
+	return config, nil
+}
+
+func SaveConfig(in *Config) (*Config, error) {
+	// TODO: Implement save config
+	return in, nil
+}
+
+func RollbackConfig(in *Config) (*Config, error) {
+	if in.CurrentFile == "" {
+		return nil, errors.New("current file not found")
+	}
+	return LoadConfig(in.CurrentFile)
 }

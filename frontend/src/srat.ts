@@ -9,11 +9,68 @@
  * ---------------------------------------------------------------
  */
 
+export interface ConfigConfig {
+  acl?: ConfigOptionsAcl[];
+  allow_hosts?: string[];
+  autodiscovery?: {
+    disable_autoremove?: boolean;
+    disable_discovery?: boolean;
+    disable_persistent?: boolean;
+  };
+  automount?: boolean;
+  available_disks_log?: boolean;
+  bind_all_interfaces?: boolean;
+  compatibility_mode?: boolean;
+  currentFile?: string;
+  docker_interface?: string;
+  docker_net?: string;
+  enable_smart?: boolean;
+  hdd_idle_seconds?: number;
+  interfaces?: string[];
+  log_level?: string;
+  meaning_of_life?: string;
+  medialibrary?: {
+    enable?: boolean;
+    ssh_private_key?: string;
+  };
+  moredisks?: string[];
+  mountoptions?: string[];
+  mqtt_enable?: boolean;
+  mqtt_host?: string;
+  mqtt_nexgen_entities?: boolean;
+  mqtt_password?: string;
+  mqtt_port?: string;
+  mqtt_topic?: string;
+  mqtt_username?: string;
+  multi_channel?: boolean;
+  other_users?: ConfigUser[];
+  password?: string;
+  recyle_bin_enabled?: boolean;
+  shares?: ConfigShares;
+  update_channel?: ConfigUpdateChannel;
+  username?: string;
+  users?: ConfigUser[];
+  version?: number;
+  veto_files?: string[];
+  workgroup?: string;
+  wsdd?: boolean;
+  wsdd2?: boolean;
+}
+
 export interface ConfigConfigSectionDirtySate {
   settings?: boolean;
   shares?: boolean;
   users?: boolean;
   volumes?: boolean;
+}
+
+export interface ConfigOptionsAcl {
+  disabled?: boolean;
+  ro_users?: string[];
+  share?: string;
+  timemachine?: boolean;
+  usage?: string;
+  users?: string[];
 }
 
 export interface ConfigShare {
@@ -628,6 +685,58 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/admin/user`,
         method: "PATCH",
         body: user,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+  };
+  config = {
+    /**
+     * @description Save dirty changes to the disk
+     *
+     * @tags samba
+     * @name ConfigUpdate
+     * @summary Persiste the current samba config
+     * @request PUT:/config
+     */
+    configUpdate: (params: RequestParams = {}) =>
+      this.request<ConfigConfig, MainResponseError>({
+        path: `/config`,
+        method: "PUT",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Revert to the last saved samba config
+     *
+     * @tags samba
+     * @name ConfigDelete
+     * @summary Rollback the current samba config
+     * @request DELETE:/config
+     */
+    configDelete: (params: RequestParams = {}) =>
+      this.request<ConfigConfig, MainResponseError>({
+        path: `/config`,
+        method: "DELETE",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Save dirty changes to the disk
+     *
+     * @tags samba
+     * @name ConfigPartialUpdate
+     * @summary Persiste the current samba config
+     * @request PATCH:/config
+     */
+    configPartialUpdate: (params: RequestParams = {}) =>
+      this.request<ConfigConfig, MainResponseError>({
+        path: `/config`,
+        method: "PATCH",
         type: ContentType.Json,
         format: "json",
         ...params,

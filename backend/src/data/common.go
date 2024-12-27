@@ -11,3 +11,4 @@ var DirtySectionState nconfig.ConfigSectionDirtySate = nconfig.ConfigSectionDirt
 	Volumes:  false,
 	Settings: false,
 }
+var ConfigFile *string

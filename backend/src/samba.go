@@ -182,3 +182,76 @@ func getSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
 }
+
+// PersistConfig godoc
+//
+//	@Summary		Persiste the current samba config
+//	@Description	Save dirty changes to the disk
+//	@Tags			samba
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	config.Config
+//	@Failure		400	{object}	ResponseError
+//	@Failure		500	{object}	ResponseError
+//	@Router			/config [put]
+//	@Router			/config [patch]
+func persistConfig(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	jsonResponse, jsonError := json.Marshal(data.Config)
+	if jsonError != nil {
+		fmt.Println("Unable to encode JSON")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(jsonError.Error()))
+		return
+	}
+
+	config.SaveConfig(data.Config)
+	data.DirtySectionState.Settings = false
+	data.DirtySectionState.Users = false
+	data.DirtySectionState.Shares = false
+	data.DirtySectionState.Volumes = false
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
+}
+
+// RollbackConfig godoc
+//
+//	@Summary		Rollback the current samba config
+//	@Description    Revert to the last saved samba config
+//	@Tags			samba
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	config.Config
+//	@Failure		400	{object}	ResponseError
+//	@Failure		500	{object}	ResponseError
+//	@Router			/config [delete]
+func rollbackConfig(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	config, err := config.RollbackConfig(data.Config)
+	if err != nil {
+		fmt.Printf("Error rolling back config: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	jsonResponse, jsonError := json.Marshal(config)
+	if jsonError != nil {
+		fmt.Println("Unable to encode JSON")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(jsonError.Error()))
+		return
+	}
+
+	data.Config = config
+	data.DirtySectionState.Settings = false
+	data.DirtySectionState.Users = false
+	data.DirtySectionState.Shares = false
+	data.DirtySectionState.Volumes = false
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
+}

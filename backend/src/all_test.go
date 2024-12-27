@@ -10,8 +10,12 @@ import (
 
 func TestMain(m *testing.M) {
 	// Get config
-	data.Config = config.ReadConfig("../test/data/config.json")
-	data.Config = config.MigrateConfig(data.Config)
+	aconfig, err := config.LoadConfig("../test/data/config.json")
+	if err != nil {
+		log.Fatalf("Cant load config file %s", err)
+	}
+	data.Config = aconfig
+
 	// Get options
 	options = config.ReadOptionsFile("../test/data/options.json")
 

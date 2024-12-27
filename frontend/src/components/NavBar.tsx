@@ -162,12 +162,12 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                     <Box sx={{ flexGrow: 0 }}>
                         {Object.values(dirty).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
                             <>
-                                <IconButton>
+                                <IconButton onClick={() => { api.config.configDelete(); window.location.reload() }}>
                                     <Tooltip title="Undo all modified" arrow>
                                         <UndoIcon sx={{ color: 'white' }} />
                                     </Tooltip>
                                 </IconButton>
-                                <IconButton>
+                                <IconButton onClick={() => api.config.configUpdate()}>
                                     <Tooltip title="Save all modified" arrow>
                                         <SaveIcon sx={{ color: 'white' }} />
                                     </Tooltip>
