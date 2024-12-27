@@ -13,9 +13,8 @@ import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
 
 export function Settings() {
-    const api = useContext(apiContext);
     const mode = useContext(ModeContext);
-    const globalConfig = useSWR<MainGlobalConfig>('/global', () => api.global.globalList().then(res => res.data));
+    const globalConfig = useSWR<MainGlobalConfig>('/global', () => apiContext.global.globalList().then(res => res.data));
     const { control, handleSubmit, reset, watch, formState } = useForm({
         // mode: "onChange",
         values: globalConfig.data,
@@ -25,7 +24,7 @@ export function Settings() {
 
     function handleCommit(data: MainGlobalConfig) {
         console.log(data);
-        api.global.globalUpdate(data).then(res => {
+        apiContext.global.globalUpdate(data).then(res => {
             console.log(res)
             globalConfig.mutate()
         }).catch(err => console.log(err))

@@ -42,6 +42,23 @@ type Config struct {
 	UpdateChannel   UpdateChannel `json:"update_channel"`
 }
 
+type ConfigSectionDirtySate struct {
+	Shares   bool `json:"shares"`
+	Users    bool `json:"users"`
+	Volumes  bool `json:"volumes"`
+	Settings bool `json:"settings"`
+}
+
+// ReadConfig reads and parses the configuration from either a file or standard input.
+// It determines the source based on the provided file parameter.
+//
+// Parameters:
+//   - file: A string representing the path to the configuration file.
+//     If empty, the function will read from standard input.
+//
+// Returns:
+//   - *Config: A pointer to the parsed Config struct.
+//     If reading or parsing fails, the function will log a fatal error and terminate the program.
 func ReadConfig(file string) *Config {
 	if file == "" {
 		return readConfigPipe()
@@ -50,6 +67,17 @@ func ReadConfig(file string) *Config {
 	}
 }
 
+// readConfigPipe reads and parses the configuration from standard input.
+// It attempts to decode JSON data from stdin into a Config struct.
+// This function is typically used when the configuration is piped into the program.
+//
+// The function will close stdin after reading, regardless of success or failure.
+//
+// If stdin is not a pipe (i.e., it's a terminal), the function will return an empty Config.
+//
+// Returns:
+//   - *Config: A pointer to the parsed Config struct.
+//     If parsing fails, the function will log a fatal error and terminate the program.
 func readConfigPipe() *Config {
 	var config Config
 	defer os.Stdin.Close()
@@ -63,6 +91,17 @@ func readConfigPipe() *Config {
 	return &config
 }
 
+// readConfigFile reads and parses a configuration file.
+//
+// It takes the path to a configuration file, reads its contents, and then
+// passes the data to readConfigBuffer for parsing into a Config struct.
+//
+// Parameters:
+//   - file: A string representing the path to the configuration file to be read.
+//
+// Returns:
+//   - *Config: A pointer to the parsed Config struct.
+//     If reading the file fails, the function will log a fatal error and terminate the program.
 func readConfigFile(file string) *Config {
 	configFile, err := os.ReadFile(file)
 	if err != nil {
@@ -73,6 +112,18 @@ func readConfigFile(file string) *Config {
 	return readConfigBuffer(configFile)
 }
 
+// readConfigBuffer parses a JSON-encoded byte slice into a Config struct.
+//
+// This function takes a byte slice containing JSON data and attempts to unmarshal it
+// into a Config struct. If the unmarshaling process fails, the function will log
+// a fatal error and terminate the program.
+//
+// Parameters:
+//   - buffer: A byte slice containing the JSON-encoded configuration data to be parsed.
+//
+// Returns:
+//   - *Config: A pointer to the parsed Config struct.
+//     If parsing fails, the function will log a fatal error and terminate the program.
 func readConfigBuffer(buffer []byte) *Config {
 	var config Config
 	// Parse json
@@ -84,6 +135,16 @@ func readConfigBuffer(buffer []byte) *Config {
 	return &config
 }
 
+// ConfigToMap converts a Config struct to a map[string]interface{}.
+// This function is useful for converting a strongly-typed Config object
+// into a more flexible map representation.
+//
+// Parameters:
+//   - in: A pointer to the Config struct to be converted.
+//
+// Returns:
+//   - *map[string]interface{}: A pointer to the resulting map.
+//     If the conversion process fails at any step, the function returns nil.
 func ConfigToMap(in *Config) *map[string]interface{} {
 	var nconfig map[string]interface{}
 
@@ -102,6 +163,16 @@ func ConfigToMap(in *Config) *map[string]interface{} {
 	return &nconfig
 }
 
+// MigrateConfig upgrades the configuration to the latest version.
+// It performs a series of migrations based on the current ConfigSpecVersion,
+// updating the configuration structure and data as needed.
+//
+// Parameters:
+//   - in: A pointer to the Config struct that needs to be migrated.
+//
+// Returns:
+//   - *Config: A pointer to the migrated Config struct. If the input config
+//     is already at the latest version, it returns the input unchanged.
 func MigrateConfig(in *Config) *Config {
 	if in.ConfigSpecVersion == CURRENT_CONFIG_VERSION {
 		return in
@@ -119,10 +190,8 @@ func MigrateConfig(in *Config) *Config {
 			_, ok := in.Shares[share]
 			if !ok {
 				in.Shares[share] = Share{Path: "/" + share, FS: "native", Disabled: false, Usage: "native"}
-				//log.Printf("Added share: %s", share)
 			}
 		}
-		//log.Println(pretty.Sprintf("Migrated config: %+v", in))
 	}
 	// From version 1 to version 2 - ACL in Share object
 	if in.ConfigSpecVersion == 1 {
@@ -132,16 +201,11 @@ func MigrateConfig(in *Config) *Config {
 			share.Name = shareName
 			i := slices.IndexFunc(in.ACL, func(a OptionsAcl) bool { return a.Share == shareName })
 			if i > -1 {
-
-				//share.OptionsAcl = OptionsAcl{}
-				//log.Printf("ACL found for share %v", in.ACL[i])
 				copier.Copy(&share, &in.ACL[i])
-				//log.Printf("ACL found for dest %v", share)
 				in.ACL = slices.Delete(in.ACL, i, i+1)
 			}
 			in.Shares[shareName] = share
 		}
-		//log.Printf("Shares %v", in.Shares)
 	}
 
 	// From version 2 to version 3 - Users in share
@@ -158,7 +222,6 @@ func MigrateConfig(in *Config) *Config {
 				in.Shares[shareName] = share
 			}
 		}
-		//log.Printf("Shares %v", in.Shares)
 	}
 
 	return in

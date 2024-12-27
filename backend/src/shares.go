@@ -144,6 +144,7 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		data.Config.Shares[share.Name] = share
+		data.DirtySectionState.Shares = true
 
 		notifyClient()
 
@@ -207,6 +208,7 @@ func updateShare(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data.Config.Shares[share_name] = adata
+		data.DirtySectionState.Shares = true
 		notifyClient()
 
 		jsonResponse, jsonError := json.Marshal(adata)
@@ -250,7 +252,7 @@ func deleteShare(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		delete(data.Config.Shares, share)
-
+		data.DirtySectionState.Shares = true
 		notifyClient()
 
 		w.WriteHeader(http.StatusNoContent)

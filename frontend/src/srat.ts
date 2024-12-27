@@ -9,6 +9,13 @@
  * ---------------------------------------------------------------
  */
 
+export interface ConfigConfigSectionDirtySate {
+  settings?: boolean;
+  shares?: boolean;
+  users?: boolean;
+  volumes?: boolean;
+}
+
 export interface ConfigShare {
   disabled?: boolean;
   fs?: string;
@@ -342,6 +349,7 @@ export enum MainEventType {
   EventHeartbeat = "heartbeat",
   EventShare = "share",
   EventVolumes = "volumes",
+  EventDirty = "dirty",
 }
 
 export interface MainGlobalConfig {
@@ -1046,9 +1054,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/ws
      */
     getWs: (params: RequestParams = {}) =>
-      this.request<void, MainResponseError>({
+      this.request<ConfigConfigSectionDirtySate, MainResponseError>({
         path: `/ws`,
         method: "GET",
+        format: "json",
         ...params,
       }),
   };

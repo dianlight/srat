@@ -1,4 +1,15 @@
 definitions:
+  config.ConfigSectionDirtySate:
+    properties:
+      settings:
+        type: boolean
+      shares:
+        type: boolean
+      users:
+        type: boolean
+      volumes:
+        type: boolean
+    type: object
   config.Share:
     properties:
       disabled:
@@ -571,12 +582,14 @@ definitions:
     - heartbeat
     - share
     - volumes
+    - dirty
     type: string
     x-enum-varnames:
     - EventUpdate
     - EventHeartbeat
     - EventShare
     - EventVolumes
+    - EventDirty
   main.GlobalConfig:
     properties:
       allow_hosts:
@@ -1518,6 +1531,8 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/config.ConfigSectionDirtySate'
         "405":
           description: Method Not Allowed
           schema:
