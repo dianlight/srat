@@ -1,7 +1,6 @@
 import { createContext } from 'react';
 import { Api, type MainHealth } from './srat';
 import { WSRouter } from './WSRouter';
-import { Octokit } from '@octokit/rest';
 
 let APIURL = process.env.APIURL;
 if (process.env.APIURL === "dynamic") {
@@ -19,7 +18,6 @@ wsUrl.pathname += "ws"
 
 export const wsContext = createContext(new WSRouter(wsUrl.href));
 //export const AuthContext = createContext(null);
-export const GithubContext = createContext(new Octokit());
 
 console.log("API URL", APIURL)
 console.log("WS URL", wsUrl.href)
