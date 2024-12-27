@@ -18,7 +18,7 @@ export function App() {
 
 
     useEffect(() => {
-        ws.subscribe<MainHealth>(MainEventType.EventHeartbeat, (data) => {
+        const mhuuid = ws.subscribe<MainHealth>(MainEventType.EventHeartbeat, (data) => {
             // console.log("Got heartbeat", data)
             setStatus(data);
         })
@@ -27,10 +27,26 @@ export function App() {
             setStatus({ alive: false, read_only: true });
             setErrorInfo(JSON.stringify(event));
         })
-        ws.subscribe<ConfigConfigSectionDirtySate>(MainEventType.EventDirty, (data) => {
+        const drtyuid = ws.subscribe<ConfigConfigSectionDirtySate>(MainEventType.EventDirty, (data) => {
             console.log("Got dirty data", data)
             setDirtyData(data);
+            localStorage.setItem("srat_dirty", (Object.values(data).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0) ? "true" : "false");
         })
+        function onBeforeUnload(ev: BeforeUnloadEvent) {
+            if (localStorage.getItem("srat_dirty") === "true" && !window.confirm("Are you sure you want to leave? Your changes will be lost.")) {
+                ev.preventDefault();
+                return "Are you sure you want to leave? Your changes will be lost.";
+            }
+            return
+        };
+
+        window.addEventListener("beforeunload", onBeforeUnload);
+
+        return () => {
+            ws.unsubscribe(mhuuid);
+            ws.unsubscribe(drtyuid);
+            window.removeEventListener("beforeunload", onBeforeUnload);
+        };
     }, [])
 
     if (error) {

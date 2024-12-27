@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -439,7 +440,7 @@ func VolumesEventHandler() {
 
 }
 
-func VolumesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+func VolumesWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	volumesQueueMutex.Lock()
 	if volumesQueue[request.Uid] == nil {
 		volumesQueue[request.Uid] = make(chan *[]Volume, 10)
@@ -457,12 +458,20 @@ func VolumesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessage
 	var queue = volumesQueue[request.Uid]
 	go VolumesEventHandler()
 	for {
-		smessage := &WebSocketMessageEnvelope{
-			Event: EventVolumes,
-			Uid:   request.Uid,
-			Data:  <-queue,
+		select {
+		case <-ctx.Done():
+			volumesQueueMutex.Lock()
+			delete(volumesQueue, request.Uid)
+			volumesQueueMutex.Unlock()
+			return
+		default:
+			smessage := &WebSocketMessageEnvelope{
+				Event: EventVolumes,
+				Uid:   request.Uid,
+				Data:  <-queue,
+			}
+			//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
+			c <- smessage
 		}
-		//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
-		c <- smessage
 	}
 }

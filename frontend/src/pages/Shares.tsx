@@ -47,10 +47,13 @@ export function Shares() {
 
 
     useEffect(() => {
-        ws.subscribe<ConfigShares>(MainEventType.EventShare, (data) => {
+        const chr = ws.subscribe<ConfigShares>(MainEventType.EventShare, (data) => {
             console.log("Got shares", data)
             setStatus(data);
         })
+        return () => {
+            ws.unsubscribe(chr);
+        };
     }, [])
 
     function onSubmitDeleteShare(data?: string) {

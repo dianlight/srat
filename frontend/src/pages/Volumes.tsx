@@ -25,10 +25,13 @@ export function Volumes() {
 
 
     useEffect(() => {
-        ws.subscribe<MainVolume[]>(MainEventType.EventVolumes, (data) => {
+        const vol = ws.subscribe<MainVolume[]>(MainEventType.EventVolumes, (data) => {
             console.log("Got volumes", data)
             setStatus(data);
         })
+        return () => {
+            ws.unsubscribe(vol);
+        };
     }, [])
 
     function onSubmitEjectVolume(data?: string) {

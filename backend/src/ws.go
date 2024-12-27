@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -25,13 +26,24 @@ var EventTypes = []string{
 	string(EventVolumes),
 }
 
+type WebSocketMessageEnvelopeAction string
+
+const (
+	ActionSubscribe   WebSocketMessageEnvelopeAction = "subscribe"
+	ActionUnsubscribe WebSocketMessageEnvelopeAction = "unsubscribe"
+	ActionError       WebSocketMessageEnvelopeAction = "error"
+)
+
 type WebSocketMessageEnvelope struct {
-	Event EventType `json:"event"`
-	Uid   string    `json:"uid"`
-	Data  any       `json:"data"`
+	Event  EventType                      `json:"event"`
+	Uid    string                         `json:"uid"`
+	Data   any                            `json:"data"`
+	Action WebSocketMessageEnvelopeAction `json:"action,omitempty"`
 }
 
 var upgrader = websocket.Upgrader{} // use default options
+
+var activeContexts = make(map[string]context.CancelFunc)
 
 // WSChannel godoc
 //
@@ -52,6 +64,7 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 	defer c.Close()
 	outchan := make(chan *WebSocketMessageEnvelope, 10)
 
+	// Output channel for sending messages to the client
 	go func() {
 		for {
 			outmessage := <-outchan
@@ -68,6 +81,7 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 		}
 	}()
 
+	// Input channel for receiving messages from the client
 	for {
 		var message WebSocketMessageEnvelope
 		err := c.ReadJSON(&message)
@@ -78,19 +92,28 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 		log.Printf("recv: %s %s", message.Event, message)
 		// Dispatcher
 
-		switch message.Event {
-		case EventHeartbeat:
-			go HealthCheckWsHandler(message, outchan)
-		case EventShare:
-			go SharesWsHandler(message, outchan)
-		case EventVolumes:
-			go VolumesWsHandler(message, outchan)
-		case EventUpdate:
-			go UpdateWsHandler(message, outchan)
-		case EventDirty:
-			go DirtyWsHandler(message, outchan)
-		default:
-			log.Printf("Unknown event: %s", message.Event)
+		if message.Action == ActionSubscribe {
+			ctx, activeContexts[message.Uid] = context.WithCancel(context.Background())
+			log.Printf("Subscribed: %s %v\n", message.Uid, activeContexts)
+			switch message.Event {
+			case EventHeartbeat:
+				go HealthCheckWsHandler(ctx, message, outchan)
+			case EventShare:
+				go SharesWsHandler(ctx, message, outchan)
+			case EventVolumes:
+				go VolumesWsHandler(ctx, message, outchan)
+			case EventUpdate:
+				go UpdateWsHandler(ctx, message, outchan)
+			case EventDirty:
+				go DirtyWsHandler(ctx, message, outchan)
+			default:
+				log.Printf("Unknown event: %s", message.Event)
+			}
+		} else if message.Action == ActionUnsubscribe {
+			activeContexts[message.Uid]()
+			delete(activeContexts, message.Uid)
+		} else {
+			log.Printf("Unknown action: %s", message.Action)
 		}
 	}
 }

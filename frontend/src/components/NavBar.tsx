@@ -117,12 +117,15 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
     };
 
-    function onLoadHandler() {
-        ws.subscribe<MainSRATReleaseAsset>(MainEventType.EventUpdate, (data) => {
+    useEffect(() => {
+        const upd = ws.subscribe<MainSRATReleaseAsset>(MainEventType.EventUpdate, (data) => {
             // console.log("Got update", data)
             setUpdateAssetStatus(data);
         })
-    }
+        return () => {
+            ws.unsubscribe(upd);
+        };
+    }, [])
 
     const current = pkg.version;
     //console.log("Latest version", props.healthData?.last_release, "Current version", current)
@@ -135,12 +138,8 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         setUpdate(latestVersion)
     }
 
-    useEffect(() => {
-
-    }, [])
-
     return (<>
-        <AppBar position="static" onLoad={onLoadHandler}>
+        <AppBar position="static">
             <Container maxWidth="xl">
                 <Toolbar disableGutters>
                     <img id="logo-container" className="brand-logo" alt="SRAT -- Samba Rest Adminitration Tool" src={logo} />
@@ -162,7 +161,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                     <Box sx={{ flexGrow: 0 }}>
                         {Object.values(dirty).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
                             <>
-                                <IconButton onClick={() => { api.config.configDelete(); window.location.reload() }}>
+                                <IconButton onClick={() => { api.config.configDelete() }}>
                                     <Tooltip title="Undo all modified" arrow>
                                         <UndoIcon sx={{ color: 'white' }} />
                                     </Tooltip>

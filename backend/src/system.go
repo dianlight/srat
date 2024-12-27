@@ -108,7 +108,7 @@ func HealthAndUpdateDataRefeshHandlers() {
 						}
 						break
 					}
-					log.Printf("Latest %s version is %s (Asset %s)", data.Config.UpdateChannel, *lastReleaseData.LastRelease.TagName, lastReleaseData.ArchAsset.GetName())
+					//log.Printf("Latest %s version is %s (Asset %s)", data.Config.UpdateChannel, *lastReleaseData.LastRelease.TagName, lastReleaseData.ArchAsset.GetName())
 					notifyUpdate()
 				} else {
 					log.Println("No Releases found")
@@ -158,31 +158,40 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 //   - c: A channel of *WebSocketMessageEnvelope used to send messages back to the WebSocket client.
 //
 // The function runs indefinitely, sending health updates until the WebSocket connection is closed.
-func HealthCheckWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+func HealthCheckWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	for {
-
-		var message WebSocketMessageEnvelope = WebSocketMessageEnvelope{
-			Event: EventHeartbeat,
-			Uid:   request.Uid,
-			Data:  healthData,
-		}
-		c <- &message
-		time.Sleep(5 * time.Second)
-	}
-}
-
-func DirtyWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
-	var oldDritySectionState config.ConfigSectionDirtySate
-	for {
-		if oldDritySectionState != data.DirtySectionState {
+		select {
+		case <-ctx.Done():
+			return
+		default:
 			var message WebSocketMessageEnvelope = WebSocketMessageEnvelope{
 				Event: EventHeartbeat,
 				Uid:   request.Uid,
-				Data:  data.DirtySectionState,
+				Data:  healthData,
 			}
 			c <- &message
-			copier.Copy(&oldDritySectionState, data.DirtySectionState)
-			//log.Printf("%v %v\n", oldDritySectionState, data.DirtySectionState)
+			time.Sleep(5 * time.Second)
+		}
+	}
+}
+
+func DirtyWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+	var oldDritySectionState config.ConfigSectionDirtySate
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if oldDritySectionState != data.DirtySectionState {
+				var message WebSocketMessageEnvelope = WebSocketMessageEnvelope{
+					Event: EventHeartbeat,
+					Uid:   request.Uid,
+					Data:  data.DirtySectionState,
+				}
+				c <- &message
+				copier.Copy(&oldDritySectionState, data.DirtySectionState)
+				//log.Printf("%v %v\n", oldDritySectionState, data.DirtySectionState)
+			}
 		}
 		time.Sleep(1 * time.Second)
 	}
@@ -205,24 +214,30 @@ func notifyUpdate() {
 	updateQueueMutex.RUnlock()
 }
 
-func UpdateWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+func UpdateWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	updateQueueMutex.Lock()
 	if updateQueue[request.Uid] == nil {
 		updateQueue[request.Uid] = make(chan *SRATReleaseAsset, 10)
 	}
-	updateQueue[request.Uid] <- lastReleaseData
+	//updateQueue[request.Uid] <- lastReleaseData
 	var queue = updateQueue[request.Uid]
 	queue <- lastReleaseData
 	updateQueueMutex.Unlock()
 	//log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
 	for {
-		smessage := &WebSocketMessageEnvelope{
-			Event: EventUpdate,
-			Uid:   request.Uid,
-			Data:  <-queue,
+		select {
+		case <-ctx.Done():
+			delete(updateQueue, request.Uid)
+			return
+		default:
+			smessage := &WebSocketMessageEnvelope{
+				Event: EventUpdate,
+				Uid:   request.Uid,
+				Data:  <-queue,
+			}
+			//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
+			c <- smessage
 		}
-		//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
-		c <- smessage
 	}
 }
 

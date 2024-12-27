@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -261,7 +262,7 @@ func deleteShare(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func SharesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+func SharesWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	sharesQueueMutex.Lock()
 	if sharesQueue[request.Uid] == nil {
 		sharesQueue[request.Uid] = make(chan *config.Shares, 10)
@@ -271,12 +272,21 @@ func SharesWsHandler(request WebSocketMessageEnvelope, c chan *WebSocketMessageE
 	sharesQueueMutex.Unlock()
 	log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
 	for {
-		smessage := &WebSocketMessageEnvelope{
-			Event: EventShare,
-			Uid:   request.Uid,
-			Data:  <-queue,
+		select {
+		case <-ctx.Done():
+			log.Printf("Handle close: %s %s", request.Event, request.Uid)
+			sharesQueueMutex.Lock()
+			delete(sharesQueue, request.Uid)
+			sharesQueueMutex.Unlock()
+			return
+		default:
+			smessage := &WebSocketMessageEnvelope{
+				Event: EventShare,
+				Uid:   request.Uid,
+				Data:  <-queue,
+			}
+			//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
+			c <- smessage
 		}
-		//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
-		c <- smessage
 	}
 }
