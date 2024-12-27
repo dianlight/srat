@@ -1,7 +1,7 @@
 import copy from 'bun-copy-plugin';
 import { watch } from "fs"
 import { parseArgs } from "util";
-import { file, type BuildOutput, type Serve } from "bun";
+import { file, type BuildConfig, type BuildOutput, type Serve } from "bun";
 import { htmlLiveReload } from '@gtramontina.com/bun-html-live-reload';
 
 const { values, positionals } = parseArgs({
@@ -29,47 +29,64 @@ const { values, positionals } = parseArgs({
     allowPositionals: true
 });
 
+const APIURL = values.watch ? values.apiContextUrl || "" : "'dynamic'"
+console.log(`API URL: ${APIURL}`)
 
-
-async function build(): Promise<BuildOutput | void> {
-    const APIURL = values.watch ? values.apiContextUrl || "" : "'dynamic'"
-    console.log(`API URL: ${APIURL}`)
-    return Bun.build({
-        entrypoints: [/*'src/index.html',*/ 'src/index.tsx'],
-        outdir: './out',  // Specify the output directory
-        experimentalCss: true,
-        naming: {
-            entry: "[dir]/[name].[ext]",
-            chunk: '[name]-[hash].[ext]',
-            asset: '[name].[ext]',
-        },
-        target: "browser",
-        sourcemap: "inline",
-        minify: true,
-        plugins: [
-            copy("src/index.html", "out/index.html")
-            //  html({})
-        ],
-        define: {
-            "process.env.APIURL": APIURL,
-        }
-    }).then((result) => {
-        if (!result.success) {
-            console.error("Build failed");
-            for (const message of result.logs) {
-                // Bun will pretty print the message object
-                console.error(message);
-            }
-        }
-        return result
-    })
+const buildConfig: BuildConfig = {
+    entrypoints: [/*'src/index.html',*/ 'src/index.tsx'],
+    outdir: './out',  // Specify the output directory
+    experimentalCss: true,
+    naming: {
+        entry: "[dir]/[name].[ext]",
+        chunk: '[name]-[hash].[ext]',
+        asset: '[name].[ext]',
+    },
+    target: "browser",
+    sourcemap: "inline",
+    minify: true,
+    plugins: [
+        copy("src/index.html", "out/index.html")
+        //  html({})
+    ],
+    define: {
+        "process.env.APIURL": APIURL,
+    }
 }
 
-console.log(`Build ${import.meta.dir}/src`)
+async function build(): Promise<BuildOutput | void> {
+    if (!values.serve) {
+        console.log(`Build ${import.meta.dir}/src`)
+        return Bun.build(buildConfig).then((result) => {
+            if (!result.success) {
+                console.error("Build failed");
+                for (const message of result.logs) {
+                    // Bun will pretty print the message object
+                    console.error(message);
+                }
+            }
+            return result
+        })
+    } else {
+        console.log(`Serving ${values.serve}`);
+        const serve: Serve = {
+            fetch(req: Request) {
+                const url = new URL(req.url)
+                const path = values.serve + url.pathname;
+                console.log(`Request ${req.mode} ${url.pathname} ==> ${path}`)
+                return new Response(Bun.file(path))
+            },
+            port: 3000
+        }
+
+        Bun.serve(htmlLiveReload(serve, { buildConfig, watchPath: import.meta.dir + "/src" }));
+        console.log("Serving http://localhost:3000/index.html");
+    }
+}
+
 await build();
 console.log(`Build complete ✅ [👁️:${values.watch ? 'watching' : 'build'}]`)
 
-
+/*
 if (values.watch) {
     console.log(`Build Watch ${import.meta.dir}/src`)
     const srcwatch = watch(
@@ -77,7 +94,8 @@ if (values.watch) {
         { recursive: true },
         async (event, filename) => {
             console.log(`Detected ${event} in ${filename}`)
-            await build();
+            //await build();
+            await htmlLiveReload.
             console.log('Build complete ✅')
         }
     )
@@ -88,22 +106,6 @@ if (values.watch) {
         process.exit(0);
     })
 }
-
-if (values.serve) {
-    console.log(`Serving ${values.serve}`);
-    const serve: Serve = {
-        fetch(req: Request) {
-            const url = new URL(req.url)
-            const path = values.serve + url.pathname;
-            console.log(`Request ${req.mode} ${url.pathname} ==> ${path}`)
-            return new Response(Bun.file(path))
-        },
-        port: 3000
-    }
-
-    Bun.serve(htmlLiveReload(serve, { watchPath: import.meta.dir + "/src" }));
-    console.log("Serving http://localhost:3000/index.html");
-}
-
+    */
 
 

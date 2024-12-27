@@ -1,0 +1,35 @@
+diff --git a/index.js b/index.js
+index f49456402c0671d7998cec0b27c743616b329f49..54ccddf297f988bb0e06e89ed6053a63cf87c325 100644
+--- a/index.js
++++ b/index.js
+@@ -1,6 +1,6 @@
+ // index.ts
+-import {watch} from "fs";
+-import {join} from "path";
++import { watch } from "fs";
++import { join } from "path";
+ if (globalThis.ws === undefined) {
+   globalThis.ws = [];
+ }
+@@ -12,7 +12,7 @@ var htmlLiveReload = (serve, { buildConfig, watchPath } = {}) => {
+     Bun.build(buildConfig).catch(console.error);
+   }
+   if (watchPath) {
+-    watch(watchPath).on("change", async (event, filename) => {
++    watch(watchPath, { recursive: true }).on("change", async (event, filename) => {
+       if (event !== "change" || typeof filename !== "string")
+         return;
+       let command = "reload";
+diff --git a/index.ts b/index.ts
+index fc45b2278f884d6f8bb88ce4107b4b88b222eebe..f72f1467ea1d92e59f43f0401ec5a4a572e74595 100644
+--- a/index.ts
++++ b/index.ts
+@@ -69,7 +69,7 @@ export const htmlLiveReload = <
+ 	}
+ 
+ 	if (watchPath) {
+-		watch(watchPath).on("change", async (event, filename) => {
++		watch(watchPath, { recursive: true }).on("change", async (event, filename) => {
+ 			if (event !== "change" || typeof filename !== "string") return;
+ 
+ 			let command = "reload";
