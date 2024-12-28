@@ -12,6 +12,8 @@ import StorageIcon from '@mui/icons-material/Storage';
 import CreditScoreIcon from '@mui/icons-material/CreditScore';
 import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
+import { faHardDrive, faPlug, faPlugCircleCheck, faPlugCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
 
 
 export function Volumes() {
@@ -95,7 +97,7 @@ export function Volumes() {
                         >
                             <ListItemAvatar>
                                 <Avatar>
-                                    <StorageIcon />
+                                    <FontAwesomeSvgIcon icon={faHardDrive} />
                                 </Avatar>
                             </ListItemAvatar>
                             <ListItemText
@@ -124,7 +126,13 @@ export function Volumes() {
                                 </IconButton>
                             */}
                                         <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
-                                            <EjectIcon />
+                                            <FontAwesomeSvgIcon icon={faPlug} />
+                                        </IconButton>
+                                        <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
+                                            <FontAwesomeSvgIcon icon={faPlugCircleCheck} />
+                                        </IconButton>
+                                        <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
+                                            <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
                                         </IconButton>
                                     </>
                                     }
