@@ -207,7 +207,6 @@ func prog(state overseer.State) {
 
 	// Volumes
 	globalRouter.HandleFunc("/volumes", listVolumes).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/volume/{volume_name}", getVolume).Methods(http.MethodGet)
 	//	globalRouter.HandleFunc("/volume/{volume_name}", updateVolume).Methods(http.MethodPut, http.MethodPatch)
 	//	globalRouter.HandleFunc("/volume/{volume_name}/mount", mountVolume).Methods(http.MethodPost)
 	//	globalRouter.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods(http.MethodDelete)

@@ -1,4 +1,173 @@
 definitions:
+  block.Disk:
+    properties:
+      bus_path:
+        description: BusPath is the filepath to the bus for this disk.
+        type: string
+      drive_type:
+        allOf:
+        - $ref: '#/definitions/block.DriveType'
+        description: DriveType is the category of disk drive for this disk.
+      model:
+        description: Model is the model number of the disk.
+        type: string
+      name:
+        description: Name contains a short name for the disk, e.g. `sda`
+        type: string
+      partitions:
+        description: |-
+          Partitions contains an array of pointers to `Partition` structs, one for
+          each partition on the disk.
+        items:
+          $ref: '#/definitions/block.Partition'
+        type: array
+      physical_block_size_bytes:
+        description: |-
+          PhysicalBlockSizeBytes is the size, in bytes, of the physical blocks in
+          this disk. This is typically the minimum amount of data that can be
+          written to a disk in a single write operation.
+        type: integer
+      removable:
+        description: IsRemovable indicates if the disk drive is removable.
+        type: boolean
+      serial_number:
+        description: SerialNumber is the serial number of the disk.
+        type: string
+      size_bytes:
+        description: SizeBytes contains the total amount of storage, in bytes, for
+          this disk
+        type: integer
+      storage_controller:
+        allOf:
+        - $ref: '#/definitions/block.StorageController'
+        description: |-
+          StorageController is the category of storage controller used by the
+          disk.
+      vendor:
+        description: Vendor is the manufacturer of the disk.
+        type: string
+      wwn:
+        description: |-
+          WWN is the World-wide Name of the disk.
+          See: https://en.wikipedia.org/wiki/World_Wide_Name
+        type: string
+      wwnNoExtension:
+        description: |-
+          WWNNoExtension is the World-wide Name of the disk with any vendor
+          extensions excluded.
+          See: https://en.wikipedia.org/wiki/World_Wide_Name
+        type: string
+    type: object
+  block.DriveType:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    type: integer
+    x-enum-varnames:
+    - DriveTypeUnknown
+    - DriveTypeHDD
+    - DriveTypeFDD
+    - DriveTypeODD
+    - DriveTypeSSD
+    - DriveTypeVirtual
+    - DRIVE_TYPE_UNKNOWN
+    - DRIVE_TYPE_HDD
+    - DRIVE_TYPE_FDD
+    - DRIVE_TYPE_ODD
+    - DRIVE_TYPE_SSD
+    - DRIVE_TYPE_VIRTUAL
+  block.Info:
+    properties:
+      disks:
+        description: |-
+          Disks contains an array of pointers to `Disk` structs, one for each disk
+          drive on the host system.
+        items:
+          $ref: '#/definitions/block.Disk'
+        type: array
+      total_size_bytes:
+        description: |-
+          TotalSizeBytes contains the total amount of storage, in bytes, on the
+          host system.
+        type: integer
+    type: object
+  block.Partition:
+    properties:
+      filesystem_label:
+        description: |-
+          FilesystemLabel is the label of the filesystem contained on the
+          partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
+        type: string
+      label:
+        description: |-
+          Label is the human-readable label given to the partition. On Linux, this
+          is derived from the `ID_PART_ENTRY_NAME` udev entry.
+        type: string
+      mount_point:
+        description: MountPoint is the path where this partition is mounted.
+        type: string
+      name:
+        description: Name is the system name given to the partition, e.g. "sda1".
+        type: string
+      read_only:
+        description: IsReadOnly indicates if the partition is marked read-only.
+        type: boolean
+      size_bytes:
+        description: |-
+          SizeBytes contains the total amount of storage, in bytes, this partition
+          can consume.
+        type: integer
+      type:
+        description: Type contains the type of the partition.
+        type: string
+      uuid:
+        description: |-
+          UUID is the universally-unique identifier (UUID) for the partition.
+          This will be volume UUID on Darwin, PartUUID on linux, empty on Windows.
+        type: string
+    type: object
+  block.StorageController:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    type: integer
+    x-enum-varnames:
+    - StorageControllerUnknown
+    - StorageControllerIDE
+    - StorageControllerSCSI
+    - StorageControllerNVMe
+    - StorageControllerVirtIO
+    - StorageControllerMMC
+    - StorageControllerLoop
+    - STORAGE_CONTROLLER_UNKNOWN
+    - STORAGE_CONTROLLER_IDE
+    - STORAGE_CONTROLLER_SCSI
+    - STORAGE_CONTROLLER_NVME
+    - STORAGE_CONTROLLER_VIRTIO
+    - STORAGE_CONTROLLER_MMC
+    - STORAGE_CONTROLLER_LOOP
   config.Config:
     properties:
       acl:
@@ -631,77 +800,6 @@ definitions:
         description: API URLs
         type: string
     type: object
-  lsblk.Device:
-    properties:
-      children:
-        items:
-          $ref: '#/definitions/lsblk.Device'
-        type: array
-      fsavail:
-        type: integer
-      fssize:
-        type: integer
-      fstype:
-        type: string
-      fsusage:
-        description: percent that was used
-        type: integer
-      fsused:
-        type: integer
-      group:
-        type: string
-      hctl:
-        type: string
-      hotplug:
-        type: boolean
-      label:
-        type: string
-      model:
-        type: string
-      mountpoint:
-        type: string
-      mountpoints:
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-      partlabel:
-        type: string
-      parttype:
-        type: string
-      partuuid:
-        type: string
-      path:
-        type: string
-      pttype:
-        type: string
-      ptuuid:
-        type: string
-      rev:
-        type: string
-      rm:
-        type: boolean
-      ro:
-        type: boolean
-      serial:
-        type: string
-      state:
-        type: string
-      subsystems:
-        type: string
-      tran:
-        type: string
-      type:
-        type: string
-      uuid:
-        type: string
-      vendor:
-        type: string
-      wwn:
-        description: Alignment  int      `json:"alignment"`
-        type: string
-    type: object
   main.EventType:
     enum:
     - update
@@ -768,56 +866,6 @@ definitions:
       error:
         type: string
     type: object
-  main.RootDevice:
-    properties:
-      group:
-        type: string
-      hctl:
-        type: string
-      hotplug:
-        type: boolean
-      label:
-        type: string
-      model:
-        type: string
-      name:
-        type: string
-      partlabel:
-        type: string
-      parttype:
-        type: string
-      partuuid:
-        type: string
-      path:
-        type: string
-      pttype:
-        type: string
-      ptuuid:
-        type: string
-      rev:
-        type: string
-      rm:
-        type: boolean
-      ro:
-        type: boolean
-      serial:
-        type: string
-      state:
-        type: string
-      subsystems:
-        type: string
-      tran:
-        type: string
-      type:
-        type: string
-      uuid:
-        type: string
-      vendor:
-        type: string
-      wwn:
-        description: Alignment  int    `json:"alignment"`
-        type: string
-    type: object
   main.SRATReleaseAsset:
     properties:
       arch:
@@ -849,31 +897,6 @@ definitions:
         items:
           type: string
         type: array
-    type: object
-  main.Volume:
-    properties:
-      device:
-        type: string
-      device_name:
-        type: string
-      fstype:
-        type: string
-      label:
-        type: string
-      lsbk:
-        $ref: '#/definitions/lsblk.Device'
-      mountpoint:
-        type: string
-      opts:
-        items:
-          type: string
-        type: array
-      root_device:
-        allOf:
-        - $ref: '#/definitions/main.RootDevice'
-        description: Stats        disk.UsageStat `json:"stats"`
-      serial_number:
-        type: string
     type: object
 info:
   contact:
@@ -1671,33 +1694,6 @@ paths:
       summary: List all configured users
       tags:
       - user
-  /volume/{volume_name}:
-    get:
-      description: get a volume by Name
-      parameters:
-      - description: Name
-        in: path
-        name: volume_name
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/main.Volume'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/main.ResponseError'
-      summary: Get a volume
-      tags:
-      - volume
   /volumes:
     get:
       description: List all available volumes
@@ -1707,9 +1703,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/main.Volume'
-            type: array
+            $ref: '#/definitions/block.Info'
         "405":
           description: Method Not Allowed
           schema:
