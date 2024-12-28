@@ -112,8 +112,17 @@ func HealthAndUpdateDataRefeshHandlers() {
 					notifyUpdate()
 				} else {
 					log.Println("No Releases found")
+					lastReleaseData = &SRATReleaseAsset{
+						UpdateStatus: -1,
+					}
+					notifyUpdate()
 				}
 			})
+		} else {
+			lastReleaseData = &SRATReleaseAsset{
+				UpdateStatus: -1,
+			}
+			notifyUpdate()
 		}
 		sambaProcess, err := GetSambaProcess()
 		if err == nil && sambaProcess != nil {

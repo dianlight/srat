@@ -34,6 +34,7 @@ import { green } from "@mui/material/colors"
 import SaveIcon from '@mui/icons-material/Save';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import UndoIcon from '@mui/icons-material/Undo';
+import { useConfirm } from "material-ui-confirm"
 
 function a11yProps(index: number) {
     return {
@@ -105,17 +106,36 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         return Number.parseInt(localStorage.getItem("srat_tab") || "0");
     });
     const dirty = useContext(DirtyDataContext);
+    const confirm = useConfirm();
 
 
     if (!mode) {
         return null;
     }
 
-    const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+    function handleChange(event: React.SyntheticEvent, newValue: number) {
         setValue(newValue);
         localStorage.setItem("srat_tab", "" + newValue)
-
     };
+
+    function handleDoUpdate() {
+        console.log("Doing update")
+        confirm({
+            title: `Update to ${update}?`,
+            description: "If you proceed the new version is downloaded and installed."
+        })
+            .then(() => {
+                api.update.updateUpdate().then((res) => {
+                    //users.mutate();
+                }).catch(err => {
+                    console.error(err);
+                    //setErrorInfo(JSON.stringify(err));
+                })
+            })
+            .catch(() => {
+                /* ... */
+            });
+    }
 
     useEffect(() => {
         const upd = ws.subscribe<MainSRATReleaseAsset>(MainEventType.EventUpdate, (data) => {
@@ -127,16 +147,19 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         };
     }, [])
 
-    const current = pkg.version;
-    //console.log("Latest version", props.healthData?.last_release, "Current version", current)
+    useEffect(() => {
+        const current = pkg.version;
 
-    // Normalize Version Strings
-    const currentVersion = semver.clean(current.replace(".dev", "-dev")) || "0.0.0"
-    const latestVersion = semver.clean((updateAssetStatus.last_release?.tag_name || "0.0.0").replace(".dev", "-dev")) || "0.0.0"
+        // Normalize Version Strings
+        const currentVersion = semver.clean(current.replace(".dev", "-dev")) || "0.0.0"
+        const latestVersion = semver.clean((updateAssetStatus.last_release?.tag_name || "0.0.0").replace(".dev", "-dev")) || "0.0.0"
 
-    if (updateAssetStatus.last_release && update !== latestVersion && semver.compare(latestVersion, currentVersion) == 1) {
-        setUpdate(latestVersion)
-    }
+        if (updateAssetStatus.last_release && update !== latestVersion && semver.compare(latestVersion, currentVersion) == 1) {
+            setUpdate(latestVersion)
+        } else {
+            setUpdate(undefined)
+        }
+    }, [updateAssetStatus])
 
     return (<>
         <AppBar position="static">
@@ -181,7 +204,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                             </IconButton>
                         }
                         {update && updateAssetStatus.update_status == -1 &&
-                            <IconButton onClick={() => api.update.updateUpdate()}>
+                            <IconButton onClick={handleDoUpdate}>
                                 <Tooltip title={`Update ${update} available`} arrow>
                                     <SystemSecurityUpdateIcon sx={{ color: 'white' }} />
                                 </Tooltip>
