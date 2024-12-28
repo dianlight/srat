@@ -61,7 +61,7 @@ export function Settings() {
                                         id: 'prerelease',
                                         label: 'Beta Release',
                                     }
-                                ]} sx={{ display: "flex" }} control={control} />
+                                ]} sx={{ display: "flex" }} control={control} disabled={mode.read_only} />
                         </Grid>
                         <Grid size={12}>
                             <Divider />
