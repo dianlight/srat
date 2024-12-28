@@ -36,6 +36,7 @@
     "@mui/icons-material": "^6.2.1",
     "@mui/material": "^6.2.1",
     "axios": "^1.7.9",
+    "filesize": "^10.1.6",
     "material-ui-confirm": "^3.0.16",
     "mui-chips-input": "^4.0.1",
     "react": "^19.0.0",

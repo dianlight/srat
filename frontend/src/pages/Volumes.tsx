@@ -11,6 +11,7 @@ import EjectIcon from '@mui/icons-material/Eject';
 import StorageIcon from '@mui/icons-material/Storage';
 import CreditScoreIcon from '@mui/icons-material/CreditScore';
 import { useConfirm } from "material-ui-confirm";
+import { filesize } from "filesize";
 
 
 export function Volumes() {
@@ -32,6 +33,12 @@ export function Volumes() {
             ws.unsubscribe(vol);
         };
     }, [])
+
+    function decodeEscapeSequence(source: string) {
+        return source.replace(/\\x([0-9A-Fa-f]{2})/g, function () {
+            return String.fromCharCode(parseInt(arguments[1], 16));
+        });
+    };
 
     function onSubmitEjectVolume(data?: string) {
         console.log("Eject", data)
@@ -70,7 +77,7 @@ export function Volumes() {
         </Fab>}
         <br />
         <List dense={true}>
-            {status.disks?.map((disk, idx) =>
+            {status.disks?.filter((block) => !block.name?.match("z{0,1}ram\\d+")).map((disk, idx) =>
                 <Fragment key={idx}>
                     <ListItemButton>
                         <ListItem
@@ -96,7 +103,10 @@ export function Volumes() {
                                 onClick={() => { setSelected(disk); setShowPreview(true) }}
                                 disableTypography
                                 secondary={<Stack spacing={2} direction="row">
-                                    <Typography variant="caption">Controller: {disk.storage_controller}</Typography>
+                                    <Typography variant="caption">Size: {(disk.size_bytes && filesize(disk.size_bytes, { round: 0 }))}</Typography>
+                                    <Typography variant="caption">Type: {disk.drive_type}</Typography>
+                                    <Typography variant="caption">Bus: {disk.storage_controller}</Typography>
+                                    <Typography variant="caption">Vendor: {disk.vendor}</Typography>
                                     <Typography variant="caption">SN: {disk.serial_number}</Typography>
                                     <Typography variant="caption">Dev: {disk.name}</Typography>
                                 </Stack>}
@@ -104,7 +114,7 @@ export function Volumes() {
                         </ListItem>
                     </ListItemButton>
                     <List disablePadding>
-                        {disk.partitions?.map((partition, idx) =>
+                        {disk.partitions?.filter((part) => !(part.label?.startsWith("hassos-") && part.mount_point === "")).map((partition, idx) =>
                             <ListItemButton sx={{ pl: 4 }} key={idx}>
                                 <ListItem
                                     secondaryAction={!mode.read_only && <>
@@ -125,10 +135,12 @@ export function Volumes() {
                                         </Avatar>
                                     </ListItemAvatar>
                                     <ListItemText
-                                        primary={partition.label + " (" + partition.type + ")"}
+                                        primary={decodeEscapeSequence((partition.label === "unknown" ? partition.filesystem_label : partition.label) || "unknown")}
                                         onClick={() => { setSelected(partition); setShowPreview(true) }}
                                         disableTypography
                                         secondary={<Stack spacing={2} direction="row">
+                                            <Typography variant="caption">Size: {(partition.size_bytes && filesize(partition.size_bytes, { round: 0 }))}</Typography>
+                                            <Typography variant="caption">Type: {partition.type}</Typography>
                                             <Typography variant="caption">MountPath: {partition.mount_point}</Typography>
                                             <Typography variant="caption">UUID: {partition.uuid}</Typography>
                                             <Typography variant="caption">Dev: {partition.name}</Typography>
