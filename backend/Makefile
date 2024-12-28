@@ -46,11 +46,7 @@ docs: $(SRCS)
 
 .PHONY: dev
 dev: 
-	cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json
-
-.PHONY: dev_ro
-dev_ro: 
-	cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json -ro true
+	cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json $(ARGS)
 
 $(FRONTEND_DIRS)/node_modules:
 	cd $(FRONTEND_DIRS); bun install	

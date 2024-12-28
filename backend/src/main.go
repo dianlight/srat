@@ -3,6 +3,7 @@ package main
 //go:generate swag init --pd
 
 import (
+	"context"
 	"embed"
 	"flag"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	"github.com/dianlight/srat/data"
 	_ "github.com/dianlight/srat/docs"
 	"github.com/jpillora/overseer/fetcher"
+	"github.com/rs/cors"
 )
 
 var SRATVersion string
@@ -36,6 +38,7 @@ var http_port *int
 var templateFile *string
 var sambaConfigFile *string
 var wait time.Duration
+var hamode *bool
 
 // Static files
 //
@@ -45,15 +48,22 @@ var content embed.FS
 //go:embed templates/smb.gtpl
 var defaultTemplate embed.FS
 
-func ACAOMethodMiddleware(next http.Handler) http.Handler {
+func HAMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Access-Control-Allow-Headers
-		if r.Method == http.MethodOptions {
+		tokenString := r.Header.Get("X-Supervisor-Token")
+		if tokenString == "" {
+			log.Printf("Not in a HomeAssistant environment!")
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		if tokenString != os.Getenv("SUPERVISOR_TOKEN") {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "auth_token", tokenString)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -78,6 +88,7 @@ func main() {
 	templateFile = flag.String("template", "", "Template file")
 	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
 	data.ROMode = flag.Bool("ro", false, "Read only mode")
+	hamode = flag.Bool("addon", false, "Run in addon mode")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -151,9 +162,9 @@ func prog(state overseer.State) {
 	options = config.ReadOptionsFile(*optionsFile)
 
 	globalRouter := mux.NewRouter()
-	globalRouter.Use(mux.CORSMethodMiddleware(globalRouter))
-	globalRouter.Use(ACAOMethodMiddleware)
-	//r.Use(optionMiddleware)
+	if hamode != nil && *hamode {
+		globalRouter.Use(HAMiddleware)
+	}
 
 	// Swagger
 	globalRouter.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
@@ -230,7 +241,16 @@ func prog(state overseer.State) {
 		return nil
 	})
 
-	loggedRouter := handlers.LoggingHandler(os.Stdout, globalRouter)
+	handler := cors.New(
+		cors.Options{
+			AllowedOrigins:   []string{"*"},
+			AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
+			AllowedHeaders:   []string{"*"},
+			AllowCredentials: true,
+			MaxAge:           300,
+		},
+	).Handler(globalRouter)
+	loggedRouter := handlers.LoggingHandler(os.Stdout, handler)
 
 	srv := &http.Server{
 		//Addr: fmt.Sprintf("%s:%d",state.Address, *http_port),

@@ -12,3 +12,4 @@ var DirtySectionState nconfig.ConfigSectionDirtySate = nconfig.ConfigSectionDirt
 	Settings: false,
 }
 var ConfigFile *string
+var SupervisorToken *string
