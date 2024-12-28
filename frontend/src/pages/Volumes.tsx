@@ -5,14 +5,14 @@ import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
 import List from "@mui/material/List";
-import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography } from "@mui/material";
+import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 import EjectIcon from '@mui/icons-material/Eject';
 import StorageIcon from '@mui/icons-material/Storage';
 import CreditScoreIcon from '@mui/icons-material/CreditScore';
 import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
-import { faHardDrive, faPlug, faPlugCircleCheck, faPlugCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import { faHardDrive, faPlug, faPlugCircleCheck, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
 
 
@@ -68,28 +68,15 @@ export function Volumes() {
 
     return <InView>
         <PreviewDialog title={selected?.name || ""} objectToDisplay={selected} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
-        {mode.read_only || <Fab color="primary" aria-label="add" sx={{
-            float: 'right',
-            top: '-20px',
-            margin: '-8px'
-        }} size="small"
-            onClick={() => { setSelected(null); /*setShowEdit(true)*/ }}
-        >
-            <AddIcon />
-        </Fab>}
         <br />
         <List dense={true}>
+            <Divider />
             {status.disks?.filter((block) => !block.name?.match("z{0,1}ram\\d+")).map((disk, idx) =>
                 <Fragment key={idx}>
                     <ListItemButton>
                         <ListItem
                             secondaryAction={!mode.read_only && <>
-                                {/*
-                                <IconButton onClick={() => { setSelected(volume);setShowEdit(true) }} edge="end" aria-label="settings">
-                                    <SettingsIcon />
-                                </IconButton>
-                            */}
-                                <IconButton onClick={() => onSubmitEjectVolume(disk.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
+                                <IconButton onClick={() => onSubmitEjectVolume(disk.name)} edge="end" aria-label="delete" sx={(!disk.removable ? { display: "none" } : {})}>
                                     <EjectIcon />
                                 </IconButton>
                             </>
@@ -120,20 +107,27 @@ export function Volumes() {
                             <ListItemButton sx={{ pl: 4 }} key={idx}>
                                 <ListItem
                                     secondaryAction={!mode.read_only && <>
-                                        {/*
-                                <IconButton onClick={() => { setSelected(volume);setShowEdit(true) }} edge="end" aria-label="settings">
-                                    <SettingsIcon />
-                                </IconButton>
-                            */}
-                                        <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
-                                            <FontAwesomeSvgIcon icon={faPlug} />
-                                        </IconButton>
-                                        <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
-                                            <FontAwesomeSvgIcon icon={faPlugCircleCheck} />
-                                        </IconButton>
-                                        <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
-                                            <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
-                                        </IconButton>
+                                        {partition.mount_point === "" &&
+                                            <Tooltip title="Mount disk">
+                                                <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
+                                                    <FontAwesomeSvgIcon icon={faPlug} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        }
+                                        {partition.mount_point !== "" && partition.mount_point?.startsWith("/mnt/") && <>
+                                            <Tooltip title="Unmount disk">
+                                                <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
+                                                    <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Force unmounting disk">
+
+                                                <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
+                                                    <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </>
+                                        }
                                     </>
                                     }
                                 >
@@ -163,5 +157,5 @@ export function Volumes() {
                 </Fragment>
             )}
         </List>
-    </InView>
+    </InView >
 }
