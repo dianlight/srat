@@ -30,10 +30,10 @@ export function App() {
         const drtyuid = ws.subscribe<ConfigConfigSectionDirtySate>(MainEventType.EventDirty, (data) => {
             console.log("Got dirty data", data)
             setDirtyData(data);
-            localStorage.setItem("srat_dirty", (Object.values(data).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0) ? "true" : "false");
+            sessionStorage.setItem("srat_dirty", (Object.values(data).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0) ? "true" : "false");
         })
         function onBeforeUnload(ev: BeforeUnloadEvent) {
-            if (localStorage.getItem("srat_dirty") === "true" && !window.confirm("Are you sure you want to leave? Your changes will be lost.")) {
+            if (sessionStorage.getItem("srat_dirty") === "true") {
                 ev.preventDefault();
                 return "Are you sure you want to leave? Your changes will be lost.";
             }

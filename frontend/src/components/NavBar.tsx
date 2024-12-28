@@ -1,7 +1,7 @@
 import logo from "../img/logo.png"
 import github from "../img/github.svg"
 import pkg from '../../package.json'
-import { useContext, useEffect, useRef, useState } from "react"
+import { useContext, useEffect, useState } from "react"
 import { apiContext as api, DirtyDataContext, ModeContext, wsContext as ws } from "../Contexts"
 import { MainEventType, type MainHealth, type MainSRATReleaseAsset } from "../srat"
 import AppBar from '@mui/material/AppBar';
@@ -9,13 +9,8 @@ import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import Menu from '@mui/material/Menu';
-import MenuIcon from '@mui/icons-material/Menu';
 import Container from '@mui/material/Container';
-import Avatar from '@mui/material/Avatar';
-import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
-import AdbIcon from '@mui/icons-material/Adb';
 import PreviewIcon from '@mui/icons-material/Preview';
 import SystemSecurityUpdateIcon from '@mui/icons-material/SystemSecurityUpdate';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
@@ -30,14 +25,11 @@ import { SmbConf } from "../pages/SmbConf"
 import { Settings } from "../pages/Settings"
 import { Volumes } from "../pages/Volumes"
 import { Users } from "../pages/Users"
-import { green } from "@mui/material/colors"
 import SaveIcon from '@mui/icons-material/Save';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import UndoIcon from '@mui/icons-material/Undo';
 import { useConfirm } from "material-ui-confirm"
 import { v4 as uuidv4 } from 'uuid';
-import { Height } from "@mui/icons-material"
-import { InView } from "react-intersection-observer"
 import { Swagger } from "../pages/Swagger"
 
 function a11yProps(index: number) {
@@ -57,7 +49,7 @@ function CircularProgressWithLabel(
     props: CircularProgressProps & { value: number },
 ) {
     return (
-        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+        <Box sx={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle' }}>
             <CircularProgress variant="determinate" {...props} />
             <Box
                 sx={{
@@ -74,7 +66,7 @@ function CircularProgressWithLabel(
                 <Typography
                     variant="caption"
                     component="div"
-                    sx={{ color: 'text.secondary' }}
+                    sx={{ color: 'primary' }}
                 >{`${Math.round(props.value)}%`}</Typography>
             </Box>
         </Box>
@@ -241,17 +233,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                             </IconButton>
                         }
                         {updateAssetStatus.update_status && updateAssetStatus.update_status != -1 &&
-                            <CircularProgressWithLabel
-                                value={updateAssetStatus.update_status}
-                                size={68}
-                                sx={{
-                                    color: green[500],
-                                    position: 'absolute',
-                                    top: -6,
-                                    left: -6,
-                                    zIndex: 1,
-                                }}
-                            />
+                            <CircularProgressWithLabel value={updateAssetStatus.update_status} color="success" />
                         }
                         <IconButton onClick={() => { mode == 'light' ? setMode('dark') : (mode == 'dark' ? setMode('system') : setMode('light')) }} >
                             <Tooltip title={`Switch Mode ${mode}`} arrow>
