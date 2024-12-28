@@ -63,20 +63,14 @@ type ResponseError struct {
 	Body  any    `json:"body"`
 }
 
-//	@title			SRAT API
-//	@version		1.0
-//	@description	This are samba rest admin API
-// _termsOfService http://swagger.io/terms/
-
-//	@contact.name	Lucio Tarantino
-// _contact.url http://www.swagger.io/support
-//	@contact.email	lucio.tarantino@gmail.com
-
-//	@license.name	Apache 2.0
-//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
-
-// _host petstore.swagger.io
-// _BasePath /v2
+//		@title			SRAT API
+//		@version		1.0
+//		@description	This are samba rest admin API
+//		@contact.name	Lucio Tarantino
+//	 	@contact.url 	https://github.com/dianlight
+//		@contact.email	lucio.tarantino@gmail.com
+//		@license.name	Apache 2.0
+//		@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 func main() {
 	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
 	data.ConfigFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
