@@ -879,6 +879,7 @@ info:
   contact:
     email: lucio.tarantino@gmail.com
     name: Lucio Tarantino
+    url: https://github.com/dianlight
   description: This are samba rest admin API
   license:
     name: Apache 2.0
@@ -1737,4 +1738,10 @@ paths:
       summary: WSChannel
       tags:
       - system
+securityDefinitions:
+  ApiKeyAuth:
+    description: HomeAssistant Supervisor Token
+    in: header
+    name: X-Supervisor-Token
+    type: apiKey
 swagger: "2.0"

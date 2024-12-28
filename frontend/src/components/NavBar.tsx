@@ -36,6 +36,9 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import UndoIcon from '@mui/icons-material/Undo';
 import { useConfirm } from "material-ui-confirm"
 import { v4 as uuidv4 } from 'uuid';
+import { Height } from "@mui/icons-material"
+import { InView } from "react-intersection-observer"
+import { Swagger } from "../pages/Swagger"
 
 function a11yProps(index: number) {
     return {
@@ -264,22 +267,27 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                 </Toolbar>
             </Container>
         </AppBar>
-        {props.bodyRef.current && createPortal(<>
-            <TabPanel key={tabId + "0"} value={value} index={0}>
-                <Shares />
-            </TabPanel>
-            <TabPanel key={tabId + "1"} value={value} index={1}>
-                <Volumes />
-            </TabPanel>
-            <TabPanel key={tabId + "2"} value={value} index={2}>
-                <Users />
-            </TabPanel>
-            <TabPanel key={tabId + "3"} value={value} index={3}>
-                <Settings />
-            </TabPanel>
-            <TabPanel key={tabId + "4"} value={value} index={4}>
-                <SmbConf />
-            </TabPanel></>,
+        {props.bodyRef.current && createPortal(
+            <>
+                <TabPanel key={tabId + "0"} value={value} index={0}>
+                    <Shares />
+                </TabPanel>
+                <TabPanel key={tabId + "1"} value={value} index={1}>
+                    <Volumes />
+                </TabPanel>
+                <TabPanel key={tabId + "2"} value={value} index={2}>
+                    <Users />
+                </TabPanel>
+                <TabPanel key={tabId + "3"} value={value} index={3}>
+                    <Settings />
+                </TabPanel>
+                <TabPanel key={tabId + "4"} value={value} index={4}>
+                    <SmbConf />
+                </TabPanel>
+                <TabPanel key={tabId + "5"} value={value} index={5}>
+                    <Swagger />
+                </TabPanel>
+            </>,
             props.bodyRef.current /*document.getElementById('mainarea')!*/
         )}
     </>

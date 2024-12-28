@@ -19,7 +19,6 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
-	httpSwagger "github.com/swaggo/http-swagger/v2"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
@@ -42,7 +41,7 @@ var hamode *bool
 
 // Static files
 //
-//go:embed static/*
+//go:embed static/* docs/swagger.json
 var content embed.FS
 
 //go:embed templates/smb.gtpl
@@ -81,6 +80,10 @@ type ResponseError struct {
 //		@contact.email	lucio.tarantino@gmail.com
 //		@license.name	Apache 2.0
 //		@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+//		@securitydefinitions.apikey	ApiKeyAuth
+//				@in header
+//				@name	X-Supervisor-Token
+//				@description	HomeAssistant Supervisor Token
 func main() {
 	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
 	data.ConfigFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
@@ -167,56 +170,58 @@ func prog(state overseer.State) {
 	}
 
 	// Swagger
-	globalRouter.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
-		httpSwagger.URL("/swagger/doc.json"), //The url pointing to API definition
-		httpSwagger.DeepLinking(true),
-		httpSwagger.DocExpansion("none"),
-		httpSwagger.DomID("swagger-ui"),
-	)).Methods(http.MethodGet)
+	/*
+		globalRouter.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+			httpSwagger.URL("/swagger/doc.json"), //The url pointing to API definition
+			httpSwagger.DeepLinking(true),
+			httpSwagger.DocExpansion("none"),
+			httpSwagger.DomID("swagger-ui"),
+		)).Methods(http.MethodGet)
+	*/
 
 	// System
-	globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/update", UpdateHandler).Methods(http.MethodPut, http.MethodOptions)
-	globalRouter.HandleFunc("/restart", RestartHandler).Methods(http.MethodPut, http.MethodOptions)
+	globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/update", UpdateHandler).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/restart", RestartHandler).Methods(http.MethodPut)
 
 	// Shares
-	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/share", createShare).Methods(http.MethodPost, http.MethodOptions)
+	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/share", createShare).Methods(http.MethodPost)
 	globalRouter.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/share/{share_name}", deleteShare).Methods(http.MethodDelete)
 
 	// Volumes
-	globalRouter.HandleFunc("/volumes", listVolumes).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/volume/{volume_name}", getVolume).Methods(http.MethodGet, http.MethodOptions)
+	globalRouter.HandleFunc("/volumes", listVolumes).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/volume/{volume_name}", getVolume).Methods(http.MethodGet)
 	//	globalRouter.HandleFunc("/volume/{volume_name}", updateVolume).Methods(http.MethodPut, http.MethodPatch)
 	//	globalRouter.HandleFunc("/volume/{volume_name}/mount", mountVolume).Methods(http.MethodPost)
 	//	globalRouter.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods(http.MethodDelete)
 
 	// Users
-	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet, http.MethodOptions)
+	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/admin/user", updateAdminUser).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/users", listUsers).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/user/{username}", getUser).Methods(http.MethodGet, http.MethodOptions)
-	globalRouter.HandleFunc("/user", createUser).Methods(http.MethodPost, http.MethodOptions)
+	globalRouter.HandleFunc("/users", listUsers).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/user/{username}", getUser).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/user", createUser).Methods(http.MethodPost)
 	globalRouter.HandleFunc("/user/{username}", updateUser).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
 
 	// Samba
-	globalRouter.HandleFunc("/samba", getSambaConfig).Methods(http.MethodGet, http.MethodOptions)
+	globalRouter.HandleFunc("/samba", getSambaConfig).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/samba/apply", applySamba).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/samba/status", getSambaProcessStatus).Methods(http.MethodGet, http.MethodOptions)
+	globalRouter.HandleFunc("/samba/status", getSambaProcessStatus).Methods(http.MethodGet)
 
 	// Global
-	globalRouter.HandleFunc("/global", getGlobalConfig).Methods(http.MethodGet, http.MethodOptions)
+	globalRouter.HandleFunc("/global", getGlobalConfig).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/global", updateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
 
 	// Configuration
-	globalRouter.HandleFunc("/config", persistConfig).Methods(http.MethodPut, http.MethodPatch, http.MethodOptions)
+	globalRouter.HandleFunc("/config", persistConfig).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/config", rollbackConfig).Methods(http.MethodDelete)
 
 	// WebSocket
-	globalRouter.HandleFunc("/events", WSChannelEventsList).Methods(http.MethodGet, http.MethodOptions)
+	globalRouter.HandleFunc("/events", WSChannelEventsList).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/ws", WSChannelHandler)
 
 	// Static files
@@ -265,7 +270,7 @@ func prog(state overseer.State) {
 	go HealthAndUpdateDataRefeshHandlers()
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
-		log.Printf("Starting Server... \n Swagger At: http://localhost:%d/swagger/index.html", *http_port)
+		log.Printf("Starting Server... \n GoTo: http://localhost:%d/", *http_port)
 		if err := srv.Serve(state.Listener); err != nil {
 			log.Fatal(err)
 		}

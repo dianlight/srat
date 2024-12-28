@@ -22,6 +22,7 @@
     "@types/react-dom": "^19.0.2",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/semver": "^7.5.8",
+    "@types/swagger-ui-react": "^4.18.3",
     "bun-copy-plugin": "^0.2.1",
     "swagger-typescript-api": "^13.0.23"
   },
@@ -45,6 +46,7 @@
     "react-syntax-highlighter": "^15.6.1",
     "react-use-error-boundary": "^3.0.0",
     "semver": "^7.6.3",
+    "swagger-ui-react": "^5.18.2",
     "swr": "^2.2.5",
     "uuid": "^11.0.3"
   },
@@ -59,5 +61,8 @@
   },
   "patchedDependencies": {
     "@gtramontina.com/bun-html-live-reload@1.0.1": "patches/@gtramontina.com%2Fbun-html-live-reload@1.0.1.patch"
+  },
+  "scarfSettings": {
+    "enabled": false
   }
 }
