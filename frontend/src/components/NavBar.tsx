@@ -23,7 +23,7 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import { useColorScheme } from "@mui/material/styles"
 import AutoModeIcon from '@mui/icons-material/AutoMode';
 import semver from "semver"
-import { CircularProgress, Tab, Tabs, type CircularProgressProps } from "@mui/material"
+import { CircularProgress, Tab, Tabs, useMediaQuery, useTheme, type CircularProgressProps } from "@mui/material"
 import { createPortal } from "react-dom"
 import { Shares } from "../pages/Shares"
 import { SmbConf } from "../pages/SmbConf"
@@ -109,6 +109,8 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     const dirty = useContext(DirtyDataContext);
     const confirm = useConfirm();
     const [tabId, setTabId] = useState<string>(() => uuidv4())
+    const theme = useTheme();
+    const matches = useMediaQuery(theme.breakpoints.up('sm'));
 
 
     if (!mode) {
@@ -185,21 +187,26 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         <AppBar position="static">
             <Container maxWidth="xl">
                 <Toolbar disableGutters>
-                    <img id="logo-container" className="brand-logo" alt="SRAT -- Samba Rest Adminitration Tool" src={logo} />
+                    {matches &&
+                        <img id="logo-container" className="brand-logo" alt="SRAT -- Samba Rest Adminitration Tool" src={logo} />
+                    }
                     <Tabs
                         sx={{ flexGrow: 1, display: { xs: 'flex', md: 'flex' } }}
                         value={value}
                         onChange={handleChange}
                         indicatorColor="secondary"
                         textColor="inherit"
-                        variant="fullWidth"
-                        aria-label="full width tabs example"
+                        variant="scrollable"
+                        aria-label="Section Tabs"
+                        allowScrollButtonsMobile
+                        scrollButtons
                     >
                         <Tab label="Shares" {...a11yProps(0)} icon={dirty.shares ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab href="#" label="Volumes" {...a11yProps(1)} icon={dirty.volumes ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab href="#" label="Users" {...a11yProps(2)} icon={dirty.users ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab href="#" label="Settings" {...a11yProps(3)} icon={dirty.settings ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab label="smb.conf (ro)" {...a11yProps(4)} />
+                        <Tab label="smb.conf" {...a11yProps(4)} />
+                        <Tab label="API Docs" {...a11yProps(4)} />
                     </Tabs>
                     <Box sx={{ flexGrow: 0 }}>
                         {Object.values(dirty).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
