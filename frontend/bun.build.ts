@@ -50,6 +50,7 @@ const buildConfig: BuildConfig = {
     ],
     define: {
         "process.env.APIURL": APIURL,
+        "process.env.NODE_ENV": values.watch ? "'development'" : "'production'"
     }
 }
 
