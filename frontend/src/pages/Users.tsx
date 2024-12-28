@@ -13,13 +13,14 @@ import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
-import { TextFieldElement } from "react-hook-form-mui";
+import { PasswordElement, PasswordRepeatElement, TextFieldElement } from "react-hook-form-mui";
 
 
 
 interface UsersProps extends ConfigUser {
     isAdmin?: boolean
     doCreate?: boolean
+    "password-repeat"?: string
 }
 
 export function Users() {
@@ -147,9 +148,6 @@ export function Users() {
 }
 
 function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => void, objectToEdit?: UsersProps }) {
-    //const [isPassowrdVisible, setIsPasswordVisible] = useState(false);
-    //const admin = useSWR<ConfigUser>('/admin/user', () => api.admin.userList().then(res => res.data));
-    //const users = useSWR<ConfigUser[]>('/users', () => api.users.usersList().then(res => res.data));
     const { control, handleSubmit, watch, formState: { errors } } = useForm<UsersProps>(
         {
             defaultValues: {
@@ -190,7 +188,9 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
                                     <TextFieldElement name="username" label="User Name" required control={control} disabled={props.objectToEdit?.username ? (props.objectToEdit.isAdmin ? false : true) : false} />
                                 </Grid>
                                 <Grid size={6}>
-                                    <TextFieldElement name="password" label="Password" type="password" required control={control} />
+                                    <PasswordElement name="password" label="Password"
+                                        required control={control} />
+                                    <PasswordRepeatElement passwordFieldName={'password'} name={'password-repeat'} margin={'dense'} label={'Repeat Password'} required control={control} />
                                 </Grid>
                             </Grid>
                         </form>
