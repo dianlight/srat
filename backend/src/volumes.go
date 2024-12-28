@@ -68,7 +68,7 @@ type Volume struct {
 	// IOStats disk.IOCountersStat `json:"io_stats"`
 }
 
-func _getVolumesData() ([]Volume, []error) {
+func GetVolumesData() ([]Volume, []error) {
 	var errs []error
 
 	_partitions, err := disk.Partitions(false)
@@ -184,7 +184,7 @@ func _getVolumesData() ([]Volume, []error) {
 func listVolumes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	volumes, errs := _getVolumesData()
+	volumes, errs := GetVolumesData()
 	if len(errs) > 0 && volumes == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error fetching volumes: %v", errs)))
@@ -218,7 +218,7 @@ func getVolume(w http.ResponseWriter, r *http.Request) {
 	volume := mux.Vars(r)["volume_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	volumes, err := _getVolumesData()
+	volumes, err := GetVolumesData()
 	if len(err) > 0 && volumes == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error fetching volumes: %v", err)))
@@ -431,8 +431,13 @@ func VolumesEventHandler() {
 		select {
 		case uevent := <-queue:
 			log.Println("Handle", pretty.Sprint(uevent))
-			var data, _ = _getVolumesData()
-			notifyVolumeClient(data)
+			if uevent.Action == "add" {
+				var data, _ = GetVolumesData()
+				notifyVolumeClient(data)
+			} else if uevent.Action == "remove" {
+				var data, _ = GetVolumesData()
+				notifyVolumeClient(data)
+			}
 		case err := <-errors:
 			log.Println("ERROR:", err)
 		}
@@ -446,7 +451,7 @@ func VolumesWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c c
 		volumesQueue[request.Uid] = make(chan *[]Volume, 10)
 	}
 
-	var data, errs = _getVolumesData()
+	var data, errs = GetVolumesData()
 	if len(errs) > 0 && data == nil {
 		log.Printf("Unable to fetch volumes: %v", errs)
 		return

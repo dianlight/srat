@@ -89,12 +89,12 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 			log.Println("read:", err)
 			break
 		}
-		log.Printf("recv: %s %s", message.Event, message)
+		log.Printf("ws: %s %s", message.Event, message)
 		// Dispatcher
 
 		if message.Action == ActionSubscribe {
 			ctx, activeContexts[message.Uid] = context.WithCancel(context.Background())
-			log.Printf("Subscribed: %s %v\n", message.Uid, activeContexts)
+			//log.Printf("Subscribed: %s %v\n", message.Uid, activeContexts)
 			switch message.Event {
 			case EventHeartbeat:
 				go HealthCheckWsHandler(ctx, message, outchan)

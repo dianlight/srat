@@ -54,7 +54,7 @@ func TestListVolumessHandler(t *testing.T) {
 
 func TestGetVolumeHandler(t *testing.T) {
 
-	volumes, errs := _getVolumesData()
+	volumes, errs := GetVolumesData()
 	if len(errs) != 0 {
 		t.Logf("Warning on _getVolumesData %v", errs)
 	}

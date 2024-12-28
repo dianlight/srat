@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 
@@ -270,11 +269,11 @@ func SharesWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c ch
 	sharesQueue[request.Uid] <- &data.Config.Shares
 	var queue = sharesQueue[request.Uid]
 	sharesQueueMutex.Unlock()
-	log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
+	//log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("Handle close: %s %s", request.Event, request.Uid)
+			//log.Printf("Handle close: %s %s", request.Event, request.Uid)
 			sharesQueueMutex.Lock()
 			delete(sharesQueue, request.Uid)
 			sharesQueueMutex.Unlock()

@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
+	"github.com/kr/pretty"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
@@ -95,6 +96,9 @@ func main() {
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
+	// Headless CLI mode (execute a command and exit)
+	show_volumes := flag.Bool("show-volumes", false, "Show volumes in headless CLI mode and exit")
+
 	flag.Usage = func() {
 		writer := flag.CommandLine.Output()
 
@@ -108,7 +112,17 @@ func main() {
 	flag.Parse()
 
 	data.UpdateFilePath = os.TempDir() + "/" + filepath.Base(os.Args[0])
-	log.Printf("Update file: %s\n", data.UpdateFilePath)
+	//log.Printf("Update file: %s\n", data.UpdateFilePath)
+
+	if *show_volumes {
+		volumes, err := GetVolumesData()
+		if err != nil {
+			log.Fatalf("Error fetching volumes: %v", err)
+			os.Exit(1)
+		}
+		pretty.Printf("\n%v\n", volumes)
+		os.Exit(0)
+	}
 
 	overseer.Run(overseer.Config{
 		Program: prog,
