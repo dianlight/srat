@@ -632,7 +632,7 @@ export class HttpClient<SecurityDataType = unknown> {
  * @title SRAT API
  * @version 1.0
  * @license Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0.html)
- * @contact Lucio Tarantino <lucio.tarantino@gmail.com>
+ * @contact Lucio Tarantino <lucio.tarantino@gmail.com> (https://github.com/dianlight)
  *
  * This are samba rest admin API
  */
