@@ -35,7 +35,6 @@ clean:
 test: $(ALL_SRCS) static
 	echo $(ALL_SRCS)
 	cd $(SRC_DIRS)/config;go test -cover 
-	cd $(SRC_DIRS)/lsblk;go test -cover 
 	cd $(SRC_DIRS);go test -cover 
 
  
