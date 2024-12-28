@@ -183,20 +183,11 @@ func prog(state overseer.State) {
 		globalRouter.Use(HAMiddleware)
 	}
 
-	// Swagger
-	/*
-		globalRouter.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
-			httpSwagger.URL("/swagger/doc.json"), //The url pointing to API definition
-			httpSwagger.DeepLinking(true),
-			httpSwagger.DocExpansion("none"),
-			httpSwagger.DomID("swagger-ui"),
-		)).Methods(http.MethodGet)
-	*/
-
 	// System
 	globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/update", UpdateHandler).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/restart", RestartHandler).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/nics", GetNICsHandler).Methods(http.MethodGet)
 
 	// Shares
 	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet)

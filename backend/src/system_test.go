@@ -56,3 +56,37 @@ func TestHealthCheckHandlerDoesNotModifyGlobalHealthData(t *testing.T) {
 		t.Errorf("HealthCheckHandler modified global healthData. Original: %+v, Modified: %+v", originalHealthData, *healthData)
 	}
 }
+
+func TestGetNICsHandler(t *testing.T) {
+	req, err := http.NewRequest("GET", "/nics", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(GetNICsHandler)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	expectedContentType := "application/json"
+	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
+		t.Errorf("handler returned wrong content type: got %v want %v",
+			contentType, expectedContentType)
+	}
+
+	var response map[string]interface{}
+	err = json.Unmarshal(rr.Body.Bytes(), &response)
+	if err != nil {
+		t.Errorf("Failed to unmarshal response body: %v", err)
+	}
+	t.Logf("%v", response)
+
+	if nics, ok := response["nics"].([]interface{}); !ok || len(nics) == 0 {
+		t.Errorf("Response does not contain any network interfaces")
+	}
+}

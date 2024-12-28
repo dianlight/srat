@@ -17,6 +17,7 @@ import (
 	"github.com/dianlight/srat/data"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v68/github"
+	"github.com/jaypipes/ghw"
 	"github.com/jinzhu/copier"
 	"github.com/jpillora/overseer"
 	"golang.org/x/time/rate"
@@ -282,7 +283,6 @@ func (w *ProgressWriter) N() int64 {
 //	@Failure		405	{object}	ResponseError
 //	@Router			/update [put]
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	// A very simple health check.
 	w.Header().Set("Content-Type", "application/json")
 
 	log.Printf("Updating to version %s", *lastReleaseData.LastRelease.TagName)
@@ -364,4 +364,36 @@ func RestartHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Restarting server...")
 	overseer.Restart()
+}
+
+// GetNICsHandler godoc
+//
+//	@Summary		GetNICsHandler
+//	@Description	Return all network interfaces
+//	@Tags			system
+//	@Produce		json
+//	@Success		200 {object}	net.Info
+//	@Failure		405	{object}	ResponseError
+//	@Router			/nics [get]
+func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	net, err := ghw.Network()
+	if err != nil {
+		fmt.Printf("Error downloading release asset: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	jsonResponse, jsonError := json.Marshal(net)
+
+	if jsonError != nil {
+		fmt.Println("Unable to encode JSON")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(jsonError.Error()))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
 }

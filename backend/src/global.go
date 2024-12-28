@@ -65,7 +65,7 @@ func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	log.Printf("\n%v\n%v", data.Config, &tmpConfig)
+	//log.Printf("\n%v\n%v", data.Config, &tmpConfig)
 	copier.CopyWithOption(&data.Config, &tmpConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
 	var retglobalConfig GlobalConfig = GlobalConfig{}
