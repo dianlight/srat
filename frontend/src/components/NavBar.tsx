@@ -35,6 +35,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import UndoIcon from '@mui/icons-material/Undo';
 import { useConfirm } from "material-ui-confirm"
+import { v4 as uuidv4 } from 'uuid';
 
 function a11yProps(index: number) {
     return {
@@ -107,6 +108,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     });
     const dirty = useContext(DirtyDataContext);
     const confirm = useConfirm();
+    const [tabId, setTabId] = useState<string>(() => uuidv4())
 
 
     if (!mode) {
@@ -134,6 +136,24 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             })
             .catch(() => {
                 /* ... */
+            });
+    }
+
+    function handleRoolback() {
+        console.log("Doing rollback")
+        confirm({
+            title: `Rollback and lose all modified data?`,
+            description: "If you proceed all unsaved changes will be lost!"
+        })
+            .then(() => {
+                api.config.configDelete().then((res) => {
+                    setTabId(uuidv4())
+                }).catch(err => {
+                    console.error(err);
+                })
+            })
+            .catch(() => {
+                /*... */
             });
     }
 
@@ -184,7 +204,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                     <Box sx={{ flexGrow: 0 }}>
                         {Object.values(dirty).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
                             <>
-                                <IconButton onClick={() => { api.config.configDelete() }}>
+                                <IconButton onClick={handleRoolback}>
                                     <Tooltip title="Undo all modified" arrow>
                                         <UndoIcon sx={{ color: 'white' }} />
                                     </Tooltip>
@@ -238,19 +258,19 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             </Container>
         </AppBar>
         {props.bodyRef.current && createPortal(<>
-            <TabPanel key="tab_0" value={value} index={0}>
+            <TabPanel key={tabId + "0"} value={value} index={0}>
                 <Shares />
             </TabPanel>
-            <TabPanel key="tab_1" value={value} index={1}>
+            <TabPanel key={tabId + "1"} value={value} index={1}>
                 <Volumes />
             </TabPanel>
-            <TabPanel key="tab_2" value={value} index={2}>
+            <TabPanel key={tabId + "2"} value={value} index={2}>
                 <Users />
             </TabPanel>
-            <TabPanel key="tab_3" value={value} index={3}>
+            <TabPanel key={tabId + "3"} value={value} index={3}>
                 <Settings />
             </TabPanel>
-            <TabPanel key="tab_4" value={value} index={4}>
+            <TabPanel key={tabId + "4"} value={value} index={4}>
                 <SmbConf />
             </TabPanel></>,
             props.bodyRef.current /*document.getElementById('mainarea')!*/
