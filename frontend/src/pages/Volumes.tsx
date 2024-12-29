@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useState } from "react";
-import { ModeContext, wsContext as ws } from "../Contexts";
+import { apiContext, ModeContext, wsContext as ws } from "../Contexts";
 import { MainEventType, type BlockDisk, type BlockInfo, type BlockPartition } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
@@ -14,6 +14,7 @@ import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
 import { faHardDrive, faPlug, faPlugCircleCheck, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
+import { Api } from "@mui/icons-material";
 
 
 export function Volumes() {
@@ -42,6 +43,48 @@ export function Volumes() {
         });
     };
 
+    function onSubmitMountVolume(data?: string) {
+        console.log("Mount", data)
+        if (!data) return
+        confirm({
+            title: `Mount ${data}?`,
+            description: "Do you really want mount the Volume?"
+        })
+            .then(() => {
+                apiContext.volume.mountCreate(data, {}).then((res) => {
+                    setSelected(null);
+                }).catch(err => {
+                    console.error(err);
+                    //setErrorInfo(JSON.stringify(err));
+                })
+            })
+            .catch(() => {
+                /* ... */
+            });
+    }
+
+    function onSubmitUmountVolume(data?: string, force = false) {
+        console.log("Umount", data)
+        if (!data) return
+        confirm({
+            title: `Umount ${data}?`,
+            description: "Do you really want umount the Volume?"
+        })
+            .then(() => {
+                apiContext.volume.mountDelete(data, {
+                    force,
+                    lazy: true,
+                }).then((res) => {
+                    setSelected(null);
+                }).catch(err => {
+                    console.error(err);
+                    //setErrorInfo(JSON.stringify(err));
+                })
+            })
+            .catch(() => {
+                /* ... */
+            });
+    }
     function onSubmitEjectVolume(data?: string) {
         console.log("Eject", data)
         if (!data) return
@@ -103,26 +146,26 @@ export function Volumes() {
                         </ListItem>
                     </ListItemButton>
                     <List disablePadding>
-                        {disk.partitions?.filter((part) => !(part.label?.startsWith("hassos-") && part.mount_point === "")).map((partition, idx) =>
+                        {disk.partitions?.filter((part) => (part.type !== "unknown") && !(part.label?.startsWith("hassos-"))).map((partition, idx) =>
                             <ListItemButton sx={{ pl: 4 }} key={idx}>
                                 <ListItem
                                     secondaryAction={!mode.read_only && <>
                                         {partition.mount_point === "" &&
                                             <Tooltip title="Mount disk">
-                                                <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
+                                                <IconButton onClick={() => onSubmitMountVolume(partition.label)} edge="end" aria-label="delete">
                                                     <FontAwesomeSvgIcon icon={faPlug} />
                                                 </IconButton>
                                             </Tooltip>
                                         }
                                         {partition.mount_point !== "" && partition.mount_point?.startsWith("/mnt/") && <>
                                             <Tooltip title="Unmount disk">
-                                                <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
+                                                <IconButton onClick={() => onSubmitUmountVolume(partition.label, false)} edge="end" aria-label="delete">
                                                     <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
                                                 </IconButton>
                                             </Tooltip>
                                             <Tooltip title="Force unmounting disk">
 
-                                                <IconButton onClick={() => onSubmitEjectVolume(partition.name)} edge="end" aria-label="delete" disabled={!disk.removable}>
+                                                <IconButton onClick={() => onSubmitUmountVolume(partition.label, true)} edge="end" aria-label="delete">
                                                     <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
                                                 </IconButton>
                                             </Tooltip>

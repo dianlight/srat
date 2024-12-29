@@ -5,9 +5,12 @@ package lsblk
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os/exec"
 	"strings"
+
+	"github.com/itchyny/gojq"
 )
 
 type Device struct {
@@ -78,6 +81,36 @@ type _Device struct {
 	Partuuid   string    `json:"partuuid"`
 	Ptuuid     string    `json:"ptuuid"`
 	ReadOnly   bool      `json:"ro"`
+}
+
+var jqpartition *gojq.Code
+var jqdevice *gojq.Code
+
+func init() {
+	query, err := gojq.Parse(".blockdevices[]| select(.children) | .children[] | select(.name == $p )")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	jq, err := gojq.Compile(query,
+		gojq.WithVariables([]string{
+			"$p",
+		}))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	jqpartition = jq
+	query2, err := gojq.Parse(".blockdevices[]| select(.name == $p )")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	jq2, err := gojq.Compile(query2,
+		gojq.WithVariables([]string{
+			"$p",
+		}))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	jqdevice = jq2
 }
 
 func runCmd(command string) (output []byte, err error) {
@@ -222,17 +255,83 @@ func getSerial(devName string) (serial string, err error) {
 }
 */
 
-func GetLabelsFromDevice(devName string) (labels *string, partlabel *string, mountpoint *string, err error) {
-	output, err := runCmd("lsblk -e7 -b -J -o name,label,partlabel,mountpoint /dev/" + devName)
+type LSBKInfo struct {
+	Name       string `json:"name"`
+	Label      string `json:"label"`
+	Partlabel  string `json:"partlabel"`
+	Mountpoint string `json:"mountpoint"`
+	Fstype     string `json:"fstype"`
+}
+
+func GetInfoFromDevice(devName string) (info *LSBKInfo, err error) {
+
+	result := &LSBKInfo{}
+
+	output, err := runCmd("lsblk -b -J -o name,label,partlabel,mountpoint,fstype")
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
-	lsblkRsp := make(map[string][]_Device)
+	lsblkRsp := make(map[string]any)
 	err = json.Unmarshal(output, &lsblkRsp)
 	if err != nil {
 		log.Println(output)
-		return nil, nil, nil, err
+		return nil, err
 	}
-	return &lsblkRsp["blockdevices"][0].Label, &lsblkRsp["blockdevices"][0].Partlabel, &lsblkRsp["blockdevices"][0].Mountpoint, nil
+
+	iter := jqpartition.Run(lsblkRsp, devName)
+	for {
+		v, ok := iter.Next()
+		if !ok {
+			break
+		}
+		if err, ok := v.(error); ok {
+			log.Fatalln(err)
+			return nil, err
+		}
+		//fmt.Printf("%#v\n", v)
+		if m := v.(map[string]interface{}); m["name"] == devName {
+			result.Name = devName
+			var str = fmt.Sprintf("%v", m["label"])
+			result.Label = strings.Replace(str, "<nil>", "unknown", 1)
+			var str1 = fmt.Sprintf("%v", m["partlabel"])
+			result.Partlabel = strings.Replace(str1, "<nil>", "unknown", 1)
+			var str2 = fmt.Sprintf("%v", m["mountpoint"])
+			result.Mountpoint = strings.Replace(str2, "<nil>", "", 1)
+			var str3 = fmt.Sprintf("%v", m["fstype"])
+			result.Fstype = strings.Replace(str3, "<nil>", "unknown", 1)
+			break
+		}
+	}
+
+	if result.Name == "" {
+		iter := jqdevice.Run(lsblkRsp, devName)
+		for {
+			v, ok := iter.Next()
+			if !ok {
+				break
+			}
+			if err, ok := v.(error); ok {
+				log.Fatalln(err)
+				return nil, err
+			}
+			//fmt.Printf("%#v\n", v)
+			if m := v.(map[string]interface{}); m["name"] == devName {
+				result.Name = devName
+				var str = fmt.Sprintf("%v", m["label"])
+				result.Label = strings.Replace(str, "<nil>", "unknown", 1)
+				var str1 = fmt.Sprintf("%v", m["partlabel"])
+				result.Partlabel = strings.Replace(str1, "<nil>", "unknown", 1)
+				var str2 = fmt.Sprintf("%v", m["mountpoint"])
+				result.Mountpoint = strings.Replace(str2, "<nil>", "", 1)
+				var str3 = fmt.Sprintf("%v", m["fstype"])
+				result.Fstype = strings.Replace(str3, "<nil>", "unknown", 1)
+				break
+			}
+		}
+	}
+
+	//fmt.Printf("--->\n%v\n", *result)
+
+	return result, nil
 }

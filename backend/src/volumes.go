@@ -37,15 +37,11 @@ var (
 func GetVolumesData() (*block.Info, error) {
 	blockInfo, err := ghw.Block()
 
+	//pretty.Print(blockInfo)
+
 	if err == nil {
 		for _, v := range blockInfo.Disks {
 			if len(v.Partitions) == 0 {
-
-				fs, _, err := mount.FSFromBlock("/dev/" + v.Name)
-				if err != nil {
-					//log.Printf("Error getting filesystem for device /dev/%s: %v", v.Name, err)
-					continue
-				}
 
 				rblock, errb := ublock.Device(v.Name)
 				if errb != nil {
@@ -53,45 +49,65 @@ func GetVolumesData() (*block.Info, error) {
 					continue
 				}
 
-				label, partlabel, mountpoint, err := lsblk.GetLabelsFromDevice(v.Name)
+				lsbkInfo, err := lsblk.GetInfoFromDevice(v.Name)
 				if err != nil {
 					log.Printf("GetLabelsFromDevice failed: %v", err)
 					continue
 				}
-				if *label == "" && *partlabel == "" {
-					*label = "unknown"
-					*partlabel = "unknown"
-				} else if *label == "" {
-					*label = "unknown"
-				} else if *partlabel == "" {
-					*partlabel = *label
+				if lsbkInfo.Partlabel == "unknown" {
+					lsbkInfo.Partlabel = lsbkInfo.Label
+				}
+
+				if lsbkInfo.Fstype == "" {
+					fs, _, err := mount.FSFromBlock("/dev/" + v.Name)
+					if err != nil {
+						//log.Printf("Error getting filesystem for device /dev/%s: %v", v.Name, err)
+						continue
+					}
+					lsbkInfo.Fstype = fs
 				}
 
 				var partition = &block.Partition{
 					Disk:            v,
 					Name:            v.Name,
-					Label:           *partlabel,
-					FilesystemLabel: *label,
+					Label:           lsbkInfo.Partlabel,
+					FilesystemLabel: lsbkInfo.Label,
 					UUID:            rblock.FsUUID,
 					SizeBytes:       v.SizeBytes,
-					Type:            fs,
-					MountPoint:      *mountpoint,
+					Type:            lsbkInfo.Fstype,
+					MountPoint:      lsbkInfo.Mountpoint,
 					IsReadOnly:      false,
 				}
 				v.Partitions = append(v.Partitions, partition)
 
 			} else {
 				for _, d := range v.Partitions {
-					if d.Label == "unknown" && d.FilesystemLabel == "unknown" {
-						d.Label = d.UUID
-						label, partlabel, _, err := lsblk.GetLabelsFromDevice(d.Name)
-						if err == nil && (*partlabel != "" || *label != "") {
-							d.FilesystemLabel = *label
-							d.Label = *partlabel
+					if d.Label == "unknown" || d.Type == "unknown" {
+						lsbkInfo, err := lsblk.GetInfoFromDevice(d.Name)
+						if err == nil {
+							if lsbkInfo.Label != "unknown" {
+								d.FilesystemLabel = strings.Replace(d.FilesystemLabel, "unknown", lsbkInfo.Label, 1)
+							}
+							if lsbkInfo.Partlabel != "unknown" {
+								d.Label = strings.Replace(d.Label, "unknown", lsbkInfo.Partlabel, 1)
+							}
+							if lsbkInfo.Fstype != "unknown" {
+								d.Type = strings.Replace(d.Type, "unknown", lsbkInfo.Fstype, 1)
+							}
 						}
 					}
-					if d.Label == "unknown" || d.Label == "" {
+
+					if d.Label == "unknown" {
 						d.Label = d.FilesystemLabel
+					}
+					if d.Label == "unknown" && d.FilesystemLabel == "unknown" {
+						d.Label = d.UUID
+					}
+					if d.Type == "unknown" {
+						fs, _, err := mount.FSFromBlock("/dev/" + v.Name)
+						if err == nil {
+							d.Type = fs
+						}
 					}
 				}
 			}
@@ -222,7 +238,7 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mount_data.Device == "" || mount_data.FSType == "" {
-		DoResponseError(http.StatusBadRequest, w, "Invalid device or filesystem type", nil)
+		DoResponseError(http.StatusBadRequest, w, "Invalid device or filesystem type", "")
 		return
 	}
 

@@ -2,6 +2,8 @@ package lsblk
 
 import (
 	"testing"
+
+	"github.com/kr/pretty"
 )
 
 /*
@@ -34,14 +36,22 @@ func TestPrintPartitions(t *testing.T) {
 
 */
 
-func TestGetLabelsFromDevice(t *testing.T) {
-	_, _, _, err := GetLabelsFromDevice("loop1")
+func TestGetInfoFromDevice(t *testing.T) {
+	lsbkp, err := GetInfoFromDevice("loop1p1")
 	if err != nil {
 		t.Errorf("GetLabelsFromDevice failed: %v", err)
+		return
 	}
-	// t.Logf("label: %s, partlabel: %s mountpoint:%s", *label, *partlabel, *mountpoint)
-	//
-	//	if *label == "" && *partlabel == "" {
-	//		t.Error("Empty labels returned")
-	//	}
+	t.Logf("lsbk %v", pretty.Sprint(lsbkp))
+
+	lsbkd, err := GetInfoFromDevice("loop1")
+	if err != nil {
+		t.Errorf("GetLabelsFromDevice failed: %v", err)
+		return
+	}
+	t.Logf("lsbk %v", pretty.Sprint(lsbkd))
+
+	if lsbkp.Name == "" || lsbkd.Name == "" {
+		t.Error("Empty devices returned")
+	}
 }

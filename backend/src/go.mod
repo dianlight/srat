@@ -25,6 +25,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
+	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/jaypipes/pcidb v1.0.1 // indirect
 	github.com/jpillora/s3 v1.1.4 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -58,6 +59,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/websocket v1.5.3
 	github.com/icza/gog v0.0.0-20241010132004-5da24f18211d
+	github.com/itchyny/gojq v0.12.17
 	github.com/jaypipes/ghw v0.13.0
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
