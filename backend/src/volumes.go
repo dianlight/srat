@@ -183,7 +183,7 @@ type MountPointData struct {
 //	@Failure		500				{object}	ResponseError
 //	@Router			/volume/{volume_label}/mount [post]
 func mountVolume(w http.ResponseWriter, r *http.Request) {
-	//volume_label := mux.Vars(r)["volume_label"]
+	volume_label := mux.Vars(r)["volume_label"]
 	w.Header().Set("Content-Type", "application/json")
 
 	var mount_data MountPointData
@@ -194,9 +194,36 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if mount_data.Path == "" {
+		mount_data.Path = "/mnt/" + volume_label
+	}
+
+	if mount_data.Device == "" || mount_data.FSType == "" {
+		volumes, err := GetVolumesData()
+		if err != nil {
+			DoResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
+			return
+		}
+	out:
+		for _, v := range volumes.Disks {
+			for _, d := range v.Partitions {
+				if d.Label == volume_label {
+					mount_data.Device = d.Name
+					mount_data.FSType = d.Type
+					break out
+				}
+			}
+		}
+	}
+
 	var flags = 0
 	for _, flag := range mount_data.Flags {
 		flags |= int(flag)
+	}
+
+	if mount_data.Device == "" || mount_data.FSType == "" {
+		DoResponseError(http.StatusBadRequest, w, "Invalid device or filesystem type", nil)
+		return
 	}
 
 	if !strings.HasPrefix(mount_data.Device, "/dev/") {
