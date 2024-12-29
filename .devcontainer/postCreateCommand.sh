@@ -1,11 +1,15 @@
 #!/bin/bash
 
-apk add  --no-cache go git make lsblk eudev gcc musl-dev linux-headers samba
+apk add --no-cache go git make lsblk eudev gcc musl-dev linux-headers samba ethtool e2fsprogs e2fsprogs-extra
 
 #bun
-curl -fsSL https://bun.sh/install | bash 
+curl -fsSL https://bun.sh/install | bash
 
 #Swag
 #curl -s -L https://github.com/swaggo/swag/releases/download/v2.0.0-rc4/swag_2.0.0-rc4_Linux_arm64.tar.gz | tar xzvf - -C /usr/local/bin
 GOBIN=/usr/local/bin/ go install github.com/swaggo/swag/v2/cmd/swag@latest
-GOBIN=/usr/local/bin/ go install github.com/rogpeppe/gohack
+GOBIN=/usr/local/bin/ go install github.com/rogpeppe/gohack@latest
+
+# Loopback device for testing
+/workspaces/srat/script/removeTestDevices.sh
+/workspaces/srat/script/createTestDevices.sh
