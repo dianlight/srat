@@ -219,7 +219,7 @@ func persistConfig(w http.ResponseWriter, _ *http.Request) {
 // RollbackConfig godoc
 //
 //	@Summary		Rollback the current samba config
-//	@Description    Revert to the last saved samba config
+//	@Description	Revert to the last saved samba config
 //	@Tags			samba
 //	@Accept			json
 //	@Produce		json

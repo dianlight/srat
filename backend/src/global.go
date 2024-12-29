@@ -30,18 +30,18 @@ type GlobalConfig struct {
 
 // UpdateGlobalConfig godoc
 //
-//		@Summary		Update the configuration for the global samba settings
-//		@Description	Update the configuration for the global samba settings
-//		@Tags			samba
-//		@Accept			json
-//		@Produce		json
-//		@Param			config	body	GlobalConfig	true	"Update model"
-//		@Success		200 {object}    GlobalConfig
-//	 	@Success		204
-//		@Failure		400	{object}	ResponseError
-//		@Failure		500	{object}	ResponseError
-//		@Router			/global [put]
-//		@Router			/global [patch]
+//	@Summary		Update the configuration for the global samba settings
+//	@Description	Update the configuration for the global samba settings
+//	@Tags			samba
+//	@Accept			json
+//	@Produce		json
+//	@Param			config	body		GlobalConfig	true	"Update model"
+//	@Success		200		{object}	GlobalConfig
+//	@Success		204
+//	@Failure		400	{object}	ResponseError
+//	@Failure		500	{object}	ResponseError
+//	@Router			/global [put]
+//	@Router			/global [patch]
 func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

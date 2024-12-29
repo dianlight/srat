@@ -48,6 +48,16 @@ var content embed.FS
 //go:embed templates/smb.gtpl
 var defaultTemplate embed.FS
 
+// HAMiddleware is a middleware function for handling HomeAssistant authentication.
+// It checks for the presence and validity of the X-Supervisor-Token in the request header.
+//
+// Parameters:
+//   - next: The next http.Handler in the chain to be called if authentication is successful.
+//
+// Returns:
+//   - http.Handler: A new http.Handler that wraps the authentication logic around the next handler.
+//     If authentication fails, it returns a 401 Unauthorized status.
+//     If successful, it adds the token to the request context and calls the next handler.
 func HAMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("X-Supervisor-Token")
@@ -73,18 +83,18 @@ type ResponseError struct {
 	Body  any    `json:"body"`
 }
 
-//		@title			SRAT API
-//		@version		1.0
-//		@description	This are samba rest admin API
-//		@contact.name	Lucio Tarantino
-//	 	@contact.url 	https://github.com/dianlight
-//		@contact.email	lucio.tarantino@gmail.com
-//		@license.name	Apache 2.0
-//		@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
-//		@securitydefinitions.apikey	ApiKeyAuth
-//				@in header
-//				@name	X-Supervisor-Token
-//				@description	HomeAssistant Supervisor Token
+// @title						SRAT API
+// @version					1.0
+// @description				This are samba rest admin API
+// @contact.name				Lucio Tarantino
+// @contact.url				https://github.com/dianlight
+// @contact.email				lucio.tarantino@gmail.com
+// @license.name				Apache 2.0
+// @license.url				http://www.apache.org/licenses/LICENSE-2.0.html
+// @securitydefinitions.apikey	ApiKeyAuth
+// @in							header
+// @name						X-Supervisor-Token
+// @description				HomeAssistant Supervisor Token
 func main() {
 	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
 	data.ConfigFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")

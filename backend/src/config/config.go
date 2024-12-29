@@ -193,6 +193,18 @@ func MigrateConfig(in *Config) *Config {
 	return in
 }
 
+// LoadConfig reads a configuration file, parses it, and migrates it to the latest version.
+//
+// This function takes a file path, reads the configuration from that file,
+// and then applies any necessary migrations to ensure the configuration
+// is up-to-date with the current version.
+//
+// Parameters:
+//   - file: A string representing the path to the configuration file to be loaded.
+//
+// Returns:
+//   - *Config: A pointer to the loaded and migrated Config struct.
+//   - error: An error if the file couldn't be read or parsed. If successful, this will be nil.
 func LoadConfig(file string) (*Config, error) {
 	config, err := readConfigFile(file)
 	if err != nil {
@@ -207,6 +219,19 @@ func SaveConfig(in *Config) (*Config, error) {
 	return in, nil
 }
 
+// RollbackConfig reverts the configuration to the last saved state.
+//
+// This function attempts to reload the configuration from the file specified
+// in the CurrentFile field of the input Config. If CurrentFile is empty,
+// it returns an error indicating that the current file was not found.
+//
+// Parameters:
+//   - in: A pointer to the Config struct containing the current configuration state.
+//
+// Returns:
+//   - *Config: A pointer to the reloaded Config struct if successful.
+//   - error: An error if the rollback fails, either due to a missing CurrentFile
+//     or issues with reloading the configuration.
 func RollbackConfig(in *Config) (*Config, error) {
 	if in.CurrentFile == "" {
 		return nil, errors.New("current file not found")

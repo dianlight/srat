@@ -24,11 +24,11 @@ $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 format:
 	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
 	cd $(SRC_DIRS);swag fmt
+	cd $(SRC_DIRS);go mod tidy	
 
 .PHONY: clean
 clean:
 	go clean
-	cd $(SRC_DIRS);go mod tidy
 	rm -rf dist
 
 .PHONY: test

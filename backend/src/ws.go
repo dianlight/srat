@@ -51,7 +51,7 @@ var activeContexts = make(map[string]context.CancelFunc)
 //	@Description	Open the WSChannel
 //	@Tags			system
 //	@Produce		json
-//	@Success		200 {object}    config.ConfigSectionDirtySate
+//	@Success		200	{object}	config.ConfigSectionDirtySate
 //	@Failure		405	{object}	ResponseError
 //	@Router			/ws [get]
 func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
@@ -124,7 +124,7 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 //	@Description	Return a list of available WSChannel events
 //	@Tags			system
 //	@Produce		json
-//	@Success		200 {object}	[]EventType
+//	@Success		200	{object}	[]EventType
 //	@Failure		500	{object}	string
 //	@Router			/events [get]
 func WSChannelEventsList(w http.ResponseWriter, rq *http.Request) {

@@ -97,12 +97,12 @@ func getShare(w http.ResponseWriter, r *http.Request) {
 //	@Tags			share
 //	@Accept			json
 //	@Produce		json
-//	@Param			share		body		config.Share	true	"Create model"
-//	@Success		201			{object}	config.Share
-//	@Failure		400			{object}	ResponseError
-//	@Failure		405			{object}	ResponseError
-//	@Failure		409			{object}	ResponseError
-//	@Failure		500			{object}	ResponseError
+//	@Param			share	body		config.Share	true	"Create model"
+//	@Success		201		{object}	config.Share
+//	@Failure		400		{object}	ResponseError
+//	@Failure		405		{object}	ResponseError
+//	@Failure		409		{object}	ResponseError
+//	@Failure		500		{object}	ResponseError
 //	@Router			/share [post]
 func createShare(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -177,7 +177,7 @@ func notifyClient() {
 //	@Tags			share
 //	@Accept			json
 //	@Produce		json
-//	@Param			share_name	path		string	true	"Name"
+//	@Param			share_name	path		string			true	"Name"
 //	@Param			share		body		config.Share	true	"Update model"
 //	@Success		200			{object}	config.Share
 //	@Failure		400			{object}	ResponseError

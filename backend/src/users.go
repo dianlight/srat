@@ -13,29 +13,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
-/*
-var (
-	usersQueue      = map[string](chan *[]User){}
-	usersQueueMutex = sync.RWMutex{}
-)
-*/
-
 // ListUsers godoc
 //
 //	@Summary		List all configured users
 //	@Description	List all configured users
 //	@Tags			user
-//
-// _Accept       json
-//
 //	@Produce		json
-//
-// _Param        id   path      int  true  "Account ID"
-//
 //	@Success		200	{object}	[]config.User
-//
-// _Failure      400  {object}  ResponseError
-//
 //	@Failure		405	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
 //	@Router			/users [get]
@@ -60,8 +44,6 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 //	@Summary		Get the admin user
 //	@Description	get the admin user
 //	@Tags			user
-//
-//
 //	@Produce		json
 //	@Success		200	{object}	config.User
 //	@Failure		405	{object}	ResponseError
@@ -189,7 +171,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Accept			json
 //	@Produce		json
-//	@Param			username	path		string	true	"Name"
+//	@Param			username	path		string		true	"Name"
 //	@Param			user		body		config.User	true	"Update model"
 //	@Success		200			{object}	config.User
 //	@Failure		400			{object}	ResponseError
@@ -284,7 +266,6 @@ func updateAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Summary		Delete a user
 //	@Description	delete a user
 //	@Tags			user
-//
 //	@Param			username	path	string	true	"Name"
 //	@Success		204
 //	@Failure		400	{object}	ResponseError
