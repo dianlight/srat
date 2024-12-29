@@ -43,7 +43,7 @@ func GetVolumesData() (*block.Info, error) {
 
 				fs, _, err := mount.FSFromBlock("/dev/" + v.Name)
 				if err != nil {
-					log.Printf("Error getting filesystem for device /dev/%s: %v", v.Name, err)
+					//log.Printf("Error getting filesystem for device /dev/%s: %v", v.Name, err)
 					continue
 				}
 
