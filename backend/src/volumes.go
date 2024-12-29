@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -196,6 +197,10 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 	var flags = 0
 	for _, flag := range mount_data.Flags {
 		flags |= int(flag)
+	}
+
+	if !strings.HasPrefix(mount_data.Device, "/dev/") {
+		mount_data.Device = "/dev/" + mount_data.Device
 	}
 
 	if mp, err := mount.Mount(mount_data.Device, mount_data.Path, mount_data.FSType, mount_data.Data, uintptr(flags), func() error { return os.MkdirAll(mount_data.Path, 0o666) }); err != nil {

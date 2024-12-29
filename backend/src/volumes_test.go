@@ -78,7 +78,7 @@ out:
 	for _, v := range volumes.Disks {
 		for _, d := range v.Partitions {
 			if strings.HasPrefix(d.Name, "loop") {
-				mockMountData.Device = "/dev/" + d.Name
+				mockMountData.Device = d.Name
 				mockMountData.Path = filepath.Join("/mnt", d.Label)
 				mockMountData.FSType = d.Type
 				mockMountData.Flags = []MounDataFlag{MS_NOATIME}

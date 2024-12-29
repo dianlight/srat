@@ -1292,11 +1292,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @tags volume
      * @name MountCreate
      * @summary mount an existing volume
-     * @request POST:/volume/{volume_name}/mount
+     * @request POST:/volume/{volume_label}/mount
      */
-    mountCreate: (volumeName: string, mount_data: MainMountPointData, params: RequestParams = {}) =>
+    mountCreate: (volumeLabel: string, mount_data: MainMountPointData, params: RequestParams = {}) =>
       this.request<MainMountPointData, MainResponseError>({
-        path: `/volume/${volumeName}/mount`,
+        path: `/volume/${volumeLabel}/mount`,
         method: "POST",
         body: mount_data,
         type: ContentType.Json,
@@ -1310,10 +1310,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @tags volume
      * @name MountDelete
      * @summary Umount the selected volume
-     * @request DELETE:/volume/{volume_name}/mount
+     * @request DELETE:/volume/{volume_label}/mount
      */
     mountDelete: (
-      volumeName: string,
+      volumeLabel: string,
       query: {
         /** Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted. */
         force: boolean;
@@ -1323,7 +1323,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       params: RequestParams = {},
     ) =>
       this.request<void, MainResponseError>({
-        path: `/volume/${volumeName}/mount`,
+        path: `/volume/${volumeLabel}/mount`,
         method: "DELETE",
         query: query,
         ...params,
