@@ -33,7 +33,8 @@ clean:
 
 .PHONY: test
 test: $(ALL_SRCS) static
-	echo $(ALL_SRCS)
+	#echo $(ALL_SRCS)
+	cd $(SRC_DIRS)/lsblk;go test -cover
 	cd $(SRC_DIRS)/config;go test -cover 
 	cd $(SRC_DIRS);go test -cover 
 
@@ -55,4 +56,4 @@ static: $(FRONTEND_DIRS)/node_modules
 	cd $(FRONTEND_DIRS);bun run swagger
 	cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
 	cd $(FRONTEND_DIRS);bun run build
-	cp -rv $(STATIC_DIRS) $(SRC_DIRS)/static
+	cp -r $(STATIC_DIRS) $(SRC_DIRS)/static

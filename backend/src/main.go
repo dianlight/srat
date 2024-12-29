@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -81,6 +82,19 @@ type ResponseError struct {
 	Code  int    `json:"code"`
 	Error string `json:"error"`
 	Body  any    `json:"body"`
+}
+
+func DoResponseError(code int, w http.ResponseWriter, message string, body any) {
+	w.WriteHeader(code)
+	jsonResponse, jsonError := json.Marshal(ResponseError{Error: message, Body: pretty.Sprintf("%v", body)})
+	if jsonError != nil {
+		fmt.Println("Unable to encode JSON")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(jsonError.Error()))
+	} else {
+		w.Write(jsonResponse)
+	}
+	return
 }
 
 // @title						SRAT API
@@ -208,9 +222,8 @@ func prog(state overseer.State) {
 
 	// Volumes
 	globalRouter.HandleFunc("/volumes", listVolumes).Methods(http.MethodGet)
-	//	globalRouter.HandleFunc("/volume/{volume_name}", updateVolume).Methods(http.MethodPut, http.MethodPatch)
-	//	globalRouter.HandleFunc("/volume/{volume_name}/mount", mountVolume).Methods(http.MethodPost)
-	//	globalRouter.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods(http.MethodDelete)
+	globalRouter.HandleFunc("/volume/{volume_label}/mount", mountVolume).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/volume/{volume_label}/mount", umountVolume).Methods(http.MethodDelete)
 
 	// Users
 	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet)

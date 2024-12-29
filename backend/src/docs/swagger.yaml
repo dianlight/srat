@@ -858,6 +858,45 @@ definitions:
       samba_pid:
         type: integer
     type: object
+  main.MounDataFlag:
+    enum:
+    - 1
+    - 4096
+    - 33554432
+    - 8
+    - 2
+    - -2147483648
+    - 2097152
+    - 4
+    - 1024
+    - 1025
+    type: integer
+    x-enum-varnames:
+    - MS_RDONLY
+    - MS_BIND
+    - MS_LAZYTIME
+    - MS_NOEXEC
+    - MS_NOSUID
+    - MS_NOUSER
+    - MS_RELATIME
+    - MS_SYNC
+    - MS_NOATIME
+    - ReadOnlyMountPoindDataFlags
+  main.MountPointData:
+    properties:
+      data:
+        type: string
+      device:
+        type: string
+      flags:
+        items:
+          $ref: '#/definitions/main.MounDataFlag'
+        type: array
+      fstype:
+        type: string
+      path:
+        type: string
+    type: object
   main.ResponseError:
     properties:
       body: {}
@@ -897,6 +936,107 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  net.Info:
+    properties:
+      nics:
+        description: |-
+          NICs is a slice of pointers to `NIC` structs describing the network
+          interface controllers (NICs) on the host system.
+        items:
+          $ref: '#/definitions/net.NIC'
+        type: array
+    type: object
+  net.NIC:
+    properties:
+      advertised_fec_modes:
+        description: |-
+          AvertisedFECModes is a slice of strings containing the advertised
+          (during auto-negotiation) Forward Error Correction (FEC) modes for this
+          NIC.
+        items:
+          type: string
+        type: array
+      advertised_link_modes:
+        description: |-
+          AdvertiseLinkModes is a slice of strings containing the advertised
+          (during auto-negotiation) link modes of this NIC, e.g. "10baseT/Half",
+          "1000baseT/Full", etc.
+        items:
+          type: string
+        type: array
+      capabilities:
+        description: |-
+          Capabilities is a slice of pointers to `NICCapability` structs
+          describing a feature/capability of this NIC.
+        items:
+          $ref: '#/definitions/net.NICCapability'
+        type: array
+      duplex:
+        description: |-
+          Duplex is a string indicating the current duplex setting of this NIC,
+          e.g. "Full"
+        type: string
+      is_virtual:
+        description: |-
+          IsVirtual is true if the NIC is entirely virtual/emulated, false
+          otherwise.
+        type: boolean
+      mac_address:
+        description: MACAddress is the Media Access Control (MAC) address of this
+          NIC.
+        type: string
+      name:
+        description: Name is the string identifier the system gave this NIC.
+        type: string
+      pci_address:
+        description: |-
+          PCIAddress is a pointer to the PCI address for this NIC, or nil if there
+          is no PCI address for this NIC.
+        type: string
+      speed:
+        description: Speed is a string describing the link speed of this NIC, e.g.
+          "1000Mb/s"
+        type: string
+      supported_fec_modes:
+        description: |-
+          SupportedFECModes is a slice of strings containing the supported Forward
+          Error Correction (FEC) modes for this NIC.
+        items:
+          type: string
+        type: array
+      supported_link_modes:
+        description: |-
+          SupportedLinkModes is a slice of strings containing the supported link
+          modes of this NIC, e.g. "10baseT/Half", "1000baseT/Full", etc.
+        items:
+          type: string
+        type: array
+      supported_ports:
+        description: |-
+          SupportedPorts is a slice of strings containing the supported physical
+          ports on this NIC, e.g. "Twisted Pair"
+        items:
+          type: string
+        type: array
+    type: object
+  net.NICCapability:
+    properties:
+      can_enable:
+        description: |-
+          CanEnable is true if the capability can be enabled on the NIC, false
+          otherwise.
+        type: boolean
+      is_enabled:
+        description: |-
+          IsEnabled is true if the capability is currently enabled on the NIC,
+          false otherwise.
+        type: boolean
+      name:
+        description: |-
+          Name is the string name for the capability, e.g.
+          "tcp-segmentation-offload"
+        type: string
     type: object
 info:
   contact:
@@ -1191,6 +1331,23 @@ paths:
           schema:
             $ref: '#/definitions/main.ResponseError'
       summary: HealthCheck
+      tags:
+      - system
+  /nics:
+    get:
+      description: Return all network interfaces
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/net.Info'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: GetNICsHandler
       tags:
       - system
   /restart:
@@ -1694,6 +1851,86 @@ paths:
       summary: List all configured users
       tags:
       - user
+  /volume/{volume_label}/mount:
+    delete:
+      description: Umount the selected volume
+      parameters:
+      - description: Label of the volume to be unmounted
+        in: path
+        name: volume_label
+        required: true
+        type: string
+      - description: Umount forcefully - forces an unmount regardless of currently
+          open or otherwise used files within the file system to be unmounted.
+        in: query
+        name: force
+        required: true
+        type: boolean
+      - description: Umount lazily - disallows future uses of any files below path
+          -- i.e. it hides the file system mounted at path, but the file system itself
+          is still active and any currently open files can continue to be used. When
+          all references to files from this file system are gone, the file system
+          will actually be unmounted.
+        in: query
+        name: lazy
+        required: true
+        type: boolean
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Umount the selected volume
+      tags:
+      - volume
+    post:
+      consumes:
+      - application/json
+      description: mount an existing volume
+      parameters:
+      - description: Volume Label to Mount
+        in: path
+        name: volume_label
+        required: true
+        type: string
+      - description: Mount data
+        in: body
+        name: mount_data
+        required: true
+        schema:
+          $ref: '#/definitions/main.MountPointData'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.MountPointData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: mount an existing volume
+      tags:
+      - volume
   /volumes:
     get:
       description: List all available volumes

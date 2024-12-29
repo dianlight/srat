@@ -9,3 +9,9 @@ github.com/lufia/iostat
 
 
 github.com/shirou/gopsutil/v3
+
+
+# Minimal Size for LoopBack Disk 
+exfat 10mb
+fat32 512mb
+ntfs 10mb

@@ -516,6 +516,27 @@ export interface MainHealth {
   samba_pid?: number;
 }
 
+export enum MainMounDataFlag {
+  MS_RDONLY = 1,
+  MS_BIND = 4096,
+  MS_LAZYTIME = 33554432,
+  MS_NOEXEC = 8,
+  MS_NOSUID = 2,
+  MS_NOUSER = -2147483648,
+  MS_RELATIME = 2097152,
+  MS_SYNC = 4,
+  MS_NOATIME = 1024,
+  ReadOnlyMountPoindDataFlags = 1025,
+}
+
+export interface MainMountPointData {
+  data?: string;
+  device?: string;
+  flags?: MainMounDataFlag[];
+  fstype?: string;
+  path?: string;
+}
+
 export interface MainResponseError {
   body?: any;
   code?: number;
@@ -538,6 +559,88 @@ export interface MainSambaProcessStatus {
   open_files?: number;
   pid?: number;
   status?: string[];
+}
+
+export interface NetInfo {
+  /**
+   * NICs is a slice of pointers to `NIC` structs describing the network
+   * interface controllers (NICs) on the host system.
+   */
+  nics?: NetNIC[];
+}
+
+export interface NetNIC {
+  /**
+   * AvertisedFECModes is a slice of strings containing the advertised
+   * (during auto-negotiation) Forward Error Correction (FEC) modes for this
+   * NIC.
+   */
+  advertised_fec_modes?: string[];
+  /**
+   * AdvertiseLinkModes is a slice of strings containing the advertised
+   * (during auto-negotiation) link modes of this NIC, e.g. "10baseT/Half",
+   * "1000baseT/Full", etc.
+   */
+  advertised_link_modes?: string[];
+  /**
+   * Capabilities is a slice of pointers to `NICCapability` structs
+   * describing a feature/capability of this NIC.
+   */
+  capabilities?: NetNICCapability[];
+  /**
+   * Duplex is a string indicating the current duplex setting of this NIC,
+   * e.g. "Full"
+   */
+  duplex?: string;
+  /**
+   * IsVirtual is true if the NIC is entirely virtual/emulated, false
+   * otherwise.
+   */
+  is_virtual?: boolean;
+  /** MACAddress is the Media Access Control (MAC) address of this NIC. */
+  mac_address?: string;
+  /** Name is the string identifier the system gave this NIC. */
+  name?: string;
+  /**
+   * PCIAddress is a pointer to the PCI address for this NIC, or nil if there
+   * is no PCI address for this NIC.
+   */
+  pci_address?: string;
+  /** Speed is a string describing the link speed of this NIC, e.g. "1000Mb/s" */
+  speed?: string;
+  /**
+   * SupportedFECModes is a slice of strings containing the supported Forward
+   * Error Correction (FEC) modes for this NIC.
+   */
+  supported_fec_modes?: string[];
+  /**
+   * SupportedLinkModes is a slice of strings containing the supported link
+   * modes of this NIC, e.g. "10baseT/Half", "1000baseT/Full", etc.
+   */
+  supported_link_modes?: string[];
+  /**
+   * SupportedPorts is a slice of strings containing the supported physical
+   * ports on this NIC, e.g. "Twisted Pair"
+   */
+  supported_ports?: string[];
+}
+
+export interface NetNICCapability {
+  /**
+   * CanEnable is true if the capability can be enabled on the NIC, false
+   * otherwise.
+   */
+  can_enable?: boolean;
+  /**
+   * IsEnabled is true if the capability is currently enabled on the NIC,
+   * false otherwise.
+   */
+  is_enabled?: boolean;
+  /**
+   * Name is the string name for the capability, e.g.
+   * "tcp-segmentation-offload"
+   */
+  name?: string;
 }
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
@@ -876,6 +979,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         ...params,
       }),
   };
+  nics = {
+    /**
+     * @description Return all network interfaces
+     *
+     * @tags system
+     * @name NicsList
+     * @summary GetNICsHandler
+     * @request GET:/nics
+     */
+    nicsList: (params: RequestParams = {}) =>
+      this.request<NetInfo, MainResponseError>({
+        path: `/nics`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+  };
   restart = {
     /**
      * @description Restart the server ( useful in development )
@@ -1162,6 +1282,50 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/users`,
         method: "GET",
         format: "json",
+        ...params,
+      }),
+  };
+  volume = {
+    /**
+     * @description mount an existing volume
+     *
+     * @tags volume
+     * @name MountCreate
+     * @summary mount an existing volume
+     * @request POST:/volume/{volume_name}/mount
+     */
+    mountCreate: (volumeName: string, mount_data: MainMountPointData, params: RequestParams = {}) =>
+      this.request<MainMountPointData, MainResponseError>({
+        path: `/volume/${volumeName}/mount`,
+        method: "POST",
+        body: mount_data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Umount the selected volume
+     *
+     * @tags volume
+     * @name MountDelete
+     * @summary Umount the selected volume
+     * @request DELETE:/volume/{volume_name}/mount
+     */
+    mountDelete: (
+      volumeName: string,
+      query: {
+        /** Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted. */
+        force: boolean;
+        /** Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted. */
+        lazy: boolean;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<void, MainResponseError>({
+        path: `/volume/${volumeName}/mount`,
+        method: "DELETE",
+        query: query,
         ...params,
       }),
   };
