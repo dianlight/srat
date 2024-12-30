@@ -22,6 +22,10 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     name: Set version
     steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
       - name: Get version
         id: version
         uses: home-assistant/actions/helpers/version@master
