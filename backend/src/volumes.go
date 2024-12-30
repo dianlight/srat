@@ -13,6 +13,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gobeam/stringy"
 	"github.com/gorilla/mux"
@@ -299,8 +300,9 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		var data, _ = GetVolumesData()
-		notifyVolumeClient(data)
+		var ndata, _ = GetVolumesData()
+		notifyVolumeClient(ndata)
+		data.DirtySectionState.Volumes = true
 
 		jsonResponse, jsonError := json.Marshal(mounted_data)
 
@@ -366,9 +368,9 @@ func umountVolume(w http.ResponseWriter, r *http.Request) {
 					DoResponseError(http.StatusInternalServerError, w, fmt.Sprintf("Error unmounting %s", d.MountPoint), err)
 					return
 				}
-				var data, _ = GetVolumesData()
-				notifyVolumeClient(data)
-
+				var ndata, _ = GetVolumesData()
+				notifyVolumeClient(ndata)
+				data.DirtySectionState.Volumes = true
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}
