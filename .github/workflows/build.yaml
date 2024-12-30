@@ -108,7 +108,7 @@ jobs:
 
     - name: Build ${{ matrix.variant.name }} ${{ needs.setversion.outputs.version }}
       run: |
-        sudo -E PATH="$PATH" make BUILD AARGS="${{ matrix.variant.args }}" SUFFIX="${{ matrix.variant.suffix }}" VERSION=${{ steps.version.outputs.version }}
+        sudo -E PATH="$PATH" make BUILD AARGS="${{ matrix.variant.args }}" SUFFIX="${{ matrix.variant.suffix }}" VERSION=${{ needs.setversion.outputs.version }}
 
     - name: Upload ${{ matrix.variant.name }}
       uses: actions/upload-artifact@v4
