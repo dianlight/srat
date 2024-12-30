@@ -62,7 +62,7 @@ func TestListVolumessHandler(t *testing.T) {
 
 }
 
-var label string
+var previus_device string
 
 func TestMountVolumeHandler(t *testing.T) {
 	// Check if loop device is available for mounting
@@ -78,23 +78,23 @@ out:
 	for _, v := range volumes.Disks {
 		for _, d := range v.Partitions {
 			if strings.HasPrefix(d.Name, "loop") {
-				mockMountData.Device = d.Name
+				mockMountData.Name = d.Name
 				mockMountData.Path = filepath.Join("/mnt", d.Label)
 				mockMountData.FSType = d.Type
 				mockMountData.Flags = []MounDataFlag{MS_NOATIME}
-				label = d.Label
+				previus_device = d.Name
 				t.Logf("Selected loop device: %v", mockMountData)
 				break out
 			}
 		}
 	}
-	if mockMountData.Device == "" {
+	if mockMountData.Name == "" {
 		t.Skip("Test failed: loop device not found for mounting")
 		return
 	}
 
 	body, _ := json.Marshal(mockMountData)
-	requestPath := "/volume/" + label + "/mount"
+	requestPath := "/volume/" + previus_device + "/mount"
 	t.Logf("Request path: %s", requestPath)
 	req, err := http.NewRequest("POST", requestPath, bytes.NewBuffer(body))
 	if err != nil {
@@ -145,7 +145,7 @@ func TestUmountVolumeNonExistent(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{volume_label}/mount", umountVolume).Methods("DELETE")
+	router.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods("DELETE")
 
 	router.ServeHTTP(rr, req)
 
@@ -162,20 +162,20 @@ func TestUmountVolumeNonExistent(t *testing.T) {
 }
 func TestUmountVolumeSuccess(t *testing.T) {
 
-	if label == "" {
+	if previus_device == "" {
 		t.Skip("Test skip: not prevision mounted volume found")
 		return
 	}
 
 	// Create a request
-	req, err := http.NewRequest("DELETE", "/volume/"+label+"/mount", nil)
+	req, err := http.NewRequest("DELETE", "/volume/"+previus_device+"/mount", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{volume_label}/mount", umountVolume).Methods("DELETE")
+	router.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods("DELETE")
 
 	// Create a ResponseRecorder
 	rr := httptest.NewRecorder()

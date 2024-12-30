@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	"github.com/dianlight/srat/lsblk"
+	"github.com/gobeam/stringy"
 	"github.com/gorilla/mux"
 	"github.com/jaypipes/ghw"
 	"github.com/jaypipes/ghw/pkg/block"
@@ -181,10 +182,11 @@ var MounDataFlags = []MounDataFlag{
 
 type MountPointData struct {
 	Path   string         `json:"path"`
-	Device string         `json:"device"`
+	Label  string         `json:"label"`
+	Name   string         `json:"name"`
 	FSType string         `json:"fstype"`
 	Flags  []MounDataFlag `json:"flags"`
-	Data   string         `json:"data"`
+	Data   string         `json:"data,omitempty"`
 }
 
 // MountVolume godoc
@@ -194,16 +196,16 @@ type MountPointData struct {
 //	@Tags			volume
 //	@Accept			json
 //	@Produce		json
-//	@Param			volume_label	path		string			true	"Volume Label to Mount"
-//	@Param			mount_data		body		MountPointData	true	"Mount data"
-//	@Success		201				{object}	MountPointData
-//	@Failure		400				{object}	ResponseError
-//	@Failure		405				{object}	ResponseError
-//	@Failure		409				{object}	ResponseError
-//	@Failure		500				{object}	ResponseError
-//	@Router			/volume/{volume_label}/mount [post]
+//	@Param			volume_name	path		string			true	"Volume Name to Mount"
+//	@Param			mount_data	body		MountPointData	true	"Mount data"
+//	@Success		201			{object}	MountPointData
+//	@Failure		400			{object}	ResponseError
+//	@Failure		405			{object}	ResponseError
+//	@Failure		409			{object}	ResponseError
+//	@Failure		500			{object}	ResponseError
+//	@Router			/volume/{volume_name}/mount [post]
 func mountVolume(w http.ResponseWriter, r *http.Request) {
-	volume_label := mux.Vars(r)["volume_label"]
+	volume_name := mux.Vars(r)["volume_name"]
 	w.Header().Set("Content-Type", "application/json")
 
 	var mount_data MountPointData
@@ -214,26 +216,43 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if mount_data.Path == "" {
-		mount_data.Path = "/mnt/" + volume_label
+	if mount_data.Name != "" && mount_data.Name != volume_name {
+		DoResponseError(http.StatusBadRequest, w, "Name conflict", "")
+		return
+	} else if mount_data.Name == "" {
+		mount_data.Name = volume_name
 	}
 
-	if mount_data.Device == "" || mount_data.FSType == "" {
-		volumes, err := GetVolumesData()
-		if err != nil {
-			DoResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
-			return
-		}
+	volumes, err := GetVolumesData()
+	if err != nil {
+		DoResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
+		return
+	}
+
+	if mount_data.FSType == "" || mount_data.Label == "" || mount_data.Path == "" {
 	out:
 		for _, v := range volumes.Disks {
 			for _, d := range v.Partitions {
-				if d.Label == volume_label {
-					mount_data.Device = d.Name
-					mount_data.FSType = d.Type
+				if d.Name == volume_name {
+					if mount_data.FSType == "" {
+						mount_data.FSType = d.Type
+					}
+					if mount_data.Label == "" {
+						mount_data.Label = d.Label
+					}
+					if mount_data.Path == "" {
+						mount_data.Path = d.MountPoint
+					}
 					break out
 				}
 			}
 		}
+	}
+
+	if mount_data.Path == "" && mount_data.Label != "" {
+		mount_data.Path = "/mnt/" + stringy.New(mount_data.Label).RemoveSpecialCharacter()
+	} else if mount_data.Path == "" {
+		mount_data.Path = "/mnt/" + mount_data.Name
 	}
 
 	var flags = 0
@@ -241,17 +260,34 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 		flags |= int(flag)
 	}
 
-	if mount_data.Device == "" || mount_data.FSType == "" {
-		DoResponseError(http.StatusBadRequest, w, "Invalid device or filesystem type", "")
-		return
+	mount_data.Path = stringy.New(mount_data.Path).SnakeCase().Get()
+
+	if !strings.HasPrefix(mount_data.Name, "/dev/") {
+		mount_data.Name = "/dev/" + mount_data.Name
 	}
 
-	if !strings.HasPrefix(mount_data.Device, "/dev/") {
-		mount_data.Device = "/dev/" + mount_data.Device
+	// Check if mount_data.Path is already mounted
+
+	var c = 0
+	for _, v := range volumes.Disks {
+		for _, d := range v.Partitions {
+			if d.MountPoint != "" && strings.HasPrefix(mount_data.Path, d.MountPoint) {
+				c++
+			}
+		}
+	}
+	if c > 0 {
+		mount_data.Path += fmt.Sprintf("_(%d)", c)
 	}
 
-	if mp, err := mount.Mount(mount_data.Device, mount_data.Path, mount_data.FSType, mount_data.Data, uintptr(flags), func() error { return os.MkdirAll(mount_data.Path, 0o666) }); err != nil {
-		log.Printf("TryMount(%s) = %v, want nil", mount_data.Device, err)
+	var mp *mount.MountPoint
+	if mount_data.FSType == "" {
+		mp, err = mount.TryMount(mount_data.Name, mount_data.Path, mount_data.Data, uintptr(flags), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
+	} else {
+		mp, err = mount.Mount(mount_data.Name, mount_data.Path, mount_data.FSType, mount_data.Data, uintptr(flags), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
+	}
+	if err != nil {
+		log.Printf("(Try)Mount(%s) = %v, want nil", mount_data.Name, err)
 		DoResponseError(http.StatusConflict, w, "Error Mounting volume", err)
 		return
 	} else {
@@ -303,16 +339,16 @@ func notifyVolumeClient(volumes *block.Info) {
 //	@Summary		Umount the selected volume
 //	@Description	Umount the selected volume
 //	@Tags			volume
-//	@Param			volume_label	path	string	true	"Label of the volume to be unmounted"
-//	@Param			force			query	bool	true	"Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted."
-//	@Param			lazy			query	bool	true	"Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted."
+//	@Param			volume_name	path	string	true	"Name of the volume to be unmounted"
+//	@Param			force		query	bool	true	"Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted."
+//	@Param			lazy		query	bool	true	"Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted."
 //	@Success		204
 //	@Failure		404	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
-//	@Router			/volume/{volume_label}/mount [delete]
+//	@Router			/volume/{volume_name}/mount [delete]
 func umountVolume(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	volume := mux.Vars(r)["volume_label"]
+	volume_name := mux.Vars(r)["volume_name"]
 	force := r.URL.Query().Get("force")
 	lazy := r.URL.Query().Get("lazy")
 
@@ -324,7 +360,7 @@ func umountVolume(w http.ResponseWriter, r *http.Request) {
 
 	for _, v := range volumes.Disks {
 		for _, d := range v.Partitions {
-			if d.Label == volume {
+			if d.Name == volume_name {
 				err := mount.Unmount(d.MountPoint, force == "true", lazy == "true")
 				if err != nil {
 					DoResponseError(http.StatusInternalServerError, w, fmt.Sprintf("Error unmounting %s", d.MountPoint), err)
@@ -338,7 +374,7 @@ func umountVolume(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	DoResponseError(http.StatusNotFound, w, fmt.Sprintf("No mount on %s found!", volume), "")
+	DoResponseError(http.StatusNotFound, w, fmt.Sprintf("No mount on %s found!", volume_name), "")
 }
 
 func VolumesEventHandler() {

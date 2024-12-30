@@ -54,6 +54,7 @@ require (
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/spec v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
+	github.com/gobeam/stringy v0.0.7
 	github.com/gofri/go-github-ratelimit v1.1.0
 	github.com/google/go-github/v68 v68.0.0
 	github.com/gorilla/handlers v1.5.2

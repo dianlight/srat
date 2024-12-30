@@ -886,13 +886,15 @@ definitions:
     properties:
       data:
         type: string
-      device:
-        type: string
       flags:
         items:
           $ref: '#/definitions/main.MounDataFlag'
         type: array
       fstype:
+        type: string
+      label:
+        type: string
+      name:
         type: string
       path:
         type: string
@@ -1851,13 +1853,13 @@ paths:
       summary: List all configured users
       tags:
       - user
-  /volume/{volume_label}/mount:
+  /volume/{volume_name}/mount:
     delete:
       description: Umount the selected volume
       parameters:
-      - description: Label of the volume to be unmounted
+      - description: Name of the volume to be unmounted
         in: path
-        name: volume_label
+        name: volume_name
         required: true
         type: string
       - description: Umount forcefully - forces an unmount regardless of currently
@@ -1894,9 +1896,9 @@ paths:
       - application/json
       description: mount an existing volume
       parameters:
-      - description: Volume Label to Mount
+      - description: Volume Name to Mount
         in: path
-        name: volume_label
+        name: volume_name
         required: true
         type: string
       - description: Mount data

@@ -43,15 +43,16 @@ export function Volumes() {
         });
     };
 
-    function onSubmitMountVolume(data?: string) {
+    function onSubmitMountVolume(data: BlockPartition) {
         console.log("Mount", data)
-        if (!data) return
+
         confirm({
-            title: `Mount ${data}?`,
-            description: "Do you really want mount the Volume?"
+            title: `Mount ${data.label}?`,
+            description: `Do you really want mount the Volume ${data.name}?`
         })
             .then(() => {
-                apiContext.volume.mountCreate(data, {}).then((res) => {
+                if (!data.name) return
+                apiContext.volume.mountCreate(data.name, {}).then((res) => {
                     setSelected(null);
                 }).catch(err => {
                     console.error(err);
@@ -63,17 +64,17 @@ export function Volumes() {
             });
     }
 
-    function onSubmitUmountVolume(data?: string, force = false) {
+    function onSubmitUmountVolume(data: BlockPartition, force = false) {
         console.log("Umount", data)
-        if (!data) return
         confirm({
-            title: `Umount ${data}?`,
-            description: "Do you really want umount the Volume?"
+            title: `Umount ${data.label}?`,
+            description: `Do you really want umount ${force ? "forcefull" : ""} the Volume ${data.name}?`
         })
             .then(() => {
-                apiContext.volume.mountDelete(data, {
+                if (!data.name) return
+                apiContext.volume.mountDelete(data.name, {
                     force,
-                    lazy: true,
+                    lazy: !force,
                 }).then((res) => {
                     setSelected(null);
                 }).catch(err => {
@@ -152,20 +153,20 @@ export function Volumes() {
                                     secondaryAction={!mode.read_only && <>
                                         {partition.mount_point === "" &&
                                             <Tooltip title="Mount disk">
-                                                <IconButton onClick={() => onSubmitMountVolume(partition.label)} edge="end" aria-label="delete">
+                                                <IconButton onClick={() => onSubmitMountVolume(partition)} edge="end" aria-label="delete">
                                                     <FontAwesomeSvgIcon icon={faPlug} />
                                                 </IconButton>
                                             </Tooltip>
                                         }
                                         {partition.mount_point !== "" && partition.mount_point?.startsWith("/mnt/") && <>
                                             <Tooltip title="Unmount disk">
-                                                <IconButton onClick={() => onSubmitUmountVolume(partition.label, false)} edge="end" aria-label="delete">
+                                                <IconButton onClick={() => onSubmitUmountVolume(partition, false)} edge="end" aria-label="delete">
                                                     <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
                                                 </IconButton>
                                             </Tooltip>
                                             <Tooltip title="Force unmounting disk">
 
-                                                <IconButton onClick={() => onSubmitUmountVolume(partition.label, true)} edge="end" aria-label="delete">
+                                                <IconButton onClick={() => onSubmitUmountVolume(partition, true)} edge="end" aria-label="delete">
                                                     <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
                                                 </IconButton>
                                             </Tooltip>

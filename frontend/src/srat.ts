@@ -531,9 +531,10 @@ export enum MainMounDataFlag {
 
 export interface MainMountPointData {
   data?: string;
-  device?: string;
   flags?: MainMounDataFlag[];
   fstype?: string;
+  label?: string;
+  name?: string;
   path?: string;
 }
 
@@ -1292,11 +1293,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @tags volume
      * @name MountCreate
      * @summary mount an existing volume
-     * @request POST:/volume/{volume_label}/mount
+     * @request POST:/volume/{volume_name}/mount
      */
-    mountCreate: (volumeLabel: string, mount_data: MainMountPointData, params: RequestParams = {}) =>
+    mountCreate: (volumeName: string, mount_data: MainMountPointData, params: RequestParams = {}) =>
       this.request<MainMountPointData, MainResponseError>({
-        path: `/volume/${volumeLabel}/mount`,
+        path: `/volume/${volumeName}/mount`,
         method: "POST",
         body: mount_data,
         type: ContentType.Json,
@@ -1310,10 +1311,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @tags volume
      * @name MountDelete
      * @summary Umount the selected volume
-     * @request DELETE:/volume/{volume_label}/mount
+     * @request DELETE:/volume/{volume_name}/mount
      */
     mountDelete: (
-      volumeLabel: string,
+      volumeName: string,
       query: {
         /** Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted. */
         force: boolean;
@@ -1323,7 +1324,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       params: RequestParams = {},
     ) =>
       this.request<void, MainResponseError>({
-        path: `/volume/${volumeLabel}/mount`,
+        path: `/volume/${volumeName}/mount`,
         method: "DELETE",
         query: query,
         ...params,

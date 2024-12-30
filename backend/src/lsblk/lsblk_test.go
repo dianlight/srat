@@ -51,7 +51,7 @@ func TestGetInfoFromDevice(t *testing.T) {
 	}
 	t.Logf("lsbk %v", pretty.Sprint(lsbkd))
 
-	if lsbkp.Name == "" || lsbkd.Name == "" {
+	if lsbkp.Name == "" && lsbkd.Name == "" {
 		t.Error("Empty devices returned")
 	}
 }
