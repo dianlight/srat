@@ -41,6 +41,8 @@ jobs:
       with:
         bun-version: latest
 
+    - run: "sudo apt-get install -y samba" 
+
     - name: Get version
       id: version
       uses: home-assistant/actions/helpers/version@master
