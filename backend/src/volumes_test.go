@@ -126,7 +126,7 @@ out:
 	}
 
 	// Verify the response data
-	if !strings.HasPrefix(mockMountData.Path, responseData.Path) {
+	if !strings.HasPrefix(responseData.Path, mockMountData.Path) {
 		t.Errorf("Unexpected path in response: got %v want %v", responseData.Path, mockMountData.Path)
 	}
 	if responseData.FSType != mockMountData.FSType {
