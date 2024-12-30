@@ -67,6 +67,10 @@ func GetVolumesData() (*block.Info, error) {
 					lsbkInfo.Fstype = fs
 				}
 
+				if lsbkInfo.Fstype == "unknown" || lsbkInfo.Fstype == "swap" {
+					continue
+				}
+
 				var partition = &block.Partition{
 					Disk:            v,
 					Name:            v.Name,

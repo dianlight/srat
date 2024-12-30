@@ -114,7 +114,7 @@ export function Volumes() {
         <br />
         <List dense={true}>
             <Divider />
-            {status.disks?.filter((block) => !block.name?.match("z{0,1}ram\\d+")).map((disk, idx) =>
+            {status.disks?.filter((block) => block.partitions && block.partitions.length > 0).map((disk, idx) =>
                 <Fragment key={idx}>
                     <ListItemButton>
                         <ListItem
