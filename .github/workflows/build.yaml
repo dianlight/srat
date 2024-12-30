@@ -96,7 +96,7 @@ jobs:
 
     - name: Build ${{ matrix.variant.name }} ${{ steps.version.outputs.version }}
       run: |
-        make BUILD AARGS="${{ matrix.variant.args }}" SUFFIX="${{ matrix.variant.suffix }}" VERSION=${{ steps.version.outputs.version }}
+        sudo -E PATH="$PATH" make BUILD AARGS="${{ matrix.variant.args }}" SUFFIX="${{ matrix.variant.suffix }}" VERSION=${{ steps.version.outputs.version }}
 
     - name: Upload release asset for ${{ github.event.release.tag_name || format('{0}',steps.version.outputs.version) }}
       uses: softprops/action-gh-release@v2
