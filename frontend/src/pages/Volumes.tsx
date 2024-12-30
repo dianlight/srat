@@ -131,15 +131,15 @@ export function Volumes() {
                                 </Avatar>
                             </ListItemAvatar>
                             <ListItemText
-                                primary={disk.model}
+                                primary={disk.model !== 'unknown' ? disk.model : "No name " + disk.name}
                                 onClick={() => { setSelected(disk); setShowPreview(true) }}
                                 disableTypography
                                 secondary={<Stack spacing={2} direction="row">
                                     <Typography variant="caption">Size: {(disk.size_bytes && filesize(disk.size_bytes, { round: 0 }))}</Typography>
                                     <Typography variant="caption">Type: {disk.drive_type}</Typography>
                                     <Typography variant="caption">Bus: {disk.storage_controller}</Typography>
-                                    <Typography variant="caption">Vendor: {disk.vendor}</Typography>
-                                    <Typography variant="caption">SN: {disk.serial_number}</Typography>
+                                    {disk.vendor !== 'unknown' && <Typography variant="caption">Vendor: {disk.vendor}</Typography>}
+                                    {disk.serial_number !== 'unknown' && <Typography variant="caption">SN: {disk.serial_number}</Typography>}
                                     <Typography variant="caption">Dev: {disk.name}</Typography>
                                 </Stack>}
                             />
@@ -186,8 +186,8 @@ export function Volumes() {
                                         secondary={<Stack spacing={2} direction="row">
                                             <Typography variant="caption">Size: {(partition.size_bytes && filesize(partition.size_bytes, { round: 0 }))}</Typography>
                                             <Typography variant="caption">Type: {partition.type}</Typography>
-                                            <Typography variant="caption">MountPath: {partition.mount_point}</Typography>
-                                            <Typography variant="caption">UUID: {partition.uuid}</Typography>
+                                            {partition.mount_point !== '' && <Typography variant="caption">MountPath: {partition.mount_point}</Typography>}
+                                            {partition.uuid !== 'unknown' && <Typography variant="caption">UUID: {partition.uuid}</Typography>}
                                             <Typography variant="caption">Dev: {partition.name}</Typography>
                                         </Stack>}
                                     />
