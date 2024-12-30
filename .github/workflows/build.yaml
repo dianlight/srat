@@ -90,6 +90,10 @@ jobs:
               sha: context.sha
             })
 
+    - name: Prepare loop devices
+      run: |
+        sudo scripts/createTestDevices.sh 
+
     - name: Build ${{ matrix.variant.name }} ${{ steps.version.outputs.version }}
       run: |
         make BUILD AARGS="${{ matrix.variant.args }}" SUFFIX="${{ matrix.variant.suffix }}" VERSION=${{ steps.version.outputs.version }}

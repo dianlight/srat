@@ -1,5 +1,5 @@
 #!/bin/bash
-
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 losetup -a
-find  /workspaces/srat/backend/test/data/ -name "*.dmg" -exec losetup -P -f  '{}' \;
+find  $(SCRIPT_DIR)/../backend/test/data/ -name "*.dmg" -exec losetup -P -f  '{}' \;
 mdev -s

@@ -77,7 +77,7 @@ func TestMountVolumeHandler(t *testing.T) {
 out:
 	for _, v := range volumes.Disks {
 		for _, d := range v.Partitions {
-			if strings.HasPrefix(d.Name, "loop") {
+			if strings.HasPrefix(d.Name, "loop") && d.Label == "_EXT4" {
 				mockMountData.Name = d.Name
 				mockMountData.Path = filepath.Join("/mnt", d.Label)
 				mockMountData.FSType = d.Type
