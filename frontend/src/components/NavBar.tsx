@@ -31,6 +31,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import { useConfirm } from "material-ui-confirm"
 import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
+import { NotificationCenter } from "./NotificationCenter"
 
 function a11yProps(index: number) {
     return {
@@ -245,6 +246,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                 <img src={github} style={{ height: "20px" }} />
                             </Tooltip>
                         </IconButton>
+                        <NotificationCenter />
                     </Box>
                 </Toolbar>
             </Container>
