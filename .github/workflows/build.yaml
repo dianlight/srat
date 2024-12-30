@@ -92,7 +92,7 @@ jobs:
 
     - name: Prepare loop devices
       run: |
-        sudo scripts/createTestDevices.sh 
+        sudo .devcontainer/createTestDevices.sh 
 
     - name: Build ${{ matrix.variant.name }} ${{ steps.version.outputs.version }}
       run: |
