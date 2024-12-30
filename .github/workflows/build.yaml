@@ -56,7 +56,7 @@ jobs:
     - name: Test ${{ matrix.variant.name }} ${{ steps.version.outputs.version }}
       run: |
         cd backend
-        make test
+        sudo make test
         cd ..
 
     - name: Check if ${{ steps.version.outputs.version }} exists
