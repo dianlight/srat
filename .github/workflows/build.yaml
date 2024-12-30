@@ -51,6 +51,7 @@ jobs:
         cd frontend
         bun install
         cd ..
+        sudo .devcontainer/createTestDevices.sh 
 
     - name: Test ${{ matrix.variant.name }} ${{ steps.version.outputs.version }}
       run: |
@@ -90,9 +91,6 @@ jobs:
               sha: context.sha
             })
 
-    - name: Prepare loop devices
-      run: |
-        sudo .devcontainer/createTestDevices.sh 
 
     - name: Build ${{ matrix.variant.name }} ${{ steps.version.outputs.version }}
       run: |
