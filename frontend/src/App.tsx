@@ -20,7 +20,7 @@ export function App() {
     useEffect(() => {
         const mhuuid = ws.subscribe<MainHealth>(MainEventType.EventHeartbeat, (data) => {
             // console.log("Got heartbeat", data)
-            if (process.env.NODE_ENV === "development") {
+            if (process.env.NODE_ENV === "development" && data.read_only === true) {
                 console.log("Dev mode force read_only to false");
                 data.read_only = false;
             }
