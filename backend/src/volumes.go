@@ -107,7 +107,7 @@ func GetVolumesData() (*BlockInfo, error) {
 				fs, flags, err := mount.FSFromBlock("/dev/" + v.Name)
 				if err != nil {
 					partition.Type = lsbkInfo.Fstype
-					if partition.Type == "unknown" {
+					if partition.Type == "unknown" && rblock.FSType != "" {
 						partition.Type = rblock.FSType
 					}
 					partition.PartitionFlags = 0
@@ -124,7 +124,7 @@ func GetVolumesData() (*BlockInfo, error) {
 					}
 				}
 
-				if partition.Type == "unknown" || partition.Type == "swap" {
+				if partition.Type == "unknown" || partition.Type == "swap" || partition.Type == "" {
 					continue
 				}
 
@@ -173,6 +173,10 @@ func GetVolumesData() (*BlockInfo, error) {
 						if err == nil {
 							partition.MountFlags = stat.Flags
 						}
+					}
+
+					if partition.Type == "unknown" || partition.Type == "swap" || partition.Type == "" {
+						continue
 					}
 
 					retBlockInfo.Partitions = append(retBlockInfo.Partitions, partition)

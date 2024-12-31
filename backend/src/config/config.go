@@ -57,5 +57,5 @@ func ListMountPointData() ([]MountPointData, error) {
 // Returns:
 //   - error: An error if the save operation fails, or nil if successful.
 func SaveMountPointData(mp MountPointData) error {
-	return db.Create(&mp).Error
+	return db.Save(&mp).Error
 }

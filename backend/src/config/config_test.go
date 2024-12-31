@@ -98,7 +98,7 @@ func TestSaveMountPointDataDuplicate(t *testing.T) {
 
 	err := SaveMountPointData(testMountPoint)
 
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
 func TestSaveMountPointDataLargeNumber(t *testing.T) {

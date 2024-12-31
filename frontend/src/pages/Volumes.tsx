@@ -1,6 +1,6 @@
 import { Fragment, useContext, useEffect, useState } from "react";
 import { apiContext, ModeContext, wsContext as ws } from "../Contexts";
-import { MainEventType, type BlockDisk, type BlockInfo, type BlockPartition } from "../srat";
+import { MainEventType, type MainBlockInfo, type MainBlockPartition } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
@@ -22,13 +22,13 @@ export function Volumes() {
     const [showPreview, setShowPreview] = useState<boolean>(false);
 
 
-    const [status, setStatus] = useState<BlockInfo>({});
-    const [selected, setSelected] = useState<BlockDisk | BlockPartition | null>(null);
+    const [status, setStatus] = useState<MainBlockInfo>({});
+    const [selected, setSelected] = useState<MainBlockPartition | null>(null);
     const confirm = useConfirm();
 
 
     useEffect(() => {
-        const vol = ws.subscribe<BlockInfo>(MainEventType.EventVolumes, (data) => {
+        const vol = ws.subscribe<MainBlockInfo>(MainEventType.EventVolumes, (data) => {
             console.log("Got volumes", data)
             setStatus(data);
         })
@@ -43,7 +43,7 @@ export function Volumes() {
         });
     };
 
-    function onSubmitMountVolume(data: BlockPartition) {
+    function onSubmitMountVolume(data: MainBlockPartition) {
         console.log("Mount", data)
 
         confirm({
@@ -64,7 +64,7 @@ export function Volumes() {
             });
     }
 
-    function onSubmitUmountVolume(data: BlockPartition, force = false) {
+    function onSubmitUmountVolume(data: MainBlockPartition, force = false) {
         console.log("Umount", data)
         confirm({
             title: `Umount ${data.label}?`,
@@ -115,89 +115,57 @@ export function Volumes() {
         <br />
         <List dense={true}>
             <Divider />
-            {status.disks?.filter((block) => block.partitions && block.partitions.length > 0).map((disk, idx) =>
+            {status.partitions?.map((partition, idx) =>
                 <Fragment key={idx}>
-                    <ListItemButton>
+                    <ListItemButton key={idx}>
                         <ListItem
                             secondaryAction={!mode.read_only && <>
-                                <IconButton onClick={() => onSubmitEjectVolume(disk.name)} edge="end" aria-label="delete" sx={(!disk.removable ? { display: "none" } : {})}>
-                                    <EjectIcon />
-                                </IconButton>
+                                {partition.mount_point === "" &&
+                                    <Tooltip title="Mount disk">
+                                        <IconButton onClick={() => onSubmitMountVolume(partition)} edge="end" aria-label="delete">
+                                            <FontAwesomeSvgIcon icon={faPlug} />
+                                        </IconButton>
+                                    </Tooltip>
+                                }
+                                {partition.mount_point !== "" && partition.mount_point?.startsWith("/mnt/") && <>
+                                    <Tooltip title="Unmount disk">
+                                        <IconButton onClick={() => onSubmitUmountVolume(partition, false)} edge="end" aria-label="delete">
+                                            <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Force unmounting disk">
+
+                                        <IconButton onClick={() => onSubmitUmountVolume(partition, true)} edge="end" aria-label="delete">
+                                            <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
+                                        </IconButton>
+                                    </Tooltip>
+                                </>
+                                }
                             </>
                             }
                         >
                             <ListItemAvatar>
                                 <Avatar>
-                                    <FontAwesomeSvgIcon icon={faHardDrive} />
+                                    {partition.label === 'hassos-data' ? <CreditScoreIcon /> : <StorageIcon />}
                                 </Avatar>
                             </ListItemAvatar>
                             <ListItemText
-                                primary={disk.model !== 'unknown' ? disk.model : "No name " + disk.name}
-                                onClick={() => { setSelected(disk); setShowPreview(true) }}
+                                primary={decodeEscapeSequence((partition.label === "unknown" ? partition.filesystem_label : partition.label) || "unknown")}
+                                onClick={() => { setSelected(partition); setShowPreview(true) }}
                                 disableTypography
                                 secondary={<Stack spacing={2} direction="row">
-                                    <Typography variant="caption">Size: {(disk.size_bytes && filesize(disk.size_bytes, { round: 0 }))}</Typography>
-                                    <Typography variant="caption">Type: {disk.drive_type}</Typography>
-                                    <Typography variant="caption">Bus: {disk.storage_controller}</Typography>
-                                    {disk.vendor !== 'unknown' && <Typography variant="caption">Vendor: {disk.vendor}</Typography>}
-                                    {disk.serial_number !== 'unknown' && <Typography variant="caption">SN: {disk.serial_number}</Typography>}
-                                    <Typography variant="caption">Dev: {disk.name}</Typography>
+                                    <Typography variant="caption">Size: {(partition.size_bytes && filesize(partition.size_bytes, { round: 0 }))}</Typography>
+                                    <Typography variant="caption">Type: {partition.type}</Typography>
+                                    {partition.mount_point !== '' && <Typography variant="caption">MountPath: {partition.mount_point}</Typography>}
+                                    {partition.uuid !== 'unknown' && <Typography variant="caption">UUID: {partition.uuid}</Typography>}
+                                    <Typography variant="caption">Dev: {partition.name}</Typography>
                                 </Stack>}
                             />
                         </ListItem>
                     </ListItemButton>
-                    <List disablePadding>
-                        {disk.partitions?.filter((part) => (part.type !== "unknown") && !(part.label?.startsWith("hassos-"))).map((partition, idx) =>
-                            <ListItemButton sx={{ pl: 4 }} key={idx}>
-                                <ListItem
-                                    secondaryAction={!mode.read_only && <>
-                                        {partition.mount_point === "" &&
-                                            <Tooltip title="Mount disk">
-                                                <IconButton onClick={() => onSubmitMountVolume(partition)} edge="end" aria-label="delete">
-                                                    <FontAwesomeSvgIcon icon={faPlug} />
-                                                </IconButton>
-                                            </Tooltip>
-                                        }
-                                        {partition.mount_point !== "" && partition.mount_point?.startsWith("/mnt/") && <>
-                                            <Tooltip title="Unmount disk">
-                                                <IconButton onClick={() => onSubmitUmountVolume(partition, false)} edge="end" aria-label="delete">
-                                                    <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Force unmounting disk">
 
-                                                <IconButton onClick={() => onSubmitUmountVolume(partition, true)} edge="end" aria-label="delete">
-                                                    <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </>
-                                        }
-                                    </>
-                                    }
-                                >
-                                    <ListItemAvatar>
-                                        <Avatar>
-                                            {partition.label === 'hassos-data' ? <CreditScoreIcon /> : <StorageIcon />}
-                                        </Avatar>
-                                    </ListItemAvatar>
-                                    <ListItemText
-                                        primary={decodeEscapeSequence((partition.label === "unknown" ? partition.filesystem_label : partition.label) || "unknown")}
-                                        onClick={() => { setSelected(partition); setShowPreview(true) }}
-                                        disableTypography
-                                        secondary={<Stack spacing={2} direction="row">
-                                            <Typography variant="caption">Size: {(partition.size_bytes && filesize(partition.size_bytes, { round: 0 }))}</Typography>
-                                            <Typography variant="caption">Type: {partition.type}</Typography>
-                                            {partition.mount_point !== '' && <Typography variant="caption">MountPath: {partition.mount_point}</Typography>}
-                                            {partition.uuid !== 'unknown' && <Typography variant="caption">UUID: {partition.uuid}</Typography>}
-                                            <Typography variant="caption">Dev: {partition.name}</Typography>
-                                        </Stack>}
-                                    />
-                                </ListItem>
-                            </ListItemButton>
-                        )}
-                        <Divider />
-                    </List>
-                    <Divider component="li" />
+                    <Divider />
+
                 </Fragment>
             )}
         </List>

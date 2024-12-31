@@ -9,128 +9,6 @@
  * ---------------------------------------------------------------
  */
 
-export interface BlockDisk {
-  /** BusPath is the filepath to the bus for this disk. */
-  bus_path?: string;
-  /** DriveType is the category of disk drive for this disk. */
-  drive_type?: BlockDriveType;
-  /** Model is the model number of the disk. */
-  model?: string;
-  /** Name contains a short name for the disk, e.g. `sda` */
-  name?: string;
-  /**
-   * Partitions contains an array of pointers to `Partition` structs, one for
-   * each partition on the disk.
-   */
-  partitions?: BlockPartition[];
-  /**
-   * PhysicalBlockSizeBytes is the size, in bytes, of the physical blocks in
-   * this disk. This is typically the minimum amount of data that can be
-   * written to a disk in a single write operation.
-   */
-  physical_block_size_bytes?: number;
-  /** IsRemovable indicates if the disk drive is removable. */
-  removable?: boolean;
-  /** SerialNumber is the serial number of the disk. */
-  serial_number?: string;
-  /** SizeBytes contains the total amount of storage, in bytes, for this disk */
-  size_bytes?: number;
-  /**
-   * StorageController is the category of storage controller used by the
-   * disk.
-   */
-  storage_controller?: BlockStorageController;
-  /** Vendor is the manufacturer of the disk. */
-  vendor?: string;
-  /**
-   * WWN is the World-wide Name of the disk.
-   * See: https://en.wikipedia.org/wiki/World_Wide_Name
-   */
-  wwn?: string;
-  /**
-   * WWNNoExtension is the World-wide Name of the disk with any vendor
-   * extensions excluded.
-   * See: https://en.wikipedia.org/wiki/World_Wide_Name
-   */
-  wwnNoExtension?: string;
-}
-
-export enum BlockDriveType {
-  DriveTypeUnknown = 0,
-  DriveTypeHDD = 1,
-  DriveTypeFDD = 2,
-  DriveTypeODD = 3,
-  DriveTypeSSD = 4,
-  DriveTypeVirtual = 5,
-  DRIVE_TYPE_UNKNOWN = 0,
-  DRIVE_TYPE_HDD = 1,
-  DRIVE_TYPE_FDD = 2,
-  DRIVE_TYPE_ODD = 3,
-  DRIVE_TYPE_SSD = 4,
-  DRIVE_TYPE_VIRTUAL = 5,
-}
-
-export interface BlockInfo {
-  /**
-   * Disks contains an array of pointers to `Disk` structs, one for each disk
-   * drive on the host system.
-   */
-  disks?: BlockDisk[];
-  /**
-   * TotalSizeBytes contains the total amount of storage, in bytes, on the
-   * host system.
-   */
-  total_size_bytes?: number;
-}
-
-export interface BlockPartition {
-  /**
-   * FilesystemLabel is the label of the filesystem contained on the
-   * partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
-   */
-  filesystem_label?: string;
-  /**
-   * Label is the human-readable label given to the partition. On Linux, this
-   * is derived from the `ID_PART_ENTRY_NAME` udev entry.
-   */
-  label?: string;
-  /** MountPoint is the path where this partition is mounted. */
-  mount_point?: string;
-  /** Name is the system name given to the partition, e.g. "sda1". */
-  name?: string;
-  /** IsReadOnly indicates if the partition is marked read-only. */
-  read_only?: boolean;
-  /**
-   * SizeBytes contains the total amount of storage, in bytes, this partition
-   * can consume.
-   */
-  size_bytes?: number;
-  /** Type contains the type of the partition. */
-  type?: string;
-  /**
-   * UUID is the universally-unique identifier (UUID) for the partition.
-   * This will be volume UUID on Darwin, PartUUID on linux, empty on Windows.
-   */
-  uuid?: string;
-}
-
-export enum BlockStorageController {
-  StorageControllerUnknown = 0,
-  StorageControllerIDE = 1,
-  StorageControllerSCSI = 2,
-  StorageControllerNVMe = 3,
-  StorageControllerVirtIO = 4,
-  StorageControllerMMC = 5,
-  StorageControllerLoop = 6,
-  STORAGE_CONTROLLER_UNKNOWN = 0,
-  STORAGE_CONTROLLER_IDE = 1,
-  STORAGE_CONTROLLER_SCSI = 2,
-  STORAGE_CONTROLLER_NVME = 3,
-  STORAGE_CONTROLLER_VIRTIO = 4,
-  STORAGE_CONTROLLER_MMC = 5,
-  STORAGE_CONTROLLER_LOOP = 6,
-}
-
 export interface ConfigConfig {
   acl?: ConfigOptionsAcl[];
   allow_hosts?: string[];
@@ -188,20 +66,22 @@ export interface ConfigConfigSectionDirtySate {
 
 export enum ConfigMounDataFlag {
   MS_RDONLY = 1,
+  MS_NOSUID = 2,
+  MS_NODEV = 4,
+  MS_NOEXEC = 8,
+  MS_SYNCHRONOUS = 16,
+  MS_REMOUNT = 32,
+  MS_MANDLOCK = 64,
+  MS_NOATIME = 1024,
+  MS_NODIRATIME = 2048,
   MS_BIND = 4096,
   MS_LAZYTIME = 33554432,
-  MS_NOEXEC = 8,
-  MS_NOSUID = 2,
   MS_NOUSER = -2147483648,
   MS_RELATIME = 2097152,
-  MS_SYNC = 4,
-  MS_NOATIME = 1024,
-  ReadOnlyMountPoindDataFlags = 1025,
 }
 
 export interface ConfigMountPointData {
   data?: string;
-  /** Flags     []MounDataFlag `json:"flags" gorm:"type:mount_data_flag"` */
   flags?: ConfigMounDataFlag[];
   fstype?: string;
   label?: string;
@@ -508,6 +388,50 @@ export interface GithubUser {
   updated_at?: GithubTimestamp;
   /** API URLs */
   url?: string;
+}
+
+export interface MainBlockInfo {
+  /**
+   * Partitions contains an array of pointers to `Partition` structs, one for
+   * each partition on any disk drive on the host system.
+   */
+  partitions?: MainBlockPartition[];
+  total_size_bytes?: number;
+}
+
+export interface MainBlockPartition {
+  /**
+   * FilesystemLabel is the label of the filesystem contained on the
+   * partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
+   */
+  filesystem_label?: string;
+  /**
+   * Label is the human-readable label given to the partition. On Linux, this
+   * is derived from the `ID_PART_ENTRY_NAME` udev entry.
+   */
+  label?: string;
+  /** MountFlags contains the mount flags for the partition. */
+  mount_flags?: number;
+  /** MountPoint is the path where this partition is mounted. */
+  mount_point?: string;
+  /** Name is the system name given to the partition, e.g. "sda1". */
+  name?: string;
+  /** PartiionFlags contains the mount flags for the partition. */
+  partition_flags?: number;
+  /** IsReadOnly indicates if the partition is marked read-only. */
+  read_only?: boolean;
+  /**
+   * SizeBytes contains the total amount of storage, in bytes, this partition
+   * can consume.
+   */
+  size_bytes?: number;
+  /** Type contains the type of the partition. */
+  type?: string;
+  /**
+   * UUID is the universally-unique identifier (UUID) for the partition.
+   * This will be volume UUID on Darwin, PartUUID on linux, empty on Windows.
+   */
+  uuid?: string;
 }
 
 export enum MainEventType {
@@ -1341,7 +1265,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/volumes
      */
     volumesList: (params: RequestParams = {}) =>
-      this.request<BlockInfo, MainResponseError>({
+      this.request<MainBlockInfo, MainResponseError>({
         path: `/volumes`,
         method: "GET",
         format: "json",
