@@ -1,173 +1,4 @@
 definitions:
-  block.Disk:
-    properties:
-      bus_path:
-        description: BusPath is the filepath to the bus for this disk.
-        type: string
-      drive_type:
-        allOf:
-        - $ref: '#/definitions/block.DriveType'
-        description: DriveType is the category of disk drive for this disk.
-      model:
-        description: Model is the model number of the disk.
-        type: string
-      name:
-        description: Name contains a short name for the disk, e.g. `sda`
-        type: string
-      partitions:
-        description: |-
-          Partitions contains an array of pointers to `Partition` structs, one for
-          each partition on the disk.
-        items:
-          $ref: '#/definitions/block.Partition'
-        type: array
-      physical_block_size_bytes:
-        description: |-
-          PhysicalBlockSizeBytes is the size, in bytes, of the physical blocks in
-          this disk. This is typically the minimum amount of data that can be
-          written to a disk in a single write operation.
-        type: integer
-      removable:
-        description: IsRemovable indicates if the disk drive is removable.
-        type: boolean
-      serial_number:
-        description: SerialNumber is the serial number of the disk.
-        type: string
-      size_bytes:
-        description: SizeBytes contains the total amount of storage, in bytes, for
-          this disk
-        type: integer
-      storage_controller:
-        allOf:
-        - $ref: '#/definitions/block.StorageController'
-        description: |-
-          StorageController is the category of storage controller used by the
-          disk.
-      vendor:
-        description: Vendor is the manufacturer of the disk.
-        type: string
-      wwn:
-        description: |-
-          WWN is the World-wide Name of the disk.
-          See: https://en.wikipedia.org/wiki/World_Wide_Name
-        type: string
-      wwnNoExtension:
-        description: |-
-          WWNNoExtension is the World-wide Name of the disk with any vendor
-          extensions excluded.
-          See: https://en.wikipedia.org/wiki/World_Wide_Name
-        type: string
-    type: object
-  block.DriveType:
-    enum:
-    - 0
-    - 1
-    - 2
-    - 3
-    - 4
-    - 5
-    - 0
-    - 1
-    - 2
-    - 3
-    - 4
-    - 5
-    type: integer
-    x-enum-varnames:
-    - DriveTypeUnknown
-    - DriveTypeHDD
-    - DriveTypeFDD
-    - DriveTypeODD
-    - DriveTypeSSD
-    - DriveTypeVirtual
-    - DRIVE_TYPE_UNKNOWN
-    - DRIVE_TYPE_HDD
-    - DRIVE_TYPE_FDD
-    - DRIVE_TYPE_ODD
-    - DRIVE_TYPE_SSD
-    - DRIVE_TYPE_VIRTUAL
-  block.Info:
-    properties:
-      disks:
-        description: |-
-          Disks contains an array of pointers to `Disk` structs, one for each disk
-          drive on the host system.
-        items:
-          $ref: '#/definitions/block.Disk'
-        type: array
-      total_size_bytes:
-        description: |-
-          TotalSizeBytes contains the total amount of storage, in bytes, on the
-          host system.
-        type: integer
-    type: object
-  block.Partition:
-    properties:
-      filesystem_label:
-        description: |-
-          FilesystemLabel is the label of the filesystem contained on the
-          partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
-        type: string
-      label:
-        description: |-
-          Label is the human-readable label given to the partition. On Linux, this
-          is derived from the `ID_PART_ENTRY_NAME` udev entry.
-        type: string
-      mount_point:
-        description: MountPoint is the path where this partition is mounted.
-        type: string
-      name:
-        description: Name is the system name given to the partition, e.g. "sda1".
-        type: string
-      read_only:
-        description: IsReadOnly indicates if the partition is marked read-only.
-        type: boolean
-      size_bytes:
-        description: |-
-          SizeBytes contains the total amount of storage, in bytes, this partition
-          can consume.
-        type: integer
-      type:
-        description: Type contains the type of the partition.
-        type: string
-      uuid:
-        description: |-
-          UUID is the universally-unique identifier (UUID) for the partition.
-          This will be volume UUID on Darwin, PartUUID on linux, empty on Windows.
-        type: string
-    type: object
-  block.StorageController:
-    enum:
-    - 0
-    - 1
-    - 2
-    - 3
-    - 4
-    - 5
-    - 6
-    - 0
-    - 1
-    - 2
-    - 3
-    - 4
-    - 5
-    - 6
-    type: integer
-    x-enum-varnames:
-    - StorageControllerUnknown
-    - StorageControllerIDE
-    - StorageControllerSCSI
-    - StorageControllerNVMe
-    - StorageControllerVirtIO
-    - StorageControllerMMC
-    - StorageControllerLoop
-    - STORAGE_CONTROLLER_UNKNOWN
-    - STORAGE_CONTROLLER_IDE
-    - STORAGE_CONTROLLER_SCSI
-    - STORAGE_CONTROLLER_NVME
-    - STORAGE_CONTROLLER_VIRTIO
-    - STORAGE_CONTROLLER_MMC
-    - STORAGE_CONTROLLER_LOOP
   config.Config:
     properties:
       acl:
@@ -289,33 +120,52 @@ definitions:
   config.MounDataFlag:
     enum:
     - 1
+    - 2
+    - 4
+    - 8
+    - 16
+    - 32
+    - 64
+    - 1024
+    - 2048
     - 4096
     - 33554432
-    - 8
-    - 2
     - -2147483648
     - 2097152
-    - 4
-    - 1024
-    - 1025
     type: integer
+    x-enum-comments:
+      MS_BIND: Bind directory at differente place
+      MS_LAZYTIME: Lazily update access and modification times
+      MS_MANDLOCK: Allow mandatory locks
+      MS_NOATIME: Do not update access and modification times
+      MS_NODEV: Disallow access to device special files
+      MS_NODIRATIME: Do not update directory access and modification times
+      MS_NOEXEC: Disallow execution of binaries
+      MS_NOSUID: Ignore setuid and setgid bits
+      MS_NOUSER: Do not update user and group IDs
+      MS_RDONLY: Mount read only
+      MS_RELATIME: Update access and modification times only when necessary
+      MS_REMOUNT: Remount the filesystem
+      MS_SYNCHRONOUS: Write data synchronously (wait until data has been written)
     x-enum-varnames:
     - MS_RDONLY
+    - MS_NOSUID
+    - MS_NODEV
+    - MS_NOEXEC
+    - MS_SYNCHRONOUS
+    - MS_REMOUNT
+    - MS_MANDLOCK
+    - MS_NOATIME
+    - MS_NODIRATIME
     - MS_BIND
     - MS_LAZYTIME
-    - MS_NOEXEC
-    - MS_NOSUID
     - MS_NOUSER
     - MS_RELATIME
-    - MS_SYNC
-    - MS_NOATIME
-    - ReadOnlyMountPoindDataFlags
   config.MountPointData:
     properties:
       data:
         type: string
       flags:
-        description: Flags     []MounDataFlag `json:"flags" gorm:"type:mount_data_flag"`
         items:
           $ref: '#/definitions/config.MounDataFlag'
         type: array
@@ -840,6 +690,59 @@ definitions:
         $ref: '#/definitions/github.Timestamp'
       url:
         description: API URLs
+        type: string
+    type: object
+  main.BlockInfo:
+    properties:
+      partitions:
+        description: |-
+          Partitions contains an array of pointers to `Partition` structs, one for
+          each partition on any disk drive on the host system.
+        items:
+          $ref: '#/definitions/main.BlockPartition'
+        type: array
+      total_size_bytes:
+        type: integer
+    type: object
+  main.BlockPartition:
+    properties:
+      filesystem_label:
+        description: |-
+          FilesystemLabel is the label of the filesystem contained on the
+          partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
+        type: string
+      label:
+        description: |-
+          Label is the human-readable label given to the partition. On Linux, this
+          is derived from the `ID_PART_ENTRY_NAME` udev entry.
+        type: string
+      mount_flags:
+        description: MountFlags contains the mount flags for the partition.
+        type: integer
+      mount_point:
+        description: MountPoint is the path where this partition is mounted.
+        type: string
+      name:
+        description: Name is the system name given to the partition, e.g. "sda1".
+        type: string
+      partition_flags:
+        description: PartiionFlags contains the mount flags for the partition.
+        type: integer
+      read_only:
+        description: IsReadOnly indicates if the partition is marked read-only.
+        type: boolean
+      size_bytes:
+        description: |-
+          SizeBytes contains the total amount of storage, in bytes, this partition
+          can consume.
+        type: integer
+      type:
+        description: Type contains the type of the partition.
+        type: string
+      uuid:
+        description: |-
+          UUID is the universally-unique identifier (UUID) for the partition.
+          This will be volume UUID on Darwin, PartUUID on linux, empty on Windows.
         type: string
     type: object
   main.EventType:
@@ -1943,7 +1846,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/block.Info'
+            $ref: '#/definitions/main.BlockInfo'
         "405":
           description: Method Not Allowed
           schema:

@@ -13,7 +13,6 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/gorilla/mux"
-	"github.com/jaypipes/ghw/pkg/block"
 	"github.com/kr/pretty"
 )
 
@@ -45,18 +44,16 @@ func TestListVolumessHandler(t *testing.T) {
 			rr.Body.String(), "[]")
 	}
 
-	var volumes block.Info
+	var volumes BlockInfo
 	err2 := json.NewDecoder(rr.Body).Decode(&volumes)
 	if err2 != nil {
 		t.Errorf("handler error in decode body %v", err2)
 	}
 	t.Log(pretty.Sprint(volumes))
 
-	for _, v := range volumes.Disks {
-		for _, d := range v.Partitions {
-			if d.Label == "testvolume" {
-				return
-			}
+	for _, d := range volumes.Partitions {
+		if d.Label == "testvolume" {
+			return
 		}
 	}
 	t.Error("Test failed: testvolume not found in volumes")
@@ -75,18 +72,14 @@ func TestMountVolumeHandler(t *testing.T) {
 
 	var mockMountData config.MountPointData
 
-out:
-	for _, v := range volumes.Disks {
-		for _, d := range v.Partitions {
-			if strings.HasPrefix(d.Name, "loop") && d.Label == "_EXT4" {
-				mockMountData.Name = d.Name
-				mockMountData.Path = filepath.Join("/mnt", d.Label)
-				mockMountData.FSType = d.Type
-				mockMountData.Flags = []config.MounDataFlag{config.MS_NOATIME}
-				previus_device = d.Name
-				t.Logf("Selected loop device: %v", mockMountData)
-				break out
-			}
+	for _, d := range volumes.Partitions {
+		if strings.HasPrefix(d.Name, "loop") && d.Label == "_EXT4" {
+			mockMountData.Name = d.Name
+			mockMountData.Path = filepath.Join("/mnt", d.Label)
+			mockMountData.FSType = d.Type
+			mockMountData.Flags = []config.MounDataFlag{config.MS_NOATIME}
+			previus_device = d.Name
+			t.Logf("Selected loop device: %v", mockMountData)
 		}
 	}
 	if mockMountData.Name == "" {

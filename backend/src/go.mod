@@ -5,13 +5,14 @@ go 1.23.3
 require (
 	dario.cat/mergo v1.0.1
 	github.com/Masterminds/sprig/v3 v3.3.0
+	github.com/google/go-cmp v0.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jinzhu/copier v0.3.2
 	github.com/jpillora/overseer v1.1.6
 	github.com/kr/pretty v0.3.1
 	github.com/pilebones/go-udev v0.9.0
 	github.com/shirou/gopsutil/v4 v4.24.11
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/swaggo/swag/v2 v2.0.0-rc4
 	golang.org/x/sys v0.28.0
 )

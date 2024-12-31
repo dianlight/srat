@@ -19,7 +19,6 @@ import (
 	"github.com/gobeam/stringy"
 	"github.com/gorilla/mux"
 	"github.com/jaypipes/ghw"
-	"github.com/jaypipes/ghw/pkg/block"
 	"github.com/jinzhu/copier"
 	"github.com/kr/pretty"
 	"github.com/pilebones/go-udev/netlink"
@@ -32,14 +31,52 @@ var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
 var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
 
 var (
-	volumesQueue      = map[string](chan *block.Info){}
+	volumesQueue      = map[string](chan *BlockInfo){}
 	volumesQueueMutex = sync.RWMutex{}
 )
 
-func GetVolumesData() (*block.Info, error) {
+type BlockInfo struct {
+	TotalSizeBytes uint64 `json:"total_size_bytes"`
+	// Partitions contains an array of pointers to `Partition` structs, one for
+	// each partition on any disk drive on the host system.
+	Partitions []*BlockPartition `json:"partitions"`
+}
+
+type BlockPartition struct {
+	// Name is the system name given to the partition, e.g. "sda1".
+	Name string `json:"name"`
+	// Label is the human-readable label given to the partition. On Linux, this
+	// is derived from the `ID_PART_ENTRY_NAME` udev entry.
+	Label string `json:"label"`
+	// MountPoint is the path where this partition is mounted.
+	MountPoint string `json:"mount_point"`
+	// SizeBytes contains the total amount of storage, in bytes, this partition
+	// can consume.
+	SizeBytes uint64 `json:"size_bytes"`
+	// Type contains the type of the partition.
+	Type string `json:"type"`
+	// IsReadOnly indicates if the partition is marked read-only.
+	IsReadOnly bool `json:"read_only"`
+	// UUID is the universally-unique identifier (UUID) for the partition.
+	// This will be volume UUID on Darwin, PartUUID on linux, empty on Windows.
+	UUID string `json:"uuid"`
+	// FilesystemLabel is the label of the filesystem contained on the
+	// partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
+	FilesystemLabel string `json:"filesystem_label"`
+	// PartiionFlags contains the mount flags for the partition.
+	PartitionFlags int64 `json:"partition_flags"`
+	// MountFlags contains the mount flags for the partition.
+	MountFlags int64 `json:"mount_flags"`
+}
+
+func GetVolumesData() (*BlockInfo, error) {
 	blockInfo, err := ghw.Block()
+	retBlockInfo := &BlockInfo{}
+
+	copier.Copy(retBlockInfo, blockInfo)
 
 	//pretty.Print(blockInfo)
+	//pretty.Print(retBlockInfo)
 
 	if err == nil {
 		for _, v := range blockInfo.Disks {
@@ -51,75 +88,100 @@ func GetVolumesData() (*block.Info, error) {
 					continue
 				}
 
+				var partition = &BlockPartition{
+					Name: rblock.Name,
+					Type: rblock.FSType,
+					UUID: rblock.FsUUID,
+				}
+
 				lsbkInfo, err := lsblk.GetInfoFromDevice(v.Name)
 				if err != nil {
 					log.Printf("GetLabelsFromDevice failed: %v", err)
 					continue
 				}
+
 				if lsbkInfo.Partlabel == "unknown" {
 					lsbkInfo.Partlabel = lsbkInfo.Label
 				}
 
-				if lsbkInfo.Fstype == "" {
-					fs, _, err := mount.FSFromBlock("/dev/" + v.Name)
-					if err != nil {
-						//log.Printf("Error getting filesystem for device /dev/%s: %v", v.Name, err)
-						continue
+				fs, flags, err := mount.FSFromBlock("/dev/" + v.Name)
+				if err != nil {
+					partition.Type = lsbkInfo.Fstype
+					if partition.Type == "unknown" {
+						partition.Type = rblock.FSType
 					}
-					lsbkInfo.Fstype = fs
+					partition.PartitionFlags = 0
+				} else {
+					partition.Type = fs
+					partition.PartitionFlags = int64(flags)
 				}
 
-				if lsbkInfo.Fstype == "unknown" || lsbkInfo.Fstype == "swap" {
+				if partition.MountPoint != "" {
+					stat := syscall.Statfs_t{}
+					err := syscall.Statfs(partition.MountPoint, &stat)
+					if err == nil {
+						partition.MountFlags = stat.Flags
+					}
+				}
+
+				if partition.Type == "unknown" || partition.Type == "swap" {
 					continue
 				}
 
-				var partition = &block.Partition{
-					Disk:            v,
-					Name:            v.Name,
-					Label:           lsbkInfo.Partlabel,
-					FilesystemLabel: lsbkInfo.Label,
-					UUID:            rblock.FsUUID,
-					SizeBytes:       v.SizeBytes,
-					Type:            lsbkInfo.Fstype,
-					MountPoint:      lsbkInfo.Mountpoint,
-					IsReadOnly:      false,
-				}
-				v.Partitions = append(v.Partitions, partition)
+				partition.Label = lsbkInfo.Partlabel
+				partition.FilesystemLabel = lsbkInfo.Label
+				partition.SizeBytes = v.SizeBytes
+				partition.MountPoint = lsbkInfo.Mountpoint
+
+				retBlockInfo.Partitions = append(retBlockInfo.Partitions, partition)
 
 			} else {
 				for _, d := range v.Partitions {
-					if d.Label == "unknown" || d.Type == "unknown" {
+					var partition = &BlockPartition{}
+					copier.Copy(&partition, &d)
+
+					if partition.Label == "unknown" || partition.FilesystemLabel == "unknown" || partition.Type == "unknown" {
 						lsbkInfo, err := lsblk.GetInfoFromDevice(d.Name)
 						if err == nil {
 							if lsbkInfo.Label != "unknown" {
-								d.FilesystemLabel = strings.Replace(d.FilesystemLabel, "unknown", lsbkInfo.Label, 1)
+								partition.FilesystemLabel = strings.Replace(partition.FilesystemLabel, "unknown", lsbkInfo.Label, 1)
 							}
 							if lsbkInfo.Partlabel != "unknown" {
-								d.Label = strings.Replace(d.Label, "unknown", lsbkInfo.Partlabel, 1)
+								partition.Label = strings.Replace(partition.Label, "unknown", lsbkInfo.Partlabel, 1)
 							}
 							if lsbkInfo.Fstype != "unknown" {
-								d.Type = strings.Replace(d.Type, "unknown", lsbkInfo.Fstype, 1)
+								partition.Type = strings.Replace(partition.Type, "unknown", lsbkInfo.Fstype, 1)
 							}
 						}
 					}
 
-					if d.Label == "unknown" {
-						d.Label = d.FilesystemLabel
+					if partition.Label == "unknown" {
+						partition.Label = partition.FilesystemLabel
 					}
-					if d.Label == "unknown" && d.FilesystemLabel == "unknown" {
-						d.Label = d.UUID
+					if partition.Label == "unknown" && partition.FilesystemLabel == "unknown" {
+						partition.Label = partition.UUID
 					}
-					if d.Type == "unknown" {
-						fs, _, err := mount.FSFromBlock("/dev/" + v.Name)
+					fs, flags, err := mount.FSFromBlock("/dev/" + v.Name)
+					if err == nil {
+						partition.Type = strings.Replace(d.Type, "unknown", fs, 1)
+						partition.PartitionFlags = int64(flags)
+					}
+
+					if partition.MountPoint != "" {
+						stat := syscall.Statfs_t{}
+						err := syscall.Statfs(partition.MountPoint, &stat)
 						if err == nil {
-							d.Type = fs
+							partition.MountFlags = stat.Flags
 						}
 					}
+
+					retBlockInfo.Partitions = append(retBlockInfo.Partitions, partition)
 				}
 			}
 		}
 	}
-	return blockInfo, err
+	//pretty.Print(retBlockInfo)
+	return retBlockInfo, err
 }
 
 // ListVolumes godoc
@@ -128,7 +190,7 @@ func GetVolumesData() (*block.Info, error) {
 //	@Description	List all available volumes
 //	@Tags			volume
 //	@Produce		json
-//	@Success		200	{object}	block.Info
+//	@Success		200	{object}	BlockInfo
 //	@Failure		405	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
 //	@Router			/volumes [get]
@@ -137,21 +199,11 @@ func listVolumes(w http.ResponseWriter, r *http.Request) {
 
 	volumes, err := GetVolumesData()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error fetching volumes: %v", err)))
+		DoResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
 		return
 	}
 
-	jsonResponse, jsonError := json.Marshal(volumes)
-
-	if jsonError != nil {
-		fmt.Println("Unable to encode JSON")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(jsonError.Error()))
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(jsonResponse)
-	}
+	DoResponse(http.StatusOK, w, volumes)
 }
 
 // MountVolume godoc
@@ -195,21 +247,19 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mount_data.FSType == "" || mount_data.Label == "" || mount_data.Path == "" {
-	out:
-		for _, v := range volumes.Disks {
-			for _, d := range v.Partitions {
-				if d.Name == volume_name {
-					if mount_data.FSType == "" {
-						mount_data.FSType = d.Type
-					}
-					if mount_data.Label == "" {
-						mount_data.Label = d.Label
-					}
-					if mount_data.Path == "" {
-						mount_data.Path = d.MountPoint
-					}
-					break out
+
+		for _, d := range volumes.Partitions {
+			if d.Name == volume_name {
+				if mount_data.FSType == "" {
+					mount_data.FSType = d.Type
 				}
+				if mount_data.Label == "" {
+					mount_data.Label = d.Label
+				}
+				if mount_data.Path == "" {
+					mount_data.Path = d.MountPoint
+				}
+				break
 			}
 		}
 	}
@@ -235,11 +285,9 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 	// Check if mount_data.Path is already mounted
 
 	var c = 0
-	for _, v := range volumes.Disks {
-		for _, d := range v.Partitions {
-			if d.MountPoint != "" && strings.HasPrefix(mount_data.Path, d.MountPoint) {
-				c++
-			}
+	for _, d := range volumes.Partitions {
+		if d.MountPoint != "" && strings.HasPrefix(mount_data.Path, d.MountPoint) {
+			c++
 		}
 	}
 	if c > 0 {
@@ -248,9 +296,9 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 
 	var mp *mount.MountPoint
 	if mount_data.FSType == "" {
-		mp, err = mount.TryMount(mount_data.Name, mount_data.Path, mount_data.Data, uintptr(flags.(int)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
+		mp, err = mount.TryMount(mount_data.Name, mount_data.Path, mount_data.Data, uintptr(flags.(int64)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
 	} else {
-		mp, err = mount.Mount(mount_data.Name, mount_data.Path, mount_data.FSType, mount_data.Data, uintptr(flags.(int)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
+		mp, err = mount.Mount(mount_data.Name, mount_data.Path, mount_data.FSType, mount_data.Data, uintptr(flags.(int64)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
 	}
 	if err != nil {
 		log.Printf("(Try)Mount(%s) = %v, want nil", mount_data.Name, err)
@@ -271,16 +319,17 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 		notifyVolumeClient(ndata)
 		data.DirtySectionState.Volumes = true
 
-		jsonResponse, jsonError := json.Marshal(mounted_data)
+		DoResponse(http.StatusCreated, w, mounted_data)
+		/*
+			jsonResponse, jsonError := json.Marshal(mounted_data)
 
-		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(jsonError.Error()))
-		} else {
-			w.WriteHeader(http.StatusCreated)
-			w.Write(jsonResponse)
-		}
+			if jsonError != nil {
+				DoResponseError(http.StatusInternalServerError,w, "Error encoding JSON", jsonError)
+			} else {
+				w.WriteHeader(http.StatusCreated)
+				w.Write(jsonResponse)
+			}
+		*/
 	}
 }
 
@@ -291,11 +340,11 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 // thread-safe access to the shared volumesQueue.
 //
 // Parameters:
-//   - volumes: A pointer to block.Info containing the updated volume information
+//   - volumes: A pointer to BlockInfo containing the updated volume information
 //     to be sent to all clients.
 //
 // The function does not return any value.
-func notifyVolumeClient(volumes *block.Info) {
+func notifyVolumeClient(volumes *BlockInfo) {
 	volumesQueueMutex.RLock()
 	for _, v := range volumesQueue {
 		v <- volumes
@@ -327,25 +376,31 @@ func umountVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, v := range volumes.Disks {
-		for _, d := range v.Partitions {
-			if d.Name == volume_name {
-				err := mount.Unmount(d.MountPoint, force == "true", lazy == "true")
-				if err != nil {
-					DoResponseError(http.StatusInternalServerError, w, fmt.Sprintf("Error unmounting %s", d.MountPoint), err)
-					return
-				}
-				var ndata, _ = GetVolumesData()
-				notifyVolumeClient(ndata)
-				data.DirtySectionState.Volumes = true
-				w.WriteHeader(http.StatusNoContent)
+	for _, d := range volumes.Partitions {
+		if d.Name == volume_name {
+			err := mount.Unmount(d.MountPoint, force == "true", lazy == "true")
+			if err != nil {
+				DoResponseError(http.StatusInternalServerError, w, fmt.Sprintf("Error unmounting %s", d.MountPoint), err)
 				return
 			}
+			var ndata, _ = GetVolumesData()
+			notifyVolumeClient(ndata)
+			data.DirtySectionState.Volumes = true
+			w.WriteHeader(http.StatusNoContent)
+			return
 		}
 	}
 	DoResponseError(http.StatusNotFound, w, fmt.Sprintf("No mount on %s found!", volume_name), "")
 }
 
+// VolumesEventHandler monitors and handles UEvent kernel messages related to volume changes.
+// It sets up a connection to receive UEvents, processes them, and notifies clients of volume updates.
+// The function runs indefinitely, handling events and errors, until interrupted by a termination signal.
+//
+// This function does not take any parameters.
+//
+// The function does not return any value, but it will log errors and volume changes,
+// and call notifyVolumeClient when volumes are added or removed.
 func VolumesEventHandler() {
 	log.Println("Monitoring UEvent kernel message to user-space...")
 
@@ -388,10 +443,21 @@ func VolumesEventHandler() {
 
 }
 
+// VolumesWsHandler handles WebSocket connections for volume-related events.
+// It sets up a queue for the client, fetches initial volume data, and continuously
+// listens for updates to send to the client.
+//
+// Parameters:
+//   - ctx: A context.Context for handling cancellation and timeouts.
+//   - request: A WebSocketMessageEnvelope containing the client's request information.
+//   - c: A channel for sending WebSocketMessageEnvelope messages back to the client.
+//
+// The function doesn't return any value, but it continues to run until the context is cancelled,
+// sending volume updates to the client through the provided channel.
 func VolumesWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	volumesQueueMutex.Lock()
 	if volumesQueue[request.Uid] == nil {
-		volumesQueue[request.Uid] = make(chan *block.Info, 10)
+		volumesQueue[request.Uid] = make(chan *BlockInfo, 10)
 	}
 
 	var data, err = GetVolumesData()

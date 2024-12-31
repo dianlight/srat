@@ -200,9 +200,7 @@ func persistConfig(w http.ResponseWriter, _ *http.Request) {
 
 	jsonResponse, jsonError := json.Marshal(data.Config)
 	if jsonError != nil {
-		fmt.Println("Unable to encode JSON")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(jsonError.Error()))
+		DoResponseError(http.StatusInternalServerError, w, "Unable to marshal config", jsonError)
 		return
 	}
 
@@ -210,6 +208,12 @@ func persistConfig(w http.ResponseWriter, _ *http.Request) {
 	data.DirtySectionState.Settings = false
 	data.DirtySectionState.Users = false
 	data.DirtySectionState.Shares = false
+
+	err := PersistVolumesState()
+	if err != nil {
+		DoResponseError(http.StatusInternalServerError, w, "Error Persisting Volume States", err)
+		return
+	}
 	data.DirtySectionState.Volumes = false
 
 	w.WriteHeader(http.StatusOK)

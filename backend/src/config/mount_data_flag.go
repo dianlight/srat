@@ -11,16 +11,22 @@ type MounDataFlag int
 type MounDataFlags []MounDataFlag
 
 const (
-	MS_RDONLY                   MounDataFlag = unix.MS_RDONLY
-	MS_BIND                     MounDataFlag = unix.MS_BIND
-	MS_LAZYTIME                 MounDataFlag = unix.MS_LAZYTIME
-	MS_NOEXEC                   MounDataFlag = unix.MS_NOEXEC
-	MS_NOSUID                   MounDataFlag = unix.MS_NOSUID
-	MS_NOUSER                   MounDataFlag = unix.MS_NOUSER
-	MS_RELATIME                 MounDataFlag = unix.MS_RELATIME
-	MS_SYNC                     MounDataFlag = unix.MS_SYNC
-	MS_NOATIME                  MounDataFlag = unix.MS_NOATIME
-	ReadOnlyMountPoindDataFlags MounDataFlag = unix.MS_RDONLY | unix.MS_NOATIME
+	// Old Flags 0x0000ffff
+	MS_RDONLY      MounDataFlag = unix.MS_RDONLY      // Mount read only
+	MS_NOSUID      MounDataFlag = unix.MS_NOSUID      // Ignore setuid and setgid bits
+	MS_NODEV       MounDataFlag = unix.MS_NODEV       // Disallow access to device special files
+	MS_NOEXEC      MounDataFlag = unix.MS_NOEXEC      // Disallow execution of binaries
+	MS_SYNCHRONOUS MounDataFlag = unix.MS_SYNCHRONOUS // Write data synchronously (wait until data has been written)
+	MS_REMOUNT     MounDataFlag = unix.MS_REMOUNT     // Remount the filesystem
+	MS_MANDLOCK    MounDataFlag = unix.MS_MANDLOCK    // Allow mandatory locks
+	MS_NOATIME     MounDataFlag = unix.MS_NOATIME     // Do not update access and modification times
+	MS_NODIRATIME  MounDataFlag = unix.MS_NODIRATIME  // Do not update directory access and modification times
+	MS_BIND        MounDataFlag = unix.MS_BIND        // Bind directory at differente place
+	// New Flags 0xffff0000 + Magic number 0xc0ed0000
+	MS_LAZYTIME MounDataFlag = unix.MS_LAZYTIME // Lazily update access and modification times
+	MS_NOUSER   MounDataFlag = unix.MS_NOUSER   // Do not update user and group IDs
+	MS_RELATIME MounDataFlag = unix.MS_RELATIME // Update access and modification times only when necessary
+	//ReadOnlyMountPoindDataFlags MounDataFlag = unix.MS_RDONLY | unix.MS_NOATIME
 )
 
 func (self *MounDataFlag) Scan(value interface{}) error {
@@ -40,15 +46,16 @@ func (self MounDataFlag) Value() (driver.Value, error) {
 //   - []MounDataFlag: A slice containing all the MounDataFlag constants defined in this package.
 func (self MounDataFlags) EnumValues() []MounDataFlag {
 	return []MounDataFlag{
-		MS_RDONLY,
-		MS_BIND,
-		MS_LAZYTIME,
-		MS_NOEXEC,
-		MS_NOSUID,
-		MS_NOUSER,
-		MS_RELATIME,
-		MS_SYNC,
-		MS_NOATIME,
+		MS_RDONLY,      // Mount read only
+		MS_NOSUID,      // Ignore setuid and setgid bits
+		MS_NODEV,       // Disallow access to device special files
+		MS_NOEXEC,      // Disallow execution of binaries
+		MS_SYNCHRONOUS, // Write data synchronously (wait until data has been written)
+		MS_REMOUNT,     // Remount the filesystem
+		MS_MANDLOCK,    // Allow mandatory locks
+		MS_NOATIME,     // Do not update access and modification times
+		MS_NODIRATIME,  // Do not update directory access and modification times
+		MS_BIND,        // Bind directory at differente place
 	}
 }
 
@@ -83,6 +90,10 @@ func (self *MounDataFlags) Scan(value interface{}) error {
 			if value.(uintptr)&uintptr(flags) != 0 {
 				self.Add(flags)
 			}
+		case int64:
+			if value.(int64)&int64(flags) != 0 {
+				self.Add(flags)
+			}
 		default:
 			return fmt.Errorf("invalid value type for MounDataFlags: %T", value)
 		}
@@ -94,12 +105,12 @@ func (self *MounDataFlags) Scan(value interface{}) error {
 // It converts MounDataFlags to a value that can be stored in the database.
 //
 // Returns:
-//   - driver.Value: An int representing the combined flags as a bitmask.
+//   - driver.Value: An int64 representing the combined flags as a bitmask.
 //   - error: Always nil as this operation cannot fail.
 func (self MounDataFlags) Value() (driver.Value, error) {
-	var flags = 0
+	var flags int64 = 0
 	for _, flag := range self {
-		flags |= int(flag)
+		flags |= int64(flag)
 	}
 	return flags, nil
 }

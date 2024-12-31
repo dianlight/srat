@@ -31,5 +31,7 @@ func TestMain(m *testing.M) {
 	templateData = templateDatan
 	data.ROMode = new(bool)
 
+	config.InitDB(":memory:")
+
 	m.Run()
 }

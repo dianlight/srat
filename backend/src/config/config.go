@@ -18,9 +18,8 @@ type MountPointData struct {
 	Label     string         `json:"label"`
 	Name      string         `json:"name" gorm:"primarykey"`
 	FSType    string         `json:"fstype"`
-	//	Flags     []MounDataFlag `json:"flags" gorm:"type:mount_data_flag"`
-	Flags MounDataFlags `json:"flags" gorm:"type:mount_data_flags"`
-	Data  string        `json:"data,omitempty"`
+	Flags     MounDataFlags  `json:"flags" gorm:"type:mount_data_flags"`
+	Data      string         `json:"data,omitempty"`
 }
 
 // initDB initializes the database connection and performs schema migration.
@@ -33,13 +32,14 @@ type MountPointData struct {
 //
 // The function panics if it fails to connect to the database.
 func InitDB(dbpath string) {
-	db, err := gorm.Open(sqlite.Open(dbpath), &gorm.Config{})
+	adb, err := gorm.Open(sqlite.Open(dbpath), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
 
 	// Migrate the schema
-	db.AutoMigrate(&MountPointData{})
+	adb.AutoMigrate(&MountPointData{})
+	db = adb
 }
 
 // ListMountPointData retrieves the list of volumes from the database.

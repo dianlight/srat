@@ -185,6 +185,16 @@ func HealthCheckWsHandler(ctx context.Context, request WebSocketMessageEnvelope,
 	}
 }
 
+// DirtyWsHandler handles WebSocket connections for monitoring changes in the dirty state of configuration sections.
+// It continuously checks for changes in the DirtySectionState and sends updates to the client when changes occur.
+//
+// Parameters:
+//   - ctx: A context.Context for handling cancellation of the WebSocket connection.
+//   - request: A WebSocketMessageEnvelope containing the initial request information.
+//   - c: A channel of *WebSocketMessageEnvelope used to send messages back to the WebSocket client.
+//
+// The function runs indefinitely, sending updates only when the DirtySectionState changes,
+// until the WebSocket connection is closed or the context is cancelled.
 func DirtyWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	var oldDritySectionState config.ConfigSectionDirtySate
 	for {
@@ -224,16 +234,26 @@ func notifyUpdate() {
 	updateQueueMutex.RUnlock()
 }
 
+// UpdateWsHandler handles WebSocket connections for update notifications.
+// It manages a queue for each client to receive update information and
+// continuously sends updates to the connected client.
+//
+// Parameters:
+//   - ctx: A context.Context for handling cancellation of the WebSocket connection.
+//   - request: A WebSocketMessageEnvelope containing the initial request information,
+//     including a unique identifier (Uid) for the client.
+//   - c: A channel of *WebSocketMessageEnvelope used to send messages back to the WebSocket client.
+//
+// The function runs indefinitely, sending updates when available, until the WebSocket
+// connection is closed or the context is cancelled. It does not return any value.
 func UpdateWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	updateQueueMutex.Lock()
 	if updateQueue[request.Uid] == nil {
 		updateQueue[request.Uid] = make(chan *SRATReleaseAsset, 10)
 	}
-	//updateQueue[request.Uid] <- lastReleaseData
 	var queue = updateQueue[request.Uid]
 	queue <- lastReleaseData
 	updateQueueMutex.Unlock()
-	//log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
 	for {
 		select {
 		case <-ctx.Done():
@@ -245,7 +265,6 @@ func UpdateWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c ch
 				Uid:   request.Uid,
 				Data:  <-queue,
 			}
-			//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
 			c <- smessage
 		}
 	}
@@ -380,20 +399,37 @@ func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
 
 	net, err := ghw.Network()
 	if err != nil {
-		fmt.Printf("Error downloading release asset: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		DoResponseError(http.StatusInternalServerError, w, "Unable to fetch nics", err.Error())
 		return
 	}
 
-	jsonResponse, jsonError := json.Marshal(net)
+	DoResponse(http.StatusOK, w, net)
+}
 
-	if jsonError != nil {
-		fmt.Println("Unable to encode JSON")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(jsonError.Error()))
-		return
+func PersistVolumesState() error {
+	volumes, err := GetVolumesData()
+	if err != nil {
+		log.Printf("Error persisting volumes state: %v\n", err)
+		return err
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonResponse)
+	for _, partition := range volumes.Partitions {
+		if partition.MountPoint != "" {
+			var flags = &config.MounDataFlags{}
+			flags.Scan(partition.MountFlags)
+			adata := config.MountPointData{
+				Path:   partition.MountPoint,
+				Label:  partition.Label,
+				Name:   partition.Name,
+				FSType: partition.Type,
+				//	Flags:  *flags,
+			}
+			//pretty.Println(adata)
+			err = config.SaveMountPointData(adata)
+			if err != nil {
+				log.Printf("Error persisting volume data: %v\n", err)
+				return err
+			}
+		}
+	}
+	return nil
 }

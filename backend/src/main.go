@@ -1,6 +1,6 @@
 package main
 
-//go:generate swag init --pd
+//go:generate swag init --pd --parseInternal
 
 import (
 	"context"
@@ -84,6 +84,39 @@ type ResponseError struct {
 	Body  any    `json:"body"`
 }
 
+// DoResponse writes a JSON response to the provided http.ResponseWriter.
+// It sets the HTTP status code and marshals the given body into JSON format.
+//
+// Parameters:
+//   - code: The HTTP status code to be set in the response.
+//   - w: The http.ResponseWriter to write the response to.
+//   - body: The data to be marshaled into JSON and written as the response body.
+//
+// If there's an error marshaling the body into JSON, it calls DoResponseError
+// with an internal server error status.
+func DoResponse(code int, w http.ResponseWriter, body any) {
+	w.WriteHeader(code)
+	jsonResponse, jsonError := json.Marshal(body)
+	if jsonError != nil {
+		DoResponseError(http.StatusInternalServerError, w, "Unable to encode JSON", jsonError)
+	} else {
+		w.Write(jsonResponse)
+	}
+	return
+}
+
+// DoResponseError writes a JSON error response to the provided http.ResponseWriter.
+// It sets the HTTP status code and marshals an error object into JSON format.
+//
+// Parameters:
+//   - code: The HTTP status code to be set in the response.
+//   - w: The http.ResponseWriter to write the response to.
+//   - message: A string describing the error message.
+//   - body: Additional data to be included in the error response.
+//
+// The function doesn't return any value. It writes the error response directly to the provided http.ResponseWriter.
+// If there's an error marshaling the response into JSON, it writes an internal server error status
+// and the error message as plain text.
 func DoResponseError(code int, w http.ResponseWriter, message string, body any) {
 	w.WriteHeader(code)
 	jsonResponse, jsonError := json.Marshal(ResponseError{Error: message, Body: pretty.Sprintf("%v", body)})
