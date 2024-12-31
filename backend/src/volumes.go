@@ -13,6 +13,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gobeam/stringy"
@@ -24,7 +25,6 @@ import (
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/u-root/u-root/pkg/mount"
 	ublock "github.com/u-root/u-root/pkg/mount/block"
-	"golang.org/x/sys/unix"
 )
 
 var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
@@ -154,42 +154,6 @@ func listVolumes(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type MounDataFlag int
-
-const (
-	MS_RDONLY                   MounDataFlag = unix.MS_RDONLY
-	MS_BIND                     MounDataFlag = unix.MS_BIND
-	MS_LAZYTIME                 MounDataFlag = unix.MS_LAZYTIME
-	MS_NOEXEC                   MounDataFlag = unix.MS_NOEXEC
-	MS_NOSUID                   MounDataFlag = unix.MS_NOSUID
-	MS_NOUSER                   MounDataFlag = unix.MS_NOUSER
-	MS_RELATIME                 MounDataFlag = unix.MS_RELATIME
-	MS_SYNC                     MounDataFlag = unix.MS_SYNC
-	MS_NOATIME                  MounDataFlag = unix.MS_NOATIME
-	ReadOnlyMountPoindDataFlags MounDataFlag = unix.MS_RDONLY | unix.MS_NOATIME
-)
-
-var MounDataFlags = []MounDataFlag{
-	MS_RDONLY,
-	MS_BIND,
-	MS_LAZYTIME,
-	MS_NOEXEC,
-	MS_NOSUID,
-	MS_NOUSER,
-	MS_RELATIME,
-	MS_SYNC,
-	MS_NOATIME,
-}
-
-type MountPointData struct {
-	Path   string         `json:"path"`
-	Label  string         `json:"label"`
-	Name   string         `json:"name"`
-	FSType string         `json:"fstype"`
-	Flags  []MounDataFlag `json:"flags"`
-	Data   string         `json:"data,omitempty"`
-}
-
 // MountVolume godoc
 //
 //	@Summary		mount an existing volume
@@ -197,9 +161,9 @@ type MountPointData struct {
 //	@Tags			volume
 //	@Accept			json
 //	@Produce		json
-//	@Param			volume_name	path		string			true	"Volume Name to Mount"
-//	@Param			mount_data	body		MountPointData	true	"Mount data"
-//	@Success		201			{object}	MountPointData
+//	@Param			volume_name	path		string					true	"Volume Name to Mount"
+//	@Param			mount_data	body		config.MountPointData	true	"Mount data"
+//	@Success		201			{object}	config.MountPointData
 //	@Failure		400			{object}	ResponseError
 //	@Failure		405			{object}	ResponseError
 //	@Failure		409			{object}	ResponseError
@@ -209,7 +173,7 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 	volume_name := mux.Vars(r)["volume_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	var mount_data MountPointData
+	var mount_data config.MountPointData
 
 	err := json.NewDecoder(r.Body).Decode(&mount_data)
 	if err != nil {
@@ -256,9 +220,10 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 		mount_data.Path = "/mnt/" + mount_data.Name
 	}
 
-	var flags = 0
-	for _, flag := range mount_data.Flags {
-		flags |= int(flag)
+	var flags, err4 = mount_data.Flags.Value()
+	if err4 != nil {
+		DoResponseError(http.StatusInternalServerError, w, "Error parsing flags", err4)
+		return
 	}
 
 	mount_data.Path = stringy.New(mount_data.Path).SnakeCase().Get()
@@ -283,22 +248,24 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 
 	var mp *mount.MountPoint
 	if mount_data.FSType == "" {
-		mp, err = mount.TryMount(mount_data.Name, mount_data.Path, mount_data.Data, uintptr(flags), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
+		mp, err = mount.TryMount(mount_data.Name, mount_data.Path, mount_data.Data, uintptr(flags.(int)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
 	} else {
-		mp, err = mount.Mount(mount_data.Name, mount_data.Path, mount_data.FSType, mount_data.Data, uintptr(flags), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
+		mp, err = mount.Mount(mount_data.Name, mount_data.Path, mount_data.FSType, mount_data.Data, uintptr(flags.(int)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
 	}
 	if err != nil {
 		log.Printf("(Try)Mount(%s) = %v, want nil", mount_data.Name, err)
 		DoResponseError(http.StatusConflict, w, "Error Mounting volume", err)
 		return
 	} else {
-		mounted_data := MountPointData{}
+		mounted_data := config.MountPointData{}
 		copier.Copy(&mounted_data, mp)
-		for _, flags := range MounDataFlags {
-			if mp.Flags&uintptr(flags) != 0 {
-				mounted_data.Flags = append(mounted_data.Flags, flags)
-			}
-		}
+		//		mounted_data.Flags.Scan(mp.Flags)
+		// log.Printf("---------------------   mp %v mounted_data = %v", mp, mounted_data)
+		//		for _, flags := range config.MounDataFlags {
+		//			if mp.Flags&uintptr(flags) != 0 {
+		//				mounted_data.Flags = append(mounted_data.Flags, flags)
+		//			}
+		//		}
 
 		var ndata, _ = GetVolumesData()
 		notifyVolumeClient(ndata)

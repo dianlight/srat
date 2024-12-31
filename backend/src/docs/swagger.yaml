@@ -286,6 +286,48 @@ definitions:
       volumes:
         type: boolean
     type: object
+  config.MounDataFlag:
+    enum:
+    - 1
+    - 4096
+    - 33554432
+    - 8
+    - 2
+    - -2147483648
+    - 2097152
+    - 4
+    - 1024
+    - 1025
+    type: integer
+    x-enum-varnames:
+    - MS_RDONLY
+    - MS_BIND
+    - MS_LAZYTIME
+    - MS_NOEXEC
+    - MS_NOSUID
+    - MS_NOUSER
+    - MS_RELATIME
+    - MS_SYNC
+    - MS_NOATIME
+    - ReadOnlyMountPoindDataFlags
+  config.MountPointData:
+    properties:
+      data:
+        type: string
+      flags:
+        description: Flags     []MounDataFlag `json:"flags" gorm:"type:mount_data_flag"`
+        items:
+          $ref: '#/definitions/config.MounDataFlag'
+        type: array
+      fstype:
+        type: string
+      label:
+        type: string
+      name:
+        type: string
+      path:
+        type: string
+    type: object
   config.OptionsAcl:
     properties:
       disabled:
@@ -857,47 +899,6 @@ definitions:
         type: boolean
       samba_pid:
         type: integer
-    type: object
-  main.MounDataFlag:
-    enum:
-    - 1
-    - 4096
-    - 33554432
-    - 8
-    - 2
-    - -2147483648
-    - 2097152
-    - 4
-    - 1024
-    - 1025
-    type: integer
-    x-enum-varnames:
-    - MS_RDONLY
-    - MS_BIND
-    - MS_LAZYTIME
-    - MS_NOEXEC
-    - MS_NOSUID
-    - MS_NOUSER
-    - MS_RELATIME
-    - MS_SYNC
-    - MS_NOATIME
-    - ReadOnlyMountPoindDataFlags
-  main.MountPointData:
-    properties:
-      data:
-        type: string
-      flags:
-        items:
-          $ref: '#/definitions/main.MounDataFlag'
-        type: array
-      fstype:
-        type: string
-      label:
-        type: string
-      name:
-        type: string
-      path:
-        type: string
     type: object
   main.ResponseError:
     properties:
@@ -1906,14 +1907,14 @@ paths:
         name: mount_data
         required: true
         schema:
-          $ref: '#/definitions/main.MountPointData'
+          $ref: '#/definitions/config.MountPointData'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/main.MountPointData'
+            $ref: '#/definitions/config.MountPointData'
         "400":
           description: Bad Request
           schema:

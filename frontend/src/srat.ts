@@ -186,6 +186,29 @@ export interface ConfigConfigSectionDirtySate {
   volumes?: boolean;
 }
 
+export enum ConfigMounDataFlag {
+  MS_RDONLY = 1,
+  MS_BIND = 4096,
+  MS_LAZYTIME = 33554432,
+  MS_NOEXEC = 8,
+  MS_NOSUID = 2,
+  MS_NOUSER = -2147483648,
+  MS_RELATIME = 2097152,
+  MS_SYNC = 4,
+  MS_NOATIME = 1024,
+  ReadOnlyMountPoindDataFlags = 1025,
+}
+
+export interface ConfigMountPointData {
+  data?: string;
+  /** Flags     []MounDataFlag `json:"flags" gorm:"type:mount_data_flag"` */
+  flags?: ConfigMounDataFlag[];
+  fstype?: string;
+  label?: string;
+  name?: string;
+  path?: string;
+}
+
 export interface ConfigOptionsAcl {
   disabled?: boolean;
   ro_users?: string[];
@@ -514,28 +537,6 @@ export interface MainHealth {
   last_error?: string;
   read_only?: boolean;
   samba_pid?: number;
-}
-
-export enum MainMounDataFlag {
-  MS_RDONLY = 1,
-  MS_BIND = 4096,
-  MS_LAZYTIME = 33554432,
-  MS_NOEXEC = 8,
-  MS_NOSUID = 2,
-  MS_NOUSER = -2147483648,
-  MS_RELATIME = 2097152,
-  MS_SYNC = 4,
-  MS_NOATIME = 1024,
-  ReadOnlyMountPoindDataFlags = 1025,
-}
-
-export interface MainMountPointData {
-  data?: string;
-  flags?: MainMounDataFlag[];
-  fstype?: string;
-  label?: string;
-  name?: string;
-  path?: string;
 }
 
 export interface MainResponseError {
@@ -1295,8 +1296,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary mount an existing volume
      * @request POST:/volume/{volume_name}/mount
      */
-    mountCreate: (volumeName: string, mount_data: MainMountPointData, params: RequestParams = {}) =>
-      this.request<MainMountPointData, MainResponseError>({
+    mountCreate: (volumeName: string, mount_data: ConfigMountPointData, params: RequestParams = {}) =>
+      this.request<ConfigMountPointData, MainResponseError>({
         path: `/volume/${volumeName}/mount`,
         method: "POST",
         body: mount_data,

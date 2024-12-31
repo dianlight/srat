@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/config"
 	"github.com/gorilla/mux"
 	"github.com/jaypipes/ghw/pkg/block"
 	"github.com/kr/pretty"
@@ -72,7 +73,7 @@ func TestMountVolumeHandler(t *testing.T) {
 		return
 	}
 
-	var mockMountData MountPointData
+	var mockMountData config.MountPointData
 
 out:
 	for _, v := range volumes.Disks {
@@ -81,7 +82,7 @@ out:
 				mockMountData.Name = d.Name
 				mockMountData.Path = filepath.Join("/mnt", d.Label)
 				mockMountData.FSType = d.Type
-				mockMountData.Flags = []MounDataFlag{MS_NOATIME}
+				mockMountData.Flags = []config.MounDataFlag{config.MS_NOATIME}
 				previus_device = d.Name
 				t.Logf("Selected loop device: %v", mockMountData)
 				break out
@@ -119,7 +120,7 @@ out:
 	}
 
 	// Check the response body is what we expect.
-	var responseData MountPointData
+	var responseData config.MountPointData
 	err = json.Unmarshal(rr.Body.Bytes(), &responseData)
 	if err != nil {
 		t.Errorf("Unable to parse response body: %v", err)

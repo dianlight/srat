@@ -117,6 +117,7 @@ func main() {
 	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
 	data.ROMode = flag.Bool("ro", false, "Read only mode")
 	hamode = flag.Bool("addon", false, "Run in addon mode")
+	dbfile := flag.String("db", ":memory:?cache=shared", "Database file")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -147,6 +148,8 @@ func main() {
 		pretty.Printf("\n%v\n", volumes)
 		os.Exit(0)
 	}
+
+	config.InitDB(*dbfile)
 
 	overseer.Run(overseer.Config{
 		Program: prog,

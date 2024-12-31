@@ -8,8 +8,6 @@ import (
 	"github.com/kr/pretty"
 )
 
-func TestReadConfig(t *testing.T) {
-}
 func TestReadConfigConsistency(t *testing.T) {
 	// Create a temporary file with some sample config data
 	tempFile, err := os.CreateTemp("", "config*.json")
