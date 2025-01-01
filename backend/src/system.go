@@ -470,7 +470,7 @@ func getFileSystems() ([]string, error) {
 //	@Description	Return all network interfaces
 //	@Tags			system
 //	@Produce		json
-//	@Success		200 {object}	net.Info
+//	@Success		200 {object}	[]string
 //	@Failure		405	{object}	ResponseError
 //	@Router			/filesystems [get]
 func GetFSHandler(w http.ResponseWriter, r *http.Request) {
@@ -512,10 +512,10 @@ func PersistVolumesState() error {
 				Label:  partition.Label,
 				Name:   partition.Name,
 				FSType: partition.Type,
-				//	Flags:  *flags,
+				Flags:  *flags,
 			}
 			//pretty.Println(adata)
-			err = config.SaveMountPointData(adata)
+			err = adata.Save()
 			if err != nil {
 				log.Printf("Error persisting volume data: %v\n", err)
 				return err
