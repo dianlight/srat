@@ -1,11 +1,10 @@
-import { Alert, AppBar, Badge, Box, CardContent, Container, Divider, FormControlLabel, IconButton, Paper, Popover, Stack, Switch, Toolbar, Tooltip, Typography, useColorScheme, useMediaQuery, useTheme } from "@mui/material";
-import { toast, ToastContainer, Slide } from "react-toastify";
+import { Alert, Badge, Box, CardContent, Divider, FormControlLabel, IconButton, Popover, Stack, Switch, Toolbar, Tooltip, Typography, useColorScheme, useMediaQuery } from "@mui/material";
+import { ToastContainer, Slide } from "react-toastify";
 import { useNotificationCenter } from "react-toastify/addons/use-notification-center"
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CloseIcon from '@mui/icons-material/Close';
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Card from '@mui/material/Card';
-import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 import { FontAwesomeSvgIcon } from "./FontAwesomeSvgIcon";
 import { faCheckDouble, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import CheckIcon from '@mui/icons-material/Check';
