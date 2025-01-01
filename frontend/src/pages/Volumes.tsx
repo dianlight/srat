@@ -16,6 +16,8 @@ import { faHardDrive, faPlug, faPlugCircleCheck, faPlugCircleXmark, faPlugCircle
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
 import { Api } from "@mui/icons-material";
 import { AutocompleteElement, PasswordElement, PasswordRepeatElement, TextFieldElement, useForm } from "react-hook-form-mui";
+import useSWR from "swr";
+import { toast } from "react-toastify";
 
 
 export function Volumes() {
@@ -46,25 +48,16 @@ export function Volumes() {
     };
 
     function onSubmitMountVolume(data?: ConfigMountPointData) {
-        if (!data) return
+        if (!data || !data.name) return
         console.log("Mount", data)
-
-        confirm({
-            title: `Mount ${data.label}?`,
-            description: `Do you really want mount the Volume ${data.name}?`
+        apiContext.volume.mountCreate(data.name, {}).then((res) => {
+            toast.info(`Volume ${res.data.label} mounted successfully.`);
+            setSelected(undefined);
+        }).catch(err => {
+            console.error(err);
+            toast.error(`Erroe mountig ${data.label}: ${err}`, { data: { error: err } });
+            //setErrorInfo(JSON.stringify(err));
         })
-            .then(() => {
-                if (!data.name) return
-                apiContext.volume.mountCreate(data.name, {}).then((res) => {
-                    setSelected(undefined);
-                }).catch(err => {
-                    console.error(err);
-                    //setErrorInfo(JSON.stringify(err));
-                })
-            })
-            .catch(() => {
-                /* ... */
-            });
     }
 
     function onSubmitUmountVolume(data: MainBlockPartition, force = false) {
@@ -80,8 +73,10 @@ export function Volumes() {
                     lazy: !force,
                 }).then((res) => {
                     setSelected(undefined);
+                    toast.info(`Volume ${data.label} umounted successfully.`);
                 }).catch(err => {
                     console.error(err);
+                    toast.error(`Erroe umountig ${data.label}: ${err}`, { data: { error: err } });
                     //setErrorInfo(JSON.stringify(err));
                 })
             })
@@ -160,18 +155,20 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: ConfigMountP
     const { control, handleSubmit, watch, formState: { errors } } = useForm<ConfigMountPointData>(
         {
             values: {
+                name: props.objectToEdit?.name,
                 fstype: props.objectToEdit?.type,
-                flags: props.objectToEdit?.partition_flags, //FIXME: Wrong tipe from Object
-                //data: props.objectToEdit?.partition_data, //FIXME: Missing in volume data,
+                flags: props.objectToEdit?.partition_flags,
+                data: props.objectToEdit?.mount_data,
             }
         },
     );
+    const filesystems = useSWR<string[]>('/filesystems', () => apiContext.filesystems.filesystemsList().then(res => res.data));
 
     function handleCloseSubmit(data?: ConfigMountPointData) {
         props.onClose(data)
     }
 
-    console.log("MountpointData", props.objectToEdit)
+    //console.log("MountpointData", props.objectToEdit)
 
     return (
         <Fragment>
@@ -192,7 +189,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: ConfigMountP
                                 <Grid2 size={6}>
                                     <AutocompleteElement name="fstype" label="File System Type"
                                         required control={control}
-                                        options={['ext4', 'vfat', 'exfat']}
+                                        options={filesystems.data || []}
                                     />
                                 </Grid2>
                                 <Grid2 size={6}>
@@ -213,7 +210,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: ConfigMountP
                     </Stack>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => handleCloseSubmit()}>Cancel</Button>
+                    <Button onClick={() => handleCloseSubmit(mountpointData)}>Cancel</Button>
                     <Button type="submit" form="mountvolumeform">Mount</Button>
                 </DialogActions>
             </Dialog>

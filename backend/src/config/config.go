@@ -1,7 +1,6 @@
 package config
 
 import (
-	"time"
 
 	//"gorm.io/driver/sqlite"
 	"github.com/glebarez/sqlite"
@@ -9,18 +8,6 @@ import (
 )
 
 var db *gorm.DB
-
-type MountPointData struct {
-	CreatedAt time.Time      `json:"-"`
-	UpdatedAt time.Time      `json:"-"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
-	Path      string         `json:"path"`
-	Label     string         `json:"label"`
-	Name      string         `json:"name" gorm:"primarykey"`
-	FSType    string         `json:"fstype"`
-	Flags     MounDataFlags  `json:"flags" gorm:"type:mount_data_flags"`
-	Data      string         `json:"data,omitempty"`
-}
 
 // initDB initializes the database connection and performs schema migration.
 //
@@ -40,36 +27,4 @@ func InitDB(dbpath string) {
 	// Migrate the schema
 	adb.AutoMigrate(&MountPointData{})
 	db = adb
-}
-
-// ListMountPointData retrieves the list of volumes from the database.
-func ListMountPointData() ([]MountPointData, error) {
-	var mountPoints []MountPointData
-	err := db.Find(&mountPoints).Error
-	return mountPoints, err
-}
-
-// SaveMountPointData saves a new mount point data entry to the database.
-//
-// Parameters:
-//   - mp: A MountPointData struct containing the mount point information to be saved.
-//
-// Returns:
-//   - error: An error if the save operation fails, or nil if successful.
-func SaveMountPointData(mp MountPointData) error {
-	return db.Save(&mp).Error
-}
-
-// GetMountPointDataFromName retrieves a MountPointData entry from the database by its name.
-//
-// Parameters:
-//   - name: A string representing the name of the mount point to retrieve.
-//
-// Returns:
-//   - *MountPointData: A pointer to the retrieved MountPointData struct, or nil if not found.
-//   - error: An error if the retrieval operation fails, or nil if successful.
-func GetMountPointDataFromName(name string) (*MountPointData, error) {
-	var mp MountPointData
-	err := db.Limit(1).Find(&mp, "name = ?", name).Error
-	return &mp, err
 }

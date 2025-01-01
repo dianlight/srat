@@ -82,6 +82,7 @@ export enum ConfigMounDataFlag {
 
 export interface ConfigMountPointData {
   data?: string;
+  default_path?: string;
   flags?: ConfigMounDataFlag[];
   fstype?: string;
   label?: string;
@@ -400,6 +401,8 @@ export interface MainBlockInfo {
 }
 
 export interface MainBlockPartition {
+  /** MountPoint is the path where this partition is mounted last time */
+  default_mount_point?: string;
   /**
    * FilesystemLabel is the label of the filesystem contained on the
    * partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
@@ -831,6 +834,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     eventsList: (params: RequestParams = {}) =>
       this.request<MainEventType[], string>({
         path: `/events`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+  };
+  filesystems = {
+    /**
+     * @description Return all network interfaces
+     *
+     * @tags system
+     * @name FilesystemsList
+     * @summary GetFSHandler
+     * @request GET:/filesystems
+     */
+    filesystemsList: (params: RequestParams = {}) =>
+      this.request<string[], MainResponseError>({
+        path: `/filesystems`,
         method: "GET",
         format: "json",
         ...params,

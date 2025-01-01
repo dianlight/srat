@@ -52,6 +52,8 @@ type BlockPartition struct {
 	Label string `json:"label"`
 	// MountPoint is the path where this partition is mounted.
 	MountPoint string `json:"mount_point"`
+	// MountPoint is the path where this partition is mounted last time
+	DefaultMountPoint string `json:"default_mount_point"`
 	// SizeBytes contains the total amount of storage, in bytes, this partition
 	// can consume.
 	SizeBytes uint64 `json:"size_bytes"`
@@ -192,14 +194,15 @@ func GetVolumesData() (*BlockInfo, error) {
 	// Enrich the data with mount point information form DB ( previously saved state if mount point is not present)
 	for i, partition := range retBlockInfo.Partitions {
 		if partition.MountPoint == "" {
-			mp, err := config.GetMountPointDataFromName(partition.Name)
+			var mp config.MountPointData
+			err := mp.FromName(partition.Name)
 			if err != nil {
 				if !errors.Is(err, gorm.ErrRecordNotFound) {
 					log.Printf("Error fetching mount point data for device /dev/%s: %v", partition.Name, err)
 				}
 				continue
 			}
-			partition.MountPoint = mp.Path
+			partition.DefaultMountPoint = mp.Path
 			partition.MountData = mp.Data
 			partition.MountFlags.Scan(mp.Flags)
 			retBlockInfo.Partitions[i] = partition

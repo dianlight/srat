@@ -165,6 +165,8 @@ definitions:
     properties:
       data:
         type: string
+      default_path:
+        type: string
       flags:
         items:
           $ref: '#/definitions/config.MounDataFlag'
@@ -706,6 +708,9 @@ definitions:
     type: object
   main.BlockPartition:
     properties:
+      default_mount_point:
+        description: MountPoint is the path where this partition is mounted last time
+        type: string
       filesystem_label:
         description: |-
           FilesystemLabel is the label of the filesystem contained on the
@@ -1153,7 +1158,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/net.Info'
+            items:
+              type: string
+            type: array
         "405":
           description: Method Not Allowed
           schema:
