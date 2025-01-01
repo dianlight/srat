@@ -466,6 +466,7 @@ export interface MainHealth {
   last_error?: string;
   read_only?: boolean;
   samba_pid?: number;
+  last_time?: number;
 }
 
 export interface MainResponseError {

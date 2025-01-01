@@ -5,6 +5,7 @@ import { DirtyDataContext, ModeContext, wsContext as ws } from "./Contexts";
 import { MainEventType, type ConfigConfigSectionDirtySate, type MainHealth } from "./srat";
 import { useErrorBoundary } from "react-use-error-boundary";
 import Container from "@mui/material/Container";
+import { Backdrop, CircularProgress, Typography } from "@mui/material";
 
 
 export function App() {
@@ -16,15 +17,22 @@ export function App() {
     );
     const mainArea = useRef<HTMLDivElement>(null);
 
+    var timeoutpid: ReturnType<typeof setTimeout>
 
     useEffect(() => {
         const mhuuid = ws.subscribe<MainHealth>(MainEventType.EventHeartbeat, (data) => {
             // console.log("Got heartbeat", data)
+            if (timeoutpid) clearTimeout(timeoutpid);
             if (process.env.NODE_ENV === "development" && data.read_only === true) {
                 console.log("Dev mode force read_only to false");
                 data.read_only = false;
             }
+            data.last_time = Date.now();
             setStatus(data);
+            function timeoutStatus() {
+                setStatus({ alive: false, read_only: true });
+            }
+            timeoutpid = setTimeout(timeoutStatus, 10000);
         })
         ws.onError((event) => {
             console.error("WS error2", event.type, JSON.stringify(event))
@@ -55,20 +63,7 @@ export function App() {
 
     if (error) {
         setTimeout(() => { resetError() }, 5000);
-        return <div className="row center">
-            <h5 className="header col s12 light">Connecting to the server...</h5>
-            <div className="spinner-layer spinner-blue">
-                <div className="circle-clipper left">
-                    <div className="circle"></div>
-                </div>
-                <div className="gap-patch">
-                    <div className="circle"></div>
-                </div>
-                <div className="circle-clipper right">
-                    <div className="circle"></div>
-                </div>
-            </div>
-        </div>
+        return <Typography> Connecting to the server... </Typography>
     }
 
     return (
@@ -79,6 +74,12 @@ export function App() {
                     <div ref={mainArea} className="fullBody"></div>
                     <Footer healthData={status} />
                 </Container>
+                <Backdrop
+                    sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
+                    open={status.alive === false}
+                >
+                    <CircularProgress color="inherit" />
+                </Backdrop>
             </DirtyDataContext.Provider>
         </ModeContext.Provider>)
 }
