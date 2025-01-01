@@ -119,7 +119,7 @@ func DoResponse(code int, w http.ResponseWriter, body any) {
 // and the error message as plain text.
 func DoResponseError(code int, w http.ResponseWriter, message string, body any) {
 	w.WriteHeader(code)
-	jsonResponse, jsonError := json.Marshal(ResponseError{Error: message, Body: pretty.Sprintf("%v", body)})
+	jsonResponse, jsonError := json.Marshal(ResponseError{Error: message, Body: body})
 	if jsonError != nil {
 		fmt.Println("Unable to encode JSON")
 		w.WriteHeader(http.StatusInternalServerError)

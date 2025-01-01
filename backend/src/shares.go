@@ -116,31 +116,13 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if share.Name == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "No Name in data"})
-
-		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(jsonError.Error()))
-		} else {
-			w.Write(jsonResponse)
-		}
+		DoResponseError(http.StatusBadRequest, w, "No Name in data", nil)
 		return
 	}
 
 	fshare, ok := data.Config.Shares[share.Name]
 	if ok {
-		w.WriteHeader(http.StatusConflict)
-		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "Share already exists", Body: fshare})
-
-		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(jsonError.Error()))
-		} else {
-			w.Write(jsonResponse)
-		}
+		DoResponseError(http.StatusConflict, w, "Share already exists", fshare)
 	} else {
 
 		data.Config.Shares[share.Name] = share
