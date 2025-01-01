@@ -64,9 +64,9 @@ type BlockPartition struct {
 	// partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
 	FilesystemLabel string `json:"filesystem_label"`
 	// PartiionFlags contains the mount flags for the partition.
-	PartitionFlags int64 `json:"partition_flags"`
+	PartitionFlags config.MounDataFlags `json:"partition_flags"`
 	// MountFlags contains the mount flags for the partition.
-	MountFlags int64 `json:"mount_flags"`
+	MountFlags config.MounDataFlags `json:"mount_flags"`
 }
 
 func GetVolumesData() (*BlockInfo, error) {
@@ -110,17 +110,17 @@ func GetVolumesData() (*BlockInfo, error) {
 					if partition.Type == "unknown" && rblock.FSType != "" {
 						partition.Type = rblock.FSType
 					}
-					partition.PartitionFlags = 0
+					partition.PartitionFlags = []config.MounDataFlag{}
 				} else {
 					partition.Type = fs
-					partition.PartitionFlags = int64(flags)
+					partition.PartitionFlags.Scan(flags)
 				}
 
 				if partition.MountPoint != "" {
 					stat := syscall.Statfs_t{}
 					err := syscall.Statfs(partition.MountPoint, &stat)
 					if err == nil {
-						partition.MountFlags = stat.Flags
+						partition.MountFlags.Scan(stat.Flags)
 					}
 				}
 
@@ -164,14 +164,14 @@ func GetVolumesData() (*BlockInfo, error) {
 					fs, flags, err := mount.FSFromBlock("/dev/" + v.Name)
 					if err == nil {
 						partition.Type = strings.Replace(d.Type, "unknown", fs, 1)
-						partition.PartitionFlags = int64(flags)
+						partition.PartitionFlags.Scan(flags)
 					}
 
 					if partition.MountPoint != "" {
 						stat := syscall.Statfs_t{}
 						err := syscall.Statfs(partition.MountPoint, &stat)
 						if err == nil {
-							partition.MountFlags = stat.Flags
+							partition.MountFlags.Scan(stat.Flags)
 						}
 					}
 

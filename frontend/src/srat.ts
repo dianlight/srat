@@ -411,13 +411,13 @@ export interface MainBlockPartition {
    */
   label?: string;
   /** MountFlags contains the mount flags for the partition. */
-  mount_flags?: number;
+  mount_flags?: ConfigMounDataFlag[];
   /** MountPoint is the path where this partition is mounted. */
   mount_point?: string;
   /** Name is the system name given to the partition, e.g. "sda1". */
   name?: string;
   /** PartiionFlags contains the mount flags for the partition. */
-  partition_flags?: number;
+  partition_flags?: ConfigMounDataFlag[];
   /** IsReadOnly indicates if the partition is marked read-only. */
   read_only?: boolean;
   /**

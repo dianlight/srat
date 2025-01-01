@@ -1,11 +1,11 @@
 import { Fragment, useContext, useEffect, useState } from "react";
 import { apiContext, ModeContext, wsContext as ws } from "../Contexts";
-import { MainEventType, type MainBlockInfo, type MainBlockPartition } from "../srat";
+import { ConfigMounDataFlag, MainEventType, type ConfigMountPointData, type MainBlockInfo, type MainBlockPartition } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
 import List from "@mui/material/List";
-import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip } from "@mui/material";
+import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid2, Autocomplete } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 import EjectIcon from '@mui/icons-material/Eject';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -15,15 +15,17 @@ import { filesize } from "filesize";
 import { faHardDrive, faPlug, faPlugCircleCheck, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
 import { Api } from "@mui/icons-material";
+import { AutocompleteElement, PasswordElement, PasswordRepeatElement, TextFieldElement, useForm } from "react-hook-form-mui";
 
 
 export function Volumes() {
     const mode = useContext(ModeContext);
     const [showPreview, setShowPreview] = useState<boolean>(false);
+    const [showMount, setShowMount] = useState<boolean>(false);
 
 
     const [status, setStatus] = useState<MainBlockInfo>({});
-    const [selected, setSelected] = useState<MainBlockPartition | null>(null);
+    const [selected, setSelected] = useState<MainBlockPartition | undefined>(undefined);
     const confirm = useConfirm();
 
 
@@ -43,7 +45,8 @@ export function Volumes() {
         });
     };
 
-    function onSubmitMountVolume(data: MainBlockPartition) {
+    function onSubmitMountVolume(data?: ConfigMountPointData) {
+        if (!data) return
         console.log("Mount", data)
 
         confirm({
@@ -53,7 +56,7 @@ export function Volumes() {
             .then(() => {
                 if (!data.name) return
                 apiContext.volume.mountCreate(data.name, {}).then((res) => {
-                    setSelected(null);
+                    setSelected(undefined);
                 }).catch(err => {
                     console.error(err);
                     //setErrorInfo(JSON.stringify(err));
@@ -76,33 +79,11 @@ export function Volumes() {
                     force,
                     lazy: !force,
                 }).then((res) => {
-                    setSelected(null);
+                    setSelected(undefined);
                 }).catch(err => {
                     console.error(err);
                     //setErrorInfo(JSON.stringify(err));
                 })
-            })
-            .catch(() => {
-                /* ... */
-            });
-    }
-    function onSubmitEjectVolume(data?: string) {
-        console.log("Eject", data)
-        if (!data) return
-        confirm({
-            title: `Eject ${data}?`,
-            description: "Do you really want eject the Volume?"
-        })
-            .then(() => {
-                /*
-                api.share.shareDelete(data).then((res) => {
-                    setSelected(null);
-                    //users.mutate();
-                }).catch(err => {
-                    console.error(err);
-                    //setErrorInfo(JSON.stringify(err));
-                })
-                */
             })
             .catch(() => {
                 /* ... */
@@ -111,7 +92,8 @@ export function Volumes() {
 
 
     return <InView>
-        <PreviewDialog title={selected?.name || ""} objectToDisplay={selected} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
+        <VolumeMountDialog objectToEdit={selected} open={showMount} onClose={(data) => { setSelected({}); onSubmitMountVolume(data); setShowMount(false) }} />
+        <PreviewDialog title={selected?.name || ""} objectToDisplay={selected} open={showPreview} onClose={() => { setSelected(undefined); setShowPreview(false) }} />
         <br />
         <List dense={true}>
             <Divider />
@@ -122,7 +104,7 @@ export function Volumes() {
                             secondaryAction={!mode.read_only && <>
                                 {partition.mount_point === "" &&
                                     <Tooltip title="Mount disk">
-                                        <IconButton onClick={() => onSubmitMountVolume(partition)} edge="end" aria-label="delete">
+                                        <IconButton onClick={() => { setSelected(partition); setShowMount(true) }} edge="end" aria-label="delete">
                                             <FontAwesomeSvgIcon icon={faPlug} />
                                         </IconButton>
                                     </Tooltip>
@@ -170,4 +152,71 @@ export function Volumes() {
             )}
         </List>
     </InView >
+}
+
+
+function VolumeMountDialog(props: { open: boolean, onClose: (data?: ConfigMountPointData) => void, objectToEdit?: MainBlockPartition }) {
+    const mountpointData: ConfigMountPointData = {}
+    const { control, handleSubmit, watch, formState: { errors } } = useForm<ConfigMountPointData>(
+        {
+            values: {
+                fstype: props.objectToEdit?.type,
+                flags: props.objectToEdit?.partition_flags, //FIXME: Wrong tipe from Object
+                //data: props.objectToEdit?.partition_data, //FIXME: Missing in volume data,
+            }
+        },
+    );
+
+    function handleCloseSubmit(data?: ConfigMountPointData) {
+        props.onClose(data)
+    }
+
+    console.log("MountpointData", props.objectToEdit)
+
+    return (
+        <Fragment>
+            <Dialog
+                open={props.open}
+                onClose={() => handleCloseSubmit()}
+            >
+                <DialogTitle>
+                    Mount Disk {props.objectToEdit?.label} ({props.objectToEdit?.name})
+                </DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2}>
+                        <DialogContentText>
+                            Plese enter the mount point for the disk or change default configuration settings
+                        </DialogContentText>
+                        <form id="mountvolumeform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
+                            <Grid2 container spacing={2}>
+                                <Grid2 size={6}>
+                                    <AutocompleteElement name="fstype" label="File System Type"
+                                        required control={control}
+                                        options={['ext4', 'vfat', 'exfat']}
+                                    />
+                                </Grid2>
+                                <Grid2 size={6}>
+                                    <AutocompleteElement
+                                        multiple
+                                        name="flags"
+                                        label="Mount Flags"
+                                        options={Object.values(ConfigMounDataFlag).filter((v) => typeof v === "string") as string[]}
+                                        control={control}
+                                    />
+                                </Grid2>
+                                <Grid2 size={12}>
+                                    <TextFieldElement name="data" label="Additional Mount Data" control={control} sx={{ display: "flex" }} />
+                                </Grid2>
+
+                            </Grid2>
+                        </form>
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => handleCloseSubmit()}>Cancel</Button>
+                    <Button type="submit" form="mountvolumeform">Mount</Button>
+                </DialogActions>
+            </Dialog>
+        </Fragment>
+    );
 }

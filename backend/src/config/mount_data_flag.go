@@ -2,6 +2,7 @@ package config
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 
 	"golang.org/x/sys/unix"
@@ -113,4 +114,31 @@ func (self MounDataFlags) Value() (driver.Value, error) {
 		flags |= int64(flag)
 	}
 	return flags, nil
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface for MounDataFlags.
+// It decodes a JSON-encoded byte slice into a MounDataFlags object.
+//
+// Parameters:
+//   - b: A byte slice containing the JSON-encoded MounDataFlags data.
+//
+// Returns:
+//   - error: An error if JSON unmarshaling fails, or nil if successful.
+func (a *MounDataFlags) UnmarshalJSON(b []byte) error {
+	var s []MounDataFlag
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	*a = s
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaler interface for MounDataFlags.
+// It encodes the MounDataFlags slice into a JSON-encoded byte slice.
+//
+// Returns:
+//   - []byte: A JSON-encoded byte slice representing the MounDataFlags.
+//   - error: An error if JSON marshaling fails, or nil if successful.
+func (a MounDataFlags) MarshalJSON() ([]byte, error) {
+	return json.Marshal([]MounDataFlag(a))
 }

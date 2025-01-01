@@ -718,7 +718,9 @@ definitions:
         type: string
       mount_flags:
         description: MountFlags contains the mount flags for the partition.
-        type: integer
+        items:
+          $ref: '#/definitions/config.MounDataFlag'
+        type: array
       mount_point:
         description: MountPoint is the path where this partition is mounted.
         type: string
@@ -727,7 +729,9 @@ definitions:
         type: string
       partition_flags:
         description: PartiionFlags contains the mount flags for the partition.
-        type: integer
+        items:
+          $ref: '#/definitions/config.MounDataFlag'
+        type: array
       read_only:
         description: IsReadOnly indicates if the partition is marked read-only.
         type: boolean
