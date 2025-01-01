@@ -59,3 +59,17 @@ func ListMountPointData() ([]MountPointData, error) {
 func SaveMountPointData(mp MountPointData) error {
 	return db.Save(&mp).Error
 }
+
+// GetMountPointDataFromName retrieves a MountPointData entry from the database by its name.
+//
+// Parameters:
+//   - name: A string representing the name of the mount point to retrieve.
+//
+// Returns:
+//   - *MountPointData: A pointer to the retrieved MountPointData struct, or nil if not found.
+//   - error: An error if the retrieval operation fails, or nil if successful.
+func GetMountPointDataFromName(name string) (*MountPointData, error) {
+	var mp MountPointData
+	err := db.Limit(1).Find(&mp, "name = ?", name).Error
+	return &mp, err
+}

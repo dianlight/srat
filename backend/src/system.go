@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -406,6 +408,95 @@ func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
 	DoResponse(http.StatusOK, w, net)
 }
 
+// ReadLinesOffsetN reads contents from file and splits them by new line.
+// The offset tells at which line number to start.
+// The count determines the number of lines to read (starting from offset):
+// n >= 0: at most n lines
+// n < 0: whole file
+// Source: https://github.com/shirou/gopsutil
+func readLinesOffsetN(filename string, offset uint, n int) ([]string, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return []string{""}, err
+	}
+	defer f.Close()
+
+	var ret []string
+
+	r := bufio.NewReader(f)
+	for i := uint(0); i < uint(n)+offset || n < 0; i++ {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			if err == io.EOF && len(line) > 0 {
+				ret = append(ret, strings.Trim(line, "\n"))
+			}
+			break
+		}
+		if i < offset {
+			continue
+		}
+		ret = append(ret, strings.Trim(line, "\n"))
+	}
+
+	return ret, nil
+}
+
+// Source: https://github.com/shirou/gopsutil
+func getFileSystems() ([]string, error) {
+	filename := "/proc/filesystems"
+	lines, err := readLinesOffsetN(filename, 0, -1)
+	if err != nil {
+		return nil, err
+	}
+	var ret []string
+	for _, line := range lines {
+		if !strings.HasPrefix(line, "nodev") {
+			ret = append(ret, strings.TrimSpace(line))
+			continue
+		}
+		t := strings.Split(line, "\t")
+		if len(t) != 2 || t[1] != "zfs" {
+			continue
+		}
+		ret = append(ret, strings.TrimSpace(t[1]))
+	}
+
+	return ret, nil
+}
+
+// GetFSHandler godoc
+//
+//	@Summary		GetFSHandler
+//	@Description	Return all network interfaces
+//	@Tags			system
+//	@Produce		json
+//	@Success		200 {object}	net.Info
+//	@Failure		405	{object}	ResponseError
+//	@Router			/filesystems [get]
+func GetFSHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	fs, err := getFileSystems()
+	if err != nil {
+		DoResponseError(http.StatusInternalServerError, w, "Unable to fetch nics", err.Error())
+		return
+	}
+
+	DoResponse(http.StatusOK, w, fs)
+}
+
+// PersistVolumesState saves the current state of mounted volumes to persistent storage.
+// It retrieves volume data, processes each mounted partition, and saves the mount point data.
+//
+// The function performs the following steps:
+// 1. Retrieves volume data using GetVolumesData().
+// 2. Iterates through each partition with a mount point.
+// 3. Creates a MountPointData struct for each mounted partition.
+// 4. Saves the MountPointData using SaveMountPointData().
+//
+// Returns:
+//   - error: nil if the operation was successful, otherwise an error describing what went wrong
+//     during the retrieval of volume data or while saving mount point data.
 func PersistVolumesState() error {
 	volumes, err := GetVolumesData()
 	if err != nil {

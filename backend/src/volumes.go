@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/u-root/u-root/pkg/mount"
 	ublock "github.com/u-root/u-root/pkg/mount/block"
+	"gorm.io/gorm"
 )
 
 var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
@@ -67,6 +69,8 @@ type BlockPartition struct {
 	PartitionFlags config.MounDataFlags `json:"partition_flags"`
 	// MountFlags contains the mount flags for the partition.
 	MountFlags config.MounDataFlags `json:"mount_flags"`
+	// MountData contains additional data associated with the partition.
+	MountData string `json:"mount_data"`
 }
 
 func GetVolumesData() (*BlockInfo, error) {
@@ -184,6 +188,24 @@ func GetVolumesData() (*BlockInfo, error) {
 			}
 		}
 	}
+
+	// Enrich the data with mount point information form DB ( previously saved state if mount point is not present)
+	for i, partition := range retBlockInfo.Partitions {
+		if partition.MountPoint == "" {
+			mp, err := config.GetMountPointDataFromName(partition.Name)
+			if err != nil {
+				if !errors.Is(err, gorm.ErrRecordNotFound) {
+					log.Printf("Error fetching mount point data for device /dev/%s: %v", partition.Name, err)
+				}
+				continue
+			}
+			partition.MountPoint = mp.Path
+			partition.MountData = mp.Data
+			partition.MountFlags.Scan(mp.Flags)
+			retBlockInfo.Partitions[i] = partition
+		}
+	}
+
 	//pretty.Print(retBlockInfo)
 	return retBlockInfo, err
 }

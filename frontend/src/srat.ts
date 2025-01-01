@@ -410,6 +410,8 @@ export interface MainBlockPartition {
    * is derived from the `ID_PART_ENTRY_NAME` udev entry.
    */
   label?: string;
+  /** MountData contains additional data associated with the partition. */
+  mount_data?: string;
   /** MountFlags contains the mount flags for the partition. */
   mount_flags?: ConfigMounDataFlag[];
   /** MountPoint is the path where this partition is mounted. */

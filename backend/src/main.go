@@ -248,6 +248,7 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/update", UpdateHandler).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/restart", RestartHandler).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/nics", GetNICsHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/filesystems", GetFSHandler).Methods(http.MethodGet)
 
 	// Shares
 	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet)

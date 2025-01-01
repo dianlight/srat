@@ -716,6 +716,9 @@ definitions:
           Label is the human-readable label given to the partition. On Linux, this
           is derived from the `ID_PART_ENTRY_NAME` udev entry.
         type: string
+      mount_data:
+        description: MountData contains additional data associated with the partition.
+        type: string
       mount_flags:
         description: MountFlags contains the mount flags for the partition.
         items:
@@ -1139,6 +1142,23 @@ paths:
           schema:
             type: string
       summary: WSChannelEventsList
+      tags:
+      - system
+  /filesystems:
+    get:
+      description: Return all network interfaces
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/net.Info'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: GetFSHandler
       tags:
       - system
   /global:
