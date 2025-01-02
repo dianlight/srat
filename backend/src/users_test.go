@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dm"
 	"github.com/gorilla/mux"
 )
 
@@ -158,7 +159,7 @@ func TestCreateUserDuplicateHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	expected, jsonError := json.Marshal(ResponseError{Error: "User already exists", Body: user})
+	expected, jsonError := json.Marshal(dm.ResponseError{Error: "User already exists", Body: user})
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())
 	}

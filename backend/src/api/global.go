@@ -1,16 +1,13 @@
 package api
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
-	"reflect"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dto"
 	"github.com/jinzhu/copier"
+	"github.com/kr/pretty"
 )
 
 // UpdateGlobalConfig godoc
@@ -32,44 +29,64 @@ func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 
 	var globalConfig dto.Settings
 
-	err := json.NewDecoder(r.Body).Decode(&globalConfig)
+	err := globalConfig.FromJSONBody(w, r)
+	//	err := json.NewDecoder(r.Body).Decode(&globalConfig)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	tmpConfig := config.Config{}
+	tmpSettings := dto.Settings{}
 	addon_config := r.Context().Value("addon_config").(*config.Config)
-	addon_option := r.Context().Value("addon_option").(*config.Options)
+	//addon_option := r.Context().Value("addon_option").(*config.Options)
 
-	copier.CopyWithOption(&tmpConfig, &addon_config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
-	copier.CopyWithOption(&tmpConfig.Options, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
-	copier.CopyWithOption(&tmpConfig, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	//dto.Mapper.Map(&tmpConfig, globalConfig)
+	tmpSettings.From(addon_config)
+	tmpSettings.FromIgnoreEmpty(globalConfig)
+	copier.CopyWithOption(&tmpConfig, &addon_config, copier.Option{IgnoreEmpty: false, DeepCopy: true})
+	//pretty.Println("---------------", tmpConfig, addon_config)
+	tmpSettings.ToIgnoreEmpty(&tmpConfig)
 
-	if reflect.DeepEqual(addon_config, &tmpConfig) {
+	//copier.CopyWithOption(&tmpConfig, &addon_config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	//copier.CopyWithOption(&tmpConfig.Options, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	//copier.CopyWithOption(&tmpConfig, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+
+	//pretty.Pdiff(log.Default(), addon_config, &tmpConfig)
+
+	if diff := pretty.Diff(addon_config, &tmpConfig); len(diff) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
+	} else {
+		//pretty.Println(diff)
 	}
-	copier.CopyWithOption(&addon_config, &tmpConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+
+	tmpSettings.To(&addon_config)
+	//copier.CopyWithOption(&addon_config, &tmpConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
 	var retglobalConfig dto.Settings = dto.Settings{}
 	data.DirtySectionState.Settings = true // FIXME: Change mode I set dirty
 
 	// Recheck the config
-	copier.CopyWithOption(&retglobalConfig, &addon_option, copier.Option{IgnoreEmpty: true, DeepCopy: true})
-	copier.CopyWithOption(&retglobalConfig, &addon_config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	//copier.CopyWithOption(&retglobalConfig, &addon_option, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	//copier.CopyWithOption(&retglobalConfig, &addon_config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	retglobalConfig.From(addon_config)
 
-	jsonResponse, jsonError := json.Marshal(retglobalConfig)
+	retglobalConfig.ToResponse(http.StatusOK, w)
 
-	if jsonError != nil {
-		log.Println("Unable to encode JSON")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(jsonError.Error()))
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(jsonResponse)
-		//	UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
-	}
+	/*
+
+		jsonResponse, jsonError := json.Marshal(retglobalConfig)
+
+		if jsonError != nil {
+			log.Println("Unable to encode JSON")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(jsonError.Error()))
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Write(jsonResponse)
+			//	UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
+		}
+	*/
 
 }
 
@@ -90,19 +107,12 @@ func GetGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	var globalConfig dto.Settings
 
 	addon_config := r.Context().Value("addon_config").(*config.Config)
-	addon_option := r.Context().Value("addon_option").(*config.Options)
+	// addon_option := r.Context().Value("addon_option").(*config.Options)
 
-	copier.CopyWithOption(&globalConfig, &addon_option, copier.Option{IgnoreEmpty: true, DeepCopy: true})
-	copier.CopyWithOption(&globalConfig, &addon_config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	globalConfig.From(addon_config)
 
-	jsonResponse, jsonError := json.Marshal(globalConfig)
+	//copier.CopyWithOption(&globalConfig, &addon_option, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	//	copier.CopyWithOption(&globalConfig, &addon_config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
-	if jsonError != nil {
-		fmt.Println("Unable to encode JSON")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(jsonError.Error()))
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(jsonResponse)
-	}
+	globalConfig.ToResponse(http.StatusOK, w)
 }

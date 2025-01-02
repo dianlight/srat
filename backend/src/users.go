@@ -10,6 +10,7 @@ import (
 	"dario.cat/mergo"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dm"
 	"github.com/gorilla/mux"
 )
 
@@ -132,7 +133,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	index := slices.IndexFunc(data.Config.OtherUsers, func(u config.User) bool { return u.Username == user.Username })
 	if index != -1 {
 		w.WriteHeader(http.StatusConflict)
-		jsonResponse, jsonError := json.Marshal(ResponseError{Error: "User already exists", Body: data.Config.OtherUsers[index]})
+		jsonResponse, jsonError := json.Marshal(dm.ResponseError{Error: "User already exists", Body: data.Config.OtherUsers[index]})
 
 		if jsonError != nil {
 			log.Println("Unable to encode JSON")

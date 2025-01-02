@@ -27,6 +27,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dm"
 	_ "github.com/dianlight/srat/docs"
 	"github.com/jpillora/overseer/fetcher"
 	"github.com/rs/cors"
@@ -81,12 +82,6 @@ func HAMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-type ResponseError struct {
-	Code  int    `json:"code"`
-	Error string `json:"error"`
-	Body  any    `json:"body"`
-}
-
 // DoResponse writes a JSON response to the provided http.ResponseWriter.
 // It sets the HTTP status code and marshals the given body into JSON format.
 //
@@ -122,7 +117,7 @@ func DoResponse(code int, w http.ResponseWriter, body any) {
 // and the error message as plain text.
 func DoResponseError(code int, w http.ResponseWriter, message string, body any) {
 	w.WriteHeader(code)
-	jsonResponse, jsonError := json.Marshal(ResponseError{Error: message, Body: body})
+	jsonResponse, jsonError := json.Marshal(dm.ResponseError{Error: message, Body: body})
 	if jsonError != nil {
 		fmt.Println("Unable to encode JSON")
 		w.WriteHeader(http.StatusInternalServerError)

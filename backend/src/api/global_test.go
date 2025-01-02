@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 )
@@ -33,11 +34,19 @@ func TestGetGlobalConfigHandler(t *testing.T) {
 			status, http.StatusOK)
 	}
 
+	var expectedDto = dto.Settings{}
+	addon_config := testContext.Value("addon_config").(*config.Config)
+	expectedDto.From(addon_config)
+
 	// Check the response body is what we expect.
-	expected := `{"workgroup":"WORKGROUP","mountoptions":["nosuid","relatime","noexec"],"allow_hosts":["10.0.0.0/8","100.0.0.0/8","172.16.0.0/12","192.168.0.0/16","169.254.0.0/16","fe80::/10","fc00::/7"],"veto_files":["._*",".DS_Store","Thumbs.db","icon?",".Trashes"],"compatibility_mode":false,"recyle_bin_enabled":false,"interfaces":["wlan0","end0"],"bind_all_interfaces":true,"log_level":"","multi_channel":true,"update_channel":"stable"}`
-	if rr.Body.String() != expected {
+	expected, jsonError := json.Marshal(expectedDto)
+	if jsonError != nil {
+		t.Errorf("Unable to encode JSON %s", jsonError.Error())
+	}
+	//expected := `{"workgroup":"WORKGROUP","mountoptions":["nosuid","relatime","noexec"],"allow_hosts":["10.0.0.0/8","100.0.0.0/8","172.16.0.0/12","192.168.0.0/16","169.254.0.0/16","fe80::/10","fc00::/7"],"veto_files":["._*",".DS_Store","Thumbs.db","icon?",".Trashes"],"compatibility_mode":false,"recyle_bin_enabled":false,"interfaces":["wlan0","end0"],"bind_all_interfaces":true,"log_level":"","multi_channel":false,"update_channel":"stable"}`
+	if rr.Body.String() != string(expected[:]) {
 		t.Errorf("handler returned unexpected body: go\n %v want\n %v",
-			rr.Body.String(), expected)
+			rr.Body.String(), string(expected[:]))
 	}
 }
 
@@ -65,6 +74,7 @@ func TestUpdateGlobalConfigHandler(t *testing.T) {
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
+		return
 	}
 
 	var res dto.Settings
@@ -81,4 +91,34 @@ func TestUpdateGlobalConfigHandler(t *testing.T) {
 			res.Workgroup, glc.Workgroup)
 	}
 
+}
+
+func TestUpdateGlobalConfigSameConfigHandler(t *testing.T) {
+	var glc = dto.Settings{}
+	addon_config := testContext.Value("addon_config").(*config.Config)
+	glc.From(addon_config)
+
+	jsonBody, jsonError := json.Marshal(glc)
+	if jsonError != nil {
+		t.Errorf("Unable to encode JSON %s", jsonError.Error())
+	}
+	req, err := http.NewRequestWithContext(testContext, "PATCH", "/global", strings.NewReader(string(jsonBody)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/global", UpdateGlobalConfig).Methods(http.MethodPatch, http.MethodPost)
+	router.ServeHTTP(rr, req)
+
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusNoContent {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusNoContent)
+	}
+
+	// FIXME: Test status dirty not change for config
+	//pretty.Logf("res: %v", res)
 }
