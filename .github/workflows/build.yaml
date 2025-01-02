@@ -62,6 +62,7 @@ jobs:
     - name: Prepare env for ${{ matrix.variant.name }} ${{ needs.setversion.outputs.version }}
       run: |
         GOBIN=/usr/local/bin/ go install github.com/swaggo/swag/v2/cmd/swag@latest
+        GOBIN=/usr/local/bin/ go install github.com/rakyll/gotest@latest
         cd frontend
         bun install
         cd ..
