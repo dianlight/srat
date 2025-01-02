@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dm"
 	"github.com/dianlight/srat/dto"
 	"github.com/jinzhu/copier"
 	"github.com/kr/pretty"
@@ -64,7 +64,8 @@ func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	//copier.CopyWithOption(&addon_config, &tmpConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
 	var retglobalConfig dto.Settings = dto.Settings{}
-	data.DirtySectionState.Settings = true // FIXME: Change mode I set dirty
+	data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+	data_dirty_tracker.Settings = true
 
 	// Recheck the config
 	//copier.CopyWithOption(&retglobalConfig, &addon_option, copier.Option{IgnoreEmpty: true, DeepCopy: true})

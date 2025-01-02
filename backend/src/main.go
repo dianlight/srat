@@ -329,6 +329,8 @@ func prog(state overseer.State) {
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			ctx = context.WithValue(ctx, "addon_config", ctx.Value("addon_config"))
 			ctx = context.WithValue(ctx, "addon_option", ctx.Value("addon_option"))
+			ctx = context.WithValue(ctx, "data_dirty_tracker", dm.DataDirtyTracker{})
+
 			return ctx
 		},
 	}

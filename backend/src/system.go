@@ -15,7 +15,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dm"
@@ -200,7 +199,7 @@ func HealthCheckWsHandler(ctx context.Context, request WebSocketMessageEnvelope,
 // The function runs indefinitely, sending updates only when the DirtySectionState changes,
 // until the WebSocket connection is closed or the context is cancelled.
 func DirtyWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
-	var oldDritySectionState config.ConfigSectionDirtySate
+	var oldDritySectionState dm.DataDirtyTracker
 	for {
 		select {
 		case <-ctx.Done():

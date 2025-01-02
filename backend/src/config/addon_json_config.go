@@ -37,13 +37,6 @@ type Config struct {
 	UpdateChannel   dm.UpdateChannel `json:"update_channel"`
 }
 
-type ConfigSectionDirtySate struct {
-	Shares   bool `json:"shares"`
-	Users    bool `json:"users"`
-	Volumes  bool `json:"volumes"`
-	Settings bool `json:"settings"`
-}
-
 // readConfigFile reads and parses a configuration file.
 //
 // It takes the path to a configuration file, reads its contents, and then

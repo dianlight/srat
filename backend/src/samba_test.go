@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dm"
 	"github.com/gorilla/mux"
 )
 
@@ -159,7 +160,7 @@ func TestGetSambaProcessStatus(t *testing.T) {
 func TestPersistConfig(t *testing.T) {
 	// Setup
 	//data.Config = &config.Config{}
-	data.DirtySectionState = config.ConfigSectionDirtySate{
+	data.DirtySectionState = dm.DataDirtyTracker{
 		Settings: true,
 		Users:    true,
 		Shares:   true,

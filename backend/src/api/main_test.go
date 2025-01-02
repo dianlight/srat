@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/dm"
 )
 
 var testContext = context.Background()
@@ -23,6 +24,7 @@ func TestMain(m *testing.M) {
 
 	testContext = context.WithValue(testContext, "addon_config", aconfig)
 	testContext = context.WithValue(testContext, "addon_option", options)
+	testContext = context.WithValue(testContext, "data_dirty_tracker", &dm.DataDirtyTracker{})
 
 	// smbConfigFile
 	//smbConfigFile := new(string)
