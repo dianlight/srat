@@ -24,6 +24,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dbom"
 	_ "github.com/dianlight/srat/docs"
 	"github.com/jpillora/overseer/fetcher"
 	"github.com/rs/cors"
@@ -182,7 +183,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	config.InitDB(*dbfile)
+	dbom.InitDB(*dbfile)
 
 	overseer.Run(overseer.Config{
 		Program: prog,

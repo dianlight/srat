@@ -6,6 +6,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dbom"
 )
 
 func TestMain(m *testing.M) {
@@ -31,7 +32,7 @@ func TestMain(m *testing.M) {
 	templateData = templateDatan
 	data.ROMode = new(bool)
 
-	config.InitDB(":memory:")
+	dbom.InitDB(":memory:")
 
 	m.Run()
 }

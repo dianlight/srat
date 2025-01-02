@@ -1,4 +1,4 @@
-package config
+package dbom
 
 import "gorm.io/gorm"
 

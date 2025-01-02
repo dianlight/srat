@@ -11,7 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dbom"
 	"github.com/gorilla/mux"
 	"github.com/kr/pretty"
 )
@@ -70,14 +71,14 @@ func TestMountVolumeHandler(t *testing.T) {
 		return
 	}
 
-	var mockMountData config.MountPointData
+	var mockMountData dbom.MountPointData
 
 	for _, d := range volumes.Partitions {
 		if strings.HasPrefix(d.Name, "loop") && d.Label == "_EXT4" {
 			mockMountData.Name = d.Name
 			mockMountData.Path = filepath.Join("/mnt", d.Label)
 			mockMountData.FSType = d.Type
-			mockMountData.Flags = []config.MounDataFlag{config.MS_NOATIME}
+			mockMountData.Flags = []data.MounDataFlag{data.MS_NOATIME}
 			previus_device = d.Name
 			t.Logf("Selected loop device: %v", mockMountData)
 		}
@@ -113,7 +114,7 @@ func TestMountVolumeHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	var responseData config.MountPointData
+	var responseData dbom.MountPointData
 	err = json.Unmarshal(rr.Body.Bytes(), &responseData)
 	if err != nil {
 		t.Errorf("Unable to parse response body: %v", err)

@@ -17,6 +17,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dbom"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v68/github"
 	"github.com/jaypipes/ghw"
@@ -505,9 +506,9 @@ func PersistVolumesState() error {
 	}
 	for _, partition := range volumes.Partitions {
 		if partition.MountPoint != "" {
-			var flags = &config.MounDataFlags{}
+			var flags = &data.MounDataFlags{}
 			flags.Scan(partition.MountFlags)
-			adata := config.MountPointData{
+			adata := dbom.MountPointData{
 				Path:   partition.MountPoint,
 				Label:  partition.Label,
 				Name:   partition.Name,

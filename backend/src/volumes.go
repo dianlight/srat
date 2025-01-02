@@ -14,8 +14,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gobeam/stringy"
 	"github.com/gorilla/mux"
@@ -68,9 +68,9 @@ type BlockPartition struct {
 	// partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
 	FilesystemLabel string `json:"filesystem_label"`
 	// PartiionFlags contains the mount flags for the partition.
-	PartitionFlags config.MounDataFlags `json:"partition_flags"`
+	PartitionFlags data.MounDataFlags `json:"partition_flags"`
 	// MountFlags contains the mount flags for the partition.
-	MountFlags config.MounDataFlags `json:"mount_flags"`
+	MountFlags data.MounDataFlags `json:"mount_flags"`
 	// MountData contains additional data associated with the partition.
 	MountData string `json:"mount_data"`
 }
@@ -116,7 +116,7 @@ func GetVolumesData() (*BlockInfo, error) {
 					if partition.Type == "unknown" && rblock.FSType != "" {
 						partition.Type = rblock.FSType
 					}
-					partition.PartitionFlags = []config.MounDataFlag{}
+					partition.PartitionFlags = []data.MounDataFlag{}
 				} else {
 					partition.Type = fs
 					partition.PartitionFlags.Scan(flags)
@@ -194,7 +194,7 @@ func GetVolumesData() (*BlockInfo, error) {
 	// Enrich the data with mount point information form DB ( previously saved state if mount point is not present)
 	for i, partition := range retBlockInfo.Partitions {
 		if partition.MountPoint == "" {
-			var mp config.MountPointData
+			var mp dbom.MountPointData
 			err := mp.FromName(partition.Name)
 			if err != nil {
 				if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -254,7 +254,7 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 	volume_name := mux.Vars(r)["volume_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	var mount_data config.MountPointData
+	var mount_data dbom.MountPointData
 
 	err := json.NewDecoder(r.Body).Decode(&mount_data)
 	if err != nil {
@@ -334,7 +334,7 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 		DoResponseError(http.StatusConflict, w, "Error Mounting volume", err)
 		return
 	} else {
-		mounted_data := config.MountPointData{}
+		mounted_data := dbom.MountPointData{}
 		copier.Copy(&mounted_data, mp)
 		//		mounted_data.Flags.Scan(mp.Flags)
 		// log.Printf("---------------------   mp %v mounted_data = %v", mp, mounted_data)

@@ -1,4 +1,4 @@
-package config
+package data
 
 import (
 	"database/sql/driver"
