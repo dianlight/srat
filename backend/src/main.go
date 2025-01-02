@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,6 +23,7 @@ import (
 	"github.com/jpillora/overseer"
 	"github.com/kr/pretty"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
@@ -278,8 +280,8 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/samba/status", getSambaProcessStatus).Methods(http.MethodGet)
 
 	// Global
-	globalRouter.HandleFunc("/global", getGlobalConfig).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/global", updateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/global", api.GetGlobalConfig).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/global", api.UpdateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
 
 	// Configuration
 	globalRouter.HandleFunc("/config", persistConfig).Methods(http.MethodPut, http.MethodPatch)
@@ -329,6 +331,11 @@ func prog(state overseer.State) {
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
 		Handler:      loggedRouter, // Pass our instance of gorilla/mux in.
+		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
+			ctx = context.WithValue(ctx, "addon_config", ctx.Value("addon_config"))
+			ctx = context.WithValue(ctx, "addon_option", ctx.Value("addon_option"))
+			return ctx
+		},
 	}
 
 	// Run the backgrounde services
@@ -336,6 +343,7 @@ func prog(state overseer.State) {
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
 		log.Printf("Starting Server... \n GoTo: http://localhost:%d/", *http_port)
+
 		if err := srv.Serve(state.Listener); err != nil {
 			log.Fatal(err)
 		}

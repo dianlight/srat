@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -6,27 +6,12 @@ import (
 	"log"
 	"net/http"
 	"reflect"
-	"time"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dto"
 	"github.com/jinzhu/copier"
-	"golang.org/x/time/rate"
 )
-
-type GlobalConfig struct {
-	Workgroup         string               `json:"workgroup"`
-	Mountoptions      []string             `json:"mountoptions"`
-	AllowHost         []string             `json:"allow_hosts"`
-	VetoFiles         []string             `json:"veto_files"`
-	CompatibilityMode bool                 `json:"compatibility_mode"`
-	EnableRecycleBin  bool                 `json:"recyle_bin_enabled"`
-	Interfaces        []string             `json:"interfaces"`
-	BindAllInterfaces bool                 `json:"bind_all_interfaces"`
-	LogLevel          string               `json:"log_level"`
-	MultiChannel      bool                 `json:"multi_channel"`
-	UpdateChannel     config.UpdateChannel `json:"update_channel"`
-}
 
 // UpdateGlobalConfig godoc
 //
@@ -42,10 +27,10 @@ type GlobalConfig struct {
 //	@Failure		500	{object}	ResponseError
 //	@Router			/global [put]
 //	@Router			/global [patch]
-func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
+func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var globalConfig GlobalConfig
+	var globalConfig dto.Settings
 
 	err := json.NewDecoder(r.Body).Decode(&globalConfig)
 	if err != nil {
@@ -54,27 +39,25 @@ func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpConfig := config.Config{}
-	copier.CopyWithOption(&tmpConfig, &data.Config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	addon_config := r.Context().Value("addon_config").(*config.Config)
+	addon_option := r.Context().Value("addon_option").(*config.Options)
 
-	//pretty.Logf("1res: %v", data.Config.Options)
-
+	copier.CopyWithOption(&tmpConfig, &addon_config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 	copier.CopyWithOption(&tmpConfig.Options, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 	copier.CopyWithOption(&tmpConfig, &globalConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
-	if reflect.DeepEqual(data.Config, &tmpConfig) {
+	if reflect.DeepEqual(addon_config, &tmpConfig) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	//log.Printf("\n%v\n%v", data.Config, &tmpConfig)
-	copier.CopyWithOption(&data.Config, &tmpConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	copier.CopyWithOption(&addon_config, &tmpConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
-	var retglobalConfig GlobalConfig = GlobalConfig{}
-	data.DirtySectionState.Settings = true
+	var retglobalConfig dto.Settings = dto.Settings{}
+	data.DirtySectionState.Settings = true // FIXME: Change mode I set dirty
 
 	// Recheck the config
-	copier.CopyWithOption(&retglobalConfig, &data.Config.Options, copier.Option{IgnoreEmpty: true, DeepCopy: true})
-	copier.CopyWithOption(&retglobalConfig, &data.Config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
-	//mergo.MapWithOverwrite(&globalConfig, data.Config)
+	copier.CopyWithOption(&retglobalConfig, &addon_option, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	copier.CopyWithOption(&retglobalConfig, &addon_config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
 	jsonResponse, jsonError := json.Marshal(retglobalConfig)
 
@@ -85,7 +68,7 @@ func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Write(jsonResponse)
-		UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
+		//	UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 	}
 
 }
@@ -101,14 +84,16 @@ func updateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
 //	@Router			/global [get]
-func getGlobalConfig(w http.ResponseWriter, _ *http.Request) {
+func GetGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var globalConfig GlobalConfig
+	var globalConfig dto.Settings
 
-	copier.CopyWithOption(&globalConfig, &data.Config.Options, copier.Option{IgnoreEmpty: true, DeepCopy: true})
-	copier.CopyWithOption(&globalConfig, &data.Config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
-	//mergo.MapWithOverwrite(&globalConfig, data.Config.Options)
+	addon_config := r.Context().Value("addon_config").(*config.Config)
+	addon_option := r.Context().Value("addon_option").(*config.Options)
+
+	copier.CopyWithOption(&globalConfig, &addon_option, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	copier.CopyWithOption(&globalConfig, &addon_config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
 	jsonResponse, jsonError := json.Marshal(globalConfig)
 

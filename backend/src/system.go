@@ -18,6 +18,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dm"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v68/github"
 	"github.com/jaypipes/ghw"
@@ -77,7 +78,7 @@ func HealthAndUpdateDataRefeshHandlers() {
 	var gh = github.NewClient(rateLimiter)
 	for {
 		healthData.ReadOnly = *data.ROMode
-		if data.Config.UpdateChannel != config.None {
+		if data.Config.UpdateChannel != dm.None {
 			UpdateLimiter.Do(func() {
 				log.Printf("Checking for updates...%v", data.Config.UpdateChannel)
 				releases, _, err := gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
@@ -91,10 +92,10 @@ func HealthAndUpdateDataRefeshHandlers() {
 				} else if len(releases) > 0 {
 					for _, release := range releases {
 						//log.Println(pretty.Sprintf("%v\n", release))
-						if *release.Prerelease && data.Config.UpdateChannel == config.Stable {
+						if *release.Prerelease && data.Config.UpdateChannel == dm.Stable {
 							//log.Printf("Skip Prerelease %s", *release.TagName)
 							continue
-						} else if !*release.Prerelease && data.Config.UpdateChannel == config.Prerelease {
+						} else if !*release.Prerelease && data.Config.UpdateChannel == dm.Prerelease {
 							//log.Printf("Skip Release %s", *release.TagName)
 							continue
 						}

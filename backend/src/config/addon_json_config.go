@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 
+	"github.com/dianlight/srat/dm"
 	"github.com/jinzhu/copier"
 )
 
@@ -23,25 +24,17 @@ type Share struct {
 
 type Shares map[string]Share
 
-type UpdateChannel string
-
-const (
-	Stable     UpdateChannel = "stable"
-	Prerelease UpdateChannel = "prerelease"
-	None       UpdateChannel = "none"
-)
-
 const CURRENT_CONFIG_VERSION = 3
 
 type Config struct {
 	CurrentFile       string
 	ConfigSpecVersion int8 `json:"version,omitempty,default=0"`
 	Options
-	Shares          Shares        `json:"shares"`
-	DockerInterface string        `json:"docker_interface"`
-	DockerNet       string        `json:"docker_net"`
-	Users           []User        `json:"users"`
-	UpdateChannel   UpdateChannel `json:"update_channel"`
+	Shares          Shares           `json:"shares"`
+	DockerInterface string           `json:"docker_interface"`
+	DockerNet       string           `json:"docker_net"`
+	Users           []User           `json:"users"`
+	UpdateChannel   dm.UpdateChannel `json:"update_channel"`
 }
 
 type ConfigSectionDirtySate struct {
@@ -148,7 +141,7 @@ func MigrateConfig(in *Config) *Config {
 	if in.ConfigSpecVersion == 0 {
 		log.Printf("Migrating config from version 0 to version 1")
 		in.ConfigSpecVersion = 1
-		in.UpdateChannel = Stable
+		in.UpdateChannel = dm.Stable
 		if in.Shares == nil {
 			in.Shares = make(Shares)
 		}
