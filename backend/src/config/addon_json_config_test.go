@@ -60,7 +60,7 @@ func TestConfigToMapWithUnicode(t *testing.T) {
 	}
 
 	// Call configToMap
-	result := ConfigToMap(config)
+	result := config.ConfigToMap()
 
 	// Check if the result is not nil
 	if result == nil {

@@ -30,7 +30,8 @@ func TestMain(m *testing.M) {
 	testContext = context.WithValue(testContext, "addon_config", aconfig)
 	testContext = context.WithValue(testContext, "addon_option", options)
 	testContext = context.WithValue(testContext, "data_dirty_tracker", &dm.DataDirtyTracker{})
-	testContext = context.WithValue(testContext, "samba_config_file", "../../test/data/smb.conf")
+	var smbConfigFile = "../../test/data/smb.conf"
+	testContext = context.WithValue(testContext, "samba_config_file", &smbConfigFile)
 	testContext = context.WithValue(testContext, "template_data", templateData)
 
 	// smbConfigFile

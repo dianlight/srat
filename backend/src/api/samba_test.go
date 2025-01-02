@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/data"
 	"github.com/gorilla/mux"
 )
 
@@ -74,61 +73,63 @@ func TestCreateConfigStream(t *testing.T) {
 		t.Errorf("handler returned stream is nil")
 	}
 
-	data.Config.Workgroup = "WORKGROUP12"
-	if checkStringInSMBConfig(data.Config.Workgroup, "\n\\s*workgroup = *%s\\s*\n", t) == false {
+	addon_config := testContext.Value("addon_config").(*config.Config)
+
+	addon_config.Workgroup = "WORKGROUP12"
+	if checkStringInSMBConfig(addon_config.Workgroup, "\n\\s*workgroup = *%s\\s*\n", t) == false {
 		t.Errorf("Seting workgroup failed.")
 	}
 
-	data.Config.Username = "admin"
-	if checkStringInSMBConfig(data.Config.Username, "\n\\s*valid users =_ha_mount_user_ %s\\s*\n", t) == false {
+	addon_config.Username = "admin"
+	if checkStringInSMBConfig(addon_config.Username, "\n\\s*valid users =_ha_mount_user_ %s\\s*\n", t) == false {
 		t.Errorf("Seting username failed.")
 	}
 
-	data.Config.Moredisks = []string{"ALPHA", "beta"}
-	data.Config.Shares["ALPHA"] = config.Share{Path: "/mnt/ALPHA", FS: "ext4"}
-	data.Config.Shares["BETA"] = config.Share{Path: "/mnt/BETA", FS: "ext4"}
-	if checkStringInSMBConfig(data.Config.Moredisks[0], "\n.*.shares=map[%s:map[fs:ext4 path:/mnt/ALPHA].*\n", t) == false {
+	addon_config.Moredisks = []string{"ALPHA", "beta"}
+	addon_config.Shares["ALPHA"] = config.Share{Path: "/mnt/ALPHA", FS: "ext4"}
+	addon_config.Shares["BETA"] = config.Share{Path: "/mnt/BETA", FS: "ext4"}
+	if checkStringInSMBConfig(addon_config.Moredisks[0], "\n.*.shares=map[%s:map[fs:ext4 path:/mnt/ALPHA].*\n", t) == false {
 		t.Errorf("Setting moredisks and share failed.")
 	}
 
-	data.Config.Medialibrary.Enable = true
-	data.Config.ACL = []config.OptionsAcl{{Share: "APLHA", Usage: "media", Users: []string{"admin"}, Disabled: false}}
+	addon_config.Medialibrary.Enable = true
+	addon_config.ACL = []config.OptionsAcl{{Share: "APLHA", Usage: "media", Users: []string{"admin"}, Disabled: false}}
 
-	data.Config.AllowHost = []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fe80::/10"}
-	data.Config.VetoFiles = []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"}
+	addon_config.AllowHost = []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fe80::/10"}
+	addon_config.VetoFiles = []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"}
 
-	data.Config.CompatibilityMode = false
-	data.Config.EnableRecycleBin = false
+	addon_config.CompatibilityMode = false
+	addon_config.EnableRecycleBin = false
 
-	data.Config.WSDD = false
-	data.Config.WSDD2 = false
+	addon_config.WSDD = false
+	addon_config.WSDD2 = false
 
-	//data.Config.OtherUsers = []User{{Username: "test", Password: "test"}, {Username: "test2", Password: "test2"}}
-	data.Config.ACL = []config.OptionsAcl{{Share: "config", Disabled: true}}
-	data.Config.Interfaces = []string{"eth0"}
-	data.Config.BindAllInterfaces = false
-	data.Config.LogLevel = "info"
-	data.Config.MultiChannel = false
+	//addon_config.OtherUsers = []User{{Username: "test", Password: "test"}, {Username: "test2", Password: "test2"}}
+	addon_config.ACL = []config.OptionsAcl{{Share: "config", Disabled: true}}
+	addon_config.Interfaces = []string{"eth0"}
+	addon_config.BindAllInterfaces = false
+	addon_config.LogLevel = "info"
+	addon_config.MultiChannel = false
 
 	// Skip because untestable on config file
-	//  data.Config.Password = "admin"
-	// 	data.Config.Automount = true
-	// 	data.Config.AvailableDiskLog = true
-	//  data.Config.HDDIdle = 0
-	//	data.Config.Smart = false
-	//  data.Config.MQTTNextGen = false
-	//  data.Config.MQTTEnable = false
-	//  data.Config.MQTTHost = ""
-	//  data.Config.MQTTUsername = ""
-	//  data.Config.MQTTPassword = ""
-	//  data.Config.MQTTPort = ""
-	//  data.Config.MQTTTopic = ""
-	// 	data.Config.Autodiscovery.DisableAutoremove = false
-	// 	data.Config.Autodiscovery.DisableDiscovery = false
-	// 	data.Config.Autodiscovery.DisablePersistent = false
-	//  data.Config.MOF = "42"
-	//  data.Config.Mountoptions = []string{"uid=1999, gid=1000, umask=000,iocharset=utf8"}
-	//  data.Config.Medialibrary.SSHKEY = "<super secret key>"
+	//  addon_config.Password = "admin"
+	// 	addon_config.Automount = true
+	// 	addon_config.AvailableDiskLog = true
+	//  addon_config.HDDIdle = 0
+	//	addon_config.Smart = false
+	//  addon_config.MQTTNextGen = false
+	//  addon_config.MQTTEnable = false
+	//  addon_config.MQTTHost = ""
+	//  addon_config.MQTTUsername = ""
+	//  addon_config.MQTTPassword = ""
+	//  addon_config.MQTTPort = ""
+	//  addon_config.MQTTTopic = ""
+	// 	addon_config.Autodiscovery.DisableAutoremove = false
+	// 	addon_config.Autodiscovery.DisableDiscovery = false
+	// 	addon_config.Autodiscovery.DisablePersistent = false
+	//  addon_config.MOF = "42"
+	//  addon_config.Mountoptions = []string{"uid=1999, gid=1000, umask=000,iocharset=utf8"}
+	//  addon_config.Medialibrary.SSHKEY = "<super secret key>"
 
 }
 

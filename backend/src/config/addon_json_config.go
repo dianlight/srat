@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianlight/srat/dm"
 	"github.com/jinzhu/copier"
+	"github.com/kr/pretty"
 )
 
 type Share struct {
@@ -97,11 +98,13 @@ func readConfigBuffer(buffer []byte) (*Config, error) {
 // Returns:
 //   - *map[string]interface{}: A pointer to the resulting map.
 //     If the conversion process fails at any step, the function returns nil.
-func ConfigToMap(in *Config) *map[string]interface{} {
+func (in *Config) ConfigToMap() *map[string]interface{} {
 	var nconfig map[string]interface{}
 
+	log.Println(pretty.Sprint("New Config:", in))
+
 	// Parse json
-	buffer, err := json.Marshal(in)
+	buffer, err := json.Marshal(&in)
 	if err != nil {
 		log.Fatal(err)
 		return nil
@@ -111,6 +114,8 @@ func ConfigToMap(in *Config) *map[string]interface{} {
 		log.Fatal(err_2)
 		return nil
 	}
+
+	log.Println(pretty.Sprint("New Config2:", nconfig))
 
 	return &nconfig
 }
