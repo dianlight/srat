@@ -17,11 +17,11 @@ import (
 //	@Tags			samba
 //	@Accept			json
 //	@Produce		json
-//	@Param			config	body		GlobalConfig	true	"Update model"
-//	@Success		200		{object}	GlobalConfig
+//	@Param			config	body		dto.Settings	true	"Update model"
+//	@Success		200		{object}	dto.Settings
 //	@Success		204
-//	@Failure		400	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
+//	@Failure		400	{object}	dm.ResponseError
+//	@Failure		500	{object}	dm.ResponseError
 //	@Router			/global [put]
 //	@Router			/global [patch]
 func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
@@ -98,9 +98,9 @@ func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 //	@Tags			samba
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	GlobalConfig
-//	@Failure		400	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
+//	@Success		200	{object}	dto.Settings
+//	@Failure		400	{object}	dm.ResponseError
+//	@Failure		500	{object}	dm.ResponseError
 //	@Router			/global [get]
 func GetGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
