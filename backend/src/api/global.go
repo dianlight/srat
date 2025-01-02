@@ -20,8 +20,8 @@ import (
 //	@Param			config	body		dto.Settings	true	"Update model"
 //	@Success		200		{object}	dto.Settings
 //	@Success		204
-//	@Failure		400	{object}	dm.ResponseError
-//	@Failure		500	{object}	dm.ResponseError
+//	@Failure		400	{object}	dto.ResponseError
+//	@Failure		500	{object}	dto.ResponseError
 //	@Router			/global [put]
 //	@Router			/global [patch]
 func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +91,7 @@ func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// GetGlobakConfig godoc
+// GetGlobalConfig godoc
 //
 //	@Summary		Get the configuration for the global samba settings
 //	@Description	Get the configuration for the global samba settings
@@ -99,8 +99,8 @@ func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	dto.Settings
-//	@Failure		400	{object}	dm.ResponseError
-//	@Failure		500	{object}	dm.ResponseError
+//	@Failure		400	{object}	dto.ResponseError
+//	@Failure		500	{object}	dto.ResponseError
 //	@Router			/global [get]
 func GetGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -116,4 +116,87 @@ func GetGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	//	copier.CopyWithOption(&globalConfig, &addon_config, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
 	globalConfig.ToResponse(http.StatusOK, w)
+}
+
+// PersistConfig godoc
+//
+//	@Summary		Persiste the current samba config
+//	@Description	Save dirty changes to the disk
+//	@Tags			samba
+//	@Accept			json
+//	@Produce		json
+//	@Success		200 {object}	dto.Settings
+//	@Failure		400	{object}	dto.ResponseError
+//	@Failure		500	{object}	dto.ResponseError
+//	@Router			/config [put]
+//	@Router			/config [patch]
+func PersistConfig(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	addon_config := r.Context().Value("addon_config").(*config.Config)
+	data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+
+	//config.SaveConfig(addon_config) // FIXME: Change to DB
+	data_dirty_tracker.Settings = false
+	data_dirty_tracker.Users = false
+
+	/*
+		err := PersistSharesState()
+		if err != nil {
+			DoResponseError(http.StatusInternalServerError, w, "Error Persisting Share States", err)
+			return
+		}
+			 FIXME: Persist share state
+	*/
+	data_dirty_tracker.Shares = false
+
+	/*
+		err = PersistVolumesState()
+		if err != nil {
+			DoResponseError(http.StatusInternalServerError, w, "Error Persisting Volume States", err)
+			return
+		}
+			FIXME: Persist volume state
+	*/
+	data_dirty_tracker.Volumes = false
+
+	var globalConfig dto.Settings = dto.Settings{}
+	globalConfig.From(addon_config)
+	globalConfig.ToResponse(http.StatusOK, w)
+}
+
+// RollbackConfig godoc
+//
+//	@Summary		Rollback the current samba config
+//	@Description	Revert to the last saved samba config
+//	@Tags			samba
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	dto.Settings
+//	@Failure		400	{object}	dto.ResponseError
+//	@Failure		500	{object}	dto.ResponseError
+//	@Router			/config [delete]
+func RollbackConfig(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	addon_config := r.Context().Value("addon_config").(*config.Config)
+	var settings dto.Settings
+	settings.From(addon_config)
+
+	config, err := config.RollbackConfig(addon_config) // FIXME: Change to DB
+	if err != nil {
+		settings.ToResponseError(http.StatusInternalServerError, w, "Error rolling back config", err)
+		return
+	}
+
+	copier.CopyWithOption(addon_config, config, copier.Option{IgnoreEmpty: false, DeepCopy: true})
+	settings.From(config)
+
+	data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+	data_dirty_tracker.Settings = false
+	//data_dirty_tracker.Users = false FIXME: Implement this
+	//data_dirty_tracker.Shares = false FIXME: Implement this
+	//data_dirty_tracker.Volumes = false FIXME: Implement this
+
+	settings.ToResponse(http.StatusOK, w)
 }

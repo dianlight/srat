@@ -10,7 +10,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
-	"github.com/dianlight/srat/dm"
+	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 )
 
@@ -159,7 +159,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	}
 
 	// Check the response body is what we expect.
-	expected, jsonError := json.Marshal(dm.ResponseError{Error: "Share already exists", Body: share})
+	expected, jsonError := json.Marshal(dto.ResponseError{Error: "Share already exists", Body: share})
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())
 	}

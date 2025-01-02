@@ -1,130 +1,4 @@
 definitions:
-  config.Config:
-    properties:
-      acl:
-        items:
-          $ref: '#/definitions/config.OptionsAcl'
-        type: array
-      allow_hosts:
-        items:
-          type: string
-        type: array
-      autodiscovery:
-        properties:
-          disable_autoremove:
-            type: boolean
-          disable_discovery:
-            type: boolean
-          disable_persistent:
-            type: boolean
-        type: object
-      automount:
-        type: boolean
-      available_disks_log:
-        type: boolean
-      bind_all_interfaces:
-        type: boolean
-      compatibility_mode:
-        type: boolean
-      currentFile:
-        type: string
-      docker_interface:
-        type: string
-      docker_net:
-        type: string
-      enable_smart:
-        type: boolean
-      hdd_idle_seconds:
-        type: integer
-      interfaces:
-        items:
-          type: string
-        type: array
-      log_level:
-        type: string
-      meaning_of_life:
-        type: string
-      medialibrary:
-        properties:
-          enable:
-            type: boolean
-          ssh_private_key:
-            type: string
-        type: object
-      moredisks:
-        items:
-          type: string
-        type: array
-      mountoptions:
-        items:
-          type: string
-        type: array
-      mqtt_enable:
-        type: boolean
-      mqtt_host:
-        type: string
-      mqtt_nexgen_entities:
-        type: boolean
-      mqtt_password:
-        type: string
-      mqtt_port:
-        type: string
-      mqtt_topic:
-        type: string
-      mqtt_username:
-        type: string
-      multi_channel:
-        type: boolean
-      other_users:
-        items:
-          $ref: '#/definitions/config.User'
-        type: array
-      password:
-        type: string
-      recyle_bin_enabled:
-        type: boolean
-      shares:
-        $ref: '#/definitions/config.Shares'
-      update_channel:
-        $ref: '#/definitions/dm.UpdateChannel'
-      username:
-        type: string
-      users:
-        items:
-          $ref: '#/definitions/config.User'
-        type: array
-      version:
-        type: integer
-      veto_files:
-        items:
-          type: string
-        type: array
-      workgroup:
-        type: string
-      wsdd:
-        type: boolean
-      wsdd2:
-        type: boolean
-    type: object
-  config.OptionsAcl:
-    properties:
-      disabled:
-        type: boolean
-      ro_users:
-        items:
-          type: string
-        type: array
-      share:
-        type: string
-      timemachine:
-        type: boolean
-      usage:
-        type: string
-      users:
-        items:
-          type: string
-        type: array
-    type: object
   config.Share:
     properties:
       disabled:
@@ -222,14 +96,6 @@ definitions:
       path:
         type: string
     type: object
-  dm.ResponseError:
-    properties:
-      body: {}
-      code:
-        type: integer
-      error:
-        type: string
-    type: object
   dm.UpdateChannel:
     enum:
     - stable
@@ -240,6 +106,37 @@ definitions:
     - Stable
     - Prerelease
     - None
+  dto.ResponseError:
+    properties:
+      body: {}
+      code:
+        type: integer
+      error:
+        type: string
+    type: object
+  dto.SambaProcessStatus:
+    properties:
+      connections:
+        type: integer
+      cpu_percent:
+        type: number
+      create_time:
+        type: string
+      is_running:
+        type: boolean
+      memory_percent:
+        type: number
+      name:
+        type: string
+      open_files:
+        type: integer
+      pid:
+        type: integer
+      status:
+        items:
+          type: string
+        type: array
+    type: object
   dto.Settings:
     properties:
       allow_hosts:
@@ -821,29 +718,6 @@ definitions:
       update_status:
         type: integer
     type: object
-  main.SambaProcessStatus:
-    properties:
-      connections:
-        type: integer
-      cpu_percent:
-        type: number
-      create_time:
-        type: string
-      is_running:
-        type: boolean
-      memory_percent:
-        type: number
-      name:
-        type: string
-      open_files:
-        type: integer
-      pid:
-        type: integer
-      status:
-        items:
-          type: string
-        type: array
-    type: object
   net.Info:
     properties:
       nics:
@@ -970,11 +844,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Get the admin user
       tags:
       - user
@@ -999,19 +873,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Update admin user
       tags:
       - user
@@ -1036,19 +910,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Update admin user
       tags:
       - user
@@ -1063,15 +937,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/config.Config'
+            $ref: '#/definitions/dto.Settings'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Rollback the current samba config
       tags:
       - samba
@@ -1085,15 +959,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/config.Config'
+            $ref: '#/definitions/dto.Settings'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Persiste the current samba config
       tags:
       - samba
@@ -1107,15 +981,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/config.Config'
+            $ref: '#/definitions/dto.Settings'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Persiste the current samba config
       tags:
       - samba
@@ -1153,7 +1027,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: GetFSHandler
       tags:
       - system
@@ -1172,11 +1046,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Get the configuration for the global samba settings
       tags:
       - samba
@@ -1203,11 +1077,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Update the configuration for the global samba settings
       tags:
       - samba
@@ -1234,11 +1108,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Update the configuration for the global samba settings
       tags:
       - samba
@@ -1255,7 +1129,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: HealthCheck
       tags:
       - system
@@ -1272,7 +1146,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: GetNICsHandler
       tags:
       - system
@@ -1287,7 +1161,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: RestartHandler
       tags:
       - system
@@ -1302,15 +1176,13 @@ paths:
         "200":
           description: OK
           schema:
-            type: string
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dm.ResponseError'
+            items:
+              type: integer
+            type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Get the generated samba config
       tags:
       - samba
@@ -1327,11 +1199,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Write the samba config and send signal ro restart
       tags:
       - samba
@@ -1346,15 +1218,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.SambaProcessStatus'
+            $ref: '#/definitions/dto.SambaProcessStatus'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Get the current samba process status
       tags:
       - samba
@@ -1380,19 +1252,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Create a share
       tags:
       - share
@@ -1411,19 +1283,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Delere a share
       tags:
       - share
@@ -1445,11 +1317,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Get a share
       tags:
       - share
@@ -1479,19 +1351,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Update a share
       tags:
       - share
@@ -1521,19 +1393,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Update a share
       tags:
       - share
@@ -1550,11 +1422,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: List all configured shares
       tags:
       - share
@@ -1571,7 +1443,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: UpdateHandler
       tags:
       - system
@@ -1597,19 +1469,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Create a user
       tags:
       - user
@@ -1628,19 +1500,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Delete a user
       tags:
       - user
@@ -1662,11 +1534,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Get a user
       tags:
       - user
@@ -1696,19 +1568,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Update a user
       tags:
       - user
@@ -1738,19 +1610,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Update a user
       tags:
       - user
@@ -1769,11 +1641,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: List all configured users
       tags:
       - user
@@ -1807,11 +1679,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: Umount the selected volume
       tags:
       - volume
@@ -1841,19 +1713,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: mount an existing volume
       tags:
       - volume
@@ -1870,11 +1742,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: List all available volumes
       tags:
       - volume
@@ -1889,7 +1761,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/dm.ResponseError'
+            $ref: '#/definitions/dto.ResponseError'
       summary: WSChannel
       tags:
       - system

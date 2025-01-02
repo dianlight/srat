@@ -13,6 +13,7 @@ import (
 var testContext = context.Background()
 
 func TestMain(m *testing.M) {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	// Get config
 	aconfig, err := config.LoadConfig("../../test/data/config.json")
 	if err != nil {
@@ -21,10 +22,16 @@ func TestMain(m *testing.M) {
 
 	// Get options
 	options := config.ReadOptionsFile("../../test/data/options.json")
+	templateData, err := os.ReadFile("../templates/smb.gtpl")
+	if err != nil {
+		log.Fatalf("Cant read template file %s", err)
+	}
 
 	testContext = context.WithValue(testContext, "addon_config", aconfig)
 	testContext = context.WithValue(testContext, "addon_option", options)
 	testContext = context.WithValue(testContext, "data_dirty_tracker", &dm.DataDirtyTracker{})
+	testContext = context.WithValue(testContext, "samba_config_file", "../../test/data/smb.conf")
+	testContext = context.WithValue(testContext, "template_data", templateData)
 
 	// smbConfigFile
 	//smbConfigFile := new(string)

@@ -29,6 +29,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dm"
 	_ "github.com/dianlight/srat/docs"
+	"github.com/dianlight/srat/dto"
 	"github.com/jpillora/overseer/fetcher"
 	"github.com/rs/cors"
 )
@@ -41,7 +42,6 @@ var templateData []byte
 var optionsFile *string
 var http_port *int
 var templateFile *string
-var sambaConfigFile *string
 var wait time.Duration
 var hamode *bool
 
@@ -117,7 +117,7 @@ func DoResponse(code int, w http.ResponseWriter, body any) {
 // and the error message as plain text.
 func DoResponseError(code int, w http.ResponseWriter, message string, body any) {
 	w.WriteHeader(code)
-	jsonResponse, jsonError := json.Marshal(dm.ResponseError{Error: message, Body: body})
+	jsonResponse, jsonError := json.Marshal(dto.ResponseError{Error: message, Body: body})
 	if jsonError != nil {
 		fmt.Println("Unable to encode JSON")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -141,6 +141,7 @@ func DoResponseError(code int, w http.ResponseWriter, message string, body any) 
 // @name						X-Supervisor-Token
 // @description				HomeAssistant Supervisor Token
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
 	data.ConfigFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
@@ -270,17 +271,17 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
 
 	// Samba
-	globalRouter.HandleFunc("/samba", getSambaConfig).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/samba/apply", applySamba).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/samba/status", getSambaProcessStatus).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/samba/apply", api.ApplySamba).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/samba/status", api.GetSambaProcessStatus).Methods(http.MethodGet)
 
 	// Global
 	globalRouter.HandleFunc("/global", api.GetGlobalConfig).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/global", api.UpdateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
 
 	// Configuration
-	globalRouter.HandleFunc("/config", persistConfig).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/config", rollbackConfig).Methods(http.MethodDelete)
+	globalRouter.HandleFunc("/config", api.PersistConfig).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/config", api.RollbackConfig).Methods(http.MethodDelete)
 
 	// WebSocket
 	globalRouter.HandleFunc("/events", WSChannelEventsList).Methods(http.MethodGet)
@@ -330,6 +331,8 @@ func prog(state overseer.State) {
 			ctx = context.WithValue(ctx, "addon_config", ctx.Value("addon_config"))
 			ctx = context.WithValue(ctx, "addon_option", ctx.Value("addon_option"))
 			ctx = context.WithValue(ctx, "data_dirty_tracker", dm.DataDirtyTracker{})
+			ctx = context.WithValue(ctx, "samba_config_file", smbConfigFile)
+			ctx = context.WithValue(ctx, "template_data", templateData)
 
 			return ctx
 		},

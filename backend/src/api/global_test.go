@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dm"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
@@ -113,4 +114,78 @@ func TestUpdateGlobalConfigSameConfigHandler(t *testing.T) {
 
 	assert.Equal(t, rr.Code, http.StatusNoContent)
 	assert.False(t, testContext.Value("data_dirty_tracker").(*dm.DataDirtyTracker).Settings)
+}
+
+func TestPersistConfig(t *testing.T) {
+	// Setup
+	//data.Config = &config.Config{}
+	data_dirty_tracker := testContext.Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+	data_dirty_tracker.Settings = true
+	data_dirty_tracker.Users = true
+	data_dirty_tracker.Shares = true
+	data_dirty_tracker.Volumes = true
+
+	// Create a request to pass to our handler
+	req, err := http.NewRequestWithContext(testContext, "PUT", "/config", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(PersistConfig)
+
+	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+	// directly and pass in our Request and ResponseRecorder.
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code is what we expect.
+	assert.Equal(t, rr.Code, http.StatusOK)
+
+	// Check if DirtySectionState flags are set to false
+	assert.False(t, data.DirtySectionState.Settings)
+	assert.False(t, data.DirtySectionState.Users)
+	assert.False(t, data.DirtySectionState.Shares)
+	assert.False(t, data.DirtySectionState.Volumes)
+
+}
+
+func TestRollbackConfig(t *testing.T) {
+	// Setup
+	//data.Config = &config.Config{}
+	data_dirty_tracker := testContext.Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+	data_dirty_tracker.Settings = true
+	data_dirty_tracker.Users = true
+	data_dirty_tracker.Shares = true
+	data_dirty_tracker.Volumes = true
+
+	addon_config := testContext.Value("addon_config").(*config.Config)
+	var tmpWRG = "WORKGROUP" //addon_config.Workgroup
+	addon_config.Workgroup = "pluto&admin_rb"
+
+	// Create a request to pass to our handler
+	req, err := http.NewRequestWithContext(testContext, "DELETE", "/config", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(RollbackConfig)
+
+	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+	// directly and pass in our Request and ResponseRecorder.
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code is what we expect.
+	assert.Equal(t, rr.Code, http.StatusOK)
+
+	// Check if DirtySectionState flags are set to false
+
+	assert.Equal(t, addon_config.Workgroup, tmpWRG) // rollback to original workgroup
+	assert.False(t, data.DirtySectionState.Settings)
+	//assert.False(t, data.DirtySectionState.Users)
+	//assert.False(t, data.DirtySectionState.Shares)
+	//assert.False(t, data.DirtySectionState.Volumes)
+
 }

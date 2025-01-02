@@ -1,6 +1,6 @@
 import { Fragment, useContext, useEffect, useState } from "react";
 import { apiContext, ModeContext, wsContext as ws } from "../Contexts";
-import { ConfigMounDataFlag, MainEventType, type ConfigMountPointData, type MainBlockInfo, type MainBlockPartition } from "../srat";
+import { DataMounDataFlag, MainEventType, type DbomMountPointData, type MainBlockInfo, type MainBlockPartition } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
@@ -47,7 +47,7 @@ export function Volumes() {
         });
     };
 
-    function onSubmitMountVolume(data?: ConfigMountPointData) {
+    function onSubmitMountVolume(data?: DbomMountPointData) {
         if (!data || !data.name) return
         console.log("Mount", data)
         apiContext.volume.mountCreate(data.name, {}).then((res) => {
@@ -150,9 +150,9 @@ export function Volumes() {
 }
 
 
-function VolumeMountDialog(props: { open: boolean, onClose: (data?: ConfigMountPointData) => void, objectToEdit?: MainBlockPartition }) {
-    const mountpointData: ConfigMountPointData = {}
-    const { control, handleSubmit, watch, formState: { errors } } = useForm<ConfigMountPointData>(
+function VolumeMountDialog(props: { open: boolean, onClose: (data?: DbomMountPointData) => void, objectToEdit?: MainBlockPartition }) {
+    const mountpointData: DbomMountPointData = {}
+    const { control, handleSubmit, watch, formState: { errors } } = useForm<DbomMountPointData>(
         {
             values: {
                 name: props.objectToEdit?.name,
@@ -164,7 +164,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: ConfigMountP
     );
     const filesystems = useSWR<string[]>('/filesystems', () => apiContext.filesystems.filesystemsList().then(res => res.data));
 
-    function handleCloseSubmit(data?: ConfigMountPointData) {
+    function handleCloseSubmit(data?: DbomMountPointData) {
         props.onClose(data)
     }
 
@@ -197,7 +197,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: ConfigMountP
                                         multiple
                                         name="flags"
                                         label="Mount Flags"
-                                        options={Object.values(ConfigMounDataFlag).filter((v) => typeof v === "string") as string[]}
+                                        options={Object.values(DataMounDataFlag).filter((v) => typeof v === "string") as string[]}
                                         control={control}
                                     />
                                 </Grid2>

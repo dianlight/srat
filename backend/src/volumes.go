@@ -220,8 +220,8 @@ func GetVolumesData() (*BlockInfo, error) {
 //	@Tags			volume
 //	@Produce		json
 //	@Success		200	{object}	BlockInfo
-//	@Failure		405	{object}	dm.ResponseError
-//	@Failure		500	{object}	dm.ResponseError
+//	@Failure		405	{object}	dto.ResponseError
+//	@Failure		500	{object}	dto.ResponseError
 //	@Router			/volumes [get]
 func listVolumes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -242,13 +242,13 @@ func listVolumes(w http.ResponseWriter, r *http.Request) {
 //	@Tags			volume
 //	@Accept			json
 //	@Produce		json
-//	@Param			volume_name	path		string					true	"Volume Name to Mount"
+//	@Param			volume_name	path		string				true	"Volume Name to Mount"
 //	@Param			mount_data	body		dbom.MountPointData	true	"Mount data"
 //	@Success		201			{object}	dbom.MountPointData
-//	@Failure		400			{object}	dm.ResponseError
-//	@Failure		405			{object}	dm.ResponseError
-//	@Failure		409			{object}	dm.ResponseError
-//	@Failure		500			{object}	dm.ResponseError
+//	@Failure		400			{object}	dto.ResponseError
+//	@Failure		405			{object}	dto.ResponseError
+//	@Failure		409			{object}	dto.ResponseError
+//	@Failure		500			{object}	dto.ResponseError
 //	@Router			/volume/{volume_name}/mount [post]
 func mountVolume(w http.ResponseWriter, r *http.Request) {
 	volume_name := mux.Vars(r)["volume_name"]
@@ -390,8 +390,8 @@ func notifyVolumeClient(volumes *BlockInfo) {
 //	@Param			force		query	bool	true	"Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted."
 //	@Param			lazy		query	bool	true	"Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted."
 //	@Success		204
-//	@Failure		404	{object}	dm.ResponseError
-//	@Failure		500	{object}	dm.ResponseError
+//	@Failure		404	{object}	dto.ResponseError
+//	@Failure		500	{object}	dto.ResponseError
 //	@Router			/volume/{volume_name}/mount [delete]
 func umountVolume(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

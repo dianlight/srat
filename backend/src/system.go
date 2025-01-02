@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dm"
@@ -128,7 +129,7 @@ func HealthAndUpdateDataRefeshHandlers() {
 			}
 			notifyUpdate()
 		}
-		sambaProcess, err := GetSambaProcess()
+		sambaProcess, err := api.GetSambaProcess()
 		if err == nil && sambaProcess != nil {
 			healthData.Samba = int32(sambaProcess.Pid)
 		} else {
@@ -145,7 +146,7 @@ func HealthAndUpdateDataRefeshHandlers() {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	Health
-//	@Failure		405	{object}	dm.ResponseError
+//	@Failure		405	{object}	dto.ResponseError
 //	@Router			/health [get]
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	// A very simple health check.
@@ -302,7 +303,7 @@ func (w *ProgressWriter) N() int64 {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	SRATReleaseAsset
-//	@Failure		405	{object}	dm.ResponseError
+//	@Failure		405	{object}	dto.ResponseError
 //	@Router			/update [put]
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -379,7 +380,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		204
-//	@Failure		405	{object}	dm.ResponseError
+//	@Failure		405	{object}	dto.ResponseError
 //	@Router			/restart [put]
 func RestartHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
@@ -395,7 +396,7 @@ func RestartHandler(w http.ResponseWriter, r *http.Request) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	net.Info
-//	@Failure		405	{object}	dm.ResponseError
+//	@Failure		405	{object}	dto.ResponseError
 //	@Router			/nics [get]
 func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -472,7 +473,7 @@ func getFileSystems() ([]string, error) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	[]string
-//	@Failure		405	{object}	dm.ResponseError
+//	@Failure		405	{object}	dto.ResponseError
 //	@Router			/filesystems [get]
 func GetFSHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

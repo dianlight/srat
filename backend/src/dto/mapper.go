@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/dianlight/srat/dm"
 )
 
 type Convertible interface {
@@ -54,7 +52,7 @@ func doResponse(code int, w http.ResponseWriter, body any) error {
 // and the error message as plain text.
 func doResponseError(code int, w http.ResponseWriter, message string, body any) error {
 	w.WriteHeader(code)
-	jsonResponse, jsonError := json.Marshal(dm.ResponseError{Error: message, Body: body})
+	jsonResponse, jsonError := json.Marshal(ResponseError{Error: message, Body: body})
 	if jsonError != nil {
 		fmt.Println("Unable to encode JSON")
 		w.WriteHeader(http.StatusInternalServerError)

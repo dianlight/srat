@@ -1,5 +1,5 @@
 // endpoints_test.go
-package main
+package api
 
 import (
 	"fmt"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
-	"github.com/dianlight/srat/dm"
 	"github.com/gorilla/mux"
 )
 
@@ -18,7 +17,7 @@ func TestApplySambaHandler(t *testing.T) {
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
-	req, err := http.NewRequest("POST", "/samba/apply", nil)
+	req, err := http.NewRequestWithContext(testContext, "POST", "/samba/apply", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +26,7 @@ func TestApplySambaHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/samba/apply", applySamba).Methods(http.MethodPost)
+	router.HandleFunc("/samba/apply", ApplySamba).Methods(http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -38,7 +37,7 @@ func TestApplySambaHandler(t *testing.T) {
 }
 
 func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) bool {
-	stream, err := createConfigStream()
+	stream, err := createConfigStream(testContext)
 	if err != nil {
 		t.Errorf("Error in createConfigStream %s", err.Error())
 		return false
@@ -67,7 +66,7 @@ func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) boo
 }
 
 func TestCreateConfigStream(t *testing.T) {
-	stream, err := createConfigStream()
+	stream, err := createConfigStream(testContext)
 	if err != nil {
 		t.Errorf("Error in createConfigStream %s", err.Error())
 	}
@@ -137,14 +136,14 @@ func TestCreateConfigStream(t *testing.T) {
 
 func TestGetSambaProcessStatus(t *testing.T) {
 	// Create a request to pass to our handler
-	req, err := http.NewRequest("GET", "/samba/status", nil)
+	req, err := http.NewRequestWithContext(testContext, "GET", "/samba/status", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(getSambaProcessStatus)
+	handler := http.HandlerFunc(GetSambaProcessStatus)
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.
@@ -154,50 +153,5 @@ func TestGetSambaProcessStatus(t *testing.T) {
 	if status := rr.Code; status != http.StatusOK && status != http.StatusNotFound {
 		t.Errorf("handler returned wrong status code: got %v want %v or %v",
 			status, http.StatusOK, http.StatusNotFound)
-	}
-}
-
-func TestPersistConfig(t *testing.T) {
-	// Setup
-	//data.Config = &config.Config{}
-	data.DirtySectionState = dm.DataDirtyTracker{
-		Settings: true,
-		Users:    true,
-		Shares:   true,
-		Volumes:  true,
-	}
-
-	// Create a request to pass to our handler
-	req, err := http.NewRequest("PUT", "/config", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(persistConfig)
-
-	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
-	handler.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-	// Check if DirtySectionState flags are set to false
-	if data.DirtySectionState.Settings {
-		t.Errorf("DirtySectionState.Settings not set to false")
-	}
-	if data.DirtySectionState.Users {
-		t.Errorf("DirtySectionState.Users not set to false")
-	}
-	if data.DirtySectionState.Shares {
-		t.Errorf("DirtySectionState.Shares not set to false")
-	}
-	if data.DirtySectionState.Volumes {
-		t.Errorf("DirtySectionState.Volumes not set to false")
 	}
 }

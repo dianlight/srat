@@ -52,7 +52,7 @@ var activeContexts = make(map[string]context.CancelFunc)
 //	@Tags			system
 //	@Produce		json
 //	@Success		200
-//	@Failure		405	{object}	dm.ResponseError
+//	@Failure		405	{object}	dto.ResponseError
 //	@Router			/ws [get]
 func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
