@@ -207,9 +207,15 @@ func persistConfig(w http.ResponseWriter, _ *http.Request) {
 	config.SaveConfig(data.Config)
 	data.DirtySectionState.Settings = false
 	data.DirtySectionState.Users = false
+
+	err := PersistSharesState()
+	if err != nil {
+		DoResponseError(http.StatusInternalServerError, w, "Error Persisting Share States", err)
+		return
+	}
 	data.DirtySectionState.Shares = false
 
-	err := PersistVolumesState()
+	err = PersistVolumesState()
 	if err != nil {
 		DoResponseError(http.StatusInternalServerError, w, "Error Persisting Volume States", err)
 		return

@@ -64,6 +64,21 @@ export interface ConfigConfigSectionDirtySate {
   volumes?: boolean;
 }
 
+export interface ConfigExportedShare {
+  createdAt?: string;
+  deletedAt?: GormDeletedAt;
+  disabled?: boolean;
+  fs?: string;
+  id?: number;
+  name?: string;
+  path?: string;
+  ro_users?: ConfigSambaUser[];
+  timemachine?: boolean;
+  updatedAt?: string;
+  usage?: string;
+  users?: ConfigSambaUser[];
+}
+
 export enum ConfigMounDataFlag {
   MS_RDONLY = 1,
   MS_NOSUID = 2,
@@ -97,6 +112,11 @@ export interface ConfigOptionsAcl {
   timemachine?: boolean;
   usage?: string;
   users?: string[];
+}
+
+export interface ConfigSambaUser {
+  password?: string;
+  username?: string;
 }
 
 export interface ConfigShare {
@@ -391,6 +411,12 @@ export interface GithubUser {
   url?: string;
 }
 
+export interface GormDeletedAt {
+  time?: string;
+  /** Valid is true if Time is not NULL */
+  valid?: boolean;
+}
+
 export interface MainBlockInfo {
   /**
    * Partitions contains an array of pointers to `Partition` structs, one for
@@ -466,7 +492,6 @@ export interface MainHealth {
   last_error?: string;
   read_only?: boolean;
   samba_pid?: number;
-  last_time?: number;
 }
 
 export interface MainResponseError {
@@ -1107,7 +1132,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/shares
      */
     sharesList: (params: RequestParams = {}) =>
-      this.request<ConfigShares, MainResponseError>({
+      this.request<ConfigExportedShare[], MainResponseError>({
         path: `/shares`,
         method: "GET",
         format: "json",

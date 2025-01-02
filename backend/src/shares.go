@@ -23,34 +23,16 @@ var (
 //	@Summary		List all configured shares
 //	@Description	List all configured shares
 //	@Tags			share
-//
-// _Accept       json
-//
 //	@Produce		json
-//
-// _Param        id   path      int  true  "Account ID"
-//
-//	@Success		200	{object}	config.Shares
-//
-// _Failure      400  {object}  ResponseError
-//
+//	@Success		200	{object}	[]config.ExportedShare
 //	@Failure		405	{object}	ResponseError
 //	@Failure		500	{object}	ResponseError
 //	@Router			/shares [get]
 func listShares(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	jsonResponse, jsonError := json.Marshal(data.Config.Shares)
-
-	if jsonError != nil {
-		fmt.Println("Unable to encode JSON")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(jsonError.Error()))
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(jsonResponse)
-	}
-
+	DoResponse(http.StatusOK, w, data.Config.Shares)
+	//	   DoResponse(http.StatusOK, w, config.ExportedShare{}.All())
 }
 
 // GetShare godoc
@@ -58,9 +40,6 @@ func listShares(w http.ResponseWriter, r *http.Request) {
 //	@Summary		Get a share
 //	@Description	get share by Name
 //	@Tags			share
-//
-// _Accept       json
-//
 //	@Produce		json
 //	@Param			share_name	path		string	true	"Name"
 //	@Success		200			{object}	config.Share
@@ -68,10 +47,10 @@ func listShares(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500			{object}	ResponseError
 //	@Router			/share/{share_name} [get]
 func getShare(w http.ResponseWriter, r *http.Request) {
-	share := mux.Vars(r)["share_name"]
+	shareName := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	data, ok := data.Config.Shares[share]
+	data, ok := data.Config.Shares[shareName]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
@@ -111,7 +90,7 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&share)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		DoResponseError(http.StatusBadRequest, w, "Invalid JSON", err)
 		return
 	}
 
@@ -129,21 +108,14 @@ func createShare(w http.ResponseWriter, r *http.Request) {
 		data.DirtySectionState.Shares = true
 
 		notifyClient()
-
-		jsonResponse, jsonError := json.Marshal(share)
-
-		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(jsonError.Error()))
-		} else {
-			w.WriteHeader(http.StatusCreated)
-			w.Write(jsonResponse)
-		}
-
+		DoResponse(http.StatusCreated, w, share)
 	}
 }
 
+// notifyClient sends the current shares configuration to all connected clients.
+// It iterates through the sharesQueue, sending the Config.Shares to each client's channel.
+// This function is used to broadcast updates to all clients when the shares configuration changes.
+// The function uses a read lock to ensure thread-safe access to the sharesQueue.
 func notifyClient() {
 	sharesQueueMutex.RLock()
 	for _, v := range sharesQueue {
@@ -180,30 +152,19 @@ func updateShare(w http.ResponseWriter, r *http.Request) {
 
 		err := json.NewDecoder(r.Body).Decode(&share)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			DoResponseError(http.StatusBadRequest, w, "Invalid JSON", err)
 			return
 		}
 
 		err2 := mergo.MapWithOverwrite(&adata, share)
 		if err2 != nil {
-			http.Error(w, err2.Error(), http.StatusInternalServerError)
+			DoResponseError(http.StatusInternalServerError, w, "Internal error", err2)
 			return
 		}
 		data.Config.Shares[share_name] = adata
 		data.DirtySectionState.Shares = true
 		notifyClient()
-
-		jsonResponse, jsonError := json.Marshal(adata)
-
-		if jsonError != nil {
-			fmt.Println("Unable to encode JSON")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(jsonError.Error()))
-		} else {
-			w.WriteHeader(http.StatusOK)
-			w.Write(jsonResponse)
-		}
-
+		DoResponse(http.StatusOK, w, adata)
 	}
 
 }
@@ -213,10 +174,6 @@ func updateShare(w http.ResponseWriter, r *http.Request) {
 //	@Summary		Delere a share
 //	@Description	delere a share
 //	@Tags			share
-//
-// _Accept       json
-// _Produce      json
-//
 //	@Param			share_name	path	string	true	"Name"
 //	@Success		204
 //	@Failure		400	{object}	ResponseError
@@ -243,6 +200,15 @@ func deleteShare(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// SharesWsHandler handles WebSocket connections for share updates.
+// It manages a queue for each client and sends share configuration updates.
+//
+// Parameters:
+//   - ctx: The context for handling cancellation and timeouts.
+//   - request: The WebSocket message envelope containing client information.
+//   - c: A channel for sending WebSocket messages back to the client.
+//
+// The function doesn't return any value, it runs until the context is cancelled.
 func SharesWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
 	sharesQueueMutex.Lock()
 	if sharesQueue[request.Uid] == nil {
@@ -251,11 +217,9 @@ func SharesWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c ch
 	sharesQueue[request.Uid] <- &data.Config.Shares
 	var queue = sharesQueue[request.Uid]
 	sharesQueueMutex.Unlock()
-	//log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(sharesQueue))
 	for {
 		select {
 		case <-ctx.Done():
-			//log.Printf("Handle close: %s %s", request.Event, request.Uid)
 			sharesQueueMutex.Lock()
 			delete(sharesQueue, request.Uid)
 			sharesQueueMutex.Unlock()
@@ -266,7 +230,6 @@ func SharesWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c ch
 				Uid:   request.Uid,
 				Data:  <-queue,
 			}
-			//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
 			c <- smessage
 		}
 	}

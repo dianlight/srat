@@ -25,6 +25,6 @@ func InitDB(dbpath string) {
 	}
 
 	// Migrate the schema
-	adb.AutoMigrate(&MountPointData{})
+	adb.AutoMigrate(&MountPointData{}, &ExportedShare{}, &SambaUser{})
 	db = adb
 }

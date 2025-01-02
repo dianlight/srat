@@ -195,6 +195,7 @@ export function NotificationCenter() {
                 pauseOnHover
                 theme={mode === "system" ? (prefersDarkMode ? "dark" : "light") : mode}
                 transition={Slide}
+                limit={10}
             />
         </>
 

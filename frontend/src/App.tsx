@@ -27,7 +27,7 @@ export function App() {
                 console.log("Dev mode force read_only to false");
                 data.read_only = false;
             }
-            data.last_time = Date.now();
+            //data.last_time = Date.now();
             setStatus(data);
             function timeoutStatus() {
                 setStatus({ alive: false, read_only: true });

@@ -117,6 +117,37 @@ definitions:
       volumes:
         type: boolean
     type: object
+  config.ExportedShare:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      disabled:
+        type: boolean
+      fs:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      path:
+        type: string
+      ro_users:
+        items:
+          $ref: '#/definitions/config.SambaUser'
+        type: array
+      timemachine:
+        type: boolean
+      updatedAt:
+        type: string
+      usage:
+        type: string
+      users:
+        items:
+          $ref: '#/definitions/config.SambaUser'
+        type: array
+    type: object
   config.MounDataFlag:
     enum:
     - 1
@@ -198,6 +229,13 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  config.SambaUser:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
     type: object
   config.Share:
     properties:
@@ -693,6 +731,14 @@ definitions:
       url:
         description: API URLs
         type: string
+    type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
     type: object
   main.BlockInfo:
     properties:
@@ -1557,7 +1603,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/config.Shares'
+            items:
+              $ref: '#/definitions/config.ExportedShare'
+            type: array
         "405":
           description: Method Not Allowed
           schema:
