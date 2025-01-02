@@ -51,8 +51,8 @@ var activeContexts = make(map[string]context.CancelFunc)
 //	@Description	Open the WSChannel
 //	@Tags			system
 //	@Produce		json
-//	@Success		200	{object}	config.ConfigSectionDirtySate
-//	@Failure		405	{object}	ResponseError
+//	@Success		200
+//	@Failure		405	{object}	dm.ResponseError
 //	@Router			/ws [get]
 func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
@@ -93,7 +93,7 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 		// Dispatcher
 
 		if message.Action == ActionSubscribe {
-			ctx, activeContexts[message.Uid] = context.WithCancel(context.Background())
+			ctx, activeContexts[message.Uid] = context.WithCancel(rq.Context())
 			//log.Printf("Subscribed: %s %v\n", message.Uid, activeContexts)
 			switch message.Event {
 			case EventHeartbeat:

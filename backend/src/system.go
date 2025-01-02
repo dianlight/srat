@@ -145,7 +145,7 @@ func HealthAndUpdateDataRefeshHandlers() {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	Health
-//	@Failure		405	{object}	ResponseError
+//	@Failure		405	{object}	dm.ResponseError
 //	@Router			/health [get]
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	// A very simple health check.
@@ -302,7 +302,7 @@ func (w *ProgressWriter) N() int64 {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	SRATReleaseAsset
-//	@Failure		405	{object}	ResponseError
+//	@Failure		405	{object}	dm.ResponseError
 //	@Router			/update [put]
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -379,7 +379,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		204
-//	@Failure		405	{object}	ResponseError
+//	@Failure		405	{object}	dm.ResponseError
 //	@Router			/restart [put]
 func RestartHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
@@ -395,7 +395,7 @@ func RestartHandler(w http.ResponseWriter, r *http.Request) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	net.Info
-//	@Failure		405	{object}	ResponseError
+//	@Failure		405	{object}	dm.ResponseError
 //	@Router			/nics [get]
 func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -472,7 +472,7 @@ func getFileSystems() ([]string, error) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	[]string
-//	@Failure		405	{object}	ResponseError
+//	@Failure		405	{object}	dm.ResponseError
 //	@Router			/filesystems [get]
 func GetFSHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

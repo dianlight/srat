@@ -21,8 +21,8 @@ import (
 //	@Tags			user
 //	@Produce		json
 //	@Success		200	{object}	[]config.User
-//	@Failure		405	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
+//	@Failure		405	{object}	dm.ResponseError
+//	@Failure		500	{object}	dm.ResponseError
 //	@Router			/users [get]
 func listUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -47,8 +47,8 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Produce		json
 //	@Success		200	{object}	config.User
-//	@Failure		405	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
+//	@Failure		405	{object}	dm.ResponseError
+//	@Failure		500	{object}	dm.ResponseError
 //	@Router			/admin/user [get]
 func getAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -79,8 +79,8 @@ func getAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			username	path		string	true	"Name"
 //	@Success		200			{object}	config.User
-//	@Failure		405			{object}	ResponseError
-//	@Failure		500			{object}	ResponseError
+//	@Failure		405			{object}	dm.ResponseError
+//	@Failure		500			{object}	dm.ResponseError
 //	@Router			/user/{username} [get]
 func getUser(w http.ResponseWriter, r *http.Request) {
 	user := mux.Vars(r)["username"]
@@ -114,10 +114,10 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			user	body		config.User	true	"Create model"
 //	@Success		201		{object}	config.User
-//	@Failure		400		{object}	ResponseError
-//	@Failure		405		{object}	ResponseError
-//	@Failure		409		{object}	ResponseError
-//	@Failure		500		{object}	ResponseError
+//	@Failure		400		{object}	dm.ResponseError
+//	@Failure		405		{object}	dm.ResponseError
+//	@Failure		409		{object}	dm.ResponseError
+//	@Failure		500		{object}	dm.ResponseError
 //	@Router			/user [post]
 func createUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -175,10 +175,10 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 //	@Param			username	path		string		true	"Name"
 //	@Param			user		body		config.User	true	"Update model"
 //	@Success		200			{object}	config.User
-//	@Failure		400			{object}	ResponseError
-//	@Failure		405			{object}	ResponseError
-//	@Failure		404			{object}	ResponseError
-//	@Failure		500			{object}	ResponseError
+//	@Failure		400			{object}	dm.ResponseError
+//	@Failure		405			{object}	dm.ResponseError
+//	@Failure		404			{object}	dm.ResponseError
+//	@Failure		500			{object}	dm.ResponseError
 //	@Router			/user/{username} [put]
 //	@Router			/user/{username} [patch]
 func updateUser(w http.ResponseWriter, r *http.Request) {
@@ -224,10 +224,10 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			user	body		config.User	true	"Update model"
 //	@Success		200		{object}	config.User
-//	@Failure		400		{object}	ResponseError
-//	@Failure		405		{object}	ResponseError
-//	@Failure		404		{object}	ResponseError
-//	@Failure		500		{object}	ResponseError
+//	@Failure		400		{object}	dm.ResponseError
+//	@Failure		405		{object}	dm.ResponseError
+//	@Failure		404		{object}	dm.ResponseError
+//	@Failure		500		{object}	dm.ResponseError
 //	@Router			/admin/user [put]
 //	@Router			/admin/user [patch]
 func updateAdminUser(w http.ResponseWriter, r *http.Request) {
@@ -269,10 +269,10 @@ func updateAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Param			username	path	string	true	"Name"
 //	@Success		204
-//	@Failure		400	{object}	ResponseError
-//	@Failure		405	{object}	ResponseError
-//	@Failure		404	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
+//	@Failure		400	{object}	dm.ResponseError
+//	@Failure		405	{object}	dm.ResponseError
+//	@Failure		404	{object}	dm.ResponseError
+//	@Failure		500	{object}	dm.ResponseError
 //	@Router			/user/{username} [delete]
 func deleteUser(w http.ResponseWriter, r *http.Request) {
 	user := mux.Vars(r)["username"]

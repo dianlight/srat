@@ -49,8 +49,8 @@ func GetSambaProcess() (*process.Process, error) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		204
-//	@Failure		400	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
+//	@Failure		400	{object}	dm.ResponseError
+//	@Failure		500	{object}	dm.ResponseError
 //	@Router			/samba/apply [put]
 func applySamba(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "plain/text")
@@ -102,8 +102,8 @@ func applySamba(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		plain/text
 //	@Success		200	{object}	string
-//	@Failure		400	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
+//	@Failure		400	{object}	dm.ResponseError
+//	@Failure		500	{object}	dm.ResponseError
 //	@Router			/samba [get]
 func getSambaConfig(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "plain/text")
@@ -139,8 +139,8 @@ type SambaProcessStatus struct {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	SambaProcessStatus
-//	@Failure		400	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
+//	@Failure		400	{object}	dm.ResponseError
+//	@Failure		500	{object}	dm.ResponseError
 //	@Router			/samba/status [get]
 func getSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -191,8 +191,8 @@ func getSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	config.Config
-//	@Failure		400	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
+//	@Failure		400	{object}	dm.ResponseError
+//	@Failure		500	{object}	dm.ResponseError
 //	@Router			/config [put]
 //	@Router			/config [patch]
 func persistConfig(w http.ResponseWriter, _ *http.Request) {
@@ -234,8 +234,8 @@ func persistConfig(w http.ResponseWriter, _ *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	config.Config
-//	@Failure		400	{object}	ResponseError
-//	@Failure		500	{object}	ResponseError
+//	@Failure		400	{object}	dm.ResponseError
+//	@Failure		500	{object}	dm.ResponseError
 //	@Router			/config [delete]
 func rollbackConfig(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
