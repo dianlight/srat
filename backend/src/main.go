@@ -336,7 +336,7 @@ func prog(state overseer.State) {
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			ctx = context.WithValue(ctx, "addon_config", aconfig)
 			ctx = context.WithValue(ctx, "addon_option", options)
-			ctx = context.WithValue(ctx, "data_dirty_tracker", dto.DataDirtyTracker{})
+			ctx = context.WithValue(ctx, "data_dirty_tracker", &dto.DataDirtyTracker{})
 			ctx = context.WithValue(ctx, "samba_config_file", smbConfigFile)
 			ctx = context.WithValue(ctx, "template_data", templateData)
 
