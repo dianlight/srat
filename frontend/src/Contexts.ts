@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import { Api, type ConfigConfigSectionDirtySate, type MainHealth } from './srat';
+import { Api, type DtoDataDirtyTracker, type DtoHealthPing } from './srat';
 import { WSRouter } from './WSRouter';
 
 let APIURL = process.env.APIURL;
@@ -22,7 +22,7 @@ export const wsContext = new WSRouter(wsUrl.href);
 console.log("API URL", APIURL)
 console.log("WS URL", wsUrl.href)
 
-export const ModeContext = createContext<MainHealth>({});
+export const ModeContext = createContext<DtoHealthPing>({});
 
 // Dirty data  state context
 export type DirtyData = {
@@ -32,5 +32,5 @@ export type DirtyData = {
     configs: boolean,
     //[key: string]: boolean
 }
-export const DirtyDataContext = createContext<ConfigConfigSectionDirtySate>({});
+export const DirtyDataContext = createContext<DtoDataDirtyTracker>({});
 

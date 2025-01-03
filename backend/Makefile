@@ -25,6 +25,8 @@ format:
 	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
 	cd $(SRC_DIRS);swag fmt
 	cd $(SRC_DIRS);go mod tidy	
+	cd $(SRC_DIRS);testifylint --fix ./...
+	cd $(SRC_DIRS);go fmt
 
 .PHONY: clean
 clean:
@@ -33,10 +35,7 @@ clean:
 
 .PHONY: test
 test: $(ALL_SRCS) static
-	#echo $(ALL_SRCS)
-	cd $(SRC_DIRS)/lsblk;go test -cover
-	cd $(SRC_DIRS)/config;go test -cover 
-	cd $(SRC_DIRS);go test -cover 
+	cd $(SRC_DIRS);gotest -coverpkg=./... ./...
 
  
 docs: $(SRCS)

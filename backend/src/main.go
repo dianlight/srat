@@ -1,6 +1,6 @@
 package main
 
-//go:generate swag init --pd
+//go:generate swag init --pd --parseInternal
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,9 +23,12 @@ import (
 	"github.com/jpillora/overseer"
 	"github.com/kr/pretty"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dbom"
 	_ "github.com/dianlight/srat/docs"
+	"github.com/dianlight/srat/dto"
 	"github.com/jpillora/overseer/fetcher"
 	"github.com/rs/cors"
 )
@@ -37,7 +41,6 @@ var templateData []byte
 var optionsFile *string
 var http_port *int
 var templateFile *string
-var sambaConfigFile *string
 var wait time.Duration
 var hamode *bool
 
@@ -78,15 +81,42 @@ func HAMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-type ResponseError struct {
-	Code  int    `json:"code"`
-	Error string `json:"error"`
-	Body  any    `json:"body"`
+// DoResponse writes a JSON response to the provided http.ResponseWriter.
+// It sets the HTTP status code and marshals the given body into JSON format.
+//
+// Parameters:
+//   - code: The HTTP status code to be set in the response.
+//   - w: The http.ResponseWriter to write the response to.
+//   - body: The data to be marshaled into JSON and written as the response body.
+//
+// If there's an error marshaling the body into JSON, it calls DoResponseError
+// with an internal server error status.
+func DoResponse(code int, w http.ResponseWriter, body any) {
+	w.WriteHeader(code)
+	jsonResponse, jsonError := json.Marshal(body)
+	if jsonError != nil {
+		DoResponseError(http.StatusInternalServerError, w, "Unable to encode JSON", jsonError)
+	} else {
+		w.Write(jsonResponse)
+	}
+	return
 }
 
+// DoResponseError writes a JSON error response to the provided http.ResponseWriter.
+// It sets the HTTP status code and marshals an error object into JSON format.
+//
+// Parameters:
+//   - code: The HTTP status code to be set in the response.
+//   - w: The http.ResponseWriter to write the response to.
+//   - message: A string describing the error message.
+//   - body: Additional data to be included in the error response.
+//
+// The function doesn't return any value. It writes the error response directly to the provided http.ResponseWriter.
+// If there's an error marshaling the response into JSON, it writes an internal server error status
+// and the error message as plain text.
 func DoResponseError(code int, w http.ResponseWriter, message string, body any) {
 	w.WriteHeader(code)
-	jsonResponse, jsonError := json.Marshal(ResponseError{Error: message, Body: pretty.Sprintf("%v", body)})
+	jsonResponse, jsonError := json.Marshal(dto.ResponseError{Error: message, Body: body})
 	if jsonError != nil {
 		fmt.Println("Unable to encode JSON")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -110,6 +140,7 @@ func DoResponseError(code int, w http.ResponseWriter, message string, body any) 
 // @name						X-Supervisor-Token
 // @description				HomeAssistant Supervisor Token
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
 	data.ConfigFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
@@ -117,6 +148,7 @@ func main() {
 	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
 	data.ROMode = flag.Bool("ro", false, "Read only mode")
 	hamode = flag.Bool("addon", false, "Run in addon mode")
+	dbfile := flag.String("db", ":memory:?cache=shared", "Database file")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -139,7 +171,7 @@ func main() {
 	//log.Printf("Update file: %s\n", data.UpdateFilePath)
 
 	if *show_volumes {
-		volumes, err := GetVolumesData()
+		volumes, err := api.GetVolumesData()
 		if err != nil {
 			log.Fatalf("Error fetching volumes: %v", err)
 			os.Exit(1)
@@ -147,6 +179,8 @@ func main() {
 		pretty.Printf("\n%v\n", volumes)
 		os.Exit(0)
 	}
+
+	dbom.InitDB(*dbfile)
 
 	overseer.Run(overseer.Config{
 		Program: prog,
@@ -197,10 +231,17 @@ func prog(state overseer.State) {
 	if cerr != nil {
 		log.Fatalf("Cant load config file %s - %s", *data.ConfigFile, cerr)
 	}
-	data.Config = aconfig
+	//data.Config = aconfig
 
 	// Get options
 	options = config.ReadOptionsFile(*optionsFile)
+
+	var apiContext = context.Background()
+	apiContext = context.WithValue(apiContext, "addon_config", aconfig)
+	apiContext = context.WithValue(apiContext, "addon_option", options)
+	apiContext = context.WithValue(apiContext, "data_dirty_tracker", dto.DataDirtyTracker{})
+	apiContext = context.WithValue(apiContext, "samba_config_file", smbConfigFile)
+	apiContext = context.WithValue(apiContext, "template_data", templateData)
 
 	globalRouter := mux.NewRouter()
 	if hamode != nil && *hamode {
@@ -208,48 +249,49 @@ func prog(state overseer.State) {
 	}
 
 	// System
-	globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/update", UpdateHandler).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/restart", RestartHandler).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/nics", GetNICsHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/health", api.HealthCheckHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/update", api.UpdateHandler).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/restart", api.RestartHandler).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/filesystems", api.GetFSHandler).Methods(http.MethodGet)
 
 	// Shares
-	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/share", createShare).Methods(http.MethodPost)
-	globalRouter.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/share/{share_name}", deleteShare).Methods(http.MethodDelete)
+	globalRouter.HandleFunc("/shares", api.ListShares).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/share/{share_name}", api.GetShare).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/share", api.CreateShare).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/share/{share_name}", api.UpdateShare).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/share/{share_name}", api.DeleteShare).Methods(http.MethodDelete)
 
 	// Volumes
-	globalRouter.HandleFunc("/volumes", listVolumes).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/volume/{volume_name}/mount", mountVolume).Methods(http.MethodPost)
-	globalRouter.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods(http.MethodDelete)
+	globalRouter.HandleFunc("/volumes", api.ListVolumes).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/volume/{volume_name}/mount", api.MountVolume).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/volume/{volume_name}/mount", api.UmountVolume).Methods(http.MethodDelete)
 
 	// Users
-	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/admin/user", updateAdminUser).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/users", listUsers).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/user/{username}", getUser).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/user", createUser).Methods(http.MethodPost)
-	globalRouter.HandleFunc("/user/{username}", updateUser).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
+	globalRouter.HandleFunc("/admin/user", api.GetAdminUser).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/admin/user", api.UpdateAdminUser).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/users", api.ListUsers).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/user/{username}", api.GetUser).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/user", api.CreateUser).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/user/{username}", api.UpdateUser).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/user/{username}", api.DeleteUser).Methods(http.MethodDelete)
 
 	// Samba
-	globalRouter.HandleFunc("/samba", getSambaConfig).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/samba/apply", applySamba).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/samba/status", getSambaProcessStatus).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/samba/apply", api.ApplySamba).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/samba/status", api.GetSambaProcessStatus).Methods(http.MethodGet)
 
 	// Global
-	globalRouter.HandleFunc("/global", getGlobalConfig).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/global", updateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/global", api.GetGlobalConfig).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/global", api.UpdateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
 
 	// Configuration
-	globalRouter.HandleFunc("/config", persistConfig).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/config", rollbackConfig).Methods(http.MethodDelete)
+	globalRouter.HandleFunc("/config", api.PersistConfig).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/config", api.RollbackConfig).Methods(http.MethodDelete)
 
 	// WebSocket
-	globalRouter.HandleFunc("/events", WSChannelEventsList).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/ws", WSChannelHandler)
+	globalRouter.HandleFunc("/events", api.WSChannelEventsList).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/ws", api.WSChannelHandler)
 
 	// Static files
 	globalRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -291,13 +333,23 @@ func prog(state overseer.State) {
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
 		Handler:      loggedRouter, // Pass our instance of gorilla/mux in.
+		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
+			ctx = context.WithValue(ctx, "addon_config", aconfig)
+			ctx = context.WithValue(ctx, "addon_option", options)
+			ctx = context.WithValue(ctx, "data_dirty_tracker", &dto.DataDirtyTracker{})
+			ctx = context.WithValue(ctx, "samba_config_file", smbConfigFile)
+			ctx = context.WithValue(ctx, "template_data", templateData)
+
+			return ctx
+		},
 	}
 
 	// Run the backgrounde services
-	go HealthAndUpdateDataRefeshHandlers()
+	go api.HealthAndUpdateDataRefeshHandlers(apiContext)
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
 		log.Printf("Starting Server... \n GoTo: http://localhost:%d/", *http_port)
+
 		if err := srv.Serve(state.Listener); err != nil {
 			log.Fatal(err)
 		}

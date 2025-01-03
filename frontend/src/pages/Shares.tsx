@@ -1,6 +1,6 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { apiContext as api, ModeContext, wsContext as ws } from "../Contexts";
-import { MainEventType, type Api, type ConfigShare, type ConfigShares, type ConfigUser } from "../srat";
+import { DtoEventType, type Api, type DtoSharedResource, type DtoSharedResources, type DtoUser } from "../srat";
 import { set, useForm } from "react-hook-form";
 import useSWR from "swr";
 import { InView } from "react-intersection-observer";
@@ -30,15 +30,15 @@ import { Box, Container, Fab, Paper, Stack } from "@mui/material";
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import AddIcon from '@mui/icons-material/Add';
 
-interface ShareEditProps extends ConfigShare {
+interface ShareEditProps extends DtoSharedResource {
     org_name: string,
 }
 
 
 export function Shares() {
     const mode = useContext(ModeContext);
-    const [status, setStatus] = useState<ConfigShares>({});
-    const [selected, setSelected] = useState<[string, ConfigShare] | null>(null);
+    const [status, setStatus] = useState<DtoSharedResources>({});
+    const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
     const [errorInfo, setErrorInfo] = useState<string>('')
@@ -47,7 +47,7 @@ export function Shares() {
 
 
     useEffect(() => {
-        const chr = ws.subscribe<ConfigShares>(MainEventType.EventShare, (data) => {
+        const chr = ws.subscribe<DtoSharedResources>(DtoEventType.EventShare, (data) => {
             console.log("Got shares", data)
             setStatus(data);
         })
@@ -157,8 +157,8 @@ export function Shares() {
 }
 
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
-    const admin = useSWR<ConfigUser>('/admin/user', () => api.admin.userList().then(res => res.data));
-    const users = useSWR<ConfigUser[]>('/users', () => api.users.usersList().then(res => res.data));
+    const admin = useSWR<DtoUser>('/admin/user', () => api.admin.userList().then(res => res.data));
+    const users = useSWR<DtoUser[]>('/users', () => api.users.usersList().then(res => res.data));
     const [editName, setEditName] = useState(false);
     const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditProps>(
         {

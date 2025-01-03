@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { MainEventType } from './srat';
+import { toast } from 'react-toastify';
 
 /** Message structure for WebSocket communication */
 export interface WSMessage<T> {
@@ -34,19 +35,22 @@ export class WSRouter {
     errorSubscribers: Map<string, (data: Event) => void> = new Map()
     /** Last error message */
     lastError: string = ''
-
+    /** Pid for the riconnect Tiemout */
+    timeoutpids: ReturnType<typeof setTimeout>[] = []
     /**
      * Create a new WebSocketRouter instance
      * @param url WebSocket URL
      */
     constructor(url: string) {
-
         const startWebsocket = () => {
+            this.timeoutpids = this.timeoutpids.filter((pid) => { clearTimeout(pid); return false });
             try {
                 console.log("WS connecting", url)
                 this.WebSocket = new WebSocket(url)
                 this.WebSocket.addEventListener('open', () => {
                     console.log("WS opened", this.WebSocket)
+                    toast.dismiss(0xFFFFFFFF)
+                    toast.dismiss(0xFFFFFFFE)
                     for (const subscriber of this.subcribers.values()) {
                         this.send(JSON.stringify({
                             event: subscriber.event,
@@ -61,13 +65,17 @@ export class WSRouter {
 
                 this.WebSocket.onclose = () => {
                     console.log("WS closed")
-                    setTimeout(startWebsocket, 1000)
+                    toast.warn(`Server Connection closed!`, { toastId: 0xFFFFFFFF });
+                    this.timeoutpids = this.timeoutpids.filter((pid) => { clearTimeout(pid); return false });
+                    this.timeoutpids.push(setTimeout(startWebsocket, 1000))
                 }
 
                 this.WebSocket.addEventListener('error', (event) => {
                     console.error("WS error", event)
+                    toast.error(`Server Connection error! Retry in 5s`, { toastId: 0xFFFFFFFE, data: { error: event } });
                     this.lastError = JSON.stringify(event)
-                    setTimeout(startWebsocket, 5000)
+                    this.timeoutpids = this.timeoutpids.filter((pid) => { clearTimeout(pid); return false });
+                    this.timeoutpids.push(setTimeout(startWebsocket, 5000))
                 })
 
                 this.WebSocket.onmessage = (event) => {

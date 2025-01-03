@@ -15,7 +15,7 @@ export function SmbConf() {
 
     function updateSmbConf() {
         api.samba.sambaList().then((res) => {
-            setSmbConf(res.data)
+            setSmbConf(res.data.data || "No data available")
         }).catch(err => {
             console.error(err);
         })

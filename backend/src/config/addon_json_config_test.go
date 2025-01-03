@@ -8,8 +8,6 @@ import (
 	"github.com/kr/pretty"
 )
 
-func TestReadConfig(t *testing.T) {
-}
 func TestReadConfigConsistency(t *testing.T) {
 	// Create a temporary file with some sample config data
 	tempFile, err := os.CreateTemp("", "config*.json")
@@ -62,7 +60,7 @@ func TestConfigToMapWithUnicode(t *testing.T) {
 	}
 
 	// Call configToMap
-	result := ConfigToMap(config)
+	result := config.ConfigToMap()
 
 	// Check if the result is not nil
 	if result == nil {

@@ -3,7 +3,7 @@ import github from "../img/github.svg"
 import pkg from '../../package.json'
 import { useContext, useEffect, useState } from "react"
 import { apiContext as api, DirtyDataContext, ModeContext, wsContext as ws } from "../Contexts"
-import { MainEventType, type MainHealth, type MainSRATReleaseAsset } from "../srat"
+import { DtoEventType, type DtoHealthPing, type DtoReleaseAsset } from "../srat"
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -31,6 +31,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import { useConfirm } from "material-ui-confirm"
 import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
+import { NotificationCenter } from "./NotificationCenter"
 
 function a11yProps(index: number) {
     return {
@@ -93,9 +94,9 @@ function TabPanel(props: TabPanelProps) {
     );
 }
 
-export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null>, healthData: MainHealth }) {
+export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null>, healthData: DtoHealthPing }) {
     const healt = useContext(ModeContext);
-    const [updateAssetStatus, setUpdateAssetStatus] = useState<MainSRATReleaseAsset>({});
+    const [updateAssetStatus, setUpdateAssetStatus] = useState<DtoReleaseAsset>({});
     const { mode, setMode } = useColorScheme();
     const [update, setUpdate] = useState<string | undefined>()
     const [value, setValue] = useState(() => {
@@ -155,7 +156,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     }
 
     useEffect(() => {
-        const upd = ws.subscribe<MainSRATReleaseAsset>(MainEventType.EventUpdate, (data) => {
+        const upd = ws.subscribe<DtoReleaseAsset>(DtoEventType.EventUpdate, (data) => {
             // console.log("Got update", data)
             setUpdateAssetStatus(data);
         })
@@ -245,6 +246,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                 <img src={github} style={{ height: "20px" }} />
                             </Tooltip>
                         </IconButton>
+                        <NotificationCenter />
                     </Box>
                 </Toolbar>
             </Container>

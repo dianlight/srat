@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 
+	"github.com/dianlight/srat/dm"
 	"github.com/jinzhu/copier"
 )
 
@@ -23,32 +24,17 @@ type Share struct {
 
 type Shares map[string]Share
 
-type UpdateChannel string
-
-const (
-	Stable     UpdateChannel = "stable"
-	Prerelease UpdateChannel = "prerelease"
-	None       UpdateChannel = "none"
-)
-
 const CURRENT_CONFIG_VERSION = 3
 
 type Config struct {
 	CurrentFile       string
 	ConfigSpecVersion int8 `json:"version,omitempty,default=0"`
 	Options
-	Shares          Shares        `json:"shares"`
-	DockerInterface string        `json:"docker_interface"`
-	DockerNet       string        `json:"docker_net"`
-	Users           []User        `json:"users"`
-	UpdateChannel   UpdateChannel `json:"update_channel"`
-}
-
-type ConfigSectionDirtySate struct {
-	Shares   bool `json:"shares"`
-	Users    bool `json:"users"`
-	Volumes  bool `json:"volumes"`
-	Settings bool `json:"settings"`
+	Shares          Shares           `json:"shares"`
+	DockerInterface string           `json:"docker_interface"`
+	DockerNet       string           `json:"docker_net"`
+	Users           []User           `json:"users"`
+	UpdateChannel   dm.UpdateChannel `json:"update_channel"`
 }
 
 // readConfigFile reads and parses a configuration file.
@@ -111,11 +97,13 @@ func readConfigBuffer(buffer []byte) (*Config, error) {
 // Returns:
 //   - *map[string]interface{}: A pointer to the resulting map.
 //     If the conversion process fails at any step, the function returns nil.
-func ConfigToMap(in *Config) *map[string]interface{} {
+func (in *Config) ConfigToMap() *map[string]interface{} {
 	var nconfig map[string]interface{}
 
+	//log.Println(pretty.Sprint("New Config:", in))
+
 	// Parse json
-	buffer, err := json.Marshal(in)
+	buffer, err := json.Marshal(&in)
 	if err != nil {
 		log.Fatal(err)
 		return nil
@@ -125,6 +113,8 @@ func ConfigToMap(in *Config) *map[string]interface{} {
 		log.Fatal(err_2)
 		return nil
 	}
+
+	//log.Println(pretty.Sprint("New Config2:", nconfig))
 
 	return &nconfig
 }
@@ -148,7 +138,7 @@ func MigrateConfig(in *Config) *Config {
 	if in.ConfigSpecVersion == 0 {
 		log.Printf("Migrating config from version 0 to version 1")
 		in.ConfigSpecVersion = 1
-		in.UpdateChannel = Stable
+		in.UpdateChannel = dm.Stable
 		if in.Shares == nil {
 			in.Shares = make(Shares)
 		}

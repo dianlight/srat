@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -6,40 +6,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/websocket"
 )
-
-type EventType string
-
-const (
-	EventUpdate    EventType = "update"
-	EventHeartbeat EventType = "heartbeat"
-	EventShare     EventType = "share"
-	EventVolumes   EventType = "volumes"
-	EventDirty     EventType = "dirty"
-)
-
-var EventTypes = []string{
-	string(EventUpdate),
-	string(EventHeartbeat),
-	string(EventShare),
-	string(EventVolumes),
-}
-
-type WebSocketMessageEnvelopeAction string
-
-const (
-	ActionSubscribe   WebSocketMessageEnvelopeAction = "subscribe"
-	ActionUnsubscribe WebSocketMessageEnvelopeAction = "unsubscribe"
-	ActionError       WebSocketMessageEnvelopeAction = "error"
-)
-
-type WebSocketMessageEnvelope struct {
-	Event  EventType                      `json:"event"`
-	Uid    string                         `json:"uid"`
-	Data   any                            `json:"data"`
-	Action WebSocketMessageEnvelopeAction `json:"action,omitempty"`
-}
 
 var upgrader = websocket.Upgrader{} // use default options
 
@@ -51,8 +20,8 @@ var activeContexts = make(map[string]context.CancelFunc)
 //	@Description	Open the WSChannel
 //	@Tags			system
 //	@Produce		json
-//	@Success		200	{object}	config.ConfigSectionDirtySate
-//	@Failure		405	{object}	ResponseError
+//	@Success		200 {object}	dto.DataDirtyTracker
+//	@Failure		405	{object}	dto.ResponseError
 //	@Router			/ws [get]
 func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
@@ -62,7 +31,7 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 		return
 	}
 	defer c.Close()
-	outchan := make(chan *WebSocketMessageEnvelope, 10)
+	outchan := make(chan *dto.WebSocketMessageEnvelope, 10)
 
 	// Output channel for sending messages to the client
 	go func() {
@@ -83,7 +52,7 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 
 	// Input channel for receiving messages from the client
 	for {
-		var message WebSocketMessageEnvelope
+		var message dto.WebSocketMessageEnvelope
 		err := c.ReadJSON(&message)
 		if err != nil {
 			log.Println("read:", err)
@@ -92,24 +61,25 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 		log.Printf("ws: %s %s", message.Event, message)
 		// Dispatcher
 
-		if message.Action == ActionSubscribe {
-			ctx, activeContexts[message.Uid] = context.WithCancel(context.Background())
+		if message.Action == dto.ActionSubscribe {
+			var ctx context.Context
+			ctx, activeContexts[message.Uid] = context.WithCancel(rq.Context())
 			//log.Printf("Subscribed: %s %v\n", message.Uid, activeContexts)
 			switch message.Event {
-			case EventHeartbeat:
+			case dto.EventHeartbeat:
 				go HealthCheckWsHandler(ctx, message, outchan)
-			case EventShare:
+			case dto.EventShare:
 				go SharesWsHandler(ctx, message, outchan)
-			case EventVolumes:
+			case dto.EventVolumes:
 				go VolumesWsHandler(ctx, message, outchan)
-			case EventUpdate:
+			case dto.EventUpdate:
 				go UpdateWsHandler(ctx, message, outchan)
-			case EventDirty:
+			case dto.EventDirty:
 				go DirtyWsHandler(ctx, message, outchan)
 			default:
 				log.Printf("Unknown event: %s", message.Event)
 			}
-		} else if message.Action == ActionUnsubscribe {
+		} else if message.Action == dto.ActionUnsubscribe {
 			activeContexts[message.Uid]()
 			delete(activeContexts, message.Uid)
 		} else {
@@ -124,15 +94,14 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 //	@Description	Return a list of available WSChannel events
 //	@Tags			system
 //	@Produce		json
-//	@Success		200	{object}	[]EventType
+//	@Success		200	{object}	[]dto.EventType
 //	@Failure		500	{object}	string
 //	@Router			/events [get]
 func WSChannelEventsList(w http.ResponseWriter, rq *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	jsonResponse, jsonError := json.Marshal(EventTypes)
+	jsonResponse, jsonError := json.Marshal(dto.EventTypes)
 	if jsonError != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(jsonError.Error()))
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error encoding JSON", jsonError)
 	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Write(jsonResponse)
