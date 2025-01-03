@@ -113,7 +113,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 
 		// FIXME: Check the new username with admin username
 		var cuser config.User
-		user.To(cuser)
+		user.To(&cuser)
 
 		addon_config.OtherUsers = append(addon_config.OtherUsers, cuser)
 		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)

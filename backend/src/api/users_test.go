@@ -12,15 +12,14 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestListUsersHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/users", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -31,30 +30,21 @@ func TestListUsersHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, rr.Code, http.StatusOK)
 
 	// Check the response body is what we expect.
 	addon_config := testContext.Value("addon_config").(*config.Config)
 	expected, jsonError := json.Marshal(addon_config.OtherUsers)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
-	if rr.Body.String() != string(expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), string(expected))
-	}
+	assert.NotEmpty(t, expected)
+	assert.NoError(t, jsonError)
+	assert.Equal(t, rr.Body.String(), string(expected))
 }
 
 func TestGetUserHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/user/backupuser", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -64,45 +54,32 @@ func TestGetUserHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, rr.Code, http.StatusOK)
 
 	// Check the response body is what we expect.
 	addon_config := testContext.Value("addon_config").(*config.Config)
 	index := slices.IndexFunc(addon_config.OtherUsers, func(u config.User) bool { return u.Username == "backupuser" })
-	if index == -1 {
-		t.Error("User not found")
-	} else {
-		expected, jsonError := json.Marshal(addon_config.OtherUsers[index])
-		if jsonError != nil {
-			t.Errorf("Unable to encode JSON %s", jsonError.Error())
-		}
-		if rr.Body.String() != string(expected) {
-			t.Errorf("handler returned unexpected body: got %v want %v",
-				rr.Body.String(), string(expected))
-		}
-	}
+	assert.NotEqual(t, index, -1)
+	expected, jsonError := json.Marshal(addon_config.OtherUsers[index])
+	assert.NoError(t, jsonError)
+	assert.NotEmpty(t, expected)
+	assert.Equal(t, rr.Body.String(), string(expected))
 }
 
 func TestCreateUserHandler(t *testing.T) {
 
-	user := config.User{
+	user := dto.User{
 		Username: "PIPPO",
 		Password: "PLUTO",
 	}
 
 	jsonBody, jsonError := json.Marshal(user)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
+	assert.NoError(t, jsonError)
+
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PUT", "/user/PIPPO", strings.NewReader(string(jsonBody)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -112,20 +89,17 @@ func TestCreateUserHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusCreated {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, rr.Code, http.StatusCreated)
 
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(user)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
-	if rr.Body.String() != string(expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), string(expected))
-	}
+	assert.NoError(t, jsonError)
+	assert.Equal(t, rr.Body.String(), string(expected))
+
+	addon_config := testContext.Value("addon_config").(*config.Config)
+	index := slices.IndexFunc(addon_config.OtherUsers, func(u config.User) bool { return u.Username == "PIPPO" })
+	assert.NotEqual(t, index, -1)
+	assert.Equal(t, addon_config.OtherUsers[index].Password, user.Password)
 }
 
 func TestCreateUserDuplicateHandler(t *testing.T) {
@@ -177,15 +151,12 @@ func TestUpdateUserHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(user)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
+	assert.NoError(t, jsonError)
+
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PATCH", "/user/PIPPO", strings.NewReader(string(jsonBody)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -195,20 +166,12 @@ func TestUpdateUserHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(user)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
-	if rr.Body.String() != string(expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), string(expected))
-	}
+	assert.NoError(t, jsonError)
+	assert.Equal(t, string(expected), rr.Body.String())
 }
 
 func TestUpdateAdminUserHandler(t *testing.T) {

@@ -157,7 +157,7 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 	for i, partition := range retBlockInfo.Partitions {
 		if partition.MountPoint == "" {
 			var mp dbom.MountPointData
-			log.Printf("\nAttempting to %#v\n", partition)
+			//log.Printf("\nAttempting to %#v\n", partition)
 			err := mp.FromName(partition.Name)
 			if err != nil {
 				if !errors.Is(err, gorm.ErrRecordNotFound) {
