@@ -1,9 +1,8 @@
-package main
+package api
 
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -15,10 +14,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dm"
+	"github.com/dianlight/srat/dto"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v68/github"
 	"github.com/jaypipes/ghw"
@@ -27,35 +26,22 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type Health struct {
-	Alive     bool   `json:"alive"`
-	ReadOnly  bool   `json:"read_only"`
-	Samba     int32  `json:"samba_pid"`
-	LastError string `json:"last_error"`
-}
-
 var ctx = context.Background()
-var healthData = &Health{
+var healthData = &dto.HealthPing{
 	Alive:     true,
 	ReadOnly:  true,
 	Samba:     -1,
 	LastError: "",
 }
 
-type SRATReleaseAsset struct {
-	UpdateStatus int8                      `json:"update_status"`
-	LastRelease  *github.RepositoryRelease `json:"last_release,omitempty"`
-	ArchAsset    *github.ReleaseAsset      `json:"arch,omitempty"`
-}
-
-var lastReleaseData = &SRATReleaseAsset{
+var lastReleaseData = &dto.ReleaseAsset{
 	UpdateStatus: -1,
 }
 
 var UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 
 var (
-	updateQueue      = map[string](chan *SRATReleaseAsset){}
+	updateQueue      = map[string](chan *dto.ReleaseAsset){}
 	updateQueueMutex = sync.RWMutex{}
 )
 
@@ -117,19 +103,19 @@ func HealthAndUpdateDataRefeshHandlers() {
 					notifyUpdate()
 				} else {
 					log.Println("No Releases found")
-					lastReleaseData = &SRATReleaseAsset{
+					lastReleaseData = &dto.ReleaseAsset{
 						UpdateStatus: -1,
 					}
 					notifyUpdate()
 				}
 			})
 		} else {
-			lastReleaseData = &SRATReleaseAsset{
+			lastReleaseData = &dto.ReleaseAsset{
 				UpdateStatus: -1,
 			}
 			notifyUpdate()
 		}
-		sambaProcess, err := api.GetSambaProcess()
+		sambaProcess, err := GetSambaProcess()
 		if err == nil && sambaProcess != nil {
 			healthData.Samba = int32(sambaProcess.Pid)
 		} else {
@@ -145,23 +131,12 @@ func HealthAndUpdateDataRefeshHandlers() {
 //	@Description	HealthCheck
 //	@Tags			system
 //	@Produce		json
-//	@Success		200 {object}	Health
+//	@Success		200 {object}	dto.HealthPing
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/health [get]
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	// A very simple health check.
 	w.Header().Set("Content-Type", "application/json")
-
-	jsonResponse, jsonError := json.Marshal(healthData)
-
-	if jsonError != nil {
-		fmt.Println("Unable to encode JSON")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(jsonError.Error()))
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonResponse)
+	healthData.ToResponse(http.StatusOK, w)
 }
 
 // HealthCheckWsHandler handles WebSocket connections for health check updates.
@@ -172,14 +147,14 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 //   - c: A channel of *WebSocketMessageEnvelope used to send messages back to the WebSocket client.
 //
 // The function runs indefinitely, sending health updates until the WebSocket connection is closed.
-func HealthCheckWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+func HealthCheckWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			var message WebSocketMessageEnvelope = WebSocketMessageEnvelope{
-				Event: EventHeartbeat,
+			var message dto.WebSocketMessageEnvelope = dto.WebSocketMessageEnvelope{
+				Event: dto.EventHeartbeat,
 				Uid:   request.Uid,
 				Data:  healthData,
 			}
@@ -199,7 +174,7 @@ func HealthCheckWsHandler(ctx context.Context, request WebSocketMessageEnvelope,
 //
 // The function runs indefinitely, sending updates only when the DirtySectionState changes,
 // until the WebSocket connection is closed or the context is cancelled.
-func DirtyWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+func DirtyWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
 	var oldDritySectionState dm.DataDirtyTracker
 	for {
 		select {
@@ -207,8 +182,8 @@ func DirtyWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c cha
 			return
 		default:
 			if oldDritySectionState != data.DirtySectionState {
-				var message WebSocketMessageEnvelope = WebSocketMessageEnvelope{
-					Event: EventHeartbeat,
+				var message dto.WebSocketMessageEnvelope = dto.WebSocketMessageEnvelope{
+					Event: dto.EventHeartbeat,
 					Uid:   request.Uid,
 					Data:  data.DirtySectionState,
 				}
@@ -250,10 +225,10 @@ func notifyUpdate() {
 //
 // The function runs indefinitely, sending updates when available, until the WebSocket
 // connection is closed or the context is cancelled. It does not return any value.
-func UpdateWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+func UpdateWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
 	updateQueueMutex.Lock()
 	if updateQueue[request.Uid] == nil {
-		updateQueue[request.Uid] = make(chan *SRATReleaseAsset, 10)
+		updateQueue[request.Uid] = make(chan *dto.ReleaseAsset, 10)
 	}
 	var queue = updateQueue[request.Uid]
 	queue <- lastReleaseData
@@ -264,8 +239,8 @@ func UpdateWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c ch
 			delete(updateQueue, request.Uid)
 			return
 		default:
-			smessage := &WebSocketMessageEnvelope{
-				Event: EventUpdate,
+			smessage := &dto.WebSocketMessageEnvelope{
+				Event: dto.EventUpdate,
 				Uid:   request.Uid,
 				Data:  <-queue,
 			}
@@ -274,7 +249,7 @@ func UpdateWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c ch
 	}
 }
 
-type ProgressWriter struct {
+type ProgressWriter struct { // FIXME: Don't world!!!
 	w io.Writer
 	n atomic.Int64
 }
@@ -302,7 +277,7 @@ func (w *ProgressWriter) N() int64 {
 //	@Description	Start the update process
 //	@Tags			system
 //	@Produce		json
-//	@Success		200 {object}	SRATReleaseAsset
+//	@Success		200 {object}	dto.ReleaseAsset
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/update [put]
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -313,25 +288,19 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	lastReleaseData.UpdateStatus = 0
 	var gh = github.NewClient(nil)
 	if lastReleaseData.ArchAsset == nil {
-		fmt.Printf("Asset not found for architecture %s\n", runtime.GOARCH)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Asset not found for architecture " + runtime.GOARCH))
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Asset not found for architecture "+runtime.GOARCH, nil)
 		return
 	}
 
 	rc, _, err := gh.Repositories.DownloadReleaseAsset(context.Background(), "dianlight", "srat", *lastReleaseData.ArchAsset.ID, http.DefaultClient)
 	if err != nil {
-		fmt.Printf("Error downloading release asset: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error downloading release asset: ", err)
 		return
 	}
 	//defer rc.Close()
 	tmpFile, err := os.OpenFile(data.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
-		fmt.Printf("Error creating temporary file: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error creating temporary file: ", err)
 		return
 	}
 	//defer tmpFile.Close()
@@ -361,16 +330,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	jsonResponse, jsonError := json.Marshal(lastReleaseData)
-
-	if jsonError != nil {
-		fmt.Println("Unable to encode JSON")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(jsonError.Error()))
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonResponse)
+	lastReleaseData.ToResponse(http.StatusOK, w)
 }
 
 // RestartHandler godoc
@@ -395,7 +355,7 @@ func RestartHandler(w http.ResponseWriter, r *http.Request) {
 //	@Description	Return all network interfaces
 //	@Tags			system
 //	@Produce		json
-//	@Success		200 {object}	net.Info
+//	@Success		200 {object}	dto.NetworkInfo
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/nics [get]
 func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
@@ -403,11 +363,13 @@ func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
 
 	net, err := ghw.Network()
 	if err != nil {
-		DoResponseError(http.StatusInternalServerError, w, "Unable to fetch nics", err.Error())
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Unable to fetch network information", err)
 		return
 	}
 
-	DoResponse(http.StatusOK, w, net)
+	var info dto.NetworkInfo
+	info.From(net)
+	info.ToResponse(http.StatusOK, w)
 }
 
 // ReadLinesOffsetN reads contents from file and splits them by new line.
@@ -472,7 +434,7 @@ func getFileSystems() ([]string, error) {
 //	@Description	Return all network interfaces
 //	@Tags			system
 //	@Produce		json
-//	@Success		200 {object}	[]string
+//	@Success		200 {object}	dto.FilesystemTypes
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/filesystems [get]
 func GetFSHandler(w http.ResponseWriter, r *http.Request) {
@@ -480,11 +442,12 @@ func GetFSHandler(w http.ResponseWriter, r *http.Request) {
 
 	fs, err := getFileSystems()
 	if err != nil {
-		DoResponseError(http.StatusInternalServerError, w, "Unable to fetch nics", err.Error())
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Unable to fetch filesystems", err.Error())
 		return
 	}
-
-	DoResponse(http.StatusOK, w, fs)
+	var xfs dto.FilesystemTypes
+	xfs.From(fs)
+	xfs.ToResponse(http.StatusOK, w)
 }
 
 // PersistVolumesState saves the current state of mounted volumes to persistent storage.

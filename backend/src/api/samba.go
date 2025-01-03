@@ -12,7 +12,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	tempiogo "github.com/dianlight/srat/tempio"
 	"github.com/icza/gog"
-	"github.com/kr/pretty"
 	"github.com/shirou/gopsutil/v4/process"
 )
 
@@ -20,7 +19,7 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 	config := ctx.Value("addon_config").(*config.Config)
 	config_2 := config.ConfigToMap()
 	templateData := ctx.Value("template_data").([]byte)
-	log.Println(pretty.Printf("New Config:%v", config_2))
+	//log.Println(pretty.Printf("New Config:%v", config_2))
 	data, err := tempiogo.RenderTemplateBuffer(config_2, templateData)
 	return &data, err
 }

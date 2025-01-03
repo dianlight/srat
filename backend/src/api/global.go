@@ -2,12 +2,14 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dm"
 	"github.com/dianlight/srat/dto"
 	"github.com/jinzhu/copier"
 	"github.com/kr/pretty"
+	"golang.org/x/time/rate"
 )
 
 // UpdateGlobalConfig godoc
@@ -73,6 +75,7 @@ func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	retglobalConfig.From(addon_config)
 
 	retglobalConfig.ToResponse(http.StatusOK, w)
+	UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 
 	/*
 
@@ -85,7 +88,7 @@ func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.WriteHeader(http.StatusOK)
 			w.Write(jsonResponse)
-			//	UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
+			UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 		}
 	*/
 

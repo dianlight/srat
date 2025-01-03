@@ -1,10 +1,13 @@
 package dbom
 
 import (
+	"log"
+	"os"
 	"testing"
 )
 
 func TestMain(m *testing.M) {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	InitDB(":memory:")
-	m.Run()
+	os.Exit(m.Run())
 }

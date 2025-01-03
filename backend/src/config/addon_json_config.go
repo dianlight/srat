@@ -9,7 +9,6 @@ import (
 
 	"github.com/dianlight/srat/dm"
 	"github.com/jinzhu/copier"
-	"github.com/kr/pretty"
 )
 
 type Share struct {
@@ -101,7 +100,7 @@ func readConfigBuffer(buffer []byte) (*Config, error) {
 func (in *Config) ConfigToMap() *map[string]interface{} {
 	var nconfig map[string]interface{}
 
-	log.Println(pretty.Sprint("New Config:", in))
+	//log.Println(pretty.Sprint("New Config:", in))
 
 	// Parse json
 	buffer, err := json.Marshal(&in)
@@ -115,7 +114,7 @@ func (in *Config) ConfigToMap() *map[string]interface{} {
 		return nil
 	}
 
-	log.Println(pretty.Sprint("New Config2:", nconfig))
+	//log.Println(pretty.Sprint("New Config2:", nconfig))
 
 	return &nconfig
 }

@@ -172,7 +172,7 @@ func main() {
 	//log.Printf("Update file: %s\n", data.UpdateFilePath)
 
 	if *show_volumes {
-		volumes, err := GetVolumesData()
+		volumes, err := api.GetVolumesData()
 		if err != nil {
 			log.Fatalf("Error fetching volumes: %v", err)
 			os.Exit(1)
@@ -243,23 +243,23 @@ func prog(state overseer.State) {
 	}
 
 	// System
-	globalRouter.HandleFunc("/health", HealthCheckHandler).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/update", UpdateHandler).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/restart", RestartHandler).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/nics", GetNICsHandler).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/filesystems", GetFSHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/health", api.HealthCheckHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/update", api.UpdateHandler).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/restart", api.RestartHandler).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/filesystems", api.GetFSHandler).Methods(http.MethodGet)
 
 	// Shares
-	globalRouter.HandleFunc("/shares", listShares).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/share/{share_name}", getShare).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/share", createShare).Methods(http.MethodPost)
-	globalRouter.HandleFunc("/share/{share_name}", updateShare).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/share/{share_name}", deleteShare).Methods(http.MethodDelete)
+	globalRouter.HandleFunc("/shares", api.ListShares).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/share/{share_name}", api.GetShare).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/share", api.CreateShare).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/share/{share_name}", api.UpdateShare).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/share/{share_name}", api.DeleteShare).Methods(http.MethodDelete)
 
 	// Volumes
-	globalRouter.HandleFunc("/volumes", listVolumes).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/volume/{volume_name}/mount", mountVolume).Methods(http.MethodPost)
-	globalRouter.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods(http.MethodDelete)
+	globalRouter.HandleFunc("/volumes", api.ListVolumes).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/volume/{volume_name}/mount", api.MountVolume).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/volume/{volume_name}/mount", api.UmountVolume).Methods(http.MethodDelete)
 
 	// Users
 	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet)
@@ -284,8 +284,8 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/config", api.RollbackConfig).Methods(http.MethodDelete)
 
 	// WebSocket
-	globalRouter.HandleFunc("/events", WSChannelEventsList).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/ws", WSChannelHandler)
+	globalRouter.HandleFunc("/events", api.WSChannelEventsList).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/ws", api.WSChannelHandler)
 
 	// Static files
 	globalRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -339,7 +339,7 @@ func prog(state overseer.State) {
 	}
 
 	// Run the backgrounde services
-	go HealthAndUpdateDataRefeshHandlers()
+	go api.HealthAndUpdateDataRefeshHandlers()
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
 		log.Printf("Starting Server... \n GoTo: http://localhost:%d/", *http_port)

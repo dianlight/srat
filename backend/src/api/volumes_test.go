@@ -1,5 +1,4 @@
-// endpoints_test.go
-package main
+package api
 
 import (
 	"bytes"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/kr/pretty"
 )
@@ -20,14 +20,14 @@ import (
 func TestListVolumessHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
-	req, err := http.NewRequest("GET", "/volumes", nil)
+	req, err := http.NewRequestWithContext(testContext, "GET", "/volumes", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(listVolumes)
+	handler := http.HandlerFunc(ListVolumes)
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.
@@ -45,7 +45,7 @@ func TestListVolumessHandler(t *testing.T) {
 			rr.Body.String(), "[]")
 	}
 
-	var volumes BlockInfo
+	var volumes dto.BlockInfo
 	err2 := json.NewDecoder(rr.Body).Decode(&volumes)
 	if err2 != nil {
 		t.Errorf("handler error in decode body %v", err2)
@@ -91,14 +91,14 @@ func TestMountVolumeHandler(t *testing.T) {
 	body, _ := json.Marshal(mockMountData)
 	requestPath := "/volume/" + previus_device + "/mount"
 	t.Logf("Request path: %s", requestPath)
-	req, err := http.NewRequest("POST", requestPath, bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(testContext, "POST", requestPath, bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{volume_name}/mount", mountVolume).Methods("POST")
+	router.HandleFunc("/volume/{volume_name}/mount", MountVolume).Methods("POST")
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -133,14 +133,14 @@ func TestMountVolumeHandler(t *testing.T) {
 }
 
 func TestUmountVolumeNonExistent(t *testing.T) {
-	req, err := http.NewRequest("DELETE", "/volume/nonexistent/mount", nil)
+	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/nonexistent/mount", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods("DELETE")
+	router.HandleFunc("/volume/{volume_name}/mount", UmountVolume).Methods("DELETE")
 
 	router.ServeHTTP(rr, req)
 
@@ -163,14 +163,14 @@ func TestUmountVolumeSuccess(t *testing.T) {
 	}
 
 	// Create a request
-	req, err := http.NewRequest("DELETE", "/volume/"+previus_device+"/mount", nil)
+	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/"+previus_device+"/mount", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{volume_name}/mount", umountVolume).Methods("DELETE")
+	router.HandleFunc("/volume/{volume_name}/mount", UmountVolume).Methods("DELETE")
 
 	// Create a ResponseRecorder
 	rr := httptest.NewRecorder()

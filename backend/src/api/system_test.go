@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -6,10 +6,12 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	"github.com/dianlight/srat/dto"
 )
 
 func TestHealthCheckHandler(t *testing.T) {
-	req, err := http.NewRequest("GET", "/health", nil)
+	req, err := http.NewRequestWithContext(testContext, "GET", "/health", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +32,7 @@ func TestHealthCheckHandler(t *testing.T) {
 			contentType, expectedContentType)
 	}
 
-	var response Health
+	var response dto.HealthPing
 	err = json.Unmarshal(rr.Body.Bytes(), &response)
 	if err != nil {
 		t.Errorf("Failed to unmarshal response body: %v", err)
@@ -42,7 +44,7 @@ func TestHealthCheckHandler(t *testing.T) {
 }
 func TestHealthCheckHandlerDoesNotModifyGlobalHealthData(t *testing.T) {
 	originalHealthData := *healthData
-	req, err := http.NewRequest("GET", "/health", nil)
+	req, err := http.NewRequestWithContext(testContext, "GET", "/health", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +60,7 @@ func TestHealthCheckHandlerDoesNotModifyGlobalHealthData(t *testing.T) {
 }
 
 func TestGetNICsHandler(t *testing.T) {
-	req, err := http.NewRequest("GET", "/nics", nil)
+	req, err := http.NewRequestWithContext(testContext, "GET", "/nics", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +95,7 @@ func TestGetNICsHandler(t *testing.T) {
 
 func TestGetFSHandler(t *testing.T) {
 	// Create a request to pass to our handler
-	req, err := http.NewRequest("GET", "/filesystems", nil)
+	req, err := http.NewRequestWithContext(testContext, "GET", "/filesystems", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,4 +136,34 @@ func TestGetFSHandler(t *testing.T) {
 
 	// You might want to add more specific checks here, such as verifying
 	// the presence of expected file systems or the format of the data
+}
+
+func TestMainHealthCheckHandler(t *testing.T) {
+	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
+	// pass 'nil' as the third parameter.
+	req, err := http.NewRequestWithContext(testContext, "GET", "/health", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(HealthCheckHandler)
+
+	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+	// directly and pass in our Request and ResponseRecorder.
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	// Check the response body is what we expect.
+	expected := `{"alive":true,"read_only":true`
+	if rr.Body.String()[:len(expected)] != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			rr.Body.String(), expected)
+	}
 }

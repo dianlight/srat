@@ -1,8 +1,7 @@
-package main
+package api
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -16,6 +15,8 @@ import (
 
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dm"
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gobeam/stringy"
 	"github.com/gorilla/mux"
@@ -33,51 +34,13 @@ var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
 var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
 
 var (
-	volumesQueue      = map[string](chan *BlockInfo){}
+	volumesQueue      = map[string](chan *dto.BlockInfo){}
 	volumesQueueMutex = sync.RWMutex{}
 )
 
-type BlockInfo struct {
-	TotalSizeBytes uint64 `json:"total_size_bytes"`
-	// Partitions contains an array of pointers to `Partition` structs, one for
-	// each partition on any disk drive on the host system.
-	Partitions []*BlockPartition `json:"partitions"`
-}
-
-type BlockPartition struct {
-	// Name is the system name given to the partition, e.g. "sda1".
-	Name string `json:"name"`
-	// Label is the human-readable label given to the partition. On Linux, this
-	// is derived from the `ID_PART_ENTRY_NAME` udev entry.
-	Label string `json:"label"`
-	// MountPoint is the path where this partition is mounted.
-	MountPoint string `json:"mount_point"`
-	// MountPoint is the path where this partition is mounted last time
-	DefaultMountPoint string `json:"default_mount_point"`
-	// SizeBytes contains the total amount of storage, in bytes, this partition
-	// can consume.
-	SizeBytes uint64 `json:"size_bytes"`
-	// Type contains the type of the partition.
-	Type string `json:"type"`
-	// IsReadOnly indicates if the partition is marked read-only.
-	IsReadOnly bool `json:"read_only"`
-	// UUID is the universally-unique identifier (UUID) for the partition.
-	// This will be volume UUID on Darwin, PartUUID on linux, empty on Windows.
-	UUID string `json:"uuid"`
-	// FilesystemLabel is the label of the filesystem contained on the
-	// partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
-	FilesystemLabel string `json:"filesystem_label"`
-	// PartiionFlags contains the mount flags for the partition.
-	PartitionFlags data.MounDataFlags `json:"partition_flags"`
-	// MountFlags contains the mount flags for the partition.
-	MountFlags data.MounDataFlags `json:"mount_flags"`
-	// MountData contains additional data associated with the partition.
-	MountData string `json:"mount_data"`
-}
-
-func GetVolumesData() (*BlockInfo, error) {
+func GetVolumesData() (*dto.BlockInfo, error) {
 	blockInfo, err := ghw.Block()
-	retBlockInfo := &BlockInfo{}
+	retBlockInfo := &dto.BlockInfo{}
 
 	copier.Copy(retBlockInfo, blockInfo)
 
@@ -94,7 +57,7 @@ func GetVolumesData() (*BlockInfo, error) {
 					continue
 				}
 
-				var partition = &BlockPartition{
+				var partition = &dto.BlockPartition{
 					Name: rblock.Name,
 					Type: rblock.FSType,
 					UUID: rblock.FsUUID,
@@ -143,7 +106,7 @@ func GetVolumesData() (*BlockInfo, error) {
 
 			} else {
 				for _, d := range v.Partitions {
-					var partition = &BlockPartition{}
+					var partition = &dto.BlockPartition{}
 					copier.Copy(&partition, &d)
 
 					if partition.Label == "unknown" || partition.FilesystemLabel == "unknown" || partition.Type == "unknown" {
@@ -195,6 +158,7 @@ func GetVolumesData() (*BlockInfo, error) {
 	for i, partition := range retBlockInfo.Partitions {
 		if partition.MountPoint == "" {
 			var mp dbom.MountPointData
+			log.Printf("\nAttempting to %#v\n", partition)
 			err := mp.FromName(partition.Name)
 			if err != nil {
 				if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -219,20 +183,19 @@ func GetVolumesData() (*BlockInfo, error) {
 //	@Description	List all available volumes
 //	@Tags			volume
 //	@Produce		json
-//	@Success		200	{object}	BlockInfo
+//	@Success		200	{object}	dto.BlockInfo
 //	@Failure		405	{object}	dto.ResponseError
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/volumes [get]
-func listVolumes(w http.ResponseWriter, r *http.Request) {
+func ListVolumes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	volumes, err := GetVolumesData()
 	if err != nil {
-		DoResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
 		return
 	}
-
-	DoResponse(http.StatusOK, w, volumes)
+	volumes.ToResponse(http.StatusOK, w)
 }
 
 // MountVolume godoc
@@ -243,27 +206,22 @@ func listVolumes(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			volume_name	path		string				true	"Volume Name to Mount"
-//	@Param			mount_data	body		dbom.MountPointData	true	"Mount data"
-//	@Success		201			{object}	dbom.MountPointData
+//	@Param			mount_data	body		dto.MountPointData	true	"Mount data"
+//	@Success		201			{object}	dto.MountPointData
 //	@Failure		400			{object}	dto.ResponseError
 //	@Failure		405			{object}	dto.ResponseError
 //	@Failure		409			{object}	dto.ResponseError
 //	@Failure		500			{object}	dto.ResponseError
 //	@Router			/volume/{volume_name}/mount [post]
-func mountVolume(w http.ResponseWriter, r *http.Request) {
+func MountVolume(w http.ResponseWriter, r *http.Request) {
 	volume_name := mux.Vars(r)["volume_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	var mount_data dbom.MountPointData
-
-	err := json.NewDecoder(r.Body).Decode(&mount_data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	var mount_data dto.MountPointData
+	mount_data.FromJSONBody(w, r)
 
 	if mount_data.Name != "" && mount_data.Name != volume_name {
-		DoResponseError(http.StatusBadRequest, w, "Name conflict", "")
+		dto.ResponseError{}.ToResponseError(http.StatusBadRequest, w, "Name conflict", nil)
 		return
 	} else if mount_data.Name == "" {
 		mount_data.Name = volume_name
@@ -271,7 +229,7 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 
 	volumes, err := GetVolumesData()
 	if err != nil {
-		DoResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
 		return
 	}
 
@@ -301,7 +259,7 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 
 	var flags, err4 = mount_data.Flags.Value()
 	if err4 != nil {
-		DoResponseError(http.StatusInternalServerError, w, "Error parsing flags", err4)
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error parsing flags", err4)
 		return
 	}
 
@@ -331,10 +289,10 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Printf("(Try)Mount(%s) = %v, want nil", mount_data.Name, err)
-		DoResponseError(http.StatusConflict, w, "Error Mounting volume", err)
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error Mounting volume", err)
 		return
 	} else {
-		mounted_data := dbom.MountPointData{}
+		mounted_data := dto.MountPointData{}
 		copier.Copy(&mounted_data, mp)
 		//		mounted_data.Flags.Scan(mp.Flags)
 		// log.Printf("---------------------   mp %v mounted_data = %v", mp, mounted_data)
@@ -348,17 +306,7 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 		notifyVolumeClient(ndata)
 		data.DirtySectionState.Volumes = true
 
-		DoResponse(http.StatusCreated, w, mounted_data)
-		/*
-			jsonResponse, jsonError := json.Marshal(mounted_data)
-
-			if jsonError != nil {
-				DoResponseError(http.StatusInternalServerError,w, "Error encoding JSON", jsonError)
-			} else {
-				w.WriteHeader(http.StatusCreated)
-				w.Write(jsonResponse)
-			}
-		*/
+		mounted_data.ToResponse(http.StatusCreated, w)
 	}
 }
 
@@ -373,7 +321,7 @@ func mountVolume(w http.ResponseWriter, r *http.Request) {
 //     to be sent to all clients.
 //
 // The function does not return any value.
-func notifyVolumeClient(volumes *BlockInfo) {
+func notifyVolumeClient(volumes *dto.BlockInfo) {
 	volumesQueueMutex.RLock()
 	for _, v := range volumesQueue {
 		v <- volumes
@@ -393,7 +341,7 @@ func notifyVolumeClient(volumes *BlockInfo) {
 //	@Failure		404	{object}	dto.ResponseError
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/volume/{volume_name}/mount [delete]
-func umountVolume(w http.ResponseWriter, r *http.Request) {
+func UmountVolume(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	volume_name := mux.Vars(r)["volume_name"]
 	force := r.URL.Query().Get("force")
@@ -401,7 +349,7 @@ func umountVolume(w http.ResponseWriter, r *http.Request) {
 
 	volumes, err := GetVolumesData()
 	if err != nil {
-		DoResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
 		return
 	}
 
@@ -409,17 +357,18 @@ func umountVolume(w http.ResponseWriter, r *http.Request) {
 		if d.Name == volume_name {
 			err := mount.Unmount(d.MountPoint, force == "true", lazy == "true")
 			if err != nil {
-				DoResponseError(http.StatusInternalServerError, w, fmt.Sprintf("Error unmounting %s", d.MountPoint), err)
+				dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, fmt.Sprintf("Error unmounting %s", d.MountPoint), err)
 				return
 			}
 			var ndata, _ = GetVolumesData()
 			notifyVolumeClient(ndata)
-			data.DirtySectionState.Volumes = true
+			data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+			data_dirty_tracker.Volumes = true
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 	}
-	DoResponseError(http.StatusNotFound, w, fmt.Sprintf("No mount on %s found!", volume_name), "")
+	dto.ResponseError{}.ToResponseError(http.StatusNotFound, w, fmt.Sprintf("No mount on %s found!", volume_name), "")
 }
 
 // VolumesEventHandler monitors and handles UEvent kernel messages related to volume changes.
@@ -483,10 +432,10 @@ func VolumesEventHandler() {
 //
 // The function doesn't return any value, but it continues to run until the context is cancelled,
 // sending volume updates to the client through the provided channel.
-func VolumesWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c chan *WebSocketMessageEnvelope) {
+func VolumesWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
 	volumesQueueMutex.Lock()
 	if volumesQueue[request.Uid] == nil {
-		volumesQueue[request.Uid] = make(chan *BlockInfo, 10)
+		volumesQueue[request.Uid] = make(chan *dto.BlockInfo, 10)
 	}
 
 	var data, err = GetVolumesData()
@@ -508,8 +457,8 @@ func VolumesWsHandler(ctx context.Context, request WebSocketMessageEnvelope, c c
 			volumesQueueMutex.Unlock()
 			return
 		default:
-			smessage := &WebSocketMessageEnvelope{
-				Event: EventVolumes,
+			smessage := &dto.WebSocketMessageEnvelope{
+				Event: dto.EventVolumes,
 				Uid:   request.Uid,
 				Data:  <-queue,
 			}

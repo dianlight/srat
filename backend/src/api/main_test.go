@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dm"
 )
 
@@ -48,7 +49,7 @@ func TestMain(m *testing.M) {
 		data.ROMode = new(bool)
 	*/
 
-	//dbom.InitDB(":memory:")
+	dbom.InitDB(":memory:")
 
 	os.Exit(m.Run())
 }

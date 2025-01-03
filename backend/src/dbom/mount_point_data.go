@@ -2,6 +2,7 @@ package dbom
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	"github.com/dianlight/srat/data"
@@ -81,5 +82,6 @@ func (mp *MountPointData) FromName(name string) error {
 	if name == "" {
 		return errors.New("name cannot be empty")
 	}
+	log.Printf("FromName \n%s \n%v \n%v", name, db, mp)
 	return db.Limit(1).Find(&mp, "name = ?", name).Error
 }
