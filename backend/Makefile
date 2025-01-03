@@ -25,7 +25,7 @@ format:
 	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
 	cd $(SRC_DIRS);swag fmt
 	cd $(SRC_DIRS);go mod tidy	
-	cd $(SRC_DIRS);testifylint ./...
+	cd $(SRC_DIRS);testifylint --fix ./...
 	cd $(SRC_DIRS);go fmt
 
 .PHONY: clean

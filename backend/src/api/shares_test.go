@@ -28,7 +28,7 @@ func TestListSharesHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	addon_config := testContext.Value("addon_config").(*config.Config)
@@ -36,7 +36,7 @@ func TestListSharesHandler(t *testing.T) {
 	expectedDto.From(addon_config.Shares)
 	expected, jsonError := json.Marshal(expectedDto)
 	assert.NoError(t, jsonError)
-	assert.Equal(t, rr.Body.String(), string(expected))
+	assert.Equal(t, string(expected), rr.Body.String())
 }
 
 func TestGetShareHandler(t *testing.T) {
@@ -53,7 +53,7 @@ func TestGetShareHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	addon_config := testContext.Value("addon_config").(*config.Config)
@@ -61,7 +61,7 @@ func TestGetShareHandler(t *testing.T) {
 	expectedDto.From(addon_config.Shares["LIBRARY"])
 	expected, jsonError := json.Marshal(expectedDto)
 	assert.NoError(t, jsonError)
-	assert.Equal(t, rr.Body.String(), string(expected))
+	assert.Equal(t, string(expected), rr.Body.String())
 }
 
 func TestCreateShareHandler(t *testing.T) {
@@ -92,7 +92,7 @@ func TestCreateShareHandler(t *testing.T) {
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(share)
 	assert.NoError(t, jsonError)
-	assert.Equal(t, rr.Body.String(), string(expected))
+	assert.Equal(t, string(expected), rr.Body.String())
 }
 
 func TestCreateShareDuplicateHandler(t *testing.T) {
@@ -127,7 +127,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(dto.ResponseError{Error: "Share already exists", Body: share})
 	assert.NoError(t, jsonError)
-	assert.Equal(t, rr.Body.String(), string(expected))
+	assert.Equal(t, string(expected), rr.Body.String())
 }
 
 func TestUpdateShareHandler(t *testing.T) {
@@ -151,7 +151,7 @@ func TestUpdateShareHandler(t *testing.T) {
 	router.HandleFunc("/share/{share_name}", UpdateShare).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	share.FS = "ext4"
@@ -162,7 +162,7 @@ func TestUpdateShareHandler(t *testing.T) {
 	share.Usage = "media"
 	expected, jsonError := json.Marshal(share)
 	assert.NoError(t, jsonError)
-	assert.Equal(t, rr.Body.String(), string(expected))
+	assert.Equal(t, string(expected), rr.Body.String())
 }
 
 func TestDeleteShareHandler(t *testing.T) {
@@ -179,7 +179,7 @@ func TestDeleteShareHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, rr.Code, http.StatusNoContent)
+	assert.Equal(t, http.StatusNoContent, rr.Code)
 
 	// Refresh shares list anche check that LIBRARY don't exists
 	req, err = http.NewRequestWithContext(testContext, "GET", "/shares", nil)
@@ -188,6 +188,6 @@ func TestDeleteShareHandler(t *testing.T) {
 	handler := http.HandlerFunc(ListShares)
 	handler.ServeHTTP(rr, req)
 
-	assert.Equal(t, rr.Code, http.StatusOK)
-	assert.False(t, strings.Contains(rr.Body.String(), "LIBRARY"), "LIBRARY share still exists")
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.NotContains(t, rr.Body.String(), "LIBRARY", "LIBRARY share still exists")
 }

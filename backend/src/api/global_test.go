@@ -74,7 +74,7 @@ func TestUpdateGlobalConfigHandler(t *testing.T) {
 	router.HandleFunc("/global", UpdateGlobalConfig).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	var res dto.Settings
 	err = json.Unmarshal(rr.Body.Bytes(), &res)
@@ -90,7 +90,7 @@ func TestUpdateGlobalConfigHandler(t *testing.T) {
 func TestUpdateGlobalConfigSameConfigHandler(t *testing.T) {
 	var glc = dto.Settings{}
 	addon_config := testContext.Value("addon_config").(*config.Config)
-	assert.Equal(t, addon_config.Workgroup, "pluto&admin")
+	assert.Equal(t, "pluto&admin", addon_config.Workgroup)
 	testContext.Value("data_dirty_tracker").(*dto.DataDirtyTracker).Settings = false
 
 	glc.From(addon_config)
@@ -110,7 +110,7 @@ func TestUpdateGlobalConfigSameConfigHandler(t *testing.T) {
 	router.HandleFunc("/global", UpdateGlobalConfig).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, rr.Code, http.StatusNoContent)
+	assert.Equal(t, http.StatusNoContent, rr.Code)
 	assert.False(t, testContext.Value("data_dirty_tracker").(*dto.DataDirtyTracker).Settings)
 }
 
@@ -138,7 +138,7 @@ func TestPersistConfig(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check if DirtySectionState flags are set to false
 	assert.False(t, data_dirty_tracker.Settings)
@@ -176,7 +176,7 @@ func TestRollbackConfig(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check if DirtySectionState flags are set to false
 

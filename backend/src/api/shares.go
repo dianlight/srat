@@ -122,7 +122,7 @@ func notifyClient(in *config.Shares) {
 //	@Tags			share
 //	@Accept			json
 //	@Produce		json
-//	@Param			share_name	path		string			true	"Name"
+//	@Param			share_name	path		string				true	"Name"
 //	@Param			share		body		dto.SharedResource	true	"Update model"
 //	@Success		200			{object}	dto.SharedResource
 //	@Failure		400			{object}	dto.ResponseError

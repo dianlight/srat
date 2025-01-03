@@ -17,7 +17,7 @@ func TestMountPointDataAllEmpty(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, []MountPointData{}, mountPoints)
-	assert.Len(t, mountPoints, 0)
+	assert.Empty(t, mountPoints)
 }
 
 func TestMountPointDataSave(t *testing.T) {

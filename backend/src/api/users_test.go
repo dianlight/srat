@@ -30,14 +30,14 @@ func TestListUsersHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	addon_config := testContext.Value("addon_config").(*config.Config)
 	expected, jsonError := json.Marshal(addon_config.OtherUsers)
 	assert.NotEmpty(t, expected)
 	assert.NoError(t, jsonError)
-	assert.Equal(t, rr.Body.String(), string(expected))
+	assert.Equal(t, string(expected), rr.Body.String())
 }
 
 func TestGetUserHandler(t *testing.T) {
@@ -54,7 +54,7 @@ func TestGetUserHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	addon_config := testContext.Value("addon_config").(*config.Config)
@@ -63,7 +63,7 @@ func TestGetUserHandler(t *testing.T) {
 	expected, jsonError := json.Marshal(addon_config.OtherUsers[index])
 	assert.NoError(t, jsonError)
 	assert.NotEmpty(t, expected)
-	assert.Equal(t, rr.Body.String(), string(expected))
+	assert.Equal(t, string(expected), rr.Body.String())
 }
 
 func TestCreateUserHandler(t *testing.T) {
@@ -89,12 +89,12 @@ func TestCreateUserHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, rr.Code, http.StatusCreated)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(user)
 	assert.NoError(t, jsonError)
-	assert.Equal(t, rr.Body.String(), string(expected))
+	assert.Equal(t, string(expected), rr.Body.String())
 
 	addon_config := testContext.Value("addon_config").(*config.Config)
 	index := slices.IndexFunc(addon_config.OtherUsers, func(u config.User) bool { return u.Username == "PIPPO" })
