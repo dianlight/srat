@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/kr/pretty"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestReadConfigConsistency(t *testing.T) {
@@ -217,14 +218,7 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 
 	// Check if acl are as share attributes
 	t.Log(pretty.Sprint(migratedConfig.Shares))
-	if migratedConfig.Shares["backup"].Users[0] != "utente1" {
-		t.Error("Expected 'backup' share to have 'utente1' user, got '" + migratedConfig.Shares["backup"].Users[0] + "'")
-	}
-	if migratedConfig.Shares["ssl"].Users[0] != "utente2" {
-		t.Error("Expected'ssl' share to have 'utente2' user, got '" + migratedConfig.Shares["ssl"].Users[0] + "'")
-	}
-	if !migratedConfig.Shares["ssl"].Disabled {
-		t.Error("Expected'ssl' share to be disabled, got enabled")
-	}
-
+	assert.Equal(t, (*migratedConfig.Shares["backup"].Users)[0], "utente1")
+	assert.Equal(t, (*migratedConfig.Shares["ssl"].Users)[0], "utente2")
+	assert.True(t, migratedConfig.Shares["ssl"].Disabled)
 }

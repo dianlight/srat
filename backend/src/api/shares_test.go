@@ -29,15 +29,33 @@ func TestListSharesHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check the response body is what we expect.
 	addon_config := testContext.Value("addon_config").(*config.Config)
 	var expectedDto dto.SharedResources
 	expectedDto.From(addon_config.Shares)
-	expected, jsonError := json.Marshal(expectedDto)
-	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected), rr.Body.String())
+	resultsDto := dto.SharedResources{}
+	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultsDto)
+	assert.NoError(t, jsonError, "Body %#v", rr.Body.String())
+	assert.NotEmpty(t, resultsDto)
+	resultsShares := config.Shares{}
+	jsonError = json.Unmarshal(rr.Body.Bytes(), &resultsShares)
+	assert.NoError(t, jsonError)
+	assert.EqualValues(t, resultsShares, addon_config.Shares)
+
+	for _, sdto := range resultsDto {
+		assert.NotEmpty(t, sdto.Path)
+		if sdto.DeviceId == nil {
+			assert.NoDirExists(t, sdto.Path, "DeviceId is false but %s exists", sdto.Path)
+		} else {
+			assert.DirExists(t, sdto.Path, "DeviceId is true but %s doesn't exist", sdto.Path)
+		}
+		if sdto.Invalid {
+			assert.NoDirExists(t, sdto.Path, "Share is invalid  but %s exists", sdto.Path)
+		}
+	}
+
 }
 
 func TestGetShareHandler(t *testing.T) {
@@ -58,11 +76,12 @@ func TestGetShareHandler(t *testing.T) {
 
 	// Check the response body is what we expect.
 	addon_config := testContext.Value("addon_config").(*config.Config)
-	var expectedDto dto.SharedResource
-	expectedDto.From(addon_config.Shares["LIBRARY"])
-	expected, jsonError := json.Marshal(expectedDto)
-	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected), rr.Body.String())
+
+	resultShare := config.Share{}
+	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultShare)
+	assert.NoError(t, jsonError)
+
+	assert.Equal(t, addon_config.Shares["LIBRARY"], resultShare)
 }
 
 func TestCreateShareHandler(t *testing.T) {

@@ -170,7 +170,9 @@ func MigrateConfig(in *Config) *Config {
 		in.ConfigSpecVersion = 3
 		for shareName, share := range in.Shares {
 			if share.Users == nil {
-				share.Users = append(share.Users, in.Username)
+				share.Users = []string{
+					in.Username,
+				}
 				in.Shares[shareName] = share
 			}
 			if share.Usage == "" && in.Automount {

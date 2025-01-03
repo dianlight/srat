@@ -33,7 +33,7 @@ func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
 	for _, sdto := range shares {
 		if sdto.ID == nil {
 			ckdb := dbom.ExportedShare{}
-			err = ckdb.FromNameOfMountPoint(sdto.Name, sdto.Path)
+			err = ckdb.FromNameOrPath(sdto.Name, sdto.Path)
 			if err != nil {
 				return nil, err
 			}
@@ -73,6 +73,7 @@ func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
 				sdto.DeviceId = &sstat.Dev
 			}
 		}
+		shares[sdto.Name] = sdto
 	}
 
 	// TODO: Popolate missing share and set to delete!

@@ -12,6 +12,8 @@ type ExportedShare struct {
 	RoUsers     []SambaUser `json:"ro_users,omitempty" gorm:"many2many:user_ro_share;"`
 	TimeMachine bool        `json:"timemachine,omitempty"`
 	Usage       string      `json:"usage,omitempty"`
+	DeviceId    *uint64     `json:"device_id,omitempty"`
+	Invalid     bool        `json:"invalid,omitempty"`
 }
 
 func (_ ExportedShare) All() ([]ExportedShare, error) {
@@ -36,6 +38,6 @@ func (share *ExportedShare) Get() error {
 	return db.First(share).Error
 }
 
-func (share *ExportedShare) FromNameOfMountPoint(name string, path string) error {
+func (share *ExportedShare) FromNameOrPath(name string, path string) error {
 	return db.Limit(1).Find(share, db.Where("name =?", name).Or(db.Where("path = ?", path))).Error
 }

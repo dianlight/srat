@@ -17,7 +17,9 @@ type SharedResource struct {
 	TimeMachine bool     `json:"timemachine,omitempty"`
 	Usage       string   `json:"usage,omitempty"`
 
-	DirtyStatus bool `json:"id_dirty,omitempty"`
+	DirtyStatus bool    `json:"id_dirty,omitempty"`
+	DeviceId    *uint64 `json:"device_id,omitempty"`
+	Invalid     bool    `json:"invalid,omitempty"`
 }
 
 func (self *SharedResource) From(value interface{}) error {
