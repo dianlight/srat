@@ -211,7 +211,11 @@ func SharesWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, 
 	if sharesQueue[request.Uid] == nil {
 		sharesQueue[request.Uid] = make(chan *dto.SharedResources, 10)
 	}
-	//	sharesQueue[request.Uid] <- &data.Config.Shares // FIXME: First send now is empty controllare ctx!!
+	addon_config := ctx.Value("addon_config").(*config.Config)
+	var currentShares dto.SharedResources
+	currentShares.From(&addon_config.Shares)
+	sharesQueue[request.Uid] <- &currentShares
+
 	var queue = sharesQueue[request.Uid]
 	sharesQueueMutex.Unlock()
 	for {
