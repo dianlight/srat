@@ -127,7 +127,7 @@ func GetSambaConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	smbConf.From(*stream)
+	smbConf.Data = string(*stream)
 	smbConf.ToResponse(http.StatusOK, w)
 }
 

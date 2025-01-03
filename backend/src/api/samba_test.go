@@ -101,10 +101,6 @@ func TestGetSambaConfig(t *testing.T) {
 	expectedStream, err := createConfigStream(testContext)
 	require.NoError(t, err)
 
-	// Create the expected SmbConf
-	var expectedSmbConf dto.SmbConf
-	expectedSmbConf.From(*expectedStream)
-
 	// Compare the response body with the expected SmbConf
-	assert.Equal(t, expectedSmbConf, responseBody)
+	assert.Equal(t, string(*expectedStream), responseBody.Data)
 }

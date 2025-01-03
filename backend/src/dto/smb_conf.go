@@ -6,7 +6,9 @@ import (
 	"github.com/jinzhu/copier"
 )
 
-type SmbConf string
+type SmbConf struct {
+	Data string `json:"data"`
+}
 
 func (self *SmbConf) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})

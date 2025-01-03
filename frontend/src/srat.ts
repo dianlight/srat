@@ -185,6 +185,10 @@ export interface DtoSharedResource {
 
 export type DtoSharedResources = Record<string, DtoSharedResource>;
 
+export interface DtoSmbConf {
+  data?: string;
+}
+
 export interface DtoUser {
   password?: string;
   username?: string;
@@ -854,7 +858,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/samba
      */
     sambaList: (params: RequestParams = {}) =>
-      this.request<string, DtoResponseError>({
+      this.request<DtoSmbConf, DtoResponseError>({
         path: `/samba`,
         method: "GET",
         type: ContentType.Json,
