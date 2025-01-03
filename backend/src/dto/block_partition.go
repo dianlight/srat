@@ -36,6 +36,8 @@ type BlockPartition struct {
 	MountFlags data.MounDataFlags `json:"mount_flags"`
 	// MountData contains additional data associated with the partition.
 	MountData string `json:"mount_data"`
+	// DeviceId is the ID of the block device this partition is on.
+	DeviceId *uint64 `json:"device_id"`
 }
 
 func (self *BlockPartition) From(value interface{}) error {

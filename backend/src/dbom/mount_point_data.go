@@ -19,6 +19,7 @@ type MountPointData struct {
 	FSType      string             `json:"fstype"`
 	Flags       data.MounDataFlags `json:"flags" gorm:"type:mount_data_flags"`
 	Data        string             `json:"data,omitempty"`
+	DeviceId    uint64             `json:"device_id,omitempty"`
 }
 
 // BeforeSave is a GORM callback function that sets the DefaultPath to the Path

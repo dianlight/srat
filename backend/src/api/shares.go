@@ -3,8 +3,10 @@ package api
 import (
 	"context"
 	"net/http"
+	"os"
 	"reflect"
 	"sync"
+	"syscall"
 
 	"dario.cat/mergo"
 	"github.com/dianlight/srat/config"
@@ -55,6 +57,22 @@ func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
 				shares[sdto.Name] = sdto
 			}
 		}
+		// Check if mounted and wich path
+
+		if sdto.DeviceId == nil {
+			sstat := syscall.Stat_t{}
+			err := syscall.Stat(sdto.Path, &sstat)
+			if err != nil {
+				// check if error is not such file or directory
+				if os.IsNotExist(err) {
+					sdto.Invalid = true
+				} else {
+					return nil, err
+				}
+			} else {
+				sdto.DeviceId = &sstat.Dev
+			}
+		}
 	}
 
 	// TODO: Popolate missing share and set to delete!
@@ -77,7 +95,7 @@ func ListShares(w http.ResponseWriter, r *http.Request) {
 
 	shares, err := GetSharedResources(r.Context())
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err.Error())
 		return
 	}
 	shares.ToResponse(http.StatusOK, w)

@@ -70,6 +70,9 @@ definitions:
       default_mount_point:
         description: MountPoint is the path where this partition is mounted last time
         type: string
+      device_id:
+        description: DeviceId is the ID of the block device this partition is on.
+        type: integer
       filesystem_label:
         description: |-
           FilesystemLabel is the label of the filesystem contained on the
@@ -277,10 +280,18 @@ definitions:
     type: object
   dto.SharedResource:
     properties:
+      device_id:
+        type: integer
       disabled:
         type: boolean
       fs:
         type: string
+      id:
+        type: integer
+      id_dirty:
+        type: boolean
+      invalid:
+        type: boolean
       name:
         type: string
       path:

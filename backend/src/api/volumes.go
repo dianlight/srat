@@ -168,6 +168,15 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 			partition.DefaultMountPoint = mp.Path
 			partition.MountData = mp.Data
 			partition.MountFlags.Scan(mp.Flags)
+			partition.DeviceId = &mp.DeviceId
+			retBlockInfo.Partitions[i] = partition
+		} else if partition.DeviceId == nil {
+			sstat := syscall.Stat_t{}
+			err := syscall.Stat(partition.MountPoint, &sstat)
+			if err != nil {
+				return nil, err
+			}
+			partition.DeviceId = &sstat.Dev
 			retBlockInfo.Partitions[i] = partition
 		}
 	}

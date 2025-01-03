@@ -43,6 +43,8 @@ export interface DtoBlockInfo {
 export interface DtoBlockPartition {
   /** MountPoint is the path where this partition is mounted last time */
   default_mount_point?: string;
+  /** DeviceId is the ID of the block device this partition is on. */
+  device_id?: number;
   /**
    * FilesystemLabel is the label of the filesystem contained on the
    * partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
@@ -173,8 +175,12 @@ export interface DtoSettings {
 }
 
 export interface DtoSharedResource {
+  device_id?: number;
   disabled?: boolean;
   fs?: string;
+  id?: number;
+  id_dirty?: boolean;
+  invalid?: boolean;
   name?: string;
   path?: string;
   ro_users?: string[];
