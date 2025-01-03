@@ -45,7 +45,9 @@
 				"esbenp.prettier-vscode",
 				"mortenson.go-template-transpiler-extension",
 				"TabNine.tabnine-vscode",
-				"GitHub.copilot"
+				"GitHub.copilot",
+				"jgclark.vscode-todo-highlight",
+				"Gruntfuggly.todo-tree"
 			]		
 		}
 	},
