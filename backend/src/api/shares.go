@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"net/http"
+	"reflect"
 	"sync"
 
 	"dario.cat/mergo"
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 )
@@ -15,6 +17,50 @@ var (
 	sharesQueue      = map[string](chan *dto.SharedResources){}
 	sharesQueueMutex = sync.RWMutex{}
 )
+
+func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
+
+	var shares dto.SharedResources
+	addon_config := ctx.Value("addon_config").(*config.Config)
+	err := shares.From(addon_config.Shares)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check all ID Matching and sign dirty!
+	for _, sdto := range shares {
+		if sdto.ID == nil {
+			ckdb := dbom.ExportedShare{}
+			err = ckdb.FromNameOfMountPoint(sdto.Name, sdto.Path)
+			if err != nil {
+				return nil, err
+			}
+			if ckdb.Name != "" {
+				sdto.ID = &ckdb.ID
+				sdto.DirtyStatus = true
+			}
+			shares[sdto.Name] = sdto
+		} else {
+			dbshare := dbom.ExportedShare{}
+			dbshare.ID = *sdto.ID
+			err = dbshare.Get()
+			if err != nil {
+				return nil, err
+			}
+			nsdto := dto.SharedResource{}
+			nsdto.From(dbshare)
+
+			if !reflect.DeepEqual(nsdto, sdto) {
+				sdto.DirtyStatus = true
+				shares[sdto.Name] = sdto
+			}
+		}
+	}
+
+	// TODO: Popolate missing share and set to delete!
+
+	return &shares, nil
+}
 
 // ListShares godoc
 //
@@ -29,9 +75,7 @@ var (
 func ListShares(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var shares dto.SharedResources
-	addon_config := r.Context().Value("addon_config").(*config.Config)
-	err := shares.From(addon_config.Shares)
+	shares, err := GetSharedResources(r.Context())
 	if err != nil {
 		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
 		return
@@ -54,9 +98,13 @@ func GetShare(w http.ResponseWriter, r *http.Request) {
 	shareName := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	addon_config := r.Context().Value("addon_config").(*config.Config)
+	shares, err := GetSharedResources(r.Context())
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
 
-	data, ok := addon_config.Shares[shareName]
+	data, ok := shares.Get(shareName)
 	if !ok {
 		dto.ResponseError{}.ToResponseError(http.StatusNotFound, w, "Share not found", nil)
 	} else {

@@ -7,6 +7,7 @@ import (
 )
 
 type SharedResource struct {
+	ID          *uint    `json:"id,omitempty"`
 	Name        string   `json:"name,omitempty"`
 	Path        string   `json:"path"`
 	FS          string   `json:"fs"`
@@ -15,6 +16,8 @@ type SharedResource struct {
 	RoUsers     []string `json:"ro_users,omitempty"`
 	TimeMachine bool     `json:"timemachine,omitempty"`
 	Usage       string   `json:"usage,omitempty"`
+
+	DirtyStatus bool `json:"id_dirty,omitempty"`
 }
 
 func (self *SharedResource) From(value interface{}) error {
@@ -40,6 +43,14 @@ func (self *SharedResource) FromJSONBody(w http.ResponseWriter, r *http.Request)
 }
 
 type SharedResources map[string]SharedResource
+
+func (self SharedResources) Get(key string) (sharedResource *SharedResource, found bool) {
+	sharedResource_, ok := self[key]
+	if ok {
+		return &sharedResource_, true
+	}
+	return nil, false
+}
 
 func (self *SharedResources) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})

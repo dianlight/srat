@@ -4,8 +4,8 @@ import "gorm.io/gorm"
 
 type ExportedShare struct {
 	gorm.Model
-	Name        string      `json:"name,omitempty"`
-	Path        string      `json:"path"`
+	Name        string      `json:"name,omitempty" gorm:"unique"`
+	Path        string      `json:"path" gorm:"unique"`
 	FS          string      `json:"fs"`
 	Disabled    bool        `json:"disabled,omitempty"`
 	Users       []SambaUser `json:"users,omitempty" gorm:"many2many:user_rw_share;"`
@@ -30,4 +30,12 @@ func (share *ExportedShare) Delete() error {
 
 func (share *ExportedShare) FromName(name string) error {
 	return db.Where("name =?", name).First(share).Error
+}
+
+func (share *ExportedShare) Get() error {
+	return db.First(share).Error
+}
+
+func (share *ExportedShare) FromNameOfMountPoint(name string, path string) error {
+	return db.Limit(1).Find(share, db.Where("name =?", name).Or(db.Where("path = ?", path))).Error
 }
