@@ -13,6 +13,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestApplySambaHandler(t *testing.T) {
@@ -20,7 +21,7 @@ func TestApplySambaHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "POST", "/samba/apply", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -35,13 +36,13 @@ func TestApplySambaHandler(t *testing.T) {
 
 func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) bool {
 	stream, err := createConfigStream(testContext)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, stream)
 
 	rexpt := fmt.Sprintf(expected, testvalue)
 
 	m, err := regexp.MatchString(rexpt, string(*stream))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, m, "Wrong Match `%s` not found in stream \n%s", rexpt, string(*stream))
 
 	return true
@@ -49,14 +50,14 @@ func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) boo
 
 func TestCreateConfigStream(t *testing.T) {
 	stream, err := createConfigStream(testContext)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, stream)
 
 	samba_config_file := testContext.Value("samba_config_file").(*string)
 	assert.NotEmpty(t, *samba_config_file)
 
 	fsbyte, err := os.ReadFile(*samba_config_file)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, len(fsbyte), len(*stream))
 }
 
@@ -65,7 +66,7 @@ func TestCreateConfigStream(t *testing.T) {
 func TestGetSambaProcessStatus(t *testing.T) {
 	// Create a request to pass to our handler
 	req, err := http.NewRequestWithContext(testContext, "GET", "/samba/status", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -80,7 +81,7 @@ func TestGetSambaProcessStatus(t *testing.T) {
 func TestGetSambaConfig(t *testing.T) {
 	// Create a request to pass to our handler
 	req, err := http.NewRequestWithContext(testContext, "GET", "/samba", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -94,11 +95,11 @@ func TestGetSambaConfig(t *testing.T) {
 	// Check the response body is what we expect.
 	var responseBody dto.SmbConf
 	err = json.Unmarshal(rr.Body.Bytes(), &responseBody)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create the expected config stream
 	expectedStream, err := createConfigStream(testContext)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create the expected SmbConf
 	var expectedSmbConf dto.SmbConf

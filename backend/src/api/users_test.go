@@ -13,13 +13,14 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListUsersHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/users", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -36,7 +37,7 @@ func TestListUsersHandler(t *testing.T) {
 	addon_config := testContext.Value("addon_config").(*config.Config)
 	expected, jsonError := json.Marshal(addon_config.OtherUsers)
 	assert.NotEmpty(t, expected)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 }
 
@@ -44,7 +45,7 @@ func TestGetUserHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/user/backupuser", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -61,7 +62,7 @@ func TestGetUserHandler(t *testing.T) {
 	index := slices.IndexFunc(addon_config.OtherUsers, func(u config.User) bool { return u.Username == "backupuser" })
 	assert.NotEqual(t, index, -1)
 	expected, jsonError := json.Marshal(addon_config.OtherUsers[index])
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	assert.NotEmpty(t, expected)
 	assert.Equal(t, string(expected), rr.Body.String())
 }
@@ -74,12 +75,12 @@ func TestCreateUserHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(user)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PUT", "/user/PIPPO", strings.NewReader(string(jsonBody)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -93,7 +94,7 @@ func TestCreateUserHandler(t *testing.T) {
 
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(user)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 
 	addon_config := testContext.Value("addon_config").(*config.Config)
@@ -151,12 +152,12 @@ func TestUpdateUserHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(user)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PATCH", "/user/PIPPO", strings.NewReader(string(jsonBody)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -170,7 +171,7 @@ func TestUpdateUserHandler(t *testing.T) {
 
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(user)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 }
 

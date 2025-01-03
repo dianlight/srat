@@ -9,13 +9,14 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
 func TestMountPointDataAllEmpty(t *testing.T) {
 	mountPoints, err := MountPointData{}.All()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []MountPointData{}, mountPoints)
 	assert.Empty(t, mountPoints)
 }
@@ -33,7 +34,7 @@ func TestMountPointDataSave(t *testing.T) {
 
 	err := testMountPoint.Save()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&MountPointData{})
 }
 
@@ -59,13 +60,13 @@ func TestMountPointDataAll(t *testing.T) {
 	}
 
 	err := expectedMountPoints[0].Save()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = expectedMountPoints[1].Save()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mountPoints, err := MountPointData{}.All()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if !cmp.Equal(expectedMountPoints, mountPoints, cmpopts.IgnoreFields(MountPointData{}, "CreatedAt", "UpdatedAt")) {
 		assert.Equal(t, expectedMountPoints, mountPoints)
 		//		t.Errorf("FuncUnderTest() mismatch")
@@ -95,7 +96,7 @@ func TestMountPointDataSaveDuplicate(t *testing.T) {
 
 	err := testMountPoint.Save()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestMountPointDataSaveLargeNumber(t *testing.T) {
@@ -115,7 +116,7 @@ func TestMountPointDataSaveLargeNumber(t *testing.T) {
 
 	for _, mp := range testMountPoints {
 		err := mp.Save()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 func TestMountPointDataSaveEmptyDefaultPath(t *testing.T) {
@@ -147,7 +148,7 @@ func TestMountPointDataSaveEmptyDefaultPath(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.mountPoint.Save()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tc.expectedPath, tc.mountPoint.DefaultPath)
 		})
 	}
@@ -160,7 +161,7 @@ func TestMountPointDataSaveWithSetDefaultPath(t *testing.T) {
 
 	err := testMountPoint.Save()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "/mnt/original", testMountPoint.DefaultPath)
 }
 
@@ -177,7 +178,7 @@ func TestMountPointDataFromName(t *testing.T) {
 
 	// Save the test mount point to the database
 	err := testMountPoint.Save()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a new MountPointData instance to test FromName
 	var retrievedMountPoint MountPointData
@@ -185,7 +186,7 @@ func TestMountPointDataFromName(t *testing.T) {
 	// Call FromName with the existing name
 	err = retrievedMountPoint.FromName("test_drive")
 	t.Logf("%v", retrievedMountPoint)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check if the retrieved mount point matches the original
 	assert.Equal(t, testMountPoint.Path, retrievedMountPoint.Path)
@@ -204,7 +205,7 @@ func TestMountPointDataFromNameEmptyString(t *testing.T) {
 
 	err := mp.FromName("")
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, errors.New("name cannot be empty"), err)
 	assert.Empty(t, mp.Name)
 	assert.Empty(t, mp.Path)

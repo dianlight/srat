@@ -11,13 +11,14 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListSharesHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/shares", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -35,7 +36,7 @@ func TestListSharesHandler(t *testing.T) {
 	var expectedDto dto.SharedResources
 	expectedDto.From(addon_config.Shares)
 	expected, jsonError := json.Marshal(expectedDto)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 }
 
@@ -43,7 +44,7 @@ func TestGetShareHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/share/LIBRARY", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -60,7 +61,7 @@ func TestGetShareHandler(t *testing.T) {
 	var expectedDto dto.SharedResource
 	expectedDto.From(addon_config.Shares["LIBRARY"])
 	expected, jsonError := json.Marshal(expectedDto)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 }
 
@@ -73,11 +74,11 @@ func TestCreateShareHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "POST", "/share", strings.NewReader(string(jsonBody)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -91,7 +92,7 @@ func TestCreateShareHandler(t *testing.T) {
 
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(share)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 }
 
@@ -108,11 +109,11 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "POST", "/share/LIBRARY", strings.NewReader(string(jsonBody)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -126,7 +127,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(dto.ResponseError{Error: "Share already exists", Body: share})
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 }
 
@@ -137,12 +138,12 @@ func TestUpdateShareHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PATCH", "/share/LIBRARY", strings.NewReader(string(jsonBody)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -161,7 +162,7 @@ func TestUpdateShareHandler(t *testing.T) {
 	share.Users = []string{"dianlight"}
 	share.Usage = "media"
 	expected, jsonError := json.Marshal(share)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 }
 
@@ -169,7 +170,7 @@ func TestDeleteShareHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/share/LIBRARY", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -183,7 +184,7 @@ func TestDeleteShareHandler(t *testing.T) {
 
 	// Refresh shares list anche check that LIBRARY don't exists
 	req, err = http.NewRequestWithContext(testContext, "GET", "/shares", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	rr = httptest.NewRecorder()
 	handler := http.HandlerFunc(ListShares)
 	handler.ServeHTTP(rr, req)
