@@ -17,9 +17,7 @@ func TestListSharesHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/shares", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -30,10 +28,7 @@ func TestListSharesHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, rr.Code, http.StatusOK)
 
 	// Check the response body is what we expect.
 	addon_config := testContext.Value("addon_config").(*config.Config)
@@ -48,9 +43,7 @@ func TestGetShareHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/share/LIBRARY", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -60,24 +53,15 @@ func TestGetShareHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, rr.Code, http.StatusOK)
 
 	// Check the response body is what we expect.
 	addon_config := testContext.Value("addon_config").(*config.Config)
 	var expectedDto dto.SharedResource
 	expectedDto.From(addon_config.Shares["LIBRARY"])
-	//	var returnedDto dto.SharedResource
-	//	returnedDto.FromJSONBody(w,rr)
 	expected, jsonError := json.Marshal(expectedDto)
 	assert.NoError(t, jsonError)
 	assert.Equal(t, rr.Body.String(), string(expected))
-	//	if rr.Body.String() != string(expected) {
-	//		t.Errorf("handler returned unexpected body: got %v want %v",
-	//			rr.Body.String(), string(expected))
-	//	}
 }
 
 func TestCreateShareHandler(t *testing.T) {
@@ -89,15 +73,11 @@ func TestCreateShareHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
+	assert.NoError(t, jsonError)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "POST", "/share", strings.NewReader(string(jsonBody)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -107,20 +87,12 @@ func TestCreateShareHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusCreated {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, http.StatusCreated, rr.Code)
 
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(share)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
-	if rr.Body.String() != string(expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), string(expected))
-	}
+	assert.NoError(t, jsonError)
+	assert.Equal(t, rr.Body.String(), string(expected))
 }
 
 func TestCreateShareDuplicateHandler(t *testing.T) {
@@ -136,15 +108,11 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
+	assert.NoError(t, jsonError)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "POST", "/share/LIBRARY", strings.NewReader(string(jsonBody)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -154,20 +122,12 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusConflict {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, http.StatusConflict, rr.Code)
 
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(dto.ResponseError{Error: "Share already exists", Body: share})
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
-	if rr.Body.String() != string(expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), string(expected))
-	}
+	assert.NoError(t, jsonError)
+	assert.Equal(t, rr.Body.String(), string(expected))
 }
 
 func TestUpdateShareHandler(t *testing.T) {
@@ -177,15 +137,12 @@ func TestUpdateShareHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
+	assert.NoError(t, jsonError)
+
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PATCH", "/share/LIBRARY", strings.NewReader(string(jsonBody)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -204,22 +161,15 @@ func TestUpdateShareHandler(t *testing.T) {
 	share.Users = []string{"dianlight"}
 	share.Usage = "media"
 	expected, jsonError := json.Marshal(share)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
-	if rr.Body.String() != string(expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), string(expected))
-	}
+	assert.NoError(t, jsonError)
+	assert.Equal(t, rr.Body.String(), string(expected))
 }
 
 func TestDeleteShareHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/share/LIBRARY", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -229,21 +179,15 @@ func TestDeleteShareHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusNoContent {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, rr.Code, http.StatusNoContent)
 
 	// Refresh shares list anche check that LIBRARY don't exists
 	req, err = http.NewRequestWithContext(testContext, "GET", "/shares", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	rr = httptest.NewRecorder()
 	handler := http.HandlerFunc(ListShares)
 	handler.ServeHTTP(rr, req)
 
-	if strings.Contains(rr.Body.String(), "LIBRARY") {
-		t.Errorf("LIBRARY share still exists")
-	}
+	assert.Equal(t, rr.Code, http.StatusOK)
+	assert.False(t, strings.Contains(rr.Body.String(), "LIBRARY"), "LIBRARY share still exists")
 }

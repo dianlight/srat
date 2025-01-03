@@ -10,3 +10,4 @@ curl -fsSL https://bun.sh/install | bash
 GOBIN=/usr/local/bin/ go install github.com/swaggo/swag/v2/cmd/swag@latest
 GOBIN=/usr/local/bin/ go install github.com/rogpeppe/gohack@latest
 GOBIN=/usr/local/bin/ go install github.com/rakyll/gotest@latest
+GOBIN=/usr/local/bin/ go install github.com/Antonboom/testifylint@latest

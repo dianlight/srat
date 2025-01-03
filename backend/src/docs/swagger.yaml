@@ -1112,14 +1112,12 @@ paths:
       - application/json
       description: Get the generated samba config
       produces:
-      - plain/text
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              type: integer
-            type: array
+            type: string
         "500":
           description: Internal Server Error
           schema:

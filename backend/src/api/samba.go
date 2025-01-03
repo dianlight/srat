@@ -62,7 +62,7 @@ func GetSambaProcess() (*process.Process, error) {
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/samba/apply [put]
 func ApplySamba(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "plain/text")
+	w.Header().Set("Content-Type", "application/json")
 
 	stream, err := createConfigStream(r.Context())
 	if err != nil {
@@ -82,16 +82,24 @@ func ApplySamba(w http.ResponseWriter, r *http.Request) {
 		cmd := exec.Command("testparm", "-s", *smbConfigFile)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error executing testparm", map[string]any{"error": err, "output": out})
+			dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error executing testparm", map[string]any{"error": err, "output": string(out)})
+			return
+		}
+
+		process, err := GetSambaProcess()
+		if err != nil {
+			dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error getting Samba process", err)
 			return
 		}
 
 		// Exec smbcontrol smbd reload-config
-		cmdr := exec.Command("smbcontrol", "smbd", "reload-config")
-		err = cmdr.Run()
-		if err != nil {
-			dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error executing smbcontrol", map[string]any{"error": err})
-			return
+		if process != nil {
+			cmdr := exec.Command("smbcontrol", "smbd", "reload-config")
+			out, err = cmdr.CombinedOutput()
+			if err != nil {
+				dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error executing smbcontrol", map[string]any{"error": err, "output": string(out)})
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusNoContent)
@@ -104,12 +112,12 @@ func ApplySamba(w http.ResponseWriter, r *http.Request) {
 //	@Description	Get the generated samba config
 //	@Tags			samba
 //	@Accept			json
-//	@Produce		plain/text
+//	@Produce		json
 //	@Success		200	{object}	dto.SmbConf
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/samba [get]
 func GetSambaConfig(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "plain/text")
+	w.Header().Set("Content-Type", "application/json")
 
 	var smbConf dto.SmbConf
 

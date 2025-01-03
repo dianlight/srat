@@ -6,7 +6,7 @@ import (
 	"github.com/jinzhu/copier"
 )
 
-type SmbConf []byte
+type SmbConf string
 
 func (self *SmbConf) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})

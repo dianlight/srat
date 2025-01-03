@@ -854,10 +854,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/samba
      */
     sambaList: (params: RequestParams = {}) =>
-      this.request<number[], DtoResponseError>({
+      this.request<string, DtoResponseError>({
         path: `/samba`,
         method: "GET",
         type: ContentType.Json,
+        format: "json",
         ...params,
       }),
 

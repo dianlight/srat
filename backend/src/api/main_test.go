@@ -35,10 +35,6 @@ func TestMain(m *testing.M) {
 	testContext = context.WithValue(testContext, "samba_config_file", &smbConfigFile)
 	testContext = context.WithValue(testContext, "template_data", templateData)
 
-	// smbConfigFile
-	//smbConfigFile := new(string)
-	//*smbConfigFile = "../test/data/smb.conf"
-
 	// Template
 	/*
 		templateDatan, err := io.ReadFile("../templates/smb.gtpl")
