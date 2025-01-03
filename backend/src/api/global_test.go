@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/data"
-	"github.com/dianlight/srat/dm"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +51,7 @@ func TestGetGlobalConfigHandler(t *testing.T) {
 	//			rr.Body.String(), string(expected[:]))
 	//	}
 
-	assert.False(t, testContext.Value("data_dirty_tracker").(*dm.DataDirtyTracker).Settings)
+	assert.False(t, testContext.Value("data_dirty_tracker").(*dto.DataDirtyTracker).Settings)
 }
 
 func TestUpdateGlobalConfigHandler(t *testing.T) {
@@ -84,7 +82,7 @@ func TestUpdateGlobalConfigHandler(t *testing.T) {
 		t.Errorf("Unable to decode JSON %s", err.Error())
 	}
 
-	assert.True(t, testContext.Value("data_dirty_tracker").(*dm.DataDirtyTracker).Settings)
+	assert.True(t, testContext.Value("data_dirty_tracker").(*dto.DataDirtyTracker).Settings)
 
 	assert.Equal(t, res.Workgroup, glc.Workgroup)
 }
@@ -93,7 +91,7 @@ func TestUpdateGlobalConfigSameConfigHandler(t *testing.T) {
 	var glc = dto.Settings{}
 	addon_config := testContext.Value("addon_config").(*config.Config)
 	assert.Equal(t, addon_config.Workgroup, "pluto&admin")
-	testContext.Value("data_dirty_tracker").(*dm.DataDirtyTracker).Settings = false
+	testContext.Value("data_dirty_tracker").(*dto.DataDirtyTracker).Settings = false
 
 	glc.From(addon_config)
 
@@ -113,13 +111,13 @@ func TestUpdateGlobalConfigSameConfigHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	assert.Equal(t, rr.Code, http.StatusNoContent)
-	assert.False(t, testContext.Value("data_dirty_tracker").(*dm.DataDirtyTracker).Settings)
+	assert.False(t, testContext.Value("data_dirty_tracker").(*dto.DataDirtyTracker).Settings)
 }
 
 func TestPersistConfig(t *testing.T) {
 	// Setup
 	//data.Config = &config.Config{}
-	data_dirty_tracker := testContext.Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+	data_dirty_tracker := testContext.Value("data_dirty_tracker").(*dto.DataDirtyTracker)
 	data_dirty_tracker.Settings = true
 	data_dirty_tracker.Users = true
 	data_dirty_tracker.Shares = true
@@ -143,17 +141,17 @@ func TestPersistConfig(t *testing.T) {
 	assert.Equal(t, rr.Code, http.StatusOK)
 
 	// Check if DirtySectionState flags are set to false
-	assert.False(t, data.DirtySectionState.Settings)
-	assert.False(t, data.DirtySectionState.Users)
-	assert.False(t, data.DirtySectionState.Shares)
-	assert.False(t, data.DirtySectionState.Volumes)
+	assert.False(t, data_dirty_tracker.Settings)
+	assert.False(t, data_dirty_tracker.Users)
+	assert.False(t, data_dirty_tracker.Shares)
+	assert.False(t, data_dirty_tracker.Volumes)
 
 }
 
 func TestRollbackConfig(t *testing.T) {
 	// Setup
 	//data.Config = &config.Config{}
-	data_dirty_tracker := testContext.Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+	data_dirty_tracker := testContext.Value("data_dirty_tracker").(*dto.DataDirtyTracker)
 	data_dirty_tracker.Settings = true
 	data_dirty_tracker.Users = true
 	data_dirty_tracker.Shares = true
@@ -183,9 +181,9 @@ func TestRollbackConfig(t *testing.T) {
 	// Check if DirtySectionState flags are set to false
 
 	assert.Equal(t, addon_config.Workgroup, tmpWRG) // rollback to original workgroup
-	assert.False(t, data.DirtySectionState.Settings)
-	//assert.False(t, data.DirtySectionState.Users)
-	//assert.False(t, data.DirtySectionState.Shares)
-	//assert.False(t, data.DirtySectionState.Volumes)
+	assert.False(t, data_dirty_tracker.Settings)
+	//assert.False(t, data_dirty_tracker.Users)
+	//assert.False(t, data_dirty_tracker.Shares)
+	//assert.False(t, data_dirty_tracker.Volumes)
 
 }

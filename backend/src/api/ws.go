@@ -20,7 +20,7 @@ var activeContexts = make(map[string]context.CancelFunc)
 //	@Description	Open the WSChannel
 //	@Tags			system
 //	@Produce		json
-//	@Success		200
+//	@Success		200 {object}	dto.DataDirtyTracker
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/ws [get]
 func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {

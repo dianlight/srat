@@ -27,7 +27,6 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
-	"github.com/dianlight/srat/dm"
 	_ "github.com/dianlight/srat/docs"
 	"github.com/dianlight/srat/dto"
 	"github.com/jpillora/overseer/fetcher"
@@ -232,10 +231,17 @@ func prog(state overseer.State) {
 	if cerr != nil {
 		log.Fatalf("Cant load config file %s - %s", *data.ConfigFile, cerr)
 	}
-	data.Config = aconfig
+	//data.Config = aconfig
 
 	// Get options
 	options = config.ReadOptionsFile(*optionsFile)
+
+	var apiContext = context.Background()
+	apiContext = context.WithValue(apiContext, "addon_config", aconfig)
+	apiContext = context.WithValue(apiContext, "addon_option", options)
+	apiContext = context.WithValue(apiContext, "data_dirty_tracker", dto.DataDirtyTracker{})
+	apiContext = context.WithValue(apiContext, "samba_config_file", smbConfigFile)
+	apiContext = context.WithValue(apiContext, "template_data", templateData)
 
 	globalRouter := mux.NewRouter()
 	if hamode != nil && *hamode {
@@ -262,13 +268,13 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/volume/{volume_name}/mount", api.UmountVolume).Methods(http.MethodDelete)
 
 	// Users
-	globalRouter.HandleFunc("/admin/user", getAdminUser).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/admin/user", updateAdminUser).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/users", listUsers).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/user/{username}", getUser).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/user", createUser).Methods(http.MethodPost)
-	globalRouter.HandleFunc("/user/{username}", updateUser).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/user/{username}", deleteUser).Methods(http.MethodDelete)
+	globalRouter.HandleFunc("/admin/user", api.GetAdminUser).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/admin/user", api.UpdateAdminUser).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/users", api.ListUsers).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/user/{username}", api.GetUser).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/user", api.CreateUser).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/user/{username}", api.UpdateUser).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/user/{username}", api.DeleteUser).Methods(http.MethodDelete)
 
 	// Samba
 	globalRouter.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet)
@@ -328,9 +334,9 @@ func prog(state overseer.State) {
 		IdleTimeout:  time.Second * 60,
 		Handler:      loggedRouter, // Pass our instance of gorilla/mux in.
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			ctx = context.WithValue(ctx, "addon_config", ctx.Value("addon_config"))
-			ctx = context.WithValue(ctx, "addon_option", ctx.Value("addon_option"))
-			ctx = context.WithValue(ctx, "data_dirty_tracker", dm.DataDirtyTracker{})
+			ctx = context.WithValue(ctx, "addon_config", aconfig)
+			ctx = context.WithValue(ctx, "addon_option", options)
+			ctx = context.WithValue(ctx, "data_dirty_tracker", dto.DataDirtyTracker{})
 			ctx = context.WithValue(ctx, "samba_config_file", smbConfigFile)
 			ctx = context.WithValue(ctx, "template_data", templateData)
 
@@ -339,7 +345,7 @@ func prog(state overseer.State) {
 	}
 
 	// Run the backgrounde services
-	go api.HealthAndUpdateDataRefeshHandlers()
+	go api.HealthAndUpdateDataRefeshHandlers(apiContext)
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
 		log.Printf("Starting Server... \n GoTo: http://localhost:%d/", *http_port)

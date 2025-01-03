@@ -7,7 +7,6 @@ import (
 
 	"dario.cat/mergo"
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/dm"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 )
@@ -95,7 +94,7 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 	} else {
 		var share2 config.Share
 		share.To(&share2)
-		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
 		data_dirty_tracker.Shares = true
 		notifyClient(&addon_config.Shares)
 		share.ToResponse(http.StatusCreated, w)
@@ -158,7 +157,7 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		addon_config.Shares[share_name] = adata
-		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
 		data_dirty_tracker.Shares = true
 		notifyClient(&addon_config.Shares)
 		//	log.Println(pretty.Sprint(cshare, share))
@@ -190,7 +189,7 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		delete(addon_config.Shares, share)
-		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
 		data_dirty_tracker.Shares = true
 		notifyClient(&addon_config.Shares)
 		w.WriteHeader(http.StatusNoContent)

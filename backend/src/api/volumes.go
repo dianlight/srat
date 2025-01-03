@@ -15,7 +15,6 @@ import (
 
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
-	"github.com/dianlight/srat/dm"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gobeam/stringy"
@@ -304,7 +303,8 @@ func MountVolume(w http.ResponseWriter, r *http.Request) {
 
 		var ndata, _ = GetVolumesData()
 		notifyVolumeClient(ndata)
-		data.DirtySectionState.Volumes = true
+		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
+		data_dirty_tracker.Volumes = true
 
 		mounted_data.ToResponse(http.StatusCreated, w)
 	}
@@ -362,7 +362,7 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 			}
 			var ndata, _ = GetVolumesData()
 			notifyVolumeClient(ndata)
-			data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+			data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
 			data_dirty_tracker.Volumes = true
 			w.WriteHeader(http.StatusNoContent)
 			return

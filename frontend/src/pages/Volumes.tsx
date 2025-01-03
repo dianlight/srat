@@ -1,6 +1,6 @@
 import { Fragment, useContext, useEffect, useState } from "react";
 import { apiContext, ModeContext, wsContext as ws } from "../Contexts";
-import { DataMounDataFlag, MainEventType, type DbomMountPointData, type MainBlockInfo, type MainBlockPartition } from "../srat";
+import { DataMounDataFlag, DtoEventType, type DtoBlockInfo, type DtoBlockPartition, type DtoMountPointData } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
@@ -26,13 +26,13 @@ export function Volumes() {
     const [showMount, setShowMount] = useState<boolean>(false);
 
 
-    const [status, setStatus] = useState<MainBlockInfo>({});
-    const [selected, setSelected] = useState<MainBlockPartition | undefined>(undefined);
+    const [status, setStatus] = useState<DtoBlockInfo>({});
+    const [selected, setSelected] = useState<DtoBlockPartition | undefined>(undefined);
     const confirm = useConfirm();
 
 
     useEffect(() => {
-        const vol = ws.subscribe<MainBlockInfo>(MainEventType.EventVolumes, (data) => {
+        const vol = ws.subscribe<DtoBlockInfo>(DtoEventType.EventVolumes, (data) => {
             console.log("Got volumes", data)
             setStatus(data);
         })
@@ -47,7 +47,7 @@ export function Volumes() {
         });
     };
 
-    function onSubmitMountVolume(data?: DbomMountPointData) {
+    function onSubmitMountVolume(data?: DtoMountPointData) {
         if (!data || !data.name) return
         console.log("Mount", data)
         apiContext.volume.mountCreate(data.name, {}).then((res) => {
@@ -60,7 +60,7 @@ export function Volumes() {
         })
     }
 
-    function onSubmitUmountVolume(data: MainBlockPartition, force = false) {
+    function onSubmitUmountVolume(data: DtoBlockPartition, force = false) {
         console.log("Umount", data)
         confirm({
             title: `Umount ${data.label}?`,
@@ -150,9 +150,9 @@ export function Volumes() {
 }
 
 
-function VolumeMountDialog(props: { open: boolean, onClose: (data?: DbomMountPointData) => void, objectToEdit?: MainBlockPartition }) {
-    const mountpointData: DbomMountPointData = {}
-    const { control, handleSubmit, watch, formState: { errors } } = useForm<DbomMountPointData>(
+function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPointData) => void, objectToEdit?: DtoBlockPartition }) {
+    const mountpointData: DtoMountPointData = {}
+    const { control, handleSubmit, watch, formState: { errors } } = useForm<DtoMountPointData>(
         {
             values: {
                 name: props.objectToEdit?.name,
@@ -164,7 +164,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DbomMountPoi
     );
     const filesystems = useSWR<string[]>('/filesystems', () => apiContext.filesystems.filesystemsList().then(res => res.data));
 
-    function handleCloseSubmit(data?: DbomMountPointData) {
+    function handleCloseSubmit(data?: DtoMountPointData) {
         props.onClose(data)
     }
 

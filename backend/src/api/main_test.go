@@ -8,7 +8,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
-	"github.com/dianlight/srat/dm"
+	"github.com/dianlight/srat/dto"
 )
 
 var testContext = context.Background()
@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 
 	testContext = context.WithValue(testContext, "addon_config", aconfig)
 	testContext = context.WithValue(testContext, "addon_option", options)
-	testContext = context.WithValue(testContext, "data_dirty_tracker", &dm.DataDirtyTracker{})
+	testContext = context.WithValue(testContext, "data_dirty_tracker", &dto.DataDirtyTracker{})
 	var smbConfigFile = "../../test/data/smb.conf"
 	testContext = context.WithValue(testContext, "samba_config_file", &smbConfigFile)
 	testContext = context.WithValue(testContext, "template_data", templateData)

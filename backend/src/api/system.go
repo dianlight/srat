@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dm"
@@ -54,19 +55,21 @@ var (
 //
 // This function runs indefinitely in a loop, with a 5-second pause between iterations.
 // It uses a rate limiter to manage GitHub API requests and respects the configured update channel.
-func HealthAndUpdateDataRefeshHandlers() {
+func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
 
+	addon_config := ctx.Value("addon_config").(*config.Config)
+
 	var gh = github.NewClient(rateLimiter)
 	for {
 		healthData.ReadOnly = *data.ROMode
-		if data.Config.UpdateChannel != dm.None {
+		if addon_config.UpdateChannel != dm.None {
 			UpdateLimiter.Do(func() {
-				log.Printf("Checking for updates...%v", data.Config.UpdateChannel)
+				log.Printf("Checking for updates...%v", addon_config.UpdateChannel)
 				releases, _, err := gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
 					Page:    1,
 					PerPage: 5,
@@ -78,10 +81,10 @@ func HealthAndUpdateDataRefeshHandlers() {
 				} else if len(releases) > 0 {
 					for _, release := range releases {
 						//log.Println(pretty.Sprintf("%v\n", release))
-						if *release.Prerelease && data.Config.UpdateChannel == dm.Stable {
+						if *release.Prerelease && addon_config.UpdateChannel == dm.Stable {
 							//log.Printf("Skip Prerelease %s", *release.TagName)
 							continue
-						} else if !*release.Prerelease && data.Config.UpdateChannel == dm.Prerelease {
+						} else if !*release.Prerelease && addon_config.UpdateChannel == dm.Prerelease {
 							//log.Printf("Skip Release %s", *release.TagName)
 							continue
 						}
@@ -175,20 +178,21 @@ func HealthCheckWsHandler(ctx context.Context, request dto.WebSocketMessageEnvel
 // The function runs indefinitely, sending updates only when the DirtySectionState changes,
 // until the WebSocket connection is closed or the context is cancelled.
 func DirtyWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
-	var oldDritySectionState dm.DataDirtyTracker
+	var oldDritySectionState dto.DataDirtyTracker
+	dtr := ctx.Value("data_dirty_tracker").(*dto.DataDirtyTracker)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			if oldDritySectionState != data.DirtySectionState {
+			if oldDritySectionState != *dtr {
 				var message dto.WebSocketMessageEnvelope = dto.WebSocketMessageEnvelope{
 					Event: dto.EventHeartbeat,
 					Uid:   request.Uid,
-					Data:  data.DirtySectionState,
+					Data:  &dtr,
 				}
 				c <- &message
-				copier.Copy(&oldDritySectionState, data.DirtySectionState)
+				copier.Copy(&oldDritySectionState, dtr)
 				//log.Printf("%v %v\n", oldDritySectionState, data.DirtySectionState)
 			}
 		}
@@ -431,7 +435,7 @@ func getFileSystems() ([]string, error) {
 // GetFSHandler godoc
 //
 //	@Summary		GetFSHandler
-//	@Description	Return all network interfaces
+//	@Description	Return all supported fs
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	dto.FilesystemTypes

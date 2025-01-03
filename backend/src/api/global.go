@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/dm"
 	"github.com/dianlight/srat/dto"
 	"github.com/jinzhu/copier"
 	"github.com/kr/pretty"
@@ -66,7 +65,7 @@ func UpdateGlobalConfig(w http.ResponseWriter, r *http.Request) {
 	//copier.CopyWithOption(&addon_config, &tmpConfig, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 
 	var retglobalConfig dto.Settings = dto.Settings{}
-	data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+	data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
 	data_dirty_tracker.Settings = true
 
 	// Recheck the config
@@ -137,7 +136,7 @@ func PersistConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	addon_config := r.Context().Value("addon_config").(*config.Config)
-	data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+	data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
 
 	//config.SaveConfig(addon_config) // FIXME: Change to DB
 	data_dirty_tracker.Settings = false
@@ -195,7 +194,7 @@ func RollbackConfig(w http.ResponseWriter, r *http.Request) {
 	copier.CopyWithOption(addon_config, config, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 	settings.From(config)
 
-	data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dm.DataDirtyTracker)
+	data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
 	data_dirty_tracker.Settings = false
 	//data_dirty_tracker.Users = false FIXME: Implement this
 	//data_dirty_tracker.Shares = false FIXME: Implement this

@@ -9,24 +9,6 @@
  * ---------------------------------------------------------------
  */
 
-export interface ConfigShare {
-  disabled?: boolean;
-  fs?: string;
-  name?: string;
-  path?: string;
-  ro_users?: string[];
-  timemachine?: boolean;
-  usage?: string;
-  users?: string[];
-}
-
-export type ConfigShares = Record<string, ConfigShare>;
-
-export interface ConfigUser {
-  password?: string;
-  username?: string;
-}
-
 export enum DataMounDataFlag {
   MS_RDONLY = 1,
   MS_NOSUID = 2,
@@ -43,7 +25,83 @@ export enum DataMounDataFlag {
   MS_RELATIME = 2097152,
 }
 
-export interface DbomMountPointData {
+export enum DmUpdateChannel {
+  Stable = "stable",
+  Prerelease = "prerelease",
+  None = "none",
+}
+
+export interface DtoBlockInfo {
+  /**
+   * Partitions contains an array of pointers to `Partition` structs, one for
+   * each partition on any disk drive on the host system.
+   */
+  partitions?: DtoBlockPartition[];
+  total_size_bytes?: number;
+}
+
+export interface DtoBlockPartition {
+  /** MountPoint is the path where this partition is mounted last time */
+  default_mount_point?: string;
+  /**
+   * FilesystemLabel is the label of the filesystem contained on the
+   * partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
+   */
+  filesystem_label?: string;
+  /**
+   * Label is the human-readable label given to the partition. On Linux, this
+   * is derived from the `ID_PART_ENTRY_NAME` udev entry.
+   */
+  label?: string;
+  /** MountData contains additional data associated with the partition. */
+  mount_data?: string;
+  /** MountFlags contains the mount flags for the partition. */
+  mount_flags?: DataMounDataFlag[];
+  /** MountPoint is the path where this partition is mounted. */
+  mount_point?: string;
+  /** Name is the system name given to the partition, e.g. "sda1". */
+  name?: string;
+  /** PartiionFlags contains the mount flags for the partition. */
+  partition_flags?: DataMounDataFlag[];
+  /** IsReadOnly indicates if the partition is marked read-only. */
+  read_only?: boolean;
+  /**
+   * SizeBytes contains the total amount of storage, in bytes, this partition
+   * can consume.
+   */
+  size_bytes?: number;
+  /** Type contains the type of the partition. */
+  type?: string;
+  /**
+   * UUID is the universally-unique identifier (UUID) for the partition.
+   * This will be volume UUID on Darwin, PartUUID on linux, empty on Windows.
+   */
+  uuid?: string;
+}
+
+export interface DtoDataDirtyTracker {
+  settings?: boolean;
+  shares?: boolean;
+  users?: boolean;
+  volumes?: boolean;
+}
+
+export enum DtoEventType {
+  EventUpdate = "update",
+  EventHeartbeat = "heartbeat",
+  EventShare = "share",
+  EventVolumes = "volumes",
+  EventDirty = "dirty",
+}
+
+export interface DtoHealthPing {
+  alive?: boolean;
+  last_error?: string;
+  read_only?: boolean;
+  samba_pid?: number;
+}
+
+export interface DtoMountPointData {
   data?: string;
   default_path?: string;
   flags?: DataMounDataFlag[];
@@ -53,10 +111,33 @@ export interface DbomMountPointData {
   path?: string;
 }
 
-export enum DmUpdateChannel {
-  Stable = "stable",
-  Prerelease = "prerelease",
-  None = "none",
+export interface DtoNIC {
+  /**
+   * Duplex is a string indicating the current duplex setting of this NIC,
+   * e.g. "Full"
+   */
+  duplex?: string;
+  /**
+   * IsVirtual is true if the NIC is entirely virtual/emulated, false
+   * otherwise.
+   */
+  is_virtual?: boolean;
+  /** MACAddress is the Media Access Control (MAC) address of this NIC. */
+  mac_address?: string;
+  /** Name is the string identifier the system gave this NIC. */
+  name?: string;
+  /** Speed is a string describing the link speed of this NIC, e.g. "1000Mb/s" */
+  speed?: string;
+}
+
+export interface DtoNetworkInfo {
+  nics?: DtoNIC[];
+}
+
+export interface DtoReleaseAsset {
+  arch?: GithubReleaseAsset;
+  last_release?: GithubRepositoryRelease;
+  update_status?: number;
 }
 
 export interface DtoResponseError {
@@ -89,6 +170,24 @@ export interface DtoSettings {
   update_channel?: DmUpdateChannel;
   veto_files?: string[];
   workgroup?: string;
+}
+
+export interface DtoSharedResource {
+  disabled?: boolean;
+  fs?: string;
+  name?: string;
+  path?: string;
+  ro_users?: string[];
+  timemachine?: boolean;
+  usage?: string;
+  users?: string[];
+}
+
+export type DtoSharedResources = Record<string, DtoSharedResource>;
+
+export interface DtoUser {
+  password?: string;
+  username?: string;
 }
 
 export interface GithubMatch {
@@ -359,157 +458,6 @@ export interface GithubUser {
   url?: string;
 }
 
-export interface MainBlockInfo {
-  /**
-   * Partitions contains an array of pointers to `Partition` structs, one for
-   * each partition on any disk drive on the host system.
-   */
-  partitions?: MainBlockPartition[];
-  total_size_bytes?: number;
-}
-
-export interface MainBlockPartition {
-  /** MountPoint is the path where this partition is mounted last time */
-  default_mount_point?: string;
-  /**
-   * FilesystemLabel is the label of the filesystem contained on the
-   * partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
-   */
-  filesystem_label?: string;
-  /**
-   * Label is the human-readable label given to the partition. On Linux, this
-   * is derived from the `ID_PART_ENTRY_NAME` udev entry.
-   */
-  label?: string;
-  /** MountData contains additional data associated with the partition. */
-  mount_data?: string;
-  /** MountFlags contains the mount flags for the partition. */
-  mount_flags?: DataMounDataFlag[];
-  /** MountPoint is the path where this partition is mounted. */
-  mount_point?: string;
-  /** Name is the system name given to the partition, e.g. "sda1". */
-  name?: string;
-  /** PartiionFlags contains the mount flags for the partition. */
-  partition_flags?: DataMounDataFlag[];
-  /** IsReadOnly indicates if the partition is marked read-only. */
-  read_only?: boolean;
-  /**
-   * SizeBytes contains the total amount of storage, in bytes, this partition
-   * can consume.
-   */
-  size_bytes?: number;
-  /** Type contains the type of the partition. */
-  type?: string;
-  /**
-   * UUID is the universally-unique identifier (UUID) for the partition.
-   * This will be volume UUID on Darwin, PartUUID on linux, empty on Windows.
-   */
-  uuid?: string;
-}
-
-export enum MainEventType {
-  EventUpdate = "update",
-  EventHeartbeat = "heartbeat",
-  EventShare = "share",
-  EventVolumes = "volumes",
-  EventDirty = "dirty",
-}
-
-export interface MainHealth {
-  alive?: boolean;
-  last_error?: string;
-  read_only?: boolean;
-  samba_pid?: number;
-}
-
-export interface MainSRATReleaseAsset {
-  arch?: GithubReleaseAsset;
-  last_release?: GithubRepositoryRelease;
-  update_status?: number;
-}
-
-export interface NetInfo {
-  /**
-   * NICs is a slice of pointers to `NIC` structs describing the network
-   * interface controllers (NICs) on the host system.
-   */
-  nics?: NetNIC[];
-}
-
-export interface NetNIC {
-  /**
-   * AvertisedFECModes is a slice of strings containing the advertised
-   * (during auto-negotiation) Forward Error Correction (FEC) modes for this
-   * NIC.
-   */
-  advertised_fec_modes?: string[];
-  /**
-   * AdvertiseLinkModes is a slice of strings containing the advertised
-   * (during auto-negotiation) link modes of this NIC, e.g. "10baseT/Half",
-   * "1000baseT/Full", etc.
-   */
-  advertised_link_modes?: string[];
-  /**
-   * Capabilities is a slice of pointers to `NICCapability` structs
-   * describing a feature/capability of this NIC.
-   */
-  capabilities?: NetNICCapability[];
-  /**
-   * Duplex is a string indicating the current duplex setting of this NIC,
-   * e.g. "Full"
-   */
-  duplex?: string;
-  /**
-   * IsVirtual is true if the NIC is entirely virtual/emulated, false
-   * otherwise.
-   */
-  is_virtual?: boolean;
-  /** MACAddress is the Media Access Control (MAC) address of this NIC. */
-  mac_address?: string;
-  /** Name is the string identifier the system gave this NIC. */
-  name?: string;
-  /**
-   * PCIAddress is a pointer to the PCI address for this NIC, or nil if there
-   * is no PCI address for this NIC.
-   */
-  pci_address?: string;
-  /** Speed is a string describing the link speed of this NIC, e.g. "1000Mb/s" */
-  speed?: string;
-  /**
-   * SupportedFECModes is a slice of strings containing the supported Forward
-   * Error Correction (FEC) modes for this NIC.
-   */
-  supported_fec_modes?: string[];
-  /**
-   * SupportedLinkModes is a slice of strings containing the supported link
-   * modes of this NIC, e.g. "10baseT/Half", "1000baseT/Full", etc.
-   */
-  supported_link_modes?: string[];
-  /**
-   * SupportedPorts is a slice of strings containing the supported physical
-   * ports on this NIC, e.g. "Twisted Pair"
-   */
-  supported_ports?: string[];
-}
-
-export interface NetNICCapability {
-  /**
-   * CanEnable is true if the capability can be enabled on the NIC, false
-   * otherwise.
-   */
-  can_enable?: boolean;
-  /**
-   * IsEnabled is true if the capability is currently enabled on the NIC,
-   * false otherwise.
-   */
-  is_enabled?: boolean;
-  /**
-   * Name is the string name for the capability, e.g.
-   * "tcp-segmentation-offload"
-   */
-  name?: string;
-}
-
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
 
@@ -663,7 +611,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/admin/user
      */
     userList: (params: RequestParams = {}) =>
-      this.request<ConfigUser, DtoResponseError>({
+      this.request<DtoUser, DtoResponseError>({
         path: `/admin/user`,
         method: "GET",
         format: "json",
@@ -678,8 +626,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update admin user
      * @request PUT:/admin/user
      */
-    userUpdate: (user: ConfigUser, params: RequestParams = {}) =>
-      this.request<ConfigUser, DtoResponseError>({
+    userUpdate: (user: DtoUser, params: RequestParams = {}) =>
+      this.request<DtoUser, DtoResponseError>({
         path: `/admin/user`,
         method: "PUT",
         body: user,
@@ -696,8 +644,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update admin user
      * @request PATCH:/admin/user
      */
-    userPartialUpdate: (user: ConfigUser, params: RequestParams = {}) =>
-      this.request<ConfigUser, DtoResponseError>({
+    userPartialUpdate: (user: DtoUser, params: RequestParams = {}) =>
+      this.request<DtoUser, DtoResponseError>({
         path: `/admin/user`,
         method: "PATCH",
         body: user,
@@ -768,7 +716,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/events
      */
     eventsList: (params: RequestParams = {}) =>
-      this.request<MainEventType[], string>({
+      this.request<DtoEventType[], string>({
         path: `/events`,
         method: "GET",
         format: "json",
@@ -777,7 +725,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
   };
   filesystems = {
     /**
-     * @description Return all network interfaces
+     * @description Return all supported fs
      *
      * @tags system
      * @name FilesystemsList
@@ -856,7 +804,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/health
      */
     healthList: (params: RequestParams = {}) =>
-      this.request<MainHealth, DtoResponseError>({
+      this.request<DtoHealthPing, DtoResponseError>({
         path: `/health`,
         method: "GET",
         format: "json",
@@ -873,7 +821,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/nics
      */
     nicsList: (params: RequestParams = {}) =>
-      this.request<NetInfo, DtoResponseError>({
+      this.request<DtoNetworkInfo, DtoResponseError>({
         path: `/nics`,
         method: "GET",
         format: "json",
@@ -955,8 +903,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Create a share
      * @request POST:/share
      */
-    shareCreate: (share: ConfigShare, params: RequestParams = {}) =>
-      this.request<ConfigShare, DtoResponseError>({
+    shareCreate: (share: DtoSharedResource, params: RequestParams = {}) =>
+      this.request<DtoSharedResource, DtoResponseError>({
         path: `/share`,
         method: "POST",
         body: share,
@@ -974,7 +922,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/share/{share_name}
      */
     shareDetail: (shareName: string, params: RequestParams = {}) =>
-      this.request<ConfigShare, DtoResponseError>({
+      this.request<DtoSharedResource, DtoResponseError>({
         path: `/share/${shareName}`,
         method: "GET",
         format: "json",
@@ -989,8 +937,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update a share
      * @request PUT:/share/{share_name}
      */
-    shareUpdate: (shareName: string, share: ConfigShare, params: RequestParams = {}) =>
-      this.request<ConfigShare, DtoResponseError>({
+    shareUpdate: (shareName: string, share: DtoSharedResource, params: RequestParams = {}) =>
+      this.request<DtoSharedResource, DtoResponseError>({
         path: `/share/${shareName}`,
         method: "PUT",
         body: share,
@@ -1022,8 +970,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update a share
      * @request PATCH:/share/{share_name}
      */
-    sharePartialUpdate: (shareName: string, share: ConfigShare, params: RequestParams = {}) =>
-      this.request<ConfigShare, DtoResponseError>({
+    sharePartialUpdate: (shareName: string, share: DtoSharedResource, params: RequestParams = {}) =>
+      this.request<DtoSharedResource, DtoResponseError>({
         path: `/share/${shareName}`,
         method: "PATCH",
         body: share,
@@ -1042,7 +990,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/shares
      */
     sharesList: (params: RequestParams = {}) =>
-      this.request<ConfigShares, DtoResponseError>({
+      this.request<DtoSharedResources, DtoResponseError>({
         path: `/shares`,
         method: "GET",
         format: "json",
@@ -1059,7 +1007,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PUT:/update
      */
     updateUpdate: (params: RequestParams = {}) =>
-      this.request<MainSRATReleaseAsset, DtoResponseError>({
+      this.request<DtoReleaseAsset, DtoResponseError>({
         path: `/update`,
         method: "PUT",
         format: "json",
@@ -1075,8 +1023,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Create a user
      * @request POST:/user
      */
-    userCreate: (user: ConfigUser, params: RequestParams = {}) =>
-      this.request<ConfigUser, DtoResponseError>({
+    userCreate: (user: DtoUser, params: RequestParams = {}) =>
+      this.request<DtoUser, DtoResponseError>({
         path: `/user`,
         method: "POST",
         body: user,
@@ -1094,7 +1042,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/user/{username}
      */
     userDetail: (username: string, params: RequestParams = {}) =>
-      this.request<ConfigUser, DtoResponseError>({
+      this.request<DtoUser, DtoResponseError>({
         path: `/user/${username}`,
         method: "GET",
         format: "json",
@@ -1109,8 +1057,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update a user
      * @request PUT:/user/{username}
      */
-    userUpdate: (username: string, user: ConfigUser, params: RequestParams = {}) =>
-      this.request<ConfigUser, DtoResponseError>({
+    userUpdate: (username: string, user: DtoUser, params: RequestParams = {}) =>
+      this.request<DtoUser, DtoResponseError>({
         path: `/user/${username}`,
         method: "PUT",
         body: user,
@@ -1142,8 +1090,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update a user
      * @request PATCH:/user/{username}
      */
-    userPartialUpdate: (username: string, user: ConfigUser, params: RequestParams = {}) =>
-      this.request<ConfigUser, DtoResponseError>({
+    userPartialUpdate: (username: string, user: DtoUser, params: RequestParams = {}) =>
+      this.request<DtoUser, DtoResponseError>({
         path: `/user/${username}`,
         method: "PATCH",
         body: user,
@@ -1162,7 +1110,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/users
      */
     usersList: (params: RequestParams = {}) =>
-      this.request<ConfigUser[], DtoResponseError>({
+      this.request<DtoUser[], DtoResponseError>({
         path: `/users`,
         method: "GET",
         format: "json",
@@ -1178,8 +1126,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary mount an existing volume
      * @request POST:/volume/{volume_name}/mount
      */
-    mountCreate: (volumeName: string, mount_data: DbomMountPointData, params: RequestParams = {}) =>
-      this.request<DbomMountPointData, DtoResponseError>({
+    mountCreate: (volumeName: string, mount_data: DtoMountPointData, params: RequestParams = {}) =>
+      this.request<DtoMountPointData, DtoResponseError>({
         path: `/volume/${volumeName}/mount`,
         method: "POST",
         body: mount_data,
@@ -1223,7 +1171,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/volumes
      */
     volumesList: (params: RequestParams = {}) =>
-      this.request<MainBlockInfo, DtoResponseError>({
+      this.request<DtoBlockInfo, DtoResponseError>({
         path: `/volumes`,
         method: "GET",
         format: "json",
@@ -1240,9 +1188,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/ws
      */
     getWs: (params: RequestParams = {}) =>
-      this.request<void, DtoResponseError>({
+      this.request<DtoDataDirtyTracker, DtoResponseError>({
         path: `/ws`,
         method: "GET",
+        format: "json",
         ...params,
       }),
   };
