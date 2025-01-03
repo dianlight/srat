@@ -253,7 +253,7 @@ func UpdateWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, 
 	}
 }
 
-type ProgressWriter struct { // FIXME: Don't world!!!
+type ProgressWriter struct { // FIXME: Don't work!!!
 	w io.Writer
 	n atomic.Int64
 }
