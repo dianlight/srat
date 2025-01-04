@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
@@ -76,7 +75,7 @@ func TestMountVolumeHandler(t *testing.T) {
 			mockMountData.Name = d.Name
 			mockMountData.Path = filepath.Join("/mnt", d.Label)
 			mockMountData.FSType = d.Type
-			mockMountData.Flags = []data.MounDataFlag{data.MS_NOATIME}
+			mockMountData.Flags = []dto.MounDataFlag{dto.MS_NOATIME}
 			previus_device = d.Name
 			t.Logf("Selected loop device: %v", mockMountData)
 		}

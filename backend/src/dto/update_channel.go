@@ -1,4 +1,4 @@
-package dm
+package dto
 
 type UpdateChannel string
 

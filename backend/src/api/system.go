@@ -16,7 +16,6 @@ import (
 
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
-	"github.com/dianlight/srat/dm"
 	"github.com/dianlight/srat/dto"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v68/github"
@@ -66,7 +65,7 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 	var gh = github.NewClient(rateLimiter)
 	for {
 		healthData.ReadOnly = *data.ROMode
-		if context_state.Settings.UpdateChannel != dm.None {
+		if context_state.Settings.UpdateChannel != dto.None {
 			UpdateLimiter.Do(func() {
 				log.Printf("Checking for updates...%v", context_state.Settings.UpdateChannel)
 				releases, _, err := gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
@@ -80,10 +79,10 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 				} else if len(releases) > 0 {
 					for _, release := range releases {
 						//log.Println(pretty.Sprintf("%v\n", release))
-						if *release.Prerelease && context_state.Settings.UpdateChannel == dm.Stable {
+						if *release.Prerelease && context_state.Settings.UpdateChannel == dto.Stable {
 							//log.Printf("Skip Prerelease %s", *release.TagName)
 							continue
-						} else if !*release.Prerelease && context_state.Settings.UpdateChannel == dm.Prerelease {
+						} else if !*release.Prerelease && context_state.Settings.UpdateChannel == dto.Prerelease {
 							//log.Printf("Skip Release %s", *release.TagName)
 							continue
 						}
@@ -473,7 +472,7 @@ func PersistVolumesState() error {
 	}
 	for _, partition := range volumes.Partitions {
 		if partition.MountPoint != "" {
-			var flags = &data.MounDataFlags{}
+			var flags = &dto.MounDataFlags{}
 			flags.Scan(partition.MountFlags)
 			adata := dbom.MountPointData{
 				Path:   partition.MountPoint,

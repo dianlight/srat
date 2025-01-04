@@ -63,7 +63,7 @@ func GetSettings(w http.ResponseWriter, r *http.Request) {
 	context_state.Settings.ToResponse(http.StatusOK, w)
 }
 
-// PersistConfig godoc
+// PersistAllConfig godoc
 //
 //	@Summary		Persiste the current samba config
 //	@Description	Save dirty changes to the disk
@@ -75,7 +75,7 @@ func GetSettings(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/config [put]
 //	@Router			/config [patch]
-func PersistConfig(w http.ResponseWriter, r *http.Request) {
+func PersistAllConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())

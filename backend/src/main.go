@@ -291,7 +291,7 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/global", api.UpdateSettings).Methods(http.MethodPut, http.MethodPatch)
 
 	// Configuration
-	globalRouter.HandleFunc("/config", api.PersistConfig).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/config", api.PersistAllConfig).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/config", api.RollbackConfig).Methods(http.MethodDelete)
 
 	// WebSocket

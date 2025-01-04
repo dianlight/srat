@@ -3,7 +3,6 @@ package dto
 import (
 	"net/http"
 
-	"github.com/dianlight/srat/data"
 	"github.com/jinzhu/copier"
 )
 
@@ -31,9 +30,9 @@ type BlockPartition struct {
 	// partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
 	FilesystemLabel string `json:"filesystem_label"`
 	// PartiionFlags contains the mount flags for the partition.
-	PartitionFlags data.MounDataFlags `json:"partition_flags"`
+	PartitionFlags MounDataFlags `json:"partition_flags"`
 	// MountFlags contains the mount flags for the partition.
-	MountFlags data.MounDataFlags `json:"mount_flags"`
+	MountFlags MounDataFlags `json:"mount_flags"`
 	// MountData contains additional data associated with the partition.
 	MountData string `json:"mount_data"`
 	// DeviceId is the ID of the block device this partition is on.

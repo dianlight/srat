@@ -13,7 +13,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/lsblk"
@@ -78,7 +77,7 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 					if partition.Type == "unknown" && rblock.FSType != "" {
 						partition.Type = rblock.FSType
 					}
-					partition.PartitionFlags = []data.MounDataFlag{}
+					partition.PartitionFlags = []dto.MounDataFlag{}
 				} else {
 					partition.Type = fs
 					partition.PartitionFlags.Scan(flags)

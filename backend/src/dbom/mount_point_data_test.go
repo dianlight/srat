@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +28,7 @@ func TestMountPointDataSave(t *testing.T) {
 		Label:  "Test Drive",
 		Name:   "test_drive",
 		FSType: "ext4",
-		Flags:  []data.MounDataFlag{data.MS_RDONLY, data.MS_NOATIME},
+		Flags:  []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
 		Data:   "rw,noatime",
 	}
 
@@ -46,7 +46,7 @@ func TestMountPointDataAll(t *testing.T) {
 			Label:  "Test 1",
 			Name:   "test1",
 			FSType: "ext4",
-			Flags:  []data.MounDataFlag{data.MS_RDONLY, data.MS_NOATIME},
+			Flags:  []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
 			Data:   "rw,noatime",
 		},
 		{
@@ -54,7 +54,7 @@ func TestMountPointDataAll(t *testing.T) {
 			Label:  "Test 2",
 			Name:   "test2",
 			FSType: "ntfs",
-			Flags:  []data.MounDataFlag{data.MS_BIND},
+			Flags:  []dto.MounDataFlag{dto.MS_BIND},
 			Data:   "bind",
 		},
 	}
@@ -90,7 +90,7 @@ func TestMountPointDataSaveDuplicate(t *testing.T) {
 		Label:  "Test Drive",
 		Name:   "test_drive",
 		FSType: "ext4",
-		Flags:  []data.MounDataFlag{data.MS_RDONLY, data.MS_NOATIME},
+		Flags:  []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
 		Data:   "rw,noatime",
 	}
 
@@ -109,7 +109,7 @@ func TestMountPointDataSaveLargeNumber(t *testing.T) {
 			Label:  fmt.Sprintf("Test Drive %d", i),
 			Name:   fmt.Sprintf("test_drive_%d", i),
 			FSType: "ext4",
-			Flags:  []data.MounDataFlag{data.MS_RDONLY, data.MS_NOATIME},
+			Flags:  []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
 			Data:   "rw,noatime",
 		}
 	}
@@ -172,7 +172,7 @@ func TestMountPointDataFromName(t *testing.T) {
 		Label:  "Test Drive",
 		Name:   "test_drive",
 		FSType: "ext4",
-		Flags:  []data.MounDataFlag{data.MS_RDONLY, data.MS_NOATIME},
+		Flags:  []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
 		Data:   "rw,noatime",
 	}
 

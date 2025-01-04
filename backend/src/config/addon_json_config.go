@@ -7,7 +7,6 @@ import (
 	"os"
 	"slices"
 
-	"github.com/dianlight/srat/dm"
 	"github.com/jinzhu/copier"
 )
 
@@ -34,7 +33,7 @@ type Config struct {
 	DockerInterface string `json:"docker_interface"`
 	DockerNet       string `json:"docker_net"`
 	//Users           []User           `json:"users"`
-	UpdateChannel dm.UpdateChannel `json:"update_channel"`
+	UpdateChannel string `json:"update_channel"`
 }
 
 // readConfigFile reads and parses a configuration file.
@@ -138,7 +137,7 @@ func MigrateConfig(in *Config) *Config {
 	if in.ConfigSpecVersion == 0 {
 		log.Printf("Migrating config from version 0 to version 1")
 		in.ConfigSpecVersion = 1
-		in.UpdateChannel = dm.Stable
+		in.UpdateChannel = "stable"
 		if in.Shares == nil {
 			in.Shares = make(Shares)
 		}

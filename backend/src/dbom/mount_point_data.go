@@ -4,22 +4,22 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianlight/srat/data"
+	"github.com/dianlight/srat/dto"
 	"gorm.io/gorm"
 )
 
 type MountPointData struct {
-	CreatedAt   time.Time          `json:"-"`
-	UpdatedAt   time.Time          `json:"-"`
-	DeletedAt   gorm.DeletedAt     `gorm:"index" json:"-"`
-	Path        string             `json:"path"`
-	DefaultPath string             `json:"default_path"`
-	Label       string             `json:"label"`
-	Name        string             `json:"name" gorm:"primarykey"`
-	FSType      string             `json:"fstype"`
-	Flags       data.MounDataFlags `json:"flags" gorm:"type:mount_data_flags"`
-	Data        string             `json:"data,omitempty"`
-	DeviceId    uint64             `json:"device_id,omitempty"`
+	CreatedAt   time.Time         `json:"-"`
+	UpdatedAt   time.Time         `json:"-"`
+	DeletedAt   gorm.DeletedAt    `gorm:"index" json:"-"`
+	Path        string            `json:"path"`
+	DefaultPath string            `json:"default_path"`
+	Label       string            `json:"label"`
+	Name        string            `json:"name" gorm:"primarykey"`
+	FSType      string            `json:"fstype"`
+	Flags       dto.MounDataFlags `json:"flags" gorm:"type:mount_data_flags"`
+	Data        string            `json:"data,omitempty"`
+	DeviceId    uint64            `json:"device_id,omitempty"`
 }
 
 // BeforeSave is a GORM callback function that sets the DefaultPath to the Path
