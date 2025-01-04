@@ -214,7 +214,7 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 
 	// Check if acl are as share attributes
 	//t.Log(pretty.Sprint(migratedConfig.Shares))
-	assert.Equal(t, (migratedConfig.Shares["backup"].Users)[0], "utente1")
-	assert.Equal(t, (migratedConfig.Shares["ssl"].Users)[0], "utente2")
+	assert.Equal(t, "utente1", (migratedConfig.Shares["backup"].Users)[0])
+	assert.Equal(t, "utente2", (migratedConfig.Shares["ssl"].Users)[0])
 	assert.True(t, migratedConfig.Shares["ssl"].Disabled)
 }

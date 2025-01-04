@@ -1,58 +1,4 @@
 definitions:
-  data.MounDataFlag:
-    enum:
-    - 1
-    - 2
-    - 4
-    - 8
-    - 16
-    - 32
-    - 64
-    - 1024
-    - 2048
-    - 4096
-    - 33554432
-    - -2147483648
-    - 2097152
-    type: integer
-    x-enum-comments:
-      MS_BIND: Bind directory at differente place
-      MS_LAZYTIME: Lazily update access and modification times
-      MS_MANDLOCK: Allow mandatory locks
-      MS_NOATIME: Do not update access and modification times
-      MS_NODEV: Disallow access to device special files
-      MS_NODIRATIME: Do not update directory access and modification times
-      MS_NOEXEC: Disallow execution of binaries
-      MS_NOSUID: Ignore setuid and setgid bits
-      MS_NOUSER: Do not update user and group IDs
-      MS_RDONLY: Mount read only
-      MS_RELATIME: Update access and modification times only when necessary
-      MS_REMOUNT: Remount the filesystem
-      MS_SYNCHRONOUS: Write data synchronously (wait until data has been written)
-    x-enum-varnames:
-    - MS_RDONLY
-    - MS_NOSUID
-    - MS_NODEV
-    - MS_NOEXEC
-    - MS_SYNCHRONOUS
-    - MS_REMOUNT
-    - MS_MANDLOCK
-    - MS_NOATIME
-    - MS_NODIRATIME
-    - MS_BIND
-    - MS_LAZYTIME
-    - MS_NOUSER
-    - MS_RELATIME
-  dm.UpdateChannel:
-    enum:
-    - stable
-    - prerelease
-    - none
-    type: string
-    x-enum-varnames:
-    - Stable
-    - Prerelease
-    - None
   dto.BlockInfo:
     properties:
       partitions:
@@ -89,7 +35,7 @@ definitions:
       mount_flags:
         description: MountFlags contains the mount flags for the partition.
         items:
-          $ref: '#/definitions/data.MounDataFlag'
+          $ref: '#/definitions/dto.MounDataFlag'
         type: array
       mount_point:
         description: MountPoint is the path where this partition is mounted.
@@ -100,7 +46,7 @@ definitions:
       partition_flags:
         description: PartiionFlags contains the mount flags for the partition.
         items:
-          $ref: '#/definitions/data.MounDataFlag'
+          $ref: '#/definitions/dto.MounDataFlag'
         type: array
       read_only:
         description: IsReadOnly indicates if the partition is marked read-only.
@@ -155,6 +101,50 @@ definitions:
       samba_pid:
         type: integer
     type: object
+  dto.MounDataFlag:
+    enum:
+    - 1
+    - 2
+    - 4
+    - 8
+    - 16
+    - 32
+    - 64
+    - 1024
+    - 2048
+    - 4096
+    - 33554432
+    - -2147483648
+    - 2097152
+    type: integer
+    x-enum-comments:
+      MS_BIND: Bind directory at differente place
+      MS_LAZYTIME: Lazily update access and modification times
+      MS_MANDLOCK: Allow mandatory locks
+      MS_NOATIME: Do not update access and modification times
+      MS_NODEV: Disallow access to device special files
+      MS_NODIRATIME: Do not update directory access and modification times
+      MS_NOEXEC: Disallow execution of binaries
+      MS_NOSUID: Ignore setuid and setgid bits
+      MS_NOUSER: Do not update user and group IDs
+      MS_RDONLY: Mount read only
+      MS_RELATIME: Update access and modification times only when necessary
+      MS_REMOUNT: Remount the filesystem
+      MS_SYNCHRONOUS: Write data synchronously (wait until data has been written)
+    x-enum-varnames:
+    - MS_RDONLY
+    - MS_NOSUID
+    - MS_NODEV
+    - MS_NOEXEC
+    - MS_SYNCHRONOUS
+    - MS_REMOUNT
+    - MS_MANDLOCK
+    - MS_NOATIME
+    - MS_NODIRATIME
+    - MS_BIND
+    - MS_LAZYTIME
+    - MS_NOUSER
+    - MS_RELATIME
   dto.MountPointData:
     properties:
       data:
@@ -163,7 +153,7 @@ definitions:
         type: string
       flags:
         items:
-          $ref: '#/definitions/data.MounDataFlag'
+          $ref: '#/definitions/dto.MounDataFlag'
         type: array
       fstype:
         type: string
@@ -270,7 +260,7 @@ definitions:
       recyle_bin_enabled:
         type: boolean
       update_channel:
-        $ref: '#/definitions/dm.UpdateChannel'
+        $ref: '#/definitions/dto.UpdateChannel'
       veto_files:
         items:
           type: string
@@ -318,6 +308,16 @@ definitions:
       data:
         type: string
     type: object
+  dto.UpdateChannel:
+    enum:
+    - stable
+    - prerelease
+    - none
+    type: string
+    x-enum-varnames:
+    - Stable
+    - Prerelease
+    - None
   dto.User:
     properties:
       password:
@@ -1278,48 +1278,6 @@ paths:
           schema:
             $ref: '#/definitions/dto.ResponseError'
       summary: Get a share
-      tags:
-      - share
-    patch:
-      consumes:
-      - application/json
-      description: update e new share
-      parameters:
-      - description: Name
-        in: path
-        name: share_name
-        required: true
-        type: string
-      - description: Update model
-        in: body
-        name: share
-        required: true
-        schema:
-          $ref: '#/definitions/dto.SharedResource'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SharedResource'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-      summary: Update a share
       tags:
       - share
     put:

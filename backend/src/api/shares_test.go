@@ -34,7 +34,7 @@ func TestListSharesHandler(t *testing.T) {
 	context_state := (&dto.ContextState{}).FromContext(testContext)
 	resultsDto := dto.SharedResources{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultsDto)
-	assert.NoError(t, jsonError, "Body %#v", rr.Body.String())
+	require.NoError(t, jsonError, "Body %#v", rr.Body.String())
 	assert.NotEmpty(t, resultsDto)
 	assert.Equal(t, resultsDto, context_state.SharedResources)
 
@@ -72,7 +72,7 @@ func TestGetShareHandler(t *testing.T) {
 	context_state := (&dto.ContextState{}).FromContext(testContext)
 	resultShare := dto.SharedResource{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultShare)
-	assert.NoError(t, jsonError)
+	require.NoError(t, jsonError)
 
 	assert.Equal(t, context_state.SharedResources["LIBRARY"], resultShare)
 }
