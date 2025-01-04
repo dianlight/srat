@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"slices"
 	"strings"
 	"testing"
 
@@ -34,8 +33,8 @@ func TestListUsersHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
-	addon_config := testContext.Value("addon_config").(*config.Config)
-	expected, jsonError := json.Marshal(addon_config.OtherUsers)
+	context_state := (&dto.ContextState{}).FromContext(testContext)
+	expected, jsonError := json.Marshal(context_state.Users)
 	assert.NotEmpty(t, expected)
 	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
@@ -58,10 +57,10 @@ func TestGetUserHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
-	addon_config := testContext.Value("addon_config").(*config.Config)
-	index := slices.IndexFunc(addon_config.OtherUsers, func(u config.User) bool { return u.Username == "backupuser" })
+	context_state := (&dto.ContextState{}).FromContext(testContext)
+	bu, index := context_state.Users.Get("backupuser")
 	assert.NotEqual(t, index, -1)
-	expected, jsonError := json.Marshal(addon_config.OtherUsers[index])
+	expected, jsonError := json.Marshal(bu)
 	require.NoError(t, jsonError)
 	assert.NotEmpty(t, expected)
 	assert.Equal(t, string(expected), rr.Body.String())
@@ -97,10 +96,11 @@ func TestCreateUserHandler(t *testing.T) {
 	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 
-	addon_config := testContext.Value("addon_config").(*config.Config)
-	index := slices.IndexFunc(addon_config.OtherUsers, func(u config.User) bool { return u.Username == "PIPPO" })
+	context_state := (&dto.ContextState{}).FromContext(testContext)
+	fu, index := context_state.Users.Get("PIPPO")
 	assert.NotEqual(t, index, -1)
-	assert.Equal(t, addon_config.OtherUsers[index].Password, user.Password)
+	assert.NotNil(t, fu)
+	assert.Equal(t, fu.Password, user.Password)
 }
 
 func TestCreateUserDuplicateHandler(t *testing.T) {
@@ -111,15 +111,11 @@ func TestCreateUserDuplicateHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(user)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
+	require.NoError(t, jsonError)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PUT", "/user/backupuser", strings.NewReader(string(jsonBody)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -129,20 +125,12 @@ func TestCreateUserDuplicateHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusConflict {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, http.StatusConflict, rr.Code)
 
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(dto.ResponseError{Error: "User already exists", Body: user})
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
-	if rr.Body.String() != string(expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), string(expected))
-	}
+	require.NoError(t, jsonError)
+	assert.Equal(t, string(expected), rr.Body.String())
 }
 
 func TestUpdateUserHandler(t *testing.T) {
@@ -151,12 +139,15 @@ func TestUpdateUserHandler(t *testing.T) {
 		Password: "/pippo",
 	}
 
+	context_state := (&dto.ContextState{}).FromContext(testContext)
+	username := context_state.Users[0].Username
+
 	jsonBody, jsonError := json.Marshal(user)
 	require.NoError(t, jsonError)
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "PATCH", "/user/PIPPO", strings.NewReader(string(jsonBody)))
+	req, err := http.NewRequestWithContext(testContext, "PATCH", "/user/"+username, strings.NewReader(string(jsonBody)))
 	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
@@ -170,9 +161,11 @@ func TestUpdateUserHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
-	expected, jsonError := json.Marshal(user)
+	updated := dto.User{}
+	jsonError = json.Unmarshal(rr.Body.Bytes(), &updated)
 	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected), rr.Body.String())
+	assert.Equal(t, username, updated.Username)
+	assert.Equal(t, user.Password, updated.Password)
 }
 
 func TestUpdateAdminUserHandler(t *testing.T) {
@@ -200,10 +193,7 @@ func TestUpdateAdminUserHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	user.Password = "/pluto||admin"

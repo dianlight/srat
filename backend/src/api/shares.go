@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"dario.cat/mergo"
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
@@ -22,18 +21,14 @@ var (
 
 func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
 
-	var shares dto.SharedResources
-	addon_config := ctx.Value("addon_config").(*config.Config)
-	err := shares.From(addon_config.Shares)
-	if err != nil {
-		return nil, err
-	}
+	context_state := (&dto.ContextState{}).FromContext(ctx)
+	shares := context_state.SharedResources
 
 	// Check all ID Matching and sign dirty!
 	for _, sdto := range shares {
 		if sdto.ID == nil {
 			ckdb := dbom.ExportedShare{}
-			err = ckdb.FromNameOrPath(sdto.Name, sdto.Path)
+			err := ckdb.FromNameOrPath(sdto.Name, sdto.Path)
 			if err != nil {
 				return nil, err
 			}
@@ -45,7 +40,7 @@ func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
 		} else {
 			dbshare := dbom.ExportedShare{}
 			dbshare.ID = *sdto.ID
-			err = dbshare.Get()
+			err := dbshare.Get()
 			if err != nil {
 				return nil, err
 			}
@@ -154,16 +149,14 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 	var share dto.SharedResource
 	share.FromJSONBody(w, r)
 
-	addon_config := r.Context().Value("addon_config").(*config.Config)
-	fshare, ok := addon_config.Shares[share.Name]
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	fshare, ok := context_state.SharedResources[share.Name]
 	if ok {
 		dto.ResponseError{}.ToResponseError(http.StatusConflict, w, "Share already exists", fshare)
 	} else {
-		var share2 config.Share
-		share.To(&share2)
-		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
-		data_dirty_tracker.Shares = true
-		notifyClient(&addon_config.Shares)
+		context_state.SharedResources[share.Name] = share
+		context_state.DataDirtyTracker.Shares = true
+		notifyClient(&context_state.SharedResources)
 		share.ToResponse(http.StatusCreated, w)
 	}
 }
@@ -172,12 +165,10 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 // It iterates through the sharesQueue, sending the Config.Shares to each client's channel.
 // This function is used to broadcast updates to all clients when the shares configuration changes.
 // The function uses a read lock to ensure thread-safe access to the sharesQueue.
-func notifyClient(in *config.Shares) {
-	var in2 dto.SharedResources
-	in2.From(in)
+func notifyClient(in *dto.SharedResources) {
 	sharesQueueMutex.RLock()
 	for _, v := range sharesQueue {
-		v <- &in2
+		v <- in
 	}
 	sharesQueueMutex.RUnlock()
 }
@@ -197,38 +188,27 @@ func notifyClient(in *config.Shares) {
 //	@Failure		404			{object}	dto.ResponseError
 //	@Failure		500			{object}	dto.ResponseError
 //	@Router			/share/{share_name} [put]
-//	@Router			/share/{share_name} [patch]
 func UpdateShare(w http.ResponseWriter, r *http.Request) {
 	share_name := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	addon_config := r.Context().Value("addon_config").(*config.Config)
-
-	adata, ok := addon_config.Shares[share_name]
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	adata, ok := context_state.SharedResources[share_name]
 	if !ok {
 		dto.ResponseError{}.ToResponseError(http.StatusNotFound, w, "Share not found", nil)
 	} else {
 		var share dto.SharedResource
 		share.FromJSONBody(w, r)
-		var cshare dto.SharedResource
-		cshare.From(adata)
 
-		err2 := mergo.MapWithOverwrite(&cshare, share)
+		err2 := mergo.MapWithOverwrite(&adata, share)
 		if err2 != nil {
 			dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err2)
 			return
 		}
-		err := cshare.To(&adata)
-		if err != nil {
-			dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
-			return
-		}
-		addon_config.Shares[share_name] = adata
-		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
-		data_dirty_tracker.Shares = true
-		notifyClient(&addon_config.Shares)
-		//	log.Println(pretty.Sprint(cshare, share))
-		cshare.ToResponse(http.StatusOK, w)
+		context_state.SharedResources[share_name] = adata
+		context_state.DataDirtyTracker.Shares = true
+		notifyClient(&context_state.SharedResources)
+		adata.ToResponse(http.StatusOK, w)
 	}
 }
 
@@ -248,17 +228,16 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 	share := mux.Vars(r)["share_name"]
 	w.Header().Set("Content-Type", "application/json")
 
-	addon_config := r.Context().Value("addon_config").(*config.Config)
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
 
-	_, ok := addon_config.Shares[share]
+	_, ok := context_state.SharedResources[share]
 	if !ok {
 		dto.ResponseError{}.ToResponseError(http.StatusNotFound, w, "Share not found", nil)
 	} else {
 
-		delete(addon_config.Shares, share)
-		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
-		data_dirty_tracker.Shares = true
-		notifyClient(&addon_config.Shares)
+		delete(context_state.SharedResources, share)
+		context_state.DataDirtyTracker.Shares = true
+		notifyClient(&context_state.SharedResources)
 		w.WriteHeader(http.StatusNoContent)
 	}
 
@@ -278,10 +257,8 @@ func SharesWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, 
 	if sharesQueue[request.Uid] == nil {
 		sharesQueue[request.Uid] = make(chan *dto.SharedResources, 10)
 	}
-	addon_config := ctx.Value("addon_config").(*config.Config)
-	var currentShares dto.SharedResources
-	currentShares.From(&addon_config.Shares)
-	sharesQueue[request.Uid] <- &currentShares
+	context_state := (&dto.ContextState{}).FromContext(ctx)
+	sharesQueue[request.Uid] <- &context_state.SharedResources
 
 	var queue = sharesQueue[request.Uid]
 	sharesQueueMutex.Unlock()

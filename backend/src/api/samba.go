@@ -16,7 +16,10 @@ import (
 )
 
 func createConfigStream(ctx context.Context) (*[]byte, error) {
-	config := ctx.Value("addon_config").(*config.Config)
+	config, err := (&dto.ContextState{}).FromContext(ctx).ToJSONConfig(&config.Config{})
+	if err != nil {
+		return nil, err
+	}
 	config_2 := config.ConfigToMap()
 	templateData := ctx.Value("template_data").([]byte)
 	//log.Println(pretty.Printf("New Config:%v", config_2))

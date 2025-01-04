@@ -2,6 +2,7 @@ package dto
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/jinzhu/copier"
 )
@@ -55,4 +56,13 @@ func (self Users) ToResponseError(code int, w http.ResponseWriter, message strin
 }
 func (self *Users) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
+}
+
+func (self *Users) Get(username string) (*User, int) {
+	index := slices.IndexFunc(*self, func(u User) bool { return u.Username == username })
+	if index == -1 {
+		return nil, index
+	} else {
+		return &(*self)[index], index
+	}
 }

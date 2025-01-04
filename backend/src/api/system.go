@@ -14,7 +14,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dm"
@@ -62,14 +61,14 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 		return
 	}
 
-	addon_config := ctx.Value("addon_config").(*config.Config)
+	context_state := (&dto.ContextState{}).FromContext(ctx)
 
 	var gh = github.NewClient(rateLimiter)
 	for {
 		healthData.ReadOnly = *data.ROMode
-		if addon_config.UpdateChannel != dm.None {
+		if context_state.Settings.UpdateChannel != dm.None {
 			UpdateLimiter.Do(func() {
-				log.Printf("Checking for updates...%v", addon_config.UpdateChannel)
+				log.Printf("Checking for updates...%v", context_state.Settings.UpdateChannel)
 				releases, _, err := gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
 					Page:    1,
 					PerPage: 5,
@@ -81,10 +80,10 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 				} else if len(releases) > 0 {
 					for _, release := range releases {
 						//log.Println(pretty.Sprintf("%v\n", release))
-						if *release.Prerelease && addon_config.UpdateChannel == dm.Stable {
+						if *release.Prerelease && context_state.Settings.UpdateChannel == dm.Stable {
 							//log.Printf("Skip Prerelease %s", *release.TagName)
 							continue
-						} else if !*release.Prerelease && addon_config.UpdateChannel == dm.Prerelease {
+						} else if !*release.Prerelease && context_state.Settings.UpdateChannel == dm.Prerelease {
 							//log.Printf("Skip Release %s", *release.TagName)
 							continue
 						}
@@ -179,20 +178,20 @@ func HealthCheckWsHandler(ctx context.Context, request dto.WebSocketMessageEnvel
 // until the WebSocket connection is closed or the context is cancelled.
 func DirtyWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
 	var oldDritySectionState dto.DataDirtyTracker
-	dtr := ctx.Value("data_dirty_tracker").(*dto.DataDirtyTracker)
+	context_state := (&dto.ContextState{}).FromContext(ctx)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			if oldDritySectionState != *dtr {
+			if oldDritySectionState != context_state.DataDirtyTracker {
 				var message dto.WebSocketMessageEnvelope = dto.WebSocketMessageEnvelope{
 					Event: dto.EventHeartbeat,
 					Uid:   request.Uid,
-					Data:  &dtr,
+					Data:  &context_state.DataDirtyTracker,
 				}
 				c <- &message
-				copier.Copy(&oldDritySectionState, dtr)
+				copier.Copy(&oldDritySectionState, context_state.DataDirtyTracker)
 				//log.Printf("%v %v\n", oldDritySectionState, data.DirtySectionState)
 			}
 		}

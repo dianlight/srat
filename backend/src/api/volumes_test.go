@@ -14,7 +14,8 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
-	"github.com/kr/pretty"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListVolumessHandler(t *testing.T) {
@@ -50,7 +51,7 @@ func TestListVolumessHandler(t *testing.T) {
 	if err2 != nil {
 		t.Errorf("handler error in decode body %v", err2)
 	}
-	t.Log(pretty.Sprint(volumes))
+	//t.Log(pretty.Sprint(volumes))
 
 	for _, d := range volumes.Partitions {
 		if d.Label == "testvolume" {
@@ -66,10 +67,7 @@ var previus_device string
 func TestMountVolumeHandler(t *testing.T) {
 	// Check if loop device is available for mounting
 	volumes, err := GetVolumesData()
-	if err != nil {
-		t.Fatalf("Error fetching volumes: %v", err)
-		return
-	}
+	require.NoError(t, err)
 
 	var mockMountData dbom.MountPointData
 
@@ -92,9 +90,7 @@ func TestMountVolumeHandler(t *testing.T) {
 	requestPath := "/volume/" + previus_device + "/mount"
 	t.Logf("Request path: %s", requestPath)
 	req, err := http.NewRequestWithContext(testContext, "POST", requestPath, bytes.NewBuffer(body))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
@@ -108,17 +104,12 @@ func TestMountVolumeHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusCreated {
-		t.Errorf("handler returned wrong status code: got %v want %v\n %v",
-			status, http.StatusCreated, rr)
-	}
+	assert.Equal(t, http.StatusCreated, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check the response body is what we expect.
 	var responseData dbom.MountPointData
 	err = json.Unmarshal(rr.Body.Bytes(), &responseData)
-	if err != nil {
-		t.Errorf("Unable to parse response body: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify the response data
 	if !strings.HasPrefix(responseData.Path, mockMountData.Path) {
@@ -157,16 +148,11 @@ func TestUmountVolumeNonExistent(t *testing.T) {
 }
 func TestUmountVolumeSuccess(t *testing.T) {
 
-	if previus_device == "" {
-		t.Skip("Test skip: not prevision mounted volume found")
-		return
-	}
+	require.NotEmpty(t, previus_device, "Test skip: not prevision mounted volume found")
 
 	// Create a request
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/"+previus_device+"/mount", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
@@ -179,12 +165,8 @@ func TestUmountVolumeSuccess(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code
-	if status := rr.Code; status != http.StatusNoContent {
-		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusNoContent)
-	}
+	assert.Equal(t, http.StatusNoContent, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check that the response body is empty
-	if rr.Body.String() != "" {
-		t.Errorf("handler returned unexpected body: got %v want empty", rr.Body.String())
-	}
+	assert.Empty(t, rr.Body.String(), "Body should be empty")
 }

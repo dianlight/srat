@@ -237,11 +237,16 @@ func prog(state overseer.State) {
 	options = config.ReadOptionsFile(*optionsFile)
 
 	var apiContext = context.Background()
-	apiContext = context.WithValue(apiContext, "addon_config", aconfig)
-	apiContext = context.WithValue(apiContext, "addon_option", options)
-	apiContext = context.WithValue(apiContext, "data_dirty_tracker", dto.DataDirtyTracker{})
+
+	//apiContext = context.WithValue(apiContext, " addon_config", aconfig)
+	//apiContext = context.WithValue(apiContext, "addon_option", options)
+	//apiContext = context.WithValue(apiContext, "data_dirty_tracker", dto.DataDirtyTracker{})
 	apiContext = context.WithValue(apiContext, "samba_config_file", smbConfigFile)
 	apiContext = context.WithValue(apiContext, "template_data", templateData)
+
+	sharedResources := dto.ContextState{}
+	sharedResources.FromJSONConfig(*aconfig)
+	apiContext = sharedResources.ToContext(apiContext)
 
 	globalRouter := mux.NewRouter()
 	if hamode != nil && *hamode {
@@ -259,7 +264,7 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/shares", api.ListShares).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/share/{share_name}", api.GetShare).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/share", api.CreateShare).Methods(http.MethodPost)
-	globalRouter.HandleFunc("/share/{share_name}", api.UpdateShare).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/share/{share_name}", api.UpdateShare).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/share/{share_name}", api.DeleteShare).Methods(http.MethodDelete)
 
 	// Volumes
@@ -282,8 +287,8 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/samba/status", api.GetSambaProcessStatus).Methods(http.MethodGet)
 
 	// Global
-	globalRouter.HandleFunc("/global", api.GetGlobalConfig).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/global", api.UpdateGlobalConfig).Methods(http.MethodPut, http.MethodPatch)
+	globalRouter.HandleFunc("/global", api.GetSettings).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/global", api.UpdateSettings).Methods(http.MethodPut, http.MethodPatch)
 
 	// Configuration
 	globalRouter.HandleFunc("/config", api.PersistConfig).Methods(http.MethodPut, http.MethodPatch)
@@ -334,11 +339,12 @@ func prog(state overseer.State) {
 		IdleTimeout:  time.Second * 60,
 		Handler:      loggedRouter, // Pass our instance of gorilla/mux in.
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			ctx = context.WithValue(ctx, "addon_config", aconfig)
-			ctx = context.WithValue(ctx, "addon_option", options)
-			ctx = context.WithValue(ctx, "data_dirty_tracker", &dto.DataDirtyTracker{})
+			//ctx = context.WithValue(ctx, "shared_resources", sharedResources)
+			//ctx = context.WithValue(ctx, "addon_option", options)
+			//ctx = context.WithValue(ctx, "data_dirty_tracker", &dto.DataDirtyTracker{})
 			ctx = context.WithValue(ctx, "samba_config_file", smbConfigFile)
 			ctx = context.WithValue(ctx, "template_data", templateData)
+			ctx = sharedResources.ToContext(ctx)
 
 			return ctx
 		},

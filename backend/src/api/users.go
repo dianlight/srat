@@ -1,13 +1,10 @@
 package api
 
 import (
-	"encoding/json"
-	"log"
 	"net/http"
 	"slices"
 
 	"dario.cat/mergo"
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 )
@@ -25,11 +22,8 @@ import (
 func ListUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var users dto.Users
-
-	addon_config := r.Context().Value("addon_config").(*config.Config)
-	users.From(addon_config.OtherUsers)
-	users.ToResponse(http.StatusOK, w)
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	context_state.Users.ToResponse(http.StatusOK, w)
 }
 
 // GetAdminUser godoc
@@ -45,13 +39,8 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 func GetAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var user dto.User
-	addon_config := r.Context().Value("addon_config").(*config.Config)
-	user.Username = addon_config.Username
-	user.Password = addon_config.Password
-
-	user.ToResponse(http.StatusOK, w)
-
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	context_state.AdminUser.ToResponse(http.StatusOK, w)
 }
 
 // GetUser godoc
@@ -68,17 +57,15 @@ func GetAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500			{object}	dto.ResponseError
 //	@Router			/user/{username} [get]
 func GetUser(w http.ResponseWriter, r *http.Request) {
-	user := mux.Vars(r)["username"]
+	username := mux.Vars(r)["username"]
 	w.Header().Set("Content-Type", "application/json")
 
-	addon_config := r.Context().Value("addon_config").(*config.Config)
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
 
-	index := slices.IndexFunc(addon_config.OtherUsers, func(u config.User) bool { return u.Username == user })
+	user, index := context_state.Users.Get(username)
 	if index == -1 {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
-		var user dto.User
-		user.From(addon_config.OtherUsers[index])
 		user.ToResponse(http.StatusOK, w)
 	}
 
@@ -104,35 +91,22 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user dto.User
 	user.FromJSONBody(w, r)
 
-	addon_config := r.Context().Value("addon_config").(*config.Config)
-
-	index := slices.IndexFunc(addon_config.OtherUsers, func(u config.User) bool { return u.Username == user.Username })
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	_, index := context_state.Users.Get(user.Username)
 	if index != -1 {
-		dto.ResponseError{}.ToResponseError(http.StatusConflict, w, "User already exists", addon_config.OtherUsers[index])
-	} else {
-
-		// FIXME: Check the new username with admin username
-		var cuser config.User
-		user.To(&cuser)
-
-		addon_config.OtherUsers = append(addon_config.OtherUsers, cuser)
-		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
-		data_dirty_tracker.Users = true
-
-		//notifyClient()
-
-		jsonResponse, jsonError := json.Marshal(user)
-
-		if jsonError != nil {
-			log.Println("Unable to encode JSON")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(jsonError.Error()))
-		} else {
-			w.WriteHeader(http.StatusCreated)
-			w.Write(jsonResponse)
-		}
-
+		dto.ResponseError{}.ToResponseError(http.StatusConflict, w, "User already exists", user)
+		return
 	}
+
+	if user.Username == context_state.AdminUser.Username {
+		dto.ResponseError{}.ToResponseError(http.StatusConflict, w, "User already exists", user)
+		return
+	}
+
+	context_state.Users = append(context_state.Users, user)
+	context_state.DataDirtyTracker.Users = true
+
+	user.ToResponse(http.StatusCreated, w)
 }
 
 // UpdateUser godoc
@@ -152,21 +126,18 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 //	@Router			/user/{username} [put]
 //	@Router			/user/{username} [patch]
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
-	user := mux.Vars(r)["username"]
+	username := mux.Vars(r)["username"]
 	w.Header().Set("Content-Type", "application/json")
 
-	addon_config := r.Context().Value("addon_config").(*config.Config)
-	index := slices.IndexFunc(addon_config.OtherUsers, func(u config.User) bool { return u.Username == user })
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	user, index := context_state.Users.Get(username)
 	if index == -1 {
 		dto.ResponseError{}.ToResponseError(http.StatusNotFound, w, "User not found", nil)
 	} else {
-		var user dto.User
-		user.FromJSONBody(w, r)
-
-		mergo.MapWithOverwrite(&addon_config.OtherUsers[index], user)
-		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
-		data_dirty_tracker.Users = true
-
+		var nuser dto.User
+		nuser.FromJSONBody(w, r)
+		mergo.Map(user, nuser, mergo.WithOverride)
+		context_state.DataDirtyTracker.Users = true
 		user.ToResponse(http.StatusOK, w)
 	}
 
@@ -192,18 +163,15 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 
 	var user dto.User
 	user.FromJSONBody(w, r)
-	addon_config := r.Context().Value("addon_config").(*config.Config)
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
 
 	if user.Username != "" {
-		addon_config.Username = user.Username
+		context_state.AdminUser.Username = user.Username
 	}
 	if user.Password != "" {
-		addon_config.Password = user.Password
+		context_state.AdminUser.Password = user.Password
 	}
-
-	data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
-	data_dirty_tracker.Users = true
-
+	context_state.DataDirtyTracker.Users = true
 	user.ToResponse(http.StatusOK, w)
 }
 
@@ -220,21 +188,17 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/user/{username} [delete]
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
-	user := mux.Vars(r)["username"]
+	username := mux.Vars(r)["username"]
 	w.Header().Set("Content-Type", "application/json")
 
-	addon_config := r.Context().Value("addon_config").(*config.Config)
-	index := slices.IndexFunc(addon_config.OtherUsers, func(u config.User) bool { return u.Username == user })
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	_, index := context_state.Users.Get(username)
 	if index == -1 {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
-
-		addon_config.OtherUsers = slices.Delete(addon_config.OtherUsers, index, index+1)
-		data_dirty_tracker := r.Context().Value("data_dirty_tracker").(*dto.DataDirtyTracker)
-		data_dirty_tracker.Users = true
-
+		context_state.Users = slices.Delete(context_state.Users, index, index+1)
+		context_state.DataDirtyTracker.Users = true
 		w.WriteHeader(http.StatusNoContent)
-
 	}
 
 }

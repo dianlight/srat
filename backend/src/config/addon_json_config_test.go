@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -55,9 +54,6 @@ func TestConfigToMapWithUnicode(t *testing.T) {
 		},
 		DockerInterface: "eth0",
 		DockerNet:       "172.17.0.0/16",
-		Users: []User{
-			{Username: "用户", Password: "パスワード"},
-		},
 	}
 
 	// Call configToMap
@@ -217,8 +213,8 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	}
 
 	// Check if acl are as share attributes
-	t.Log(pretty.Sprint(migratedConfig.Shares))
-	assert.Equal(t, (*migratedConfig.Shares["backup"].Users)[0], "utente1")
-	assert.Equal(t, (*migratedConfig.Shares["ssl"].Users)[0], "utente2")
+	//t.Log(pretty.Sprint(migratedConfig.Shares))
+	assert.Equal(t, (migratedConfig.Shares["backup"].Users)[0], "utente1")
+	assert.Equal(t, (migratedConfig.Shares["ssl"].Users)[0], "utente2")
 	assert.True(t, migratedConfig.Shares["ssl"].Disabled)
 }

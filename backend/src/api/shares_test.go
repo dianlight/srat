@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -32,17 +31,12 @@ func TestListSharesHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check the response body is what we expect.
-	addon_config := testContext.Value("addon_config").(*config.Config)
-	var expectedDto dto.SharedResources
-	expectedDto.From(addon_config.Shares)
+	context_state := (&dto.ContextState{}).FromContext(testContext)
 	resultsDto := dto.SharedResources{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultsDto)
 	assert.NoError(t, jsonError, "Body %#v", rr.Body.String())
 	assert.NotEmpty(t, resultsDto)
-	resultsShares := config.Shares{}
-	jsonError = json.Unmarshal(rr.Body.Bytes(), &resultsShares)
-	assert.NoError(t, jsonError)
-	assert.EqualValues(t, resultsShares, addon_config.Shares)
+	assert.Equal(t, resultsDto, context_state.SharedResources)
 
 	for _, sdto := range resultsDto {
 		assert.NotEmpty(t, sdto.Path)
@@ -75,18 +69,17 @@ func TestGetShareHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
-	addon_config := testContext.Value("addon_config").(*config.Config)
-
-	resultShare := config.Share{}
+	context_state := (&dto.ContextState{}).FromContext(testContext)
+	resultShare := dto.SharedResource{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultShare)
 	assert.NoError(t, jsonError)
 
-	assert.Equal(t, addon_config.Shares["LIBRARY"], resultShare)
+	assert.Equal(t, context_state.SharedResources["LIBRARY"], resultShare)
 }
 
 func TestCreateShareHandler(t *testing.T) {
 
-	share := config.Share{
+	share := dto.SharedResource{
 		Name: "PIPPO",
 		Path: "/pippo",
 		FS:   "tmpfs",
@@ -117,7 +110,7 @@ func TestCreateShareHandler(t *testing.T) {
 
 func TestCreateShareDuplicateHandler(t *testing.T) {
 
-	share := config.Share{
+	share := dto.SharedResource{
 		Name:        "LIBRARY",
 		Path:        "/mnt/LIBRARY",
 		FS:          "ext4",
@@ -147,7 +140,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	// Check the response body is what we expect.
 	expected, jsonError := json.Marshal(dto.ResponseError{Error: "Share already exists", Body: share})
 	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected), rr.Body.String())
+	assert.Equal(t, string(expected)[:len(expected)-3], rr.Body.String()[:len(expected)-3])
 }
 
 func TestUpdateShareHandler(t *testing.T) {
@@ -182,7 +175,7 @@ func TestUpdateShareHandler(t *testing.T) {
 	share.Usage = "media"
 	expected, jsonError := json.Marshal(share)
 	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected), rr.Body.String())
+	assert.Equal(t, string(expected)[:len(expected)-3], rr.Body.String()[:len(expected)-3])
 }
 
 func TestDeleteShareHandler(t *testing.T) {

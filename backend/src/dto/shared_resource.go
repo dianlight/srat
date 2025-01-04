@@ -12,8 +12,8 @@ type SharedResource struct {
 	Path        string   `json:"path"`
 	FS          string   `json:"fs"`
 	Disabled    bool     `json:"disabled,omitempty"`
-	Users       []string `json:"users,omitempty"`
-	RoUsers     []string `json:"ro_users,omitempty"`
+	Users       []string `json:"users"`
+	RoUsers     []string `json:"ro_users"`
 	TimeMachine bool     `json:"timemachine,omitempty"`
 	Usage       string   `json:"usage,omitempty"`
 

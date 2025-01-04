@@ -30,11 +30,11 @@ type Config struct {
 	CurrentFile       string
 	ConfigSpecVersion int8 `json:"version,omitempty,default=0"`
 	Options
-	Shares          Shares           `json:"shares"`
-	DockerInterface string           `json:"docker_interface"`
-	DockerNet       string           `json:"docker_net"`
-	Users           []User           `json:"users"`
-	UpdateChannel   dm.UpdateChannel `json:"update_channel"`
+	Shares          Shares `json:"shares"`
+	DockerInterface string `json:"docker_interface"`
+	DockerNet       string `json:"docker_net"`
+	//Users           []User           `json:"users"`
+	UpdateChannel dm.UpdateChannel `json:"update_channel"`
 }
 
 // readConfigFile reads and parses a configuration file.
