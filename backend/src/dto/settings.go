@@ -41,3 +41,9 @@ func (self Settings) ToResponseError(code int, w http.ResponseWriter, message st
 func (self *Settings) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+
+func (self *Settings) ToMap() map[string]interface{} {
+	result := make(map[string]interface{})
+	copier.Copy(&result, self)
+	return result
+}

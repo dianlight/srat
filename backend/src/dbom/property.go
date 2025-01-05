@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/dianlight/srat/dto"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +20,15 @@ type Properties []Property
 
 func (p *Properties) Load() error {
 	return db.Find(p).Error
+}
+
+func (p *Properties) DeleteAll() error {
+	result := db.Delete(&Property{})
+	if result.Error != nil {
+		return result.Error
+	}
+	*p = nil
+	return nil
 }
 
 func (p *Properties) Add(key string, value interface{}) error {
@@ -88,4 +98,28 @@ func (p *Properties) GetValue(key string) (*interface{}, error) {
 	}
 	err = prop.UnmarshalValue(v)
 	return &v, err
+}
+
+func (p *Properties) FromSettings(setting dto.Settings) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		err := p.DeleteAll()
+		if err != nil {
+			return err
+		}
+		mapSetting := setting.ToMap()
+		for key, value := range mapSetting {
+			err := p.Add(key, value)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (p *Properties) ToSettings(setting *dto.Settings) {
+	mapSetting := setting.ToMap()
+	for _, prop := range *p {
+		mapSetting[prop.Key] = prop.Value
+	}
 }

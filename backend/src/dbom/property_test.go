@@ -11,6 +11,110 @@ import (
 	"gorm.io/gorm"
 )
 
+func TestPropertiesLoadEmpty(t *testing.T) {
+	// Initialize an empty Properties slice
+	p := &Properties{}
+
+	// Call the Load method
+	err := p.Load()
+
+	// Assert that no error occurred
+	require.NoError(t, err)
+
+	// Check if the Properties slice is still empty
+	assert.Empty(t, *p)
+
+	// Verify that no properties were loaded from the database
+	var count int64
+	result := db.Model(&Property{}).Count(&count)
+	require.NoError(t, result.Error)
+	assert.Equal(t, int64(0), count)
+}
+
+func TestPropertiesLoadWithExistingProperties(t *testing.T) {
+	// Create test properties
+	testProperties := []Property{
+		{Key: "key1", Value: `"value1"`},
+		{Key: "key2", Value: `42`},
+		{Key: "key3", Value: `true`},
+	}
+
+	// Insert test properties into the database
+	for _, prop := range testProperties {
+		result := db.Create(&prop)
+		require.NoError(t, result.Error)
+	}
+
+	// Initialize an empty Properties slice
+	p := &Properties{}
+
+	// Call the Load method
+	err := p.Load()
+
+	// Assert that no error occurred
+	require.NoError(t, err)
+
+	// Check if the Properties slice contains the correct number of items
+	assert.Len(t, *p, len(testProperties))
+
+	// Verify that all properties were loaded correctly
+	for _, expectedProp := range testProperties {
+		found := false
+		for _, loadedProp := range *p {
+			if loadedProp.Key == expectedProp.Key && loadedProp.Value == expectedProp.Value {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "Property %s not found in loaded properties", expectedProp.Key)
+	}
+
+	// Clean up the test data
+	db.Where("key IN ?", []string{"key1", "key2", "key3"}).Delete(&Property{})
+}
+
+func TestPropertiesLoadWithNullValues(t *testing.T) {
+	// Create test properties with null values
+	testProperties := []Property{
+		{Key: "key1", Value: "null"},
+		{Key: "key2", Value: `"value2"`},
+		{Key: "key3", Value: "null"},
+	}
+
+	// Insert test properties into the database
+	for _, prop := range testProperties {
+		result := db.Create(&prop)
+		require.NoError(t, result.Error)
+	}
+
+	// Initialize an empty Properties slice
+	p := &Properties{}
+
+	// Call the Load method
+	err := p.Load()
+
+	// Assert that no error occurred
+	require.NoError(t, err)
+
+	// Check if the Properties slice contains the correct number of items
+	assert.Len(t, *p, len(testProperties))
+
+	// Verify that all properties were loaded correctly, including null values
+	for _, expectedProp := range testProperties {
+		found := false
+		for _, loadedProp := range *p {
+			if loadedProp.Key == expectedProp.Key && loadedProp.Value == expectedProp.Value {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "Property %s not found or has incorrect value in loaded properties", expectedProp.Key)
+	}
+
+	// Clean up the test data
+	db.Where("key IN ?", []string{"key1", "key2", "key3"}).Delete(&Property{})
+}
+
 func TestPropertiesAddString(t *testing.T) {
 	// Initialize Properties
 	p := &Properties{}
