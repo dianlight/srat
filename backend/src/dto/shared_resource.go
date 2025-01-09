@@ -2,24 +2,35 @@ package dto
 
 import (
 	"errors"
+	"fmt"
 	"maps"
 	"net/http"
 	"reflect"
 	"slices"
 
 	"github.com/jinzhu/copier"
+	"github.com/thoas/go-funk"
+)
+
+type HAMountUsage string // https://developers.home-assistant.io/docs/api/supervisor/models#mount
+
+const (
+	UsageAsBackup HAMountUsage = "backup"
+	UsageAsMedia  HAMountUsage = "media"
+	UsageAsShare  HAMountUsage = "share"
+	UsageAsNone   HAMountUsage = "none"
 )
 
 type SharedResource struct {
-	ID          *uint    `json:"id,omitempty"`
-	Name        string   `json:"name,omitempty"`
-	Path        string   `json:"path"`
-	FS          string   `json:"fs"`
-	Disabled    bool     `json:"disabled,omitempty"`
-	Users       []string `json:"users"`
-	RoUsers     []string `json:"ro_users"`
-	TimeMachine bool     `json:"timemachine,omitempty"`
-	Usage       string   `json:"usage,omitempty"`
+	ID          *uint        `json:"id,omitempty"`
+	Name        string       `json:"name,omitempty"`
+	Path        string       `json:"path"`
+	FS          string       `json:"fs"`
+	Disabled    bool         `json:"disabled,omitempty"`
+	Users       Users        `json:"users"`
+	RoUsers     Users        `json:"ro_users"`
+	TimeMachine bool         `json:"timemachine,omitempty"`
+	Usage       HAMountUsage `json:"usage,omitempty"`
 
 	DirtyStatus bool    `json:"id_dirty,omitempty"`
 	DeviceId    *uint64 `json:"device_id,omitempty"`
@@ -59,7 +70,34 @@ func (self SharedResources) Get(key string) (sharedResource *SharedResource, fou
 }
 
 func (self *SharedResources) From(value interface{}) error {
-	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
+	//	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
+	var rerr error = nil
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+			rerr = err.(error)
+		}
+	}()
+	*self = SharedResources(funk.Map(value, func(k string, v any) (string, SharedResource) {
+		var dst SharedResource
+		funk.ForEach(funk.Keys(&SharedResource{}), func(k any) {
+			if *k.(*string) == "Users" || *k.(*string) == "RoUsers" {
+				var users Users
+				err := copier.Copy(&users, v)
+				if err != nil {
+					panic(err)
+				}
+				funk.Set(&dst, users, *k.(*string))
+				//dst.Users = users
+			} else if *k.(*string) == "Usage" {
+				dst.Usage = HAMountUsage(funk.Get(v, *k.(*string)).(string))
+			} else {
+				funk.Set(&dst, funk.Get(v, *k.(*string)), *k.(*string))
+			}
+		})
+		return k, dst
+	}).(map[string]SharedResource))
+	return rerr
 }
 func (self *SharedResources) FromIgnoreEmpty(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: true, DeepCopy: true})

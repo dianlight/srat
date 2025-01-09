@@ -118,13 +118,17 @@ func TestCreateShareHandler(t *testing.T) {
 func TestCreateShareDuplicateHandler(t *testing.T) {
 
 	share := dto.SharedResource{
-		Name:        "LIBRARY",
-		Path:        "/mnt/LIBRARY",
-		FS:          "ext4",
-		RoUsers:     []string{"rouser"},
+		Name: "LIBRARY",
+		Path: "/mnt/LIBRARY",
+		FS:   "ext4",
+		RoUsers: dto.Users{
+			dto.User{Username: "rouser"},
+		},
 		TimeMachine: true,
-		Users:       []string{"dianlight"},
-		Usage:       "media",
+		Users: dto.Users{
+			dto.User{Username: "dianlight"},
+		},
+		Usage: "media",
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
@@ -176,10 +180,14 @@ func TestUpdateShareHandler(t *testing.T) {
 	// Check the response body is what we expect.
 	share.FS = "ext4"
 	share.Name = "LIBRARY"
-	share.RoUsers = []string{"rouser"}
+	share.RoUsers = dto.Users{
+		dto.User{Username: "rouser"},
+	}
 	share.TimeMachine = true
-	share.Users = []string{"dianlight"}
-	share.Usage = "media"
+	share.Users = dto.Users{
+		dto.User{Username: "dianlight"},
+	}
+	share.Usage = dto.UsageAsMedia
 	expected, jsonError := json.Marshal(share)
 	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected)[:len(expected)-3], rr.Body.String()[:len(expected)-3])

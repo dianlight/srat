@@ -8,17 +8,18 @@ import (
 	"slices"
 
 	"github.com/jinzhu/copier"
+	"github.com/thoas/go-funk"
 )
 
 type Share struct {
-	Name        string   `json:"name,omitempty"`
-	Path        string   `json:"path"`
-	FS          string   `json:"fs"`
-	Disabled    bool     `json:"disabled,omitempty"`
-	Users       []string `json:"users,omitempty"`
-	RoUsers     []string `json:"ro_users,omitempty"`
-	TimeMachine bool     `json:"timemachine,omitempty"`
-	Usage       string   `json:"usage,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Path        string `json:"path"`
+	FS          string `json:"fs"`
+	Disabled    bool   `json:"disabled,omitempty"`
+	Users       []any  `json:"users,omitempty"`
+	RoUsers     []any  `json:"ro_users,omitempty"`
+	TimeMachine bool   `json:"timemachine,omitempty"`
+	Usage       string `json:"usage,omitempty"`
 }
 
 type Shares map[string]Share
@@ -130,7 +131,7 @@ func (in *Config) MigrateConfig() error {
 		for _, share := range []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"} {
 			_, ok := in.Shares[share]
 			if !ok {
-				in.Shares[share] = Share{Path: "/" + share, FS: "native", Disabled: false, Usage: "native"}
+				in.Shares[share] = Share{Path: "/" + share, FS: "native", Disabled: false, Usage: "none", Users: []any{in.Username}}
 			}
 		}
 	}
@@ -145,6 +146,19 @@ func (in *Config) MigrateConfig() error {
 				copier.Copy(&share, &in.ACL[i])
 				in.ACL = slices.Delete(in.ACL, i, i+1)
 			}
+			if len(share.Users) == 0 {
+				share.Users = append(share.Users, User{
+					Username: in.Username,
+					Password: in.Password,
+				})
+			}
+			if share.Usage == "" {
+				if in.Medialibrary.Enable {
+					share.Usage = "media"
+				} else {
+					share.Usage = "share"
+				}
+			}
 			in.Shares[shareName] = share
 		}
 	}
@@ -154,12 +168,29 @@ func (in *Config) MigrateConfig() error {
 		log.Printf("Migrating config from version 2 to version 3")
 		in.ConfigSpecVersion = 3
 		for shareName, share := range in.Shares {
-			if share.Users == nil {
-				share.Users = []string{
-					in.Username,
+			for ix, user := range share.Users {
+				switch user.(type) {
+				case string:
+					{
+						share.Users[ix] = funk.Find(in.OtherUsers, func(u User) bool { return u.Username == user.(string) })
+					}
+				case User:
+					{
+						share.Users[ix] = user
+					}
+				default:
+					{
+						log.Printf("Unknown user type in share %s: %T", shareName, user)
+					}
 				}
-				in.Shares[shareName] = share
 			}
+
+			//			if share.Users == nil {
+			//				share.Users = []any{
+			//					in.Username,
+			//				}
+			//				in.Shares[shareName] = share
+			//			}
 			if share.Usage == "" && in.Automount {
 				share.Usage = "media"
 				in.Shares[shareName] = share

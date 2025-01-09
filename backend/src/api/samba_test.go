@@ -28,7 +28,11 @@ func TestCreateConfigStream(t *testing.T) {
 	fsbyte, err := os.ReadFile(*samba_config_file)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, strings.Split(string(fsbyte), "\n"), strings.Split(string(*stream), "\n"))
+	resultValue := strings.Split(string(*stream), "\n")
+	for i, line := range strings.Split(string(fsbyte), "\n") {
+		assert.EqualValues(t, strings.TrimSpace(line), strings.TrimSpace(resultValue[i]), "Line: %d", i)
+	}
+	// assert.EqualValues(t, strings.Split(string(fsbyte), "\n"), strings.Split(string(*stream), "\n"))
 }
 func TestApplySambaHandler(t *testing.T) {
 

@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 	}
 	// Shares
 	var shares dto.SharedResources
-	err = shares.From(&config.Shares)
+	err = shares.From(config.Shares)
 	if err != nil {
 		log.Fatalf("Cant save shares - %s", err)
 	}

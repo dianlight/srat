@@ -71,6 +71,13 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 		return nil, err
 	}
 	shares.ToIgnoreEmpty(&config.Shares)
+	// Special setting parameters to remove after upgrade
+	for _, cshare := range config.Shares {
+		if cshare.Usage == "media" {
+			config.Options.Medialibrary.Enable = true
+			break
+		}
+	}
 	// End
 	config.DockerInterface = *ctx.Value("docker_interface").(*string)
 	config.DockerNet = *ctx.Value("docker_network").(*string)
