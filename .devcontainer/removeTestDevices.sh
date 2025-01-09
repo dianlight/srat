@@ -9,7 +9,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Get a list of all loop devices.
-loop_devices=$(losetup -a | awk '{print $1}' | cut -d: -f1)
+loop_devices=$(losetup -a | grep .devcontainer | awk '{print $1}' | cut -d: -f1)
 
 # Remove each loop device.
 for device in $loop_devices; do
