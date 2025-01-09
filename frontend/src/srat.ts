@@ -9,28 +9,6 @@
  * ---------------------------------------------------------------
  */
 
-export enum DataMounDataFlag {
-  MS_RDONLY = 1,
-  MS_NOSUID = 2,
-  MS_NODEV = 4,
-  MS_NOEXEC = 8,
-  MS_SYNCHRONOUS = 16,
-  MS_REMOUNT = 32,
-  MS_MANDLOCK = 64,
-  MS_NOATIME = 1024,
-  MS_NODIRATIME = 2048,
-  MS_BIND = 4096,
-  MS_LAZYTIME = 33554432,
-  MS_NOUSER = -2147483648,
-  MS_RELATIME = 2097152,
-}
-
-export enum DmUpdateChannel {
-  Stable = "stable",
-  Prerelease = "prerelease",
-  None = "none",
-}
-
 export interface DtoBlockInfo {
   /**
    * Partitions contains an array of pointers to `Partition` structs, one for
@@ -58,13 +36,13 @@ export interface DtoBlockPartition {
   /** MountData contains additional data associated with the partition. */
   mount_data?: string;
   /** MountFlags contains the mount flags for the partition. */
-  mount_flags?: DataMounDataFlag[];
+  mount_flags?: DtoMounDataFlag[];
   /** MountPoint is the path where this partition is mounted. */
   mount_point?: string;
   /** Name is the system name given to the partition, e.g. "sda1". */
   name?: string;
   /** PartiionFlags contains the mount flags for the partition. */
-  partition_flags?: DataMounDataFlag[];
+  partition_flags?: DtoMounDataFlag[];
   /** IsReadOnly indicates if the partition is marked read-only. */
   read_only?: boolean;
   /**
@@ -103,10 +81,26 @@ export interface DtoHealthPing {
   samba_pid?: number;
 }
 
+export enum DtoMounDataFlag {
+  MS_RDONLY = 1,
+  MS_NOSUID = 2,
+  MS_NODEV = 4,
+  MS_NOEXEC = 8,
+  MS_SYNCHRONOUS = 16,
+  MS_REMOUNT = 32,
+  MS_MANDLOCK = 64,
+  MS_NOATIME = 1024,
+  MS_NODIRATIME = 2048,
+  MS_BIND = 4096,
+  MS_LAZYTIME = 33554432,
+  MS_NOUSER = -2147483648,
+  MS_RELATIME = 2097152,
+}
+
 export interface DtoMountPointData {
   data?: string;
   default_path?: string;
-  flags?: DataMounDataFlag[];
+  flags?: DtoMounDataFlag[];
   fstype?: string;
   label?: string;
   name?: string;
@@ -169,7 +163,7 @@ export interface DtoSettings {
   mountoptions?: string[];
   multi_channel?: boolean;
   recyle_bin_enabled?: boolean;
-  update_channel?: DmUpdateChannel;
+  update_channel?: DtoUpdateChannel;
   veto_files?: string[];
   workgroup?: string;
 }
@@ -195,7 +189,14 @@ export interface DtoSmbConf {
   data?: string;
 }
 
+export enum DtoUpdateChannel {
+  Stable = "stable",
+  Prerelease = "prerelease",
+  None = "none",
+}
+
 export interface DtoUser {
+  is_admin?: boolean;
   password?: string;
   username?: string;
 }
@@ -664,58 +665,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         ...params,
       }),
   };
-  config = {
-    /**
-     * @description Save dirty changes to the disk
-     *
-     * @tags samba
-     * @name ConfigUpdate
-     * @summary Persiste the current samba config
-     * @request PUT:/config
-     */
-    configUpdate: (params: RequestParams = {}) =>
-      this.request<DtoSettings, DtoResponseError>({
-        path: `/config`,
-        method: "PUT",
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Revert to the last saved samba config
-     *
-     * @tags samba
-     * @name ConfigDelete
-     * @summary Rollback the current samba config
-     * @request DELETE:/config
-     */
-    configDelete: (params: RequestParams = {}) =>
-      this.request<DtoSettings, DtoResponseError>({
-        path: `/config`,
-        method: "DELETE",
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Save dirty changes to the disk
-     *
-     * @tags samba
-     * @name ConfigPartialUpdate
-     * @summary Persiste the current samba config
-     * @request PATCH:/config
-     */
-    configPartialUpdate: (params: RequestParams = {}) =>
-      this.request<DtoSettings, DtoResponseError>({
-        path: `/config`,
-        method: "PATCH",
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-  };
   events = {
     /**
      * @description Return a list of available WSChannel events
@@ -972,24 +921,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "DELETE",
         ...params,
       }),
-
-    /**
-     * @description update e new share
-     *
-     * @tags share
-     * @name SharePartialUpdate
-     * @summary Update a share
-     * @request PATCH:/share/{share_name}
-     */
-    sharePartialUpdate: (shareName: string, share: DtoSharedResource, params: RequestParams = {}) =>
-      this.request<DtoSharedResource, DtoResponseError>({
-        path: `/share/${shareName}`,
-        method: "PATCH",
-        body: share,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
   };
   shares = {
     /**
@@ -1040,22 +971,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: user,
         type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description get user by Name
-     *
-     * @tags user
-     * @name UserDetail
-     * @summary Get a user
-     * @request GET:/user/{username}
-     */
-    userDetail: (username: string, params: RequestParams = {}) =>
-      this.request<DtoUser, DtoResponseError>({
-        path: `/user/${username}`,
-        method: "GET",
         format: "json",
         ...params,
       }),

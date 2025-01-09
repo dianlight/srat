@@ -50,6 +50,12 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Cant save users - %s", err)
 	}
+	// Admin user
+	sambaUsers = append(sambaUsers, dbom.SambaUser{
+		Username: config.Username,
+		Password: config.Password,
+		IsAdmin:  true,
+	})
 	err = sambaUsers.Save()
 	if err != nil {
 		log.Fatalf("Cant save users - %s", err)

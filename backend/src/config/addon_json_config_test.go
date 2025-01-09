@@ -57,7 +57,7 @@ func TestConfigToMapWithUnicode(t *testing.T) {
 	// Check if the unicode characters are preserved
 	sharePath, ok := (*result)["shares"].(map[string]interface{})["unicode"].(map[string]interface{})["path"].(string)
 	assert.True(t, ok)
-	assert.Equal(t, sharePath, "/path/to/unicode/文件夹")
+	assert.Equal(t, "/path/to/unicode/文件夹", sharePath)
 }
 func TestMigrateConfigFromVersion0To1(t *testing.T) {
 	// Create a config with version 0
@@ -71,7 +71,7 @@ func TestMigrateConfigFromVersion0To1(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check if the version has been updated
-	assert.Equal(t, initialConfig.ConfigSpecVersion, CURRENT_CONFIG_VERSION)
+	assert.Equal(t, CURRENT_CONFIG_VERSION, initialConfig.ConfigSpecVersion)
 
 	// Check if all required shares have been added
 	expectedShares := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"}
@@ -79,8 +79,8 @@ func TestMigrateConfigFromVersion0To1(t *testing.T) {
 		share, exists := initialConfig.Shares[shareName]
 		assert.True(t, exists)
 		expectedPath := "/" + shareName
-		assert.Equal(t, share.FS, "native")
-		assert.Equal(t, share.Path, expectedPath)
+		assert.Equal(t, "native", share.FS)
+		assert.Equal(t, expectedPath, share.Path)
 	}
 
 	// Check that no extra shares were added
@@ -98,7 +98,7 @@ func TestMigrateConfigSetsVersionToCurrent(t *testing.T) {
 	err := initialConfig.MigrateConfig()
 	require.NoError(t, err)
 
-	assert.Equal(t, initialConfig.ConfigSpecVersion, CURRENT_CONFIG_VERSION)
+	assert.Equal(t, CURRENT_CONFIG_VERSION, initialConfig.ConfigSpecVersion)
 }
 func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	// Create a config with version 0 and all default shares already present
@@ -139,19 +139,19 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check if the version has been updated
-	assert.Equal(t, initialConfig.ConfigSpecVersion, CURRENT_CONFIG_VERSION)
+	assert.Equal(t, CURRENT_CONFIG_VERSION, initialConfig.ConfigSpecVersion)
 	// Check if all shares are still present and unchanged
 	expectedShares := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"}
 	for _, shareName := range expectedShares {
 		share, exists := initialConfig.Shares[shareName]
 		assert.True(t, exists)
 		assert.Equal(t, share.Path, "/"+shareName)
-		assert.Equal(t, share.FS, "native")
+		assert.Equal(t, "native", share.FS)
 	}
 
 	assert.Equal(t, len(initialConfig.Shares), len(expectedShares))
 
-	assert.Equal(t, len(initialConfig.Options.ACL), 2)
+	assert.Len(t, initialConfig.Options.ACL, 2)
 
 	assert.Equal(t, "utente1", (initialConfig.Shares["backup"].Users)[0])
 	assert.Equal(t, "utente2", (initialConfig.Shares["ssl"].Users)[0])

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -38,11 +39,26 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 		return nil, err
 	}
 	var users dto.Users
-	err = users.From(&sambaUsers) // FIXME: Tha admin user?!?!
+	err = users.From(&sambaUsers)
 	if err != nil {
 		return nil, err
 	}
-	users.ToIgnoreEmpty(&config.OtherUsers)
+	normalUsers, err := users.Users()
+	if err != nil {
+		return nil, err
+	}
+	normalUsers.ToIgnoreEmpty(&config.OtherUsers)
+	// Admin user
+	admin, err := users.AdminUser()
+	if err != nil {
+		return nil, err
+	}
+	if admin == nil {
+		return nil, errors.New("No admin user found")
+	}
+	config.Username = admin.Username
+	config.Password = admin.Password
+
 	// Shares
 	var sambaShares dbom.ExportedShares
 	err = sambaShares.Load()

@@ -320,6 +320,8 @@ definitions:
     - None
   dto.User:
     properties:
+      is_admin:
+        type: boolean
       password:
         type: string
       username:
@@ -883,73 +885,6 @@ paths:
       summary: Update admin user
       tags:
       - user
-  /config:
-    delete:
-      consumes:
-      - application/json
-      description: Revert to the last saved samba config
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.Settings'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-      summary: Rollback the current samba config
-      tags:
-      - samba
-    patch:
-      consumes:
-      - application/json
-      description: Save dirty changes to the disk
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.Settings'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-      summary: Persiste the current samba config
-      tags:
-      - samba
-    put:
-      consumes:
-      - application/json
-      description: Save dirty changes to the disk
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.Settings'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-      summary: Persiste the current samba config
-      tags:
-      - samba
   /events:
     get:
       description: Return a list of available WSChannel events
@@ -1427,32 +1362,6 @@ paths:
           schema:
             $ref: '#/definitions/dto.ResponseError'
       summary: Delete a user
-      tags:
-      - user
-    get:
-      description: get user by Name
-      parameters:
-      - description: Name
-        in: path
-        name: username
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.User'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ResponseError'
-      summary: Get a user
       tags:
       - user
     patch:

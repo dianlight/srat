@@ -1,7 +1,6 @@
 package dbom
 
 import (
-	"slices"
 	"time"
 
 	"gorm.io/gorm"
@@ -35,9 +34,11 @@ func (p *SambaUsers) DeleteAll() error {
 	return nil
 }
 
-func (self SambaUsers) Users() ([]*SambaUser, error) {
-	tmp := slices.Clone(self)
-	return slices.DeleteFunc(tmp, func(u *SambaUser) bool { return u.IsAdmin }), nil
+/*
+func (self SambaUsers) Users() ([]SambaUser, error) {
+	tmp := reflect.ValueOf(slices.Clone(self)).Interface().([]SambaUser)
+	result := slices.DeleteFunc(tmp, func(u SambaUser) bool { return u.IsAdmin })
+	return result, nil
 }
 
 func (self *SambaUsers) AdminUser() (*SambaUser, error) {
@@ -48,6 +49,7 @@ func (self *SambaUsers) AdminUser() (*SambaUser, error) {
 	}
 	return &user, nil
 }
+*/
 
 /*
 func (p *SambaUser) Add(value interface{}) error {

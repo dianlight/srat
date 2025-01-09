@@ -12,6 +12,7 @@ type Users []User
 type User struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	IsAdmin  bool   `json:"is_admin"`
 }
 
 func (self *User) From(value interface{}) error {
@@ -64,5 +65,21 @@ func (self *Users) Get(username string) (*User, int) {
 		return nil, index
 	} else {
 		return &(*self)[index], index
+	}
+}
+
+func (self Users) Users() (Users, error) {
+	tmp := slices.Clone(self)
+	result := slices.DeleteFunc(tmp, func(u User) bool { return u.IsAdmin })
+	return result, nil
+}
+
+func (self Users) AdminUser() (*User, error) {
+	tmp := slices.Clone(self)
+	result := slices.DeleteFunc(tmp, func(u User) bool { return !u.IsAdmin })
+	if len(result) == 0 {
+		return nil, nil
+	} else {
+		return &result[0], nil
 	}
 }

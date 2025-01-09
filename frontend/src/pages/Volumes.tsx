@@ -1,6 +1,6 @@
 import { Fragment, useContext, useEffect, useState } from "react";
 import { apiContext, ModeContext, wsContext as ws } from "../Contexts";
-import { DataMounDataFlag, DtoEventType, type DtoBlockInfo, type DtoBlockPartition, type DtoMountPointData } from "../srat";
+import { DtoEventType, DtoMounDataFlag, type DtoBlockInfo, type DtoBlockPartition, type DtoMountPointData } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
@@ -197,7 +197,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                                         multiple
                                         name="flags"
                                         label="Mount Flags"
-                                        options={Object.values(DataMounDataFlag).filter((v) => typeof v === "string") as string[]}
+                                        options={Object.values(DtoMounDataFlag).filter((v) => typeof v === "string") as string[]}
                                         control={control}
                                     />
                                 </Grid2>
