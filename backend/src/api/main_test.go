@@ -16,6 +16,8 @@ var testContext = context.Background()
 func TestMain(m *testing.M) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	os.Setenv("HOSTNAME", "test-host")
+
 	dbom.InitDB(":memory:")
 	defer dbom.CloseDB()
 
