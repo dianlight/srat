@@ -43,6 +43,8 @@ var http_port *int
 var templateFile *string
 var wait time.Duration
 var hamode *bool
+var dockerInterface *string
+var dockerNetwork *string
 
 // Static files
 //
@@ -142,13 +144,15 @@ func DoResponseError(code int, w http.ResponseWriter, message string, body any) 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
-	data.ConfigFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
+	var configFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
 	templateFile = flag.String("template", "", "Template file")
 	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
 	data.ROMode = flag.Bool("ro", false, "Read only mode")
 	hamode = flag.Bool("addon", false, "Run in addon mode")
 	dbfile := flag.String("db", ":memory:?cache=shared", "Database file")
+	dockerInterface = flag.String("docker-interface", "", "Docker interface")
+	dockerNetwork = flag.String("docker-network", "", "Docker network")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -181,6 +185,78 @@ func main() {
 	}
 
 	dbom.InitDB(*dbfile)
+
+	// JSON Config  Migration if necessary
+	// Get config and migrate if DB is empty
+	var properties dbom.Properties
+	err := properties.Load()
+	if err != nil {
+		log.Fatalf("Cant load properties - %s", err)
+	}
+	versionInDB, err := properties.GetValue("version")
+	if err != nil || versionInDB.(string) == "" {
+		// Migrate from JSON to DB
+		var config config.Config
+		err := config.LoadConfig(*configFile)
+		// Setting/Properties
+		if err != nil {
+			log.Fatalf("Cant load config file %s", err)
+		}
+		var settings dto.Settings
+		err = settings.From(&config)
+		if err != nil {
+			log.Fatalf("Cant save settings - %s", err)
+		}
+		var properties dbom.Properties
+		err = settings.To(&properties)
+		if err != nil {
+			log.Fatalf("Cant save settings - %s", err)
+		}
+		err = properties.Save()
+		if err != nil {
+			log.Fatalf("Cant save properties - %s", err)
+		}
+
+		// Users
+		var users dto.Users
+		err = users.From(&config.OtherUsers)
+		if err != nil {
+			log.Fatalf("Cant save users - %s", err)
+		}
+		var sambaUsers dbom.SambaUsers
+		err = users.To(&sambaUsers)
+		if err != nil {
+			log.Fatalf("Cant save users - %s", err)
+		}
+		// --> Add Admin user
+		sambaUsers = append(sambaUsers, dbom.SambaUser{
+			Username: config.Username,
+			Password: config.Password,
+			IsAdmin:  true,
+		})
+		err = sambaUsers.Save()
+		if err != nil {
+			log.Fatalf("Cant save users - %s", err)
+		}
+		// Shares
+		var shares dto.SharedResources
+		err = shares.From(&config.Shares)
+		if err != nil {
+			log.Fatalf("Cant save shares - %s", err)
+		}
+		var sambaShares dbom.ExportedShares
+		err = shares.To(&sambaShares)
+		if err != nil {
+			log.Fatalf("Cant save shares - %s", err)
+		}
+		err = sambaShares.Save()
+		if err != nil {
+			log.Fatalf("Cant save shares - %s", err)
+		}
+	}
+	//data.Config = aconfig
+
+	// End
 
 	overseer.Run(overseer.Config{
 		Program: prog,
@@ -226,13 +302,6 @@ func prog(state overseer.State) {
 		log.Println("Read only mode")
 	}
 
-	// Get config
-	aconfig, cerr := config.LoadConfig(*data.ConfigFile)
-	if cerr != nil {
-		log.Fatalf("Cant load config file %s - %s", *data.ConfigFile, cerr)
-	}
-	//data.Config = aconfig
-
 	// Get options
 	options = config.ReadOptionsFile(*optionsFile)
 
@@ -243,9 +312,11 @@ func prog(state overseer.State) {
 	//apiContext = context.WithValue(apiContext, "data_dirty_tracker", dto.DataDirtyTracker{})
 	apiContext = context.WithValue(apiContext, "samba_config_file", smbConfigFile)
 	apiContext = context.WithValue(apiContext, "template_data", templateData)
+	apiContext = context.WithValue(apiContext, "docker_interface", dockerInterface)
+	apiContext = context.WithValue(apiContext, "docker_network", dockerNetwork)
 
 	sharedResources := dto.ContextState{}
-	sharedResources.FromJSONConfig(*aconfig)
+	//sharedResources.FromJSONConfig(*aconfig)
 	apiContext = sharedResources.ToContext(apiContext)
 
 	globalRouter := mux.NewRouter()
@@ -254,10 +325,10 @@ func prog(state overseer.State) {
 	}
 
 	// System
-	globalRouter.HandleFunc("/health", api.HealthCheckHandler).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/update", api.UpdateHandler).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/health", api.HealthCheckHandler).Methods(http.MethodGet) // TODO: correctly handle
+	globalRouter.HandleFunc("/update", api.UpdateHandler).Methods(http.MethodPut)      // TODO: correctly handle
 	globalRouter.HandleFunc("/restart", api.RestartHandler).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet) // TODO: correctly handle
 	globalRouter.HandleFunc("/filesystems", api.GetFSHandler).Methods(http.MethodGet)
 
 	// Shares
@@ -276,13 +347,13 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/admin/user", api.GetAdminUser).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/admin/user", api.UpdateAdminUser).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/users", api.ListUsers).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/user/{username}", api.GetUser).Methods(http.MethodGet)
+	//	globalRouter.HandleFunc("/user/{username}", api.GetUser).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/user", api.CreateUser).Methods(http.MethodPost)
 	globalRouter.HandleFunc("/user/{username}", api.UpdateUser).Methods(http.MethodPut, http.MethodPatch)
 	globalRouter.HandleFunc("/user/{username}", api.DeleteUser).Methods(http.MethodDelete)
 
 	// Samba
-	globalRouter.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet) // TODO: correctly handle
 	globalRouter.HandleFunc("/samba/apply", api.ApplySamba).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/samba/status", api.GetSambaProcessStatus).Methods(http.MethodGet)
 
@@ -291,8 +362,9 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/global", api.UpdateSettings).Methods(http.MethodPut, http.MethodPatch)
 
 	// Configuration
-	globalRouter.HandleFunc("/config", api.PersistAllConfig).Methods(http.MethodPut, http.MethodPatch)
-	globalRouter.HandleFunc("/config", api.RollbackConfig).Methods(http.MethodDelete)
+
+	//globalRouter.HandleFunc("/config", api.PersistAllConfig).Methods(http.MethodPut, http.MethodPatch)
+	//globalRouter.HandleFunc("/config", api.RollbackConfig).Methods(http.MethodDelete)
 
 	// WebSocket
 	globalRouter.HandleFunc("/events", api.WSChannelEventsList).Methods(http.MethodGet)
@@ -344,6 +416,8 @@ func prog(state overseer.State) {
 			//ctx = context.WithValue(ctx, "data_dirty_tracker", &dto.DataDirtyTracker{})
 			ctx = context.WithValue(ctx, "samba_config_file", smbConfigFile)
 			ctx = context.WithValue(ctx, "template_data", templateData)
+			ctx = context.WithValue(ctx, "docker_interface", dockerInterface)
+			ctx = context.WithValue(ctx, "docker_network", dockerNetwork)
 			ctx = sharedResources.ToContext(ctx)
 
 			return ctx

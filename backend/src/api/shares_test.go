@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -31,12 +32,14 @@ func TestListSharesHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check the response body is what we expect.
-	context_state := (&dto.ContextState{}).FromContext(testContext)
+	//context_state := (&dto.ContextState{}).FromContext(testContext)
 	resultsDto := dto.SharedResources{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultsDto)
 	require.NoError(t, jsonError, "Body %#v", rr.Body.String())
 	assert.NotEmpty(t, resultsDto)
-	assert.Equal(t, resultsDto, context_state.SharedResources)
+	var config config.Config
+	config.FromContext(testContext)
+	assert.EqualValues(t, resultsDto, config.Shares)
 
 	for _, sdto := range resultsDto {
 		assert.NotEmpty(t, sdto.Path)
@@ -69,12 +72,16 @@ func TestGetShareHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
-	context_state := (&dto.ContextState{}).FromContext(testContext)
+	//context_state := (&dto.ContextState{}).FromContext(testContext)
 	resultShare := dto.SharedResource{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultShare)
 	require.NoError(t, jsonError)
 
-	assert.Equal(t, context_state.SharedResources["LIBRARY"], resultShare)
+	var config config.Config
+	config.FromContext(testContext)
+	assert.Equal(t, config.Shares["LIBRARY"], resultShare)
+
+	assert.EqualValues(t, config.Shares["LIBRARY"], resultShare)
 }
 
 func TestCreateShareHandler(t *testing.T) {

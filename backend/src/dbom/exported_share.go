@@ -16,11 +16,17 @@ type ExportedShare struct {
 	Invalid     bool        `json:"invalid,omitempty"`
 }
 
-func (_ ExportedShare) All() ([]ExportedShare, error) {
-	var shares []ExportedShare
-	err := db.Find(&shares).Error
-	return shares, err
+type ExportedShares []ExportedShare
+
+func (p *ExportedShares) Load() error {
+	return db.Find(p).Error
 }
+
+func (p *ExportedShares) Save() error {
+	return db.Save(p).Error
+}
+
+//------------------------------------------------------------------------------
 
 func (share *ExportedShare) Save() error {
 	return db.Save(share).Error

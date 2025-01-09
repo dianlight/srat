@@ -28,3 +28,13 @@ func InitDB(dbpath string) {
 	adb.AutoMigrate(&MountPointData{}, &ExportedShare{}, &SambaUser{}, &Property{})
 	db = adb
 }
+
+func CloseDB() {
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic(err)
+	}
+
+	// Close
+	sqlDB.Close()
+}

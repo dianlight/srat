@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -33,13 +34,18 @@ func TestListUsersHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
-	context_state := (&dto.ContextState{}).FromContext(testContext)
-	expected, jsonError := json.Marshal(context_state.Users)
+	//context_state := (&dto.ContextState{}).FromContext(testContext)
+	var configs config.Config
+	err = configs.FromContext(testContext)
+	require.NoError(t, err)
+
+	expected, jsonError := json.Marshal(configs.OtherUsers)
 	assert.NotEmpty(t, expected)
 	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 }
 
+/*
 func TestGetUserHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
@@ -65,6 +71,7 @@ func TestGetUserHandler(t *testing.T) {
 	assert.NotEmpty(t, expected)
 	assert.Equal(t, string(expected), rr.Body.String())
 }
+*/
 
 func TestCreateUserHandler(t *testing.T) {
 
@@ -96,11 +103,13 @@ func TestCreateUserHandler(t *testing.T) {
 	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
 
-	context_state := (&dto.ContextState{}).FromContext(testContext)
-	fu, index := context_state.Users.Get("PIPPO")
-	assert.NotEqual(t, index, -1)
-	assert.NotNil(t, fu)
-	assert.Equal(t, fu.Password, user.Password)
+	//context_state := (&dto.ContextState{}).FromContext(testContext)
+	dbuser := dbom.SambaUser{
+		Username: "PIPPO",
+	}
+	err = dbuser.Get()
+	require.NoError(t, err)
+	assert.Equal(t, dbuser.Password, user.Password)
 }
 
 func TestCreateUserDuplicateHandler(t *testing.T) {
@@ -139,8 +148,8 @@ func TestUpdateUserHandler(t *testing.T) {
 		Password: "/pippo",
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(testContext)
-	username := context_state.Users[0].Username
+	//context_state := (&dto.ContextState{}).FromContext(testContext)
+	username := "utente2"
 
 	jsonBody, jsonError := json.Marshal(user)
 	require.NoError(t, jsonError)

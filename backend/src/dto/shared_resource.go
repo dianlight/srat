@@ -1,7 +1,11 @@
 package dto
 
 import (
+	"errors"
+	"maps"
 	"net/http"
+	"reflect"
+	"slices"
 
 	"github.com/jinzhu/copier"
 )
@@ -63,6 +67,46 @@ func (self *SharedResources) FromIgnoreEmpty(value interface{}) error {
 func (self SharedResources) To(value interface{}) error {
 	return copier.CopyWithOption(value, &self, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
+
+func (self SharedResources) ToArray(value interface{}) error {
+	vals := slices.Collect(maps.Values(self))
+	return copier.CopyWithOption(value, vals, copier.Option{IgnoreEmpty: false, DeepCopy: true})
+}
+
+func (self *SharedResources) FromArray(value interface{}, keyfield string) error {
+	if value == nil {
+		return errors.New("Missing array in the request body")
+	}
+	if reflect.Indirect(reflect.ValueOf(value)).Type().Kind() != reflect.Slice {
+		return errors.New("Expected array in the request body")
+	}
+	arrValue := reflect.Indirect(reflect.ValueOf(value))
+	for i := 0; i < arrValue.Len(); i++ {
+		shareName := reflect.Indirect(arrValue.Index(i)).FieldByName(keyfield).Interface().(string)
+		if shareName == "" {
+			return errors.New("Missing '" + keyfield + "' field in the array item")
+		}
+		var toShare SharedResource
+		copier.CopyWithOption(&toShare, arrValue.Index(i).Interface(), copier.Option{DeepCopy: true})
+		if isNil(*self) {
+			*self = make(SharedResources)
+		}
+		(*self)[shareName] = toShare
+	}
+	/*
+		for _, v := range reflect.Indirect(reflect.ValueOf(value)).Interface().([]interface{}) {
+			shareName := reflect.Indirect(reflect.ValueOf(v)).FieldByName(keyfield).Interface().(string)
+			if shareName == "" {
+				return errors.New("Missing '" + keyfield + "' field in the array item")
+			}
+			var toShare SharedResource
+			copier.CopyWithOption(&toShare, v, copier.Option{DeepCopy: true})
+			self[shareName] = toShare
+		}
+	*/
+	return nil
+}
+
 func (self SharedResources) ToIgnoreEmpty(value interface{}) error {
 	return copier.CopyWithOption(value, &self, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 }

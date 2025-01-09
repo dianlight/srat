@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
@@ -16,6 +17,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCreateConfigStream(t *testing.T) {
+	stream, err := createConfigStream(testContext)
+	require.NoError(t, err)
+	assert.NotNil(t, stream)
+
+	samba_config_file := testContext.Value("samba_config_file").(*string)
+	assert.NotEmpty(t, *samba_config_file)
+
+	fsbyte, err := os.ReadFile(*samba_config_file)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, strings.Split(string(fsbyte), "\n"), strings.Split(string(*stream), "\n"))
+}
 func TestApplySambaHandler(t *testing.T) {
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
@@ -46,19 +60,6 @@ func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) boo
 	assert.True(t, m, "Wrong Match `%s` not found in stream \n%s", rexpt, string(*stream))
 
 	return true
-}
-
-func TestCreateConfigStream(t *testing.T) {
-	stream, err := createConfigStream(testContext)
-	require.NoError(t, err)
-	assert.NotNil(t, stream)
-
-	samba_config_file := testContext.Value("samba_config_file").(*string)
-	assert.NotEmpty(t, *samba_config_file)
-
-	fsbyte, err := os.ReadFile(*samba_config_file)
-	require.NoError(t, err)
-	assert.Equal(t, len(fsbyte), len(*stream))
 }
 
 // check migrate config don't duplicate share

@@ -1,12 +1,13 @@
 package api
 
 import (
+	"errors"
 	"net/http"
-	"slices"
 
-	"dario.cat/mergo"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
+	"gorm.io/gorm"
 )
 
 // ListUsers godoc
@@ -22,8 +23,19 @@ import (
 func ListUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	context_state.Users.ToResponse(http.StatusOK, w)
+	var dbusers dbom.SambaUsers
+	err := dbusers.Load()
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+	var users dto.Users
+	err = users.From(dbusers)
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+	users.ToResponse(http.StatusOK, w)
 }
 
 // GetAdminUser godoc
@@ -39,8 +51,21 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 func GetAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	context_state.AdminUser.ToResponse(http.StatusOK, w)
+	var adminUser dto.User
+	dbUser := dbom.SambaUser{
+		IsAdmin: true,
+	}
+	err := dbUser.Get()
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+	err = adminUser.From(&dbUser)
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+	adminUser.ToResponse(http.StatusOK, w)
 }
 
 // GetUser godoc
@@ -56,6 +81,7 @@ func GetAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		405			{object}	dto.ResponseError
 //	@Failure		500			{object}	dto.ResponseError
 //	@Router			/user/{username} [get]
+/*
 func GetUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 	w.Header().Set("Content-Type", "application/json")
@@ -70,6 +96,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+*/
 
 // CreateUser godoc
 //
@@ -90,22 +117,21 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	var user dto.User
 	user.FromJSONBody(w, r)
+	var dbUser dbom.SambaUser
+	err := user.To(&dbUser)
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusBadRequest, w, "Invalid user data", user)
+		return
+	}
+	err = dbUser.Save()
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+	user.ToResponse(http.StatusCreated, w)
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	_, index := context_state.Users.Get(user.Username)
-	if index != -1 {
-		dto.ResponseError{}.ToResponseError(http.StatusConflict, w, "User already exists", user)
-		return
-	}
-
-	if user.Username == context_state.AdminUser.Username {
-		dto.ResponseError{}.ToResponseError(http.StatusConflict, w, "User already exists", user)
-		return
-	}
-
-	context_state.Users = append(context_state.Users, user)
 	context_state.DataDirtyTracker.Users = true
-
 	user.ToResponse(http.StatusCreated, w)
 }
 
@@ -129,18 +155,25 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 	w.Header().Set("Content-Type", "application/json")
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	user, index := context_state.Users.Get(username)
-	if index == -1 {
-		dto.ResponseError{}.ToResponseError(http.StatusNotFound, w, "User not found", nil)
-	} else {
-		var nuser dto.User
-		nuser.FromJSONBody(w, r)
-		mergo.Map(user, nuser, mergo.WithOverride)
-		context_state.DataDirtyTracker.Users = true
-		user.ToResponse(http.StatusOK, w)
+	var user dto.User
+	user.FromJSONBody(w, r)
+	dbUser := dbom.SambaUser{
+		Username: username,
+		IsAdmin:  false,
 	}
+	err := dbUser.Get()
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+	user.ToIgnoreEmpty(dbUser)
 
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	context_state.DataDirtyTracker.Users = true
+	user.ToResponse(http.StatusOK, w)
 }
 
 // UpdateAdminUser godoc
@@ -163,14 +196,17 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 
 	var user dto.User
 	user.FromJSONBody(w, r)
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	dbUser := dbom.SambaUser{
+		IsAdmin: true,
+	}
+	err := dbUser.Get()
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+	user.ToIgnoreEmpty(dbUser)
 
-	if user.Username != "" {
-		context_state.AdminUser.Username = user.Username
-	}
-	if user.Password != "" {
-		context_state.AdminUser.Password = user.Password
-	}
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Users = true
 	user.ToResponse(http.StatusOK, w)
 }
@@ -191,14 +227,29 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 	w.Header().Set("Content-Type", "application/json")
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	_, index := context_state.Users.Get(username)
-	if index == -1 {
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-		context_state.Users = slices.Delete(context_state.Users, index, index+1)
-		context_state.DataDirtyTracker.Users = true
-		w.WriteHeader(http.StatusNoContent)
+	var user dto.User
+	user.FromJSONBody(w, r)
+	dbUser := dbom.SambaUser{
+		Username: username,
+		IsAdmin:  false,
 	}
+	err := dbUser.Get()
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+	err = dbUser.Delete()
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
+
+	context_state.DataDirtyTracker.Users = true
+	w.WriteHeader(http.StatusNoContent)
 
 }

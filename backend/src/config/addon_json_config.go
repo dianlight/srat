@@ -1,8 +1,8 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"os"
 	"slices"
@@ -36,7 +36,7 @@ type Config struct {
 	UpdateChannel string `json:"update_channel"`
 }
 
-// readConfigFile reads and parses a configuration file.
+// ReadConfigBuffer reads and parses a configuration file.
 //
 // It takes the path to a configuration file, reads its contents, and then
 // passes the data to readConfigBuffer for parsing into a Config struct.
@@ -47,22 +47,16 @@ type Config struct {
 // Returns:
 //   - *Config: A pointer to the parsed Config struct.
 //     If reading the file fails, the function will log a fatal error and terminate the program.
-func readConfigFile(file string) (*Config, error) {
+func (self *Config) ReadFromFile(file string) error {
 	configFile, err := os.ReadFile(file)
 	if err != nil {
-		log.Println(err)
-		return nil, err
+		return err
 	}
 	// Parse json
-	config, err := readConfigBuffer(configFile)
-	if err != nil {
-		return nil, err
-	}
-	config.CurrentFile = file
-	return config, nil
+	return self.ReadConfigBuffer(configFile)
 }
 
-// readConfigBuffer parses a JSON-encoded byte slice into a Config struct.
+// ReadConfigBuffer parses a JSON-encoded byte slice into a Config struct.
 //
 // This function takes a byte slice containing JSON data and attempts to unmarshal it
 // into a Config struct. If the unmarshaling process fails, the function will log
@@ -74,16 +68,8 @@ func readConfigFile(file string) (*Config, error) {
 // Returns:
 //   - *Config: A pointer to the parsed Config struct.
 //     If parsing fails, the function will log a fatal error and terminate the program.
-func readConfigBuffer(buffer []byte) (*Config, error) {
-	var config Config
-	// Parse json
-	err := json.Unmarshal(buffer, &config)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-
-	return &config, nil
+func (self *Config) ReadConfigBuffer(buffer []byte) error {
+	return json.Unmarshal(buffer, &self)
 }
 
 // ConfigToMap converts a Config struct to a map[string]interface{}.
@@ -128,9 +114,9 @@ func (in *Config) ConfigToMap() *map[string]interface{} {
 // Returns:
 //   - *Config: A pointer to the migrated Config struct. If the input config
 //     is already at the latest version, it returns the input unchanged.
-func MigrateConfig(in *Config) *Config {
+func (in *Config) MigrateConfig() error {
 	if in.ConfigSpecVersion == CURRENT_CONFIG_VERSION {
-		return in
+		return nil
 	}
 
 	// From version 0 to version 1 - Default shares ain config
@@ -181,7 +167,7 @@ func MigrateConfig(in *Config) *Config {
 		}
 	}
 
-	return in
+	return nil
 }
 
 // LoadConfig reads a configuration file, parses it, and migrates it to the latest version.
@@ -196,36 +182,20 @@ func MigrateConfig(in *Config) *Config {
 // Returns:
 //   - *Config: A pointer to the loaded and migrated Config struct.
 //   - error: An error if the file couldn't be read or parsed. If successful, this will be nil.
-func LoadConfig(file string) (*Config, error) {
-	config, err := readConfigFile(file)
+func (self *Config) LoadConfig(file string) error {
+	err := self.ReadFromFile(file)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	config = MigrateConfig(config)
-	return config, nil
+	self.MigrateConfig()
+	return nil
 }
 
-func SaveConfig(in *Config) (*Config, error) {
-	// TODO: Implement save config
-	return in, nil
+func (self *Config) FromContext(ctx context.Context) error {
+	*self = *ctx.Value("samba_json_config").(*Config)
+	return nil
 }
 
-// RollbackConfig reverts the configuration to the last saved state.
-//
-// This function attempts to reload the configuration from the file specified
-// in the CurrentFile field of the input Config. If CurrentFile is empty,
-// it returns an error indicating that the current file was not found.
-//
-// Parameters:
-//   - in: A pointer to the Config struct containing the current configuration state.
-//
-// Returns:
-//   - *Config: A pointer to the reloaded Config struct if successful.
-//   - error: An error if the rollback fails, either due to a missing CurrentFile
-//     or issues with reloading the configuration.
-func RollbackConfig(in *Config) (*Config, error) {
-	if in.CurrentFile == "" {
-		return nil, errors.New("current file not found")
-	}
-	return LoadConfig(in.CurrentFile)
+func (self *Config) ToContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, "samba_json_config", self)
 }

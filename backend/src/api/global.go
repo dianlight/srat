@@ -2,11 +2,10 @@ package api
 
 import (
 	"net/http"
-	"reflect"
 	"time"
 
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/jinzhu/copier"
 	"golang.org/x/time/rate"
 )
 
@@ -27,23 +26,38 @@ import (
 func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var globalConfig dto.Settings
-
-	err := globalConfig.FromJSONBody(w, r)
+	var config dto.Settings
+	err := config.FromJSONBody(w, r)
 	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "A0 Internal error", err)
+		return
+	}
+
+	var dbconfig dbom.Properties
+	err = dbconfig.Load()
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "A1 Internal error", err)
+		return
+	}
+
+	err = config.ToArray(&dbconfig)
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "A2 Internal error", err)
+		return
+	}
+
+	err = dbconfig.Save()
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "A3 Internal error", err)
 		return
 	}
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	if reflect.DeepEqual(globalConfig, context_state.Settings) {
-		w.WriteHeader(http.StatusNoContent)
-	} else {
-		copier.CopyWithOption(&context_state.Settings, &globalConfig, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 
-		context_state.DataDirtyTracker.Settings = true
-		UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
-		context_state.Settings.ToResponse(http.StatusOK, w)
-	}
+	config.FromArray(dbconfig)
+	context_state.DataDirtyTracker.Settings = true
+	UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
+	config.ToResponse(http.StatusOK, w)
 }
 
 // GetSettings godoc
@@ -59,8 +73,20 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 //	@Router			/global [get]
 func GetSettings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	context_state.Settings.ToResponse(http.StatusOK, w)
+
+	var dbsettings dbom.Properties
+	err := dbsettings.Load()
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+	var settings dto.Settings
+	err = settings.FromArray(&dbsettings)
+	if err != nil {
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		return
+	}
+	settings.ToResponse(http.StatusOK, w)
 }
 
 // PersistAllConfig godoc
@@ -75,6 +101,7 @@ func GetSettings(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/config [put]
 //	@Router			/config [patch]
+/*
 func PersistAllConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -91,7 +118,7 @@ func PersistAllConfig(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 			 FIXME: Persist share state
-	*/
+	* /
 	context_state.DataDirtyTracker.Shares = false
 
 	/*
@@ -101,11 +128,12 @@ func PersistAllConfig(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 			FIXME: Persist volume state
-	*/
+	* /
 	context_state.DataDirtyTracker.Volumes = false
 
 	context_state.Settings.ToResponse(http.StatusOK, w)
 }
+*/
 
 // RollbackConfig godoc
 //
@@ -118,6 +146,7 @@ func PersistAllConfig(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400	{object}	dto.ResponseError
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/config [delete]
+/*
 func RollbackConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -141,3 +170,4 @@ func RollbackConfig(w http.ResponseWriter, r *http.Request) {
 
 	context_state.Settings.ToResponse(http.StatusOK, w)
 }
+*/

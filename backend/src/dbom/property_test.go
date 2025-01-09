@@ -133,7 +133,7 @@ func TestPropertiesAddString(t *testing.T) {
 
 	// Unmarshal the stored value and compare
 	var storedValue string
-	err = json.Unmarshal([]byte((*p)[0].Value), &storedValue)
+	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &storedValue)
 	require.NoError(t, err)
 	assert.Equal(t, value, storedValue)
 
@@ -158,7 +158,7 @@ func TestPropertiesAddInt(t *testing.T) {
 
 	// Unmarshal the value and check if it matches the original
 	var value int
-	err = json.Unmarshal([]byte((*p)[0].Value), &value)
+	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &value)
 	require.NoError(t, err)
 	assert.Equal(t, 42, value)
 
@@ -216,7 +216,7 @@ func TestPropertiesAddNestedObject(t *testing.T) {
 
 	// Unmarshal the value and check if it matches the original nested object
 	var retrievedObject map[string]interface{}
-	err = json.Unmarshal([]byte((*p)[0].Value), &retrievedObject)
+	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &retrievedObject)
 	require.NoError(t, err)
 	assert.Equal(t, nestedObject, retrievedObject)
 
@@ -269,7 +269,7 @@ func TestPropertiesAddAppendToSlice(t *testing.T) {
 
 	// Verify the value of the new property
 	var storedValue string
-	err = json.Unmarshal([]byte((*p)[1].Value), &storedValue)
+	err = json.Unmarshal([]byte((*p)[1].Value.([]byte)), &storedValue)
 	require.NoError(t, err)
 	assert.Equal(t, "newValue", storedValue)
 
@@ -294,7 +294,7 @@ func TestPropertiesAddLargeValue(t *testing.T) {
 
 	// Unmarshal the value and check if it matches the original large value
 	var retrievedValue string
-	err = json.Unmarshal([]byte((*p)[0].Value), &retrievedValue)
+	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &retrievedValue)
 	require.NoError(t, err)
 	assert.Equal(t, largeValue, retrievedValue)
 
@@ -327,7 +327,7 @@ func TestPropertiesAddUnicode(t *testing.T) {
 
 	// Unmarshal the value and check if it matches the original
 	var storedValue string
-	err = json.Unmarshal([]byte((*p)[0].Value), &storedValue)
+	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &storedValue)
 	require.NoError(t, err)
 	assert.Equal(t, unicodeValue, storedValue)
 
@@ -355,7 +355,7 @@ func TestPropertiesAddNilValue(t *testing.T) {
 
 	// Unmarshal the value and check if it's null
 	var storedValue interface{}
-	err = json.Unmarshal([]byte((*p)[0].Value), &storedValue)
+	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &storedValue)
 	require.NoError(t, err)
 	assert.Nil(t, storedValue)
 
@@ -419,7 +419,7 @@ func TestPropertiesAddExistingKeyInDB(t *testing.T) {
 
 	// Unmarshal the value and check if it matches the new value
 	var storedValue string
-	err = json.Unmarshal([]byte((*p)[0].Value), &storedValue)
+	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &storedValue)
 	require.NoError(t, err)
 	assert.Equal(t, newValue, storedValue)
 
@@ -598,7 +598,7 @@ func TestPropertiesAddAfterRemoveAndReAdd(t *testing.T) {
 
 	// Unmarshal the updated value and check if it matches the new value
 	var storedValue string
-	err = json.Unmarshal([]byte((*p)[0].Value), &storedValue)
+	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &storedValue)
 	require.NoError(t, err)
 	assert.Equal(t, updatedValue, storedValue)
 
@@ -683,7 +683,7 @@ func TestPropertiesConcurrentGet(t *testing.T) {
 		assert.NotNil(t, prop)
 		assert.Equal(t, testKey, prop.Key)
 		var storedValue string
-		err = json.Unmarshal([]byte(prop.Value), &storedValue)
+		err = json.Unmarshal([]byte(prop.Value.([]byte)), &storedValue)
 		require.NoError(t, err)
 		assert.Equal(t, testValue, storedValue)
 	}
@@ -810,7 +810,7 @@ func TestPropertiesGetValueWithSpecialChars(t *testing.T) {
 	require.NotNil(t, value)
 
 	// Assert that the retrieved value matches the original value
-	assert.Equal(t, specialValue, *value)
+	assert.Equal(t, specialValue, value)
 
 	// Verify that the property was added to the database
 	var dbProp Property

@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/dianlight/srat/dto"
 	"gorm.io/gorm"
 )
 
 type Property struct {
-	Key       string `json:"key" gorm:"primaryKey"`
-	Value     string `json:"value"`
+	Key       string      `json:"key" gorm:"primaryKey" from_map:"key"`
+	Value     interface{} `json:"value" from_map:"value" gorm:"serializer:json"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -20,6 +19,10 @@ type Properties []Property
 
 func (p *Properties) Load() error {
 	return db.Find(p).Error
+}
+
+func (self *Properties) Save() error {
+	return db.Save(self).Error
 }
 
 func (p *Properties) DeleteAll() error {
@@ -85,20 +88,25 @@ func (p *Properties) Get(key string) (*Property, error) {
 	return &prop, nil
 }
 
+/*
 func (p *Property) UnmarshalValue(v interface{}) error {
 	return json.Unmarshal([]byte(p.Value), v)
 }
-
+*/
 // New GetValue method
-func (p *Properties) GetValue(key string) (*interface{}, error) {
-	var v interface{}
+func (p *Properties) GetValue(key string) (interface{}, error) {
+	//var v interface{}
 	prop, err := p.Get(key)
 	if err != nil {
 		return nil, err
 	}
-	err = prop.UnmarshalValue(v)
-	return &v, err
+	//	err = prop.UnmarshalValue(v)
+	//	return &v, err
+	return prop.Value, nil
 }
+
+/*
+
 
 func (p *Properties) FromSettings(setting dto.Settings) error {
 	return db.Transaction(func(tx *gorm.DB) error {
@@ -117,9 +125,12 @@ func (p *Properties) FromSettings(setting dto.Settings) error {
 	})
 }
 
+
 func (p *Properties) ToSettings(setting *dto.Settings) {
 	mapSetting := setting.ToMap()
 	for _, prop := range *p {
 		mapSetting[prop.Key] = prop.Value
 	}
 }
+
+*/

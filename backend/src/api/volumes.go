@@ -220,7 +220,7 @@ func ListVolumes(w http.ResponseWriter, r *http.Request) {
 //	@Failure		409			{object}	dto.ResponseError
 //	@Failure		500			{object}	dto.ResponseError
 //	@Router			/volume/{volume_name}/mount [post]
-func MountVolume(w http.ResponseWriter, r *http.Request) {
+func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification MountPointData and BlockPartitionData
 	volume_name := mux.Vars(r)["volume_name"]
 	w.Header().Set("Content-Type", "application/json")
 

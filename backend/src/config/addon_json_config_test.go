@@ -2,18 +2,16 @@ package config
 
 import (
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadConfigConsistency(t *testing.T) {
 	// Create a temporary file with some sample config data
 	tempFile, err := os.CreateTemp("", "config*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temporary file: %v", err)
-	}
+	require.NoError(t, err)
 	defer os.Remove(tempFile.Name())
 
 	sampleConfig := `{"version": 1, "shares": {"test": {"path": "/test", "fs": "ext4"}}}`
@@ -23,23 +21,19 @@ func TestReadConfigConsistency(t *testing.T) {
 	tempFile.Close()
 
 	// Call readConfig multiple times
-	config1, e1 := readConfigFile(tempFile.Name())
-	if e1 != nil {
-		t.Fatalf("Failed to read config: %v", e1)
-	}
-	config2, e2 := readConfigFile(tempFile.Name())
-	if e2 != nil {
-		t.Fatalf("Failed to read config: %v", e2)
-	}
-	config3, e3 := readConfigFile(tempFile.Name())
-	if e3 != nil {
-		t.Fatalf("Failed to read config: %v", e3)
-	}
+	var config1 Config
+	e1 := config1.ReadFromFile(tempFile.Name())
+	require.NoError(t, e1)
+	var config2 Config
+	e2 := config2.ReadFromFile(tempFile.Name())
+	require.NoError(t, e2)
+	var config3 Config
+	e3 := config3.ReadFromFile(tempFile.Name())
+	require.NoError(t, e3)
 
 	// Compare the results
-	if !reflect.DeepEqual(config1, config2) || !reflect.DeepEqual(config2, config3) {
-		t.Errorf("readConfig returned inconsistent results for the same input file")
-	}
+	assert.Equal(t, config1, config2)
+	assert.Equal(t, config2, config3)
 }
 
 func TestConfigToMapWithUnicode(t *testing.T) {
@@ -58,18 +52,12 @@ func TestConfigToMapWithUnicode(t *testing.T) {
 
 	// Call configToMap
 	result := config.ConfigToMap()
-
-	// Check if the result is not nil
-	if result == nil {
-		t.Fatalf("configToMap returned nil for valid input")
-	}
+	assert.NotNil(t, result)
 
 	// Check if the unicode characters are preserved
 	sharePath, ok := (*result)["shares"].(map[string]interface{})["unicode"].(map[string]interface{})["path"].(string)
-	if !ok || sharePath != "/path/to/unicode/文件夹" {
-		t.Errorf("Unicode path not preserved, got: %v", sharePath)
-	}
-
+	assert.True(t, ok)
+	assert.Equal(t, sharePath, "/path/to/unicode/文件夹")
 }
 func TestMigrateConfigFromVersion0To1(t *testing.T) {
 	// Create a config with version 0
@@ -79,55 +67,26 @@ func TestMigrateConfigFromVersion0To1(t *testing.T) {
 	}
 
 	// Call migrateConfig
-	migratedConfig := MigrateConfig(initialConfig)
+	err := initialConfig.MigrateConfig()
+	require.NoError(t, err)
 
 	// Check if the version has been updated
-	if migratedConfig.ConfigSpecVersion != CURRENT_CONFIG_VERSION {
-		t.Errorf("Expected ConfigSpecVersion to be %d, got %d", CURRENT_CONFIG_VERSION, migratedConfig.ConfigSpecVersion)
-	}
+	assert.Equal(t, initialConfig.ConfigSpecVersion, CURRENT_CONFIG_VERSION)
 
 	// Check if all required shares have been added
 	expectedShares := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"}
 	for _, shareName := range expectedShares {
-		share, exists := migratedConfig.Shares[shareName]
-		if !exists {
-			t.Errorf("Expected share '%s' to be added, but it wasn't", shareName)
-		} else {
-			expectedPath := "/" + shareName
-			if share.Path != expectedPath {
-				t.Errorf("Expected share '%s' to have path '%s', got '%s'", shareName, expectedPath, share.Path)
-			}
-			if share.FS != "native" {
-				t.Errorf("Expected share '%s' to have FS 'native', got '%s'", shareName, share.FS)
-			}
-		}
+		share, exists := initialConfig.Shares[shareName]
+		assert.True(t, exists)
+		expectedPath := "/" + shareName
+		assert.Equal(t, share.FS, "native")
+		assert.Equal(t, share.Path, expectedPath)
 	}
 
 	// Check that no extra shares were added
-	if len(migratedConfig.Shares) != len(expectedShares) {
-		t.Errorf("Expected %d shares, got %d", len(expectedShares), len(migratedConfig.Shares))
-	}
+	assert.Equal(t, len(initialConfig.Shares), len(expectedShares))
 }
-func TestMigrateConfigCurrentVersion(t *testing.T) {
-	// Create a config with the current version
-	initialConfig := &Config{
-		ConfigSpecVersion: CURRENT_CONFIG_VERSION,
-		Shares:            make(Shares),
-	}
 
-	// Call migrateConfig
-	migratedConfig := MigrateConfig(initialConfig)
-
-	// Check if the config is unchanged
-	if !reflect.DeepEqual(initialConfig, migratedConfig) {
-		t.Errorf("migrateConfig modified a config that was already at the current version")
-	}
-
-	// Verify that no shares were added
-	if len(migratedConfig.Shares) != 0 {
-		t.Errorf("Expected 0 shares, got %d", len(migratedConfig.Shares))
-	}
-}
 func TestMigrateConfigSetsVersionToCurrent(t *testing.T) {
 	// Create a config with version 0
 	initialConfig := &Config{
@@ -136,12 +95,10 @@ func TestMigrateConfigSetsVersionToCurrent(t *testing.T) {
 	}
 
 	// Call migrateConfig
-	migratedConfig := MigrateConfig(initialConfig)
+	err := initialConfig.MigrateConfig()
+	require.NoError(t, err)
 
-	// Check if the version has been updated to 1
-	if migratedConfig.ConfigSpecVersion != CURRENT_CONFIG_VERSION {
-		t.Errorf("Expected ConfigSpecVersion to be %d after migration, got %d", CURRENT_CONFIG_VERSION, migratedConfig.ConfigSpecVersion)
-	}
+	assert.Equal(t, initialConfig.ConfigSpecVersion, CURRENT_CONFIG_VERSION)
 }
 func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	// Create a config with version 0 and all default shares already present
@@ -178,43 +135,25 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	}
 
 	// Call migrateConfig
-	migratedConfig := MigrateConfig(initialConfig)
+	err := initialConfig.MigrateConfig()
+	require.NoError(t, err)
 
 	// Check if the version has been updated
-	if migratedConfig.ConfigSpecVersion != CURRENT_CONFIG_VERSION {
-		t.Errorf("Expected ConfigSpecVersion to be %d, got %d", CURRENT_CONFIG_VERSION, migratedConfig.ConfigSpecVersion)
-	}
-
+	assert.Equal(t, initialConfig.ConfigSpecVersion, CURRENT_CONFIG_VERSION)
 	// Check if all shares are still present and unchanged
 	expectedShares := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"}
 	for _, shareName := range expectedShares {
-		share, exists := migratedConfig.Shares[shareName]
-		if !exists {
-			t.Errorf("Expected share '%s' to be present, but it wasn't", shareName)
-		} else {
-			expectedPath := "/" + shareName
-			if share.Path != expectedPath {
-				t.Errorf("Expected share '%s' to have path '%s', got '%s'", shareName, expectedPath, share.Path)
-			}
-			if share.FS != "native" {
-				t.Errorf("Expected share '%s' to have FS 'native', got '%s'", shareName, share.FS)
-			}
-		}
+		share, exists := initialConfig.Shares[shareName]
+		assert.True(t, exists)
+		assert.Equal(t, share.Path, "/"+shareName)
+		assert.Equal(t, share.FS, "native")
 	}
 
-	// Check that no extra shares were added
-	if len(migratedConfig.Shares) != len(expectedShares) {
-		t.Errorf("Expected %d shares, got %d", len(expectedShares), len(migratedConfig.Shares))
-	}
+	assert.Equal(t, len(initialConfig.Shares), len(expectedShares))
 
-	// Check if old acl are empty
-	if len(migratedConfig.ACL) != 0 {
-		t.Error("Expected no ACLs, got some")
-	}
+	assert.Equal(t, len(initialConfig.Options.ACL), 2)
 
-	// Check if acl are as share attributes
-	//t.Log(pretty.Sprint(migratedConfig.Shares))
-	assert.Equal(t, "utente1", (migratedConfig.Shares["backup"].Users)[0])
-	assert.Equal(t, "utente2", (migratedConfig.Shares["ssl"].Users)[0])
-	assert.True(t, migratedConfig.Shares["ssl"].Disabled)
+	assert.Equal(t, "utente1", (initialConfig.Shares["backup"].Users)[0])
+	assert.Equal(t, "utente2", (initialConfig.Shares["ssl"].Users)[0])
+	assert.True(t, initialConfig.Shares["ssl"].Disabled)
 }

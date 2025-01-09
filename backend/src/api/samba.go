@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	tempiogo "github.com/dianlight/srat/tempio"
 	"github.com/icza/gog"
@@ -16,13 +17,50 @@ import (
 )
 
 func createConfigStream(ctx context.Context) (*[]byte, error) {
-	config, err := (&dto.ContextState{}).FromContext(ctx).ToJSONConfig(&config.Config{})
+
+	var config config.Config
+	// Settings
+	var properties dbom.Properties
+	err := properties.Load()
 	if err != nil {
 		return nil, err
 	}
+	var settings dto.Settings
+	err = settings.FromArray(&properties)
+	if err != nil {
+		return nil, err
+	}
+	settings.ToIgnoreEmpty(&config)
+	// Users
+	var sambaUsers dbom.SambaUsers
+	err = sambaUsers.Load()
+	if err != nil {
+		return nil, err
+	}
+	var users dto.Users
+	err = users.From(&sambaUsers) // FIXME: Tha admin user?!?!
+	if err != nil {
+		return nil, err
+	}
+	users.ToIgnoreEmpty(&config.OtherUsers)
+	// Shares
+	var sambaShares dbom.ExportedShares
+	err = sambaShares.Load()
+	if err != nil {
+		return nil, err
+	}
+	var shares dto.SharedResources
+	err = shares.FromArray(&sambaShares, "Name")
+	if err != nil {
+		return nil, err
+	}
+	shares.ToIgnoreEmpty(&config.Shares)
+	// End
+	config.DockerInterface = *ctx.Value("docker_interface").(*string)
+	config.DockerNet = *ctx.Value("docker_network").(*string)
+
 	config_2 := config.ConfigToMap()
 	templateData := ctx.Value("template_data").([]byte)
-	//log.Println(pretty.Printf("New Config:%v", config_2))
 	data, err := tempiogo.RenderTemplateBuffer(config_2, templateData)
 	return &data, err
 }
@@ -69,7 +107,7 @@ func ApplySamba(w http.ResponseWriter, r *http.Request) {
 
 	stream, err := createConfigStream(r.Context())
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error creating config stream", err)
+		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error creating config stream", err.Error())
 		return
 	}
 	smbConfigFile := r.Context().Value("samba_config_file").(*string)

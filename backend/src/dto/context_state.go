@@ -2,18 +2,16 @@ package dto
 
 import (
 	"context"
-
-	"github.com/dianlight/srat/config"
 )
 
 type ContextState struct {
 	//	BlockInfo        BlockInfo        `json:"devices"`
 	DataDirtyTracker DataDirtyTracker `json:"data_dirty_tracker"`
-	MountPointData   MountPointData   `json:"mount_point_data"`
-	Settings         Settings         `json:"settings"`
-	Users            Users            `json:"users"`
-	AdminUser        User             `json:"admin_users"`
-	SharedResources  SharedResources  `json:"shared_resources"`
+	// MountPointData   MountPointData   `json:"mount_point_data"`
+	// Settings         Settings         `json:"settings"`
+	// Users            Users            `json:"users"`
+	// AdminUser        User             `json:"admin_users"`
+	// SharedResources  SharedResources  `json:"shared_resources"`
 }
 
 func (self *ContextState) FromContext(ctx context.Context) *ContextState {
@@ -25,6 +23,7 @@ func (self *ContextState) ToContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, "context_state", self)
 }
 
+/*
 func (self *ContextState) FromJSONConfig(src config.Config) error {
 	err := self.Settings.From(src)
 	if err != nil {
@@ -60,3 +59,4 @@ func (self ContextState) ToJSONConfig(dst *config.Config) (*config.Config, error
 	}
 	return dst, nil
 }
+*/

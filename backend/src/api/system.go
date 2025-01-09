@@ -60,14 +60,27 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(ctx)
+	var properties dbom.Properties
+	err = properties.Load()
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		return
+	}
+	var settings dto.Settings
+	err = settings.From(&properties)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		return
+	}
+
+	//context_state := (&dto.ContextState{}).FromContext(ctx)
 
 	var gh = github.NewClient(rateLimiter)
 	for {
 		healthData.ReadOnly = *data.ROMode
-		if context_state.Settings.UpdateChannel != dto.None {
+		if settings.UpdateChannel != dto.None {
 			UpdateLimiter.Do(func() {
-				log.Printf("Checking for updates...%v", context_state.Settings.UpdateChannel)
+				log.Printf("Checking for updates...%v", settings.UpdateChannel)
 				releases, _, err := gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
 					Page:    1,
 					PerPage: 5,
@@ -79,10 +92,10 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 				} else if len(releases) > 0 {
 					for _, release := range releases {
 						//log.Println(pretty.Sprintf("%v\n", release))
-						if *release.Prerelease && context_state.Settings.UpdateChannel == dto.Stable {
+						if *release.Prerelease && settings.UpdateChannel == dto.Stable {
 							//log.Printf("Skip Prerelease %s", *release.TagName)
 							continue
-						} else if !*release.Prerelease && context_state.Settings.UpdateChannel == dto.Prerelease {
+						} else if !*release.Prerelease && settings.UpdateChannel == dto.Prerelease {
 							//log.Printf("Skip Release %s", *release.TagName)
 							continue
 						}
@@ -136,7 +149,7 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/health [get]
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json") // FIXME: Move healthData to context
 	healthData.ToResponse(http.StatusOK, w)
 }
 
@@ -285,7 +298,7 @@ func (w *ProgressWriter) N() int64 {
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	log.Printf("Updating to version %s", *lastReleaseData.LastRelease.TagName)
+	log.Printf("Updating to version %s", *lastReleaseData.LastRelease.TagName) // FIXME: Move latest realase to context
 
 	lastReleaseData.UpdateStatus = 0
 	var gh = github.NewClient(nil)
@@ -361,7 +374,7 @@ func RestartHandler(w http.ResponseWriter, r *http.Request) {
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/nics [get]
 func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json") // FIXME: Use DTO for transport and cache values
 
 	net, err := ghw.Network()
 	if err != nil {
