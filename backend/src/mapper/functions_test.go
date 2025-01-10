@@ -1,0 +1,212 @@
+package mapper
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+type MockMappable struct{}
+type TestStruct struct {
+	Value string `json:"value"`
+}
+
+func (m MockMappable) To(dst *TestStruct) error {
+	dst.Value = "mapped"
+	return nil
+}
+
+func TestMapWithMappableSource(t *testing.T) {
+	type TestStruct struct {
+		Value string
+	}
+
+	src := &MockMappable{}
+	dst := &TestStruct{}
+
+	err := Map(dst, src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "mapped", dst.Value)
+}
+
+func TestMapFromMapStringAny(t *testing.T) {
+	type TestStruct struct {
+		Name  string
+		Age   int
+		IsVIP bool
+	}
+
+	src := map[string]any{
+		"Name":  "John Doe",
+		"Age":   30,
+		"IsVIP": true,
+	}
+
+	dst := &TestStruct{}
+
+	err := Map(dst, src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "John Doe", dst.Name)
+	assert.Equal(t, 30, dst.Age)
+	assert.True(t, dst.IsVIP)
+}
+
+func TestMapFromSliceAny(t *testing.T) {
+	type TestStruct struct {
+		Name  string
+		Value int
+	}
+
+	src := []any{
+		map[string]any{"Name": "Item1", "Value": 10},
+		map[string]any{"Name": "Item2", "Value": 20},
+	}
+
+	var dst []TestStruct
+
+	err := Map(&dst, src)
+
+	assert.NoError(t, err)
+	assert.Len(t, dst, 2)
+	assert.Equal(t, "Item1", dst[0].Name)
+	assert.Equal(t, 10, dst[0].Value)
+	assert.Equal(t, "Item2", dst[1].Name)
+	assert.Equal(t, 20, dst[1].Value)
+}
+
+func TestMapWithUnsupportedSourceType(t *testing.T) {
+	type TestStruct struct {
+		Value string
+	}
+
+	src := 42 // An integer is an unsupported source type
+	dst := &TestStruct{}
+
+	err := Map(dst, src)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported source type: int")
+}
+
+func TestMapWithEmptyMapStringAnySource(t *testing.T) {
+	type TestStruct struct {
+		Name  string
+		Value int
+	}
+
+	src := map[string]any{}
+	dst := &TestStruct{Name: "Original", Value: 42}
+
+	err := Map(dst, src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "Original", dst.Name)
+	assert.Equal(t, 42, dst.Value)
+}
+func TestMapWithNilDestination(t *testing.T) {
+	var dst *string
+	src := "test"
+
+	err := Map(dst, src)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported source type: string")
+}
+func TestMapWithEmptySliceAnySource(t *testing.T) {
+	type TestStruct struct {
+		Name  string
+		Value int
+	}
+
+	src := []any{}
+	dst := &TestStruct{Name: "Original", Value: 42}
+
+	err := Map(dst, src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "Original", dst.Name)
+	assert.Equal(t, 42, dst.Value)
+}
+func TestMapPreservesExistingValues(t *testing.T) {
+	type TestStruct struct {
+		Name  string
+		Age   int
+		Email string
+	}
+
+	dst := &TestStruct{
+		Name:  "John Doe",
+		Age:   30,
+		Email: "john@example.com",
+	}
+
+	src := map[string]any{
+		"Name": "Jane Doe",
+		"Age":  35,
+	}
+
+	err := Map(dst, src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "Jane Doe", dst.Name)
+	assert.Equal(t, 35, dst.Age)
+	assert.Equal(t, "john@example.com", dst.Email)
+}
+func TestMapWithNestedStructures(t *testing.T) {
+	type Address struct {
+		Street string
+		City   string
+	}
+
+	type Person struct {
+		Name    string
+		Age     int
+		Address Address
+	}
+
+	src := map[string]any{
+		"Name": "John Doe",
+		"Age":  30,
+		"Address": map[string]any{
+			"Street": "123 Main St",
+			"City":   "Anytown",
+		},
+	}
+
+	dst := &Person{}
+
+	err := Map(dst, src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "John Doe", dst.Name)
+	assert.Equal(t, 30, dst.Age)
+	assert.Equal(t, "123 Main St", dst.Address.Street)
+	assert.Equal(t, "Anytown", dst.Address.City)
+}
+func TestMapTypeConversions(t *testing.T) {
+	type TestStruct struct {
+		IntValue    int
+		FloatValue  float64
+		StringValue string
+		BoolValue   bool
+	}
+
+	src := map[string]any{
+		"IntValue":    float64(42),
+		"FloatValue":  "3.14",
+		"StringValue": 123,
+		"BoolValue":   "true",
+	}
+
+	dst := &TestStruct{}
+
+	err := Map(dst, src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 42, dst.IntValue)
+	assert.Equal(t, 3.14, dst.FloatValue)
+	assert.Equal(t, "123", dst.StringValue)
+	assert.True(t, dst.BoolValue)
+}

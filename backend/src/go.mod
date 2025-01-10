@@ -81,6 +81,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/rs/cors v1.11.1
+	github.com/sirupsen/logrus v1.9.3
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	golang.org/x/time v0.8.0
