@@ -9,32 +9,22 @@ import (
 )
 
 func Map(dst any, src any) error {
-	//	pdst := reflect.ValueOf(dst)
 	if dst == nil || reflect.ValueOf(dst).Kind() != reflect.Ptr {
 		return fmt.Errorf("unsupported destination type: %T", dst)
 	}
 	if src == nil {
 		return nil
 	}
-	//	vdst := reflect.Indirect(pdst)
-	vsrc := reflect.Indirect(reflect.ValueOf(src))
 
-	var mapped = reflect.TypeFor[Mappable]()
-	if vsrc.Type().Implements(mapped) {
-		return src.(Mappable).To(dst)
+	if val, ok := src.(MappableTo); ok {
+		return val.To(dst)
+	} else if val, ok := dst.(MappableFrom); ok {
+		return val.From(src)
 	} else {
 		v := reflect.ValueOf(src)
 		switch reflect.Indirect(v).Kind() {
-
-		//switch s := src.(type) {
-		//case map[string]any:
 		case reflect.Map:
 			return fromMap(dst, src.(map[string]any))
-		//case string:
-		//	destType := reflect.Indirect(reflect.ValueOf(*dst)).Type()
-		//	srcValue := reflect.Indirect(reflect.ValueOf(src))
-		//	dst = srcValue.Convert(destType).Interface().(*T)
-		//	return nil
 		case reflect.Slice:
 			return fromSlice(dst, src.([]any))
 		default:
@@ -42,32 +32,6 @@ func Map(dst any, src any) error {
 		}
 	}
 }
-
-/*
-func Map[T any](dst *T, src any) error {
-	if dst == nil {
-		return fmt.Errorf("unsupported destination type: %T", dst)
-	}
-	var mapped = reflect.TypeFor[Mappable[T]]()
-	if reflect.Indirect(reflect.ValueOf(src)).Type().Implements(mapped) {
-		return src.(Mappable[T]).To(dst)
-	} else {
-		switch s := src.(type) {
-		case map[string]any:
-			return fromMap(dst, s)
-		case string:
-			destType := reflect.Indirect(reflect.ValueOf(*dst)).Type()
-			srcValue := reflect.Indirect(reflect.ValueOf(src))
-			dst = srcValue.Convert(destType).Interface().(*T)
-			return nil
-		//case []any:
-		//return fromSlice(dst, s)
-		default:
-			return fromInterface(dst, s)
-		}
-	}
-}
-*/
 
 func redirectValue(value reflect.Value) reflect.Value {
 	for {
@@ -93,8 +57,6 @@ func redirectValue(value reflect.Value) reflect.Value {
 func fromMap(dst any, src map[string]any) error {
 	v := reflect.ValueOf(dst)
 	switch kid := reflect.Indirect(v).Kind(); kid {
-	//	switch d := (interface{}(&dst)).(type) {
-	//	case *[]any:
 	case reflect.Slice:
 		for _, item := range src {
 			var itemT any
@@ -105,7 +67,6 @@ func fromMap(dst any, src map[string]any) error {
 		}
 		return nil
 	case reflect.Map:
-		//	case *map[string]any:
 		for k, v := range src {
 			var itemT any
 			if err := Map(&itemT, v); err != nil {
@@ -117,11 +78,8 @@ func fromMap(dst any, src map[string]any) error {
 		return nil
 	case reflect.Struct, reflect.Interface:
 		keys := funk.Keys(dst)
-		//log.Println(keys)
 		for _, key := range keys.([]string) {
-			//nvt := reflect.Indirect(reflect.ValueOf(dst)).FieldByName(key)
 			nvt := redirectValue(reflect.ValueOf(dst)).FieldByName(key)
-			//nv := nvt.Interface()
 			x := reflect.ValueOf(src[key])
 			if !x.IsValid() {
 				continue

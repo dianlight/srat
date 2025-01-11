@@ -21,6 +21,20 @@ func (m MockMappable) To(dst any) error {
 	}
 }
 
+type MockUnMappable struct {
+	Value2 string `json:"value2"`
+}
+
+func (t *TestStruct) From(src any) error {
+	switch v := src.(type) {
+	case MockUnMappable:
+		t.Value = v.Value2
+		return nil
+	default:
+		return nil
+	}
+}
+
 func TestMapWithMappableSource(t *testing.T) {
 
 	//var src Mappable[TestStruct] = MockMappable{}
@@ -31,6 +45,20 @@ func TestMapWithMappableSource(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "mapped", dst.Value)
+}
+
+func TestMapWithMappableDestination(t *testing.T) {
+
+	//var src Mappable[TestStruct] = MockMappable{}
+	src := MockUnMappable{
+		Value2: "unmapped",
+	}
+	dst := &TestStruct{}
+
+	err := Map(dst, src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "unmapped", dst.Value)
 }
 
 func TestMapFromMapStringAny(t *testing.T) {
