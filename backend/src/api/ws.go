@@ -98,12 +98,5 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 //	@Failure		500	{object}	string
 //	@Router			/events [get]
 func WSChannelEventsList(w http.ResponseWriter, rq *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	jsonResponse, jsonError := json.Marshal(dto.EventTypes)
-	if jsonError != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error encoding JSON", jsonError)
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(jsonResponse)
-	}
+	HttpJSONReponse(w, dto.EventTypes, nil)
 }
