@@ -199,10 +199,10 @@ func ListVolumes(w http.ResponseWriter, r *http.Request) {
 
 	volumes, err := GetVolumesData()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	volumes.ToResponse(http.StatusOK, w)
+	HttpJSONReponse(w, volumes, nil)
 }
 
 // MountVolume godoc
@@ -222,13 +222,17 @@ func ListVolumes(w http.ResponseWriter, r *http.Request) {
 //	@Router			/volume/{volume_name}/mount [post]
 func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification MountPointData and BlockPartitionData
 	volume_name := mux.Vars(r)["volume_name"]
-	w.Header().Set("Content-Type", "application/json")
 
 	var mount_data dto.MountPointData
-	mount_data.FromJSONBody(w, r)
+	err := HttpJSONRequest(&mount_data, w, r)
+	if err != nil {
+		return
+	}
 
 	if mount_data.Name != "" && mount_data.Name != volume_name {
-		dto.ResponseError{}.ToResponseError(http.StatusBadRequest, w, "Name conflict", nil)
+		HttpJSONReponse(w, errorResponse{Error: "Name conflict", Body: nil}, &Options{
+			Code: http.StatusBadRequest,
+		})
 		return
 	} else if mount_data.Name == "" {
 		mount_data.Name = volume_name
@@ -236,7 +240,7 @@ func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification
 
 	volumes, err := GetVolumesData()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
@@ -264,9 +268,9 @@ func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification
 		mount_data.Path = "/mnt/" + mount_data.Name
 	}
 
-	var flags, err4 = mount_data.Flags.Value()
-	if err4 != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error parsing flags", err4)
+	flags, err := mount_data.Flags.Value()
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
@@ -296,24 +300,17 @@ func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification
 	}
 	if err != nil {
 		log.Printf("(Try)Mount(%s) = %v, want nil", mount_data.Name, err)
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error Mounting volume", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	} else {
 		mounted_data := dto.MountPointData{}
 		copier.Copy(&mounted_data, mp)
-		//		mounted_data.Flags.Scan(mp.Flags)
-		// log.Printf("---------------------   mp %v mounted_data = %v", mp, mounted_data)
-		//		for _, flags := range config.MounDataFlags {
-		//			if mp.Flags&uintptr(flags) != 0 {
-		//				mounted_data.Flags = append(mounted_data.Flags, flags)
-		//			}
-		//		}
 
 		var ndata, _ = GetVolumesData()
 		notifyVolumeClient(ndata)
 		context_state := (&dto.ContextState{}).FromContext(r.Context())
 		context_state.DataDirtyTracker.Volumes = true
-		mounted_data.ToResponse(http.StatusCreated, w)
+		HttpJSONReponse(w, mounted_data, nil)
 	}
 }
 
@@ -356,7 +353,7 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 
 	volumes, err := GetVolumesData()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error fetching volumes", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
@@ -364,7 +361,7 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 		if d.Name == volume_name {
 			err := mount.Unmount(d.MountPoint, force == "true", lazy == "true")
 			if err != nil {
-				dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, fmt.Sprintf("Error unmounting %s", d.MountPoint), err)
+				HttpJSONReponse(w, err, nil)
 				return
 			}
 			var ndata, _ = GetVolumesData()
@@ -375,7 +372,9 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	dto.ResponseError{}.ToResponseError(http.StatusNotFound, w, fmt.Sprintf("No mount on %s found!", volume_name), "")
+	HttpJSONReponse(w, errorResponse{Error: "No mount on " + volume_name + " found!", Body: nil}, &Options{
+		Code: http.StatusNotFound,
+	})
 }
 
 // VolumesEventHandler monitors and handles UEvent kernel messages related to volume changes.

@@ -27,55 +27,9 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Cant load config file %s", err)
 	}
-	var settings dto.Settings
-	err = settings.From(&config)
+	err = dbom.FirstTimeJSONImporter(config)
 	if err != nil {
 		log.Fatalf("Cant save settings - %s", err)
-	}
-	var properties dbom.Properties
-	err = settings.ToArray(&properties)
-	if err != nil {
-		log.Fatalf("Cant save settings - %s", err)
-	}
-	err = properties.Save()
-	if err != nil {
-		log.Fatalf("Cant save properties - %s", err)
-	}
-	// Users
-	var users dto.Users
-	err = users.From(&config.OtherUsers)
-	if err != nil {
-		log.Fatalf("Cant save users - %s", err)
-	}
-	var sambaUsers dbom.SambaUsers
-	err = users.To(&sambaUsers)
-	if err != nil {
-		log.Fatalf("Cant save users - %s", err)
-	}
-	// Admin user
-	sambaUsers = append(sambaUsers, dbom.SambaUser{
-		Username: config.Username,
-		Password: config.Password,
-		IsAdmin:  true,
-	})
-	err = sambaUsers.Save()
-	if err != nil {
-		log.Fatalf("Cant save users - %s", err)
-	}
-	// Shares
-	var shares dto.SharedResources
-	err = shares.From(config.Shares)
-	if err != nil {
-		log.Fatalf("Cant save shares - %s", err)
-	}
-	var sambaShares dbom.ExportedShares
-	err = shares.ToArray(&sambaShares)
-	if err != nil {
-		log.Fatalf("Cant save shares - %s", err)
-	}
-	err = sambaShares.Save()
-	if err != nil {
-		log.Fatalf("Cant save shares - %s", err)
 	}
 	// End
 

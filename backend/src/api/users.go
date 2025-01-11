@@ -6,6 +6,7 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/mapper"
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )
@@ -21,21 +22,21 @@ import (
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/users [get]
 func ListUsers(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	var dbusers dbom.SambaUsers
 	err := dbusers.Load()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	var users dto.Users
-	err = users.From(dbusers)
+	var users []dto.User
+	err = mapper.Map(&users, dbusers)
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	users.ToResponse(http.StatusOK, w)
+	HttpJSONReponse(w, users, &Options{
+		Code: http.StatusOK,
+	})
 }
 
 // GetAdminUser godoc
@@ -57,15 +58,17 @@ func GetAdminUser(w http.ResponseWriter, r *http.Request) {
 	}
 	err := dbUser.Get()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = adminUser.From(&dbUser)
+	err = mapper.Map(&adminUser, dbUser)
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	adminUser.ToResponse(http.StatusOK, w)
+	HttpJSONReponse(w, adminUser, &Options{
+		Code: http.StatusOK,
+	})
 }
 
 // GetUser godoc
@@ -113,26 +116,28 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500		{object}	dto.ResponseError
 //	@Router			/user [post]
 func CreateUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 
 	var user dto.User
-	user.FromJSONBody(w, r)
-	var dbUser dbom.SambaUser
-	err := user.To(&dbUser)
+	err := HttpJSONRequest(&user, w, r)
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusBadRequest, w, "Invalid user data", user)
+		return
+	}
+	var dbUser dbom.SambaUser
+	err = mapper.Map(&dbUser, user)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 	err = dbUser.Save()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	user.ToResponse(http.StatusCreated, w)
-
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Users = true
-	user.ToResponse(http.StatusCreated, w)
+	HttpJSONReponse(w, nil, &Options{
+		Code: http.StatusCreated,
+	})
 }
 
 // UpdateUser godoc
@@ -153,27 +158,34 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 //	@Router			/user/{username} [patch]
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
-	w.Header().Set("Content-Type", "application/json")
 
 	var user dto.User
-	user.FromJSONBody(w, r)
+	err := HttpJSONRequest(&user, w, r)
+	if err != nil {
+		return
+	}
+
 	dbUser := dbom.SambaUser{
 		Username: username,
 		IsAdmin:  false,
 	}
-	err := dbUser.Get()
+	err = dbUser.Get()
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	} else if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	user.ToIgnoreEmpty(dbUser)
+	err = mapper.Map(&dbUser, &user)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Users = true
-	user.ToResponse(http.StatusOK, w)
+	HttpJSONReponse(w, nil, nil)
 }
 
 // UpdateAdminUser godoc
@@ -192,23 +204,29 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 //	@Router			/admin/user [put]
 //	@Router			/admin/user [patch]
 func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 
 	var user dto.User
-	user.FromJSONBody(w, r)
+	err := HttpJSONRequest(&user, w, r)
+	if err != nil {
+		return
+	}
 	dbUser := dbom.SambaUser{
 		IsAdmin: true,
 	}
-	err := dbUser.Get()
+	err = dbUser.Get()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	user.ToIgnoreEmpty(dbUser)
+	err = mapper.Map(&dbUser, &user)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Users = true
-	user.ToResponse(http.StatusOK, w)
+	HttpJSONReponse(w, nil, nil)
 }
 
 // DeleteUser godoc
@@ -225,31 +243,34 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Router			/user/{username} [delete]
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
-	w.Header().Set("Content-Type", "application/json")
 
 	var user dto.User
-	user.FromJSONBody(w, r)
+	err := HttpJSONRequest(&user, w, r)
+	if err != nil {
+		return
+	}
 	dbUser := dbom.SambaUser{
 		Username: username,
 		IsAdmin:  false,
 	}
-	err := dbUser.Get()
+	err = dbUser.Get()
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		w.WriteHeader(http.StatusNotFound)
+		HttpJSONReponse(w, nil, &Options{
+			Code: http.StatusNotFound,
+		})
 		return
 	} else if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 	err = dbUser.Delete()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 
 	context_state.DataDirtyTracker.Users = true
-	w.WriteHeader(http.StatusNoContent)
-
+	HttpJSONReponse(w, nil, nil)
 }
