@@ -81,6 +81,20 @@ func TestMapWithMappableDestination(t *testing.T) {
 	assert.Equal(t, "unmapped", dst.Value)
 }
 
+func TestMapFromPtrWithMappableDestination(t *testing.T) {
+
+	//var src Mappable[TestStruct] = MockMappable{}
+	src := MockUnMappable{
+		Value2: "unmapped",
+	}
+	dst := &TestStruct{}
+
+	err := Map(dst, &src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "unmapped", dst.Value)
+}
+
 func TestMapFromMapStringAny(t *testing.T) {
 	type TestStruct struct {
 		Name  string
@@ -98,6 +112,30 @@ func TestMapFromMapStringAny(t *testing.T) {
 	dst := &TestStruct{}
 
 	err := Map(dst, src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "John Doe", dst.Name)
+	assert.Equal(t, 30, dst.Age)
+	assert.True(t, dst.IsVIP)
+}
+
+func TestMapFromMapStringPointerAny(t *testing.T) {
+	type TestStruct struct {
+		Name  string
+		Age   int
+		IsVIP bool
+	}
+
+	src := map[string]any{
+		"Nothing": "No value",
+		"Name":    "John Doe",
+		"Age":     30,
+		"IsVIP":   true,
+	}
+
+	dst := &TestStruct{}
+
+	err := Map(dst, &src)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "John Doe", dst.Name)

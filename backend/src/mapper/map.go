@@ -15,6 +15,9 @@ func Map(dst any, src any) error {
 	if src == nil {
 		return nil
 	}
+	if reflect.ValueOf(src).Kind() == reflect.Ptr {
+		src = reflect.ValueOf(src).Elem().Interface()
+	}
 
 	if val, ok := src.(MappableTo); ok {
 		match, err := val.To(dst)
