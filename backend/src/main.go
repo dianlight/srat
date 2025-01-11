@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"embed"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -83,52 +82,6 @@ func HAMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// DoResponse writes a JSON response to the provided http.ResponseWriter.
-// It sets the HTTP status code and marshals the given body into JSON format.
-//
-// Parameters:
-//   - code: The HTTP status code to be set in the response.
-//   - w: The http.ResponseWriter to write the response to.
-//   - body: The data to be marshaled into JSON and written as the response body.
-//
-// If there's an error marshaling the body into JSON, it calls DoResponseError
-// with an internal server error status.
-func DoResponse(code int, w http.ResponseWriter, body any) {
-	w.WriteHeader(code)
-	jsonResponse, jsonError := json.Marshal(body)
-	if jsonError != nil {
-		DoResponseError(http.StatusInternalServerError, w, "Unable to encode JSON", jsonError)
-	} else {
-		w.Write(jsonResponse)
-	}
-	return
-}
-
-// DoResponseError writes a JSON error response to the provided http.ResponseWriter.
-// It sets the HTTP status code and marshals an error object into JSON format.
-//
-// Parameters:
-//   - code: The HTTP status code to be set in the response.
-//   - w: The http.ResponseWriter to write the response to.
-//   - message: A string describing the error message.
-//   - body: Additional data to be included in the error response.
-//
-// The function doesn't return any value. It writes the error response directly to the provided http.ResponseWriter.
-// If there's an error marshaling the response into JSON, it writes an internal server error status
-// and the error message as plain text.
-func DoResponseError(code int, w http.ResponseWriter, message string, body any) {
-	w.WriteHeader(code)
-	jsonResponse, jsonError := json.Marshal(dto.ResponseError{Error: message, Body: body})
-	if jsonError != nil {
-		fmt.Println("Unable to encode JSON")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(jsonError.Error()))
-	} else {
-		w.Write(jsonResponse)
-	}
-	return
-}
-
 // @title						SRAT API
 // @version					1.0
 // @description				This are samba rest admin API
@@ -202,56 +155,9 @@ func main() {
 		if err != nil {
 			log.Fatalf("Cant load config file %s", err)
 		}
-		var settings dto.Settings
-		err = settings.From(&config)
+		dbom.FirstTimeJSONImporter(config)
 		if err != nil {
-			log.Fatalf("Cant save settings - %s", err)
-		}
-		var properties dbom.Properties
-		err = settings.To(&properties)
-		if err != nil {
-			log.Fatalf("Cant save settings - %s", err)
-		}
-		err = properties.Save()
-		if err != nil {
-			log.Fatalf("Cant save properties - %s", err)
-		}
-
-		// Users
-		var users dto.Users
-		err = users.From(&config.OtherUsers)
-		if err != nil {
-			log.Fatalf("Cant save users - %s", err)
-		}
-		var sambaUsers dbom.SambaUsers
-		err = users.To(&sambaUsers)
-		if err != nil {
-			log.Fatalf("Cant save users - %s", err)
-		}
-		// --> Add Admin user
-		sambaUsers = append(sambaUsers, dbom.SambaUser{
-			Username: config.Username,
-			Password: config.Password,
-			IsAdmin:  true,
-		})
-		err = sambaUsers.Save()
-		if err != nil {
-			log.Fatalf("Cant save users - %s", err)
-		}
-		// Shares
-		var shares dto.SharedResources
-		err = shares.From(&config.Shares)
-		if err != nil {
-			log.Fatalf("Cant save shares - %s", err)
-		}
-		var sambaShares dbom.ExportedShares
-		err = shares.To(&sambaShares)
-		if err != nil {
-			log.Fatalf("Cant save shares - %s", err)
-		}
-		err = sambaShares.Save()
-		if err != nil {
-			log.Fatalf("Cant save shares - %s", err)
+			log.Fatalf("Cant import json settings - %#v", err)
 		}
 	}
 	//data.Config = aconfig
