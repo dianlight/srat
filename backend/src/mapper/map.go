@@ -43,7 +43,7 @@ func Map(dst any, src any) error {
 	case reflect.Slice:
 		return fromSlice(dst, src.([]any))
 	case reflect.Struct:
-		return fromInterface(dst, src)
+		return fromStruct(dst, src)
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16,
@@ -129,7 +129,7 @@ func fromSlice(dst any, src []any) error {
 	case reflect.Slice:
 		for _, item := range src {
 			itemT := reflect.New(v.Type().Elem()).Interface()
-			if err := Map(&itemT, item); err != nil {
+			if err := Map(itemT, item); err != nil {
 				return err
 			}
 			v = reflect.Append(v, reflect.Indirect(reflect.ValueOf(itemT)))
@@ -153,7 +153,7 @@ func fromSlice(dst any, src []any) error {
 	}
 }
 
-func fromInterface[T any](dst T, src any) error {
+func fromStruct[T any](dst T, src any) error {
 	v := reflect.Indirect(reflect.ValueOf(dst))
 	//v := redirectValue(reflect.ValueOf(dst))
 	switch v.Kind() {
@@ -169,7 +169,7 @@ func fromInterface[T any](dst T, src any) error {
 				nvt.Set(x.Convert(nvt.Type()))
 			} else {
 				itemT := reflect.New(nvt.Type()).Interface()
-				err := Map(itemT, src)
+				err := Map(itemT, redirectValue(x).Interface())
 				if err != nil {
 					return err
 				}
@@ -178,7 +178,7 @@ func fromInterface[T any](dst T, src any) error {
 		}
 		return nil
 	default:
-		return fmt.Errorf("(fromInterface) Unsupported source type: %T for destination %T", src, dst)
+		return fmt.Errorf("(fromStruct) Unsupported source type: %T for destination %T", src, dst)
 	}
 }
 
