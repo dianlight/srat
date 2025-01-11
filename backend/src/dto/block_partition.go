@@ -1,11 +1,5 @@
 package dto
 
-import (
-	"net/http"
-
-	"github.com/jinzhu/copier"
-)
-
 type BlockPartition struct {
 	// Name is the system name given to the partition, e.g. "sda1".
 	Name string `json:"name"`
@@ -39,6 +33,7 @@ type BlockPartition struct {
 	DeviceId *uint64 `json:"device_id"`
 }
 
+/*
 func (self *BlockPartition) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -60,3 +55,4 @@ func (self BlockPartition) ToResponseError(code int, w http.ResponseWriter, mess
 func (self *BlockPartition) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/

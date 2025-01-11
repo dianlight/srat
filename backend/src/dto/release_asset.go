@@ -1,10 +1,7 @@
 package dto
 
 import (
-	"net/http"
-
 	"github.com/google/go-github/v68/github"
-	"github.com/jinzhu/copier"
 )
 
 type ReleaseAsset struct {
@@ -13,6 +10,7 @@ type ReleaseAsset struct {
 	ArchAsset    *github.ReleaseAsset      `json:"arch,omitempty"`
 }
 
+/*
 func (self *ReleaseAsset) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -34,3 +32,4 @@ func (self ReleaseAsset) ToResponseError(code int, w http.ResponseWriter, messag
 func (self *ReleaseAsset) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/

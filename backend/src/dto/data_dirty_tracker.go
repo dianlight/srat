@@ -1,11 +1,5 @@
 package dto
 
-import (
-	"net/http"
-
-	"github.com/jinzhu/copier"
-)
-
 type DataDirtyTracker struct {
 	Shares   bool `json:"shares"`
 	Users    bool `json:"users"`
@@ -13,6 +7,7 @@ type DataDirtyTracker struct {
 	Settings bool `json:"settings"`
 }
 
+/*
 func (self *DataDirtyTracker) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -34,3 +29,4 @@ func (self DataDirtyTracker) ToResponseError(code int, w http.ResponseWriter, me
 func (self *DataDirtyTracker) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/

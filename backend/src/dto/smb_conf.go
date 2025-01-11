@@ -1,15 +1,10 @@
 package dto
 
-import (
-	"net/http"
-
-	"github.com/jinzhu/copier"
-)
-
 type SmbConf struct {
 	Data string `json:"data"`
 }
 
+/*
 func (self *SmbConf) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -31,3 +26,4 @@ func (self SmbConf) ToResponseError(code int, w http.ResponseWriter, message str
 func (self *SmbConf) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/

@@ -1,15 +1,10 @@
 package dto
 
-import (
-	"net/http"
-
-	"github.com/jinzhu/copier"
-)
-
 type FilesystemType string
 
 type FilesystemTypes []FilesystemType
 
+/*
 func (self *FilesystemTypes) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -31,3 +26,4 @@ func (self FilesystemTypes) ToResponseError(code int, w http.ResponseWriter, mes
 func (self *FilesystemTypes) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/

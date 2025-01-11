@@ -1,11 +1,5 @@
 package dto
 
-import (
-	"net/http"
-
-	"github.com/jinzhu/copier"
-)
-
 type NetworkInfo struct {
 	NICs []*NIC `json:"nics"`
 }
@@ -24,6 +18,8 @@ type NIC struct {
 	// e.g. "Full"
 	Duplex string `json:"duplex"`
 }
+
+/*
 
 func (self *NetworkInfo) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
@@ -46,3 +42,4 @@ func (self NetworkInfo) ToResponseError(code int, w http.ResponseWriter, message
 func (self *NetworkInfo) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/

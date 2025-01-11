@@ -1,11 +1,5 @@
 package dto
 
-import (
-	"net/http"
-
-	"github.com/jinzhu/copier"
-)
-
 type HealthPing struct {
 	Alive     bool   `json:"alive"`
 	ReadOnly  bool   `json:"read_only"`
@@ -13,6 +7,7 @@ type HealthPing struct {
 	LastError string `json:"last_error"`
 }
 
+/*
 func (self *HealthPing) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -34,3 +29,4 @@ func (self HealthPing) ToResponseError(code int, w http.ResponseWriter, message 
 func (self *HealthPing) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/

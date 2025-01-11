@@ -1,10 +1,7 @@
 package dto
 
 import (
-	"net/http"
 	"time"
-
-	"github.com/jinzhu/copier"
 )
 
 type SambaProcessStatus struct {
@@ -19,6 +16,7 @@ type SambaProcessStatus struct {
 	IsRunning     bool      `json:"is_running"`
 }
 
+/*
 func (self *SambaProcessStatus) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -40,3 +38,4 @@ func (self SambaProcessStatus) ToResponseError(code int, w http.ResponseWriter, 
 func (self *SambaProcessStatus) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/

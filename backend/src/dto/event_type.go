@@ -1,11 +1,5 @@
 package dto
 
-import (
-	"net/http"
-
-	"github.com/jinzhu/copier"
-)
-
 type EventType string
 
 const (
@@ -23,6 +17,7 @@ var EventTypes = []string{
 	string(EventVolumes),
 }
 
+/*
 func (self *EventType) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -44,3 +39,4 @@ func (self EventType) ToResponseError(code int, w http.ResponseWriter, message s
 func (self *EventType) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/

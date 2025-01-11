@@ -1,11 +1,5 @@
 package dto
 
-import (
-	"net/http"
-
-	"github.com/jinzhu/copier"
-)
-
 type MountPointData struct {
 	Path        string        `json:"path"`
 	DefaultPath string        `json:"default_path"`
@@ -16,6 +10,7 @@ type MountPointData struct {
 	Data        string        `json:"data,omitempty"`
 }
 
+/*
 func (self *MountPointData) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -37,3 +32,4 @@ func (self MountPointData) ToResponseError(code int, w http.ResponseWriter, mess
 func (self *MountPointData) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/

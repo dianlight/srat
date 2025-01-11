@@ -1,11 +1,5 @@
 package dto
 
-import (
-	"net/http"
-
-	"github.com/jinzhu/copier"
-)
-
 type WebSocketMessageEnvelopeAction string
 
 const (
@@ -21,6 +15,7 @@ type WebSocketMessageEnvelope struct {
 	Action WebSocketMessageEnvelopeAction `json:"action,omitempty"`
 }
 
+/*
 func (self *WebSocketMessageEnvelope) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -42,3 +37,4 @@ func (self WebSocketMessageEnvelope) ToResponseError(code int, w http.ResponseWr
 func (self *WebSocketMessageEnvelope) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+*/
