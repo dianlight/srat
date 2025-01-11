@@ -6,18 +6,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type MockMappable struct{}
+type MockMappable struct {
+	Value3 string `json:"value3"`
+}
 type TestStruct struct {
 	Value string `json:"value"`
 }
 
-func (m MockMappable) To(dst any) error {
+func (m MockMappable) To(dst any) (bool, error) {
 	switch v := dst.(type) {
 	case *TestStruct:
 		*v = TestStruct{Value: "mapped"}
-		return nil
+		return true, nil
 	default:
-		return nil
+		return false, nil
 	}
 }
 
@@ -25,13 +27,13 @@ type MockUnMappable struct {
 	Value2 string `json:"value2"`
 }
 
-func (t *TestStruct) From(src any) error {
+func (t *TestStruct) From(src any) (bool, error) {
 	switch v := src.(type) {
 	case MockUnMappable:
 		t.Value = v.Value2
-		return nil
+		return true, nil
 	default:
-		return nil
+		return false, nil
 	}
 }
 
@@ -45,6 +47,24 @@ func TestMapWithMappableSource(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "mapped", dst.Value)
+}
+
+func TestMapWithMappableSourceNoMatch(t *testing.T) {
+	type TestStruct struct {
+		Value3 string
+		Age    int
+		IsVIP  bool
+	}
+	//var src Mappable[TestStruct] = MockMappable{}
+	src := MockMappable{
+		Value3: "unmapped*",
+	}
+	dst := &TestStruct{}
+
+	err := Map(dst, src)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "unmapped*", dst.Value3)
 }
 
 func TestMapWithMappableDestination(t *testing.T) {

@@ -17,19 +17,38 @@ func Map(dst any, src any) error {
 	}
 
 	if val, ok := src.(MappableTo); ok {
-		return val.To(dst)
-	} else if val, ok := dst.(MappableFrom); ok {
-		return val.From(src)
-	} else {
-		v := reflect.ValueOf(src)
-		switch reflect.Indirect(v).Kind() {
-		case reflect.Map:
-			return fromMap(dst, src.(map[string]any))
-		case reflect.Slice:
-			return fromSlice(dst, src.([]any))
-		default:
-			return fromInterface(dst, src)
+		match, err := val.To(dst)
+		if err != nil {
+			return err
 		}
+		if match {
+			return nil
+		}
+	} else if val, ok := dst.(MappableFrom); ok {
+		match, err := val.From(src)
+		if err != nil {
+			return err
+		}
+		if match {
+			return nil
+		}
+	}
+	v := reflect.ValueOf(src)
+	switch reflect.Indirect(v).Kind() {
+	case reflect.Map:
+		return fromMap(dst, src.(map[string]any))
+	case reflect.Slice:
+		return fromSlice(dst, src.([]any))
+	case reflect.Struct:
+		return fromInterface(dst, src)
+	case reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16,
+		reflect.Float32, reflect.Float64,
+		reflect.String:
+		return fromNative(dst, src)
+	default:
+		return fmt.Errorf("Unsupported source type: %T for destination %T", src, dst)
 	}
 }
 
@@ -133,6 +152,36 @@ func fromSlice(dst any, src []any) error {
 
 func fromInterface[T any](dst T, src any) error {
 	v := reflect.Indirect(reflect.ValueOf(dst))
+	//v := redirectValue(reflect.ValueOf(dst))
+	switch v.Kind() {
+	case reflect.Struct:
+		keys := funk.Keys(dst)
+		for _, key := range keys.([]string) {
+			nvt := v.FieldByName(key)
+			x := reflect.ValueOf(src).FieldByName(key)
+			if !x.IsValid() {
+				continue
+			}
+			if x.CanConvert(nvt.Type()) {
+				nvt.Set(x.Convert(nvt.Type()))
+			} else {
+				itemT := reflect.New(nvt.Type()).Interface()
+				err := Map(itemT, src)
+				if err != nil {
+					return err
+				}
+				nvt.Set(reflect.ValueOf(itemT).Elem())
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("(fromInterface) Unsupported source type: %T for destination %T", src, dst)
+	}
+}
+
+func fromNative[T any](dst T, src any) error {
+	v := reflect.Indirect(reflect.ValueOf(dst))
+	//v := redirectValue(reflect.ValueOf(dst))
 	switch v.Kind() {
 	case reflect.Float64, reflect.Float32:
 		val, err := strconv.ParseFloat(fmt.Sprintf("%v", src), v.Type().Bits())
@@ -166,6 +215,6 @@ func fromInterface[T any](dst T, src any) error {
 		v.SetBool(val)
 		return nil
 	default:
-		return fmt.Errorf("(fromInterface) Unsupported source type: %T for destination %T", src, dst)
+		return fmt.Errorf("(fromNative) Unsupported source type: %T for destination %T", src, dst)
 	}
 }
