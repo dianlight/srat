@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"slices"
@@ -28,13 +29,12 @@ const CURRENT_CONFIG_VERSION = 3
 
 type Config struct {
 	CurrentFile       string
-	ConfigSpecVersion int8 `json:"version,omitempty,default=0"`
+	ConfigSpecVersion int `json:"version,omitempty,default=0"`
 	Options
 	Shares          Shares `json:"shares"`
 	DockerInterface string `json:"docker_interface"`
 	DockerNet       string `json:"docker_net"`
-	//Users           []User           `json:"users"`
-	UpdateChannel string `json:"update_channel"`
+	UpdateChannel   string `json:"update_channel"`
 }
 
 // ReadConfigBuffer reads and parses a configuration file.
@@ -131,7 +131,7 @@ func (in *Config) MigrateConfig() error {
 		for _, share := range []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"} {
 			_, ok := in.Shares[share]
 			if !ok {
-				in.Shares[share] = Share{Path: "/" + share, FS: "native", Disabled: false, Usage: "none", Users: []any{in.Username}}
+				in.Shares[share] = Share{Name: share, Path: "/" + share, FS: "native", Disabled: false, Usage: "none", Users: []any{in.Username}}
 			}
 		}
 	}
@@ -184,18 +184,15 @@ func (in *Config) MigrateConfig() error {
 					}
 				}
 			}
-
-			//			if share.Users == nil {
-			//				share.Users = []any{
-			//					in.Username,
-			//				}
-			//				in.Shares[shareName] = share
-			//			}
 			if share.Usage == "" && in.Automount {
 				share.Usage = "media"
 				in.Shares[shareName] = share
 			}
 		}
+	}
+
+	if in.ConfigSpecVersion != CURRENT_CONFIG_VERSION {
+		return fmt.Errorf("unsupported config version: %d (expected %d)", in.ConfigSpecVersion, CURRENT_CONFIG_VERSION)
 	}
 
 	return nil
@@ -229,4 +226,20 @@ func (self *Config) FromContext(ctx context.Context) error {
 
 func (self *Config) ToContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, "samba_json_config", self)
+}
+
+// Mapping Functions
+func (self Config) To(dst any) (bool, error) {
+	switch dst.(type) {
+	//	case *dto.Settings:
+	//		*dst.(*Config) = self
+	//	case *dto.Properties:
+	//		*dst.(*Config) = self
+	//	case *dto.Users:
+	//		*dst.(*Config) = self
+	//	case dto.SharedResource:
+	//		*dst.(dto.SharedResource) = dto.SharedResource{}
+	default:
+		return false, nil
+	}
 }
