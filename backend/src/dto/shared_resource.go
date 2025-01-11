@@ -1,17 +1,5 @@
 package dto
 
-import (
-	"errors"
-	"fmt"
-	"maps"
-	"net/http"
-	"reflect"
-	"slices"
-
-	"github.com/jinzhu/copier"
-	"github.com/thoas/go-funk"
-)
-
 type HAMountUsage string // https://developers.home-assistant.io/docs/api/supervisor/models#mount
 
 const (
@@ -27,8 +15,8 @@ type SharedResource struct {
 	Path        string       `json:"path"`
 	FS          string       `json:"fs"`
 	Disabled    bool         `json:"disabled,omitempty"`
-	Users       Users        `json:"users"`
-	RoUsers     Users        `json:"ro_users"`
+	Users       []User       `json:"users"`
+	RoUsers     []User       `json:"ro_users"`
 	TimeMachine bool         `json:"timemachine,omitempty"`
 	Usage       HAMountUsage `json:"usage,omitempty"`
 
@@ -36,6 +24,8 @@ type SharedResource struct {
 	DeviceId    *uint64 `json:"device_id,omitempty"`
 	Invalid     bool    `json:"invalid,omitempty"`
 }
+
+/*
 
 func (self *SharedResource) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
@@ -141,7 +131,7 @@ func (self *SharedResources) FromArray(value interface{}, keyfield string) error
 			copier.CopyWithOption(&toShare, v, copier.Option{DeepCopy: true})
 			self[shareName] = toShare
 		}
-	*/
+	* /
 	return nil
 }
 
@@ -157,3 +147,5 @@ func (self SharedResources) ToResponseError(code int, w http.ResponseWriter, mes
 func (self *SharedResources) FromJSONBody(w http.ResponseWriter, r *http.Request) error {
 	return fromJSONBody(w, r, self)
 }
+
+*/

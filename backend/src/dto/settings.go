@@ -1,14 +1,5 @@
 package dto
 
-import (
-	"errors"
-	"fmt"
-	"net/http"
-	"reflect"
-
-	"github.com/jinzhu/copier"
-)
-
 type Settings struct {
 	Workgroup         string        `json:"workgroup"`
 	Mountoptions      []string      `json:"mountoptions"`
@@ -23,6 +14,7 @@ type Settings struct {
 	UpdateChannel     UpdateChannel `json:"update_channel"`
 }
 
+/*
 func (self *Settings) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -148,3 +140,4 @@ func (self *Settings) ToMap(dst *map[string]interface{}) error {
 
 	return nil
 }
+*/

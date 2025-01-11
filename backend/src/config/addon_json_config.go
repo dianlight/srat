@@ -8,6 +8,8 @@ import (
 	"os"
 	"slices"
 
+	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/mapper"
 	"github.com/jinzhu/copier"
 	"github.com/thoas/go-funk"
 )
@@ -184,6 +186,22 @@ func (in *Config) MigrateConfig() error {
 					}
 				}
 			}
+			for ix, user := range share.RoUsers {
+				switch user.(type) {
+				case string:
+					{
+						share.RoUsers[ix] = funk.Find(in.OtherUsers, func(u User) bool { return u.Username == user.(string) })
+					}
+				case User:
+					{
+						share.RoUsers[ix] = user
+					}
+				default:
+					{
+						log.Printf("Unknown rouser type in share %s: %T", shareName, user)
+					}
+				}
+			}
 			if share.Usage == "" && in.Automount {
 				share.Usage = "media"
 				in.Shares[shareName] = share
@@ -231,14 +249,29 @@ func (self *Config) ToContext(ctx context.Context) context.Context {
 // Mapping Functions
 func (self Config) To(dst any) (bool, error) {
 	switch dst.(type) {
-	//	case *dto.Settings:
-	//		*dst.(*Config) = self
-	//	case *dto.Properties:
-	//		*dst.(*Config) = self
-	//	case *dto.Users:
-	//		*dst.(*Config) = self
-	//	case dto.SharedResource:
-	//		*dst.(dto.SharedResource) = dto.SharedResource{}
+	case *[]dto.User:
+		*dst.(*[]dto.User) = append((*dst.(*[]dto.User)), dto.User{
+			Username: self.Username,
+			Password: self.Password,
+			IsAdmin:  true,
+		})
+		for _, user := range self.OtherUsers {
+			*dst.(*[]dto.User) = append((*dst.(*[]dto.User)), dto.User{
+				Username: user.Username,
+				Password: user.Password,
+			})
+		}
+		return true, nil
+	case *[]dto.SharedResource:
+		for _, share := range self.Shares {
+			var sr dto.SharedResource
+			err := mapper.Map(&sr, share)
+			if err != nil {
+				return false, err
+			}
+			*dst.(*[]dto.SharedResource) = append((*dst.(*[]dto.SharedResource)), sr)
+		}
+		return true, nil
 	default:
 		return false, nil
 	}

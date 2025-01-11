@@ -1,13 +1,6 @@
 package dto
 
-import (
-	"net/http"
-	"slices"
-
-	"github.com/jinzhu/copier"
-)
-
-type Users []User
+//type Users []User
 
 type User struct {
 	Username string `json:"username"`
@@ -15,6 +8,7 @@ type User struct {
 	IsAdmin  bool   `json:"is_admin"`
 }
 
+/*
 func (self *User) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 }
@@ -83,3 +77,4 @@ func (self Users) AdminUser() (*User, error) {
 		return &result[0], nil
 	}
 }
+*/

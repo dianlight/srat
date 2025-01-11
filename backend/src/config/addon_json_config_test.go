@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -251,4 +252,52 @@ func TestMappableToDtoSettings(t *testing.T) {
 	assert.Equal(t, dto.EnableRecycleBin, false)
 	assert.Equal(t, dto.BindAllInterfaces, true)
 	assert.Equal(t, dto.MultiChannel, false)
+}
+
+func TestMappableToDtoUsers(t *testing.T) {
+	// Create a new Config instance
+	config := &Config{}
+
+	// Load the config
+	err := config.LoadConfig("../../test/data/config.json")
+	require.NoError(t, err)
+
+	_dto := []dto.User{}
+	err = mapper.Map(&_dto, config)
+	require.NoError(t, err)
+
+	//bdata, err := os.ReadFile("../../test/data/config.json")
+	//require.NoError(t, err)
+	//data := make(map[string]interface{})
+	//require.NoError(t,json.Unmarshal(bdata,data))
+
+	assert.Len(t, _dto, 4)
+	assert.Contains(t, _dto, dto.User{Username: "backupuser", Password: "\u003cbackupuser secret password\u003e", IsAdmin: false})
+	assert.Contains(t, fmt.Sprintf("%v", _dto), "utente2")
+	assert.Contains(t, fmt.Sprintf("%v", _dto), "rouser")
+	assert.Contains(t, _dto, dto.User{Username: "dianlight", Password: "hassio2010", IsAdmin: true})
+}
+
+func TestMappableToDtoSharedResources(t *testing.T) {
+	// Create a new Config instance
+	config := &Config{}
+
+	// Load the config
+	err := config.LoadConfig("../../test/data/config.json")
+	require.NoError(t, err)
+
+	_dto := make([]dto.SharedResource, 0, 20)
+	err = mapper.Map(&_dto, config)
+	require.NoError(t, err)
+
+	//bdata, err := os.ReadFile("../../test/data/config.json")
+	//require.NoError(t, err)
+	//data := make(map[string]interface{})
+	//require.NoError(t,json.Unmarshal(bdata,data))
+
+	assert.Len(t, _dto, 10, "Size of shared resources is not as expected %#v", _dto)
+	assert.Contains(t, _dto, dto.SharedResource{ID: (*uint)(nil), Name: "addons", Path: "/addons", FS: "native", Disabled: false, Users: []dto.User{dto.User{Username: "", Password: "", IsAdmin: false}}, RoUsers: []dto.User(nil), TimeMachine: false, Usage: "none", DirtyStatus: false, DeviceId: (*uint64)(nil), Invalid: false})
+	// assert.Contains(t, fmt.Sprintf("%v", _dto), "utente2")
+	// assert.Contains(t, fmt.Sprintf("%v", _dto), "rouser")
+	// assert.Contains(t, _dto, dto.User{Username: "dianlight", Password: "hassio2010", IsAdmin: true})
 }
