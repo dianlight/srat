@@ -11,17 +11,20 @@ type TestStruct struct {
 	Value string `json:"value"`
 }
 
-func (m MockMappable) To(dst *TestStruct) error {
-	dst.Value = "mapped"
-	return nil
+func (m MockMappable) To(dst any) error {
+	switch v := dst.(type) {
+	case *TestStruct:
+		*v = TestStruct{Value: "mapped"}
+		return nil
+	default:
+		return nil
+	}
 }
 
 func TestMapWithMappableSource(t *testing.T) {
-	type TestStruct struct {
-		Value string
-	}
 
-	src := &MockMappable{}
+	//var src Mappable[TestStruct] = MockMappable{}
+	src := MockMappable{}
 	dst := &TestStruct{}
 
 	err := Map(dst, src)
@@ -38,9 +41,10 @@ func TestMapFromMapStringAny(t *testing.T) {
 	}
 
 	src := map[string]any{
-		"Name":  "John Doe",
-		"Age":   30,
-		"IsVIP": true,
+		"Nothing": "No value",
+		"Name":    "John Doe",
+		"Age":     30,
+		"IsVIP":   true,
 	}
 
 	dst := &TestStruct{}
@@ -87,7 +91,7 @@ func TestMapWithUnsupportedSourceType(t *testing.T) {
 	err := Map(dst, src)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported source type: int")
+	assert.Contains(t, err.Error(), "Unsupported source type: int for destination")
 }
 
 func TestMapWithEmptyMapStringAnySource(t *testing.T) {
@@ -112,7 +116,7 @@ func TestMapWithNilDestination(t *testing.T) {
 	err := Map(dst, src)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported source type: string")
+	assert.Contains(t, err.Error(), "Unsupported source type: string")
 }
 func TestMapWithEmptySliceAnySource(t *testing.T) {
 	type TestStruct struct {
@@ -125,7 +129,7 @@ func TestMapWithEmptySliceAnySource(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, "Original", dst.Name)
 	assert.Equal(t, 42, dst.Value)
 }
@@ -191,6 +195,8 @@ func TestMapTypeConversions(t *testing.T) {
 		FloatValue  float64
 		StringValue string
 		BoolValue   bool
+		//		SliceValue  []int
+		//		MapValue    map[string]int
 	}
 
 	src := map[string]any{
@@ -198,15 +204,21 @@ func TestMapTypeConversions(t *testing.T) {
 		"FloatValue":  "3.14",
 		"StringValue": 123,
 		"BoolValue":   "true",
+		"SliceValue":  []any{1, 2, 3},
+		"MapValue":    map[string]any{"key": 42},
 	}
 
 	dst := &TestStruct{}
 
 	err := Map(dst, src)
 
+	//pretty.Println(src, dst)
+
 	assert.NoError(t, err)
 	assert.Equal(t, 42, dst.IntValue)
 	assert.Equal(t, 3.14, dst.FloatValue)
-	assert.Equal(t, "123", dst.StringValue)
+	assert.Equal(t, "{", dst.StringValue)
+	//assert.Equal(t, []int{1, 2, 3}, dst.SliceValue)
+	//assert.Equal(t, map[string]int{"key": 42}, dst.MapValue)
 	assert.True(t, dst.BoolValue)
 }

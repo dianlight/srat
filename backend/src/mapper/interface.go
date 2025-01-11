@@ -1,5 +1,6 @@
 package mapper
 
-type Mappable[T any] interface {
-	To(dst *T) error
+type Mappable interface {
+	To(dst any) error
+	//From(dst interface{}) error
 }
