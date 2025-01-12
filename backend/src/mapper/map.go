@@ -41,13 +41,14 @@ func Map(dst any, src any) error {
 	case reflect.Map:
 		return fromMap(dst, src.(map[string]any))
 	case reflect.Slice:
-		if val, ok := src.([]any); ok {
-			return fromSlice(dst, val)
-		} else if val, ok := src.([]map[string]any); ok {
-			return fromSliceMap(dst, val)
-		} else {
-			return fmt.Errorf("(_fromSlice) Unsupported source type: %T for destination %T", src, dst)
-		}
+		return fromSlice(dst, src)
+		//if val, ok := src.([]any); ok {
+		//	return fromSlice(dst, val)
+		//} else if val, ok := src.([]map[string]any); ok {
+		//	return fromSliceMap(dst, val)
+		//} else {
+		//	return fmt.Errorf("(_fromSlice) Unsupported source type: %T for destination %T", src, dst)
+		//}
 	case reflect.Struct:
 		return fromStruct(dst, src)
 	case reflect.Bool,
@@ -129,6 +130,7 @@ func fromMap(dst any, src map[string]any) error {
 	}
 }
 
+/*
 func fromSliceMap(dst any, src []map[string]any) error {
 	v := reflect.Indirect(reflect.ValueOf(dst))
 	switch v.Kind() {
@@ -142,7 +144,7 @@ func fromSliceMap(dst any, src []map[string]any) error {
 		}
 		reflect.ValueOf(dst).Elem().Set(v)
 		return nil
-		/*
+		/ *
 			case *map[string]any:
 				for k, v := range src {
 					var itemT any
@@ -153,20 +155,21 @@ func fromSliceMap(dst any, src []map[string]any) error {
 					}
 				}
 				return nil
-		*/
+		* /
 	default:
 		return fmt.Errorf("(fromSlice) Unsupported item type %T for destination %T", src, dst)
 	}
 }
+*/
 
-func fromSlice(dst any, src []any) error {
+func fromSlice(dst any, src any /*[]any*/) error {
 	v := reflect.Indirect(reflect.ValueOf(dst))
 	switch v.Kind() {
 	case reflect.Slice:
-
-		for _, item := range src {
+		vsrc := reflect.Indirect(reflect.ValueOf(src))
+		for i := 0; i < vsrc.Len(); i++ {
 			itemT := reflect.New(v.Type().Elem()).Interface()
-			if err := Map(itemT, item); err != nil {
+			if err := Map(itemT, vsrc.Index(i).Interface()); err != nil {
 				return err
 			}
 			v = reflect.Append(v, reflect.Indirect(reflect.ValueOf(itemT)))

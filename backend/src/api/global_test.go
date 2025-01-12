@@ -30,7 +30,7 @@ func TestGetSettingsHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	context_state := (&dto.ContextState{}).FromContext(testContext)
 

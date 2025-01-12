@@ -17,18 +17,27 @@ type errorResponse struct {
 	Body  any    `json:"body"`
 }
 
+func codeGetOrElse(code int, def int) int {
+	if code <= 0 {
+		return def
+	}
+	return code
+}
+
 func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 	if opt == nil {
-		opt = &Options{}
+		opt = &Options{
+			Code: -1,
+		}
 	}
 
 	if erx, ok := src.(error); ok {
-		opt.Code = funk.GetOrElse(opt.Code, http.StatusInternalServerError).(int)
+		opt.Code = codeGetOrElse(opt.Code, http.StatusInternalServerError)
 		return HttpJSONReponse(w, errorResponse{Error: erx.Error(), Body: erx}, opt)
 	}
 
 	if src == nil || funk.IsEmpty(src) {
-		opt.Code = funk.GetOrElse(opt.Code, http.StatusNoContent).(int)
+		opt.Code = codeGetOrElse(opt.Code, http.StatusNoContent)
 		w.WriteHeader(opt.Code)
 	} else {
 		jsonResponse, jsonError := json.Marshal(src)
@@ -36,7 +45,7 @@ func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 			opt.Code = http.StatusInternalServerError
 			return HttpJSONReponse(w, errorResponse{Error: "Unable to encode JSON", Body: jsonError}, opt)
 		} else {
-			opt.Code = funk.GetOrElse(opt.Code, http.StatusOK).(int)
+			opt.Code = codeGetOrElse(opt.Code, http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(opt.Code)
 			w.Write(jsonResponse)
