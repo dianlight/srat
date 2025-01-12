@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type MockMappable struct {
@@ -307,4 +308,109 @@ func TestMapTypeConversions(t *testing.T) {
 	//assert.Equal(t, []int{1, 2, 3}, dst.SliceValue)
 	//assert.Equal(t, map[string]int{"key": 42}, dst.MapValue)
 	assert.True(t, dst.BoolValue)
+}
+
+func TestMapFromMapToSlice(t *testing.T) {
+	type TestStruct struct {
+		Name string
+		Age  int
+	}
+
+	src := []map[string]any{
+		{"Name": "John Doe", "Age": 30},
+		{"Name": "Jane Doe", "Age": 35},
+	}
+
+	dst := make([]TestStruct, 0, len(src))
+
+	err := Map(&dst, src)
+
+	assert.NoError(t, err)
+	assert.Len(t, dst, 2)
+	assert.Equal(t, "John Doe", dst[0].Name)
+	assert.Equal(t, 30, dst[0].Age)
+	assert.Equal(t, "Jane Doe", dst[1].Name)
+	assert.Equal(t, 35, dst[1].Age)
+}
+
+func TestMapFromStructToSlice(t *testing.T) {
+	type TestStruct struct {
+		Name  string      `mapper:"key"`
+		Value interface{} `mapper:"value"`
+	}
+
+	type TestStuctSource struct {
+		Pippo       int
+		Pluto       string
+		Minni       string
+		ZioPaperone map[string]string
+	}
+
+	src := TestStuctSource{
+		Pippo: 30,
+		Pluto: "John Doe",
+		Minni: "Jane Doe",
+		ZioPaperone: map[string]string{
+			"Age": "30",
+		},
+	}
+
+	dst := make([]TestStruct, 0, 4)
+
+	err := Map(&dst, src)
+
+	require.NoError(t, err)
+	assert.Len(t, dst, 4)
+	assert.Equal(t, "Pippo", dst[0].Name)
+	assert.Equal(t, 30, dst[0].Value)
+	assert.Equal(t, "Pluto", dst[1].Name)
+	assert.Equal(t, "John Doe", dst[1].Value)
+	assert.Equal(t, "Minni", dst[2].Name)
+	assert.Equal(t, "Jane Doe", dst[2].Value)
+	assert.Equal(t, "ZioPaperone", dst[3].Name)
+	assert.Equal(t, map[string]string{
+		"Age": "30",
+	}, dst[3].Value)
+}
+
+func TestMapFromStructToSliceType(t *testing.T) {
+	type TestStruct struct {
+		Name  string      `mapper:"key"`
+		Value interface{} `mapper:"value"`
+	}
+
+	type TestStructs []TestStruct
+
+	type TestStuctSource struct {
+		Pippo       int
+		Pluto       string
+		Minni       string
+		ZioPaperone map[string]string
+	}
+
+	src := TestStuctSource{
+		Pippo: 30,
+		Pluto: "John Doe",
+		Minni: "Jane Doe",
+		ZioPaperone: map[string]string{
+			"Age": "30",
+		},
+	}
+
+	var dst TestStructs
+
+	err := Map(&dst, src)
+
+	assert.NoError(t, err)
+	assert.Len(t, dst, 4)
+	assert.Equal(t, "Pippo", dst[0].Name)
+	assert.Equal(t, 30, dst[0].Value)
+	assert.Equal(t, "Pluto", dst[1].Name)
+	assert.Equal(t, "John Doe", dst[1].Value)
+	assert.Equal(t, "Minni", dst[2].Name)
+	assert.Equal(t, "Jane Doe", dst[2].Value)
+	assert.Equal(t, "ZioPaperone", dst[3].Name)
+	assert.Equal(t, map[string]string{
+		"Age": "30",
+	}, dst[3].Value)
 }

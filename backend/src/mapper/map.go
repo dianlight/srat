@@ -10,7 +10,7 @@ import (
 
 func Map(dst any, src any) error {
 	if dst == nil || reflect.ValueOf(dst).Kind() != reflect.Ptr {
-		return fmt.Errorf("unsupported destination type: %T", dst)
+		return fmt.Errorf("unsupported destination type: %T a pointer is required!", dst)
 	}
 	if src == nil {
 		return nil
@@ -41,7 +41,13 @@ func Map(dst any, src any) error {
 	case reflect.Map:
 		return fromMap(dst, src.(map[string]any))
 	case reflect.Slice:
-		return fromSlice(dst, src.([]any))
+		if val, ok := src.([]any); ok {
+			return fromSlice(dst, val)
+		} else if val, ok := src.([]map[string]any); ok {
+			return fromSliceMap(dst, val)
+		} else {
+			return fmt.Errorf("(_fromSlice) Unsupported source type: %T for destination %T", src, dst)
+		}
 	case reflect.Struct:
 		return fromStruct(dst, src)
 	case reflect.Bool,
@@ -123,6 +129,36 @@ func fromMap(dst any, src map[string]any) error {
 	}
 }
 
+func fromSliceMap(dst any, src []map[string]any) error {
+	v := reflect.Indirect(reflect.ValueOf(dst))
+	switch v.Kind() {
+	case reflect.Slice:
+		for _, item := range src {
+			itemT := reflect.New(v.Type().Elem()).Interface()
+			if err := Map(itemT, item); err != nil {
+				return err
+			}
+			v = reflect.Append(v, reflect.Indirect(reflect.ValueOf(itemT)))
+		}
+		reflect.ValueOf(dst).Elem().Set(v)
+		return nil
+		/*
+			case *map[string]any:
+				for k, v := range src {
+					var itemT any
+					if err := Map(&itemT, v); err != nil {
+						return err
+					} else {
+						src[k] = itemT
+					}
+				}
+				return nil
+		*/
+	default:
+		return fmt.Errorf("(fromSlice) Unsupported item type %T for destination %T", src, dst)
+	}
+}
+
 func fromSlice(dst any, src []any) error {
 	v := reflect.Indirect(reflect.ValueOf(dst))
 	switch v.Kind() {
@@ -176,6 +212,29 @@ func fromStruct[T any](dst T, src any) error {
 				nvt.Set(reflect.ValueOf(itemT).Elem())
 			}
 		}
+		return nil
+	case reflect.Slice:
+		keyfield := -1
+		valuefield := -1
+		for ix := 0; ix < v.Type().Elem().NumField(); ix++ {
+			if v.Type().Elem().Field(ix).Tag.Get("mapper") == "key" {
+				keyfield = ix
+			} else if v.Type().Elem().Field(ix).Tag.Get("mapper") == "value" {
+				valuefield = ix
+			}
+		}
+		if keyfield == -1 || valuefield == -1 {
+			return fmt.Errorf("(fromStruct) Unsupported destination type %T for source %T\n Only slice with key/value struct with tags mapper:key and mapper:value are accepted from struct", src, dst)
+		}
+		keys := funk.Keys(src)
+		for _, key := range keys.([]string) {
+
+			itemT := reflect.Indirect(reflect.New(v.Type().Elem()))
+			itemT.Field(keyfield).SetString(key)
+			itemT.Field(valuefield).Set(reflect.ValueOf(src).FieldByName(key))
+			v = reflect.Append(v, itemT)
+		}
+		reflect.ValueOf(dst).Elem().Set(v)
 		return nil
 	default:
 		return fmt.Errorf("(fromStruct) Unsupported source type: %T for destination %T", src, dst)
