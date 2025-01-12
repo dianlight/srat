@@ -7,8 +7,8 @@ import (
 )
 
 type Property struct {
-	Key       string      `json:"key" gorm:"primaryKey" from_map:"key"`
-	Value     interface{} `json:"value" from_map:"value" gorm:"serializer:json"`
+	Key       string      `json:"key" gorm:"primaryKey" mapper:"key"`
+	Value     interface{} `json:"value" mapper:"value" gorm:"serializer:json"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`

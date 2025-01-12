@@ -155,7 +155,7 @@ func TestPropertiesAddInt(t *testing.T) {
 	result := db.Where("key = ?", "testNumberKey").First(&dbProp)
 	require.NoError(t, result.Error)
 	assert.Equal(t, "testNumberKey", dbProp.Key)
-	assert.Equal(t, float64(42), dbProp.Value)
+	assert.InDelta(t, float64(42), dbProp.Value, 0.01)
 }
 func TestPropertiesAddBool(t *testing.T) {
 	// Initialize a new Properties slice
@@ -326,7 +326,7 @@ func TestPropertiesAddNilValue(t *testing.T) {
 	result := db.Where("key = ?", "nilKey").First(&dbProp)
 	require.NoError(t, result.Error)
 	assert.Equal(t, "nilKey", dbProp.Key)
-	assert.Equal(t, nil, dbProp.Value)
+	assert.Nil(t, dbProp.Value)
 
 	// Clean up the test data
 	db.Where("key = ?", "nilKey").Delete(&Property{})
@@ -618,7 +618,7 @@ func TestPropertiesConcurrentGet(t *testing.T) {
 
 	// Firt non  concurrent
 	_, err = p.Get(testKey)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Launch concurrent Get operations
 	for i := 0; i < numGoroutines; i++ {

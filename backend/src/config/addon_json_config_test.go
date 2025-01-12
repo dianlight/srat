@@ -167,7 +167,7 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 func TestLoadConfigWithNonExistentFile(t *testing.T) {
 	config := &Config{}
 	err := config.LoadConfig("non_existent_file.json")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no such file or directory")
 }
 func TestLoadConfigWithNonReadableFile(t *testing.T) {
@@ -182,7 +182,7 @@ func TestLoadConfigWithNonReadableFile(t *testing.T) {
 
 	config := &Config{}
 	err = config.LoadConfig(tempFile.Name())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected end of JSON input")
 }
 func TestLoadConfigWithValidFile(t *testing.T) {
@@ -231,27 +231,27 @@ func TestMappableToDtoSettings(t *testing.T) {
 	//require.NoError(t, err)
 	//data := make(map[string]interface{})
 	//require.NoError(t,json.Unmarshal(bdata,data))
-	assert.Equal(t, dto.Workgroup, "WORKGROUP")
-	assert.Equal(t, dto.AllowHost, []string{"10.0.0.0/8",
+	assert.Equal(t, "WORKGROUP", dto.Workgroup)
+	assert.Equal(t, []string{"10.0.0.0/8",
 		"100.0.0.0/8",
 		"172.16.0.0/12",
 		"192.168.0.0/16",
 		"169.254.0.0/16",
 		"fe80::/10",
 		"fc00::/7",
-	})
-	assert.Equal(t, dto.Mountoptions, []string{"nosuid", "relatime", "noexec"})
-	assert.Equal(t, dto.VetoFiles, []string{
+	}, dto.AllowHost)
+	assert.Equal(t, []string{"nosuid", "relatime", "noexec"}, dto.Mountoptions)
+	assert.Equal(t, []string{
 		"._*",
 		".DS_Store",
 		"Thumbs.db",
 		"icon?",
-		".Trashes"})
+		".Trashes"}, dto.VetoFiles)
 
-	assert.Equal(t, dto.CompatibilityMode, false)
-	assert.Equal(t, dto.EnableRecycleBin, false)
-	assert.Equal(t, dto.BindAllInterfaces, true)
-	assert.Equal(t, dto.MultiChannel, false)
+	assert.False(t, dto.CompatibilityMode)
+	assert.False(t, dto.EnableRecycleBin)
+	assert.True(t, dto.BindAllInterfaces)
+	assert.False(t, dto.MultiChannel)
 }
 
 func TestMappableToDtoUsers(t *testing.T) {

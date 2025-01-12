@@ -46,7 +46,7 @@ func TestMapWithMappableSource(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "mapped", dst.Value)
 }
 
@@ -64,7 +64,7 @@ func TestMapWithMappableSourceNoMatch(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "unmapped*", dst.Value3)
 }
 
@@ -78,7 +78,7 @@ func TestMapWithMappableDestination(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "unmapped", dst.Value)
 }
 
@@ -92,7 +92,7 @@ func TestMapFromPtrWithMappableDestination(t *testing.T) {
 
 	err := Map(dst, &src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "unmapped", dst.Value)
 }
 
@@ -114,7 +114,7 @@ func TestMapFromMapStringAny(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "John Doe", dst.Name)
 	assert.Equal(t, 30, dst.Age)
 	assert.True(t, dst.IsVIP)
@@ -138,7 +138,7 @@ func TestMapFromMapStringPointerAny(t *testing.T) {
 
 	err := Map(dst, &src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "John Doe", dst.Name)
 	assert.Equal(t, 30, dst.Age)
 	assert.True(t, dst.IsVIP)
@@ -159,7 +159,7 @@ func TestMapFromSliceAny(t *testing.T) {
 
 	err := Map(&dst, src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, dst, 2)
 	assert.Equal(t, "Item1", dst[0].Name)
 	assert.Equal(t, 10, dst[0].Value)
@@ -177,7 +177,7 @@ func TestMapWithUnsupportedSourceType(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Unsupported source type: int for destination")
 }
 
@@ -192,7 +192,7 @@ func TestMapWithEmptyMapStringAnySource(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Original", dst.Name)
 	assert.Equal(t, 42, dst.Value)
 }
@@ -202,7 +202,7 @@ func TestMapWithNilDestination(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Unsupported source type: string")
 }
 func TestMapWithEmptySliceAnySource(t *testing.T) {
@@ -216,7 +216,7 @@ func TestMapWithEmptySliceAnySource(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "Original", dst.Name)
 	assert.Equal(t, 42, dst.Value)
 }
@@ -240,7 +240,7 @@ func TestMapPreservesExistingValues(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Jane Doe", dst.Name)
 	assert.Equal(t, 35, dst.Age)
 	assert.Equal(t, "john@example.com", dst.Email)
@@ -270,7 +270,7 @@ func TestMapWithNestedStructures(t *testing.T) {
 
 	err := Map(dst, src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "John Doe", dst.Name)
 	assert.Equal(t, 30, dst.Age)
 	assert.Equal(t, "123 Main St", dst.Address.Street)
@@ -301,9 +301,9 @@ func TestMapTypeConversions(t *testing.T) {
 
 	//pretty.Println(src, dst)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 42, dst.IntValue)
-	assert.Equal(t, 3.14, dst.FloatValue)
+	assert.InDelta(t, 3.14, dst.FloatValue, 0.01)
 	assert.Equal(t, "{", dst.StringValue)
 	//assert.Equal(t, []int{1, 2, 3}, dst.SliceValue)
 	//assert.Equal(t, map[string]int{"key": 42}, dst.MapValue)
@@ -325,7 +325,7 @@ func TestMapFromMapToSlice(t *testing.T) {
 
 	err := Map(&dst, src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, dst, 2)
 	assert.Equal(t, "John Doe", dst[0].Name)
 	assert.Equal(t, 30, dst[0].Age)
@@ -401,7 +401,7 @@ func TestMapFromStructToSliceType(t *testing.T) {
 
 	err := Map(&dst, src)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, dst, 4)
 	assert.Equal(t, "Pippo", dst[0].Name)
 	assert.Equal(t, 30, dst[0].Value)

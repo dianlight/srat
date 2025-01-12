@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 	}
 	err = dbom.FirstTimeJSONImporter(config)
 	if err != nil {
-		log.Fatalf("Cant save settings - %s", err)
+		log.Fatalf("Cant load json settings - %v", err)
 	}
 	// End
 

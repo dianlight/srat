@@ -163,6 +163,7 @@ func fromSlice(dst any, src []any) error {
 	v := reflect.Indirect(reflect.ValueOf(dst))
 	switch v.Kind() {
 	case reflect.Slice:
+
 		for _, item := range src {
 			itemT := reflect.New(v.Type().Elem()).Interface()
 			if err := Map(itemT, item); err != nil {
