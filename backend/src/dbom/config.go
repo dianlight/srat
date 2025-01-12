@@ -19,14 +19,13 @@ var db *gorm.DB
 //
 // The function panics if it fails to connect to the database.
 func InitDB(dbpath string) {
-	adb, err := gorm.Open(sqlite.Open(dbpath), &gorm.Config{})
+	var err error
+	db, err = gorm.Open(sqlite.Open(dbpath), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
-
 	// Migrate the schema
-	adb.AutoMigrate(&MountPointData{}, &ExportedShare{}, &SambaUser{}, &Property{})
-	db = adb
+	db.AutoMigrate(&MountPointData{}, &ExportedShare{}, &SambaUser{}, &Property{})
 }
 
 func CloseDB() {

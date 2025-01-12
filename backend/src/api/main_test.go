@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 
 	os.Setenv("HOSTNAME", "test-host")
 
-	dbom.InitDB(":memory:")
+	dbom.InitDB(":memory:?cache=shared&_pragma=foreign_keys(1)")
 	defer dbom.CloseDB()
 
 	var config config.Config

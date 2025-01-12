@@ -1,7 +1,6 @@
 package dbom
 
 import (
-	"encoding/json"
 	"time"
 
 	"gorm.io/gorm"
@@ -26,7 +25,7 @@ func (self *Properties) Save() error {
 }
 
 func (p *Properties) DeleteAll() error {
-	result := db.Delete(&Property{})
+	result := db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Property{})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -35,14 +34,9 @@ func (p *Properties) DeleteAll() error {
 }
 
 func (p *Properties) Add(key string, value interface{}) error {
-	jsonValue, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
-
 	prop := Property{
 		Key:   key,
-		Value: string(jsonValue),
+		Value: value,
 	}
 
 	db.Unscoped().Model(&Property{}).Where("key", key).Update("deleted_at", nil)
@@ -88,11 +82,6 @@ func (p *Properties) Get(key string) (*Property, error) {
 	return &prop, nil
 }
 
-/*
-func (p *Property) UnmarshalValue(v interface{}) error {
-	return json.Unmarshal([]byte(p.Value), v)
-}
-*/
 // New GetValue method
 func (p *Properties) GetValue(key string) (interface{}, error) {
 	//var v interface{}

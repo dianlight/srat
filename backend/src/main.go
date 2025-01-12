@@ -103,7 +103,7 @@ func main() {
 	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
 	data.ROMode = flag.Bool("ro", false, "Read only mode")
 	hamode = flag.Bool("addon", false, "Run in addon mode")
-	dbfile := flag.String("db", ":memory:?cache=shared", "Database file")
+	dbfile := flag.String("db", ":memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
 	dockerNetwork = flag.String("docker-network", "", "Docker network")
 
