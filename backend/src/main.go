@@ -1,6 +1,6 @@
 package main
 
-//go:generate swag init --pd --parseInternal
+//go:generate go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 init --pd --parseInternal
 
 import (
 	"context"
