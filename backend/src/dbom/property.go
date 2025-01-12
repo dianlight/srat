@@ -3,6 +3,7 @@ package dbom
 import (
 	"time"
 
+	"github.com/thoas/go-funk"
 	"gorm.io/gorm"
 )
 
@@ -16,24 +17,24 @@ type Property struct {
 
 type Properties []Property
 
-func (p *Properties) Load() error {
-	return db.Find(p).Error
+func (self *Properties) Load() error {
+	return db.Find(self).Error
 }
 
 func (self *Properties) Save() error {
 	return db.Save(self).Error
 }
 
-func (p *Properties) DeleteAll() error {
+func (self *Properties) DeleteAll() error {
 	result := db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Property{})
 	if result.Error != nil {
 		return result.Error
 	}
-	*p = nil
+	*self = nil
 	return nil
 }
 
-func (p *Properties) Add(key string, value interface{}) error {
+func (self *Properties) Add(key string, value interface{}) error {
 	prop := Property{
 		Key:   key,
 		Value: value,
@@ -46,26 +47,26 @@ func (p *Properties) Add(key string, value interface{}) error {
 		return result.Error
 	}
 
-	for i, existingProp := range *p {
+	for i, existingProp := range *self {
 		if existingProp.Key == key {
-			(*p)[i] = prop
+			(*self)[i] = prop
 			return nil
 		}
 	}
-	*p = append(*p, prop)
+	*self = append(*self, prop)
 	return nil
 }
 
-func (p *Properties) Remove(key string) error {
+func (self *Properties) Remove(key string) error {
 	result := db.Where("key = ?", key).Delete(&Property{})
 	if result.Error != nil {
 		return result.Error
 	}
 
 	// Remove the property from the slice
-	for i, prop := range *p {
+	for i, prop := range *self {
 		if prop.Key == key {
-			*p = append((*p)[:i], (*p)[i+1:]...)
+			*self = append((*self)[:i], (*self)[i+1:]...)
 			break
 		}
 	}
@@ -73,53 +74,23 @@ func (p *Properties) Remove(key string) error {
 	return nil
 }
 
-func (p *Properties) Get(key string) (*Property, error) {
+func (self *Properties) Get(key string) (*Property, error) {
 	var prop Property
 	result := db.Where("key = ?", key).First(&prop)
 	if result.Error != nil {
 		return nil, result.Error
 	}
+	if val, ok := funk.Find(*self, func(i Property) bool { return i.Key == key }).(Property); !ok {
+		*self = append(*self, val)
+	}
 	return &prop, nil
 }
 
 // New GetValue method
-func (p *Properties) GetValue(key string) (interface{}, error) {
-	//var v interface{}
-	prop, err := p.Get(key)
+func (self *Properties) GetValue(key string) (interface{}, error) {
+	prop, err := self.Get(key)
 	if err != nil {
 		return nil, err
 	}
-	//	err = prop.UnmarshalValue(v)
-	//	return &v, err
 	return prop.Value, nil
 }
-
-/*
-
-
-func (p *Properties) FromSettings(setting dto.Settings) error {
-	return db.Transaction(func(tx *gorm.DB) error {
-		err := p.DeleteAll()
-		if err != nil {
-			return err
-		}
-		mapSetting := setting.ToMap()
-		for key, value := range mapSetting {
-			err := p.Add(key, value)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-
-func (p *Properties) ToSettings(setting *dto.Settings) {
-	mapSetting := setting.ToMap()
-	for _, prop := range *p {
-		mapSetting[prop.Key] = prop.Value
-	}
-}
-
-*/

@@ -3,11 +3,14 @@ package dbom
 import (
 
 	//"gorm.io/driver/sqlite"
+
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
-var db *gorm.DB
+var (
+	db *gorm.DB
+)
 
 // initDB initializes the database connection and performs schema migration.
 //
@@ -36,4 +39,8 @@ func CloseDB() {
 
 	// Close
 	sqlDB.Close()
+}
+
+func GetDB() *gorm.DB {
+	return db
 }
