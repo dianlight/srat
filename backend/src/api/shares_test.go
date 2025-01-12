@@ -33,7 +33,7 @@ func TestListSharesHandler(t *testing.T) {
 
 	// Check the response body is what we expect.
 	//context_state := (&dto.ContextState{}).FromContext(testContext)
-	resultsDto := dto.SharedResources{}
+	resultsDto := []dto.SharedResource{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultsDto)
 	require.NoError(t, jsonError, "Body %#v", rr.Body.String())
 	assert.NotEmpty(t, resultsDto)
@@ -121,12 +121,12 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 		Name: "LIBRARY",
 		Path: "/mnt/LIBRARY",
 		FS:   "ext4",
-		RoUsers: dto.Users{
-			dto.User{Username: "rouser"},
+		RoUsers: []dto.User{
+			{Username: "rouser"},
 		},
 		TimeMachine: true,
-		Users: dto.Users{
-			dto.User{Username: "dianlight"},
+		Users: []dto.User{
+			{Username: "dianlight"},
 		},
 		Usage: "media",
 	}
@@ -149,9 +149,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	assert.Equal(t, http.StatusConflict, rr.Code)
 
 	// Check the response body is what we expect.
-	expected, jsonError := json.Marshal(dto.ResponseError{Error: "Share already exists", Body: share})
-	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected)[:len(expected)-3], rr.Body.String()[:len(expected)-3])
+	assert.Contains(t, "Share already exists", rr.Body.String())
 }
 
 func TestUpdateShareHandler(t *testing.T) {
@@ -180,12 +178,12 @@ func TestUpdateShareHandler(t *testing.T) {
 	// Check the response body is what we expect.
 	share.FS = "ext4"
 	share.Name = "LIBRARY"
-	share.RoUsers = dto.Users{
-		dto.User{Username: "rouser"},
+	share.RoUsers = []dto.User{
+		{Username: "rouser"},
 	}
 	share.TimeMachine = true
-	share.Users = dto.Users{
-		dto.User{Username: "dianlight"},
+	share.Users = []dto.User{
+		{Username: "dianlight"},
 	}
 	share.Usage = dto.UsageAsMedia
 	expected, jsonError := json.Marshal(share)

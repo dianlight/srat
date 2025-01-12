@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/mapper"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,7 @@ func TestGetSettingsHandler(t *testing.T) {
 	err = config.FromContext(testContext)
 	require.NoError(t, err)
 	var expected dto.Settings
-	err = expected.From(config)
+	err = mapper.Map(&expected, config)
 	require.NoError(t, err)
 
 	// Check the response body is what we expect.
@@ -87,7 +88,7 @@ func TestUpdateSettinsSameConfigHandler(t *testing.T) {
 	err := config.FromContext(testContext)
 	require.NoError(t, err)
 	var settings dto.Settings
-	err = settings.From(config)
+	err = mapper.Map(&settings, config)
 	require.NoError(t, err)
 
 	jsonBody, jsonError := json.Marshal(settings)

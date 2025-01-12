@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,9 +13,11 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/mapper"
 	tempiogo "github.com/dianlight/srat/tempio"
 	"github.com/icza/gog"
 	"github.com/shirou/gopsutil/v4/process"
+	"github.com/thoas/go-funk"
 )
 
 func createConfigStream(ctx context.Context) (*[]byte, error) {
@@ -27,32 +30,32 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 		return nil, err
 	}
 	var settings dto.Settings
-	err = settings.FromArray(&properties)
+	err = mapper.Map(&settings, properties)
 	if err != nil {
 		return nil, err
 	}
-	settings.ToIgnoreEmpty(&config)
+	err = mapper.Map(&config, settings)
+	if err != nil {
+		return nil, err
+	}
 	// Users
 	var sambaUsers dbom.SambaUsers
 	err = sambaUsers.Load()
 	if err != nil {
 		return nil, err
 	}
-	var users dto.Users
-	err = users.From(&sambaUsers)
+	var users []dto.User
+	err = mapper.Map(&users, sambaUsers)
 	if err != nil {
 		return nil, err
 	}
-	normalUsers, err := users.Users()
+	normalUsers := funk.Filter(users, func(u dto.User) bool { return !u.IsAdmin }).(*[]dto.User)
+	err = mapper.Map(&config.OtherUsers, normalUsers)
 	if err != nil {
 		return nil, err
 	}
-	normalUsers.ToIgnoreEmpty(&config.OtherUsers)
 	// Admin user
-	admin, err := users.AdminUser()
-	if err != nil {
-		return nil, err
-	}
+	admin := funk.Find(users, func(u dto.User) bool { return u.IsAdmin }).(*dto.User)
 	if admin == nil {
 		return nil, errors.New("No admin user found")
 	}
@@ -65,12 +68,15 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var shares dto.SharedResources
-	err = shares.FromArray(&sambaShares, "Name")
+	var shares []dto.SharedResource
+	err = mapper.Map(&shares, sambaShares) //.FromArray(&sambaShares, "Name")
 	if err != nil {
 		return nil, err
 	}
-	shares.ToIgnoreEmpty(&config.Shares)
+	err = mapper.Map(&config.Shares, shares)
+	if err != nil {
+		return nil, err
+	}
 	// Special setting parameters to remove after upgrade
 	for _, cshare := range config.Shares {
 		if cshare.Usage == "media" {
@@ -126,33 +132,34 @@ func GetSambaProcess() (*process.Process, error) {
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/samba/apply [put]
 func ApplySamba(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 
 	stream, err := createConfigStream(r.Context())
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error creating config stream", err.Error())
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 	smbConfigFile := r.Context().Value("samba_config_file").(*string)
 	if *smbConfigFile == "" {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "No file to write", nil)
+		HttpJSONReponse(w, fmt.Errorf("No samba config file provided"), nil)
 	} else {
 		err := os.WriteFile(*smbConfigFile, *stream, 0644)
 		if err != nil {
-			dto.ResponseError{}.ToResponseError(http.StatusAccepted, w, "Error writing file", err)
+			HttpJSONReponse(w, err, nil)
+			return
 		}
 
 		// Check samba configuration with exec testparm -s
 		cmd := exec.Command("testparm", "-s", *smbConfigFile)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error executing testparm", map[string]any{"error": err, "output": string(out)})
+			err = fmt.Errorf("Error executing testparm: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
+			HttpJSONReponse(w, err, nil)
 			return
 		}
 
 		process, err := GetSambaProcess()
 		if err != nil {
-			dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error getting Samba process", err)
+			HttpJSONReponse(w, err, nil)
 			return
 		}
 
@@ -161,12 +168,13 @@ func ApplySamba(w http.ResponseWriter, r *http.Request) {
 			cmdr := exec.Command("smbcontrol", "smbd", "reload-config")
 			out, err = cmdr.CombinedOutput()
 			if err != nil {
-				dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error executing smbcontrol", map[string]any{"error": err, "output": string(out)})
+				err = fmt.Errorf("Error executing testparm: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
+				HttpJSONReponse(w, err, nil)
 				return
 			}
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		HttpJSONReponse(w, nil, nil)
 	}
 }
 
@@ -181,18 +189,16 @@ func ApplySamba(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/samba [get]
 func GetSambaConfig(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	var smbConf dto.SmbConf
 
 	stream, err := createConfigStream(r.Context())
 	if err != nil {
-		smbConf.ToResponseError(http.StatusInternalServerError, w, "Error creating config stream", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
 	smbConf.Data = string(*stream)
-	smbConf.ToResponse(http.StatusOK, w)
+	HttpJSONReponse(w, smbConf, nil)
 }
 
 // GetSambaPrecessStatus godoc
@@ -207,18 +213,17 @@ func GetSambaConfig(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/samba/status [get]
 func GetSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 
 	var sambaP dto.SambaProcessStatus
 
 	var spid, err = GetSambaProcess()
 	if err != nil {
-		sambaP.ToResponseError(http.StatusInternalServerError, w, "Error getting samba process", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
 	if spid == nil {
-		sambaP.ToResponseError(http.StatusNotFound, w, "Samba process not found", nil)
+		HttpJSONReponse(w, fmt.Errorf("Samba process not found"), nil)
 		return
 	}
 
@@ -234,5 +239,5 @@ func GetSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
 	sambaP.Status = gog.Must(spid.Status())
 	sambaP.IsRunning = gog.Must(spid.IsRunning())
 
-	sambaP.ToResponse(http.StatusOK, w)
+	HttpJSONReponse(w, sambaP, nil)
 }

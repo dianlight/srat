@@ -3,18 +3,20 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/mapper"
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )
 
 var (
-	sharesQueue      = map[string](chan *dto.SharedResources){}
+	sharesQueue      = map[string](chan *[]dto.SharedResource){}
 	sharesQueueMutex = sync.RWMutex{}
 )
 
@@ -93,21 +95,19 @@ func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
 //	@Failure		500	{object}	dto.ResponseError
 //	@Router			/shares [get]
 func ListShares(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	var shares dto.SharedResources
+	var shares []dto.SharedResource
 	var dbshares dbom.ExportedShares
 	err := dbshares.Load()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = shares.From(dbshares)
+	err = mapper.Map(&shares, dbshares)
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err.Error())
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	shares.ToResponse(http.StatusOK, w)
+	HttpJSONReponse(w, shares, nil)
 }
 
 // GetShare godoc
@@ -123,25 +123,25 @@ func ListShares(w http.ResponseWriter, r *http.Request) {
 //	@Router			/share/{share_name} [get]
 func GetShare(w http.ResponseWriter, r *http.Request) {
 	shareName := mux.Vars(r)["share_name"]
-	w.Header().Set("Content-Type", "application/json")
 
 	dbshare := dbom.ExportedShare{Name: shareName}
 	err := dbshare.Get()
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		dto.ResponseError{}.ToResponseError(http.StatusNotFound, w, "Share not found", nil)
+		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
+			Code: http.StatusNotFound,
+		})
 	} else if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 	share := dto.SharedResource{}
-	err = share.From(dbshare)
+	err = mapper.Map(&share, dbshare)
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
-	share.ToResponse(http.StatusOK, w)
-
+	HttpJSONReponse(w, share, nil)
 }
 
 // CreateShare godoc
@@ -159,52 +159,72 @@ func GetShare(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500		{object}	dto.ResponseError
 //	@Router			/share [post]
 func CreateShare(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 
 	var share dto.SharedResource
-	share.FromJSONBody(w, r)
+	err := HttpJSONRequest(&share, w, r)
+	if err != nil {
+		return
+	}
 
 	dbshare := &dbom.ExportedShare{
 		//		Model: gorm.Model{ID: *share.ID},
 		Name: share.Name,
 	}
-	err := dbshare.Get()
+	err = dbshare.Get()
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		dto.ResponseError{}.ToResponseError(http.StatusConflict, w, "Share already exists", dbshare)
+		HttpJSONReponse(w, fmt.Errorf("Share already exists"), &Options{
+			Code: http.StatusConflict,
+		})
 		return
 	} else if err == nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
-	share.To(dbshare)
+	err = mapper.Map(&dbshare, share)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
 	err = dbshare.Save()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	share.From(dbshare)
-	context_state.DataDirtyTracker.Shares = true
-	var shares dto.SharedResources
-	err = shares.From(dbshare)
+	err = mapper.Map(&share, dbshare)
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	notifyClient(&shares)
-	share.ToResponse(http.StatusCreated, w)
+	context_state.DataDirtyTracker.Shares = true
+	notifyClient()
+	HttpJSONReponse(w, share, &Options{
+		Code: http.StatusCreated,
+	})
 }
 
 // notifyClient sends the current shares configuration to all connected clients.
 // It iterates through the sharesQueue, sending the Config.Shares to each client's channel.
 // This function is used to broadcast updates to all clients when the shares configuration changes.
 // The function uses a read lock to ensure thread-safe access to the sharesQueue.
-func notifyClient(in *dto.SharedResources) {
+func notifyClient() {
+	var shares []dto.SharedResource
+	var dbshares = &dbom.ExportedShares{}
+	err := dbshares.Load()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	err = mapper.Map(&shares, dbshares)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 	sharesQueueMutex.RLock()
 	for _, v := range sharesQueue {
-		v <- in
+		v <- &shares
 	}
 	sharesQueueMutex.RUnlock()
 }
@@ -226,40 +246,44 @@ func notifyClient(in *dto.SharedResources) {
 //	@Router			/share/{share_name} [put]
 func UpdateShare(w http.ResponseWriter, r *http.Request) {
 	share_name := mux.Vars(r)["share_name"]
-	w.Header().Set("Content-Type", "application/json")
 
 	var share dto.SharedResource
-	share.FromIgnoreEmpty(share)
+	err := HttpJSONRequest(&share, w, r)
+	if err != nil {
+		return
+	}
 
 	dbshare := &dbom.ExportedShare{
 		Model: gorm.Model{ID: *share.ID},
 		Name:  share_name,
 	}
-	err := dbshare.Get()
+	err = dbshare.Get()
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		dto.ResponseError{}.ToResponseError(http.StatusNotFound, w, "Share not exists", dbshare)
+		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
+			Code: http.StatusNotFound,
+		})
 		return
 	} else if err == nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	share.ToIgnoreEmpty(dbshare)
+	err = mapper.Map(&dbshare, share)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
 	err = dbshare.Save()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Shares = true
-	var shares dto.SharedResources
-	err = shares.From(dbshare)
-	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
-		return
-	}
-	notifyClient(&shares)
-	share.ToResponse(http.StatusCreated, w)
+	notifyClient()
+	HttpJSONReponse(w, share, &Options{
+		Code: http.StatusCreated,
+	})
 }
 
 // DeleteShare godoc
@@ -276,40 +300,44 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 //	@Router			/share/{share_name} [delete]
 func DeleteShare(w http.ResponseWriter, r *http.Request) {
 	share_name := mux.Vars(r)["share_name"]
-	w.Header().Set("Content-Type", "application/json")
 
 	var share dto.SharedResource
-	share.FromIgnoreEmpty(share)
+	err := HttpJSONRequest(&share, w, r)
+	if err != nil {
+		return
+	}
 
 	dbshare := &dbom.ExportedShare{
 		Model: gorm.Model{ID: *share.ID},
 		Name:  share_name,
 	}
-	err := dbshare.Get()
+	err = dbshare.Get()
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		dto.ResponseError{}.ToResponseError(http.StatusNotFound, w, "Share not exists", dbshare)
+		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
+			Code: http.StatusNotFound,
+		})
 		return
 	} else if err == nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
-	share.ToIgnoreEmpty(dbshare)
+	err = mapper.Map(&dbshare, share)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
 	err = dbshare.Delete()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Shares = true
-	var shares dto.SharedResources
-	err = shares.From(dbshare)
-	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Internal error", err)
-		return
-	}
-	notifyClient(&shares)
-	share.ToResponse(http.StatusCreated, w)
+	notifyClient()
+	HttpJSONReponse(w, share, &Options{
+		Code: http.StatusCreated,
+	})
 }
 
 // SharesWsHandler handles WebSocket connections for share updates.
@@ -324,11 +352,11 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 func SharesWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
 	sharesQueueMutex.Lock()
 	if sharesQueue[request.Uid] == nil {
-		sharesQueue[request.Uid] = make(chan *dto.SharedResources, 10)
+		sharesQueue[request.Uid] = make(chan *[]dto.SharedResource, 10)
 	}
 	var dbshare dbom.ExportedShare
-	var shares dto.SharedResources
-	err := shares.From(dbshare)
+	var shares []dto.SharedResource
+	err := mapper.Map(&shares, dbshare)
 	if err != nil {
 		log.Println(err)
 		return

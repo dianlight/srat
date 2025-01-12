@@ -17,6 +17,7 @@ import (
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/mapper"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v68/github"
 	"github.com/jaypipes/ghw"
@@ -67,7 +68,7 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 		return
 	}
 	var settings dto.Settings
-	err = settings.From(&properties)
+	err = mapper.Map(&settings, properties)
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 		return
@@ -149,8 +150,7 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/health [get]
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json") // FIXME: Move healthData to context
-	healthData.ToResponse(http.StatusOK, w)
+	HttpJSONReponse(w, healthData, nil)
 }
 
 // HealthCheckWsHandler handles WebSocket connections for health check updates.
@@ -296,26 +296,25 @@ func (w *ProgressWriter) N() int64 {
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/update [put]
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 
 	log.Printf("Updating to version %s", *lastReleaseData.LastRelease.TagName) // FIXME: Move latest realase to context
 
 	lastReleaseData.UpdateStatus = 0
 	var gh = github.NewClient(nil)
 	if lastReleaseData.ArchAsset == nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Asset not found for architecture "+runtime.GOARCH, nil)
+		HttpJSONReponse(w, fmt.Errorf("No asset found for architecture %s", runtime.GOARCH), nil)
 		return
 	}
 
 	rc, _, err := gh.Repositories.DownloadReleaseAsset(context.Background(), "dianlight", "srat", *lastReleaseData.ArchAsset.ID, http.DefaultClient)
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error downloading release asset: ", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 	//defer rc.Close()
 	tmpFile, err := os.OpenFile(data.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Error creating temporary file: ", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 	//defer tmpFile.Close()
@@ -345,7 +344,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	lastReleaseData.ToResponse(http.StatusOK, w)
+	HttpJSONReponse(w, lastReleaseData, nil)
 }
 
 // RestartHandler godoc
@@ -374,17 +373,20 @@ func RestartHandler(w http.ResponseWriter, r *http.Request) {
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/nics [get]
 func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json") // FIXME: Use DTO for transport and cache values
 
 	net, err := ghw.Network()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Unable to fetch network information", err)
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 
 	var info dto.NetworkInfo
-	info.From(net)
-	info.ToResponse(http.StatusOK, w)
+	err = mapper.Map(&info, net)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+	HttpJSONReponse(w, info, nil)
 }
 
 // ReadLinesOffsetN reads contents from file and splits them by new line.
@@ -453,16 +455,19 @@ func getFileSystems() ([]string, error) {
 //	@Failure		405	{object}	dto.ResponseError
 //	@Router			/filesystems [get]
 func GetFSHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 
 	fs, err := getFileSystems()
 	if err != nil {
-		dto.ResponseError{}.ToResponseError(http.StatusInternalServerError, w, "Unable to fetch filesystems", err.Error())
+		HttpJSONReponse(w, err, nil)
 		return
 	}
 	var xfs dto.FilesystemTypes
-	xfs.From(fs)
-	xfs.ToResponse(http.StatusOK, w)
+	err = mapper.Map(&xfs, fs)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+	HttpJSONReponse(w, xfs, nil)
 }
 
 // PersistVolumesState saves the current state of mounted volumes to persistent storage.

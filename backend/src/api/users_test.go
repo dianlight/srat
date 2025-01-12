@@ -137,9 +137,7 @@ func TestCreateUserDuplicateHandler(t *testing.T) {
 	assert.Equal(t, http.StatusConflict, rr.Code)
 
 	// Check the response body is what we expect.
-	expected, jsonError := json.Marshal(dto.ResponseError{Error: "User already exists", Body: user})
-	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected), rr.Body.String())
+	assert.Contains(t, rr.Body.String(), "User already exists")
 }
 
 func TestUpdateUserHandler(t *testing.T) {

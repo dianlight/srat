@@ -118,8 +118,8 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 		},
 		Options: Options{
 			OtherUsers: []User{
-				User{Username: "utente1", Password: "Test Password"},
-				User{Username: "utente2", Password: "Test Password"},
+				{Username: "utente1", Password: "Test Password"},
+				{Username: "utente2", Password: "Test Password"},
 			},
 			ACL: []OptionsAcl{
 				{
@@ -296,7 +296,7 @@ func TestMappableToDtoSharedResources(t *testing.T) {
 	//require.NoError(t,json.Unmarshal(bdata,data))
 
 	assert.Len(t, _dto, 10, "Size of shared resources is not as expected %#v", _dto)
-	assert.Contains(t, _dto, dto.SharedResource{ID: (*uint)(nil), Name: "addons", Path: "/addons", FS: "native", Disabled: false, Users: []dto.User{dto.User{Username: "", Password: "", IsAdmin: false}}, RoUsers: []dto.User(nil), TimeMachine: false, Usage: "none", DirtyStatus: false, DeviceId: (*uint64)(nil), Invalid: false})
+	assert.Contains(t, _dto, dto.SharedResource{ID: (*uint)(nil), Name: "addons", Path: "/addons", FS: "native", Disabled: false, Users: []dto.User{{Username: "", Password: "", IsAdmin: false}}, RoUsers: []dto.User(nil), TimeMachine: false, Usage: "none", DirtyStatus: false, DeviceId: (*uint64)(nil), Invalid: false})
 	// assert.Contains(t, fmt.Sprintf("%v", _dto), "utente2")
 	// assert.Contains(t, fmt.Sprintf("%v", _dto), "rouser")
 	// assert.Contains(t, _dto, dto.User{Username: "dianlight", Password: "hassio2010", IsAdmin: true})
