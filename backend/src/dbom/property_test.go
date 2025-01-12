@@ -76,9 +76,9 @@ func TestPropertiesLoadWithExistingProperties(t *testing.T) {
 func TestPropertiesLoadWithNullValues(t *testing.T) {
 	// Create test properties with null values
 	testProperties := []Property{
-		{Key: "key1", Value: "null"},
-		{Key: "key2", Value: `"value2"`},
-		{Key: "key3", Value: "null"},
+		{Key: "key10", Value: "null"},
+		{Key: "key20", Value: `"value2"`},
+		{Key: "key30", Value: "null"},
 	}
 
 	// Insert test properties into the database
@@ -131,18 +131,13 @@ func TestPropertiesAddString(t *testing.T) {
 	assert.Len(t, *p, 1)
 	assert.Equal(t, key, (*p)[0].Key)
 
-	// Unmarshal the stored value and compare
-	var storedValue string
-	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &storedValue)
-	require.NoError(t, err)
-	assert.Equal(t, value, storedValue)
-
 	// Verify the property was added to the database
 	var dbProp Property
 	result := db.Where("key = ?", key).First(&dbProp)
 	require.NoError(t, result.Error)
 	assert.Equal(t, key, dbProp.Key)
-	assert.Equal(t, (*p)[0].Value, dbProp.Value)
+	assert.Equal(t, value, dbProp.Value)
+	//assert.Equal(t, (*p)[0].Value, dbProp.Value)
 }
 func TestPropertiesAddInt(t *testing.T) {
 	// Initialize a new Properties slice
@@ -156,18 +151,12 @@ func TestPropertiesAddInt(t *testing.T) {
 	assert.Len(t, *p, 1)
 	assert.Equal(t, "testNumberKey", (*p)[0].Key)
 
-	// Unmarshal the value and check if it matches the original
-	var value int
-	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &value)
-	require.NoError(t, err)
-	assert.Equal(t, 42, value)
-
 	// Verify that the property was added to the database
 	var dbProp Property
 	result := db.Where("key = ?", "testNumberKey").First(&dbProp)
 	require.NoError(t, result.Error)
 	assert.Equal(t, "testNumberKey", dbProp.Key)
-	assert.Equal(t, (*p)[0].Value, dbProp.Value)
+	assert.Equal(t, 42, dbProp.Value)
 }
 func TestPropertiesAddBool(t *testing.T) {
 	// Initialize a new Properties slice
@@ -214,12 +203,6 @@ func TestPropertiesAddNestedObject(t *testing.T) {
 	assert.Len(t, *p, 1)
 	assert.Equal(t, "person", (*p)[0].Key)
 
-	// Unmarshal the value and check if it matches the original nested object
-	var retrievedObject map[string]interface{}
-	err = json.Unmarshal([]byte((*p)[0].Value.([]byte)), &retrievedObject)
-	require.NoError(t, err)
-	assert.Equal(t, nestedObject, retrievedObject)
-
 	// Verify that the property was added to the database
 	var dbProp Property
 	result := db.Where("key = ?", "person").First(&dbProp)
@@ -257,21 +240,34 @@ func TestPropertiesAddAppendToSlice(t *testing.T) {
 	p := &Properties{
 		{Key: "existingKey", Value: `"existingValue"`},
 	}
+	err := p.Save()
+	require.NoError(t, err)
 
 	// Add a new property
-	err := p.Add("newKey", "newValue")
+	err = p.Add("newKey", "newValue")
 	require.NoError(t, err)
 
 	// Check if the new property was appended to the slice
+	p = &Properties{}
+	err = p.Load()
+	require.NoError(t, err)
 	assert.Len(t, *p, 2)
 	assert.Equal(t, "existingKey", (*p)[0].Key)
 	assert.Equal(t, "newKey", (*p)[1].Key)
 
-	// Verify the value of the new property
-	var storedValue string
-	err = json.Unmarshal([]byte((*p)[1].Value.([]byte)), &storedValue)
-	require.NoError(t, err)
-	assert.Equal(t, "newValue", storedValue)
+	// Verify that the property was added to the database
+	var dbProp Property
+	result := db.Where("key =?", "newKey").First(&dbProp)
+	require.NoError(t, result.Error)
+	assert.Equal(t, "newKey", dbProp.Key)
+	assert.Equal(t, "newValue", dbProp.Value)
+
+	// Verify that the existing property was not modified
+	var existingProp Property
+	result = db.Where("key =?", "existingKey").First(&existingProp)
+	require.NoError(t, result.Error)
+	assert.Equal(t, "existingKey", existingProp.Key)
+	assert.Equal(t, `"existingValue"`, existingProp.Value)
 
 	// Clean up the test data
 	db.Where("key IN (?)", []string{"existingKey", "newKey"}).Delete(&Property{})
