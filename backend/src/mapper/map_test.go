@@ -344,6 +344,7 @@ func TestMapFromStructToSlice(t *testing.T) {
 		Pluto       string
 		Minni       string
 		ZioPaperone map[string]string
+		NonnaPapera []string
 	}
 
 	src := TestStuctSource{
@@ -353,6 +354,7 @@ func TestMapFromStructToSlice(t *testing.T) {
 		ZioPaperone: map[string]string{
 			"Age": "30",
 		},
+		NonnaPapera: []string{"Alice", "Bob", "Charlie"},
 	}
 
 	dst := make([]TestStruct, 0, 4)
@@ -360,7 +362,7 @@ func TestMapFromStructToSlice(t *testing.T) {
 	err := Map(&dst, src)
 
 	require.NoError(t, err)
-	assert.Len(t, dst, 4)
+	assert.Len(t, dst, 5)
 	assert.Equal(t, "Pippo", dst[0].Name)
 	assert.Equal(t, 30, dst[0].Value)
 	assert.Equal(t, "Pluto", dst[1].Name)
@@ -371,9 +373,11 @@ func TestMapFromStructToSlice(t *testing.T) {
 	assert.Equal(t, map[string]string{
 		"Age": "30",
 	}, dst[3].Value)
+	assert.Equal(t, "NonnaPapera", dst[4].Name)
+	assert.Equal(t, []string{"Alice", "Bob", "Charlie"}, dst[4].Value)
 }
 
-func TestMapFromStructToSliceType(t *testing.T) {
+func TestMapFromStructToSliceTypeWithDuplicate(t *testing.T) {
 	type TestStruct struct {
 		Name  string      `mapper:"key"`
 		Value interface{} `mapper:"value"`
@@ -397,7 +401,10 @@ func TestMapFromStructToSliceType(t *testing.T) {
 		},
 	}
 
-	var dst TestStructs
+	dst := TestStructs{
+		{Name: "Pippo", Value: 29},
+		{Name: "Pluto", Value: "John"},
+	}
 
 	err := Map(&dst, src)
 
@@ -428,6 +435,7 @@ func TestMapFromSliceTypeToStruct(t *testing.T) {
 		Pluto       string
 		Minni       string
 		ZioPaperone map[string]string
+		NonnaPapera []string
 	}
 
 	src := TestStructs{
@@ -435,6 +443,7 @@ func TestMapFromSliceTypeToStruct(t *testing.T) {
 		{Name: "Pluto", Value: "John Doe"},
 		{Name: "Minni", Value: "Jane Doe"},
 		{Name: "ZioPaperone", Value: map[string]string{"Age": "30"}},
+		{Name: "NonnaPapera", Value: []string{"Alpha", "Beta", "Gamma"}},
 	}
 
 	var dst TestStuctDestination
@@ -446,4 +455,5 @@ func TestMapFromSliceTypeToStruct(t *testing.T) {
 	assert.Equal(t, "John Doe", dst.Pluto)
 	assert.Equal(t, "Jane Doe", dst.Minni)
 	assert.Equal(t, map[string]string{"Age": "30"}, dst.ZioPaperone)
+	assert.Equal(t, []string{"Alpha", "Beta", "Gamma"}, dst.NonnaPapera)
 }

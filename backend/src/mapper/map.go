@@ -220,11 +220,20 @@ func fromStruct[T any](dst T, src any) error {
 		}
 		keys := funk.Keys(src)
 		for _, key := range keys.([]string) {
-
-			itemT := reflect.Indirect(reflect.New(v.Type().Elem()))
-			itemT.Field(keyfield).SetString(key)
-			itemT.Field(valuefield).Set(reflect.ValueOf(src).FieldByName(key))
-			v = reflect.Append(v, itemT)
+			var new = true
+			for i := 0; i < v.Len(); i++ {
+				if v.Index(i).Field(keyfield).Interface().(string) == key {
+					v.Index(i).Field(valuefield).Set(reflect.ValueOf(src).FieldByName(key))
+					new = false
+					break
+				}
+			}
+			if new {
+				itemT := reflect.Indirect(reflect.New(v.Type().Elem()))
+				itemT.Field(keyfield).SetString(key)
+				itemT.Field(valuefield).Set(reflect.ValueOf(src).FieldByName(key))
+				v = reflect.Append(v, itemT)
+			}
 		}
 		reflect.ValueOf(dst).Elem().Set(v)
 		return nil
