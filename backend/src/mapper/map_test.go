@@ -422,6 +422,57 @@ func TestMapFromStructToSliceTypeWithDuplicate(t *testing.T) {
 	}, dst[3].Value)
 }
 
+func TestMapFromStructToSliceTypeWithIngoreEmpty(t *testing.T) {
+	type TestStruct struct {
+		Name  string      `mapper:"key"`
+		Value interface{} `mapper:"value"`
+	}
+
+	type TestStructs []TestStruct
+
+	type TestStuctSource struct {
+		Pippo       int
+		Pluto       string
+		Minni       string
+		ZioPaperone map[string]string
+		NonnaPapera []string
+	}
+
+	src := TestStuctSource{
+		Pippo: 30,
+		Pluto: "John Doe",
+		Minni: "Jane Doe",
+		ZioPaperone: map[string]string{
+			"Age": "30",
+		},
+		NonnaPapera: nil,
+	}
+
+	dst := TestStructs{
+		{Name: "Pippo", Value: 29},
+		{Name: "Pluto", Value: "John"},
+		{Name: "NonnaPapera", Value: []string{"John"}},
+	}
+
+	err := Map(&dst, src)
+
+	require.NoError(t, err)
+	assert.Len(t, dst, 5)
+	assert.Equal(t, "Pippo", dst[0].Name)
+	assert.Equal(t, 30, dst[0].Value)
+	assert.Equal(t, "Pluto", dst[1].Name)
+	assert.Equal(t, "John Doe", dst[1].Value)
+	assert.Equal(t, "Minni", dst[3].Name)
+	assert.Equal(t, "Jane Doe", dst[3].Value)
+	assert.Equal(t, "ZioPaperone", dst[4].Name)
+	assert.Equal(t, map[string]string{
+		"Age": "30",
+	}, dst[4].Value)
+	assert.Equal(t, "NonnaPapera", dst[2].Name)
+	assert.Equal(t, []string{"John"}, dst[2].Value)
+
+}
+
 func TestMapFromSliceTypeToStruct(t *testing.T) {
 	type TestStruct struct {
 		Name  string      `mapper:"key"`

@@ -19,7 +19,6 @@ import (
 //	@Produce		json
 //	@Param			config	body		dto.Settings	true	"Update model"
 //	@Success		200		{object}	dto.Settings
-//	@Success		204
 //	@Failure		400	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/global [put]
@@ -59,7 +58,7 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	context_state.DataDirtyTracker.Settings = true
 	UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
-	HttpJSONReponse(w, nil, nil)
+	HttpJSONReponse(w, config, nil)
 }
 
 // GetSettings godoc
@@ -86,5 +85,5 @@ func GetSettings(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	HttpJSONReponse(w, nil, nil)
+	HttpJSONReponse(w, settings, nil)
 }
