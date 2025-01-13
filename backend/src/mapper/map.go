@@ -12,14 +12,10 @@ import (
 func Map(dst any, src any) error {
 	vdst := reflect.ValueOf(dst)
 	if vdst.Kind() != reflect.Ptr {
-		return tracerr.Wrap(fmt.Errorf("Unsupported destination type: %T a pointer is required!", dst))
+		return tracerr.Errorf("Unsupported destination type: %T a pointer is required!", dst)
 	}
 	if vdst.IsNil() {
-		//fmt.Println(vdst.CanSet())
-		//		vdst.SetPointer(reflect.New(reflect.TypeOf(dst).Elem()).UnsafePointer())
-		//		dst = vdst.Interface()
-		return tracerr.Wrap(fmt.Errorf("Unsupported Nil destination"))
-		//		reflect.NewAt(reflect.TypeOf(dst).Elem(), unsafe.Pointer(vdst.UnsafePointer())).Elem().Set(reflect.New(reflect.TypeOf(dst).Elem()))
+		return tracerr.Errorf("Unsupported Nil destination")
 	}
 	if src == nil {
 		return nil
@@ -60,7 +56,7 @@ func Map(dst any, src any) error {
 		reflect.String:
 		return fromNative(dst, src)
 	default:
-		return tracerr.Wrap(fmt.Errorf("Unsupported source type: %T for destination %T", src, dst))
+		return tracerr.Errorf("Unsupported source type: %T for destination %T", src, dst)
 	}
 }
 
@@ -170,7 +166,7 @@ func fromSlice(dst any, src any /*[]any*/) error {
 			}
 		}
 		if keyfield == -1 || valuefield == -1 {
-			return fmt.Errorf("(fromStruct) Unsupported destination type %T for source %T\n Only slice with key/value struct with tags mapper:key and mapper:value are accepted from struct", src, dst)
+			return tracerr.Errorf("(fromSlice) Unsupported destination type %T for source %T\n Only slice of key/value struct with tags mapper:key and mapper:value are accepted as source of struct", src, dst)
 		}
 		for i := 0; i < vsrc.Len(); i++ {
 			key := vsrc.Index(i).Field(keyfield).Interface().(string)
@@ -192,8 +188,31 @@ func fromSlice(dst any, src any /*[]any*/) error {
 			}
 		}
 		return nil
+	case reflect.Map:
+		keyfield := -1
+		if vsrc.Len() == 0 {
+			return nil
+		}
+		for ix := 0; ix < vsrc.Type().Elem().NumField(); ix++ {
+			if vsrc.Type().Elem().Field(ix).Tag.Get("mapper") == "mapkey" {
+				keyfield = ix
+				break
+			}
+		}
+		if keyfield == -1 {
+			return tracerr.Errorf("(fromSlice) Unsupported destination type %T for source %T\n Only slice of struct with tags mapper:mapkey are accepted as source for map", src, dst)
+		}
+		for i := 0; i < vsrc.Len(); i++ {
+			itemT := reflect.New(v.Type().Elem()).Interface()
+			if err := Map(itemT, vsrc.Index(i).Interface()); err != nil {
+				return tracerr.Wrap(err)
+			}
+			v.SetMapIndex(vsrc.Index(i).Field(keyfield), reflect.ValueOf(itemT).Elem())
+		}
+		reflect.ValueOf(dst).Elem().Set(v)
+		return nil
 	default:
-		return fmt.Errorf("(fromSlice) Unsupported item type %T for destination %T", src, dst)
+		return tracerr.Errorf("(fromSlice) Unsupported item type %T for destination %T", src, dst)
 	}
 }
 
@@ -232,7 +251,7 @@ func fromStruct[T any](dst T, src any) error {
 			}
 		}
 		if keyfield == -1 || valuefield == -1 {
-			return fmt.Errorf("(fromStruct) Unsupported destination type %T for source %T\n Only slice with key/value struct with tags mapper:key and mapper:value are accepted from struct", src, dst)
+			return tracerr.Errorf("(fromStruct) Unsupported destination type %T for source %T\n Only slice with key/value struct with tags mapper:key and mapper:value are accepted from struct", src, dst)
 		}
 		keys := funk.Keys(src)
 		for _, key := range keys.([]string) {
@@ -258,7 +277,7 @@ func fromStruct[T any](dst T, src any) error {
 		reflect.ValueOf(dst).Elem().Set(v)
 		return nil
 	default:
-		return fmt.Errorf("(fromStruct) Unsupported source type: %T for destination %T", src, dst)
+		return tracerr.Errorf("(fromStruct) Unsupported source type: %T for destination %T", src, dst)
 	}
 }
 
@@ -306,8 +325,11 @@ func _fromNative(v reflect.Value, src reflect.Value) error {
 			v.Set(reflect.Zero(v.Type().Elem()))
 			return nil
 		}
+		if v.IsNil() {
+			v.Set(reflect.New(v.Type().Elem()))
+		}
 		return _fromNative(reflect.Indirect(v), src)
 	default:
-		return fmt.Errorf("(fromNative) Unsupported source type: %T for destination %T", src.Interface(), v.Interface())
+		return tracerr.Errorf("(fromNative) Unsupported source type: %s for destination %s", src.Type().Name(), v.Type().Name())
 	}
 }

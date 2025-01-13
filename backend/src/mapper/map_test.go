@@ -518,3 +518,58 @@ func TestMapFromSliceTypeToStruct(t *testing.T) {
 	assert.Equal(t, []string{"Alpha", "Beta", "Gamma"}, dst.NonnaPapera)
 	assert.Equal(t, 42, *dst.Peperoga)
 }
+
+func TestMapFromSliceToMap(t *testing.T) {
+	type TestStruct struct {
+		//		Name  string      `mapper:"key"`
+		//		Value interface{} `mapper:"value"`
+		Pippo       int
+		Pluto       string `mapper:"mapkey"`
+		Minni       string
+		ZioPaperone map[string]string
+		NonnaPapera []string
+		Peperoga    *int
+	}
+
+	type TestStructs []TestStruct
+
+	type TestStuctDestination struct {
+		Pippo       int
+		Pluto       string
+		Minni       string
+		ZioPaperone map[string]string
+		NonnaPapera []string
+		Peperoga    *int
+	}
+
+	type TestMapDestinations map[string]TestStuctDestination
+
+	var pp = 10
+	src := TestStructs{
+		{Pippo: 30,
+			Pluto: "John Doe",
+			Minni: "Jane Doe",
+			ZioPaperone: map[string]string{
+				"Age": "30",
+			},
+			NonnaPapera: nil,
+			Peperoga:    &pp},
+		{Pippo: 300,
+			Pluto: "John Doe Dow",
+			Minni: "Jane Doe Din",
+			ZioPaperone: map[string]string{
+				"Rest": "10",
+			},
+			NonnaPapera: []string{"Alpha", "Beta", "Gamma"},
+			Peperoga:    nil},
+	}
+
+	dst := TestMapDestinations{}
+
+	err := Map(&dst, src)
+
+	require.NoError(t, err, tracerr.SprintSourceColor(err))
+	assert.Len(t, dst, 2)
+	assert.EqualValues(t, src[0], dst[src[0].Pluto])
+	assert.EqualValues(t, src[1], dst[src[1].Pluto])
+}
