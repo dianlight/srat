@@ -96,15 +96,16 @@ func fromMap(dst any, src any /*map[string]any*/) error {
 		for isrc.Next() {
 			ks := isrc.Key()
 			vs := isrc.Value()
-			idst := v.MapRange()
-			for idst.Next() {
-				kd := idst.Key()
-				vd := idst.Value()
-				if ks.Interface() == kd.Interface() {
-					if err := Map(vd.Interface(), vs.Interface()); err != nil {
-						return err
-					}
+			if vs.CanConvert(reflect.TypeOf(v).Elem()) {
+				v.SetMapIndex(ks, vs.Convert(reflect.TypeOf(v).Elem()))
+			} else {
+				itemT := reflect.New(v.Elem().Type()).Interface()
+				err := Map(itemT, vs.Interface())
+				if err != nil {
+					return err
 				}
+				v.SetMapIndex(ks, reflect.ValueOf(itemT).Elem())
+
 			}
 		}
 		return nil
@@ -164,7 +165,7 @@ func fromSlice(dst any, src any /*[]any*/) error {
 		}
 		for i := 0; i < vsrc.Len(); i++ {
 			key := vsrc.Index(i).Field(keyfield).Interface().(string)
-			value := reflect.Indirect(vsrc.Index(i).Field(valuefield))
+			value := redirectValue(vsrc.Index(i).Field(valuefield))
 			if value.CanConvert(v.FieldByName(key).Type()) {
 				v.FieldByName(key).Set(value.Convert(v.FieldByName(key).Type()))
 			} else {
