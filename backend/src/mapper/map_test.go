@@ -304,7 +304,7 @@ func TestMapTypeConversions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 42, dst.IntValue)
 	assert.InDelta(t, 3.14, dst.FloatValue, 0.01)
-	assert.Equal(t, "{", dst.StringValue)
+	assert.Equal(t, "123", dst.StringValue)
 	//assert.Equal(t, []int{1, 2, 3}, dst.SliceValue)
 	//assert.Equal(t, map[string]int{"key": 42}, dst.MapValue)
 	assert.True(t, dst.BoolValue)

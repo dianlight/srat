@@ -39,7 +39,7 @@ func Map(dst any, src any) error {
 	v := reflect.ValueOf(src)
 	switch reflect.Indirect(v).Kind() {
 	case reflect.Map:
-		return fromMap(dst, src.(map[string]any))
+		return fromMap(dst, src /*.(map[string]any)*/)
 	case reflect.Slice:
 		return fromSlice(dst, src)
 	case reflect.Struct:
@@ -76,11 +76,14 @@ func redirectValue(value reflect.Value) reflect.Value {
 	}
 }
 
-func fromMap(dst any, src map[string]any) error {
-	v := reflect.ValueOf(dst)
-	switch kid := reflect.Indirect(v).Kind(); kid {
+func fromMap(dst any, src any /*map[string]any*/) error {
+	v := reflect.Indirect(reflect.ValueOf(dst))
+	vsrc := reflect.Indirect(reflect.ValueOf(src))
+	switch kid := v.Kind(); kid {
 	case reflect.Slice:
-		for _, item := range src {
+		for i := 0; i < vsrc.Len(); i++ {
+			//for _, item := range src {
+			var item = vsrc.Index(i).Interface()
 			var itemT any
 			if err := Map(&itemT, item); err != nil {
 				return err
@@ -89,28 +92,34 @@ func fromMap(dst any, src map[string]any) error {
 		}
 		return nil
 	case reflect.Map:
-		for k, v := range src {
-			var itemT any
-			if err := Map(&itemT, v); err != nil {
-				return err
-			} else {
-				src[k] = itemT
+		isrc := vsrc.MapRange()
+		for isrc.Next() {
+			ks := isrc.Key()
+			vs := isrc.Value()
+			idst := v.MapRange()
+			for idst.Next() {
+				kd := idst.Key()
+				vd := idst.Value()
+				if ks.Interface() == kd.Interface() {
+					if err := Map(vd.Interface(), vs.Interface()); err != nil {
+						return err
+					}
+				}
 			}
 		}
 		return nil
 	case reflect.Struct, reflect.Interface:
-		keys := funk.Keys(dst)
-		for _, key := range keys.([]string) {
-			nvt := redirectValue(reflect.ValueOf(dst)).FieldByName(key)
-			x := reflect.ValueOf(src[key])
-			if !x.IsValid() {
+		for _, key := range vsrc.MapKeys() {
+			nvt := redirectValue(v).FieldByName(key.Interface().(string))
+			x := vsrc.MapIndex(key)
+			if !nvt.IsValid() {
 				continue
 			}
 			if x.CanConvert(nvt.Type()) {
 				nvt.Set(x.Convert(nvt.Type()))
 			} else {
 				itemT := reflect.New(nvt.Type()).Interface()
-				err := Map(itemT, src[key])
+				err := Map(itemT, vsrc.MapIndex(key).Interface())
 				if err != nil {
 					return err
 				}
