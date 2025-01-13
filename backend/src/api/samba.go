@@ -18,6 +18,7 @@ import (
 	"github.com/icza/gog"
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/thoas/go-funk"
+	"github.com/ztrue/tracerr"
 )
 
 func createConfigStream(ctx context.Context) (*[]byte, error) {
@@ -32,31 +33,31 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 	var settings dto.Settings
 	err = mapper.Map(&settings, properties)
 	if err != nil {
-		return nil, err
+		return nil, tracerr.Wrap(err)
 	}
 	err = mapper.Map(&config, settings)
 	if err != nil {
-		return nil, err
+		return nil, tracerr.Wrap(err)
 	}
 	// Users
 	var sambaUsers dbom.SambaUsers
 	err = sambaUsers.Load()
 	if err != nil {
-		return nil, err
+		return nil, tracerr.Wrap(err)
 	}
 	var users []dto.User
 	err = mapper.Map(&users, sambaUsers)
 	if err != nil {
-		return nil, err
+		return nil, tracerr.Wrap(err)
 	}
-	normalUsers := funk.Filter(users, func(u dto.User) bool { return !u.IsAdmin }).(*[]dto.User)
+	normalUsers := funk.Filter(users, func(u dto.User) bool { return !u.IsAdmin }).([]dto.User)
 	err = mapper.Map(&config.OtherUsers, normalUsers)
 	if err != nil {
-		return nil, err
+		return nil, tracerr.Wrap(err)
 	}
 	// Admin user
-	admin := funk.Find(users, func(u dto.User) bool { return u.IsAdmin }).(*dto.User)
-	if admin == nil {
+	admin, ok := funk.Find(users, func(u dto.User) bool { return u.IsAdmin }).(dto.User)
+	if !ok {
 		return nil, errors.New("No admin user found")
 	}
 	config.Username = admin.Username
@@ -66,16 +67,16 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 	var sambaShares dbom.ExportedShares
 	err = sambaShares.Load()
 	if err != nil {
-		return nil, err
+		return nil, tracerr.Wrap(err)
 	}
 	var shares []dto.SharedResource
 	err = mapper.Map(&shares, sambaShares) //.FromArray(&sambaShares, "Name")
 	if err != nil {
-		return nil, err
+		return nil, tracerr.Wrap(err)
 	}
 	err = mapper.Map(&config.Shares, shares)
 	if err != nil {
-		return nil, err
+		return nil, tracerr.Wrap(err)
 	}
 	// Special setting parameters to remove after upgrade
 	for _, cshare := range config.Shares {
@@ -91,7 +92,7 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 	config_2 := config.ConfigToMap()
 	templateData := ctx.Value("template_data").([]byte)
 	data, err := tempiogo.RenderTemplateBuffer(config_2, templateData)
-	return &data, err
+	return &data, tracerr.Wrap(err)
 }
 
 // GetSambaProcess retrieves the Samba process (smbd) if it's running.
@@ -106,7 +107,7 @@ func GetSambaProcess() (*process.Process, error) {
 	var allProcess, err = process.Processes()
 	if err != nil {
 		log.Fatal(err)
-		return nil, err
+		return nil, tracerr.Wrap(err)
 	}
 	for _, p := range allProcess {
 		var name, err = p.Name()

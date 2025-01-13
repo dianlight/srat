@@ -193,6 +193,9 @@ func fromSlice(dst any, src any /*[]any*/) error {
 		if vsrc.Len() == 0 {
 			return nil
 		}
+		if v.IsNil() {
+			v.Set(reflect.MakeMap(v.Type()))
+		}
 		for ix := 0; ix < vsrc.Type().Elem().NumField(); ix++ {
 			if vsrc.Type().Elem().Field(ix).Tag.Get("mapper") == "mapkey" {
 				keyfield = ix
@@ -200,7 +203,7 @@ func fromSlice(dst any, src any /*[]any*/) error {
 			}
 		}
 		if keyfield == -1 {
-			return tracerr.Errorf("(fromSlice) Unsupported destination type %T for source %T\n Only slice of struct with tags mapper:mapkey are accepted as source for map", src, dst)
+			return tracerr.Errorf("(fromSlice) Unsupported destination type %T for source %T\n Only slice of struct with tags mapper:mapkey are accepted as source for map", dst, src)
 		}
 		for i := 0; i < vsrc.Len(); i++ {
 			itemT := reflect.New(v.Type().Elem()).Interface()

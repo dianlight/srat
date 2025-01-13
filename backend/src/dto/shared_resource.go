@@ -11,7 +11,7 @@ const (
 
 type SharedResource struct {
 	ID          *uint        `json:"id,omitempty"`
-	Name        string       `json:"name,omitempty"`
+	Name        string       `json:"name,omitempty"  mapper:"mapkey"`
 	Path        string       `json:"path"`
 	FS          string       `json:"fs"`
 	Disabled    bool         `json:"disabled,omitempty"`

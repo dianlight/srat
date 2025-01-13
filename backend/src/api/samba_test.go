@@ -15,11 +15,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ztrue/tracerr"
 )
 
 func TestCreateConfigStream(t *testing.T) {
 	stream, err := createConfigStream(testContext)
-	require.NoError(t, err)
+	require.NoError(t, err, tracerr.SprintSourceColor(err))
 	assert.NotNil(t, stream)
 
 	samba_config_file := testContext.Value("samba_config_file").(*string)
