@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ztrue/tracerr"
 )
 
 type MockMappable struct {
@@ -203,7 +204,8 @@ func TestMapWithNilDestination(t *testing.T) {
 	err := Map(dst, src)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Unsupported source type: string")
+	//assert.Equal(t, "test", dst)
+	assert.Contains(t, err.Error(), "Unsupported Nil destination")
 }
 func TestMapWithEmptySliceAnySource(t *testing.T) {
 	type TestStruct struct {
@@ -345,8 +347,10 @@ func TestMapFromStructToSlice(t *testing.T) {
 		Minni       string
 		ZioPaperone map[string]string
 		NonnaPapera []string
+		Peperoga    *int
 	}
 
+	pp := 42
 	src := TestStuctSource{
 		Pippo: 30,
 		Pluto: "John Doe",
@@ -355,6 +359,7 @@ func TestMapFromStructToSlice(t *testing.T) {
 			"Age": "30",
 		},
 		NonnaPapera: []string{"Alice", "Bob", "Charlie"},
+		Peperoga:    &pp,
 	}
 
 	dst := make([]TestStruct, 0, 4)
@@ -362,7 +367,7 @@ func TestMapFromStructToSlice(t *testing.T) {
 	err := Map(&dst, src)
 
 	require.NoError(t, err)
-	assert.Len(t, dst, 5)
+	assert.Len(t, dst, 6)
 	assert.Equal(t, "Pippo", dst[0].Name)
 	assert.Equal(t, 30, dst[0].Value)
 	assert.Equal(t, "Pluto", dst[1].Name)
@@ -375,6 +380,8 @@ func TestMapFromStructToSlice(t *testing.T) {
 	}, dst[3].Value)
 	assert.Equal(t, "NonnaPapera", dst[4].Name)
 	assert.Equal(t, []string{"Alice", "Bob", "Charlie"}, dst[4].Value)
+	assert.Equal(t, "Peperoga", dst[5].Name)
+	assert.Equal(t, 42, *dst[5].Value.(*int))
 }
 
 func TestMapFromStructToSliceTypeWithDuplicate(t *testing.T) {
@@ -487,6 +494,7 @@ func TestMapFromSliceTypeToStruct(t *testing.T) {
 		Minni       string
 		ZioPaperone map[string]string
 		NonnaPapera []string
+		Peperoga    *int
 	}
 
 	src := TestStructs{
@@ -495,16 +503,18 @@ func TestMapFromSliceTypeToStruct(t *testing.T) {
 		{Name: "Minni", Value: "Jane Doe"},
 		{Name: "ZioPaperone", Value: map[string]string{"Age": "30"}},
 		{Name: "NonnaPapera", Value: []string{"Alpha", "Beta", "Gamma"}},
+		{Name: "Peperoga", Value: 42},
 	}
 
 	var dst TestStuctDestination
 
 	err := Map(&dst, src)
 
-	require.NoError(t, err)
+	require.NoError(t, err, tracerr.SprintSourceColor(err))
 	assert.Equal(t, 30, dst.Pippo)
 	assert.Equal(t, "John Doe", dst.Pluto)
 	assert.Equal(t, "Jane Doe", dst.Minni)
 	assert.Equal(t, map[string]string{"Age": "30"}, dst.ZioPaperone)
 	assert.Equal(t, []string{"Alpha", "Beta", "Gamma"}, dst.NonnaPapera)
+	assert.Equal(t, 42, *dst.Peperoga)
 }

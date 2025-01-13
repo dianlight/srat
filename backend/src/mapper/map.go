@@ -6,11 +6,20 @@ import (
 	"strconv"
 
 	"github.com/thoas/go-funk"
+	"github.com/ztrue/tracerr"
 )
 
 func Map(dst any, src any) error {
-	if dst == nil || reflect.ValueOf(dst).Kind() != reflect.Ptr {
-		return fmt.Errorf("unsupported destination type: %T a pointer is required!", dst)
+	vdst := reflect.ValueOf(dst)
+	if vdst.Kind() != reflect.Ptr {
+		return tracerr.Wrap(fmt.Errorf("Unsupported destination type: %T a pointer is required!", dst))
+	}
+	if vdst.IsNil() {
+		//fmt.Println(vdst.CanSet())
+		//		vdst.SetPointer(reflect.New(reflect.TypeOf(dst).Elem()).UnsafePointer())
+		//		dst = vdst.Interface()
+		return tracerr.Wrap(fmt.Errorf("Unsupported Nil destination"))
+		//		reflect.NewAt(reflect.TypeOf(dst).Elem(), unsafe.Pointer(vdst.UnsafePointer())).Elem().Set(reflect.New(reflect.TypeOf(dst).Elem()))
 	}
 	if src == nil {
 		return nil
@@ -22,7 +31,7 @@ func Map(dst any, src any) error {
 	if val, ok := src.(MappableTo); ok {
 		match, err := val.To(dst)
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
 		if match {
 			return nil
@@ -30,7 +39,7 @@ func Map(dst any, src any) error {
 	} else if val, ok := dst.(MappableFrom); ok {
 		match, err := val.From(src)
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
 		if match {
 			return nil
@@ -51,7 +60,7 @@ func Map(dst any, src any) error {
 		reflect.String:
 		return fromNative(dst, src)
 	default:
-		return fmt.Errorf("Unsupported source type: %T for destination %T", src, dst)
+		return tracerr.Wrap(fmt.Errorf("Unsupported source type: %T for destination %T", src, dst))
 	}
 }
 
@@ -86,7 +95,7 @@ func fromMap(dst any, src any /*map[string]any*/) error {
 			var item = vsrc.Index(i).Interface()
 			var itemT any
 			if err := Map(&itemT, item); err != nil {
-				return err
+				return tracerr.Wrap(err)
 			}
 			dst = append(dst.([]any), itemT)
 		}
@@ -102,7 +111,7 @@ func fromMap(dst any, src any /*map[string]any*/) error {
 				itemT := reflect.New(v.Elem().Type()).Interface()
 				err := Map(itemT, vs.Interface())
 				if err != nil {
-					return err
+					return tracerr.Wrap(err)
 				}
 				v.SetMapIndex(ks, reflect.ValueOf(itemT).Elem())
 
@@ -122,7 +131,7 @@ func fromMap(dst any, src any /*map[string]any*/) error {
 				itemT := reflect.New(nvt.Type()).Interface()
 				err := Map(itemT, vsrc.MapIndex(key).Interface())
 				if err != nil {
-					return err
+					return tracerr.Wrap(err)
 				}
 				nvt.Set(reflect.ValueOf(itemT).Elem())
 			}
@@ -141,7 +150,7 @@ func fromSlice(dst any, src any /*[]any*/) error {
 		for i := 0; i < vsrc.Len(); i++ {
 			itemT := reflect.New(v.Type().Elem()).Interface()
 			if err := Map(itemT, vsrc.Index(i).Interface()); err != nil {
-				return err
+				return tracerr.Wrap(err)
 			}
 			v = reflect.Append(v, reflect.Indirect(reflect.ValueOf(itemT)))
 		}
@@ -169,9 +178,16 @@ func fromSlice(dst any, src any /*[]any*/) error {
 			if value.CanConvert(v.FieldByName(key).Type()) {
 				v.FieldByName(key).Set(value.Convert(v.FieldByName(key).Type()))
 			} else {
-				err := Map(v.FieldByName(key).Addr().Interface(), value.Interface())
+				itemT := v.FieldByName(key).Addr()
+				if v.FieldByName(key).Type().Kind() == reflect.Ptr {
+					itemT = v.FieldByName(key)
+				}
+				if itemT.IsNil() {
+					itemT.Set(reflect.New(value.Type()))
+				}
+				err := Map(itemT.Interface(), value.Interface())
 				if err != nil {
-					return err
+					return tracerr.Wrap(err)
 				}
 			}
 		}
@@ -199,7 +215,7 @@ func fromStruct[T any](dst T, src any) error {
 				itemT := reflect.New(nvt.Type()).Interface()
 				err := Map(itemT, redirectValue(x).Interface())
 				if err != nil {
-					return err
+					return tracerr.Wrap(err)
 				}
 				nvt.Set(reflect.ValueOf(itemT).Elem())
 			}
@@ -247,41 +263,51 @@ func fromStruct[T any](dst T, src any) error {
 }
 
 func fromNative[T any](dst T, src any) error {
-	v := reflect.Indirect(reflect.ValueOf(dst))
+	return _fromNative(reflect.ValueOf(dst), reflect.ValueOf(src))
+}
+
+func _fromNative(v reflect.Value, src reflect.Value) error {
+	//v := /*reflect.Indirect(*/ reflect.ValueOf(dst) /*)*/
 	//v := redirectValue(reflect.ValueOf(dst))
 	switch v.Kind() {
 	case reflect.Float64, reflect.Float32:
-		val, err := strconv.ParseFloat(fmt.Sprintf("%v", src), v.Type().Bits())
+		val, err := strconv.ParseFloat(fmt.Sprintf("%v", src.Interface()), v.Type().Bits())
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
-		v.SetFloat(val)
+		reflect.Indirect(v).SetFloat(val)
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		val, err := strconv.ParseInt(fmt.Sprintf("%v", src), 10, v.Type().Bits())
+		val, err := strconv.ParseInt(fmt.Sprintf("%v", src.Interface()), 10, v.Type().Bits())
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
-		v.SetInt(val)
+		reflect.Indirect(v).SetInt(val)
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		val, err := strconv.ParseUint(fmt.Sprintf("%v", src), 10, v.Type().Bits())
+		val, err := strconv.ParseUint(fmt.Sprintf("%v", src.Interface()), 10, v.Type().Bits())
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
-		v.SetUint(val)
+		reflect.Indirect(v).SetUint(val)
 		return nil
 	case reflect.String:
-		v.SetString(fmt.Sprintf("%v", src))
+		reflect.Indirect(v).SetString(fmt.Sprintf("%v", src.Interface()))
 		return nil
 	case reflect.Bool:
-		val, err := strconv.ParseBool(fmt.Sprintf("%v", src))
+		val, err := strconv.ParseBool(fmt.Sprintf("%v", src.Interface()))
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
-		v.SetBool(val)
+		reflect.Indirect(v).SetBool(val)
 		return nil
+	case reflect.Ptr:
+		if src.IsZero() {
+			v.Set(reflect.Zero(v.Type().Elem()))
+			return nil
+		}
+		return _fromNative(reflect.Indirect(v), src)
 	default:
-		return fmt.Errorf("(fromNative) Unsupported source type: %T for destination %T", src, dst)
+		return fmt.Errorf("(fromNative) Unsupported source type: %T for destination %T", src.Interface(), v.Interface())
 	}
 }
