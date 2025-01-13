@@ -128,8 +128,8 @@ func GetSambaProcess() (*process.Process, error) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		204
-//	@Failure		400	{object}	dto.ResponseError
-//	@Failure		500	{object}	dto.ResponseError
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
 //	@Router			/samba/apply [put]
 func ApplySamba(w http.ResponseWriter, r *http.Request) {
 
@@ -186,7 +186,7 @@ func ApplySamba(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	dto.SmbConf
-//	@Failure		500	{object}	dto.ResponseError
+//	@Failure		500	{object}	ErrorResponse
 //	@Router			/samba [get]
 func GetSambaConfig(w http.ResponseWriter, r *http.Request) {
 	var smbConf dto.SmbConf
@@ -209,8 +209,8 @@ func GetSambaConfig(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	dto.SambaProcessStatus
-//	@Failure		400	{object}	dto.ResponseError
-//	@Failure		500	{object}	dto.ResponseError
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
 //	@Router			/samba/status [get]
 func GetSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
 

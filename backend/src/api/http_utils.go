@@ -11,7 +11,7 @@ type Options struct {
 	Code int
 }
 
-type errorResponse struct {
+type ErrorResponse struct {
 	Code  int    `json:"code"`
 	Error string `json:"error"`
 	Body  any    `json:"body"`
@@ -33,7 +33,7 @@ func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 
 	if erx, ok := src.(error); ok {
 		opt.Code = codeGetOrElse(opt.Code, http.StatusInternalServerError)
-		return HttpJSONReponse(w, errorResponse{Error: erx.Error(), Body: erx}, opt)
+		return HttpJSONReponse(w, ErrorResponse{Error: erx.Error(), Body: erx}, opt)
 	}
 
 	if src == nil || funk.IsEmpty(src) {
@@ -43,7 +43,7 @@ func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 		jsonResponse, jsonError := json.Marshal(src)
 		if jsonError != nil {
 			opt.Code = http.StatusInternalServerError
-			return HttpJSONReponse(w, errorResponse{Error: "Unable to encode JSON", Body: jsonError}, opt)
+			return HttpJSONReponse(w, ErrorResponse{Error: "Unable to encode JSON", Body: jsonError}, opt)
 		} else {
 			opt.Code = codeGetOrElse(opt.Code, http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")

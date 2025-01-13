@@ -17,9 +17,9 @@ import (
 //	@Description	List all configured users
 //	@Tags			user
 //	@Produce		json
-//	@Success		200	{object}	dto.Users
-//	@Failure		405	{object}	dto.ResponseError
-//	@Failure		500	{object}	dto.ResponseError
+//	@Success		200	{object}	[]dto.User
+//	@Failure		405	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
 //	@Router			/users [get]
 func ListUsers(w http.ResponseWriter, r *http.Request) {
 	var dbusers dbom.SambaUsers
@@ -46,8 +46,8 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Produce		json
 //	@Success		200	{object}	dto.User
-//	@Failure		405	{object}	dto.ResponseError
-//	@Failure		500	{object}	dto.ResponseError
+//	@Failure		405	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
 //	@Router			/admin/user [get]
 func GetAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -81,8 +81,8 @@ func GetAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			username	path		string	true	"Name"
 //	@Success		200			{object}	dto.User
-//	@Failure		405			{object}	dto.ResponseError
-//	@Failure		500			{object}	dto.ResponseError
+//	@Failure		405			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
 //	@Router			/user/{username} [get]
 /*
 func GetUser(w http.ResponseWriter, r *http.Request) {
@@ -110,10 +110,10 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			user	body		dto.User	true	"Create model"
 //	@Success		201		{object}	dto.User
-//	@Failure		400		{object}	dto.ResponseError
-//	@Failure		405		{object}	dto.ResponseError
-//	@Failure		409		{object}	dto.ResponseError
-//	@Failure		500		{object}	dto.ResponseError
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		405		{object}	ErrorResponse
+//	@Failure		409		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
 //	@Router			/user [post]
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 
@@ -150,10 +150,10 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 //	@Param			username	path		string		true	"Name"
 //	@Param			user		body		dto.User	true	"Update model"
 //	@Success		200			{object}	dto.User
-//	@Failure		400			{object}	dto.ResponseError
-//	@Failure		405			{object}	dto.ResponseError
-//	@Failure		404			{object}	dto.ResponseError
-//	@Failure		500			{object}	dto.ResponseError
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		405			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
 //	@Router			/user/{username} [put]
 //	@Router			/user/{username} [patch]
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
@@ -197,10 +197,10 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			user	body		dto.User	true	"Update model"
 //	@Success		200		{object}	dto.User
-//	@Failure		400		{object}	dto.ResponseError
-//	@Failure		405		{object}	dto.ResponseError
-//	@Failure		404		{object}	dto.ResponseError
-//	@Failure		500		{object}	dto.ResponseError
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		405		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
 //	@Router			/admin/user [put]
 //	@Router			/admin/user [patch]
 func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
@@ -236,10 +236,10 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Param			username	path	string	true	"Name"
 //	@Success		204
-//	@Failure		400	{object}	dto.ResponseError
-//	@Failure		405	{object}	dto.ResponseError
-//	@Failure		404	{object}	dto.ResponseError
-//	@Failure		500	{object}	dto.ResponseError
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		405	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
 //	@Router			/user/{username} [delete]
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]

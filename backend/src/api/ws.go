@@ -21,7 +21,7 @@ var activeContexts = make(map[string]context.CancelFunc)
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	dto.DataDirtyTracker
-//	@Failure		405	{object}	dto.ResponseError
+//	@Failure		405	{object}	ErrorResponse
 //	@Router			/ws [get]
 func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }

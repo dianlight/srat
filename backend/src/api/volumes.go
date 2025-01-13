@@ -191,8 +191,8 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 //	@Tags			volume
 //	@Produce		json
 //	@Success		200	{object}	dto.BlockInfo
-//	@Failure		405	{object}	dto.ResponseError
-//	@Failure		500	{object}	dto.ResponseError
+//	@Failure		405	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
 //	@Router			/volumes [get]
 func ListVolumes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -215,10 +215,10 @@ func ListVolumes(w http.ResponseWriter, r *http.Request) {
 //	@Param			volume_name	path		string				true	"Volume Name to Mount"
 //	@Param			mount_data	body		dto.MountPointData	true	"Mount data"
 //	@Success		201			{object}	dto.MountPointData
-//	@Failure		400			{object}	dto.ResponseError
-//	@Failure		405			{object}	dto.ResponseError
-//	@Failure		409			{object}	dto.ResponseError
-//	@Failure		500			{object}	dto.ResponseError
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		405			{object}	ErrorResponse
+//	@Failure		409			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
 //	@Router			/volume/{volume_name}/mount [post]
 func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification MountPointData and BlockPartitionData
 	volume_name := mux.Vars(r)["volume_name"]
@@ -230,7 +230,7 @@ func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification
 	}
 
 	if mount_data.Name != "" && mount_data.Name != volume_name {
-		HttpJSONReponse(w, errorResponse{Error: "Name conflict", Body: nil}, &Options{
+		HttpJSONReponse(w, ErrorResponse{Error: "Name conflict", Body: nil}, &Options{
 			Code: http.StatusBadRequest,
 		})
 		return
@@ -342,8 +342,8 @@ func notifyVolumeClient(volumes *dto.BlockInfo) {
 //	@Param			force		query	bool	true	"Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted."
 //	@Param			lazy		query	bool	true	"Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted."
 //	@Success		204
-//	@Failure		404	{object}	dto.ResponseError
-//	@Failure		500	{object}	dto.ResponseError
+//	@Failure		404	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
 //	@Router			/volume/{volume_name}/mount [delete]
 func UmountVolume(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -372,7 +372,7 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	HttpJSONReponse(w, errorResponse{Error: "No mount on " + volume_name + " found!", Body: nil}, &Options{
+	HttpJSONReponse(w, ErrorResponse{Error: "No mount on " + volume_name + " found!", Body: nil}, &Options{
 		Code: http.StatusNotFound,
 	})
 }

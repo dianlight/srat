@@ -147,7 +147,7 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	dto.HealthPing
-//	@Failure		405	{object}	dto.ResponseError
+//	@Failure		405	{object}	ErrorResponse
 //	@Router			/health [get]
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	HttpJSONReponse(w, healthData, nil)
@@ -293,7 +293,7 @@ func (w *ProgressWriter) N() int64 {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	dto.ReleaseAsset
-//	@Failure		405	{object}	dto.ResponseError
+//	@Failure		405	{object}	ErrorResponse
 //	@Router			/update [put]
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -354,7 +354,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		204
-//	@Failure		405	{object}	dto.ResponseError
+//	@Failure		405	{object}	ErrorResponse
 //	@Router			/restart [put]
 func RestartHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
@@ -370,7 +370,7 @@ func RestartHandler(w http.ResponseWriter, r *http.Request) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	dto.NetworkInfo
-//	@Failure		405	{object}	dto.ResponseError
+//	@Failure		405	{object}	ErrorResponse
 //	@Router			/nics [get]
 func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -452,7 +452,7 @@ func getFileSystems() ([]string, error) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	dto.FilesystemTypes
-//	@Failure		405	{object}	dto.ResponseError
+//	@Failure		405	{object}	ErrorResponse
 //	@Router			/filesystems [get]
 func GetFSHandler(w http.ResponseWriter, r *http.Request) {
 

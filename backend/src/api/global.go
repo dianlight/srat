@@ -20,8 +20,8 @@ import (
 //	@Param			config	body		dto.Settings	true	"Update model"
 //	@Success		200		{object}	dto.Settings
 //	@Success		204
-//	@Failure		400	{object}	dto.ResponseError
-//	@Failure		500	{object}	dto.ResponseError
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
 //	@Router			/global [put]
 //	@Router			/global [patch]
 func UpdateSettings(w http.ResponseWriter, r *http.Request) {
@@ -70,8 +70,8 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	dto.Settings
-//	@Failure		400	{object}	dto.ResponseError
-//	@Failure		500	{object}	dto.ResponseError
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
 //	@Router			/global [get]
 func GetSettings(w http.ResponseWriter, r *http.Request) {
 	var dbsettings dbom.Properties

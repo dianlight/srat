@@ -23,7 +23,7 @@ $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 .PHONY: format
 format:
 	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
-	cd $(SRC_DIRS);swag fmt
+	cd $(SRC_DIRS);go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 fmt
 	cd $(SRC_DIRS);go mod tidy	
 	cd $(SRC_DIRS);testifylint --fix ./...
 	cd $(SRC_DIRS);go fmt
