@@ -216,7 +216,7 @@ func TestMapWithEmptySliceAnySource(t *testing.T) {
 
 	err := Map(dst, src)
 
-	require.Error(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "Original", dst.Name)
 	assert.Equal(t, 42, dst.Value)
 }
@@ -413,4 +413,37 @@ func TestMapFromStructToSliceType(t *testing.T) {
 	assert.Equal(t, map[string]string{
 		"Age": "30",
 	}, dst[3].Value)
+}
+
+func TestMapFromSliceTypeToStruct(t *testing.T) {
+	type TestStruct struct {
+		Name  string      `mapper:"key"`
+		Value interface{} `mapper:"value"`
+	}
+
+	type TestStructs []TestStruct
+
+	type TestStuctDestination struct {
+		Pippo       int
+		Pluto       string
+		Minni       string
+		ZioPaperone map[string]string
+	}
+
+	src := TestStructs{
+		{Name: "Pippo", Value: 30},
+		{Name: "Pluto", Value: "John Doe"},
+		{Name: "Minni", Value: "Jane Doe"},
+		{Name: "ZioPaperone", Value: map[string]string{"Age": "30"}},
+	}
+
+	var dst TestStuctDestination
+
+	err := Map(&dst, src)
+
+	require.NoError(t, err)
+	assert.Equal(t, 30, dst.Pippo)
+	assert.Equal(t, "John Doe", dst.Pluto)
+	assert.Equal(t, "Jane Doe", dst.Minni)
+	assert.Equal(t, map[string]string{"Age": "30"}, dst.ZioPaperone)
 }

@@ -42,13 +42,6 @@ func Map(dst any, src any) error {
 		return fromMap(dst, src.(map[string]any))
 	case reflect.Slice:
 		return fromSlice(dst, src)
-		//if val, ok := src.([]any); ok {
-		//	return fromSlice(dst, val)
-		//} else if val, ok := src.([]map[string]any); ok {
-		//	return fromSliceMap(dst, val)
-		//} else {
-		//	return fmt.Errorf("(_fromSlice) Unsupported source type: %T for destination %T", src, dst)
-		//}
 	case reflect.Struct:
 		return fromStruct(dst, src)
 	case reflect.Bool,
@@ -130,43 +123,11 @@ func fromMap(dst any, src map[string]any) error {
 	}
 }
 
-/*
-func fromSliceMap(dst any, src []map[string]any) error {
-	v := reflect.Indirect(reflect.ValueOf(dst))
-	switch v.Kind() {
-	case reflect.Slice:
-		for _, item := range src {
-			itemT := reflect.New(v.Type().Elem()).Interface()
-			if err := Map(itemT, item); err != nil {
-				return err
-			}
-			v = reflect.Append(v, reflect.Indirect(reflect.ValueOf(itemT)))
-		}
-		reflect.ValueOf(dst).Elem().Set(v)
-		return nil
-		/ *
-			case *map[string]any:
-				for k, v := range src {
-					var itemT any
-					if err := Map(&itemT, v); err != nil {
-						return err
-					} else {
-						src[k] = itemT
-					}
-				}
-				return nil
-		* /
-	default:
-		return fmt.Errorf("(fromSlice) Unsupported item type %T for destination %T", src, dst)
-	}
-}
-*/
-
 func fromSlice(dst any, src any /*[]any*/) error {
 	v := reflect.Indirect(reflect.ValueOf(dst))
+	vsrc := reflect.Indirect(reflect.ValueOf(src))
 	switch v.Kind() {
 	case reflect.Slice:
-		vsrc := reflect.Indirect(reflect.ValueOf(src))
 		for i := 0; i < vsrc.Len(); i++ {
 			itemT := reflect.New(v.Type().Elem()).Interface()
 			if err := Map(itemT, vsrc.Index(i).Interface()); err != nil {
@@ -176,18 +137,35 @@ func fromSlice(dst any, src any /*[]any*/) error {
 		}
 		reflect.ValueOf(dst).Elem().Set(v)
 		return nil
-		/*
-			case *map[string]any:
-				for k, v := range src {
-					var itemT any
-					if err := Map(&itemT, v); err != nil {
-						return err
-					} else {
-						src[k] = itemT
-					}
+	case reflect.Struct:
+		keyfield := -1
+		valuefield := -1
+		if vsrc.Len() == 0 {
+			return nil
+		}
+		for ix := 0; ix < vsrc.Type().Elem().NumField(); ix++ {
+			if vsrc.Type().Elem().Field(ix).Tag.Get("mapper") == "key" {
+				keyfield = ix
+			} else if vsrc.Type().Elem().Field(ix).Tag.Get("mapper") == "value" {
+				valuefield = ix
+			}
+		}
+		if keyfield == -1 || valuefield == -1 {
+			return fmt.Errorf("(fromStruct) Unsupported destination type %T for source %T\n Only slice with key/value struct with tags mapper:key and mapper:value are accepted from struct", src, dst)
+		}
+		for i := 0; i < vsrc.Len(); i++ {
+			key := vsrc.Index(i).Field(keyfield).Interface().(string)
+			value := reflect.Indirect(vsrc.Index(i).Field(valuefield))
+			if value.CanConvert(v.FieldByName(key).Type()) {
+				v.FieldByName(key).Set(value.Convert(v.FieldByName(key).Type()))
+			} else {
+				err := Map(v.FieldByName(key).Addr().Interface(), value.Interface())
+				if err != nil {
+					return err
 				}
-				return nil
-		*/
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("(fromSlice) Unsupported item type %T for destination %T", src, dst)
 	}
@@ -257,14 +235,14 @@ func fromNative[T any](dst T, src any) error {
 		v.SetFloat(val)
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		val, err := strconv.ParseInt(fmt.Sprintf("%v", src), v.Type().Bits(), 64)
+		val, err := strconv.ParseInt(fmt.Sprintf("%v", src), 10, v.Type().Bits())
 		if err != nil {
 			return err
 		}
 		v.SetInt(val)
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		val, err := strconv.ParseUint(fmt.Sprintf("%v", src), v.Type().Bits(), 64)
+		val, err := strconv.ParseUint(fmt.Sprintf("%v", src), 10, v.Type().Bits())
 		if err != nil {
 			return err
 		}
