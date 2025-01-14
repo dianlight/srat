@@ -972,8 +972,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.Settings'
-        "204":
-          description: No Content
         "400":
           description: Bad Request
           schema:
@@ -1003,8 +1001,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.Settings'
-        "204":
-          description: No Content
         "400":
           description: Bad Request
           schema:

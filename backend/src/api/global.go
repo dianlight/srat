@@ -19,8 +19,8 @@ import (
 //	@Produce		json
 //	@Param			config	body		dto.Settings	true	"Update model"
 //	@Success		200		{object}	dto.Settings
-//	@Failure		400	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
 //	@Router			/global [put]
 //	@Router			/global [patch]
 func UpdateSettings(w http.ResponseWriter, r *http.Request) {

@@ -83,6 +83,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
+	github.com/ztrue/tracerr v0.4.0
 	golang.org/x/time v0.8.0
 	golang.org/x/tools v0.28.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

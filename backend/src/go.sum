@@ -166,6 +166,8 @@ github.com/u-root/uio v0.0.0-20240209044354-b3d14b93376a h1:BH1SOPEvehD2kVrndDnG
 github.com/u-root/uio v0.0.0-20240209044354-b3d14b93376a/go.mod h1:P3a5rG4X7tI17Nn3aOIAYr5HbIMukwXG0urG0WuL8OA=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
+github.com/ztrue/tracerr v0.4.0 h1:vT5PFxwIGs7rCg9ZgJ/y0NmOpJkPCPFK8x0vVIYzd04=
+github.com/ztrue/tracerr v0.4.0/go.mod h1:PaFfYlas0DfmXNpo7Eay4MFhZUONqvXM+T2HyGPpngk=
 golang.org/x/crypto v0.29.0 h1:L5SG1JTTXupVV3n6sUqMTeWbjAyfPwoda2DLX8J8FrQ=
 golang.org/x/crypto v0.29.0/go.mod h1:+F4F4N5hv6v38hfeYwTdx20oUvLLc+QfrE9Ax9HtgRg=
 golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 h1:LfspQV/FYTatPTr/3HzIcmiUFH7PGP+OQ6mgDYo3yuQ=
