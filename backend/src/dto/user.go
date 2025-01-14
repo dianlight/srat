@@ -8,6 +8,16 @@ type User struct {
 	IsAdmin  bool   `json:"is_admin"`
 }
 
+func (m User) To(dst any) (bool, error) {
+	switch v := dst.(type) {
+	case *interface{}:
+		*v = m.Username
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+
 /*
 func (self *User) From(value interface{}) error {
 	return copier.CopyWithOption(self, value, copier.Option{IgnoreEmpty: false, DeepCopy: true})

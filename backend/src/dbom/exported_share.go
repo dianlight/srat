@@ -3,6 +3,7 @@ package dbom
 import (
 	"github.com/dianlight/srat/dto"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ExportedShare struct {
@@ -22,7 +23,7 @@ type ExportedShare struct {
 type ExportedShares []ExportedShare
 
 func (p *ExportedShares) Load() error {
-	return db.Find(p).Error
+	return db.Preload(clause.Associations).Find(p).Error
 }
 
 func (p *ExportedShares) Save() error {
@@ -40,13 +41,13 @@ func (share *ExportedShare) Delete() error {
 }
 
 func (share *ExportedShare) FromName(name string) error {
-	return db.Where("name =?", name).First(share).Error
+	return db.Preload(clause.Associations).Where("name =?", name).First(share).Error
 }
 
 func (share *ExportedShare) Get() error {
-	return db.First(share).Error
+	return db.Preload(clause.Associations).First(share).Error
 }
 
 func (share *ExportedShare) FromNameOrPath(name string, path string) error {
-	return db.Limit(1).Find(share, db.Where("name =?", name).Or(db.Where("path = ?", path))).Error
+	return db.Preload(clause.Associations).Limit(1).Find(share, db.Where("name =?", name).Or(db.Where("path = ?", path))).Error
 }

@@ -104,7 +104,7 @@
    #recycle:maxsize = 0
 {{ end }}  
 
-# 1TM:{{ if has $dinfo.fs $unsupported }}unsupported{{else}}{{ .timemachine }}{{ end }} US:{{ .users|default .username|join "," }} {{ .ro_users|join "," }}{{- if .medialibrary.enable }}{{ if .usage }} CL:{{ .usage }}{{ end }} FS:{{ $dinfo.fs | default "native" }} {{ if .recyle_bin_enabled }}RECYCLEBIN{{ end }} {{ end }}
+# TM:{{ if has $dinfo.fs $unsupported }}unsupported{{else}}{{ .timemachine }}{{ end }} US:{{ .users|default .username|join "," }} {{ .ro_users|join "," }}{{- if .medialibrary.enable }}{{ if .usage }} CL:{{ .usage }}{{ end }} FS:{{ $dinfo.fs | default "native" }} {{ if .recyle_bin_enabled }}RECYCLEBIN{{ end }} {{ end }}
 {{- if and .timemachine (has $dinfo.fs $unsupported | not ) }}
    vfs objects = catia fruit streams_xattr{{ if .recyle_bin_enabled }} recycle{{ end }}
 

@@ -39,6 +39,10 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
+	err = mapper.Map(&config.Options, settings)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
 	// Users
 	var sambaUsers dbom.SambaUsers
 	err = sambaUsers.Load()
