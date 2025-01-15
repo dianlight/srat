@@ -139,7 +139,7 @@ func TestGetSambaProcessStatus(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Contains(t, []int{http.StatusOK, http.StatusNotFound}, rr.Code)
+	assert.Contains(t, []int{http.StatusOK, http.StatusNotFound}, rr.Code, "Expected status code 200 or 404, got %d with Body %s", rr.Code, rr.Body.String())
 }
 
 func TestGetSambaConfig(t *testing.T) {

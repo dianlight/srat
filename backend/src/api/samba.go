@@ -208,15 +208,16 @@ func GetSambaConfig(w http.ResponseWriter, r *http.Request) {
 
 // GetSambaPrecessStatus godoc
 //
-//	@Summary		Get the current samba process status
-//	@Description	Get the current samba process status
-//	@Tags			samba
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	dto.SambaProcessStatus
-//	@Failure		400	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
-//	@Router			/samba/status [get]
+//		@Summary		Get the current samba process status
+//		@Description	Get the current samba process status
+//		@Tags			samba
+//		@Accept			json
+//		@Produce		json
+//		@Success		200	{object}	dto.SambaProcessStatus
+//	 	@Failure		404	{object}	ErrorResponse
+//		@Failure		400	{object}	ErrorResponse
+//		@Failure		500	{object}	ErrorResponse
+//		@Router			/samba/status [get]
 func GetSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
 
 	var sambaP dto.SambaProcessStatus
@@ -228,7 +229,9 @@ func GetSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	if spid == nil {
-		HttpJSONReponse(w, fmt.Errorf("Samba process not found"), nil)
+		HttpJSONReponse(w, fmt.Errorf("Samba process not found"), &Options{
+			Code: http.StatusNotFound,
+		})
 		return
 	}
 
