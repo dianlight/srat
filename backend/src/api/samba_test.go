@@ -29,23 +29,68 @@ func TestCreateConfigStream(t *testing.T) {
 	fsbyte, err := os.ReadFile(*samba_config_file)
 	require.NoError(t, err)
 
-	resultValue := strings.Split(string(*stream), "\n")
-	for i, line := range strings.Split(string(fsbyte), "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "# DEBUG:") && strings.HasPrefix(strings.TrimSpace(resultValue[i]), "# DEBUG:") {
-			continue
-		}
-		low := i - 5
-		if low < 5 {
-			low = 5
-		}
-		hight := low + 10
-		if hight > len(resultValue) {
-			hight = len(resultValue)
+	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
+
+	var result = make(map[string]string)
+	for _, match := range re.FindAllStringSubmatch(string(*stream), -1) {
+		result[match[1]] = strings.TrimSpace(match[0])
+	}
+
+	var expected = make(map[string]string)
+	for _, match := range re.FindAllStringSubmatch(string(fsbyte), -1) {
+		expected[match[1]] = strings.TrimSpace(match[0])
+	}
+
+	keys := make([]string, 0, len(result))
+	for k := range result {
+		keys = append(keys, k)
+	}
+	assert.Len(t, keys, len(expected))
+
+	for k, v := range result {
+		//assert.EqualValues(t, expected[k], v)
+		var elines = strings.Split(expected[k], "\n")
+		var lines = strings.Split(v, "\n")
+
+		for i, line := range lines {
+			if strings.HasPrefix(strings.TrimSpace(line), "# DEBUG:") && strings.HasPrefix(strings.TrimSpace(elines[i]), "# DEBUG:") {
+				continue
+			}
+			low := i - 5
+			if low < 5 {
+				low = 5
+			}
+			hight := low + 10
+			if hight > len(lines) {
+				hight = len(lines)
+			}
+
+			require.Greater(t, len(lines), i, "Premature End of file reached")
+			require.EqualValues(t, strings.TrimSpace(line), strings.TrimSpace(elines[i]), "On Line:%d\n%d:\n%s\n%d:", i, low, strings.Join(lines[low:hight], "\n"), hight)
 		}
 
-		require.Greater(t, len(resultValue), i, "Premature End of file reached")
-		require.EqualValues(t, strings.TrimSpace(line), strings.TrimSpace(resultValue[i]), "On Line:%d\n%d:\n%s\n%d:", i, low, strings.Join(resultValue[low:hight], "\n"), hight)
 	}
+
+	/*
+
+		resultValue := strings.Split(string(*stream), "\n")
+		for i, line := range strings.Split(string(fsbyte), "\n") {
+			if strings.HasPrefix(strings.TrimSpace(line), "# DEBUG:") && strings.HasPrefix(strings.TrimSpace(resultValue[i]), "# DEBUG:") {
+				continue
+			}
+			low := i - 5
+			if low < 5 {
+				low = 5
+			}
+			hight := low + 10
+			if hight > len(resultValue) {
+				hight = len(resultValue)
+			}
+
+			require.Greater(t, len(resultValue), i, "Premature End of file reached")
+			require.EqualValues(t, strings.TrimSpace(line), strings.TrimSpace(resultValue[i]), "On Line:%d\n%d:\n%s\n%d:", i, low, strings.Join(resultValue[low:hight], "\n"), hight)
+		}
+	*/
 	// assert.EqualValues(t, strings.Split(string(fsbyte), "\n"), strings.Split(string(*stream), "\n"))
 }
 func TestApplySambaHandler(t *testing.T) {
