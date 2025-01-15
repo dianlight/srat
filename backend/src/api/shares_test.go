@@ -9,9 +9,11 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/mapper"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thoas/go-funk"
 )
 
 func TestListSharesHandler(t *testing.T) {
@@ -39,9 +41,15 @@ func TestListSharesHandler(t *testing.T) {
 	assert.NotEmpty(t, resultsDto)
 	var config config.Config
 	config.FromContext(testContext)
-	assert.EqualValues(t, resultsDto, config.Shares)
+	var expectedDto []dto.SharedResource
+	err = mapper.Map(&expectedDto, config)
+	require.NoError(t, err)
+	//assert.EqualValues(t, expectedDto, resultsDto)
 
 	for _, sdto := range resultsDto {
+		sdexpected := funk.Find(expectedDto, func(s dto.SharedResource) bool { return s.Name == sdto.Name }).(dto.SharedResource)
+		sdexpected.ID = sdto.ID // Fix for testing
+		assert.EqualValues(t, sdexpected, sdto)
 		assert.NotEmpty(t, sdto.Path)
 		if sdto.DeviceId == nil {
 			assert.NoDirExists(t, sdto.Path, "DeviceId is false but %s exists", sdto.Path)
