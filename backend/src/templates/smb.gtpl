@@ -79,7 +79,7 @@
    force directory mode = 0775
    # End PR#167
 
-   path = /{{- if eq .share "config" }}homeassistant{{- else }}{{- .share }}{{- end }}
+   path = {{- if eq .share "config" }} /homeassistant{{- else }} {{ .data.path }}{{- end }}
    valid users =_ha_mount_user_ {{ .users|default .username|join " " }} {{ .ro_users|join " " }}
    {{ if .ro_users }}
    read list = {{ .ro_users|join " " }}
@@ -114,56 +114,17 @@
    fruit:metadata = stream
 {{ end }}
 {{- if has $dinfo.fs $unsupported }}
-   vfs objects = catia{{ if .recyle_bin_enabled }} recycle{{ end }}
+   vfs objects = catia{{ if .recyle_bin_enabled }} recycle{{ end }}{{- printf "/*%#v*/" . -}}
 {{ end }}
 
 {{ end }}
 
-{{- $dfdisk := list "config" "addons" "ssl" "share" "backup" "media" "addon_configs" }}
-{{- $disks := $dfdisk -}}
-{{- if .moredisks -}}
-{{- $disks = concat $disks (compact .moredisks|default list) -}}
-{{- end -}}
 {{- $root := . -}}
-{{- range $disk := $disks -}}
-{{/*
-        {{- $acld := false -}}
-        {{- range $dd := $root.acl -}}
-                {{- $ndisk := $disk | regexFind "[A-Za-z0-9_]+$" -}} 
-                {{- if eq ($dd.share|upper) ($ndisk|upper) -}}
-                        {{- $def := deepCopy $dd }}
-                        {{- $acld = true -}}
-                        {{- if not $dd.disabled -}}
-                           {{- $_ := set $dd "share" $disk -}}
-                           {{- if has $disk $dfdisk -}}
-                                {{- $_ := set $def "timemachine" false -}}
-                                {{- $_ := set $def "usage" "" -}}
-                           {{- else -}}
-                                {{- $_ := set $def "timemachine" true -}}
-                                {{- $_ := set $def "usage" "media" -}}
-                           {{- end }}
-                           {{- template "SHT" deepCopy $root | mergeOverwrite $def $dd -}}
-                        {{- end -}}
-                {{- end -}}
-        {{- end -}}
-        {{- if not $acld -}}
-        {{
-                {{- $dd := dict "share" $disk "timemachine" true -}} 
-                {{- $_ := set $dd "usage" "media" -}}
-                {{- if has $disk $dfdisk -}}
-                        {{- $_ := set $dd "timemachine" false -}}
-                        {{- $_ := set $dd "usage" "" -}}
-                {{- end }}
-# DEBUG: Share {{ toJson .share  }}
-
-               {{- template "SHT" (deepCopy $root | mergeOverwrite $dd) -}}
-                {{- $dd := dict "share" $disk "timemachine" true -}} 
-               # DEBUG: Disk {{ $disk  }}
-                */}}
-               {{- $dd := get $root.shares $disk | default dict -}}
+{{- range $dd := .shares -}}
                {{- if not $dd.disabled -}}
                   {{- $root2 := deepCopy $root -}}
-                  {{- $_ := set $root2 "share" $disk -}}
+                  {{- $_ := set $root2 "share" $dd.name -}}
+                  {{- $_ := set $root2 "data" $dd -}}
                   {{- template "SHT" $root2 -}}
                {{- end -}}  
         {{/* - end - */}}

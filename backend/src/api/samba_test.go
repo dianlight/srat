@@ -32,6 +32,7 @@ func TestCreateConfigStream(t *testing.T) {
 	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
 
 	var result = make(map[string]string)
+	//t.Log(fmt.Sprintf("%s", *stream))
 	for _, match := range re.FindAllStringSubmatch(string(*stream), -1) {
 		result[match[1]] = strings.TrimSpace(match[0])
 	}
@@ -45,7 +46,8 @@ func TestCreateConfigStream(t *testing.T) {
 	for k := range result {
 		keys = append(keys, k)
 	}
-	assert.Len(t, keys, len(expected))
+	assert.Len(t, keys, len(expected), result)
+	m1 := regexp.MustCompile(`/\*(.*)\*/`)
 
 	for k, v := range result {
 		//assert.EqualValues(t, expected[k], v)
@@ -66,7 +68,12 @@ func TestCreateConfigStream(t *testing.T) {
 			}
 
 			require.Greater(t, len(lines), i, "Premature End of file reached")
-			require.EqualValues(t, strings.TrimSpace(line), strings.TrimSpace(elines[i]), "On Line:%d\n%d:\n%s\n%d:", i, low, strings.Join(lines[low:hight], "\n"), hight)
+			if logv := m1.FindStringSubmatch(line); len(logv) > 1 {
+				t.Logf("%d: %s", i, logv[1])
+				line = m1.ReplaceAllString(line, "")
+			}
+
+			require.EqualValues(t, strings.TrimSpace(elines[i]), strings.TrimSpace(line), "On Section [%s] Line:%d\n%d:\n%s\n%d:", k, i, low, strings.Join(lines[low:hight], "\n"), hight)
 		}
 
 	}

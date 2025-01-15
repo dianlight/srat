@@ -43,10 +43,13 @@ func RenderTemplateBuffer(config *map[string]interface{}, templateData []byte) (
 
 	// generate template
 	coreTemplate := template.New("tempIO").Funcs(sprig.TxtFuncMap())
-	template.Must(coreTemplate.Parse(string(templateData)))
+	coreTemplate, err := coreTemplate.Parse(string(templateData))
+	if err != nil {
+		return nil, err
+	}
 
 	// render
-	err := coreTemplate.Execute(buf, *config)
+	err = coreTemplate.Execute(buf, *config)
 	if err != nil {
 		return nil, err
 	}
