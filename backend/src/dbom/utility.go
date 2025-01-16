@@ -1,6 +1,8 @@
 package dbom
 
 import (
+	"context"
+
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/mapper"
@@ -9,12 +11,12 @@ import (
 func FirstTimeJSONImporter(config config.Config) error {
 	// Migrate from JSON to DB
 	var settings dto.Settings
-	err := mapper.Map(&settings, config)
+	err := mapper.Map(context.Background(), &settings, config)
 	if err != nil {
 		return err
 	}
 	var properties Properties
-	err = mapper.Map(&properties, settings)
+	err = mapper.Map(context.Background(), &properties, settings)
 	if err != nil {
 		return err
 	}
@@ -25,12 +27,12 @@ func FirstTimeJSONImporter(config config.Config) error {
 
 	// Users
 	var users []dto.User
-	err = mapper.Map(&users, config)
+	err = mapper.Map(context.Background(), &users, config)
 	if err != nil {
 		return err
 	}
 	var sambaUsers SambaUsers
-	err = mapper.Map(&sambaUsers, users)
+	err = mapper.Map(context.Background(), &sambaUsers, users)
 	if err != nil {
 		return err
 	}
@@ -40,12 +42,12 @@ func FirstTimeJSONImporter(config config.Config) error {
 	}
 	// Shares
 	var shares []dto.SharedResource
-	err = mapper.Map(&shares, config)
+	err = mapper.Map(context.Background(), &shares, config)
 	if err != nil {
 		return err
 	}
 	var sambaShares ExportedShares
-	err = mapper.Map(&sambaShares, shares)
+	err = mapper.Map(context.Background(), &sambaShares, shares)
 	if err != nil {
 		return err
 	}

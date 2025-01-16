@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -37,7 +38,7 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = mapper.Map(&dbconfig, config)
+	err = mapper.Map(context.Background(), &dbconfig, config)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -51,7 +52,7 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 
-	err = mapper.Map(&config, dbconfig)
+	err = mapper.Map(context.Background(), &config, dbconfig)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -80,7 +81,7 @@ func GetSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var settings dto.Settings
-	err = mapper.Map(&settings, dbsettings)
+	err = mapper.Map(context.Background(), &settings, dbsettings)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return

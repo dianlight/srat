@@ -102,7 +102,7 @@ func ListShares(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(&shares, dbshares)
+	err = mapper.Map(context.Background(), &shares, dbshares)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -135,7 +135,7 @@ func GetShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	share := dto.SharedResource{}
-	err = mapper.Map(&share, dbshare)
+	err = mapper.Map(context.Background(), &share, dbshare)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -181,7 +181,7 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = mapper.Map(&dbshare, share)
+	err = mapper.Map(context.Background(), &dbshare, share)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -193,7 +193,7 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	err = mapper.Map(&share, dbshare)
+	err = mapper.Map(context.Background(), &share, dbshare)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -217,7 +217,7 @@ func notifyClient() {
 		log.Fatal(err)
 		return
 	}
-	err = mapper.Map(&shares, dbshares)
+	err = mapper.Map(context.Background(), &shares, dbshares)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -267,7 +267,7 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(&dbshare, share)
+	err = mapper.Map(context.Background(), &dbshare, share)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -321,7 +321,7 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(&dbshare, share)
+	err = mapper.Map(context.Background(), &dbshare, share)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -356,7 +356,7 @@ func SharesWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, 
 	}
 	var dbshare dbom.ExportedShare
 	var shares []dto.SharedResource
-	err := mapper.Map(&shares, dbshare)
+	err := mapper.Map(context.Background(), &shares, dbshare)
 	if err != nil {
 		log.Println(err)
 		return

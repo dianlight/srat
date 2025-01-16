@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -160,8 +161,8 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 
 	//assert.Len(t, initialConfig.Options.ACL, 2)
 
-	assert.Equal(t, User{Username: "utente1", Password: "Test Password"}, (initialConfig.Shares["backup"].Users)[0])
-	assert.Equal(t, User{Username: "utente2", Password: "Test Password"}, (initialConfig.Shares["ssl"].Users)[0])
+	assert.Equal(t, "utente1", (initialConfig.Shares["backup"].Users)[0])
+	assert.Equal(t, "utente2", (initialConfig.Shares["ssl"].Users)[0])
 	assert.True(t, initialConfig.Shares["ssl"].Disabled)
 }
 func TestLoadConfigWithNonExistentFile(t *testing.T) {
@@ -224,7 +225,7 @@ func TestMappableToDtoSettings(t *testing.T) {
 	require.NoError(t, err)
 
 	dto := dto.Settings{}
-	err = mapper.Map(&dto, config)
+	err = mapper.Map(context.Background(), &dto, config)
 	require.NoError(t, err)
 
 	//bdata, err := os.ReadFile("../../test/data/config.json")
@@ -263,7 +264,7 @@ func TestMappableToDtoUsers(t *testing.T) {
 	require.NoError(t, err)
 
 	_dto := []dto.User{}
-	err = mapper.Map(&_dto, config)
+	err = mapper.Map(context.Background(), &_dto, config)
 	require.NoError(t, err)
 
 	//bdata, err := os.ReadFile("../../test/data/config.json")
@@ -287,7 +288,7 @@ func TestMappableToDtoSharedResources(t *testing.T) {
 	require.NoError(t, err)
 
 	_dto := make([]dto.SharedResource, 0, 20)
-	err = mapper.Map(&_dto, config)
+	err = mapper.Map(context.Background(), &_dto, config)
 	require.NoError(t, err)
 
 	//bdata, err := os.ReadFile("../../test/data/config.json")

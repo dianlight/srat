@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thoas/go-funk"
 )
 
 func TestListUsersHandler(t *testing.T) {
@@ -33,16 +34,22 @@ func TestListUsersHandler(t *testing.T) {
 	// Check the status code is what we expect.
 	assert.Equal(t, http.StatusOK, rr.Code)
 
+	var users []dto.User
+	jsonError := json.Unmarshal(rr.Body.Bytes(), &users)
+	require.NoError(t, jsonError)
+
 	// Check the response body is what we expect.
-	//context_state := (&dto.ContextState{}).FromContext(testContext)
 	var configs config.Config
 	err = configs.FromContext(testContext)
 	require.NoError(t, err)
 
-	expected, jsonError := json.Marshal(configs.OtherUsers)
-	assert.NotEmpty(t, expected)
-	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected), rr.Body.String())
+	assert.Len(t, users, len(configs.OtherUsers)+1, users)
+
+	for _, user := range users {
+		ou := funk.Find(configs.OtherUsers, func(u config.User) bool { return u.Username == user.Username }).(config.User)
+		assert.Equal(t, ou.Password, user.Password)
+		assert.False(t, user.IsAdmin)
+	}
 }
 
 /*

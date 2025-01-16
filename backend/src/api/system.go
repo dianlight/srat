@@ -68,7 +68,7 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 		return
 	}
 	var settings dto.Settings
-	err = mapper.Map(&settings, properties)
+	err = mapper.Map(context.Background(), &settings, properties)
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 		return
@@ -381,7 +381,7 @@ func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var info dto.NetworkInfo
-	err = mapper.Map(&info, net)
+	err = mapper.Map(context.Background(), &info, net)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -462,7 +462,7 @@ func GetFSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var xfs dto.FilesystemTypes
-	err = mapper.Map(&xfs, fs)
+	err = mapper.Map(context.Background(), &xfs, fs)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return

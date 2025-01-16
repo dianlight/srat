@@ -11,18 +11,17 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/mapper"
 	"github.com/jinzhu/copier"
-	"github.com/thoas/go-funk"
 )
 
 type Share struct {
-	Name        string `json:"name,omitempty"`
-	Path        string `json:"path"`
-	FS          string `json:"fs"`
-	Disabled    bool   `json:"disabled,omitempty"`
-	Users       []any  `json:"users,omitempty"`
-	RoUsers     []any  `json:"ro_users,omitempty"`
-	TimeMachine bool   `json:"timemachine,omitempty"`
-	Usage       string `json:"usage,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	Path        string   `json:"path"`
+	FS          string   `json:"fs"`
+	Disabled    bool     `json:"disabled,omitempty"`
+	Users       []string `json:"users,omitempty"`
+	RoUsers     []string `json:"ro_users,omitempty"`
+	TimeMachine bool     `json:"timemachine,omitempty"`
+	Usage       string   `json:"usage,omitempty"`
 }
 
 type Shares map[string]Share
@@ -133,7 +132,7 @@ func (in *Config) MigrateConfig() error {
 		for _, share := range []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"} {
 			_, ok := in.Shares[share]
 			if !ok {
-				in.Shares[share] = Share{Name: share, Path: "/" + share, FS: "native", Disabled: false, Usage: "none", Users: []any{in.Username}}
+				in.Shares[share] = Share{Name: share, Path: "/" + share, FS: "native", Disabled: false, Usage: "none", Users: []string{in.Username}}
 			}
 		}
 	}
@@ -149,10 +148,9 @@ func (in *Config) MigrateConfig() error {
 				in.ACL = slices.Delete(in.ACL, i, i+1)
 			}
 			if len(share.Users) == 0 {
-				share.Users = append(share.Users, User{
-					Username: in.Username,
-					Password: in.Password,
-				})
+				if len(share.Users) == 0 {
+					share.Users = append(share.Users, in.Username)
+				}
 			}
 			if share.Usage == "" {
 				if in.Medialibrary.Enable {
@@ -170,38 +168,48 @@ func (in *Config) MigrateConfig() error {
 		log.Printf("Migrating config from version 2 to version 3")
 		in.ConfigSpecVersion = 3
 		for shareName, share := range in.Shares {
-			for ix, user := range share.Users {
-				switch user.(type) {
-				case string:
-					{
-						share.Users[ix] = funk.Find(in.OtherUsers, func(u User) bool { return u.Username == user.(string) })
-					}
-				case User:
-					{
-						share.Users[ix] = user
-					}
-				default:
-					{
-						log.Printf("Unknown user type in share %s: %T", shareName, user)
-					}
-				}
-			}
-			for ix, user := range share.RoUsers {
-				switch user.(type) {
-				case string:
-					{
-						share.RoUsers[ix] = funk.Find(in.OtherUsers, func(u User) bool { return u.Username == user.(string) })
-					}
-				case User:
-					{
-						share.RoUsers[ix] = user
-					}
-				default:
-					{
-						log.Printf("Unknown rouser type in share %s: %T", shareName, user)
+			/*
+				for ix, user := range share.Users {
+					switch user.(type) {
+					case string:
+						{
+							ux := funk.Find(in.OtherUsers, func(u User) bool { return u.Username == user.(string) })
+							if ux != nil {
+								share.Users[ix] = ux
+							} else if user.(string) == in.Username {
+								share.Users[ix] = User{Username: in.Username, Password: in.Password}
+							} else {
+								share.Users[ix] = User{Username: user.(string), Password: "<invalid password>"}
+							}
+						}
+					case User:
+					default:
+						{
+							log.Printf("Unknown user type in share %s: %T", shareName, user)
+						}
 					}
 				}
-			}
+				for ix, user := range share.RoUsers {
+					switch user.(type) {
+					case string:
+						{
+							ux := funk.Find(in.OtherUsers, func(u User) bool { return u.Username == user.(string) })
+							if ux != nil {
+								share.RoUsers[ix] = ux
+							} else if user.(string) == in.Username {
+								share.RoUsers[ix] = User{Username: in.Username, Password: in.Password}
+							} else {
+								share.RoUsers[ix] = User{Username: user.(string), Password: "<invalid password>"}
+							}
+						}
+					case User:
+					default:
+						{
+							log.Printf("Unknown rouser type in share %s: %T", shareName, user)
+						}
+					}
+				}
+			*/
 			if share.Usage == "" && in.Automount {
 				share.Usage = "media"
 				in.Shares[shareName] = share
@@ -247,7 +255,7 @@ func (self *Config) ToContext(ctx context.Context) context.Context {
 }
 
 // Mapping Functions
-func (self Config) To(dst any) (bool, error) {
+func (self Config) To(ctx context.Context, dst any) (bool, error) {
 	switch dst.(type) {
 	case *[]dto.User:
 		*dst.(*[]dto.User) = append((*dst.(*[]dto.User)), dto.User{
@@ -265,7 +273,7 @@ func (self Config) To(dst any) (bool, error) {
 	case *[]dto.SharedResource:
 		for _, share := range self.Shares {
 			var sr dto.SharedResource
-			err := mapper.Map(&sr, share)
+			err := mapper.Map(context.Background(), &sr, share)
 			if err != nil {
 				return false, err
 			}
@@ -276,3 +284,32 @@ func (self Config) To(dst any) (bool, error) {
 		return false, nil
 	}
 }
+
+/*
+func (m Shares) To(dst any) (bool, error) {
+	switch v := dst.(type) {
+	case *[]dto.SharedResource:
+		var shr dto.SharedResource
+		err := mapper.Map(&shr, m)
+		if err != nil {
+			return false, err
+		}
+		*v = append(*v, shr)
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+*/
+
+/*
+func (m *Shares) From(src any) (bool, error) {
+	switch v := src.(type) {
+	case [string]:
+		m.Username = v
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+*/

@@ -1,5 +1,7 @@
 package dto
 
+import "context"
+
 //type Users []User
 
 type User struct {
@@ -8,10 +10,20 @@ type User struct {
 	IsAdmin  bool   `json:"is_admin"`
 }
 
-func (m User) To(dst any) (bool, error) {
+func (m User) To(ctx context.Context, dst any) (bool, error) {
 	switch v := dst.(type) {
-	case *interface{}:
+	case *string:
 		*v = m.Username
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+
+func (m *User) From(ctx context.Context, src any) (bool, error) {
+	switch v := src.(type) {
+	case string:
+		m.Username = v
 		return true, nil
 	default:
 		return false, nil

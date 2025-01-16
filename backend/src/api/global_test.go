@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -38,7 +39,7 @@ func TestGetSettingsHandler(t *testing.T) {
 	err = config.FromContext(testContext)
 	require.NoError(t, err)
 	var expected dto.Settings
-	err = mapper.Map(&expected, config)
+	err = mapper.Map(context.Background(), &expected, config)
 	require.NoError(t, err)
 
 	// Check the response body is what we expect.

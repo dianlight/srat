@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -29,7 +30,7 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var users []dto.User
-	err = mapper.Map(&users, dbusers)
+	err = mapper.Map(context.Background(), &users, dbusers)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -61,7 +62,7 @@ func GetAdminUser(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(&adminUser, dbUser)
+	err = mapper.Map(context.Background(), &adminUser, dbUser)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -123,7 +124,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var dbUser dbom.SambaUser
-	err = mapper.Map(&dbUser, user)
+	err = mapper.Map(context.Background(), &dbUser, user)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -177,7 +178,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(&dbUser, &user)
+	err = mapper.Map(context.Background(), &dbUser, &user)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -218,7 +219,7 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(&dbUser, &user)
+	err = mapper.Map(context.Background(), &dbUser, &user)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return

@@ -31,15 +31,15 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 		return nil, err
 	}
 	var settings dto.Settings
-	err = mapper.Map(&settings, properties)
+	err = mapper.Map(context.Background(), &settings, properties)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
-	err = mapper.Map(&config, settings)
+	err = mapper.Map(context.Background(), &config, settings)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
-	err = mapper.Map(&config.Options, settings)
+	err = mapper.Map(context.Background(), &config.Options, settings)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
@@ -50,12 +50,12 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 		return nil, tracerr.Wrap(err)
 	}
 	var users []dto.User
-	err = mapper.Map(&users, sambaUsers)
+	err = mapper.Map(context.Background(), &users, sambaUsers)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
 	normalUsers := funk.Filter(users, func(u dto.User) bool { return !u.IsAdmin }).([]dto.User)
-	err = mapper.Map(&config.OtherUsers, normalUsers)
+	err = mapper.Map(context.Background(), &config.OtherUsers, normalUsers)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
@@ -74,11 +74,11 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 		return nil, tracerr.Wrap(err)
 	}
 	var shares []dto.SharedResource
-	err = mapper.Map(&shares, sambaShares) //.FromArray(&sambaShares, "Name")
+	err = mapper.Map(context.Background(), &shares, sambaShares) //.FromArray(&sambaShares, "Name")
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
-	err = mapper.Map(&config.Shares, shares)
+	err = mapper.Map(context.Background(), &config.Shares, shares)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}

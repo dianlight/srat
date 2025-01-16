@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -42,7 +43,7 @@ func TestListSharesHandler(t *testing.T) {
 	var config config.Config
 	config.FromContext(testContext)
 	var expectedDto []dto.SharedResource
-	err = mapper.Map(&expectedDto, config)
+	err = mapper.Map(context.Background(), &expectedDto, config)
 	require.NoError(t, err)
 	//assert.EqualValues(t, expectedDto, resultsDto)
 
