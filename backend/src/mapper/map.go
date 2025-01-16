@@ -1,6 +1,7 @@
 package mapper
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -9,11 +10,15 @@ import (
 	"github.com/ztrue/tracerr"
 )
 
-func Map(dst any, src any) error {
+func Map(ctx context.Context, dst any, src any) error {
 	vdst := reflect.ValueOf(dst)
 	if vdst.Kind() != reflect.Ptr {
 		return tracerr.Errorf("Unsupported destination type: %T a pointer is required!", dst)
 	}
+	ctx = context.WithValue(ctx, "mapper_parent_src_ptr", ctx.Value("mapper_src_ptr"))
+	ctx = context.WithValue(ctx, "mapper_parent_dst_ptr", ctx.Value("mapper_dst_ptr"))
+	ctx = context.WithValue(ctx, "mapper_src_ptr", src)
+	ctx = context.WithValue(ctx, "mapper_dst_ptr", &dst)
 	if vdst.IsNil() {
 		return tracerr.Errorf("Unsupported Nil destination")
 	}
@@ -25,7 +30,7 @@ func Map(dst any, src any) error {
 	}
 
 	if val, ok := src.(MappableTo); ok {
-		match, err := val.To(dst)
+		match, err := val.To(ctx, dst)
 		if err != nil {
 			return tracerr.Wrap(err)
 		}
@@ -33,7 +38,7 @@ func Map(dst any, src any) error {
 			return nil
 		}
 	} else if val, ok := dst.(MappableFrom); ok {
-		match, err := val.From(src)
+		match, err := val.From(ctx, src)
 		if err != nil {
 			return tracerr.Wrap(err)
 		}
@@ -44,17 +49,17 @@ func Map(dst any, src any) error {
 	v := reflect.ValueOf(src)
 	switch reflect.Indirect(v).Kind() {
 	case reflect.Map:
-		return fromMap(dst, src /*.(map[string]any)*/)
+		return fromMap(ctx, dst, src)
 	case reflect.Slice:
-		return fromSlice(dst, src)
+		return fromSlice(ctx, dst, src)
 	case reflect.Struct:
-		return fromStruct(dst, src)
+		return fromStruct(ctx, dst, src)
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16,
 		reflect.Float32, reflect.Float64,
 		reflect.String:
-		return fromNative(dst, src)
+		return fromNative(ctx, dst, src)
 	default:
 		return tracerr.Errorf("Unsupported source type: %T for destination %T", src, dst)
 	}
@@ -81,7 +86,7 @@ func redirectValue(value reflect.Value) reflect.Value {
 	}
 }
 
-func fromMap(dst any, src any /*map[string]any*/) error {
+func fromMap(ctx context.Context, dst any, src any) error {
 	v := reflect.Indirect(reflect.ValueOf(dst))
 	vsrc := reflect.Indirect(reflect.ValueOf(src))
 	switch kid := v.Kind(); kid {
@@ -90,7 +95,7 @@ func fromMap(dst any, src any /*map[string]any*/) error {
 			//for _, item := range src {
 			var item = vsrc.Index(i).Interface()
 			var itemT any
-			if err := Map(&itemT, item); err != nil {
+			if err := Map(ctx, &itemT, item); err != nil {
 				return tracerr.Wrap(err)
 			}
 			dst = append(dst.([]any), itemT)
@@ -105,7 +110,7 @@ func fromMap(dst any, src any /*map[string]any*/) error {
 				v.SetMapIndex(ks, vs.Convert(reflect.TypeOf(v).Elem()))
 			} else {
 				itemT := reflect.New(v.Elem().Type()).Interface()
-				err := Map(itemT, vs.Interface())
+				err := Map(ctx, itemT, vs.Interface())
 				if err != nil {
 					return tracerr.Wrap(err)
 				}
@@ -125,7 +130,7 @@ func fromMap(dst any, src any /*map[string]any*/) error {
 				nvt.Set(x.Convert(nvt.Type()))
 			} else {
 				itemT := reflect.New(nvt.Type()).Interface()
-				err := Map(itemT, vsrc.MapIndex(key).Interface())
+				err := Map(ctx, itemT, vsrc.MapIndex(key).Interface())
 				if err != nil {
 					return tracerr.Wrap(err)
 				}
@@ -138,14 +143,14 @@ func fromMap(dst any, src any /*map[string]any*/) error {
 	}
 }
 
-func fromSlice(dst any, src any /*[]any*/) error {
+func fromSlice(ctx context.Context, dst any, src any) error {
 	v := reflect.Indirect(reflect.ValueOf(dst))
 	vsrc := reflect.Indirect(reflect.ValueOf(src))
 	switch v.Kind() {
 	case reflect.Slice:
 		for i := 0; i < vsrc.Len(); i++ {
 			itemT := reflect.New(v.Type().Elem()).Interface()
-			if err := Map(itemT, vsrc.Index(i).Interface()); err != nil {
+			if err := Map(ctx, itemT, vsrc.Index(i).Interface()); err != nil {
 				return tracerr.Wrap(err)
 			}
 			v = reflect.Append(v, reflect.Indirect(reflect.ValueOf(itemT)))
@@ -181,7 +186,7 @@ func fromSlice(dst any, src any /*[]any*/) error {
 				if itemT.IsNil() {
 					itemT.Set(reflect.New(value.Type()))
 				}
-				err := Map(itemT.Interface(), value.Interface())
+				err := Map(ctx, itemT.Interface(), value.Interface())
 				if err != nil {
 					return tracerr.Wrap(err)
 				}
@@ -207,7 +212,7 @@ func fromSlice(dst any, src any /*[]any*/) error {
 		}
 		for i := 0; i < vsrc.Len(); i++ {
 			itemT := reflect.New(v.Type().Elem()).Interface()
-			if err := Map(itemT, vsrc.Index(i).Interface()); err != nil {
+			if err := Map(ctx, itemT, vsrc.Index(i).Interface()); err != nil {
 				return tracerr.Wrap(err)
 			}
 			v.SetMapIndex(vsrc.Index(i).Field(keyfield), reflect.ValueOf(itemT).Elem())
@@ -219,7 +224,7 @@ func fromSlice(dst any, src any /*[]any*/) error {
 	}
 }
 
-func fromStruct[T any](dst T, src any) error {
+func fromStruct[T any](ctx context.Context, dst T, src any) error {
 	v := reflect.Indirect(reflect.ValueOf(dst))
 	//v := redirectValue(reflect.ValueOf(dst))
 	switch v.Kind() {
@@ -235,7 +240,7 @@ func fromStruct[T any](dst T, src any) error {
 				nvt.Set(x.Convert(nvt.Type()))
 			} else {
 				itemT := reflect.New(nvt.Type()).Interface()
-				err := Map(itemT, redirectValue(x).Interface())
+				err := Map(ctx, itemT, redirectValue(x).Interface())
 				if err != nil {
 					return tracerr.Wrap(err)
 				}
@@ -284,11 +289,11 @@ func fromStruct[T any](dst T, src any) error {
 	}
 }
 
-func fromNative[T any](dst T, src any) error {
-	return _fromNative(reflect.ValueOf(dst), reflect.ValueOf(src))
+func fromNative[T any](ctx context.Context, dst T, src any) error {
+	return _fromNative(ctx, reflect.ValueOf(dst), reflect.ValueOf(src))
 }
 
-func _fromNative(v reflect.Value, src reflect.Value) error {
+func _fromNative(ctx context.Context, v reflect.Value, src reflect.Value) error {
 	//v := /*reflect.Indirect(*/ reflect.ValueOf(dst) /*)*/
 	//v := redirectValue(reflect.ValueOf(dst))
 	switch v.Kind() {
@@ -331,7 +336,7 @@ func _fromNative(v reflect.Value, src reflect.Value) error {
 		if v.IsNil() {
 			v.Set(reflect.New(v.Type().Elem()))
 		}
-		return _fromNative(reflect.Indirect(v), src)
+		return _fromNative(ctx, reflect.Indirect(v), src)
 	default:
 		return tracerr.Errorf("(fromNative) Unsupported source type: %s for destination %s", src.Type().Name(), v.Type().Name())
 	}

@@ -1,6 +1,7 @@
 package mapper
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ type TestStruct struct {
 	Value string `json:"value"`
 }
 
-func (m MockMappable) To(dst any) (bool, error) {
+func (m MockMappable) To(ctx context.Context, dst any) (bool, error) {
 	switch v := dst.(type) {
 	case *TestStruct:
 		*v = TestStruct{Value: "mapped"}
@@ -29,7 +30,7 @@ type MockUnMappable struct {
 	Value2 string `json:"value2"`
 }
 
-func (t *TestStruct) From(src any) (bool, error) {
+func (t *TestStruct) From(ctx context.Context, src any) (bool, error) {
 	switch v := src.(type) {
 	case MockUnMappable:
 		t.Value = v.Value2
@@ -45,7 +46,7 @@ func TestMapWithMappableSource(t *testing.T) {
 	src := MockMappable{}
 	dst := &TestStruct{}
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	require.NoError(t, err)
 	assert.Equal(t, "mapped", dst.Value)
@@ -63,7 +64,7 @@ func TestMapWithMappableSourceNoMatch(t *testing.T) {
 	}
 	dst := &TestStruct{}
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	require.NoError(t, err)
 	assert.Equal(t, "unmapped*", dst.Value3)
@@ -77,7 +78,7 @@ func TestMapWithMappableDestination(t *testing.T) {
 	}
 	dst := &TestStruct{}
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	require.NoError(t, err)
 	assert.Equal(t, "unmapped", dst.Value)
@@ -91,7 +92,7 @@ func TestMapFromPtrWithMappableDestination(t *testing.T) {
 	}
 	dst := &TestStruct{}
 
-	err := Map(dst, &src)
+	err := Map(context.Background(), dst, &src)
 
 	require.NoError(t, err)
 	assert.Equal(t, "unmapped", dst.Value)
@@ -113,7 +114,7 @@ func TestMapFromMapStringAny(t *testing.T) {
 
 	dst := &TestStruct{}
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	require.NoError(t, err)
 	assert.Equal(t, "John Doe", dst.Name)
@@ -137,7 +138,7 @@ func TestMapFromMapStringPointerAny(t *testing.T) {
 
 	dst := &TestStruct{}
 
-	err := Map(dst, &src)
+	err := Map(context.Background(), dst, &src)
 
 	require.NoError(t, err)
 	assert.Equal(t, "John Doe", dst.Name)
@@ -158,7 +159,7 @@ func TestMapFromSliceAny(t *testing.T) {
 
 	var dst []TestStruct
 
-	err := Map(&dst, src)
+	err := Map(context.Background(), &dst, src)
 
 	require.NoError(t, err)
 	assert.Len(t, dst, 2)
@@ -176,7 +177,7 @@ func TestMapWithUnsupportedSourceType(t *testing.T) {
 	src := 42 // An integer is an unsupported source type
 	dst := &TestStruct{}
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Unsupported source type: int for destination")
@@ -191,7 +192,7 @@ func TestMapWithEmptyMapStringAnySource(t *testing.T) {
 	src := map[string]any{}
 	dst := &TestStruct{Name: "Original", Value: 42}
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	require.NoError(t, err)
 	assert.Equal(t, "Original", dst.Name)
@@ -201,7 +202,7 @@ func TestMapWithNilDestination(t *testing.T) {
 	var dst *string
 	src := "test"
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	require.Error(t, err)
 	//assert.Equal(t, "test", dst)
@@ -216,7 +217,7 @@ func TestMapWithEmptySliceAnySource(t *testing.T) {
 	src := []any{}
 	dst := &TestStruct{Name: "Original", Value: 42}
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	require.NoError(t, err)
 	assert.Equal(t, "Original", dst.Name)
@@ -240,7 +241,7 @@ func TestMapPreservesExistingValues(t *testing.T) {
 		"Age":  35,
 	}
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	require.NoError(t, err)
 	assert.Equal(t, "Jane Doe", dst.Name)
@@ -270,7 +271,7 @@ func TestMapWithNestedStructures(t *testing.T) {
 
 	dst := &Person{}
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	require.NoError(t, err)
 	assert.Equal(t, "John Doe", dst.Name)
@@ -299,7 +300,7 @@ func TestMapTypeConversions(t *testing.T) {
 
 	dst := &TestStruct{}
 
-	err := Map(dst, src)
+	err := Map(context.Background(), dst, src)
 
 	//pretty.Println(src, dst)
 
@@ -325,7 +326,7 @@ func TestMapFromMapToSlice(t *testing.T) {
 
 	dst := make([]TestStruct, 0, len(src))
 
-	err := Map(&dst, src)
+	err := Map(context.Background(), &dst, src)
 
 	require.NoError(t, err)
 	assert.Len(t, dst, 2)
@@ -364,7 +365,7 @@ func TestMapFromStructToSlice(t *testing.T) {
 
 	dst := make([]TestStruct, 0, 4)
 
-	err := Map(&dst, src)
+	err := Map(context.Background(), &dst, src)
 
 	require.NoError(t, err)
 	assert.Len(t, dst, 6)
@@ -413,7 +414,7 @@ func TestMapFromStructToSliceTypeWithDuplicate(t *testing.T) {
 		{Name: "Pluto", Value: "John"},
 	}
 
-	err := Map(&dst, src)
+	err := Map(context.Background(), &dst, src)
 
 	require.NoError(t, err)
 	assert.Len(t, dst, 4)
@@ -461,7 +462,7 @@ func TestMapFromStructToSliceTypeWithIngoreEmpty(t *testing.T) {
 		{Name: "NonnaPapera", Value: []string{"John"}},
 	}
 
-	err := Map(&dst, src)
+	err := Map(context.Background(), &dst, src)
 
 	require.NoError(t, err)
 	assert.Len(t, dst, 5)
@@ -508,7 +509,7 @@ func TestMapFromSliceTypeToStruct(t *testing.T) {
 
 	var dst TestStuctDestination
 
-	err := Map(&dst, src)
+	err := Map(context.Background(), &dst, src)
 
 	require.NoError(t, err, tracerr.SprintSourceColor(err))
 	assert.Equal(t, 30, dst.Pippo)
@@ -566,7 +567,7 @@ func TestMapFromSliceToMap(t *testing.T) {
 
 	dst := TestMapDestinations{}
 
-	err := Map(&dst, src)
+	err := Map(context.Background(), &dst, src)
 
 	require.NoError(t, err, tracerr.SprintSourceColor(err))
 	assert.Len(t, dst, 2)

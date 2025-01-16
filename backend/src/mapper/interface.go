@@ -1,9 +1,11 @@
 package mapper
 
+import "context"
+
 type MappableTo interface {
-	To(dst any) (bool, error)
+	To(ctx context.Context, dst any) (bool, error)
 }
 
 type MappableFrom interface {
-	From(src any) (bool, error)
+	From(ctx context.Context, src any) (bool, error)
 }
