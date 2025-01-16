@@ -1,7 +1,7 @@
 package dto
 
 type NetworkInfo struct {
-	NICs []*NIC `json:"nics"`
+	NICs []NIC `json:"nics"`
 }
 
 type NIC struct {
