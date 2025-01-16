@@ -101,6 +101,7 @@ func TestCreateConfigStream(t *testing.T) {
 	// assert.EqualValues(t, strings.Split(string(fsbyte), "\n"), strings.Split(string(*stream), "\n"))
 }
 func TestApplySambaHandler(t *testing.T) {
+	t.Skip("Not yed necessary for now, we need to mock the smbd process and create a test config file")
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
