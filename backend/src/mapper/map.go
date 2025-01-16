@@ -10,15 +10,21 @@ import (
 	"github.com/ztrue/tracerr"
 )
 
+type Stack struct {
+	Src, Dst any
+}
+
 func Map(ctx context.Context, dst any, src any) error {
 	vdst := reflect.ValueOf(dst)
 	if vdst.Kind() != reflect.Ptr {
 		return tracerr.Errorf("Unsupported destination type: %T a pointer is required!", dst)
 	}
-	ctx = context.WithValue(ctx, "mapper_parent_src_ptr", ctx.Value("mapper_src_ptr"))
-	ctx = context.WithValue(ctx, "mapper_parent_dst_ptr", ctx.Value("mapper_dst_ptr"))
-	ctx = context.WithValue(ctx, "mapper_src_ptr", src)
-	ctx = context.WithValue(ctx, "mapper_dst_ptr", &dst)
+	stack := ctx.Value("mapper_stack")
+	if stack == nil {
+		stack = &[]Stack{}
+		ctx = context.WithValue(ctx, "mapper_stack", stack)
+	}
+	*(stack.(*[]Stack)) = append(*(stack.(*[]Stack)), Stack{Src: src, Dst: dst})
 	if vdst.IsNil() {
 		return tracerr.Errorf("Unsupported Nil destination")
 	}

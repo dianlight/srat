@@ -1,6 +1,12 @@
 package dto
 
-import "context"
+import (
+	"context"
+	"fmt"
+
+	"github.com/dianlight/srat/mapper"
+	"github.com/thoas/go-funk"
+)
 
 //type Users []User
 
@@ -23,7 +29,14 @@ func (m User) To(ctx context.Context, dst any) (bool, error) {
 func (m *User) From(ctx context.Context, src any) (bool, error) {
 	switch v := src.(type) {
 	case string:
-		m.Username = v
+		stack := ctx.Value("mapper_stack").(*[]mapper.Stack)
+		users := (*((*stack)[0].Dst.(*SharedResource))).Users
+		nv := funk.Find(users, func(u User) bool { return u.Username == v })
+		if nv != nil {
+			*m = nv.(User)
+			return true, nil
+		}
+		fmt.Printf("User not in %+v found: %+v", users, v)
 		return true, nil
 	default:
 		return false, nil
