@@ -1,6 +1,7 @@
 package main
 
 //go:generate go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 init --pd --parseInternal
+//go:generate go run github.com/jmattheis/goverter/cmd/goverter@v1.7.0 gen ./converter
 
 import (
 	"context"

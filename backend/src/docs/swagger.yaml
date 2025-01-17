@@ -283,6 +283,7 @@ definitions:
   dto.SharedResource:
     properties:
       device_id:
+        description: DirtyStatus bool    `json:"id_dirty,omitempty"`
         type: integer
       disabled:
         type: boolean
@@ -290,8 +291,6 @@ definitions:
         type: string
       id:
         type: integer
-      id_dirty:
-        type: boolean
       invalid:
         type: boolean
       name:
@@ -1115,6 +1114,10 @@ paths:
             $ref: '#/definitions/dto.SambaProcessStatus'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/api.ErrorResponse'
         "500":
