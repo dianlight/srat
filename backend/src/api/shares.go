@@ -254,8 +254,8 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbshare := &dbom.ExportedShare{
-		Model: gorm.Model{ID: *share.ID},
-		Name:  share_name,
+		ID:   *share.ID,
+		Name: share_name,
 	}
 	err = dbshare.Get()
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
@@ -308,8 +308,8 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbshare := &dbom.ExportedShare{
-		Model: gorm.Model{ID: *share.ID},
-		Name:  share_name,
+		ID:   *share.ID,
+		Name: share_name,
 	}
 	err = dbshare.Get()
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
