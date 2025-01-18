@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
 )
 
@@ -27,7 +28,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Cant load config file %s", err)
 	}
-	err = dbom.FirstTimeJSONImporter(config)
+	err = dbutil.FirstTimeJSONImporter(config)
 	if err != nil {
 		log.Fatalf("Cant load json settings - %v", err)
 	}

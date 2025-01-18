@@ -27,6 +27,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dbutil"
 	_ "github.com/dianlight/srat/docs"
 	"github.com/dianlight/srat/dto"
 	"github.com/jpillora/overseer/fetcher"
@@ -156,7 +157,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Cant load config file %s", err)
 		}
-		dbom.FirstTimeJSONImporter(config)
+		dbutil.FirstTimeJSONImporter(config)
 		if err != nil {
 			log.Fatalf("Cant import json settings - %#v", err)
 		}
