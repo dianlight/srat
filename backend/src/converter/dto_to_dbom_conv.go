@@ -29,7 +29,7 @@ func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, targe
 	return nil
 }
 
-func (c *DtoToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, target *dto.Settings) error {
+func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, target *dto.Settings) error {
 	for _, prop := range source {
 		newvalue := reflect.ValueOf(target).Elem().FieldByName(prop.Key)
 		if newvalue.IsValid() {

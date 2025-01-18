@@ -1,14 +1,12 @@
 package api
 
 import (
-	"context"
 	"net/http"
 	"time"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/mapper"
 	"golang.org/x/time/rate"
 )
 
@@ -38,8 +36,10 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
+	var conv converter.DtoToDbomConverterImpl
 
-	err = mapper.Map(context.Background(), &dbconfig, config)
+	//err = mapper.Map(context.Background(), &dbconfig, config)
+	err = conv.SettingsToProperties(config, &dbconfig)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -53,7 +53,8 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 
-	err = mapper.Map(context.Background(), &config, dbconfig)
+	//err = mapper.Map(context.Background(), &config, dbconfig)
+	err = conv.PropertiesToSettings(dbconfig, &config)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -83,7 +84,7 @@ func GetSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var settings dto.Settings
-	err = conv.PropertiesToConfig(dbsettings, &settings)
+	err = conv.PropertiesToSettings(dbsettings, &settings)
 	//	err = mapper.Map(context.Background(), &settings, dbsettings)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
