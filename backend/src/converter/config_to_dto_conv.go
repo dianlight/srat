@@ -14,7 +14,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 	}
 	for _, user := range source.OtherUsers {
 		var tuser dto.User
-		err := c.OtherUsersToUser(user, &tuser)
+		err := c.OtherUserToUser(user, &tuser)
 		if err != nil {
 			return err
 		}
@@ -50,7 +50,7 @@ func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, use
 			target.Username = user.Username
 			target.Password = user.Password
 		} else {
-			err := c.UserToOtherUsers(user, &tuser)
+			err := c.UserToOtherUser(user, &tuser)
 			if err != nil {
 				return err
 			}

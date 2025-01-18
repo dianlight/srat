@@ -1,34 +1,33 @@
 package converter
 
 import (
-	"fmt"
-
-	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 )
 
 // goverter:converter
-// goverter:output:file ./config_to_dto_conv_gen.go
+// goverter:output:file ./dto_to_dbom_conv_gen.go
 // goverter:output:package github.com/dianlight/srat/converter
-// goverter:extend StringToDtoUser
-// goverter:extend DtoUserToString
 // goverter:default:update
-type ConfigToDtoConverter interface {
+// goverter:enum:unknown @error
+type DtoToDbomConverter interface {
 	// goverter:update target
-	// goverter:ignore ID DeviceId Invalid
-	// goverter:context users
-	ShareToSharedResource(source config.Share, target *dto.SharedResource, users []dto.User) error
+	// goverter:useZeroValueOnPointerInconsistency
+	ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) error
 
 	// goverter:update target
-	// goverter:context users
-	SharedResourceToShare(source dto.SharedResource, target *config.Share) error
+	// goverter:useZeroValueOnPointerInconsistency
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:ignore Users RoUsers
+	SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error
 
 	// goverter:update target
-	// goverter:ignore IsAdmin
-	OtherUserToUser(source config.User, target *dto.User) error
+	SambaUserToUser(source dbom.SambaUser, target *dto.User) error
 
 	// goverter:update target
-	UserToOtherUser(source dto.User, target *config.User) error
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:ignoreMissing
+	UserToSambaUser(source dto.User, target *dbom.SambaUser) error
 
 	// goverter:update target
 	// goverter:map Options.Workgroup Workgroup
@@ -41,7 +40,7 @@ type ConfigToDtoConverter interface {
 	// goverter:map Options.BindAllInterfaces BindAllInterfaces
 	// goverter:map Options.LogLevel LogLevel
 	// goverter:map Options.MultiChannel MultiChannel
-	ConfigToSettings(source config.Config, target *dto.Settings) error
+	//ConfigToSettings(source config.Config, target *dto.Settings) error
 
 	// goverter:update target
 	// goverter:map . Options | SettingsToOptions
@@ -51,7 +50,7 @@ type ConfigToDtoConverter interface {
 	// goverter:ignore DockerInterface DockerNet
 	// goverter:ignoreMissing
 	// goverter:context conv
-	SettingsToConfig(source dto.Settings, target *config.Config, conv ConfigToDtoConverter) error
+	//SettingsToConfig(source dto.Settings, target *config.Config, conv ConfigToDtoConverter) error
 
 	// goverter:update target
 	// goverter:ignore Username Password
@@ -60,32 +59,11 @@ type ConfigToDtoConverter interface {
 	// goverter:ignore MQTTHost MQTTUsername MQTTPassword MQTTPort MQTTTopic
 	// goverter:ignore Autodiscovery MOF
 	// goverter:ignore OtherUsers ACL
-	_SettingsToOptions(source dto.Settings, target *config.Options) error
+	//_SettingsToOptions(source dto.Settings, target *config.Options) error
 
 	// goverter:update target
 	// goverter:map Options.Username Username
 	// goverter:map Options.Password Password
 	// goverter:ignore IsAdmin
-	ConfigToUser(source config.Config, target *dto.User) error
-}
-
-// goverter:context users
-func StringToDtoUser(username string, users []dto.User) (dto.User, error) {
-	for _, u := range users {
-		if u.Username == username {
-			return u, nil
-		}
-	}
-	return dto.User{Username: username}, fmt.Errorf("User not found: %s", username)
-}
-
-func DtoUserToString(user dto.User) string {
-	return user.Username
-}
-
-// goverter:context conv
-func SettingsToOptions(source dto.Settings, conv ConfigToDtoConverter) (config.Options, error) {
-	var target config.Options
-	err := conv._SettingsToOptions(source, &target)
-	return target, err
+	//ConfigToUser(source config.Config, target *dto.User) error
 }

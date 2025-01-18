@@ -49,7 +49,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToUser(source config.Config, target *dt
 	target.Password = source.Options.Password
 	return nil
 }
-func (c *ConfigToDtoConverterImpl) OtherUsersToUser(source config.User, target *dto.User) error {
+func (c *ConfigToDtoConverterImpl) OtherUserToUser(source config.User, target *dto.User) error {
 	target.Username = source.Username
 	target.Password = source.Password
 	return nil
@@ -113,7 +113,7 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 	target.Usage = string(source.Usage)
 	return nil
 }
-func (c *ConfigToDtoConverterImpl) UserToOtherUsers(source dto.User, target *config.User) error {
+func (c *ConfigToDtoConverterImpl) UserToOtherUser(source dto.User, target *config.User) error {
 	target.Username = source.Username
 	target.Password = source.Password
 	return nil
