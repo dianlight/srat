@@ -3,7 +3,6 @@ package dbom
 import (
 	"time"
 
-	"github.com/thoas/go-funk"
 	"gorm.io/gorm"
 )
 
@@ -15,10 +14,19 @@ type Property struct {
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
-type Properties []Property
+type Properties map[string]Property
 
 func (self *Properties) Load() error {
-	return db.Find(self).Error
+	var props []Property
+	err := db.Model(&Property{}).Find(&props).Error
+	if err != nil {
+		return err
+	}
+	*self = make(Properties, len(props))
+	for _, prop := range props {
+		(*self)[prop.Key] = prop
+	}
+	return nil
 }
 
 func (self *Properties) Save() error {
@@ -34,7 +42,7 @@ func (self *Properties) DeleteAll() error {
 	return nil
 }
 
-func (self *Properties) Add(key string, value interface{}) error {
+func (self *Properties) Add(key string, value any) error {
 	prop := Property{
 		Key:   key,
 		Value: value,
@@ -47,13 +55,7 @@ func (self *Properties) Add(key string, value interface{}) error {
 		return result.Error
 	}
 
-	for i, existingProp := range *self {
-		if existingProp.Key == key {
-			(*self)[i] = prop
-			return nil
-		}
-	}
-	*self = append(*self, prop)
+	(*self)[key] = prop
 	return nil
 }
 
@@ -63,13 +65,7 @@ func (self *Properties) Remove(key string) error {
 		return result.Error
 	}
 
-	// Remove the property from the slice
-	for i, prop := range *self {
-		if prop.Key == key {
-			*self = append((*self)[:i], (*self)[i+1:]...)
-			break
-		}
-	}
+	delete(*self, key)
 
 	return nil
 }
@@ -80,9 +76,8 @@ func (self *Properties) Get(key string) (*Property, error) {
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	if val, ok := funk.Find(*self, func(i Property) bool { return i.Key == key }).(Property); !ok {
-		*self = append(*self, val)
-	}
+	(*self)[key] = prop
+
 	return &prop, nil
 }
 

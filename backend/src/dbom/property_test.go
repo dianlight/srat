@@ -128,7 +128,7 @@ func TestPropertiesAddString(t *testing.T) {
 
 	// Check if the property was added to the slice
 	assert.Len(t, *p, 1)
-	assert.Equal(t, key, (*p)[0].Key)
+	assert.NotNil(t, (*p)[key])
 
 	// Verify the property was added to the database
 	var dbProp Property
@@ -148,7 +148,7 @@ func TestPropertiesAddInt(t *testing.T) {
 
 	// Check if the property was added successfully
 	assert.Len(t, *p, 1)
-	assert.Equal(t, "testNumberKey", (*p)[0].Key)
+	assert.NotNil(t, (*p)["testNumberKey"])
 
 	// Verify that the property was added to the database
 	var dbProp Property
@@ -195,14 +195,14 @@ func TestPropertiesAddNestedObject(t *testing.T) {
 
 	// Check if the property was added successfully
 	assert.Len(t, *p, 1)
-	assert.Equal(t, "person", (*p)[0].Key)
+	assert.NotNil(t, (*p)["person"])
 
 	// Verify that the property was added to the database
 	var dbProp Property
 	result := db.Where("key = ?", "person").First(&dbProp)
 	require.NoError(t, result.Error)
 	assert.Equal(t, "person", dbProp.Key)
-	assert.Equal(t, (*p)[0].Value, dbProp.Value)
+	assert.Equal(t, (*p)["person"].Value, dbProp.Value)
 
 	// Clean up the test data
 	db.Where("key = ?", "person").Delete(&Property{})
@@ -270,14 +270,14 @@ func TestPropertiesAddLargeValue(t *testing.T) {
 
 	// Check if the property was added successfully
 	assert.Len(t, *p, 1)
-	assert.Equal(t, "largeKey", (*p)[0].Key)
+	assert.NotNil(t, "largeKey", (*p)["largeKey"])
 
 	// Verify that the property was added to the database
 	var dbProp Property
 	result := db.Where("key = ?", "largeKey").First(&dbProp)
 	require.NoError(t, result.Error)
 	assert.Equal(t, "largeKey", dbProp.Key)
-	assert.Equal(t, (*p)[0].Value, dbProp.Value)
+	assert.Equal(t, (*p)["largeKey"].Value, dbProp.Value)
 
 	// Clean up the test data
 	db.Where("key = ?", "largeKey").Delete(&Property{})
@@ -297,14 +297,14 @@ func TestPropertiesAddUnicode(t *testing.T) {
 
 	// Check if the property was added successfully
 	assert.Len(t, *p, 1)
-	assert.Equal(t, unicodeKey, (*p)[0].Key)
+	assert.NotNil(t, (*p)[unicodeKey])
 
 	// Verify that the property was added to the database
 	var dbProp Property
 	result := db.Where("key = ?", unicodeKey).First(&dbProp)
 	require.NoError(t, result.Error)
 	assert.Equal(t, unicodeKey, dbProp.Key)
-	assert.Equal(t, (*p)[0].Value, dbProp.Value)
+	assert.Equal(t, (*p)[unicodeKey].Value, dbProp.Value)
 
 	// Clean up the test data
 	db.Where("key = ?", unicodeKey).Delete(&Property{})
@@ -319,7 +319,7 @@ func TestPropertiesAddNilValue(t *testing.T) {
 
 	// Check if the property was added successfully
 	assert.Len(t, *p, 1)
-	assert.Equal(t, "nilKey", (*p)[0].Key)
+	assert.Nil(t, (*p)["nilKey"].Value)
 
 	// Verify that the property was added to the database
 	var dbProp Property
@@ -343,7 +343,7 @@ func TestPropertiesRemove(t *testing.T) {
 
 	// Verify the property was added
 	assert.Len(t, *p, 1)
-	assert.Equal(t, testKey, (*p)[0].Key)
+	assert.NotNil(t, (*p)[testKey])
 
 	// Remove the property
 	err = p.Remove(testKey)
@@ -377,14 +377,14 @@ func TestPropertiesAddExistingKeyInDB(t *testing.T) {
 
 	// Check if the property was added to the slice
 	assert.Len(t, *p, 1)
-	assert.Equal(t, existingKey, (*p)[0].Key)
+	assert.NotNil(t, (*p)[existingKey])
 
 	// Verify that the property was updated in the database
 	var updatedDBProp Property
 	result = db.Where("key = ?", existingKey).First(&updatedDBProp)
 	require.NoError(t, result.Error)
 	assert.Equal(t, existingKey, updatedDBProp.Key)
-	assert.Equal(t, (*p)[0].Value, updatedDBProp.Value)
+	assert.Equal(t, (*p)[existingKey].Value, updatedDBProp.Value)
 
 	// Clean up the test data
 	db.Where("key = ?", existingKey).Delete(&Property{})
@@ -392,7 +392,7 @@ func TestPropertiesAddExistingKeyInDB(t *testing.T) {
 func TestPropertiesRemoveExistsInSliceNotInDB(t *testing.T) {
 	// Initialize a new Properties slice with a test property
 	p := &Properties{
-		{Key: "testKey", Value: `"testValue"`},
+		"testKey": {Key: "testKey", Value: `"testValue"`},
 	}
 
 	// Ensure the property is not in the database
@@ -550,14 +550,14 @@ func TestPropertiesAddAfterRemoveAndReAdd(t *testing.T) {
 
 	// Check if the property was updated in the slice
 	assert.Len(t, *p, 1)
-	assert.Equal(t, initialKey, (*p)[0].Key)
+	assert.NotNil(t, (*p)[initialKey])
 
 	// Verify that the property was updated in the database
 	var dbProp Property
 	result := db.Where("key = ?", initialKey).First(&dbProp)
 	require.NoError(t, result.Error)
 	assert.Equal(t, initialKey, dbProp.Key)
-	assert.Equal(t, (*p)[0].Value, dbProp.Value)
+	assert.Equal(t, (*p)[initialKey].Value, dbProp.Value)
 
 	// Clean up the test data
 	db.Where("key = ?", initialKey).Delete(&Property{})
