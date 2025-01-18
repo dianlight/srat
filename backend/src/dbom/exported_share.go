@@ -1,13 +1,18 @@
 package dbom
 
 import (
+	"time"
+
 	"github.com/dianlight/srat/dto"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 type ExportedShare struct {
-	gorm.Model
+	ID          uint `gorm:"primarykey"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   gorm.DeletedAt   `gorm:"index"`
 	Name        string           `json:"name,omitempty" gorm:"unique"`
 	Path        string           `json:"path" gorm:"unique"`
 	FS          string           `json:"fs"`
