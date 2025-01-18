@@ -27,17 +27,17 @@ func (self *ContextState) ToContext(ctx context.Context) context.Context {
 func (self *ContextState) FromJSONConfig(src config.Config) error {
 	err := self.Settings.From(src)
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	err = self.Users.From(src.OtherUsers)
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	self.AdminUser.Username = src.Username
 	self.AdminUser.Password = src.Password
 	err = self.SharedResources.From(src.Shares)
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	return nil
 }

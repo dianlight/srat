@@ -11,42 +11,42 @@ import (
 type ConfigToDtoConverterImpl struct{}
 
 func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target *dto.Settings) error {
-	target.Workgroup = source.Options.Workgroup
-	if source.Options.Mountoptions != nil {
-		target.Mountoptions = make([]string, len(source.Options.Mountoptions))
-		for i := 0; i < len(source.Options.Mountoptions); i++ {
-			target.Mountoptions[i] = source.Options.Mountoptions[i]
+	target.Workgroup = source.Workgroup
+	if source.Mountoptions != nil {
+		target.Mountoptions = make([]string, len(source.Mountoptions))
+		for i := 0; i < len(source.Mountoptions); i++ {
+			target.Mountoptions[i] = source.Mountoptions[i]
 		}
 	}
-	if source.Options.AllowHost != nil {
-		target.AllowHost = make([]string, len(source.Options.AllowHost))
-		for j := 0; j < len(source.Options.AllowHost); j++ {
-			target.AllowHost[j] = source.Options.AllowHost[j]
+	if source.AllowHost != nil {
+		target.AllowHost = make([]string, len(source.AllowHost))
+		for j := 0; j < len(source.AllowHost); j++ {
+			target.AllowHost[j] = source.AllowHost[j]
 		}
 	}
-	if source.Options.VetoFiles != nil {
-		target.VetoFiles = make([]string, len(source.Options.VetoFiles))
-		for k := 0; k < len(source.Options.VetoFiles); k++ {
-			target.VetoFiles[k] = source.Options.VetoFiles[k]
+	if source.VetoFiles != nil {
+		target.VetoFiles = make([]string, len(source.VetoFiles))
+		for k := 0; k < len(source.VetoFiles); k++ {
+			target.VetoFiles[k] = source.VetoFiles[k]
 		}
 	}
-	target.CompatibilityMode = source.Options.CompatibilityMode
-	target.EnableRecycleBin = source.Options.EnableRecycleBin
-	if source.Options.Interfaces != nil {
-		target.Interfaces = make([]string, len(source.Options.Interfaces))
-		for l := 0; l < len(source.Options.Interfaces); l++ {
-			target.Interfaces[l] = source.Options.Interfaces[l]
+	target.CompatibilityMode = source.CompatibilityMode
+	target.EnableRecycleBin = source.EnableRecycleBin
+	if source.Interfaces != nil {
+		target.Interfaces = make([]string, len(source.Interfaces))
+		for l := 0; l < len(source.Interfaces); l++ {
+			target.Interfaces[l] = source.Interfaces[l]
 		}
 	}
-	target.BindAllInterfaces = source.Options.BindAllInterfaces
-	target.LogLevel = source.Options.LogLevel
-	target.MultiChannel = source.Options.MultiChannel
+	target.BindAllInterfaces = source.BindAllInterfaces
+	target.LogLevel = source.LogLevel
+	target.MultiChannel = source.MultiChannel
 	target.UpdateChannel = dto.UpdateChannel(source.UpdateChannel)
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ConfigToUser(source config.Config, target *dto.User) error {
-	target.Username = source.Options.Username
-	target.Password = source.Options.Password
+	target.Username = source.Username
+	target.Password = source.Password
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) OtherUserToUser(source config.User, target *dto.User) error {
@@ -55,11 +55,36 @@ func (c *ConfigToDtoConverterImpl) OtherUserToUser(source config.User, target *d
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) SettingsToConfig(source dto.Settings, target *config.Config, context ConfigToDtoConverter) error {
-	configOptions, err := SettingsToOptions(source, c)
-	if err != nil {
-		return err
+	target.Workgroup = source.Workgroup
+	if source.Mountoptions != nil {
+		target.Mountoptions = make([]string, len(source.Mountoptions))
+		for i := 0; i < len(source.Mountoptions); i++ {
+			target.Mountoptions[i] = source.Mountoptions[i]
+		}
 	}
-	target.Options = configOptions
+	if source.AllowHost != nil {
+		target.AllowHost = make([]string, len(source.AllowHost))
+		for j := 0; j < len(source.AllowHost); j++ {
+			target.AllowHost[j] = source.AllowHost[j]
+		}
+	}
+	if source.VetoFiles != nil {
+		target.VetoFiles = make([]string, len(source.VetoFiles))
+		for k := 0; k < len(source.VetoFiles); k++ {
+			target.VetoFiles[k] = source.VetoFiles[k]
+		}
+	}
+	target.CompatibilityMode = source.CompatibilityMode
+	target.EnableRecycleBin = source.EnableRecycleBin
+	if source.Interfaces != nil {
+		target.Interfaces = make([]string, len(source.Interfaces))
+		for l := 0; l < len(source.Interfaces); l++ {
+			target.Interfaces[l] = source.Interfaces[l]
+		}
+	}
+	target.BindAllInterfaces = source.BindAllInterfaces
+	target.LogLevel = source.LogLevel
+	target.MultiChannel = source.MultiChannel
 	target.UpdateChannel = string(source.UpdateChannel)
 	return nil
 }
@@ -116,38 +141,5 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 func (c *ConfigToDtoConverterImpl) UserToOtherUser(source dto.User, target *config.User) error {
 	target.Username = source.Username
 	target.Password = source.Password
-	return nil
-}
-func (c *ConfigToDtoConverterImpl) _SettingsToOptions(source dto.Settings, target *config.Options) error {
-	target.Workgroup = source.Workgroup
-	if source.Mountoptions != nil {
-		target.Mountoptions = make([]string, len(source.Mountoptions))
-		for i := 0; i < len(source.Mountoptions); i++ {
-			target.Mountoptions[i] = source.Mountoptions[i]
-		}
-	}
-	if source.AllowHost != nil {
-		target.AllowHost = make([]string, len(source.AllowHost))
-		for j := 0; j < len(source.AllowHost); j++ {
-			target.AllowHost[j] = source.AllowHost[j]
-		}
-	}
-	if source.VetoFiles != nil {
-		target.VetoFiles = make([]string, len(source.VetoFiles))
-		for k := 0; k < len(source.VetoFiles); k++ {
-			target.VetoFiles[k] = source.VetoFiles[k]
-		}
-	}
-	target.CompatibilityMode = source.CompatibilityMode
-	target.EnableRecycleBin = source.EnableRecycleBin
-	if source.Interfaces != nil {
-		target.Interfaces = make([]string, len(source.Interfaces))
-		for l := 0; l < len(source.Interfaces); l++ {
-			target.Interfaces[l] = source.Interfaces[l]
-		}
-	}
-	target.BindAllInterfaces = source.BindAllInterfaces
-	target.LogLevel = source.LogLevel
-	target.MultiChannel = source.MultiChannel
 	return nil
 }

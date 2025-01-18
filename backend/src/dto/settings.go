@@ -56,12 +56,12 @@ func (self Settings) ToArray(dst interface{}) error {
 		}
 	}
 	if keyfield == "" || valuefield == "" {
-		return errors.New("missing annotation from_map key field or value field")
+		return tracerr.Wrap(err)ors.New("missing annotation from_map key field or value field")
 	}
 	var mapdata map[string]interface{}
 	err := self.ToMap(&mapdata)
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	//fmt.Println(mapdata)
 	for key, val := range mapdata {
@@ -95,7 +95,7 @@ func (self *Settings) FromArray(value interface{}) error {
 		}
 	}
 	if keyfield == "" || valuefield == "" {
-		return errors.New("missing annotation from_map key field or value field")
+		return tracerr.Wrap(err)ors.New("missing annotation from_map key field or value field")
 	}
 	selfValue := reflect.Indirect(reflect.ValueOf(self))
 	arrValue := reflect.Indirect(reflect.ValueOf(value))
@@ -119,10 +119,10 @@ func (self *Settings) FromArray(value interface{}) error {
 				fbset.Set(nslice)
 				//fmt.Printf("|-s-> %#v %v\n", tovalue.Interface(), fbset.Type())
 			} else {
-				return errors.New("unsupported type " + fbset.Type().Name())
+				return tracerr.Wrap(err)ors.New("unsupported type " + fbset.Type().Name())
 			}
 		} else {
-			return errors.New(fmt.Sprintf("Invalid Field %#v %v %v\n", tovalue.Interface(), fbset.Type(), fbset.Type().Kind()))
+			return tracerr.Wrap(err)ors.New(fmt.Sprintf("Invalid Field %#v %v %v\n", tovalue.Interface(), fbset.Type(), fbset.Type().Kind()))
 		}
 	}
 

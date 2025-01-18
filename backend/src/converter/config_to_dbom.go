@@ -1,8 +1,6 @@
 package converter
 
 import (
-	"fmt"
-
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 )
@@ -13,15 +11,15 @@ import (
 // goverter:extend StringToSambaUser
 // goverter:extend SambaUserToString
 // goverter:default:update
+// goverter:wrapErrorsUsing github.com/dianlight/srat/converter/patherr
 type ConfigToDbomConverter interface {
 	// goverter:update target
 	// goverter:ignore ID DeviceId Invalid
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:context users
-	ShareToExportedShare(source config.Share, target *dbom.ExportedShare, users dbom.SambaUsers) error
+	ShareToExportedShare(source config.Share, target *dbom.ExportedShare, users *dbom.SambaUsers) error
 
 	// goverter:update target
-	// goverter:context users
 	ExportedShareToShare(source dbom.ExportedShare, target *config.Share) error
 
 	// goverter:update target
@@ -33,20 +31,22 @@ type ConfigToDbomConverter interface {
 	SambaUserToUser(source dbom.SambaUser, target *config.User) error
 
 	// goverter:update target
-	// goverter:map Options.Username Username
-	// goverter:map Options.Password Password
+	// -goverter:map Options.Username Username
+	// -goverter:map Options.Password Password
 	// goverter:ignore IsAdmin CreatedAt UpdatedAt DeletedAt
 	ConfigToSambaUser(source config.Config, target *dbom.SambaUser) error
 }
 
 // goverter:context users
-func StringToSambaUser(username string, users dbom.SambaUsers) (dbom.SambaUser, error) {
-	for _, u := range users {
+func StringToSambaUser(username string, users *dbom.SambaUsers) (dbom.SambaUser, error) {
+	for _, u := range *users {
 		if u.Username == username {
 			return u, nil
 		}
 	}
-	return dbom.SambaUser{Username: username}, fmt.Errorf("User not found: %s", username)
+	u := dbom.SambaUser{Username: username}
+	*users = append(*users, u)
+	return u, nil
 }
 
 func SambaUserToString(user dbom.SambaUser) string {

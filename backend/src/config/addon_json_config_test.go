@@ -117,27 +117,25 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 			"media":         Share{Path: "/media", FS: "native"},
 			"addon_configs": Share{Path: "/addon_configs", FS: "native"},
 		},
-		Options: Options{
-			OtherUsers: []User{
-				{Username: "utente1", Password: "Test Password"},
-				{Username: "utente2", Password: "Test Password"},
+		OtherUsers: []User{
+			{Username: "utente1", Password: "Test Password"},
+			{Username: "utente2", Password: "Test Password"},
+		},
+		ACL: []OptionsAcl{
+			{
+				Share:    "config",
+				Disabled: false,
+				Users:    []string{"utente1"},
 			},
-			ACL: []OptionsAcl{
-				{
-					Share:    "config",
-					Disabled: false,
-					Users:    []string{"utente1"},
-				},
-				{
-					Share:    "backup",
-					Disabled: false,
-					Users:    []string{"utente1"},
-				},
-				{
-					Share:    "ssl",
-					Disabled: true,
-					Users:    []string{"utente2"},
-				},
+			{
+				Share:    "backup",
+				Disabled: false,
+				Users:    []string{"utente1"},
+			},
+			{
+				Share:    "ssl",
+				Disabled: true,
+				Users:    []string{"utente2"},
 			},
 		},
 	}

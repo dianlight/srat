@@ -3,6 +3,7 @@ package dbom
 import (
 	"time"
 
+	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 )
 
@@ -20,7 +21,7 @@ func (self *Properties) Load() error {
 	var props []Property
 	err := db.Model(&Property{}).Find(&props).Error
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	*self = make(Properties, len(props))
 	for _, prop := range props {
@@ -30,7 +31,13 @@ func (self *Properties) Load() error {
 }
 
 func (self *Properties) Save() error {
-	return db.Save(self).Error
+	for _, prop := range *self {
+		err := db.Save(&prop).Error
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+	}
+	return nil
 }
 
 func (self *Properties) DeleteAll() error {

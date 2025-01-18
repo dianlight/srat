@@ -1,10 +1,10 @@
 package dbom
 
 import (
-	"errors"
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 )
 
@@ -80,7 +80,7 @@ func (mp *MountPointData) Save() error {
 //     Possible errors include database connection issues or if no record is found.
 func (mp *MountPointData) FromName(name string) error {
 	if name == "" {
-		return errors.New("name cannot be empty")
+		return tracerr.Errorf("name cannot be empty")
 	}
 	//log.Printf("FromName \n%s \n%v \n%v", name, db, &mp)
 	return db.Limit(1).Find(&mp, "name = ?", name).Error

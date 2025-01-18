@@ -80,13 +80,13 @@ func (p *SambaUser) FromSettings(setting dto.Settings) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		err := p.DeleteAll()
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
 		mapSetting := setting.ToMap()
 		for key, value := range mapSetting {
 			err := p.Add(key, value)
 			if err != nil {
-				return err
+				return tracerr.Wrap(err)
 			}
 		}
 		return nil

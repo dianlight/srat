@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/thoas/go-funk"
+	"github.com/ztrue/tracerr"
 )
 
 type Options struct {
@@ -33,7 +34,7 @@ func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 
 	if erx, ok := src.(error); ok {
 		opt.Code = codeGetOrElse(opt.Code, http.StatusInternalServerError)
-		return HttpJSONReponse(w, ErrorResponse{Error: erx.Error(), Body: erx}, opt)
+		return HttpJSONReponse(w, ErrorResponse{Error: tracerr.Sprint(erx), Body: erx}, opt)
 	}
 
 	if src == nil || funk.IsEmpty(src) {
@@ -58,7 +59,7 @@ func HttpJSONRequest(dst any, w http.ResponseWriter, r *http.Request) error {
 	err := json.NewDecoder(r.Body).Decode(&dst)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return err
+		return tracerr.Wrap(err)
 	}
 	return nil
 }

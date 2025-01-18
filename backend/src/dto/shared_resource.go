@@ -103,16 +103,16 @@ func (self SharedResources) ToArray(value interface{}) error {
 
 func (self *SharedResources) FromArray(value interface{}, keyfield string) error {
 	if value == nil {
-		return errors.New("Missing array in the request body")
+		return tracerr.Wrap(err)ors.New("Missing array in the request body")
 	}
 	if reflect.Indirect(reflect.ValueOf(value)).Type().Kind() != reflect.Slice {
-		return errors.New("Expected array in the request body")
+		return tracerr.Wrap(err)ors.New("Expected array in the request body")
 	}
 	arrValue := reflect.Indirect(reflect.ValueOf(value))
 	for i := 0; i < arrValue.Len(); i++ {
 		shareName := reflect.Indirect(arrValue.Index(i)).FieldByName(keyfield).Interface().(string)
 		if shareName == "" {
-			return errors.New("Missing '" + keyfield + "' field in the array item")
+			return tracerr.Wrap(err)ors.New("Missing '" + keyfield + "' field in the array item")
 		}
 		var toShare SharedResource
 		copier.CopyWithOption(&toShare, arrValue.Index(i).Interface(), copier.Option{DeepCopy: true})
@@ -125,7 +125,7 @@ func (self *SharedResources) FromArray(value interface{}, keyfield string) error
 		for _, v := range reflect.Indirect(reflect.ValueOf(value)).Interface().([]interface{}) {
 			shareName := reflect.Indirect(reflect.ValueOf(v)).FieldByName(keyfield).Interface().(string)
 			if shareName == "" {
-				return errors.New("Missing '" + keyfield + "' field in the array item")
+				return tracerr.Wrap(err)ors.New("Missing '" + keyfield + "' field in the array item")
 			}
 			var toShare SharedResource
 			copier.CopyWithOption(&toShare, v, copier.Option{DeepCopy: true})

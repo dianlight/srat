@@ -5,6 +5,7 @@ package converter
 
 import (
 	config "github.com/dianlight/srat/config"
+	patherr "github.com/dianlight/srat/converter/patherr"
 	dbom "github.com/dianlight/srat/dbom"
 	dto "github.com/dianlight/srat/dto"
 )
@@ -12,8 +13,8 @@ import (
 type ConfigToDbomConverterImpl struct{}
 
 func (c *ConfigToDbomConverterImpl) ConfigToSambaUser(source config.Config, target *dbom.SambaUser) error {
-	target.Username = source.Options.Username
-	target.Password = source.Options.Password
+	target.Username = source.Username
+	target.Password = source.Password
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedShare, target *config.Share) error {
@@ -42,7 +43,7 @@ func (c *ConfigToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, targe
 	target.Password = source.Password
 	return nil
 }
-func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, target *dbom.ExportedShare, context dbom.SambaUsers) error {
+func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {
 	target.Name = source.Name
 	target.Path = source.Path
 	target.FS = source.FS
@@ -52,7 +53,7 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, ta
 		for i := 0; i < len(source.Users); i++ {
 			dbomSambaUser, err := StringToSambaUser(source.Users[i], context)
 			if err != nil {
-				return err
+				return patherr.Wrap(err, patherr.Field("Users"), patherr.Index(i))
 			}
 			target.Users[i] = dbomSambaUser
 		}
@@ -62,7 +63,7 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, ta
 		for j := 0; j < len(source.RoUsers); j++ {
 			dbomSambaUser2, err := StringToSambaUser(source.RoUsers[j], context)
 			if err != nil {
-				return err
+				return patherr.Wrap(err, patherr.Field("RoUsers"), patherr.Index(j))
 			}
 			target.RoUsers[j] = dbomSambaUser2
 		}

@@ -5,18 +5,19 @@ package converter
 import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/ztrue/tracerr"
 )
 
 func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, settings *dto.Settings, users *[]dto.User, shares *[]dto.SharedResource) error {
 	err := c.ConfigToSettings(source, settings)
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	for _, user := range source.OtherUsers {
 		var tuser dto.User
 		err := c.OtherUserToUser(user, &tuser)
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
 		tuser.IsAdmin = false
 		*users = append(*users, tuser)
@@ -24,7 +25,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 	var auser dto.User
 	err = c.ConfigToUser(source, &auser)
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	auser.IsAdmin = true
 	*users = append(*users, auser)
@@ -32,7 +33,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 		var sharedResource dto.SharedResource
 		err := c.ShareToSharedResource(share, &sharedResource, *users)
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
 		*shares = append(*shares, sharedResource)
 	}
@@ -42,7 +43,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, users []dto.User, shares []dto.SharedResource, target *config.Config) error {
 	err := c.SettingsToConfig(settings, target, c)
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	for _, user := range users {
 		var tuser config.User
@@ -52,7 +53,7 @@ func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, use
 		} else {
 			err := c.UserToOtherUser(user, &tuser)
 			if err != nil {
-				return err
+				return tracerr.Wrap(err)
 			}
 			target.OtherUsers = append(target.OtherUsers, tuser)
 		}
@@ -61,7 +62,7 @@ func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, use
 		var tshare config.Share
 		err := c.SharedResourceToShare(share, &tshare)
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
 		target.Shares[share.Name] = tshare
 	}

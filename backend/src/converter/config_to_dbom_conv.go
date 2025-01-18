@@ -34,7 +34,7 @@ func (c *ConfigToDbomConverterImpl) ConfigToDbomObjects(source config.Config, pr
 	*users = append(*users, auser)
 	for _, share := range source.Shares {
 		var sharedResource dbom.ExportedShare
-		err = c.ShareToExportedShare(share, &sharedResource, *users)
+		err = c.ShareToExportedShare(share, &sharedResource, users)
 		if err != nil {
 			return
 		}
@@ -44,8 +44,12 @@ func (c *ConfigToDbomConverterImpl) ConfigToDbomObjects(source config.Config, pr
 }
 
 func (c *ConfigToDbomConverterImpl) ConfigToProperties(source config.Config, target *dbom.Properties) error {
-	keys := funk.Keys(source)
-	for _, key := range keys.([]string) {
+	vsource := reflect.Indirect(reflect.ValueOf(source))
+	for i := 0; i < vsource.NumField(); i++ {
+		key := vsource.Type().Field(i).Name
+		if funk.Contains([]string{"Shares", "OtherUsers", "ACL"}, key) {
+			continue
+		}
 		newvalue := reflect.ValueOf(source).FieldByName(key)
 		if newvalue.IsZero() {
 			continue

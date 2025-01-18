@@ -23,6 +23,7 @@ import (
 	"github.com/jaypipes/ghw"
 	"github.com/jinzhu/copier"
 	"github.com/jpillora/overseer"
+	"github.com/ztrue/tracerr"
 	"golang.org/x/time/rate"
 )
 
@@ -486,7 +487,7 @@ func PersistVolumesState() error {
 	volumes, err := GetVolumesData()
 	if err != nil {
 		log.Printf("Error persisting volumes state: %v\n", err)
-		return err
+		return tracerr.Wrap(err)
 	}
 	for _, partition := range volumes.Partitions {
 		if partition.MountPoint != "" {
@@ -503,7 +504,7 @@ func PersistVolumesState() error {
 			err = adata.Save()
 			if err != nil {
 				log.Printf("Error persisting volume data: %v\n", err)
-				return err
+				return tracerr.Wrap(err)
 			}
 		}
 	}
@@ -515,7 +516,7 @@ func PersistSharesState() error {
 		volumes, err := GetVolumesData()
 		if err != nil {
 			log.Printf("Error persisting shared state: %v\n", err) // FIXME: Implement me!
-			return err
+			return tracerr.Wrap(err)
 		}
 		for _, partition := range volumes.Partitions {
 			if partition.MountPoint != "" {
@@ -532,7 +533,7 @@ func PersistSharesState() error {
 				err = adata.Save()
 				if err != nil {
 					log.Printf("Error persisting volume data: %v\n", err)
-					return err
+					return tracerr.Wrap(err)
 				}
 			}
 		}*/

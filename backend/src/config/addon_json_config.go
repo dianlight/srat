@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/mapper"
 	"github.com/jinzhu/copier"
+	"github.com/ztrue/tracerr"
 )
 
 type Share struct {
@@ -31,7 +32,46 @@ const CURRENT_CONFIG_VERSION = 3
 type Config struct {
 	CurrentFile       string
 	ConfigSpecVersion int `json:"version,omitempty,default=0"`
-	Options
+	// Options
+	Workgroup        string   `json:"workgroup"`
+	Username         string   `json:"username"`
+	Password         string   `json:"password"`
+	Automount        bool     `json:"automount"`
+	Moredisks        []string `json:"moredisks"`
+	Mountoptions     []string `json:"mountoptions"`
+	AvailableDiskLog bool     `json:"available_disks_log"`
+	Medialibrary     struct {
+		Enable bool   `json:"enable"`
+		SSHKEY string `json:"ssh_private_key"`
+	} `json:"medialibrary"`
+	AllowHost         []string `json:"allow_hosts"`
+	VetoFiles         []string `json:"veto_files"`
+	CompatibilityMode bool     `json:"compatibility_mode"`
+	EnableRecycleBin  bool     `json:"recyle_bin_enabled"`
+	WSDD              bool     `json:"wsdd"`
+	WSDD2             bool     `json:"wsdd2"`
+	HDDIdle           int      `json:"hdd_idle_seconds"`
+	Smart             bool     `json:"enable_smart"`
+	MQTTNextGen       bool     `json:"mqtt_nexgen_entities"`
+	MQTTEnable        bool     `json:"mqtt_enable"`
+	MQTTHost          string   `json:"mqtt_host"`
+	MQTTUsername      string   `json:"mqtt_username"`
+	MQTTPassword      string   `json:"mqtt_password"`
+	MQTTPort          string   `json:"mqtt_port"`
+	MQTTTopic         string   `json:"mqtt_topic"`
+	Autodiscovery     struct {
+		DisableDiscovery  bool `json:"disable_discovery"`
+		DisablePersistent bool `json:"disable_persistent"`
+		DisableAutoremove bool `json:"disable_autoremove"`
+	} `json:"autodiscovery"`
+	OtherUsers        []User       `json:"other_users,omitempty"`
+	ACL               []OptionsAcl `json:"acl,omitempty"`
+	Interfaces        []string     `json:"interfaces"`
+	BindAllInterfaces bool         `json:"bind_all_interfaces"`
+	LogLevel          string       `json:"log_level"`
+	MOF               string       `json:"meaning_of_life"`
+	MultiChannel      bool         `json:"multi_channel"`
+	// End Options
 	Shares          Shares `json:"shares"`
 	DockerInterface string `json:"docker_interface"`
 	DockerNet       string `json:"docker_net"`
@@ -52,7 +92,7 @@ type Config struct {
 func (self *Config) ReadFromFile(file string) error {
 	configFile, err := os.ReadFile(file)
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	// Parse json
 	return self.ReadConfigBuffer(configFile)
@@ -239,7 +279,7 @@ func (in *Config) MigrateConfig() error {
 func (self *Config) LoadConfig(file string) error {
 	err := self.ReadFromFile(file)
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	self.MigrateConfig()
 	return nil

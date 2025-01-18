@@ -22,6 +22,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/kr/pretty"
+	"github.com/ztrue/tracerr"
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
@@ -294,7 +295,7 @@ func prog(state overseer.State) {
 	globalRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		template, err := route.GetPathTemplate()
 		if err != nil {
-			return err
+			return tracerr.Wrap(err)
 		}
 		log.Printf("Route: %s\n", template)
 		return nil

@@ -10,6 +10,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
+	"github.com/ztrue/tracerr"
 )
 
 var testContext = context.Background()
@@ -30,7 +31,7 @@ func TestMain(m *testing.M) {
 	}
 	err = dbutil.FirstTimeJSONImporter(config)
 	if err != nil {
-		log.Fatalf("Cant load json settings - %v", err)
+		log.Fatalf("Cant load json settings - %v", tracerr.SprintSourceColor(err))
 	}
 	// End
 

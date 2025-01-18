@@ -39,10 +39,10 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
-	err = mapper.Map(context.Background(), &config.Options, settings)
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
+	//err = mapper.Map(context.Background(), &config.Options, settings)
+	//if err != nil {
+	//	return nil, tracerr.Wrap(err)
+	//}
 	// Users
 	var sambaUsers dbom.SambaUsers
 	err = sambaUsers.Load()
@@ -85,7 +85,7 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 	// Special setting parameters to remove after upgrade
 	for _, cshare := range config.Shares {
 		if cshare.Usage == "media" {
-			config.Options.Medialibrary.Enable = true
+			config.Medialibrary.Enable = true
 			break
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ztrue/tracerr"
 	"golang.org/x/sys/unix"
 )
 
@@ -127,7 +128,7 @@ func (self MounDataFlags) Value() (driver.Value, error) {
 func (a *MounDataFlags) UnmarshalJSON(b []byte) error {
 	var s []MounDataFlag
 	if err := json.Unmarshal(b, &s); err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	*a = s
 	return nil

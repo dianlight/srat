@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/mapper"
@@ -75,13 +76,15 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 //	@Router			/global [get]
 func GetSettings(w http.ResponseWriter, r *http.Request) {
 	var dbsettings dbom.Properties
+	var conv converter.DtoToDbomConverterImpl
 	err := dbsettings.Load()
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
 	var settings dto.Settings
-	err = mapper.Map(context.Background(), &settings, dbsettings)
+	err = conv.PropertiesToConfig(dbsettings, &settings)
+	//	err = mapper.Map(context.Background(), &settings, dbsettings)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return

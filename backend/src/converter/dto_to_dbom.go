@@ -40,7 +40,7 @@ type DtoToDbomConverter interface {
 	// goverter:map Options.BindAllInterfaces BindAllInterfaces
 	// goverter:map Options.LogLevel LogLevel
 	// goverter:map Options.MultiChannel MultiChannel
-	//ConfigToSettings(source config.Config, target *dto.Settings) error
+	//PropertiesToSettings(source dbom.Propertie, target *dto.Settings) error
 
 	// goverter:update target
 	// goverter:map . Options | SettingsToOptions
