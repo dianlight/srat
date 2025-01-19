@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/mapper"
@@ -102,10 +103,15 @@ func ListShares(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(context.Background(), &shares, dbshares)
-	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+	var conv converter.DtoToDbomConverterImpl
+	for _, dbshare := range dbshares {
+		var share dto.SharedResource
+		err = conv.ExportedShareToSharedResource(dbshare, &share)
+		if err != nil {
+			HttpJSONReponse(w, err, nil)
+			return
+		}
+		shares = append(shares, share)
 	}
 	HttpJSONReponse(w, shares, nil)
 }

@@ -29,7 +29,6 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/goverter/patherr v1.0.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/jaypipes/pcidb v1.0.1 // indirect
@@ -84,6 +83,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
+	github.com/xorcare/pointer v1.2.2
 	github.com/ztrue/tracerr v0.4.0
 	golang.org/x/time v0.8.0
 	golang.org/x/tools v0.28.0 // indirect

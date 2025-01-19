@@ -32,3 +32,30 @@ func FirstTimeJSONImporter(config config.Config) (err error) {
 	}
 	return nil
 }
+
+func JSONFromDatabase() (tconfig config.Config, err error) {
+	var conv converter.ConfigToDbomConverterImpl
+	shares := dbom.ExportedShares{}
+	properties := dbom.Properties{}
+	users := dbom.SambaUsers{}
+
+	err = properties.Load()
+	if err != nil {
+		return tconfig, tracerr.Wrap(err)
+	}
+	err = users.Load()
+	if err != nil {
+		return tconfig, tracerr.Wrap(err)
+	}
+	err = shares.Load()
+	if err != nil {
+		return tconfig, tracerr.Wrap(err)
+	}
+
+	tconfig = config.Config{}
+	err = conv.DbomObjectsToConfig(properties, users, shares, &tconfig)
+	if err != nil {
+		return tconfig, tracerr.Wrap(err)
+	}
+	return tconfig, nil
+}

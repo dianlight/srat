@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thoas/go-funk"
+	"github.com/xorcare/pointer"
 )
 
 func TestListUsersHandler(t *testing.T) {
@@ -43,12 +44,19 @@ func TestListUsersHandler(t *testing.T) {
 	err = configs.FromContext(testContext)
 	require.NoError(t, err)
 
-	assert.Len(t, users, len(configs.OtherUsers)+1, users)
+	assert.Len(t, users, len(configs.OtherUsers)+2, users)
 
 	for _, user := range users {
-		ou := funk.Find(configs.OtherUsers, func(u config.User) bool { return u.Username == user.Username }).(config.User)
-		assert.Equal(t, ou.Password, user.Password)
-		assert.False(t, user.IsAdmin)
+		if *user.Username == "utente1" {
+			continue
+		}
+		if *user.Username != "dianlight" {
+			ou := funk.Find(configs.OtherUsers, func(u config.User) bool { return u.Username == *user.Username }).(config.User)
+			assert.Equal(t, &ou.Password, user.Password)
+			assert.False(t, *user.IsAdmin)
+		} else {
+			assert.True(t, *user.IsAdmin)
+		}
 	}
 }
 
@@ -83,8 +91,8 @@ func TestGetUserHandler(t *testing.T) {
 func TestCreateUserHandler(t *testing.T) {
 
 	user := dto.User{
-		Username: "PIPPO",
-		Password: "PLUTO",
+		Username: pointer.String("PIPPO"),
+		Password: pointer.String("PLUTO"),
 	}
 
 	jsonBody, jsonError := json.Marshal(user)
@@ -106,6 +114,7 @@ func TestCreateUserHandler(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, rr.Code)
 
 	// Check the response body is what we expect.
+	user.IsAdmin = pointer.Bool(false)
 	expected, jsonError := json.Marshal(user)
 	require.NoError(t, jsonError)
 	assert.Equal(t, string(expected), rr.Body.String())
@@ -116,7 +125,7 @@ func TestCreateUserHandler(t *testing.T) {
 	}
 	err = dbuser.Get()
 	require.NoError(t, err)
-	assert.Equal(t, dbuser.Password, user.Password)
+	assert.Equal(t, dbuser.Password, *user.Password)
 }
 
 func TestCreateUserDuplicateHandler(t *testing.T) {
@@ -149,8 +158,8 @@ func TestCreateUserDuplicateHandler(t *testing.T) {
 
 func TestUpdateUserHandler(t *testing.T) {
 
-	user := config.User{
-		Password: "/pippo",
+	user := dto.User{
+		Password: pointer.String("/pippo"),
 	}
 
 	//context_state := (&dto.ContextState{}).FromContext(testContext)
@@ -178,14 +187,14 @@ func TestUpdateUserHandler(t *testing.T) {
 	updated := dto.User{}
 	jsonError = json.Unmarshal(rr.Body.Bytes(), &updated)
 	require.NoError(t, jsonError)
-	assert.Equal(t, username, updated.Username)
-	assert.Equal(t, user.Password, updated.Password)
+	assert.Equal(t, username, *updated.Username)
+	assert.Equal(t, *user.Password, *updated.Password)
 }
 
 func TestUpdateAdminUserHandler(t *testing.T) {
 
-	user := config.User{
-		Password: "/pluto||admin",
+	user := dto.User{
+		Password: pointer.String("/pluto||admin"),
 	}
 
 	jsonBody, jsonError := json.Marshal(user)
@@ -210,7 +219,8 @@ func TestUpdateAdminUserHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
-	user.Password = "/pluto||admin"
+	user.Username = pointer.String("dianlight")
+	user.IsAdmin = pointer.Bool(true)
 	expected, jsonError := json.Marshal(user)
 	if jsonError != nil {
 		t.Errorf("Unable to encode JSON %s", jsonError.Error())
@@ -224,7 +234,7 @@ func TestUpdateAdminUserHandler(t *testing.T) {
 func TestDeleteuserHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "DELETE", "/user/PIPPO", nil)
+	req, err := http.NewRequestWithContext(testContext, "DELETE", "/user/utente1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

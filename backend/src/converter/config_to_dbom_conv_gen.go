@@ -13,15 +13,27 @@ import (
 type ConfigToDbomConverterImpl struct{}
 
 func (c *ConfigToDbomConverterImpl) ConfigToSambaUser(source config.Config, target *dbom.SambaUser) error {
-	target.Username = source.Username
-	target.Password = source.Password
+	if source.Username != "" {
+		target.Username = source.Username
+	}
+	if source.Password != "" {
+		target.Password = source.Password
+	}
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedShare, target *config.Share) error {
-	target.Name = source.Name
-	target.Path = source.Path
-	target.FS = source.FS
-	target.Disabled = source.Disabled
+	if source.Name != "" {
+		target.Name = source.Name
+	}
+	if source.Path != "" {
+		target.Path = source.Path
+	}
+	if source.FS != "" {
+		target.FS = source.FS
+	}
+	if source.Disabled != false {
+		target.Disabled = source.Disabled
+	}
 	if source.Users != nil {
 		target.Users = make([]string, len(source.Users))
 		for i := 0; i < len(source.Users); i++ {
@@ -34,20 +46,36 @@ func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedSha
 			target.RoUsers[j] = SambaUserToString(source.RoUsers[j])
 		}
 	}
-	target.TimeMachine = source.TimeMachine
-	target.Usage = string(source.Usage)
+	if source.TimeMachine != false {
+		target.TimeMachine = source.TimeMachine
+	}
+	if source.Usage != "" {
+		target.Usage = string(source.Usage)
+	}
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *config.User) error {
-	target.Username = source.Username
-	target.Password = source.Password
+	if source.Username != "" {
+		target.Username = source.Username
+	}
+	if source.Password != "" {
+		target.Password = source.Password
+	}
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {
-	target.Name = source.Name
-	target.Path = source.Path
-	target.FS = source.FS
-	target.Disabled = source.Disabled
+	if source.Name != "" {
+		target.Name = source.Name
+	}
+	if source.Path != "" {
+		target.Path = source.Path
+	}
+	if source.FS != "" {
+		target.FS = source.FS
+	}
+	if source.Disabled != false {
+		target.Disabled = source.Disabled
+	}
 	if source.Users != nil {
 		target.Users = make([]dbom.SambaUser, len(source.Users))
 		for i := 0; i < len(source.Users); i++ {
@@ -68,12 +96,20 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, ta
 			target.RoUsers[j] = dbomSambaUser2
 		}
 	}
-	target.TimeMachine = source.TimeMachine
-	target.Usage = dto.HAMountUsage(source.Usage)
+	if source.TimeMachine != false {
+		target.TimeMachine = source.TimeMachine
+	}
+	if source.Usage != "" {
+		target.Usage = dto.HAMountUsage(source.Usage)
+	}
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) UserToUSambaUser(source config.User, target *dbom.SambaUser) error {
-	target.Username = source.Username
-	target.Password = source.Password
+	if source.Username != "" {
+		target.Username = source.Username
+	}
+	if source.Password != "" {
+		target.Password = source.Password
+	}
 	return nil
 }

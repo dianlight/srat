@@ -10,6 +10,7 @@ import (
 // goverter:output:package github.com/dianlight/srat/converter
 // goverter:extend StringToSambaUser
 // goverter:extend SambaUserToString
+// goverter:update:ignoreZeroValueField
 // goverter:default:update
 // goverter:wrapErrorsUsing github.com/dianlight/srat/converter/patherr
 type ConfigToDbomConverter interface {

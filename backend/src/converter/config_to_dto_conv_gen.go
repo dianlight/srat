@@ -11,7 +11,9 @@ import (
 type ConfigToDtoConverterImpl struct{}
 
 func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target *dto.Settings) error {
-	target.Workgroup = source.Workgroup
+	if source.Workgroup != "" {
+		target.Workgroup = source.Workgroup
+	}
 	if source.Mountoptions != nil {
 		target.Mountoptions = make([]string, len(source.Mountoptions))
 		for i := 0; i < len(source.Mountoptions); i++ {
@@ -30,32 +32,58 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 			target.VetoFiles[k] = source.VetoFiles[k]
 		}
 	}
-	target.CompatibilityMode = source.CompatibilityMode
-	target.EnableRecycleBin = source.EnableRecycleBin
+	if source.CompatibilityMode != false {
+		target.CompatibilityMode = source.CompatibilityMode
+	}
+	if source.EnableRecycleBin != false {
+		target.EnableRecycleBin = source.EnableRecycleBin
+	}
 	if source.Interfaces != nil {
 		target.Interfaces = make([]string, len(source.Interfaces))
 		for l := 0; l < len(source.Interfaces); l++ {
 			target.Interfaces[l] = source.Interfaces[l]
 		}
 	}
-	target.BindAllInterfaces = source.BindAllInterfaces
-	target.LogLevel = source.LogLevel
-	target.MultiChannel = source.MultiChannel
-	target.UpdateChannel = dto.UpdateChannel(source.UpdateChannel)
+	if source.BindAllInterfaces != false {
+		target.BindAllInterfaces = source.BindAllInterfaces
+	}
+	if source.LogLevel != "" {
+		target.LogLevel = source.LogLevel
+	}
+	if source.MultiChannel != false {
+		target.MultiChannel = source.MultiChannel
+	}
+	if source.UpdateChannel != "" {
+		target.UpdateChannel = dto.UpdateChannel(source.UpdateChannel)
+	}
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ConfigToUser(source config.Config, target *dto.User) error {
-	target.Username = source.Username
-	target.Password = source.Password
+	if source.Username != "" {
+		pString := source.Username
+		target.Username = &pString
+	}
+	if source.Password != "" {
+		pString2 := source.Password
+		target.Password = &pString2
+	}
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) OtherUserToUser(source config.User, target *dto.User) error {
-	target.Username = source.Username
-	target.Password = source.Password
+	if source.Username != "" {
+		pString := source.Username
+		target.Username = &pString
+	}
+	if source.Password != "" {
+		pString2 := source.Password
+		target.Password = &pString2
+	}
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) SettingsToConfig(source dto.Settings, target *config.Config, context ConfigToDtoConverter) error {
-	target.Workgroup = source.Workgroup
+	if source.Workgroup != "" {
+		target.Workgroup = source.Workgroup
+	}
 	if source.Mountoptions != nil {
 		target.Mountoptions = make([]string, len(source.Mountoptions))
 		for i := 0; i < len(source.Mountoptions); i++ {
@@ -74,25 +102,45 @@ func (c *ConfigToDtoConverterImpl) SettingsToConfig(source dto.Settings, target 
 			target.VetoFiles[k] = source.VetoFiles[k]
 		}
 	}
-	target.CompatibilityMode = source.CompatibilityMode
-	target.EnableRecycleBin = source.EnableRecycleBin
+	if source.CompatibilityMode != false {
+		target.CompatibilityMode = source.CompatibilityMode
+	}
+	if source.EnableRecycleBin != false {
+		target.EnableRecycleBin = source.EnableRecycleBin
+	}
 	if source.Interfaces != nil {
 		target.Interfaces = make([]string, len(source.Interfaces))
 		for l := 0; l < len(source.Interfaces); l++ {
 			target.Interfaces[l] = source.Interfaces[l]
 		}
 	}
-	target.BindAllInterfaces = source.BindAllInterfaces
-	target.LogLevel = source.LogLevel
-	target.MultiChannel = source.MultiChannel
-	target.UpdateChannel = string(source.UpdateChannel)
+	if source.BindAllInterfaces != false {
+		target.BindAllInterfaces = source.BindAllInterfaces
+	}
+	if source.LogLevel != "" {
+		target.LogLevel = source.LogLevel
+	}
+	if source.MultiChannel != false {
+		target.MultiChannel = source.MultiChannel
+	}
+	if source.UpdateChannel != "" {
+		target.UpdateChannel = string(source.UpdateChannel)
+	}
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, target *dto.SharedResource, context []dto.User) error {
-	target.Name = source.Name
-	target.Path = source.Path
-	target.FS = source.FS
-	target.Disabled = source.Disabled
+	if source.Name != "" {
+		target.Name = source.Name
+	}
+	if source.Path != "" {
+		target.Path = source.Path
+	}
+	if source.FS != "" {
+		target.FS = source.FS
+	}
+	if source.Disabled != false {
+		target.Disabled = source.Disabled
+	}
 	if source.Users != nil {
 		target.Users = make([]dto.User, len(source.Users))
 		for i := 0; i < len(source.Users); i++ {
@@ -113,15 +161,27 @@ func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, ta
 			target.RoUsers[j] = dtoUser2
 		}
 	}
-	target.TimeMachine = source.TimeMachine
-	target.Usage = dto.HAMountUsage(source.Usage)
+	if source.TimeMachine != false {
+		target.TimeMachine = source.TimeMachine
+	}
+	if source.Usage != "" {
+		target.Usage = dto.HAMountUsage(source.Usage)
+	}
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResource, target *config.Share) error {
-	target.Name = source.Name
-	target.Path = source.Path
-	target.FS = source.FS
-	target.Disabled = source.Disabled
+	if source.Name != "" {
+		target.Name = source.Name
+	}
+	if source.Path != "" {
+		target.Path = source.Path
+	}
+	if source.FS != "" {
+		target.FS = source.FS
+	}
+	if source.Disabled != false {
+		target.Disabled = source.Disabled
+	}
 	if source.Users != nil {
 		target.Users = make([]string, len(source.Users))
 		for i := 0; i < len(source.Users); i++ {
@@ -134,12 +194,20 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 			target.RoUsers[j] = DtoUserToString(source.RoUsers[j])
 		}
 	}
-	target.TimeMachine = source.TimeMachine
-	target.Usage = string(source.Usage)
+	if source.TimeMachine != false {
+		target.TimeMachine = source.TimeMachine
+	}
+	if source.Usage != "" {
+		target.Usage = string(source.Usage)
+	}
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) UserToOtherUser(source dto.User, target *config.User) error {
-	target.Username = source.Username
-	target.Password = source.Password
+	if source.Username != nil {
+		target.Username = *source.Username
+	}
+	if source.Password != nil {
+		target.Password = *source.Password
+	}
 	return nil
 }

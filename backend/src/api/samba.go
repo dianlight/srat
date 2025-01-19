@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,84 +9,87 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/mapper"
 	tempiogo "github.com/dianlight/srat/tempio"
 	"github.com/icza/gog"
 	"github.com/shirou/gopsutil/v4/process"
-	"github.com/thoas/go-funk"
 	"github.com/ztrue/tracerr"
 )
 
-func createConfigStream(ctx context.Context) (*[]byte, error) {
+func createConfigStream(ctx context.Context) (data *[]byte, err error) {
 
-	var config config.Config
+	//var config config.Config
 	// Settings
-	var properties dbom.Properties
-	err := properties.Load()
-	if err != nil {
-		return nil, err
-	}
-	var settings dto.Settings
-	err = mapper.Map(context.Background(), &settings, properties)
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
-	err = mapper.Map(context.Background(), &config, settings)
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
-	//err = mapper.Map(context.Background(), &config.Options, settings)
-	//if err != nil {
-	//	return nil, tracerr.Wrap(err)
-	//}
-	// Users
-	var sambaUsers dbom.SambaUsers
-	err = sambaUsers.Load()
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
-	var users []dto.User
-	err = mapper.Map(context.Background(), &users, sambaUsers)
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
-	normalUsers := funk.Filter(users, func(u dto.User) bool { return !u.IsAdmin }).([]dto.User)
-	err = mapper.Map(context.Background(), &config.OtherUsers, normalUsers)
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
-	// Admin user
-	admin, ok := funk.Find(users, func(u dto.User) bool { return u.IsAdmin }).(dto.User)
-	if !ok {
-		return nil, errors.New("No admin user found")
-	}
-	config.Username = admin.Username
-	config.Password = admin.Password
-
-	// Shares
-	var sambaShares dbom.ExportedShares
-	err = sambaShares.Load()
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
-	var shares []dto.SharedResource
-	err = mapper.Map(context.Background(), &shares, sambaShares) //.FromArray(&sambaShares, "Name")
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
-	err = mapper.Map(context.Background(), &config.Shares, shares)
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
-	// Special setting parameters to remove after upgrade
-	for _, cshare := range config.Shares {
-		if cshare.Usage == "media" {
-			config.Medialibrary.Enable = true
-			break
+	/*
+		var properties dbom.Properties
+		err := properties.Load()
+		if err != nil {
+			return nil, err
 		}
+		var settings dto.Settings
+		err = mapper.Map(context.Background(), &settings, properties)
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		err = mapper.Map(context.Background(), &config, settings)
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		//err = mapper.Map(context.Background(), &config.Options, settings)
+		//if err != nil {
+		//	return nil, tracerr.Wrap(err)
+		//}
+		// Users
+		var sambaUsers dbom.SambaUsers
+		err = sambaUsers.Load()
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		var users []dto.User
+		err = mapper.Map(context.Background(), &users, sambaUsers)
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		normalUsers := funk.Filter(users, func(u dto.User) bool { return !u.IsAdmin }).([]dto.User)
+		err = mapper.Map(context.Background(), &config.OtherUsers, normalUsers)
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		// Admin user
+		admin, ok := funk.Find(users, func(u dto.User) bool { return u.IsAdmin }).(dto.User)
+		if !ok {
+			return nil, errors.New("No admin user found")
+		}
+		config.Username = admin.Username
+		config.Password = admin.Password
+
+		// Shares
+		var sambaShares dbom.ExportedShares
+		err = sambaShares.Load()
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		var shares []dto.SharedResource
+		err = mapper.Map(context.Background(), &shares, sambaShares) //.FromArray(&sambaShares, "Name")
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		err = mapper.Map(context.Background(), &config.Shares, shares)
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		// Special setting parameters to remove after upgrade
+		for _, cshare := range config.Shares {
+			if cshare.Usage == "media" {
+				config.Medialibrary.Enable = true
+				break
+			}
+		}
+	*/
+	config, err := dbutil.JSONFromDatabase()
+	if err != nil {
+		return nil, tracerr.Wrap(err)
 	}
 	// End
 	config.DockerInterface = *ctx.Value("docker_interface").(*string)
@@ -95,8 +97,8 @@ func createConfigStream(ctx context.Context) (*[]byte, error) {
 
 	config_2 := config.ConfigToMap()
 	templateData := ctx.Value("template_data").([]byte)
-	data, err := tempiogo.RenderTemplateBuffer(config_2, templateData)
-	return &data, tracerr.Wrap(err)
+	datar, err := tempiogo.RenderTemplateBuffer(config_2, templateData)
+	return &datar, tracerr.Wrap(err)
 }
 
 // GetSambaProcess retrieves the Samba process (smbd) if it's running.

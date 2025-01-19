@@ -5,6 +5,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/xorcare/pointer"
 )
 
 // goverter:converter
@@ -12,6 +13,8 @@ import (
 // goverter:output:package github.com/dianlight/srat/converter
 // goverter:extend StringToDtoUser
 // goverter:extend DtoUserToString
+// goverter:useZeroValueOnPointerInconsistency
+// goverter:update:ignoreZeroValueField
 // goverter:default:update
 type ConfigToDtoConverter interface {
 	// goverter:update target
@@ -72,15 +75,15 @@ type ConfigToDtoConverter interface {
 // goverter:context users
 func StringToDtoUser(username string, users []dto.User) (dto.User, error) {
 	for _, u := range users {
-		if u.Username == username {
+		if u.Username == pointer.String(username) {
 			return u, nil
 		}
 	}
-	return dto.User{Username: username}, fmt.Errorf("User not found: %s", username)
+	return dto.User{Username: &username}, fmt.Errorf("User not found: %s", username)
 }
 
 func DtoUserToString(user dto.User) string {
-	return user.Username
+	return *user.Username
 }
 
 /*

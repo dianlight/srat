@@ -101,12 +101,21 @@ func (share *SambaUser) Save() error {
 	return db.Save(share).Error
 }
 
+func (share *SambaUser) Create() error {
+	db.Unscoped().Model(&SambaUser{}).Where("username", share.Username).Update("deleted_at", nil)
+	return db.Create(share).Error
+}
+
 func (share *SambaUser) Delete() error {
 	return db.Delete(share).Error
 }
 
 func (share *SambaUser) Get() error {
 	return db.First(share).Error
+}
+
+func (share *SambaUser) GetAdmin() error {
+	return db.Where("is_admin", true).First(share).Error
 }
 
 /*

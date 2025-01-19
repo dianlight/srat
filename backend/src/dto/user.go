@@ -11,15 +11,15 @@ import (
 //type Users []User
 
 type User struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	IsAdmin  bool   `json:"is_admin"`
+	Username *string `json:"username"`
+	Password *string `json:"password,omitempty"`
+	IsAdmin  *bool   `json:"is_admin,omitempty"`
 }
 
 func (m User) To(ctx context.Context, dst any) (bool, error) {
 	switch v := dst.(type) {
 	case *string:
-		*v = m.Username
+		*v = *m.Username
 		return true, nil
 	default:
 		return false, nil
@@ -31,7 +31,7 @@ func (m *User) From(ctx context.Context, src any) (bool, error) {
 	case string:
 		stack := ctx.Value("mapper_stack").(*[]mapper.Stack)
 		users := (*((*stack)[0].Dst.(*SharedResource))).Users
-		nv := funk.Find(users, func(u User) bool { return u.Username == v })
+		nv := funk.Find(users, func(u User) bool { return u.Username == &v })
 		if nv != nil {
 			*m = nv.(User)
 			return true, nil

@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/dianlight/srat/mapper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thoas/go-funk"
 )
 
 func TestReadConfigConsistency(t *testing.T) {
@@ -271,10 +271,13 @@ func TestMappableToDtoUsers(t *testing.T) {
 	//require.NoError(t,json.Unmarshal(bdata,data))
 
 	assert.Len(t, _dto, 4)
-	assert.Contains(t, _dto, dto.User{Username: "backupuser", Password: "\u003cbackupuser secret password\u003e", IsAdmin: false})
-	assert.Contains(t, fmt.Sprintf("%v", _dto), "utente2")
-	assert.Contains(t, fmt.Sprintf("%v", _dto), "rouser")
-	assert.Contains(t, _dto, dto.User{Username: "dianlight", Password: "hassio2010", IsAdmin: true})
+	assert.NotNil(t, funk.Find(_dto, func(u dto.User) bool {
+		return *u.Username == "backupuser" && *u.Password == "\u003cbackupuser secret password\u003e" && *u.IsAdmin == false
+	}))
+	assert.NotNil(t, funk.Find(_dto, func(u dto.User) bool { return *u.Username == "utente2" || *u.Username == "rouser" }))
+	assert.NotNil(t, funk.Find(_dto, func(u dto.User) bool {
+		return *u.Username == "dianlight" && *u.Password == "hassio2010" && *u.IsAdmin == true
+	}))
 }
 
 func TestMappableToDtoSharedResources(t *testing.T) {
@@ -295,7 +298,7 @@ func TestMappableToDtoSharedResources(t *testing.T) {
 	//require.NoError(t,json.Unmarshal(bdata,data))
 
 	assert.Len(t, _dto, 10, "Size of shared resources is not as expected %#v", _dto)
-	assert.Contains(t, _dto, dto.SharedResource{ID: (*uint)(nil), Name: "addons", Path: "/addons", FS: "native", Disabled: false, Users: []dto.User{{Username: "", Password: "", IsAdmin: false}}, RoUsers: []dto.User(nil), TimeMachine: false, Usage: "none", DeviceId: (*uint64)(nil), Invalid: false})
+	assert.Contains(t, _dto, dto.SharedResource{ID: (*uint)(nil), Name: "addons", Path: "/addons", FS: "native", Disabled: false, Users: []dto.User{}, RoUsers: []dto.User(nil), TimeMachine: false, Usage: "none", DeviceId: (*uint64)(nil), Invalid: false})
 	// assert.Contains(t, fmt.Sprintf("%v", _dto), "utente2")
 	// assert.Contains(t, fmt.Sprintf("%v", _dto), "rouser")
 	// assert.Contains(t, _dto, dto.User{Username: "dianlight", Password: "hassio2010", IsAdmin: true})

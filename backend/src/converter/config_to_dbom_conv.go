@@ -47,7 +47,7 @@ func (c *ConfigToDbomConverterImpl) ConfigToProperties(source config.Config, tar
 	vsource := reflect.Indirect(reflect.ValueOf(source))
 	for i := 0; i < vsource.NumField(); i++ {
 		key := vsource.Type().Field(i).Name
-		if funk.Contains([]string{"Shares", "OtherUsers", "ACL"}, key) {
+		if funk.Contains([]string{"Shares", "OtherUsers", "ACL", "Medialibrary"}, key) {
 			continue
 		}
 		newvalue := reflect.ValueOf(source).FieldByName(key)
@@ -67,12 +67,24 @@ func (c *ConfigToDbomConverterImpl) ConfigToProperties(source config.Config, tar
 
 func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, target *config.Config) error {
 	for _, prop := range source {
-		newvalue := reflect.ValueOf(target).FieldByName(prop.Key)
+		newvalue := reflect.ValueOf(target).Elem().FieldByName(prop.Key)
 		if newvalue.IsValid() {
-			newvalue.Set(reflect.ValueOf(prop.Value))
-		} else {
+			if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
+				newvalue.Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type()))
+			} else {
+				if newvalue.Kind() == reflect.Slice {
+					newElem := reflect.New(newvalue.Type().Elem()).Elem()
+					for _, value := range prop.Value.([]interface{}) {
+						newElem.Set(reflect.ValueOf(value).Convert(newElem.Type()))
+						newvalue.Set(reflect.Append(newvalue, newElem))
+					}
+				} else {
+					return fmt.Errorf("Type mismatch for field: %s %T->%T", prop.Key, prop.Value, newvalue.Interface())
+				}
+			}
+		} /*else {
 			return fmt.Errorf("Field not found: %s", prop.Key)
-		}
+		}*/
 	}
 	return nil
 }
@@ -94,6 +106,9 @@ func (c *ConfigToDbomConverterImpl) DbomObjectsToConfig(properties dbom.Properti
 			}
 			tconfig.OtherUsers = append(tconfig.OtherUsers, tuser)
 		}
+	}
+	if tconfig.Shares == nil {
+		tconfig.Shares = config.Shares{}
 	}
 	for _, share := range shares {
 		var tshare config.Share

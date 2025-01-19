@@ -23,7 +23,9 @@ var (
 // The function panics if it fails to connect to the database.
 func InitDB(dbpath string) {
 	var err error
-	db, err = gorm.Open(sqlite.Open(dbpath), &gorm.Config{})
+	db, err = gorm.Open(sqlite.Open(dbpath), &gorm.Config{
+		TranslateError: true,
+	})
 	if err != nil {
 		panic("failed to connect database")
 	}

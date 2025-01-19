@@ -9,6 +9,8 @@ import (
 // goverter:output:file ./dto_to_dbom_conv_gen.go
 // goverter:output:package github.com/dianlight/srat/converter
 // goverter:default:update
+// goverter:useZeroValueOnPointerInconsistency
+// goverter:update:ignoreZeroValueField
 // goverter:enum:unknown @error
 type DtoToDbomConverter interface {
 	// goverter:update target

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/mapper"
@@ -30,11 +31,21 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var users []dto.User
-	err = mapper.Map(context.Background(), &users, dbusers)
-	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+	var conv converter.DtoToDbomConverterImpl
+	for _, dbuser := range dbusers {
+		var user dto.User
+		err = conv.SambaUserToUser(dbuser, &user)
+		if err != nil {
+			HttpJSONReponse(w, err, nil)
+			return
+		}
+		users = append(users, user)
 	}
+	//err = mapper.Map(context.Background(), &users, dbusers)
+	//if err != nil {
+	//	HttpJSONReponse(w, err, nil)
+	//	return
+	//}
 	HttpJSONReponse(w, users, &Options{
 		Code: http.StatusOK,
 	})
@@ -124,19 +135,31 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var dbUser dbom.SambaUser
-	err = mapper.Map(context.Background(), &dbUser, user)
+	var conv converter.DtoToDbomConverterImpl
+	err = conv.UserToSambaUser(user, &dbUser)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = dbUser.Save()
+	err = dbUser.Create()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			HttpJSONReponse(w, errors.New("User already exists"), &Options{
+				Code: http.StatusConflict,
+			})
+		} else {
+			HttpJSONReponse(w, err, nil)
+		}
 		return
 	}
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Users = true
-	HttpJSONReponse(w, nil, &Options{
+	err = conv.SambaUserToUser(dbUser, &user)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+	HttpJSONReponse(w, user, &Options{
 		Code: http.StatusCreated,
 	})
 }
@@ -178,7 +201,20 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(context.Background(), &dbUser, &user)
+	var conv converter.DtoToDbomConverterImpl
+	err = conv.UserToSambaUser(user, &dbUser)
+	//	err = mapper.Map(context.Background(), &dbUser, &user)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+
+	err = dbUser.Save()
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -186,7 +222,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Users = true
-	HttpJSONReponse(w, nil, nil)
+	HttpJSONReponse(w, user, nil)
 }
 
 // UpdateAdminUser godoc
@@ -214,12 +250,24 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 	dbUser := dbom.SambaUser{
 		IsAdmin: true,
 	}
-	err = dbUser.Get()
+	err = dbUser.GetAdmin()
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(context.Background(), &dbUser, &user)
+	var conv converter.DtoToDbomConverterImpl
+	err = conv.UserToSambaUser(user, &dbUser)
+	//	err = mapper.Map(context.Background(), &dbUser, &user)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+	err = dbUser.Save()
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -227,7 +275,7 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Users = true
-	HttpJSONReponse(w, nil, nil)
+	HttpJSONReponse(w, user, nil)
 }
 
 // DeleteUser godoc
@@ -245,16 +293,11 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 
-	var user dto.User
-	err := HttpJSONRequest(&user, w, r)
-	if err != nil {
-		return
-	}
 	dbUser := dbom.SambaUser{
 		Username: username,
 		IsAdmin:  false,
 	}
-	err = dbUser.Get()
+	err := dbUser.Get()
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		HttpJSONReponse(w, nil, &Options{
 			Code: http.StatusNotFound,

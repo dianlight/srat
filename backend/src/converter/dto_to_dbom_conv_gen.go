@@ -12,12 +12,22 @@ import (
 type DtoToDbomConverterImpl struct{}
 
 func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) error {
-	pUint := source.ID
-	target.ID = &pUint
-	target.Name = source.Name
-	target.Path = source.Path
-	target.FS = source.FS
-	target.Disabled = source.Disabled
+	if source.ID != 0 {
+		pUint := source.ID
+		target.ID = &pUint
+	}
+	if source.Name != "" {
+		target.Name = source.Name
+	}
+	if source.Path != "" {
+		target.Path = source.Path
+	}
+	if source.FS != "" {
+		target.FS = source.FS
+	}
+	if source.Disabled != false {
+		target.Disabled = source.Disabled
+	}
 	if source.Users != nil {
 		target.Users = make([]dto.User, len(source.Users))
 		for i := 0; i < len(source.Users); i++ {
@@ -30,57 +40,95 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.Expor
 			target.RoUsers[j] = c.dbomSambaUserToDtoUser(source.RoUsers[j])
 		}
 	}
-	target.TimeMachine = source.TimeMachine
-	dtoHAMountUsage, err := c.dtoHAMountUsageToDtoHAMountUsage(source.Usage)
-	if err != nil {
-		return err
+	if source.TimeMachine != false {
+		target.TimeMachine = source.TimeMachine
 	}
-	target.Usage = dtoHAMountUsage
+	if source.Usage != "" {
+		dtoHAMountUsage, err := c.dtoHAMountUsageToDtoHAMountUsage(source.Usage)
+		if err != nil {
+			return err
+		}
+		target.Usage = dtoHAMountUsage
+	}
 	if source.DeviceId != nil {
 		xuint64 := *source.DeviceId
 		target.DeviceId = &xuint64
 	}
-	target.Invalid = source.Invalid
+	if source.Invalid != false {
+		target.Invalid = source.Invalid
+	}
 	return nil
 }
 func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *dto.User) error {
-	target.Username = source.Username
-	target.Password = source.Password
-	target.IsAdmin = source.IsAdmin
+	if source.Username != "" {
+		pString := source.Username
+		target.Username = &pString
+	}
+	if source.Password != "" {
+		pString2 := source.Password
+		target.Password = &pString2
+	}
+	if source.IsAdmin != false {
+		pBool := source.IsAdmin
+		target.IsAdmin = &pBool
+	}
 	return nil
 }
 func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error {
 	if source.ID != nil {
 		target.ID = *source.ID
 	}
-	target.Name = source.Name
-	target.Path = source.Path
-	target.FS = source.FS
-	target.Disabled = source.Disabled
-	target.TimeMachine = source.TimeMachine
-	dtoHAMountUsage, err := c.dtoHAMountUsageToDtoHAMountUsage(source.Usage)
-	if err != nil {
-		return err
+	if source.Name != "" {
+		target.Name = source.Name
 	}
-	target.Usage = dtoHAMountUsage
+	if source.Path != "" {
+		target.Path = source.Path
+	}
+	if source.FS != "" {
+		target.FS = source.FS
+	}
+	if source.Disabled != false {
+		target.Disabled = source.Disabled
+	}
+	if source.TimeMachine != false {
+		target.TimeMachine = source.TimeMachine
+	}
+	if source.Usage != "" {
+		dtoHAMountUsage, err := c.dtoHAMountUsageToDtoHAMountUsage(source.Usage)
+		if err != nil {
+			return err
+		}
+		target.Usage = dtoHAMountUsage
+	}
 	if source.DeviceId != nil {
 		xuint64 := *source.DeviceId
 		target.DeviceId = &xuint64
 	}
-	target.Invalid = source.Invalid
+	if source.Invalid != false {
+		target.Invalid = source.Invalid
+	}
 	return nil
 }
 func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.SambaUser) error {
-	target.Username = source.Username
-	target.Password = source.Password
-	target.IsAdmin = source.IsAdmin
+	if source.Username != nil {
+		target.Username = *source.Username
+	}
+	if source.Password != nil {
+		target.Password = *source.Password
+	}
+	if source.IsAdmin != nil {
+		target.IsAdmin = *source.IsAdmin
+	}
 	return nil
 }
 func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) dto.User {
 	var dtoUser dto.User
-	dtoUser.Username = source.Username
-	dtoUser.Password = source.Password
-	dtoUser.IsAdmin = source.IsAdmin
+	pString := source.Username
+	dtoUser.Username = &pString
+	pString2 := source.Password
+	dtoUser.Password = &pString2
+	pBool := source.IsAdmin
+	dtoUser.IsAdmin = &pBool
 	return dtoUser
 }
 func (c *DtoToDbomConverterImpl) dtoHAMountUsageToDtoHAMountUsage(source dto.HAMountUsage) (dto.HAMountUsage, error) {

@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/mapper"
 	"github.com/jinzhu/copier"
+	"github.com/xorcare/pointer"
 	"github.com/ztrue/tracerr"
 )
 
@@ -299,14 +300,14 @@ func (self Config) To(ctx context.Context, dst any) (bool, error) {
 	switch dst.(type) {
 	case *[]dto.User:
 		*dst.(*[]dto.User) = append((*dst.(*[]dto.User)), dto.User{
-			Username: self.Username,
-			Password: self.Password,
-			IsAdmin:  true,
+			Username: pointer.String(self.Username),
+			Password: pointer.String(self.Password),
+			IsAdmin:  pointer.Bool(true),
 		})
 		for _, user := range self.OtherUsers {
 			*dst.(*[]dto.User) = append((*dst.(*[]dto.User)), dto.User{
-				Username: user.Username,
-				Password: user.Password,
+				Username: pointer.String(user.Username),
+				Password: pointer.String(user.Password),
 			})
 		}
 		return true, nil
