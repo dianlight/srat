@@ -13,6 +13,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/mapper"
 	"github.com/gorilla/mux"
+	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 )
 
@@ -178,17 +179,6 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 	dbshare := &dbom.ExportedShare{
 		Name: share.Name,
 	}
-	err = dbshare.Get()
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		HttpJSONReponse(w, fmt.Errorf("Share already exists"), &Options{
-			Code: http.StatusConflict,
-		})
-		return
-	} else if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
-	}
-
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.SharedResourceToExportedShare(share, dbshare)
 	//err = mapper.Map(context.Background(), &dbshare, share)
@@ -198,6 +188,12 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 	}
 	err = dbshare.Save()
 	if err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			HttpJSONReponse(w, fmt.Errorf("Share already exists"), &Options{
+				Code: http.StatusConflict,
+			})
+			return
+		}
 		HttpJSONReponse(w, err, nil)
 		return
 	}
@@ -275,20 +271,21 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbshare := &dbom.ExportedShare{
-		ID:   *share.ID,
 		Name: share_name,
 	}
 	err = dbshare.Get()
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
+		HttpJSONReponse(w, tracerr.New("Share not found"), &Options{
 			Code: http.StatusNotFound,
 		})
 		return
-	} else if err == nil {
+	} else if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(context.Background(), &dbshare, share)
+	var conv converter.DtoToDbomConverterImpl
+	err = conv.SharedResourceToExportedShare(share, dbshare)
+	//	err = mapper.Map(context.Background(), &dbshare, share)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -302,9 +299,7 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Shares = true
 	notifyClient()
-	HttpJSONReponse(w, share, &Options{
-		Code: http.StatusCreated,
-	})
+	HttpJSONReponse(w, share, nil)
 }
 
 // DeleteShare godoc
@@ -323,26 +318,22 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 	share_name := mux.Vars(r)["share_name"]
 
 	var share dto.SharedResource
-	err := HttpJSONRequest(&share, w, r)
-	if err != nil {
-		return
-	}
-
 	dbshare := &dbom.ExportedShare{
-		ID:   *share.ID,
 		Name: share_name,
 	}
-	err = dbshare.Get()
+	err := dbshare.Get()
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
 			Code: http.StatusNotFound,
 		})
 		return
-	} else if err == nil {
+	} else if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(context.Background(), &dbshare, share)
+	var conv converter.DtoToDbomConverterImpl
+	err = conv.SharedResourceToExportedShare(share, dbshare)
+	//err = mapper.Map(context.Background(), &dbshare, share)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -356,8 +347,8 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
 	context_state.DataDirtyTracker.Shares = true
 	notifyClient()
-	HttpJSONReponse(w, share, &Options{
-		Code: http.StatusCreated,
+	HttpJSONReponse(w, nil, &Options{
+		Code: http.StatusNoContent,
 	})
 }
 

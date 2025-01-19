@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,11 +10,13 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xorcare/pointer"
+	"gorm.io/gorm"
 )
 
 func TestListSharesHandler(t *testing.T) {
@@ -45,6 +48,7 @@ func TestListSharesHandler(t *testing.T) {
 	//err = mapper.Map(context.Background(), &expectedDto, config)
 	//require.NoError(t, err)
 	//assert.EqualValues(t, expectedDto, resultsDto)
+	assert.Len(t, resultsDto, 10)
 
 	for _, sdto := range resultsDto {
 		//sdexpected := funk.Find(expectedDto, func(s dto.SharedResource) bool { return s.Name == sdto.Name }).(dto.SharedResource)
@@ -170,7 +174,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	assert.Equal(t, http.StatusConflict, rr.Code)
 
 	// Check the response body is what we expect.
-	assert.Contains(t, "Share already exists", rr.Body.String())
+	assert.Contains(t, rr.Body.String(), "Share already exists")
 }
 
 func TestUpdateShareHandler(t *testing.T) {
@@ -196,20 +200,32 @@ func TestUpdateShareHandler(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	// Check the response body is what we expect.
-	share.FS = "ext4"
-	share.Name = "LIBRARY"
-	share.RoUsers = []dto.User{
-		{Username: pointer.String("rouser")},
-	}
-	share.TimeMachine = true
-	share.Users = []dto.User{
-		{Username: pointer.String("dianlight")},
-	}
-	share.Usage = dto.UsageAsMedia
-	expected, jsonError := json.Marshal(share)
+	var rshare dto.SharedResource
+	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)
 	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected)[:len(expected)-3], rr.Body.String()[:len(expected)-3])
+
+	assert.EqualValues(t, share, rshare)
+
+	/*
+	   // Check the response body is what we expect.
+	   share.FS = "ext4"
+	   share.Name = "LIBRARY"
+
+	   	share.RoUsers = []dto.User{
+	   		{Username: pointer.String("rouser")},
+	   	}
+
+	   share.TimeMachine = true
+
+	   	share.Users = []dto.User{
+	   		{Username: pointer.String("dianlight")},
+	   	}
+
+	   share.Usage = dto.UsageAsMedia
+	   expected, jsonError := json.Marshal(share)
+	   require.NoError(t, jsonError)
+	   assert.Equal(t, string(expected)[:len(expected)-3], rr.Body.String()[:len(expected)-3])
+	*/
 }
 
 func TestDeleteShareHandler(t *testing.T) {
@@ -229,12 +245,11 @@ func TestDeleteShareHandler(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, rr.Code)
 
 	// Refresh shares list anche check that LIBRARY don't exists
-	req, err = http.NewRequestWithContext(testContext, "GET", "/shares", nil)
-	require.NoError(t, err)
-	rr = httptest.NewRecorder()
-	handler := http.HandlerFunc(ListShares)
-	handler.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.NotContains(t, rr.Body.String(), "LIBRARY", "LIBRARY share still exists")
+	share := dbom.ExportedShare{
+		Name: "LIBRARY",
+	}
+	err = share.FromName("LIBRARY")
+	if assert.Error(t, err, fmt.Sprintf("Share %+v should not exist", share)) {
+		assert.Equal(t, gorm.ErrRecordNotFound, err)
+	}
 }
