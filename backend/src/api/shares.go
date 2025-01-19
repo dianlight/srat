@@ -176,7 +176,6 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbshare := &dbom.ExportedShare{
-		//		Model: gorm.Model{ID: *share.ID},
 		Name: share.Name,
 	}
 	err = dbshare.Get()
@@ -185,12 +184,14 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 			Code: http.StatusConflict,
 		})
 		return
-	} else if err == nil {
+	} else if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
 
-	err = mapper.Map(context.Background(), &dbshare, share)
+	var conv converter.DtoToDbomConverterImpl
+	err = conv.SharedResourceToExportedShare(share, dbshare)
+	//err = mapper.Map(context.Background(), &dbshare, share)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -202,7 +203,8 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	err = mapper.Map(context.Background(), &share, dbshare)
+	err = conv.ExportedShareToSharedResource(*dbshare, &share)
+	//err = mapper.Map(context.Background(), &share, dbshare)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -220,17 +222,27 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 // The function uses a read lock to ensure thread-safe access to the sharesQueue.
 func notifyClient() {
 	var shares []dto.SharedResource
-	var dbshares = &dbom.ExportedShares{}
+	var dbshares = dbom.ExportedShares{}
 	err := dbshares.Load()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
-	err = mapper.Map(context.Background(), &shares, dbshares)
-	if err != nil {
-		log.Fatal(err)
-		return
+	var conv converter.DtoToDbomConverterImpl
+	for _, dbshare := range dbshares {
+		var share dto.SharedResource
+		err = conv.ExportedShareToSharedResource(dbshare, &share)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		shares = append(shares, share)
 	}
+	//	err = mapper.Map(context.Background(), &shares, dbshares)
+	//	if err != nil {
+	//		log.Fatal(err)
+	//		return
+	//	}
 	sharesQueueMutex.RLock()
 	for _, v := range sharesQueue {
 		v <- &shares

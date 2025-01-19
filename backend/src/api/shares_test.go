@@ -101,7 +101,7 @@ func TestGetShareHandler(t *testing.T) {
 func TestCreateShareHandler(t *testing.T) {
 
 	share := dto.SharedResource{
-		Name: "PIPPO",
+		Name: "PIPPODD",
 		Path: "/pippo",
 		FS:   "tmpfs",
 	}
@@ -124,9 +124,16 @@ func TestCreateShareHandler(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, rr.Code)
 
 	// Check the response body is what we expect.
-	expected, jsonError := json.Marshal(share)
+	var result dto.SharedResource
+	jsonError = json.Unmarshal(rr.Body.Bytes(), &result)
 	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected), rr.Body.String())
+	share.ID = result.ID
+	share.Users = []dto.User{
+		{Username: pointer.String("dianlight"), Password: pointer.String("hassio2010"), IsAdmin: pointer.Bool(true)},
+	} // Fix for testing
+	share.RoUsers = []dto.User{}
+	share.Usage = "none"
+	assert.EqualValues(t, share, result)
 }
 
 func TestCreateShareDuplicateHandler(t *testing.T) {
