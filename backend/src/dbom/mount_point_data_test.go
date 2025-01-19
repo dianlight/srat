@@ -1,7 +1,6 @@
 package dbom
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
@@ -206,7 +205,7 @@ func TestMountPointDataFromNameEmptyString(t *testing.T) {
 	err := mp.FromName("")
 
 	require.Error(t, err)
-	assert.Equal(t, errors.New("name cannot be empty"), err)
+	assert.ErrorContains(t, err, "name cannot be empty")
 	assert.Empty(t, mp.Name)
 	assert.Empty(t, mp.Path)
 	assert.Empty(t, mp.Label)
