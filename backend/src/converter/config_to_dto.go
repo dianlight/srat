@@ -5,7 +5,6 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
-	"github.com/xorcare/pointer"
 )
 
 // goverter:converter
@@ -75,7 +74,7 @@ type ConfigToDtoConverter interface {
 // goverter:context users
 func StringToDtoUser(username string, users []dto.User) (dto.User, error) {
 	for _, u := range users {
-		if u.Username == pointer.String(username) {
+		if *u.Username == username {
 			return u, nil
 		}
 	}

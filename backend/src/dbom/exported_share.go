@@ -13,7 +13,7 @@ type ExportedShare struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   gorm.DeletedAt   `gorm:"index"`
-	Name        string           `json:"name,omitempty" gorm:"unique"`
+	Name        string           `json:"name,omitempty" gorm:"unique,index"`
 	Path        string           `json:"path" gorm:"unique"`
 	FS          string           `json:"fs"`
 	Disabled    bool             `json:"disabled,omitempty"`

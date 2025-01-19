@@ -111,6 +111,7 @@ func ListShares(w http.ResponseWriter, r *http.Request) {
 			HttpJSONReponse(w, err, nil)
 			return
 		}
+		share.CheckValidity()
 		shares = append(shares, share)
 	}
 	HttpJSONReponse(w, shares, nil)
@@ -141,7 +142,9 @@ func GetShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	share := dto.SharedResource{}
-	err = mapper.Map(context.Background(), &share, dbshare)
+	var conv converter.DtoToDbomConverterImpl
+	err = conv.ExportedShareToSharedResource(dbshare, &share)
+	//err = mapper.Map(context.Background(), &share, dbshare)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return

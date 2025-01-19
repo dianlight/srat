@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -86,8 +87,15 @@ func TestGetShareHandler(t *testing.T) {
 
 	var config config.Config
 	config.FromContext(testContext)
-	assert.Equal(t, config.Shares["LIBRARY"], resultShare)
-	assert.EqualValues(t, config.Shares["LIBRARY"], resultShare)
+	var conv converter.ConfigToDtoConverterImpl
+	var expected dto.SharedResource
+	conv.ShareToSharedResource(config.Shares["LIBRARY"], &expected, []dto.User{
+		{Username: pointer.String("dianlight"), Password: pointer.String("hassio2010"), IsAdmin: pointer.Bool(true)},
+		{Username: pointer.String("rouser"), Password: pointer.String("rouser"), IsAdmin: pointer.Bool(false)},
+	})
+	expected.ID = resultShare.ID // Fix for testing
+	//assert.Equal(t, config.Shares["LIBRARY"], resultShare)
+	assert.EqualValues(t, expected, resultShare)
 }
 
 func TestCreateShareHandler(t *testing.T) {
