@@ -114,7 +114,7 @@
    fruit:metadata = stream
 {{ end }}
 {{- if has $dinfo.fs $unsupported }}
-   vfs objects = catia{{ if .recyle_bin_enabled }} recycle{{ end }}{{- printf "/*%#v*/" . -}}
+   vfs objects = catia{{ if .recyle_bin_enabled }} recycle{{ end }}{{/*- printf "/*%#v* /" . -*/}}
 {{ end }}
 
 {{ end }}

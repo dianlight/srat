@@ -80,12 +80,6 @@ func createConfigStream(ctx context.Context) (data *[]byte, err error) {
 			return nil, tracerr.Wrap(err)
 		}
 		// Special setting parameters to remove after upgrade
-		for _, cshare := range config.Shares {
-			if cshare.Usage == "media" {
-				config.Medialibrary.Enable = true
-				break
-			}
-		}
 	*/
 	config, err := dbutil.JSONFromDatabase()
 	if err != nil {

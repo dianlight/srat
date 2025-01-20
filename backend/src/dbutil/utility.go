@@ -57,5 +57,12 @@ func JSONFromDatabase() (tconfig config.Config, err error) {
 	if err != nil {
 		return tconfig, tracerr.Wrap(err)
 	}
+	for _, cshare := range tconfig.Shares {
+		if cshare.Usage == "media" {
+			tconfig.Medialibrary.Enable = true
+			break
+		}
+	}
+
 	return tconfig, nil
 }
