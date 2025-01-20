@@ -85,7 +85,6 @@ func GetSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	var settings dto.Settings
 	err = conv.PropertiesToSettings(dbsettings, &settings)
-	//	err = mapper.Map(context.Background(), &settings, dbsettings)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return

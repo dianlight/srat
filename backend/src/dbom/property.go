@@ -88,11 +88,26 @@ func (self *Properties) Get(key string) (*Property, error) {
 	return &prop, nil
 }
 
-// New GetValue method
 func (self *Properties) GetValue(key string) (interface{}, error) {
 	prop, err := self.Get(key)
 	if err != nil {
 		return nil, err
 	}
 	return prop.Value, nil
+}
+
+func (self *Properties) SetValue(key string, value any) error {
+	prop, err := self.Get(key)
+	if err != nil {
+		return err
+	}
+
+	prop.Value = value
+	err = db.Save(&prop).Error
+	if err != nil {
+		return err
+	}
+
+	(*self)[key] = *prop
+	return nil
 }

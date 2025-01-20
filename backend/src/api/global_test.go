@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -79,4 +80,12 @@ func TestUpdateSettingsHandler(t *testing.T) {
 	assert.EqualValues(t, []string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"}, res.AllowHost)
 	assert.True(t, context_state.DataDirtyTracker.Settings)
 
+	// Restore original state
+	var properties dbom.Properties
+	if err := properties.Load(); err != nil {
+		t.Fatalf("Failed to load properties: %v", err)
+	}
+	if err := properties.SetValue("Workgroup", "WORKGROUP"); err != nil {
+		t.Fatalf("Failed to add workgroup property: %v", err)
+	}
 }
