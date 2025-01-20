@@ -34,6 +34,10 @@ func (p *SambaUsers) DeleteAll() error {
 	return nil
 }
 
+func (p *SambaUsers) GetAdmin() error {
+	return db.Where("is_admin = ?", true).First(p).Error
+}
+
 /*
 func (self SambaUsers) Users() ([]SambaUser, error) {
 	tmp := reflect.ValueOf(slices.Clone(self)).Interface().([]SambaUser)

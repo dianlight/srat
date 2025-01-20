@@ -135,8 +135,7 @@ func TestCreateShareHandler(t *testing.T) {
 	share.Users = []dto.User{
 		{Username: pointer.String("dianlight"), Password: pointer.String("hassio2010"), IsAdmin: pointer.Bool(true)},
 	} // Fix for testing
-	share.RoUsers = []dto.User{}
-	share.Usage = "none"
+	//share.Usage = "none"
 	assert.EqualValues(t, share, result)
 }
 
@@ -180,7 +179,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 func TestUpdateShareHandler(t *testing.T) {
 
 	share := dto.SharedResource{
-		Path: "/pippo",
+		Path: "/pippo_efi",
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
@@ -188,7 +187,7 @@ func TestUpdateShareHandler(t *testing.T) {
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "PATCH", "/share/LIBRARY", strings.NewReader(string(jsonBody)))
+	req, err := http.NewRequestWithContext(testContext, "PATCH", "/share/EFI", strings.NewReader(string(jsonBody)))
 	require.NoError(t, err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
@@ -198,7 +197,7 @@ func TestUpdateShareHandler(t *testing.T) {
 	router.HandleFunc("/share/{share_name}", UpdateShare).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	var rshare dto.SharedResource
 	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)

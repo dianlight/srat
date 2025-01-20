@@ -186,6 +186,15 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
+	if len(dbshare.Users) == 0 {
+		adminUser := dbom.SambaUser{}
+		err = adminUser.GetAdmin()
+		if err != nil {
+			HttpJSONReponse(w, err, nil)
+			return
+		}
+		dbshare.Users = append(dbshare.Users, adminUser)
+	}
 	err = dbshare.Save()
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {

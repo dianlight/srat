@@ -11,6 +11,7 @@ import (
 // goverter:default:update
 // goverter:useZeroValueOnPointerInconsistency
 // goverter:update:ignoreZeroValueField
+// -goverter:extend UserToSambaUser
 // goverter:enum:unknown @error
 type DtoToDbomConverter interface {
 	// goverter:update target
@@ -21,7 +22,8 @@ type DtoToDbomConverter interface {
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignore Users RoUsers
-	SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error
+	// goverter:useUnderlyingTypeMethods
+	SharedResourceToExportedShareNoUsers(source dto.SharedResource, target *dbom.ExportedShare) error
 
 	// goverter:update target
 	// goverter:update:ignoreZeroValueField:basic no

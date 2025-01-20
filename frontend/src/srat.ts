@@ -9,6 +9,12 @@
  * ---------------------------------------------------------------
  */
 
+export interface ApiErrorResponse {
+  body?: any;
+  code?: number;
+  error?: string;
+}
+
 export interface DtoBlockInfo {
   /**
    * Partitions contains an array of pointers to `Partition` structs, one for
@@ -74,6 +80,13 @@ export enum DtoEventType {
   EventDirty = "dirty",
 }
 
+export enum DtoHAMountUsage {
+  UsageAsNone = "none",
+  UsageAsBackup = "backup",
+  UsageAsMedia = "media",
+  UsageAsShare = "share",
+}
+
 export interface DtoHealthPing {
   alive?: boolean;
   last_error?: string;
@@ -136,12 +149,6 @@ export interface DtoReleaseAsset {
   update_status?: number;
 }
 
-export interface DtoResponseError {
-  body?: any;
-  code?: number;
-  error?: string;
-}
-
 export interface DtoSambaProcessStatus {
   connections?: number;
   cpu_percent?: number;
@@ -169,21 +176,19 @@ export interface DtoSettings {
 }
 
 export interface DtoSharedResource {
+  /** DirtyStatus bool    `json:"id_dirty,omitempty"` */
   device_id?: number;
   disabled?: boolean;
   fs?: string;
   id?: number;
-  id_dirty?: boolean;
   invalid?: boolean;
   name?: string;
   path?: string;
-  ro_users?: string[];
+  ro_users?: DtoUser[];
   timemachine?: boolean;
-  usage?: string;
-  users?: string[];
+  usage?: DtoHAMountUsage;
+  users?: DtoUser[];
 }
-
-export type DtoSharedResources = Record<string, DtoSharedResource>;
 
 export interface DtoSmbConf {
   data?: string;
@@ -622,7 +627,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/admin/user
      */
     userList: (params: RequestParams = {}) =>
-      this.request<DtoUser, DtoResponseError>({
+      this.request<DtoUser, ApiErrorResponse>({
         path: `/admin/user`,
         method: "GET",
         format: "json",
@@ -638,7 +643,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PUT:/admin/user
      */
     userUpdate: (user: DtoUser, params: RequestParams = {}) =>
-      this.request<DtoUser, DtoResponseError>({
+      this.request<DtoUser, ApiErrorResponse>({
         path: `/admin/user`,
         method: "PUT",
         body: user,
@@ -656,7 +661,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PATCH:/admin/user
      */
     userPartialUpdate: (user: DtoUser, params: RequestParams = {}) =>
-      this.request<DtoUser, DtoResponseError>({
+      this.request<DtoUser, ApiErrorResponse>({
         path: `/admin/user`,
         method: "PATCH",
         body: user,
@@ -692,7 +697,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/filesystems
      */
     filesystemsList: (params: RequestParams = {}) =>
-      this.request<string[], DtoResponseError>({
+      this.request<string[], ApiErrorResponse>({
         path: `/filesystems`,
         method: "GET",
         format: "json",
@@ -709,7 +714,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/global
      */
     globalList: (params: RequestParams = {}) =>
-      this.request<DtoSettings, DtoResponseError>({
+      this.request<DtoSettings, ApiErrorResponse>({
         path: `/global`,
         method: "GET",
         type: ContentType.Json,
@@ -726,7 +731,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PUT:/global
      */
     globalUpdate: (config: DtoSettings, params: RequestParams = {}) =>
-      this.request<DtoSettings, DtoResponseError>({
+      this.request<DtoSettings, ApiErrorResponse>({
         path: `/global`,
         method: "PUT",
         body: config,
@@ -744,7 +749,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PATCH:/global
      */
     globalPartialUpdate: (config: DtoSettings, params: RequestParams = {}) =>
-      this.request<DtoSettings, DtoResponseError>({
+      this.request<DtoSettings, ApiErrorResponse>({
         path: `/global`,
         method: "PATCH",
         body: config,
@@ -763,7 +768,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/health
      */
     healthList: (params: RequestParams = {}) =>
-      this.request<DtoHealthPing, DtoResponseError>({
+      this.request<DtoHealthPing, ApiErrorResponse>({
         path: `/health`,
         method: "GET",
         format: "json",
@@ -780,7 +785,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/nics
      */
     nicsList: (params: RequestParams = {}) =>
-      this.request<DtoNetworkInfo, DtoResponseError>({
+      this.request<DtoNetworkInfo, ApiErrorResponse>({
         path: `/nics`,
         method: "GET",
         format: "json",
@@ -797,7 +802,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PUT:/restart
      */
     restartUpdate: (params: RequestParams = {}) =>
-      this.request<void, DtoResponseError>({
+      this.request<void, ApiErrorResponse>({
         path: `/restart`,
         method: "PUT",
         ...params,
@@ -813,7 +818,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/samba
      */
     sambaList: (params: RequestParams = {}) =>
-      this.request<DtoSmbConf, DtoResponseError>({
+      this.request<DtoSmbConf, ApiErrorResponse>({
         path: `/samba`,
         method: "GET",
         type: ContentType.Json,
@@ -830,7 +835,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PUT:/samba/apply
      */
     applyUpdate: (params: RequestParams = {}) =>
-      this.request<void, DtoResponseError>({
+      this.request<void, ApiErrorResponse>({
         path: `/samba/apply`,
         method: "PUT",
         type: ContentType.Json,
@@ -846,7 +851,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/samba/status
      */
     statusList: (params: RequestParams = {}) =>
-      this.request<DtoSambaProcessStatus, DtoResponseError>({
+      this.request<DtoSambaProcessStatus, ApiErrorResponse>({
         path: `/samba/status`,
         method: "GET",
         type: ContentType.Json,
@@ -864,7 +869,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/share
      */
     shareCreate: (share: DtoSharedResource, params: RequestParams = {}) =>
-      this.request<DtoSharedResource, DtoResponseError>({
+      this.request<DtoSharedResource, ApiErrorResponse>({
         path: `/share`,
         method: "POST",
         body: share,
@@ -882,7 +887,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/share/{share_name}
      */
     shareDetail: (shareName: string, params: RequestParams = {}) =>
-      this.request<DtoSharedResource, DtoResponseError>({
+      this.request<DtoSharedResource, ApiErrorResponse>({
         path: `/share/${shareName}`,
         method: "GET",
         format: "json",
@@ -898,7 +903,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PUT:/share/{share_name}
      */
     shareUpdate: (shareName: string, share: DtoSharedResource, params: RequestParams = {}) =>
-      this.request<DtoSharedResource, DtoResponseError>({
+      this.request<DtoSharedResource, ApiErrorResponse>({
         path: `/share/${shareName}`,
         method: "PUT",
         body: share,
@@ -916,7 +921,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/share/{share_name}
      */
     shareDelete: (shareName: string, params: RequestParams = {}) =>
-      this.request<void, DtoResponseError>({
+      this.request<void, ApiErrorResponse>({
         path: `/share/${shareName}`,
         method: "DELETE",
         ...params,
@@ -932,7 +937,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/shares
      */
     sharesList: (params: RequestParams = {}) =>
-      this.request<DtoSharedResources, DtoResponseError>({
+      this.request<DtoSharedResource[], ApiErrorResponse>({
         path: `/shares`,
         method: "GET",
         format: "json",
@@ -949,7 +954,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PUT:/update
      */
     updateUpdate: (params: RequestParams = {}) =>
-      this.request<DtoReleaseAsset, DtoResponseError>({
+      this.request<DtoReleaseAsset, ApiErrorResponse>({
         path: `/update`,
         method: "PUT",
         format: "json",
@@ -966,7 +971,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/user
      */
     userCreate: (user: DtoUser, params: RequestParams = {}) =>
-      this.request<DtoUser, DtoResponseError>({
+      this.request<DtoUser, ApiErrorResponse>({
         path: `/user`,
         method: "POST",
         body: user,
@@ -984,7 +989,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PUT:/user/{username}
      */
     userUpdate: (username: string, user: DtoUser, params: RequestParams = {}) =>
-      this.request<DtoUser, DtoResponseError>({
+      this.request<DtoUser, ApiErrorResponse>({
         path: `/user/${username}`,
         method: "PUT",
         body: user,
@@ -1002,7 +1007,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/user/{username}
      */
     userDelete: (username: string, params: RequestParams = {}) =>
-      this.request<void, DtoResponseError>({
+      this.request<void, ApiErrorResponse>({
         path: `/user/${username}`,
         method: "DELETE",
         ...params,
@@ -1017,7 +1022,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PATCH:/user/{username}
      */
     userPartialUpdate: (username: string, user: DtoUser, params: RequestParams = {}) =>
-      this.request<DtoUser, DtoResponseError>({
+      this.request<DtoUser, ApiErrorResponse>({
         path: `/user/${username}`,
         method: "PATCH",
         body: user,
@@ -1036,7 +1041,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/users
      */
     usersList: (params: RequestParams = {}) =>
-      this.request<DtoUser[], DtoResponseError>({
+      this.request<DtoUser[], ApiErrorResponse>({
         path: `/users`,
         method: "GET",
         format: "json",
@@ -1053,7 +1058,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/volume/{volume_name}/mount
      */
     mountCreate: (volumeName: string, mount_data: DtoMountPointData, params: RequestParams = {}) =>
-      this.request<DtoMountPointData, DtoResponseError>({
+      this.request<DtoMountPointData, ApiErrorResponse>({
         path: `/volume/${volumeName}/mount`,
         method: "POST",
         body: mount_data,
@@ -1080,7 +1085,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       },
       params: RequestParams = {},
     ) =>
-      this.request<void, DtoResponseError>({
+      this.request<void, ApiErrorResponse>({
         path: `/volume/${volumeName}/mount`,
         method: "DELETE",
         query: query,
@@ -1097,7 +1102,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/volumes
      */
     volumesList: (params: RequestParams = {}) =>
-      this.request<DtoBlockInfo, DtoResponseError>({
+      this.request<DtoBlockInfo, ApiErrorResponse>({
         path: `/volumes`,
         method: "GET",
         format: "json",
@@ -1114,7 +1119,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/ws
      */
     getWs: (params: RequestParams = {}) =>
-      this.request<DtoDataDirtyTracker, DtoResponseError>({
+      this.request<DtoDataDirtyTracker, ApiErrorResponse>({
         path: `/ws`,
         method: "GET",
         format: "json",

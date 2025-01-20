@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/thoas/go-funk"
+	"github.com/ztrue/tracerr"
 )
 
 func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, target *dbom.Properties) error {
@@ -49,6 +50,30 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 		} /*else {
 			return fmt.Errorf("Field not found: %s", prop.Key)
 		}*/
+	}
+	return nil
+}
+
+func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error {
+	err := c.SharedResourceToExportedShareNoUsers(source, target)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	for _, _dtoUser := range source.Users {
+		var user dbom.SambaUser
+		err := c.UserToSambaUser(_dtoUser, &user)
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+		target.Users = append(target.Users, user)
+	}
+	for _, _dtoUser := range source.RoUsers {
+		var user dbom.SambaUser
+		err := c.UserToSambaUser(_dtoUser, &user)
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+		target.Users = append(target.RoUsers, user)
 	}
 	return nil
 }

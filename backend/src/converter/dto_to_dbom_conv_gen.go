@@ -68,7 +68,7 @@ func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *
 	target.IsAdmin = &pBool
 	return nil
 }
-func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error {
+func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsers(source dto.SharedResource, target *dbom.ExportedShare) error {
 	if source.ID != nil {
 		target.ID = *source.ID
 	}

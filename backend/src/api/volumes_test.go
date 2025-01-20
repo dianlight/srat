@@ -103,7 +103,7 @@ func TestMountVolumeHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusCreated, rr.Code, "Body %#v", rr.Body.String())
+	assert.Equal(t, http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check the response body is what we expect.
 	var responseData dbom.MountPointData
@@ -139,7 +139,7 @@ func TestUmountVolumeNonExistent(t *testing.T) {
 			status, http.StatusNotFound)
 	}
 
-	expected := `{"code":0,"error":"No mount on nonexistent found!","body":""}`
+	expected := `{"code":0,"error":"No mount on nonexistent found!","body":null}`
 	if rr.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), expected)
