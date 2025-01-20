@@ -1,13 +1,5 @@
 package dto
 
-import (
-	"context"
-	"fmt"
-
-	"github.com/dianlight/srat/mapper"
-	"github.com/thoas/go-funk"
-)
-
 //type Users []User
 
 type User struct {
@@ -15,6 +7,8 @@ type User struct {
 	Password *string `json:"password,omitempty"`
 	IsAdmin  *bool   `json:"is_admin,omitempty"`
 }
+
+/*
 
 func (m User) To(ctx context.Context, dst any) (bool, error) {
 	switch v := dst.(type) {
@@ -42,6 +36,7 @@ func (m *User) From(ctx context.Context, src any) (bool, error) {
 		return false, nil
 	}
 }
+*/
 
 /*
 func (self *User) From(value interface{}) error {

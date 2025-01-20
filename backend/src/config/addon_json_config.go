@@ -8,10 +8,7 @@ import (
 	"os"
 	"slices"
 
-	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/mapper"
 	"github.com/jinzhu/copier"
-	"github.com/xorcare/pointer"
 	"github.com/ztrue/tracerr"
 )
 
@@ -296,6 +293,7 @@ func (self *Config) ToContext(ctx context.Context) context.Context {
 }
 
 // Mapping Functions
+/*
 func (self Config) To(ctx context.Context, dst any) (bool, error) {
 	switch dst.(type) {
 	case *[]dto.User:
@@ -325,6 +323,7 @@ func (self Config) To(ctx context.Context, dst any) (bool, error) {
 		return false, nil
 	}
 }
+*/
 
 /*
 func (m Shares) To(dst any) (bool, error) {

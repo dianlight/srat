@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/mapper"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +38,9 @@ func TestGetSettingsHandler(t *testing.T) {
 	err = config.FromContext(testContext)
 	require.NoError(t, err)
 	var expected dto.Settings
-	err = mapper.Map(context.Background(), &expected, config)
+	var conv converter.ConfigToDtoConverterImpl
+	err = conv.ConfigToSettings(config, &expected)
+	//err = mapper.Map(context.Background(), &expected, config)
 	require.NoError(t, err)
 
 	// Check the response body is what we expect.

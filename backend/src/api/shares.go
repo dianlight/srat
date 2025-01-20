@@ -11,7 +11,6 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/mapper"
 	"github.com/gorilla/mux"
 	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
@@ -375,13 +374,28 @@ func SharesWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, 
 	if sharesQueue[request.Uid] == nil {
 		sharesQueue[request.Uid] = make(chan *[]dto.SharedResource, 10)
 	}
-	var dbshare dbom.ExportedShare
-	var shares []dto.SharedResource
-	err := mapper.Map(context.Background(), &shares, dbshare)
+	var dbshares dbom.ExportedShares
+	err := dbshares.Load()
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 		return
 	}
+	var shares []dto.SharedResource
+	var conv converter.DtoToDbomConverterImpl
+	for _, dbshare := range dbshares {
+		var share dto.SharedResource
+		err = conv.ExportedShareToSharedResource(dbshare, &share)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		shares = append(shares, share)
+	}
+	//	err := mapper.Map(context.Background(), &shares, dbshare)
+	//	if err != nil {
+	//		log.Println(err)
+	//		return
+	//	}
 	sharesQueue[request.Uid] <- &shares
 
 	var queue = sharesQueue[request.Uid]

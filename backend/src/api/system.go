@@ -18,7 +18,6 @@ import (
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/mapper"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v68/github"
 	"github.com/jaypipes/ghw"
@@ -385,7 +384,9 @@ func GetNICsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var info dto.NetworkInfo
-	err = mapper.Map(context.Background(), &info, net)
+	var conv converter.NetToDtoImpl
+	err = conv.NetInfoToNetworkInfo(*net, &info)
+	//err = mapper.Map(context.Background(), &info, net)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -466,11 +467,14 @@ func GetFSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var xfs dto.FilesystemTypes
-	err = mapper.Map(context.Background(), &xfs, fs)
-	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+	for _, fsi := range fs {
+		xfs = append(xfs, dto.FilesystemType(fsi))
 	}
+	//err = mapper.Map(context.Background(), &xfs, fs)
+	//if err != nil {
+	//	HttpJSONReponse(w, err, nil)
+	//	return
+	//}
 	HttpJSONReponse(w, xfs, nil)
 }
 

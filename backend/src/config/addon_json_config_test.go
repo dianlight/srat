@@ -1,15 +1,12 @@
-package config
+package config_test
 
 import (
-	"context"
 	"os"
 	"testing"
 
-	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/mapper"
+	"github.com/dianlight/srat/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thoas/go-funk"
 )
 
 func TestReadConfigConsistency(t *testing.T) {
@@ -25,13 +22,13 @@ func TestReadConfigConsistency(t *testing.T) {
 	tempFile.Close()
 
 	// Call readConfig multiple times
-	var config1 Config
+	var config1 config.Config
 	e1 := config1.ReadFromFile(tempFile.Name())
 	require.NoError(t, e1)
-	var config2 Config
+	var config2 config.Config
 	e2 := config2.ReadFromFile(tempFile.Name())
 	require.NoError(t, e2)
-	var config3 Config
+	var config3 config.Config
 	e3 := config3.ReadFromFile(tempFile.Name())
 	require.NoError(t, e3)
 
@@ -42,10 +39,10 @@ func TestReadConfigConsistency(t *testing.T) {
 
 func TestConfigToMapWithUnicode(t *testing.T) {
 	// Create a Config struct with unicode characters
-	config := &Config{
+	config := &config.Config{
 		ConfigSpecVersion: 1,
-		Shares: Shares{
-			"unicode": Share{
+		Shares: config.Shares{
+			"unicode": config.Share{
 				Path: "/path/to/unicode/文件夹",
 				FS:   "ext4",
 			},
@@ -65,9 +62,9 @@ func TestConfigToMapWithUnicode(t *testing.T) {
 }
 func TestMigrateConfigFromVersion0ToCurrent(t *testing.T) {
 	// Create a config with version 0
-	initialConfig := &Config{
+	initialConfig := &config.Config{
 		ConfigSpecVersion: 0,
-		Shares:            make(Shares),
+		Shares:            make(config.Shares),
 	}
 
 	// Call migrateConfig
@@ -75,7 +72,7 @@ func TestMigrateConfigFromVersion0ToCurrent(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check if the version has been updated
-	assert.Equal(t, CURRENT_CONFIG_VERSION, initialConfig.ConfigSpecVersion)
+	assert.Equal(t, config.CURRENT_CONFIG_VERSION, initialConfig.ConfigSpecVersion)
 
 	// Check if all required shares have been added
 	expectedShares := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"}
@@ -93,35 +90,35 @@ func TestMigrateConfigFromVersion0ToCurrent(t *testing.T) {
 
 func TestMigrateConfigSetsVersionToCurrent(t *testing.T) {
 	// Create a config with version 0
-	initialConfig := &Config{
+	initialConfig := &config.Config{
 		ConfigSpecVersion: 0,
-		Shares:            make(Shares),
+		Shares:            make(config.Shares),
 	}
 
 	// Call migrateConfig
 	err := initialConfig.MigrateConfig()
 	require.NoError(t, err)
 
-	assert.Equal(t, CURRENT_CONFIG_VERSION, initialConfig.ConfigSpecVersion)
+	assert.Equal(t, config.CURRENT_CONFIG_VERSION, initialConfig.ConfigSpecVersion)
 }
 func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	// Create a config with version 0 and all default shares already present
-	initialConfig := &Config{
+	initialConfig := &config.Config{
 		ConfigSpecVersion: 0,
-		Shares: Shares{
-			"config":        Share{Path: "/config", FS: "native"},
-			"addons":        Share{Path: "/addons", FS: "native"},
-			"ssl":           Share{Path: "/ssl", FS: "native"},
-			"share":         Share{Path: "/share", FS: "native"},
-			"backup":        Share{Path: "/backup", FS: "native"},
-			"media":         Share{Path: "/media", FS: "native"},
-			"addon_configs": Share{Path: "/addon_configs", FS: "native"},
+		Shares: config.Shares{
+			"config":        config.Share{Path: "/config", FS: "native"},
+			"addons":        config.Share{Path: "/addons", FS: "native"},
+			"ssl":           config.Share{Path: "/ssl", FS: "native"},
+			"share":         config.Share{Path: "/share", FS: "native"},
+			"backup":        config.Share{Path: "/backup", FS: "native"},
+			"media":         config.Share{Path: "/media", FS: "native"},
+			"addon_configs": config.Share{Path: "/addon_configs", FS: "native"},
 		},
-		OtherUsers: []User{
+		OtherUsers: []config.User{
 			{Username: "utente1", Password: "Test Password"},
 			{Username: "utente2", Password: "Test Password"},
 		},
-		ACL: []OptionsAcl{
+		ACL: []config.OptionsAcl{
 			{
 				Share:    "config",
 				Disabled: false,
@@ -145,7 +142,7 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check if the version has been updated
-	assert.Equal(t, CURRENT_CONFIG_VERSION, initialConfig.ConfigSpecVersion)
+	assert.Equal(t, config.CURRENT_CONFIG_VERSION, initialConfig.ConfigSpecVersion)
 	// Check if all shares are still present and unchanged
 	expectedShares := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"}
 	for _, shareName := range expectedShares {
@@ -164,7 +161,7 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 	assert.True(t, initialConfig.Shares["ssl"].Disabled)
 }
 func TestLoadConfigWithNonExistentFile(t *testing.T) {
-	config := &Config{}
+	config := &config.Config{}
 	err := config.LoadConfig("non_existent_file.json")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no such file or directory")
@@ -179,7 +176,7 @@ func TestLoadConfigWithNonReadableFile(t *testing.T) {
 	err = os.Chmod(tempFile.Name(), 0000)
 	require.NoError(t, err)
 
-	config := &Config{}
+	config := &config.Config{}
 	err = config.LoadConfig(tempFile.Name())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected end of JSON input")
@@ -196,110 +193,21 @@ func TestLoadConfigWithValidFile(t *testing.T) {
 	tempFile.Close()
 
 	// Create a new Config instance
-	config := &Config{}
+	tconfig := &config.Config{}
 
 	// Load the config
-	err = config.LoadConfig(tempFile.Name())
+	err = tconfig.LoadConfig(tempFile.Name())
 	require.NoError(t, err)
 
 	// Check if the config was loaded correctly
-	assert.Equal(t, CURRENT_CONFIG_VERSION, config.ConfigSpecVersion)
-	assert.Contains(t, config.Shares, "test")
-	assert.Equal(t, "/test", config.Shares["test"].Path)
-	assert.Equal(t, "ext4", config.Shares["test"].FS)
+	assert.Equal(t, config.CURRENT_CONFIG_VERSION, tconfig.ConfigSpecVersion)
+	assert.Contains(t, tconfig.Shares, "test")
+	assert.Equal(t, "/test", tconfig.Shares["test"].Path)
+	assert.Equal(t, "ext4", tconfig.Shares["test"].FS)
 
 	// Check if additional shares were added during migration
 	expectedShares := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"}
 	for _, shareName := range expectedShares {
-		assert.Contains(t, config.Shares, shareName)
+		assert.Contains(t, tconfig.Shares, shareName)
 	}
-}
-func TestMappableToDtoSettings(t *testing.T) {
-	// Create a new Config instance
-	config := &Config{}
-
-	// Load the config
-	err := config.LoadConfig("../../test/data/config.json")
-	require.NoError(t, err)
-
-	dto := dto.Settings{}
-	err = mapper.Map(context.Background(), &dto, config)
-	require.NoError(t, err)
-
-	//bdata, err := os.ReadFile("../../test/data/config.json")
-	//require.NoError(t, err)
-	//data := make(map[string]interface{})
-	//require.NoError(t,json.Unmarshal(bdata,data))
-	assert.Equal(t, "WORKGROUP", dto.Workgroup)
-	assert.Equal(t, []string{"10.0.0.0/8",
-		"100.0.0.0/8",
-		"172.16.0.0/12",
-		"192.168.0.0/16",
-		"169.254.0.0/16",
-		"fe80::/10",
-		"fc00::/7",
-	}, dto.AllowHost)
-	assert.Equal(t, []string{"nosuid", "relatime", "noexec"}, dto.Mountoptions)
-	assert.Equal(t, []string{
-		"._*",
-		".DS_Store",
-		"Thumbs.db",
-		"icon?",
-		".Trashes"}, dto.VetoFiles)
-
-	assert.False(t, dto.CompatibilityMode)
-	assert.False(t, dto.EnableRecycleBin)
-	assert.True(t, dto.BindAllInterfaces)
-	assert.False(t, dto.MultiChannel)
-}
-
-func TestMappableToDtoUsers(t *testing.T) {
-	// Create a new Config instance
-	config := &Config{}
-
-	// Load the config
-	err := config.LoadConfig("../../test/data/config.json")
-	require.NoError(t, err)
-
-	_dto := []dto.User{}
-	err = mapper.Map(context.Background(), &_dto, config)
-	require.NoError(t, err)
-
-	//bdata, err := os.ReadFile("../../test/data/config.json")
-	//require.NoError(t, err)
-	//data := make(map[string]interface{})
-	//require.NoError(t,json.Unmarshal(bdata,data))
-
-	assert.Len(t, _dto, 4)
-	assert.NotNil(t, funk.Find(_dto, func(u dto.User) bool {
-		return *u.Username == "backupuser" && *u.Password == "\u003cbackupuser secret password\u003e" && *u.IsAdmin == false
-	}))
-	assert.NotNil(t, funk.Find(_dto, func(u dto.User) bool { return *u.Username == "utente2" || *u.Username == "rouser" }))
-	assert.NotNil(t, funk.Find(_dto, func(u dto.User) bool {
-		return *u.Username == "dianlight" && *u.Password == "hassio2010" && *u.IsAdmin == true
-	}))
-}
-
-func TestMappableToDtoSharedResources(t *testing.T) {
-	// Create a new Config instance
-	config := &Config{}
-
-	// Load the config
-	err := config.LoadConfig("../../test/data/config.json")
-	require.NoError(t, err)
-
-	_dto := make([]dto.SharedResource, 0, 20)
-	err = mapper.Map(context.Background(), &_dto, config)
-	require.NoError(t, err)
-
-	//bdata, err := os.ReadFile("../../test/data/config.json")
-	//require.NoError(t, err)
-	//data := make(map[string]interface{})
-	//require.NoError(t,json.Unmarshal(bdata,data))
-
-	assert.Len(t, _dto, 10, "Size of shared resources is not as expected %#v", _dto)
-	assert.Contains(t, _dto, dto.SharedResource{ID: (*uint)(nil), Name: "addons", Path: "/addons", FS: "native", Disabled: false, Users: []dto.User{}, RoUsers: []dto.User(nil), TimeMachine: false, Usage: "none", DeviceId: (*uint64)(nil), Invalid: false})
-	// assert.Contains(t, fmt.Sprintf("%v", _dto), "utente2")
-	// assert.Contains(t, fmt.Sprintf("%v", _dto), "rouser")
-	// assert.Contains(t, _dto, dto.User{Username: "dianlight", Password: "hassio2010", IsAdmin: true})
 }
