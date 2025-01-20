@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -69,7 +70,9 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 		return
 	}
 	var settings dto.Settings
-	err = mapper.Map(context.Background(), &settings, properties)
+	var conv converter.DtoToDbomConverterImpl
+	err = conv.PropertiesToSettings(properties, &settings)
+	// err = mapper.Map(context.Background(), &settings, properties)
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 		return

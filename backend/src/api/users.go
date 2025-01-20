@@ -1,14 +1,12 @@
 package api
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/mapper"
 	"github.com/gorilla/mux"
 	"github.com/xorcare/pointer"
 	"gorm.io/gorm"
@@ -72,12 +70,14 @@ func GetAdminUser(w http.ResponseWriter, r *http.Request) {
 	dbUser := dbom.SambaUser{
 		IsAdmin: true,
 	}
-	err := dbUser.Get()
+	err := dbUser.GetAdmin()
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = mapper.Map(context.Background(), &adminUser, dbUser)
+	var conv converter.DtoToDbomConverterImpl
+	err = conv.SambaUserToUser(dbUser, &adminUser)
+	//	err = mapper.Map(context.Background(), &adminUser, dbUser)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
