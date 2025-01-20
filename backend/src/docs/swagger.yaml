@@ -100,16 +100,16 @@ definitions:
     - EventDirty
   dto.HAMountUsage:
     enum:
+    - none
     - backup
     - media
     - share
-    - none
     type: string
     x-enum-varnames:
+    - UsageAsNone
     - UsageAsBackup
     - UsageAsMedia
     - UsageAsShare
-    - UsageAsNone
   dto.HealthPing:
     properties:
       alive:

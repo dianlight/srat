@@ -60,18 +60,12 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.Expor
 	return nil
 }
 func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *dto.User) error {
-	if source.Username != "" {
-		pString := source.Username
-		target.Username = &pString
-	}
-	if source.Password != "" {
-		pString2 := source.Password
-		target.Password = &pString2
-	}
-	if source.IsAdmin != false {
-		pBool := source.IsAdmin
-		target.IsAdmin = &pBool
-	}
+	pString := source.Username
+	target.Username = &pString
+	pString2 := source.Password
+	target.Password = &pString2
+	pBool := source.IsAdmin
+	target.IsAdmin = &pBool
 	return nil
 }
 func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error {

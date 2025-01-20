@@ -10,6 +10,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/mapper"
 	"github.com/gorilla/mux"
+	"github.com/xorcare/pointer"
 	"gorm.io/gorm"
 )
 
@@ -38,6 +39,9 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			HttpJSONReponse(w, err, nil)
 			return
+		}
+		if user.IsAdmin == nil {
+			user.IsAdmin = pointer.Bool(false)
 		}
 		users = append(users, user)
 	}

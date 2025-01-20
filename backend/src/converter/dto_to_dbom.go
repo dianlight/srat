@@ -24,6 +24,7 @@ type DtoToDbomConverter interface {
 	SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error
 
 	// goverter:update target
+	// goverter:update:ignoreZeroValueField:basic no
 	SambaUserToUser(source dbom.SambaUser, target *dto.User) error
 
 	// goverter:update target
