@@ -133,7 +133,7 @@ func GetShare(w http.ResponseWriter, r *http.Request) {
 	shareName := mux.Vars(r)["share_name"]
 
 	dbshare := dbom.ExportedShare{Name: shareName}
-	err := dbshare.Get()
+	err := dbshare.FromName(shareName)
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
 			Code: http.StatusNotFound,
@@ -273,7 +273,7 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 	dbshare := &dbom.ExportedShare{
 		Name: share_name,
 	}
-	err = dbshare.Get()
+	err = dbshare.FromName(share_name)
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		HttpJSONReponse(w, tracerr.New("Share not found"), &Options{
 			Code: http.StatusNotFound,
@@ -321,7 +321,7 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 	dbshare := &dbom.ExportedShare{
 		Name: share_name,
 	}
-	err := dbshare.Get()
+	err := dbshare.FromName(share_name)
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
 			Code: http.StatusNotFound,

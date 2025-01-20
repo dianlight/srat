@@ -99,7 +99,7 @@ func TestGetShareHandler(t *testing.T) {
 	})
 	expected.ID = resultShare.ID // Fix for testing
 	//assert.Equal(t, config.Shares["LIBRARY"], resultShare)
-	assert.EqualValues(t, expected, resultShare)
+	assert.EqualValues(t, expected, resultShare, "Body %#v", rr.Body.String())
 }
 
 func TestCreateShareHandler(t *testing.T) {
