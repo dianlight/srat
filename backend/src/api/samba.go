@@ -139,18 +139,18 @@ func ApplySamba(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	smbConfigFile := r.Context().Value("samba_config_file").(*string)
-	if *smbConfigFile == "" {
+	ctx := r.Context().Value("context_state").(*dto.ContextState)
+	if ctx.SambaConfigFile == "" {
 		HttpJSONReponse(w, fmt.Errorf("No samba config file provided"), nil)
 	} else {
-		err := os.WriteFile(*smbConfigFile, *stream, 0644)
+		err := os.WriteFile(ctx.SambaConfigFile, *stream, 0644)
 		if err != nil {
 			HttpJSONReponse(w, err, nil)
 			return
 		}
 
 		// Check samba configuration with exec testparm -s
-		cmd := exec.Command("testparm", "-s", *smbConfigFile)
+		cmd := exec.Command("testparm", "-s", ctx.SambaConfigFile)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			err = fmt.Errorf("Error executing testparm: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})

@@ -43,6 +43,7 @@ func TestMain(m *testing.M) {
 	}
 
 	sharedResources := dto.ContextState{}
+	sharedResources.SambaConfigFile = "../../test/data/smb.conf"
 	//sharedResources.FromJSONConfig(*aconfig)
 	testContext = sharedResources.ToContext(testContext)
 	//sharedResources := dto.SharedResources{}
@@ -50,9 +51,9 @@ func TestMain(m *testing.M) {
 	//testContext = context.WithValue(testContext, "shared_resources", sharedResources)
 	//testContext = context.WithValue(testContext, "addon_option", options)
 	//testContext = context.WithValue(testContext, "data_dirty_tracker", &dto.DataDirtyTracker{})
-	var smbConfigFile = "../../test/data/smb.conf"
+	//var smbConfigFile = "../../test/data/smb.conf"
 	testContext = config.ToContext(testContext)
-	testContext = context.WithValue(testContext, "samba_config_file", &smbConfigFile)
+	//testContext = context.WithValue(testContext, "samba_config_file", &smbConfigFile)
 	testContext = context.WithValue(testContext, "template_data", templateData)
 	var dockerInterface = "hassio"
 	var dockerNetwork = "172.30.32.0/23"

@@ -23,10 +23,13 @@ func TestCreateConfigStream(t *testing.T) {
 	require.NoError(t, err, tracerr.SprintSourceColor(err))
 	assert.NotNil(t, stream)
 
-	samba_config_file := testContext.Value("samba_config_file").(*string)
-	assert.NotEmpty(t, *samba_config_file)
+	ctx := testContext.Value("context_state").(*dto.ContextState)
+	assert.NotEmpty(t, ctx)
 
-	fsbyte, err := os.ReadFile(*samba_config_file)
+	//samba_config_file := testContext.Value("samba_config_file").(*string)
+	assert.NotEmpty(t, ctx.SambaConfigFile)
+
+	fsbyte, err := os.ReadFile(ctx.SambaConfigFile)
 	require.NoError(t, err)
 
 	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)

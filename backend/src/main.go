@@ -217,7 +217,7 @@ func prog(state overseer.State) {
 
 	var apiContext = context.Background()
 
-	apiContext = context.WithValue(apiContext, "samba_config_file", smbConfigFile) // FIXME: Migrate to SharedResources
+	//apiContext = context.WithValue(apiContext, "samba_config_file", smbConfigFile) // FIXME: Migrate to SharedResources
 	apiContext = context.WithValue(apiContext, "template_data", templateData)
 	apiContext = context.WithValue(apiContext, "docker_interface", dockerInterface)
 	apiContext = context.WithValue(apiContext, "docker_network", dockerNetwork)
@@ -225,6 +225,7 @@ func prog(state overseer.State) {
 	sharedResources := dto.ContextState{}
 	sharedResources.UpdateFilePath = updateFilePath
 	sharedResources.ReadOnlyMode = *roMode
+	sharedResources.SambaConfigFile = *smbConfigFile
 
 	//sharedResources.FromJSONConfig(*aconfig)
 	apiContext = sharedResources.ToContext(apiContext)
@@ -321,10 +322,7 @@ func prog(state overseer.State) {
 		IdleTimeout:  time.Second * 60,
 		Handler:      loggedRouter, // Pass our instance of gorilla/mux in.
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			//ctx = context.WithValue(ctx, "shared_resources", sharedResources)
-			//ctx = context.WithValue(ctx, "addon_option", options)
-			//ctx = context.WithValue(ctx, "data_dirty_tracker", &dto.DataDirtyTracker{})
-			ctx = context.WithValue(ctx, "samba_config_file", smbConfigFile)
+			//ctx = context.WithValue(ctx, "samba_config_file", smbConfigFile)
 			ctx = context.WithValue(ctx, "template_data", templateData)
 			ctx = context.WithValue(ctx, "docker_interface", dockerInterface)
 			ctx = context.WithValue(ctx, "docker_network", dockerNetwork)
