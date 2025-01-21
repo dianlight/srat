@@ -27,7 +27,7 @@
     "swagger-typescript-api": "^13.0.23"
   },
   "peerDependencies": {
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.3"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
