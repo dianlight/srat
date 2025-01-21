@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
@@ -77,11 +76,11 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 		return
 	}
 
-	//context_state := (&dto.ContextState{}).FromContext(ctx)
+	context_state := (&dto.ContextState{}).FromContext(ctx)
 
 	var gh = github.NewClient(rateLimiter)
 	for {
-		healthData.ReadOnly = *data.ROMode
+		healthData.ReadOnly = context_state.ReadOnlyMode
 		if settings.UpdateChannel != dto.None {
 			UpdateLimiter.Do(func() {
 				log.Printf("Checking for updates...%v", settings.UpdateChannel)
@@ -302,6 +301,8 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Updating to version %s", *lastReleaseData.LastRelease.TagName) // FIXME: Move latest realase to context
 
+	ctx := (&dto.ContextState{}).FromContext(r.Context())
+
 	lastReleaseData.UpdateStatus = 0
 	var gh = github.NewClient(nil)
 	if lastReleaseData.ArchAsset == nil {
@@ -315,7 +316,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//defer rc.Close()
-	tmpFile, err := os.OpenFile(data.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0777)
+	tmpFile, err := os.OpenFile(ctx.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -325,7 +326,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		var by, err = io.Copy(tmpFile, rc)
 		if err != nil {
-			fmt.Printf("Error copying downloaded file to temporary file %s: %v\n", data.UpdateFilePath, err.Error())
+			fmt.Printf("Error copying downloaded file to temporary file %s: %v\n", ctx.UpdateFilePath, err.Error())
 			healthData.LastError = err.Error()
 		}
 		lastReleaseData.UpdateStatus = -1

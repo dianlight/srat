@@ -5,13 +5,9 @@ import (
 )
 
 type ContextState struct {
-	//	BlockInfo        BlockInfo        `json:"devices"`
+	ReadOnlyMode     bool             `json:"read_only_mode"`
+	UpdateFilePath   string           `json:"update_file_path"`
 	DataDirtyTracker DataDirtyTracker `json:"data_dirty_tracker"`
-	// MountPointData   MountPointData   `json:"mount_point_data"`
-	// Settings         Settings         `json:"settings"`
-	// Users            Users            `json:"users"`
-	// AdminUser        User             `json:"admin_users"`
-	// SharedResources  SharedResources  `json:"shared_resources"`
 }
 
 func (self *ContextState) FromContext(ctx context.Context) *ContextState {

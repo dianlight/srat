@@ -26,7 +26,6 @@ import (
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/data"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
 	_ "github.com/dianlight/srat/docs"
@@ -47,6 +46,8 @@ var wait time.Duration
 var hamode *bool
 var dockerInterface *string
 var dockerNetwork *string
+var roMode *bool
+var updateFilePath string
 
 // Static files
 //
@@ -104,7 +105,7 @@ func main() {
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
 	templateFile = flag.String("template", "", "Template file")
 	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
-	data.ROMode = flag.Bool("ro", false, "Read only mode")
+	roMode = flag.Bool("ro", false, "Read only mode")
 	hamode = flag.Bool("addon", false, "Run in addon mode")
 	dbfile := flag.String("db", ":memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
@@ -127,7 +128,7 @@ func main() {
 
 	flag.Parse()
 
-	data.UpdateFilePath = os.TempDir() + "/" + filepath.Base(os.Args[0])
+	updateFilePath = os.TempDir() + "/" + filepath.Base(os.Args[0])
 	//log.Printf("Update file: %s\n", data.UpdateFilePath)
 
 	if *show_volumes {
@@ -171,7 +172,7 @@ func main() {
 		Program: prog,
 		Address: fmt.Sprintf(":%d", *http_port),
 		Fetcher: &fetcher.File{
-			Path:     data.UpdateFilePath,
+			Path:     updateFilePath,
 			Interval: 1 * time.Second,
 		},
 		//Debug: true,
@@ -207,7 +208,7 @@ func prog(state overseer.State) {
 		log.Println("Missing samba config going in test mode")
 	}
 
-	if *data.ROMode {
+	if *roMode {
 		log.Println("Read only mode")
 	}
 
@@ -219,12 +220,15 @@ func prog(state overseer.State) {
 	//apiContext = context.WithValue(apiContext, " addon_config", aconfig)
 	//apiContext = context.WithValue(apiContext, "addon_option", options)
 	//apiContext = context.WithValue(apiContext, "data_dirty_tracker", dto.DataDirtyTracker{})
-	apiContext = context.WithValue(apiContext, "samba_config_file", smbConfigFile)
+	apiContext = context.WithValue(apiContext, "samba_config_file", smbConfigFile) // FIXME: Migrate to SharedResources
 	apiContext = context.WithValue(apiContext, "template_data", templateData)
 	apiContext = context.WithValue(apiContext, "docker_interface", dockerInterface)
 	apiContext = context.WithValue(apiContext, "docker_network", dockerNetwork)
 
 	sharedResources := dto.ContextState{}
+	sharedResources.UpdateFilePath = updateFilePath
+	sharedResources.ReadOnlyMode = *roMode
+
 	//sharedResources.FromJSONConfig(*aconfig)
 	apiContext = sharedResources.ToContext(apiContext)
 
