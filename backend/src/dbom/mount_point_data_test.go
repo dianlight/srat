@@ -205,7 +205,7 @@ func TestMountPointDataFromNameEmptyString(t *testing.T) {
 	err := mp.FromName("")
 
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "name cannot be empty")
+	require.ErrorContains(t, err, "name cannot be empty")
 	assert.Empty(t, mp.Name)
 	assert.Empty(t, mp.Path)
 	assert.Empty(t, mp.Label)

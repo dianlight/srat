@@ -5,6 +5,8 @@ import (
 	//"gorm.io/driver/sqlite"
 
 	"github.com/glebarez/sqlite"
+	//_ "github.com/ncruces/go-sqlite3/embed"
+	//"github.com/ncruces/go-sqlite3/gormlite"
 	"gorm.io/gorm"
 )
 
@@ -24,13 +26,22 @@ var (
 func InitDB(dbpath string) {
 	var err error
 	db, err = gorm.Open(sqlite.Open(dbpath), &gorm.Config{
-		TranslateError: true,
+		//db, err = gorm.Open(gormlite.Open(dbpath), &gorm.Config{
+		TranslateError:         true,
+		SkipDefaultTransaction: true,
 	})
 	if err != nil {
 		panic("failed to connect database")
 	}
 	// Migrate the schema
 	db.AutoMigrate(&MountPointData{}, &ExportedShare{}, &SambaUser{}, &Property{})
+	/*
+	   result, _ := db.Debug().Migrator().ColumnTypes(&Property{})
+
+	   	for _, v := range result {
+	   		fmt.Printf("%+v\n", v)
+	   	}
+	*/
 }
 
 func CloseDB() {

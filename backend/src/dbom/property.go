@@ -1,6 +1,7 @@
 package dbom
 
 import (
+	"context"
 	"time"
 
 	"github.com/ztrue/tracerr"
@@ -41,7 +42,7 @@ func (self *Properties) Save() error {
 }
 
 func (self *Properties) DeleteAll() error {
-	result := db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Property{})
+	result := db.Session(&gorm.Session{AllowGlobalUpdate: true}).Model(&Property{}).Delete(&Property{})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -55,19 +56,20 @@ func (self *Properties) Add(key string, value any) error {
 		Value: value,
 	}
 
-	db.Unscoped().Model(&Property{}).Where("key", key).Update("deleted_at", nil)
+	tx := db.WithContext(context.Background()).Begin()
+	tx.Unscoped().Model(&Property{}).Where("key", key).Update("deleted_at", nil)
 
-	result := db.Where(Property{Key: key}).Assign(prop).FirstOrCreate(&prop)
+	result := tx.Model(&Property{}).Where(Property{Key: key}).Assign(prop).FirstOrCreate(&prop)
 	if result.Error != nil {
-		return result.Error
+		return tracerr.Wrap(result.Error)
 	}
 
 	(*self)[key] = prop
-	return nil
+	return tracerr.Wrap(tx.Commit().Error)
 }
 
 func (self *Properties) Remove(key string) error {
-	result := db.Where("key = ?", key).Delete(&Property{})
+	result := db.WithContext(context.Background()).Model(&Property{}).Where("key = ?", key).Delete(&Property{})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -79,7 +81,7 @@ func (self *Properties) Remove(key string) error {
 
 func (self *Properties) Get(key string) (*Property, error) {
 	var prop Property
-	result := db.Where("key = ?", key).First(&prop)
+	result := db.WithContext(context.Background()).Table("properties").Where("key = ?", key).First(&prop)
 	if result.Error != nil {
 		return nil, result.Error
 	}

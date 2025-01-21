@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -248,7 +247,7 @@ func TestDeleteShareHandler(t *testing.T) {
 		Name: "LIBRARY",
 	}
 	err = share.FromName("LIBRARY")
-	if assert.Error(t, err, fmt.Sprintf("Share %+v should not exist", share)) {
+	if assert.Error(t, err, "Share %+v should not exist", share) {
 		assert.Equal(t, gorm.ErrRecordNotFound, err)
 	}
 }

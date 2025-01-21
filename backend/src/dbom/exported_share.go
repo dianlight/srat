@@ -32,7 +32,7 @@ func (p *ExportedShares) Load() error {
 }
 
 func (p *ExportedShares) Save() error {
-	return db.Debug().Save(p).Error
+	return db.Save(p).Error
 }
 
 //------------------------------------------------------------------------------
@@ -42,7 +42,7 @@ func (share *ExportedShare) Save() error {
 }
 
 func (share *ExportedShare) Delete() error {
-	return db.Debug().Delete(share).Error
+	return db.Delete(share).Error
 }
 
 func (share *ExportedShare) FromName(name string) error {
