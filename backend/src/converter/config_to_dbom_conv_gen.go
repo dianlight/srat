@@ -25,11 +25,19 @@ func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedSha
 	if source.Name != "" {
 		target.Name = source.Name
 	}
-	if source.Path != "" {
-		target.Path = source.Path
+	var pString *string
+	if source.MountPointData != nil {
+		pString = &source.MountPointData.Path
 	}
-	if source.FS != "" {
-		target.FS = source.FS
+	if pString != nil {
+		target.Path = *pString
+	}
+	var pString2 *string
+	if source.MountPointData != nil {
+		pString2 = &source.MountPointData.FSType
+	}
+	if pString2 != nil {
+		target.FS = *pString2
 	}
 	if source.Disabled != false {
 		target.Disabled = source.Disabled
@@ -63,15 +71,9 @@ func (c *ConfigToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, targe
 	}
 	return nil
 }
-func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {
+func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointData(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {
 	if source.Name != "" {
 		target.Name = source.Name
-	}
-	if source.Path != "" {
-		target.Path = source.Path
-	}
-	if source.FS != "" {
-		target.FS = source.FS
 	}
 	if source.Disabled != false {
 		target.Disabled = source.Disabled
@@ -101,6 +103,18 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, ta
 	}
 	if source.Usage != "" {
 		target.Usage = dto.HAMountUsage(source.Usage)
+	}
+	return nil
+}
+func (c *ConfigToDbomConverterImpl) ShareToMountPointData(source config.Share, target *dbom.MountPointData) error {
+	if source.Name != "" {
+		target.Name = source.Name
+	}
+	if source.Path != "" {
+		target.Path = source.Path
+	}
+	if source.FS != "" {
+		target.FSType = source.FS
 	}
 	return nil
 }

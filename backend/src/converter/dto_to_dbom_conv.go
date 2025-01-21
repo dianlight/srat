@@ -55,7 +55,7 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 }
 
 func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error {
-	err := c.SharedResourceToExportedShareNoUsers(source, target)
+	err := c.SharedResourceToExportedShareNoUsersNoMountPointData(source, target)
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
@@ -74,6 +74,23 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.Shared
 			return tracerr.Wrap(err)
 		}
 		target.Users = append(target.RoUsers, user)
+	}
+	err = c.DtoMountPointDataToMountPointData(*source.MountPointData, target.MountPointData)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	return nil
+}
+
+func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) error {
+	err := c.ExportedShareToSharedResourceNoMountPointData(source, target)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	target.MountPointData = &dto.MountPointData{}
+	err = c.MountPointDataToDtoMountPointData(*source.MountPointData, target.MountPointData)
+	if err != nil {
+		return tracerr.Wrap(err)
 	}
 	return nil
 }

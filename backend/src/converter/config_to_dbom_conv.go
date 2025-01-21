@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/thoas/go-funk"
+	"github.com/ztrue/tracerr"
 )
 
 func (c *ConfigToDbomConverterImpl) ConfigToDbomObjects(source config.Config, properties *dbom.Properties, users *dbom.SambaUsers, shares *dbom.ExportedShares) (err error) {
@@ -117,6 +118,19 @@ func (c *ConfigToDbomConverterImpl) DbomObjectsToConfig(properties dbom.Properti
 			return
 		}
 		tconfig.Shares[share.Name] = tshare
+	}
+	return nil
+}
+
+func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {
+	err := c.ShareToExportedShareNoMountPointData(source, target, context)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	target.MountPointData = &dbom.MountPointData{}
+	err = c.ShareToMountPointData(source, target.MountPointData)
+	if err != nil {
+		return tracerr.Wrap(err)
 	}
 	return nil
 }

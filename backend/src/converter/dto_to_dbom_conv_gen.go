@@ -11,10 +11,9 @@ import (
 
 type DtoToDbomConverterImpl struct{}
 
-func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) error {
-	if source.ID != 0 {
-		pUint := source.ID
-		target.ID = &pUint
+func (c *DtoToDbomConverterImpl) DtoMountPointDataToMountPointData(source dto.MountPointData, target *dbom.MountPointData) error {
+	if source.DeviceId != 0 {
+		target.BlockDeviceId = source.DeviceId
 	}
 	if source.Name != "" {
 		target.Name = source.Name
@@ -22,8 +21,29 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.Expor
 	if source.Path != "" {
 		target.Path = source.Path
 	}
-	if source.FS != "" {
-		target.FS = source.FS
+	if source.DefaultPath != "" {
+		target.DefaultPath = source.DefaultPath
+	}
+	if source.FSType != "" {
+		target.FSType = source.FSType
+	}
+	dtoMounDataFlags, err := c.dtoMounDataFlagsToDtoMounDataFlags(source.Flags)
+	if err != nil {
+		return err
+	}
+	target.Flags = dtoMounDataFlags
+	if source.Data != "" {
+		target.Data = source.Data
+	}
+	return nil
+}
+func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error {
+	if source.ID != 0 {
+		pUint := source.ID
+		target.ID = &pUint
+	}
+	if source.Name != "" {
+		target.Name = source.Name
 	}
 	if source.Disabled != false {
 		target.Disabled = source.Disabled
@@ -50,12 +70,31 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.Expor
 		}
 		target.Usage = dtoHAMountUsage
 	}
-	if source.DeviceId != nil {
-		xuint64 := *source.DeviceId
-		target.DeviceId = &xuint64
+	return nil
+}
+func (c *DtoToDbomConverterImpl) MountPointDataToDtoMountPointData(source dbom.MountPointData, target *dto.MountPointData) error {
+	if source.Path != "" {
+		target.Path = source.Path
 	}
-	if source.Invalid != false {
-		target.Invalid = source.Invalid
+	if source.DefaultPath != "" {
+		target.DefaultPath = source.DefaultPath
+	}
+	if source.Name != "" {
+		target.Name = source.Name
+	}
+	if source.FSType != "" {
+		target.FSType = source.FSType
+	}
+	dtoMounDataFlags, err := c.dtoMounDataFlagsToDtoMounDataFlags(source.Flags)
+	if err != nil {
+		return err
+	}
+	target.Flags = dtoMounDataFlags
+	if source.Data != "" {
+		target.Data = source.Data
+	}
+	if source.BlockDeviceId != 0 {
+		target.DeviceId = source.BlockDeviceId
 	}
 	return nil
 }
@@ -68,18 +107,12 @@ func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *
 	target.IsAdmin = &pBool
 	return nil
 }
-func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsers(source dto.SharedResource, target *dbom.ExportedShare) error {
+func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPointData(source dto.SharedResource, target *dbom.ExportedShare) error {
 	if source.ID != nil {
 		target.ID = *source.ID
 	}
 	if source.Name != "" {
 		target.Name = source.Name
-	}
-	if source.Path != "" {
-		target.Path = source.Path
-	}
-	if source.FS != "" {
-		target.FS = source.FS
 	}
 	if source.Disabled != false {
 		target.Disabled = source.Disabled
@@ -94,12 +127,13 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsers(source dto
 		}
 		target.Usage = dtoHAMountUsage
 	}
-	if source.DeviceId != nil {
-		xuint64 := *source.DeviceId
-		target.DeviceId = &xuint64
+	var pUint64 *uint64
+	if source.MountPointData != nil {
+		pUint64 = &source.MountPointData.DeviceId
 	}
-	if source.Invalid != false {
-		target.Invalid = source.Invalid
+	if pUint64 != nil {
+		xuint64 := *pUint64
+		target.DeviceId = &xuint64
 	}
 	return nil
 }
@@ -140,4 +174,52 @@ func (c *DtoToDbomConverterImpl) dtoHAMountUsageToDtoHAMountUsage(source dto.HAM
 		return dtoHAMountUsage, fmt.Errorf("unexpected enum element: %v", source)
 	}
 	return dtoHAMountUsage, nil
+}
+func (c *DtoToDbomConverterImpl) dtoMounDataFlagToDtoMounDataFlag(source dto.MounDataFlag) (dto.MounDataFlag, error) {
+	var dtoMounDataFlag dto.MounDataFlag
+	switch source {
+	case dto.MS_BIND:
+		dtoMounDataFlag = dto.MS_BIND
+	case dto.MS_LAZYTIME:
+		dtoMounDataFlag = dto.MS_LAZYTIME
+	case dto.MS_MANDLOCK:
+		dtoMounDataFlag = dto.MS_MANDLOCK
+	case dto.MS_NOATIME:
+		dtoMounDataFlag = dto.MS_NOATIME
+	case dto.MS_NODEV:
+		dtoMounDataFlag = dto.MS_NODEV
+	case dto.MS_NODIRATIME:
+		dtoMounDataFlag = dto.MS_NODIRATIME
+	case dto.MS_NOEXEC:
+		dtoMounDataFlag = dto.MS_NOEXEC
+	case dto.MS_NOSUID:
+		dtoMounDataFlag = dto.MS_NOSUID
+	case dto.MS_NOUSER:
+		dtoMounDataFlag = dto.MS_NOUSER
+	case dto.MS_RDONLY:
+		dtoMounDataFlag = dto.MS_RDONLY
+	case dto.MS_RELATIME:
+		dtoMounDataFlag = dto.MS_RELATIME
+	case dto.MS_REMOUNT:
+		dtoMounDataFlag = dto.MS_REMOUNT
+	case dto.MS_SYNCHRONOUS:
+		dtoMounDataFlag = dto.MS_SYNCHRONOUS
+	default:
+		return dtoMounDataFlag, fmt.Errorf("unexpected enum element: %v", source)
+	}
+	return dtoMounDataFlag, nil
+}
+func (c *DtoToDbomConverterImpl) dtoMounDataFlagsToDtoMounDataFlags(source dto.MounDataFlags) (dto.MounDataFlags, error) {
+	var dtoMounDataFlags dto.MounDataFlags
+	if source != nil {
+		dtoMounDataFlags = make(dto.MounDataFlags, len(source))
+		for i := 0; i < len(source); i++ {
+			dtoMounDataFlag, err := c.dtoMounDataFlagToDtoMounDataFlag(source[i])
+			if err != nil {
+				return nil, err
+			}
+			dtoMounDataFlags[i] = dtoMounDataFlag
+		}
+	}
+	return dtoMounDataFlags, nil
 }

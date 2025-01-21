@@ -17,11 +17,18 @@ import (
 // goverter:default:update
 type ConfigToDtoConverter interface {
 	// goverter:update target
-	// goverter:ignore ID DeviceId Invalid
+	// goverter:ignore ID Invalid MountPointData
 	// goverter:context users
-	ShareToSharedResource(source config.Share, target *dto.SharedResource, users []dto.User) error
+	ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
 
 	// goverter:update target
+	// goverter:ignore DefaultPath Flags Data DeviceId
+	// goverter:map FS FSType
+	ShareToMountPointData(source config.Share, target *dto.MountPointData) error
+
+	// goverter:update target
+	// goverter:map MountPointData.Path Path
+	// goverter:map MountPointData.FSType FS
 	// goverter:context users
 	SharedResourceToShare(source dto.SharedResource, target *config.Share) error
 
@@ -33,20 +40,9 @@ type ConfigToDtoConverter interface {
 	UserToOtherUser(source dto.User, target *config.User) error
 
 	// goverter:update target
-	// -goverter:map Options.Workgroup Workgroup
-	// -goverter:map Options.Mountoptions Mountoptions
-	// -goverter:map Options.AllowHost AllowHost
-	// -goverter:map Options.VetoFiles VetoFiles
-	// -goverter:map Options.CompatibilityMode CompatibilityMode
-	// -goverter:map Options.EnableRecycleBin EnableRecycleBin
-	// -goverter:map Options.Interfaces Interfaces
-	// -goverter:map Options.BindAllInterfaces BindAllInterfaces
-	// -goverter:map Options.LogLevel LogLevel
-	// -goverter:map Options.MultiChannel MultiChannel
 	ConfigToSettings(source config.Config, target *dto.Settings) error
 
 	// goverter:update target
-	// -goverter:map . Options | SettingsToOptions
 	// goverter:ignore CurrentFile
 	// goverter:ignore ConfigSpecVersion
 	// goverter:ignore Shares
@@ -55,18 +51,7 @@ type ConfigToDtoConverter interface {
 	// goverter:context conv
 	SettingsToConfig(source dto.Settings, target *config.Config, conv ConfigToDtoConverter) error
 
-	// -goverter:update target
-	// -goverter:ignore Username Password
-	// -goverter:ignore Automount
-	// -goverter:ignore Moredisks AvailableDiskLog Medialibrary WSDD WSDD2 HDDIdle Smart MQTTNextGen MQTTEnable
-	// -goverter:ignore MQTTHost MQTTUsername MQTTPassword MQTTPort MQTTTopic
-	// -goverter:ignore Autodiscovery MOF
-	// -goverter:ignore OtherUsers ACL
-	//_SettingsToOptions(source dto.Settings, target *config.Options) error
-
 	// goverter:update target
-	// -goverter:map Options.Username Username
-	// -goverter:map Options.Password Password
 	// goverter:ignore IsAdmin
 	ConfigToUser(source config.Config, target *dto.User) error
 }

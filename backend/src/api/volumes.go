@@ -167,7 +167,7 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 			partition.DefaultMountPoint = mp.Path
 			partition.MountData = mp.Data
 			partition.MountFlags.Scan(mp.Flags)
-			partition.DeviceId = &mp.DeviceId
+			partition.DeviceId = &mp.BlockDeviceId
 			retBlockInfo.Partitions[i] = partition
 		} else if partition.DeviceId == nil {
 			sstat := syscall.Stat_t{}
@@ -244,28 +244,22 @@ func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification
 		return
 	}
 
-	if mount_data.FSType == "" || mount_data.Label == "" || mount_data.Path == "" {
-
+	if mount_data.FSType == "" || mount_data.Path == "" {
 		for _, d := range volumes.Partitions {
 			if d.Name == volume_name {
 				if mount_data.FSType == "" {
 					mount_data.FSType = d.Type
 				}
-				if mount_data.Label == "" {
-					mount_data.Label = d.Label
-				}
-				if mount_data.Path == "" {
+				if mount_data.Path == "" && d.MountPoint != "" {
 					mount_data.Path = d.MountPoint
+				} else if mount_data.Path == "" && d.Label != "" {
+					mount_data.Path = "/mnt/" + stringy.New(d.Label).RemoveSpecialCharacter()
+				} else if mount_data.Path == "" {
+					mount_data.Path = "/mnt/" + d.Name
 				}
 				break
 			}
 		}
-	}
-
-	if mount_data.Path == "" && mount_data.Label != "" {
-		mount_data.Path = "/mnt/" + stringy.New(mount_data.Label).RemoveSpecialCharacter()
-	} else if mount_data.Path == "" {
-		mount_data.Path = "/mnt/" + mount_data.Name
 	}
 
 	flags, err := mount_data.Flags.Value()

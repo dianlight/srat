@@ -36,32 +36,21 @@ func TestListSharesHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check the response body is what we expect.
-	//context_state := (&dto.ContextState{}).FromContext(testContext)
 	resultsDto := []dto.SharedResource{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultsDto)
 	require.NoError(t, jsonError, "Body %#v", rr.Body.String())
 	assert.NotEmpty(t, resultsDto)
 	var config config.Config
 	config.FromContext(testContext)
-	//var expectedDto []dto.SharedResource
-	//err = mapper.Map(context.Background(), &expectedDto, config)
-	//require.NoError(t, err)
-	//assert.EqualValues(t, expectedDto, resultsDto)
 	assert.Len(t, resultsDto, 10)
 
 	for _, sdto := range resultsDto {
-		//sdexpected := funk.Find(expectedDto, func(s dto.SharedResource) bool { return s.Name == sdto.Name }).(dto.SharedResource)
-		//sdexpected.ID = sdto.ID // Fix for testing
-		//assert.EqualValues(t, sdexpected, sdto)
-		assert.NotEmpty(t, sdto.Path)
-		if sdto.DeviceId == nil {
-			assert.NoDirExists(t, sdto.Path, "DeviceId is false but %s exists", sdto.Path)
+		assert.NotEmpty(t, sdto.MountPointData.Path)
+		if sdto.MountPointData.DeviceId == 0 {
+			assert.NoDirExists(t, sdto.MountPointData.Path, "DeviceId %x is false but %s exists", sdto.MountPointData.DeviceId, sdto.MountPointData.Path)
 		} else {
-			assert.DirExists(t, sdto.Path, "DeviceId is true but %s doesn't exist", sdto.Path)
+			assert.DirExists(t, sdto.MountPointData.Path, "DeviceId %x is true but %s doesn't exist", sdto.MountPointData.DeviceId, sdto.MountPointData.Path)
 		}
-		//if sdto.Invalid {
-		//	assert.NoDirExists(t, sdto.Path, "Share is invalid  but %s exists", sdto.Path)
-		//}
 	}
 
 }
@@ -105,8 +94,9 @@ func TestCreateShareHandler(t *testing.T) {
 
 	share := dto.SharedResource{
 		Name: "PIPPODD",
-		Path: "/pippo",
-		FS:   "tmpfs",
+		MountPointData: &dto.MountPointData{
+			Path:   "/pippo",
+			FSType: "tmpfs"},
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
@@ -142,8 +132,10 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 
 	share := dto.SharedResource{
 		Name: "LIBRARY",
-		Path: "/mnt/LIBRARY",
-		FS:   "ext4",
+		MountPointData: &dto.MountPointData{
+			Path:   "/mnt/LIBRARY",
+			FSType: "ext4",
+		},
 		RoUsers: []dto.User{
 			{Username: pointer.String("rouser")},
 		},
@@ -178,7 +170,9 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 func TestUpdateShareHandler(t *testing.T) {
 
 	share := dto.SharedResource{
-		Path: "/pippo_efi",
+		MountPointData: &dto.MountPointData{
+			Path: "/pippo_efi",
+		},
 	}
 
 	jsonBody, jsonError := json.Marshal(share)

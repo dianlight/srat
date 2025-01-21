@@ -171,15 +171,16 @@ definitions:
         type: string
       default_path:
         type: string
+      device_id:
+        type: integer
       flags:
         items:
           $ref: '#/definitions/dto.MounDataFlag'
         type: array
       fstype:
         type: string
-      label:
-        type: string
       name:
+        description: Label       string        `json:"label"`
         type: string
       path:
         type: string
@@ -282,20 +283,20 @@ definitions:
     type: object
   dto.SharedResource:
     properties:
-      device_id:
-        description: DirtyStatus bool    `json:"id_dirty,omitempty"`
-        type: integer
       disabled:
+        description: |-
+          Path        string       `json:"path"`
+          FS          string       `json:"fs"`
         type: boolean
-      fs:
-        type: string
       id:
         type: integer
       invalid:
         type: boolean
+      mount_point_data:
+        allOf:
+        - $ref: '#/definitions/dto.MountPointData'
+        description: DeviceId       *uint64        `json:"device_id,omitempty"`
       name:
-        type: string
-      path:
         type: string
       ro_users:
         items:

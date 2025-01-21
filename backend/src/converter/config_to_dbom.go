@@ -11,16 +11,26 @@ import (
 // goverter:extend StringToSambaUser
 // goverter:extend SambaUserToString
 // goverter:update:ignoreZeroValueField
+// goverter:useZeroValueOnPointerInconsistency
+// -goverter:useUnderlyingTypeMethods
 // goverter:default:update
 // goverter:wrapErrorsUsing github.com/dianlight/srat/converter/patherr
 type ConfigToDbomConverter interface {
 	// goverter:update target
-	// goverter:ignore ID DeviceId Invalid
+	// goverter:ignore ID DeviceId MountPointData
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:context users
-	ShareToExportedShare(source config.Share, target *dbom.ExportedShare, users *dbom.SambaUsers) error
+	ShareToExportedShareNoMountPointData(source config.Share, target *dbom.ExportedShare, users *dbom.SambaUsers) error
 
 	// goverter:update target
+	// goverter:ignore DefaultPath Flags Data BlockDeviceId
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:map FS FSType
+	ShareToMountPointData(source config.Share, target *dbom.MountPointData) error
+
+	// goverter:update target
+	// goverter:map MountPointData.Path Path
+	// goverter:map MountPointData.FSType FS
 	ExportedShareToShare(source dbom.ExportedShare, target *config.Share) error
 
 	// goverter:update target

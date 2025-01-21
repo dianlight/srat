@@ -47,7 +47,8 @@
 				"TabNine.tabnine-vscode",
 				"GitHub.copilot",
 				"jgclark.vscode-todo-highlight",
-				"Gruntfuggly.todo-tree"
+				"Gruntfuggly.todo-tree",
+				"qwtel.sqlite-viewer"
 			]		
 		}
 	},

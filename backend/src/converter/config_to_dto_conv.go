@@ -69,3 +69,17 @@ func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, use
 	}
 	return nil
 }
+
+func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, target *dto.SharedResource, context []dto.User) error {
+	err := c.ShareToSharedResourceNoMountPointData(source, target, context)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	var mountPointData dto.MountPointData
+	err = c.ShareToMountPointData(source, &mountPointData)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	target.MountPointData = &mountPointData
+	return nil
+}

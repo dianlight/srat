@@ -9,20 +9,19 @@ import (
 )
 
 type ExportedShare struct {
-	ID          uint `gorm:"primarykey"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   gorm.DeletedAt   `gorm:"index"`
-	Name        string           `json:"name,omitempty" gorm:"unique,index"`
-	Path        string           `json:"path" gorm:"unique"`
-	FS          string           `json:"fs"`
-	Disabled    bool             `json:"disabled,omitempty"`
-	Users       []SambaUser      `json:"users,omitempty" gorm:"many2many:user_rw_share;"`
-	RoUsers     []SambaUser      `json:"ro_users,omitempty" gorm:"many2many:user_ro_share;"`
-	TimeMachine bool             `json:"timemachine,omitempty"`
-	Usage       dto.HAMountUsage `json:"usage,omitempty"`
-	DeviceId    *uint64          `json:"device_id,omitempty"`
-	Invalid     bool             `json:"invalid,omitempty"`
+	ID             uint `gorm:"primarykey"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      gorm.DeletedAt `gorm:"index"`
+	Name           string         `gorm:"unique,index"`
+	Disabled       bool
+	Users          []SambaUser `gorm:"many2many:user_rw_share;"`
+	RoUsers        []SambaUser `gorm:"many2many:user_ro_share;"`
+	TimeMachine    bool
+	Usage          dto.HAMountUsage
+	DeviceId       *uint64
+	MountPointData *MountPointData `gorm:"foreignKey:DeviceId;references:BlockDeviceId"`
+	//Invalid        bool             `json:"invalid,omitempty"`
 }
 
 type ExportedShares []ExportedShare

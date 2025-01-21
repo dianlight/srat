@@ -11,19 +11,36 @@ import (
 // goverter:default:update
 // goverter:useZeroValueOnPointerInconsistency
 // goverter:update:ignoreZeroValueField
-// -goverter:extend UserToSambaUser
 // goverter:enum:unknown @error
 type DtoToDbomConverter interface {
 	// goverter:update target
+	// goverter:ignore Invalid
+	// goverter:useUnderlyingTypeMethods
+	// goverter:ignore MountPointData
 	// goverter:useZeroValueOnPointerInconsistency
-	ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) error
+	ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error
 
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
-	// goverter:ignore Users RoUsers
+	// goverter:ignore Users RoUsers MountPointData
+	// goverter:map MountPointData.DeviceId DeviceId
 	// goverter:useUnderlyingTypeMethods
-	SharedResourceToExportedShareNoUsers(source dto.SharedResource, target *dbom.ExportedShare) error
+	SharedResourceToExportedShareNoUsersNoMountPointData(source dto.SharedResource, target *dbom.ExportedShare) error
+
+	// goverter:update target
+	// goverter:useZeroValueOnPointerInconsistency
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:map  DeviceId BlockDeviceId
+	// goverter:useUnderlyingTypeMethods
+	DtoMountPointDataToMountPointData(source dto.MountPointData, target *dbom.MountPointData) error
+
+	// goverter:update target
+	// goverter:useZeroValueOnPointerInconsistency
+	// -goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:map   BlockDeviceId DeviceId
+	// goverter:useUnderlyingTypeMethods
+	MountPointDataToDtoMountPointData(source dbom.MountPointData, target *dto.MountPointData) error
 
 	// goverter:update target
 	// goverter:update:ignoreZeroValueField:basic no

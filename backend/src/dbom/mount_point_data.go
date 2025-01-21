@@ -9,17 +9,16 @@ import (
 )
 
 type MountPointData struct {
-	CreatedAt   time.Time         `json:"-"`
-	UpdatedAt   time.Time         `json:"-"`
-	DeletedAt   gorm.DeletedAt    `gorm:"index" json:"-"`
-	Path        string            `json:"path"`
-	DefaultPath string            `json:"default_path"`
-	Label       string            `json:"label"`
-	Name        string            `json:"name" gorm:"primarykey"`
-	FSType      string            `json:"fstype"`
-	Flags       dto.MounDataFlags `json:"flags" gorm:"type:mount_data_flags"`
-	Data        string            `json:"data,omitempty"`
-	DeviceId    uint64            `json:"device_id,omitempty"`
+	BlockDeviceId uint64 `gorm:"primaryKey;autoIncrement:false"`
+	Name          string `gorm:"index,unique"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     gorm.DeletedAt `gorm:"index"`
+	Path          string
+	DefaultPath   string
+	FSType        string
+	Flags         dto.MounDataFlags `gorm:"type:mount_data_flags"`
+	Data          string
 }
 
 // BeforeSave is a GORM callback function that sets the DefaultPath to the Path

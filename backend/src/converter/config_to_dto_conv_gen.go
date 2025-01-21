@@ -128,15 +128,21 @@ func (c *ConfigToDtoConverterImpl) SettingsToConfig(source dto.Settings, target 
 	}
 	return nil
 }
-func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, target *dto.SharedResource, context []dto.User) error {
-	if source.Name != "" {
-		target.Name = source.Name
-	}
+func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, target *dto.MountPointData) error {
 	if source.Path != "" {
 		target.Path = source.Path
 	}
+	if source.Name != "" {
+		target.Name = source.Name
+	}
 	if source.FS != "" {
-		target.FS = source.FS
+		target.FSType = source.FS
+	}
+	return nil
+}
+func (c *ConfigToDtoConverterImpl) ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, context []dto.User) error {
+	if source.Name != "" {
+		target.Name = source.Name
 	}
 	if source.Disabled != false {
 		target.Disabled = source.Disabled
@@ -173,11 +179,19 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 	if source.Name != "" {
 		target.Name = source.Name
 	}
-	if source.Path != "" {
-		target.Path = source.Path
+	var pString *string
+	if source.MountPointData != nil {
+		pString = &source.MountPointData.Path
 	}
-	if source.FS != "" {
-		target.FS = source.FS
+	if pString != nil {
+		target.Path = *pString
+	}
+	var pString2 *string
+	if source.MountPointData != nil {
+		pString2 = &source.MountPointData.FSType
+	}
+	if pString2 != nil {
+		target.FS = *pString2
 	}
 	if source.Disabled != false {
 		target.Disabled = source.Disabled
