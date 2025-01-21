@@ -86,12 +86,11 @@ func createConfigStream(ctx context.Context) (data *[]byte, err error) {
 		return nil, tracerr.Wrap(err)
 	}
 	// End
-	config.DockerInterface = *ctx.Value("docker_interface").(*string)
-	config.DockerNet = *ctx.Value("docker_network").(*string)
-
+	ctsx := ctx.Value("context_state").(*dto.ContextState)
+	config.DockerInterface = ctsx.DockerInterface
+	config.DockerNet = ctsx.DockerNet
 	config_2 := config.ConfigToMap()
-	templateData := ctx.Value("template_data").([]byte)
-	datar, err := tempiogo.RenderTemplateBuffer(config_2, templateData)
+	datar, err := tempiogo.RenderTemplateBuffer(config_2, ctsx.Template)
 	return &datar, tracerr.Wrap(err)
 }
 

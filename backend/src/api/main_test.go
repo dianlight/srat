@@ -44,32 +44,11 @@ func TestMain(m *testing.M) {
 
 	sharedResources := dto.ContextState{}
 	sharedResources.SambaConfigFile = "../../test/data/smb.conf"
-	//sharedResources.FromJSONConfig(*aconfig)
+	sharedResources.Template = templateData
+	sharedResources.DockerInterface = "hassio"
+	sharedResources.DockerNet = "172.30.32.0/23"
 	testContext = sharedResources.ToContext(testContext)
-	//sharedResources := dto.SharedResources{}
-	//sharedResources.From(aconfig.Shares)
-	//testContext = context.WithValue(testContext, "shared_resources", sharedResources)
-	//testContext = context.WithValue(testContext, "addon_option", options)
-	//testContext = context.WithValue(testContext, "data_dirty_tracker", &dto.DataDirtyTracker{})
-	//var smbConfigFile = "../../test/data/smb.conf"
 	testContext = config.ToContext(testContext)
-	//testContext = context.WithValue(testContext, "samba_config_file", &smbConfigFile)
-	testContext = context.WithValue(testContext, "template_data", templateData)
-	var dockerInterface = "hassio"
-	var dockerNetwork = "172.30.32.0/23"
-	testContext = context.WithValue(testContext, "docker_interface", &dockerInterface)
-	testContext = context.WithValue(testContext, "docker_network", &dockerNetwork)
-
-	//pretty.Print(testContext.Value("context_state"))
-	// Template
-	/*
-		templateDatan, err := io.ReadFile("../templates/smb.gtpl")
-		if err != nil {
-			log.Fatalf("Cant read template file %s", err)
-		}
-		templateData = templateDatan
-		data.ROMode = new(bool)
-	*/
 
 	os.Exit(m.Run())
 }
