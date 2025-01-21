@@ -520,30 +520,6 @@ func PersistVolumesState() error {
 }
 
 func PersistSharesState() error {
-	/*
-		volumes, err := GetVolumesData()
-		if err != nil {
-			log.Printf("Error persisting shared state: %v\n", err) // FIXME: Implement me!
-			return tracerr.Wrap(err)
-		}
-		for _, partition := range volumes.Partitions {
-			if partition.MountPoint != "" {
-				var flags = &config.MounDataFlags{}
-				flags.Scan(partition.MountFlags)
-				adata := config.MountPointData{
-					Path:   partition.MountPoint,
-					Label:  partition.Label,
-					Name:   partition.Name,
-					FSType: partition.Type,
-					Flags:  *flags,
-				}
-				//pretty.Println(adata)
-				err = adata.Save()
-				if err != nil {
-					log.Printf("Error persisting volume data: %v\n", err)
-					return tracerr.Wrap(err)
-				}
-			}
-		}*/
+
 	return nil
 }

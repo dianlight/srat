@@ -595,7 +595,6 @@ func TestPropertiesGetCaseSensitiveKeys(t *testing.T) {
 	db.Where("key IN ?", []string{"testKeycs", "TestKeyCS"}).Delete(&Property{})
 }
 func TestPropertiesConcurrentGet(t *testing.T) {
-	//t.Skip("This test is failing due to a bug in the Properties.Get method.") // FIXME support concurrent Get operations in Properties
 	// Initialize a new Properties slice
 	p := &Properties{}
 	err := p.Load()
@@ -747,7 +746,6 @@ func TestPropertiesGetValueNonExistentKey(t *testing.T) {
 	assert.Equal(t, int64(0), count)
 }
 func TestPropertiesGetValueWithSpecialChars(t *testing.T) {
-	//t.Skip("This test is failing due to a bug in the Properties.GetValue method.") // FIXME support special characters in Properties.GetValue
 	// Initialize a new Properties slice
 	p := &Properties{}
 

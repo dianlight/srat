@@ -233,10 +233,10 @@ func prog(state overseer.State) {
 	}
 
 	// System
-	globalRouter.HandleFunc("/health", api.HealthCheckHandler).Methods(http.MethodGet) // TODO: correctly handle
-	globalRouter.HandleFunc("/update", api.UpdateHandler).Methods(http.MethodPut)      // TODO: correctly handle
+	globalRouter.HandleFunc("/health", api.HealthCheckHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/update", api.UpdateHandler).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/restart", api.RestartHandler).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet) // TODO: correctly handle
+	globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/filesystems", api.GetFSHandler).Methods(http.MethodGet)
 
 	// Shares
@@ -261,7 +261,7 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/user/{username}", api.DeleteUser).Methods(http.MethodDelete)
 
 	// Samba
-	globalRouter.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet) // TODO: correctly handle
+	globalRouter.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/samba/apply", api.ApplySamba).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/samba/status", api.GetSambaProcessStatus).Methods(http.MethodGet)
 
