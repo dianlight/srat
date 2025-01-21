@@ -107,7 +107,7 @@ func main() {
 	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
 	roMode = flag.Bool("ro", false, "Read only mode")
 	hamode = flag.Bool("addon", false, "Run in addon mode")
-	dbfile := flag.String("db", ":memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
+	dbfile := flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
 	dockerNetwork = flag.String("docker-network", "", "Docker network")
 
@@ -217,9 +217,6 @@ func prog(state overseer.State) {
 
 	var apiContext = context.Background()
 
-	//apiContext = context.WithValue(apiContext, " addon_config", aconfig)
-	//apiContext = context.WithValue(apiContext, "addon_option", options)
-	//apiContext = context.WithValue(apiContext, "data_dirty_tracker", dto.DataDirtyTracker{})
 	apiContext = context.WithValue(apiContext, "samba_config_file", smbConfigFile) // FIXME: Migrate to SharedResources
 	apiContext = context.WithValue(apiContext, "template_data", templateData)
 	apiContext = context.WithValue(apiContext, "docker_interface", dockerInterface)
