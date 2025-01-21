@@ -147,6 +147,10 @@ func TestUmountVolumeNonExistent(t *testing.T) {
 }
 func TestUmountVolumeSuccess(t *testing.T) {
 
+	if previus_device == "" {
+		t.Skip("Test skip: not prevision mounted volume found")
+	}
+
 	require.NotEmpty(t, previus_device, "Test skip: not prevision mounted volume found")
 
 	// Create a request
