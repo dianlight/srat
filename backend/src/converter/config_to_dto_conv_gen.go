@@ -132,9 +132,6 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, ta
 	if source.Path != "" {
 		target.Path = source.Path
 	}
-	if source.Name != "" {
-		target.Name = source.Name
-	}
 	if source.FS != "" {
 		target.FSType = source.FS
 	}

@@ -1,24 +1,33 @@
 package dbom
 
 import (
+	"fmt"
+	"os"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/snapcore/snapd/osutil"
+	"github.com/u-root/u-root/pkg/mount"
+	"github.com/xorcare/pointer"
 	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 )
 
 type MountPointData struct {
-	BlockDeviceId uint64 `gorm:"primaryKey;autoIncrement:false"`
-	Name          string `gorm:"index,unique"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DeletedAt     gorm.DeletedAt `gorm:"index"`
-	Path          string
-	DefaultPath   string
-	FSType        string
-	Flags         dto.MounDataFlags `gorm:"type:mount_data_flags"`
-	Data          string
+	ID       uint `gorm:"primarykey"`
+	DeviceId uint64
+	Source   string
+	Path     string `gorm:"uniqueIndex"`
+	FSType   string
+	Flags    dto.MounDataFlags `gorm:"type:mount_data_flags"`
+	//Data         string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    gorm.DeletedAt `gorm:"index"`
+	Invalid      bool
+	InvalidError *string
 }
 
 // BeforeSave is a GORM callback function that sets the DefaultPath to the Path
@@ -31,12 +40,72 @@ type MountPointData struct {
 // Return Value:
 //   - err: An error value that will be returned by GORM if the callback function
 //     returns an error. If no error occurs, this value will be nil.
-func (u *MountPointData) BeforeSave(tx *gorm.DB) (err error) {
-	if u.DefaultPath == "" {
-		u.DefaultPath = u.Path
+
+func (u *MountPointData) BeforeSave(tx *gorm.DB) error {
+	if u.Path == "" {
+		return tracerr.Errorf("path cannot be empty")
 	}
-	return
+	// check if u.Path exists and is a directory
+	sstat := syscall.Stat_t{}
+	err := syscall.Stat(u.Path, &sstat)
+	if os.IsNotExist(err) {
+		u.Invalid = true
+		u.InvalidError = pointer.String(tracerr.Sprint(err))
+	} else if !strings.HasPrefix(u.Path, "/") {
+		return tracerr.Errorf("path %s is not a valid mountpoint", u.Path)
+	} else if err != nil {
+		return tracerr.Wrap(err)
+	}
+	if u.DeviceId == 0 || u.DeviceId != sstat.Dev {
+		u.DeviceId = sstat.Dev
+	}
+	if !u.Invalid {
+		stat := syscall.Statfs_t{}
+		err = syscall.Statfs(u.Path, &stat)
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+		if len(u.Flags) == 0 {
+			u.Flags.Scan(stat.Flags)
+		}
+		if u.Source == "" {
+			u.Invalid = true
+			u.InvalidError = pointer.String("Uknown device source for " + u.Path)
+			info, err := osutil.LoadMountInfo()
+			if err != nil {
+				return tracerr.Wrap(err)
+			}
+			for _, m := range info {
+				if m.MountDir == u.Path {
+					u.Source = m.MountSource
+					u.FSType = m.FsType
+					//u.Data = m.
+					u.Invalid = false
+					u.InvalidError = nil
+					break
+				}
+			}
+		}
+		if u.FSType == "" && u.Source != "" {
+			fs, flags, err := mount.FSFromBlock(u.Source)
+			if err != nil {
+				u.Invalid = true
+				u.InvalidError = pointer.String(tracerr.Sprint(err))
+			}
+			fmt.Printf("Flags %+v\n", flags)
+			u.FSType = fs
+		}
+	}
+	return nil
 }
+
+/*
+func (u *MountPointData) AfterFind(tx *gorm.DB) (err error) {
+	// Validate teh mount data flags
+
+	return
+  }
+*/
 
 // All retrieves all MountPointData entries from the database.
 //
@@ -68,19 +137,10 @@ func (mp *MountPointData) Save() error {
 	return db.Save(mp).Error
 }
 
-// FromName retrieves a MountPointData entry from the database by its name.
-// It populates the receiver MountPointData struct with the data from the database.
-//
-// Parameters:
-//   - name: A string representing the name of the mount point to retrieve.
-//
-// Returns:
-//   - error: An error if the retrieval operation fails, or nil if successful.
-//     Possible errors include database connection issues or if no record is found.
-func (mp *MountPointData) FromName(name string) error {
-	if name == "" {
-		return tracerr.Errorf("name cannot be empty")
+func (mp *MountPointData) FromPath(path string) error {
+	if path == "" {
+		return tracerr.Errorf("path cannot be empty")
 	}
 	//log.Printf("FromName \n%s \n%v \n%v", name, db, &mp)
-	return db.Limit(1).Find(&mp, "name = ?", name).Error
+	return db.Limit(1).Find(&mp, "path = ?", path).Error
 }

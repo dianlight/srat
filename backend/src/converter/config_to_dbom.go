@@ -17,13 +17,13 @@ import (
 // goverter:wrapErrorsUsing github.com/dianlight/srat/converter/patherr
 type ConfigToDbomConverter interface {
 	// goverter:update target
-	// goverter:ignore ID DeviceId MountPointData
+	// goverter:ignore ID MountPointData MountPointDataID
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:context users
 	ShareToExportedShareNoMountPointData(source config.Share, target *dbom.ExportedShare, users *dbom.SambaUsers) error
 
 	// goverter:update target
-	// goverter:ignore DefaultPath Flags Data BlockDeviceId
+	// goverter:ignore Flags ID DeviceId Source Invalid InvalidError
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:map FS FSType
 	ShareToMountPointData(source config.Share, target *dbom.MountPointData) error

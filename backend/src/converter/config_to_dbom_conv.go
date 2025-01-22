@@ -127,8 +127,8 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, ta
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
-	target.MountPointData = &dbom.MountPointData{}
-	err = c.ShareToMountPointData(source, target.MountPointData)
+	target.MountPointData = dbom.MountPointData{}
+	err = c.ShareToMountPointData(source, &target.MountPointData)
 	if err != nil {
 		return tracerr.Wrap(err)
 	}

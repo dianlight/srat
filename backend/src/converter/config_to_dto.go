@@ -22,7 +22,7 @@ type ConfigToDtoConverter interface {
 	ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
 
 	// goverter:update target
-	// goverter:ignore DefaultPath Flags Data DeviceId
+	// goverter:ignore  Flags Source Invalid InvalidError ID
 	// goverter:map FS FSType
 	ShareToMountPointData(source config.Share, target *dto.MountPointData) error
 

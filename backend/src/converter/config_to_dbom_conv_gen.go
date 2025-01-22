@@ -25,19 +25,11 @@ func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedSha
 	if source.Name != "" {
 		target.Name = source.Name
 	}
-	var pString *string
-	if source.MountPointData != nil {
-		pString = &source.MountPointData.Path
+	if source.MountPointData.Path != "" {
+		target.Path = source.MountPointData.Path
 	}
-	if pString != nil {
-		target.Path = *pString
-	}
-	var pString2 *string
-	if source.MountPointData != nil {
-		pString2 = &source.MountPointData.FSType
-	}
-	if pString2 != nil {
-		target.FS = *pString2
+	if source.MountPointData.FSType != "" {
+		target.FS = source.MountPointData.FSType
 	}
 	if source.Disabled != false {
 		target.Disabled = source.Disabled
@@ -107,9 +99,6 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointData(source 
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) ShareToMountPointData(source config.Share, target *dbom.MountPointData) error {
-	if source.Name != "" {
-		target.Name = source.Name
-	}
 	if source.Path != "" {
 		target.Path = source.Path
 	}

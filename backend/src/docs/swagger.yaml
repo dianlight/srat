@@ -167,22 +167,27 @@ definitions:
     - MS_RELATIME
   dto.MountPointData:
     properties:
-      data:
-        type: string
-      default_path:
-        type: string
-      device_id:
-        type: integer
       flags:
         items:
           $ref: '#/definitions/dto.MounDataFlag'
         type: array
       fstype:
+        description: |-
+          DefaultPath string `json:"default_path"`
+          Label       string        `json:"label"`
         type: string
-      name:
-        description: Label       string        `json:"label"`
+      id:
+        type: integer
+      invalid:
+        type: boolean
+      invalid_error:
         type: string
       path:
+        type: string
+      source:
+        description: |-
+          Data         string        `json:"data,omitempty"`
+          DeviceId     uint64 `json:"device_id,omitempty"`
         type: string
     type: object
   dto.NIC:

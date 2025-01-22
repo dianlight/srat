@@ -157,7 +157,7 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 		if partition.MountPoint == "" {
 			var mp dbom.MountPointData
 			//log.Printf("\nAttempting to %#v\n", partition)
-			err := mp.FromName(partition.Name)
+			err := mp.FromPath(partition.MountPoint)
 			if err != nil {
 				if !errors.Is(err, gorm.ErrRecordNotFound) {
 					log.Printf("Error fetching mount point data for device /dev/%s: %v", partition.Name, err)
@@ -165,9 +165,9 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 				continue
 			}
 			partition.DefaultMountPoint = mp.Path
-			partition.MountData = mp.Data
+			//partition.MountData = mp.Data
 			partition.MountFlags.Scan(mp.Flags)
-			partition.DeviceId = &mp.BlockDeviceId
+			partition.DeviceId = &mp.DeviceId
 			retBlockInfo.Partitions[i] = partition
 		} else if partition.DeviceId == nil {
 			sstat := syscall.Stat_t{}
@@ -229,14 +229,14 @@ func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification
 		return
 	}
 
-	if mount_data.Name != "" && mount_data.Name != volume_name {
+	if mount_data.Source != "" && mount_data.Source != volume_name {
 		HttpJSONReponse(w, ErrorResponse{Error: "Name conflict", Body: nil}, &Options{
 			Code: http.StatusBadRequest,
 		})
 		return
-	} else if mount_data.Name == "" {
+	} /*else if mount_data.Name == "" {
 		mount_data.Name = volume_name
-	}
+	}*/
 
 	volumes, err := GetVolumesData()
 	if err != nil {
@@ -270,8 +270,8 @@ func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification
 
 	mount_data.Path = stringy.New(mount_data.Path).SnakeCase().Get()
 
-	if !strings.HasPrefix(mount_data.Name, "/dev/") {
-		mount_data.Name = "/dev/" + mount_data.Name
+	if !strings.HasPrefix(mount_data.Source, "/dev/") {
+		mount_data.Source = "/dev/" + mount_data.Source
 	}
 
 	// Check if mount_data.Path is already mounted
@@ -288,12 +288,12 @@ func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification
 
 	var mp *mount.MountPoint
 	if mount_data.FSType == "" {
-		mp, err = mount.TryMount(mount_data.Name, mount_data.Path, mount_data.Data, uintptr(flags.(int64)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
+		mp, err = mount.TryMount(mount_data.Source, mount_data.Path, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
 	} else {
-		mp, err = mount.Mount(mount_data.Name, mount_data.Path, mount_data.FSType, mount_data.Data, uintptr(flags.(int64)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
+		mp, err = mount.Mount(mount_data.Source, mount_data.Path, mount_data.FSType, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
 	}
 	if err != nil {
-		log.Printf("(Try)Mount(%s) = %v, want nil", mount_data.Name, err)
+		log.Printf("(Try)Mount(%s) = %v, want nil", mount_data.Source, err)
 		HttpJSONReponse(w, err, nil)
 		return
 	} else {

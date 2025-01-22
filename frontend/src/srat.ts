@@ -111,13 +111,21 @@ export enum DtoMounDataFlag {
 }
 
 export interface DtoMountPointData {
-  data?: string;
-  default_path?: string;
   flags?: DtoMounDataFlag[];
+  /**
+   * DefaultPath string `json:"default_path"`
+   * Label       string        `json:"label"`
+   */
   fstype?: string;
-  label?: string;
-  name?: string;
+  id?: number;
+  invalid?: boolean;
+  invalid_error?: string;
   path?: string;
+  /**
+   * Data         string        `json:"data,omitempty"`
+   * DeviceId     uint64 `json:"device_id,omitempty"`
+   */
+  source?: string;
 }
 
 export interface DtoNIC {
@@ -176,14 +184,16 @@ export interface DtoSettings {
 }
 
 export interface DtoSharedResource {
-  /** DirtyStatus bool    `json:"id_dirty,omitempty"` */
-  device_id?: number;
+  /**
+   * Path        string       `json:"path"`
+   * FS          string       `json:"fs"`
+   */
   disabled?: boolean;
-  fs?: string;
   id?: number;
   invalid?: boolean;
+  /** DeviceId       *uint64        `json:"device_id,omitempty"` */
+  mount_point_data?: DtoMountPointData;
   name?: string;
-  path?: string;
   ro_users?: DtoUser[];
   timemachine?: boolean;
   usage?: DtoHAMountUsage;

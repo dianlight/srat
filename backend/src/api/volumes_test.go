@@ -72,7 +72,7 @@ func TestMountVolumeHandler(t *testing.T) {
 
 	for _, d := range volumes.Partitions {
 		if strings.HasPrefix(d.Name, "loop") && d.Label == "_EXT4" {
-			mockMountData.Name = d.Name
+			mockMountData.Source = d.Name
 			mockMountData.Path = filepath.Join("/mnt", d.Label)
 			mockMountData.FSType = d.Type
 			mockMountData.Flags = []dto.MounDataFlag{dto.MS_NOATIME}
@@ -80,7 +80,7 @@ func TestMountVolumeHandler(t *testing.T) {
 			t.Logf("Selected loop device: %v", mockMountData)
 		}
 	}
-	if mockMountData.Name == "" {
+	if mockMountData.Source == "" {
 		t.Skip("Test failed: loop device not found for mounting")
 		return
 	}

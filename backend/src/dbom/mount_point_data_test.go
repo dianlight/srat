@@ -19,16 +19,28 @@ func TestMountPointDataAllEmpty(t *testing.T) {
 	assert.Empty(t, mountPoints)
 }
 
+func TestMountPointDataSaveWithoutData(t *testing.T) {
+
+	testMountPoint := MountPointData{
+		Path: "/addons",
+	}
+
+	err := testMountPoint.Save()
+
+	require.NoError(t, err)
+	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&MountPointData{})
+}
+
 func TestMountPointDataSave(t *testing.T) {
 
 	testMountPoint := MountPointData{
 		Path: "/mnt/test",
 		//Label:  "Test Drive",
-		Name:          "test_drive",
-		FSType:        "ext4",
-		Flags:         []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
-		Data:          "rw,noatime",
-		BlockDeviceId: 12344,
+		Source: "test_drive",
+		FSType: "ext4",
+		Flags:  []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
+		//Data:   "rw,noatime",
+		//DeviceId: 12344,
 	}
 
 	err := testMountPoint.Save()
@@ -43,20 +55,20 @@ func TestMountPointDataAll(t *testing.T) {
 		{
 			Path: "/mnt/test1",
 			//Label:  "Test 1",
-			Name:          "test1",
-			FSType:        "ext4",
-			Flags:         []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
-			Data:          "rw,noatime",
-			BlockDeviceId: 12345,
+			Source: "test1",
+			FSType: "ext4",
+			Flags:  []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
+			//Data:     "rw,noatime",
+			DeviceId: 12345,
 		},
 		{
 			Path: "/mnt/test2",
 			//Label:  "Test 2",
-			Name:          "test2",
-			FSType:        "ntfs",
-			Flags:         []dto.MounDataFlag{dto.MS_BIND},
-			Data:          "bind",
-			BlockDeviceId: 12346,
+			Source: "test2",
+			FSType: "ntfs",
+			Flags:  []dto.MounDataFlag{dto.MS_BIND},
+			//Data:     "bind",
+			DeviceId: 12346,
 		},
 	}
 
@@ -78,10 +90,10 @@ func TestMountPointDataAll(t *testing.T) {
 	for i, mp := range mountPoints {
 		assert.Equal(t, expectedMountPoints[i].Path, mp.Path)
 		//assert.Equal(t, expectedMountPoints[i].Label, mp.Label)
-		assert.Equal(t, expectedMountPoints[i].Name, mp.Name)
+		assert.Equal(t, expectedMountPoints[i].Source, mp.Source)
 		assert.Equal(t, expectedMountPoints[i].FSType, mp.FSType)
 		assert.Equal(t, expectedMountPoints[i].Flags, mp.Flags)
-		assert.Equal(t, expectedMountPoints[i].Data, mp.Data)
+		//assert.Equal(t, expectedMountPoints[i].Data, mp.Data)
 	}
 }
 
@@ -89,10 +101,10 @@ func TestMountPointDataSaveDuplicate(t *testing.T) {
 	testMountPoint := MountPointData{
 		Path: "/mnt/test",
 		//Label:  "Test Drive",
-		Name:   "test_drive",
+		Source: "test_drive",
 		FSType: "ext4",
 		Flags:  []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
-		Data:   "rw,noatime",
+		//Data:   "rw,noatime",
 	}
 
 	err := testMountPoint.Save()
@@ -157,11 +169,10 @@ func TestMountPointDataSaveDuplicate(t *testing.T) {
 		}
 	}
 */
+/*
 func TestMountPointDataSaveWithSetDefaultPath(t *testing.T) {
 	testMountPoint := MountPointData{
-		Path:          "/mnt/test",
-		DefaultPath:   "/mnt/original",
-		BlockDeviceId: 123443,
+		Path: "/mnt/test",
 	}
 
 	err := testMountPoint.Save()
@@ -169,17 +180,18 @@ func TestMountPointDataSaveWithSetDefaultPath(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "/mnt/original", testMountPoint.DefaultPath)
 }
-
+*/
+/*
 func TestMountPointDataFromName(t *testing.T) {
 	// Create a test mount point
 	testMountPoint := MountPointData{
 		Path: "/mnt/test",
 		//Label:  "Test Drive",
-		Name:          "test_drive",
-		FSType:        "ext4",
-		Flags:         []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
-		Data:          "rw,noatime",
-		BlockDeviceId: 212345,
+		Source:   "test_drive",
+		FSType:   "ext4",
+		Flags:    []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
+		Data:     "rw,noatime",
+		DeviceId: 212345,
 	}
 
 	// Save the test mount point to the database
@@ -197,7 +209,7 @@ func TestMountPointDataFromName(t *testing.T) {
 	// Check if the retrieved mount point matches the original
 	assert.Equal(t, testMountPoint.Path, retrievedMountPoint.Path)
 	//assert.Equal(t, testMountPoint.Label, retrievedMountPoint.Label)
-	assert.Equal(t, testMountPoint.Name, retrievedMountPoint.Name)
+	assert.Equal(t, testMountPoint.Source, retrievedMountPoint.Source)
 	assert.Equal(t, testMountPoint.FSType, retrievedMountPoint.FSType)
 	assert.Equal(t, testMountPoint.Flags, retrievedMountPoint.Flags)
 	assert.Equal(t, testMountPoint.Data, retrievedMountPoint.Data)
@@ -205,7 +217,8 @@ func TestMountPointDataFromName(t *testing.T) {
 	// Clean up the database
 	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&MountPointData{})
 }
-
+*/
+/*
 func TestMountPointDataFromNameEmptyString(t *testing.T) {
 	var mp MountPointData
 
@@ -213,10 +226,11 @@ func TestMountPointDataFromNameEmptyString(t *testing.T) {
 
 	require.Error(t, err)
 	require.ErrorContains(t, err, "name cannot be empty")
-	assert.Empty(t, mp.Name)
+	assert.Empty(t, mp.Source)
 	assert.Empty(t, mp.Path)
 	//assert.Empty(t, mp.Label)
 	assert.Empty(t, mp.FSType)
 	assert.Empty(t, mp.Flags)
 	assert.Empty(t, mp.Data)
 }
+*/

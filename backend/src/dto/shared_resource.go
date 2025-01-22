@@ -34,7 +34,7 @@ type SharedResource struct {
 	Invalid bool `json:"invalid,omitempty"`
 }
 
-func (s *SharedResource) CheckValidity() error {
+func (s *SharedResource) CheckValidity() error { // FIXME: Remove!
 	if s.Name == "" || s.MountPointData == nil {
 		s.Invalid = true
 		return tracerr.New("Name and Path must not be empty")
@@ -48,10 +48,10 @@ func (s *SharedResource) CheckValidity() error {
 			return tracerr.Errorf("Path %s is not a valid mountpoint", s.MountPointData.Path)
 		} else if err != nil {
 			return tracerr.Wrap(err)
-		} else if s.MountPointData.DeviceId == 0 || s.MountPointData.DeviceId != sstat.Dev {
+		} /* else if s.MountPointData.DeviceId == 0 || s.MountPointData.DeviceId != sstat.Dev {
 			s.MountPointData.DeviceId = sstat.Dev
 			s.Invalid = true
-		}
+		}*/
 	}
 	return nil
 }

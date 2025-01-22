@@ -54,7 +54,9 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/net v0.32.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
+	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	howett.net/plist v1.0.0 // indirect
 	modernc.org/libc v1.22.5 // indirect
@@ -81,6 +83,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/rs/cors v1.11.1
+	github.com/snapcore/snapd v0.0.0-20250122053934-dc7d81f7912c
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2

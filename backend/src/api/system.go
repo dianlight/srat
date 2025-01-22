@@ -504,7 +504,7 @@ func PersistVolumesState() error {
 			adata := dbom.MountPointData{
 				Path: partition.MountPoint,
 				//Label:  partition.Label,
-				Name:   partition.Name,
+				Source: partition.Name,
 				FSType: partition.Type,
 				Flags:  *flags,
 			}

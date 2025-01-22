@@ -9,12 +9,12 @@ import (
 type SambaUsers []SambaUser
 
 type SambaUser struct {
-	CreatedAt time.Time      `json:"-"`
-	UpdatedAt time.Time      `json:"-"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
-	Username  string         `json:"username" gorm:"primaryKey"`
-	Password  string         `json:"password"`
-	IsAdmin   bool           `json:"is_admin"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+	Username  string         `gorm:"primaryKey"`
+	Password  string
+	IsAdmin   bool
 }
 
 func (p *SambaUsers) Load() error {

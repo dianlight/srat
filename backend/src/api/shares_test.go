@@ -46,10 +46,10 @@ func TestListSharesHandler(t *testing.T) {
 
 	for _, sdto := range resultsDto {
 		assert.NotEmpty(t, sdto.MountPointData.Path)
-		if sdto.MountPointData.DeviceId == 0 {
-			assert.NoDirExists(t, sdto.MountPointData.Path, "DeviceId %x is false but %s exists", sdto.MountPointData.DeviceId, sdto.MountPointData.Path)
+		if !sdto.MountPointData.Invalid {
+			assert.NoDirExists(t, sdto.MountPointData.Path, "DeviceId %s is false but %s exists", sdto.MountPointData.Source, sdto.MountPointData.Path)
 		} else {
-			assert.DirExists(t, sdto.MountPointData.Path, "DeviceId %x is true but %s doesn't exist", sdto.MountPointData.DeviceId, sdto.MountPointData.Path)
+			assert.DirExists(t, sdto.MountPointData.Path, "DeviceId %s is true but %s doesn't exist", sdto.MountPointData.Source, sdto.MountPointData.Path)
 		}
 	}
 

@@ -4,23 +4,24 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 type ExportedShare struct {
-	ID             uint `gorm:"primarykey"`
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      gorm.DeletedAt `gorm:"index"`
-	Name           string         `gorm:"unique,index"`
-	Disabled       bool
-	Users          []SambaUser `gorm:"many2many:user_rw_share;"`
-	RoUsers        []SambaUser `gorm:"many2many:user_ro_share;"`
-	TimeMachine    bool
-	Usage          dto.HAMountUsage
-	DeviceId       *uint64
-	MountPointData *MountPointData `gorm:"foreignKey:DeviceId;references:BlockDeviceId"`
+	ID               uint `gorm:"primarykey"`
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	DeletedAt        gorm.DeletedAt `gorm:"index"`
+	Name             string         `gorm:"uniqueIndex"`
+	Disabled         bool
+	Users            []SambaUser `gorm:"many2many:user_rw_share;constraint:OnDelete:CASCADE;"`
+	RoUsers          []SambaUser `gorm:"many2many:user_ro_share;constraint:OnDelete:CASCADE;"`
+	TimeMachine      bool
+	Usage            dto.HAMountUsage
+	MountPointDataID uint
+	MountPointData   MountPointData `gorm:"foreignKey:MountPointDataID;references:ID;constraint:OnDelete:CASCADE;"`
 	//Invalid        bool             `json:"invalid,omitempty"`
 }
 
@@ -52,6 +53,15 @@ func (share *ExportedShare) Get() error {
 	return db.Preload(clause.Associations).First(share).Error
 }
 
+/*
 func (share *ExportedShare) FromNameOrPath(name string, path string) error {
 	return db.Preload(clause.Associations).Limit(1).Find(share, db.Where("name =?", name).Or(db.Where("path = ?", path))).Error
+}
+*/
+
+func (u *ExportedShare) BeforeSave(tx *gorm.DB) error {
+	if u.Name == "" {
+		return tracerr.Errorf("Invalid name for exported share")
+	}
+	return nil
 }
