@@ -32,7 +32,11 @@ func (p *ExportedShares) Load() error {
 }
 
 func (p *ExportedShares) Save() error {
-	return db.Save(p).Error
+	err := db.Save(p).Error
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	return nil
 }
 
 //------------------------------------------------------------------------------

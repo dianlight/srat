@@ -75,9 +75,12 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.Shared
 		}
 		target.Users = append(target.RoUsers, user)
 	}
-	err = c.DtoMountPointDataToMountPointData(*source.MountPointData, &target.MountPointData)
-	if err != nil {
-		return tracerr.Wrap(err)
+	if source.MountPointData != nil {
+		target.MountPointData = dbom.MountPointData{}
+		err = c.DtoMountPointDataToMountPointData(*source.MountPointData, &target.MountPointData)
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
 	}
 	return nil
 }

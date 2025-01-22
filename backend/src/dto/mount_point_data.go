@@ -1,8 +1,9 @@
 package dto
 
 type MountPointData struct {
-	ID   uint   `json:"id"`
-	Path string `json:"path"`
+	ID          uint   `json:"id"`
+	Path        string `json:"path"`
+	PrimaryPath string `json:"primary_path"`
 	//DefaultPath string `json:"default_path"`
 	//Label       string        `json:"label"`
 	FSType string        `json:"fstype"`
@@ -12,4 +13,5 @@ type MountPointData struct {
 	Source       string  `json:"source,omitempty"`
 	Invalid      bool    `json:"invalid,omitempty"`
 	InvalidError *string `json:"invalid_error,omitempty"`
+	Warnings     *string `json:"warnings,omitempty"`
 }

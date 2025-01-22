@@ -1,13 +1,5 @@
 package dto
 
-import (
-	"os"
-	"strings"
-	"syscall"
-
-	"github.com/ztrue/tracerr"
-)
-
 type HAMountUsage string // https://developers.home-assistant.io/docs/api/supervisor/models#mount
 
 const (
@@ -34,6 +26,7 @@ type SharedResource struct {
 	Invalid bool `json:"invalid,omitempty"`
 }
 
+/*
 func (s *SharedResource) CheckValidity() error { // FIXME: Remove!
 	if s.Name == "" || s.MountPointData == nil {
 		s.Invalid = true
@@ -51,7 +44,8 @@ func (s *SharedResource) CheckValidity() error { // FIXME: Remove!
 		} /* else if s.MountPointData.DeviceId == 0 || s.MountPointData.DeviceId != sstat.Dev {
 			s.MountPointData.DeviceId = sstat.Dev
 			s.Invalid = true
-		}*/
+		}* /
 	}
 	return nil
 }
+*/

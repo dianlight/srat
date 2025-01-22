@@ -21,6 +21,9 @@ func (c *DtoToDbomConverterImpl) DtoMountPointDataToMountPointData(source dto.Mo
 	if source.Path != "" {
 		target.Path = source.Path
 	}
+	if source.PrimaryPath != "" {
+		target.PrimaryPath = source.PrimaryPath
+	}
 	if source.FSType != "" {
 		target.FSType = source.FSType
 	}
@@ -35,6 +38,10 @@ func (c *DtoToDbomConverterImpl) DtoMountPointDataToMountPointData(source dto.Mo
 	if source.InvalidError != nil {
 		xstring := *source.InvalidError
 		target.InvalidError = &xstring
+	}
+	if source.Warnings != nil {
+		xstring2 := *source.Warnings
+		target.Warnings = &xstring2
 	}
 	return nil
 }
@@ -80,6 +87,9 @@ func (c *DtoToDbomConverterImpl) MountPointDataToDtoMountPointData(source dbom.M
 	if source.Path != "" {
 		target.Path = source.Path
 	}
+	if source.PrimaryPath != "" {
+		target.PrimaryPath = source.PrimaryPath
+	}
 	if source.FSType != "" {
 		target.FSType = source.FSType
 	}
@@ -97,6 +107,10 @@ func (c *DtoToDbomConverterImpl) MountPointDataToDtoMountPointData(source dbom.M
 	if source.InvalidError != nil {
 		xstring := *source.InvalidError
 		target.InvalidError = &xstring
+	}
+	if source.Warnings != nil {
+		xstring2 := *source.Warnings
+		target.Warnings = &xstring2
 	}
 	return nil
 }

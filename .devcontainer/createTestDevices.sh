@@ -9,4 +9,5 @@ losetup -a | grep .devcontainer ||:
 echo "----------------------------------------------------------------"
 mkdir -p /addons ||:
 mount -o bind,ro ${SCRIPT_DIR}/../backend/test/ /addons ||:
- 
+mkdir -p /media ||:
+mount -o bind,ro ${SCRIPT_DIR}/../backend/test/ /media ||: 

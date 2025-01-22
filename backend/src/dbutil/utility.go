@@ -26,11 +26,13 @@ func FirstTimeJSONImporter(config config.Config) (err error) {
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
-	//FIXME: Normalize MountPointData on DTO Level
-	//for _, share := range shares.Shares {
-	//	if share.MountPointData != nil {
-
-	//
+	for i, share := range *shares {
+		err = share.MountPointData.Save()
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+		(*shares)[i] = share
+	}
 	err = shares.Save()
 	if err != nil {
 		return tracerr.Wrap(err)

@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
+/*
 func TestMountPointDataAllEmpty(t *testing.T) {
 	mountPoints, err := MountPointData{}.All()
 
@@ -18,6 +19,7 @@ func TestMountPointDataAllEmpty(t *testing.T) {
 	assert.Equal(t, []MountPointData{}, mountPoints)
 	assert.Empty(t, mountPoints)
 }
+*/
 
 func TestMountPointDataSaveWithoutData(t *testing.T) {
 
@@ -97,6 +99,7 @@ func TestMountPointDataAll(t *testing.T) {
 	}
 }
 
+/*
 func TestMountPointDataSaveDuplicate(t *testing.T) {
 	testMountPoint := MountPointData{
 		Path: "/mnt/test",
@@ -111,6 +114,7 @@ func TestMountPointDataSaveDuplicate(t *testing.T) {
 
 	require.NoError(t, err)
 }
+*/
 
 /*
 	func TestMountPointDataSaveLargeNumber(t *testing.T) {

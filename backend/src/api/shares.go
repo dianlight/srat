@@ -111,7 +111,6 @@ func ListShares(w http.ResponseWriter, r *http.Request) {
 			HttpJSONReponse(w, err, nil)
 			return
 		}
-		share.CheckValidity()
 		shares = append(shares, share)
 	}
 	HttpJSONReponse(w, shares, nil)

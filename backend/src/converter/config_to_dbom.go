@@ -24,7 +24,7 @@ type ConfigToDbomConverter interface {
 
 	// goverter:update target
 	// goverter:ignore Flags ID DeviceId Source Invalid InvalidError
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt PrimaryPath Warnings
 	// goverter:map FS FSType
 	ShareToMountPointData(source config.Share, target *dbom.MountPointData) error
 

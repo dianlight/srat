@@ -184,10 +184,14 @@ definitions:
         type: string
       path:
         type: string
+      primary_path:
+        type: string
       source:
         description: |-
           Data         string        `json:"data,omitempty"`
           DeviceId     uint64 `json:"device_id,omitempty"`
+        type: string
+      warnings:
         type: string
     type: object
   dto.NIC:

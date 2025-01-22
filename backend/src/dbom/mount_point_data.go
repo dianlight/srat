@@ -16,18 +16,20 @@ import (
 )
 
 type MountPointData struct {
-	ID       uint `gorm:"primarykey"`
-	DeviceId uint64
-	Source   string
-	Path     string `gorm:"uniqueIndex"`
-	FSType   string
-	Flags    dto.MounDataFlags `gorm:"type:mount_data_flags"`
+	ID          uint `gorm:"primarykey"`
+	DeviceId    uint64
+	Source      string
+	Path        string `gorm:"uniqueIndex"`
+	PrimaryPath string
+	FSType      string
+	Flags       dto.MounDataFlags `gorm:"type:mount_data_flags"`
 	//Data         string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`
 	Invalid      bool
 	InvalidError *string
+	Warnings     *string
 }
 
 // BeforeSave is a GORM callback function that sets the DefaultPath to the Path
@@ -70,19 +72,33 @@ func (u *MountPointData) BeforeSave(tx *gorm.DB) error {
 		}
 		if u.Source == "" {
 			u.Invalid = true
-			u.InvalidError = pointer.String("Uknown device source for " + u.Path)
+			u.InvalidError = pointer.String("Unknown device source for " + u.Path)
 			info, err := osutil.LoadMountInfo()
 			if err != nil {
 				return tracerr.Wrap(err)
 			}
 			for _, m := range info {
+
 				if m.MountDir == u.Path {
 					u.Source = m.MountSource
+					u.PrimaryPath = m.MountDir
 					u.FSType = m.FsType
 					//u.Data = m.
 					u.Invalid = false
 					u.InvalidError = nil
 					break
+				} else {
+					same, _ := mount.SameFilesystem(u.Path, m.MountDir)
+					if same {
+						u.PrimaryPath = m.MountDir
+						u.Source = m.MountSource
+						u.FSType = m.FsType
+						//u.Data = m.
+						u.Invalid = false
+						u.InvalidError = nil
+						u.Warnings = pointer.String("Mount point is not the same as the primary path")
+						break
+					}
 				}
 			}
 		}
