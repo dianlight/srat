@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,7 +12,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gobeam/stringy"
@@ -24,7 +22,6 @@ import (
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/u-root/u-root/pkg/mount"
 	ublock "github.com/u-root/u-root/pkg/mount/block"
-	"gorm.io/gorm"
 )
 
 var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
@@ -153,32 +150,33 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 	}
 
 	// Enrich the data with mount point information form DB ( previously saved state if mount point is not present)
-	for i, partition := range retBlockInfo.Partitions {
-		if partition.MountPoint == "" {
-			var mp dbom.MountPointData
-			//log.Printf("\nAttempting to %#v\n", partition)
-			err := mp.FromPath(partition.MountPoint)
-			if err != nil {
-				if !errors.Is(err, gorm.ErrRecordNotFound) {
-					log.Printf("Error fetching mount point data for device /dev/%s: %v", partition.Name, err)
+	/*
+		for i, partition := range retBlockInfo.Partitions {
+			if partition.MountPoint == "" {
+				var mp dbom.MountPointData
+				//log.Printf("\nAttempting to %#v\n", partition)
+				err := mp.FromPath(partition.MountPoint)
+				if err != nil {
+					if !errors.Is(err, gorm.ErrRecordNotFound) {
+						log.Printf("Error fetching mount point data for device /dev/%s: %v", partition.Name, err)
+					}
+					continue
 				}
-				continue
+				partition.DefaultMountPoint = mp.Path
+				//partition.MountData = mp.Data
+				partition.MountFlags.Scan(mp.Flags)
+				partition.DeviceId = &mp.DeviceId
+				retBlockInfo.Partitions[i] = partition
+			} else if partition.DeviceId == nil {
+				sstat := syscall.Stat_t{}
+				err := syscall.Stat(partition.MountPoint, &sstat)
+				if err != nil {
+					return nil, err
+				}
+				partition.DeviceId = &sstat.Dev
+				retBlockInfo.Partitions[i] = partition
 			}
-			partition.DefaultMountPoint = mp.Path
-			//partition.MountData = mp.Data
-			partition.MountFlags.Scan(mp.Flags)
-			partition.DeviceId = &mp.DeviceId
-			retBlockInfo.Partitions[i] = partition
-		} else if partition.DeviceId == nil {
-			sstat := syscall.Stat_t{}
-			err := syscall.Stat(partition.MountPoint, &sstat)
-			if err != nil {
-				return nil, err
-			}
-			partition.DeviceId = &sstat.Dev
-			retBlockInfo.Partitions[i] = partition
-		}
-	}
+		}*/
 
 	//pretty.Print(retBlockInfo)
 	return retBlockInfo, err

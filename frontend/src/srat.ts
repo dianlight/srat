@@ -121,11 +121,13 @@ export interface DtoMountPointData {
   invalid?: boolean;
   invalid_error?: string;
   path?: string;
+  primary_path?: string;
   /**
    * Data         string        `json:"data,omitempty"`
    * DeviceId     uint64 `json:"device_id,omitempty"`
    */
   source?: string;
+  warnings?: string;
 }
 
 export interface DtoNIC {

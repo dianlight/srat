@@ -1,6 +1,6 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { apiContext as api, ModeContext, wsContext as ws } from "../Contexts";
-import { DtoEventType, type Api, type DtoSharedResource, type DtoSharedResources, type DtoUser } from "../srat";
+import { DtoEventType, type Api, type DtoSharedResource, type DtoUser } from "../srat";
 import { set, useForm } from "react-hook-form";
 import useSWR from "swr";
 import { InView } from "react-intersection-observer";
@@ -26,7 +26,7 @@ import DialogContentText from "@mui/material/DialogContentText";
 import TextField from "@mui/material/TextField";
 import DialogActions from "@mui/material/DialogActions";
 import { AutocompleteElement, CheckboxElement, FormContainer, SelectElement, TextFieldElement } from 'react-hook-form-mui'
-import { Box, Container, Fab, Paper, Stack } from "@mui/material";
+import { Box, Container, Fab, Paper, Stack, Tooltip } from "@mui/material";
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import AddIcon from '@mui/icons-material/Add';
 
@@ -37,7 +37,7 @@ interface ShareEditProps extends DtoSharedResource {
 
 export function Shares() {
     const mode = useContext(ModeContext);
-    const [status, setStatus] = useState<DtoSharedResources>({});
+    const [status, setStatus] = useState<DtoSharedResource[]>([]);
     const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
@@ -47,7 +47,7 @@ export function Shares() {
 
 
     useEffect(() => {
-        const chr = ws.subscribe<DtoSharedResources>(DtoEventType.EventShare, (data) => {
+        const chr = ws.subscribe<DtoSharedResource[]>(DtoEventType.EventShare, (data) => {
             console.log("Got shares", data)
             setStatus(data);
         })
@@ -79,7 +79,7 @@ export function Shares() {
 
     function onSubmitEditShare(data?: ShareEditProps) {
         if (!data) return;
-        if (!data.name || !data.path) {
+        if (!data.name || !data.mount_point_data?.path) {
             setErrorInfo('Unable to update share!');
             return;
         }
@@ -138,13 +138,18 @@ export function Shares() {
                         >
                             <ListItemAvatar>
                                 <Avatar>
-                                    <FolderSharedIcon />
+                                    {props.mount_point_data?.invalid && <Tooltip title={props.mount_point_data?.invalid_error} arrow>
+                                        <FolderSharedIcon color="error" />
+                                    </Tooltip> || <Tooltip title={props.mount_point_data?.warnings} arrow>
+                                            <FolderSharedIcon />
+                                        </Tooltip>
+                                    }
                                 </Avatar>
                             </ListItemAvatar>
                             <ListItemText
-                                primary={share}
+                                primary={props.name}
                                 onClick={() => { setSelected([share, props]); setShowPreview(true) }}
-                                secondary={props.path}
+                                secondary={props.mount_point_data?.path}
                             />
 
                         </ListItem>
@@ -165,11 +170,11 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
             values: props.objectToEdit?.org_name === "" ? {
                 org_name: "",
                 name: "",
-                path: "",
+                //: "",
                 users: [],
                 ro_users: [],
                 timemachine: false,
-                usage: ""
+                //usage: ""
             } : props.objectToEdit
         },
     );
@@ -227,7 +232,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                         ]} required control={control} />
                                 </Grid>
                                 <Grid size={6}>
-                                    <TextFieldElement sx={{ display: "flex" }} name="path" label="Mount Path" required control={control} />
+                                    <TextFieldElement sx={{ display: "flex" }} name="mount_point_data.path" label="Mount Path" required control={control} />
                                 </Grid>
                                 <Grid size={6}>
                                     <CheckboxElement label="Timemachine" name="timemachine" control={control} />
