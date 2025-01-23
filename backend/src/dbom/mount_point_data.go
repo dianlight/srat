@@ -1,6 +1,7 @@
 package dbom
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/jinzhu/copier"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/xorcare/pointer"
@@ -32,24 +34,13 @@ type MountPointData struct {
 	Warnings     *string
 }
 
-// BeforeSave is a GORM callback function that sets the DefaultPath to the Path
-// if it is currently empty. This function is intended to be used with GORM's
-// BeforeSave hook to ensure that the DefaultPath is always populated.
-//
-// Parameters:
-// - tx: A pointer to a gorm.DB instance representing the database transaction.
-//
-// Return Value:
-//   - err: An error value that will be returned by GORM if the callback function
-//     returns an error. If no error occurs, this value will be nil.
-
-func (u *MountPointData) BeforeSave(tx *gorm.DB) error {
+func (u *MountPointData) BeforeSave(tx *gorm.DB) (err error) {
 	if u.Path == "" {
 		return tracerr.Errorf("path cannot be empty")
 	}
 	// check if u.Path exists and is a directory
 	sstat := syscall.Stat_t{}
-	err := syscall.Stat(u.Path, &sstat)
+	err = syscall.Stat(u.Path, &sstat)
 	if os.IsNotExist(err) {
 		u.Invalid = true
 		u.InvalidError = pointer.String(tracerr.Sprint(err))
@@ -138,19 +129,29 @@ func (_ MountPointData) All() ([]MountPointData, error) {
 	return mountPoints, err
 }
 
-// Save persists the current MountPointData instance to the database.
-// If the instance already exists in the database, it will be updated;
-// otherwise, a new record will be created.
-//
-// This method uses the global 'db' variable, which should be a properly
-// initialized GORM database connection.
-//
-// Returns:
-//   - error: An error if the save operation fails, or nil if successful.
-//     Possible errors include database connection issues, constraint violations,
-//     or other database-related errors.
-func (mp *MountPointData) Save() error {
-	return db.Save(mp).Error
+func (mp *MountPointData) Save() (err error) {
+
+	tx := db.Begin()
+	var existingRecord MountPointData
+	res := tx.Limit(1).Find(&existingRecord, "path = ?", mp.Path)
+	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		return tracerr.Wrap(res.Error)
+	} else if res.RowsAffected > 0 {
+		if mp.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
+			return tracerr.Errorf("DeviceId mismatch for %s", mp.Path)
+		}
+		err = copier.CopyWithOption(mp, &existingRecord, copier.Option{IgnoreEmpty: true})
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+	}
+
+	err = tx.Save(mp).Error
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	tx.Commit()
+	return nil
 }
 
 func (mp *MountPointData) FromPath(path string) error {
