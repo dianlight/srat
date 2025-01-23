@@ -85,7 +85,7 @@ async function build(): Promise<BuildOutput | void> {
 }
 
 await build();
-console.log(`Build complete ✅ [👁️:${values.watch ? 'watching' : 'build'}]`)
+console.log(`Build complete ✅ [:${values.watch ? '👁️:watching' : '🧻:build'}]`)
 
 /*
 if (values.watch) {
