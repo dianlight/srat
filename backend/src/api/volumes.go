@@ -12,6 +12,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/dianlight/srat/converter"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/gobeam/stringy"
@@ -146,6 +148,33 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 					retBlockInfo.Partitions = append(retBlockInfo.Partitions, partition)
 				}
 			}
+		}
+	}
+
+	// Popolate MountPoints from partitions
+	for _, partition := range retBlockInfo.Partitions {
+		var conv converter.DtoToDbomConverterImpl
+		var mount_data = &dbom.MountPointData{}
+		err = conv.BlockPartitionToMountPointData(*partition, mount_data)
+		if err != nil {
+			log.Printf("Error converting partition to mount point data: %v", err)
+			continue
+		}
+		if mount_data.Path == "" {
+			if partition.FilesystemLabel != "unknown" {
+				mount_data.Path = "/mnt/" + partition.FilesystemLabel
+			} else if partition.Label != "unknown" {
+				mount_data.Path = "/mnt/" + partition.Label
+			} else if partition.UUID != "" {
+				mount_data.Path = "/mnt/" + partition.UUID
+			} else {
+				mount_data.Path = "/mnt/" + partition.Name
+			}
+		}
+		err = mount_data.Save()
+		if err != nil {
+			log.Printf("Error saving mount point data: %v", err)
+			continue
 		}
 	}
 

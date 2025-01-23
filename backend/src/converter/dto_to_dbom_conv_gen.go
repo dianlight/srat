@@ -11,6 +11,26 @@ import (
 
 type DtoToDbomConverterImpl struct{}
 
+func (c *DtoToDbomConverterImpl) BlockPartitionToMountPointData(source dto.BlockPartition, target *dbom.MountPointData) error {
+	if source.DeviceId != nil {
+		target.DeviceId = *source.DeviceId
+	}
+	if source.Name != "" {
+		target.Source = source.Name
+	}
+	if source.MountPoint != "" {
+		target.Path = source.MountPoint
+	}
+	if source.Type != "" {
+		target.FSType = source.Type
+	}
+	dtoMounDataFlags, err := c.dtoMounDataFlagsToDtoMounDataFlags(source.PartitionFlags)
+	if err != nil {
+		return err
+	}
+	target.Flags = dtoMounDataFlags
+	return nil
+}
 func (c *DtoToDbomConverterImpl) DtoMountPointDataToMountPointData(source dto.MountPointData, target *dbom.MountPointData) error {
 	if source.ID != 0 {
 		target.ID = source.ID

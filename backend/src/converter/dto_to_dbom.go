@@ -53,40 +53,11 @@ type DtoToDbomConverter interface {
 	UserToSambaUser(source dto.User, target *dbom.SambaUser) error
 
 	// goverter:update target
-	// goverter:map Options.Workgroup Workgroup
-	// goverter:map Options.Mountoptions Mountoptions
-	// goverter:map Options.AllowHost AllowHost
-	// goverter:map Options.VetoFiles VetoFiles
-	// goverter:map Options.CompatibilityMode CompatibilityMode
-	// goverter:map Options.EnableRecycleBin EnableRecycleBin
-	// goverter:map Options.Interfaces Interfaces
-	// goverter:map Options.BindAllInterfaces BindAllInterfaces
-	// goverter:map Options.LogLevel LogLevel
-	// goverter:map Options.MultiChannel MultiChannel
-	//PropertiesToSettings(source dbom.Propertie, target *dto.Settings) error
-
-	// goverter:update target
-	// goverter:map . Options | SettingsToOptions
-	// goverter:ignore CurrentFile
-	// goverter:ignore ConfigSpecVersion
-	// goverter:ignore Shares
-	// goverter:ignore DockerInterface DockerNet
-	// goverter:ignoreMissing
-	// goverter:context conv
-	//SettingsToConfig(source dto.Settings, target *config.Config, conv ConfigToDtoConverter) error
-
-	// goverter:update target
-	// goverter:ignore Username Password
-	// goverter:ignore Automount
-	// goverter:ignore Moredisks AvailableDiskLog Medialibrary WSDD WSDD2 HDDIdle Smart MQTTNextGen MQTTEnable
-	// goverter:ignore MQTTHost MQTTUsername MQTTPassword MQTTPort MQTTTopic
-	// goverter:ignore Autodiscovery MOF
-	// goverter:ignore OtherUsers ACL
-	//_SettingsToOptions(source dto.Settings, target *config.Options) error
-
-	// goverter:update target
-	// goverter:map Options.Username Username
-	// goverter:map Options.Password Password
-	// goverter:ignore IsAdmin
-	//ConfigToUser(source config.Config, target *dto.User) error
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt ID PrimaryPath
+	// goverter:ignore Invalid InvalidError Warnings
+	// goverter:map Name Source
+	// goverter:map MountPoint Path
+	// goverter:map Type FSType
+	// goverter:map PartitionFlags Flags
+	BlockPartitionToMountPointData(source dto.BlockPartition, target *dbom.MountPointData) error
 }
