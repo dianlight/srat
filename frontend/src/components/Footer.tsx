@@ -42,7 +42,7 @@ export function Footer(props: { healthData: MainHealth }) {
                     </Typography>
 
                     <Typography variant="caption">
-                        © 2024 Copyright {pkg.author.name}
+                        © 2024-2025 Copyright {pkg.author.name}
                     </Typography>
 
                     <Tooltip title={JSON.stringify(samba, null, 2)} onOpen={() => samba.mutate()} arrow>
