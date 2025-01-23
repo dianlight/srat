@@ -72,6 +72,9 @@ async function build(): Promise<BuildOutput | void> {
         const serve: Serve = {
             fetch(req: Request) {
                 const url = new URL(req.url)
+                if (url.pathname === "/") {
+                    url.pathname = "/index.html"
+                }
                 const path = values.serve + url.pathname;
                 console.log(`Request ${req.mode} ${url.pathname} ==> ${path}`)
                 return new Response(Bun.file(path))
