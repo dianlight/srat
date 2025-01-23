@@ -138,6 +138,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     }
 
     function handleRoolback() {
+        /*
         console.log("Doing rollback")
         confirm({
             title: `Rollback and lose all modified data?`,
@@ -151,8 +152,9 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                 })
             })
             .catch(() => {
-                /*... */
+                /*... * /
             });
+            */
     }
 
     useEffect(() => {
@@ -212,7 +214,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                         <UndoIcon sx={{ color: 'white' }} />
                                     </Tooltip>
                                 </IconButton>
-                                <IconButton onClick={() => api.config.configUpdate()}>
+                                <IconButton onClick={() => /*api.config.configUpdate()*/ true}>
                                     <Tooltip title="Save all modified" arrow>
                                         <SaveIcon sx={{ color: 'white' }} />
                                     </Tooltip>

@@ -2,12 +2,14 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -16,7 +18,6 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/lsblk"
-	"github.com/gobeam/stringy"
 	"github.com/gorilla/mux"
 	"github.com/jaypipes/ghw"
 	"github.com/jinzhu/copier"
@@ -24,6 +25,7 @@ import (
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/u-root/u-root/pkg/mount"
 	ublock "github.com/u-root/u-root/pkg/mount/block"
+	"gorm.io/gorm"
 )
 
 var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
@@ -152,7 +154,7 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 	}
 
 	// Popolate MountPoints from partitions
-	for _, partition := range retBlockInfo.Partitions {
+	for i, partition := range retBlockInfo.Partitions {
 		var conv converter.DtoToDbomConverterImpl
 		var mount_data = &dbom.MountPointData{}
 		err = conv.BlockPartitionToMountPointData(*partition, mount_data)
@@ -176,36 +178,8 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 			log.Printf("Error saving mount point data: %v", err)
 			continue
 		}
+		conv.MountPointDataToDtoMountPointData(*mount_data, &retBlockInfo.Partitions[i].MountPointData)
 	}
-
-	// Enrich the data with mount point information form DB ( previously saved state if mount point is not present)
-	/*
-		for i, partition := range retBlockInfo.Partitions {
-			if partition.MountPoint == "" {
-				var mp dbom.MountPointData
-				//log.Printf("\nAttempting to %#v\n", partition)
-				err := mp.FromPath(partition.MountPoint)
-				if err != nil {
-					if !errors.Is(err, gorm.ErrRecordNotFound) {
-						log.Printf("Error fetching mount point data for device /dev/%s: %v", partition.Name, err)
-					}
-					continue
-				}
-				partition.DefaultMountPoint = mp.Path
-				//partition.MountData = mp.Data
-				partition.MountFlags.Scan(mp.Flags)
-				partition.DeviceId = &mp.DeviceId
-				retBlockInfo.Partitions[i] = partition
-			} else if partition.DeviceId == nil {
-				sstat := syscall.Stat_t{}
-				err := syscall.Stat(partition.MountPoint, &sstat)
-				if err != nil {
-					return nil, err
-				}
-				partition.DeviceId = &sstat.Dev
-				retBlockInfo.Partitions[i] = partition
-			}
-		}*/
 
 	//pretty.Print(retBlockInfo)
 	return retBlockInfo, err
@@ -239,31 +213,36 @@ func ListVolumes(w http.ResponseWriter, r *http.Request) {
 //	@Tags			volume
 //	@Accept			json
 //	@Produce		json
-//	@Param			volume_name	path		string				true	"Volume Name to Mount"
+//	@Param			id			path		uint				true	"id of the mountpoint to be mounted"
 //	@Param			mount_data	body		dto.MountPointData	true	"Mount data"
 //	@Success		201			{object}	dto.MountPointData
 //	@Failure		400			{object}	ErrorResponse
 //	@Failure		405			{object}	ErrorResponse
 //	@Failure		409			{object}	ErrorResponse
 //	@Failure		500			{object}	ErrorResponse
-//	@Router			/volume/{volume_name}/mount [post]
-func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification MountPointData and BlockPartitionData
-	volume_name := mux.Vars(r)["volume_name"]
-
-	var mount_data dto.MountPointData
-	err := HttpJSONRequest(&mount_data, w, r)
+//	@Router			/volume/{id}/mount [post]
+func MountVolume(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseUint(mux.Vars(r)["id"], 10, 32)
 	if err != nil {
-		return
-	}
-
-	if mount_data.Source != "" && mount_data.Source != volume_name {
-		HttpJSONReponse(w, ErrorResponse{Error: "Name conflict", Body: nil}, &Options{
+		HttpJSONReponse(w, ErrorResponse{Error: "Invalid ID", Body: err}, &Options{
 			Code: http.StatusBadRequest,
 		})
 		return
-	} /*else if mount_data.Name == "" {
-		mount_data.Name = volume_name
-	}*/
+	}
+
+	var mount_data dto.MountPointData
+	err = HttpJSONRequest(&mount_data, w, r)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+
+	if mount_data.ID != 0 && mount_data.ID != uint(id) {
+		HttpJSONReponse(w, ErrorResponse{Error: "ID conflict", Body: nil}, &Options{
+			Code: http.StatusBadRequest,
+		})
+		return
+	}
 
 	volumes, err := GetVolumesData()
 	if err != nil {
@@ -271,34 +250,24 @@ func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification
 		return
 	}
 
-	if mount_data.FSType == "" || mount_data.Path == "" {
-		for _, d := range volumes.Partitions {
-			if d.Name == volume_name {
-				if mount_data.FSType == "" {
-					mount_data.FSType = d.Type
-				}
-				if mount_data.Path == "" && d.MountPoint != "" {
-					mount_data.Path = d.MountPoint
-				} else if mount_data.Path == "" && d.Label != "" {
-					mount_data.Path = "/mnt/" + stringy.New(d.Label).RemoveSpecialCharacter()
-				} else if mount_data.Path == "" {
-					mount_data.Path = "/mnt/" + d.Name
-				}
-				break
-			}
-		}
+	var conv converter.DtoToDbomConverterImpl
+	var dbom_mount_data dbom.MountPointData
+	err = conv.DtoMountPointDataToMountPointData(mount_data, &dbom_mount_data)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+	// Save/Update MountPointData
+	err = dbom_mount_data.Save()
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
 	}
 
 	flags, err := mount_data.Flags.Value()
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
-	}
-
-	mount_data.Path = stringy.New(mount_data.Path).SnakeCase().Get()
-
-	if !strings.HasPrefix(mount_data.Source, "/dev/") {
-		mount_data.Source = "/dev/" + mount_data.Source
 	}
 
 	// Check if mount_data.Path is already mounted
@@ -311,6 +280,11 @@ func MountVolume(w http.ResponseWriter, r *http.Request) { // FIXME: Unification
 	}
 	if c > 0 {
 		mount_data.Path += fmt.Sprintf("_(%d)", c)
+		err = dbom_mount_data.Save()
+		if err != nil {
+			HttpJSONReponse(w, err, nil)
+			return
+		}
 	}
 
 	var mp *mount.MountPoint
@@ -359,43 +333,49 @@ func notifyVolumeClient(volumes *dto.BlockInfo) {
 //	@Summary		Umount the selected volume
 //	@Description	Umount the selected volume
 //	@Tags			volume
-//	@Param			volume_name	path	string	true	"Name of the volume to be unmounted"
+//	@Param			id			path		uint				true	"id of the mountpoint to be mounted"
 //	@Param			force		query	bool	true	"Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted."
 //	@Param			lazy		query	bool	true	"Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted."
 //	@Success		204
 //	@Failure		404	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
-//	@Router			/volume/{volume_name}/mount [delete]
+//	@Router			/volume/{id}/mount [delete]
 func UmountVolume(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	volume_name := mux.Vars(r)["volume_name"]
+	id, err := strconv.ParseUint(mux.Vars(r)["id"], 10, 32)
+	if err != nil {
+		HttpJSONReponse(w, ErrorResponse{Error: "Invalid ID", Body: nil}, &Options{
+			Code: http.StatusBadRequest,
+		})
+		return
+	}
 	force := r.URL.Query().Get("force")
 	lazy := r.URL.Query().Get("lazy")
 
-	volumes, err := GetVolumesData()
+	var dbom_mount_data dbom.MountPointData
+	err = dbom_mount_data.FromID(uint(id))
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			HttpJSONReponse(w, ErrorResponse{Error: "MountPoint not found", Body: nil}, &Options{
+				Code: http.StatusNotFound,
+			})
+			return
+		}
 		HttpJSONReponse(w, err, nil)
 		return
 	}
 
-	for _, d := range volumes.Partitions {
-		if d.Name == volume_name {
-			err := mount.Unmount(d.MountPoint, force == "true", lazy == "true")
-			if err != nil {
-				HttpJSONReponse(w, err, nil)
-				return
-			}
-			var ndata, _ = GetVolumesData()
-			notifyVolumeClient(ndata)
-			context_state := (&dto.ContextState{}).FromContext(r.Context())
-			context_state.DataDirtyTracker.Volumes = true
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
+	err = mount.Unmount(dbom_mount_data.Path, force == "true", lazy == "true")
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
 	}
-	HttpJSONReponse(w, ErrorResponse{Error: "No mount on " + volume_name + " found!", Body: nil}, &Options{
-		Code: http.StatusNotFound,
-	})
+	var ndata, _ = GetVolumesData()
+	notifyVolumeClient(ndata)
+	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	context_state.DataDirtyTracker.Volumes = true
+	w.WriteHeader(http.StatusNoContent)
+	return
 }
 
 // VolumesEventHandler monitors and handles UEvent kernel messages related to volume changes.

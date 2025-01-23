@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/gobeam/stringy"
 	"github.com/jinzhu/copier"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
@@ -38,6 +39,8 @@ func (u *MountPointData) BeforeSave(tx *gorm.DB) (err error) {
 	if u.Path == "" {
 		return tracerr.Errorf("path cannot be empty")
 	}
+	u.Path = stringy.New(u.Path).SnakeCase().Get()
+
 	// check if u.Path exists and is a directory
 	sstat := syscall.Stat_t{}
 	err = syscall.Stat(u.Path, &sstat)
@@ -102,6 +105,9 @@ func (u *MountPointData) BeforeSave(tx *gorm.DB) (err error) {
 			fmt.Printf("Flags %+v\n", flags)
 			u.FSType = fs
 		}
+		if !strings.HasPrefix(u.Source, "/dev/") {
+			u.Source = "/dev/" + u.Source
+		}
 	}
 	return nil
 }
@@ -160,4 +166,12 @@ func (mp *MountPointData) FromPath(path string) error {
 	}
 	//log.Printf("FromName \n%s \n%v \n%v", name, db, &mp)
 	return db.Limit(1).Find(&mp, "path = ?", path).Error
+}
+
+func (mp *MountPointData) FromID(id uint) error {
+	if id == 0 {
+		return tracerr.Errorf("id cannot be zero")
+	}
+	//log.Printf("FromName \n%s \n%v \n%v", name, db, &mp)
+	return db.Limit(1).Find(&mp, "ID = ?", id).Error
 }

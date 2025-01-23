@@ -39,6 +39,8 @@ export interface DtoBlockPartition {
    * is derived from the `ID_PART_ENTRY_NAME` udev entry.
    */
   label?: string;
+  /** Relative MountPointData */
+  mountPointData?: DtoMountPointData;
   /** MountData contains additional data associated with the partition. */
   mount_data?: string;
   /** MountFlags contains the mount flags for the partition. */
@@ -1067,11 +1069,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @tags volume
      * @name MountCreate
      * @summary mount an existing volume
-     * @request POST:/volume/{volume_name}/mount
+     * @request POST:/volume/{id}/mount
      */
-    mountCreate: (volumeName: string, mount_data: DtoMountPointData, params: RequestParams = {}) =>
+    mountCreate: (id: number, mount_data: DtoMountPointData, params: RequestParams = {}) =>
       this.request<DtoMountPointData, ApiErrorResponse>({
-        path: `/volume/${volumeName}/mount`,
+        path: `/volume/${id}/mount`,
         method: "POST",
         body: mount_data,
         type: ContentType.Json,
@@ -1085,10 +1087,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @tags volume
      * @name MountDelete
      * @summary Umount the selected volume
-     * @request DELETE:/volume/{volume_name}/mount
+     * @request DELETE:/volume/{id}/mount
      */
     mountDelete: (
-      volumeName: string,
+      id: number,
       query: {
         /** Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted. */
         force: boolean;
@@ -1098,7 +1100,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       params: RequestParams = {},
     ) =>
       this.request<void, ApiErrorResponse>({
-        path: `/volume/${volumeName}/mount`,
+        path: `/volume/${id}/mount`,
         method: "DELETE",
         query: query,
         ...params,

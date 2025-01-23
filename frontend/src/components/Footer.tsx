@@ -6,16 +6,15 @@ import pkg from '../../package.json';
 import { getGitCommitHash } from '../macro/getGitCommitHash.ts' with { type: 'macro' };
 import Stack from "@mui/material/Stack";
 import { AppBar, Link, Toolbar, Tooltip } from "@mui/material";
-import type { MainHealth, MainSambaProcessStatus } from "../srat.ts";
+import type {DtoHealthPing, DtoSambaProcessStatus } from "../srat.ts";
 import useSWR from "swr";
 import { useContext } from "react";
 import { apiContext } from "../Contexts.ts";
 
 
-export function Footer(props: { healthData: MainHealth }) {
-    const api = useContext(apiContext);
+export function Footer(props: { healthData: DtoHealthPing }) {
 
-    const samba = useSWR<MainSambaProcessStatus>('/samba/status', () => api.samba.statusList().then(res => res.data));
+    const samba = useSWR<DtoSambaProcessStatus>('/samba/status', () => apiContext.samba.statusList().then(res => res.data));
 
 
     return (
@@ -52,7 +51,7 @@ export function Footer(props: { healthData: MainHealth }) {
                     </Tooltip>
 
                     <Tooltip title="Restart the server" arrow>
-                        <Typography onClick={() => api.restart.restartUpdate()} variant="caption">[R]</Typography>
+                        <Typography onClick={() => apiContext.restart.restartUpdate()} variant="caption">[R]</Typography>
                     </Tooltip>
 
                 </Stack>

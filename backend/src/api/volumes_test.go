@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -61,7 +62,7 @@ func TestListVolumessHandler(t *testing.T) {
 
 }
 
-var previus_device string
+var previus_device uint
 
 func TestMountVolumeHandler(t *testing.T) {
 	// Check if loop device is available for mounting
@@ -76,8 +77,9 @@ func TestMountVolumeHandler(t *testing.T) {
 			mockMountData.Path = filepath.Join("/mnt", d.Label)
 			mockMountData.FSType = d.Type
 			mockMountData.Flags = []dto.MounDataFlag{dto.MS_NOATIME}
-			previus_device = d.Name
+			previus_device = d.MountPointData.ID
 			t.Logf("Selected loop device: %v", mockMountData)
+			break
 		}
 	}
 	if mockMountData.Source == "" {
@@ -86,14 +88,14 @@ func TestMountVolumeHandler(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(mockMountData)
-	requestPath := "/volume/" + previus_device + "/mount"
+	requestPath := fmt.Sprintf("/volume/%d/mount", previus_device)
 	t.Logf("Request path: %s", requestPath)
 	req, err := http.NewRequestWithContext(testContext, "POST", requestPath, bytes.NewBuffer(body))
 	require.NoError(t, err)
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{volume_name}/mount", MountVolume).Methods("POST")
+	router.HandleFunc("/volume/{id}/mount", MountVolume).Methods("POST")
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -123,14 +125,14 @@ func TestMountVolumeHandler(t *testing.T) {
 }
 
 func TestUmountVolumeNonExistent(t *testing.T) {
-	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/nonexistent/mount", nil)
+	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/999999/mount", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{volume_name}/mount", UmountVolume).Methods("DELETE")
+	router.HandleFunc("/volume/{id}/mount", UmountVolume).Methods("DELETE")
 
 	router.ServeHTTP(rr, req)
 
@@ -147,19 +149,19 @@ func TestUmountVolumeNonExistent(t *testing.T) {
 }
 func TestUmountVolumeSuccess(t *testing.T) {
 
-	if previus_device == "" {
+	if previus_device == 0 {
 		t.Skip("Test skip: not prevision mounted volume found")
 	}
 
 	require.NotEmpty(t, previus_device, "Test skip: not prevision mounted volume found")
 
 	// Create a request
-	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/"+previus_device+"/mount", nil)
+	req, err := http.NewRequestWithContext(testContext, "DELETE", fmt.Sprintf("/volume/%d/mount", previus_device), nil)
 	require.NoError(t, err)
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{volume_name}/mount", UmountVolume).Methods("DELETE")
+	router.HandleFunc("/volume/{id}/mount", UmountVolume).Methods("DELETE")
 
 	// Create a ResponseRecorder
 	rr := httptest.NewRecorder()

@@ -5,7 +5,7 @@ import { InView } from "react-intersection-observer";
 import Grid from "@mui/material/Grid2";
 import Button from "@mui/material/Button";
 import useSWR from "swr";
-import type { ConfigUser, MainGlobalConfig } from "../srat";
+import type { DtoSettings } from "../srat";
 import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement, useForm, Controller } from "react-hook-form-mui";
 import { MuiChipsInput } from 'mui-chips-input'
 import Stack from "@mui/material/Stack";
@@ -13,7 +13,7 @@ import Divider from "@mui/material/Divider";
 
 export function Settings() {
     const mode = useContext(ModeContext);
-    const globalConfig = useSWR<MainGlobalConfig>('/global', () => apiContext.global.globalList().then(res => res.data));
+    const globalConfig = useSWR<DtoSettings>('/global', () => apiContext.global.globalList().then(res => res.data));
     const { control, handleSubmit, reset, watch, formState } = useForm({
         mode: "onBlur",
         values: globalConfig.data,
@@ -22,7 +22,7 @@ export function Settings() {
     const bindAllWatch = watch("bind_all_interfaces")
     let timer: NodeJS.Timer | null = null;
 
-    function handleCommit(data: MainGlobalConfig) {
+    function handleCommit(data: DtoSettings) {
         console.log(data);
         apiContext.global.globalUpdate(data).then(res => {
             console.log(res)

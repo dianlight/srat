@@ -48,14 +48,14 @@ export function Volumes() {
     };
 
     function onSubmitMountVolume(data?: DtoMountPointData) {
-        if (!data || !data.name) return
+        if (!data || !data.id) return
         console.log("Mount", data)
-        apiContext.volume.mountCreate(data.name, {}).then((res) => {
-            toast.info(`Volume ${res.data.label} mounted successfully.`);
+        apiContext.volume.mountCreate(data.id, {}).then((res) => {
+            toast.info(`Volume ${res.data.path} mounted successfully.`);
             setSelected(undefined);
         }).catch(err => {
             console.error(err);
-            toast.error(`Erroe mountig ${data.label}: ${err}`, { data: { error: err } });
+            toast.error(`Erroe mountig ${data.path}: ${err}`, { data: { error: err } });
             //setErrorInfo(JSON.stringify(err));
         })
     }
@@ -67,8 +67,8 @@ export function Volumes() {
             description: `Do you really want umount ${force ? "forcefull" : ""} the Volume ${data.name}?`
         })
             .then(() => {
-                if (!data.name) return
-                apiContext.volume.mountDelete(data.name, {
+                if (!data.mountPointData?.id) return
+                apiContext.volume.mountDelete(data.mountPointData?.id, {
                     force,
                     lazy: !force,
                 }).then((res) => {
@@ -155,10 +155,10 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
     const { control, handleSubmit, watch, formState: { errors } } = useForm<DtoMountPointData>(
         {
             values: {
-                name: props.objectToEdit?.name,
+                //id: props.objectToEdit?.id,
                 fstype: props.objectToEdit?.type,
                 flags: props.objectToEdit?.partition_flags,
-                data: props.objectToEdit?.mount_data,
+                //data: props.objectToEdit?.mount_data,
             }
         },
     );
@@ -201,9 +201,11 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                                         control={control}
                                     />
                                 </Grid2>
+                                {/*
                                 <Grid2 size={12}>
                                     <TextFieldElement name="data" label="Additional Mount Data" control={control} sx={{ display: "flex" }} />
                                 </Grid2>
+                                */}
 
                             </Grid2>
                         </form>

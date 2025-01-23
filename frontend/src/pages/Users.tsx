@@ -1,9 +1,8 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { apiContext as api, ModeContext, wsContext as ws } from "../Contexts";
-import type { Api, ConfigShare, ConfigShares, ConfigUser } from "../srat";
+import { type DtoUser } from "../srat";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import useSWR from "swr";
-import useSWRMutation from "swr/mutation";
 import { Fab, List, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Dialog, DialogTitle, Stack, DialogContent, DialogContentText, Grid2 as Grid, DialogActions, Button } from "@mui/material";
 import { InView } from "react-intersection-observer";
 import { useConfirm } from "material-ui-confirm";
@@ -17,7 +16,7 @@ import { PasswordElement, PasswordRepeatElement, TextFieldElement } from "react-
 
 
 
-interface UsersProps extends ConfigUser {
+interface UsersProps extends DtoUser {
     isAdmin?: boolean
     doCreate?: boolean
     "password-repeat"?: string

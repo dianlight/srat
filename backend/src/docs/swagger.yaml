@@ -48,6 +48,10 @@ definitions:
       mount_point:
         description: MountPoint is the path where this partition is mounted.
         type: string
+      mountPointData:
+        allOf:
+        - $ref: '#/definitions/dto.MountPointData'
+        description: Relative MountPointData
       name:
         description: Name is the system name given to the partition, e.g. "sda1".
         type: string
@@ -1490,15 +1494,15 @@ paths:
       summary: List all configured users
       tags:
       - user
-  /volume/{volume_name}/mount:
+  /volume/{id}/mount:
     delete:
       description: Umount the selected volume
       parameters:
-      - description: Name of the volume to be unmounted
+      - description: id of the mountpoint to be mounted
         in: path
-        name: volume_name
+        name: id
         required: true
-        type: string
+        type: integer
       - description: Umount forcefully - forces an unmount regardless of currently
           open or otherwise used files within the file system to be unmounted.
         in: query
@@ -1533,11 +1537,11 @@ paths:
       - application/json
       description: mount an existing volume
       parameters:
-      - description: Volume Name to Mount
+      - description: id of the mountpoint to be mounted
         in: path
-        name: volume_name
+        name: id
         required: true
-        type: string
+        type: integer
       - description: Mount data
         in: body
         name: mount_data
