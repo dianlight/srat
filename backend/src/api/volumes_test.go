@@ -73,7 +73,7 @@ func TestMountVolumeHandler(t *testing.T) {
 
 	for _, d := range volumes.Partitions {
 		if strings.HasPrefix(d.Name, "loop") && d.Label == "_EXT4" {
-			mockMountData.Source = d.Name
+			mockMountData.Source = "/dev/" + d.Name
 			mockMountData.Path = filepath.Join("/mnt", d.Label)
 			mockMountData.FSType = d.Type
 			mockMountData.Flags = []dto.MounDataFlag{dto.MS_NOATIME}
@@ -141,7 +141,7 @@ func TestUmountVolumeNonExistent(t *testing.T) {
 			status, http.StatusNotFound)
 	}
 
-	expected := `{"code":0,"error":"No mount on nonexistent found!","body":null}`
+	expected := `{"code":404,"error":"MountPoint not found","body":null}`
 	if rr.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), expected)

@@ -173,5 +173,5 @@ func (mp *MountPointData) FromID(id uint) error {
 		return tracerr.Errorf("id cannot be zero")
 	}
 	//log.Printf("FromName \n%s \n%v \n%v", name, db, &mp)
-	return db.Limit(1).Find(&mp, "ID = ?", id).Error
+	return db.First(&mp, id).Error
 }

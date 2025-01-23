@@ -344,7 +344,7 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	id, err := strconv.ParseUint(mux.Vars(r)["id"], 10, 32)
 	if err != nil {
-		HttpJSONReponse(w, ErrorResponse{Error: "Invalid ID", Body: nil}, &Options{
+		HttpJSONReponse(w, ErrorResponse{Code: 500, Error: "Invalid ID", Body: nil}, &Options{
 			Code: http.StatusBadRequest,
 		})
 		return
@@ -356,7 +356,7 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 	err = dbom_mount_data.FromID(uint(id))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			HttpJSONReponse(w, ErrorResponse{Error: "MountPoint not found", Body: nil}, &Options{
+			HttpJSONReponse(w, ErrorResponse{Code: 404, Error: "MountPoint not found", Body: nil}, &Options{
 				Code: http.StatusNotFound,
 			})
 			return
