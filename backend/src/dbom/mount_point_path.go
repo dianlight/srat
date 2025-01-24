@@ -19,18 +19,18 @@ import (
 )
 
 type MountPointPath struct {
-	ID          uint `gorm:"primarykey"`
-	DeviceId    uint64
-	Source      string
-	Path        string `gorm:"uniqueIndex"`
-	PrimaryPath string
-	FSType      string
-	Flags       dto.MounDataFlags `gorm:"type:mount_data_flags"`
-	//Data         string
+	ID           uint `gorm:"primarykey"`
+	DeviceId     uint64
+	Source       string
+	Path         string `gorm:"uniqueIndex"`
+	PrimaryPath  string
+	FSType       string
+	Flags        dto.MounDataFlags `gorm:"type:mount_data_flags"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`
-	Invalid      bool
+	IsInvalid    bool
+	IsMounted    bool
 	InvalidError *string
 	Warnings     *string
 }
@@ -45,7 +45,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 	sstat := syscall.Stat_t{}
 	err = syscall.Stat(u.Path, &sstat)
 	if os.IsNotExist(err) {
-		u.Invalid = true
+		u.IsInvalid = true
 		u.InvalidError = pointer.String(tracerr.Sprint(err))
 	} else if !strings.HasPrefix(u.Path, "/") {
 		return tracerr.Errorf("path %s is not a valid mountpoint", u.Path)
@@ -55,7 +55,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 	if u.DeviceId == 0 || u.DeviceId != sstat.Dev {
 		u.DeviceId = sstat.Dev
 	}
-	if !u.Invalid {
+	if !u.IsInvalid {
 		stat := syscall.Statfs_t{}
 		err = syscall.Statfs(u.Path, &stat)
 		if err != nil {
@@ -65,7 +65,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 			u.Flags.Scan(stat.Flags)
 		}
 		if u.Source == "" {
-			u.Invalid = true
+			u.IsInvalid = true
 			u.InvalidError = pointer.String("Unknown device source for " + u.Path)
 			info, err := osutil.LoadMountInfo()
 			if err != nil {
@@ -78,7 +78,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 					u.PrimaryPath = m.MountDir
 					u.FSType = m.FsType
 					//u.Data = m.
-					u.Invalid = false
+					u.IsInvalid = false
 					u.InvalidError = nil
 					break
 				} else {
@@ -88,7 +88,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 						u.Source = m.MountSource
 						u.FSType = m.FsType
 						//u.Data = m.
-						u.Invalid = false
+						u.IsInvalid = false
 						u.InvalidError = nil
 						u.Warnings = pointer.String("Mount point is not the same as the primary path")
 						break
@@ -99,7 +99,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 		if u.FSType == "" && u.Source != "" {
 			fs, flags, err := mount.FSFromBlock(u.Source)
 			if err != nil {
-				u.Invalid = true
+				u.IsInvalid = true
 				u.InvalidError = pointer.String(tracerr.Sprint(err))
 			}
 			fmt.Printf("Flags %+v\n", flags)

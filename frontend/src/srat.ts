@@ -114,20 +114,13 @@ export enum DtoMounDataFlag {
 
 export interface DtoMountPointData {
   flags?: DtoMounDataFlag[];
-  /**
-   * DefaultPath string `json:"default_path"`
-   * Label       string        `json:"label"`
-   */
   fstype?: string;
   id?: number;
   invalid?: boolean;
   invalid_error?: string;
+  is_mounted?: boolean;
   path?: string;
   primary_path?: string;
-  /**
-   * Data         string        `json:"data,omitempty"`
-   * DeviceId     uint64 `json:"device_id,omitempty"`
-   */
   source?: string;
   warnings?: string;
 }

@@ -6,6 +6,7 @@ package converter
 import (
 	config "github.com/dianlight/srat/config"
 	dto "github.com/dianlight/srat/dto"
+	osutil "github.com/snapcore/snapd/osutil"
 )
 
 type ConfigToDtoConverterImpl struct{}
@@ -134,6 +135,13 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, ta
 	}
 	if source.FS != "" {
 		target.FSType = source.FS
+	}
+	if source.Path != "" {
+		xbool, err := osutil.IsMounted(source.Path)
+		if err != nil {
+			return err
+		}
+		target.IsMounted = xbool
 	}
 	return nil
 }

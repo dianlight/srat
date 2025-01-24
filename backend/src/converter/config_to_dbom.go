@@ -23,9 +23,10 @@ type ConfigToDbomConverter interface {
 	ShareToExportedShareNoMountPointPath(source config.Share, target *dbom.ExportedShare, users *dbom.SambaUsers) error
 
 	// goverter:update target
-	// goverter:ignore Flags ID DeviceId Source Invalid InvalidError
+	// goverter:ignore Flags ID DeviceId Source IsInvalid InvalidError
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt PrimaryPath Warnings
 	// goverter:map FS FSType
+	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
 	ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error
 
 	// goverter:update target

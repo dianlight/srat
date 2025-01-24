@@ -29,6 +29,9 @@ func (c *DtoToDbomConverterImpl) BlockPartitionToMountPointPath(source dto.Block
 		return err
 	}
 	target.Flags = dtoMounDataFlags
+	if source.MountPoint != "" {
+		target.IsMounted = isMountPointValid(source.MountPoint)
+	}
 	return nil
 }
 func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error {
@@ -87,8 +90,11 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 		return err
 	}
 	target.Flags = dtoMounDataFlags
-	if source.Invalid != false {
-		target.Invalid = source.Invalid
+	if source.IsInvalid != false {
+		target.IsInvalid = source.IsInvalid
+	}
+	if source.IsMounted != false {
+		target.IsMounted = source.IsMounted
 	}
 	if source.InvalidError != nil {
 		xstring := *source.InvalidError
@@ -121,8 +127,11 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	if source.Source != "" {
 		target.Source = source.Source
 	}
-	if source.Invalid != false {
-		target.Invalid = source.Invalid
+	if source.IsMounted != false {
+		target.IsMounted = source.IsMounted
+	}
+	if source.IsInvalid != false {
+		target.IsInvalid = source.IsInvalid
 	}
 	if source.InvalidError != nil {
 		xstring := *source.InvalidError

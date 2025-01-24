@@ -46,7 +46,7 @@ func TestListSharesHandler(t *testing.T) {
 
 	for _, sdto := range resultsDto {
 		assert.NotEmpty(t, sdto.MountPointData.Path)
-		if sdto.MountPointData.Invalid {
+		if sdto.MountPointData.IsInvalid {
 			assert.NoDirExists(t, sdto.MountPointData.Path, "DeviceId %s is Invalid=true but %s exist (%s)", sdto.MountPointData.Source, sdto.MountPointData.Path, *sdto.MountPointData.InvalidError)
 		} else {
 			assert.DirExists(t, sdto.MountPointData.Path, "DeviceId %s is Invalid=false but %s doesn't exist", sdto.MountPointData.Source, sdto.MountPointData.Path)
@@ -87,7 +87,7 @@ func TestGetShareHandler(t *testing.T) {
 	})
 	expected.ID = resultShare.ID // Fix for testing
 	expected.MountPointData.ID = resultShare.MountPointData.ID
-	expected.MountPointData.Invalid = resultShare.MountPointData.Invalid
+	expected.MountPointData.IsInvalid = resultShare.MountPointData.IsInvalid
 	expected.MountPointData.InvalidError = resultShare.MountPointData.InvalidError
 	//assert.Equal(t, config.Shares["LIBRARY"], resultShare)
 	assert.EqualValues(t, expected, resultShare, "Body %#v", rr.Body.String())
@@ -129,7 +129,7 @@ func TestCreateShareHandler(t *testing.T) {
 	} // Fix for testing
 	//share.Usage = "none"
 	share.MountPointData.ID = result.MountPointData.ID
-	share.MountPointData.Invalid = result.MountPointData.Invalid
+	share.MountPointData.IsInvalid = result.MountPointData.IsInvalid
 	share.MountPointData.InvalidError = result.MountPointData.InvalidError
 	assert.EqualValues(t, share, result)
 }

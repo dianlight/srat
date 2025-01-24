@@ -54,10 +54,15 @@ type DtoToDbomConverter interface {
 
 	// goverter:update target
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt ID PrimaryPath
-	// goverter:ignore Invalid InvalidError Warnings
+	// goverter:ignore IsInvalid InvalidError Warnings
 	// goverter:map Name Source
 	// goverter:map MountPoint Path
 	// goverter:map Type FSType
 	// goverter:map PartitionFlags Flags
+	// goverter:map MountPoint IsMounted | isMountPointValid
 	BlockPartitionToMountPointPath(source dto.BlockPartition, target *dbom.MountPointPath) error
+}
+
+func isMountPointValid(source string) bool {
+	return source != ""
 }
