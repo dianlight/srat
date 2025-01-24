@@ -63,7 +63,7 @@ func (c *ConfigToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, targe
 	}
 	return nil
 }
-func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointData(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {
+func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {
 	if source.Name != "" {
 		target.Name = source.Name
 	}
@@ -98,7 +98,7 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointData(source 
 	}
 	return nil
 }
-func (c *ConfigToDbomConverterImpl) ShareToMountPointData(source config.Share, target *dbom.MountPointData) error {
+func (c *ConfigToDbomConverterImpl) ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error {
 	if source.Path != "" {
 		target.Path = source.Path
 	}

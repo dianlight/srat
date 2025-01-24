@@ -18,7 +18,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type MountPointData struct {
+type MountPointPath struct {
 	ID          uint `gorm:"primarykey"`
 	DeviceId    uint64
 	Source      string
@@ -35,7 +35,7 @@ type MountPointData struct {
 	Warnings     *string
 }
 
-func (u *MountPointData) BeforeSave(tx *gorm.DB) (err error) {
+func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 	if u.Path == "" {
 		return tracerr.Errorf("path cannot be empty")
 	}
@@ -129,16 +129,16 @@ func (u *MountPointData) AfterFind(tx *gorm.DB) (err error) {
 //   - []MountPointData: A slice containing all MountPointData entries found in the database.
 //   - error: An error if the retrieval operation fails, or nil if successful.
 //     Possible errors include database connection issues or other database-related errors.
-func (_ MountPointData) All() ([]MountPointData, error) {
-	var mountPoints []MountPointData
+func (_ MountPointPath) All() ([]MountPointPath, error) {
+	var mountPoints []MountPointPath
 	err := db.Find(&mountPoints).Error
 	return mountPoints, err
 }
 
-func (mp *MountPointData) Save() (err error) {
+func (mp *MountPointPath) Save() (err error) {
 
 	tx := db.Begin()
-	var existingRecord MountPointData
+	var existingRecord MountPointPath
 	res := tx.Limit(1).Find(&existingRecord, "path = ?", mp.Path)
 	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		return tracerr.Wrap(res.Error)
@@ -160,7 +160,7 @@ func (mp *MountPointData) Save() (err error) {
 	return nil
 }
 
-func (mp *MountPointData) FromPath(path string) error {
+func (mp *MountPointPath) FromPath(path string) error {
 	if path == "" {
 		return tracerr.Errorf("path cannot be empty")
 	}
@@ -168,7 +168,7 @@ func (mp *MountPointData) FromPath(path string) error {
 	return db.Limit(1).Find(&mp, "path = ?", path).Error
 }
 
-func (mp *MountPointData) FromID(id uint) error {
+func (mp *MountPointPath) FromID(id uint) error {
 	if id == 0 {
 		return tracerr.Errorf("id cannot be zero")
 	}

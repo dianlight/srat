@@ -23,19 +23,19 @@ func TestMountPointDataAllEmpty(t *testing.T) {
 
 func TestMountPointDataSaveWithoutData(t *testing.T) {
 
-	testMountPoint := MountPointData{
+	testMountPoint := MountPointPath{
 		Path: "/addons",
 	}
 
 	err := testMountPoint.Save()
 
 	require.NoError(t, err)
-	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&MountPointData{})
+	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&MountPointPath{})
 }
 
 func TestMountPointDataSave(t *testing.T) {
 
-	testMountPoint := MountPointData{
+	testMountPoint := MountPointPath{
 		Path: "/mnt/test",
 		//Label:  "Test Drive",
 		Source: "test_drive",
@@ -48,12 +48,12 @@ func TestMountPointDataSave(t *testing.T) {
 	err := testMountPoint.Save()
 
 	require.NoError(t, err)
-	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&MountPointData{})
+	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&MountPointPath{})
 }
 
 func TestMountPointDataAll(t *testing.T) {
 
-	expectedMountPoints := []MountPointData{
+	expectedMountPoints := []MountPointPath{
 		{
 			Path: "/mnt/test1",
 			//Label:  "Test 1",
@@ -79,10 +79,10 @@ func TestMountPointDataAll(t *testing.T) {
 	err = expectedMountPoints[1].Save()
 	require.NoError(t, err)
 
-	mountPoints, err := MountPointData{}.All()
+	mountPoints, err := MountPointPath{}.All()
 
 	require.NoError(t, err)
-	if !cmp.Equal(expectedMountPoints, mountPoints, cmpopts.IgnoreFields(MountPointData{}, "CreatedAt", "UpdatedAt")) {
+	if !cmp.Equal(expectedMountPoints, mountPoints, cmpopts.IgnoreFields(MountPointPath{}, "CreatedAt", "UpdatedAt")) {
 		assert.Equal(t, expectedMountPoints, mountPoints)
 		//		t.Errorf("FuncUnderTest() mismatch")
 	}

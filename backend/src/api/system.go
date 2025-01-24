@@ -501,7 +501,7 @@ func PersistVolumesState() error {
 		if partition.MountPoint != "" {
 			var flags = &dto.MounDataFlags{}
 			flags.Scan(partition.MountFlags)
-			adata := dbom.MountPointData{
+			adata := dbom.MountPointPath{
 				Path: partition.MountPoint,
 				//Label:  partition.Label,
 				Source: partition.Name,

@@ -34,7 +34,7 @@ func InitDB(dbpath string) {
 		panic("failed to connect database")
 	}
 	// Migrate the schema
-	db.AutoMigrate(&MountPointData{}, &ExportedShare{}, &SambaUser{}, &Property{})
+	db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{})
 	/*
 	   result, _ := db.Debug().Migrator().ColumnTypes(&Property{})
 

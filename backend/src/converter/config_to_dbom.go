@@ -20,13 +20,13 @@ type ConfigToDbomConverter interface {
 	// goverter:ignore ID MountPointData MountPointDataID
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:context users
-	ShareToExportedShareNoMountPointData(source config.Share, target *dbom.ExportedShare, users *dbom.SambaUsers) error
+	ShareToExportedShareNoMountPointPath(source config.Share, target *dbom.ExportedShare, users *dbom.SambaUsers) error
 
 	// goverter:update target
 	// goverter:ignore Flags ID DeviceId Source Invalid InvalidError
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt PrimaryPath Warnings
 	// goverter:map FS FSType
-	ShareToMountPointData(source config.Share, target *dbom.MountPointData) error
+	ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error
 
 	// goverter:update target
 	// goverter:map MountPointData.Path Path

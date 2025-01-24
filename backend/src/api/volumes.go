@@ -156,8 +156,8 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 	// Popolate MountPoints from partitions
 	for i, partition := range retBlockInfo.Partitions {
 		var conv converter.DtoToDbomConverterImpl
-		var mount_data = &dbom.MountPointData{}
-		err = conv.BlockPartitionToMountPointData(*partition, mount_data)
+		var mount_data = &dbom.MountPointPath{}
+		err = conv.BlockPartitionToMountPointPath(*partition, mount_data)
 		if err != nil {
 			log.Printf("Error converting partition to mount point data: %v", err)
 			continue
@@ -178,7 +178,7 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 			log.Printf("Error saving mount point data: %v", err)
 			continue
 		}
-		conv.MountPointDataToDtoMountPointData(*mount_data, &retBlockInfo.Partitions[i].MountPointData)
+		conv.MountPointPathToMountPointData(*mount_data, &retBlockInfo.Partitions[i].MountPointData)
 	}
 
 	//pretty.Print(retBlockInfo)
@@ -251,8 +251,8 @@ func MountVolume(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var conv converter.DtoToDbomConverterImpl
-	var dbom_mount_data dbom.MountPointData
-	err = conv.DtoMountPointDataToMountPointData(mount_data, &dbom_mount_data)
+	var dbom_mount_data dbom.MountPointPath
+	err = conv.MountPointDataToMountPointPath(mount_data, &dbom_mount_data)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -352,7 +352,7 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 	force := r.URL.Query().Get("force")
 	lazy := r.URL.Query().Get("lazy")
 
-	var dbom_mount_data dbom.MountPointData
+	var dbom_mount_data dbom.MountPointPath
 	err = dbom_mount_data.FromID(uint(id))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

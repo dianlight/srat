@@ -69,7 +69,7 @@ func TestMountVolumeHandler(t *testing.T) {
 	volumes, err := GetVolumesData()
 	require.NoError(t, err)
 
-	var mockMountData dbom.MountPointData
+	var mockMountData dbom.MountPointPath
 
 	for _, d := range volumes.Partitions {
 		if strings.HasPrefix(d.Name, "loop") && d.Label == "_EXT4" {
@@ -108,7 +108,7 @@ func TestMountVolumeHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check the response body is what we expect.
-	var responseData dbom.MountPointData
+	var responseData dbom.MountPointPath
 	err = json.Unmarshal(rr.Body.Bytes(), &responseData)
 	require.NoError(t, err)
 

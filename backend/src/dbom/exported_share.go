@@ -21,7 +21,7 @@ type ExportedShare struct {
 	TimeMachine      bool
 	Usage            dto.HAMountUsage
 	MountPointDataID uint
-	MountPointData   MountPointData `gorm:"foreignKey:MountPointDataID;references:ID;"`
+	MountPointData   MountPointPath `gorm:"foreignKey:MountPointDataID;references:ID;"`
 	//Invalid        bool             `json:"invalid,omitempty"`
 }
 

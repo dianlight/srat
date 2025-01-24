@@ -12,8 +12,8 @@ import (
 
 func TestExportedSharesLoad(t *testing.T) {
 	// Create test data
-	share1 := ExportedShare{Name: "TestShare1", MountPointData: MountPointData{Path: "/test/path1"}}
-	share2 := ExportedShare{Name: "TestShare2", MountPointData: MountPointData{Path: "/test/path2"}}
+	share1 := ExportedShare{Name: "TestShare1", MountPointData: MountPointPath{Path: "/test/path1"}}
+	share2 := ExportedShare{Name: "TestShare2", MountPointData: MountPointPath{Path: "/test/path2"}}
 	db.Create(&share1)
 	db.Create(&share2)
 
@@ -91,8 +91,8 @@ func TestExportedSharesLoad(t *testing.T) {
 */
 func TestExportedSharesSave(t *testing.T) {
 	// Create test data
-	share1 := ExportedShare{Name: "TestShare11", MountPointData: MountPointData{Path: "/test/path12"}}
-	share2 := ExportedShare{Name: "TestShare21", MountPointData: MountPointData{Path: "/test/path22"}}
+	share1 := ExportedShare{Name: "TestShare11", MountPointData: MountPointPath{Path: "/test/path12"}}
+	share2 := ExportedShare{Name: "TestShare21", MountPointData: MountPointPath{Path: "/test/path22"}}
 
 	// Save the shares
 	err := share1.MountPointData.Save()
@@ -122,9 +122,9 @@ func TestExportedSharesSave(t *testing.T) {
 
 func TestExportedSharesSaveWithExistingMountpointData(t *testing.T) {
 	// Create test data
-	mountpoint1 := MountPointData{Path: "/test/path120"}
-	share1 := ExportedShare{Name: "TestShare110", MountPointData: MountPointData{Path: "/test/path120"}}
-	share2 := ExportedShare{Name: "TestShare210", MountPointData: MountPointData{Path: "/test/path220"}}
+	mountpoint1 := MountPointPath{Path: "/test/path120"}
+	share1 := ExportedShare{Name: "TestShare110", MountPointData: MountPointPath{Path: "/test/path120"}}
+	share2 := ExportedShare{Name: "TestShare210", MountPointData: MountPointPath{Path: "/test/path220"}}
 
 	// Save the shares
 	err := mountpoint1.Save()
@@ -156,8 +156,8 @@ func TestExportedSharesSaveWithExistingMountpointData(t *testing.T) {
 
 func TestExportedSharesUpdateExisting(t *testing.T) {
 	// Create initial test data
-	share1 := ExportedShare{Name: "TestShare3", MountPointData: MountPointData{Path: "/test/path15"}}
-	share2 := ExportedShare{Name: "TestShare4", MountPointData: MountPointData{Path: "/test/path25"}}
+	share1 := ExportedShare{Name: "TestShare3", MountPointData: MountPointPath{Path: "/test/path15"}}
+	share2 := ExportedShare{Name: "TestShare4", MountPointData: MountPointPath{Path: "/test/path25"}}
 	initialShares := ExportedShares{share1, share2}
 	err := initialShares.Save()
 	require.NoError(t, err)
@@ -205,7 +205,7 @@ func TestExportedSharesSaveWithInvalidData(t *testing.T) {
 }
 func TestExportedShareSaveUpdatesExisting(t *testing.T) {
 	// Create an initial ExportedShare
-	initialShare := ExportedShare{Name: "TestShare", MountPointData: MountPointData{Path: "/test/path"}}
+	initialShare := ExportedShare{Name: "TestShare", MountPointData: MountPointPath{Path: "/test/path"}}
 	err := db.Create(&initialShare).Error
 	require.NoError(t, err)
 
@@ -235,12 +235,12 @@ func TestExportedShareSaveUpdatesExisting(t *testing.T) {
 }
 func TestExportedShareSaveWithDuplicateName(t *testing.T) {
 	// Create an initial ExportedShare
-	initialShare := ExportedShare{Name: "TestShare", MountPointData: MountPointData{Path: "/test/path_12"}}
+	initialShare := ExportedShare{Name: "TestShare", MountPointData: MountPointPath{Path: "/test/path_12"}}
 	err := db.Create(&initialShare).Error
 	require.NoError(t, err)
 
 	// Attempt to create another ExportedShare with the same name
-	duplicateShare := ExportedShare{Name: "TestShare", MountPointData: MountPointData{Path: "/test/path2"}}
+	duplicateShare := ExportedShare{Name: "TestShare", MountPointData: MountPointPath{Path: "/test/path2"}}
 	err = duplicateShare.Save()
 
 	// Assert that an error was returned
@@ -265,7 +265,7 @@ func TestExportedShareSaveWithAssociations(t *testing.T) {
 	// Create an ExportedShare with associated users
 	share := ExportedShare{
 		Name:           "TestShareWithUsers",
-		MountPointData: MountPointData{Path: "/test/path_as"},
+		MountPointData: MountPointPath{Path: "/test/path_as"},
 		Users:          []SambaUser{user1, user2},
 	}
 
@@ -309,7 +309,7 @@ func TestExportedShareGetNonExistent(t *testing.T) {
 
 func TestExportedShareGetConcurrent(t *testing.T) {
 	// Create a test share
-	testShare := ExportedShare{Name: "ConcurrentTestShare", MountPointData: MountPointData{Path: "/test/path_cc"}}
+	testShare := ExportedShare{Name: "ConcurrentTestShare", MountPointData: MountPointPath{Path: "/test/path_cc"}}
 	err := db.Create(&testShare).Error
 	require.NoError(t, err)
 

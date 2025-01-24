@@ -26,7 +26,7 @@ type DtoToDbomConverter interface {
 	// goverter:ignore Users RoUsers MountPointData MountPointDataID
 	// -goverter:map MountPointData.DeviceId DeviceId
 	// goverter:useUnderlyingTypeMethods
-	SharedResourceToExportedShareNoUsersNoMountPointData(source dto.SharedResource, target *dbom.ExportedShare) error
+	SharedResourceToExportedShareNoUsersNoMountPointPath(source dto.SharedResource, target *dbom.ExportedShare) error
 
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
@@ -34,14 +34,14 @@ type DtoToDbomConverter interface {
 	// goverter:ignore DeviceId
 	// -goverter:map  DeviceId BlockDeviceId
 	// goverter:useUnderlyingTypeMethods
-	DtoMountPointDataToMountPointData(source dto.MountPointData, target *dbom.MountPointData) error
+	MountPointDataToMountPointPath(source dto.MountPointData, target *dbom.MountPointPath) error
 
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// -goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// -goverter:map   BlockDeviceId DeviceId
 	// goverter:useUnderlyingTypeMethods
-	MountPointDataToDtoMountPointData(source dbom.MountPointData, target *dto.MountPointData) error
+	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error
 
 	// goverter:update target
 	// goverter:update:ignoreZeroValueField:basic no
@@ -59,5 +59,5 @@ type DtoToDbomConverter interface {
 	// goverter:map MountPoint Path
 	// goverter:map Type FSType
 	// goverter:map PartitionFlags Flags
-	BlockPartitionToMountPointData(source dto.BlockPartition, target *dbom.MountPointData) error
+	BlockPartitionToMountPointPath(source dto.BlockPartition, target *dbom.MountPointPath) error
 }
