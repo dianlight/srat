@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thoas/go-funk"
 )
 
 func TestListVolumessHandler(t *testing.T) {
@@ -53,12 +54,14 @@ func TestListVolumessHandler(t *testing.T) {
 	}
 	//t.Log(pretty.Sprint(volumes))
 
-	for _, d := range volumes.Partitions {
-		if d.Label == "testvolume" {
-			return
-		}
-	}
-	t.Error("Test failed: testvolume not found in volumes")
+	assert.NotNil(t, funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
+		return d.Label == "testvolume"
+	}))
+	assert.NotNil(t, funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
+		return d.Label == "_EXT4"
+	}), "Expected _EXT4 volume not found %+v", funk.Map(volumes.Partitions, func(d *dto.BlockPartition) string {
+		return d.Label + "[" + d.Name + "]"
+	}))
 
 }
 
