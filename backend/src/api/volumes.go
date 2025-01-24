@@ -333,9 +333,9 @@ func notifyVolumeClient(volumes *dto.BlockInfo) {
 //	@Summary		Umount the selected volume
 //	@Description	Umount the selected volume
 //	@Tags			volume
-//	@Param			id			path		uint				true	"id of the mountpoint to be mounted"
-//	@Param			force		query	bool	true	"Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted."
-//	@Param			lazy		query	bool	true	"Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted."
+//	@Param			id		path	uint	true	"id of the mountpoint to be mounted"
+//	@Param			force	query	bool	true	"Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted."
+//	@Param			lazy	query	bool	true	"Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted."
 //	@Success		204
 //	@Failure		404	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse

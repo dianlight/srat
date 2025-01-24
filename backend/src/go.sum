@@ -73,8 +73,6 @@ github.com/hugelgupf/go-shlex v0.0.0-20200702092117-c80c9d0918fa h1:s3KPo0nThtvj
 github.com/hugelgupf/go-shlex v0.0.0-20200702092117-c80c9d0918fa/go.mod h1:I1uW6ymzwsy5TlQgD1bFAghdMgBYqH1qtCeHoZgHMqs=
 github.com/hugelgupf/vmtest v0.0.0-20240216064925-0561770280a1 h1:jWoR2Yqg8tzM0v6LAiP7i1bikZJu3gxpgvu3g1Lw+a0=
 github.com/hugelgupf/vmtest v0.0.0-20240216064925-0561770280a1/go.mod h1:B63hDJMhTupLWCHwopAyEo7wRFowx9kOc8m8j1sfOqE=
-github.com/icza/gog v0.0.0-20241010132004-5da24f18211d h1:ZA56WhTKshNVDTPwit0Opb4FXRQUd5kcABgjAOa68ro=
-github.com/icza/gog v0.0.0-20241010132004-5da24f18211d/go.mod h1:xsNydfFX2ys7eKRjtg6cArkYGQ3GPKZn4GGwQ0cUk5E=
 github.com/itchyny/gojq v0.12.17 h1:8av8eGduDb5+rvEdaOO+zQUjA04MS0m3Ps8HiD+fceg=
 github.com/itchyny/gojq v0.12.17/go.mod h1:WBrEMkgAfAGO1LUcGOckBl5O726KPp+OlkKug0I/FEY=
 github.com/itchyny/timefmt-go v0.1.6 h1:ia3s54iciXDdzWzwaVKXZPbiXzxxnv1SPGFfM/myJ5Q=

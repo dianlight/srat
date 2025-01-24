@@ -28,10 +28,10 @@ import (
 
 var ctx = context.Background()
 var healthData = &dto.HealthPing{
-	Alive:     true,
-	ReadOnly:  true,
-	Samba:     -1,
-	LastError: "",
+	Alive:              true,
+	ReadOnly:           true,
+	SambaProcessStatus: dto.SambaProcessStatus{Pid: -1},
+	LastError:          "",
 }
 
 var lastReleaseData = &dto.ReleaseAsset{
@@ -134,9 +134,10 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 		}
 		sambaProcess, err := GetSambaProcess()
 		if err == nil && sambaProcess != nil {
-			healthData.Samba = int32(sambaProcess.Pid)
+			var conv converter.ProcessToDtoImpl
+			conv.ProcessToSambaProcessStatus(sambaProcess, &healthData.SambaProcessStatus)
 		} else {
-			healthData.Samba = -1
+			healthData.SambaProcessStatus.Pid = -1
 		}
 		time.Sleep(5 * time.Second)
 	}

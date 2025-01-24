@@ -77,7 +77,6 @@ require (
 	github.com/google/go-github/v68 v68.0.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/websocket v1.5.3
-	github.com/icza/gog v0.0.0-20241010132004-5da24f18211d
 	github.com/itchyny/gojq v0.12.17
 	github.com/jaypipes/ghw v0.13.0
 	github.com/josharian/intern v1.0.0 // indirect

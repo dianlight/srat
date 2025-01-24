@@ -48,7 +48,7 @@ definitions:
       mount_point:
         description: MountPoint is the path where this partition is mounted.
         type: string
-      mountPointData:
+      mount_point_data:
         allOf:
         - $ref: '#/definitions/dto.MountPointData'
         description: Relative MountPointData
@@ -122,8 +122,8 @@ definitions:
         type: string
       read_only:
         type: boolean
-      samba_pid:
-        type: integer
+      samba_process_status:
+        $ref: '#/definitions/dto.SambaProcessStatus'
     type: object
   dto.MounDataFlag:
     enum:
@@ -1108,33 +1108,6 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Write the samba config and send signal ro restart
-      tags:
-      - samba
-  /samba/status:
-    get:
-      consumes:
-      - application/json
-      description: Get the current samba process status
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SambaProcessStatus'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get the current samba process status
       tags:
       - samba
   /share:

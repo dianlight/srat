@@ -32,5 +32,5 @@ type BlockPartition struct {
 	// DeviceId is the ID of the block device this partition is on.
 	DeviceId *uint64 `json:"device_id"`
 	// Relative MountPointData
-	MountPointData MountPointData
+	MountPointData MountPointData `json:"mount_point_data"`
 }

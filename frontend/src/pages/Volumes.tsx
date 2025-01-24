@@ -1,11 +1,11 @@
-import { Fragment, useContext, useEffect, useState } from "react";
+import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { apiContext, ModeContext, wsContext as ws } from "../Contexts";
 import { DtoEventType, DtoMounDataFlag, type DtoBlockInfo, type DtoBlockPartition, type DtoMountPointData } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
 import List from "@mui/material/List";
-import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid2, Autocomplete } from "@mui/material";
+import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid2, Autocomplete, TextField, Input } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 import EjectIcon from '@mui/icons-material/Eject';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -15,7 +15,7 @@ import { filesize } from "filesize";
 import { faHardDrive, faPlug, faPlugCircleCheck, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
 import { Api } from "@mui/icons-material";
-import { AutocompleteElement, PasswordElement, PasswordRepeatElement, TextFieldElement, useForm } from "react-hook-form-mui";
+import { AutocompleteElement, Controller, PasswordElement, PasswordRepeatElement, TextFieldElement, useForm } from "react-hook-form-mui";
 import useSWR from "swr";
 import { toast } from "react-toastify";
 
@@ -29,6 +29,7 @@ export function Volumes() {
     const [status, setStatus] = useState<DtoBlockInfo>({});
     const [selected, setSelected] = useState<DtoBlockPartition | undefined>(undefined);
     const confirm = useConfirm();
+
 
 
     useEffect(() => {
@@ -48,6 +49,7 @@ export function Volumes() {
     };
 
     function onSubmitMountVolume(data?: DtoMountPointData) {
+        console.log("Mount", data)
         if (!data || !data.id) return
         console.log("Mount", data)
         apiContext.volume.mountCreate(data.id, {}).then((res) => {
@@ -67,8 +69,8 @@ export function Volumes() {
             description: `Do you really want umount ${force ? "forcefull" : ""} the Volume ${data.name}?`
         })
             .then(() => {
-                if (!data.mountPointData?.id) return
-                apiContext.volume.mountDelete(data.mountPointData?.id, {
+                if (!data.mount_point_data?.id) return
+                apiContext.volume.mountDelete(data.mount_point_data?.id, {
                     force,
                     lazy: !force,
                 }).then((res) => {
@@ -155,20 +157,18 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
     const { control, handleSubmit, watch, formState: { errors } } = useForm<DtoMountPointData>(
         {
             values: {
-                //id: props.objectToEdit?.id,
+                id: props.objectToEdit?.mount_point_data?.id,
                 fstype: props.objectToEdit?.type,
                 flags: props.objectToEdit?.partition_flags,
-                //data: props.objectToEdit?.mount_data,
-            }
+            },
         },
     );
     const filesystems = useSWR<string[]>('/filesystems', () => apiContext.filesystems.filesystemsList().then(res => res.data));
 
     function handleCloseSubmit(data?: DtoMountPointData) {
+        console.log("Close", data)
         props.onClose(data)
     }
-
-    //console.log("MountpointData", props.objectToEdit)
 
     return (
         <Fragment>
@@ -177,7 +177,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                 onClose={() => handleCloseSubmit()}
             >
                 <DialogTitle>
-                    Mount Disk {props.objectToEdit?.label} ({props.objectToEdit?.name})
+                    {props.objectToEdit?.mount_point_data?.id} Mount Disk {props.objectToEdit?.label} ({props.objectToEdit?.name})
                 </DialogTitle>
                 <DialogContent>
                     <Stack spacing={2}>
@@ -206,7 +206,6 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                                     <TextFieldElement name="data" label="Additional Mount Data" control={control} sx={{ display: "flex" }} />
                                 </Grid2>
                                 */}
-
                             </Grid2>
                         </form>
                     </Stack>

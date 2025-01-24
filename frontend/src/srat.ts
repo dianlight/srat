@@ -39,14 +39,14 @@ export interface DtoBlockPartition {
    * is derived from the `ID_PART_ENTRY_NAME` udev entry.
    */
   label?: string;
-  /** Relative MountPointData */
-  mountPointData?: DtoMountPointData;
   /** MountData contains additional data associated with the partition. */
   mount_data?: string;
   /** MountFlags contains the mount flags for the partition. */
   mount_flags?: DtoMounDataFlag[];
   /** MountPoint is the path where this partition is mounted. */
   mount_point?: string;
+  /** Relative MountPointData */
+  mount_point_data?: DtoMountPointData;
   /** Name is the system name given to the partition, e.g. "sda1". */
   name?: string;
   /** PartiionFlags contains the mount flags for the partition. */
@@ -93,7 +93,7 @@ export interface DtoHealthPing {
   alive?: boolean;
   last_error?: string;
   read_only?: boolean;
-  samba_pid?: number;
+  samba_process_status?: DtoSambaProcessStatus;
 }
 
 export enum DtoMounDataFlag {
@@ -846,23 +846,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/samba/apply`,
         method: "PUT",
         type: ContentType.Json,
-        ...params,
-      }),
-
-    /**
-     * @description Get the current samba process status
-     *
-     * @tags samba
-     * @name StatusList
-     * @summary Get the current samba process status
-     * @request GET:/samba/status
-     */
-    statusList: (params: RequestParams = {}) =>
-      this.request<DtoSambaProcessStatus, ApiErrorResponse>({
-        path: `/samba/status`,
-        method: "GET",
-        type: ContentType.Json,
-        format: "json",
         ...params,
       }),
   };

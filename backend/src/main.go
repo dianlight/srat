@@ -263,7 +263,7 @@ func prog(state overseer.State) {
 	// Samba
 	globalRouter.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/samba/apply", api.ApplySamba).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/samba/status", api.GetSambaProcessStatus).Methods(http.MethodGet)
+	//globalRouter.HandleFunc("/samba/status", api.GetSambaProcessStatus).Methods(http.MethodGet)
 
 	// Global
 	globalRouter.HandleFunc("/global", api.GetSettings).Methods(http.MethodGet)

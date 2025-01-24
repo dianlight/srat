@@ -80,28 +80,6 @@ func TestCreateConfigStream(t *testing.T) {
 		}
 
 	}
-
-	/*
-
-		resultValue := strings.Split(string(*stream), "\n")
-		for i, line := range strings.Split(string(fsbyte), "\n") {
-			if strings.HasPrefix(strings.TrimSpace(line), "# DEBUG:") && strings.HasPrefix(strings.TrimSpace(resultValue[i]), "# DEBUG:") {
-				continue
-			}
-			low := i - 5
-			if low < 5 {
-				low = 5
-			}
-			hight := low + 10
-			if hight > len(resultValue) {
-				hight = len(resultValue)
-			}
-
-			require.Greater(t, len(resultValue), i, "Premature End of file reached")
-			require.EqualValues(t, strings.TrimSpace(line), strings.TrimSpace(resultValue[i]), "On Line:%d\n%d:\n%s\n%d:", i, low, strings.Join(resultValue[low:hight], "\n"), hight)
-		}
-	*/
-	// assert.EqualValues(t, strings.Split(string(fsbyte), "\n"), strings.Split(string(*stream), "\n"))
 }
 func TestApplySambaHandler(t *testing.T) {
 	t.Skip("Not yed necessary for now, we need to mock the smbd process and create a test config file")
@@ -138,6 +116,7 @@ func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) boo
 
 // check migrate config don't duplicate share
 
+/*
 func TestGetSambaProcessStatus(t *testing.T) {
 	// Create a request to pass to our handler
 	req, err := http.NewRequestWithContext(testContext, "GET", "/samba/status", nil)
@@ -152,6 +131,7 @@ func TestGetSambaProcessStatus(t *testing.T) {
 	// Check the status code is what we expect.
 	assert.Contains(t, []int{http.StatusOK, http.StatusNotFound}, rr.Code, "Expected status code 200 or 404, got %d with Body %s", rr.Code, rr.Body.String())
 }
+*/
 
 func TestGetSambaConfig(t *testing.T) {
 	// Create a request to pass to our handler

@@ -7,12 +7,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"time"
 
 	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
 	tempiogo "github.com/dianlight/srat/tempio"
-	"github.com/icza/gog"
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/ztrue/tracerr"
 )
@@ -213,6 +211,7 @@ func GetSambaConfig(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/samba/status [get]
+/*
 func GetSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
 
 	var sambaP dto.SambaProcessStatus
@@ -244,3 +243,4 @@ func GetSambaProcessStatus(w http.ResponseWriter, _ *http.Request) {
 
 	HttpJSONReponse(w, sambaP, nil)
 }
+*/
