@@ -25,6 +25,7 @@ import (
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/u-root/u-root/pkg/mount"
 	ublock "github.com/u-root/u-root/pkg/mount/block"
+	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 )
 
@@ -244,27 +245,27 @@ func MountVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	volumes, err := GetVolumesData()
+	var dbom_mount_data dbom.MountPointPath
+	err = dbom_mount_data.FromID(uint(id))
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			HttpJSONReponse(w, ErrorResponse{Code: 404, Error: "MountPoint not found", Body: nil}, &Options{
+				Code: http.StatusNotFound,
+			})
+			return
+		}
 		HttpJSONReponse(w, err, nil)
 		return
 	}
 
 	var conv converter.DtoToDbomConverterImpl
-	var dbom_mount_data dbom.MountPointPath
 	err = conv.MountPointDataToMountPointPath(mount_data, &dbom_mount_data)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	// Save/Update MountPointData
-	err = dbom_mount_data.Save()
-	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
-	}
 
-	flags, err := mount_data.Flags.Value()
+	flags, err := dbom_mount_data.Flags.Value()
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -272,35 +273,58 @@ func MountVolume(w http.ResponseWriter, r *http.Request) {
 
 	// Check if mount_data.Path is already mounted
 
+	volumes, err := GetVolumesData()
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+
 	var c = 0
 	for _, d := range volumes.Partitions {
-		if d.MountPoint != "" && strings.HasPrefix(mount_data.Path, d.MountPoint) {
+		if d.MountPoint != "" && strings.HasPrefix(dbom_mount_data.Path, d.MountPoint) {
 			c++
 		}
 	}
 	if c > 0 {
-		mount_data.Path += fmt.Sprintf("_(%d)", c)
-		err = dbom_mount_data.Save()
+		dbom_mount_data.Path += fmt.Sprintf("_(%d)", c)
+	}
+
+	// Save/Update MountPointData
+	err = dbom_mount_data.Save()
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+
+	/* 	err = conv.MountPointPathToMountPointData(dbom_mount_data, &mount_data)
+	   	if err != nil {
+	   		HttpJSONReponse(w, err, nil)
+	   		return
+	   	} */
+
+	var mp *mount.MountPoint
+	if dbom_mount_data.FSType == "" {
+		mp, err = mount.TryMount(dbom_mount_data.Source, dbom_mount_data.Path, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
+	} else {
+		mp, err = mount.Mount(dbom_mount_data.Source, dbom_mount_data.Path, dbom_mount_data.FSType, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
+	}
+	if err != nil {
+		log.Printf("(Try)Mount(%s) = %s", dbom_mount_data.Source, tracerr.SprintSourceColor(err))
+		HttpJSONReponse(w, err, nil)
+		return
+	} else {
+		var convm converter.MountToDbomImpl
+		err = convm.MountToMountPointPath(mp, &dbom_mount_data)
 		if err != nil {
 			HttpJSONReponse(w, err, nil)
 			return
 		}
-	}
-
-	var mp *mount.MountPoint
-	if mount_data.FSType == "" {
-		mp, err = mount.TryMount(mount_data.Source, mount_data.Path, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
-	} else {
-		mp, err = mount.Mount(mount_data.Source, mount_data.Path, mount_data.FSType, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(mount_data.Path, 0o666) })
-	}
-	if err != nil {
-		log.Printf("(Try)Mount(%s) = %v, want nil", mount_data.Source, err)
-		HttpJSONReponse(w, err, nil)
-		return
-	} else {
 		mounted_data := dto.MountPointData{}
-		copier.Copy(&mounted_data, mp)
-
+		err = conv.MountPointPathToMountPointData(dbom_mount_data, &mounted_data)
+		if err != nil {
+			HttpJSONReponse(w, err, nil)
+			return
+		}
 		var ndata, _ = GetVolumesData()
 		notifyVolumeClient(ndata)
 		context_state := (&dto.ContextState{}).FromContext(r.Context())
