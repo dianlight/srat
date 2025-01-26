@@ -83,9 +83,7 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 					return fmt.Errorf("Type mismatch for field: %s %T->%T", prop.Key, prop.Value, newvalue.Interface())
 				}
 			}
-		} /*else {
-			return fmt.Errorf("Field not found: %s", prop.Key)
-		}*/
+		}
 	}
 	return nil
 }

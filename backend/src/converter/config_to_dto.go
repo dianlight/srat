@@ -70,12 +70,3 @@ func StringToDtoUser(username string, users []dto.User) (dto.User, error) {
 func DtoUserToString(user dto.User) string {
 	return *user.Username
 }
-
-/*
-// goverter:context conv
-func SettingsToOptions(source dto.Settings, conv ConfigToDtoConverter) (config.Options, error) {
-	var target config.Options
-	err := conv._SettingsToOptions(source, &target)
-	return target, err
-}
-*/

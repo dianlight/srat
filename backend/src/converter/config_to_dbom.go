@@ -12,7 +12,6 @@ import (
 // goverter:extend SambaUserToString
 // goverter:update:ignoreZeroValueField
 // goverter:useZeroValueOnPointerInconsistency
-// -goverter:useUnderlyingTypeMethods
 // goverter:default:update
 // goverter:wrapErrorsUsing github.com/dianlight/srat/converter/patherr
 type ConfigToDbomConverter interface {
@@ -43,8 +42,6 @@ type ConfigToDbomConverter interface {
 	SambaUserToUser(source dbom.SambaUser, target *config.User) error
 
 	// goverter:update target
-	// -goverter:map Options.Username Username
-	// -goverter:map Options.Password Password
 	// goverter:ignore IsAdmin CreatedAt UpdatedAt DeletedAt
 	ConfigToSambaUser(source config.Config, target *dbom.SambaUser) error
 }

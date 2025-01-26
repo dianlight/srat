@@ -112,14 +112,6 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 	return nil
 }
 
-/*
-func (u *MountPointData) AfterFind(tx *gorm.DB) (err error) {
-	// Validate teh mount data flags
-
-	return
-  }
-*/
-
 // All retrieves all MountPointData entries from the database.
 //
 // This method uses the global 'db' variable, which should be a properly

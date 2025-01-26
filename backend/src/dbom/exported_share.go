@@ -22,7 +22,6 @@ type ExportedShare struct {
 	Usage            dto.HAMountUsage
 	MountPointDataID uint
 	MountPointData   MountPointPath `gorm:"foreignKey:MountPointDataID;references:ID;"`
-	//Invalid        bool             `json:"invalid,omitempty"`
 }
 
 type ExportedShares []ExportedShare
@@ -56,12 +55,6 @@ func (share *ExportedShare) FromName(name string) error {
 func (share *ExportedShare) Get() error {
 	return db.Preload(clause.Associations).First(share).Error
 }
-
-/*
-func (share *ExportedShare) FromNameOrPath(name string, path string) error {
-	return db.Preload(clause.Associations).Limit(1).Find(share, db.Where("name =?", name).Or(db.Where("path = ?", path))).Error
-}
-*/
 
 func (u *ExportedShare) BeforeSave(tx *gorm.DB) error {
 	if u.Name == "" {

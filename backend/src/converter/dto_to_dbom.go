@@ -24,7 +24,6 @@ type DtoToDbomConverter interface {
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignore Users RoUsers MountPointData MountPointDataID
-	// -goverter:map MountPointData.DeviceId DeviceId
 	// goverter:useUnderlyingTypeMethods
 	SharedResourceToExportedShareNoUsersNoMountPointPath(source dto.SharedResource, target *dbom.ExportedShare) error
 
@@ -32,14 +31,11 @@ type DtoToDbomConverter interface {
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignore DeviceId
-	// -goverter:map  DeviceId BlockDeviceId
 	// goverter:useUnderlyingTypeMethods
 	MountPointDataToMountPointPath(source dto.MountPointData, target *dbom.MountPointPath) error
 
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// -goverter:ignore CreatedAt UpdatedAt DeletedAt
-	// -goverter:map   BlockDeviceId DeviceId
 	// goverter:useUnderlyingTypeMethods
 	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error
 
