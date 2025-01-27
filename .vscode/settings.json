@@ -9,5 +9,6 @@
       "docker",
       "sensors"
     ],
-    "makefile.configureOnOpen": false
+    "makefile.configureOnOpen": false,
+    "better-comments.highlightPlainText": true
 }
