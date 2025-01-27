@@ -48,7 +48,9 @@
 				"GitHub.copilot",
 				"jgclark.vscode-todo-highlight",
 				"Gruntfuggly.todo-tree",
-				"qwtel.sqlite-viewer"
+				"qwtel.sqlite-viewer",
+				"Continue.continue",
+				"sudsarkar13.codefast"
 			]		
 		}
 	},
