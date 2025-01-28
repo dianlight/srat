@@ -236,6 +236,11 @@ export function Shares() {
                                                 Mount Point: {props.mount_point_data.path}
                                             </Box>
                                         )}
+                                        {props.mount_point_data?.warnings && (
+                                            <Box component="span" sx={{ display: 'block', color: 'orange' }}>
+                                                Warning: {props.mount_point_data.warnings}
+                                            </Box>
+                                        )}
                                         <Box component="div" sx={{ mt: 1 }}>
                                             {props.users && props.users.length > 0 && (
                                                 <Box component="span" sx={{ display: 'block' }}>
