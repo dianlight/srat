@@ -1,6 +1,8 @@
 import { createContext } from 'react';
 import { Api, type DtoDataDirtyTracker, type DtoHealthPing } from './srat';
 import { WSRouter } from './WSRouter';
+import { useEventSource, useEventSourceListener, type EventSourceStatus } from "@react-nano/use-event-source";
+
 
 let APIURL = process.env.APIURL;
 if (process.env.APIURL === "dynamic") {
@@ -11,6 +13,7 @@ if (process.env.APIURL === "dynamic") {
 
 export const apiContext = new Api({
     baseURL: APIURL
+
 });
 const wsUrl = new URL(APIURL || "")
 wsUrl.protocol = window.location.protocol === 'https:' ? "wss:" : "ws:"
@@ -23,6 +26,8 @@ console.log("API URL", APIURL)
 console.log("WS URL", wsUrl.href)
 
 export const ModeContext = createContext<DtoHealthPing>({});
+
+export const SSEContext = createContext<[EventSource | null, EventSourceStatus]>([null, "init"]);
 
 // Dirty data  state context
 export type DirtyData = {

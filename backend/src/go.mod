@@ -5,6 +5,7 @@ go 1.23.3
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/google/go-cmp v0.6.0
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jinzhu/copier v0.3.2
 	github.com/jpillora/overseer v1.1.6
@@ -28,7 +29,6 @@ require (
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/jaypipes/pcidb v1.0.1 // indirect

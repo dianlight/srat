@@ -118,20 +118,20 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 						break
 					}
 					//log.Printf("Latest %s version is %s (Asset %s)", data.Config.UpdateChannel, *lastReleaseData.LastRelease.TagName, lastReleaseData.ArchAsset.GetName())
-					notifyUpdate()
+					notifyUpdate(ctx)
 				} else {
 					log.Println("No Releases found")
 					lastReleaseData = &dto.ReleaseAsset{
 						UpdateStatus: -1,
 					}
-					notifyUpdate()
+					notifyUpdate(ctx)
 				}
 			})
 		} else {
 			lastReleaseData = &dto.ReleaseAsset{
 				UpdateStatus: -1,
 			}
-			notifyUpdate()
+			notifyUpdate(ctx)
 		}
 		sambaProcess, err := GetSambaProcess()
 		if err == nil && sambaProcess != nil {
@@ -225,7 +225,13 @@ func DirtyWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c
 // the queue.
 //
 // This function does not take any parameters and does not return any values.
-func notifyUpdate() {
+func notifyUpdate(ctx context.Context) {
+	var sse dto.EventMessageEnvelope
+	sse.Event = dto.EventHeartbeat
+	sse.Data = lastReleaseData
+	state := StateFromContext(ctx)
+	state.SSEBroker.BroadcastMessage(sse)
+
 	updateQueueMutex.RLock()
 	for _, v := range updateQueue {
 		v <- lastReleaseData
@@ -334,7 +340,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 			healthData.LastError = err.Error()
 		}
 		lastReleaseData.UpdateStatus = -1
-		notifyUpdate()
+		notifyUpdate(r.Context())
 		fmt.Printf("Update process completed %d vs %d\n", by, *lastReleaseData.ArchAsset.Size)
 		tmpFile.Close()
 		rc.Close()
@@ -348,7 +354,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			lastReleaseData.UpdateStatus = int8((int(pw.N()) / (*lastReleaseData.ArchAsset.Size)) * 100)
 			fmt.Printf("Copied %d bytes progress %d%%\n", pw.N(), lastReleaseData.UpdateStatus)
-			notifyUpdate()
+			notifyUpdate(r.Context())
 		}
 	}()
 

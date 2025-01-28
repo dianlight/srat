@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { apiContext as api, ModeContext, wsContext as ws } from "../Contexts";
+import { apiContext as api, ModeContext, SSEContext, wsContext as ws } from "../Contexts";
 import { DtoEventType, type Api, type DtoSharedResource, type DtoUser } from "../srat";
 import { set, useForm } from "react-hook-form";
 import useSWR from "swr";
@@ -35,6 +35,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import GroupIcon from '@mui/icons-material/Group';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { useEventSourceListener } from "@react-nano/use-event-source";
 
 interface ShareEditProps extends DtoSharedResource {
     org_name: string,
@@ -43,6 +44,7 @@ interface ShareEditProps extends DtoSharedResource {
 
 export function Shares() {
     const mode = useContext(ModeContext);
+    const sse = useContext(SSEContext);
     const [status, setStatus] = useState<DtoSharedResource[]>([]);
     const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
@@ -62,6 +64,17 @@ export function Shares() {
             ws.unsubscribe(chr);
         };
     }, [])
+
+    useEventSourceListener(
+        sse[0],
+        [DtoEventType.EventShare],
+        (evt) => {
+            console.log("SSE EventShare", evt);
+            setStatus(JSON.parse(evt.data))
+        },
+        [setStatus],
+    );
+
 
     function onSubmitDeleteShare(data?: string) {
         console.log("Delete", data)

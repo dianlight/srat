@@ -10,7 +10,7 @@ package dto
 
 type EventMessageEnvelope struct {
 	Event EventType `json:"event"`
-	Uid   string    `json:"uid"`
+	Id    string    `json:"id"`
 	Data  any       `json:"data"`
 	//Action WebSocketMessageEnvelopeAction `json:"action,omitempty"`
 }

@@ -1,11 +1,12 @@
 import { NavBar } from "./components/NavBar";
 import { Footer } from "./components/Footer";
 import { useContext, useEffect, useRef, useState } from "react";
-import { DirtyDataContext, ModeContext, wsContext as ws } from "./Contexts";
+import { apiContext, DirtyDataContext, ModeContext, SSEContext, wsContext as ws } from "./Contexts";
 import { DtoEventType, type DtoDataDirtyTracker, type DtoHealthPing } from "./srat";
 import { useErrorBoundary } from "react-use-error-boundary";
 import Container from "@mui/material/Container";
 import { Backdrop, CircularProgress, Typography } from "@mui/material";
+import { useEventSource } from "@react-nano/use-event-source";
 
 
 export function App() {
@@ -16,6 +17,7 @@ export function App() {
         (error, errorInfo) => console.error(error, errorInfo)
     );
     const mainArea = useRef<HTMLDivElement>(null);
+    const [sseEventSource, sseStatus] = useEventSource(apiContext.instance.getUri() + "/sse", true)
 
     var timeoutpid: ReturnType<typeof setTimeout>
 
@@ -69,17 +71,20 @@ export function App() {
     return (
         <ModeContext.Provider value={status}>
             <DirtyDataContext.Provider value={dirtyData}>
-                <Container maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
-                    <NavBar healthData={status} error={errorInfo} bodyRef={mainArea} />
-                    <div ref={mainArea} className="fullBody"></div>
-                    <Footer healthData={status} />
-                </Container>
-                <Backdrop
-                    sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
-                    open={status.alive === false}
-                >
-                    <CircularProgress color="inherit" />
-                </Backdrop>
+                <SSEContext.Provider value={[sseEventSource, sseStatus]}>
+
+                    <Container maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
+                        <NavBar healthData={status} error={errorInfo} bodyRef={mainArea} />
+                        <div ref={mainArea} className="fullBody"></div>
+                        <Footer healthData={status} />
+                    </Container>
+                    <Backdrop
+                        sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
+                        open={status.alive === false}
+                    >
+                        <CircularProgress color="inherit" />
+                    </Backdrop>
+                </SSEContext.Provider>
             </DirtyDataContext.Provider>
         </ModeContext.Provider>)
 }

@@ -214,7 +214,7 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	context_state.DataDirtyTracker.Shares = true
-	notifyClient()
+	notifyClient(r.Context())
 	HttpJSONReponse(w, share, &Options{
 		Code: http.StatusCreated,
 	})
@@ -224,7 +224,7 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 // It iterates through the sharesQueue, sending the Config.Shares to each client's channel.
 // This function is used to broadcast updates to all clients when the shares configuration changes.
 // The function uses a read lock to ensure thread-safe access to the sharesQueue.
-func notifyClient() {
+func notifyClient(ctx context.Context) {
 	var shares []dto.SharedResource
 	var dbshares = dbom.ExportedShares{}
 	err := dbshares.Load()
@@ -242,16 +242,18 @@ func notifyClient() {
 		}
 		shares = append(shares, share)
 	}
-	//	err = mapper.Map(context.Background(), &shares, dbshares)
-	//	if err != nil {
-	//		log.Fatal(err)
-	//		return
-	//	}
-	sharesQueueMutex.RLock()
-	for _, v := range sharesQueue {
-		v <- &shares
-	}
-	sharesQueueMutex.RUnlock()
+
+	var event dto.EventMessageEnvelope
+	event.Event = dto.EventShare
+	event.Data = shares
+	StateFromContext(ctx).SSEBroker.BroadcastMessage(event)
+	/*
+		sharesQueueMutex.RLock()
+		for _, v := range sharesQueue {
+			v <- &shares
+		}
+		sharesQueueMutex.RUnlock()
+	*/
 }
 
 // UpdateShare godoc
@@ -307,7 +309,7 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 	//	context_state := (&dto.Status{}).FromContext(r.Context())
 	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Shares = true
-	notifyClient()
+	notifyClient(r.Context())
 	HttpJSONReponse(w, share, nil)
 }
 
@@ -356,7 +358,7 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 	//context_state := (&dto.Status{}).FromContext(r.Context())
 	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Shares = true
-	notifyClient()
+	notifyClient(r.Context())
 	HttpJSONReponse(w, nil, &Options{
 		Code: http.StatusNoContent,
 	})

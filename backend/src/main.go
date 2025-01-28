@@ -304,7 +304,8 @@ func prog(state overseer.State) {
 
 	handler := cors.New(
 		cors.Options{
-			AllowedOrigins:   []string{"*"},
+			//AllowedOrigins:   []string{"*"},
+			AllowOriginFunc:  func(origin string) bool { return true },
 			AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
 			AllowedHeaders:   []string{"*"},
 			AllowCredentials: true,

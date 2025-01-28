@@ -7,29 +7,30 @@ import (
 	"net/http"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/google/uuid"
 )
 
 type Broker struct {
 	// Events are pushed to this channel by the main events-gathering routine
-	Notifier chan []byte
+	Notifier chan dto.EventMessageEnvelope
 
 	// New client connections are pushed to this channel
-	newClients chan chan []byte
+	newClients chan chan dto.EventMessageEnvelope
 
 	// Closed client connections are pushed to this channel
-	closingClients chan chan []byte
+	closingClients chan chan dto.EventMessageEnvelope
 
 	// Client connections registry
-	clients map[chan []byte]bool
+	clients map[chan dto.EventMessageEnvelope]bool
 }
 
 func NewSSEBroker() (broker *Broker) {
 	// Instantiate a broker
 	broker = &Broker{
-		Notifier:       make(chan []byte, 1),
-		newClients:     make(chan chan []byte),
-		closingClients: make(chan chan []byte),
-		clients:        make(map[chan []byte]bool),
+		Notifier:       make(chan dto.EventMessageEnvelope, 1),
+		newClients:     make(chan chan dto.EventMessageEnvelope),
+		closingClients: make(chan chan dto.EventMessageEnvelope),
+		clients:        make(map[chan dto.EventMessageEnvelope]bool),
 	}
 
 	// Set it running - listening and broadcasting events
@@ -47,6 +48,7 @@ func (broker *Broker) listen() {
 			// Register their message channel
 			broker.clients[s] = true
 			log.Printf("Client added. %d registered clients", len(broker.clients))
+			broker.BroadcastMessage(dto.EventMessageEnvelope{Event: dto.EventHello})
 		case s := <-broker.closingClients:
 
 			// A client has dettached and we want to
@@ -87,7 +89,7 @@ func (broker *Broker) Stream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Each connection registers its own message channel with the Broker's connections registry
-	messageChan := make(chan []byte)
+	messageChan := make(chan dto.EventMessageEnvelope)
 
 	// Signal the broker that we have a new connection
 	broker.newClients <- messageChan
@@ -101,7 +103,7 @@ func (broker *Broker) Stream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	//w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	for {
 		select {
@@ -114,33 +116,25 @@ func (broker *Broker) Stream(w http.ResponseWriter, r *http.Request) {
 		// Listen for incoming messages from messageChan
 		case msg := <-messageChan:
 			// Write to the ResponseWriter
+			j, err := json.Marshal(msg.Data)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			// Server Sent Events compatible
-			fmt.Fprintf(w, "data: %s\n\n", msg)
+			fmt.Fprintf(w, "event: %s\nid: %s\nretry: 30\ndata: %s\n\n", msg.Event, msg.Id, []byte(j))
 			// Flush the data immediatly instead of buffering it for later.
 			flusher.Flush()
 		}
 	}
 }
 
-func (broker *Broker) BroadcastMessage(w http.ResponseWriter, r *http.Request) {
-	// Parse the request body
-	var msg dto.EventMessageEnvelope
-	err := json.NewDecoder(r.Body).Decode(&msg)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+func (broker *Broker) BroadcastMessage(msg dto.EventMessageEnvelope) {
+	if msg.Id == "" {
+		msg.Id = uuid.New().String()
 	}
-
-	// Send the message to the broker via Notifier channel
-	j, err := json.Marshal(msg)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	broker.Notifier <- []byte(j)
-
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Message sent"))
+	broker.Notifier <- msg
+	log.Printf("Broadcasted message: %+v\n", msg)
 }
 
 /*

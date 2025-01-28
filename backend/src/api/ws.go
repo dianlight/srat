@@ -68,8 +68,8 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 			switch message.Event {
 			case dto.EventHeartbeat:
 				go HealthCheckWsHandler(ctx, message, outchan)
-			case dto.EventShare:
-				go SharesWsHandler(ctx, message, outchan)
+				//			case dto.EventShare:
+				//				go SharesWsHandler(ctx, message, outchan)
 			case dto.EventVolumes:
 				go VolumesWsHandler(ctx, message, outchan)
 			case dto.EventUpdate:
