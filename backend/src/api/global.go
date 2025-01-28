@@ -51,7 +51,7 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	context_state := StateFromContext(r.Context())
 
 	//err = mapper.Map(context.Background(), &config, dbconfig)
 	err = conv.PropertiesToSettings(dbconfig, &config)

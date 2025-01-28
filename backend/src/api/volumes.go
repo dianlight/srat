@@ -327,7 +327,8 @@ func MountVolume(w http.ResponseWriter, r *http.Request) {
 		}
 		var ndata, _ = GetVolumesData()
 		notifyVolumeClient(ndata)
-		context_state := (&dto.ContextState{}).FromContext(r.Context())
+		//		context_state := (&dto.Status{}).FromContext(r.Context())
+		context_state := StateFromContext(r.Context())
 		context_state.DataDirtyTracker.Volumes = true
 		HttpJSONReponse(w, mounted_data, nil)
 	}
@@ -396,7 +397,8 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 	}
 	var ndata, _ = GetVolumesData()
 	notifyVolumeClient(ndata)
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	//	context_state := (&dto.Status{}).FromContext(r.Context())
+	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Volumes = true
 	w.WriteHeader(http.StatusNoContent)
 	return

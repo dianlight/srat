@@ -156,7 +156,8 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	//	context_state := (&dto.Status{}).FromContext(r.Context())
+	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Users = true
 	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
@@ -224,7 +225,8 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	//context_state := (&dto.Status{}).FromContext(r.Context())
+	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Users = true
 	HttpJSONReponse(w, user, nil)
 }
@@ -277,7 +279,8 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	//context_state := (&dto.Status{}).FromContext(r.Context())
+	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Users = true
 	HttpJSONReponse(w, user, nil)
 }
@@ -317,7 +320,8 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	//context_state := (&dto.Status{}).FromContext(r.Context())
+	context_state := StateFromContext(r.Context())
 
 	context_state.DataDirtyTracker.Users = true
 	HttpJSONReponse(w, nil, nil)

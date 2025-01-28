@@ -33,7 +33,8 @@ func TestGetSettingsHandler(t *testing.T) {
 	// Check the status code is what we expect.
 	require.Equal(t, http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
-	context_state := (&dto.ContextState{}).FromContext(testContext)
+	//context_state := (&context.Status{}).FromContext(testContext)
+	context_state := StateFromContext(testContext)
 
 	var config config.Config
 	err = config.FromContext(testContext)
@@ -58,7 +59,8 @@ func TestUpdateSettingsHandler(t *testing.T) {
 	glc := dto.Settings{
 		Workgroup: "pluto&admin",
 	}
-	context_state := (&dto.ContextState{}).FromContext(testContext)
+	//context_state := (&dto.Status{}).FromContext(testContext)
+	context_state := StateFromContext(testContext)
 
 	jsonBody, jsonError := json.Marshal(glc)
 	require.NoError(t, jsonError)

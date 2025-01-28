@@ -76,7 +76,8 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(ctx)
+	//context_state := (&status.ContextState{}).FromContext(ctx)
+	context_state := StateFromContext(ctx)
 
 	var gh = github.NewClient(rateLimiter)
 	for {
@@ -193,7 +194,8 @@ func HealthCheckWsHandler(ctx context.Context, request dto.WebSocketMessageEnvel
 // until the WebSocket connection is closed or the context is cancelled.
 func DirtyWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
 	var oldDritySectionState dto.DataDirtyTracker
-	context_state := (&dto.ContextState{}).FromContext(ctx)
+	//context_state := (&dto.Status{}).FromContext(ctx)
+	context_state := StateFromContext(ctx)
 	for {
 		select {
 		case <-ctx.Done():
@@ -302,7 +304,8 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Updating to version %s", *lastReleaseData.LastRelease.TagName) // FIXME: Move latest realase to context
 
-	ctx := (&dto.ContextState{}).FromContext(r.Context())
+	//ctx := (&dto.Status{}).FromContext(r.Context())
+	ctx := StateFromContext(r.Context())
 
 	lastReleaseData.UpdateStatus = 0
 	var gh = github.NewClient(nil)

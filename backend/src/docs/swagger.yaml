@@ -88,6 +88,14 @@ definitions:
       volumes:
         type: boolean
     type: object
+  dto.EventMessageEnvelope:
+    properties:
+      data: {}
+      event:
+        $ref: '#/definitions/dto.EventType'
+      uid:
+        type: string
+    type: object
   dto.EventType:
     enum:
     - update
@@ -293,9 +301,6 @@ definitions:
   dto.SharedResource:
     properties:
       disabled:
-        description: |-
-          Path        string       `json:"path"`
-          FS          string       `json:"fs"`
         type: boolean
       id:
         type: integer

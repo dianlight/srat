@@ -8,13 +8,11 @@ import (
 	"embed"
 	"flag"
 	"fmt"
-	"io/fs"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"time"
 
@@ -29,7 +27,6 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
 	_ "github.com/dianlight/srat/docs"
-	"github.com/dianlight/srat/dto"
 	"github.com/jpillora/overseer/fetcher"
 	"github.com/rs/cors"
 )
@@ -216,16 +213,18 @@ func prog(state overseer.State) {
 	options = config.ReadOptionsFile(*optionsFile)
 
 	var apiContext = context.Background()
-	sharedResources := dto.ContextState{}
+	sharedResources := api.ContextState{}
 	sharedResources.UpdateFilePath = updateFilePath
 	sharedResources.ReadOnlyMode = *roMode
 	sharedResources.SambaConfigFile = *smbConfigFile
 	sharedResources.Template = templateData
 	sharedResources.DockerInterface = *dockerInterface
 	sharedResources.DockerNet = *dockerNetwork
+	sharedResources.SSEBroker = *api.NewSSEBroker()
 
 	//sharedResources.FromJSONConfig(*aconfig)
-	apiContext = sharedResources.ToContext(apiContext)
+	//apiContext = sharedResources.ToContext(apiContext)
+	apiContext = api.StateToContext(&sharedResources, apiContext)
 
 	globalRouter := mux.NewRouter()
 	if hamode != nil && *hamode {
@@ -238,6 +237,7 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/restart", api.RestartHandler).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/filesystems", api.GetFSHandler).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/sse", sharedResources.SSEBroker.Stream).Methods(http.MethodGet)
 
 	// Shares
 	globalRouter.HandleFunc("/shares", api.ListShares).Methods(http.MethodGet)
@@ -285,10 +285,12 @@ func prog(state overseer.State) {
 	globalRouter.PathPrefix("/").Handler(http.FileServerFS(content)).Methods(http.MethodGet)
 
 	// Print content directory recursively
-	fs.WalkDir(content, ".", func(p string, d fs.DirEntry, err error) error {
-		log.Printf("dir=%s, path=%s\n", path.Dir(p), p)
-		return nil
-	})
+	/*
+		fs.WalkDir(content, ".", func(p string, d fs.DirEntry, err error) error {
+			log.Printf("dir=%s, path=%s\n", path.Dir(p), p)
+			return nil
+		})
+	*/
 
 	// Print all routes
 	globalRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
@@ -319,8 +321,8 @@ func prog(state overseer.State) {
 		IdleTimeout:  time.Second * 60,
 		Handler:      loggedRouter, // Pass our instance of gorilla/mux in.
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			ctx = sharedResources.ToContext(ctx)
-
+			log.Printf("New connection: %s\n", c.RemoteAddr())
+			ctx = api.StateToContext(&sharedResources, ctx)
 			return ctx
 		},
 	}

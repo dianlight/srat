@@ -29,6 +29,12 @@ import { AutocompleteElement, CheckboxElement, FormContainer, SelectElement, Tex
 import { Box, Container, Fab, Paper, Stack, Tooltip } from "@mui/material";
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import AddIcon from '@mui/icons-material/Add';
+import { Eject, DriveFileMove } from '@mui/icons-material';
+import { Chip, Typography } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import GroupIcon from '@mui/icons-material/Group';
+import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 interface ShareEditProps extends DtoSharedResource {
     org_name: string,
@@ -41,6 +47,7 @@ export function Shares() {
     const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
+    const [showUserEdit, setShowUserEdit] = useState<boolean>(false);
     const [errorInfo, setErrorInfo] = useState<string>('')
     const formRef = useRef<HTMLFormElement>(null);
     const confirm = useConfirm();
@@ -107,6 +114,48 @@ export function Shares() {
         return false;
     }
 
+    function onSubmitUnmount(share: string): void {
+        confirm({
+            title: `Unmount ${share}?`,
+            description: "Are you sure you want to unmount this share?"
+        })
+            .then(() => {
+                /*
+                api.share.unmountShare(share).then((res) => {
+                    console.log(`Share ${share} unmounted successfully`);
+                    // Optionally update the state or perform other actions
+                }).catch(err => {
+                    console.error(`Failed to unmount share ${share}`, err);
+                    setErrorInfo(`Failed to unmount share ${share}: ${err.message}`);
+                });
+                */
+            })
+            .catch(() => {
+                // Handle cancel action if needed
+            });
+    }
+
+    function onSubmitMount(share: string): void {
+        confirm({
+            title: `Mount ${share}?`,
+            description: "Are you sure you want to mount this share?"
+        })
+            .then(() => {
+                /*
+                api.share.unmountShare(share).then((res) => {
+                    console.log(`Share ${share} unmounted successfully`);
+                    // Optionally update the state or perform other actions
+                }).catch(err => {
+                    console.error(`Failed to unmount share ${share}`, err);
+                    setErrorInfo(`Failed to unmount share ${share}: ${err.message}`);
+                });
+                */
+            })
+            .catch(() => {
+                // Handle cancel action if needed
+            });
+    }
+
     return <InView>
         <PreviewDialog title={selected ? selected[0] : ""} objectToDisplay={selected?.[1]} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
         <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[0] || "" }} open={showEdit} onClose={(data) => { setSelected(null); onSubmitEditShare(data); setShowEdit(false) }} />
@@ -130,6 +179,24 @@ export function Shares() {
                                 <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
                                     <SettingsIcon />
                                 </IconButton>
+                                <IconButton onClick={() => { setSelected([share, props]); setShowUserEdit(true) }} edge="end" aria-label="users">
+                                    <Tooltip title="Manage Users">
+                                        <GroupIcon />
+                                    </Tooltip>
+                                </IconButton>
+                                {props.mount_point_data?.is_mounted ? (
+                                    <IconButton onClick={() => onSubmitUnmount(share)} edge="end" aria-label="unmount">
+                                        <Tooltip title="Unmount">
+                                            <Eject />
+                                        </Tooltip>
+                                    </IconButton>
+                                ) : (
+                                    <IconButton onClick={() => onSubmitMount(share)} edge="end" aria-label="mount">
+                                        <Tooltip title="Mount">
+                                            <DriveFileMove />
+                                        </Tooltip>
+                                    </IconButton>
+                                )}
                                 <IconButton onClick={() => onSubmitDeleteShare(share)} edge="end" aria-label="delete">
                                     <FolderDeleteIcon />
                                 </IconButton>
@@ -147,11 +214,57 @@ export function Shares() {
                                 </Avatar>
                             </ListItemAvatar>
                             <ListItemText
-                                primary={props.name}
+                                primary={
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        {props.name}
+                                        {props.mount_point_data?.is_mounted && (
+                                            <Chip
+                                                size="small"
+                                                color="success"
+                                                label="Mounted"
+                                                icon={<CheckCircleIcon />}
+                                            />
+                                        )}
+                                    </Box>
+                                }
                                 onClick={() => { setSelected([share, props]); setShowPreview(true) }}
-                                secondary={props.mount_point_data?.path}
+                                secondary={
+                                    <Typography variant="body2" component="div">
+                                        Path: {props.mount_point_data?.path}
+                                        {props.mount_point_data?.path && (
+                                            <Box component="span" sx={{ display: 'block' }}>
+                                                Mount Point: {props.mount_point_data.path}
+                                            </Box>
+                                        )}
+                                        <Box component="div" sx={{ mt: 1 }}>
+                                            {props.users && props.users.length > 0 && (
+                                                <Box component="span" sx={{ display: 'block' }}>
+                                                    <Tooltip title="Users with write access">
+                                                        <Chip
+                                                            size="small"
+                                                            icon={<EditIcon />}
+                                                            label={`Users: ${props.users.join(', ')}`}
+                                                            sx={{ mr: 1, my: 0.5 }}
+                                                        />
+                                                    </Tooltip>
+                                                </Box>
+                                            )}
+                                            {props.ro_users && props.ro_users.length > 0 && (
+                                                <Box component="span" sx={{ display: 'block' }}>
+                                                    <Tooltip title="Users with read-only access">
+                                                        <Chip
+                                                            size="small"
+                                                            icon={<VisibilityIcon />}
+                                                            label={`Read-only Users: ${props.ro_users.join(', ')}`}
+                                                            sx={{ my: 0.5 }}
+                                                        />
+                                                    </Tooltip>
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    </Typography>
+                                }
                             />
-
                         </ListItem>
                     </ListItemButton>
                     <Divider component="li" />

@@ -84,7 +84,8 @@ func createConfigStream(ctx context.Context) (data *[]byte, err error) {
 		return nil, tracerr.Wrap(err)
 	}
 	// End
-	ctsx := ctx.Value("context_state").(*dto.ContextState)
+	//ctsx := ctx.Value("context_state").(*dto.Status)
+	ctsx := StateFromContext(ctx)
 	config.DockerInterface = ctsx.DockerInterface
 	config.DockerNet = ctsx.DockerNet
 	config_2 := config.ConfigToMap()
@@ -136,7 +137,8 @@ func ApplySamba(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	ctx := r.Context().Value("context_state").(*dto.ContextState)
+	//ctx := r.Context().Value("context_state").(*dto.Status)
+	ctx := StateFromContext(r.Context())
 	if ctx.SambaConfigFile == "" {
 		HttpJSONReponse(w, fmt.Errorf("No samba config file provided"), nil)
 	} else {

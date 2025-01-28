@@ -23,7 +23,8 @@ func TestCreateConfigStream(t *testing.T) {
 	require.NoError(t, err, tracerr.SprintSourceColor(err))
 	assert.NotNil(t, stream)
 
-	ctx := testContext.Value("context_state").(*dto.ContextState)
+	//ctx := testContext.Value("context_state").(*dto.Status)
+	ctx := StateFromContext(testContext)
 	assert.NotEmpty(t, ctx)
 
 	//samba_config_file := testContext.Value("samba_config_file").(*string)

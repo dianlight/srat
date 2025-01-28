@@ -9,7 +9,6 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
-	"github.com/dianlight/srat/dto"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/ztrue/tracerr"
 )
@@ -49,12 +48,12 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Cant read template file %s", err)
 	}
 
-	sharedResources := dto.ContextState{}
+	sharedResources := ContextState{}
 	sharedResources.SambaConfigFile = "../../test/data/smb.conf"
 	sharedResources.Template = templateData
 	sharedResources.DockerInterface = "hassio"
 	sharedResources.DockerNet = "172.30.32.0/23"
-	testContext = sharedResources.ToContext(testContext)
+	StateToContext(&sharedResources, testContext)
 	testContext = config.ToContext(testContext)
 
 	os.Exit(m.Run())

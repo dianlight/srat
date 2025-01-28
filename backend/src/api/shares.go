@@ -205,7 +205,8 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	//context_state := (&dto.Status{}).FromContext(r.Context())
+	context_state := StateFromContext(r.Context())
 	err = conv.ExportedShareToSharedResource(*dbshare, &share)
 	//err = mapper.Map(context.Background(), &share, dbshare)
 	if err != nil {
@@ -303,7 +304,8 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	//	context_state := (&dto.Status{}).FromContext(r.Context())
+	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Shares = true
 	notifyClient()
 	HttpJSONReponse(w, share, nil)
@@ -351,7 +353,8 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	//context_state := (&dto.Status{}).FromContext(r.Context())
+	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Shares = true
 	notifyClient()
 	HttpJSONReponse(w, nil, &Options{

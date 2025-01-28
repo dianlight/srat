@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/dianlight/srat/dto"
 )
 
 type Broker struct {
@@ -23,7 +23,7 @@ type Broker struct {
 	clients map[chan []byte]bool
 }
 
-func NewServer() (broker *Broker) {
+func NewSSEBroker() (broker *Broker) {
 	// Instantiate a broker
 	broker = &Broker{
 		Notifier:       make(chan []byte, 1),
@@ -64,16 +64,21 @@ func (broker *Broker) listen() {
 	}
 }
 
-type Message struct {
-	Name    string `json:"name"`
-	Message string `json:"msg"`
-}
-
+//	SSE Stream godoc
+//
+// @Summary		Open a SSE stream
+// @Description	Open a SSE stream
+// @Tags			system
+// @Success		200	{object} dto.EventMessageEnvelope
+// @Failure		500	{object}	ErrorResponse
+// @Router			/sse [get]
 func (broker *Broker) Stream(w http.ResponseWriter, r *http.Request) {
 	// Check if the ResponseWriter supports flushing.
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		HttpJSONReponse(w, "Streaming unsupported!", &Options{
+			Code: http.StatusInternalServerError,
+		})
 		return
 	}
 
@@ -115,7 +120,7 @@ func (broker *Broker) Stream(w http.ResponseWriter, r *http.Request) {
 
 func (broker *Broker) BroadcastMessage(w http.ResponseWriter, r *http.Request) {
 	// Parse the request body
-	var msg Message
+	var msg dto.EventMessageEnvelope
 	err := json.NewDecoder(r.Body).Decode(&msg)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -134,8 +139,9 @@ func (broker *Broker) BroadcastMessage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Message sent"))
 }
 
+/*
 func main() {
-	broker := NewServer()
+	broker := NewSSEServer()
 	router := mux.NewRouter()
 
 	router.HandleFunc("/messages", broker.BroadcastMessage).Methods("POST")
@@ -145,6 +151,7 @@ func main() {
 	log.Println("Starting server on :8000")
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
+*/
 
 // To test the server, run the following commands in separate terminals:
 // Start listening to the stream
