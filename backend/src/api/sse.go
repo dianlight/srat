@@ -64,10 +64,14 @@ func (broker *Broker) listen() {
 	}
 }
 
-//	SSE Stream godoc
+// SSE Stream godoc
 //
 // @Summary		Open a SSE stream
 // @Description	Open a SSE stream
+//
+//	@Accept			json
+//	@Produce		text/event-stream
+//
 // @Tags			system
 // @Success		200	{object} dto.EventMessageEnvelope
 // @Failure		500	{object}	ErrorResponse

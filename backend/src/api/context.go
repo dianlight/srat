@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"log"
 
 	"github.com/dianlight/srat/dto"
 )
@@ -20,12 +19,12 @@ type ContextState struct {
 
 func StateFromContext(ctx context.Context) *ContextState {
 	var self *ContextState
-	log.Printf("----> %+v", ctx)
+	//log.Printf("----> %+v", ctx)
 	self = ctx.Value("context_state").(*ContextState)
 	return self
 }
 
 func StateToContext(self *ContextState, ctx context.Context) context.Context {
-	log.Printf("<---- %+v", self)
+	//log.Printf("<---- %+v", self)
 	return context.WithValue(ctx, "context_state", self)
 }

@@ -74,6 +74,12 @@ export interface DtoDataDirtyTracker {
   volumes?: boolean;
 }
 
+export interface DtoEventMessageEnvelope {
+  data?: any;
+  event?: DtoEventType;
+  uid?: string;
+}
+
 export enum DtoEventType {
   EventUpdate = "update",
   EventHeartbeat = "heartbeat",
@@ -181,10 +187,6 @@ export interface DtoSettings {
 }
 
 export interface DtoSharedResource {
-  /**
-   * Path        string       `json:"path"`
-   * FS          string       `json:"fs"`
-   */
   disabled?: boolean;
   id?: number;
   invalid?: boolean;
@@ -931,6 +933,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/shares`,
         method: "GET",
         format: "json",
+        ...params,
+      }),
+  };
+  sse = {
+    /**
+     * @description Open a SSE stream
+     *
+     * @tags system
+     * @name GetSse
+     * @summary Open a SSE stream
+     * @request GET:/sse
+     */
+    getSse: (params: RequestParams = {}) =>
+      this.request<DtoEventMessageEnvelope, ApiErrorResponse>({
+        path: `/sse`,
+        method: "GET",
+        type: ContentType.Json,
         ...params,
       }),
   };

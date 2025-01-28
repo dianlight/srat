@@ -1275,6 +1275,25 @@ paths:
       summary: List all configured shares
       tags:
       - share
+  /sse:
+    get:
+      consumes:
+      - application/json
+      description: Open a SSE stream
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.EventMessageEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Open a SSE stream
+      tags:
+      - system
   /update:
     put:
       description: Start the update process
