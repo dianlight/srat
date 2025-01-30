@@ -57,7 +57,7 @@ func TestHealthEventEmitter(t *testing.T) {
 	sharedContex.SSEBroker = mockBrocker
 
 	health := api.NewHealth(testContext, false)
-	numcal := 0
+	numcal := uint64(0)
 	startTime := time.Now()
 	mockBrocker.EXPECT().BroadcastMessage(gomock.Any()).Do((func(data any) {
 		msg := data.(*dto.EventMessageEnvelope)
@@ -74,7 +74,7 @@ func TestHealthEventEmitter(t *testing.T) {
 		time.Sleep(time.Millisecond * 500)
 	}
 	elapsed := time.Since(startTime)
-	assert.Greater(t, elapsed.Seconds()/10, numcal)
+	assert.LessOrEqual(t, uint64(elapsed.Seconds()/float64(testContext.Value("health_interlive_seconds").(int))), numcal, " elapsed seconds %d should be greater than %d", elapsed.Seconds(), numcal)
 	assert.Equal(t, health.OutputEventsCount, numcal)
 
 	//t.Log(health)
