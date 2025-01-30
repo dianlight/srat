@@ -1,5 +1,5 @@
 // endpoints_test.go
-package api
+package api_test
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -19,12 +20,12 @@ import (
 )
 
 func TestCreateConfigStream(t *testing.T) {
-	stream, err := createConfigStream(testContext)
+	stream, err := api.CreateConfigStream(testContext)
 	require.NoError(t, err, tracerr.SprintSourceColor(err))
 	assert.NotNil(t, stream)
 
 	//ctx := testContext.Value("context_state").(*dto.Status)
-	ctx := StateFromContext(testContext)
+	ctx := api.StateFromContext(testContext)
 	assert.NotEmpty(t, ctx)
 
 	//samba_config_file := testContext.Value("samba_config_file").(*string)
@@ -94,7 +95,7 @@ func TestApplySambaHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/samba/apply", ApplySamba).Methods(http.MethodPost)
+	router.HandleFunc("/samba/apply", api.ApplySamba).Methods(http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -102,7 +103,7 @@ func TestApplySambaHandler(t *testing.T) {
 }
 
 func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) bool {
-	stream, err := createConfigStream(testContext)
+	stream, err := api.CreateConfigStream(testContext)
 	require.NoError(t, err)
 	assert.NotNil(t, stream)
 
@@ -142,7 +143,7 @@ func TestGetSambaConfig(t *testing.T) {
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
-	router.HandleFunc("/samba", GetSambaConfig).Methods(http.MethodGet)
+	router.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -154,7 +155,7 @@ func TestGetSambaConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create the expected config stream
-	expectedStream, err := createConfigStream(testContext)
+	expectedStream, err := api.CreateConfigStream(testContext)
 	require.NoError(t, err)
 
 	// Compare the response body with the expected SmbConf

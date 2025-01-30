@@ -1,14 +1,17 @@
-package api
+package api_test
 
 import (
 	"context"
 	"log"
+	"log/slog"
 	"os"
 	"testing"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
+	"github.com/dianlight/srat/dto"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/ztrue/tracerr"
 )
@@ -17,6 +20,7 @@ var testContext = context.Background()
 
 func TestMain(m *testing.M) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	slog.SetLogLoggerLevel(slog.LevelDebug)
 
 	data, err := os.ReadFile("../../test/data/mount_info.txt")
 	if err != nil {
@@ -35,6 +39,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Cant load config file %s", err)
 	}
+	config.UpdateChannel = string(dto.None)
 	err = dbutil.FirstTimeJSONImporter(config)
 	if err != nil {
 		log.Fatalf("Cant load json settings - %v", tracerr.SprintSourceColor(err))
@@ -48,13 +53,15 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Cant read template file %s", err)
 	}
 
-	sharedResources := ContextState{}
+	sharedResources := api.ContextState{}
 	sharedResources.SambaConfigFile = "../../test/data/smb.conf"
 	sharedResources.Template = templateData
 	sharedResources.DockerInterface = "hassio"
 	sharedResources.DockerNet = "172.30.32.0/23"
-	StateToContext(&sharedResources, testContext)
+	//sharedResources.SSEBroker = NewMockBrokerInterface(ctrl) //
+	testContext = api.StateToContext(&sharedResources, testContext)
 	testContext = config.ToContext(testContext)
+	testContext = context.WithValue(testContext, "health_interlive_seconds", 1)
 
 	os.Exit(m.Run())
 }

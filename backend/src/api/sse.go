@@ -24,6 +24,11 @@ type Broker struct {
 	clients map[chan dto.EventMessageEnvelope]bool
 }
 
+type BrokerInterface interface {
+	Stream(w http.ResponseWriter, r *http.Request)
+	BroadcastMessage(msg *dto.EventMessageEnvelope) (*dto.EventMessageEnvelope, error)
+}
+
 func NewSSEBroker() (broker *Broker) {
 	// Instantiate a broker
 	broker = &Broker{
@@ -48,7 +53,7 @@ func (broker *Broker) listen() {
 			// Register their message channel
 			broker.clients[s] = true
 			log.Printf("Client added. %d registered clients", len(broker.clients))
-			broker.BroadcastMessage(dto.EventMessageEnvelope{Event: dto.EventHello})
+			broker.BroadcastMessage(&dto.EventMessageEnvelope{Event: dto.EventHello})
 		case s := <-broker.closingClients:
 
 			// A client has dettached and we want to
@@ -129,12 +134,13 @@ func (broker *Broker) Stream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (broker *Broker) BroadcastMessage(msg dto.EventMessageEnvelope) {
+func (broker *Broker) BroadcastMessage(msg *dto.EventMessageEnvelope) (*dto.EventMessageEnvelope, error) {
 	if msg.Id == "" {
 		msg.Id = uuid.New().String()
 	}
-	broker.Notifier <- msg
+	broker.Notifier <- *msg
 	log.Printf("Broadcasted message: %+v\n", msg)
+	return msg, nil
 }
 
 /*

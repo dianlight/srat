@@ -12,3 +12,4 @@ GOBIN=/usr/local/bin/ go install github.com/rogpeppe/gohack@latest
 GOBIN=/usr/local/bin/ go install github.com/rakyll/gotest@latest
 GOBIN=/usr/local/bin/ go install github.com/Antonboom/testifylint@latest
 GOBIN=/usr/local/bin/ go install github.com/ramya-rao-a/go-outline@latest
+GOBIN=/usr/local/bin/ go install go.uber.org/mock/mockgen@latest

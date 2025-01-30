@@ -1,4 +1,4 @@
-package api
+package api_test
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
@@ -29,7 +30,7 @@ func TestListVolumessHandler(t *testing.T) {
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(ListVolumes)
+	handler := http.HandlerFunc(api.ListVolumes)
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.
@@ -69,7 +70,7 @@ var previus_device uint
 
 func TestMountVolumeHandler(t *testing.T) {
 	// Check if loop device is available for mounting
-	volumes, err := GetVolumesData()
+	volumes, err := api.GetVolumesData()
 	require.NoError(t, err)
 
 	var mockMountData dbom.MountPointPath
@@ -98,7 +99,7 @@ func TestMountVolumeHandler(t *testing.T) {
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{id}/mount", MountVolume).Methods("POST")
+	router.HandleFunc("/volume/{id}/mount", api.MountVolume).Methods("POST")
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -135,7 +136,7 @@ func TestUmountVolumeNonExistent(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{id}/mount", UmountVolume).Methods("DELETE")
+	router.HandleFunc("/volume/{id}/mount", api.UmountVolume).Methods("DELETE")
 
 	router.ServeHTTP(rr, req)
 
@@ -164,7 +165,7 @@ func TestUmountVolumeSuccess(t *testing.T) {
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
-	router.HandleFunc("/volume/{id}/mount", UmountVolume).Methods("DELETE")
+	router.HandleFunc("/volume/{id}/mount", api.UmountVolume).Methods("DELETE")
 
 	// Create a ResponseRecorder
 	rr := httptest.NewRecorder()

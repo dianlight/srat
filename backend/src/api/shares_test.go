@@ -1,4 +1,4 @@
-package api
+package api_test
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
@@ -26,7 +27,7 @@ func TestListSharesHandler(t *testing.T) {
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(ListShares)
+	handler := http.HandlerFunc(api.ListShares)
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.
@@ -65,7 +66,7 @@ func TestGetShareHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", GetShare).Methods(http.MethodGet)
+	router.HandleFunc("/share/{share_name}", api.GetShare).Methods(http.MethodGet)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -113,7 +114,7 @@ func TestCreateShareHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share", CreateShare).Methods(http.MethodPost)
+	router.HandleFunc("/share", api.CreateShare).Methods(http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -163,7 +164,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", CreateShare).Methods(http.MethodPost)
+	router.HandleFunc("/share/{share_name}", api.CreateShare).Methods(http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -193,7 +194,7 @@ func TestUpdateShareHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", UpdateShare).Methods(http.MethodPatch, http.MethodPost)
+	router.HandleFunc("/share/{share_name}", api.UpdateShare).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
@@ -236,7 +237,7 @@ func TestDeleteShareHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", DeleteShare).Methods(http.MethodDelete)
+	router.HandleFunc("/share/{share_name}", api.DeleteShare).Methods(http.MethodDelete)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.

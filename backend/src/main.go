@@ -1,6 +1,6 @@
 package main
 
-//go:generate go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 init --pd --parseInternal
+//go:generate go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 init --pd --parseInternal --outputTypes json,yaml
 //go:generate go run github.com/jmattheis/goverter/cmd/goverter@v1.7.0 gen ./converter
 
 import (
@@ -20,13 +20,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/kr/pretty"
-	"github.com/ztrue/tracerr"
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
-	_ "github.com/dianlight/srat/docs"
+
+	//_ "github.com/dianlight/srat/docs"
 	"github.com/jpillora/overseer/fetcher"
 	"github.com/rs/cors"
 )
@@ -220,7 +220,7 @@ func prog(state overseer.State) {
 	sharedResources.Template = templateData
 	sharedResources.DockerInterface = *dockerInterface
 	sharedResources.DockerNet = *dockerNetwork
-	sharedResources.SSEBroker = *api.NewSSEBroker()
+	sharedResources.SSEBroker = api.NewSSEBroker()
 
 	//sharedResources.FromJSONConfig(*aconfig)
 	//apiContext = sharedResources.ToContext(apiContext)
@@ -232,7 +232,8 @@ func prog(state overseer.State) {
 	}
 
 	// System
-	globalRouter.HandleFunc("/health", api.HealthCheckHandler).Methods(http.MethodGet)
+	health := api.NewHealth(apiContext, *roMode)
+	globalRouter.HandleFunc("/health", health.HealthCheckHandler).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/update", api.UpdateHandler).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/restart", api.RestartHandler).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet)
@@ -293,14 +294,16 @@ func prog(state overseer.State) {
 	*/
 
 	// Print all routes
-	globalRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		template, err := route.GetPathTemplate()
-		if err != nil {
-			return tracerr.Wrap(err)
-		}
-		log.Printf("Route: %s\n", template)
-		return nil
-	})
+	/*
+		globalRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+			template, err := route.GetPathTemplate()
+			if err != nil {
+				return tracerr.Wrap(err)
+			}
+			log.Printf("Route: %s\n", template)
+			return nil
+		})
+	*/
 
 	handler := cors.New(
 		cors.Options{

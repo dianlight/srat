@@ -15,7 +15,7 @@ import (
 	"github.com/ztrue/tracerr"
 )
 
-func createConfigStream(ctx context.Context) (data *[]byte, err error) {
+func CreateConfigStream(ctx context.Context) (data *[]byte, err error) {
 
 	//var config config.Config
 	// Settings
@@ -132,7 +132,7 @@ func GetSambaProcess() (*process.Process, error) {
 //	@Router			/samba/apply [put]
 func ApplySamba(w http.ResponseWriter, r *http.Request) {
 
-	stream, err := createConfigStream(r.Context())
+	stream, err := CreateConfigStream(r.Context())
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -191,7 +191,7 @@ func ApplySamba(w http.ResponseWriter, r *http.Request) {
 func GetSambaConfig(w http.ResponseWriter, r *http.Request) {
 	var smbConf dto.SmbConf
 
-	stream, err := createConfigStream(r.Context())
+	stream, err := CreateConfigStream(r.Context())
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
