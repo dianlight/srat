@@ -1,4 +1,4 @@
-package api
+package api_test
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
@@ -24,7 +25,7 @@ func TestGetSettingsHandler(t *testing.T) {
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(GetSettings)
+	handler := http.HandlerFunc(api.GetSettings)
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.
@@ -34,7 +35,7 @@ func TestGetSettingsHandler(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	//context_state := (&context.Status{}).FromContext(testContext)
-	context_state := StateFromContext(testContext)
+	context_state := api.StateFromContext(testContext)
 
 	var config config.Config
 	err = config.FromContext(testContext)
@@ -60,7 +61,7 @@ func TestUpdateSettingsHandler(t *testing.T) {
 		Workgroup: "pluto&admin",
 	}
 	//context_state := (&dto.Status{}).FromContext(testContext)
-	context_state := StateFromContext(testContext)
+	context_state := api.StateFromContext(testContext)
 
 	jsonBody, jsonError := json.Marshal(glc)
 	require.NoError(t, jsonError)
@@ -69,7 +70,7 @@ func TestUpdateSettingsHandler(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
-	router.HandleFunc("/global", UpdateSettings).Methods(http.MethodPatch, http.MethodPost)
+	router.HandleFunc("/global", api.UpdateSettings).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())

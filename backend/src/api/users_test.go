@@ -1,5 +1,5 @@
 // endpoints_test.go
-package api
+package api_test
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -26,7 +27,7 @@ func TestListUsersHandler(t *testing.T) {
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(ListUsers)
+	handler := http.HandlerFunc(api.ListUsers)
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.
@@ -107,7 +108,7 @@ func TestCreateUserHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/user/{username}", CreateUser).Methods(http.MethodPut)
+	router.HandleFunc("/user/{username}", api.CreateUser).Methods(http.MethodPut)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -146,7 +147,7 @@ func TestCreateUserDuplicateHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/user/{username}", CreateUser).Methods(http.MethodPut)
+	router.HandleFunc("/user/{username}", api.CreateUser).Methods(http.MethodPut)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -177,7 +178,7 @@ func TestUpdateUserHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/user/{username}", UpdateUser).Methods(http.MethodPatch, http.MethodPost)
+	router.HandleFunc("/user/{username}", api.UpdateUser).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -212,7 +213,7 @@ func TestUpdateAdminUserHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/adminUser", UpdateAdminUser).Methods(http.MethodPatch, http.MethodPost)
+	router.HandleFunc("/adminUser", api.UpdateAdminUser).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -243,7 +244,7 @@ func TestDeleteuserHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/user/{username}", DeleteUser).Methods(http.MethodDelete)
+	router.HandleFunc("/user/{username}", api.DeleteUser).Methods(http.MethodDelete)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.

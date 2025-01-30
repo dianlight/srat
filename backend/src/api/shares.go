@@ -246,7 +246,7 @@ func notifyClient(ctx context.Context) {
 	var event dto.EventMessageEnvelope
 	event.Event = dto.EventShare
 	event.Data = shares
-	StateFromContext(ctx).SSEBroker.BroadcastMessage(event)
+	StateFromContext(ctx).SSEBroker.BroadcastMessage(&event)
 	/*
 		sharesQueueMutex.RLock()
 		for _, v := range sharesQueue {

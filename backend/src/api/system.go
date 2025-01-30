@@ -83,7 +83,7 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 	for {
 		healthData.ReadOnly = context_state.ReadOnlyMode
 		if settings.UpdateChannel != dto.None {
-			UpdateLimiter.Do(func() {
+			go UpdateLimiter.Do(func() {
 				log.Printf("Checking for updates...%v", settings.UpdateChannel)
 				releases, _, err := gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
 					Page:    1,
@@ -144,6 +144,7 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 	}
 }
 
+/*
 // HealthCheckHandler godoc
 //
 //	@Summary		HealthCheck
@@ -156,6 +157,7 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	HttpJSONReponse(w, healthData, nil)
 }
+*/
 
 // HealthCheckWsHandler handles WebSocket connections for health check updates.
 // It continuously sends health status updates to the client every 5 seconds.
@@ -230,7 +232,7 @@ func notifyUpdate(ctx context.Context) {
 	sse.Event = dto.EventHeartbeat
 	sse.Data = lastReleaseData
 	state := StateFromContext(ctx)
-	state.SSEBroker.BroadcastMessage(sse)
+	state.SSEBroker.BroadcastMessage(&sse)
 
 	updateQueueMutex.RLock()
 	for _, v := range updateQueue {
