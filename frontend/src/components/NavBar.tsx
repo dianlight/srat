@@ -2,7 +2,7 @@ import logo from "../img/logo.png"
 import github from "../img/github.svg"
 import pkg from '../../package.json'
 import { useContext, useEffect, useState } from "react"
-import { apiContext as api, DirtyDataContext, ModeContext, wsContext as ws } from "../Contexts"
+import { apiContext as api, DirtyDataContext, ModeContext, SSEContext, sseContext, wsContext as ws } from "../Contexts"
 import { DtoEventType, type DtoHealthPing, type DtoReleaseAsset } from "../srat"
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
@@ -32,6 +32,7 @@ import { useConfirm } from "material-ui-confirm"
 import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
 import { NotificationCenter } from "./NotificationCenter"
+import { useEventSourceListener } from "@react-nano/use-event-source"
 
 function a11yProps(index: number) {
     return {
@@ -96,6 +97,8 @@ function TabPanel(props: TabPanelProps) {
 
 export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null>, healthData: DtoHealthPing }) {
     const healt = useContext(ModeContext);
+    const [sse, sseStatus] = useContext(SSEContext);
+
     const [updateAssetStatus, setUpdateAssetStatus] = useState<DtoReleaseAsset>({});
     const { mode, setMode } = useColorScheme();
     const [update, setUpdate] = useState<string | undefined>()
@@ -156,17 +159,17 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             });
             */
     }
-
-    useEffect(() => {
-        const upd = ws.subscribe<DtoReleaseAsset>(DtoEventType.EventUpdate, (data) => {
-            // console.log("Got update", data)
-            setUpdateAssetStatus(data);
-        })
-        return () => {
-            ws.unsubscribe(upd);
-        };
-    }, [])
-
+    /*
+        useEffect(() => {
+            const upd = ws.subscribe<DtoReleaseAsset>(DtoEventType.EventUpdate, (data) => {
+                // console.log("Got update", data)
+                setUpdateAssetStatus(data);
+            })
+            return () => {
+                ws.unsubscribe(upd);
+            };
+        }, [])
+    */
     useEffect(() => {
         const current = pkg.version;
 
@@ -180,6 +183,16 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             setUpdate(undefined)
         }
     }, [updateAssetStatus])
+
+    useEventSourceListener(
+        sse,
+        [DtoEventType.EventHeartbeat],
+        (evt) => {
+            console.log("SSE EventHeartbeat", evt);
+            setUpdateAssetStatus(JSON.parse(evt.data));
+        },
+        [setUpdateAssetStatus],
+    );
 
     return (<>
         <AppBar position="static">

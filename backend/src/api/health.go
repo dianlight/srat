@@ -39,7 +39,7 @@ func NewHealth(ctx context.Context, ro_mode bool) *Health {
 	if sec := ctx.Value("health_interlive_seconds"); sec != nil {
 		p.OutputEventsInterleave = time.Duration(sec.(int)) * time.Second
 	} else {
-		p.OutputEventsInterleave = 10 * time.Second
+		p.OutputEventsInterleave = 5 * time.Second
 	}
 	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
 	if err != nil {

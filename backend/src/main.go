@@ -320,10 +320,10 @@ func prog(state overseer.State) {
 	srv := &http.Server{
 		//Addr: fmt.Sprintf("%s:%d",state.Address, *http_port),
 		// Good practice to set timeouts to avoid Slowloris attacks.
-		WriteTimeout: time.Second * 15,
-		ReadTimeout:  time.Second * 15,
-		IdleTimeout:  time.Second * 60,
-		Handler:      loggedRouter, // Pass our instance of gorilla/mux in.
+		//WriteTimeout: time.Second * 15,
+		ReadTimeout: time.Second * 15,
+		IdleTimeout: time.Second * 60,
+		Handler:     loggedRouter, // Pass our instance of gorilla/mux in.
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			log.Printf("New connection: %s\n", c.RemoteAddr())
 			ctx = api.StateToContext(&sharedResources, ctx)

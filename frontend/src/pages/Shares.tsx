@@ -44,7 +44,7 @@ interface ShareEditProps extends DtoSharedResource {
 
 export function Shares() {
     const mode = useContext(ModeContext);
-    const sse = useContext(SSEContext);
+    const [sse, sseStatus] = useContext(SSEContext);
     const [status, setStatus] = useState<DtoSharedResource[]>([]);
     const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
@@ -66,7 +66,7 @@ export function Shares() {
     }, [])
 
     useEventSourceListener(
-        sse[0],
+        sse,
         [DtoEventType.EventShare],
         (evt) => {
             console.log("SSE EventShare", evt);
