@@ -10,11 +10,15 @@
 	"portsAttributes": {
 		"3000": {
 			"label": "Backend",
-			"onAutoForward": "openBrowserOnce"
+			"onAutoForward": "silent",
+			"protocol": "http",
+			"hostPort": 3000,
+            "containerPort": 3000
 		},
 		"8080": {
 			"label": "FrontEnd",
-			"onAutoForward": "openBrowserOnce"
+			"onAutoForward": "openBrowserOnce",
+			"protocol": "http"
 		}		
 	},	
 	"remoteEnv": {
