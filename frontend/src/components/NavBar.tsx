@@ -2,7 +2,7 @@ import logo from "../img/logo.png"
 import github from "../img/github.svg"
 import pkg from '../../package.json'
 import { useContext, useEffect, useState } from "react"
-import { apiContext as api, DirtyDataContext, ModeContext, SSEContext, sseContext, wsContext as ws } from "../Contexts"
+import { apiContext as api, DirtyDataContext, ModeContext, SSEContext, wsContext as ws } from "../Contexts"
 import { DtoEventType, type DtoHealthPing, type DtoReleaseAsset } from "../srat"
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
@@ -188,7 +188,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         sse,
         [DtoEventType.EventHeartbeat],
         (evt) => {
-            console.log("SSE EventHeartbeat", evt);
+            //console.log("SSE EventHeartbeat", evt);
             setUpdateAssetStatus(JSON.parse(evt.data));
         },
         [setUpdateAssetStatus],

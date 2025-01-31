@@ -20,6 +20,7 @@ import (
 )
 
 func TestListSharesHandler(t *testing.T) {
+	shareHandler := api.NewShareHandler(testContext)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/shares", nil)
@@ -27,7 +28,7 @@ func TestListSharesHandler(t *testing.T) {
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(api.ListShares)
+	handler := http.HandlerFunc(shareHandler.ListShares)
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.
@@ -57,6 +58,7 @@ func TestListSharesHandler(t *testing.T) {
 }
 
 func TestGetShareHandler(t *testing.T) {
+	shareHandler := api.NewShareHandler(testContext)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/share/LIBRARY", nil)
@@ -66,7 +68,7 @@ func TestGetShareHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", api.GetShare).Methods(http.MethodGet)
+	router.HandleFunc("/share/{share_name}", shareHandler.GetShare).Methods(http.MethodGet)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -95,6 +97,7 @@ func TestGetShareHandler(t *testing.T) {
 }
 
 func TestCreateShareHandler(t *testing.T) {
+	shareHandler := api.NewShareHandler(testContext)
 
 	share := dto.SharedResource{
 		Name: "PIPPODD",
@@ -114,7 +117,7 @@ func TestCreateShareHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share", api.CreateShare).Methods(http.MethodPost)
+	router.HandleFunc("/share", shareHandler.CreateShare).Methods(http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -136,6 +139,7 @@ func TestCreateShareHandler(t *testing.T) {
 }
 
 func TestCreateShareDuplicateHandler(t *testing.T) {
+	shareHandler := api.NewShareHandler(testContext)
 
 	share := dto.SharedResource{
 		Name: "LIBRARY",
@@ -164,7 +168,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", api.CreateShare).Methods(http.MethodPost)
+	router.HandleFunc("/share/{share_name}", shareHandler.CreateShare).Methods(http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
@@ -175,6 +179,7 @@ func TestCreateShareDuplicateHandler(t *testing.T) {
 }
 
 func TestUpdateShareHandler(t *testing.T) {
+	shareHandler := api.NewShareHandler(testContext)
 
 	share := dto.SharedResource{
 		MountPointData: &dto.MountPointData{
@@ -194,7 +199,7 @@ func TestUpdateShareHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", api.UpdateShare).Methods(http.MethodPatch, http.MethodPost)
+	router.HandleFunc("/share/{share_name}", shareHandler.UpdateShare).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
@@ -228,6 +233,7 @@ func TestUpdateShareHandler(t *testing.T) {
 }
 
 func TestDeleteShareHandler(t *testing.T) {
+	shareHandler := api.NewShareHandler(testContext)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/share/LIBRARY", nil)
@@ -237,7 +243,7 @@ func TestDeleteShareHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", api.DeleteShare).Methods(http.MethodDelete)
+	router.HandleFunc("/share/{share_name}", shareHandler.DeleteShare).Methods(http.MethodDelete)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.

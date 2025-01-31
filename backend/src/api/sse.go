@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/google/uuid"
+	"github.com/ztrue/tracerr"
 )
 
 type Broker struct {
@@ -22,11 +24,17 @@ type Broker struct {
 
 	// Client connections registry
 	clients map[chan dto.EventMessageEnvelope]bool
+
+	// Listeners for new and closed connections
+	openConnectionListeners  []func(broker BrokerInterface) error
+	closeConnectionListeners []func(broker BrokerInterface) error
 }
 
 type BrokerInterface interface {
 	Stream(w http.ResponseWriter, r *http.Request)
 	BroadcastMessage(msg *dto.EventMessageEnvelope) (*dto.EventMessageEnvelope, error)
+	AddOpenConnectionListener(ws func(broker BrokerInterface) error) error
+	AddCloseConnectionListener(ws func(broker BrokerInterface) error) error
 }
 
 func NewSSEBroker() (broker *Broker) {
@@ -54,14 +62,30 @@ func (broker *Broker) listen() {
 			broker.clients[s] = true
 			log.Printf("Client added. %d registered clients", len(broker.clients))
 			broker.BroadcastMessage(&dto.EventMessageEnvelope{Event: dto.EventHello})
+			go func() {
+				for _, openListener := range broker.openConnectionListeners {
+					err := openListener(broker)
+					if err != nil {
+						slog.Warn("Error in open connection listener", "err", tracerr.SprintSourceColor(err))
+					}
+				}
+			}()
+
 		case s := <-broker.closingClients:
 
 			// A client has dettached and we want to
 			// stop sending them messages.
 			delete(broker.clients, s)
 			log.Printf("Removed client. %d registered clients", len(broker.clients))
+			go func() {
+				for _, closeListener := range broker.closeConnectionListeners {
+					err := closeListener(broker)
+					if err != nil {
+						slog.Warn("Error in close connection listener", "err", tracerr.SprintSourceColor(err))
+					}
+				}
+			}()
 		case event := <-broker.Notifier:
-
 			// We got a new event from the outside!
 			// Send event to all connected clients
 			for clientMessageChan := range broker.clients {
@@ -141,6 +165,16 @@ func (broker *Broker) BroadcastMessage(msg *dto.EventMessageEnvelope) (*dto.Even
 	broker.Notifier <- *msg
 	log.Printf("Broadcasted message: %+v\n", msg)
 	return msg, nil
+}
+
+func (broker *Broker) AddOpenConnectionListener(ws func(broker BrokerInterface) error) error {
+	broker.openConnectionListeners = append(broker.openConnectionListeners, ws)
+	return nil
+}
+
+func (broker *Broker) AddCloseConnectionListener(ws func(broker BrokerInterface) error) error {
+	broker.closeConnectionListeners = append(broker.closeConnectionListeners, ws)
+	return nil
 }
 
 /*

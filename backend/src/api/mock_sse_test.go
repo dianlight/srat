@@ -13,6 +13,7 @@ import (
 	http "net/http"
 	reflect "reflect"
 
+	api "github.com/dianlight/srat/api"
 	dto "github.com/dianlight/srat/dto"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -41,6 +42,34 @@ func NewMockBrokerInterface(ctrl *gomock.Controller) *MockBrokerInterface {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockBrokerInterface) EXPECT() *MockBrokerInterfaceMockRecorder {
 	return m.recorder
+}
+
+// AddCloseConnectionListener mocks base method.
+func (m *MockBrokerInterface) AddCloseConnectionListener(ws func(api.BrokerInterface) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddCloseConnectionListener", ws)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddCloseConnectionListener indicates an expected call of AddCloseConnectionListener.
+func (mr *MockBrokerInterfaceMockRecorder) AddCloseConnectionListener(ws any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddCloseConnectionListener", reflect.TypeOf((*MockBrokerInterface)(nil).AddCloseConnectionListener), ws)
+}
+
+// AddOpenConnectionListener mocks base method.
+func (m *MockBrokerInterface) AddOpenConnectionListener(ws func(api.BrokerInterface) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddOpenConnectionListener", ws)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddOpenConnectionListener indicates an expected call of AddOpenConnectionListener.
+func (mr *MockBrokerInterfaceMockRecorder) AddOpenConnectionListener(ws any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddOpenConnectionListener", reflect.TypeOf((*MockBrokerInterface)(nil).AddOpenConnectionListener), ws)
 }
 
 // BroadcastMessage mocks base method.

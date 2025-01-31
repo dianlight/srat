@@ -231,21 +231,25 @@ func prog(state overseer.State) {
 		globalRouter.Use(HAMiddleware)
 	}
 
-	// System
+	// Health check
 	health := api.NewHealth(apiContext, *roMode)
 	globalRouter.HandleFunc("/health", health.HealthCheckHandler).Methods(http.MethodGet)
+
+	// Shares
+	share := api.NewShareHandler(apiContext)
+	globalRouter.HandleFunc("/shares", share.ListShares).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/share/{share_name}", share.GetShare).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/share", share.CreateShare).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/share/{share_name}", share.UpdateShare).Methods(http.MethodPut)
+	globalRouter.HandleFunc("/share/{share_name}", share.DeleteShare).Methods(http.MethodDelete)
+
+	// ---------------------------------------- OLAPI --------------------------------
+
 	globalRouter.HandleFunc("/update", api.UpdateHandler).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/restart", api.RestartHandler).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/filesystems", api.GetFSHandler).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/sse", sharedResources.SSEBroker.Stream).Methods(http.MethodGet)
-
-	// Shares
-	globalRouter.HandleFunc("/shares", api.ListShares).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/share/{share_name}", api.GetShare).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/share", api.CreateShare).Methods(http.MethodPost)
-	globalRouter.HandleFunc("/share/{share_name}", api.UpdateShare).Methods(http.MethodPut)
-	globalRouter.HandleFunc("/share/{share_name}", api.DeleteShare).Methods(http.MethodDelete)
 
 	// Volumes
 	globalRouter.HandleFunc("/volumes", api.ListVolumes).Methods(http.MethodGet)

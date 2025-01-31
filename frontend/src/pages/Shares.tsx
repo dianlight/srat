@@ -56,6 +56,7 @@ export function Shares() {
 
 
     useEffect(() => {
+        /*
         const chr = ws.subscribe<DtoSharedResource[]>(DtoEventType.EventShare, (data) => {
             console.log("Got shares", data)
             setStatus(data);
@@ -63,6 +64,14 @@ export function Shares() {
         return () => {
             ws.unsubscribe(chr);
         };
+        */
+        api.shares.sharesList().then((res) => {
+            console.log("Got shares", res.data)
+            setStatus(res.data);
+        }).catch(err => {
+            console.error(err);
+            //setErrorInfo(JSON.stringify(err));
+        })
     }, [])
 
     useEventSourceListener(

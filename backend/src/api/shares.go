@@ -16,10 +16,23 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	sharesQueue      = map[string](chan *[]dto.SharedResource){}
-	sharesQueueMutex = sync.RWMutex{}
-)
+type ShareHandler struct {
+	ctx              context.Context
+	sharesQueueMutex sync.RWMutex
+	//sharesQueue      map[string]chan *[]dto.SharedResource
+}
+
+func NewShareHandler(ctx context.Context) *ShareHandler {
+	p := new(ShareHandler)
+	p.ctx = ctx
+	//p.sharesQueue = map[string](chan *[]dto.SharedResource){}
+	p.sharesQueueMutex = sync.RWMutex{}
+	StateFromContext(p.ctx).SSEBroker.AddOpenConnectionListener(func(broker BrokerInterface) error {
+		p.notifyClient()
+		return nil
+	})
+	return p
+}
 
 /*
 func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
@@ -95,7 +108,7 @@ func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
 //	@Failure		405	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/shares [get]
-func ListShares(w http.ResponseWriter, r *http.Request) {
+func (self *ShareHandler) ListShares(w http.ResponseWriter, r *http.Request) {
 	var shares []dto.SharedResource
 	var dbshares dbom.ExportedShares
 	err := dbshares.Load()
@@ -127,7 +140,7 @@ func ListShares(w http.ResponseWriter, r *http.Request) {
 //	@Failure		405			{object}	ErrorResponse
 //	@Failure		500			{object}	ErrorResponse
 //	@Router			/share/{share_name} [get]
-func GetShare(w http.ResponseWriter, r *http.Request) {
+func (self *ShareHandler) GetShare(w http.ResponseWriter, r *http.Request) {
 	shareName := mux.Vars(r)["share_name"]
 
 	dbshare := dbom.ExportedShare{Name: shareName}
@@ -166,7 +179,7 @@ func GetShare(w http.ResponseWriter, r *http.Request) {
 //	@Failure		409		{object}	ErrorResponse
 //	@Failure		500		{object}	ErrorResponse
 //	@Router			/share [post]
-func CreateShare(w http.ResponseWriter, r *http.Request) {
+func (self *ShareHandler) CreateShare(w http.ResponseWriter, r *http.Request) {
 
 	var share dto.SharedResource
 	err := HttpJSONRequest(&share, w, r)
@@ -214,17 +227,15 @@ func CreateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	context_state.DataDirtyTracker.Shares = true
-	notifyClient(r.Context())
+	go self.notifyClient()
 	HttpJSONReponse(w, share, &Options{
 		Code: http.StatusCreated,
 	})
 }
 
-// notifyClient sends the current shares configuration to all connected clients.
-// It iterates through the sharesQueue, sending the Config.Shares to each client's channel.
-// This function is used to broadcast updates to all clients when the shares configuration changes.
-// The function uses a read lock to ensure thread-safe access to the sharesQueue.
-func notifyClient(ctx context.Context) {
+func (self *ShareHandler) notifyClient() {
+	self.sharesQueueMutex.RLock()
+	defer self.sharesQueueMutex.RUnlock()
 	var shares []dto.SharedResource
 	var dbshares = dbom.ExportedShares{}
 	err := dbshares.Load()
@@ -246,14 +257,7 @@ func notifyClient(ctx context.Context) {
 	var event dto.EventMessageEnvelope
 	event.Event = dto.EventShare
 	event.Data = shares
-	StateFromContext(ctx).SSEBroker.BroadcastMessage(&event)
-	/*
-		sharesQueueMutex.RLock()
-		for _, v := range sharesQueue {
-			v <- &shares
-		}
-		sharesQueueMutex.RUnlock()
-	*/
+	StateFromContext(self.ctx).SSEBroker.BroadcastMessage(&event)
 }
 
 // UpdateShare godoc
@@ -271,7 +275,7 @@ func notifyClient(ctx context.Context) {
 //	@Failure		404			{object}	ErrorResponse
 //	@Failure		500			{object}	ErrorResponse
 //	@Router			/share/{share_name} [put]
-func UpdateShare(w http.ResponseWriter, r *http.Request) {
+func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
 	share_name := mux.Vars(r)["share_name"]
 
 	var share dto.SharedResource
@@ -306,10 +310,9 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//	context_state := (&dto.Status{}).FromContext(r.Context())
 	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Shares = true
-	notifyClient(r.Context())
+	go self.notifyClient()
 	HttpJSONReponse(w, share, nil)
 }
 
@@ -325,7 +328,7 @@ func UpdateShare(w http.ResponseWriter, r *http.Request) {
 //	@Failure		404	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/share/{share_name} [delete]
-func DeleteShare(w http.ResponseWriter, r *http.Request) {
+func (self *ShareHandler) DeleteShare(w http.ResponseWriter, r *http.Request) {
 	share_name := mux.Vars(r)["share_name"]
 
 	var share dto.SharedResource
@@ -355,69 +358,10 @@ func DeleteShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//context_state := (&dto.Status{}).FromContext(r.Context())
 	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Shares = true
-	notifyClient(r.Context())
+	go self.notifyClient()
 	HttpJSONReponse(w, nil, &Options{
 		Code: http.StatusNoContent,
 	})
-}
-
-// SharesWsHandler handles WebSocket connections for share updates.
-// It manages a queue for each client and sends share configuration updates.
-//
-// Parameters:
-//   - ctx: The context for handling cancellation and timeouts.
-//   - request: The WebSocket message envelope containing client information.
-//   - c: A channel for sending WebSocket messages back to the client.
-//
-// The function doesn't return any value, it runs until the context is cancelled.
-func SharesWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
-	sharesQueueMutex.Lock()
-	if sharesQueue[request.Uid] == nil {
-		sharesQueue[request.Uid] = make(chan *[]dto.SharedResource, 10)
-	}
-	var dbshares dbom.ExportedShares
-	err := dbshares.Load()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	var shares []dto.SharedResource
-	var conv converter.DtoToDbomConverterImpl
-	for _, dbshare := range dbshares {
-		var share dto.SharedResource
-		err = conv.ExportedShareToSharedResource(dbshare, &share)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		shares = append(shares, share)
-	}
-	//	err := mapper.Map(context.Background(), &shares, dbshare)
-	//	if err != nil {
-	//		log.Println(err)
-	//		return
-	//	}
-	sharesQueue[request.Uid] <- &shares
-
-	var queue = sharesQueue[request.Uid]
-	sharesQueueMutex.Unlock()
-	for {
-		select {
-		case <-ctx.Done():
-			sharesQueueMutex.Lock()
-			delete(sharesQueue, request.Uid)
-			sharesQueueMutex.Unlock()
-			return
-		default:
-			smessage := &dto.WebSocketMessageEnvelope{
-				Event: dto.EventShare,
-				Uid:   request.Uid,
-				Data:  <-queue,
-			}
-			c <- smessage
-		}
-	}
 }

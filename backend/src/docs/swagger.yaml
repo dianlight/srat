@@ -128,10 +128,11 @@ definitions:
     properties:
       alive:
         type: boolean
+      aliveTime:
+        type: string
       last_error:
         type: string
       read_only:
-        description: AliveTime          time.Time          `json:"aliveTime"`
         type: boolean
       samba_process_status:
         $ref: '#/definitions/dto.SambaProcessStatus'
