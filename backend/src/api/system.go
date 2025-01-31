@@ -22,7 +22,6 @@ import (
 	"github.com/jaypipes/ghw"
 	"github.com/jinzhu/copier"
 	"github.com/jpillora/overseer"
-	"github.com/ztrue/tracerr"
 	"golang.org/x/time/rate"
 )
 
@@ -159,6 +158,7 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 }
 */
 
+/*
 // HealthCheckWsHandler handles WebSocket connections for health check updates.
 // It continuously sends health status updates to the client every 5 seconds.
 //
@@ -183,6 +183,7 @@ func HealthCheckWsHandler(ctx context.Context, request dto.WebSocketMessageEnvel
 		}
 	}
 }
+*/
 
 // DirtyWsHandler handles WebSocket connections for monitoring changes in the dirty state of configuration sections.
 // It continuously checks for changes in the DirtySectionState and sends updates to the client when changes occur.
@@ -504,30 +505,33 @@ func GetFSHandler(w http.ResponseWriter, r *http.Request) {
 //   - error: nil if the operation was successful, otherwise an error describing what went wrong
 //     during the retrieval of volume data or while saving mount point data.
 func PersistVolumesState() error {
-	volumes, err := GetVolumesData()
-	if err != nil {
-		log.Printf("Error persisting volumes state: %v\n", err)
-		return tracerr.Wrap(err)
-	}
-	for _, partition := range volumes.Partitions {
-		if partition.MountPoint != "" {
-			var flags = &dto.MounDataFlags{}
-			flags.Scan(partition.MountFlags)
-			adata := dbom.MountPointPath{
-				Path: partition.MountPoint,
-				//Label:  partition.Label,
-				Source: partition.Name,
-				FSType: partition.Type,
-				Flags:  *flags,
-			}
-			//pretty.Println(adata)
-			err = adata.Save()
-			if err != nil {
-				log.Printf("Error persisting volume data: %v\n", err)
-				return tracerr.Wrap(err)
+
+	/*
+		volumes, err := GetVolumesData()
+		if err != nil {
+			log.Printf("Error persisting volumes state: %v\n", err)
+			return tracerr.Wrap(err)
+		}
+		for _, partition := range volumes.Partitions {
+			if partition.MountPoint != "" {
+				var flags = &dto.MounDataFlags{}
+				flags.Scan(partition.MountFlags)
+				adata := dbom.MountPointPath{
+					Path: partition.MountPoint,
+					//Label:  partition.Label,
+					Source: partition.Name,
+					FSType: partition.Type,
+					Flags:  *flags,
+				}
+				//pretty.Println(adata)
+				err = adata.Save()
+				if err != nil {
+					log.Printf("Error persisting volume data: %v\n", err)
+					return tracerr.Wrap(err)
+				}
 			}
 		}
-	}
+	*/
 	return nil
 }
 

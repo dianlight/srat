@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -33,12 +34,25 @@ var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
 var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
 var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
 
-var (
-	volumesQueue      = map[string](chan *dto.BlockInfo){}
-	volumesQueueMutex = sync.RWMutex{}
-)
+type VolumeHandler struct {
+	ctx               context.Context
+	volumesQueueMutex sync.RWMutex
+}
 
-func GetVolumesData() (*dto.BlockInfo, error) {
+func NewVolumeHandler(ctx context.Context) *VolumeHandler {
+	p := new(VolumeHandler)
+	p.ctx = ctx
+	//p.sharesQueue = map[string](chan *[]dto.SharedResource){}
+	p.volumesQueueMutex = sync.RWMutex{}
+	StateFromContext(p.ctx).SSEBroker.AddOpenConnectionListener(func(broker BrokerInterface) error {
+		p.notifyClient()
+		return nil
+	})
+	go p.VolumesEventHandler()
+	return p
+}
+
+func (self *VolumeHandler) GetVolumesData() (*dto.BlockInfo, error) {
 	blockInfo, err := ghw.Block()
 	retBlockInfo := &dto.BlockInfo{}
 
@@ -196,10 +210,10 @@ func GetVolumesData() (*dto.BlockInfo, error) {
 //	@Failure		405	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/volumes [get]
-func ListVolumes(w http.ResponseWriter, r *http.Request) {
+func (self *VolumeHandler) ListVolumes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	volumes, err := GetVolumesData()
+	volumes, err := self.GetVolumesData()
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -222,7 +236,7 @@ func ListVolumes(w http.ResponseWriter, r *http.Request) {
 //	@Failure		409			{object}	ErrorResponse
 //	@Failure		500			{object}	ErrorResponse
 //	@Router			/volume/{id}/mount [post]
-func MountVolume(w http.ResponseWriter, r *http.Request) {
+func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseUint(mux.Vars(r)["id"], 10, 32)
 	if err != nil {
 		HttpJSONReponse(w, ErrorResponse{Error: "Invalid ID", Body: err}, &Options{
@@ -273,7 +287,7 @@ func MountVolume(w http.ResponseWriter, r *http.Request) {
 
 	// Check if mount_data.Path is already mounted
 
-	volumes, err := GetVolumesData()
+	volumes, err := self.GetVolumesData()
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -325,32 +339,12 @@ func MountVolume(w http.ResponseWriter, r *http.Request) {
 			HttpJSONReponse(w, err, nil)
 			return
 		}
-		var ndata, _ = GetVolumesData()
-		notifyVolumeClient(ndata)
+		self.notifyClient()
 		//		context_state := (&dto.Status{}).FromContext(r.Context())
 		context_state := StateFromContext(r.Context())
 		context_state.DataDirtyTracker.Volumes = true
 		HttpJSONReponse(w, mounted_data, nil)
 	}
-}
-
-// notifyVolumeClient sends updated volume information to all registered clients.
-//
-// This function iterates through all registered volume queues and sends the
-// provided volume information to each of them. It uses a read lock to ensure
-// thread-safe access to the shared volumesQueue.
-//
-// Parameters:
-//   - volumes: A pointer to BlockInfo containing the updated volume information
-//     to be sent to all clients.
-//
-// The function does not return any value.
-func notifyVolumeClient(volumes *dto.BlockInfo) {
-	volumesQueueMutex.RLock()
-	for _, v := range volumesQueue {
-		v <- volumes
-	}
-	volumesQueueMutex.RUnlock()
 }
 
 // UmountVolume godoc
@@ -365,7 +359,7 @@ func notifyVolumeClient(volumes *dto.BlockInfo) {
 //	@Failure		404	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/volume/{id}/mount [delete]
-func UmountVolume(w http.ResponseWriter, r *http.Request) {
+func (self *VolumeHandler) UmountVolume(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	id, err := strconv.ParseUint(mux.Vars(r)["id"], 10, 32)
 	if err != nil {
@@ -395,8 +389,7 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	var ndata, _ = GetVolumesData()
-	notifyVolumeClient(ndata)
+	self.notifyClient()
 	//	context_state := (&dto.Status{}).FromContext(r.Context())
 	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Volumes = true
@@ -412,12 +405,12 @@ func UmountVolume(w http.ResponseWriter, r *http.Request) {
 //
 // The function does not return any value, but it will log errors and volume changes,
 // and call notifyVolumeClient when volumes are added or removed.
-func VolumesEventHandler() {
-	log.Println("Monitoring UEvent kernel message to user-space...")
+func (self *VolumeHandler) VolumesEventHandler() {
+	slog.Debug("Monitoring UEvent kernel message to user-space...")
 
 	conn := new(netlink.UEventConn)
 	if err := conn.Connect(netlink.UdevEvent); err != nil {
-		log.Fatalln("Unable to connect to Netlink Kobject UEvent socket")
+		slog.Error("Unable to connect to Netlink Kobject UEvent socket", "err", tracerr.SprintSourceColor(err))
 	}
 	defer conn.Close()
 
@@ -430,7 +423,7 @@ func VolumesEventHandler() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
 		<-signals
-		log.Println("Exiting monitor mode...")
+		slog.Debug("Exiting monitor mode...")
 		close(quit)
 		// os.Exit(0)
 	}()
@@ -439,64 +432,31 @@ func VolumesEventHandler() {
 	for {
 		select {
 		case uevent := <-queue:
-			log.Println("Handle", pretty.Sprint(uevent))
+			slog.Info("Handle", "event", pretty.Sprint(uevent))
 			if uevent.Action == "add" {
-				var data, _ = GetVolumesData()
-				notifyVolumeClient(data)
+				self.notifyClient()
 			} else if uevent.Action == "remove" {
-				var data, _ = GetVolumesData()
-				notifyVolumeClient(data)
+				self.notifyClient()
 			}
 		case err := <-errors:
-			log.Println("ERROR:", err)
+			slog.Error("ERROR:", "err", tracerr.SprintSourceColor(err))
 		}
 	}
 
 }
 
-// VolumesWsHandler handles WebSocket connections for volume-related events.
-// It sets up a queue for the client, fetches initial volume data, and continuously
-// listens for updates to send to the client.
-//
-// Parameters:
-//   - ctx: A context.Context for handling cancellation and timeouts.
-//   - request: A WebSocketMessageEnvelope containing the client's request information.
-//   - c: A channel for sending WebSocketMessageEnvelope messages back to the client.
-//
-// The function doesn't return any value, but it continues to run until the context is cancelled,
-// sending volume updates to the client through the provided channel.
-func VolumesWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
-	volumesQueueMutex.Lock()
-	if volumesQueue[request.Uid] == nil {
-		volumesQueue[request.Uid] = make(chan *dto.BlockInfo, 10)
-	}
+func (self *VolumeHandler) notifyClient() {
+	self.volumesQueueMutex.Lock()
+	defer self.volumesQueueMutex.Unlock()
 
-	var data, err = GetVolumesData()
+	var data, err = self.GetVolumesData()
 	if err != nil {
 		log.Printf("Unable to fetch volumes: %v", err)
 		return
-	} else {
-		volumesQueue[request.Uid] <- data
-		volumesQueueMutex.Unlock()
-		log.Printf("Handle recv: %s %s %d", request.Event, request.Uid, len(volumesQueue))
 	}
-	var queue = volumesQueue[request.Uid]
-	go VolumesEventHandler()
-	for {
-		select {
-		case <-ctx.Done():
-			volumesQueueMutex.Lock()
-			delete(volumesQueue, request.Uid)
-			volumesQueueMutex.Unlock()
-			return
-		default:
-			smessage := &dto.WebSocketMessageEnvelope{
-				Event: dto.EventVolumes,
-				Uid:   request.Uid,
-				Data:  <-queue,
-			}
-			//log.Printf("Handle send: %s %s %d", smessage.Event, smessage.Uid, len(c))
-			c <- smessage
-		}
-	}
+
+	var event dto.EventMessageEnvelope
+	event.Event = dto.EventVolumes
+	event.Data = data
+	StateFromContext(self.ctx).SSEBroker.BroadcastMessage(&event)
 }

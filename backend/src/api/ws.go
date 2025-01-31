@@ -66,12 +66,12 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 			ctx, activeContexts[message.Uid] = context.WithCancel(rq.Context())
 			//log.Printf("Subscribed: %s %v\n", message.Uid, activeContexts)
 			switch message.Event {
-			case dto.EventHeartbeat:
-				go HealthCheckWsHandler(ctx, message, outchan)
-				//			case dto.EventShare:
-				//				go SharesWsHandler(ctx, message, outchan)
-			case dto.EventVolumes:
-				go VolumesWsHandler(ctx, message, outchan)
+			//case dto.EventHeartbeat:
+			//go HealthCheckWsHandler(ctx, message, outchan)
+			//			case dto.EventShare:
+			//				go SharesWsHandler(ctx, message, outchan)
+			//case dto.EventVolumes:
+			//go VolumesWsHandler(ctx, message, outchan)
 			case dto.EventUpdate:
 				go UpdateWsHandler(ctx, message, outchan)
 			case dto.EventDirty:

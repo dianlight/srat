@@ -129,7 +129,8 @@ func main() {
 	//log.Printf("Update file: %s\n", data.UpdateFilePath)
 
 	if *show_volumes {
-		volumes, err := api.GetVolumesData()
+		volume := api.NewVolumeHandler(context.Background())
+		volumes, err := volume.GetVolumesData()
 		if err != nil {
 			log.Fatalf("Error fetching volumes: %v", err)
 			os.Exit(1)
@@ -243,6 +244,12 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/share/{share_name}", share.UpdateShare).Methods(http.MethodPut)
 	globalRouter.HandleFunc("/share/{share_name}", share.DeleteShare).Methods(http.MethodDelete)
 
+	// Volumes
+	volumes := api.NewVolumeHandler(apiContext)
+	globalRouter.HandleFunc("/volumes", volumes.ListVolumes).Methods(http.MethodGet)
+	globalRouter.HandleFunc("/volume/{id}/mount", volumes.MountVolume).Methods(http.MethodPost)
+	globalRouter.HandleFunc("/volume/{id}/mount", volumes.UmountVolume).Methods(http.MethodDelete)
+
 	// ---------------------------------------- OLAPI --------------------------------
 
 	globalRouter.HandleFunc("/update", api.UpdateHandler).Methods(http.MethodPut)
@@ -250,11 +257,6 @@ func prog(state overseer.State) {
 	globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/filesystems", api.GetFSHandler).Methods(http.MethodGet)
 	globalRouter.HandleFunc("/sse", sharedResources.SSEBroker.Stream).Methods(http.MethodGet)
-
-	// Volumes
-	globalRouter.HandleFunc("/volumes", api.ListVolumes).Methods(http.MethodGet)
-	globalRouter.HandleFunc("/volume/{id}/mount", api.MountVolume).Methods(http.MethodPost)
-	globalRouter.HandleFunc("/volume/{id}/mount", api.UmountVolume).Methods(http.MethodDelete)
 
 	// Users
 	globalRouter.HandleFunc("/admin/user", api.GetAdminUser).Methods(http.MethodGet)

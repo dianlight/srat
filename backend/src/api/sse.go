@@ -163,7 +163,7 @@ func (broker *Broker) BroadcastMessage(msg *dto.EventMessageEnvelope) (*dto.Even
 		msg.Id = uuid.New().String()
 	}
 	broker.Notifier <- *msg
-	log.Printf("Broadcasted message: %+v\n", msg)
+	slog.Debug("Broadcasted message:", "msg", msg)
 	return msg, nil
 }
 

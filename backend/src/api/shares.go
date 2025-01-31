@@ -149,6 +149,7 @@ func (self *ShareHandler) GetShare(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
 			Code: http.StatusNotFound,
 		})
+		return
 	} else if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
