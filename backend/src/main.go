@@ -247,6 +247,7 @@ func prog(state overseer.State) {
 			),
 			service.NewBroadcasterService,
 			service.NewVolumeService,
+			service.NewSambaService,
 			server.AsRoute(api.NewSSEBroker),
 			server.AsRoute(api.NewHealthHandler),
 			server.AsRoute(api.NewShareHandler),
@@ -269,23 +270,26 @@ func prog(state overseer.State) {
 	*/
 
 	/*
-		// Health check
-		health := api.NewHealth(apiContext, *roMode)
-		globalRouter.HandleFunc("/health", health.HealthCheckHandler).Methods(http.MethodGet)
+		ok
+			// Health check
+			health := api.NewHealth(apiContext, *roMode)
+			globalRouter.HandleFunc("/health", health.HealthCheckHandler).Methods(http.MethodGet)
 
-		// Shares
-		share := api.NewShareHandler(apiContext)
-		globalRouter.HandleFunc("/shares", share.ListShares).Methods(http.MethodGet)
-		globalRouter.HandleFunc("/share/{share_name}", share.GetShare).Methods(http.MethodGet)
-		globalRouter.HandleFunc("/share", share.CreateShare).Methods(http.MethodPost)
-		globalRouter.HandleFunc("/share/{share_name}", share.UpdateShare).Methods(http.MethodPut)
-		globalRouter.HandleFunc("/share/{share_name}", share.DeleteShare).Methods(http.MethodDelete)
+			ok
+			// Shares
+			share := api.NewShareHandler(apiContext)
+			globalRouter.HandleFunc("/shares", share.ListShares).Methods(http.MethodGet)
+			globalRouter.HandleFunc("/share/{share_name}", share.GetShare).Methods(http.MethodGet)
+			globalRouter.HandleFunc("/share", share.CreateShare).Methods(http.MethodPost)
+			globalRouter.HandleFunc("/share/{share_name}", share.UpdateShare).Methods(http.MethodPut)
+			globalRouter.HandleFunc("/share/{share_name}", share.DeleteShare).Methods(http.MethodDelete)
 
-		// Volumes
-		volumes := api.NewVolumeHandler(apiContext)
-		globalRouter.HandleFunc("/volumes", volumes.ListVolumes).Methods(http.MethodGet)
-		globalRouter.HandleFunc("/volume/{id}/mount", volumes.MountVolume).Methods(http.MethodPost)
-		globalRouter.HandleFunc("/volume/{id}/mount", volumes.UmountVolume).Methods(http.MethodDelete)
+			ok
+			// Volumes
+			volumes := api.NewVolumeHandler(apiContext)
+			globalRouter.HandleFunc("/volumes", volumes.ListVolumes).Methods(http.MethodGet)
+			globalRouter.HandleFunc("/volume/{id}/mount", volumes.MountVolume).Methods(http.MethodPost)
+			globalRouter.HandleFunc("/volume/{id}/mount", volumes.UmountVolume).Methods(http.MethodDelete)
 	*/
 	/*
 			// ---------------------------------------- OLAPI --------------------------------
@@ -311,6 +315,7 @@ func prog(state overseer.State) {
 			//globalRouter.HandleFunc("/samba/status", api.GetSambaProcessStatus).Methods(http.MethodGet)
 
 			// Global
+			ok
 			globalRouter.HandleFunc("/global", api.GetSettings).Methods(http.MethodGet)
 			globalRouter.HandleFunc("/global", api.UpdateSettings).Methods(http.MethodPut, http.MethodPatch)
 

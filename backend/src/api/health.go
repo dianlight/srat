@@ -28,9 +28,10 @@ type HealthHanler struct {
 	gh            *github.Client
 	updateChannel dto.UpdateChannel
 	broadcaster   service.BroadcasterServiceInterface
+	sambaService  service.SambaServiceInterface
 }
 
-func NewHealthHandler(ctx context.Context, apictx *ContextState, broadcaster service.BroadcasterServiceInterface) *HealthHanler {
+func NewHealthHandler(ctx context.Context, apictx *ContextState, broadcaster service.BroadcasterServiceInterface, sambaService service.SambaServiceInterface) *HealthHanler {
 
 	p := new(HealthHanler)
 	p.Alive = true
@@ -40,6 +41,7 @@ func NewHealthHandler(ctx context.Context, apictx *ContextState, broadcaster ser
 	p.LastError = ""
 	p.ctx = ctx
 	p.broadcaster = broadcaster
+	p.sambaService = sambaService
 	p.OutputEventsCount = 0
 	if apictx.Heartbeat > 0 {
 		p.OutputEventsInterleave = time.Duration(apictx.Heartbeat) * time.Second
@@ -148,7 +150,7 @@ func (self *HealthHanler) checkSoftwareVersion() error {
 }
 
 func (self *HealthHanler) checkSamba() {
-	sambaProcess, err := GetSambaProcess()
+	sambaProcess, err := self.sambaService.GetSambaProcess()
 	if err == nil && sambaProcess != nil {
 		var conv converter.ProcessToDtoImpl
 		conv.ProcessToSambaProcessStatus(sambaProcess, &self.HealthPing.SambaProcessStatus)

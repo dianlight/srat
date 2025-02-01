@@ -15,9 +15,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v68/github"
 	"github.com/jaypipes/ghw"
 	"github.com/jinzhu/copier"
@@ -44,6 +42,7 @@ var (
 	updateQueueMutex = sync.RWMutex{}
 )
 
+/*
 // HealthAndUpdateDataRefeshHandlers periodically refreshes health data and checks for updates.
 // It performs the following tasks:
 // - Updates the read-only status of the system.
@@ -142,7 +141,7 @@ func HealthAndUpdateDataRefeshHandlers(ctx context.Context) {
 		time.Sleep(5 * time.Second)
 	}
 }
-
+*/
 /*
 // HealthCheckHandler godoc
 //

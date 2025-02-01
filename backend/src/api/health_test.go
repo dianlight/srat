@@ -18,7 +18,8 @@ import (
 
 type HealthHandlerSuite struct {
 	suite.Suite
-	mockBoradcaster *MockBroadcasterServiceInterface
+	mockBoradcaster  *MockBroadcasterServiceInterface
+	mockSambaService *MockSambaServiceInterface
 	//mockBrocker *MockBrokerInterface
 	// VariableThatShouldStartAtFive int
 }
@@ -29,6 +30,7 @@ func TestHealthHandlerSuite(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
+	csuite.mockSambaService = NewMockSambaServiceInterface(ctrl)
 	//csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
 
 	suite.Run(t, csuite)
@@ -43,7 +45,7 @@ func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
 	}
 
 	rr := httptest.NewRecorder()
-	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster)
+	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService)
 	handler := http.HandlerFunc(health.HealthCheckHandler)
 
 	handler.ServeHTTP(rr, req)
@@ -71,7 +73,7 @@ func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
 }
 
 func (suite *HealthHandlerSuite) TestHealthEventEmitter() {
-	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster)
+	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService)
 	numcal := uint64(0)
 	startTime := time.Now()
 	suite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).Do((func(data any) {

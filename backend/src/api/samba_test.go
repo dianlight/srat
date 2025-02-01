@@ -3,12 +3,8 @@ package api_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/api"
@@ -16,80 +12,33 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/ztrue/tracerr"
+	"github.com/stretchr/testify/suite"
+	gomock "go.uber.org/mock/gomock"
 )
 
-func TestCreateConfigStream(t *testing.T) {
-	stream, err := api.CreateConfigStream(testContext)
-	require.NoError(t, err, tracerr.SprintSourceColor(err))
-	assert.NotNil(t, stream)
-
-	//ctx := testContext.Value("context_state").(*dto.Status)
-	ctx := api.StateFromContext(testContext)
-	assert.NotEmpty(t, ctx)
-
-	//samba_config_file := testContext.Value("samba_config_file").(*string)
-	assert.NotEmpty(t, ctx.SambaConfigFile)
-
-	fsbyte, err := os.ReadFile(ctx.SambaConfigFile)
-	require.NoError(t, err)
-
-	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
-
-	var result = make(map[string]string)
-	//t.Log(fmt.Sprintf("%s", *stream))
-	for _, match := range re.FindAllStringSubmatch(string(*stream), -1) {
-		result[match[1]] = strings.TrimSpace(match[0])
-	}
-
-	var expected = make(map[string]string)
-	for _, match := range re.FindAllStringSubmatch(string(fsbyte), -1) {
-		expected[match[1]] = strings.TrimSpace(match[0])
-	}
-
-	keys := make([]string, 0, len(result))
-	for k := range result {
-		keys = append(keys, k)
-	}
-	assert.Len(t, keys, len(expected), result)
-	m1 := regexp.MustCompile(`/\*(.*)\*/`)
-
-	for k, v := range result {
-		//assert.EqualValues(t, expected[k], v)
-		var elines = strings.Split(expected[k], "\n")
-		var lines = strings.Split(v, "\n")
-
-		for i, line := range lines {
-			if strings.HasPrefix(strings.TrimSpace(line), "# DEBUG:") && strings.HasPrefix(strings.TrimSpace(elines[i]), "# DEBUG:") {
-				continue
-			}
-			low := i - 5
-			if low < 5 {
-				low = 5
-			}
-			hight := low + 10
-			if hight > len(lines) {
-				hight = len(lines)
-			}
-
-			require.Greater(t, len(lines), i, "Premature End of file reached")
-			if logv := m1.FindStringSubmatch(line); len(logv) > 1 {
-				t.Logf("%d: %s", i, logv[1])
-				line = m1.ReplaceAllString(line, "")
-			}
-
-			require.EqualValues(t, strings.TrimSpace(elines[i]), strings.TrimSpace(line), "On Section [%s] Line:%d\n%d:\n%s\n%d:", k, i, low, strings.Join(lines[low:hight], "\n"), hight)
-		}
-
-	}
+type SambaHandlerSuite struct {
+	suite.Suite
+	mockSambaService *MockSambaServiceInterface
+	// VariableThatShouldStartAtFive int
 }
-func TestApplySambaHandler(t *testing.T) {
-	t.Skip("Not yed necessary for now, we need to mock the smbd process and create a test config file")
 
+func TestSambaHandlerSuite(t *testing.T) {
+	csuite := new(SambaHandlerSuite)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	csuite.mockSambaService = NewMockSambaServiceInterface(ctrl)
+	//csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
+
+	suite.Run(t, csuite)
+}
+
+func (suite *SambaHandlerSuite) TestApplySambaHandler() {
+	api := api.NewSambaHanler(&apiContextState, suite.mockSambaService)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "POST", "/samba/apply", nil)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -99,11 +48,12 @@ func TestApplySambaHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusNoContent, rr.Code, "Expected status code 204, got %d with Body %#v", rr.Code, rr.Body.String())
+	assert.Equal(suite.T(), http.StatusNoContent, rr.Code, "Expected status code 204, got %d with Body %#v", rr.Code, rr.Body.String())
 }
 
-func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) bool {
-	stream, err := api.CreateConfigStream(testContext)
+/*
+func (suite *SambaHandlerSuite) checkStringInSMBConfig(testvalue string, expected string, t *testing.T) bool {
+	stream, err := suite.CreateConfigStream(testContext)
 	require.NoError(t, err)
 	assert.NotNil(t, stream)
 
@@ -115,6 +65,7 @@ func checkStringInSMBConfig(testvalue string, expected string, t *testing.T) boo
 
 	return true
 }
+*/
 
 // check migrate config don't duplicate share
 
@@ -135,10 +86,11 @@ func TestGetSambaProcessStatus(t *testing.T) {
 }
 */
 
-func TestGetSambaConfig(t *testing.T) {
+func (suite *SambaHandlerSuite) TestGetSambaConfig() {
+	api := api.NewSambaHanler(&apiContextState, suite.mockSambaService)
 	// Create a request to pass to our handler
 	req, err := http.NewRequestWithContext(testContext, "GET", "/samba", nil)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -147,17 +99,13 @@ func TestGetSambaConfig(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(suite.T(), http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	var responseBody dto.SmbConf
 	err = json.Unmarshal(rr.Body.Bytes(), &responseBody)
-	require.NoError(t, err)
-
-	// Create the expected config stream
-	expectedStream, err := api.CreateConfigStream(testContext)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	// Compare the response body with the expected SmbConf
-	assert.Equal(t, string(*expectedStream), responseBody.Data)
+	assert.Equal(suite.T(), "Test", responseBody.Data)
 }

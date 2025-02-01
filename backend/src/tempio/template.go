@@ -1,4 +1,4 @@
-package tempiogo
+package tempio
 
 import (
 	"bytes"
