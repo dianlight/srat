@@ -23,7 +23,7 @@ import (
 
 type ShareHandlerSuite struct {
 	suite.Suite
-	mockBrocker *MockBrokerInterface
+	mockBoradcaster *MockBroadcasterServiceInterface
 	// VariableThatShouldStartAtFive int
 }
 
@@ -31,16 +31,14 @@ func TestShareHandlerSuite(t *testing.T) {
 	csuite := new(ShareHandlerSuite)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	sharedContex := api.StateFromContext(testContext)
-	csuite.mockBrocker = NewMockBrokerInterface(ctrl)
-	sharedContex.SSEBroker = csuite.mockBrocker
-	csuite.mockBrocker.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
-	csuite.mockBrocker.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
+	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
+	csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
+	csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
 	suite.Run(t, csuite)
 }
 
 func (suite *ShareHandlerSuite) TestListShares() {
-	shareHandler := api.NewShareHandler(testContext)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/shares", nil)
@@ -78,7 +76,7 @@ func (suite *ShareHandlerSuite) TestListShares() {
 }
 
 func (suite *ShareHandlerSuite) TestGetShareHandler() {
-	shareHandler := api.NewShareHandler(testContext)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/share/LIBRARY", nil)
@@ -117,7 +115,7 @@ func (suite *ShareHandlerSuite) TestGetShareHandler() {
 }
 
 func (suite *ShareHandlerSuite) TestCreateShareHandler() {
-	shareHandler := api.NewShareHandler(testContext)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster)
 
 	share := dto.SharedResource{
 		Name: "PIPPODD",
@@ -159,7 +157,7 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 }
 
 func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
-	shareHandler := api.NewShareHandler(testContext)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster)
 
 	share := dto.SharedResource{
 		Name: "LIBRARY",
@@ -199,7 +197,7 @@ func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
 }
 
 func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
-	shareHandler := api.NewShareHandler(testContext)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster)
 
 	share := dto.SharedResource{
 		MountPointData: &dto.MountPointData{
@@ -253,7 +251,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
 }
 
 func (suite *ShareHandlerSuite) TestDeleteShareHandler() {
-	shareHandler := api.NewShareHandler(testContext)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/share/EFI", nil)

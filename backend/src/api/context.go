@@ -14,7 +14,8 @@ type ContextState struct {
 	Template         []byte
 	DockerInterface  string
 	DockerNet        string
-	SSEBroker        BrokerInterface
+	Heartbeat        int
+	//SSEBroker        BrokerInterface
 }
 
 func StateFromContext(ctx context.Context) *ContextState {

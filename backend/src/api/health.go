@@ -16,28 +16,33 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/server"
+	"github.com/dianlight/srat/service"
 )
 
-type Health struct {
+type HealthHanler struct {
 	ctx                    context.Context
 	OutputEventsCount      uint64
 	OutputEventsInterleave time.Duration
 	dto.HealthPing
 	gh            *github.Client
 	updateChannel dto.UpdateChannel
+	broadcaster   service.BroadcasterServiceInterface
 }
 
-func NewHealth(ctx context.Context, ro_mode bool) *Health {
-	p := new(Health)
+func NewHealthHandler(ctx context.Context, apictx *ContextState, broadcaster service.BroadcasterServiceInterface) *HealthHanler {
+
+	p := new(HealthHanler)
 	p.Alive = true
 	p.AliveTime = time.Now()
-	p.ReadOnly = ro_mode
+	p.ReadOnly = apictx.ReadOnlyMode
 	p.SambaProcessStatus.Pid = -1
 	p.LastError = ""
 	p.ctx = ctx
+	p.broadcaster = broadcaster
 	p.OutputEventsCount = 0
-	if sec := ctx.Value("health_interlive_seconds"); sec != nil {
-		p.OutputEventsInterleave = time.Duration(sec.(int)) * time.Second
+	if apictx.Heartbeat > 0 {
+		p.OutputEventsInterleave = time.Duration(apictx.Heartbeat) * time.Second
 	} else {
 		p.OutputEventsInterleave = 5 * time.Second
 	}
@@ -58,6 +63,12 @@ func NewHealth(ctx context.Context, ro_mode bool) *Health {
 	return p
 }
 
+func (broker *HealthHanler) Patterns() []server.RouteDetail {
+	return []server.RouteDetail{
+		{Pattern: "/healt", Method: "GET", Handler: broker.HealthCheckHandler},
+	}
+}
+
 // HealthCheckHandler godoc
 //
 //	@Summary		HealthCheck
@@ -67,17 +78,16 @@ func NewHealth(ctx context.Context, ro_mode bool) *Health {
 //	@Success		200 {object}	dto.HealthPing
 //	@Failure		405	{object}	ErrorResponse
 //	@Router			/health [get]
-func (self *Health) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+func (self *HealthHanler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	HttpJSONReponse(w, self, nil)
 }
 
-func (self *Health) EventEmitter(ctx context.Context, data dto.HealthPing) error {
-	share := StateFromContext(ctx)
+func (self *HealthHanler) EventEmitter(ctx context.Context, data dto.HealthPing) error {
 	msg := dto.EventMessageEnvelope{
 		Event: dto.EventHeartbeat,
 		Data:  data,
 	}
-	_, err := share.SSEBroker.BroadcastMessage(&msg)
+	_, err := self.broadcaster.BroadcastMessage(&msg)
 	if err != nil {
 		slog.Error("Error broadcasting health message: %w", "err", err)
 		return tracerr.Wrap(err)
@@ -86,7 +96,7 @@ func (self *Health) EventEmitter(ctx context.Context, data dto.HealthPing) error
 	return nil
 }
 
-func (self *Health) checkSoftwareVersion() error {
+func (self *HealthHanler) checkSoftwareVersion() error {
 	if self.updateChannel != dto.None {
 		UpdateLimiter.Do(func() {
 			slog.Debug("Checking for updates...", "channel", self.updateChannel)
@@ -137,7 +147,7 @@ func (self *Health) checkSoftwareVersion() error {
 	return nil
 }
 
-func (self *Health) checkSamba() {
+func (self *HealthHanler) checkSamba() {
 	sambaProcess, err := GetSambaProcess()
 	if err == nil && sambaProcess != nil {
 		var conv converter.ProcessToDtoImpl
@@ -147,11 +157,11 @@ func (self *Health) checkSamba() {
 	}
 }
 
-func (self *Health) run() error {
+func (self *HealthHanler) run() error {
 	for {
 		select {
 		case <-self.ctx.Done():
-			slog.Debug("Run process closed %w", "err", self.ctx.Err())
+			slog.Debug("Run process closed", "err", self.ctx.Err())
 			return tracerr.Wrap(self.ctx.Err())
 		default:
 			// FIXME: Implement background process to retrieve all health information
@@ -163,7 +173,6 @@ func (self *Health) run() error {
 				slog.Error("Error emitting health message: %w", "err", err)
 			}
 			time.Sleep(self.OutputEventsInterleave)
-			slog.Debug("Done")
 		}
 	}
 }

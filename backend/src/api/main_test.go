@@ -17,6 +17,7 @@ import (
 )
 
 var testContext = context.Background()
+var apiContextState api.ContextState
 
 func TestMain(m *testing.M) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -53,15 +54,18 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Cant read template file %s", err)
 	}
 
-	sharedResources := api.ContextState{}
-	sharedResources.SambaConfigFile = "../../test/data/smb.conf"
-	sharedResources.Template = templateData
-	sharedResources.DockerInterface = "hassio"
-	sharedResources.DockerNet = "172.30.32.0/23"
+	apiContextState = api.ContextState{}
+	apiContextState.SambaConfigFile = "../../test/data/smb.conf"
+	apiContextState.Template = templateData
+	apiContextState.DockerInterface = "hassio"
+	apiContextState.DockerNet = "172.30.32.0/23"
+	apiContextState.Heartbeat = 1
 	//sharedResources.SSEBroker = NewMockBrokerInterface(ctrl) //
-	testContext = api.StateToContext(&sharedResources, testContext)
+	testContext = api.StateToContext(&apiContextState, testContext)
 	testContext = config.ToContext(testContext)
-	testContext = context.WithValue(testContext, "health_interlive_seconds", 1)
 
-	os.Exit(m.Run())
+	retErr := m.Run()
+
+	os.Exit(retErr)
+
 }

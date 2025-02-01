@@ -1,33 +1,30 @@
 package api
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
-	"log/slog"
 	"net/http"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/google/uuid"
-	"github.com/ztrue/tracerr"
+	"github.com/dianlight/srat/server"
+	"github.com/dianlight/srat/service"
 )
 
-type Broker struct {
+type BrokerHandler struct {
 	// Events are pushed to this channel by the main events-gathering routine
-	Notifier chan dto.EventMessageEnvelope
+	//Notifier chan dto.EventMessageEnvelope
 
 	// New client connections are pushed to this channel
-	newClients chan chan dto.EventMessageEnvelope
+	//newClients chan chan dto.EventMessageEnvelope
 
 	// Closed client connections are pushed to this channel
-	closingClients chan chan dto.EventMessageEnvelope
+	//closingClients chan chan dto.EventMessageEnvelope
 
 	// Client connections registry
-	clients map[chan dto.EventMessageEnvelope]bool
+	//clients map[chan dto.EventMessageEnvelope]bool
 
 	// Listeners for new and closed connections
-	openConnectionListeners  []func(broker BrokerInterface) error
-	closeConnectionListeners []func(broker BrokerInterface) error
+	//openConnectionListeners  []func(broker BrokerInterface) error
+	//closeConnectionListeners []func(broker BrokerInterface) error
+	broadcaster service.BroadcasterServiceInterface
 }
 
 type BrokerInterface interface {
@@ -37,22 +34,30 @@ type BrokerInterface interface {
 	AddCloseConnectionListener(ws func(broker BrokerInterface) error) error
 }
 
-func NewSSEBroker() (broker *Broker) {
+func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker *BrokerHandler) {
 	// Instantiate a broker
-	broker = &Broker{
-		Notifier:       make(chan dto.EventMessageEnvelope, 1),
-		newClients:     make(chan chan dto.EventMessageEnvelope),
-		closingClients: make(chan chan dto.EventMessageEnvelope),
-		clients:        make(map[chan dto.EventMessageEnvelope]bool),
+	broker = &BrokerHandler{
+		broadcaster: broadcaster,
+		//Notifier:       make(chan dto.EventMessageEnvelope, 1),
+		//newClients:     make(chan chan dto.EventMessageEnvelope),
+		//closingClients: make(chan chan dto.EventMessageEnvelope),
+		//clients:        make(map[chan dto.EventMessageEnvelope]bool),
 	}
 
 	// Set it running - listening and broadcasting events
-	go broker.listen()
+	//go broadcaster.listen()
 
 	return
 }
 
-func (broker *Broker) listen() {
+func (broker *BrokerHandler) Patterns() []server.RouteDetail {
+	return []server.RouteDetail{
+		{Pattern: "/sse", Method: "GET", Handler: broker.Stream},
+	}
+}
+
+/*
+func (broker *BrokerHandler) listen() {
 	for {
 		select {
 		case s := <-broker.newClients:
@@ -94,6 +99,7 @@ func (broker *Broker) listen() {
 		}
 	}
 }
+*/
 
 // SSE Stream godoc
 //
@@ -107,58 +113,60 @@ func (broker *Broker) listen() {
 // @Success		200	{object} dto.EventMessageEnvelope
 // @Failure		500	{object}	ErrorResponse
 // @Router			/sse [get]
-func (broker *Broker) Stream(w http.ResponseWriter, r *http.Request) {
-	// Check if the ResponseWriter supports flushing.
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		HttpJSONReponse(w, "Streaming unsupported!", &Options{
+func (broker *BrokerHandler) Stream(w http.ResponseWriter, r *http.Request) {
+	err := broker.broadcaster.ProcessHttpChannel(w, r)
+	if err != nil {
+		HttpJSONReponse(w, err, &Options{
 			Code: http.StatusInternalServerError,
 		})
 		return
 	}
+	/*
+	   // Each connection registers its own message channel with the Broker's connections registry
+	   messageChan := make(chan dto.EventMessageEnvelope)
 
-	// Each connection registers its own message channel with the Broker's connections registry
-	messageChan := make(chan dto.EventMessageEnvelope)
+	   // Signal the broker that we have a new connection
+	   broker.newClients <- messageChan
 
-	// Signal the broker that we have a new connection
-	broker.newClients <- messageChan
+	   // Remove this client from the map of connected clients
+	   // when this handler exits.
 
-	// Remove this client from the map of connected clients
-	// when this handler exits.
-	defer func() {
-		broker.closingClients <- messageChan
-	}()
+	   	defer func() {
+	   		broker.closingClients <- messageChan
+	   	}()
 
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	//w.Header().Set("Access-Control-Allow-Origin", "*")
+	   w.Header().Set("Content-Type", "text/event-stream")
+	   w.Header().Set("Cache-Control", "no-cache")
+	   w.Header().Set("Connection", "keep-alive")
+	   //w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	for {
-		select {
-		// Listen to connection close and un-register messageChan
-		case <-r.Context().Done():
-			// remove this client from the map of connected clients
-			broker.closingClients <- messageChan
-			return
+	   	for {
+	   		select {
+	   		// Listen to connection close and un-register messageChan
+	   		case <-r.Context().Done():
+	   			// remove this client from the map of connected clients
+	   			broker.closingClients <- messageChan
+	   			return
 
-		// Listen for incoming messages from messageChan
-		case msg := <-messageChan:
-			// Write to the ResponseWriter
-			j, err := json.Marshal(msg.Data)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			// Server Sent Events compatible
-			fmt.Fprintf(w, "event: %s\nid: %s\nretry: 30\ndata: %s\n\n", msg.Event, msg.Id, []byte(j))
-			// Flush the data immediatly instead of buffering it for later.
-			flusher.Flush()
-		}
-	}
+	   		// Listen for incoming messages from messageChan
+	   		case msg := <-messageChan:
+	   			// Write to the ResponseWriter
+	   			j, err := json.Marshal(msg.Data)
+	   			if err != nil {
+	   				http.Error(w, err.Error(), http.StatusInternalServerError)
+	   				return
+	   			}
+	   			// Server Sent Events compatible
+	   			fmt.Fprintf(w, "event: %s\nid: %s\nretry: 30\ndata: %s\n\n", msg.Event, msg.Id, []byte(j))
+	   			// Flush the data immediatly instead of buffering it for later.
+	   			flusher.Flush()
+	   		}
+	   	}
+	*/
 }
 
-func (broker *Broker) BroadcastMessage(msg *dto.EventMessageEnvelope) (*dto.EventMessageEnvelope, error) {
+/*
+func (broker *BrokerHandler) BroadcastMessage(msg *dto.EventMessageEnvelope) (*dto.EventMessageEnvelope, error) {
 	if msg.Id == "" {
 		msg.Id = uuid.New().String()
 	}
@@ -167,15 +175,16 @@ func (broker *Broker) BroadcastMessage(msg *dto.EventMessageEnvelope) (*dto.Even
 	return msg, nil
 }
 
-func (broker *Broker) AddOpenConnectionListener(ws func(broker BrokerInterface) error) error {
+func (broker *BrokerHandler) AddOpenConnectionListener(ws func(broker BrokerInterface) error) error {
 	broker.openConnectionListeners = append(broker.openConnectionListeners, ws)
 	return nil
 }
 
-func (broker *Broker) AddCloseConnectionListener(ws func(broker BrokerInterface) error) error {
+func (broker *BrokerHandler) AddCloseConnectionListener(ws func(broker BrokerInterface) error) error {
 	broker.closeConnectionListeners = append(broker.closeConnectionListeners, ws)
 	return nil
 }
+*/
 
 /*
 func main() {

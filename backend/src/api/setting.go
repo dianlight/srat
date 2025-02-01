@@ -7,8 +7,25 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/server"
 	"golang.org/x/time/rate"
 )
+
+type SettingsHanler struct {
+}
+
+func NewSettingsHanler() *SettingsHanler {
+	p := new(SettingsHanler)
+	return p
+}
+
+func (broker *SettingsHanler) Patterns() []server.RouteDetail {
+	return []server.RouteDetail{
+		{Pattern: "/settings", Method: "GET", Handler: broker.GetSettings},
+		{Pattern: "/settings", Method: "PUT", Handler: broker.UpdateSettings},
+		{Pattern: "/settings", Method: "PATCH", Handler: broker.UpdateSettings},
+	}
+}
 
 // UpdateSettings godoc
 //
@@ -21,9 +38,9 @@ import (
 //	@Success		200		{object}	dto.Settings
 //	@Failure		400		{object}	ErrorResponse
 //	@Failure		500		{object}	ErrorResponse
-//	@Router			/global [put]
-//	@Router			/global [patch]
-func UpdateSettings(w http.ResponseWriter, r *http.Request) {
+//	@Router			/settings [put]
+//	@Router			/settings [patch]
+func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	var config dto.Settings
 	err := HttpJSONRequest(&config, w, r)
 	if err != nil {
@@ -74,8 +91,8 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	dto.Settings
 //	@Failure		400	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
-//	@Router			/global [get]
-func GetSettings(w http.ResponseWriter, r *http.Request) {
+//	@Router			/settingsx [get]
+func (self *SettingsHanler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	var dbsettings dbom.Properties
 	var conv converter.DtoToDbomConverterImpl
 	err := dbsettings.Load()

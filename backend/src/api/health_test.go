@@ -11,59 +11,74 @@ import (
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"github.com/tj/go-spin"
 	gomock "go.uber.org/mock/gomock"
 )
 
-func TestHealthCheckHandler(t *testing.T) {
+type HealthHandlerSuite struct {
+	suite.Suite
+	mockBoradcaster *MockBroadcasterServiceInterface
+	//mockBrocker *MockBrokerInterface
+	// VariableThatShouldStartAtFive int
+}
+
+func TestHealthHandlerSuite(t *testing.T) {
+	csuite := new(HealthHandlerSuite)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
+	//csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
+
+	suite.Run(t, csuite)
+}
+
+func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
+
+	suite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
 	req, err := http.NewRequestWithContext(testContext, "GET", "/health", nil)
 	if err != nil {
-		t.Fatal(err)
+		suite.T().Fatal(err)
 	}
 
 	rr := httptest.NewRecorder()
-	health := api.NewHealth(testContext, false)
+	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster)
 	handler := http.HandlerFunc(health.HealthCheckHandler)
 
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
+		suite.T().Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
 
 	expectedContentType := "application/json"
 	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
-		t.Errorf("handler returned wrong content type: got %v want %v",
+		suite.T().Errorf("handler returned wrong content type: got %v want %v",
 			contentType, expectedContentType)
 	}
 
 	var response dto.HealthPing
 	err = json.Unmarshal(rr.Body.Bytes(), &response)
 	if err != nil {
-		t.Errorf("Failed to unmarshal response body: %v", err)
+		suite.T().Errorf("Failed to unmarshal response body: %v", err)
 	}
 
 	if !response.Alive {
-		t.Errorf("Expected Alive to be true, got false")
+		suite.T().Errorf("Expected Alive to be true, got false")
 	}
 }
 
-func TestHealthEventEmitter(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	sharedContex := api.StateFromContext(testContext)
-	mockBrocker := NewMockBrokerInterface(ctrl)
-	sharedContex.SSEBroker = mockBrocker
-
-	health := api.NewHealth(testContext, false)
+func (suite *HealthHandlerSuite) TestHealthEventEmitter() {
+	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster)
 	numcal := uint64(0)
 	startTime := time.Now()
-	mockBrocker.EXPECT().BroadcastMessage(gomock.Any()).Do((func(data any) {
+	suite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).Do((func(data any) {
 		msg := data.(*dto.EventMessageEnvelope)
-		assert.NotNil(t, msg.Data)
+		assert.NotNil(suite.T(), msg.Data)
 		if msg.Event != dto.EventHeartbeat {
-			t.Errorf("Expected Event to be Heartbeat, got %v", msg.Event)
+			suite.T().Errorf("Expected Event to be Heartbeat, got %v", msg.Event)
 		}
 		numcal++
 		return
@@ -74,8 +89,8 @@ func TestHealthEventEmitter(t *testing.T) {
 		time.Sleep(time.Millisecond * 500)
 	}
 	elapsed := time.Since(startTime)
-	assert.LessOrEqual(t, uint64(elapsed.Seconds()/float64(testContext.Value("health_interlive_seconds").(int))), numcal, " elapsed seconds %d should be greater than %d", elapsed.Seconds(), numcal)
-	assert.Equal(t, health.OutputEventsCount, numcal)
+	assert.LessOrEqual(suite.T(), uint64(elapsed.Seconds()/float64(apiContextState.Heartbeat)), numcal, " elapsed seconds %d should be greater than %d", elapsed.Seconds(), numcal)
+	assert.Equal(suite.T(), health.OutputEventsCount, numcal)
 
 	//t.Log(health)
 }

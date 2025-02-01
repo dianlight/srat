@@ -19,6 +19,8 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/lsblk"
+	"github.com/dianlight/srat/server"
+	"github.com/dianlight/srat/service"
 	"github.com/gorilla/mux"
 	"github.com/jaypipes/ghw"
 	"github.com/jinzhu/copier"
@@ -36,20 +38,30 @@ var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
 
 type VolumeHandler struct {
 	ctx               context.Context
+	broascasting      service.BroadcasterServiceInterface
 	volumesQueueMutex sync.RWMutex
 }
 
-func NewVolumeHandler(ctx context.Context) *VolumeHandler {
+func NewVolumeHandler(ctx context.Context, broascasting service.BroadcasterServiceInterface) *VolumeHandler {
 	p := new(VolumeHandler)
 	p.ctx = ctx
+	p.broascasting = broascasting
 	//p.sharesQueue = map[string](chan *[]dto.SharedResource){}
 	p.volumesQueueMutex = sync.RWMutex{}
-	StateFromContext(p.ctx).SSEBroker.AddOpenConnectionListener(func(broker BrokerInterface) error {
+	broascasting.AddOpenConnectionListener(func(broker service.BroadcasterServiceInterface) error {
 		p.notifyClient()
 		return nil
 	})
-	go p.VolumesEventHandler()
+	go p.VolumesEventHandler(ctx)
 	return p
+}
+
+func (broker *VolumeHandler) Patterns() []server.RouteDetail {
+	return []server.RouteDetail{
+		{Pattern: "/volumes", Method: "GET", Handler: broker.ListVolumes},
+		{Pattern: "/volume/{id}/mount", Method: "POST", Handler: broker.MountVolume},
+		{Pattern: "/volume/{id}/mount", Method: "DELETE", Handler: broker.UmountVolume},
+	}
 }
 
 func (self *VolumeHandler) GetVolumesData() (*dto.BlockInfo, error) {
@@ -310,12 +322,6 @@ func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/* 	err = conv.MountPointPathToMountPointData(dbom_mount_data, &mount_data)
-	   	if err != nil {
-	   		HttpJSONReponse(w, err, nil)
-	   		return
-	   	} */
-
 	var mp *mount.MountPoint
 	if dbom_mount_data.FSType == "" {
 		mp, err = mount.TryMount(dbom_mount_data.Source, dbom_mount_data.Path, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
@@ -405,7 +411,7 @@ func (self *VolumeHandler) UmountVolume(w http.ResponseWriter, r *http.Request) 
 //
 // The function does not return any value, but it will log errors and volume changes,
 // and call notifyVolumeClient when volumes are added or removed.
-func (self *VolumeHandler) VolumesEventHandler() {
+func (self *VolumeHandler) VolumesEventHandler(ctx context.Context) {
 	slog.Debug("Monitoring UEvent kernel message to user-space...")
 
 	conn := new(netlink.UEventConn)
@@ -431,6 +437,9 @@ func (self *VolumeHandler) VolumesEventHandler() {
 	// Handling message from queue
 	for {
 		select {
+		case <-ctx.Done():
+			slog.Info("Run process closed", "err", tracerr.SprintSourceColor(ctx.Err()))
+			return
 		case uevent := <-queue:
 			slog.Info("Handle", "event", pretty.Sprint(uevent))
 			if uevent.Action == "add" {
@@ -458,5 +467,5 @@ func (self *VolumeHandler) notifyClient() {
 	var event dto.EventMessageEnvelope
 	event.Event = dto.EventVolumes
 	event.Data = data
-	StateFromContext(self.ctx).SSEBroker.BroadcastMessage(&event)
+	self.broascasting.BroadcastMessage(&event)
 }

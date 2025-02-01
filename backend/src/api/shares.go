@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -11,27 +10,42 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/server"
+	"github.com/dianlight/srat/service"
 	"github.com/gorilla/mux"
 	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 )
 
 type ShareHandler struct {
-	ctx              context.Context
+	//ctx              context.Context
+	//apictx           *ContextState
 	sharesQueueMutex sync.RWMutex
+	broadcaster      service.BroadcasterServiceInterface
 	//sharesQueue      map[string]chan *[]dto.SharedResource
 }
 
-func NewShareHandler(ctx context.Context) *ShareHandler {
+func NewShareHandler(broadcaster service.BroadcasterServiceInterface) *ShareHandler {
 	p := new(ShareHandler)
-	p.ctx = ctx
+	p.broadcaster = broadcaster
+	//p.ctx = ctx
 	//p.sharesQueue = map[string](chan *[]dto.SharedResource){}
 	p.sharesQueueMutex = sync.RWMutex{}
-	StateFromContext(p.ctx).SSEBroker.AddOpenConnectionListener(func(broker BrokerInterface) error {
+	broadcaster.AddOpenConnectionListener(func(broker service.BroadcasterServiceInterface) error {
 		p.notifyClient()
 		return nil
 	})
 	return p
+}
+
+func (broker *ShareHandler) Patterns() []server.RouteDetail {
+	return []server.RouteDetail{
+		{Pattern: "/shares", Method: "GET", Handler: broker.ListShares},
+		{Pattern: "/share/{share_name}", Method: "GET", Handler: broker.GetShare},
+		{Pattern: "/share", Method: "POST", Handler: broker.CreateShare},
+		{Pattern: "/share/{share_name}", Method: "PUT", Handler: broker.UpdateShare},
+		{Pattern: "/share/{share_name}", Method: "DELETE", Handler: broker.DeleteShare},
+	}
 }
 
 /*
@@ -258,7 +272,7 @@ func (self *ShareHandler) notifyClient() {
 	var event dto.EventMessageEnvelope
 	event.Event = dto.EventShare
 	event.Data = shares
-	StateFromContext(self.ctx).SSEBroker.BroadcastMessage(&event)
+	self.broadcaster.BroadcastMessage(&event)
 }
 
 // UpdateShare godoc

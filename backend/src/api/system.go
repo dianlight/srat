@@ -228,12 +228,13 @@ func DirtyWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c
 // the queue.
 //
 // This function does not take any parameters and does not return any values.
-func notifyUpdate(ctx context.Context) {
-	var sse dto.EventMessageEnvelope
-	sse.Event = dto.EventHeartbeat
-	sse.Data = lastReleaseData
-	state := StateFromContext(ctx)
-	state.SSEBroker.BroadcastMessage(&sse)
+func notifyUpdate(_ context.Context) {
+	//var sse dto.EventMessageEnvelope
+	//sse.Event = dto.EventHeartbeat
+	//sse.Data = lastReleaseData
+	// FIXME: Use SSEBroker to broadcast the message instead of sending to all channels
+	//state := StateFromContext(ctx)
+	//state.SSEBroker.BroadcastMessage(&sse)
 
 	updateQueueMutex.RLock()
 	for _, v := range updateQueue {

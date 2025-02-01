@@ -17,16 +17,34 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"github.com/thoas/go-funk"
+	gomock "go.uber.org/mock/gomock"
 )
 
-func TestListVolumessHandler(t *testing.T) {
-	volume := api.NewVolumeHandler(testContext)
+type VolumeHandlerSuite struct {
+	suite.Suite
+	mockBoradcaster *MockBroadcasterServiceInterface
+	previus_device  uint
+}
+
+func TestVolumeHandlerSuite(t *testing.T) {
+	csuite := new(VolumeHandlerSuite)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
+	csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
+	csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
+	suite.Run(t, csuite)
+}
+
+func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
+	volume := api.NewVolumeHandler(testContext, suite.mockBoradcaster)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/volumes", nil)
 	if err != nil {
-		t.Fatal(err)
+		suite.T().Fatal(err)
 	}
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
@@ -39,27 +57,27 @@ func TestListVolumessHandler(t *testing.T) {
 
 	// Check the status code is what we expect.
 	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
+		suite.T().Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
 
-	//t.Log(pretty.Sprint(rr.Body))
+	//suite.T().Log(pretty.Sprint(rr.Body))
 	if len(rr.Body.String()) == 0 {
-		t.Errorf("handler returned unexpected body: got %v want %v",
+		suite.T().Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), "[]")
 	}
 
 	var volumes dto.BlockInfo
 	err2 := json.NewDecoder(rr.Body).Decode(&volumes)
 	if err2 != nil {
-		t.Errorf("handler error in decode body %v", err2)
+		suite.T().Errorf("handler error in decode body %v", err2)
 	}
-	//t.Log(pretty.Sprint(volumes))
+	//suite.T(),Log(pretty.Sprint(volumes))
 
-	assert.NotNil(t, funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
+	assert.NotNil(suite.T(), funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
 		return d.Label == "testvolume"
 	}))
-	assert.NotNil(t, funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
+	assert.NotNil(suite.T(), funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
 		return d.Label == "_EXT4"
 	}), "Expected _EXT4 volume not found %+v", funk.Map(volumes.Partitions, func(d *dto.BlockPartition) string {
 		return d.Label + "[" + d.Name + "]"
@@ -67,13 +85,13 @@ func TestListVolumessHandler(t *testing.T) {
 
 }
 
-var previus_device uint
+//var
 
-func TestMountVolumeHandler(t *testing.T) {
-	volume := api.NewVolumeHandler(testContext)
+func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
+	volume := api.NewVolumeHandler(testContext, suite.mockBoradcaster)
 	// Check if loop device is available for mounting
 	volumes, err := volume.GetVolumesData()
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	var mockMountData dbom.MountPointPath
 
@@ -83,21 +101,21 @@ func TestMountVolumeHandler(t *testing.T) {
 			mockMountData.Path = filepath.Join("/mnt", d.Label)
 			mockMountData.FSType = d.Type
 			mockMountData.Flags = []dto.MounDataFlag{dto.MS_NOATIME}
-			previus_device = d.MountPointData.ID
-			t.Logf("Selected loop device: %v", mockMountData)
+			suite.previus_device = d.MountPointData.ID
+			suite.T().Logf("Selected loop device: %v", mockMountData)
 			break
 		}
 	}
 	if mockMountData.Source == "" {
-		t.Skip("Test failed: loop device not found for mounting")
+		suite.T().Skip("Test failed: loop device not found for mounting")
 		return
 	}
 
 	body, _ := json.Marshal(mockMountData)
-	requestPath := fmt.Sprintf("/volume/%d/mount", previus_device)
-	t.Logf("Request path: %s", requestPath)
+	requestPath := fmt.Sprintf("/volume/%d/mount", suite.previus_device)
+	suite.T().Logf("Request path: %s", requestPath)
 	req, err := http.NewRequestWithContext(testContext, "POST", requestPath, bytes.NewBuffer(body))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
@@ -111,30 +129,30 @@ func TestMountVolumeHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
+	assert.Equal(suite.T(), http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
 
-	// Check the response body is what we expect.
+	// Check the response body is what we expecsuite.T().
 	var responseData dbom.MountPointPath
 	err = json.Unmarshal(rr.Body.Bytes(), &responseData)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	// Verify the response data
 	if !strings.HasPrefix(responseData.Path, mockMountData.Path) {
-		t.Errorf("Unexpected path in response: got %v want %v", responseData.Path, mockMountData.Path)
+		suite.T().Errorf("Unexpected path in response: got %v want %v", responseData.Path, mockMountData.Path)
 	}
 	if responseData.FSType != mockMountData.FSType {
-		t.Errorf("Unexpected FSType in response: got %v want %v", responseData.FSType, mockMountData.FSType)
+		suite.T().Errorf("Unexpected FSType in response: got %v want %v", responseData.FSType, mockMountData.FSType)
 	}
 	if !reflect.DeepEqual(responseData.Flags, mockMountData.Flags) {
-		t.Errorf("Unexpected Flags in response: got %v want %v", responseData.Flags, mockMountData.Flags)
+		suite.T().Errorf("Unexpected Flags in response: got %v want %v", responseData.Flags, mockMountData.Flags)
 	}
 }
 
-func TestUmountVolumeNonExistent(t *testing.T) {
-	volume := api.NewVolumeHandler(testContext)
+func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
+	volume := api.NewVolumeHandler(testContext, suite.mockBoradcaster)
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/999999/mount", nil)
 	if err != nil {
-		t.Fatal(err)
+		suite.T().Fatal(err)
 	}
 
 	rr := httptest.NewRecorder()
@@ -144,28 +162,28 @@ func TestUmountVolumeNonExistent(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusNotFound {
-		t.Errorf("handler returned wrong status code: got %v want %v",
+		suite.T().Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusNotFound)
 	}
 
 	expected := `{"code":404,"error":"MountPoint not found","body":null}`
 	if rr.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
+		suite.T().Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), expected)
 	}
 }
-func TestUmountVolumeSuccess(t *testing.T) {
+func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 
-	volume := api.NewVolumeHandler(testContext)
-	if previus_device == 0 {
-		t.Skip("Test skip: not prevision mounted volume found")
+	volume := api.NewVolumeHandler(testContext, suite.mockBoradcaster)
+	if suite.previus_device == 0 {
+		suite.T().Skip("Test skip: not prevision mounted volume found")
 	}
 
-	require.NotEmpty(t, previus_device, "Test skip: not prevision mounted volume found")
+	require.NotEmpty(suite.T(), suite.previus_device, "Test skip: not prevision mounted volume found")
 
 	// Create a request
-	req, err := http.NewRequestWithContext(testContext, "DELETE", fmt.Sprintf("/volume/%d/mount", previus_device), nil)
-	require.NoError(t, err)
+	req, err := http.NewRequestWithContext(testContext, "DELETE", fmt.Sprintf("/volume/%d/mount", suite.previus_device), nil)
+	require.NoError(suite.T(), err)
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
@@ -178,8 +196,8 @@ func TestUmountVolumeSuccess(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code
-	assert.Equal(t, http.StatusNoContent, rr.Code, "Body %#v", rr.Body.String())
+	assert.Equal(suite.T(), http.StatusNoContent, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check that the response body is empty
-	assert.Empty(t, rr.Body.String(), "Body should be empty")
+	assert.Empty(suite.T(), rr.Body.String(), "Body should be empty")
 }
