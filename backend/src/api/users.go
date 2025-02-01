@@ -1,16 +1,42 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/server"
 	"github.com/gorilla/mux"
 	"github.com/xorcare/pointer"
 	"gorm.io/gorm"
 )
+
+type UserHandler struct {
+	//ctx               context.Context
+	//broascasting      service.BroadcasterServiceInterface
+	//volumesQueueMutex sync.RWMutex
+}
+
+func NewUserHandler(ctx context.Context) *UserHandler {
+	p := new(UserHandler)
+	//p.ctx = ctx
+	//p.broascasting = broascasting
+	//p.volumesQueueMutex = sync.RWMutex{}
+	return p
+}
+
+func (handler *UserHandler) Patterns() []server.RouteDetail {
+	return []server.RouteDetail{
+		{Pattern: "/users", Method: "GET", Handler: handler.ListUsers},
+		{Pattern: "/useradmin", Method: "GET", Handler: handler.GetAdminUser},
+		{Pattern: "/useradmin", Method: "PUT", Handler: handler.UpdateAdminUser},
+		{Pattern: "/user/{id}", Method: "PUT", Handler: handler.UpdateUser},
+		{Pattern: "/user/{id}", Method: "DELETE", Handler: handler.DeleteUser},
+	}
+}
 
 // ListUsers godoc
 //
@@ -22,7 +48,7 @@ import (
 //	@Failure		405	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/users [get]
-func ListUsers(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	var dbusers dbom.SambaUsers
 	err := dbusers.Load()
 	if err != nil {
@@ -62,8 +88,8 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	dto.User
 //	@Failure		405	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
-//	@Router			/admin/user [get]
-func GetAdminUser(w http.ResponseWriter, r *http.Request) {
+//	@Router			/user/admin [get]
+func (handler *UserHandler) GetAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var adminUser dto.User
@@ -131,7 +157,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		409		{object}	ErrorResponse
 //	@Failure		500		{object}	ErrorResponse
 //	@Router			/user [post]
-func CreateUser(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	var user dto.User
 	err := HttpJSONRequest(&user, w, r)
@@ -184,8 +210,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		404			{object}	ErrorResponse
 //	@Failure		500			{object}	ErrorResponse
 //	@Router			/user/{username} [put]
-//	@Router			/user/{username} [patch]
-func UpdateUser(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 
 	var user dto.User
@@ -244,9 +269,8 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		405		{object}	ErrorResponse
 //	@Failure		404		{object}	ErrorResponse
 //	@Failure		500		{object}	ErrorResponse
-//	@Router			/admin/user [put]
-//	@Router			/admin/user [patch]
-func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
+//	@Router			/user/admin [put]
+func (handler *UserHandler) UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 
 	var user dto.User
 	err := HttpJSONRequest(&user, w, r)
@@ -297,7 +321,7 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		404	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/user/{username} [delete]
-func DeleteUser(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 
 	dbUser := dbom.SambaUser{

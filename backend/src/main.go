@@ -309,6 +309,7 @@ func prog(state overseer.State) {
 			globalRouter.HandleFunc("/user/{username}", api.UpdateUser).Methods(http.MethodPut, http.MethodPatch)
 			globalRouter.HandleFunc("/user/{username}", api.DeleteUser).Methods(http.MethodDelete)
 
+			ok
 			// Samba
 			globalRouter.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet)
 			globalRouter.HandleFunc("/samba/apply", api.ApplySamba).Methods(http.MethodPut)
@@ -324,6 +325,7 @@ func prog(state overseer.State) {
 			//globalRouter.HandleFunc("/config", api.PersistAllConfig).Methods(http.MethodPut, http.MethodPatch)
 			//globalRouter.HandleFunc("/config", api.RollbackConfig).Methods(http.MethodDelete)
 
+			ok
 			// WebSocket
 			globalRouter.HandleFunc("/events", api.WSChannelEventsList).Methods(http.MethodGet)
 			globalRouter.HandleFunc("/ws", api.WSChannelHandler)

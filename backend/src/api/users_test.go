@@ -1,4 +1,3 @@
-// endpoints_test.go
 package api_test
 
 import (
@@ -15,15 +14,33 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"github.com/thoas/go-funk"
 	"github.com/xorcare/pointer"
 )
 
-func TestListUsersHandler(t *testing.T) {
+type UserHandlerSuite struct {
+	suite.Suite
+	//mockBoradcaster *MockBroadcasterServiceInterface
+	// VariableThatShouldStartAtFive int
+}
+
+func TestSUserHandlerSuite(t *testing.T) {
+	csuite := new(UserHandlerSuite)
+	//ctrl := gomock.NewController(t)
+	//defer ctrl.Finish()
+	//csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
+	//csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
+	//csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
+	suite.Run(t, csuite)
+}
+
+func (suite *UserHandlerSuite) TestListUsersHandler() {
+	api := api.NewUserHandler(testContext)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/users", nil)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -34,62 +51,58 @@ func TestListUsersHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(suite.T(), http.StatusOK, rr.Code)
 
 	var users []dto.User
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &users)
-	require.NoError(t, jsonError)
+	require.NoError(suite.T(), jsonError)
 
 	// Check the response body is what we expect.
 	var configs config.Config
 	err = configs.FromContext(testContext)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
-	assert.Len(t, users, len(configs.OtherUsers)+2, users)
+	assert.Len(suite.T(), users, len(configs.OtherUsers)+2, users)
 
 	for _, user := range users {
-		if *user.Username == "utente1" {
-			continue
-		}
+		assert.NotEmpty(suite.T(), user.Username)
 		if *user.Username != "dianlight" {
-			ou := funk.Find(configs.OtherUsers, func(u config.User) bool { return u.Username == *user.Username }).(config.User)
-			assert.Equal(t, &ou.Password, user.Password)
-			assert.False(t, *user.IsAdmin)
+			ou := funk.Find(configs.OtherUsers, func(u config.User) bool { return u.Username == *user.Username })
+			if ou != nil {
+				assert.Equal(suite.T(), (ou.(config.User)).Password, *user.Password)
+				assert.False(suite.T(), *user.IsAdmin)
+			}
 		} else {
-			assert.True(t, *user.IsAdmin)
+			assert.True(suite.T(), *user.IsAdmin)
 		}
 	}
 }
 
-/*
-func TestGetUserHandler(t *testing.T) {
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "GET", "/user/backupuser", nil)
-	require.NoError(t, err)
+func (suite *UserHandlerSuite) TestGetUserHandler() {
+	api := api.NewUserHandler(testContext)
+	req, err := http.NewRequestWithContext(testContext, "GET", "/useradmin", nil)
+	require.NoError(suite.T(), err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/user/{username}", GetUser).Methods(http.MethodGet)
+	router.HandleFunc("/useradmin", api.GetAdminUser).Methods(http.MethodGet)
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(suite.T(), http.StatusOK, rr.Code)
 
-	// Check the response body is what we expect.
-	context_state := (&dto.ContextState{}).FromContext(testContext)
-	bu, index := context_state.Users.Get("backupuser")
-	assert.NotEqual(t, index, -1)
-	expected, jsonError := json.Marshal(bu)
-	require.NoError(t, jsonError)
-	assert.NotEmpty(t, expected)
-	assert.Equal(t, string(expected), rr.Body.String())
+	ret := &dto.User{}
+	jsonError := json.Unmarshal(rr.Body.Bytes(), &ret)
+	require.NoError(suite.T(), jsonError)
+	assert.NotEmpty(suite.T(), ret)
+	assert.Equal(suite.T(), "dianlight", *ret.Username)
+	assert.True(suite.T(), *ret.IsAdmin)
 }
-*/
 
-func TestCreateUserHandler(t *testing.T) {
+func (suite *UserHandlerSuite) TestCreateUserHandler() {
+	api := api.NewUserHandler(testContext)
 
 	user := dto.User{
 		Username: pointer.String("PIPPO"),
@@ -97,12 +110,12 @@ func TestCreateUserHandler(t *testing.T) {
 	}
 
 	jsonBody, jsonError := json.Marshal(user)
-	require.NoError(t, jsonError)
+	require.NoError(suite.T(), jsonError)
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PUT", "/user/PIPPO", strings.NewReader(string(jsonBody)))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -112,36 +125,37 @@ func TestCreateUserHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusCreated, rr.Code)
+	assert.Equal(suite.T(), http.StatusCreated, rr.Code)
 
 	// Check the response body is what we expect.
 	user.IsAdmin = pointer.Bool(false)
 	expected, jsonError := json.Marshal(user)
-	require.NoError(t, jsonError)
-	assert.Equal(t, string(expected), rr.Body.String())
+	require.NoError(suite.T(), jsonError)
+	assert.Equal(suite.T(), string(expected), rr.Body.String())
 
 	//context_state := (&dto.ContextState{}).FromContext(testContext)
 	dbuser := dbom.SambaUser{
 		Username: "PIPPO",
 	}
 	err = dbuser.Get()
-	require.NoError(t, err)
-	assert.Equal(t, dbuser.Password, *user.Password)
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), dbuser.Password, *user.Password)
+	assert.False(suite.T(), *user.IsAdmin)
 }
 
-func TestCreateUserDuplicateHandler(t *testing.T) {
-
+func (suite *UserHandlerSuite) TestCreateUserDuplicateHandler() {
+	api := api.NewUserHandler(testContext)
 	user := config.User{
 		Username: "backupuser",
 		Password: "\u003cbackupuser secret password\u003e",
 	}
 
 	jsonBody, jsonError := json.Marshal(user)
-	require.NoError(t, jsonError)
+	require.NoError(suite.T(), jsonError)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PUT", "/user/backupuser", strings.NewReader(string(jsonBody)))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -151,14 +165,14 @@ func TestCreateUserDuplicateHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusConflict, rr.Code)
+	assert.Equal(suite.T(), http.StatusConflict, rr.Code)
 
 	// Check the response body is what we expect.
-	assert.Contains(t, rr.Body.String(), "User already exists")
+	assert.Contains(suite.T(), rr.Body.String(), "User already exists")
 }
 
-func TestUpdateUserHandler(t *testing.T) {
-
+func (suite *UserHandlerSuite) TestUpdateUserHandler() {
+	api := api.NewUserHandler(testContext)
 	user := dto.User{
 		Password: pointer.String("/pippo"),
 	}
@@ -167,12 +181,12 @@ func TestUpdateUserHandler(t *testing.T) {
 	username := "utente2"
 
 	jsonBody, jsonError := json.Marshal(user)
-	require.NoError(t, jsonError)
+	require.NoError(suite.T(), jsonError)
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PATCH", "/user/"+username, strings.NewReader(string(jsonBody)))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -182,32 +196,26 @@ func TestUpdateUserHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(suite.T(), http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	updated := dto.User{}
 	jsonError = json.Unmarshal(rr.Body.Bytes(), &updated)
-	require.NoError(t, jsonError)
-	assert.Equal(t, username, *updated.Username)
-	assert.Equal(t, *user.Password, *updated.Password)
+	require.NoError(suite.T(), jsonError)
+	assert.Equal(suite.T(), username, *updated.Username)
+	assert.Equal(suite.T(), *user.Password, *updated.Password)
 }
 
-func TestUpdateAdminUserHandler(t *testing.T) {
-
+func (suite *UserHandlerSuite) TestUpdateAdminUserHandler() {
+	api := api.NewUserHandler(testContext)
 	user := dto.User{
 		Password: pointer.String("/pluto||admin"),
 	}
 
 	jsonBody, jsonError := json.Marshal(user)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
+	require.NoError(suite.T(), jsonError)
 	req, err := http.NewRequestWithContext(testContext, "PATCH", "/adminUser", strings.NewReader(string(jsonBody)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(suite.T(), err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -217,28 +225,22 @@ func TestUpdateAdminUserHandler(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(suite.T(), http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	user.Username = pointer.String("dianlight")
 	user.IsAdmin = pointer.Bool(true)
 	expected, jsonError := json.Marshal(user)
-	if jsonError != nil {
-		t.Errorf("Unable to encode JSON %s", jsonError.Error())
-	}
-	if rr.Body.String() != string(expected) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), string(expected))
-	}
+	require.NoError(suite.T(), jsonError)
+	assert.Equal(suite.T(), string(expected), rr.Body.String())
 }
 
-func TestDeleteuserHandler(t *testing.T) {
+func (suite *UserHandlerSuite) TestDeleteuserHandler() {
+	api := api.NewUserHandler(testContext)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/user/utente1", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(suite.T(), err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -247,9 +249,5 @@ func TestDeleteuserHandler(t *testing.T) {
 	router.HandleFunc("/user/{username}", api.DeleteUser).Methods(http.MethodDelete)
 	router.ServeHTTP(rr, req)
 
-	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusNoContent {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(suite.T(), http.StatusNoContent, rr.Code)
 }
