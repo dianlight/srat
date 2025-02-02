@@ -25,7 +25,7 @@ type SettingsHandlerSuite struct {
 }
 
 func TestSettingsHandlerSuite(t *testing.T) {
-	csuite := new(ShareHandlerSuite)
+	csuite := new(SettingsHandlerSuite)
 	suite.Run(t, csuite)
 }
 func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
