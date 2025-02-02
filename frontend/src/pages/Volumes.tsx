@@ -33,6 +33,13 @@ export function Volumes() {
 
 
     useEffect(() => {
+        apiContext.volumes.volumesList().then((res) => {
+            console.log("Got volumes", res.data)
+            setStatus(res.data);
+        }).catch(err => {
+            console.error(err);
+            //setErrorInfo(JSON.stringify(err));
+        })
         /*
         const vol = ws.subscribe<DtoBlockInfo>(DtoEventType.EventVolumes, (data) => {
             console.log("Got volumes", data)
