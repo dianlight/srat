@@ -15,7 +15,6 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/utility"
 	"github.com/google/go-github/v68/github"
-	"github.com/jpillora/overseer"
 )
 
 type UpgradeHanler struct {
@@ -36,7 +35,6 @@ func NewUpgradeHanler(ctx context.Context, apictx *ContextState, upgader service
 func (handler *UpgradeHanler) Patterns() []server.RouteDetail {
 	return []server.RouteDetail{
 		{Pattern: "/update", Method: "PUT", Handler: handler.UpdateHandler},
-		{Pattern: "/restart", Method: "PUT", Handler: handler.RestartHandler},
 	}
 }
 
@@ -97,20 +95,4 @@ func (handler *UpgradeHanler) UpdateHandler(w http.ResponseWriter, r *http.Reque
 	}()
 
 	HttpJSONReponse(w, lastReleaseData, nil)
-}
-
-// RestartHandler godoc
-//
-//	@Summary		RestartHandler
-//	@Description	Restart the server ( useful in development )
-//	@Tags			system
-//	@Produce		json
-//	@Success		204
-//	@Failure		405	{object}	ErrorResponse
-//	@Router			/restart [put]
-func (handler *UpgradeHanler) RestartHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
-
-	slog.Info("Restarting server...")
-	overseer.Restart()
 }
