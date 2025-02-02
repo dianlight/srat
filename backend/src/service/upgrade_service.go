@@ -33,6 +33,7 @@ type UpgradeService struct {
 func NewUpgradeService(ctx context.Context, broadcaster BroadcasterServiceInterface) UpgradeServiceInterface {
 	p := new(UpgradeService)
 	p.updateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
+	p.ctx = ctx
 	//p.updateQueue = make(map[string](chan *dto.ReleaseAsset))
 	//p.updateQueueMutex = sync.RWMutex{}
 	p.lastReleaseData = dto.ReleaseAsset{
