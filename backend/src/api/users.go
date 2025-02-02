@@ -88,7 +88,7 @@ func (handler *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	dto.User
 //	@Failure		405	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
-//	@Router			/user/admin [get]
+//	@Router			/useradmin [get]
 func (handler *UserHandler) GetAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -269,7 +269,7 @@ func (handler *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 //	@Failure		405		{object}	ErrorResponse
 //	@Failure		404		{object}	ErrorResponse
 //	@Failure		500		{object}	ErrorResponse
-//	@Router			/user/admin [put]
+//	@Router			/useradmin [put]
 func (handler *UserHandler) UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 
 	var user dto.User

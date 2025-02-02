@@ -1,7 +1,6 @@
 import { createContext } from 'react';
 import { Api, type DtoDataDirtyTracker, type DtoHealthPing } from './srat';
-import { WSRouter } from './WSRouter';
-import { useEventSource, useEventSourceListener, type EventSourceStatus } from "@react-nano/use-event-source";
+import { type EventSourceStatus } from "@react-nano/use-event-source";
 
 
 let APIURL = process.env.APIURL;
@@ -15,15 +14,15 @@ export const apiContext = new Api({
     baseURL: APIURL
 
 });
-const wsUrl = new URL(APIURL || "")
-wsUrl.protocol = window.location.protocol === 'https:' ? "wss:" : "ws:"
-wsUrl.pathname += "ws"
+//const wsUrl = new URL(APIURL || "")
+//wsUrl.protocol = window.location.protocol === 'https:' ? "wss:" : "ws:"
+//wsUrl.pathname += "ws"
 
-export const wsContext = new WSRouter(wsUrl.href);
+//export const wsContext = new WSRouter(wsUrl.href);
 //export const AuthContext = createContext(null);
 
 console.log("API URL", APIURL)
-console.log("WS URL", wsUrl.href)
+//console.log("WS URL", wsUrl.href)
 
 export const ModeContext = createContext<DtoHealthPing>({});
 

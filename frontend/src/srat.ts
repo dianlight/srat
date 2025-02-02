@@ -99,6 +99,7 @@ export enum DtoHAMountUsage {
 export interface DtoHealthPing {
   alive?: boolean;
   aliveTime?: string;
+  dirty_tracking?: DtoDataDirtyTracker;
   last_error?: string;
   read_only?: boolean;
   samba_process_status?: DtoSambaProcessStatus;
@@ -628,59 +629,6 @@ export class HttpClient<SecurityDataType = unknown> {
  * This are samba rest admin API
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
-  admin = {
-    /**
-     * @description get the admin user
-     *
-     * @tags user
-     * @name UserList
-     * @summary Get the admin user
-     * @request GET:/admin/user
-     */
-    userList: (params: RequestParams = {}) =>
-      this.request<DtoUser, ApiErrorResponse>({
-        path: `/admin/user`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description update admin user
-     *
-     * @tags user
-     * @name UserUpdate
-     * @summary Update admin user
-     * @request PUT:/admin/user
-     */
-    userUpdate: (user: DtoUser, params: RequestParams = {}) =>
-      this.request<DtoUser, ApiErrorResponse>({
-        path: `/admin/user`,
-        method: "PUT",
-        body: user,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description update admin user
-     *
-     * @tags user
-     * @name UserPartialUpdate
-     * @summary Update admin user
-     * @request PATCH:/admin/user
-     */
-    userPartialUpdate: (user: DtoUser, params: RequestParams = {}) =>
-      this.request<DtoUser, ApiErrorResponse>({
-        path: `/admin/user`,
-        method: "PATCH",
-        body: user,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-  };
   events = {
     /**
      * @description Return a list of available WSChannel events
@@ -711,60 +659,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<string[], ApiErrorResponse>({
         path: `/filesystems`,
         method: "GET",
-        format: "json",
-        ...params,
-      }),
-  };
-  global = {
-    /**
-     * @description Get the configuration for the global samba settings
-     *
-     * @tags samba
-     * @name GlobalList
-     * @summary Get the configuration for the global samba settings
-     * @request GET:/global
-     */
-    globalList: (params: RequestParams = {}) =>
-      this.request<DtoSettings, ApiErrorResponse>({
-        path: `/global`,
-        method: "GET",
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Update the configuration for the global samba settings
-     *
-     * @tags samba
-     * @name GlobalUpdate
-     * @summary Update the configuration for the global samba settings
-     * @request PUT:/global
-     */
-    globalUpdate: (config: DtoSettings, params: RequestParams = {}) =>
-      this.request<DtoSettings, ApiErrorResponse>({
-        path: `/global`,
-        method: "PUT",
-        body: config,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Update the configuration for the global samba settings
-     *
-     * @tags samba
-     * @name GlobalPartialUpdate
-     * @summary Update the configuration for the global samba settings
-     * @request PATCH:/global
-     */
-    globalPartialUpdate: (config: DtoSettings, params: RequestParams = {}) =>
-      this.request<DtoSettings, ApiErrorResponse>({
-        path: `/global`,
-        method: "PATCH",
-        body: config,
-        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -821,23 +715,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
   };
   samba = {
     /**
-     * @description Get the generated samba config
-     *
-     * @tags samba
-     * @name SambaList
-     * @summary Get the generated samba config
-     * @request GET:/samba
-     */
-    sambaList: (params: RequestParams = {}) =>
-      this.request<DtoSmbConf, ApiErrorResponse>({
-        path: `/samba`,
-        method: "GET",
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Write the samba config and send signal ro restart
      *
      * @tags samba
@@ -850,6 +727,77 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/samba/apply`,
         method: "PUT",
         type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * @description Get the generated samba config
+     *
+     * @tags samba
+     * @name ConfigList
+     * @summary Get the generated samba config
+     * @request GET:/samba/config
+     */
+    configList: (params: RequestParams = {}) =>
+      this.request<DtoSmbConf, ApiErrorResponse>({
+        path: `/samba/config`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+  };
+  settings = {
+    /**
+     * @description Get the configuration for the global samba settings
+     *
+     * @tags samba
+     * @name SettingsList
+     * @summary Get the configuration for the global samba settings
+     * @request GET:/settings
+     */
+    settingsList: (params: RequestParams = {}) =>
+      this.request<DtoSettings, ApiErrorResponse>({
+        path: `/settings`,
+        method: "GET",
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update the configuration for the global samba settings
+     *
+     * @tags samba
+     * @name SettingsUpdate
+     * @summary Update the configuration for the global samba settings
+     * @request PUT:/settings
+     */
+    settingsUpdate: (config: DtoSettings, params: RequestParams = {}) =>
+      this.request<DtoSettings, ApiErrorResponse>({
+        path: `/settings`,
+        method: "PUT",
+        body: config,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update the configuration for the global samba settings
+     *
+     * @tags samba
+     * @name SettingsPartialUpdate
+     * @summary Update the configuration for the global samba settings
+     * @request PATCH:/settings
+     */
+    settingsPartialUpdate: (config: DtoSettings, params: RequestParams = {}) =>
+      this.request<DtoSettings, ApiErrorResponse>({
+        path: `/settings`,
+        method: "PATCH",
+        body: config,
+        type: ContentType.Json,
+        format: "json",
         ...params,
       }),
   };
@@ -954,6 +902,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         type: ContentType.Json,
         ...params,
       }),
+
+    /**
+     * @description Return a list of available WSChannel events
+     *
+     * @tags system
+     * @name EventsList
+     * @summary EventTypeList
+     * @request GET:/sse/events
+     */
+    eventsList: (params: RequestParams = {}) =>
+      this.request<DtoEventType[], string>({
+        path: `/sse/events`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
   };
   update = {
     /**
@@ -1023,19 +987,36 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "DELETE",
         ...params,
       }),
-
+  };
+  useradmin = {
     /**
-     * @description update e user
+     * @description get the admin user
      *
      * @tags user
-     * @name UserPartialUpdate
-     * @summary Update a user
-     * @request PATCH:/user/{username}
+     * @name UseradminList
+     * @summary Get the admin user
+     * @request GET:/useradmin
      */
-    userPartialUpdate: (username: string, user: DtoUser, params: RequestParams = {}) =>
+    useradminList: (params: RequestParams = {}) =>
       this.request<DtoUser, ApiErrorResponse>({
-        path: `/user/${username}`,
-        method: "PATCH",
+        path: `/useradmin`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description update admin user
+     *
+     * @tags user
+     * @name UseradminUpdate
+     * @summary Update admin user
+     * @request PUT:/useradmin
+     */
+    useradminUpdate: (user: DtoUser, params: RequestParams = {}) =>
+      this.request<DtoUser, ApiErrorResponse>({
+        path: `/useradmin`,
+        method: "PUT",
         body: user,
         type: ContentType.Json,
         format: "json",
@@ -1115,23 +1096,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     volumesList: (params: RequestParams = {}) =>
       this.request<DtoBlockInfo, ApiErrorResponse>({
         path: `/volumes`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-  };
-  ws = {
-    /**
-     * @description Open the WSChannel
-     *
-     * @tags system
-     * @name GetWs
-     * @summary WSChannel
-     * @request GET:/ws
-     */
-    getWs: (params: RequestParams = {}) =>
-      this.request<DtoDataDirtyTracker, ApiErrorResponse>({
-        path: `/ws`,
         method: "GET",
         format: "json",
         ...params,

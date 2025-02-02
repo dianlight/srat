@@ -89,7 +89,7 @@ func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 //	@Success		200	{object}	dto.Settings
 //	@Failure		400	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
-//	@Router			/settingsx [get]
+//	@Router			/settings [get]
 func (self *SettingsHanler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	var dbsettings dbom.Properties
 	var conv converter.DtoToDbomConverterImpl

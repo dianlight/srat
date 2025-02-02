@@ -76,7 +76,7 @@ func (handler *SambaHanler) ApplySamba(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Success		200	{object}	dto.SmbConf
 //	@Failure		500	{object}	ErrorResponse
-//	@Router			/samba [get]
+//	@Router			/samba/config [get]
 func (handler *SambaHanler) GetSambaConfig(w http.ResponseWriter, r *http.Request) {
 	var smbConf dto.SmbConf
 

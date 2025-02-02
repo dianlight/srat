@@ -1,12 +1,12 @@
 import { NavBar } from "./components/NavBar";
 import { Footer } from "./components/Footer";
 import { useContext, useEffect, useRef, useState } from "react";
-import { apiContext, DirtyDataContext, ModeContext, SSEContext, wsContext as ws } from "./Contexts";
+import { apiContext, DirtyDataContext, ModeContext, SSEContext } from "./Contexts";
 import { DtoEventType, type DtoDataDirtyTracker, type DtoHealthPing } from "./srat";
 import { useErrorBoundary } from "react-use-error-boundary";
 import Container from "@mui/material/Container";
 import { Backdrop, CircularProgress, Typography } from "@mui/material";
-import { useEventSource } from "@react-nano/use-event-source";
+import { useEventSource, useEventSourceListener } from "@react-nano/use-event-source";
 
 
 export function App() {
@@ -22,6 +22,7 @@ export function App() {
     var timeoutpid: ReturnType<typeof setTimeout>
 
     useEffect(() => {
+        /*
         const mhuuid = ws.subscribe<DtoHealthPing>(DtoEventType.EventHeartbeat, (data) => {
             // console.log("Got heartbeat", data)
             if (timeoutpid) clearTimeout(timeoutpid);
@@ -46,6 +47,13 @@ export function App() {
             setDirtyData(data);
             sessionStorage.setItem("srat_dirty", (Object.values(data).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0) ? "true" : "false");
         })
+        */
+        if (sseEventSource) {
+            sseEventSource.onerror = () => {
+                setStatus({ alive: false, read_only: true });
+                setErrorInfo("SSE connection error");
+            }
+        }
         function onBeforeUnload(ev: BeforeUnloadEvent) {
             if (sessionStorage.getItem("srat_dirty") === "true") {
                 ev.preventDefault();
@@ -57,11 +65,22 @@ export function App() {
         window.addEventListener("beforeunload", onBeforeUnload);
 
         return () => {
-            ws.unsubscribe(mhuuid);
-            ws.unsubscribe(drtyuid);
+            //ws.unsubscribe(mhuuid);
+            //ws.unsubscribe(drtyuid);
             window.removeEventListener("beforeunload", onBeforeUnload);
         };
     }, [])
+
+    useEventSourceListener(
+        sseEventSource,
+        [DtoEventType.EventHeartbeat],
+        (evt) => {
+            //console.log("SSE EventHeartbeat", evt);
+            setStatus(JSON.parse(evt.data));
+            setDirtyData(status.dirty_tracking || {});
+        },
+        [sseStatus],
+    );
 
     if (error) {
         setTimeout(() => { resetError() }, 5000);

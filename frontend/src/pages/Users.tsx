@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { apiContext as api, ModeContext, wsContext as ws } from "../Contexts";
+import { apiContext as api, ModeContext } from "../Contexts";
 import { type DtoUser } from "../srat";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import useSWR from "swr";
@@ -13,11 +13,11 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import { PasswordElement, PasswordRepeatElement, TextFieldElement } from "react-hook-form-mui";
+import { stringWidth } from "bun";
 
 
 
 interface UsersProps extends DtoUser {
-    isAdmin?: boolean
     doCreate?: boolean
     "password-repeat"?: string
 }
@@ -25,7 +25,7 @@ interface UsersProps extends DtoUser {
 export function Users() {
     const mode = useContext(ModeContext);
     const users = useSWR<UsersProps[]>('/users', () => api.users.usersList().then(res => res.data));
-    const admin = useSWR<UsersProps>('/admin/user', () => api.admin.userList().then(res => res.data));
+    const admin = useSWR<UsersProps>('/admin/user', () => api.useradmin.useradminList().then(res => res.data));
     const [errorInfo, setErrorInfo] = useState<string>('')
     const [selected, setSelected] = useState<UsersProps>({});
     const confirm = useConfirm();
@@ -51,8 +51,8 @@ export function Users() {
                 setErrorInfo(JSON.stringify(err));
             })
             return;
-        } else if (data.isAdmin) {
-            api.admin.userUpdate(data).then((res) => {
+        } else if (data.is_admin) {
+            api.useradmin.useradminUpdate(data).then((res) => {
                 setErrorInfo('')
                 admin.mutate();
             }).catch(err => {
@@ -109,7 +109,17 @@ export function Users() {
                 <PersonAddIcon />
             </Fab>}
             <List dense={true}>
-                {[{ ...admin.data, isAdmin: true }, ...users.data || []].map((user) =>
+                {users.data?.sort((a, b) => {
+                    if (a.is_admin) {
+                        return -1;
+                    } else if (b.is_admin) {
+                        return 1;
+                    } else if (a.username === b.username) {
+                        return 0;
+                    } else {
+                        return (a.username || "") > (b.username || "") ? -1 : 1;
+                    }
+                }).map((user) =>
                     <Fragment key={user.username || "admin"}>
                         <ListItemButton>
                             <ListItem
@@ -117,7 +127,7 @@ export function Users() {
                                     <IconButton onClick={() => { setSelected(user); setShowEdit(true) }} edge="end" aria-label="settings">
                                         <ManageAccountsIcon />
                                     </IconButton>
-                                    {user.isAdmin ||
+                                    {user.is_admin ||
                                         <IconButton onClick={() => onSubmitDeleteUser(user)} edge="end" aria-label="delete">
                                             <PersonRemoveIcon />
                                         </IconButton>
@@ -127,7 +137,7 @@ export function Users() {
                             >
                                 <ListItemAvatar>
                                     <Avatar>
-                                        {user.isAdmin ?
+                                        {user.is_admin ?
                                             <AdminPanelSettingsIcon /> :
                                             <AssignmentIndIcon />}
 
@@ -135,6 +145,7 @@ export function Users() {
                                 </ListItemAvatar>
                                 <ListItemText
                                     primary={user.username}
+                                    secondary={JSON.stringify(user)}
                                 />
                             </ListItem>
                         </ListItemButton>
@@ -152,12 +163,12 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
             defaultValues: {
                 username: '',
                 password: '',
-                isAdmin: false
+                is_admin: false
             },
             values: props.objectToEdit?.doCreate ? {
                 username: "",
                 password: "",
-                isAdmin: false
+                is_admin: false
             } : props.objectToEdit
         },
     );
@@ -173,7 +184,7 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
                 onClose={() => handleCloseSubmit()}
             >
                 <DialogTitle>
-                    {props.objectToEdit?.isAdmin ? "Administrator" : (props.objectToEdit?.username || "New User")}
+                    {props.objectToEdit?.is_admin ? "Administrator" : (props.objectToEdit?.username || "New User")}
                 </DialogTitle>
                 <DialogContent>
                     <Stack spacing={2}>
@@ -184,7 +195,7 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
                         <form id="editshareform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                             <Grid container spacing={2}>
                                 <Grid size={6}>
-                                    <TextFieldElement name="username" label="User Name" required control={control} disabled={props.objectToEdit?.username ? (props.objectToEdit.isAdmin ? false : true) : false} />
+                                    <TextFieldElement name="username" label="User Name" required control={control} disabled={props.objectToEdit?.username ? (props.objectToEdit.is_admin ? false : true) : false} />
                                 </Grid>
                                 <Grid size={6}>
                                     <PasswordElement name="password" label="Password"

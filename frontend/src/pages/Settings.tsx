@@ -13,7 +13,7 @@ import Divider from "@mui/material/Divider";
 
 export function Settings() {
     const mode = useContext(ModeContext);
-    const globalConfig = useSWR<DtoSettings>('/global', () => apiContext.global.globalList().then(res => res.data));
+    const globalConfig = useSWR<DtoSettings>('/settings', () => apiContext.settings.settingsList().then(res => res.data));
     const { control, handleSubmit, reset, watch, formState } = useForm({
         mode: "onBlur",
         values: globalConfig.data,
@@ -24,7 +24,7 @@ export function Settings() {
 
     function handleCommit(data: DtoSettings) {
         console.log(data);
-        apiContext.global.globalUpdate(data).then(res => {
+        apiContext.settings.settingsUpdate(data).then(res => {
             console.log(res)
             globalConfig.mutate()
         }).catch(err => console.log(err))

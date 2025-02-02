@@ -16,6 +16,7 @@ import (
 
 type HealthHanler struct {
 	ctx                    context.Context
+	apictx                 *ContextState
 	OutputEventsCount      uint64
 	OutputEventsInterleave time.Duration
 	dto.HealthPing
@@ -34,6 +35,7 @@ func NewHealthHandler(ctx context.Context, apictx *ContextState, broadcaster ser
 	p.SambaProcessStatus.Pid = -1
 	p.LastError = ""
 	p.ctx = ctx
+	p.apictx = apictx
 	p.broadcaster = broadcaster
 	p.sambaService = sambaService
 	p.OutputEventsCount = 0
@@ -65,7 +67,7 @@ func (self *HealthHanler) HealthCheckHandler(w http.ResponseWriter, r *http.Requ
 	HttpJSONReponse(w, self, nil)
 }
 
-func (self *HealthHanler) EventEmitter(ctx context.Context, data dto.HealthPing) error {
+func (self *HealthHanler) EventEmitter(data dto.HealthPing) error {
 	msg := dto.EventMessageEnvelope{
 		Event: dto.EventHeartbeat,
 		Data:  data,
@@ -98,7 +100,8 @@ func (self *HealthHanler) run() error {
 		default:
 			slog.Debug("Richiesto aggiornamento per Healthy")
 			self.checkSamba()
-			err := self.EventEmitter(self.ctx, self.HealthPing)
+			self.HealthPing.Dirty = self.apictx.DataDirtyTracker
+			err := self.EventEmitter(self.HealthPing)
 			if err != nil {
 				slog.Error("Error emitting health message: %w", "err", err)
 			}

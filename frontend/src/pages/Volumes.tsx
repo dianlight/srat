@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { apiContext, ModeContext, wsContext as ws } from "../Contexts";
+import { apiContext, ModeContext } from "../Contexts";
 import { DtoEventType, DtoMounDataFlag, type DtoBlockInfo, type DtoBlockPartition, type DtoMountPointData } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
@@ -33,6 +33,7 @@ export function Volumes() {
 
 
     useEffect(() => {
+        /*
         const vol = ws.subscribe<DtoBlockInfo>(DtoEventType.EventVolumes, (data) => {
             console.log("Got volumes", data)
             setStatus(data);
@@ -40,6 +41,7 @@ export function Volumes() {
         return () => {
             ws.unsubscribe(vol);
         };
+        */
     }, [])
 
     function decodeEscapeSequence(source: string) {

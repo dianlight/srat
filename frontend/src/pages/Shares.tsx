@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { apiContext as api, ModeContext, SSEContext, wsContext as ws } from "../Contexts";
+import { apiContext as api, ModeContext, SSEContext } from "../Contexts";
 import { DtoEventType, type Api, type DtoSharedResource, type DtoUser } from "../srat";
 import { set, useForm } from "react-hook-form";
 import useSWR from "swr";
@@ -302,7 +302,7 @@ export function Shares() {
 }
 
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
-    const admin = useSWR<DtoUser>('/admin/user', () => api.admin.userList().then(res => res.data));
+    const admin = useSWR<DtoUser>('/admin/user', () => api.useradmin.useradminList().then(res => res.data));
     const users = useSWR<DtoUser[]>('/users', () => api.users.usersList().then(res => res.data));
     const [editName, setEditName] = useState(false);
     const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditProps>(

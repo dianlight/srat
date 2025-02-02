@@ -130,6 +130,8 @@ definitions:
         type: boolean
       aliveTime:
         type: string
+      dirty_tracking:
+        $ref: '#/definitions/dto.DataDirtyTracker'
       last_error:
         type: string
       read_only:
@@ -816,101 +818,6 @@ info:
   title: SRAT API
   version: "1.0"
 paths:
-  /admin/user:
-    get:
-      description: get the admin user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.User'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get the admin user
-      tags:
-      - user
-    patch:
-      consumes:
-      - application/json
-      description: update admin user
-      parameters:
-      - description: Update model
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/dto.User'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.User'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Update admin user
-      tags:
-      - user
-    put:
-      consumes:
-      - application/json
-      description: update admin user
-      parameters:
-      - description: Update model
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/dto.User'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.User'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Update admin user
-      tags:
-      - user
   /events:
     get:
       description: Return a list of available WSChannel events
@@ -949,7 +856,96 @@ paths:
       summary: GetFSHandler
       tags:
       - system
-  /global:
+  /health:
+    get:
+      description: HealthCheck
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HealthPing'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: HealthCheck
+      tags:
+      - system
+  /nics:
+    get:
+      description: Return all network interfaces
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.NetworkInfo'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: GetNICsHandler
+      tags:
+      - system
+  /restart:
+    put:
+      description: Restart the server ( useful in development )
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: RestartHandler
+      tags:
+      - system
+  /samba/apply:
+    put:
+      consumes:
+      - application/json
+      description: Write the samba config and send signal ro restart
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Write the samba config and send signal ro restart
+      tags:
+      - samba
+  /samba/config:
+    get:
+      consumes:
+      - application/json
+      description: Get the generated samba config
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SmbConf'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get the generated samba config
+      tags:
+      - samba
+  /settings:
     get:
       consumes:
       - application/json
@@ -1028,95 +1024,6 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Update the configuration for the global samba settings
-      tags:
-      - samba
-  /health:
-    get:
-      description: HealthCheck
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.HealthPing'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: HealthCheck
-      tags:
-      - system
-  /nics:
-    get:
-      description: Return all network interfaces
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.NetworkInfo'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: GetNICsHandler
-      tags:
-      - system
-  /restart:
-    put:
-      description: Restart the server ( useful in development )
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: RestartHandler
-      tags:
-      - system
-  /samba:
-    get:
-      consumes:
-      - application/json
-      description: Get the generated samba config
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SmbConf'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get the generated samba config
-      tags:
-      - samba
-  /samba/apply:
-    put:
-      consumes:
-      - application/json
-      description: Write the samba config and send signal ro restart
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Write the samba config and send signal ro restart
       tags:
       - samba
   /share:
@@ -1298,6 +1205,25 @@ paths:
       summary: Open a SSE stream
       tags:
       - system
+  /sse/events:
+    get:
+      description: Return a list of available WSChannel events
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.EventType'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: EventTypeList
+      tags:
+      - system
   /update:
     put:
       description: Start the update process
@@ -1384,7 +1310,7 @@ paths:
       summary: Delete a user
       tags:
       - user
-    patch:
+    put:
       consumes:
       - application/json
       description: update e user
@@ -1426,16 +1352,32 @@ paths:
       summary: Update a user
       tags:
       - user
+  /useradmin:
+    get:
+      description: get the admin user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.User'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get the admin user
+      tags:
+      - user
     put:
       consumes:
       - application/json
-      description: update e user
+      description: update admin user
       parameters:
-      - description: Name
-        in: path
-        name: username
-        required: true
-        type: string
       - description: Update model
         in: body
         name: user
@@ -1465,7 +1407,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
-      summary: Update a user
+      summary: Update admin user
       tags:
       - user
   /users:
@@ -1592,23 +1534,6 @@ paths:
       summary: List all available volumes
       tags:
       - volume
-  /ws:
-    get:
-      description: Open the WSChannel
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.DataDirtyTracker'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: WSChannel
-      tags:
-      - system
 securityDefinitions:
   ApiKeyAuth:
     description: HomeAssistant Supervisor Token
