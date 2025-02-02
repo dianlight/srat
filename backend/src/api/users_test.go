@@ -25,7 +25,7 @@ type UserHandlerSuite struct {
 	// VariableThatShouldStartAtFive int
 }
 
-func TestSUserHandlerSuite(t *testing.T) {
+func TestUserHandlerSuite(t *testing.T) {
 	csuite := new(UserHandlerSuite)
 	//ctrl := gomock.NewController(t)
 	//defer ctrl.Finish()
