@@ -24,22 +24,46 @@ import (
 
 type VolumeHandlerSuite struct {
 	suite.Suite
-	mockBoradcaster *MockBroadcasterServiceInterface
-	previus_device  uint
+	//	mockBoradcaster   *MockBroadcasterServiceInterface
+	mockVolumeService *MockVolumeServiceInterface
 }
 
 func TestVolumeHandlerSuite(t *testing.T) {
 	csuite := new(VolumeHandlerSuite)
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
-	csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
-	csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
+	//	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
+	//	csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
+	//	csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
+	bogusBlockInfo := dto.BlockInfo{
+		TotalSizeBytes: 99999,
+		Partitions: []*dto.BlockPartition{
+			{
+				Name:       "bogus1",
+				MountPoint: "/mnt/bogus1",
+				Label:      "_EXT4",
+				SizeBytes:  10000,
+				Type:       "ext4",
+			},
+			{
+				Name:       "bogus2",
+				MountPoint: "/mnt/bogus2",
+				Label:      "testvolume",
+				SizeBytes:  10000,
+				Type:       "vfat",
+			},
+		},
+	}
+	csuite.mockVolumeService = NewMockVolumeServiceInterface(ctrl)
+	csuite.mockVolumeService.EXPECT().GetVolumesData().AnyTimes().Return(&bogusBlockInfo, nil)
+	csuite.mockVolumeService.EXPECT().MountVolume(gomock.Any()).AnyTimes().Return(nil)
+	csuite.mockVolumeService.EXPECT().UnmountVolume(gomock.Any(), false, false).AnyTimes().Return(nil)
+
 	suite.Run(t, csuite)
 }
 
 func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
-	volume := api.NewVolumeHandler(testContext, suite.mockBoradcaster)
+	volume := api.NewVolumeHandler(suite.mockVolumeService)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/volumes", nil)
@@ -88,32 +112,29 @@ func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
 //var
 
 func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
-	volume := api.NewVolumeHandler(testContext, suite.mockBoradcaster)
+	volume := api.NewVolumeHandler(suite.mockVolumeService)
 	// Check if loop device is available for mounting
-	volumes, err := volume.GetVolumesData()
+	volumes, err := suite.mockVolumeService.GetVolumesData()
 	require.NoError(suite.T(), err)
 
 	var mockMountData dbom.MountPointPath
 
 	for _, d := range volumes.Partitions {
-		if strings.HasPrefix(d.Name, "loop") && d.Label == "_EXT4" {
+		if strings.HasPrefix(d.Name, "bogus") && d.Label == "_EXT4" {
 			mockMountData.Source = "/dev/" + d.Name
 			mockMountData.Path = filepath.Join("/mnt", d.Label)
 			mockMountData.FSType = d.Type
 			mockMountData.Flags = []dto.MounDataFlag{dto.MS_NOATIME}
-			suite.previus_device = d.MountPointData.ID
 			suite.T().Logf("Selected loop device: %v", mockMountData)
 			break
 		}
 	}
-	if mockMountData.Source == "" {
-		suite.T().Skip("Test failed: loop device not found for mounting")
-		return
-	}
+	err = mockMountData.Save()
+	require.NoError(suite.T(), err)
 
 	body, _ := json.Marshal(mockMountData)
-	requestPath := fmt.Sprintf("/volume/%d/mount", suite.previus_device)
-	suite.T().Logf("Request path: %s", requestPath)
+	requestPath := fmt.Sprintf("/volume/%d/mount", mockMountData.ID)
+	//suite.T().Logf("Request path: %s", requestPath)
 	req, err := http.NewRequestWithContext(testContext, "POST", requestPath, bytes.NewBuffer(body))
 	require.NoError(suite.T(), err)
 
@@ -149,7 +170,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 }
 
 func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
-	volume := api.NewVolumeHandler(testContext, suite.mockBoradcaster)
+	volume := api.NewVolumeHandler(suite.mockVolumeService)
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/999999/mount", nil)
 	if err != nil {
 		suite.T().Fatal(err)
@@ -174,15 +195,10 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
 }
 func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 
-	volume := api.NewVolumeHandler(testContext, suite.mockBoradcaster)
-	if suite.previus_device == 0 {
-		suite.T().Skip("Test skip: not prevision mounted volume found")
-	}
-
-	require.NotEmpty(suite.T(), suite.previus_device, "Test skip: not prevision mounted volume found")
+	volume := api.NewVolumeHandler(suite.mockVolumeService)
 
 	// Create a request
-	req, err := http.NewRequestWithContext(testContext, "DELETE", fmt.Sprintf("/volume/%d/mount", suite.previus_device), nil)
+	req, err := http.NewRequestWithContext(testContext, "DELETE", fmt.Sprintf("/volume/%d/mount", 1), nil)
 	require.NoError(suite.T(), err)
 
 	// Set up gorilla/mux router
