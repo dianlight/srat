@@ -248,11 +248,16 @@ func prog(state overseer.State) {
 			service.NewBroadcasterService,
 			service.NewVolumeService,
 			service.NewSambaService,
+			service.NewUpgradeService,
 			server.AsRoute(api.NewSSEBroker),
 			server.AsRoute(api.NewHealthHandler),
 			server.AsRoute(api.NewShareHandler),
 			server.AsRoute(api.NewVolumeHandler),
 			server.AsRoute(api.NewSettingsHanler),
+			server.AsRoute(api.NewUserHandler),
+			server.AsRoute(api.NewSambaHanler),
+			server.AsRoute(api.NewUpgradeHanler),
+			server.AsRoute(api.NewSystemHanler),
 			fx.Annotate(
 				server.NewMuxRouter,
 				fx.ParamTags(`group:"routes"`, `name:"ha_mode"`, `name:"static_fs"`),
@@ -300,6 +305,7 @@ func prog(state overseer.State) {
 			globalRouter.HandleFunc("/filesystems", api.GetFSHandler).Methods(http.MethodGet)
 			//globalRouter.HandleFunc("/sse", sharedResources.SSEBroker.Stream).Methods(http.MethodGet)
 
+			ok
 			// Users
 			globalRouter.HandleFunc("/admin/user", api.GetAdminUser).Methods(http.MethodGet)
 			globalRouter.HandleFunc("/admin/user", api.UpdateAdminUser).Methods(http.MethodPut, http.MethodPatch)

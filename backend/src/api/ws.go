@@ -2,8 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/dianlight/srat/dto"
@@ -23,6 +21,7 @@ var activeContexts = make(map[string]context.CancelFunc)
 //	@Success		200 {object}	dto.DataDirtyTracker
 //	@Failure		405	{object}	ErrorResponse
 //	@Router			/ws [get]
+/*
 func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	c, err := upgrader.Upgrade(w, rq, nil)
@@ -87,6 +86,7 @@ func WSChannelHandler(w http.ResponseWriter, rq *http.Request) {
 		}
 	}
 }
+*/
 
 // WSChannelEventsList godoc
 //

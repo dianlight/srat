@@ -2,13 +2,11 @@ package api
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/server"
-	"golang.org/x/time/rate"
 )
 
 type SettingsHanler struct {
@@ -77,7 +75,7 @@ func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	context_state.DataDirtyTracker.Settings = true
-	UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
+	//UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 	HttpJSONReponse(w, config, nil)
 }
 

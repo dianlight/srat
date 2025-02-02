@@ -7,48 +7,58 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/api"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestGetNICsHandler(t *testing.T) {
+type SystemHandlerSuite struct {
+	suite.Suite
+	mockBoradcaster *MockBroadcasterServiceInterface
+	// VariableThatShouldStartAtFive int
+}
+
+func TestSystemHandlerSuite(t *testing.T) {
+	csuite := new(SystemHandlerSuite)
+	/*
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
+		csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
+		csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
+	*/
+	suite.Run(t, csuite)
+}
+
+func (suite *SystemHandlerSuite) TestGetNICsHandler() {
+	api := api.NewSystemHanler()
 	req, err := http.NewRequestWithContext(testContext, "GET", "/nics", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(suite.T(), err)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(api.GetNICsHandler)
 
 	handler.ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(suite.T(), rr.Code, http.StatusOK, "Expected status code 200, got %d", rr.Code)
 
 	expectedContentType := "application/json"
-	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
-		t.Errorf("handler returned wrong content type: got %v want %v",
-			contentType, expectedContentType)
-	}
+	assert.Equal(suite.T(), rr.Header().Get("Content-Type"), expectedContentType, "Expected content type %s, got %s", expectedContentType, rr.Header().Get("Content-Type"))
 
 	var response map[string]interface{}
 	err = json.Unmarshal(rr.Body.Bytes(), &response)
-	if err != nil {
-		t.Errorf("Failed to unmarshal response body: %v", err)
-	}
-	t.Logf("%v", response)
+	require.NoError(suite.T(), err)
+	suite.T().Logf("%v", response)
 
 	if nics, ok := response["nics"].([]interface{}); !ok || len(nics) == 0 {
-		t.Errorf("Response does not contain any network interfaces")
+		suite.T().Errorf("Response does not contain any network interfaces")
 	}
 }
 
-func TestGetFSHandler(t *testing.T) {
-	// Create a request to pass to our handler
+func (suite *SystemHandlerSuite) TestGetFSHandler() {
+	api := api.NewSystemHanler()
 	req, err := http.NewRequestWithContext(testContext, "GET", "/filesystems", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(suite.T(), err)
 
 	// Create a ResponseRecorder to record the response
 	rr := httptest.NewRecorder()
@@ -58,32 +68,16 @@ func TestGetFSHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assert.Equal(suite.T(), rr.Code, http.StatusOK, "Expected status code 200, got %d", rr.Code)
 
 	// Check the content type
 	expectedContentType := "application/json"
-	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
-		t.Errorf("handler returned wrong content type: got %v want %v",
-			contentType, expectedContentType)
-	}
+	assert.Equal(suite.T(), rr.Header().Get("Content-Type"), expectedContentType, "Expected content type %s, got %s", expectedContentType, rr.Header().Get("Content-Type"))
 
 	// Check the response body
-	var filesystems []string
-	err = json.Unmarshal(rr.Body.Bytes(), &filesystems)
-	if err != nil {
-		t.Errorf("Failed to unmarshal response body: %v", err)
-	}
-
-	// Verify that the response contains file systems data
-	if len(filesystems) == 0 {
-		t.Errorf("Expected file systems data in response, got empty array")
-	}
-
-	//t.Error(filesystems)
-
-	// You might want to add more specific checks here, such as verifying
-	// the presence of expected file systems or the format of the data
+	var fileSystems []string
+	err = json.Unmarshal(rr.Body.Bytes(), &fileSystems)
+	require.NoError(suite.T(), err)
+	suite.T().Logf("%v", fileSystems)
+	assert.NotEmpty(suite.T(), fileSystems, "Response does not contain any file systems")
 }
