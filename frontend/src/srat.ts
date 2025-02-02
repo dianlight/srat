@@ -77,10 +77,11 @@ export interface DtoDataDirtyTracker {
 export interface DtoEventMessageEnvelope {
   data?: any;
   event?: DtoEventType;
-  uid?: string;
+  id?: string;
 }
 
 export enum DtoEventType {
+  EventHello = "hello",
   EventUpdate = "update",
   EventHeartbeat = "heartbeat",
   EventShare = "share",
@@ -97,6 +98,7 @@ export enum DtoHAMountUsage {
 
 export interface DtoHealthPing {
   alive?: boolean;
+  aliveTime?: string;
   last_error?: string;
   read_only?: boolean;
   samba_process_status?: DtoSambaProcessStatus;

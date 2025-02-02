@@ -28,6 +28,11 @@ func TestSambaHandlerSuite(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	csuite.mockSambaService = NewMockSambaServiceInterface(ctrl)
+	body := []byte("Test")
+	csuite.mockSambaService.EXPECT().CreateConfigStream(apiContextState.DockerInterface, apiContextState.DockerNet, apiContextState.Template).AnyTimes().Return(&body, nil)
+	csuite.mockSambaService.EXPECT().StreamToFile(gomock.Any(), gomock.Any()).AnyTimes()
+	csuite.mockSambaService.EXPECT().TestSambaConfig(gomock.Any()).AnyTimes()
+	csuite.mockSambaService.EXPECT().RestartSambaService().AnyTimes()
 	//csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
 
 	suite.Run(t, csuite)

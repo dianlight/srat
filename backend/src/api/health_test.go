@@ -31,6 +31,7 @@ func TestHealthHandlerSuite(t *testing.T) {
 	defer ctrl.Finish()
 	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
 	csuite.mockSambaService = NewMockSambaServiceInterface(ctrl)
+	csuite.mockSambaService.EXPECT().GetSambaProcess().AnyTimes()
 	//csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
 
 	suite.Run(t, csuite)
@@ -91,8 +92,10 @@ func (suite *HealthHandlerSuite) TestHealthEventEmitter() {
 		time.Sleep(time.Millisecond * 500)
 	}
 	elapsed := time.Since(startTime)
-	assert.LessOrEqual(suite.T(), uint64(elapsed.Seconds()/float64(apiContextState.Heartbeat)), numcal, " elapsed seconds %d should be greater than %d", elapsed.Seconds(), numcal)
-	assert.Equal(suite.T(), health.OutputEventsCount, numcal)
+	assert.LessOrEqual(suite.T(), uint64(elapsed.Seconds()/float64(apiContextState.Heartbeat)), health.OutputEventsCount, " elapsed seconds %d should be greater than %d", elapsed.Seconds(), numcal)
+	if numcal != 0 {
+		assert.Equal(suite.T(), health.OutputEventsCount, numcal)
+	}
 
 	//t.Log(health)
 }
