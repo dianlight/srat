@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/api"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -33,21 +31,21 @@ func TestSystemHandlerSuite(t *testing.T) {
 func (suite *SystemHandlerSuite) TestGetNICsHandler() {
 	api := api.NewSystemHanler()
 	req, err := http.NewRequestWithContext(testContext, "GET", "/nics", nil)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(api.GetNICsHandler)
 
 	handler.ServeHTTP(rr, req)
 
-	assert.Equal(suite.T(), rr.Code, http.StatusOK, "Expected status code 200, got %d", rr.Code)
+	suite.Equal(http.StatusOK, rr.Code, "Expected status code 200, got %d", rr.Code)
 
 	expectedContentType := "application/json"
-	assert.Equal(suite.T(), rr.Header().Get("Content-Type"), expectedContentType, "Expected content type %s, got %s", expectedContentType, rr.Header().Get("Content-Type"))
+	suite.Equal(expectedContentType, rr.Header().Get("Content-Type"), "Expected content type %s, got %s", expectedContentType, rr.Header().Get("Content-Type"))
 
 	var response map[string]interface{}
 	err = json.Unmarshal(rr.Body.Bytes(), &response)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 	suite.T().Logf("%v", response)
 
 	if nics, ok := response["nics"].([]interface{}); !ok || len(nics) == 0 {
@@ -58,7 +56,7 @@ func (suite *SystemHandlerSuite) TestGetNICsHandler() {
 func (suite *SystemHandlerSuite) TestGetFSHandler() {
 	api := api.NewSystemHanler()
 	req, err := http.NewRequestWithContext(testContext, "GET", "/filesystems", nil)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// Create a ResponseRecorder to record the response
 	rr := httptest.NewRecorder()
@@ -68,16 +66,16 @@ func (suite *SystemHandlerSuite) TestGetFSHandler() {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code
-	assert.Equal(suite.T(), rr.Code, http.StatusOK, "Expected status code 200, got %d", rr.Code)
+	suite.Equal(http.StatusOK, rr.Code, "Expected status code 200, got %d", rr.Code)
 
 	// Check the content type
 	expectedContentType := "application/json"
-	assert.Equal(suite.T(), rr.Header().Get("Content-Type"), expectedContentType, "Expected content type %s, got %s", expectedContentType, rr.Header().Get("Content-Type"))
+	suite.Equal(expectedContentType, rr.Header().Get("Content-Type"), "Expected content type %s, got %s", expectedContentType, rr.Header().Get("Content-Type"))
 
 	// Check the response body
 	var fileSystems []string
 	err = json.Unmarshal(rr.Body.Bytes(), &fileSystems)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 	suite.T().Logf("%v", fileSystems)
-	assert.NotEmpty(suite.T(), fileSystems, "Response does not contain any file systems")
+	suite.NotEmpty(fileSystems, "Response does not contain any file systems")
 }

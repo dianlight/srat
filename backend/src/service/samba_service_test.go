@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	service "github.com/dianlight/srat/service"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/ztrue/tracerr"
 )
@@ -40,11 +38,11 @@ func TestSambaServiceSuite(t *testing.T) {
 
 func (suite *SambaServiceSuite) TestCreateConfigStream() {
 	stream, err := suite.sambaService.CreateConfigStream("hassio", "172.30.32.0/23", suite.templateData)
-	require.NoError(suite.T(), err, tracerr.SprintSourceColor(err))
-	assert.NotNil(suite.T(), stream)
+	suite.Require().NoError(err, tracerr.SprintSourceColor(err))
+	suite.NotNil(stream)
 
 	fsbyte, err := os.ReadFile("../../test/data/smb.conf")
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
 
@@ -63,7 +61,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 	for k := range result {
 		keys = append(keys, k)
 	}
-	assert.Len(suite.T(), keys, len(expected), result)
+	suite.Len(keys, len(expected), result)
 	m1 := regexp.MustCompile(`/\*(.*)\*/`)
 
 	for k, v := range result {
@@ -84,13 +82,13 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 				hight = len(lines)
 			}
 
-			require.Greater(suite.T(), len(lines), i, "Premature End of file reached")
+			suite.Require().Greater(len(lines), i, "Premature End of file reached")
 			if logv := m1.FindStringSubmatch(line); len(logv) > 1 {
 				suite.T().Logf("%d: %s", i, logv[1])
 				line = m1.ReplaceAllString(line, "")
 			}
 
-			require.EqualValues(suite.T(), strings.TrimSpace(elines[i]), strings.TrimSpace(line), "On Section [%s] Line:%d\n%d:\n%s\n%d:", k, i, low, strings.Join(lines[low:hight], "\n"), hight)
+			suite.Require().EqualValues(strings.TrimSpace(elines[i]), strings.TrimSpace(line), "On Section [%s] Line:%d\n%d:\n%s\n%d:", k, i, low, strings.Join(lines[low:hight], "\n"), hight)
 		}
 
 	}

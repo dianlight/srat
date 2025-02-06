@@ -53,7 +53,7 @@ func (self *UpgradeService) run() error {
 	for {
 		select {
 		case <-self.ctx.Done():
-			slog.Debug("Run process closed", "err", self.ctx.Err())
+			slog.Info("Run process closed", "err", self.ctx.Err())
 			return tracerr.Wrap(self.ctx.Err())
 		default:
 			self.updateLimiter.Do(func() {

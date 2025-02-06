@@ -163,13 +163,14 @@ func main() {
 			Path:     updateFilePath,
 			Interval: 1 * time.Second,
 		},
-		//Debug: true,
+		TerminateTimeout: 60,
+		Debug:            true,
 	})
 }
 
 func prog(state overseer.State) {
 
-	log.Printf("SRAT: SambaNAS Rest Administration Interface\n")
+	log.Printf("SRAT: SambaNAS Rest Administration Interface (%s)\n", state.ID)
 	log.Printf("SRAT Version: %s\n", SRATVersion)
 	log.Printf("\nFlags: %v\n", os.Args)
 

@@ -15,8 +15,6 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/thoas/go-funk"
 	gomock "go.uber.org/mock/gomock"
@@ -98,10 +96,10 @@ func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
 	}
 	//suite.T(),Log(pretty.Sprint(volumes))
 
-	assert.NotNil(suite.T(), funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
+	suite.NotNil(funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
 		return d.Label == "testvolume"
 	}))
-	assert.NotNil(suite.T(), funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
+	suite.NotNil(funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
 		return d.Label == "_EXT4"
 	}), "Expected _EXT4 volume not found %+v", funk.Map(volumes.Partitions, func(d *dto.BlockPartition) string {
 		return d.Label + "[" + d.Name + "]"
@@ -115,7 +113,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 	volume := api.NewVolumeHandler(suite.mockVolumeService)
 	// Check if loop device is available for mounting
 	volumes, err := suite.mockVolumeService.GetVolumesData()
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	var mockMountData dbom.MountPointPath
 
@@ -130,13 +128,13 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 		}
 	}
 	err = mockMountData.Save()
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	body, _ := json.Marshal(mockMountData)
 	requestPath := fmt.Sprintf("/volume/%d/mount", mockMountData.ID)
 	//suite.T().Logf("Request path: %s", requestPath)
 	req, err := http.NewRequestWithContext(testContext, "POST", requestPath, bytes.NewBuffer(body))
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
@@ -150,12 +148,12 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(suite.T(), http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
+	suite.Equal(http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check the response body is what we expecsuite.T().
 	var responseData dbom.MountPointPath
 	err = json.Unmarshal(rr.Body.Bytes(), &responseData)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// Verify the response data
 	if !strings.HasPrefix(responseData.Path, mockMountData.Path) {
@@ -199,7 +197,7 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 
 	// Create a request
 	req, err := http.NewRequestWithContext(testContext, "DELETE", fmt.Sprintf("/volume/%d/mount", 1), nil)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// Set up gorilla/mux router
 	router := mux.NewRouter()
@@ -212,8 +210,8 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code
-	assert.Equal(suite.T(), http.StatusNoContent, rr.Code, "Body %#v", rr.Body.String())
+	suite.Equal(http.StatusNoContent, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check that the response body is empty
-	assert.Empty(suite.T(), rr.Body.String(), "Body should be empty")
+	suite.Empty(rr.Body.String(), "Body should be empty")
 }

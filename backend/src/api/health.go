@@ -95,7 +95,7 @@ func (self *HealthHanler) run() error {
 	for {
 		select {
 		case <-self.ctx.Done():
-			slog.Debug("Run process closed", "err", self.ctx.Err())
+			slog.Info("Run process closed", "err", self.ctx.Err())
 			return tracerr.Wrap(self.ctx.Err())
 		default:
 			slog.Debug("Richiesto aggiornamento per Healthy")

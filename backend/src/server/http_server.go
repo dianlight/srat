@@ -42,17 +42,30 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtC
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
-				slog.Debug("Starting HTTP server at", "listener", state.Address)
+				slog.Debug("Starting HTTP server at", "listener", state.Address, "pid", state.ID)
 				if err := srv.Serve(state.Listener); err != nil {
-					log.Fatal(err)
+					if err == http.ErrServerClosed {
+						slog.Info("HTTP server stopped gracefully")
+					} else {
+						log.Fatal(tracerr.SprintSourceColor(err))
+					}
 				}
 			}()
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			state.Listener.Close()
+			slog.Info("Stopping HTTP server")
+			//state.Listener.Close()
 			cxtClose()
-			return srv.Shutdown(ctx)
+			//ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+			//defer cancel()
+			//err := srv.Shutdown(ctx)
+			//if err != nil {
+			//	return tracerr.Wrap(err)
+			//}
+			//time.Sleep(15 * time.Second)
+			slog.Info("HTTP server stopped")
+			return nil
 		},
 	})
 	return srv

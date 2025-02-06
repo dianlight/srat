@@ -10,7 +10,6 @@ import (
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/tj/go-spin"
 	gomock "go.uber.org/mock/gomock"
@@ -79,7 +78,7 @@ func (suite *HealthHandlerSuite) TestHealthEventEmitter() {
 	startTime := time.Now()
 	suite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).Do((func(data any) {
 		msg := data.(*dto.EventMessageEnvelope)
-		assert.NotNil(suite.T(), msg.Data)
+		suite.NotNil(msg.Data)
 		if msg.Event != dto.EventHeartbeat {
 			suite.T().Errorf("Expected Event to be Heartbeat, got %v", msg.Event)
 		}
@@ -92,9 +91,9 @@ func (suite *HealthHandlerSuite) TestHealthEventEmitter() {
 		time.Sleep(time.Millisecond * 500)
 	}
 	elapsed := time.Since(startTime)
-	assert.LessOrEqual(suite.T(), uint64(elapsed.Seconds()/float64(apiContextState.Heartbeat)), health.OutputEventsCount, " elapsed seconds %d should be greater than %d", elapsed.Seconds(), numcal)
+	suite.LessOrEqual(uint64(elapsed.Seconds()/float64(apiContextState.Heartbeat)), health.OutputEventsCount, " elapsed seconds %d should be greater than %d", elapsed.Seconds(), numcal)
 	if numcal != 0 {
-		assert.Equal(suite.T(), health.OutputEventsCount, numcal)
+		suite.Equal(health.OutputEventsCount, numcal)
 	}
 
 	//t.Log(health)

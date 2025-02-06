@@ -54,7 +54,7 @@ func (broker *BroadcasterService) listen() {
 	for {
 		select {
 		case <-broker.ctx.Done():
-			slog.Debug("Run process closed", "err", broker.ctx.Err())
+			slog.Info("Run process closed", "err", broker.ctx.Err())
 			return
 		case s := <-broker.newClients:
 

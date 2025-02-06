@@ -13,8 +13,6 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/xorcare/pointer"
 	gomock "go.uber.org/mock/gomock"
@@ -42,7 +40,7 @@ func (suite *ShareHandlerSuite) TestListShares() {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/shares", nil)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -53,23 +51,23 @@ func (suite *ShareHandlerSuite) TestListShares() {
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(suite.T(), http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
+	suite.Equal(http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
 
 	// Check the response body is what we expect.
 	resultsDto := []dto.SharedResource{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultsDto)
-	require.NoError(suite.T(), jsonError, "Body %#v", rr.Body.String())
-	assert.NotEmpty(suite.T(), resultsDto)
+	suite.Require().NoError(jsonError, "Body %#v", rr.Body.String())
+	suite.NotEmpty(resultsDto)
 	var config config.Config
 	config.FromContext(testContext)
-	assert.Len(suite.T(), resultsDto, 10)
+	suite.Len(resultsDto, 10)
 
 	for _, sdto := range resultsDto {
-		assert.NotEmpty(suite.T(), sdto.MountPointData.Path)
+		suite.NotEmpty(sdto.MountPointData.Path)
 		if sdto.MountPointData.IsInvalid {
-			assert.NoDirExists(suite.T(), sdto.MountPointData.Path, "DeviceId %s is Invalid=true but %s exist (%s)", sdto.MountPointData.Source, sdto.MountPointData.Path, *sdto.MountPointData.InvalidError)
+			suite.NoDirExists(sdto.MountPointData.Path, "DeviceId %s is Invalid=true but %s exist (%s)", sdto.MountPointData.Source, sdto.MountPointData.Path, *sdto.MountPointData.InvalidError)
 		} else {
-			assert.DirExists(suite.T(), sdto.MountPointData.Path, "DeviceId %s is Invalid=false but %s doesn't exist", sdto.MountPointData.Source, sdto.MountPointData.Path)
+			suite.DirExists(sdto.MountPointData.Path, "DeviceId %s is Invalid=false but %s doesn't exist", sdto.MountPointData.Source, sdto.MountPointData.Path)
 		}
 	}
 
@@ -80,7 +78,7 @@ func (suite *ShareHandlerSuite) TestGetShareHandler() {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/share/LIBRARY", nil)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -90,13 +88,13 @@ func (suite *ShareHandlerSuite) TestGetShareHandler() {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	require.Equal(suite.T(), http.StatusOK, rr.Code)
+	suite.Require().Equal(http.StatusOK, rr.Code)
 
 	// Check the response body is what we expect.
 	//context_state := (&dto.ContextState{}).FromContext(testContext)
 	resultShare := dto.SharedResource{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultShare)
-	require.NoError(suite.T(), jsonError, "Body %#v", rr.Body.String())
+	suite.Require().NoError(jsonError, "Body %#v", rr.Body.String())
 
 	var config config.Config
 	config.FromContext(testContext)
@@ -111,7 +109,7 @@ func (suite *ShareHandlerSuite) TestGetShareHandler() {
 	expected.MountPointData.IsInvalid = resultShare.MountPointData.IsInvalid
 	expected.MountPointData.InvalidError = resultShare.MountPointData.InvalidError
 	//assert.Equal(suite.T(), config.Shares["LIBRARY"], resultShare)
-	assert.EqualValues(suite.T(), expected, resultShare, "Body %#v", rr.Body.String())
+	suite.EqualValues(expected, resultShare, "Body %#v", rr.Body.String())
 }
 
 func (suite *ShareHandlerSuite) TestCreateShareHandler() {
@@ -125,11 +123,11 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
-	require.NoError(suite.T(), jsonError)
+	suite.Require().NoError(jsonError)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "POST", "/share", strings.NewReader(string(jsonBody)))
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -139,12 +137,12 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(suite.T(), http.StatusCreated, rr.Code)
+	suite.Equal(http.StatusCreated, rr.Code)
 
 	// Check the response body is what we expect.
 	var result dto.SharedResource
 	jsonError = json.Unmarshal(rr.Body.Bytes(), &result)
-	require.NoError(suite.T(), jsonError)
+	suite.Require().NoError(jsonError)
 	share.ID = result.ID
 	share.Users = []dto.User{
 		{Username: pointer.String("dianlight"), Password: pointer.String("hassio2010"), IsAdmin: pointer.Bool(true)},
@@ -153,7 +151,7 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 	share.MountPointData.ID = result.MountPointData.ID
 	share.MountPointData.IsInvalid = result.MountPointData.IsInvalid
 	share.MountPointData.InvalidError = result.MountPointData.InvalidError
-	assert.EqualValues(suite.T(), share, result)
+	suite.EqualValues(share, result)
 }
 
 func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
@@ -176,11 +174,11 @@ func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
-	require.NoError(suite.T(), jsonError)
+	suite.Require().NoError(jsonError)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "POST", "/share/LIBRARY", strings.NewReader(string(jsonBody)))
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -190,10 +188,10 @@ func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(suite.T(), http.StatusConflict, rr.Code)
+	suite.Equal(http.StatusConflict, rr.Code)
 
 	// Check the response body is what we expect.
-	assert.Contains(suite.T(), rr.Body.String(), "Share already exists")
+	suite.Contains(rr.Body.String(), "Share already exists")
 }
 
 func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
@@ -206,12 +204,12 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
 	}
 
 	jsonBody, jsonError := json.Marshal(share)
-	require.NoError(suite.T(), jsonError)
+	suite.Require().NoError(jsonError)
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "PATCH", "/share/UPDATER", strings.NewReader(string(jsonBody)))
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -220,13 +218,13 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
 	router.HandleFunc("/share/{share_name}", shareHandler.UpdateShare).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(suite.T(), http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	var rshare dto.SharedResource
 	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)
-	require.NoError(suite.T(), jsonError)
+	suite.Require().NoError(jsonError)
 
-	assert.EqualValues(suite.T(), share, rshare)
+	suite.EqualValues(share, rshare)
 
 	/*
 	   // Check the response body is what we expect.
@@ -255,7 +253,7 @@ func (suite *ShareHandlerSuite) TestDeleteShareHandler() {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/share/EFI", nil)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
@@ -265,14 +263,14 @@ func (suite *ShareHandlerSuite) TestDeleteShareHandler() {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	assert.Equal(suite.T(), http.StatusNoContent, rr.Code)
+	suite.Equal(http.StatusNoContent, rr.Code)
 
 	// Refresh shares list anche check that LIBRARY don't exists
 	share := dbom.ExportedShare{
 		Name: "EFI",
 	}
 	err = share.FromName("EFI")
-	if assert.Error(suite.T(), err, "Share %+v should not exist", share) {
-		assert.Equal(suite.T(), gorm.ErrRecordNotFound, err)
+	if suite.Error(err, "Share %+v should not exist", share) {
+		suite.Equal(gorm.ErrRecordNotFound, err)
 	}
 }
