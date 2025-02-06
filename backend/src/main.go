@@ -47,6 +47,8 @@ var dockerInterface *string
 var dockerNetwork *string
 var roMode *bool
 var updateFilePath string
+var configFile *string
+var dbfile *string
 
 // Static files
 //
@@ -86,13 +88,13 @@ func main() {
 	))
 
 	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
-	var configFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
+	configFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
 	templateFile = flag.String("template", "", "Template file")
 	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
 	roMode = flag.Bool("ro", false, "Read only mode")
 	hamode = flag.Bool("addon", false, "Run in addon mode")
-	dbfile := flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
+	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
 	dockerNetwork = flag.String("docker-network", "", "Docker network")
 
@@ -129,29 +131,6 @@ func main() {
 	}
 	*/
 
-	dbom.InitDB(*dbfile)
-
-	// JSON Config  Migration if necessary
-	// Get config and migrate if DB is empty
-	var properties dbom.Properties
-	err := properties.Load()
-	if err != nil {
-		log.Fatalf("Cant load properties - %s", err)
-	}
-	versionInDB, err := properties.GetValue("version")
-	if err != nil || versionInDB.(string) == "" {
-		// Migrate from JSON to DB
-		var config config.Config
-		err := config.LoadConfig(*configFile)
-		// Setting/Properties
-		if err != nil {
-			log.Fatalf("Cant load config file %s", err)
-		}
-		dbutil.FirstTimeJSONImporter(config)
-		if err != nil {
-			log.Fatalf("Cant import json settings - %#v", err)
-		}
-	}
 	//data.Config = aconfig
 
 	// End
@@ -199,6 +178,30 @@ func prog(state overseer.State) {
 
 	if *roMode {
 		log.Println("Read only mode")
+	}
+
+	dbom.InitDB(*dbfile)
+
+	// JSON Config  Migration if necessary
+	// Get config and migrate if DB is empty
+	var properties dbom.Properties
+	err := properties.Load()
+	if err != nil {
+		log.Fatalf("Cant load properties - %s", err)
+	}
+	versionInDB, err := properties.GetValue("version")
+	if err != nil || versionInDB.(string) == "" {
+		// Migrate from JSON to DB
+		var config config.Config
+		err := config.LoadConfig(*configFile)
+		// Setting/Properties
+		if err != nil {
+			log.Fatalf("Cant load config file %s", err)
+		}
+		dbutil.FirstTimeJSONImporter(config)
+		if err != nil {
+			log.Fatalf("Cant import json settings - %#v", err)
+		}
 	}
 
 	// Get options
@@ -267,6 +270,8 @@ func prog(state overseer.State) {
 		),
 		fx.Invoke(func(*http.Server) {}),
 	).Run()
+
+	dbom.CloseDB()
 
 	/*
 		globalRouter := mux.NewRouter()
