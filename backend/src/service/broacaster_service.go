@@ -101,7 +101,7 @@ func (broker *BroadcasterService) BroadcastMessage(msg *dto.EventMessageEnvelope
 		msg.Id = uuid.New().String()
 	}
 	broker.notifier <- *msg
-	slog.Debug("Broadcasted message:", "msg", msg)
+	//slog.Debug("Broadcasted message:", "msg", msg)
 	return msg, nil
 }
 

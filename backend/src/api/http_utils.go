@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/thoas/go-funk"
@@ -34,6 +35,7 @@ func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 
 	if erx, ok := src.(error); ok {
 		opt.Code = codeGetOrElse(opt.Code, http.StatusInternalServerError)
+		slog.Error(tracerr.SprintSourceColor(erx))
 		return HttpJSONReponse(w, ErrorResponse{Error: tracerr.Sprint(erx), Body: erx}, opt)
 	}
 

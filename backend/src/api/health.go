@@ -98,7 +98,7 @@ func (self *HealthHanler) run() error {
 			slog.Info("Run process closed", "err", self.ctx.Err())
 			return tracerr.Wrap(self.ctx.Err())
 		default:
-			slog.Debug("Richiesto aggiornamento per Healthy")
+			//slog.Debug("Richiesto aggiornamento per Healthy")
 			self.checkSamba()
 			self.HealthPing.Dirty = self.apictx.DataDirtyTracker
 			err := self.EventEmitter(self.HealthPing)

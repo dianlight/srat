@@ -143,7 +143,7 @@ func main() {
 			Interval: 1 * time.Second,
 		},
 		TerminateTimeout: 60,
-		Debug:            true,
+		Debug:            false,
 	})
 }
 
