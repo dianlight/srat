@@ -14,6 +14,7 @@ import { ConfirmProvider } from "material-ui-confirm";
 import { StrictMode } from 'react';
 import { SSEProvider, type Listener, type Source } from 'react-hooks-sse';
 import { apiContext } from './Contexts.ts';
+import { DtoEventType } from './srat.ts';
 
 
 const theme = createTheme({
@@ -25,6 +26,8 @@ const theme = createTheme({
 class SSESource implements Source {
     private eventSource: EventSource;
     private resetTimer?: Timer
+    private heartbeatListener: Listener[] = []
+    private listeners = new Map<string, Listener[]>()
     private faultCount = 0
 
     constructor(endpoint: string) {
@@ -36,6 +39,7 @@ class SSESource implements Source {
         let eventSource = new EventSource(endpoint, { withCredentials: true });
         eventSource.onerror = () => {
             console.error("SSE connection error");
+            this.heartbeatListener.forEach((func) => func({ data: "{ \"alive\": false, \"read_only\": true }" }));
             this.faultCount++;
             if (this.faultCount > 3 && this.resetTimer === undefined) {
                 this.eventSource.close();
@@ -46,15 +50,26 @@ class SSESource implements Source {
             console.log("SSE connection open");
             if (this.resetTimer) clearTimeout(this.resetTimer);
             this.faultCount = 0;
+            this.listeners.forEach((values, key) => values.forEach(value => {
+                this.eventSource.addEventListener(key, value);
+            }));
         }
         return eventSource;
     }
 
     addEventListener(name: string, listener: Listener): void {
+        if (name === DtoEventType.EventHeartbeat) {
+            this.heartbeatListener.push(listener);
+        }
+        if (!this.listeners.has(name)) {
+            this.listeners.set(name, []);
+        }
+        this.listeners.get(name)?.push(listener);
         this.eventSource.addEventListener(name, listener);
     }
     removeEventListener(name: string, listener: Listener): void {
         this.eventSource.removeEventListener(name, listener);
+        this.listeners.get(name)?.splice(this.listeners.get(name)?.indexOf(listener) || 0, 1);
     }
     close(): void {
         this.eventSource.close();
