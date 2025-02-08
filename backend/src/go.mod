@@ -76,7 +76,6 @@ require (
 	github.com/gofri/go-github-ratelimit v1.1.0
 	github.com/google/go-github/v68 v68.0.0
 	github.com/gorilla/handlers v1.5.2
-	github.com/gorilla/websocket v1.5.3
 	github.com/itchyny/gojq v0.12.17
 	github.com/jaypipes/ghw v0.13.0
 	github.com/lmittmann/tint v1.0.7

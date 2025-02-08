@@ -1,12 +1,18 @@
 package repository
 
 import (
+	"errors"
+	"sync"
+
 	"github.com/dianlight/srat/dbom"
+	"github.com/jinzhu/copier"
+	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 )
 
 type MountPointPathRepository struct {
-	db *gorm.DB
+	db    *gorm.DB
+	mutex sync.RWMutex
 }
 
 type MountPointPathRepositoryInterface interface {
@@ -20,34 +26,37 @@ type MountPointPathRepositoryInterface interface {
 }
 
 func NewMountPointPathRepository(db *gorm.DB) MountPointPathRepositoryInterface {
-	return &MountPointPathRepository{db: db}
+	return &MountPointPathRepository{
+		mutex: sync.RWMutex{},
+		db:    db,
+	}
 }
 
 func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
-	return r.db.Save(mp).Error
-	/*
-		tx := db.Begin()
-		var existingRecord MountPointPath
-		res := tx.Limit(1).Find(&existingRecord, "path = ?", mp.Path)
-		if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return tracerr.Wrap(res.Error)
-		} else if res.RowsAffected > 0 {
-			if mp.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
-				return tracerr.Errorf("DeviceId mismatch for %s", mp.Path)
-			}
-			err = copier.CopyWithOption(mp, &existingRecord, copier.Option{IgnoreEmpty: true})
-			if err != nil {
-				return tracerr.Wrap(err)
-			}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	tx := r.db.Begin()
+	defer tx.Rollback()
+	var existingRecord dbom.MountPointPath
+	res := tx.Limit(1).Find(&existingRecord, "path = ?", mp.Path)
+	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		return tracerr.Wrap(res.Error)
+	} else if res.RowsAffected > 0 {
+		if mp.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
+			return tracerr.Errorf("DeviceId mismatch for %s", mp.Path)
 		}
-
-		err = tx.Save(mp).Error
+		err := copier.CopyWithOption(mp, &existingRecord, copier.Option{IgnoreEmpty: true})
 		if err != nil {
 			return tracerr.Wrap(err)
 		}
-		tx.Commit()
-		return nil
-	*/
+	}
+
+	err := tx.Save(mp).Error
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	tx.Commit()
+	return nil
 
 }
 

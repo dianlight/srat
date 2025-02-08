@@ -629,23 +629,6 @@ export class HttpClient<SecurityDataType = unknown> {
  * This are samba rest admin API
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
-  events = {
-    /**
-     * @description Return a list of available WSChannel events
-     *
-     * @tags system
-     * @name EventsList
-     * @summary WSChannelEventsList
-     * @request GET:/events
-     */
-    eventsList: (params: RequestParams = {}) =>
-      this.request<DtoEventType[], string>({
-        path: `/events`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-  };
   filesystems = {
     /**
      * @description Return all supported fs

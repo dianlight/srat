@@ -818,25 +818,6 @@ info:
   title: SRAT API
   version: "1.0"
 paths:
-  /events:
-    get:
-      description: Return a list of available WSChannel events
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/dto.EventType'
-            type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: WSChannelEventsList
-      tags:
-      - system
   /filesystems:
     get:
       description: Return all supported fs

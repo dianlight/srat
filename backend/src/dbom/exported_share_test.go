@@ -54,7 +54,7 @@ func (suite *ExportedSharesSuite) TestExportedSharesLoad() {
 	err := shares.Load()
 
 	// Assert
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	suite.Len(shares, 2)
 	suite.Equal("TestShare1", shares[0].Name)
 	suite.Equal("TestShare2", shares[1].Name)
@@ -86,12 +86,12 @@ func (suite *ExportedSharesSuite) TestExportedSharesSave() {
 	err := shares.Save()
 
 	// Assert
-	suite.NoError(err)
+	suite.Require().NoError(err)
 
 	// Verify the shares were saved
 	var loadedShares ExportedShares
 	err = loadedShares.Load()
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	suite.Len(loadedShares, 2)
 	suite.Equal("TestShare11", loadedShares[0].Name)
 	suite.Equal("TestShare21", loadedShares[1].Name)

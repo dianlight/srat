@@ -39,7 +39,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveWithoutData() 
 
 	err := suite.mount_repo.Save(&testMountPoint)
 
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
 
@@ -57,7 +57,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 
 	err := suite.mount_repo.Save(&testMountPoint)
 
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
 
@@ -85,13 +85,13 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 	}
 
 	err := suite.mount_repo.Save(&expectedMountPoints[0])
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	err = suite.mount_repo.Save(&expectedMountPoints[1])
-	suite.NoError(err)
+	suite.Require().NoError(err)
 
 	mountPoints, err := suite.mount_repo.All()
 
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	if !cmp.Equal(expectedMountPoints, mountPoints, cmpopts.IgnoreFields(dbom.MountPointPath{}, "CreatedAt", "UpdatedAt")) {
 		suite.Equal(expectedMountPoints, mountPoints)
 		//		t.Errorf("FuncUnderTest() mismatch")
