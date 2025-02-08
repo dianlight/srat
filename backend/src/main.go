@@ -199,7 +199,7 @@ func prog(state overseer.State) {
 
 	//sharedResources.FromJSONConfig(*aconfig)
 	//apiContext = sharedResources.ToContext(apiContext)
-	apiContext = api.StateToContext(&sharedResources, apiContext)
+	//apiContext = api.StateToContext(&sharedResources, apiContext)
 
 	w := os.Stderr
 

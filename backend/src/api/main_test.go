@@ -63,7 +63,7 @@ func TestMain(m *testing.M) {
 	apiContextState.DockerNet = "172.30.32.0/23"
 	apiContextState.Heartbeat = 1
 	//sharedResources.SSEBroker = NewMockBrokerInterface(ctrl) //
-	testContext = api.StateToContext(&apiContextState, testContext)
+	//testContext = api.StateToContext(&apiContextState, testContext)
 	testContext = config.ToContext(testContext)
 
 	retErr := m.Run()

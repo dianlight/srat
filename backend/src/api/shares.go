@@ -23,11 +23,13 @@ type ShareHandler struct {
 	sharesQueueMutex sync.RWMutex
 	broadcaster      service.BroadcasterServiceInterface
 	//sharesQueue      map[string]chan *[]dto.SharedResource
+	apiContext *ContextState
 }
 
-func NewShareHandler(broadcaster service.BroadcasterServiceInterface) *ShareHandler {
+func NewShareHandler(broadcaster service.BroadcasterServiceInterface, apiContext *ContextState) *ShareHandler {
 	p := new(ShareHandler)
 	p.broadcaster = broadcaster
+	p.apiContext = apiContext
 	//p.ctx = ctx
 	//p.sharesQueue = map[string](chan *[]dto.SharedResource){}
 	p.sharesQueueMutex = sync.RWMutex{}
@@ -234,14 +236,14 @@ func (self *ShareHandler) CreateShare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//context_state := (&dto.Status{}).FromContext(r.Context())
-	context_state := StateFromContext(r.Context())
+	//context_state := StateFromContext(r.Context())
 	err = conv.ExportedShareToSharedResource(*dbshare, &share)
 	//err = mapper.Map(context.Background(), &share, dbshare)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	context_state.DataDirtyTracker.Shares = true
+	self.apiContext.DataDirtyTracker.Shares = true
 	go self.notifyClient()
 	HttpJSONReponse(w, share, &Options{
 		Code: http.StatusCreated,
@@ -325,8 +327,8 @@ func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := StateFromContext(r.Context())
-	context_state.DataDirtyTracker.Shares = true
+	//context_state := StateFromContext(r.Context())
+	self.apiContext.DataDirtyTracker.Shares = true
 	go self.notifyClient()
 	HttpJSONReponse(w, share, nil)
 }
@@ -373,8 +375,8 @@ func (self *ShareHandler) DeleteShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := StateFromContext(r.Context())
-	context_state.DataDirtyTracker.Shares = true
+	//context_state := StateFromContext(r.Context())
+	self.apiContext.DataDirtyTracker.Shares = true
 	go self.notifyClient()
 	HttpJSONReponse(w, nil, &Options{
 		Code: http.StatusNoContent,

@@ -65,7 +65,7 @@ func TestVolumeHandlerSuite(t *testing.T) {
 }
 
 func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
-	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo)
+	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo, &apiContextState)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/volumes", nil)
@@ -114,7 +114,7 @@ func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
 //var
 
 func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
-	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo)
+	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo, &apiContextState)
 	// Check if loop device is available for mounting
 	volumes, err := suite.mockVolumeService.GetVolumesData()
 	suite.Require().NoError(err)
@@ -172,7 +172,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 }
 
 func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
-	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo)
+	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo, &apiContextState)
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/999999/mount", nil)
 	if err != nil {
 		suite.T().Fatal(err)
@@ -197,7 +197,7 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
 }
 func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 
-	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo)
+	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo, &apiContextState)
 
 	// Create a request
 	req, err := http.NewRequestWithContext(testContext, "DELETE", fmt.Sprintf("/volume/%d/mount", 1), nil)

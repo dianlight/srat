@@ -10,10 +10,12 @@ import (
 )
 
 type SettingsHanler struct {
+	apiContext *ContextState
 }
 
-func NewSettingsHanler() *SettingsHanler {
+func NewSettingsHanler(apiContext *ContextState) *SettingsHanler {
 	p := new(SettingsHanler)
+	p.apiContext = apiContext
 	return p
 }
 
@@ -66,7 +68,7 @@ func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	context_state := StateFromContext(r.Context())
+	//context_state := StateFromContext(r.Context())
 
 	//err = mapper.Map(context.Background(), &config, dbconfig)
 	err = conv.PropertiesToSettings(dbconfig, &config)
@@ -74,7 +76,7 @@ func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	context_state.DataDirtyTracker.Settings = true
+	self.apiContext.DataDirtyTracker.Settings = true
 	//UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 	HttpJSONReponse(w, config, nil)
 }

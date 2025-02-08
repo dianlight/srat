@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -18,10 +17,12 @@ type UserHandler struct {
 	//ctx               context.Context
 	//broascasting      service.BroadcasterServiceInterface
 	//volumesQueueMutex sync.RWMutex
+	apiContext *ContextState
 }
 
-func NewUserHandler(ctx context.Context) *UserHandler {
+func NewUserHandler(apiContext *ContextState) *UserHandler {
 	p := new(UserHandler)
+	p.apiContext = apiContext
 	//p.ctx = ctx
 	//p.broascasting = broascasting
 	//p.volumesQueueMutex = sync.RWMutex{}
@@ -183,8 +184,8 @@ func (handler *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//	context_state := (&dto.Status{}).FromContext(r.Context())
-	context_state := StateFromContext(r.Context())
-	context_state.DataDirtyTracker.Users = true
+	//context_state := StateFromContext(r.Context())
+	handler.apiContext.DataDirtyTracker.Users = true
 	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
@@ -251,8 +252,8 @@ func (handler *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//context_state := (&dto.Status{}).FromContext(r.Context())
-	context_state := StateFromContext(r.Context())
-	context_state.DataDirtyTracker.Users = true
+	//context_state := StateFromContext(r.Context())
+	handler.apiContext.DataDirtyTracker.Users = true
 	HttpJSONReponse(w, user, nil)
 }
 
@@ -304,8 +305,8 @@ func (handler *UserHandler) UpdateAdminUser(w http.ResponseWriter, r *http.Reque
 	}
 
 	//context_state := (&dto.Status{}).FromContext(r.Context())
-	context_state := StateFromContext(r.Context())
-	context_state.DataDirtyTracker.Users = true
+	//context_state := StateFromContext(r.Context())
+	handler.apiContext.DataDirtyTracker.Users = true
 	HttpJSONReponse(w, user, nil)
 }
 
@@ -345,8 +346,8 @@ func (handler *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//context_state := (&dto.Status{}).FromContext(r.Context())
-	context_state := StateFromContext(r.Context())
+	//context_state := StateFromContext(r.Context())
 
-	context_state.DataDirtyTracker.Users = true
+	handler.apiContext.DataDirtyTracker.Users = true
 	HttpJSONReponse(w, nil, nil)
 }

@@ -27,7 +27,7 @@ func TestSettingsHandlerSuite(t *testing.T) {
 	suite.Run(t, csuite)
 }
 func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
-	api := api.NewSettingsHanler()
+	api := api.NewSettingsHanler(&apiContextState)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/global", nil)
@@ -64,7 +64,7 @@ func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
 }
 
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
-	api := api.NewSettingsHanler()
+	api := api.NewSettingsHanler(&apiContextState)
 	glc := dto.Settings{
 		Workgroup: "pluto&admin",
 	}

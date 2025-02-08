@@ -20,14 +20,16 @@ var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
 var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
 
 type VolumeHandler struct {
+	apiContext *ContextState
 	vservice   service.VolumeServiceInterface
 	mount_repo repository.MountPointPathRepositoryInterface
 }
 
-func NewVolumeHandler(vservice service.VolumeServiceInterface, mount_repo repository.MountPointPathRepositoryInterface) *VolumeHandler {
+func NewVolumeHandler(vservice service.VolumeServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, apiContext *ContextState) *VolumeHandler {
 	p := new(VolumeHandler)
 	p.vservice = vservice
 	p.mount_repo = mount_repo
+	p.apiContext = apiContext
 	return p
 }
 
@@ -126,8 +128,8 @@ func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 	}
 	//self.vservice.NotifyClient()
 	//		context_state := (&dto.Status{}).FromContext(r.Context())
-	context_state := StateFromContext(r.Context())
-	context_state.DataDirtyTracker.Volumes = true
+	//context_state := StateFromContext(r.Context())
+	self.apiContext.DataDirtyTracker.Volumes = true
 	HttpJSONReponse(w, mounted_data, nil)
 	//}
 }
@@ -169,8 +171,9 @@ func (self *VolumeHandler) UmountVolume(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	context_state := StateFromContext(r.Context())
-	context_state.DataDirtyTracker.Volumes = true
+	//context_state := StateFromContext(r.Context())
+	self.apiContext.DataDirtyTracker.Volumes = true
+
 	HttpJSONReponse(w, nil, nil)
 	return
 }

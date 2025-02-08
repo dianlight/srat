@@ -34,7 +34,7 @@ func TestUserHandlerSuite(t *testing.T) {
 }
 
 func (suite *UserHandlerSuite) TestListUsersHandler() {
-	api := api.NewUserHandler(testContext)
+	api := api.NewUserHandler(&apiContextState)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/users", nil)
@@ -77,7 +77,7 @@ func (suite *UserHandlerSuite) TestListUsersHandler() {
 }
 
 func (suite *UserHandlerSuite) TestGetUserHandler() {
-	api := api.NewUserHandler(testContext)
+	api := api.NewUserHandler(&apiContextState)
 	req, err := http.NewRequestWithContext(testContext, "GET", "/useradmin", nil)
 	suite.Require().NoError(err)
 
@@ -100,7 +100,7 @@ func (suite *UserHandlerSuite) TestGetUserHandler() {
 }
 
 func (suite *UserHandlerSuite) TestCreateUserHandler() {
-	api := api.NewUserHandler(testContext)
+	api := api.NewUserHandler(&apiContextState)
 
 	user := dto.User{
 		Username: pointer.String("PIPPO"),
@@ -142,7 +142,7 @@ func (suite *UserHandlerSuite) TestCreateUserHandler() {
 }
 
 func (suite *UserHandlerSuite) TestCreateUserDuplicateHandler() {
-	api := api.NewUserHandler(testContext)
+	api := api.NewUserHandler(&apiContextState)
 	user := config.User{
 		Username: "backupuser",
 		Password: "\u003cbackupuser secret password\u003e",
@@ -170,7 +170,7 @@ func (suite *UserHandlerSuite) TestCreateUserDuplicateHandler() {
 }
 
 func (suite *UserHandlerSuite) TestUpdateUserHandler() {
-	api := api.NewUserHandler(testContext)
+	api := api.NewUserHandler(&apiContextState)
 	user := dto.User{
 		Password: pointer.String("/pippo"),
 	}
@@ -205,7 +205,7 @@ func (suite *UserHandlerSuite) TestUpdateUserHandler() {
 }
 
 func (suite *UserHandlerSuite) TestUpdateAdminUserHandler() {
-	api := api.NewUserHandler(testContext)
+	api := api.NewUserHandler(&apiContextState)
 	user := dto.User{
 		Password: pointer.String("/pluto||admin"),
 	}
@@ -234,7 +234,7 @@ func (suite *UserHandlerSuite) TestUpdateAdminUserHandler() {
 }
 
 func (suite *UserHandlerSuite) TestDeleteuserHandler() {
-	api := api.NewUserHandler(testContext)
+	api := api.NewUserHandler(&apiContextState)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/user/utente1", nil)
