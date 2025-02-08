@@ -1,6 +1,5 @@
 import { createContext } from 'react';
 import { Api, type DtoDataDirtyTracker, type DtoHealthPing } from './srat';
-import { type EventSourceStatus } from "@react-nano/use-event-source";
 
 
 let APIURL = process.env.APIURL;
@@ -26,7 +25,7 @@ console.log("API URL", APIURL)
 
 export const ModeContext = createContext<DtoHealthPing>({});
 
-export const SSEContext = createContext<[EventSource | null, EventSourceStatus]>([null, "init"]);
+//export const SSEContext = createContext<[EventSource | null, EventSourceStatus]>([null, "init"]);
 
 // Dirty data  state context
 export type DirtyData = {

@@ -61,7 +61,7 @@ export function Volumes() {
         console.log("Mount", data)
         if (!data || !data.id) return
         console.log("Mount", data)
-        apiContext.volume.mountCreate(data.id, {}).then((res) => {
+        apiContext.volume.mountCreate(data.id, data).then((res) => {
             toast.info(`Volume ${res.data.path} mounted successfully.`);
             setSelected(undefined);
         }).catch(err => {

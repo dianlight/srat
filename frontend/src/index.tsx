@@ -12,6 +12,8 @@ import '@mui/icons-material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { ConfirmProvider } from "material-ui-confirm";
 import { StrictMode } from 'react';
+import { SSEProvider, type Listener, type Source } from 'react-hooks-sse';
+import { apiContext } from './Contexts.ts';
 
 
 const theme = createTheme({
@@ -20,6 +22,45 @@ const theme = createTheme({
     },
 });
 
+class SSESource implements Source {
+    private eventSource: EventSource;
+    private resetTimer?: Timer
+    private faultCount = 0
+
+    constructor(endpoint: string) {
+        this.eventSource = this.newSSEClient(endpoint)
+    }
+
+    newSSEClient(endpoint: string): EventSource {
+        console.log("Creating SSE client", endpoint);
+        let eventSource = new EventSource(endpoint, { withCredentials: true });
+        eventSource.onerror = () => {
+            console.error("SSE connection error");
+            this.faultCount++;
+            if (this.faultCount > 3 && this.resetTimer === undefined) {
+                this.eventSource.close();
+                this.resetTimer = setTimeout(() => this.eventSource = this.newSSEClient(endpoint), 5000);
+            }
+        }
+        eventSource.onopen = () => {
+            console.log("SSE connection open");
+            if (this.resetTimer) clearTimeout(this.resetTimer);
+            this.faultCount = 0;
+        }
+        return eventSource;
+    }
+
+    addEventListener(name: string, listener: Listener): void {
+        this.eventSource.addEventListener(name, listener);
+    }
+    removeEventListener(name: string, listener: Listener): void {
+        this.eventSource.removeEventListener(name, listener);
+    }
+    close(): void {
+        this.eventSource.close();
+    }
+}
+
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 root.render(
     <ErrorBoundaryContext>
@@ -27,7 +68,9 @@ root.render(
             <CssBaseline />
             <ConfirmProvider>
                 <StrictMode>
-                    <App />
+                    <SSEProvider source={() => new SSESource(apiContext.instance.getUri() + "/sse")}>
+                        <App />
+                    </SSEProvider>
                 </StrictMode>
             </ConfirmProvider>
         </ThemeProvider>

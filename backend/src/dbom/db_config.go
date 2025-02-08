@@ -5,6 +5,8 @@ import (
 	//"gorm.io/driver/sqlite"
 
 	"github.com/glebarez/sqlite"
+	"github.com/ztrue/tracerr"
+
 	//_ "github.com/ncruces/go-sqlite3/embed"
 	//"github.com/ncruces/go-sqlite3/gormlite"
 	"gorm.io/gorm"
@@ -30,8 +32,9 @@ func InitDB(dbpath string) {
 		TranslateError:         true,
 		SkipDefaultTransaction: true,
 	})
+
 	if err != nil {
-		panic("failed to connect database")
+		panic(tracerr.Errorf("failed to connect database %s", dbpath))
 	}
 	// Migrate the schema
 	db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{})

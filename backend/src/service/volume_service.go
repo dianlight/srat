@@ -43,6 +43,7 @@ func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterf
 		broascasting:      broascasting,
 		volumesQueueMutex: sync.RWMutex{},
 	}
+	p.GetVolumesData()
 	go p.udevEventHandler()
 	return p
 }
@@ -91,6 +92,7 @@ func (ms *VolumeService) MountVolume(id uint) error {
 		mp, err = mount.Mount(dbom_mount_data.Source, dbom_mount_data.Path, dbom_mount_data.FSType, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
 	}
 	if err != nil {
+		slog.Error("Failed to mount volume:", "source", dbom_mount_data.Source, "fstype", dbom_mount_data.FSType, "path", dbom_mount_data.Path, "flags", flags, "mp", mp)
 		return tracerr.Wrap(err)
 	} else {
 		var convm converter.MountToDbomImpl

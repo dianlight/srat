@@ -137,6 +137,7 @@ func (broker *BroadcasterService) ProcessHttpChannel(w http.ResponseWriter, r *h
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	for {
@@ -156,7 +157,7 @@ func (broker *BroadcasterService) ProcessHttpChannel(w http.ResponseWriter, r *h
 				return tracerr.Wrap(err)
 			}
 			// Server Sent Events compatible
-			fmt.Fprintf(w, "event: %s\nid: %s\nretry: 30\ndata: %s\n\n", msg.Event, msg.Id, []byte(j))
+			fmt.Fprintf(w, "event: %s\nid: %s\nretry: 3000\ndata: %s\n\n", msg.Event, msg.Id, []byte(j))
 			// Flush the data immediatly instead of buffering it for later.
 			flusher.Flush()
 		}

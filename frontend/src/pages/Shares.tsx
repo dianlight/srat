@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { apiContext as api, ModeContext, SSEContext } from "../Contexts";
+import { apiContext as api, ModeContext } from "../Contexts";
 import { DtoEventType, type Api, type DtoSharedResource, type DtoUser } from "../srat";
 import { set, useForm } from "react-hook-form";
 import useSWR from "swr";
@@ -35,7 +35,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import GroupIcon from '@mui/icons-material/Group';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { useEventSourceListener } from "@react-nano/use-event-source";
+import { useSSE } from "react-hooks-sse";
 
 interface ShareEditProps extends DtoSharedResource {
     org_name: string,
@@ -44,8 +44,14 @@ interface ShareEditProps extends DtoSharedResource {
 
 export function Shares() {
     const mode = useContext(ModeContext);
-    const [sse, sseStatus] = useContext(SSEContext);
-    const [status, setStatus] = useState<DtoSharedResource[]>([]);
+    const status = useSSE(DtoEventType.EventShare, {} as DtoSharedResource, {
+        parser(input: any): DtoSharedResource {
+            console.log("Got shares", input)
+            return JSON.parse(input);
+        },
+    });
+
+    //const [status, setStatus] = useState<DtoSharedResource[]>([]);
     const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
@@ -65,6 +71,7 @@ export function Shares() {
             ws.unsubscribe(chr);
         };
         */
+        /*
         api.shares.sharesList().then((res) => {
             console.log("Got shares", res.data)
             setStatus(res.data);
@@ -72,8 +79,10 @@ export function Shares() {
             console.error(err);
             //setErrorInfo(JSON.stringify(err));
         })
+        */
     }, [])
 
+    /*
     useEventSourceListener(
         sse,
         [DtoEventType.EventShare],
@@ -83,7 +92,7 @@ export function Shares() {
         },
         [setStatus],
     );
-
+*/
 
     function onSubmitDeleteShare(data?: string) {
         console.log("Delete", data)

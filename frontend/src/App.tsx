@@ -1,23 +1,29 @@
 import { NavBar } from "./components/NavBar";
 import { Footer } from "./components/Footer";
 import { useContext, useEffect, useRef, useState } from "react";
-import { apiContext, DirtyDataContext, ModeContext, SSEContext } from "./Contexts";
+import { apiContext, DirtyDataContext, ModeContext } from "./Contexts";
 import { DtoEventType, type DtoDataDirtyTracker, type DtoHealthPing } from "./srat";
 import { useErrorBoundary } from "react-use-error-boundary";
 import Container from "@mui/material/Container";
 import { Backdrop, CircularProgress, Typography } from "@mui/material";
-import { useEventSource, useEventSourceListener } from "@react-nano/use-event-source";
+import { useSSE, SSEProvider } from 'react-hooks-sse';
 
 
 export function App() {
-    const [status, setStatus] = useState<DtoHealthPing>({ alive: false, read_only: true });
+    //const [status, setStatus] = useState<DtoHealthPing>({ alive: false, read_only: true });
     const [dirtyData, setDirtyData] = useState<DtoDataDirtyTracker>({});
     const [errorInfo, setErrorInfo] = useState<string>('')
     const [error, resetError] = useErrorBoundary(
         (error, errorInfo) => console.error(error, errorInfo)
     );
     const mainArea = useRef<HTMLDivElement>(null);
-    const [sseEventSource, sseStatus] = useEventSource(apiContext.instance.getUri() + "/sse", true)
+    const status = useSSE(DtoEventType.EventHeartbeat, { alive: false, read_only: true }, {
+        parser(input: any): DtoHealthPing {
+            console.log("Got heartbeat", input)
+            return JSON.parse(input);
+        },
+    });
+    //const [sseEventSource, sseStatus] = useEventSource(apiContext.instance.getUri() + "/sse", true)
 
     var timeoutpid: ReturnType<typeof setTimeout>
 
@@ -48,12 +54,14 @@ export function App() {
             sessionStorage.setItem("srat_dirty", (Object.values(data).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0) ? "true" : "false");
         })
         */
+        /*
         if (sseEventSource) {
             sseEventSource.onerror = () => {
                 setStatus({ alive: false, read_only: true });
                 setErrorInfo("SSE connection error");
             }
         }
+        */
         function onBeforeUnload(ev: BeforeUnloadEvent) {
             if (sessionStorage.getItem("srat_dirty") === "true") {
                 ev.preventDefault();
@@ -70,18 +78,18 @@ export function App() {
             window.removeEventListener("beforeunload", onBeforeUnload);
         };
     }, [])
-
-    useEventSourceListener(
-        sseEventSource,
-        [DtoEventType.EventHeartbeat],
-        (evt) => {
-            //console.log("SSE EventHeartbeat", evt);
-            setStatus(JSON.parse(evt.data));
-            setDirtyData(status.dirty_tracking || {});
-        },
-        [sseStatus],
-    );
-
+    /*
+        useEventSourceListener(
+            sseEventSource,
+            [DtoEventType.EventHeartbeat],
+            (evt) => {
+                //console.log("SSE EventHeartbeat", evt);
+                setStatus(JSON.parse(evt.data));
+                setDirtyData(status.dirty_tracking || {});
+            },
+            [sseStatus],
+        );
+    */
     if (error) {
         setTimeout(() => { resetError() }, 5000);
         return <Typography> Connecting to the server... </Typography>
@@ -90,20 +98,18 @@ export function App() {
     return (
         <ModeContext.Provider value={status}>
             <DirtyDataContext.Provider value={dirtyData}>
-                <SSEContext.Provider value={[sseEventSource, sseStatus]}>
 
-                    <Container maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
-                        <NavBar healthData={status} error={errorInfo} bodyRef={mainArea} />
-                        <div ref={mainArea} className="fullBody"></div>
-                        <Footer healthData={status} />
-                    </Container>
-                    <Backdrop
-                        sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
-                        open={status.alive === false}
-                    >
-                        <CircularProgress color="inherit" />
-                    </Backdrop>
-                </SSEContext.Provider>
+                <Container maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
+                    <NavBar healthData={status} error={errorInfo} bodyRef={mainArea} />
+                    <div ref={mainArea} className="fullBody"></div>
+                    <Footer healthData={status} />
+                </Container>
+                <Backdrop
+                    sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
+                    open={status.alive === false}
+                >
+                    <CircularProgress color="inherit" />
+                </Backdrop>
             </DirtyDataContext.Provider>
         </ModeContext.Provider>)
 }

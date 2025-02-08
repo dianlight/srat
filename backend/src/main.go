@@ -180,7 +180,7 @@ func prog(state overseer.State) {
 		log.Println("Read only mode")
 	}
 
-	dbom.InitDB(*dbfile)
+	dbom.InitDB(*dbfile + "?cache=shared&_pragma=foreign_keys(1)")
 
 	// JSON Config  Migration if necessary
 	// Get config and migrate if DB is empty
@@ -203,7 +203,6 @@ func prog(state overseer.State) {
 			log.Fatalf("Cant import json settings - %#v", err)
 		}
 	}
-
 	// Get options
 	options = config.ReadOptionsFile(*optionsFile)
 
