@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 	"github.com/gorilla/mux"
@@ -20,12 +20,14 @@ var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
 var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
 
 type VolumeHandler struct {
-	vservice service.VolumeServiceInterface
+	vservice   service.VolumeServiceInterface
+	mount_repo repository.MountPointPathRepositoryInterface
 }
 
-func NewVolumeHandler(vservice service.VolumeServiceInterface) *VolumeHandler {
+func NewVolumeHandler(vservice service.VolumeServiceInterface, mount_repo repository.MountPointPathRepositoryInterface) *VolumeHandler {
 	p := new(VolumeHandler)
 	p.vservice = vservice
+	p.mount_repo = mount_repo
 	return p
 }
 
@@ -96,14 +98,15 @@ func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = self.vservice.MountVolume(uint(id))
+	mount_data.ID = uint(id)
+
+	err = self.vservice.MountVolume(mount_data)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
 
-	var dbom_mount_data dbom.MountPointPath
-	err = dbom_mount_data.FromID(uint(id))
+	dbom_mount_data, err := self.mount_repo.FindByID(uint(id))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			HttpJSONReponse(w, ErrorResponse{Code: 404, Error: "MountPoint not found", Body: nil}, &Options{
@@ -115,75 +118,8 @@ func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var conv converter.DtoToDbomConverterImpl
-	/*
-		err = conv.MountPointDataToMountPointPath(mount_data, &dbom_mount_data)
-		if err != nil {
-			HttpJSONReponse(w, err, nil)
-			return
-		}
-
-		flags, err := dbom_mount_data.Flags.Value()
-		if err != nil {
-			HttpJSONReponse(w, err, nil)
-			return
-		}
-
-		// Check if mount_data.Path is already mounted
-
-		volumes, err := self.vservice.GetVolumesData()
-		if err != nil {
-			HttpJSONReponse(w, err, nil)
-			return
-		}
-
-		var c = 0
-		for _, d := range volumes.Partitions {
-			if d.MountPoint != "" && strings.HasPrefix(dbom_mount_data.Path, d.MountPoint) {
-				c++
-			}
-		}
-		if c > 0 {
-			dbom_mount_data.Path += fmt.Sprintf("_(%d)", c)
-		}
-
-		// Save/Update MountPointData
-		err = dbom_mount_data.Save()
-		if err != nil {
-			HttpJSONReponse(w, err, nil)
-			return
-		}
-
-		var mp *mount.MountPoint
-		if dbom_mount_data.FSType == "" {
-			mp, err = mount.TryMount(dbom_mount_data.Source, dbom_mount_data.Path, "" /*mount_data.Data* /, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
-		} else {
-			mp, err = mount.Mount(dbom_mount_data.Source, dbom_mount_data.Path, dbom_mount_data.FSType, "" /*mount_data.Data* /, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
-		}
-		if err != nil {
-			log.Printf("(Try)Mount(%s) = %s", dbom_mount_data.Source, tracerr.SprintSourceColor(err))
-			HttpJSONReponse(w, err, nil)
-			return
-		} else {
-			var convm converter.MountToDbomImpl
-			err = convm.MountToMountPointPath(mp, &dbom_mount_data)
-			if err != nil {
-				HttpJSONReponse(w, err, nil)
-				return
-			}
-	*/
 	mounted_data := dto.MountPointData{}
-	err = dbom_mount_data.FromID(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			HttpJSONReponse(w, ErrorResponse{Code: 404, Error: "MountPoint not found", Body: nil}, &Options{
-				Code: http.StatusNotFound,
-			})
-			return
-		}
-		HttpJSONReponse(w, err, nil)
-		return
-	}
-	err = conv.MountPointPathToMountPointData(dbom_mount_data, &mounted_data)
+	err = conv.MountPointPathToMountPointData(*dbom_mount_data, &mounted_data)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -220,16 +156,10 @@ func (self *VolumeHandler) UmountVolume(w http.ResponseWriter, r *http.Request) 
 	force := r.URL.Query().Get("force")
 	lazy := r.URL.Query().Get("lazy")
 
-	var dbom_mount_data dbom.MountPointPath
-	err = dbom_mount_data.FromID(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			HttpJSONReponse(w, ErrorResponse{Code: 404, Error: "MountPoint not found", Body: nil}, &Options{
-				Code: http.StatusNotFound,
-			})
-			return
-		}
-		HttpJSONReponse(w, err, nil)
+	if !self.mount_repo.Exists(uint(id)) {
+		HttpJSONReponse(w, ErrorResponse{Code: 404, Error: "MountPoint not found", Body: nil}, &Options{
+			Code: http.StatusNotFound,
+		})
 		return
 	}
 
@@ -238,16 +168,7 @@ func (self *VolumeHandler) UmountVolume(w http.ResponseWriter, r *http.Request) 
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	/*
 
-		err = mount.Unmount(dbom_mount_data.Path, force == "true", lazy == "true")
-		if err != nil {
-			HttpJSONReponse(w, err, nil)
-			return
-		}
-		self.vservice.NotifyClient()
-		//	context_state := (&dto.Status{}).FromContext(r.Context())
-	*/
 	context_state := StateFromContext(r.Context())
 	context_state.DataDirtyTracker.Volumes = true
 	HttpJSONReponse(w, nil, nil)

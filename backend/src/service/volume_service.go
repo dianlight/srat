@@ -14,6 +14,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/lsblk"
+	"github.com/dianlight/srat/repository"
 	"github.com/jaypipes/ghw"
 	"github.com/jinzhu/copier"
 	"github.com/kr/pretty"
@@ -25,7 +26,7 @@ import (
 )
 
 type VolumeServiceInterface interface {
-	MountVolume(id uint) error
+	MountVolume(md dto.MountPointData) error
 	UnmountVolume(id uint, force bool, lazy bool) error
 	GetVolumesData() (*dto.BlockInfo, error)
 	NotifyClient()
@@ -35,22 +36,28 @@ type VolumeService struct {
 	ctx               context.Context
 	volumesQueueMutex sync.RWMutex
 	broascasting      BroadcasterServiceInterface
+	mount_repo        repository.MountPointPathRepositoryInterface
 }
 
-func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface) VolumeServiceInterface {
+func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface) VolumeServiceInterface {
 	p := &VolumeService{
 		ctx:               ctx,
 		broascasting:      broascasting,
 		volumesQueueMutex: sync.RWMutex{},
+		mount_repo:        mount_repo,
 	}
 	p.GetVolumesData()
 	go p.udevEventHandler()
 	return p
 }
 
-func (ms *VolumeService) MountVolume(id uint) error {
-	var dbom_mount_data dbom.MountPointPath
-	err := dbom_mount_data.FromID(uint(id))
+func (ms *VolumeService) MountVolume(md dto.MountPointData) error {
+	dbom_mount_data, err := ms.mount_repo.FindByID(md.ID)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	var conv converter.DtoToDbomConverterImpl
+	err = conv.MountPointDataToMountPointPath(md, dbom_mount_data)
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
@@ -96,12 +103,12 @@ func (ms *VolumeService) MountVolume(id uint) error {
 		return tracerr.Wrap(err)
 	} else {
 		var convm converter.MountToDbomImpl
-		err = convm.MountToMountPointPath(mp, &dbom_mount_data)
+		err = convm.MountToMountPointPath(mp, dbom_mount_data)
 		if err != nil {
 			return tracerr.Wrap(err)
 		}
 		dbom_mount_data.IsMounted = true
-		err = dbom_mount_data.Save()
+		err = ms.mount_repo.Save(dbom_mount_data)
 		if err != nil {
 			return tracerr.Wrap(err)
 		}
@@ -111,8 +118,7 @@ func (ms *VolumeService) MountVolume(id uint) error {
 }
 
 func (ms *VolumeService) UnmountVolume(id uint, force bool, lazy bool) error {
-	var dbom_mount_data dbom.MountPointPath
-	err := dbom_mount_data.FromID(uint(id))
+	dbom_mount_data, err := ms.mount_repo.FindByID(id)
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
@@ -121,7 +127,7 @@ func (ms *VolumeService) UnmountVolume(id uint, force bool, lazy bool) error {
 		return tracerr.Wrap(err)
 	}
 	dbom_mount_data.IsMounted = false
-	err = dbom_mount_data.Save()
+	err = ms.mount_repo.Save(dbom_mount_data)
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
@@ -312,7 +318,7 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 				mount_data.Path = "/mnt/" + partition.Name
 			}
 		}
-		err = mount_data.Save()
+		err = self.mount_repo.Save(mount_data)
 		if err != nil {
 			slog.Warn("Error saving mount point data", "err", err)
 			continue

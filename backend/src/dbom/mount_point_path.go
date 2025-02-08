@@ -1,7 +1,6 @@
 package dbom
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/gobeam/stringy"
-	"github.com/jinzhu/copier"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/xorcare/pointer"
@@ -112,6 +110,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 	return nil
 }
 
+/*
 // All retrieves all MountPointData entries from the database.
 //
 // This method uses the global 'db' variable, which should be a properly
@@ -167,3 +166,4 @@ func (mp *MountPointPath) FromID(id uint) error {
 	//log.Printf("FromName \n%s \n%v \n%v", name, db, &mp)
 	return db.First(&mp, id).Error
 }
+*/

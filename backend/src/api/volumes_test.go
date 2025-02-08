@@ -14,6 +14,7 @@ import (
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 	"github.com/thoas/go-funk"
@@ -24,6 +25,7 @@ type VolumeHandlerSuite struct {
 	suite.Suite
 	//	mockBoradcaster   *MockBroadcasterServiceInterface
 	mockVolumeService *MockVolumeServiceInterface
+	mount_repo        repository.MountPointPathRepositoryInterface
 }
 
 func TestVolumeHandlerSuite(t *testing.T) {
@@ -57,11 +59,13 @@ func TestVolumeHandlerSuite(t *testing.T) {
 	csuite.mockVolumeService.EXPECT().MountVolume(gomock.Any()).AnyTimes().Return(nil)
 	csuite.mockVolumeService.EXPECT().UnmountVolume(gomock.Any(), false, false).AnyTimes().Return(nil)
 
+	csuite.mount_repo = repository.NewMountPointPathRepository(dbom.GetDB())
+
 	suite.Run(t, csuite)
 }
 
 func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
-	volume := api.NewVolumeHandler(suite.mockVolumeService)
+	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/volumes", nil)
@@ -110,7 +114,7 @@ func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
 //var
 
 func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
-	volume := api.NewVolumeHandler(suite.mockVolumeService)
+	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo)
 	// Check if loop device is available for mounting
 	volumes, err := suite.mockVolumeService.GetVolumesData()
 	suite.Require().NoError(err)
@@ -127,7 +131,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 			break
 		}
 	}
-	err = mockMountData.Save()
+	err = suite.mount_repo.Save(&mockMountData)
 	suite.Require().NoError(err)
 
 	body, _ := json.Marshal(mockMountData)
@@ -168,7 +172,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 }
 
 func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
-	volume := api.NewVolumeHandler(suite.mockVolumeService)
+	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo)
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/999999/mount", nil)
 	if err != nil {
 		suite.T().Fatal(err)
@@ -193,7 +197,7 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
 }
 func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 
-	volume := api.NewVolumeHandler(suite.mockVolumeService)
+	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo)
 
 	// Create a request
 	req, err := http.NewRequestWithContext(testContext, "DELETE", fmt.Sprintf("/volume/%d/mount", 1), nil)

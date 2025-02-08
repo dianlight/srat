@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/ztrue/tracerr"
 )
@@ -41,7 +42,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Cant load config file %s", err)
 	}
 	config.UpdateChannel = string(dto.None)
-	err = dbutil.FirstTimeJSONImporter(config)
+	mount_repo := repository.NewMountPointPathRepository(dbom.GetDB())
+	err = dbutil.FirstTimeJSONImporter(config, mount_repo)
 	if err != nil {
 		log.Fatalf("Cant load json settings - %v", tracerr.SprintSourceColor(err))
 	}

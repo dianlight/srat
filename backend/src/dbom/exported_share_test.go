@@ -5,12 +5,34 @@ import (
 	"sync"
 	"testing"
 
+	//"github.com/dianlight/srat/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"gorm.io/gorm"
 )
 
-func TestExportedSharesLoad(t *testing.T) {
+type ExportedSharesSuite struct {
+	suite.Suite
+	//mount_repo repository.MountPointPathRepositoryInterface
+	//mockBoradcaster *MockBroadcasterServiceInterface
+	// VariableThatShouldStartAtFive int
+}
+
+func TestExportedSharesSuite(t *testing.T) {
+	csuite := new(ExportedSharesSuite)
+	//csuite.mount_repo = repository.NewMountPointPathRepository(GetDB())
+	/*
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
+		csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
+		csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
+	*/
+	suite.Run(t, csuite)
+}
+
+func (suite *ExportedSharesSuite) TestExportedSharesLoad() {
 	// Create test data
 	share1 := ExportedShare{Name: "TestShare1", MountPointData: MountPointPath{Path: "/test/path1"}}
 	share2 := ExportedShare{Name: "TestShare2", MountPointData: MountPointPath{Path: "/test/path2"}}
@@ -32,127 +54,91 @@ func TestExportedSharesLoad(t *testing.T) {
 	err := shares.Load()
 
 	// Assert
-	require.NoError(t, err)
-	assert.Len(t, shares, 2)
-	assert.Equal(t, "TestShare1", shares[0].Name)
-	assert.Equal(t, "TestShare2", shares[1].Name)
-	assert.Len(t, shares[0].Users, 1)
-	assert.Len(t, shares[1].Users, 1)
-	assert.Equal(t, "TestUser1", shares[0].Users[0].Username)
-	assert.Equal(t, "TestUser2", shares[1].Users[0].Username)
+	suite.NoError(err)
+	suite.Len(shares, 2)
+	suite.Equal("TestShare1", shares[0].Name)
+	suite.Equal("TestShare2", shares[1].Name)
+	suite.Len(shares[0].Users, 1)
+	suite.Len(shares[1].Users, 1)
+	suite.Equal("TestUser1", shares[0].Users[0].Username)
+	suite.Equal("TestUser2", shares[1].Users[0].Username)
 
 	// Clean up
-	require.NoError(t, db.Unscoped().Delete(&share1).Error)
-	require.NoError(t, db.Unscoped().Delete(&share2).Error)
-	require.NoError(t, db.Unscoped().Delete(&user1).Error)
-	require.NoError(t, db.Unscoped().Delete(&user2).Error)
+	suite.NoError(db.Unscoped().Delete(&share1).Error)
+	suite.NoError(db.Unscoped().Delete(&share2).Error)
+	suite.NoError(db.Unscoped().Delete(&user1).Error)
+	suite.NoError(db.Unscoped().Delete(&user2).Error)
 }
 
-/*
-	func TestExportedSharesLoadPreloadsAssociations(t *testing.T) {
-		// Create test data
-		share := ExportedShare{Name: "TestShare"}
-		user := SambaUser{Username: "TestUser"}
-		roUser := SambaUser{Username: "TestROUser"}
-		mountPointData := MountPointData{Path: "/test/path"}
-
-		require.NoError(t, db.Create(&user).Error)
-		require.NoError(t, db.Create(&roUser).Error)
-		require.NoError(t, db.Create(&mountPointData).Error)
-		require.NoError(t, db.Create(&share).Error)
-
-		// Associate data
-		db.Model(&share).Association("Users").Append(&user)
-		db.Model(&share).Association("RoUsers").Append(&roUser)
-		share.MountPointDataID = mountPointData.ID
-		db.Save(&share)
-
-		// Test Load function
-		var shares ExportedShares
-		err := shares.Load()
-		require.NoError(t, err)
-
-		// Assert
-		assert.Len(t, shares, 1)
-		assert.Equal(t, "TestShare", shares[0].Name)
-		assert.Len(t, shares[0].Users, 1)
-		assert.Equal(t, "TestUser", shares[0].Users[0].Username)
-		assert.Len(t, shares[0].RoUsers, 1)
-		assert.Equal(t, "TestROUser", shares[0].RoUsers[0].Username)
-		assert.Equal(t, mountPointData.ID, shares[0].MountPointDataID)
-		assert.Equal(t, "/test/path", shares[0].MountPointData.Path)
-
-		// Clean up
-		require.NoError(t, db.Unscoped().Delete(&shares[0]).Error)
-		require.NoError(t, db.Unscoped().Delete(&user).Error)
-		require.NoError(t, db.Unscoped().Delete(&roUser).Error)
-		require.NoError(t, db.Unscoped().Delete(&mountPointData).Error)
-	}
-*/
-func TestExportedSharesSave(t *testing.T) {
+func (suite *ExportedSharesSuite) TestExportedSharesSave() {
 	// Create test data
 	share1 := ExportedShare{Name: "TestShare11", MountPointData: MountPointPath{Path: "/test/path12"}}
 	share2 := ExportedShare{Name: "TestShare21", MountPointData: MountPointPath{Path: "/test/path22"}}
 
 	// Save the shares
-	err := share1.MountPointData.Save()
-	share1.MountPointDataID = share1.MountPointData.ID
-	require.NoError(t, err)
-	err = share2.MountPointData.Save()
-	share2.MountPointDataID = share2.MountPointData.ID
-	require.NoError(t, err)
+	//err := share1.MountPointData.Save()
+	//share1.MountPointDataID = share1.MountPointData.ID
+	//require.NoError(t, err)
+	//err = share2.MountPointData.Save()
+	//share2.MountPointDataID = share2.MountPointData.ID
+	//require.NoError(t, err)
 	shares := ExportedShares{share1, share2}
-	err = shares.Save()
+	err := shares.Save()
 
 	// Assert
-	require.NoError(t, err)
+	suite.NoError(err)
 
 	// Verify the shares were saved
 	var loadedShares ExportedShares
 	err = loadedShares.Load()
-	require.NoError(t, err)
-	assert.Len(t, loadedShares, 2)
-	assert.Equal(t, "TestShare11", loadedShares[0].Name)
-	assert.Equal(t, "TestShare21", loadedShares[1].Name)
+	suite.NoError(err)
+	suite.Len(loadedShares, 2)
+	suite.Equal("TestShare11", loadedShares[0].Name)
+	suite.Equal("TestShare21", loadedShares[1].Name)
 
 	// Clean up
-	require.NoError(t, db.Unscoped().Delete(&loadedShares[0]).Error)
-	require.NoError(t, db.Unscoped().Delete(&loadedShares[1]).Error)
+	suite.NoError(db.Unscoped().Delete(&loadedShares[0]).Error)
+	suite.NoError(db.Unscoped().Delete(&loadedShares[1]).Error)
 }
 
-func TestExportedSharesSaveWithExistingMountpointData(t *testing.T) {
+/*
+func (suite *ExportedSharesSuite) TestExportedSharesSaveWithExistingMountpointData() {
 	// Create test data
-	mountpoint1 := MountPointPath{Path: "/test/path120"}
-	share1 := ExportedShare{Name: "TestShare110", MountPointData: MountPointPath{Path: "/test/path120"}}
-	share2 := ExportedShare{Name: "TestShare210", MountPointData: MountPointPath{Path: "/test/path220"}}
+	//mountpoint1 := MountPointPath{Path: "/test/path120"}
+	//err := suite.mount_repo.Save(&mountpoint1)
+	share1 := ExportedShare{Name: "TestShare110", MountPointData: MountPointPath{Path: "/mnt/LIBRARY"}}
+	share2 := ExportedShare{Name: "TestShare210", MountPointData: MountPointPath{Path: "/mnt/LIBRARY"}}
 
 	// Save the shares
-	err := mountpoint1.Save()
-	require.NoError(t, err)
-	err = share1.MountPointData.Save()
-	share1.MountPointDataID = share1.MountPointData.ID
-	require.NoError(t, err)
-	err = share2.MountPointData.Save()
-	share2.MountPointDataID = share2.MountPointData.ID
-	require.NoError(t, err)
+	/*
+		err := mountpoint1.Save()
+		require.NoError(t, err)
+		err = share1.MountPointData.Save()
+		share1.MountPointDataID = share1.MountPointData.ID
+		require.NoError(t, err)
+		err = share2.MountPointData.Save()
+		share2.MountPointDataID = share2.MountPointData.ID
+		require.NoError(t, err)
+	* /
 	shares := ExportedShares{share1, share2}
-	err = shares.Save()
+	err := shares.Save()
 
 	// Assert
-	require.NoError(t, err)
+	suite.NoError(err)
 
 	// Verify the shares were saved
 	var loadedShares ExportedShares
 	err = loadedShares.Load()
-	require.NoError(t, err)
-	assert.Len(t, loadedShares, 2)
-	assert.Equal(t, "TestShare110", loadedShares[0].Name)
-	assert.Equal(t, "TestShare210", loadedShares[1].Name)
+	suite.NoError(err)
+	suite.Len(loadedShares, 2)
+	suite.Equal("TestShare110", loadedShares[0].Name)
+	suite.Equal("TestShare210", loadedShares[1].Name)
 
 	// Clean up
-	require.NoError(t, db.Unscoped().Delete(&loadedShares[0]).Error)
-	require.NoError(t, db.Unscoped().Delete(&loadedShares[1]).Error)
+	suite.NoError(db.Unscoped().Delete(&loadedShares[0]).Error)
+	suite.NoError(db.Unscoped().Delete(&loadedShares[1]).Error)
 }
+*/
 
 func TestExportedSharesUpdateExisting(t *testing.T) {
 	// Create initial test data

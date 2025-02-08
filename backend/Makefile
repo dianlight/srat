@@ -47,7 +47,8 @@ gen: $(SRCS)
 
 .PHONY: dev
 dev: 
-	cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json $(ARGS)
+	#cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json $(ARGS)
+	air
 
 $(FRONTEND_DIRS)/node_modules:
 	cd $(FRONTEND_DIRS); bun install	

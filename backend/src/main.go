@@ -18,11 +18,13 @@ import (
 
 	"github.com/jpillora/overseer"
 	"github.com/mattn/go-isatty"
+	"gorm.io/gorm"
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 
@@ -182,27 +184,6 @@ func prog(state overseer.State) {
 
 	dbom.InitDB(*dbfile + "?cache=shared&_pragma=foreign_keys(1)")
 
-	// JSON Config  Migration if necessary
-	// Get config and migrate if DB is empty
-	var properties dbom.Properties
-	err := properties.Load()
-	if err != nil {
-		log.Fatalf("Cant load properties - %s", err)
-	}
-	versionInDB, err := properties.GetValue("version")
-	if err != nil || versionInDB.(string) == "" {
-		// Migrate from JSON to DB
-		var config config.Config
-		err := config.LoadConfig(*configFile)
-		// Setting/Properties
-		if err != nil {
-			log.Fatalf("Cant load config file %s", err)
-		}
-		dbutil.FirstTimeJSONImporter(config)
-		if err != nil {
-			log.Fatalf("Cant import json settings - %#v", err)
-		}
-	}
 	// Get options
 	options = config.ReadOptionsFile(*optionsFile)
 
@@ -236,6 +217,7 @@ func prog(state overseer.State) {
 			return &fxevent.SlogLogger{Logger: log}
 		}),
 		fx.Provide(
+			func() *gorm.DB { return dbom.GetDB() },
 			func() *slog.Logger { return logger },
 			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
 			func() *api.ContextState { return &sharedResources },
@@ -252,6 +234,7 @@ func prog(state overseer.State) {
 			service.NewVolumeService,
 			service.NewSambaService,
 			service.NewUpgradeService,
+			repository.NewMountPointPathRepository,
 			server.AsRoute(api.NewSSEBroker),
 			server.AsRoute(api.NewHealthHandler),
 			server.AsRoute(api.NewShareHandler),
@@ -267,6 +250,29 @@ func prog(state overseer.State) {
 			),
 			server.NewHTTPServer,
 		),
+		fx.Invoke(func(mount_repo repository.MountPointPathRepositoryInterface) {
+			// JSON Config  Migration if necessary
+			// Get config and migrate if DB is empty
+			var properties dbom.Properties
+			err := properties.Load()
+			if err != nil {
+				log.Fatalf("Cant load properties - %s", err)
+			}
+			versionInDB, err := properties.GetValue("version")
+			if err != nil || versionInDB.(string) == "" {
+				// Migrate from JSON to DB
+				var config config.Config
+				err := config.LoadConfig(*configFile)
+				// Setting/Properties
+				if err != nil {
+					log.Fatalf("Cant load config file %s", err)
+				}
+				dbutil.FirstTimeJSONImporter(config, mount_repo)
+				if err != nil {
+					log.Fatalf("Cant import json settings - %#v", err)
+				}
+			}
+		}),
 		fx.Invoke(func(*http.Server) {}),
 	).Run()
 

@@ -58,17 +58,17 @@ func (mr *MockVolumeServiceInterfaceMockRecorder) GetVolumesData() *gomock.Call 
 }
 
 // MountVolume mocks base method.
-func (m *MockVolumeServiceInterface) MountVolume(id uint) error {
+func (m *MockVolumeServiceInterface) MountVolume(md dto.MountPointData) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MountVolume", id)
+	ret := m.ctrl.Call(m, "MountVolume", md)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // MountVolume indicates an expected call of MountVolume.
-func (mr *MockVolumeServiceInterfaceMockRecorder) MountVolume(id any) *gomock.Call {
+func (mr *MockVolumeServiceInterfaceMockRecorder) MountVolume(md any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MountVolume", reflect.TypeOf((*MockVolumeServiceInterface)(nil).MountVolume), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MountVolume", reflect.TypeOf((*MockVolumeServiceInterface)(nil).MountVolume), md)
 }
 
 // NotifyClient mocks base method.
