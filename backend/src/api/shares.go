@@ -121,8 +121,8 @@ func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
 //	@Tags			share
 //	@Produce		json
 //	@Success		200	{object}	[]dto.SharedResource
-//	@Failure		405	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		405	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/shares [get]
 func (self *ShareHandler) ListShares(w http.ResponseWriter, r *http.Request) {
 	var shares []dto.SharedResource
@@ -153,8 +153,8 @@ func (self *ShareHandler) ListShares(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			share_name	path		string	true	"Name"
 //	@Success		200			{object}	dto.SharedResource
-//	@Failure		405			{object}	ErrorResponse
-//	@Failure		500			{object}	ErrorResponse
+//	@Failure		405			{object}	dto.ErrorInfo
+//	@Failure		500			{object}	dto.ErrorInfo
 //	@Router			/share/{share_name} [get]
 func (self *ShareHandler) GetShare(w http.ResponseWriter, r *http.Request) {
 	shareName := mux.Vars(r)["share_name"]
@@ -191,10 +191,10 @@ func (self *ShareHandler) GetShare(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			share	body		dto.SharedResource	true	"Create model"
 //	@Success		201		{object}	dto.SharedResource
-//	@Failure		400		{object}	ErrorResponse
-//	@Failure		405		{object}	ErrorResponse
-//	@Failure		409		{object}	ErrorResponse
-//	@Failure		500		{object}	ErrorResponse
+//	@Failure		400		{object}	dto.ErrorInfo
+//	@Failure		405		{object}	dto.ErrorInfo
+//	@Failure		409		{object}	dto.ErrorInfo
+//	@Failure		500		{object}	dto.ErrorInfo
 //	@Router			/share [post]
 func (self *ShareHandler) CreateShare(w http.ResponseWriter, r *http.Request) {
 
@@ -287,10 +287,10 @@ func (self *ShareHandler) notifyClient() {
 //	@Param			share_name	path		string				true	"Name"
 //	@Param			share		body		dto.SharedResource	true	"Update model"
 //	@Success		200			{object}	dto.SharedResource
-//	@Failure		400			{object}	ErrorResponse
-//	@Failure		405			{object}	ErrorResponse
-//	@Failure		404			{object}	ErrorResponse
-//	@Failure		500			{object}	ErrorResponse
+//	@Failure		400			{object}	dto.ErrorInfo
+//	@Failure		405			{object}	dto.ErrorInfo
+//	@Failure		404			{object}	dto.ErrorInfo
+//	@Failure		500			{object}	dto.ErrorInfo
 //	@Router			/share/{share_name} [put]
 func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
 	share_name := mux.Vars(r)["share_name"]
@@ -340,10 +340,10 @@ func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
 //	@Tags			share
 //	@Param			share_name	path	string	true	"Name"
 //	@Success		204
-//	@Failure		400	{object}	ErrorResponse
-//	@Failure		405	{object}	ErrorResponse
-//	@Failure		404	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		400	{object}	dto.ErrorInfo
+//	@Failure		405	{object}	dto.ErrorInfo
+//	@Failure		404	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/share/{share_name} [delete]
 func (self *ShareHandler) DeleteShare(w http.ResponseWriter, r *http.Request) {
 	share_name := mux.Vars(r)["share_name"]

@@ -48,8 +48,8 @@ func (broker *VolumeHandler) Patterns() []server.RouteDetail {
 //	@Tags			volume
 //	@Produce		json
 //	@Success		200	{object}	dto.BlockInfo
-//	@Failure		405	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		405	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/volumes [get]
 func (self *VolumeHandler) ListVolumes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -72,15 +72,21 @@ func (self *VolumeHandler) ListVolumes(w http.ResponseWriter, r *http.Request) {
 //	@Param			id			path		uint				true	"id of the mountpoint to be mounted"
 //	@Param			mount_data	body		dto.MountPointData	true	"Mount data"
 //	@Success		201			{object}	dto.MountPointData
-//	@Failure		400			{object}	ErrorResponse
-//	@Failure		405			{object}	ErrorResponse
-//	@Failure		409			{object}	ErrorResponse
-//	@Failure		500			{object}	ErrorResponse
+//	@Failure		400			{object}	dto.ErrorInfo
+//	@Failure		405			{object}	dto.ErrorInfo
+//	@Failure		409			{object}	dto.ErrorInfo
+//	@Failure		500			{object}	dto.ErrorInfo
 //	@Router			/volume/{id}/mount [post]
 func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseUint(mux.Vars(r)["id"], 10, 32)
 	if err != nil {
-		HttpJSONReponse(w, ErrorResponse{Error: "Invalid ID", Body: err}, &Options{
+		HttpJSONReponse(w, dto.NewErrorInfo(
+			dto.ErrorCodes.INVALID_PARAMETER,
+			map[string]any{
+				"Key":     "ID",
+				"Message": "Path parameter is not a valid uint!",
+			},
+			nil), &Options{
 			Code: http.StatusBadRequest,
 		})
 		return
@@ -94,9 +100,15 @@ func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mount_data.ID != 0 && mount_data.ID != uint(id) {
-		HttpJSONReponse(w, ErrorResponse{Error: "ID conflict", Body: nil}, &Options{
-			Code: http.StatusBadRequest,
-		})
+		HttpJSONReponse(w, dto.NewErrorInfo(
+			dto.ErrorCodes.INVALID_PARAMETER,
+			map[string]any{
+				"Key":     "ID",
+				"Message": "Inconsistent ID provided in the request",
+			}, nil),
+			&Options{
+				Code: http.StatusBadRequest,
+			})
 		return
 	}
 
@@ -104,6 +116,8 @@ func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 
 	err = self.vservice.MountVolume(mount_data)
 	if err != nil {
+		if errors.Is(err, dto.ErrorInfo) {
+		}
 		HttpJSONReponse(w, err, nil)
 		return
 	}
@@ -111,7 +125,11 @@ func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 	dbom_mount_data, err := self.mount_repo.FindByID(uint(id))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			HttpJSONReponse(w, ErrorResponse{Code: 404, Error: "MountPoint not found", Body: nil}, &Options{
+			HttpJSONReponse(w, dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
+				"Device":  dbom_mount_data.Source,
+				"Path":    dbom_mount_data.Path,
+				"Message": "Mount Record Not Found",
+			}, err), &Options{
 				Code: http.StatusNotFound,
 			})
 			return
@@ -143,14 +161,20 @@ func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 //	@Param			force	query	bool	true	"Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted."
 //	@Param			lazy	query	bool	true	"Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted."
 //	@Success		204
-//	@Failure		404	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		404	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/volume/{id}/mount [delete]
 func (self *VolumeHandler) UmountVolume(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	id, err := strconv.ParseUint(mux.Vars(r)["id"], 10, 32)
 	if err != nil {
-		HttpJSONReponse(w, ErrorResponse{Code: 500, Error: "Invalid ID", Body: nil}, &Options{
+		HttpJSONReponse(w, dto.ErrorInfo{
+			Code: dto.ErrorCodes.INVALID_PARAMETER,
+			Data: map[string]any{
+				"Key":     "ID",
+				"Message": "Inconsistent ID provided in the request",
+			},
+		}, &Options{
 			Code: http.StatusBadRequest,
 		})
 		return
@@ -159,7 +183,13 @@ func (self *VolumeHandler) UmountVolume(w http.ResponseWriter, r *http.Request) 
 	lazy := r.URL.Query().Get("lazy")
 
 	if !self.mount_repo.Exists(uint(id)) {
-		HttpJSONReponse(w, ErrorResponse{Code: 404, Error: "MountPoint not found", Body: nil}, &Options{
+		HttpJSONReponse(w, dto.ErrorInfo{
+			Code: dto.ErrorCodes.UNMOUNT_FAIL,
+			Data: map[string]any{
+				"ID":      id,
+				"Message": "No mount point found for the provided ID",
+			},
+		}, &Options{
 			Code: http.StatusNotFound,
 		})
 		return

@@ -1,12 +1,4 @@
 definitions:
-  api.ErrorResponse:
-    properties:
-      body: {}
-      code:
-        type: integer
-      error:
-        type: string
-    type: object
   dto.BlockInfo:
     properties:
       partitions:
@@ -87,6 +79,52 @@ definitions:
         type: boolean
       volumes:
         type: boolean
+    type: object
+  dto.ErrorCode:
+    properties:
+      errorCode:
+        enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        type: integer
+        x-enum-comments:
+          generic_error: '"An unexpected error occurred",false'
+          invalid_parameter: '"Invalid parameter: {{.Key}}. {{.Message}}",false'
+          json_marshal_error: '"Unable to marshal JSON: {{.Error}}",false'
+          json_unmarshal_error: '"Unable to unmarshal JSON: {{.Error}}",false'
+          mount_fail: '"Unable to mount {{.Device}} on {{.Path}}. {{.Message}}",false'
+          unknown: invalid
+          unmount_fail: '"Unable to unmount {{.ID}}. {{.Message}}",false'
+        x-enum-varnames:
+        - unknown
+        - generic_error
+        - json_marshal_error
+        - json_unmarshal_error
+        - invalid_parameter
+        - mount_fail
+        - unmount_fail
+      errorMessage:
+        type: string
+      recoverable:
+        type: boolean
+    type: object
+  dto.ErrorInfo:
+    properties:
+      code:
+        $ref: '#/definitions/dto.ErrorCode'
+      data:
+        additionalProperties: {}
+        type: object
+      error: {}
+      trace:
+        items:
+          $ref: '#/definitions/tracerr.Frame'
+        type: array
     type: object
   dto.EventMessageEnvelope:
     properties:
@@ -806,6 +844,18 @@ definitions:
         description: API URLs
         type: string
     type: object
+  tracerr.Frame:
+    properties:
+      func:
+        description: Func contains a function name.
+        type: string
+      line:
+        description: Line contains a line number.
+        type: integer
+      path:
+        description: Path contains a file path.
+        type: string
+    type: object
 info:
   contact:
     email: lucio.tarantino@gmail.com
@@ -833,7 +883,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: GetFSHandler
       tags:
       - system
@@ -850,7 +900,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: HealthCheck
       tags:
       - system
@@ -867,7 +917,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: GetNICsHandler
       tags:
       - system
@@ -882,7 +932,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: RestartHandler
       tags:
       - system
@@ -899,11 +949,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Write the samba config and send signal ro restart
       tags:
       - samba
@@ -922,7 +972,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Get the generated samba config
       tags:
       - samba
@@ -941,11 +991,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Get the configuration for the global samba settings
       tags:
       - samba
@@ -970,11 +1020,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Update the configuration for the global samba settings
       tags:
       - samba
@@ -999,11 +1049,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Update the configuration for the global samba settings
       tags:
       - samba
@@ -1029,19 +1079,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Create a share
       tags:
       - share
@@ -1060,19 +1110,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Delere a share
       tags:
       - share
@@ -1094,11 +1144,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Get a share
       tags:
       - share
@@ -1128,19 +1178,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Update a share
       tags:
       - share
@@ -1159,11 +1209,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: List all configured shares
       tags:
       - share
@@ -1182,7 +1232,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Open a SSE stream
       tags:
       - system
@@ -1218,7 +1268,7 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: UpdateHandler
       tags:
       - system
@@ -1244,19 +1294,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Create a user
       tags:
       - user
@@ -1275,19 +1325,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Delete a user
       tags:
       - user
@@ -1317,19 +1367,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Update a user
       tags:
       - user
@@ -1346,11 +1396,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Get the admin user
       tags:
       - user
@@ -1375,19 +1425,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Update admin user
       tags:
       - user
@@ -1406,11 +1456,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: List all configured users
       tags:
       - user
@@ -1444,11 +1494,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Umount the selected volume
       tags:
       - volume
@@ -1478,19 +1528,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: mount an existing volume
       tags:
       - volume
@@ -1507,11 +1557,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: List all available volumes
       tags:
       - volume

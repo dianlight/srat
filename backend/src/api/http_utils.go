@@ -5,18 +5,13 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/thoas/go-funk"
 	"github.com/ztrue/tracerr"
 )
 
 type Options struct {
 	Code int
-}
-
-type ErrorResponse struct {
-	Code  int    `json:"code"`
-	Error string `json:"error"`
-	Body  any    `json:"body"`
 }
 
 func codeGetOrElse(code int, def int) int {
@@ -33,10 +28,14 @@ func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 		}
 	}
 
-	if erx, ok := src.(error); ok {
+	if erx, ok := src.(dto.ErrorInfo); ok {
+		opt.Code = codeGetOrElse(opt.Code, http.StatusInternalServerError)
+		slog.Error(erx.Error())
+		return HttpJSONReponse(w, erx, opt)
+	} else if erx, ok := src.(error); ok {
 		opt.Code = codeGetOrElse(opt.Code, http.StatusInternalServerError)
 		slog.Error(tracerr.SprintSourceColor(erx))
-		return HttpJSONReponse(w, ErrorResponse{Error: tracerr.Sprint(erx), Body: erx}, opt)
+		return HttpJSONReponse(w, dto.NewErrorInfo(dto.ErrorCodes.GENERIC_ERROR, nil, erx), opt)
 	}
 
 	if src == nil || funk.IsEmpty(src) {
@@ -46,7 +45,8 @@ func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 		jsonResponse, jsonError := json.Marshal(src)
 		if jsonError != nil {
 			opt.Code = http.StatusInternalServerError
-			return HttpJSONReponse(w, ErrorResponse{Error: "Unable to encode JSON", Body: jsonError}, opt)
+			return HttpJSONReponse(w,
+				tracerr.Wrap(dto.NewErrorInfo(dto.ErrorCodes.GENERIC_ERROR, nil, jsonError)), opt)
 		} else {
 			opt.Code = codeGetOrElse(opt.Code, http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")

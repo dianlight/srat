@@ -65,8 +65,8 @@ export function Volumes() {
             toast.info(`Volume ${res.data.path} mounted successfully.`);
             setSelected(undefined);
         }).catch(err => {
-            console.error(err);
-            toast.error(`Erroe mountig ${data.path}: ${err}`, { data: { error: err } });
+            console.error("Error:", err, err.response);
+            toast.error(`${err.response.data.code}:${err.response.data.error}`, { data: { error: err } });
             //setErrorInfo(JSON.stringify(err));
         })
     }

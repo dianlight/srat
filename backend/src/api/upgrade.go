@@ -45,7 +45,7 @@ func (handler *UpgradeHanler) Patterns() []server.RouteDetail {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	dto.ReleaseAsset
-//	@Failure		405	{object}	ErrorResponse
+//	@Failure		405	{object}	dto.ErrorInfo
 //	@Router			/update [put]
 func (handler *UpgradeHanler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 

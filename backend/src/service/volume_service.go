@@ -63,11 +63,19 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) error {
 	}
 
 	if dbom_mount_data.Source == "" {
-		return tracerr.New("Source path is empty")
+		return tracerr.Wrap(dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
+			"Device":  dbom_mount_data.Source,
+			"Path":    dbom_mount_data.Path,
+			"Message": "Source device is empty",
+		}, nil))
 	}
 
 	if dbom_mount_data.Path == "" {
-		return tracerr.New("Mount point path is empty")
+		return tracerr.Wrap(dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
+			"Device":  dbom_mount_data.Source,
+			"Path":    dbom_mount_data.Path,
+			"Message": "Mount point path is empty",
+		}, nil))
 	}
 
 	ok, err := osutil.IsMounted(dbom_mount_data.Path)
@@ -76,7 +84,11 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) error {
 	}
 
 	if dbom_mount_data.IsMounted && ok {
-		return tracerr.New("Volume is already mounted")
+		return dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
+			"Device":  dbom_mount_data.Source,
+			"Path":    dbom_mount_data.Path,
+			"Message": "Volume is already mounted",
+		}, nil)
 	}
 
 	orgPath := dbom_mount_data.Path
@@ -90,7 +102,11 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) error {
 
 	flags, err := dbom_mount_data.Flags.Value()
 	if err != nil {
-		return tracerr.Wrap(err)
+		return tracerr.Wrap(dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
+			"Device":  dbom_mount_data.Source,
+			"Path":    dbom_mount_data.Path,
+			"Message": "Invalid Flags",
+		}, err))
 	}
 	var mp *mount.MountPoint
 	if dbom_mount_data.FSType == "" {
@@ -100,7 +116,11 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) error {
 	}
 	if err != nil {
 		slog.Error("Failed to mount volume:", "source", dbom_mount_data.Source, "fstype", dbom_mount_data.FSType, "path", dbom_mount_data.Path, "flags", flags, "mp", mp)
-		return tracerr.Wrap(err)
+		return tracerr.Wrap(dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
+			"Device":  dbom_mount_data.Source,
+			"Path":    dbom_mount_data.Path,
+			"Message": "Mount failed",
+		}, err))
 	} else {
 		var convm converter.MountToDbomImpl
 		err = convm.MountToMountPointPath(mp, dbom_mount_data)

@@ -35,8 +35,8 @@ func (handler *SambaHanler) Patterns() []server.RouteDetail {
 //	@Accept			json
 //	@Produce		json
 //	@Success		204
-//	@Failure		400	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		400	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/samba/apply [put]
 func (handler *SambaHanler) ApplySamba(w http.ResponseWriter, r *http.Request) {
 
@@ -75,7 +75,7 @@ func (handler *SambaHanler) ApplySamba(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	dto.SmbConf
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/samba/config [get]
 func (handler *SambaHanler) GetSambaConfig(w http.ResponseWriter, r *http.Request) {
 	var smbConf dto.SmbConf

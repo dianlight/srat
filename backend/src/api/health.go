@@ -61,7 +61,7 @@ func (broker *HealthHanler) Patterns() []server.RouteDetail {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	dto.HealthPing
-//	@Failure		405	{object}	ErrorResponse
+//	@Failure		405	{object}	dto.ErrorInfo
 //	@Router			/health [get]
 func (self *HealthHanler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	HttpJSONReponse(w, self, nil)

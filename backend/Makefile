@@ -43,7 +43,7 @@ docs: gen
 gen: $(SRCS)
 	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest init
 	mkdir -p $(SRC_DIRS)/static && touch $(SRC_DIRS)/static/.nodelete
-	cd $(SRC_DIRS);go generate
+	cd $(SRC_DIRS);go generate .
 
 .PHONY: dev
 dev: 

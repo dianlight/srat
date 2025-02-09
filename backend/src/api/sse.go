@@ -44,7 +44,7 @@ func (handler *BrokerHandler) Patterns() []server.RouteDetail {
 //
 // @Tags			system
 // @Success		200	{object} dto.EventMessageEnvelope
-// @Failure		500	{object}	ErrorResponse
+// @Failure		500	{object}	dto.ErrorInfo
 // @Router			/sse [get]
 func (handler *BrokerHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	err := handler.broadcaster.ProcessHttpChannel(w, r)

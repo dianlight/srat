@@ -74,7 +74,7 @@ func DirtyWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c
 //	@Tags			system
 //	@Produce		json
 //	@Success		204
-//	@Failure		405	{object}	ErrorResponse
+//	@Failure		405	{object}	dto.ErrorInfo
 //	@Router			/restart [put]
 func (handler *SystemHanler) RestartHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
@@ -90,7 +90,7 @@ func (handler *SystemHanler) RestartHandler(w http.ResponseWriter, r *http.Reque
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	dto.NetworkInfo
-//	@Failure		405	{object}	ErrorResponse
+//	@Failure		405	{object}	dto.ErrorInfo
 //	@Router			/nics [get]
 func (handler *SystemHanler) GetNICsHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -174,7 +174,7 @@ func (handler *SystemHanler) getFileSystems() ([]string, error) {
 //	@Tags			system
 //	@Produce		json
 //	@Success		200 {object}	dto.FilesystemTypes
-//	@Failure		405	{object}	ErrorResponse
+//	@Failure		405	{object}	dto.ErrorInfo
 //	@Router			/filesystems [get]
 func (handler *SystemHanler) GetFSHandler(w http.ResponseWriter, r *http.Request) {
 

@@ -36,8 +36,8 @@ func (broker *SettingsHanler) Patterns() []server.RouteDetail {
 //	@Produce		json
 //	@Param			config	body		dto.Settings	true	"Update model"
 //	@Success		200		{object}	dto.Settings
-//	@Failure		400		{object}	ErrorResponse
-//	@Failure		500		{object}	ErrorResponse
+//	@Failure		400		{object}	dto.ErrorInfo
+//	@Failure		500		{object}	dto.ErrorInfo
 //	@Router			/settings [put]
 //	@Router			/settings [patch]
 func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
@@ -89,8 +89,8 @@ func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	dto.Settings
-//	@Failure		400	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		400	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/settings [get]
 func (self *SettingsHanler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	var dbsettings dbom.Properties

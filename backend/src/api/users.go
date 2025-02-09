@@ -46,8 +46,8 @@ func (handler *UserHandler) Patterns() []server.RouteDetail {
 //	@Tags			user
 //	@Produce		json
 //	@Success		200	{object}	[]dto.User
-//	@Failure		405	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		405	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/users [get]
 func (handler *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	var dbusers dbom.SambaUsers
@@ -87,8 +87,8 @@ func (handler *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Produce		json
 //	@Success		200	{object}	dto.User
-//	@Failure		405	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		405	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/useradmin [get]
 func (handler *UserHandler) GetAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -124,8 +124,8 @@ func (handler *UserHandler) GetAdminUser(w http.ResponseWriter, r *http.Request)
 //	@Produce		json
 //	@Param			username	path		string	true	"Name"
 //	@Success		200			{object}	dto.User
-//	@Failure		405			{object}	ErrorResponse
-//	@Failure		500			{object}	ErrorResponse
+//	@Failure		405			{object}	dto.ErrorInfo
+//	@Failure		500			{object}	dto.ErrorInfo
 //	@Router			/user/{username} [get]
 /*
 func GetUser(w http.ResponseWriter, r *http.Request) {
@@ -153,10 +153,10 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			user	body		dto.User	true	"Create model"
 //	@Success		201		{object}	dto.User
-//	@Failure		400		{object}	ErrorResponse
-//	@Failure		405		{object}	ErrorResponse
-//	@Failure		409		{object}	ErrorResponse
-//	@Failure		500		{object}	ErrorResponse
+//	@Failure		400		{object}	dto.ErrorInfo
+//	@Failure		405		{object}	dto.ErrorInfo
+//	@Failure		409		{object}	dto.ErrorInfo
+//	@Failure		500		{object}	dto.ErrorInfo
 //	@Router			/user [post]
 func (handler *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
@@ -206,10 +206,10 @@ func (handler *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 //	@Param			username	path		string		true	"Name"
 //	@Param			user		body		dto.User	true	"Update model"
 //	@Success		200			{object}	dto.User
-//	@Failure		400			{object}	ErrorResponse
-//	@Failure		405			{object}	ErrorResponse
-//	@Failure		404			{object}	ErrorResponse
-//	@Failure		500			{object}	ErrorResponse
+//	@Failure		400			{object}	dto.ErrorInfo
+//	@Failure		405			{object}	dto.ErrorInfo
+//	@Failure		404			{object}	dto.ErrorInfo
+//	@Failure		500			{object}	dto.ErrorInfo
 //	@Router			/user/{username} [put]
 func (handler *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
@@ -266,10 +266,10 @@ func (handler *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			user	body		dto.User	true	"Update model"
 //	@Success		200		{object}	dto.User
-//	@Failure		400		{object}	ErrorResponse
-//	@Failure		405		{object}	ErrorResponse
-//	@Failure		404		{object}	ErrorResponse
-//	@Failure		500		{object}	ErrorResponse
+//	@Failure		400		{object}	dto.ErrorInfo
+//	@Failure		405		{object}	dto.ErrorInfo
+//	@Failure		404		{object}	dto.ErrorInfo
+//	@Failure		500		{object}	dto.ErrorInfo
 //	@Router			/useradmin [put]
 func (handler *UserHandler) UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 
@@ -317,10 +317,10 @@ func (handler *UserHandler) UpdateAdminUser(w http.ResponseWriter, r *http.Reque
 //	@Tags			user
 //	@Param			username	path	string	true	"Name"
 //	@Success		204
-//	@Failure		400	{object}	ErrorResponse
-//	@Failure		405	{object}	ErrorResponse
-//	@Failure		404	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		400	{object}	dto.ErrorInfo
+//	@Failure		405	{object}	dto.ErrorInfo
+//	@Failure		404	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/user/{username} [delete]
 func (handler *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
