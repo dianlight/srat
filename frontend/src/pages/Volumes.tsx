@@ -18,14 +18,21 @@ import { Api } from "@mui/icons-material";
 import { AutocompleteElement, Controller, PasswordElement, PasswordRepeatElement, TextFieldElement, useForm } from "react-hook-form-mui";
 import useSWR from "swr";
 import { toast } from "react-toastify";
+import { useSSE } from "react-hooks-sse";
 
 
 export function Volumes() {
     const mode = useContext(ModeContext);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showMount, setShowMount] = useState<boolean>(false);
-
-
+    const statusSSE = useSSE(DtoEventType.EventVolumes, {} as DtoBlockInfo, {
+        parser(input: any): DtoBlockInfo {
+            console.log("Got volumes", input)
+            const c = JSON.parse(input);
+            setStatus(c)
+            return c;
+        },
+    });
     const [status, setStatus] = useState<DtoBlockInfo>({});
     const [selected, setSelected] = useState<DtoBlockPartition | undefined>(undefined);
     const confirm = useConfirm();
@@ -66,7 +73,7 @@ export function Volumes() {
             setSelected(undefined);
         }).catch(err => {
             console.error("Error:", err, err.response);
-            toast.error(`${err.response.data.code}:${err.response.data.error}`, { data: { error: err } });
+            toast.error(`${err.response.data.code}:${err.response.data.message}`, { data: { error: err } });
             //setErrorInfo(JSON.stringify(err));
         })
     }

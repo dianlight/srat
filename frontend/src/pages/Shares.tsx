@@ -44,14 +44,16 @@ interface ShareEditProps extends DtoSharedResource {
 
 export function Shares() {
     const mode = useContext(ModeContext);
-    const status = useSSE(DtoEventType.EventShare, {} as DtoSharedResource, {
+    const statusSSE = useSSE(DtoEventType.EventShare, {} as DtoSharedResource, {
         parser(input: any): DtoSharedResource {
             console.log("Got shares", input)
-            return JSON.parse(input);
+            const c = JSON.parse(input);
+            setStatus(c)
+            return c;
         },
     });
 
-    //const [status, setStatus] = useState<DtoSharedResource[]>([]);
+    const [status, setStatus] = useState<DtoSharedResource[]>([]);
     const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
@@ -62,16 +64,6 @@ export function Shares() {
 
 
     useEffect(() => {
-        /*
-        const chr = ws.subscribe<DtoSharedResource[]>(DtoEventType.EventShare, (data) => {
-            console.log("Got shares", data)
-            setStatus(data);
-        })
-        return () => {
-            ws.unsubscribe(chr);
-        };
-        */
-        /*
         api.shares.sharesList().then((res) => {
             console.log("Got shares", res.data)
             setStatus(res.data);
@@ -79,7 +71,6 @@ export function Shares() {
             console.error(err);
             //setErrorInfo(JSON.stringify(err));
         })
-        */
     }, [])
 
     /*

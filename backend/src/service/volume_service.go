@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"os"
 	"strconv"
@@ -351,17 +350,19 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 }
 
 func (self *VolumeService) NotifyClient() {
+	slog.Debug("Notifying client about changes...")
 	self.volumesQueueMutex.Lock()
 	defer self.volumesQueueMutex.Unlock()
 
 	var data, err = self.GetVolumesData()
 	if err != nil {
-		log.Printf("Unable to fetch volumes: %v", err)
+		slog.Error("Unable to fetch volumes", "err", err)
 		return
 	}
 
 	var event dto.EventMessageEnvelope
 	event.Event = dto.EventVolumes
 	event.Data = data
+	slog.Debug("Sending event to clients", "event", pretty.Sprint(event))
 	self.broascasting.BroadcastMessage(&event)
 }

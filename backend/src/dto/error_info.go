@@ -2,7 +2,6 @@ package dto
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"text/template"
 
@@ -55,6 +54,7 @@ func (u *ErrorInfo) popolateMessage() error {
 	return nil
 }
 
+/*
 func (u ErrorInfo) MarshalJSON() ([]byte, error) {
 	err := u.popolateMessage()
 	if err != nil {
@@ -69,6 +69,7 @@ func (u *ErrorInfo) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
+*/
 
 func (r *ErrorInfo) Error() string {
 	err := r.popolateMessage()

@@ -28,14 +28,12 @@ func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 		}
 	}
 
-	if erx, ok := src.(dto.ErrorInfo); ok {
-		opt.Code = codeGetOrElse(opt.Code, http.StatusInternalServerError)
-		slog.Error(erx.Error())
-		return HttpJSONReponse(w, erx, opt)
-	} else if erx, ok := src.(error); ok {
-		opt.Code = codeGetOrElse(opt.Code, http.StatusInternalServerError)
-		slog.Error(tracerr.SprintSourceColor(erx))
-		return HttpJSONReponse(w, dto.NewErrorInfo(dto.ErrorCodes.GENERIC_ERROR, nil, erx), opt)
+	if _, ok := src.(error); ok {
+		if erx, ok := src.(*dto.ErrorInfo); !ok {
+			opt.Code = codeGetOrElse(opt.Code, http.StatusInternalServerError)
+			slog.Error(tracerr.SprintSourceColor(erx))
+			return HttpJSONReponse(w, dto.NewErrorInfo(dto.ErrorCodes.GENERIC_ERROR, nil, erx), opt)
+		}
 	}
 
 	if src == nil || funk.IsEmpty(src) {
