@@ -11,6 +11,7 @@ const (
 	invalid_parameter                     // "Invalid parameter: {{.Key}}. {{.Message}}",false
 	mount_fail                            // "Unable to mount {{.Device}} on {{.Path}}. {{.Message}}",false
 	unmount_fail                          // "Unable to unmount {{.ID}}. {{.Message}}",false
+	device_not_found                      // "Device not found {{.DeviceID}}",false
 )
 
 var ()

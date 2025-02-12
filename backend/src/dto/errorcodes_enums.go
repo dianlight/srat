@@ -26,6 +26,7 @@ type errorcodesContainer struct {
 	INVALID_PARAMETER    ErrorCode
 	MOUNT_FAIL           ErrorCode
 	UNMOUNT_FAIL         ErrorCode
+	DEVICE_NOT_FOUND     ErrorCode
 }
 
 var ErrorCodes = errorcodesContainer{
@@ -59,6 +60,11 @@ var ErrorCodes = errorcodesContainer{
 		ErrorMessage: "Unable to unmount {{.ID}}. {{.Message}}",
 		Recoverable:  false,
 	},
+	DEVICE_NOT_FOUND: ErrorCode{
+		errorCode:    device_not_found,
+		ErrorMessage: "Device not found {{.DeviceID}}",
+		Recoverable:  false,
+	},
 }
 
 func (c errorcodesContainer) All() []ErrorCode {
@@ -69,6 +75,7 @@ func (c errorcodesContainer) All() []ErrorCode {
 		c.INVALID_PARAMETER,
 		c.MOUNT_FAIL,
 		c.UNMOUNT_FAIL,
+		c.DEVICE_NOT_FOUND,
 	}
 }
 
@@ -111,6 +118,8 @@ func stringToErrorCode(s string) ErrorCode {
 		return ErrorCodes.MOUNT_FAIL
 	case "unmount_fail":
 		return ErrorCodes.UNMOUNT_FAIL
+	case "device_not_found":
+		return ErrorCodes.DEVICE_NOT_FOUND
 	}
 	return invalidErrorCode
 }
@@ -135,6 +144,7 @@ var validErrorCodes = map[ErrorCode]bool{
 	ErrorCodes.INVALID_PARAMETER:    true,
 	ErrorCodes.MOUNT_FAIL:           true,
 	ErrorCodes.UNMOUNT_FAIL:         true,
+	ErrorCodes.DEVICE_NOT_FOUND:     true,
 }
 
 func (p ErrorCode) IsValid() bool {
@@ -180,11 +190,12 @@ func _() {
 	_ = x[invalid_parameter-4]
 	_ = x[mount_fail-5]
 	_ = x[unmount_fail-6]
+	_ = x[device_not_found-7]
 }
 
-const _errorcodes_name = "unknowngeneric_errorjson_marshal_errorjson_unmarshal_errorinvalid_parametermount_failunmount_fail"
+const _errorcodes_name = "unknowngeneric_errorjson_marshal_errorjson_unmarshal_errorinvalid_parametermount_failunmount_faildevice_not_found"
 
-var _errorcodes_index = [...]uint16{0, 7, 20, 38, 58, 75, 85, 97}
+var _errorcodes_index = [...]uint16{0, 7, 20, 38, 58, 75, 85, 97, 113}
 
 func (i errorCode) String() string {
 	if i < 0 || i >= errorCode(len(_errorcodes_index)-1) {

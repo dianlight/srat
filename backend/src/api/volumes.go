@@ -116,7 +116,27 @@ func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
 
 	err = self.vservice.MountVolume(mount_data)
 	if err != nil {
-		if errors.Is(err, dto.ErrorInfo) {
+		if einfo, ok := err.(*dto.ErrorInfo); ok {
+			switch einfo.Code {
+			case dto.ErrorCodes.INVALID_PARAMETER:
+				HttpJSONReponse(w, einfo, &Options{
+					Code: http.StatusBadRequest,
+				})
+				return
+			case dto.ErrorCodes.DEVICE_NOT_FOUND:
+				HttpJSONReponse(w, einfo, &Options{
+					Code: http.StatusNotFound,
+				})
+				return
+			case dto.ErrorCodes.MOUNT_FAIL:
+				HttpJSONReponse(w, einfo, &Options{
+					Code: http.StatusBadRequest,
+				})
+				return
+			default:
+				HttpJSONReponse(w, einfo, nil)
+				return
+			}
 		}
 		HttpJSONReponse(w, err, nil)
 		return
