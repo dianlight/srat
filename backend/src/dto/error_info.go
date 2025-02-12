@@ -60,6 +60,7 @@ func (u ErrorInfo) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
+	return []byte{""}, nil
 	return json.Marshal(u)
 }
 

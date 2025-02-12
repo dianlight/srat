@@ -28,11 +28,18 @@ func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 		}
 	}
 
-	if _, ok := src.(error); ok {
-		if erx, ok := src.(*dto.ErrorInfo); !ok {
+	if erx, ok := src.(error); ok {
+		var cherr = erx
+		if _, ok := src.(tracerr.Error); ok {
+			cherr = tracerr.Unwrap(erx)
+		}
+		if ei, ok := cherr.(*dto.ErrorInfo); !ok {
 			opt.Code = codeGetOrElse(opt.Code, http.StatusInternalServerError)
+			slog.Error("Error", "err", erx)
 			slog.Error(tracerr.SprintSourceColor(erx))
 			return HttpJSONReponse(w, dto.NewErrorInfo(dto.ErrorCodes.GENERIC_ERROR, nil, erx), opt)
+		} else {
+			opt.Code = codeGetOrElse(opt.Code, ei.Code.HttpCode)
 		}
 	}
 

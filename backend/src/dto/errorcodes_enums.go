@@ -15,7 +15,7 @@ import (
 type ErrorCode struct {
 	errorCode
 	ErrorMessage string
-	Recoverable  bool
+	HttpCode     int
 }
 
 type errorcodesContainer struct {
@@ -33,37 +33,37 @@ var ErrorCodes = errorcodesContainer{
 	GENERIC_ERROR: ErrorCode{
 		errorCode:    generic_error,
 		ErrorMessage: "An unexpected error occurred",
-		Recoverable:  false,
+		HttpCode:     500,
 	},
 	JSON_MARSHAL_ERROR: ErrorCode{
 		errorCode:    json_marshal_error,
 		ErrorMessage: "Unable to marshal JSON: {{.Error}}",
-		Recoverable:  false,
+		HttpCode:     500,
 	},
 	JSON_UNMARSHAL_ERROR: ErrorCode{
 		errorCode:    json_unmarshal_error,
 		ErrorMessage: "Unable to unmarshal JSON: {{.Error}}",
-		Recoverable:  false,
+		HttpCode:     500,
 	},
 	INVALID_PARAMETER: ErrorCode{
 		errorCode:    invalid_parameter,
 		ErrorMessage: "Invalid parameter: {{.Key}}. {{.Message}}",
-		Recoverable:  false,
+		HttpCode:     405,
 	},
 	MOUNT_FAIL: ErrorCode{
 		errorCode:    mount_fail,
 		ErrorMessage: "Unable to mount {{.Device}} on {{.Path}}. {{.Message}}",
-		Recoverable:  false,
+		HttpCode:     406,
 	},
 	UNMOUNT_FAIL: ErrorCode{
 		errorCode:    unmount_fail,
 		ErrorMessage: "Unable to unmount {{.ID}}. {{.Message}}",
-		Recoverable:  false,
+		HttpCode:     406,
 	},
 	DEVICE_NOT_FOUND: ErrorCode{
 		errorCode:    device_not_found,
 		ErrorMessage: "Device not found {{.DeviceID}}",
-		Recoverable:  false,
+		HttpCode:     404,
 	},
 }
 
