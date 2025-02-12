@@ -14,7 +14,7 @@ import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
 import { faHardDrive, faPlug, faPlugCircleCheck, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
-import { Api } from "@mui/icons-material";
+import { Api, DiscFull } from "@mui/icons-material";
 import { AutocompleteElement, Controller, PasswordElement, PasswordRepeatElement, TextFieldElement, useForm } from "react-hook-form-mui";
 import useSWR from "swr";
 import { toast } from "react-toastify";
@@ -67,7 +67,6 @@ export function Volumes() {
     function onSubmitMountVolume(data?: DtoMountPointData) {
         console.log("Mount", data)
         if (!data || !data.id) return
-        console.log("Mount", data)
         apiContext.volume.mountCreate(data.id, data).then((res) => {
             toast.info(`Volume ${res.data.path} mounted successfully.`);
             setSelected(undefined);
@@ -167,21 +166,34 @@ export function Volumes() {
     </InView >
 }
 
+interface MountPointData extends DtoMountPointData {
+    flagsNames?: string[];
+}
+
 
 function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPointData) => void, objectToEdit?: DtoBlockPartition }) {
-    const mountpointData: DtoMountPointData = {}
-    const { control, handleSubmit, watch, formState: { errors } } = useForm<DtoMountPointData>(
+    const mountpointData: MountPointData = {}
+    const { control, handleSubmit, watch, formState: { errors } } = useForm<MountPointData>(
         {
             values: {
                 id: props.objectToEdit?.mount_point_data?.id,
                 fstype: props.objectToEdit?.type,
-                flags: props.objectToEdit?.partition_flags,
+                flags: props.objectToEdit?.mount_point_data?.flags,
+                flagsNames: props.objectToEdit?.mount_point_data?.flags?.map(v => DtoMounDataFlag[v]) || [],
             },
         },
     );
     const filesystems = useSWR<string[]>('/filesystems', () => apiContext.filesystems.filesystemsList().then(res => res.data));
 
-    function handleCloseSubmit(data?: DtoMountPointData) {
+    function handleCloseSubmit(data?: MountPointData) {
+        if (data) {
+            data.flags = data.flagsNames?.map(v => Object.values(DtoMounDataFlag)
+                .filter(v2 => !(typeof v2 === 'string')).find((v1, ix) => {
+                    // console.log(v1, v, DtoMounDataFlag[v1])
+                    return DtoMounDataFlag[v1] === v
+                })
+            ).filter(v3 => v3 !== undefined);
+        }
         console.log("Close", data)
         props.onClose(data)
     }
@@ -211,7 +223,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                                 <Grid2 size={6}>
                                     <AutocompleteElement
                                         multiple
-                                        name="flags"
+                                        name="flagsNames"
                                         label="Mount Flags"
                                         options={Object.values(DtoMounDataFlag).filter((v) => typeof v === "string") as string[]}
                                         control={control}
