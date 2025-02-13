@@ -40,6 +40,7 @@ func HttpJSONReponse(w http.ResponseWriter, src any, opt *Options) error {
 			return HttpJSONReponse(w, dto.NewErrorInfo(dto.ErrorCodes.GENERIC_ERROR, nil, erx), opt)
 		} else {
 			opt.Code = codeGetOrElse(opt.Code, ei.Code.HttpCode)
+			src = ei
 		}
 	}
 
