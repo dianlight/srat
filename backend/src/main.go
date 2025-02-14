@@ -1,7 +1,7 @@
 package main
 
 //go:generate go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 init --pd --parseInternal --outputTypes json,yaml
-//go:generate go run github.com/jmattheis/goverter/cmd/goverter@v1.7.0 gen ./converter
+//-go:generate go run github.com/jmattheis/goverter/cmd/goverter@v1.7.0 gen ./converter
 
 import (
 	"context"
@@ -51,10 +51,11 @@ var roMode *bool
 var updateFilePath string
 var configFile *string
 var dbfile *string
+var frontend *string
 
 // Static files
 //
-//go:embed static/* docs/swagger.json
+//go:embed static/* docs/swagger.*
 var content embed.FS
 
 //go:embed templates/smb.gtpl
@@ -99,6 +100,7 @@ func main() {
 	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
 	dockerNetwork = flag.String("docker-network", "", "Docker network")
+	frontend = flag.String("frontend", "", "Frontend path - if missing the internal is used")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -223,7 +225,17 @@ func prog(state overseer.State) {
 			func() *api.ContextState { return &sharedResources },
 			func() *overseer.State { return &state },
 			fx.Annotate(
-				func() fs.FS { return content },
+				func() fs.FS {
+					if frontend == nil || *frontend == "" {
+						return content
+					} else {
+						_, err := os.Stat(*frontend)
+						if err != nil {
+							log.Fatalf("Cant access frontend folder %s - %s", *frontend, err)
+						}
+						return os.DirFS(*frontend)
+					}
+				},
 				fx.ResultTags(`name:"static_fs"`),
 			),
 			fx.Annotate(
@@ -277,76 +289,8 @@ func prog(state overseer.State) {
 	).Run()
 
 	dbom.CloseDB()
-
 	/*
-		globalRouter := mux.NewRouter()
-		if hamode != nil && *hamode {
-			globalRouter.Use(HAMiddleware)
-		}
-	*/
-
-	/*
-		ok
-			// Health check
-			health := api.NewHealth(apiContext, *roMode)
-			globalRouter.HandleFunc("/health", health.HealthCheckHandler).Methods(http.MethodGet)
-
-			ok
-			// Shares
-			share := api.NewShareHandler(apiContext)
-			globalRouter.HandleFunc("/shares", share.ListShares).Methods(http.MethodGet)
-			globalRouter.HandleFunc("/share/{share_name}", share.GetShare).Methods(http.MethodGet)
-			globalRouter.HandleFunc("/share", share.CreateShare).Methods(http.MethodPost)
-			globalRouter.HandleFunc("/share/{share_name}", share.UpdateShare).Methods(http.MethodPut)
-			globalRouter.HandleFunc("/share/{share_name}", share.DeleteShare).Methods(http.MethodDelete)
-
-			ok
-			// Volumes
-			volumes := api.NewVolumeHandler(apiContext)
-			globalRouter.HandleFunc("/volumes", volumes.ListVolumes).Methods(http.MethodGet)
-			globalRouter.HandleFunc("/volume/{id}/mount", volumes.MountVolume).Methods(http.MethodPost)
-			globalRouter.HandleFunc("/volume/{id}/mount", volumes.UmountVolume).Methods(http.MethodDelete)
-	*/
-	/*
-			// ---------------------------------------- OLAPI --------------------------------
-
-			globalRouter.HandleFunc("/update", api.UpdateHandler).Methods(http.MethodPut)
-			globalRouter.HandleFunc("/restart", api.RestartHandler).Methods(http.MethodPut)
-			globalRouter.HandleFunc("/nics", api.GetNICsHandler).Methods(http.MethodGet)
-			globalRouter.HandleFunc("/filesystems", api.GetFSHandler).Methods(http.MethodGet)
-			//globalRouter.HandleFunc("/sse", sharedResources.SSEBroker.Stream).Methods(http.MethodGet)
-
-			ok
-			// Users
-			globalRouter.HandleFunc("/admin/user", api.GetAdminUser).Methods(http.MethodGet)
-			globalRouter.HandleFunc("/admin/user", api.UpdateAdminUser).Methods(http.MethodPut, http.MethodPatch)
-			globalRouter.HandleFunc("/users", api.ListUsers).Methods(http.MethodGet)
-			//	globalRouter.HandleFunc("/user/{username}", api.GetUser).Methods(http.MethodGet)
-			globalRouter.HandleFunc("/user", api.CreateUser).Methods(http.MethodPost)
-			globalRouter.HandleFunc("/user/{username}", api.UpdateUser).Methods(http.MethodPut, http.MethodPatch)
-			globalRouter.HandleFunc("/user/{username}", api.DeleteUser).Methods(http.MethodDelete)
-
-			ok
-			// Samba
-			globalRouter.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet)
-			globalRouter.HandleFunc("/samba/apply", api.ApplySamba).Methods(http.MethodPut)
-			//globalRouter.HandleFunc("/samba/status", api.GetSambaProcessStatus).Methods(http.MethodGet)
-
-			// Global
-			ok
-			globalRouter.HandleFunc("/global", api.GetSettings).Methods(http.MethodGet)
-			globalRouter.HandleFunc("/global", api.UpdateSettings).Methods(http.MethodPut, http.MethodPatch)
-
-			// Configuration
-
-			//globalRouter.HandleFunc("/config", api.PersistAllConfig).Methods(http.MethodPut, http.MethodPatch)
-			//globalRouter.HandleFunc("/config", api.RollbackConfig).Methods(http.MethodDelete)
-
-			ok
-			// WebSocket
-			globalRouter.HandleFunc("/events", api.WSChannelEventsList).Methods(http.MethodGet)
-			globalRouter.HandleFunc("/ws", api.WSChannelHandler)
-		// Static files
+			// Static files
 		globalRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/static/", http.StatusPermanentRedirect)
 		})
@@ -359,76 +303,6 @@ func prog(state overseer.State) {
 			})
 	*/
 
-	// Print all routes
-	/*
-		globalRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-			template, err := route.GetPathTemplate()
-			if err != nil {
-				return tracerr.Wrap(err)
-			}
-			log.Printf("Route: %s\n", template)
-			return nil
-		})
-	*/
-	/*
-		handler := cors.New(
-			cors.Options{
-				//AllowedOrigins:   []string{"*"},
-				AllowOriginFunc:  func(origin string) bool { return true },
-				AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
-				AllowedHeaders:   []string{"*"},
-				AllowCredentials: true,
-				MaxAge:           300,
-			},
-		).Handler(globalRouter)
-		loggedRouter := handlers.LoggingHandler(os.Stdout, handler)
-
-		srv := &http.Server{
-			//Addr: fmt.Sprintf("%s:%d",state.Address, *http_port),
-			// Good practice to set timeouts to avoid Slowloris attacks.
-			//WriteTimeout: time.Second * 15,
-			ReadTimeout: time.Second * 15,
-			IdleTimeout: time.Second * 60,
-			Handler:     loggedRouter, // Pass our instance of gorilla/mux in.
-			ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-				log.Printf("New connection: %s\n", c.RemoteAddr())
-				ctx = api.StateToContext(&sharedResources, ctx)
-				return ctx
-			},
-		}
-	*/
-	/*
-		// Run the backgrounde services
-		//go api.HealthAndUpdateDataRefeshHandlers(apiContext)
-		// Run our server in a goroutine so that it doesn't block.
-		go func() {
-			log.Printf("Starting Server... \n GoTo: http://localhost:%d/", *http_port)
-
-			if err := srv.Serve(state.Listener); err != nil {
-				log.Fatal(err)
-			}
-		}()
-	*/
-	/*
-		c := make(chan os.Signal, 1)
-		// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-		// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
-		signal.Notify(c, os.Interrupt)
-
-		// Block until we receive our signal.
-		<-c
-		log.Println("Shutting down server...")
-
-		// Create a deadline to wait for.
-		//ctx, cancel := context.WithTimeout(context.Background(), wait)
-		//defer cancel()
-		// Doesn't block if no connections, but will otherwise wait
-		// until the timeout deadline.
-		// srv.Shutdown(ctx)
-		// Optionally, you could run srv.Shutdown in a goroutine and block on
-		// <-ctx.Done() if your application should wait for other services
-		// to finalize based on context cancellation.
-	*/
 	log.Println("shutting down")
 	os.Exit(0)
 }

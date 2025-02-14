@@ -12,10 +12,10 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/pilebones/go-udev v0.9.0
-	github.com/shirou/gopsutil/v4 v4.24.12
+	github.com/shirou/gopsutil/v4 v4.25.1
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.0
-	golang.org/x/sys v0.29.0
+	golang.org/x/sys v0.30.0
 )
 
 require (
@@ -31,6 +31,8 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
+	github.com/hugelgupf/go-shlex v0.0.0-20200702092117-c80c9d0918fa // indirect
+	github.com/hugelgupf/vmtest v0.0.0-20240216064925-0561770280a1 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/jaypipes/pcidb v1.0.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
@@ -42,6 +44,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
+	github.com/pierrec/lz4/v4 v4.1.14 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
@@ -52,22 +55,27 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.9.0 // indirect
+	github.com/u-root/gobusybox/src v0.0.0-20240225013946-a274a8d5d83a // indirect
+	github.com/u-root/mkuimage v0.0.0-20240225063926-11a3bcc79c2a // indirect
+	github.com/u-root/uio v0.0.0-20240209044354-b3d14b93376a // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/dig v1.18.0 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
-	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/crypto v0.32.0 // indirect
-	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
-	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
+	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
+	golang.org/x/mod v0.23.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	howett.net/plist v1.0.1 // indirect
-	modernc.org/libc v1.61.10 // indirect
+	modernc.org/libc v1.61.13 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.8.2 // indirect
-	modernc.org/sqlite v1.34.5 // indirect
+	modernc.org/sqlite v1.35.0 // indirect
+	mvdan.cc/sh/v3 v3.7.0 // indirect
 )
 
 require (
@@ -80,15 +88,15 @@ require (
 	github.com/jaypipes/ghw v0.13.0
 	github.com/lmittmann/tint v1.0.7
 	github.com/rs/cors v1.11.1
-	github.com/snapcore/snapd v0.0.0-20250129091035-23039caa898e
+	github.com/snapcore/snapd v0.0.0-20250213160703-1a8abe667b2e
 	github.com/thoas/go-funk v0.9.3
 	github.com/tj/go-spin v1.1.0
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
 	github.com/ztrue/tracerr v0.4.0
 	go.uber.org/fx v1.23.0
-	golang.org/x/time v0.9.0
-	golang.org/x/tools v0.29.0 // indirect
+	golang.org/x/time v0.10.0
+	golang.org/x/tools v0.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/gorm v1.25.12
 )

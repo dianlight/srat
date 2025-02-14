@@ -91,15 +91,17 @@ definitions:
         - 4
         - 5
         - 6
+        - 7
         type: integer
         x-enum-comments:
-          generic_error: '"An unexpected error occurred",false'
-          invalid_parameter: '"Invalid parameter: {{.Key}}. {{.Message}}",false'
-          json_marshal_error: '"Unable to marshal JSON: {{.Error}}",false'
-          json_unmarshal_error: '"Unable to unmarshal JSON: {{.Error}}",false'
-          mount_fail: '"Unable to mount {{.Device}} on {{.Path}}. {{.Message}}",false'
+          device_not_found: '"Device not found {{.DeviceID}}",404'
+          generic_error: '"An unexpected error occurred",500'
+          invalid_parameter: '"Invalid parameter: {{.Key}}. {{.Message}}",405'
+          json_marshal_error: '"Unable to marshal JSON: {{.Error}}",500'
+          json_unmarshal_error: '"Unable to unmarshal JSON: {{.Error}}",500'
+          mount_fail: '"Unable to mount {{.Device}} on {{.Path}}. {{.Message}}",406'
           unknown: invalid
-          unmount_fail: '"Unable to unmount {{.ID}}. {{.Message}}",false'
+          unmount_fail: '"Unable to unmount {{.ID}}. {{.Message}}",406'
         x-enum-varnames:
         - unknown
         - generic_error
@@ -108,10 +110,11 @@ definitions:
         - invalid_parameter
         - mount_fail
         - unmount_fail
+        - device_not_found
       errorMessage:
         type: string
-      recoverable:
-        type: boolean
+      httpCode:
+        type: integer
     type: object
   dto.ErrorInfo:
     properties:
@@ -120,7 +123,11 @@ definitions:
       data:
         additionalProperties: {}
         type: object
+      deep_message:
+        type: string
       error: {}
+      message:
+        type: string
       trace:
         items:
           $ref: '#/definitions/tracerr.Frame'

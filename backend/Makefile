@@ -25,7 +25,7 @@ format:
 	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
 	cd $(SRC_DIRS);go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 fmt
 	cd $(SRC_DIRS);go mod tidy	
-	cd $(SRC_DIRS);testifylint --fix ./...
+	cd $(SRC_DIRS);go run github.com/Antonboom/testifylint@latest --fix ./...
 	cd $(SRC_DIRS);go fmt
 
 .PHONY: clean
@@ -43,12 +43,17 @@ docs: gen
 gen: $(SRCS)
 	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest init
 	mkdir -p $(SRC_DIRS)/static && touch $(SRC_DIRS)/static/.nodelete
-	cd $(SRC_DIRS);go generate .
+	cd $(SRC_DIRS);go generate ./...
 
 .PHONY: dev
 dev: 
 	#cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json $(ARGS)
 	air
+
+.PHONY: update
+update:
+	cd $(SRC_DIRS);go get -u ./...
+
 
 $(FRONTEND_DIRS)/node_modules:
 	cd $(FRONTEND_DIRS); bun install	

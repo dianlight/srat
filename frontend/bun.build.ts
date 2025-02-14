@@ -35,15 +35,15 @@ console.log(`API URL: ${APIURL}`)
 const buildConfig: BuildConfig = {
     entrypoints: [/*'src/index.html',*/ 'src/index.tsx'],
     outdir: './out',  // Specify the output directory
-    experimentalCss: true,
+    //experimentalCss: true,
     naming: {
         entry: "[dir]/[name].[ext]",
         chunk: '[name]-[hash].[ext]',
         asset: '[name].[ext]',
     },
     target: "browser",
-    sourcemap: "inline",
-    minify: true,
+    sourcemap: "linked",
+    minify: false,
     plugins: [
         copy("src/index.html", "out/index.html")
         //  html({})
@@ -51,11 +51,11 @@ const buildConfig: BuildConfig = {
     define: {
         "process.env.APIURL": APIURL,
         "process.env.NODE_ENV": values.watch ? "'development'" : "'production'"
-    }
+    },
 }
 
 async function build(): Promise<BuildOutput | void> {
-    if (!values.serve) {
+    if (!values.serve && !values.watch) {
         console.log(`Build ${import.meta.dir}/src`)
         return Bun.build(buildConfig).then((result) => {
             if (!result.success) {
@@ -67,7 +67,7 @@ async function build(): Promise<BuildOutput | void> {
             }
             return result
         })
-    } else {
+    } else if (values.serve) {
         console.log(`Serving ${values.serve}`);
         const serve: Serve = {
             fetch(req: Request) {
@@ -84,6 +84,35 @@ async function build(): Promise<BuildOutput | void> {
 
         Bun.serve(htmlLiveReload(serve, { buildConfig, watchPath: import.meta.dir + "/src" }));
         console.log("Serving http://localhost:3000/index.html");
+    } else if (values.watch) {
+        console.log(`Build Watch ${import.meta.dir}/src`)
+        function rebuild(event: string, filename: string | null) {
+            console.log(`Detected ${event} in ${filename}`)
+            Bun.build(buildConfig).then((result) => {
+                if (!result.success) {
+                    console.error("Build failed");
+                    for (const message of result.logs) {
+                        // Bun will pretty print the message object
+                        console.error(message);
+                    }
+                }
+                return result
+            })
+            console.log('ReBuild complete ✅')
+        }
+        const srcwatch = watch(
+            `${import.meta.dir}/src`,
+            { recursive: true, },
+            async (event, filename) => {
+                rebuild(event, filename);
+            }
+        )
+
+        process.on('SIGINT', () => {
+            srcwatch.close();
+            process.exit(0);
+        })
+        rebuild('initial build', null);
     }
 }
 
@@ -92,23 +121,6 @@ console.log(`Build complete ✅ [:${values.watch ? '👁️:watching' : '🧻:bu
 
 /*
 if (values.watch) {
-    console.log(`Build Watch ${import.meta.dir}/src`)
-    const srcwatch = watch(
-        `${import.meta.dir}/src`,
-        { recursive: true },
-        async (event, filename) => {
-            console.log(`Detected ${event} in ${filename}`)
-            //await build();
-            await htmlLiveReload.
-            console.log('Build complete ✅')
-        }
-    )
-
-
-    process.on('SIGINT', () => {
-        srcwatch.close();
-        process.exit(0);
-    })
 }
     */
 

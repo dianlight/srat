@@ -12,6 +12,7 @@ package service_test
 import (
 	reflect "reflect"
 
+	dto "github.com/dianlight/srat/dto"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,18 +42,45 @@ func (m *MockVolumeServiceInterface) EXPECT() *MockVolumeServiceInterfaceMockRec
 	return m.recorder
 }
 
-// MountVolume mocks base method.
-func (m *MockVolumeServiceInterface) MountVolume(id uint) error {
+// GetVolumesData mocks base method.
+func (m *MockVolumeServiceInterface) GetVolumesData() (*dto.BlockInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MountVolume", id)
+	ret := m.ctrl.Call(m, "GetVolumesData")
+	ret0, _ := ret[0].(*dto.BlockInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetVolumesData indicates an expected call of GetVolumesData.
+func (mr *MockVolumeServiceInterfaceMockRecorder) GetVolumesData() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVolumesData", reflect.TypeOf((*MockVolumeServiceInterface)(nil).GetVolumesData))
+}
+
+// MountVolume mocks base method.
+func (m *MockVolumeServiceInterface) MountVolume(md dto.MountPointData) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MountVolume", md)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // MountVolume indicates an expected call of MountVolume.
-func (mr *MockVolumeServiceInterfaceMockRecorder) MountVolume(id any) *gomock.Call {
+func (mr *MockVolumeServiceInterfaceMockRecorder) MountVolume(md any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MountVolume", reflect.TypeOf((*MockVolumeServiceInterface)(nil).MountVolume), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MountVolume", reflect.TypeOf((*MockVolumeServiceInterface)(nil).MountVolume), md)
+}
+
+// NotifyClient mocks base method.
+func (m *MockVolumeServiceInterface) NotifyClient() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "NotifyClient")
+}
+
+// NotifyClient indicates an expected call of NotifyClient.
+func (mr *MockVolumeServiceInterfaceMockRecorder) NotifyClient() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NotifyClient", reflect.TypeOf((*MockVolumeServiceInterface)(nil).NotifyClient))
 }
 
 // UnmountVolume mocks base method.

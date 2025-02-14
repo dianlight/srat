@@ -12,13 +12,15 @@
 			"label": "Backend",
 			"onAutoForward": "silent",
 			"protocol": "http",
-			"hostPort": 3000,
-            "containerPort": 3000
+			"hostPort": 8080,
+            "containerPort": 8080
 		},
 		"8080": {
 			"label": "FrontEnd",
-			"onAutoForward": "openBrowserOnce",
-			"protocol": "http"
+			"onAutoForward": "silent",
+			"protocol": "http",
+			"hostPort": 3000,
+            "containerPort": 3000
 		}		
 	},	
 	"remoteEnv": {
@@ -52,7 +54,8 @@
 				"GitHub.copilot",
 				"jgclark.vscode-todo-highlight",
 				"Gruntfuggly.todo-tree",
-				"yy0931.vscode-sqlite3-editor"
+				"yy0931.vscode-sqlite3-editor",
+				"tamasfe.even-better-toml"
 			]		
 		}
 	},

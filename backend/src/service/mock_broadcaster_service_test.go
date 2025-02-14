@@ -100,15 +100,3 @@ func (mr *MockBroadcasterServiceInterfaceMockRecorder) ProcessHttpChannel(w, r a
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessHttpChannel", reflect.TypeOf((*MockBroadcasterServiceInterface)(nil).ProcessHttpChannel), w, r)
 }
-
-// listen mocks base method.
-func (m *MockBroadcasterServiceInterface) listen() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "listen")
-}
-
-// listen indicates an expected call of listen.
-func (mr *MockBroadcasterServiceInterfaceMockRecorder) listen() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "listen", reflect.TypeOf((*MockBroadcasterServiceInterface)(nil).listen))
-}

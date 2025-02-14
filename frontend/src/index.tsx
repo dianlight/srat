@@ -2,6 +2,7 @@ import * as ReactDOM from 'react-dom/client';
 import CssBaseline from '@mui/material/CssBaseline';
 import { App } from "./App.tsx"
 import "./css/style.css"
+import "./img/favicon.ico"
 import { ErrorBoundaryContext } from 'react-use-error-boundary';
 import '@fontsource/roboto/300.css';
 import '@fontsource/roboto/400.css';
@@ -15,7 +16,6 @@ import { StrictMode } from 'react';
 import { SSEProvider, type Listener, type Source } from 'react-hooks-sse';
 import { apiContext } from './Contexts.ts';
 import { DtoEventType } from './srat.ts';
-
 
 const theme = createTheme({
     colorSchemes: {

@@ -5,7 +5,7 @@ import { Api, type DtoDataDirtyTracker, type DtoHealthPing } from './srat';
 let APIURL = process.env.APIURL;
 if (process.env.APIURL === "dynamic") {
     APIURL = window.location.href.substring(0, window.location.href.lastIndexOf('/static/') + 1);
-    console.info(`Dynamic APIURL provided, using generated: ${APIURL}`)
+    console.info(`Dynamic not APIURL provided, using generated: ${APIURL}/`)
 
 }
 
@@ -20,7 +20,7 @@ export const apiContext = new Api({
 //export const wsContext = new WSRouter(wsUrl.href);
 //export const AuthContext = createContext(null);
 
-console.log("API URL", APIURL)
+console.log("* API URL", APIURL + "/")
 //console.log("WS URL", wsUrl.href)
 
 export const ModeContext = createContext<DtoHealthPing>({});

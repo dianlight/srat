@@ -69,15 +69,17 @@ export interface DtoDataDirtyTracker {
 }
 
 export interface DtoErrorCode {
-  errorCode?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  errorCode?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
   errorMessage?: string;
-  recoverable?: boolean;
+  httpCode?: number;
 }
 
 export interface DtoErrorInfo {
   code?: DtoErrorCode;
   data?: Record<string, any>;
+  deep_message?: string;
   error?: any;
+  message?: string;
   trace?: TracerrFrame[];
 }
 

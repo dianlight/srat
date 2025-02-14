@@ -61,6 +61,7 @@
     "nextversion": "bun run version.ts -i alpha",
     "version": "bun run version.ts",
     "build": "bun run bun.build.ts",
+    "watch": "bun run bun.build.ts -w",
     "clean": "rm -rf out",
     "dev": "bun --hot run bun.build.ts -w -s ./out",
     "dev:remote": "bun --hot run bun.build.ts -w -s ./out -c http://192.168.0.250:3000/",
