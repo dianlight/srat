@@ -73,18 +73,6 @@ export function Shares() {
         })
     }, [])
 
-    /*
-    useEventSourceListener(
-        sse,
-        [DtoEventType.EventShare],
-        (evt) => {
-            console.log("SSE EventShare", evt);
-            setStatus(JSON.parse(evt.data))
-        },
-        [setStatus],
-    );
-*/
-
     function onSubmitDeleteShare(data?: string) {
         console.log("Delete", data)
         if (!data) return
@@ -252,7 +240,6 @@ export function Shares() {
                                 onClick={() => { setSelected([share, props]); setShowPreview(true) }}
                                 secondary={
                                     <Typography variant="body2" component="div">
-                                        Path: {props.mount_point_data?.path}
                                         {props.mount_point_data?.path && (
                                             <Box component="span" sx={{ display: 'block' }}>
                                                 Mount Point: {props.mount_point_data.path}
@@ -263,30 +250,44 @@ export function Shares() {
                                                 Warning: {props.mount_point_data.warnings}
                                             </Box>
                                         )}
-                                        <Box component="div" sx={{ mt: 1 }}>
+                                        <Box component="div" sx={{ mt: 1, display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 1 }}>
                                             {props.users && props.users.length > 0 && (
-                                                <Box component="span" sx={{ display: 'block' }}>
-                                                    <Tooltip title="Users with write access">
-                                                        <Chip
-                                                            size="small"
-                                                            icon={<EditIcon />}
-                                                            label={`Users: ${props.users.join(', ')}`}
-                                                            sx={{ mr: 1, my: 0.5 }}
-                                                        />
-                                                    </Tooltip>
-                                                </Box>
+                                                <Tooltip title="Users with write access">
+                                                    <Chip
+                                                        size="small"
+                                                        icon={<EditIcon />}
+                                                        label={
+                                                            <span>
+                                                                Users: {props.users.map(u => (
+                                                                    <span key={u.username} style={{ color: u.is_admin ? 'yellow' : 'inherit' }}>
+                                                                        {u.username}
+                                                                        {u !== props.users![props.users!.length - 1] && ', '}
+                                                                    </span>
+                                                                ))}
+                                                            </span>
+                                                        }
+                                                        sx={{ my: 0.5 }}
+                                                    />
+                                                </Tooltip>
                                             )}
                                             {props.ro_users && props.ro_users.length > 0 && (
-                                                <Box component="span" sx={{ display: 'block' }}>
-                                                    <Tooltip title="Users with read-only access">
-                                                        <Chip
-                                                            size="small"
-                                                            icon={<VisibilityIcon />}
-                                                            label={`Read-only Users: ${props.ro_users.join(', ')}`}
-                                                            sx={{ my: 0.5 }}
-                                                        />
-                                                    </Tooltip>
-                                                </Box>
+                                                <Tooltip title="Users with read-only access">
+                                                    <Chip
+                                                        size="small"
+                                                        icon={<VisibilityIcon />}
+                                                        label={
+                                                            <span>
+                                                                Read-only Users: {props.ro_users.map(u => (
+                                                                    <span key={u.username} style={{ color: u.is_admin ? 'yellow' : 'inherit' }}>
+                                                                        {u.username}
+                                                                        {u !== props.ro_users![props.ro_users!.length - 1] && ', '}
+                                                                    </span>
+                                                                ))}
+                                                            </span>
+                                                        }
+                                                        sx={{ my: 0.5 }}
+                                                    />
+                                                </Tooltip>
                                             )}
                                         </Box>
                                     </Typography>
