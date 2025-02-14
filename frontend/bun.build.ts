@@ -24,6 +24,12 @@ const { values, positionals } = parseArgs({
             default: 'http://localhost:8080',
             description: 'Specify the URL of the API context (in watching mode) (default: http://localhost:8080)'
         },
+        outDir: {
+            type: 'string',
+            short: 'o',
+            default: './out',
+            description: 'Specify the output directory (default: ./out)'
+        },
     },
     strict: true,
     allowPositionals: true
@@ -33,8 +39,8 @@ const APIURL = values.watch ? values.apiContextUrl || "" : "'dynamic'"
 console.log(`API URL: ${APIURL}`)
 
 const buildConfig: BuildConfig = {
-    entrypoints: [/*'src/index.html',*/ 'src/index.tsx'],
-    outdir: './out',  // Specify the output directory
+    entrypoints: ['src/index.html', 'src/index.tsx'],
+    outdir: values.outDir,  // Specify the output directory
     //experimentalCss: true,
     naming: {
         entry: "[dir]/[name].[ext]",
@@ -45,7 +51,7 @@ const buildConfig: BuildConfig = {
     sourcemap: "linked",
     minify: false,
     plugins: [
-        copy("src/index.html", "out/index.html")
+        //copy("src/index.html", "out/index.html")
         //  html({})
     ],
     define: {
@@ -56,7 +62,7 @@ const buildConfig: BuildConfig = {
 
 async function build(): Promise<BuildOutput | void> {
     if (!values.serve && !values.watch) {
-        console.log(`Build ${import.meta.dir}/src`)
+        console.log(`Build ${import.meta.dir}/src -> ${values.outDir}`)
         return Bun.build(buildConfig).then((result) => {
             if (!result.success) {
                 console.error("Build failed");
@@ -68,7 +74,7 @@ async function build(): Promise<BuildOutput | void> {
             return result
         })
     } else if (values.serve) {
-        console.log(`Serving ${values.serve}`);
+        console.log(`Serving ${values.serve} -> ${values.outDir}`);
         const serve: Serve = {
             fetch(req: Request) {
                 const url = new URL(req.url)
@@ -85,7 +91,7 @@ async function build(): Promise<BuildOutput | void> {
         Bun.serve(htmlLiveReload(serve, { buildConfig, watchPath: import.meta.dir + "/src" }));
         console.log("Serving http://localhost:3000/index.html");
     } else if (values.watch) {
-        console.log(`Build Watch ${import.meta.dir}/src`)
+        console.log(`Build Watch ${import.meta.dir}/src -> ${values.outDir}`)
         function rebuild(event: string, filename: string | null) {
             console.log(`Detected ${event} in ${filename}`)
             Bun.build(buildConfig).then((result) => {

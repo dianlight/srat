@@ -23,6 +23,7 @@ const theme = createTheme({
     },
 });
 
+
 class SSESource implements Source {
     private eventSource: EventSource;
     private resetTimer?: Timer

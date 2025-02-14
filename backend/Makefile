@@ -2,7 +2,7 @@ TARGET_EXEC=srat
 BUILD_DIR := ./dist
 SRC_DIRS := ./src
 FRONTEND_DIRS := ../frontend
-STATIC_DIRS := $(FRONTEND_DIRS)/out
+STATIC_DIRS := ./src/static
 
 #ALL_SRCS := $(shell find $(SRC_DIRS) -name '*.go')
 ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go)  
@@ -46,7 +46,7 @@ gen: $(SRCS)
 	cd $(SRC_DIRS);go generate ./...
 
 .PHONY: dev
-dev: 
+dev:
 	#cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json $(ARGS)
 	air
 
@@ -62,5 +62,5 @@ static: $(FRONTEND_DIRS)/node_modules
 	rm -rf $(SRC_DIRS)/static
 	cd $(FRONTEND_DIRS);bun run swagger
 	cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
-	cd $(FRONTEND_DIRS);bun run build
-	cp -r $(STATIC_DIRS) $(SRC_DIRS)/static
+	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(SRC_DIRS)/static
+	#cp -r $(STATIC_DIRS) $(SRC_DIRS)/static
