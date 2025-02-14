@@ -1,7 +1,7 @@
 //import copy from 'bun-copy-plugin';
 import { watch } from "fs"
 import { parseArgs } from "util";
-import { file, type BuildConfig, type BuildOutput, type Serve } from "bun";
+import { file, Glob, type BuildConfig, type BuildOutput, type Serve } from "bun";
 import { htmlLiveReload } from '@gtramontina.com/bun-html-live-reload';
 
 const { values, positionals } = parseArgs({
@@ -92,8 +92,15 @@ async function build(): Promise<BuildOutput | void> {
         console.log("Serving http://localhost:3000/index.html");
     } else if (values.watch) {
         console.log(`Build Watch ${import.meta.dir}/src -> ${values.outDir}`)
-        function rebuild(event: string, filename: string | null) {
+        async function rebuild(event: string, filename: string | null) {
             console.log(`Detected ${event} in ${filename}`)
+            const glob = new Glob(`index-*`);
+
+            for await (const file of glob.scan(values.outDir)) {
+                console.log(`D ${values.outDir}/${file}`);
+                Bun.file(`${values.outDir}/${file}`).delete().catch((err) => { });
+            }
+
             Bun.build(buildConfig).then((result) => {
                 if (!result.success) {
                     console.error("Build failed");

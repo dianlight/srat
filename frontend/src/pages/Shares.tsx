@@ -14,6 +14,7 @@ import ListItemText from "@mui/material/ListItemText";
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
 import FolderDeleteIcon from '@mui/icons-material/FolderDelete';
 import SettingsIcon from '@mui/icons-material/Settings';
+import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import { PreviewDialog } from "../components/PreviewDialog";
 import { useConfirm } from "material-ui-confirm";
 import Divider from "@mui/material/Divider";
@@ -34,6 +35,8 @@ import { Chip, Typography } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import GroupIcon from '@mui/icons-material/Group';
 import EditIcon from '@mui/icons-material/Edit';
+import BlockIcon from '@mui/icons-material/Block';
+import BackupIcon from '@mui/icons-material/Backup';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useSSE } from "react-hooks-sse";
 
@@ -73,7 +76,7 @@ export function Shares() {
         })
     }, [])
 
-    function onSubmitDeleteShare(data?: string) {
+    function onSubmitDisableShare(data?: string) {
         console.log("Delete", data)
         if (!data) return
         confirm({
@@ -207,9 +210,18 @@ export function Shares() {
                                         </Tooltip>
                                     </IconButton>
                                 )}
-                                <IconButton onClick={() => onSubmitDeleteShare(share)} edge="end" aria-label="delete">
-                                    <FolderDeleteIcon />
-                                </IconButton>
+                                <Tooltip title={props.mount_point_data?.is_mounted ? "Cannot disable mounted share" : "Disable share"}>
+                                    <span>
+                                        <IconButton
+                                            onClick={() => onSubmitDisableShare(share)}
+                                            edge="end"
+                                            aria-label="disable"
+                                            disabled={props.mount_point_data?.is_mounted}
+                                        >
+                                            <BlockIcon />
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
                             </>
                             }
                         >
@@ -285,6 +297,27 @@ export function Shares() {
                                                                 ))}
                                                             </span>
                                                         }
+                                                        sx={{ my: 0.5 }}
+                                                    />
+                                                </Tooltip>
+                                            )}
+                                            {props.usage && (
+                                                <Tooltip title="Share Usage">
+                                                    <Chip
+                                                        size="small"
+                                                        icon={<FolderSpecialIcon />}
+                                                        label={`Usage: ${props.usage}`}
+                                                        sx={{ my: 0.5 }}
+                                                    />
+                                                </Tooltip>
+                                            )}
+                                            {props.timemachine && (
+                                                <Tooltip title="TimeMachine Enabled">
+                                                    <Chip
+                                                        size="small"
+                                                        icon={<BackupIcon />}
+                                                        label="TimeMachine"
+                                                        color="secondary"
                                                         sx={{ my: 0.5 }}
                                                     />
                                                 </Tooltip>
