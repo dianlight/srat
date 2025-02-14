@@ -1,4 +1,4 @@
-import copy from 'bun-copy-plugin';
+//import copy from 'bun-copy-plugin';
 import { watch } from "fs"
 import { parseArgs } from "util";
 import { file, type BuildConfig, type BuildOutput, type Serve } from "bun";
@@ -39,7 +39,7 @@ const APIURL = values.watch ? values.apiContextUrl || "" : "'dynamic'"
 console.log(`API URL: ${APIURL}`)
 
 const buildConfig: BuildConfig = {
-    entrypoints: ['src/index.html', 'src/index.tsx'],
+    entrypoints: ['src/index.html' /*, 'src/index.tsx' */],
     outdir: values.outDir,  // Specify the output directory
     //experimentalCss: true,
     naming: {
