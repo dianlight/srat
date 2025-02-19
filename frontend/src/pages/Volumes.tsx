@@ -1,11 +1,12 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { apiContext, ModeContext } from "../Contexts";
-import { DtoEventType, DtoMounDataFlag, type DtoBlockInfo, type DtoBlockPartition, type DtoMountPointData } from "../srat";
+import { DtoEventType, DtoMounDataFlag, type DtoBlockInfo, type DtoBlockPartition, type DtoMountPointData, type DtoSharedResource } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
 import List from "@mui/material/List";
 import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid2, Autocomplete, TextField, Input } from "@mui/material";
+import ShareIcon from '@mui/icons-material/Share';
 import AddIcon from '@mui/icons-material/Add';
 import EjectIcon from '@mui/icons-material/Eject';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -36,6 +37,7 @@ export function Volumes() {
     const [status, setStatus] = useState<DtoBlockInfo>({});
     const [selected, setSelected] = useState<DtoBlockPartition | undefined>(undefined);
     const confirm = useConfirm();
+    const [shares, setShares] = useState<DtoSharedResource[]>([]);
 
 
 
@@ -43,6 +45,13 @@ export function Volumes() {
         apiContext.volumes.volumesList().then((res) => {
             console.log("Got volumes", res.data)
             setStatus(res.data);
+
+            apiContext.shares.sharesList().then((shareRes) => {
+                console.log("Got shares", shareRes.data);
+                setShares(shareRes.data);
+            }).catch(shareErr => {
+                console.error("Error fetching shares:", shareErr);
+            });
         }).catch(err => {
             console.error(err);
             //setErrorInfo(JSON.stringify(err));
@@ -75,6 +84,23 @@ export function Volumes() {
             toast.error(`${err.response.data.code}:${err.response.data.message}`, { data: { error: err } });
             //setErrorInfo(JSON.stringify(err));
         })
+    }
+
+    function shareExists(mountPoint: string) {
+        //return shares.some(share => share.path === mountPoint);
+        return true;
+    }
+
+    function handleCreateShare(partition: DtoBlockPartition) {
+        //navigate(`/shares/create?path=${partition.mount_point}`);
+    }
+
+    function handleGoToShare(partition: DtoBlockPartition) {
+        const share = shares.find(share => share.mount_point_data?.path === partition.mount_point);
+        if (share) {
+            // Navigate to the specific share page
+            //navigate(`/shares/${share.name}`);
+        }
     }
 
     function onSubmitUmountVolume(data: DtoBlockPartition, force = false) {
@@ -116,27 +142,39 @@ export function Volumes() {
                             secondaryAction={!mode.read_only && <>
                                 {partition.mount_point === "" &&
                                     <Tooltip title="Mount disk">
-                                        <IconButton onClick={() => { setSelected(partition); setShowMount(true) }} edge="end" aria-label="delete">
+                                        <IconButton onClick={() => { setSelected(partition); setShowMount(true) }} edge="end" aria-label="mount">
                                             <FontAwesomeSvgIcon icon={faPlug} />
                                         </IconButton>
                                     </Tooltip>
                                 }
                                 {partition.mount_point !== "" && partition.mount_point?.startsWith("/mnt/") && <>
                                     <Tooltip title="Unmount disk">
-                                        <IconButton onClick={() => onSubmitUmountVolume(partition, false)} edge="end" aria-label="delete">
+                                        <IconButton onClick={() => onSubmitUmountVolume(partition, false)} edge="end" aria-label="unmount">
                                             <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
                                         </IconButton>
                                     </Tooltip>
                                     <Tooltip title="Force unmounting disk">
-
-                                        <IconButton onClick={() => onSubmitUmountVolume(partition, true)} edge="end" aria-label="delete">
+                                        <IconButton onClick={() => onSubmitUmountVolume(partition, true)} edge="end" aria-label="force unmount">
                                             <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
                                         </IconButton>
                                     </Tooltip>
+                                    {!shareExists(partition.mount_point) && (
+                                        <Tooltip title="Create Share">
+                                            <IconButton onClick={() => handleCreateShare(partition)} edge="end" aria-label="create share">
+                                                <AddIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    {shareExists(partition.mount_point) && (
+                                        <Tooltip title="Go to Share">
+                                            <IconButton onClick={() => handleGoToShare(partition)} edge="end" aria-label="go to share">
+                                                <ShareIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
                                 </>
                                 }
-                            </>
-                            }
+                            </>}
                         >
                             <ListItemAvatar>
                                 <Avatar>

@@ -1,6 +1,6 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { apiContext as api, ModeContext } from "../Contexts";
-import { DtoEventType, type Api, type DtoSharedResource, type DtoUser } from "../srat";
+//import { DtoEventType, type Api, type DtoSharedResource, type DtoUser } from "../srat";
 import { set, useForm } from "react-hook-form";
 import useSWR from "swr";
 import { InView } from "react-intersection-observer";
@@ -39,6 +39,10 @@ import BlockIcon from '@mui/icons-material/Block';
 import BackupIcon from '@mui/icons-material/Backup';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useSSE } from "react-hooks-sse";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../store/store";
+import { refresh } from "../store/shareSlice";
+import { DtoEventType, useGetSharesQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
 
 interface ShareEditProps extends DtoSharedResource {
     org_name: string,
@@ -47,7 +51,7 @@ interface ShareEditProps extends DtoSharedResource {
 
 export function Shares() {
     const mode = useContext(ModeContext);
-    const statusSSE = useSSE(DtoEventType.EventShare, {} as DtoSharedResource, {
+    const statusSSE = useSSE(DtoEventType.Share, {} as DtoSharedResource, {
         parser(input: any): DtoSharedResource {
             console.log("Got shares", input)
             const c = JSON.parse(input);
@@ -64,9 +68,14 @@ export function Shares() {
     const [errorInfo, setErrorInfo] = useState<string>('')
     const formRef = useRef<HTMLFormElement>(null);
     const confirm = useConfirm();
+    const { data, error, isLoading } = useGetSharesQuery();
+    const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
 
+    //const shares = useSelector((state: RootState) => state.shares.value);
+    //const dispatch = useDispatch()
 
     useEffect(() => {
+        /*
         api.shares.sharesList().then((res) => {
             console.log("Got shares", res.data)
             setStatus(res.data);
@@ -74,23 +83,25 @@ export function Shares() {
             console.error(err);
             //setErrorInfo(JSON.stringify(err));
         })
+        */
+        //dispatch(refresh());
     }, [])
 
-    function onSubmitDisableShare(data?: string) {
-        console.log("Delete", data)
-        if (!data) return
+    function onSubmitDisableShare(cdata?: string, props?: DtoSharedResource) {
+        console.log("Disable", cdata, props);
+        if (!cdata) return
         confirm({
-            title: `Delete ${data}?`,
-            description: "If you delete this share, all of their configurations will be deleted."
+            title: `Disable ${props?.name}?`,
+            description: "If you disable this share, all of its configurations will be retained."
         })
             .then(() => {
-                api.share.shareDelete(data).then((res) => {
-                    setSelected(null);
-                    //users.mutate();
-                }).catch(err => {
-                    console.error(err);
-                    //setErrorInfo(JSON.stringify(err));
-                })
+                updateShare({ shareName: props?.name || "", dtoSharedResource: { ...props, disabled: true } }).unwrap()
+                    .then(() => {
+                        setErrorInfo('');
+                    })
+                    .catch(err => {
+                        setErrorInfo(JSON.stringify(err));
+                    });
             })
             .catch(() => {
                 /* ... */
@@ -107,14 +118,17 @@ export function Shares() {
         // Save Data
         console.log(data);
         if (data.org_name === "") {
+            /*
             api.share.shareCreate(data).then((res) => {
                 setErrorInfo('')
                 setSelected(null);
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
             })
+            */
             return;
         } else {
+            /*
             api.share.shareUpdate(data.org_name, data).then((res) => {
                 setErrorInfo('')
                 //setSelectedUser(null);
@@ -122,6 +136,7 @@ export function Shares() {
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
             })
+            */
         }
         setShowEdit(false);
         return false;
@@ -184,7 +199,7 @@ export function Shares() {
         </Fab>}
         <br />
         <List dense={true}>
-            {Object.entries(status).map(([share, props]) =>
+            {data ? Object.entries(data).map(([share, props]) =>
                 <Fragment key={share}>
                     <ListItemButton>
                         <ListItem
@@ -213,7 +228,7 @@ export function Shares() {
                                 <Tooltip title={props.mount_point_data?.is_mounted ? "Cannot disable mounted share" : "Disable share"}>
                                     <span>
                                         <IconButton
-                                            onClick={() => onSubmitDisableShare(share)}
+                                            onClick={() => onSubmitDisableShare(share, props)}
                                             edge="end"
                                             aria-label="disable"
                                             disabled={props.mount_point_data?.is_mounted}
@@ -330,7 +345,7 @@ export function Shares() {
                     </ListItemButton>
                     <Divider component="li" />
                 </Fragment>
-            )}
+            ) : null}
         </List>
     </InView>
 }

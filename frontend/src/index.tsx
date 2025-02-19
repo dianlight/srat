@@ -16,6 +16,8 @@ import { StrictMode } from 'react';
 import { SSEProvider, type Listener, type Source } from 'react-hooks-sse';
 import { apiContext } from './Contexts.ts';
 import { DtoEventType } from './srat.ts';
+import { store } from './store/store.ts'
+import { Provider } from 'react-redux'
 
 const theme = createTheme({
     colorSchemes: {
@@ -82,12 +84,14 @@ root.render(
     <ErrorBoundaryContext>
         <ThemeProvider theme={theme} noSsr>
             <CssBaseline />
-            <ConfirmProvider>
-                <StrictMode>
-                    <SSEProvider source={() => new SSESource(apiContext.instance.getUri() + "/sse")}>
-                        <App />
-                    </SSEProvider>
-                </StrictMode>
-            </ConfirmProvider>
+            <Provider store={store}>
+                <ConfirmProvider>
+                    <StrictMode>
+                        <SSEProvider source={() => new SSESource(apiContext.instance.getUri() + "/sse")}>
+                            <App />
+                        </SSEProvider>
+                    </StrictMode>
+                </ConfirmProvider>
+            </Provider>
         </ThemeProvider>
     </ErrorBoundaryContext>)
