@@ -1,7 +1,6 @@
-import { useContext } from "react";
-import { ModeContext } from "../Contexts";
+import { useHealth } from "./healthHook";
 
 export function useReadOnly() {
-    const mode = useContext(ModeContext);
-    return mode.read_only || false;
+    const mode = useHealth();
+    return mode.health?.read_only || false;
 }

@@ -1,6 +1,5 @@
 import { DevTool } from "@hookform/devtools";
 import { useContext, useEffect, useRef } from "react";
-import { ModeContext } from "../Contexts";
 import { InView } from "react-intersection-observer";
 import Grid from "@mui/material/Grid2";
 import Button from "@mui/material/Button";

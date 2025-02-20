@@ -3,9 +3,11 @@ import { errorSlice } from './errorSlice'
 import { sratApi } from './sratApi'
 import { setupListeners } from '@reduxjs/toolkit/query'
 import { useDispatch, useSelector, useStore } from 'react-redux'
+import { dirtySlice } from './dirtySlice'
 
 export const store = configureStore({
     reducer: {
+        dirty: dirtySlice.reducer,
         errors: errorSlice.reducer,
         [sratApi.reducerPath]: sratApi.reducer,
     },

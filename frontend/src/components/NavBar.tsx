@@ -2,7 +2,7 @@ import logo from "../img/logo.png"
 import github from "../img/github.svg"
 import pkg from '../../package.json'
 import { useContext, useEffect, useState } from "react"
-import { DirtyDataContext, ModeContext } from "../Contexts"
+//import { DirtyDataContext, ModeContext } from "../Contexts"
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -33,6 +33,9 @@ import { Swagger } from "../pages/Swagger"
 import { NotificationCenter } from "./NotificationCenter"
 import { useSSE } from "react-hooks-sse"
 import { DtoEventType, usePutUpdateMutation, type DtoHealthPing, type DtoReleaseAsset } from "../store/sratApi"
+import { useHealth } from "../hooks/healthHook";
+import { useAppSelector } from "../store/store";
+import { useReadOnly } from "../hooks/readonlyHook";
 
 function a11yProps(index: number) {
     return {
@@ -96,7 +99,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null>, healthData: DtoHealthPing }) {
-    const healt = useContext(ModeContext);
+    const read_only = useReadOnly();
     //  const [sse, sseStatus] = useContext(SSEContext);
 
     //  const [updateAssetStatus, setUpdateAssetStatus] = useState<DtoReleaseAsset>({});
@@ -116,7 +119,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     const [value, setValue] = useState(() => {
         return Number.parseInt(localStorage.getItem("srat_tab") || "0");
     });
-    const dirty = useContext(DirtyDataContext);
+    const dirty = useAppSelector(state => state.dirty);
     const confirm = useConfirm();
     const [tabId, setTabId] = useState<string>(() => uuidv4())
     const theme = useTheme();
@@ -228,7 +231,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                         <Tab label="Shares" {...a11yProps(0)} icon={dirty.shares ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab href="#" label="Volumes" {...a11yProps(1)} icon={dirty.volumes ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab href="#" label="Users" {...a11yProps(2)} icon={dirty.users ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab href="#" label="Settings" {...a11yProps(3)} icon={dirty.settings ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab href="#" label="Settings" {...a11yProps(3)} icon={dirty.configs ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab label="smb.conf" {...a11yProps(4)} />
                         <Tab label="API Docs" {...a11yProps(4)} />
                     </Tabs>
@@ -247,7 +250,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                 </IconButton>
                             </>
                         }
-                        {healt.read_only &&
+                        {read_only &&
                             <IconButton>
                                 <Tooltip title="ReadOnly Mode" arrow>
                                     <PreviewIcon sx={{ color: 'white' }} />

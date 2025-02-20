@@ -1,28 +1,32 @@
 import { NavBar } from "./components/NavBar";
 import { Footer } from "./components/Footer";
 import { useContext, useEffect, useRef, useState } from "react";
-import { DirtyDataContext, ModeContext } from "./Contexts";
+//import { DirtyDataContext, ModeContext } from "./Contexts";
 import { useErrorBoundary } from "react-use-error-boundary";
 import Container from "@mui/material/Container";
 import { Backdrop, CircularProgress, Typography } from "@mui/material";
 import { useSSE, SSEProvider } from 'react-hooks-sse';
 import { DtoEventType, type DtoDataDirtyTracker, type DtoHealthPing } from "./store/sratApi";
+import { useHealth } from "./hooks/healthHook";
 
 
 export function App() {
     //const [status, setStatus] = useState<DtoHealthPing>({ alive: false, read_only: true });
-    const [dirtyData, setDirtyData] = useState<DtoDataDirtyTracker>({});
+    //    const [dirtyData, setDirtyData] = useState<DtoDataDirtyTracker>({});
     const [errorInfo, setErrorInfo] = useState<string>('')
     const [error, resetError] = useErrorBoundary(
         (error, errorInfo) => console.error(error, errorInfo)
     );
     const mainArea = useRef<HTMLDivElement>(null);
+    /*
     const status = useSSE(DtoEventType.Heartbeat, { alive: false, read_only: true }, {
         parser(input: any): DtoHealthPing {
             console.log("Got heartbeat", input)
             return JSON.parse(input);
         },
     });
+    */
+    const { health: status, isLoading, error: herror } = useHealth();
     //const [sseEventSource, sseStatus] = useEventSource(apiContext.instance.getUri() + "/sse", true)
 
     var timeoutpid: ReturnType<typeof setTimeout>
@@ -90,26 +94,29 @@ export function App() {
             [sseStatus],
         );
     */
-    if (error) {
+    if (error || herror) {
         setTimeout(() => { resetError() }, 5000);
         return <Typography> Connecting to the server... </Typography>
     }
 
     return (
-        <ModeContext.Provider value={status}>
-            <DirtyDataContext.Provider value={dirtyData}>
-
-                <Container maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
-                    <NavBar healthData={status} error={errorInfo} bodyRef={mainArea} />
-                    <div ref={mainArea} className="fullBody"></div>
-                    <Footer healthData={status} />
-                </Container>
-                <Backdrop
-                    sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
-                    open={status.alive === false}
-                >
-                    <CircularProgress color="inherit" />
-                </Backdrop>
+        /*     <ModeContext.Provider value={status}>
+                 <DirtyDataContext.Provider value={dirtyData}>*/
+        <>
+            <Container maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
+                <NavBar healthData={status} error={errorInfo} bodyRef={mainArea} />
+                <div ref={mainArea} className="fullBody"></div>
+                <Footer healthData={status} />
+            </Container>
+            <Backdrop
+                sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
+                open={status.alive === false || isLoading}
+                content={isLoading ? 'Loading...' : 'Server is not reachable'}
+            >
+                <CircularProgress color="inherit" />
+            </Backdrop>
+        </>
+        /*
             </DirtyDataContext.Provider>
-        </ModeContext.Provider>)
+        </ModeContext.Provider>*/)
 }

@@ -1,5 +1,4 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { ModeContext } from "../Contexts";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { Fab, List, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Dialog, DialogTitle, Stack, DialogContent, DialogContentText, Grid2 as Grid, DialogActions, Button } from "@mui/material";
 import { InView } from "react-intersection-observer";

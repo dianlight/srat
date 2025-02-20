@@ -18,6 +18,7 @@ import { SSEProvider, type Listener, type Source } from 'react-hooks-sse';
 import { store } from './store/store.ts'
 import { Provider } from 'react-redux'
 import { DtoEventType } from './store/sratApi.ts';
+import { apiUrl } from './store/emptyApi.ts';
 
 const theme = createTheme({
     colorSchemes: {
@@ -87,7 +88,7 @@ root.render(
             <Provider store={store}>
                 <ConfirmProvider>
                     <StrictMode>
-                        <SSEProvider source={() => new SSESource(/*apiContext.instance.getUri() +*/ "/sse")}>
+                        <SSEProvider source={() => new SSESource(apiUrl + "sse")}>
                             <App />
                         </SSEProvider>
                     </StrictMode>

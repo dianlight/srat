@@ -50,7 +50,7 @@ func NewHealthHandler(ctx context.Context, apictx *ContextState, broadcaster ser
 
 func (broker *HealthHanler) Patterns() []server.RouteDetail {
 	return []server.RouteDetail{
-		{Pattern: "/healt", Method: "GET", Handler: broker.HealthCheckHandler},
+		{Pattern: "/health", Method: "GET", Handler: broker.HealthCheckHandler},
 	}
 }
 

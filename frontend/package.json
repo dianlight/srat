@@ -23,8 +23,7 @@
     "@types/react-dom": "^19.0.3",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/semver": "^7.5.8",
-    "@types/swagger-ui-react": "^4.19.0",
-    "swagger-typescript-api": "^13.0.23"
+    "@types/swagger-ui-react": "^4.19.0"
   },
   "peerDependencies": {
     "typescript": "^5.7.3"
@@ -40,7 +39,6 @@
     "@mui/icons-material": "^6.4.4",
     "@mui/material": "^6.4.4",
     "@reduxjs/toolkit": "^2.5.1",
-    "axios": "^1.7.9",
     "filesize": "^10.1.6",
     "material-ui-confirm": "^3.0.18",
     "mui-chips-input": "^4.0.1",
@@ -67,7 +65,6 @@
     "clean": "rm -rf out",
     "dev": "bun --hot run bun.build.ts -w -s ./out",
     "dev:remote": "bun --hot run bun.build.ts -w -s ./out -c http://192.168.0.250:3000/",
-    "swagger": "sta -p ../backend/src/docs/swagger.json -o ./src -n srat.ts --axios",
     "gen": "bunx @rtk-query/codegen-openapi api.config.json"
   },
   "patchedDependencies": {
