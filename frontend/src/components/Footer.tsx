@@ -6,16 +6,26 @@ import pkg from '../../package.json';
 import { getGitCommitHash } from '../macro/getGitCommitHash.ts' with { type: 'macro' };
 import Stack from "@mui/material/Stack";
 import { AppBar, Link, Toolbar, Tooltip } from "@mui/material";
-import type { DtoHealthPing, DtoSambaProcessStatus } from "../srat.ts";
-import useSWR from "swr";
 import { useContext } from "react";
-import { apiContext } from "../Contexts.ts";
+import { usePutRestartMutation, type DtoHealthPing } from "../store/sratApi.ts";
+//import { apiContext } from "../Contexts.ts";
 
 
 export function Footer(props: { healthData: DtoHealthPing }) {
 
+    const [restart, { isLoading }] = usePutRestartMutation();
+
     //const samba = useSWR<DtoSambaProcessStatus>('/samba/status', () => apiContext.samba.statusList().then(res => res.data));
 
+    const handleRestart = () => {
+        if (!isLoading) {
+            restart().unwrap().then(() => {
+                console.log("Server restarted successfully");
+            }).catch((error) => {
+                console.error("Failed to restart the server:", error);
+            });
+        }
+    };
 
     return (
         <Paper sx={{
@@ -51,7 +61,7 @@ export function Footer(props: { healthData: DtoHealthPing }) {
                     </Tooltip>
 
                     <Tooltip title="Restart the server" arrow>
-                        <Typography onClick={() => apiContext.restart.restartUpdate()} variant="caption">[R]</Typography>
+                        <Typography onClick={() => handleRestart()} variant="caption">[R]</Typography>
                     </Tooltip>
 
                 </Stack>

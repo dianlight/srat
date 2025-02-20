@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { apiContext, ModeContext } from "../Contexts";
+import { ModeContext } from "../Contexts";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
@@ -16,12 +16,11 @@ import { faHardDrive, faPlug, faPlugCircleCheck, faPlugCircleXmark, faPlugCircle
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
 import { Api, DiscFull } from "@mui/icons-material";
 import { AutocompleteElement, Controller, PasswordElement, PasswordRepeatElement, TextFieldElement, useForm } from "react-hook-form-mui";
-import useSWR from "swr";
 import { toast } from "react-toastify";
 import { useSSE } from "react-hooks-sse";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
-import { DtoMounDataFlag, useDeleteVolumeByIdMountMutation, usePostVolumeByIdMountMutation, type DtoBlockPartition, type DtoMountPointData } from "../store/sratApi";
+import { DtoMounDataFlag, useDeleteVolumeByIdMountMutation, useGetFilesystemsQuery, usePostVolumeByIdMountMutation, type DtoBlockPartition, type DtoMountPointData } from "../store/sratApi";
 
 
 export function Volumes() {
@@ -186,7 +185,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
             },
         },
     );
-    const filesystems = useSWR<string[]>('/filesystems', () => apiContext.filesystems.filesystemsList().then(res => res.data));
+    const { data: filesystems, isLoading, error } = useGetFilesystemsQuery()
 
     function handleCloseSubmit(data?: MountPointData) {
         if (data) {
@@ -220,7 +219,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                                 <Grid2 size={6}>
                                     <AutocompleteElement name="fstype" label="File System Type"
                                         required control={control}
-                                        options={filesystems.data || []}
+                                        options={filesystems || []}
                                     />
                                 </Grid2>
                                 <Grid2 size={6}>

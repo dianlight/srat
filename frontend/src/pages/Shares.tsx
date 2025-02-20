@@ -1,7 +1,6 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { apiContext as api, ModeContext } from "../Contexts";
+import { ModeContext } from "../Contexts";
 import { set, useForm } from "react-hook-form";
-import useSWR from "swr";
 import { InView } from "react-intersection-observer";
 import Grid from "@mui/material/Grid2";
 import List from "@mui/material/List";
@@ -40,7 +39,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useSSE } from "react-hooks-sse";
 import { useDispatch, useSelector } from "react-redux";
 import { useAppDispatch, useAppSelector, type RootState } from "../store/store";
-import { DtoEventType, useGetSharesQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
+import { DtoEventType, useGetSharesQuery, useGetUseradminQuery, useGetUsersQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { addMessage } from "../store/errorSlice";
@@ -357,8 +356,8 @@ export function Shares() {
 }
 
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
-    const admin = useSWR<DtoUser>('/admin/user', () => api.useradmin.useradminList().then(res => res.data));
-    const users = useSWR<DtoUser[]>('/users', () => api.users.usersList().then(res => res.data));
+    const { data: admin } = useGetUseradminQuery();
+    const { data: users } = useGetUsersQuery()
     const [editName, setEditName] = useState(false);
     const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditProps>(
         {
@@ -437,7 +436,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                         name="users"
                                         label="Read and Write users"
                                         options={
-                                            (users.data?.map(user => ({ id: user.username, label: user.username })) || []).concat({ id: admin.data?.username, label: admin.data?.username })
+                                            (users?.map(user => ({ id: user.username, label: user.username })) || []).concat({ id: admin?.username, label: admin?.username })
                                         }
                                         control={control}
                                         multiple
@@ -448,7 +447,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                         name="ro_users"
                                         label="ReadOnly users"
                                         options={
-                                            (users.data?.map(user => ({ id: user.username, label: user.username })) || []).concat({ id: admin.data?.username, label: admin.data?.username })
+                                            (users?.map(user => ({ id: user.username, label: user.username })) || []).concat({ id: admin?.username, label: admin?.username })
                                         }
                                         control={control}
                                         multiple

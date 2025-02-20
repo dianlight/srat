@@ -1,12 +1,12 @@
 import { NavBar } from "./components/NavBar";
 import { Footer } from "./components/Footer";
 import { useContext, useEffect, useRef, useState } from "react";
-import { apiContext, DirtyDataContext, ModeContext } from "./Contexts";
-import { DtoEventType, type DtoDataDirtyTracker, type DtoHealthPing } from "./srat";
+import { DirtyDataContext, ModeContext } from "./Contexts";
 import { useErrorBoundary } from "react-use-error-boundary";
 import Container from "@mui/material/Container";
 import { Backdrop, CircularProgress, Typography } from "@mui/material";
 import { useSSE, SSEProvider } from 'react-hooks-sse';
+import { DtoEventType, type DtoDataDirtyTracker, type DtoHealthPing } from "./store/sratApi";
 
 
 export function App() {
@@ -17,7 +17,7 @@ export function App() {
         (error, errorInfo) => console.error(error, errorInfo)
     );
     const mainArea = useRef<HTMLDivElement>(null);
-    const status = useSSE(DtoEventType.EventHeartbeat, { alive: false, read_only: true }, {
+    const status = useSSE(DtoEventType.Heartbeat, { alive: false, read_only: true }, {
         parser(input: any): DtoHealthPing {
             console.log("Got heartbeat", input)
             return JSON.parse(input);

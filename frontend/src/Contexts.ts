@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import { Api, type DtoDataDirtyTracker, type DtoHealthPing } from './srat';
+import type { DtoDataDirtyTracker, DtoHealthPing } from './store/sratApi';
 
 
 let APIURL = process.env.APIURL;
@@ -8,11 +8,12 @@ if (process.env.APIURL === "dynamic") {
     console.info(`Dynamic not APIURL provided, using generated: ${APIURL}/`)
 
 }
-
+/*
 export const apiContext = new Api({
     baseURL: APIURL
 
 });
+*/
 //const wsUrl = new URL(APIURL || "")
 //wsUrl.protocol = window.location.protocol === 'https:' ? "wss:" : "ws:"
 //wsUrl.pathname += "ws"

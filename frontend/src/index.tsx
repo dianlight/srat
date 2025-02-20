@@ -14,10 +14,10 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { ConfirmProvider } from "material-ui-confirm";
 import { StrictMode } from 'react';
 import { SSEProvider, type Listener, type Source } from 'react-hooks-sse';
-import { apiContext } from './Contexts.ts';
-import { DtoEventType } from './srat.ts';
+//import { apiContext } from './Contexts.ts';
 import { store } from './store/store.ts'
 import { Provider } from 'react-redux'
+import { DtoEventType } from './store/sratApi.ts';
 
 const theme = createTheme({
     colorSchemes: {
@@ -61,7 +61,7 @@ class SSESource implements Source {
     }
 
     addEventListener(name: string, listener: Listener): void {
-        if (name === DtoEventType.EventHeartbeat) {
+        if (name === DtoEventType.Heartbeat) {
             this.heartbeatListener.push(listener);
         }
         if (!this.listeners.has(name)) {
@@ -87,7 +87,7 @@ root.render(
             <Provider store={store}>
                 <ConfirmProvider>
                     <StrictMode>
-                        <SSEProvider source={() => new SSESource(apiContext.instance.getUri() + "/sse")}>
+                        <SSEProvider source={() => new SSESource(/*apiContext.instance.getUri() +*/ "/sse")}>
                             <App />
                         </SSEProvider>
                     </StrictMode>

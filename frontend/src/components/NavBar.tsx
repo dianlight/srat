@@ -2,8 +2,7 @@ import logo from "../img/logo.png"
 import github from "../img/github.svg"
 import pkg from '../../package.json'
 import { useContext, useEffect, useState } from "react"
-import { apiContext as api, DirtyDataContext, ModeContext } from "../Contexts"
-import { DtoEventType, type DtoHealthPing, type DtoReleaseAsset } from "../srat"
+import { DirtyDataContext, ModeContext } from "../Contexts"
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -33,6 +32,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
 import { NotificationCenter } from "./NotificationCenter"
 import { useSSE } from "react-hooks-sse"
+import { DtoEventType, usePutUpdateMutation, type DtoHealthPing, type DtoReleaseAsset } from "../store/sratApi"
 
 function a11yProps(index: number) {
     return {
@@ -101,12 +101,14 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
     //  const [updateAssetStatus, setUpdateAssetStatus] = useState<DtoReleaseAsset>({});
 
-    const updateAssetStatus = useSSE(DtoEventType.EventUpdate, {} as DtoReleaseAsset, {
+    const updateAssetStatus = useSSE(DtoEventType.Update, {} as DtoReleaseAsset, {
         parser(input: any): DtoReleaseAsset {
             console.log("Got version", input)
             return JSON.parse(input);
         },
     });
+
+    const [doUpdate] = usePutUpdateMutation();
 
 
     const { mode, setMode } = useColorScheme();
@@ -137,7 +139,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             description: "If you proceed the new version is downloaded and installed."
         })
             .then(() => {
-                api.update.updateUpdate().then((res) => {
+                doUpdate().unwrap().then((res) => {
                     //users.mutate();
                 }).catch(err => {
                     console.error(err);
