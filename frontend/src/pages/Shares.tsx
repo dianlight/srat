@@ -1,6 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { apiContext as api, ModeContext } from "../Contexts";
-//import { DtoEventType, type Api, type DtoSharedResource, type DtoUser } from "../srat";
 import { set, useForm } from "react-hook-form";
 import useSWR from "swr";
 import { InView } from "react-intersection-observer";
@@ -40,10 +39,11 @@ import BackupIcon from '@mui/icons-material/Backup';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useSSE } from "react-hooks-sse";
 import { useDispatch, useSelector } from "react-redux";
-import type { RootState } from "../store/store";
-import { refresh } from "../store/shareSlice";
+import { useAppDispatch, useAppSelector, type RootState } from "../store/store";
 import { DtoEventType, useGetSharesQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
+import { useReadOnly } from "../hooks/readonlyHook";
+import { addMessage } from "../store/errorSlice";
 
 interface ShareEditProps extends DtoSharedResource {
     org_name: string,
@@ -51,45 +51,17 @@ interface ShareEditProps extends DtoSharedResource {
 
 
 export function Shares() {
-    const mode = useContext(ModeContext);
-    /*
-    const statusSSE = useSSE(DtoEventType.Share, {} as DtoSharedResource, {
-        parser(input: any): DtoSharedResource {
-            console.log("Got shares", input)
-            const c = JSON.parse(input);
-            setStatus(c)
-            return c;
-        },
-    });
-    */
-
-    //const [status, setStatus] = useState<DtoSharedResource[]>([]);
+    const read_only = useReadOnly();
+    const dispatch = useAppDispatch();
+    const errors = useAppSelector((state) => state.errors.messages);
     const { shares, isLoading, error } = useShare();
     const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
     const [showUserEdit, setShowUserEdit] = useState<boolean>(false);
-    const [errorInfo, setErrorInfo] = useState<string>('')
     const formRef = useRef<HTMLFormElement>(null);
     const confirm = useConfirm();
-    //    const { data, error, isLoading } = useGetSharesQuery();
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
-
-    //const shares = useSelector((state: RootState) => state.shares.value);
-    //const dispatch = useDispatch()
-
-    useEffect(() => {
-        /*
-        api.shares.sharesList().then((res) => {
-            console.log("Got shares", res.data)
-            setStatus(res.data);
-        }).catch(err => {
-            console.error(err);
-            //setErrorInfo(JSON.stringify(err));
-        })
-        */
-        //dispatch(refresh());
-    }, [])
 
     function onSubmitDisableShare(cdata?: string, props?: DtoSharedResource) {
         console.log("Disable", cdata, props);
@@ -101,14 +73,14 @@ export function Shares() {
             .then(() => {
                 updateShare({ shareName: props?.name || "", dtoSharedResource: { ...props, disabled: true } }).unwrap()
                     .then(() => {
-                        setErrorInfo('');
+                        //                        setErrorInfo('');
                     })
                     .catch(err => {
-                        setErrorInfo(JSON.stringify(err));
+                        dispatch(addMessage(JSON.stringify(err)));
                     });
             })
-            .catch(() => {
-                /* ... */
+            .catch((err) => {
+                dispatch(addMessage(JSON.stringify(err)));
             });
     }
 
@@ -116,17 +88,17 @@ export function Shares() {
         console.log("Enable", cdata, props);
         updateShare({ shareName: props?.name || "", dtoSharedResource: { ...props, disabled: false } }).unwrap()
             .then(() => {
-                setErrorInfo('');
+                //            setErrorInfo('');
             })
             .catch(err => {
-                setErrorInfo(JSON.stringify(err));
+                dispatch(addMessage(JSON.stringify(err)));
             });
     }
 
     function onSubmitEditShare(data?: ShareEditProps) {
         if (!data) return;
         if (!data.name || !data.mount_point_data?.path) {
-            setErrorInfo('Unable to update share!');
+            dispatch(addMessage("Unable to open share!"));
             return;
         }
 
@@ -202,7 +174,7 @@ export function Shares() {
     return <InView>
         <PreviewDialog title={selected ? selected[0] : ""} objectToDisplay={selected?.[1]} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
         <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[0] || "" }} open={showEdit} onClose={(data) => { setSelected(null); onSubmitEditShare(data); setShowEdit(false) }} />
-        {mode.read_only || <Fab color="primary" aria-label="add" sx={{
+        {read_only || <Fab color="primary" aria-label="add" sx={{
             float: 'right',
             top: '-20px',
             margin: '-8px'
@@ -223,7 +195,7 @@ export function Shares() {
                         },
                     }}>
                         <ListItem
-                            secondaryAction={!mode.read_only && <>
+                            secondaryAction={!read_only && <>
                                 <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
                                     <SettingsIcon />
                                 </IconButton>
