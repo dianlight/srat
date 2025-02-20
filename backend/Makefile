@@ -17,7 +17,7 @@ PREREQUISITE: docs static
 build: $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
-	mkdir dist || : 
+	mkdir dist || :  2>/dev/null
 	cd $(SRC_DIRS);CGO_ENABLED=0 $(AARGS) go build -ldflags="-s -w -X main.SRATVersion=$(VERSION)" -o ../$(@)$(SUFFIX)
 
 .PHONY: format

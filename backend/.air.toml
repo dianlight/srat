@@ -13,10 +13,9 @@ args_bin = [
   "-port",
   "8080",
 ]
-bin = "./dist/srat"
-_cmd = "go build -o ./tmp/srat ."
-_pre_cmd = ["mkdir -p ./src/static", "touch ./src/static/nodelete.tmp"]
-cmd = "make build"
+bin = "./tmp/srat"
+cmd = "CGO_ENABLED=0 go build -C src -ldflags=\"-s -w -X main.SRATVersion=\\\"TEST_AIR_INTERNAL\\\"\" -o ../tmp/srat"
+pre_cmd = []
 delay = 1000
 exclude_dir = ["assets", "tmp", "vendor", "testdata"]
 exclude_file = []
@@ -32,7 +31,6 @@ log = "build-errors.log"
 poll = false
 poll_interval = 0
 post_cmd = []
-pre_cmd = []
 rerun = false
 rerun_delay = 500
 send_interrupt = true
