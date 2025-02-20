@@ -1,11 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit'
-import { sharesSlice } from './shareSlice'
+import { errorSlice } from './errorSlice'
 import { sratApi } from './sratApi'
 import { setupListeners } from '@reduxjs/toolkit/query'
+import { useDispatch, useSelector, useStore } from 'react-redux'
 
 export const store = configureStore({
     reducer: {
-        shares: sharesSlice.reducer,
+        errors: errorSlice.reducer,
         [sratApi.reducerPath]: sratApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
@@ -16,5 +17,10 @@ setupListeners(store.dispatch)
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>
-// Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
+// Inferred type: {errors: ErrorsState, posts: PostsState, comments: CommentsState, users: UsersState}
 export type AppDispatch = typeof store.dispatch
+
+// Use throughout your app instead of plain `useDispatch` and `useSelector`
+export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+export const useAppSelector = useSelector.withTypes<RootState>();
+//export const useAppStore = useStore.withTypes<store>();
