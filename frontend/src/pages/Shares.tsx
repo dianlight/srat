@@ -186,7 +186,7 @@ export function Shares() {
         </Fab>}
         <br />
         <List dense={true}>
-            {shares ? Object.entries(shares).map(([share, props]) =>
+            {shares ? Object.entries(shares).sort((a, b) => a[1].name!.localeCompare(b[1].name || "")).map(([share, props]) =>
                 <Fragment key={share}>
                     <ListItemButton sx={{
                         opacity: props.disabled ? 0.5 : 1,
