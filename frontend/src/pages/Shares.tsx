@@ -43,6 +43,7 @@ import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../store/store";
 import { refresh } from "../store/shareSlice";
 import { DtoEventType, useGetSharesQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
+import { useShare } from "../hooks/shareHook";
 
 interface ShareEditProps extends DtoSharedResource {
     org_name: string,
@@ -51,6 +52,7 @@ interface ShareEditProps extends DtoSharedResource {
 
 export function Shares() {
     const mode = useContext(ModeContext);
+    /*
     const statusSSE = useSSE(DtoEventType.Share, {} as DtoSharedResource, {
         parser(input: any): DtoSharedResource {
             console.log("Got shares", input)
@@ -59,8 +61,10 @@ export function Shares() {
             return c;
         },
     });
+    */
 
-    const [status, setStatus] = useState<DtoSharedResource[]>([]);
+    //const [status, setStatus] = useState<DtoSharedResource[]>([]);
+    const { shares, isLoading, error } = useShare();
     const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
@@ -68,7 +72,7 @@ export function Shares() {
     const [errorInfo, setErrorInfo] = useState<string>('')
     const formRef = useRef<HTMLFormElement>(null);
     const confirm = useConfirm();
-    const { data, error, isLoading } = useGetSharesQuery();
+    //    const { data, error, isLoading } = useGetSharesQuery();
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
 
     //const shares = useSelector((state: RootState) => state.shares.value);
@@ -105,6 +109,17 @@ export function Shares() {
             })
             .catch(() => {
                 /* ... */
+            });
+    }
+
+    function onSubmitEnableShare(cdata?: string, props?: DtoSharedResource) {
+        console.log("Enable", cdata, props);
+        updateShare({ shareName: props?.name || "", dtoSharedResource: { ...props, disabled: false } }).unwrap()
+            .then(() => {
+                setErrorInfo('');
+            })
+            .catch(err => {
+                setErrorInfo(JSON.stringify(err));
             });
     }
 
@@ -199,9 +214,14 @@ export function Shares() {
         </Fab>}
         <br />
         <List dense={true}>
-            {data ? Object.entries(data).map(([share, props]) =>
+            {shares ? Object.entries(shares).map(([share, props]) =>
                 <Fragment key={share}>
-                    <ListItemButton>
+                    <ListItemButton sx={{
+                        opacity: props.disabled ? 0.5 : 1,
+                        '&:hover': {
+                            opacity: 1,
+                        },
+                    }}>
                         <ListItem
                             secondaryAction={!mode.read_only && <>
                                 <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
@@ -225,18 +245,32 @@ export function Shares() {
                                         </Tooltip>
                                     </IconButton>
                                 )}
-                                <Tooltip title={props.mount_point_data?.is_mounted ? "Cannot disable mounted share" : "Disable share"}>
-                                    <span>
-                                        <IconButton
-                                            onClick={() => onSubmitDisableShare(share, props)}
-                                            edge="end"
-                                            aria-label="disable"
-                                            disabled={props.mount_point_data?.is_mounted}
-                                        >
-                                            <BlockIcon />
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
+                                {props.disabled ? (
+                                    <Tooltip title="Enable share">
+                                        <span>
+                                            <IconButton
+                                                onClick={() => onSubmitEnableShare(share, props)}
+                                                edge="end"
+                                                aria-label="disable"
+                                            >
+                                                <CheckCircleIcon />
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                ) : (
+                                    <Tooltip title="Disable share">
+                                        <span>
+                                            <IconButton
+                                                onClick={() => onSubmitDisableShare(share, props)}
+                                                edge="end"
+                                                aria-label="disable"
+                                                disabled={props.mount_point_data?.is_mounted}
+                                            >
+                                                <BlockIcon />
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                )}
                             </>
                             }
                         >
