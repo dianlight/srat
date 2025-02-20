@@ -1,6 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { apiContext, ModeContext } from "../Contexts";
-import { DtoEventType, DtoMounDataFlag, type DtoBlockInfo, type DtoBlockPartition, type DtoMountPointData, type DtoSharedResource } from "../srat";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
@@ -20,52 +19,23 @@ import { AutocompleteElement, Controller, PasswordElement, PasswordRepeatElement
 import useSWR from "swr";
 import { toast } from "react-toastify";
 import { useSSE } from "react-hooks-sse";
+import { useVolume } from "../hooks/volumeHook";
+import { useReadOnly } from "../hooks/readonlyHook";
+import { DtoMounDataFlag, useDeleteVolumeByIdMountMutation, usePostVolumeByIdMountMutation, type DtoBlockPartition, type DtoMountPointData } from "../store/sratApi";
 
 
 export function Volumes() {
-    const mode = useContext(ModeContext);
+    const read_only = useReadOnly();
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showMount, setShowMount] = useState<boolean>(false);
-    const statusSSE = useSSE(DtoEventType.EventVolumes, {} as DtoBlockInfo, {
-        parser(input: any): DtoBlockInfo {
-            console.log("Got volumes", input)
-            const c = JSON.parse(input);
-            setStatus(c)
-            return c;
-        },
-    });
-    const [status, setStatus] = useState<DtoBlockInfo>({});
+
+    const { volumes, isLoading, error } = useVolume();
     const [selected, setSelected] = useState<DtoBlockPartition | undefined>(undefined);
     const confirm = useConfirm();
-    const [shares, setShares] = useState<DtoSharedResource[]>([]);
+    const [mountVolume, mountVolumeResult] = usePostVolumeByIdMountMutation();
+    const [umountVolume, umountVolumeResult] = useDeleteVolumeByIdMountMutation();
 
 
-
-    useEffect(() => {
-        apiContext.volumes.volumesList().then((res) => {
-            console.log("Got volumes", res.data)
-            setStatus(res.data);
-
-            apiContext.shares.sharesList().then((shareRes) => {
-                console.log("Got shares", shareRes.data);
-                setShares(shareRes.data);
-            }).catch(shareErr => {
-                console.error("Error fetching shares:", shareErr);
-            });
-        }).catch(err => {
-            console.error(err);
-            //setErrorInfo(JSON.stringify(err));
-        })
-        /*
-        const vol = ws.subscribe<DtoBlockInfo>(DtoEventType.EventVolumes, (data) => {
-            console.log("Got volumes", data)
-            setStatus(data);
-        })
-        return () => {
-            ws.unsubscribe(vol);
-        };
-        */
-    }, [])
 
     function decodeEscapeSequence(source: string) {
         return source.replace(/\\x([0-9A-Fa-f]{2})/g, function () {
@@ -76,13 +46,12 @@ export function Volumes() {
     function onSubmitMountVolume(data?: DtoMountPointData) {
         console.log("Mount", data)
         if (!data || !data.id) return
-        apiContext.volume.mountCreate(data.id, data).then((res) => {
-            toast.info(`Volume ${res.data.path} mounted successfully.`);
+        mountVolume({ id: data.id, dtoMountPointData: data }).unwrap().then((res) => {
+            toast.info(`Volume ${res.path} mounted successfully.`);
             setSelected(undefined);
         }).catch(err => {
-            console.error("Error:", err, err.response);
-            toast.error(`${err.response.data.code}:${err.response.data.message}`, { data: { error: err } });
-            //setErrorInfo(JSON.stringify(err));
+            console.error("Error:", err, err.data);
+            toast.error(`${err.data.code}:${err.data.message}`, { data: { error: err } });
         })
     }
 
@@ -96,11 +65,6 @@ export function Volumes() {
     }
 
     function handleGoToShare(partition: DtoBlockPartition) {
-        const share = shares.find(share => share.mount_point_data?.path === partition.mount_point);
-        if (share) {
-            // Navigate to the specific share page
-            //navigate(`/shares/${share.name}`);
-        }
     }
 
     function onSubmitUmountVolume(data: DtoBlockPartition, force = false) {
@@ -111,15 +75,16 @@ export function Volumes() {
         })
             .then(() => {
                 if (!data.mount_point_data?.id) return
-                apiContext.volume.mountDelete(data.mount_point_data?.id, {
-                    force,
-                    lazy: !force,
-                }).then((res) => {
+                umountVolume({
+                    id: data.mount_point_data?.id,
+                    force: force,
+                    lazy: true,
+                }).unwrap().then((res) => {
                     setSelected(undefined);
-                    toast.info(`Volume ${data.label} umounted successfully.`);
+                    toast.info(`Volume ${data.label} unmounted successfully.`);
                 }).catch(err => {
                     console.error(err);
-                    toast.error(`Erroe umountig ${data.label}: ${err}`, { data: { error: err } });
+                    toast.error(`Error unmounting ${data.label}: ${err}`, { data: { error: err } });
                     //setErrorInfo(JSON.stringify(err));
                 })
             })
@@ -135,11 +100,11 @@ export function Volumes() {
         <br />
         <List dense={true}>
             <Divider />
-            {status.partitions?.map((partition, idx) =>
+            {volumes.partitions?.map((partition, idx) =>
                 <Fragment key={idx}>
                     <ListItemButton key={idx}>
                         <ListItem
-                            secondaryAction={!mode.read_only && <>
+                            secondaryAction={!read_only && <>
                                 {partition.mount_point === "" &&
                                     <Tooltip title="Mount disk">
                                         <IconButton onClick={() => { setSelected(partition); setShowMount(true) }} edge="end" aria-label="mount">
