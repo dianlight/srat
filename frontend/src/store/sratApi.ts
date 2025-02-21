@@ -215,7 +215,7 @@ export type GetSseApiResponse = unknown;
 export type GetSseApiArg = void;
 export type GetSseEventsApiResponse = /** status 200 OK */ DtoEventType[];
 export type GetSseEventsApiArg = void;
-export type PutUpdateApiResponse = /** status 200 OK */ DtoReleaseAsset;
+export type PutUpdateApiResponse = /** status 200 OK */ DtoUpdateProgress;
 export type PutUpdateApiArg = void;
 export type PostUserApiResponse = /** status 201 Created */ DtoUser;
 export type PostUserApiArg = {
@@ -291,6 +291,15 @@ export type DtoDataDirtyTracker = {
   users?: boolean;
   volumes?: boolean;
 };
+export type DtoBinaryAsset = {
+  id?: number;
+  size?: number;
+};
+export type DtoReleaseAsset = {
+  arch_asset?: DtoBinaryAsset;
+  /** ProgressStatus int8        `json:"update_status"` */
+  last_release?: string;
+};
 export type DtoSambaProcessStatus = {
   connections?: number;
   cpu_percent?: number;
@@ -307,6 +316,7 @@ export type DtoHealthPing = {
   aliveTime?: string;
   dirty_tracking?: DtoDataDirtyTracker;
   last_error?: string;
+  last_release?: DtoReleaseAsset;
   read_only?: boolean;
   samba_process_status?: DtoSambaProcessStatus;
 };
@@ -372,250 +382,9 @@ export type DtoSharedResource = {
   usage?: DtoHAMountUsage;
   users?: DtoUser[];
 };
-export type GithubTimestamp = {
-  "time.Time"?: string;
-};
-export type GithubPlan = {
-  collaborators?: number;
-  filled_seats?: number;
-  name?: string;
-  private_repos?: number;
-  seats?: number;
-  space?: number;
-};
-export type GithubOrganization = {
-  /** AdvancedSecurityAuditLogEnabled toggles whether the advanced security audit log is enabled. */
-  advanced_security_enabled_for_new_repositories?: boolean;
-  avatar_url?: string;
-  billing_email?: string;
-  blog?: string;
-  collaborators?: number;
-  company?: string;
-  created_at?: GithubTimestamp;
-  /** DefaultRepoPermission can be one of: "read", "write", "admin", or "none". (Default: "read").
-    It is only used in OrganizationsService.Edit. */
-  default_repository_permission?: string;
-  /** DefaultRepoSettings can be one of: "read", "write", "admin", or "none". (Default: "read").
-    It is only used in OrganizationsService.Get. */
-  default_repository_settings?: string;
-  /** DependabotAlertsEnabled toggles whether dependabot alerts are enabled. */
-  dependabot_alerts_enabled_for_new_repositories?: boolean;
-  /** DependabotSecurityUpdatesEnabled toggles whether dependabot security updates are enabled. */
-  dependabot_security_updates_enabled_for_new_repositories?: boolean;
-  /** DependabotGraphEnabledForNewRepos toggles whether dependabot graph is enabled on new repositories. */
-  dependency_graph_enabled_for_new_repositories?: boolean;
-  description?: string;
-  disk_usage?: number;
-  email?: string;
-  events_url?: string;
-  followers?: number;
-  following?: number;
-  has_organization_projects?: boolean;
-  has_repository_projects?: boolean;
-  hooks_url?: string;
-  html_url?: string;
-  id?: number;
-  is_verified?: boolean;
-  issues_url?: string;
-  location?: string;
-  login?: string;
-  /** MembersAllowedRepositoryCreationType denotes if organization members can create repositories
-    and the type of repositories they can create. Possible values are: "all", "private", or "none".
-    
-    Deprecated: Use MembersCanCreatePublicRepos, MembersCanCreatePrivateRepos, MembersCanCreateInternalRepos
-    instead. The new fields overrides the existing MembersAllowedRepositoryCreationType during 'edit'
-    operation and does not consider 'internal' repositories during 'get' operation */
-  members_allowed_repository_creation_type?: string;
-  members_can_create_internal_repositories?: boolean;
-  /** MembersCanCreatePages toggles whether organization members can create GitHub Pages sites. */
-  members_can_create_pages?: boolean;
-  /** MembersCanCreatePrivatePages toggles whether organization members can create private GitHub Pages sites. */
-  members_can_create_private_pages?: boolean;
-  members_can_create_private_repositories?: boolean;
-  /** MembersCanCreatePublicPages toggles whether organization members can create public GitHub Pages sites. */
-  members_can_create_public_pages?: boolean;
-  /** https://developer.github.com/changes/2019-12-03-internal-visibility-changes/#rest-v3-api */
-  members_can_create_public_repositories?: boolean;
-  /** MembersCanCreateRepos default value is true and is only used in Organizations.Edit. */
-  members_can_create_repositories?: boolean;
-  /** MembersCanForkPrivateRepos toggles whether organization members can fork private organization repositories. */
-  members_can_fork_private_repositories?: boolean;
-  members_url?: string;
-  name?: string;
-  node_id?: string;
-  owned_private_repos?: number;
-  plan?: GithubPlan;
-  private_gists?: number;
-  public_gists?: number;
-  public_members_url?: string;
-  public_repos?: number;
-  repos_url?: string;
-  /** SecretScanningEnabled toggles whether secret scanning is enabled on new repositories. */
-  secret_scanning_enabled_for_new_repositories?: boolean;
-  /** SecretScanningPushProtectionEnabledForNewRepos toggles whether secret scanning push protection is enabled on new repositories. */
-  secret_scanning_push_protection_enabled_for_new_repositories?: boolean;
-  /** SecretScanningValidityChecksEnabled toggles whether secret scanning validity check is enabled. */
-  secret_scanning_validity_checks_enabled?: boolean;
-  total_private_repos?: number;
-  twitter_username?: string;
-  two_factor_requirement_enabled?: boolean;
-  type?: string;
-  updated_at?: GithubTimestamp;
-  /** API URLs */
-  url?: string;
-  /** WebCommitSignoffRequire toggles */
-  web_commit_signoff_required?: boolean;
-};
-export type GithubTeam = {
-  /** Assignment identifies how a team was assigned to an organization role. Its
-    possible values are: "direct", "indirect", "mixed". This is only populated when
-    calling the ListTeamsAssignedToOrgRole method. */
-  assignment?: string;
-  description?: string;
-  html_url?: string;
-  id?: number;
-  /** LDAPDN is only available in GitHub Enterprise and when the team
-    membership is synchronized with LDAP. */
-  ldap_dn?: string;
-  members_count?: number;
-  members_url?: string;
-  name?: string;
-  node_id?: string;
-  organization?: GithubOrganization;
-  parent?: GithubTeam;
-  /** Permission specifies the default permission for repositories owned by the team. */
-  permission?: string;
-  /** Permissions identifies the permissions that a team has on a given
-    repository. This is only populated when calling Repositories.ListTeams. */
-  permissions?: {
-    [key: string]: boolean;
-  };
-  /** Privacy identifies the level of privacy this team should have.
-    Possible values are:
-        secret - only visible to organization owners and members of this team
-        closed - visible to all members of this organization
-    Default is "secret". */
-  privacy?: string;
-  repos_count?: number;
-  repositories_url?: string;
-  slug?: string;
-  url?: string;
-};
-export type GithubMatch = {
-  indices?: number[];
-  text?: string;
-};
-export type GithubTextMatch = {
-  fragment?: string;
-  matches?: GithubMatch[];
-  object_type?: string;
-  object_url?: string;
-  property?: string;
-};
-export type GithubUser = {
-  /** Assignment identifies how a user was assigned to an organization role. Its
-    possible values are: "direct", "indirect", "mixed". This is only populated when
-    calling the ListUsersAssignedToOrgRole method. */
-  assignment?: string;
-  avatar_url?: string;
-  bio?: string;
-  blog?: string;
-  collaborators?: number;
-  company?: string;
-  created_at?: GithubTimestamp;
-  disk_usage?: number;
-  email?: string;
-  events_url?: string;
-  followers?: number;
-  followers_url?: string;
-  following?: number;
-  following_url?: string;
-  gists_url?: string;
-  gravatar_id?: string;
-  hireable?: boolean;
-  html_url?: string;
-  id?: number;
-  /** InheritedFrom identifies the team that a user inherited their organization role
-    from. This is only populated when calling the ListUsersAssignedToOrgRole method. */
-  inherited_from?: GithubTeam;
-  ldap_dn?: string;
-  location?: string;
-  login?: string;
-  name?: string;
-  node_id?: string;
-  organizations_url?: string;
-  owned_private_repos?: number;
-  /** Permissions and RoleName identify the permissions and role that a user has on a given
-    repository. These are only populated when calling Repositories.ListCollaborators. */
-  permissions?: {
-    [key: string]: boolean;
-  };
-  plan?: GithubPlan;
-  private_gists?: number;
-  public_gists?: number;
-  public_repos?: number;
-  received_events_url?: string;
-  repos_url?: string;
-  role_name?: string;
-  site_admin?: boolean;
-  starred_url?: string;
-  subscriptions_url?: string;
-  suspended_at?: GithubTimestamp;
-  /** TextMatches is only populated from search results that request text matches
-    See: search.go and https://docs.github.com/rest/search/#text-match-metadata */
-  text_matches?: GithubTextMatch[];
-  total_private_repos?: number;
-  twitter_username?: string;
-  two_factor_authentication?: boolean;
-  type?: string;
-  updated_at?: GithubTimestamp;
-  /** API URLs */
-  url?: string;
-};
-export type GithubReleaseAsset = {
-  browser_download_url?: string;
-  content_type?: string;
-  created_at?: GithubTimestamp;
-  download_count?: number;
-  id?: number;
-  label?: string;
-  name?: string;
-  node_id?: string;
-  size?: number;
-  state?: string;
-  updated_at?: GithubTimestamp;
-  uploader?: GithubUser;
-  url?: string;
-};
-export type GithubRepositoryRelease = {
-  assets?: GithubReleaseAsset[];
-  assets_url?: string;
-  author?: GithubUser;
-  body?: string;
-  created_at?: GithubTimestamp;
-  discussion_category_name?: string;
-  draft?: boolean;
-  /** The following fields are not used in EditRelease: */
-  generate_release_notes?: boolean;
-  html_url?: string;
-  /** The following fields are not used in CreateRelease or EditRelease: */
-  id?: number;
-  /** MakeLatest can be one of: "true", "false", or "legacy". */
-  make_latest?: string;
-  name?: string;
-  node_id?: string;
-  prerelease?: boolean;
-  published_at?: GithubTimestamp;
-  tag_name?: string;
-  tarball_url?: string;
-  target_commitish?: string;
-  upload_url?: string;
-  url?: string;
-  zipball_url?: string;
-};
-export type DtoReleaseAsset = {
-  arch?: GithubReleaseAsset;
-  last_release?: GithubRepositoryRelease;
+export type DtoUpdateProgress = {
+  last_release?: string;
+  update_error?: string;
   update_status?: number;
 };
 export type DtoBlockPartition = {

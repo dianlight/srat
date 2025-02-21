@@ -32,7 +32,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
 import { NotificationCenter } from "./NotificationCenter"
 import { useSSE } from "react-hooks-sse"
-import { DtoEventType, usePutUpdateMutation, type DtoHealthPing, type DtoReleaseAsset } from "../store/sratApi"
+import { DtoEventType, usePutUpdateMutation, type DtoHealthPing, type DtoReleaseAsset, type DtoUpdateProgress } from "../store/sratApi"
 import { useHealth } from "../hooks/healthHook";
 import { useAppSelector } from "../store/store";
 import { useReadOnly } from "../hooks/readonlyHook";
@@ -100,11 +100,12 @@ function TabPanel(props: TabPanelProps) {
 
 export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null>, healthData: DtoHealthPing }) {
     const read_only = useReadOnly();
+    const health = useHealth();
     //  const [sse, sseStatus] = useContext(SSEContext);
 
     //  const [updateAssetStatus, setUpdateAssetStatus] = useState<DtoReleaseAsset>({});
 
-    const updateAssetStatus = useSSE(DtoEventType.Update, {} as DtoReleaseAsset, {
+    const updateAssetStatus = useSSE(DtoEventType.Update, {} as DtoUpdateProgress, {
         parser(input: any): DtoReleaseAsset {
             console.log("Got version", input)
             return JSON.parse(input);
@@ -143,6 +144,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         })
             .then(() => {
                 doUpdate().unwrap().then((res) => {
+                    updateAssetStatus.update_status = res.update_status;
                     //users.mutate();
                 }).catch(err => {
                     console.error(err);
@@ -189,14 +191,14 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
         // Normalize Version Strings
         const currentVersion = semver.clean(current.replace(".dev", "-dev")) || "0.0.0"
-        const latestVersion = semver.clean((updateAssetStatus.last_release?.tag_name || "0.0.0").replace(".dev", "-dev")) || "0.0.0"
+        const latestVersion = semver.clean((health.health.last_release?.last_release || "0.0.0").replace(".dev", "-dev")) || "0.0.0"
 
-        if (updateAssetStatus.last_release && update !== latestVersion && semver.compare(latestVersion, currentVersion) == 1) {
+        if (update !== latestVersion && semver.compare(latestVersion, currentVersion) == 1) {
             setUpdate(latestVersion)
         } else {
             setUpdate(undefined)
         }
-    }, [updateAssetStatus])
+    }, [health])
 
     /*
     useEventSourceListener(
@@ -257,16 +259,18 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                 </Tooltip>
                             </IconButton>
                         }
-                        {update && updateAssetStatus.update_status == -1 &&
+                        {(update && updateAssetStatus.update_status == undefined) ? (
                             <IconButton onClick={handleDoUpdate}>
                                 <Tooltip title={`Update ${update} available`} arrow>
                                     <SystemSecurityUpdateIcon sx={{ color: 'white' }} />
                                 </Tooltip>
                             </IconButton>
-                        }
-                        {updateAssetStatus.update_status && updateAssetStatus.update_status != -1 &&
-                            <CircularProgressWithLabel value={updateAssetStatus.update_status} color="success" />
-                        }
+                        ) : (
+                            updateAssetStatus.update_status != undefined ?
+                                <CircularProgressWithLabel value={updateAssetStatus.update_status} color="success" />
+                                :
+                                <></>
+                        )}
                         <IconButton onClick={() => { mode == 'light' ? setMode('dark') : (mode == 'dark' ? setMode('system') : setMode('light')) }} >
                             <Tooltip title={`Switch Mode ${mode}`} arrow>
                                 {mode === 'light' ? <LightModeIcon sx={{ color: 'white' }} /> : mode === 'dark' ? <DarkModeIcon sx={{ color: 'white' }} /> : <AutoModeIcon sx={{ color: 'white' }} />}

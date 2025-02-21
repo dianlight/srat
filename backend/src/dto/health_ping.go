@@ -9,4 +9,5 @@ type HealthPing struct {
 	SambaProcessStatus SambaProcessStatus `json:"samba_process_status"`
 	LastError          string             `json:"last_error"`
 	Dirty              DataDirtyTracker   `json:"dirty_tracking"`
+	LastRelease        ReleaseAsset       `json:"last_release"`
 }

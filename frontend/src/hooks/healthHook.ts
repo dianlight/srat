@@ -9,8 +9,8 @@ export function useHealth() {
 
     useSSE(DtoEventType.Heartbeat, {} as DtoHealthPing, {
         parser(input: any): DtoHealthPing {
-            console.log("Got health data", input);
             const c = JSON.parse(input);
+            console.log("Got health data", c);
             setHealth(c);
             return c;
         },

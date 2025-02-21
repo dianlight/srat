@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/utility"
@@ -18,17 +19,21 @@ import (
 )
 
 type UpgradeHanler struct {
-	ctx     context.Context
-	apictx  *ContextState
-	upgader service.UpgradeServiceInterface
+	ctx         context.Context
+	apictx      *ContextState
+	upgader     service.UpgradeServiceInterface
+	broadcaster service.BroadcasterServiceInterface
+	progress    dto.UpdateProgress
+	pw          *utility.ProgressWriter
 }
 
-func NewUpgradeHanler(ctx context.Context, apictx *ContextState, upgader service.UpgradeServiceInterface) *UpgradeHanler {
+func NewUpgradeHanler(ctx context.Context, apictx *ContextState, upgader service.UpgradeServiceInterface, broadcaster service.BroadcasterServiceInterface) *UpgradeHanler {
 
 	p := new(UpgradeHanler)
 	p.ctx = ctx
 	p.apictx = apictx
 	p.upgader = upgader
+	p.broadcaster = broadcaster
 	return p
 }
 
@@ -44,22 +49,21 @@ func (handler *UpgradeHanler) Patterns() []server.RouteDetail {
 //	@Description	Start the update process
 //	@Tags			system
 //	@Produce		json
-//	@Success		200 {object}	dto.ReleaseAsset
+//	@Success		200 {object}	dto.UpdateProgress
 //	@Failure		405	{object}	dto.ErrorInfo
 //	@Router			/update [put]
 func (handler *UpgradeHanler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	lastReleaseData := handler.upgader.GetLastReleaseData()
-	log.Printf("Updating to version %s", *lastReleaseData.LastRelease.TagName)
+	log.Printf("Updating to version %s", lastReleaseData.LastRelease)
 
-	lastReleaseData.UpdateStatus = 0
 	var gh = github.NewClient(nil)
-	if lastReleaseData.ArchAsset == nil {
+	if lastReleaseData.ArchAsset.Size == 0 {
 		HttpJSONReponse(w, fmt.Errorf("No asset found for architecture %s", runtime.GOARCH), nil)
 		return
 	}
 
-	rc, _, err := gh.Repositories.DownloadReleaseAsset(context.Background(), "dianlight", "srat", *lastReleaseData.ArchAsset.ID, http.DefaultClient)
+	rc, _, err := gh.Repositories.DownloadReleaseAsset(context.Background(), "dianlight", "srat", lastReleaseData.ArchAsset.ID, http.DefaultClient)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -71,28 +75,50 @@ func (handler *UpgradeHanler) UpdateHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	//defer tmpFile.Close()
-	pw := utility.NewProgressWriter(tmpFile)
+	handler.pw = utility.NewProgressWriter(tmpFile, lastReleaseData.ArchAsset.Size)
 	go func() {
+		defer tmpFile.Close()
+		defer rc.Close()
+		handler.progress = dto.UpdateProgress{
+			ProgressStatus: 0,
+			LastRelease:    lastReleaseData.LastRelease,
+		}
+		go handler.notifyClient()
 		var by, err = io.Copy(tmpFile, rc)
 		if err != nil {
-			HttpJSONReponse(w, err, nil)
+			slog.Error(fmt.Sprintf("Error copying file %s", err))
+			handler.progress.UpdateError = err.Error()
 		}
-		lastReleaseData.UpdateStatus = -1
-		slog.Debug(fmt.Sprintf("Update process completed %d vs %d\n", by, *lastReleaseData.ArchAsset.Size))
-		tmpFile.Close()
-		rc.Close()
+		slog.Debug(fmt.Sprintf("Update process completed %d vs %d\n", by, lastReleaseData.ArchAsset.Size))
 	}()
 
 	go func() {
 		for {
 			time.Sleep(500 * time.Millisecond)
-			if lastReleaseData.UpdateStatus == -1 {
-				break
-			}
-			lastReleaseData.UpdateStatus = int8((int(pw.N()) / (*lastReleaseData.ArchAsset.Size)) * 100)
-			slog.Debug(fmt.Sprintf("Copied %d bytes progress %d%%\n", pw.N(), lastReleaseData.UpdateStatus))
 		}
 	}()
 
-	HttpJSONReponse(w, lastReleaseData, nil)
+	HttpJSONReponse(w, handler.progress, nil)
+}
+
+func (handler *UpgradeHanler) notifyClient() {
+	for {
+		select {
+		case <-handler.ctx.Done():
+			slog.Error("Upgrade process closed", "err", handler.ctx.Err())
+			return
+		case n := <-handler.pw.P:
+			slog.Debug(fmt.Sprintf("Notified client of progress update, bytes written: %d", n))
+			handler.progress.ProgressStatus = handler.pw.Percent()
+			slog.Debug(fmt.Sprintf("Copied %d bytes progress %d%%\n", handler.pw.Written(), handler.progress.ProgressStatus))
+			var event dto.EventMessageEnvelope
+			event.Event = dto.EventUpdate
+			event.Data = handler.progress
+			handler.broadcaster.BroadcastMessage(&event)
+			if handler.progress.ProgressStatus >= 100 {
+				slog.Info("Update process completed successfully")
+				return
+			}
+		}
+	}
 }

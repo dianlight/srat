@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
@@ -36,9 +37,7 @@ func NewUpgradeService(ctx context.Context, broadcaster BroadcasterServiceInterf
 	p.ctx = ctx
 	//p.updateQueue = make(map[string](chan *dto.ReleaseAsset))
 	//p.updateQueueMutex = sync.RWMutex{}
-	p.lastReleaseData = dto.ReleaseAsset{
-		UpdateStatus: -1,
-	}
+	p.lastReleaseData = dto.ReleaseAsset{}
 	p.broadcaster = broadcaster
 	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
 	if err != nil {
@@ -92,6 +91,7 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 				slog.Warn("Github API hit rate limit")
 			}
 		} else if len(releases) > 0 {
+			conv := converter.GitHubToDtoImpl{}
 			for _, release := range releases {
 				//log.Println(pretty.Sprintf("%v\n", release))
 				if *release.Prerelease && updateChannel == dto.Stable {
@@ -101,15 +101,18 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 					//log.Printf("Skip Release %s", *release.TagName)
 					continue
 				}
-				self.lastReleaseData.LastRelease = release
+				self.lastReleaseData.LastRelease = *release.TagName
 				// Serch for the asset corrisponfing the correct architecture
-				for _, asset := range self.lastReleaseData.LastRelease.Assets {
+				for _, asset := range release.Assets {
 					arch := runtime.GOARCH
 					if arch == "arm64" {
 						arch = "aarch64"
 					}
 					if asset.GetName() == fmt.Sprintf("srat_%s", arch) {
-						self.lastReleaseData.ArchAsset = asset
+						err = conv.ReleaseAssetToBinaryAsset(asset, &self.lastReleaseData.ArchAsset)
+						if err != nil {
+							return tracerr.Wrap(err)
+						}
 						break
 					}
 				}
@@ -117,14 +120,10 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 			}
 		} else {
 			slog.Debug("No Releases found")
-			self.lastReleaseData = dto.ReleaseAsset{
-				UpdateStatus: -1,
-			}
+			self.lastReleaseData = dto.ReleaseAsset{}
 		}
 	} else {
-		self.lastReleaseData = dto.ReleaseAsset{
-			UpdateStatus: -1,
-		}
+		self.lastReleaseData = dto.ReleaseAsset{}
 	}
 	return nil
 }
