@@ -15,7 +15,7 @@ import (
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/utility"
-	"github.com/google/go-github/v68/github"
+	"github.com/google/go-github/v69/github"
 )
 
 type UpgradeHanler struct {
