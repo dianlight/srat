@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/ztrue/tracerr"
@@ -13,6 +14,9 @@ import (
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 )
+
+var _healthHanlerIntance *HealthHanler
+var _healthHanlerIntanceMutex sync.Mutex
 
 type HealthHanler struct {
 	ctx                    context.Context
@@ -27,10 +31,15 @@ type HealthHanler struct {
 }
 
 func NewHealthHandler(ctx context.Context, apictx *ContextState, broadcaster service.BroadcasterServiceInterface, sambaService service.SambaServiceInterface) *HealthHanler {
+	_healthHanlerIntanceMutex.Lock()
+	defer _healthHanlerIntanceMutex.Unlock()
+	if _healthHanlerIntance != nil {
+		return _healthHanlerIntance
+	}
 
 	p := new(HealthHanler)
 	p.Alive = true
-	p.AliveTime = time.Now()
+	p.AliveTime = time.Now().UnixMilli()
 	p.ReadOnly = apictx.ReadOnlyMode
 	p.SambaProcessStatus.Pid = -1
 	p.LastError = ""
@@ -45,6 +54,7 @@ func NewHealthHandler(ctx context.Context, apictx *ContextState, broadcaster ser
 		p.OutputEventsInterleave = 5 * time.Second
 	}
 	go p.run()
+	_healthHanlerIntance = p
 	return p
 }
 
@@ -101,6 +111,7 @@ func (self *HealthHanler) run() error {
 			//slog.Debug("Richiesto aggiornamento per Healthy")
 			self.checkSamba()
 			self.HealthPing.Dirty = self.apictx.DataDirtyTracker
+			self.AliveTime = time.Now().UnixMilli()
 			err := self.EventEmitter(self.HealthPing)
 			if err != nil {
 				slog.Error("Error emitting health message: %w", "err", err)

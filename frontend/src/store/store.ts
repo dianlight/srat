@@ -7,7 +7,7 @@ import { dirtySlice } from './dirtySlice'
 
 export const store = configureStore({
     reducer: {
-        dirty: dirtySlice.reducer,
+        //        dirty: dirtySlice.reducer,
         errors: errorSlice.reducer,
         [sratApi.reducerPath]: sratApi.reducer,
     },

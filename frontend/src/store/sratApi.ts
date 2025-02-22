@@ -313,7 +313,7 @@ export type DtoSambaProcessStatus = {
 };
 export type DtoHealthPing = {
   alive?: boolean;
-  aliveTime?: string;
+  aliveTime?: number;
   dirty_tracking?: DtoDataDirtyTracker;
   last_error?: string;
   last_release?: DtoReleaseAsset;

@@ -189,7 +189,7 @@ definitions:
       alive:
         type: boolean
       aliveTime:
-        type: string
+        type: integer
       dirty_tracking:
         $ref: '#/definitions/dto.DataDirtyTracker'
       last_error:

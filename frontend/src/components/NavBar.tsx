@@ -28,6 +28,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import UndoIcon from '@mui/icons-material/Undo';
 import { useConfirm } from "material-ui-confirm"
+import CancelIcon from '@mui/icons-material/Cancel';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
 import { NotificationCenter } from "./NotificationCenter"
@@ -98,7 +100,7 @@ function TabPanel(props: TabPanelProps) {
     );
 }
 
-export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null>, healthData: DtoHealthPing }) {
+export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null> }) {
     const read_only = useReadOnly();
     const health = useHealth();
     //  const [sse, sseStatus] = useContext(SSEContext);
@@ -120,7 +122,6 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     const [value, setValue] = useState(() => {
         return Number.parseInt(localStorage.getItem("srat_tab") || "0");
     });
-    const dirty = useAppSelector(state => state.dirty);
     const confirm = useConfirm();
     const [tabId, setTabId] = useState<string>(() => uuidv4())
     const theme = useTheme();
@@ -213,27 +214,28 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                         allowScrollButtonsMobile
                         scrollButtons
                     >
-                        <Tab label="Shares" {...a11yProps(0)} icon={dirty.shares ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab href="#" label="Volumes" {...a11yProps(1)} icon={dirty.volumes ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab href="#" label="Users" {...a11yProps(2)} icon={dirty.users ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab href="#" label="Settings" {...a11yProps(3)} icon={dirty.configs ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab label="Shares" {...a11yProps(0)} icon={health.health?.dirty_tracking?.shares ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab label="Volumes" {...a11yProps(1)} icon={health.health?.dirty_tracking?.volumes ? <Tooltip title="Changes not yet applied"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab label="Users" {...a11yProps(2)} icon={health.health?.dirty_tracking?.users ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab label="Settings" {...a11yProps(3)} icon={health.health?.dirty_tracking?.settings ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab label="smb.conf" {...a11yProps(4)} />
                         <Tab label="API Docs" {...a11yProps(4)} />
                     </Tabs>
                     <Box sx={{ flexGrow: 0 }}>
-                        {Object.values(dirty).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
-                            <>
+                        {Object.values(health.health.dirty_tracking || {}).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
+                            <Tooltip title="Cancel Process Restart" arrow>
                                 <IconButton onClick={handleRoolback}>
-                                    <Tooltip title="Undo all modified" arrow>
-                                        <UndoIcon sx={{ color: 'white' }} />
-                                    </Tooltip>
+                                    <CancelIcon sx={{ color: 'white' }} />
+                                    <CircularProgress
+                                        size={32}
+                                        sx={{
+                                            color: "secondary",
+                                            position: 'absolute',
+                                            zIndex: 1,
+                                        }}
+                                    />
                                 </IconButton>
-                                <IconButton onClick={() => /*api.config.configUpdate()*/ true}>
-                                    <Tooltip title="Save all modified" arrow>
-                                        <SaveIcon sx={{ color: 'white' }} />
-                                    </Tooltip>
-                                </IconButton>
-                            </>
+                            </Tooltip>
                         }
                         {read_only &&
                             <IconButton>

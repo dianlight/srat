@@ -104,7 +104,7 @@ export function App() {
                  <DirtyDataContext.Provider value={dirtyData}>*/
         <>
             <Container maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
-                <NavBar healthData={status} error={errorInfo} bodyRef={mainArea} />
+                <NavBar error={errorInfo} bodyRef={mainArea} />
                 <div ref={mainArea} className="fullBody"></div>
                 <Footer healthData={status} />
             </Container>
