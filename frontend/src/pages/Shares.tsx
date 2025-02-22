@@ -154,20 +154,13 @@ export function Shares() {
             title: `Mount ${share}?`,
             description: "Are you sure you want to mount this share?"
         })
-            .then(() => {
-                /*
-                api.share.unmountShare(share).then((res) => {
-                    console.log(`Share ${share} unmounted successfully`);
-                    // Optionally update the state or perform other actions
-                }).catch(err => {
-                    console.error(`Failed to unmount share ${share}`, err);
-                    setErrorInfo(`Failed to unmount share ${share}: ${err.message}`);
-                });
-                */
+            .then(({ confirmed, reason }) => {
+                if (confirmed) {
+                    // TODO: 
+                } else if (reason === "cancel") {
+                    console.log("cancel")
+                }
             })
-            .catch(() => {
-                // Handle cancel action if needed
-            });
     }
 
     return <InView>
