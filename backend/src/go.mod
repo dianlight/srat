@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/google/go-cmp v0.6.0
+	github.com/google/go-github/v68 v68.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jinzhu/copier v0.4.0
@@ -82,7 +83,7 @@ require (
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/gofri/go-github-ratelimit v1.1.0
-	github.com/google/go-github/v68 v68.0.0
+	github.com/google/go-github/v69 v69.2.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/itchyny/gojq v0.12.17
 	github.com/jaypipes/ghw v0.13.0
