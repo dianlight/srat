@@ -189,7 +189,7 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
 			status, http.StatusNotFound)
 	}
 
-	expected := `{"code":404,"error":"MountPoint not found","body":null}`
+	expected := `{"code":"unmount_fail","data":{"ID":999999,"Message":"No mount point found for the provided ID"}}`
 	if rr.Body.String() != expected {
 		suite.T().Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), expected)
