@@ -79,5 +79,11 @@
     "core-js-pure",
     "tree-sitter",
     "tree-sitter-json"
-  ]
+  ],
+  "packageManager": "bun@1.2.2",
+  "engines": {
+    "bun": ">=1.2.2"
+  },
+  "homepage": "https://github.com/dianlight/srat#readme",
+  "license": "MIT"
 }

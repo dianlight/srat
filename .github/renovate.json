@@ -18,6 +18,43 @@
         "dependencyDashboardApproval": true
     },
     "dependencyDashboardAutoclose": true,
+    "customManagers": [
+        {
+            "customType": "regex",
+            "fileMatch": [
+                "\\.github/workflows/.+\\.ya?ml$",
+                "\\.devcontainer/.+\\.sh$"
+            ],
+            "matchStrings": [
+                "go\\s+install\\s+(?<depName>github\\.com/.+)@(?<currentValue>[^\\s]+)"
+            ],
+            "autoReplaceStringTemplate": "go install {{{depName}}}@{{{newValue}}}",
+            "datasourceTemplate": "go"
+        },
+        {
+            "customType": "regex",
+            "fileMatch": [
+                "\\.go$"
+            ],
+            "matchStrings": [
+                "//go:generate\\s+go\\s+run\\s+(?<depName>github\\.com/.+)@(?<currentValue>[^\\s]+)"
+            ],
+            "autoReplaceStringTemplate": "//go:generate go run {{{depName}}}@{{{newValue}}}",
+            "datasourceTemplate": "go"
+        },
+        {
+            "customType": "regex",
+            "fileMatch": [
+                "\\.github/workflows/.+\\.ya?ml$",
+                "\\.devcontainer/.+\\.sh$"
+            ],
+            "matchStrings": [
+                "go\\s+install\\s+(?<depName>github\\.com/.+)@(?<currentValue>[^\\s]+)"
+            ],
+            "autoReplaceStringTemplate": "go install {{{depName}}}@{{{newValue}}}",
+            "datasourceTemplate": "go"
+        }
+    ],
     "packageRules": [
         {
             "groupName": "BackEnd",
@@ -29,6 +66,12 @@
             "groupName": "FrontEnd",
             "matchFileNames": [
                 "frontend/**"
+            ]
+        },
+        {
+            "groupName": "CI/CD",
+            "matchFileNames": [
+                ".guthub/workflows/**"
             ]
         },
         {
