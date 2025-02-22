@@ -122,7 +122,7 @@ jobs:
         cd ..
 
     - name: Check if ${{ needs.setversion.outputs.version }} exists
-      uses: mukunku/tag-exists-action@v1.4.0
+      uses: mukunku/tag-exists-action@v1.6.0
       id: checkTag
       with: 
         tag: '${{ needs.setversion.outputs.version }}'
