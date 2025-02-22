@@ -1,8 +1,13 @@
 package dto
 
+import "time"
+
 type HealthPing struct {
-	Alive     bool   `json:"alive"`
-	ReadOnly  bool   `json:"read_only"`
-	Samba     int32  `json:"samba_pid"`
-	LastError string `json:"last_error"`
+	Alive              bool               `json:"alive"`
+	AliveTime          time.Time          `json:"aliveTime"`
+	ReadOnly           bool               `json:"read_only"`
+	SambaProcessStatus SambaProcessStatus `json:"samba_process_status"`
+	LastError          string             `json:"last_error"`
+	Dirty              DataDirtyTracker   `json:"dirty_tracking"`
+	LastRelease        ReleaseAsset       `json:"last_release"`
 }

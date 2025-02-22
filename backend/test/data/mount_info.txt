@@ -1,0 +1,19 @@
+674 610 0:46 / / rw,relatime - overlay overlay rw,lowerdir=/var/lib/docker/overlay2/l/PVTUU7IW3FVKKO4DRLUOKHQP5R:/var/lib/docker/overlay2/l/M3OZD6CMGR4CWJSPIYKGEPXUTQ:/var/lib/docker/overlay2/l/YFXZ7BL5F325Y7RWD5KVZHUKTF:/var/lib/docker/overlay2/l/RYL5ORDTSITCUCL67T5UQ26IUB:/var/lib/docker/overlay2/l/D5EH35GOHMKRPUZISH2ZKY4H2L:/var/lib/docker/overlay2/l/4ZJH6FKC3NO7Q3UVMUW5N3GZWB:/var/lib/docker/overlay2/l/2DSL4PHTFYXEACMECBQ4NM2JSX:/var/lib/docker/overlay2/l/RNMNGEYVVNBML24S2JI2HHEHMR:/var/lib/docker/overlay2/l/PRKJCVTBWMBZBWOTW4BA5ODCHX:/var/lib/docker/overlay2/l/YUQCR2I6G4RAXQ3JVI4EYBPAHN:/var/lib/docker/overlay2/l/PHTTQPFD3BDP3HTFO3ITV2Z6VI,upperdir=/var/lib/docker/overlay2/4023602e5a1d5eb2666fa12994b2431ddf957887f3dc3bc692954bf1f1f27817/diff,workdir=/var/lib/docker/overlay2/4023602e5a1d5eb2666fa12994b2431ddf957887f3dc3bc692954bf1f1f27817/work,nouserxattr
+675 674 0:49 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw
+729 674 0:50 / /dev rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755,inode64
+730 729 0:51 / /dev/pts rw,nosuid,noexec,relatime - devpts devpts rw,gid=5,mode=620,ptmxmode=666
+731 674 0:23 / /sys rw,nosuid,nodev,noexec,relatime - sysfs sysfs rw
+732 731 0:28 / /sys/fs/cgroup rw,nosuid,nodev,noexec,relatime - cgroup2 cgroup rw,nsdelegate,memory_recursiveprot
+733 729 0:48 / /dev/mqueue rw,nosuid,nodev,noexec,relatime - mqueue mqueue rw
+734 729 0:52 / /dev/shm rw,nosuid,nodev,noexec,relatime - tmpfs shm rw,size=65536k,inode64
+735 674 7:4 /codespacemount/workspace /workspaces rw,nodev,relatime master:232 - ext4 /dev/loop4 rw
+736 674 8:17 /containerTmp /tmp rw,relatime - ext4 /dev/sdb1 rw
+737 674 8:33 /.codespaces/agent/mount/cache /vscode rw,relatime - ext4 /dev/root rw,discard,errors=remount-ro
+738 674 8:33 /.codespaces/agent/mount /.codespaces/bin rw,relatime - ext4 /dev/root rw,discard,errors=remount-ro
+739 674 7:4 /containers/7015d8d4282862dd43471a18cefc344df3a1321e3195539d03efc65751ba7ddd/resolv.conf /etc/resolv.conf rw,nodev,relatime - ext4 /dev/loop4 rw
+740 674 7:4 /containers/7015d8d4282862dd43471a18cefc344df3a1321e3195539d03efc65751ba7ddd/hostname /etc/hostname rw,nodev,relatime - ext4 /dev/loop4 rw
+741 674 7:4 /containers/7015d8d4282862dd43471a18cefc344df3a1321e3195539d03efc65751ba7ddd/hosts /etc/hosts rw,nodev,relatime - ext4 /dev/loop4 rw
+742 735 7:4 /codespacemount/.persistedshare /workspaces/.codespaces/.persistedshare rw,nodev,relatime master:232 - ext4 /dev/loop4 rw
+743 735 8:33 /root/.codespaces/shared /workspaces/.codespaces/shared rw,relatime - ext4 /dev/root rw,discard,errors=remount-ro
+744 674 0:26 /docker.sock /run/docker-host.sock rw,nosuid,nodev - tmpfs tmpfs rw,size=1623772k,nr_inodes=819200,mode=755,inode64
+346 674 7:4 /codespacemount/workspace/srat/backend/test /addons rw,nodev,relatime master:232 - ext4 /dev/loop4 rw

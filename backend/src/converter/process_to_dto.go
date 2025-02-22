@@ -1,0 +1,31 @@
+package converter
+
+import (
+	"time"
+
+	"github.com/dianlight/srat/dto"
+	"github.com/shirou/gopsutil/v4/process"
+)
+
+// goverter:converter
+// goverter:output:file ./process_to_dto_conv_gen.go
+// goverter:output:package github.com/dianlight/srat/converter
+// goverter:useZeroValueOnPointerInconsistency
+// goverter:update:ignoreZeroValueField
+// goverter:extend int64ToTime
+// goverter:default:update
+type ProcessToDto interface {
+	// goverter:update target
+	// goverter:useZeroValueOnPointerInconsistency
+	// goverter:map OpenFiles OpenFiles | sliceToLen
+	// goverter:map Connections Connections | sliceToLen
+	ProcessToSambaProcessStatus(source *process.Process, target *dto.SambaProcessStatus) error
+}
+
+func int64ToTime(source int64) (time.Time, error) {
+	return time.Unix(source/1000, 0), nil
+}
+
+func sliceToLen(source any) (int, error) {
+	return len(source.([]any)), nil
+}

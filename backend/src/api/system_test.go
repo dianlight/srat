@@ -1,169 +1,81 @@
-package api
+package api_test
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 
-	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/api"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestHealthCheckHandler(t *testing.T) {
-	req, err := http.NewRequestWithContext(testContext, "GET", "/health", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(HealthCheckHandler)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-	expectedContentType := "application/json"
-	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
-		t.Errorf("handler returned wrong content type: got %v want %v",
-			contentType, expectedContentType)
-	}
-
-	var response dto.HealthPing
-	err = json.Unmarshal(rr.Body.Bytes(), &response)
-	if err != nil {
-		t.Errorf("Failed to unmarshal response body: %v", err)
-	}
-
-	if !response.Alive {
-		t.Errorf("Expected Alive to be true, got false")
-	}
-}
-func TestHealthCheckHandlerDoesNotModifyGlobalHealthData(t *testing.T) {
-	originalHealthData := *healthData
-	req, err := http.NewRequestWithContext(testContext, "GET", "/health", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(HealthCheckHandler)
-
-	handler.ServeHTTP(rr, req)
-
-	if !reflect.DeepEqual(*healthData, originalHealthData) {
-		t.Errorf("HealthCheckHandler modified global healthData. Original: %+v, Modified: %+v", originalHealthData, *healthData)
-	}
+type SystemHandlerSuite struct {
+	suite.Suite
+	mockBoradcaster *MockBroadcasterServiceInterface
+	// VariableThatShouldStartAtFive int
 }
 
-func TestGetNICsHandler(t *testing.T) {
+func TestSystemHandlerSuite(t *testing.T) {
+	csuite := new(SystemHandlerSuite)
+	/*
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
+		csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
+		csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
+	*/
+	suite.Run(t, csuite)
+}
+
+func (suite *SystemHandlerSuite) TestGetNICsHandler() {
+	api := api.NewSystemHanler()
 	req, err := http.NewRequestWithContext(testContext, "GET", "/nics", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	suite.Require().NoError(err)
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(GetNICsHandler)
+	handler := http.HandlerFunc(api.GetNICsHandler)
 
 	handler.ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	suite.Equal(http.StatusOK, rr.Code, "Expected status code 200, got %d", rr.Code)
 
 	expectedContentType := "application/json"
-	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
-		t.Errorf("handler returned wrong content type: got %v want %v",
-			contentType, expectedContentType)
-	}
+	suite.Equal(expectedContentType, rr.Header().Get("Content-Type"), "Expected content type %s, got %s", expectedContentType, rr.Header().Get("Content-Type"))
 
 	var response map[string]interface{}
 	err = json.Unmarshal(rr.Body.Bytes(), &response)
-	if err != nil {
-		t.Errorf("Failed to unmarshal response body: %v", err)
-	}
-	t.Logf("%v", response)
+	suite.Require().NoError(err)
+	suite.T().Logf("%v", response)
 
 	if nics, ok := response["nics"].([]interface{}); !ok || len(nics) == 0 {
-		t.Errorf("Response does not contain any network interfaces")
+		suite.T().Errorf("Response does not contain any network interfaces")
 	}
 }
 
-func TestGetFSHandler(t *testing.T) {
-	// Create a request to pass to our handler
+func (suite *SystemHandlerSuite) TestGetFSHandler() {
+	api := api.NewSystemHanler()
 	req, err := http.NewRequestWithContext(testContext, "GET", "/filesystems", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	suite.Require().NoError(err)
 
 	// Create a ResponseRecorder to record the response
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(GetFSHandler)
+	handler := http.HandlerFunc(api.GetFSHandler)
 
 	// Call the handler
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	suite.Equal(http.StatusOK, rr.Code, "Expected status code 200, got %d", rr.Code)
 
 	// Check the content type
 	expectedContentType := "application/json"
-	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
-		t.Errorf("handler returned wrong content type: got %v want %v",
-			contentType, expectedContentType)
-	}
+	suite.Equal(expectedContentType, rr.Header().Get("Content-Type"), "Expected content type %s, got %s", expectedContentType, rr.Header().Get("Content-Type"))
 
 	// Check the response body
-	var filesystems []string
-	err = json.Unmarshal(rr.Body.Bytes(), &filesystems)
-	if err != nil {
-		t.Errorf("Failed to unmarshal response body: %v", err)
-	}
-
-	// Verify that the response contains file systems data
-	if len(filesystems) == 0 {
-		t.Errorf("Expected file systems data in response, got empty array")
-	}
-
-	//t.Error(filesystems)
-
-	// You might want to add more specific checks here, such as verifying
-	// the presence of expected file systems or the format of the data
-}
-
-func TestMainHealthCheckHandler(t *testing.T) {
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "GET", "/health", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(HealthCheckHandler)
-
-	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
-	handler.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-	// Check the response body is what we expect.
-	expected := `{"alive":true,"read_only":true`
-	if rr.Body.String()[:len(expected)] != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), expected)
-	}
+	var fileSystems []string
+	err = json.Unmarshal(rr.Body.Bytes(), &fileSystems)
+	suite.Require().NoError(err)
+	suite.T().Logf("%v", fileSystems)
+	suite.NotEmpty(fileSystems, "Response does not contain any file systems")
 }

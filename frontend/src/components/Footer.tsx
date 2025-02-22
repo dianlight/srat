@@ -6,17 +6,26 @@ import pkg from '../../package.json';
 import { getGitCommitHash } from '../macro/getGitCommitHash.ts' with { type: 'macro' };
 import Stack from "@mui/material/Stack";
 import { AppBar, Link, Toolbar, Tooltip } from "@mui/material";
-import type { MainHealth, MainSambaProcessStatus } from "../srat.ts";
-import useSWR from "swr";
 import { useContext } from "react";
-import { apiContext } from "../Contexts.ts";
+import { usePutRestartMutation, type DtoHealthPing } from "../store/sratApi.ts";
+//import { apiContext } from "../Contexts.ts";
 
 
-export function Footer(props: { healthData: MainHealth }) {
-    const api = useContext(apiContext);
+export function Footer(props: { healthData: DtoHealthPing }) {
 
-    const samba = useSWR<MainSambaProcessStatus>('/samba/status', () => api.samba.statusList().then(res => res.data));
+    const [restart, { isLoading }] = usePutRestartMutation();
 
+    //const samba = useSWR<DtoSambaProcessStatus>('/samba/status', () => apiContext.samba.statusList().then(res => res.data));
+
+    const handleRestart = () => {
+        if (!isLoading) {
+            restart().unwrap().then(() => {
+                console.log("Server restarted successfully");
+            }).catch((error) => {
+                console.error("Failed to restart the server:", error);
+            });
+        }
+    };
 
     return (
         <Paper sx={{
@@ -42,17 +51,17 @@ export function Footer(props: { healthData: MainHealth }) {
                     </Typography>
 
                     <Typography variant="caption">
-                        © 2024 Copyright {pkg.author.name}
+                        © 2024-2025 Copyright {pkg.author.name}
                     </Typography>
 
-                    <Tooltip title={JSON.stringify(samba, null, 2)} onOpen={() => samba.mutate()} arrow>
+                    <Tooltip title={JSON.stringify(props.healthData.samba_process_status, null, 2)} arrow>
                         <Typography variant="caption">
-                            smbd pid {props.healthData.samba_pid || "unknown"}
+                            smbd pid {props.healthData.samba_process_status?.pid || "unknown"}
                         </Typography>
                     </Tooltip>
 
                     <Tooltip title="Restart the server" arrow>
-                        <Typography onClick={() => api.restart.restartUpdate()} variant="caption">[R]</Typography>
+                        <Typography onClick={() => handleRestart()} variant="caption">[R]</Typography>
                     </Tooltip>
 
                 </Stack>

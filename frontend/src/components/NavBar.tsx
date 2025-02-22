@@ -2,8 +2,7 @@ import logo from "../img/logo.png"
 import github from "../img/github.svg"
 import pkg from '../../package.json'
 import { useContext, useEffect, useState } from "react"
-import { apiContext as api, DirtyDataContext, ModeContext, wsContext as ws } from "../Contexts"
-import { DtoEventType, type DtoHealthPing, type DtoReleaseAsset } from "../srat"
+//import { DirtyDataContext, ModeContext } from "../Contexts"
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -32,6 +31,11 @@ import { useConfirm } from "material-ui-confirm"
 import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
 import { NotificationCenter } from "./NotificationCenter"
+import { useSSE } from "react-hooks-sse"
+import { DtoEventType, usePutUpdateMutation, type DtoHealthPing, type DtoReleaseAsset, type DtoUpdateProgress } from "../store/sratApi"
+import { useHealth } from "../hooks/healthHook";
+import { useAppSelector } from "../store/store";
+import { useReadOnly } from "../hooks/readonlyHook";
 
 function a11yProps(index: number) {
     return {
@@ -95,14 +99,28 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null>, healthData: DtoHealthPing }) {
-    const healt = useContext(ModeContext);
-    const [updateAssetStatus, setUpdateAssetStatus] = useState<DtoReleaseAsset>({});
+    const read_only = useReadOnly();
+    const health = useHealth();
+    //  const [sse, sseStatus] = useContext(SSEContext);
+
+    //  const [updateAssetStatus, setUpdateAssetStatus] = useState<DtoReleaseAsset>({});
+
+    const updateAssetStatus = useSSE(DtoEventType.Update, {} as DtoUpdateProgress, {
+        parser(input: any): DtoReleaseAsset {
+            console.log("Got version", input)
+            return JSON.parse(input);
+        },
+    });
+
+    const [doUpdate] = usePutUpdateMutation();
+
+
     const { mode, setMode } = useColorScheme();
     const [update, setUpdate] = useState<string | undefined>()
     const [value, setValue] = useState(() => {
         return Number.parseInt(localStorage.getItem("srat_tab") || "0");
     });
-    const dirty = useContext(DirtyDataContext);
+    const dirty = useAppSelector(state => state.dirty);
     const confirm = useConfirm();
     const [tabId, setTabId] = useState<string>(() => uuidv4())
     const theme = useTheme();
@@ -125,7 +143,8 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             description: "If you proceed the new version is downloaded and installed."
         })
             .then(() => {
-                api.update.updateUpdate().then((res) => {
+                doUpdate().unwrap().then((res) => {
+                    updateAssetStatus.update_status = res.update_status;
                     //users.mutate();
                 }).catch(err => {
                     console.error(err);
@@ -138,6 +157,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     }
 
     function handleRoolback() {
+        /*
         console.log("Doing rollback")
         confirm({
             title: `Rollback and lose all modified data?`,
@@ -151,33 +171,46 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                 })
             })
             .catch(() => {
-                /*... */
+                /*... * /
             });
+            */
     }
-
-    useEffect(() => {
-        const upd = ws.subscribe<DtoReleaseAsset>(DtoEventType.EventUpdate, (data) => {
-            // console.log("Got update", data)
-            setUpdateAssetStatus(data);
-        })
-        return () => {
-            ws.unsubscribe(upd);
-        };
-    }, [])
-
+    /*
+        useEffect(() => {
+            const upd = ws.subscribe<DtoReleaseAsset>(DtoEventType.EventUpdate, (data) => {
+                // console.log("Got update", data)
+                setUpdateAssetStatus(data);
+            })
+            return () => {
+                ws.unsubscribe(upd);
+            };
+        }, [])
+    */
     useEffect(() => {
         const current = pkg.version;
 
         // Normalize Version Strings
         const currentVersion = semver.clean(current.replace(".dev", "-dev")) || "0.0.0"
-        const latestVersion = semver.clean((updateAssetStatus.last_release?.tag_name || "0.0.0").replace(".dev", "-dev")) || "0.0.0"
+        const latestVersion = semver.clean((health.health.last_release?.last_release || "0.0.0").replace(".dev", "-dev")) || "0.0.0"
 
-        if (updateAssetStatus.last_release && update !== latestVersion && semver.compare(latestVersion, currentVersion) == 1) {
+        if (update !== latestVersion && semver.compare(latestVersion, currentVersion) == 1) {
             setUpdate(latestVersion)
         } else {
             setUpdate(undefined)
         }
-    }, [updateAssetStatus])
+    }, [health])
+
+    /*
+    useEventSourceListener(
+        sse,
+        [DtoEventType.EventHeartbeat],
+        (evt) => {
+            //console.log("SSE EventHeartbeat", evt);
+            setUpdateAssetStatus(JSON.parse(evt.data));
+        },
+        [setUpdateAssetStatus],
+    );
+    */
 
     return (<>
         <AppBar position="static">
@@ -200,7 +233,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                         <Tab label="Shares" {...a11yProps(0)} icon={dirty.shares ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab href="#" label="Volumes" {...a11yProps(1)} icon={dirty.volumes ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab href="#" label="Users" {...a11yProps(2)} icon={dirty.users ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab href="#" label="Settings" {...a11yProps(3)} icon={dirty.settings ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab href="#" label="Settings" {...a11yProps(3)} icon={dirty.configs ? <Tooltip title="Unsaved data"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
                         <Tab label="smb.conf" {...a11yProps(4)} />
                         <Tab label="API Docs" {...a11yProps(4)} />
                     </Tabs>
@@ -212,30 +245,32 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                         <UndoIcon sx={{ color: 'white' }} />
                                     </Tooltip>
                                 </IconButton>
-                                <IconButton onClick={() => api.config.configUpdate()}>
+                                <IconButton onClick={() => /*api.config.configUpdate()*/ true}>
                                     <Tooltip title="Save all modified" arrow>
                                         <SaveIcon sx={{ color: 'white' }} />
                                     </Tooltip>
                                 </IconButton>
                             </>
                         }
-                        {healt.read_only &&
+                        {read_only &&
                             <IconButton>
                                 <Tooltip title="ReadOnly Mode" arrow>
                                     <PreviewIcon sx={{ color: 'white' }} />
                                 </Tooltip>
                             </IconButton>
                         }
-                        {update && updateAssetStatus.update_status == -1 &&
+                        {(update && updateAssetStatus.update_status == undefined) ? (
                             <IconButton onClick={handleDoUpdate}>
                                 <Tooltip title={`Update ${update} available`} arrow>
                                     <SystemSecurityUpdateIcon sx={{ color: 'white' }} />
                                 </Tooltip>
                             </IconButton>
-                        }
-                        {updateAssetStatus.update_status && updateAssetStatus.update_status != -1 &&
-                            <CircularProgressWithLabel value={updateAssetStatus.update_status} color="success" />
-                        }
+                        ) : (
+                            updateAssetStatus.update_status != undefined ?
+                                <CircularProgressWithLabel value={updateAssetStatus.update_status} color="success" />
+                                :
+                                <></>
+                        )}
                         <IconButton onClick={() => { mode == 'light' ? setMode('dark') : (mode == 'dark' ? setMode('system') : setMode('light')) }} >
                             <Tooltip title={`Switch Mode ${mode}`} arrow>
                                 {mode === 'light' ? <LightModeIcon sx={{ color: 'white' }} /> : mode === 'dark' ? <DarkModeIcon sx={{ color: 'white' }} /> : <AutoModeIcon sx={{ color: 'white' }} />}

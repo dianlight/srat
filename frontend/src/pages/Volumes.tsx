@@ -1,11 +1,10 @@
-import { Fragment, useContext, useEffect, useState } from "react";
-import { apiContext, ModeContext, wsContext as ws } from "../Contexts";
-import { DtoEventType, DtoMounDataFlag, type DtoBlockInfo, type DtoBlockPartition, type DtoMountPointData } from "../srat";
+import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { InView } from "react-intersection-observer";
 import { ObjectTable, PreviewDialog } from "../components/PreviewDialog";
 import Fab from "@mui/material/Fab";
 import List from "@mui/material/List";
-import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid2, Autocomplete } from "@mui/material";
+import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid2, Autocomplete, TextField, Input } from "@mui/material";
+import ShareIcon from '@mui/icons-material/Share';
 import AddIcon from '@mui/icons-material/Add';
 import EjectIcon from '@mui/icons-material/Eject';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -14,32 +13,27 @@ import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
 import { faHardDrive, faPlug, faPlugCircleCheck, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
-import { Api } from "@mui/icons-material";
-import { AutocompleteElement, PasswordElement, PasswordRepeatElement, TextFieldElement, useForm } from "react-hook-form-mui";
-import useSWR from "swr";
+import { Api, DiscFull } from "@mui/icons-material";
+import { AutocompleteElement, Controller, PasswordElement, PasswordRepeatElement, TextFieldElement, useForm } from "react-hook-form-mui";
 import { toast } from "react-toastify";
+import { useSSE } from "react-hooks-sse";
+import { useVolume } from "../hooks/volumeHook";
+import { useReadOnly } from "../hooks/readonlyHook";
+import { DtoMounDataFlag, useDeleteVolumeByIdMountMutation, useGetFilesystemsQuery, usePostVolumeByIdMountMutation, type DtoBlockPartition, type DtoMountPointData } from "../store/sratApi";
 
 
 export function Volumes() {
-    const mode = useContext(ModeContext);
+    const read_only = useReadOnly();
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showMount, setShowMount] = useState<boolean>(false);
 
-
-    const [status, setStatus] = useState<DtoBlockInfo>({});
+    const { volumes, isLoading, error } = useVolume();
     const [selected, setSelected] = useState<DtoBlockPartition | undefined>(undefined);
     const confirm = useConfirm();
+    const [mountVolume, mountVolumeResult] = usePostVolumeByIdMountMutation();
+    const [umountVolume, umountVolumeResult] = useDeleteVolumeByIdMountMutation();
 
 
-    useEffect(() => {
-        const vol = ws.subscribe<DtoBlockInfo>(DtoEventType.EventVolumes, (data) => {
-            console.log("Got volumes", data)
-            setStatus(data);
-        })
-        return () => {
-            ws.unsubscribe(vol);
-        };
-    }, [])
 
     function decodeEscapeSequence(source: string) {
         return source.replace(/\\x([0-9A-Fa-f]{2})/g, function () {
@@ -48,16 +42,27 @@ export function Volumes() {
     };
 
     function onSubmitMountVolume(data?: DtoMountPointData) {
-        if (!data || !data.name) return
         console.log("Mount", data)
-        apiContext.volume.mountCreate(data.name, {}).then((res) => {
-            toast.info(`Volume ${res.data.label} mounted successfully.`);
+        if (!data || !data.id) return
+        mountVolume({ id: data.id, dtoMountPointData: data }).unwrap().then((res) => {
+            toast.info(`Volume ${res.path} mounted successfully.`);
             setSelected(undefined);
         }).catch(err => {
-            console.error(err);
-            toast.error(`Erroe mountig ${data.label}: ${err}`, { data: { error: err } });
-            //setErrorInfo(JSON.stringify(err));
+            console.error("Error:", err, err.data);
+            toast.error(`${err.data.code}:${err.data.message}`, { data: { error: err } });
         })
+    }
+
+    function shareExists(mountPoint: string) {
+        //return shares.some(share => share.path === mountPoint);
+        return true;
+    }
+
+    function handleCreateShare(partition: DtoBlockPartition) {
+        //navigate(`/shares/create?path=${partition.mount_point}`);
+    }
+
+    function handleGoToShare(partition: DtoBlockPartition) {
     }
 
     function onSubmitUmountVolume(data: DtoBlockPartition, force = false) {
@@ -67,16 +72,17 @@ export function Volumes() {
             description: `Do you really want umount ${force ? "forcefull" : ""} the Volume ${data.name}?`
         })
             .then(() => {
-                if (!data.name) return
-                apiContext.volume.mountDelete(data.name, {
-                    force,
-                    lazy: !force,
-                }).then((res) => {
+                if (!data.mount_point_data?.id) return
+                umountVolume({
+                    id: data.mount_point_data?.id,
+                    force: force,
+                    lazy: true,
+                }).unwrap().then((res) => {
                     setSelected(undefined);
-                    toast.info(`Volume ${data.label} umounted successfully.`);
+                    toast.info(`Volume ${data.label} unmounted successfully.`);
                 }).catch(err => {
                     console.error(err);
-                    toast.error(`Erroe umountig ${data.label}: ${err}`, { data: { error: err } });
+                    toast.error(`Error unmounting ${data.label}: ${err}`, { data: { error: err } });
                     //setErrorInfo(JSON.stringify(err));
                 })
             })
@@ -92,34 +98,46 @@ export function Volumes() {
         <br />
         <List dense={true}>
             <Divider />
-            {status.partitions?.map((partition, idx) =>
+            {volumes.partitions?.map((partition, idx) =>
                 <Fragment key={idx}>
                     <ListItemButton key={idx}>
                         <ListItem
-                            secondaryAction={!mode.read_only && <>
+                            secondaryAction={!read_only && <>
                                 {partition.mount_point === "" &&
                                     <Tooltip title="Mount disk">
-                                        <IconButton onClick={() => { setSelected(partition); setShowMount(true) }} edge="end" aria-label="delete">
+                                        <IconButton onClick={() => { setSelected(partition); setShowMount(true) }} edge="end" aria-label="mount">
                                             <FontAwesomeSvgIcon icon={faPlug} />
                                         </IconButton>
                                     </Tooltip>
                                 }
                                 {partition.mount_point !== "" && partition.mount_point?.startsWith("/mnt/") && <>
                                     <Tooltip title="Unmount disk">
-                                        <IconButton onClick={() => onSubmitUmountVolume(partition, false)} edge="end" aria-label="delete">
+                                        <IconButton onClick={() => onSubmitUmountVolume(partition, false)} edge="end" aria-label="unmount">
                                             <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
                                         </IconButton>
                                     </Tooltip>
                                     <Tooltip title="Force unmounting disk">
-
-                                        <IconButton onClick={() => onSubmitUmountVolume(partition, true)} edge="end" aria-label="delete">
+                                        <IconButton onClick={() => onSubmitUmountVolume(partition, true)} edge="end" aria-label="force unmount">
                                             <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
                                         </IconButton>
                                     </Tooltip>
+                                    {!shareExists(partition.mount_point) && (
+                                        <Tooltip title="Create Share">
+                                            <IconButton onClick={() => handleCreateShare(partition)} edge="end" aria-label="create share">
+                                                <AddIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    {shareExists(partition.mount_point) && (
+                                        <Tooltip title="Go to Share">
+                                            <IconButton onClick={() => handleGoToShare(partition)} edge="end" aria-label="go to share">
+                                                <ShareIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
                                 </>
                                 }
-                            </>
-                            }
+                            </>}
                         >
                             <ListItemAvatar>
                                 <Avatar>
@@ -149,26 +167,37 @@ export function Volumes() {
     </InView >
 }
 
+interface MountPointData extends DtoMountPointData {
+    flagsNames?: string[];
+}
+
 
 function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPointData) => void, objectToEdit?: DtoBlockPartition }) {
-    const mountpointData: DtoMountPointData = {}
-    const { control, handleSubmit, watch, formState: { errors } } = useForm<DtoMountPointData>(
+    const mountpointData: MountPointData = {}
+    const { control, handleSubmit, watch, formState: { errors } } = useForm<MountPointData>(
         {
             values: {
-                name: props.objectToEdit?.name,
+                id: props.objectToEdit?.mount_point_data?.id,
                 fstype: props.objectToEdit?.type,
-                flags: props.objectToEdit?.partition_flags,
-                data: props.objectToEdit?.mount_data,
-            }
+                flags: props.objectToEdit?.mount_point_data?.flags,
+                flagsNames: props.objectToEdit?.mount_point_data?.flags?.map(v => DtoMounDataFlag[v]) || [],
+            },
         },
     );
-    const filesystems = useSWR<string[]>('/filesystems', () => apiContext.filesystems.filesystemsList().then(res => res.data));
+    const { data: filesystems, isLoading, error } = useGetFilesystemsQuery()
 
-    function handleCloseSubmit(data?: DtoMountPointData) {
+    function handleCloseSubmit(data?: MountPointData) {
+        if (data) {
+            data.flags = data.flagsNames?.map(v => Object.values(DtoMounDataFlag)
+                .filter(v2 => !(typeof v2 === 'string')).find((v1, ix) => {
+                    // console.log(v1, v, DtoMounDataFlag[v1])
+                    return DtoMounDataFlag[v1] === v
+                })
+            ).filter(v3 => v3 !== undefined);
+        }
+        console.log("Close", data)
         props.onClose(data)
     }
-
-    //console.log("MountpointData", props.objectToEdit)
 
     return (
         <Fragment>
@@ -177,7 +206,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                 onClose={() => handleCloseSubmit()}
             >
                 <DialogTitle>
-                    Mount Disk {props.objectToEdit?.label} ({props.objectToEdit?.name})
+                    {props.objectToEdit?.mount_point_data?.id} Mount Disk {props.objectToEdit?.label} ({props.objectToEdit?.name})
                 </DialogTitle>
                 <DialogContent>
                     <Stack spacing={2}>
@@ -189,22 +218,23 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                                 <Grid2 size={6}>
                                     <AutocompleteElement name="fstype" label="File System Type"
                                         required control={control}
-                                        options={filesystems.data || []}
+                                        options={filesystems || []}
                                     />
                                 </Grid2>
                                 <Grid2 size={6}>
                                     <AutocompleteElement
                                         multiple
-                                        name="flags"
+                                        name="flagsNames"
                                         label="Mount Flags"
                                         options={Object.values(DtoMounDataFlag).filter((v) => typeof v === "string") as string[]}
                                         control={control}
                                     />
                                 </Grid2>
+                                {/*
                                 <Grid2 size={12}>
                                     <TextFieldElement name="data" label="Additional Mount Data" control={control} sx={{ display: "flex" }} />
                                 </Grid2>
-
+                                */}
                             </Grid2>
                         </form>
                     </Stack>

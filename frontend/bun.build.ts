@@ -1,7 +1,7 @@
-import copy from 'bun-copy-plugin';
+//import copy from 'bun-copy-plugin';
 import { watch } from "fs"
 import { parseArgs } from "util";
-import { file, type BuildConfig, type BuildOutput, type Serve } from "bun";
+import { file, Glob, type BuildConfig, type BuildOutput, type Serve } from "bun";
 import { htmlLiveReload } from '@gtramontina.com/bun-html-live-reload';
 
 const { values, positionals } = parseArgs({
@@ -24,6 +24,12 @@ const { values, positionals } = parseArgs({
             default: 'http://localhost:8080',
             description: 'Specify the URL of the API context (in watching mode) (default: http://localhost:8080)'
         },
+        outDir: {
+            type: 'string',
+            short: 'o',
+            default: './out',
+            description: 'Specify the output directory (default: ./out)'
+        },
     },
     strict: true,
     allowPositionals: true
@@ -33,30 +39,30 @@ const APIURL = values.watch ? values.apiContextUrl || "" : "'dynamic'"
 console.log(`API URL: ${APIURL}`)
 
 const buildConfig: BuildConfig = {
-    entrypoints: [/*'src/index.html',*/ 'src/index.tsx'],
-    outdir: './out',  // Specify the output directory
-    experimentalCss: true,
+    entrypoints: ['src/index.html' /*, 'src/index.tsx' */],
+    outdir: values.outDir,  // Specify the output directory
+    //experimentalCss: true,
     naming: {
         entry: "[dir]/[name].[ext]",
         chunk: '[name]-[hash].[ext]',
         asset: '[name].[ext]',
     },
     target: "browser",
-    sourcemap: "inline",
-    minify: true,
+    sourcemap: "linked",
+    minify: false,
     plugins: [
-        copy("src/index.html", "out/index.html")
+        //copy("src/index.html", "out/index.html")
         //  html({})
     ],
     define: {
         "process.env.APIURL": APIURL,
         "process.env.NODE_ENV": values.watch ? "'development'" : "'production'"
-    }
+    },
 }
 
 async function build(): Promise<BuildOutput | void> {
-    if (!values.serve) {
-        console.log(`Build ${import.meta.dir}/src`)
+    if (!values.serve && !values.watch) {
+        console.log(`Build ${import.meta.dir}/src -> ${values.outDir}`)
         return Bun.build(buildConfig).then((result) => {
             if (!result.success) {
                 console.error("Build failed");
@@ -67,11 +73,14 @@ async function build(): Promise<BuildOutput | void> {
             }
             return result
         })
-    } else {
-        console.log(`Serving ${values.serve}`);
+    } else if (values.serve) {
+        console.log(`Serving ${values.serve} -> ${values.outDir}`);
         const serve: Serve = {
             fetch(req: Request) {
                 const url = new URL(req.url)
+                if (url.pathname === "/") {
+                    url.pathname = "/index.html"
+                }
                 const path = values.serve + url.pathname;
                 console.log(`Request ${req.mode} ${url.pathname} ==> ${path}`)
                 return new Response(Bun.file(path))
@@ -81,31 +90,50 @@ async function build(): Promise<BuildOutput | void> {
 
         Bun.serve(htmlLiveReload(serve, { buildConfig, watchPath: import.meta.dir + "/src" }));
         console.log("Serving http://localhost:3000/index.html");
+    } else if (values.watch) {
+        console.log(`Build Watch ${import.meta.dir}/src -> ${values.outDir}`)
+        async function rebuild(event: string, filename: string | null) {
+            console.log(`Detected ${event} in ${filename}`)
+            const glob = new Glob(`index-*`);
+
+            for await (const file of glob.scan(values.outDir)) {
+                console.log(`D ${values.outDir}/${file}`);
+                Bun.file(`${values.outDir}/${file}`).delete().catch((err) => { });
+            }
+
+            Bun.build(buildConfig).then((result) => {
+                if (!result.success) {
+                    console.error("Build failed");
+                    for (const message of result.logs) {
+                        // Bun will pretty print the message object
+                        console.error(message);
+                    }
+                }
+                return result
+            })
+            console.log('ReBuild complete ✅')
+        }
+        const srcwatch = watch(
+            `${import.meta.dir}/src`,
+            { recursive: true, },
+            async (event, filename) => {
+                rebuild(event, filename);
+            }
+        )
+
+        process.on('SIGINT', () => {
+            srcwatch.close();
+            process.exit(0);
+        })
+        rebuild('initial build', null);
     }
 }
 
 await build();
-console.log(`Build complete ✅ [👁️:${values.watch ? 'watching' : 'build'}]`)
+console.log(`Build complete ✅ [:${values.watch ? '👁️:watching' : '🧻:build'}]`)
 
 /*
 if (values.watch) {
-    console.log(`Build Watch ${import.meta.dir}/src`)
-    const srcwatch = watch(
-        `${import.meta.dir}/src`,
-        { recursive: true },
-        async (event, filename) => {
-            console.log(`Detected ${event} in ${filename}`)
-            //await build();
-            await htmlLiveReload.
-            console.log('Build complete ✅')
-        }
-    )
-
-
-    process.on('SIGINT', () => {
-        srcwatch.close();
-        process.exit(0);
-    })
 }
     */
 

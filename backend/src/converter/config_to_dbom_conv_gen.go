@@ -8,6 +8,7 @@ import (
 	patherr "github.com/dianlight/srat/converter/patherr"
 	dbom "github.com/dianlight/srat/dbom"
 	dto "github.com/dianlight/srat/dto"
+	osutil "github.com/snapcore/snapd/osutil"
 )
 
 type ConfigToDbomConverterImpl struct{}
@@ -25,19 +26,11 @@ func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedSha
 	if source.Name != "" {
 		target.Name = source.Name
 	}
-	var pString *string
-	if source.MountPointData != nil {
-		pString = &source.MountPointData.Path
+	if source.MountPointData.Path != "" {
+		target.Path = source.MountPointData.Path
 	}
-	if pString != nil {
-		target.Path = *pString
-	}
-	var pString2 *string
-	if source.MountPointData != nil {
-		pString2 = &source.MountPointData.FSType
-	}
-	if pString2 != nil {
-		target.FS = *pString2
+	if source.MountPointData.FSType != "" {
+		target.FS = source.MountPointData.FSType
 	}
 	if source.Disabled != false {
 		target.Disabled = source.Disabled
@@ -71,7 +64,7 @@ func (c *ConfigToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, targe
 	}
 	return nil
 }
-func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointData(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {
+func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {
 	if source.Name != "" {
 		target.Name = source.Name
 	}
@@ -106,15 +99,19 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointData(source 
 	}
 	return nil
 }
-func (c *ConfigToDbomConverterImpl) ShareToMountPointData(source config.Share, target *dbom.MountPointData) error {
-	if source.Name != "" {
-		target.Name = source.Name
-	}
+func (c *ConfigToDbomConverterImpl) ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error {
 	if source.Path != "" {
 		target.Path = source.Path
 	}
 	if source.FS != "" {
 		target.FSType = source.FS
+	}
+	if source.Path != "" {
+		xbool, err := osutil.IsMounted(source.Path)
+		if err != nil {
+			return patherr.Wrap(err, patherr.Field("IsMounted"))
+		}
+		target.IsMounted = xbool
 	}
 	return nil
 }

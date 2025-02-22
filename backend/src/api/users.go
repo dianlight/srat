@@ -7,10 +7,37 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/server"
 	"github.com/gorilla/mux"
 	"github.com/xorcare/pointer"
 	"gorm.io/gorm"
 )
+
+type UserHandler struct {
+	//ctx               context.Context
+	//broascasting      service.BroadcasterServiceInterface
+	//volumesQueueMutex sync.RWMutex
+	apiContext *ContextState
+}
+
+func NewUserHandler(apiContext *ContextState) *UserHandler {
+	p := new(UserHandler)
+	p.apiContext = apiContext
+	//p.ctx = ctx
+	//p.broascasting = broascasting
+	//p.volumesQueueMutex = sync.RWMutex{}
+	return p
+}
+
+func (handler *UserHandler) Patterns() []server.RouteDetail {
+	return []server.RouteDetail{
+		{Pattern: "/users", Method: "GET", Handler: handler.ListUsers},
+		{Pattern: "/useradmin", Method: "GET", Handler: handler.GetAdminUser},
+		{Pattern: "/useradmin", Method: "PUT", Handler: handler.UpdateAdminUser},
+		{Pattern: "/user/{id}", Method: "PUT", Handler: handler.UpdateUser},
+		{Pattern: "/user/{id}", Method: "DELETE", Handler: handler.DeleteUser},
+	}
+}
 
 // ListUsers godoc
 //
@@ -19,10 +46,10 @@ import (
 //	@Tags			user
 //	@Produce		json
 //	@Success		200	{object}	[]dto.User
-//	@Failure		405	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		405	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/users [get]
-func ListUsers(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	var dbusers dbom.SambaUsers
 	err := dbusers.Load()
 	if err != nil {
@@ -60,10 +87,10 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Produce		json
 //	@Success		200	{object}	dto.User
-//	@Failure		405	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
-//	@Router			/admin/user [get]
-func GetAdminUser(w http.ResponseWriter, r *http.Request) {
+//	@Failure		405	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
+//	@Router			/useradmin [get]
+func (handler *UserHandler) GetAdminUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var adminUser dto.User
@@ -97,8 +124,8 @@ func GetAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			username	path		string	true	"Name"
 //	@Success		200			{object}	dto.User
-//	@Failure		405			{object}	ErrorResponse
-//	@Failure		500			{object}	ErrorResponse
+//	@Failure		405			{object}	dto.ErrorInfo
+//	@Failure		500			{object}	dto.ErrorInfo
 //	@Router			/user/{username} [get]
 /*
 func GetUser(w http.ResponseWriter, r *http.Request) {
@@ -126,12 +153,12 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			user	body		dto.User	true	"Create model"
 //	@Success		201		{object}	dto.User
-//	@Failure		400		{object}	ErrorResponse
-//	@Failure		405		{object}	ErrorResponse
-//	@Failure		409		{object}	ErrorResponse
-//	@Failure		500		{object}	ErrorResponse
+//	@Failure		400		{object}	dto.ErrorInfo
+//	@Failure		405		{object}	dto.ErrorInfo
+//	@Failure		409		{object}	dto.ErrorInfo
+//	@Failure		500		{object}	dto.ErrorInfo
 //	@Router			/user [post]
-func CreateUser(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	var user dto.User
 	err := HttpJSONRequest(&user, w, r)
@@ -156,8 +183,9 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	context_state.DataDirtyTracker.Users = true
+	//	context_state := (&dto.Status{}).FromContext(r.Context())
+	//context_state := StateFromContext(r.Context())
+	handler.apiContext.DataDirtyTracker.Users = true
 	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
@@ -178,13 +206,12 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 //	@Param			username	path		string		true	"Name"
 //	@Param			user		body		dto.User	true	"Update model"
 //	@Success		200			{object}	dto.User
-//	@Failure		400			{object}	ErrorResponse
-//	@Failure		405			{object}	ErrorResponse
-//	@Failure		404			{object}	ErrorResponse
-//	@Failure		500			{object}	ErrorResponse
+//	@Failure		400			{object}	dto.ErrorInfo
+//	@Failure		405			{object}	dto.ErrorInfo
+//	@Failure		404			{object}	dto.ErrorInfo
+//	@Failure		500			{object}	dto.ErrorInfo
 //	@Router			/user/{username} [put]
-//	@Router			/user/{username} [patch]
-func UpdateUser(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 
 	var user dto.User
@@ -224,8 +251,9 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	context_state.DataDirtyTracker.Users = true
+	//context_state := (&dto.Status{}).FromContext(r.Context())
+	//context_state := StateFromContext(r.Context())
+	handler.apiContext.DataDirtyTracker.Users = true
 	HttpJSONReponse(w, user, nil)
 }
 
@@ -238,13 +266,12 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			user	body		dto.User	true	"Update model"
 //	@Success		200		{object}	dto.User
-//	@Failure		400		{object}	ErrorResponse
-//	@Failure		405		{object}	ErrorResponse
-//	@Failure		404		{object}	ErrorResponse
-//	@Failure		500		{object}	ErrorResponse
-//	@Router			/admin/user [put]
-//	@Router			/admin/user [patch]
-func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
+//	@Failure		400		{object}	dto.ErrorInfo
+//	@Failure		405		{object}	dto.ErrorInfo
+//	@Failure		404		{object}	dto.ErrorInfo
+//	@Failure		500		{object}	dto.ErrorInfo
+//	@Router			/useradmin [put]
+func (handler *UserHandler) UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 
 	var user dto.User
 	err := HttpJSONRequest(&user, w, r)
@@ -277,8 +304,9 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
-	context_state.DataDirtyTracker.Users = true
+	//context_state := (&dto.Status{}).FromContext(r.Context())
+	//context_state := StateFromContext(r.Context())
+	handler.apiContext.DataDirtyTracker.Users = true
 	HttpJSONReponse(w, user, nil)
 }
 
@@ -289,12 +317,12 @@ func UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
 //	@Tags			user
 //	@Param			username	path	string	true	"Name"
 //	@Success		204
-//	@Failure		400	{object}	ErrorResponse
-//	@Failure		405	{object}	ErrorResponse
-//	@Failure		404	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Failure		400	{object}	dto.ErrorInfo
+//	@Failure		405	{object}	dto.ErrorInfo
+//	@Failure		404	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/user/{username} [delete]
-func DeleteUser(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 
 	dbUser := dbom.SambaUser{
@@ -317,8 +345,9 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	//context_state := (&dto.Status{}).FromContext(r.Context())
+	//context_state := StateFromContext(r.Context())
 
-	context_state.DataDirtyTracker.Users = true
+	handler.apiContext.DataDirtyTracker.Users = true
 	HttpJSONReponse(w, nil, nil)
 }

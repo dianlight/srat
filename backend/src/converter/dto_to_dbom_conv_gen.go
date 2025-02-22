@@ -11,29 +11,26 @@ import (
 
 type DtoToDbomConverterImpl struct{}
 
-func (c *DtoToDbomConverterImpl) DtoMountPointDataToMountPointData(source dto.MountPointData, target *dbom.MountPointData) error {
-	if source.DeviceId != 0 {
-		target.BlockDeviceId = source.DeviceId
+func (c *DtoToDbomConverterImpl) BlockPartitionToMountPointPath(source dto.BlockPartition, target *dbom.MountPointPath) error {
+	if source.DeviceId != nil {
+		target.DeviceId = *source.DeviceId
 	}
 	if source.Name != "" {
-		target.Name = source.Name
+		target.Source = source.Name
 	}
-	if source.Path != "" {
-		target.Path = source.Path
+	if source.MountPoint != "" {
+		target.Path = source.MountPoint
 	}
-	if source.DefaultPath != "" {
-		target.DefaultPath = source.DefaultPath
+	if source.Type != "" {
+		target.FSType = source.Type
 	}
-	if source.FSType != "" {
-		target.FSType = source.FSType
-	}
-	dtoMounDataFlags, err := c.dtoMounDataFlagsToDtoMounDataFlags(source.Flags)
+	dtoMounDataFlags, err := c.dtoMounDataFlagsToDtoMounDataFlags(source.PartitionFlags)
 	if err != nil {
 		return err
 	}
 	target.Flags = dtoMounDataFlags
-	if source.Data != "" {
-		target.Data = source.Data
+	if source.MountPoint != "" {
+		target.IsMounted = isMountPointValid(source.MountPoint)
 	}
 	return nil
 }
@@ -72,15 +69,18 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 	}
 	return nil
 }
-func (c *DtoToDbomConverterImpl) MountPointDataToDtoMountPointData(source dbom.MountPointData, target *dto.MountPointData) error {
+func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.MountPointData, target *dbom.MountPointPath) error {
+	if source.ID != 0 {
+		target.ID = source.ID
+	}
+	if source.Source != "" {
+		target.Source = source.Source
+	}
 	if source.Path != "" {
 		target.Path = source.Path
 	}
-	if source.DefaultPath != "" {
-		target.DefaultPath = source.DefaultPath
-	}
-	if source.Name != "" {
-		target.Name = source.Name
+	if source.PrimaryPath != "" {
+		target.PrimaryPath = source.PrimaryPath
 	}
 	if source.FSType != "" {
 		target.FSType = source.FSType
@@ -90,11 +90,56 @@ func (c *DtoToDbomConverterImpl) MountPointDataToDtoMountPointData(source dbom.M
 		return err
 	}
 	target.Flags = dtoMounDataFlags
-	if source.Data != "" {
-		target.Data = source.Data
+	if source.IsInvalid != false {
+		target.IsInvalid = source.IsInvalid
 	}
-	if source.BlockDeviceId != 0 {
-		target.DeviceId = source.BlockDeviceId
+	if source.IsMounted != false {
+		target.IsMounted = source.IsMounted
+	}
+	if source.InvalidError != nil {
+		xstring := *source.InvalidError
+		target.InvalidError = &xstring
+	}
+	if source.Warnings != nil {
+		xstring2 := *source.Warnings
+		target.Warnings = &xstring2
+	}
+	return nil
+}
+func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error {
+	if source.ID != 0 {
+		target.ID = source.ID
+	}
+	if source.Path != "" {
+		target.Path = source.Path
+	}
+	if source.PrimaryPath != "" {
+		target.PrimaryPath = source.PrimaryPath
+	}
+	if source.FSType != "" {
+		target.FSType = source.FSType
+	}
+	dtoMounDataFlags, err := c.dtoMounDataFlagsToDtoMounDataFlags(source.Flags)
+	if err != nil {
+		return err
+	}
+	target.Flags = dtoMounDataFlags
+	if source.Source != "" {
+		target.Source = source.Source
+	}
+	if source.IsMounted != false {
+		target.IsMounted = source.IsMounted
+	}
+	if source.IsInvalid != false {
+		target.IsInvalid = source.IsInvalid
+	}
+	if source.InvalidError != nil {
+		xstring := *source.InvalidError
+		target.InvalidError = &xstring
+	}
+	if source.Warnings != nil {
+		xstring2 := *source.Warnings
+		target.Warnings = &xstring2
 	}
 	return nil
 }
@@ -107,7 +152,7 @@ func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *
 	target.IsAdmin = &pBool
 	return nil
 }
-func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPointData(source dto.SharedResource, target *dbom.ExportedShare) error {
+func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPointPath(source dto.SharedResource, target *dbom.ExportedShare) error {
 	if source.ID != nil {
 		target.ID = *source.ID
 	}
@@ -126,14 +171,6 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 			return err
 		}
 		target.Usage = dtoHAMountUsage
-	}
-	var pUint64 *uint64
-	if source.MountPointData != nil {
-		pUint64 = &source.MountPointData.DeviceId
-	}
-	if pUint64 != nil {
-		xuint64 := *pUint64
-		target.DeviceId = &xuint64
 	}
 	return nil
 }

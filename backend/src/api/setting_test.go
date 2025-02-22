@@ -1,4 +1,4 @@
-package api
+package api_test
 
 import (
 	"encoding/json"
@@ -7,85 +7,94 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestGetSettingsHandler(t *testing.T) {
+type SettingsHandlerSuite struct {
+	suite.Suite
+	//mockBoradcaster *MockBroadcasterServiceInterface
+	// VariableThatShouldStartAtFive int
+}
+
+func TestSettingsHandlerSuite(t *testing.T) {
+	csuite := new(SettingsHandlerSuite)
+	suite.Run(t, csuite)
+}
+func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
+	api := api.NewSettingsHanler(&apiContextState)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/global", nil)
-	require.NoError(t, err)
+	suite.Require().NoError(err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(GetSettings)
+	handler := http.HandlerFunc(api.GetSettings)
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.
 	handler.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	require.Equal(t, http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
-
-	context_state := (&dto.ContextState{}).FromContext(testContext)
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	var config config.Config
 	err = config.FromContext(testContext)
-	require.NoError(t, err)
+	suite.Require().NoError(err)
 	var expected dto.Settings
 	var conv converter.ConfigToDtoConverterImpl
 	err = conv.ConfigToSettings(config, &expected)
 	//err = mapper.Map(context.Background(), &expected, config)
-	require.NoError(t, err)
+	suite.Require().NoError(err)
 
 	// Check the response body is what we expect.
 	var returned dto.Settings
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &returned)
-	require.NoError(t, jsonError)
+	suite.Require().NoError(jsonError)
 
-	assert.Equal(t, expected, returned)
+	suite.Equal(expected, returned)
 
-	assert.False(t, context_state.DataDirtyTracker.Settings)
+	suite.False(apiContextState.DataDirtyTracker.Settings)
 }
 
-func TestUpdateSettingsHandler(t *testing.T) {
+func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
+	api := api.NewSettingsHanler(&apiContextState)
 	glc := dto.Settings{
 		Workgroup: "pluto&admin",
 	}
-	context_state := (&dto.ContextState{}).FromContext(testContext)
 
 	jsonBody, jsonError := json.Marshal(glc)
-	require.NoError(t, jsonError)
+	suite.Require().NoError(jsonError)
 	req, err := http.NewRequestWithContext(testContext, "PATCH", "/global", strings.NewReader(string(jsonBody)))
-	require.NoError(t, err)
+	suite.Require().NoError(err)
 
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
-	router.HandleFunc("/global", UpdateSettings).Methods(http.MethodPatch, http.MethodPost)
+	router.HandleFunc("/global", api.UpdateSettings).Methods(http.MethodPatch, http.MethodPost)
 	router.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	var res dto.Settings
 	err = json.Unmarshal(rr.Body.Bytes(), &res)
-	require.NoError(t, err, "Body %#v", rr.Body.String())
+	suite.Require().NoError(err, "Body %#v", rr.Body.String())
 
-	assert.Equal(t, glc.Workgroup, res.Workgroup)
-	assert.EqualValues(t, []string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"}, res.AllowHost)
-	assert.True(t, context_state.DataDirtyTracker.Settings)
+	suite.Equal(glc.Workgroup, res.Workgroup)
+	suite.EqualValues([]string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"}, res.AllowHost)
+	suite.True(apiContextState.DataDirtyTracker.Settings)
 
 	// Restore original state
 	var properties dbom.Properties
 	if err := properties.Load(); err != nil {
-		t.Fatalf("Failed to load properties: %v", err)
+		suite.T().Fatalf("Failed to load properties: %v", err)
 	}
 	if err := properties.SetValue("Workgroup", "WORKGROUP"); err != nil {
-		t.Fatalf("Failed to add workgroup property: %v", err)
+		suite.T().Fatalf("Failed to add workgroup property: %v", err)
 	}
 }

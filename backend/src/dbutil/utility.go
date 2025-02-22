@@ -4,10 +4,11 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/repository"
 	"github.com/ztrue/tracerr"
 )
 
-func FirstTimeJSONImporter(config config.Config) (err error) {
+func FirstTimeJSONImporter(config config.Config, mount_repository repository.MountPointPathRepositoryInterface) (err error) {
 
 	var conv converter.ConfigToDbomConverterImpl
 	shares := &dbom.ExportedShares{}
@@ -26,11 +27,13 @@ func FirstTimeJSONImporter(config config.Config) (err error) {
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
-	//FIXME: Normalize MountPointData on DTO Level
-	//for _, share := range shares.Shares {
-	//	if share.MountPointData != nil {
-
-	//
+	for i, share := range *shares {
+		err = mount_repository.Save(&share.MountPointData)
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+		(*shares)[i] = share
+	}
 	err = shares.Save()
 	if err != nil {
 		return tracerr.Wrap(err)

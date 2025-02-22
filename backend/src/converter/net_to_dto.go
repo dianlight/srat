@@ -8,8 +8,6 @@ import (
 // goverter:converter
 // goverter:output:file ./net_to_dto_conv_gen.go
 // goverter:output:package github.com/dianlight/srat/converter
-// -goverter:extend StringToDtoUser
-// -goverter:extend DtoUserToString
 // goverter:useZeroValueOnPointerInconsistency
 // goverter:update:ignoreZeroValueField
 // goverter:default:update

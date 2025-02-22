@@ -1,12 +1,14 @@
 package dto
 
 type MountPointData struct {
-	Path        string `json:"path"`
-	DefaultPath string `json:"default_path"`
-	//Label       string        `json:"label"`
-	Name     string        `json:"name"`
-	FSType   string        `json:"fstype"`
-	Flags    MounDataFlags `json:"flags,omitempty"`
-	Data     string        `json:"data,omitempty"`
-	DeviceId uint64        `json:"device_id,omitempty"`
+	ID           uint          `json:"id"`
+	Path         string        `json:"path"`
+	PrimaryPath  string        `json:"primary_path"`
+	FSType       string        `json:"fstype"`
+	Flags        MounDataFlags `json:"flags,omitempty"`
+	Source       string        `json:"source,omitempty"`
+	IsMounted    bool          `json:"is_mounted,omitempty"`
+	IsInvalid    bool          `json:"invalid,omitempty"`
+	InvalidError *string       `json:"invalid_error,omitempty"`
+	Warnings     *string       `json:"warnings,omitempty"`
 }

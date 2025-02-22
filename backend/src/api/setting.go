@@ -2,13 +2,30 @@ package api
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"golang.org/x/time/rate"
+	"github.com/dianlight/srat/server"
 )
+
+type SettingsHanler struct {
+	apiContext *ContextState
+}
+
+func NewSettingsHanler(apiContext *ContextState) *SettingsHanler {
+	p := new(SettingsHanler)
+	p.apiContext = apiContext
+	return p
+}
+
+func (broker *SettingsHanler) Patterns() []server.RouteDetail {
+	return []server.RouteDetail{
+		{Pattern: "/settings", Method: "GET", Handler: broker.GetSettings},
+		{Pattern: "/settings", Method: "PUT", Handler: broker.UpdateSettings},
+		{Pattern: "/settings", Method: "PATCH", Handler: broker.UpdateSettings},
+	}
+}
 
 // UpdateSettings godoc
 //
@@ -19,11 +36,11 @@ import (
 //	@Produce		json
 //	@Param			config	body		dto.Settings	true	"Update model"
 //	@Success		200		{object}	dto.Settings
-//	@Failure		400		{object}	ErrorResponse
-//	@Failure		500		{object}	ErrorResponse
-//	@Router			/global [put]
-//	@Router			/global [patch]
-func UpdateSettings(w http.ResponseWriter, r *http.Request) {
+//	@Failure		400		{object}	dto.ErrorInfo
+//	@Failure		500		{object}	dto.ErrorInfo
+//	@Router			/settings [put]
+//	@Router			/settings [patch]
+func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	var config dto.Settings
 	err := HttpJSONRequest(&config, w, r)
 	if err != nil {
@@ -51,7 +68,7 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
+	//context_state := StateFromContext(r.Context())
 
 	//err = mapper.Map(context.Background(), &config, dbconfig)
 	err = conv.PropertiesToSettings(dbconfig, &config)
@@ -59,8 +76,8 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	context_state.DataDirtyTracker.Settings = true
-	UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
+	self.apiContext.DataDirtyTracker.Settings = true
+	//UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 	HttpJSONReponse(w, config, nil)
 }
 
@@ -72,10 +89,10 @@ func UpdateSettings(w http.ResponseWriter, r *http.Request) {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	dto.Settings
-//	@Failure		400	{object}	ErrorResponse
-//	@Failure		500	{object}	ErrorResponse
-//	@Router			/global [get]
-func GetSettings(w http.ResponseWriter, r *http.Request) {
+//	@Failure		400	{object}	dto.ErrorInfo
+//	@Failure		500	{object}	dto.ErrorInfo
+//	@Router			/settings [get]
+func (self *SettingsHanler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	var dbsettings dbom.Properties
 	var conv converter.DtoToDbomConverterImpl
 	err := dbsettings.Load()

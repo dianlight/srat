@@ -83,9 +83,7 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 					return fmt.Errorf("Type mismatch for field: %s %T->%T", prop.Key, prop.Value, newvalue.Interface())
 				}
 			}
-		} /*else {
-			return fmt.Errorf("Field not found: %s", prop.Key)
-		}*/
+		}
 	}
 	return nil
 }
@@ -123,12 +121,12 @@ func (c *ConfigToDbomConverterImpl) DbomObjectsToConfig(properties dbom.Properti
 }
 
 func (c *ConfigToDbomConverterImpl) ShareToExportedShare(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {
-	err := c.ShareToExportedShareNoMountPointData(source, target, context)
+	err := c.ShareToExportedShareNoMountPointPath(source, target, context)
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
-	target.MountPointData = &dbom.MountPointData{}
-	err = c.ShareToMountPointData(source, target.MountPointData)
+	target.MountPointData = dbom.MountPointPath{}
+	err = c.ShareToMountPointPath(source, &target.MountPointData)
 	if err != nil {
 		return tracerr.Wrap(err)
 	}

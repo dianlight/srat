@@ -22,7 +22,8 @@ type ConfigToDtoConverter interface {
 	ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
 
 	// goverter:update target
-	// goverter:ignore DefaultPath Flags Data DeviceId
+	// goverter:ignore  Flags Source IsInvalid InvalidError ID PrimaryPath Warnings
+	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map FS FSType
 	ShareToMountPointData(source config.Share, target *dto.MountPointData) error
 
@@ -69,12 +70,3 @@ func StringToDtoUser(username string, users []dto.User) (dto.User, error) {
 func DtoUserToString(user dto.User) string {
 	return *user.Username
 }
-
-/*
-// goverter:context conv
-func SettingsToOptions(source dto.Settings, conv ConfigToDtoConverter) (config.Options, error) {
-	var target config.Options
-	err := conv._SettingsToOptions(source, &target)
-	return target, err
-}
-*/

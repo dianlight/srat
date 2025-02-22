@@ -1,11 +1,10 @@
 definitions:
-  api.ErrorResponse:
+  dto.BinaryAsset:
     properties:
-      body: {}
-      code:
+      id:
         type: integer
-      error:
-        type: string
+      size:
+        type: integer
     type: object
   dto.BlockInfo:
     properties:
@@ -48,6 +47,10 @@ definitions:
       mount_point:
         description: MountPoint is the path where this partition is mounted.
         type: string
+      mount_point_data:
+        allOf:
+        - $ref: '#/definitions/dto.MountPointData'
+        description: Relative MountPointData
       name:
         description: Name is the system name given to the partition, e.g. "sda1".
         type: string
@@ -84,8 +87,70 @@ definitions:
       volumes:
         type: boolean
     type: object
+  dto.ErrorCode:
+    properties:
+      errorCode:
+        enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        - 7
+        type: integer
+        x-enum-comments:
+          device_not_found: '"Device not found {{.DeviceID}}",404'
+          generic_error: '"An unexpected error occurred",500'
+          invalid_parameter: '"Invalid parameter: {{.Key}}. {{.Message}}",405'
+          json_marshal_error: '"Unable to marshal JSON: {{.Error}}",500'
+          json_unmarshal_error: '"Unable to unmarshal JSON: {{.Error}}",500'
+          mount_fail: '"Unable to mount {{.Device}} on {{.Path}}. {{.Message}}",406'
+          unknown: invalid
+          unmount_fail: '"Unable to unmount {{.ID}}. {{.Message}}",406'
+        x-enum-varnames:
+        - unknown
+        - generic_error
+        - json_marshal_error
+        - json_unmarshal_error
+        - invalid_parameter
+        - mount_fail
+        - unmount_fail
+        - device_not_found
+      errorMessage:
+        type: string
+      httpCode:
+        type: integer
+    type: object
+  dto.ErrorInfo:
+    properties:
+      code:
+        $ref: '#/definitions/dto.ErrorCode'
+      data:
+        additionalProperties: {}
+        type: object
+      deep_message:
+        type: string
+      error: {}
+      message:
+        type: string
+      trace:
+        items:
+          $ref: '#/definitions/tracerr.Frame'
+        type: array
+    type: object
+  dto.EventMessageEnvelope:
+    properties:
+      data: {}
+      event:
+        $ref: '#/definitions/dto.EventType'
+      id:
+        type: string
+    type: object
   dto.EventType:
     enum:
+    - hello
     - update
     - heartbeat
     - share
@@ -93,6 +158,7 @@ definitions:
     - dirty
     type: string
     x-enum-varnames:
+    - EventHello
     - EventUpdate
     - EventHeartbeat
     - EventShare
@@ -114,12 +180,18 @@ definitions:
     properties:
       alive:
         type: boolean
+      aliveTime:
+        type: string
+      dirty_tracking:
+        $ref: '#/definitions/dto.DataDirtyTracker'
       last_error:
         type: string
+      last_release:
+        $ref: '#/definitions/dto.ReleaseAsset'
       read_only:
         type: boolean
-      samba_pid:
-        type: integer
+      samba_process_status:
+        $ref: '#/definitions/dto.SambaProcessStatus'
     type: object
   dto.MounDataFlag:
     enum:
@@ -167,22 +239,27 @@ definitions:
     - MS_RELATIME
   dto.MountPointData:
     properties:
-      data:
-        type: string
-      default_path:
-        type: string
-      device_id:
-        type: integer
       flags:
         items:
           $ref: '#/definitions/dto.MounDataFlag'
         type: array
       fstype:
         type: string
-      name:
-        description: Label       string        `json:"label"`
+      id:
+        type: integer
+      invalid:
+        type: boolean
+      invalid_error:
         type: string
+      is_mounted:
+        type: boolean
       path:
+        type: string
+      primary_path:
+        type: string
+      source:
+        type: string
+      warnings:
         type: string
     type: object
   dto.NIC:
@@ -218,12 +295,11 @@ definitions:
     type: object
   dto.ReleaseAsset:
     properties:
-      arch:
-        $ref: '#/definitions/github.ReleaseAsset'
+      arch_asset:
+        $ref: '#/definitions/dto.BinaryAsset'
       last_release:
-        $ref: '#/definitions/github.RepositoryRelease'
-      update_status:
-        type: integer
+        description: ProgressStatus int8        `json:"update_status"`
+        type: string
     type: object
   dto.SambaProcessStatus:
     properties:
@@ -284,9 +360,6 @@ definitions:
   dto.SharedResource:
     properties:
       disabled:
-        description: |-
-          Path        string       `json:"path"`
-          FS          string       `json:"fs"`
         type: boolean
       id:
         type: integer
@@ -326,6 +399,15 @@ definitions:
     - Stable
     - Prerelease
     - None
+  dto.UpdateProgress:
+    properties:
+      last_release:
+        type: string
+      update_error:
+        type: string
+      update_status:
+        type: integer
+    type: object
   dto.User:
     properties:
       is_admin:
@@ -335,455 +417,16 @@ definitions:
       username:
         type: string
     type: object
-  github.Match:
+  tracerr.Frame:
     properties:
-      indices:
-        items:
-          type: integer
-        type: array
-      text:
+      func:
+        description: Func contains a function name.
         type: string
-    type: object
-  github.Organization:
-    properties:
-      advanced_security_enabled_for_new_repositories:
-        description: AdvancedSecurityAuditLogEnabled toggles whether the advanced
-          security audit log is enabled.
-        type: boolean
-      avatar_url:
-        type: string
-      billing_email:
-        type: string
-      blog:
-        type: string
-      collaborators:
+      line:
+        description: Line contains a line number.
         type: integer
-      company:
-        type: string
-      created_at:
-        $ref: '#/definitions/github.Timestamp'
-      default_repository_permission:
-        description: |-
-          DefaultRepoPermission can be one of: "read", "write", "admin", or "none". (Default: "read").
-          It is only used in OrganizationsService.Edit.
-        type: string
-      default_repository_settings:
-        description: |-
-          DefaultRepoSettings can be one of: "read", "write", "admin", or "none". (Default: "read").
-          It is only used in OrganizationsService.Get.
-        type: string
-      dependabot_alerts_enabled_for_new_repositories:
-        description: DependabotAlertsEnabled toggles whether dependabot alerts are
-          enabled.
-        type: boolean
-      dependabot_security_updates_enabled_for_new_repositories:
-        description: DependabotSecurityUpdatesEnabled toggles whether dependabot security
-          updates are enabled.
-        type: boolean
-      dependency_graph_enabled_for_new_repositories:
-        description: DependabotGraphEnabledForNewRepos toggles whether dependabot
-          graph is enabled on new repositories.
-        type: boolean
-      description:
-        type: string
-      disk_usage:
-        type: integer
-      email:
-        type: string
-      events_url:
-        type: string
-      followers:
-        type: integer
-      following:
-        type: integer
-      has_organization_projects:
-        type: boolean
-      has_repository_projects:
-        type: boolean
-      hooks_url:
-        type: string
-      html_url:
-        type: string
-      id:
-        type: integer
-      is_verified:
-        type: boolean
-      issues_url:
-        type: string
-      location:
-        type: string
-      login:
-        type: string
-      members_allowed_repository_creation_type:
-        description: |-
-          MembersAllowedRepositoryCreationType denotes if organization members can create repositories
-          and the type of repositories they can create. Possible values are: "all", "private", or "none".
-
-          Deprecated: Use MembersCanCreatePublicRepos, MembersCanCreatePrivateRepos, MembersCanCreateInternalRepos
-          instead. The new fields overrides the existing MembersAllowedRepositoryCreationType during 'edit'
-          operation and does not consider 'internal' repositories during 'get' operation
-        type: string
-      members_can_create_internal_repositories:
-        type: boolean
-      members_can_create_pages:
-        description: MembersCanCreatePages toggles whether organization members can
-          create GitHub Pages sites.
-        type: boolean
-      members_can_create_private_pages:
-        description: MembersCanCreatePrivatePages toggles whether organization members
-          can create private GitHub Pages sites.
-        type: boolean
-      members_can_create_private_repositories:
-        type: boolean
-      members_can_create_public_pages:
-        description: MembersCanCreatePublicPages toggles whether organization members
-          can create public GitHub Pages sites.
-        type: boolean
-      members_can_create_public_repositories:
-        description: https://developer.github.com/changes/2019-12-03-internal-visibility-changes/#rest-v3-api
-        type: boolean
-      members_can_create_repositories:
-        description: MembersCanCreateRepos default value is true and is only used
-          in Organizations.Edit.
-        type: boolean
-      members_can_fork_private_repositories:
-        description: MembersCanForkPrivateRepos toggles whether organization members
-          can fork private organization repositories.
-        type: boolean
-      members_url:
-        type: string
-      name:
-        type: string
-      node_id:
-        type: string
-      owned_private_repos:
-        type: integer
-      plan:
-        $ref: '#/definitions/github.Plan'
-      private_gists:
-        type: integer
-      public_gists:
-        type: integer
-      public_members_url:
-        type: string
-      public_repos:
-        type: integer
-      repos_url:
-        type: string
-      secret_scanning_enabled_for_new_repositories:
-        description: SecretScanningEnabled toggles whether secret scanning is enabled
-          on new repositories.
-        type: boolean
-      secret_scanning_push_protection_enabled_for_new_repositories:
-        description: SecretScanningPushProtectionEnabledForNewRepos toggles whether
-          secret scanning push protection is enabled on new repositories.
-        type: boolean
-      secret_scanning_validity_checks_enabled:
-        description: SecretScanningValidityChecksEnabled toggles whether secret scanning
-          validity check is enabled.
-        type: boolean
-      total_private_repos:
-        type: integer
-      twitter_username:
-        type: string
-      two_factor_requirement_enabled:
-        type: boolean
-      type:
-        type: string
-      updated_at:
-        $ref: '#/definitions/github.Timestamp'
-      url:
-        description: API URLs
-        type: string
-      web_commit_signoff_required:
-        description: WebCommitSignoffRequire toggles
-        type: boolean
-    type: object
-  github.Plan:
-    properties:
-      collaborators:
-        type: integer
-      filled_seats:
-        type: integer
-      name:
-        type: string
-      private_repos:
-        type: integer
-      seats:
-        type: integer
-      space:
-        type: integer
-    type: object
-  github.ReleaseAsset:
-    properties:
-      browser_download_url:
-        type: string
-      content_type:
-        type: string
-      created_at:
-        $ref: '#/definitions/github.Timestamp'
-      download_count:
-        type: integer
-      id:
-        type: integer
-      label:
-        type: string
-      name:
-        type: string
-      node_id:
-        type: string
-      size:
-        type: integer
-      state:
-        type: string
-      updated_at:
-        $ref: '#/definitions/github.Timestamp'
-      uploader:
-        $ref: '#/definitions/github.User'
-      url:
-        type: string
-    type: object
-  github.RepositoryRelease:
-    properties:
-      assets:
-        items:
-          $ref: '#/definitions/github.ReleaseAsset'
-        type: array
-      assets_url:
-        type: string
-      author:
-        $ref: '#/definitions/github.User'
-      body:
-        type: string
-      created_at:
-        $ref: '#/definitions/github.Timestamp'
-      discussion_category_name:
-        type: string
-      draft:
-        type: boolean
-      generate_release_notes:
-        description: 'The following fields are not used in EditRelease:'
-        type: boolean
-      html_url:
-        type: string
-      id:
-        description: 'The following fields are not used in CreateRelease or EditRelease:'
-        type: integer
-      make_latest:
-        description: 'MakeLatest can be one of: "true", "false", or "legacy".'
-        type: string
-      name:
-        type: string
-      node_id:
-        type: string
-      prerelease:
-        type: boolean
-      published_at:
-        $ref: '#/definitions/github.Timestamp'
-      tag_name:
-        type: string
-      tarball_url:
-        type: string
-      target_commitish:
-        type: string
-      upload_url:
-        type: string
-      url:
-        type: string
-      zipball_url:
-        type: string
-    type: object
-  github.Team:
-    properties:
-      assignment:
-        description: |-
-          Assignment identifies how a team was assigned to an organization role. Its
-          possible values are: "direct", "indirect", "mixed". This is only populated when
-          calling the ListTeamsAssignedToOrgRole method.
-        type: string
-      description:
-        type: string
-      html_url:
-        type: string
-      id:
-        type: integer
-      ldap_dn:
-        description: |-
-          LDAPDN is only available in GitHub Enterprise and when the team
-          membership is synchronized with LDAP.
-        type: string
-      members_count:
-        type: integer
-      members_url:
-        type: string
-      name:
-        type: string
-      node_id:
-        type: string
-      organization:
-        $ref: '#/definitions/github.Organization'
-      parent:
-        $ref: '#/definitions/github.Team'
-      permission:
-        description: Permission specifies the default permission for repositories
-          owned by the team.
-        type: string
-      permissions:
-        additionalProperties:
-          type: boolean
-        description: |-
-          Permissions identifies the permissions that a team has on a given
-          repository. This is only populated when calling Repositories.ListTeams.
-        type: object
-      privacy:
-        description: |-
-          Privacy identifies the level of privacy this team should have.
-          Possible values are:
-              secret - only visible to organization owners and members of this team
-              closed - visible to all members of this organization
-          Default is "secret".
-        type: string
-      repos_count:
-        type: integer
-      repositories_url:
-        type: string
-      slug:
-        type: string
-      url:
-        type: string
-    type: object
-  github.TextMatch:
-    properties:
-      fragment:
-        type: string
-      matches:
-        items:
-          $ref: '#/definitions/github.Match'
-        type: array
-      object_type:
-        type: string
-      object_url:
-        type: string
-      property:
-        type: string
-    type: object
-  github.Timestamp:
-    properties:
-      time.Time:
-        type: string
-    type: object
-  github.User:
-    properties:
-      assignment:
-        description: |-
-          Assignment identifies how a user was assigned to an organization role. Its
-          possible values are: "direct", "indirect", "mixed". This is only populated when
-          calling the ListUsersAssignedToOrgRole method.
-        type: string
-      avatar_url:
-        type: string
-      bio:
-        type: string
-      blog:
-        type: string
-      collaborators:
-        type: integer
-      company:
-        type: string
-      created_at:
-        $ref: '#/definitions/github.Timestamp'
-      disk_usage:
-        type: integer
-      email:
-        type: string
-      events_url:
-        type: string
-      followers:
-        type: integer
-      followers_url:
-        type: string
-      following:
-        type: integer
-      following_url:
-        type: string
-      gists_url:
-        type: string
-      gravatar_id:
-        type: string
-      hireable:
-        type: boolean
-      html_url:
-        type: string
-      id:
-        type: integer
-      inherited_from:
-        allOf:
-        - $ref: '#/definitions/github.Team'
-        description: |-
-          InheritedFrom identifies the team that a user inherited their organization role
-          from. This is only populated when calling the ListUsersAssignedToOrgRole method.
-      ldap_dn:
-        type: string
-      location:
-        type: string
-      login:
-        type: string
-      name:
-        type: string
-      node_id:
-        type: string
-      organizations_url:
-        type: string
-      owned_private_repos:
-        type: integer
-      permissions:
-        additionalProperties:
-          type: boolean
-        description: |-
-          Permissions and RoleName identify the permissions and role that a user has on a given
-          repository. These are only populated when calling Repositories.ListCollaborators.
-        type: object
-      plan:
-        $ref: '#/definitions/github.Plan'
-      private_gists:
-        type: integer
-      public_gists:
-        type: integer
-      public_repos:
-        type: integer
-      received_events_url:
-        type: string
-      repos_url:
-        type: string
-      role_name:
-        type: string
-      site_admin:
-        type: boolean
-      starred_url:
-        type: string
-      subscriptions_url:
-        type: string
-      suspended_at:
-        $ref: '#/definitions/github.Timestamp'
-      text_matches:
-        description: |-
-          TextMatches is only populated from search results that request text matches
-          See: search.go and https://docs.github.com/rest/search/#text-match-metadata
-        items:
-          $ref: '#/definitions/github.TextMatch'
-        type: array
-      total_private_repos:
-        type: integer
-      twitter_username:
-        type: string
-      two_factor_authentication:
-        type: boolean
-      type:
-        type: string
-      updated_at:
-        $ref: '#/definitions/github.Timestamp'
-      url:
-        description: API URLs
+      path:
+        description: Path contains a file path.
         type: string
     type: object
 info:
@@ -798,120 +441,6 @@ info:
   title: SRAT API
   version: "1.0"
 paths:
-  /admin/user:
-    get:
-      description: get the admin user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.User'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get the admin user
-      tags:
-      - user
-    patch:
-      consumes:
-      - application/json
-      description: update admin user
-      parameters:
-      - description: Update model
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/dto.User'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.User'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Update admin user
-      tags:
-      - user
-    put:
-      consumes:
-      - application/json
-      description: update admin user
-      parameters:
-      - description: Update model
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/dto.User'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.User'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Update admin user
-      tags:
-      - user
-  /events:
-    get:
-      description: Return a list of available WSChannel events
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/dto.EventType'
-            type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: WSChannelEventsList
-      tags:
-      - system
   /filesystems:
     get:
       description: Return all supported fs
@@ -927,11 +456,100 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: GetFSHandler
       tags:
       - system
-  /global:
+  /health:
+    get:
+      description: HealthCheck
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HealthPing'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+      summary: HealthCheck
+      tags:
+      - system
+  /nics:
+    get:
+      description: Return all network interfaces
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.NetworkInfo'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+      summary: GetNICsHandler
+      tags:
+      - system
+  /restart:
+    put:
+      description: Restart the server ( useful in development )
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+      summary: RestartHandler
+      tags:
+      - system
+  /samba/apply:
+    put:
+      consumes:
+      - application/json
+      description: Write the samba config and send signal ro restart
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+      summary: Write the samba config and send signal ro restart
+      tags:
+      - samba
+  /samba/config:
+    get:
+      consumes:
+      - application/json
+      description: Get the generated samba config
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SmbConf'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+      summary: Get the generated samba config
+      tags:
+      - samba
+  /settings:
     get:
       consumes:
       - application/json
@@ -946,11 +564,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Get the configuration for the global samba settings
       tags:
       - samba
@@ -975,11 +593,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Update the configuration for the global samba settings
       tags:
       - samba
@@ -1004,128 +622,12 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Update the configuration for the global samba settings
-      tags:
-      - samba
-  /health:
-    get:
-      description: HealthCheck
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.HealthPing'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: HealthCheck
-      tags:
-      - system
-  /nics:
-    get:
-      description: Return all network interfaces
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.NetworkInfo'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: GetNICsHandler
-      tags:
-      - system
-  /restart:
-    put:
-      description: Restart the server ( useful in development )
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: RestartHandler
-      tags:
-      - system
-  /samba:
-    get:
-      consumes:
-      - application/json
-      description: Get the generated samba config
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SmbConf'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get the generated samba config
-      tags:
-      - samba
-  /samba/apply:
-    put:
-      consumes:
-      - application/json
-      description: Write the samba config and send signal ro restart
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Write the samba config and send signal ro restart
-      tags:
-      - samba
-  /samba/status:
-    get:
-      consumes:
-      - application/json
-      description: Get the current samba process status
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SambaProcessStatus'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get the current samba process status
       tags:
       - samba
   /share:
@@ -1150,19 +652,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Create a share
       tags:
       - share
@@ -1181,19 +683,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Delere a share
       tags:
       - share
@@ -1215,11 +717,11 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Get a share
       tags:
       - share
@@ -1249,19 +751,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Update a share
       tags:
       - share
@@ -1280,14 +782,52 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: List all configured shares
       tags:
       - share
+  /sse:
+    get:
+      consumes:
+      - application/json
+      description: Open a SSE stream
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.EventMessageEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+      summary: Open a SSE stream
+      tags:
+      - system
+  /sse/events:
+    get:
+      description: Return a list of available WSChannel events
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.EventType'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: EventTypeList
+      tags:
+      - system
   /update:
     put:
       description: Start the update process
@@ -1297,11 +837,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.ReleaseAsset'
+            $ref: '#/definitions/dto.UpdateProgress'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: UpdateHandler
       tags:
       - system
@@ -1327,19 +867,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Create a user
       tags:
       - user
@@ -1358,62 +898,20 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Delete a user
-      tags:
-      - user
-    patch:
-      consumes:
-      - application/json
-      description: update e user
-      parameters:
-      - description: Name
-        in: path
-        name: username
-        required: true
-        type: string
-      - description: Update model
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/dto.User'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.User'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Update a user
       tags:
       - user
     put:
@@ -1442,20 +940,78 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Update a user
+      tags:
+      - user
+  /useradmin:
+    get:
+      description: get the admin user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.User'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+      summary: Get the admin user
+      tags:
+      - user
+    put:
+      consumes:
+      - application/json
+      description: update admin user
+      parameters:
+      - description: Update model
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dto.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
+      summary: Update admin user
       tags:
       - user
   /users:
@@ -1473,23 +1029,23 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: List all configured users
       tags:
       - user
-  /volume/{volume_name}/mount:
+  /volume/{id}/mount:
     delete:
       description: Umount the selected volume
       parameters:
-      - description: Name of the volume to be unmounted
+      - description: id of the mountpoint to be mounted
         in: path
-        name: volume_name
+        name: id
         required: true
-        type: string
+        type: integer
       - description: Umount forcefully - forces an unmount regardless of currently
           open or otherwise used files within the file system to be unmounted.
         in: query
@@ -1511,11 +1067,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: Umount the selected volume
       tags:
       - volume
@@ -1524,11 +1080,11 @@ paths:
       - application/json
       description: mount an existing volume
       parameters:
-      - description: Volume Name to Mount
+      - description: id of the mountpoint to be mounted
         in: path
-        name: volume_name
+        name: id
         required: true
-        type: string
+        type: integer
       - description: Mount data
         in: body
         name: mount_data
@@ -1545,19 +1101,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: mount an existing volume
       tags:
       - volume
@@ -1574,31 +1130,14 @@ paths:
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorInfo'
       summary: List all available volumes
       tags:
       - volume
-  /ws:
-    get:
-      description: Open the WSChannel
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.DataDirtyTracker'
-        "405":
-          description: Method Not Allowed
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: WSChannel
-      tags:
-      - system
 securityDefinitions:
   ApiKeyAuth:
     description: HomeAssistant Supervisor Token

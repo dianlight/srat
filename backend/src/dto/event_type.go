@@ -3,6 +3,7 @@ package dto
 type EventType string
 
 const (
+	EventHello     EventType = "hello"
 	EventUpdate    EventType = "update"
 	EventHeartbeat EventType = "heartbeat"
 	EventShare     EventType = "share"
@@ -11,6 +12,7 @@ const (
 )
 
 var EventTypes = []string{
+	string(EventHello),
 	string(EventUpdate),
 	string(EventHeartbeat),
 	string(EventShare),

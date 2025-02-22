@@ -1,0 +1,42 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        "customManagers:dockerfileVersions",
+        "customManagers:githubActionsVersions"
+    ],
+    "labels": [
+        "dependencies",
+        "no-stale"
+    ],
+    "commitMessagePrefix": "⬆️",
+    "commitMessageTopic": "{{depName}}",
+    "configMigration": true,
+    "rebaseWhen": "behind-base-branch",
+    "dependencyDashboard": true,
+    "major": {
+        "dependencyDashboardApproval": true
+    },
+    "dependencyDashboardAutoclose": true,
+    "packageRules": [
+        {
+            "groupName": "BackEnd",
+            "matchFileNames": [
+                "backend/**"
+            ]
+        },
+        {
+            "groupName": "FrontEnd",
+            "matchFileNames": [
+                "frontend/**"
+            ]
+        },
+        {
+            "matchUpdateTypes": [
+                "minor",
+                "patch"
+            ],
+            "automerge": true
+        }
+    ]
+}

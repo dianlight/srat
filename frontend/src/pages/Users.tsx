@@ -1,9 +1,5 @@
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { apiContext as api, ModeContext, wsContext as ws } from "../Contexts";
-import type { Api, ConfigShare, ConfigShares, ConfigUser } from "../srat";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import useSWR from "swr";
-import useSWRMutation from "swr/mutation";
 import { Fab, List, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Dialog, DialogTitle, Stack, DialogContent, DialogContentText, Grid2 as Grid, DialogActions, Button } from "@mui/material";
 import { InView } from "react-intersection-observer";
 import { useConfirm } from "material-ui-confirm";
@@ -14,23 +10,29 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import { PasswordElement, PasswordRepeatElement, TextFieldElement } from "react-hook-form-mui";
+import { stringWidth } from "bun";
+import { useDeleteUserByUsernameMutation, useGetUseradminQuery, useGetUsersQuery, usePostUserMutation, usePutUseradminMutation, usePutUserByUsernameMutation, type DtoUser } from "../store/sratApi";
+import { useReadOnly } from "../hooks/readonlyHook";
 
 
 
-interface UsersProps extends ConfigUser {
-    isAdmin?: boolean
+interface UsersProps extends DtoUser {
     doCreate?: boolean
     "password-repeat"?: string
 }
 
 export function Users() {
-    const mode = useContext(ModeContext);
-    const users = useSWR<UsersProps[]>('/users', () => api.users.usersList().then(res => res.data));
-    const admin = useSWR<UsersProps>('/admin/user', () => api.admin.userList().then(res => res.data));
+    const read_only = useReadOnly();
+    const users = useGetUsersQuery();
+    const admin = useGetUseradminQuery();
     const [errorInfo, setErrorInfo] = useState<string>('')
     const [selected, setSelected] = useState<UsersProps>({});
     const confirm = useConfirm();
     const [showEdit, setShowEdit] = useState<boolean>(false);
+    const [userCreate] = usePostUserMutation();
+    const [userAdminUpdate] = usePutUseradminMutation();
+    const [userUpdate] = usePutUserByUsernameMutation();
+    const [userDelete] = useDeleteUserByUsernameMutation();
 
     function onSubmitEditUser(data?: UsersProps) {
         if (!data || !data.username || !data.password) {
@@ -44,26 +46,26 @@ export function Users() {
         // Save Data
         console.log(data);
         if (data.doCreate) {
-            api.user.userCreate(data).then((res) => {
+            userCreate({ dtoUser: data }).unwrap().then((res) => {
                 setErrorInfo('')
                 setSelected({});
-                users.mutate();
+                users.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
             })
             return;
-        } else if (data.isAdmin) {
-            api.admin.userUpdate(data).then((res) => {
+        } else if (data.is_admin) {
+            userAdminUpdate({ dtoUser: data }).unwrap().then((res) => {
                 setErrorInfo('')
-                admin.mutate();
+                admin.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
             })
         } else {
-            api.user.userUpdate(data.username, data).then((res) => {
+            userUpdate({ username: data.username, dtoUser: data }).unwrap().then((res) => {
                 setErrorInfo('')
                 setSelected({});
-                users.mutate();
+                users.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
             })
@@ -84,10 +86,10 @@ export function Users() {
                     setErrorInfo('Unable to delete user!');
                     return;
                 }
-                api.user.userDelete(data.username).then((res) => {
+                userDelete({ username: data.username }).unwrap().then((res) => {
                     setErrorInfo('')
                     setSelected({});
-                    users.mutate();
+                    users.refetch();
                 }).catch(err => {
                     setErrorInfo(JSON.stringify(err));
                 })
@@ -100,7 +102,7 @@ export function Users() {
     return (
         <InView>
             <UserEditDialog objectToEdit={selected} open={showEdit} onClose={(data) => { setSelected({}); onSubmitEditUser(data); setShowEdit(false) }} />
-            {mode.read_only || <Fab key="fab_users" color="primary" aria-label="add" sx={{
+            {read_only || <Fab key="fab_users" color="primary" aria-label="add" sx={{
                 float: 'right',
                 top: '-20px',
                 margin: '-8px'
@@ -110,15 +112,25 @@ export function Users() {
                 <PersonAddIcon />
             </Fab>}
             <List dense={true}>
-                {[{ ...admin.data, isAdmin: true }, ...users.data || []].map((user) =>
+                {users.isSuccess && users.data!/*.sort((a, b) => {
+                    if (a.is_admin) {
+                        return -1;
+                    } else if (b.is_admin) {
+                        return 1;
+                    } else if (a.username === b.username) {
+                        return 0;
+                    } else {
+                        return (a.username || "") > (b.username || "") ? -1 : 1;
+                    }
+                })*/.map((user) =>
                     <Fragment key={user.username || "admin"}>
                         <ListItemButton>
                             <ListItem
-                                secondaryAction={!mode.read_only && <>
+                                secondaryAction={!read_only && <>
                                     <IconButton onClick={() => { setSelected(user); setShowEdit(true) }} edge="end" aria-label="settings">
                                         <ManageAccountsIcon />
                                     </IconButton>
-                                    {user.isAdmin ||
+                                    {user.is_admin ||
                                         <IconButton onClick={() => onSubmitDeleteUser(user)} edge="end" aria-label="delete">
                                             <PersonRemoveIcon />
                                         </IconButton>
@@ -128,7 +140,7 @@ export function Users() {
                             >
                                 <ListItemAvatar>
                                     <Avatar>
-                                        {user.isAdmin ?
+                                        {user.is_admin ?
                                             <AdminPanelSettingsIcon /> :
                                             <AssignmentIndIcon />}
 
@@ -136,6 +148,7 @@ export function Users() {
                                 </ListItemAvatar>
                                 <ListItemText
                                     primary={user.username}
+                                    secondary={JSON.stringify(user)}
                                 />
                             </ListItem>
                         </ListItemButton>
@@ -153,12 +166,12 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
             defaultValues: {
                 username: '',
                 password: '',
-                isAdmin: false
+                is_admin: false
             },
             values: props.objectToEdit?.doCreate ? {
                 username: "",
                 password: "",
-                isAdmin: false
+                is_admin: false
             } : props.objectToEdit
         },
     );
@@ -174,7 +187,7 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
                 onClose={() => handleCloseSubmit()}
             >
                 <DialogTitle>
-                    {props.objectToEdit?.isAdmin ? "Administrator" : (props.objectToEdit?.username || "New User")}
+                    {props.objectToEdit?.is_admin ? "Administrator" : (props.objectToEdit?.username || "New User")}
                 </DialogTitle>
                 <DialogContent>
                     <Stack spacing={2}>
@@ -185,7 +198,7 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
                         <form id="editshareform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                             <Grid container spacing={2}>
                                 <Grid size={6}>
-                                    <TextFieldElement name="username" label="User Name" required control={control} disabled={props.objectToEdit?.username ? (props.objectToEdit.isAdmin ? false : true) : false} />
+                                    <TextFieldElement name="username" label="User Name" required control={control} disabled={props.objectToEdit?.username ? (props.objectToEdit.is_admin ? false : true) : false} />
                                 </Grid>
                                 <Grid size={6}>
                                     <PasswordElement name="password" label="Password"

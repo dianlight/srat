@@ -1,22 +1,34 @@
-package api
+package api_test
 
 import (
 	"context"
 	"log"
+	"log/slog"
 	"os"
 	"testing"
 
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
+	"github.com/snapcore/snapd/osutil"
 	"github.com/ztrue/tracerr"
 )
 
 var testContext = context.Background()
+var apiContextState api.ContextState
 
 func TestMain(m *testing.M) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+
+	data, err := os.ReadFile("../../test/data/mount_info.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	osutil.MockMountInfo(string(data))
 
 	os.Setenv("HOSTNAME", "test-host")
 
@@ -24,12 +36,14 @@ func TestMain(m *testing.M) {
 	defer dbom.CloseDB()
 
 	var config config.Config
-	err := config.LoadConfig("../../test/data/config.json")
+	err = config.LoadConfig("../../test/data/config.json")
 	// Setting/Properties
 	if err != nil {
 		log.Fatalf("Cant load config file %s", err)
 	}
-	err = dbutil.FirstTimeJSONImporter(config)
+	config.UpdateChannel = string(dto.None)
+	mount_repo := repository.NewMountPointPathRepository(dbom.GetDB())
+	err = dbutil.FirstTimeJSONImporter(config, mount_repo)
 	if err != nil {
 		log.Fatalf("Cant load json settings - %v", tracerr.SprintSourceColor(err))
 	}
@@ -42,13 +56,18 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Cant read template file %s", err)
 	}
 
-	sharedResources := dto.ContextState{}
-	sharedResources.SambaConfigFile = "../../test/data/smb.conf"
-	sharedResources.Template = templateData
-	sharedResources.DockerInterface = "hassio"
-	sharedResources.DockerNet = "172.30.32.0/23"
-	testContext = sharedResources.ToContext(testContext)
+	apiContextState = api.ContextState{}
+	apiContextState.SambaConfigFile = "../../test/data/smb.conf"
+	apiContextState.Template = templateData
+	apiContextState.DockerInterface = "hassio"
+	apiContextState.DockerNet = "172.30.32.0/23"
+	apiContextState.Heartbeat = 1
+	//sharedResources.SSEBroker = NewMockBrokerInterface(ctrl) //
+	//testContext = api.StateToContext(&apiContextState, testContext)
 	testContext = config.ToContext(testContext)
 
-	os.Exit(m.Run())
+	retErr := m.Run()
+
+	os.Exit(retErr)
+
 }
