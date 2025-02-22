@@ -2,7 +2,7 @@ package dto
 
 type errorCode int // ErrorMessage[string],HttpCode[int]
 
-//go:generate go run github.com/zarldev/goenums@latest error_code.go
+//go:generate go run github.com/zarldev/goenums@v0.3.5 error_code.go
 const (
 	unknown              errorCode = iota // invalid
 	generic_error                         // "An unexpected error occurred",500
@@ -12,4 +12,6 @@ const (
 	mount_fail                            // "Unable to mount {{.Device}} on {{.Path}}. {{.Message}}",406
 	unmount_fail                          // "Unable to unmount {{.ID}}. {{.Message}}",406
 	device_not_found                      // "Device not found {{.DeviceID}}",404
+	network_timeout                       // "Network operation timed out",408
+	permission_denied                     // "Permission denied for {{.Action}}",403
 )

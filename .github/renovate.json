@@ -26,7 +26,7 @@
                 "\\.devcontainer/.+\\.sh$"
             ],
             "matchStrings": [
-                "go\\s+install\\s+(?<depName>github\\.com/.+)@(?<currentValue>[^\\s]+)"
+                "go\\s+install\\s+(?<depName>.+)@(?<currentValue>[^\\s]+)"
             ],
             "autoReplaceStringTemplate": "go install {{{depName}}}@{{{newValue}}}",
             "datasourceTemplate": "go"
@@ -37,21 +37,9 @@
                 "\\.go$"
             ],
             "matchStrings": [
-                "//go:generate\\s+go\\s+run\\s+(?<depName>github\\.com/.+)@(?<currentValue>[^\\s]+)"
+                "//go:generate\\s+go\\s+run\\s+(?<depName>.+)@(?<currentValue>[^\\s]+)"
             ],
             "autoReplaceStringTemplate": "//go:generate go run {{{depName}}}@{{{newValue}}}",
-            "datasourceTemplate": "go"
-        },
-        {
-            "customType": "regex",
-            "fileMatch": [
-                "\\.github/workflows/.+\\.ya?ml$",
-                "\\.devcontainer/.+\\.sh$"
-            ],
-            "matchStrings": [
-                "go\\s+install\\s+(?<depName>github\\.com/.+)@(?<currentValue>[^\\s]+)"
-            ],
-            "autoReplaceStringTemplate": "go install {{{depName}}}@{{{newValue}}}",
             "datasourceTemplate": "go"
         }
     ],

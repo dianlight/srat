@@ -5,10 +5,10 @@ apk add --no-cache go git make lsblk eudev gcc musl-dev linux-headers samba etht
 #bun
 curl -fsSL https://bun.sh/install | bash
 
-GOBIN=/usr/local/bin/ go install github.com/rogpeppe/gohack@latest
-GOBIN=/usr/local/bin/ go install github.com/rakyll/gotest@latest
-GOBIN=/usr/local/bin/ go install github.com/Antonboom/testifylint@latest
-GOBIN=/usr/local/bin/ go install github.com/ramya-rao-a/go-outline@latest
-GOBIN=/usr/local/bin/ go install go.uber.org/mock/mockgen@latest
+GOBIN=/usr/local/bin/ go install github.com/rogpeppe/gohack@v1.0.2
+GOBIN=/usr/local/bin/ go install github.com/rakyll/gotest@v0.0.6
+GOBIN=/usr/local/bin/ go install github.com/Antonboom/testifylint@v1.5.2
+#GOBIN=/usr/local/bin/ go install github.com/ramya-rao-a/go-outline@1.0.0
+GOBIN=/usr/local/bin/ go install go.uber.org/mock/mockgen@v0.5.0
 #GOBIN=/usr/local/bin/ go install github.com/cortesi/modd/cmd/modd@latest
-GOBIN=/usr/local/bin/ go install github.com/air-verse/air@latest
+GOBIN=/usr/local/bin/ go install github.com/air-verse/air@v1.61.7

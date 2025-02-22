@@ -27,6 +27,8 @@ type errorcodesContainer struct {
 	MOUNT_FAIL           ErrorCode
 	UNMOUNT_FAIL         ErrorCode
 	DEVICE_NOT_FOUND     ErrorCode
+	NETWORK_TIMEOUT      ErrorCode
+	PERMISSION_DENIED    ErrorCode
 }
 
 var ErrorCodes = errorcodesContainer{
@@ -65,6 +67,16 @@ var ErrorCodes = errorcodesContainer{
 		ErrorMessage: "Device not found {{.DeviceID}}",
 		HttpCode:     404,
 	},
+	NETWORK_TIMEOUT: ErrorCode{
+		errorCode:    network_timeout,
+		ErrorMessage: "Network operation timed out",
+		HttpCode:     408,
+	},
+	PERMISSION_DENIED: ErrorCode{
+		errorCode:    permission_denied,
+		ErrorMessage: "Permission denied for {{.Action}}",
+		HttpCode:     403,
+	},
 }
 
 func (c errorcodesContainer) All() []ErrorCode {
@@ -76,6 +88,8 @@ func (c errorcodesContainer) All() []ErrorCode {
 		c.MOUNT_FAIL,
 		c.UNMOUNT_FAIL,
 		c.DEVICE_NOT_FOUND,
+		c.NETWORK_TIMEOUT,
+		c.PERMISSION_DENIED,
 	}
 }
 
@@ -120,6 +134,10 @@ func stringToErrorCode(s string) ErrorCode {
 		return ErrorCodes.UNMOUNT_FAIL
 	case "device_not_found":
 		return ErrorCodes.DEVICE_NOT_FOUND
+	case "network_timeout":
+		return ErrorCodes.NETWORK_TIMEOUT
+	case "permission_denied":
+		return ErrorCodes.PERMISSION_DENIED
 	}
 	return invalidErrorCode
 }
@@ -145,6 +163,8 @@ var validErrorCodes = map[ErrorCode]bool{
 	ErrorCodes.MOUNT_FAIL:           true,
 	ErrorCodes.UNMOUNT_FAIL:         true,
 	ErrorCodes.DEVICE_NOT_FOUND:     true,
+	ErrorCodes.NETWORK_TIMEOUT:      true,
+	ErrorCodes.PERMISSION_DENIED:    true,
 }
 
 func (p ErrorCode) IsValid() bool {
@@ -191,11 +211,13 @@ func _() {
 	_ = x[mount_fail-5]
 	_ = x[unmount_fail-6]
 	_ = x[device_not_found-7]
+	_ = x[network_timeout-8]
+	_ = x[permission_denied-9]
 }
 
-const _errorcodes_name = "unknowngeneric_errorjson_marshal_errorjson_unmarshal_errorinvalid_parametermount_failunmount_faildevice_not_found"
+const _errorcodes_name = "unknowngeneric_errorjson_marshal_errorjson_unmarshal_errorinvalid_parametermount_failunmount_faildevice_not_foundnetwork_timeoutpermission_denied"
 
-var _errorcodes_index = [...]uint16{0, 7, 20, 38, 58, 75, 85, 97, 113}
+var _errorcodes_index = [...]uint16{0, 7, 20, 38, 58, 75, 85, 97, 113, 128, 145}
 
 func (i errorCode) String() string {
 	if i < 0 || i >= errorCode(len(_errorcodes_index)-1) {
