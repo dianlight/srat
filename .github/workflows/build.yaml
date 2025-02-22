@@ -31,8 +31,8 @@ jobs:
         uses: home-assistant/actions/helpers/version@master
       - run: echo ${{ steps.version.outputs.version }}
 
-  build:
-    name: Build ${{ matrix.variant.name }}
+  test:
+    name: Test ${{ matrix.variant.name }}
     runs-on: ubuntu-latest
     needs: setversion
     strategy:
@@ -76,6 +76,49 @@ jobs:
       run: |
         cd backend
         sudo -E PATH="$PATH" make test
+        cd ..
+
+  build:
+    name: Build ${{ matrix.variant.name }}
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    needs:
+      - setversion
+      - test
+    strategy:
+      matrix:
+        variant:
+          #- {"name": "srat_i386","suffix":"_386", "args": "GOARCH=386"}
+          - {"name": "srat_amd64","suffix":"_amd64", "args": "GOARCH=amd64"}
+          #- {"name": "srat_armhf","suffix":"_armhf", "args": "GOARM=6 GOARCH=arm"}
+          - {"name": "srat_armv7","suffix":"_armv7", "args": "GOARM=7 GOARCH=arm"}
+          - {"name": "srat_aarch64", "suffix":"_aarch64","args": "GOARCH=arm64"}
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v4.2.2
+      with:
+        fetch-depth: 0
+    - name: Setup go ${{ env.GOLANG_VERSION }}
+      uses: actions/setup-go@v5.0.2
+      with:
+        go-version: ${{ env.GOLANG_VERSION }}
+
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - run: "sudo apt-get install -y samba" 
+
+    - name: Prepare env for ${{ matrix.variant.name }} ${{ needs.setversion.outputs.version }}
+      run: |
+        GOBIN=/usr/local/bin/ go install github.com/rogpeppe/gohack@latest
+        GOBIN=/usr/local/bin/ go install github.com/rakyll/gotest@latest
+        GOBIN=/usr/local/bin/ go install github.com/Antonboom/testifylint@latest
+        GOBIN=/usr/local/bin/ go install github.com/ramya-rao-a/go-outline@latest
+        GOBIN=/usr/local/bin/ go install go.uber.org/mock/mockgen@latest
+        GOBIN=/usr/local/bin/ go install github.com/air-verse/air@latest
+        cd frontend
+        bun install
         cd ..
 
     - name: Check if ${{ needs.setversion.outputs.version }} exists
