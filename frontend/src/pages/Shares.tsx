@@ -347,26 +347,46 @@ export function Shares() {
     </InView>
 }
 
+
+interface ShareEditPropsEdit extends ShareEditProps {
+    usersNames?: string[],
+    roUsersNames?: string[],
+}
+
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
-    const { data: admin } = useGetUseradminQuery();
-    const { data: users } = useGetUsersQuery()
+    //    const { data: admin, isLoading: isLoadingAdmin } = useGetUseradminQuery();
+    const { data: users, isLoading } = useGetUsersQuery()
     const [editName, setEditName] = useState(false);
-    const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditProps>(
+    const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditPropsEdit>(
         {
-            values: props.objectToEdit?.org_name === "" ? {
+            values: !props.objectToEdit ? {
                 org_name: "",
                 name: "",
-                //: "",
                 users: [],
                 ro_users: [],
                 timemachine: false,
-                //usage: ""
-            } : props.objectToEdit
+                usersNames: [],
+                roUsersNames: []
+            } : {
+                ...props.objectToEdit,
+                usersNames: props.objectToEdit?.users?.map(user => user.username as string) || [],
+                roUsersNames: props.objectToEdit?.ro_users?.map(user => user.username as string) || [],
+            }
         },
     );
+    const selected_users = watch("usersNames")
+    const selected_ro_users = watch("roUsersNames")
 
-    function handleCloseSubmit(data?: ShareEditProps) {
+
+    function handleCloseSubmit(data?: ShareEditPropsEdit) {
         setEditName(false)
+        if (!data) {
+            props.onClose()
+            return
+        }
+        data.users = data.usersNames?.map(username => users?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
+        data.ro_users = data.usersNames?.map(username => users?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
+        //console.log(data)
         props.onClose(data)
     }
 
@@ -390,8 +410,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 <DialogContent>
                     <Stack spacing={2}>
                         <DialogContentText>
-                            To subscribe to this website, please enter your email address here. We
-                            will send updates occasionally.
+                            Please enter your options and click Apply.
                         </DialogContentText>
                         <form id="editshareform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                             <Grid container spacing={2}>
@@ -400,48 +419,55 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                     <TextFieldElement name="name" label="Share Name" required control={control} />
                                 </Grid>
                                 */}
-                                <Grid size={6}>
-                                    <SelectElement sx={{ display: "flex" }} label="Usage" name="usage"
-                                        options={[
-                                            {
-                                                id: 'native', label: 'Native'
-                                            },
-                                            {
-                                                id: 'media', label: 'Media'
-                                            },
-                                            {
-                                                id: 'share', label: 'Share'
-                                            },
-                                            {
-                                                id: 'backup', label: 'Backup'
-                                            }
-                                        ]} required control={control} />
-                                </Grid>
-                                <Grid size={6}>
-                                    <TextFieldElement sx={{ display: "flex" }} name="mount_point_data.path" label="Mount Path" required control={control} />
-                                </Grid>
-                                <Grid size={6}>
-                                    <CheckboxElement label="Timemachine" name="timemachine" control={control} />
-                                </Grid>
-                                <Grid size={6}>
+                                {props.objectToEdit?.usage !== DtoHAMountUsage.Internal &&
+                                    <Grid size={6}>
+                                        <SelectElement sx={{ display: "flex" }} label="Usage" name="usage"
+                                            options={[
+                                                {
+                                                    id: 'native', label: 'Native'
+                                                },
+                                                {
+                                                    id: 'media', label: 'Media'
+                                                },
+                                                {
+                                                    id: 'share', label: 'Share'
+                                                },
+                                                {
+                                                    id: 'backup', label: 'Backup'
+                                                }
+                                            ]} required control={control} />
+                                    </Grid>
+                                }
+                                {
+                                    props.objectToEdit?.usage !== DtoHAMountUsage.Internal && <>
+                                        <Grid size={6}>
+                                            <TextFieldElement sx={{ display: "flex" }} name="mount_point_data.path" label="Mount Path" required control={control} />
+                                        </Grid>
+                                        <Grid size={6}>
+                                            <CheckboxElement label="Timemachine" name="timemachine" control={control} />
+                                        </Grid></>
+                                }
+                                <Grid size={12}>
                                     <AutocompleteElement
-                                        name="users"
+                                        name="usersNames"
                                         label="Read and Write users"
+                                        loading={isLoading}
                                         options={
-                                            (users?.map(user => ({ id: user.username, label: user.username })) || []).concat({ id: admin?.username, label: admin?.username })
+                                            (users?.map(user => ({ id: user.username, label: user.username })) || [])
                                         }
                                         control={control}
+                                        matchId
                                         multiple
                                     />
-                                </Grid>
-                                <Grid size={6} offset={6}>
                                     <AutocompleteElement
-                                        name="ro_users"
+                                        name="roUsersNames"
                                         label="ReadOnly users"
+                                        loading={isLoading}
                                         options={
-                                            (users?.map(user => ({ id: user.username, label: user.username })) || []).concat({ id: admin?.username, label: admin?.username })
+                                            (users?.map(user => ({ id: user.username, label: user.username })) || [])
                                         }
                                         control={control}
+                                        matchId
                                         multiple
                                     />
                                 </Grid>
