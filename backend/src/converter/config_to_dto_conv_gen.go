@@ -150,7 +150,8 @@ func (c *ConfigToDtoConverterImpl) ShareToSharedResourceNoMountPointData(source 
 		target.Name = source.Name
 	}
 	if source.Disabled != false {
-		target.Disabled = source.Disabled
+		pBool := source.Disabled
+		target.Disabled = &pBool
 	}
 	if source.Users != nil {
 		target.Users = make([]dto.User, len(source.Users))
@@ -173,7 +174,8 @@ func (c *ConfigToDtoConverterImpl) ShareToSharedResourceNoMountPointData(source 
 		}
 	}
 	if source.TimeMachine != false {
-		target.TimeMachine = source.TimeMachine
+		pBool2 := source.TimeMachine
+		target.TimeMachine = &pBool2
 	}
 	if source.Usage != "" {
 		target.Usage = dto.HAMountUsage(source.Usage)
@@ -198,8 +200,8 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 	if pString2 != nil {
 		target.FS = *pString2
 	}
-	if source.Disabled != false {
-		target.Disabled = source.Disabled
+	if source.Disabled != nil {
+		target.Disabled = *source.Disabled
 	}
 	if source.Users != nil {
 		target.Users = make([]string, len(source.Users))
@@ -213,8 +215,8 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 			target.RoUsers[j] = DtoUserToString(source.RoUsers[j])
 		}
 	}
-	if source.TimeMachine != false {
-		target.TimeMachine = source.TimeMachine
+	if source.TimeMachine != nil {
+		target.TimeMachine = *source.TimeMachine
 	}
 	if source.Usage != "" {
 		target.Usage = string(source.Usage)

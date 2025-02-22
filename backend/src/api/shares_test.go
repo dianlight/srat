@@ -166,7 +166,7 @@ func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
 		RoUsers: []dto.User{
 			{Username: pointer.String("rouser")},
 		},
-		TimeMachine: true,
+		TimeMachine: pointer.Bool(true),
 		Users: []dto.User{
 			{Username: pointer.String("dianlight")},
 		},
@@ -224,7 +224,8 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
 	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)
 	suite.Require().NoError(jsonError)
 
-	suite.EqualValues(share, rshare)
+	suite.EqualValues("UPDATER", rshare.Name)
+	suite.EqualValues(share.MountPointData.Path, rshare.MountPointData.Path)
 
 	/*
 	   // Check the response body is what we expect.
@@ -246,6 +247,48 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
 	   require.NoError(suite.T(), jsonError)
 	   assert.Equal(suite.T(), string(expected)[:len(expected)-3], rr.Body.String()[:len(expected)-3])
 	*/
+}
+
+func (suite *ShareHandlerSuite) TestUpdateShareHandlerEnableDisableShare() {
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState)
+
+	share := dto.SharedResource{
+		Disabled: pointer.Bool(true),
+	}
+
+	jsonBody, jsonError := json.Marshal(share)
+	suite.Require().NoError(jsonError)
+	req, err := http.NewRequestWithContext(testContext, "PATCH", "/share/UPDATER", strings.NewReader(string(jsonBody)))
+	suite.Require().NoError(err)
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/share/{share_name}", shareHandler.UpdateShare).Methods(http.MethodPatch, http.MethodPost)
+	router.ServeHTTP(rr, req)
+
+	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	var rshare dto.SharedResource
+	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)
+	suite.Require().NoError(jsonError)
+
+	suite.EqualValues("UPDATER", rshare.Name)
+	suite.Assert().True(*rshare.Disabled)
+
+	share.Disabled = pointer.Bool(false)
+	jsonBody, jsonError = json.Marshal(share)
+	suite.Require().NoError(jsonError)
+	req, err = http.NewRequestWithContext(testContext, "PATCH", "/share/UPDATER", strings.NewReader(string(jsonBody)))
+	suite.Require().NoError(err)
+	rr = httptest.NewRecorder()
+
+	router.HandleFunc("/share/{share_name}", shareHandler.UpdateShare).Methods(http.MethodPatch, http.MethodPost)
+	router.ServeHTTP(rr, req)
+	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)
+	suite.Require().NoError(jsonError)
+	suite.EqualValues("UPDATER", rshare.Name)
+	suite.Assert().False(*rshare.Disabled)
 }
 
 func (suite *ShareHandlerSuite) TestDeleteShareHandler() {

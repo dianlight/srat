@@ -436,6 +436,8 @@ export enum ErrorCode {
   MountFail = 5,
   UnmountFail = 6,
   DeviceNotFound = 7,
+  NetworkTimeout = 8,
+  PermissionDenied = 9,
 }
 export enum DtoUpdateChannel {
   Stable = "stable",
@@ -462,6 +464,7 @@ export enum DtoHAMountUsage {
   Backup = "backup",
   Media = "media",
   Share = "share",
+  Internal = "internal",
 }
 export enum DtoEventType {
   Hello = "hello",

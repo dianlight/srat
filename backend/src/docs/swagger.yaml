@@ -99,6 +99,8 @@ definitions:
         - 5
         - 6
         - 7
+        - 8
+        - 9
         type: integer
         x-enum-comments:
           device_not_found: '"Device not found {{.DeviceID}}",404'
@@ -107,6 +109,8 @@ definitions:
           json_marshal_error: '"Unable to marshal JSON: {{.Error}}",500'
           json_unmarshal_error: '"Unable to unmarshal JSON: {{.Error}}",500'
           mount_fail: '"Unable to mount {{.Device}} on {{.Path}}. {{.Message}}",406'
+          network_timeout: '"Network operation timed out",408'
+          permission_denied: '"Permission denied for {{.Action}}",403'
           unknown: invalid
           unmount_fail: '"Unable to unmount {{.ID}}. {{.Message}}",406'
         x-enum-varnames:
@@ -118,6 +122,8 @@ definitions:
         - mount_fail
         - unmount_fail
         - device_not_found
+        - network_timeout
+        - permission_denied
       errorMessage:
         type: string
       httpCode:
@@ -170,12 +176,14 @@ definitions:
     - backup
     - media
     - share
+    - internal
     type: string
     x-enum-varnames:
     - UsageAsNone
     - UsageAsBackup
     - UsageAsMedia
     - UsageAsShare
+    - UsageAsInternal
   dto.HealthPing:
     properties:
       alive:

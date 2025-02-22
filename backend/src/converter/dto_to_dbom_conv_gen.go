@@ -43,7 +43,8 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 		target.Name = source.Name
 	}
 	if source.Disabled != false {
-		target.Disabled = source.Disabled
+		pBool := source.Disabled
+		target.Disabled = &pBool
 	}
 	if source.Users != nil {
 		target.Users = make([]dto.User, len(source.Users))
@@ -58,7 +59,8 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 		}
 	}
 	if source.TimeMachine != false {
-		target.TimeMachine = source.TimeMachine
+		pBool2 := source.TimeMachine
+		target.TimeMachine = &pBool2
 	}
 	if source.Usage != "" {
 		dtoHAMountUsage, err := c.dtoHAMountUsageToDtoHAMountUsage(source.Usage)
@@ -159,11 +161,11 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 	if source.Name != "" {
 		target.Name = source.Name
 	}
-	if source.Disabled != false {
-		target.Disabled = source.Disabled
+	if source.Disabled != nil {
+		target.Disabled = *source.Disabled
 	}
-	if source.TimeMachine != false {
-		target.TimeMachine = source.TimeMachine
+	if source.TimeMachine != nil {
+		target.TimeMachine = *source.TimeMachine
 	}
 	if source.Usage != "" {
 		dtoHAMountUsage, err := c.dtoHAMountUsageToDtoHAMountUsage(source.Usage)
@@ -201,6 +203,8 @@ func (c *DtoToDbomConverterImpl) dtoHAMountUsageToDtoHAMountUsage(source dto.HAM
 	switch source {
 	case dto.UsageAsBackup:
 		dtoHAMountUsage = dto.UsageAsBackup
+	case dto.UsageAsInternal:
+		dtoHAMountUsage = dto.UsageAsInternal
 	case dto.UsageAsMedia:
 		dtoHAMountUsage = dto.UsageAsMedia
 	case dto.UsageAsNone:

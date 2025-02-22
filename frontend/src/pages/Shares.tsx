@@ -38,7 +38,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useSSE } from "react-hooks-sse";
 import { useDispatch, useSelector } from "react-redux";
 import { useAppDispatch, useAppSelector, type RootState } from "../store/store";
-import { DtoEventType, useGetSharesQuery, useGetUseradminQuery, useGetUsersQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
+import { DtoEventType, DtoHAMountUsage, useGetSharesQuery, useGetUseradminQuery, useGetUsersQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { addMessage } from "../store/errorSlice";
@@ -196,7 +196,7 @@ export function Shares() {
                                         <GroupIcon />
                                     </Tooltip>
                                 </IconButton>
-                                {props.mount_point_data?.is_mounted ? (
+                                {(props.usage !== DtoHAMountUsage.Internal) && (props.mount_point_data?.is_mounted ? (
                                     <IconButton onClick={() => onSubmitUnmount(share)} edge="end" aria-label="unmount">
                                         <Tooltip title="Unmount">
                                             <Eject />
@@ -208,7 +208,7 @@ export function Shares() {
                                             <DriveFileMove />
                                         </Tooltip>
                                     </IconButton>
-                                )}
+                                ))}
                                 {props.disabled ? (
                                     <Tooltip title="Enable share">
                                         <span>
@@ -228,7 +228,6 @@ export function Shares() {
                                                 onClick={() => onSubmitDisableShare(share, props)}
                                                 edge="end"
                                                 aria-label="disable"
-                                                disabled={props.mount_point_data?.is_mounted}
                                             >
                                                 <BlockIcon />
                                             </IconButton>
@@ -314,7 +313,7 @@ export function Shares() {
                                                     />
                                                 </Tooltip>
                                             )}
-                                            {props.usage && (
+                                            {(props.usage && props.usage !== DtoHAMountUsage.Internal) && (
                                                 <Tooltip title="Share Usage">
                                                     <Chip
                                                         size="small"

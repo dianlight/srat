@@ -170,7 +170,7 @@ func (in *Config) MigrateConfig() error {
 		for _, share := range []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"} {
 			_, ok := in.Shares[share]
 			if !ok {
-				in.Shares[share] = Share{Name: share, Path: "/" + share, FS: "native", Disabled: false, Usage: "none", Users: []string{in.Username}}
+				in.Shares[share] = Share{Name: share, Path: "/" + share, FS: "native", Disabled: false, Usage: "internal", Users: []string{in.Username}}
 			}
 		}
 	}

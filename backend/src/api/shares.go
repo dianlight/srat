@@ -327,7 +327,12 @@ func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//context_state := StateFromContext(r.Context())
+	err = conv.ExportedShareToSharedResource(*dbshare, &share)
+	if err != nil {
+		HttpJSONReponse(w, err, nil)
+		return
+	}
+
 	self.apiContext.DataDirtyTracker.Shares = true
 	go self.notifyClient()
 	HttpJSONReponse(w, share, nil)
