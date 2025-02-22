@@ -71,24 +71,25 @@ export function Volumes() {
             title: `Umount ${data.label}?`,
             description: `Do you really want umount ${force ? "forcefull" : ""} the Volume ${data.name}?`
         })
-            .then(() => {
-                if (!data.mount_point_data?.id) return
-                umountVolume({
-                    id: data.mount_point_data?.id,
-                    force: force,
-                    lazy: true,
-                }).unwrap().then((res) => {
-                    setSelected(undefined);
-                    toast.info(`Volume ${data.label} unmounted successfully.`);
-                }).catch(err => {
-                    console.error(err);
-                    toast.error(`Error unmounting ${data.label}: ${err}`, { data: { error: err } });
-                    //setErrorInfo(JSON.stringify(err));
-                })
+            .then(({ confirmed, reason }) => {
+                if (confirmed) {
+                    if (!data.mount_point_data?.id) return
+                    umountVolume({
+                        id: data.mount_point_data?.id,
+                        force: force,
+                        lazy: true,
+                    }).unwrap().then((res) => {
+                        setSelected(undefined);
+                        toast.info(`Volume ${data.label} unmounted successfully.`);
+                    }).catch(err => {
+                        console.error(err);
+                        toast.error(`Error unmounting ${data.label}: ${err}`, { data: { error: err } });
+                        //setErrorInfo(JSON.stringify(err));
+                    })
+                } else if (reason === "cancel") {
+                    console.log("cancel")
+                }
             })
-            .catch(() => {
-                /* ... */
-            });
     }
 
 

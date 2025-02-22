@@ -81,22 +81,23 @@ export function Users() {
             title: `Delete ${data.username}?`,
             description: "Do you really would delete this user?"
         })
-            .then(() => {
-                if (!data.username) {
-                    setErrorInfo('Unable to delete user!');
-                    return;
+            .then(({ confirmed, reason }) => {
+                if (confirmed) {
+                    if (!data.username) {
+                        setErrorInfo('Unable to delete user!');
+                        return;
+                    }
+                    userDelete({ username: data.username }).unwrap().then((res) => {
+                        setErrorInfo('')
+                        setSelected({});
+                        users.refetch();
+                    }).catch(err => {
+                        setErrorInfo(JSON.stringify(err));
+                    })
+                } else if (reason === "cancel") {
+                    console.log("cancel")
                 }
-                userDelete({ username: data.username }).unwrap().then((res) => {
-                    setErrorInfo('')
-                    setSelected({});
-                    users.refetch();
-                }).catch(err => {
-                    setErrorInfo(JSON.stringify(err));
-                })
             })
-            .catch(() => {
-                /* ... */
-            });
     }
 
     return (

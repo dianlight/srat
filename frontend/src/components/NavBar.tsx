@@ -142,38 +142,21 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             title: `Update to ${update}?`,
             description: "If you proceed the new version is downloaded and installed."
         })
-            .then(() => {
-                doUpdate().unwrap().then((res) => {
-                    updateAssetStatus.update_status = res.update_status;
-                    //users.mutate();
-                }).catch(err => {
-                    console.error(err);
-                    //setErrorInfo(JSON.stringify(err));
-                })
+            .then(({ confirmed, reason }) => {
+                if (confirmed) {
+                    doUpdate().unwrap().then((res) => {
+                        updateAssetStatus.update_status = res.update_status;
+                        //users.mutate();
+                    }).catch(err => {
+                        console.error(err);
+                    })
+                } else if (reason === "cancel") {
+                    console.log("cancel")
+                }
             })
-            .catch(() => {
-                /* ... */
-            });
     }
 
     function handleRoolback() {
-        /*
-        console.log("Doing rollback")
-        confirm({
-            title: `Rollback and lose all modified data?`,
-            description: "If you proceed all unsaved changes will be lost!"
-        })
-            .then(() => {
-                api.config.configDelete().then((res) => {
-                    setTabId(uuidv4())
-                }).catch(err => {
-                    console.error(err);
-                })
-            })
-            .catch(() => {
-                /*... * /
-            });
-            */
     }
     /*
         useEffect(() => {

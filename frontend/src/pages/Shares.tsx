@@ -68,18 +68,19 @@ export function Shares() {
             title: `Disable ${props?.name}?`,
             description: "If you disable this share, all of its configurations will be retained."
         })
-            .then(() => {
-                updateShare({ shareName: props?.name || "", dtoSharedResource: { ...props, disabled: true } }).unwrap()
-                    .then(() => {
-                        //                        setErrorInfo('');
-                    })
-                    .catch(err => {
-                        dispatch(addMessage(JSON.stringify(err)));
-                    });
+            .then(({ confirmed, reason }) => {
+                if (confirmed) {
+                    updateShare({ shareName: props?.name || "", dtoSharedResource: { ...props, disabled: true } }).unwrap()
+                        .then(() => {
+                            //                        setErrorInfo('');
+                        })
+                        .catch(err => {
+                            dispatch(addMessage(JSON.stringify(err)));
+                        });
+                } else if (reason === "cancel") {
+                    console.log("cancel")
+                }
             })
-            .catch((err) => {
-                dispatch(addMessage(JSON.stringify(err)));
-            });
     }
 
     function onSubmitEnableShare(cdata?: string, props?: DtoSharedResource) {

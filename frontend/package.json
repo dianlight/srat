@@ -18,12 +18,12 @@
     "@gtramontina.com/bun-html-live-reload": "^1.0.1",
     "@hookform/devtools": "^4.3.3",
     "@rtk-query/codegen-openapi": "^2.0.0",
-    "@types/bun": "^1.2.2",
-    "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3",
+    "@types/bun": "^1.2.3",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/semver": "^7.5.8",
-    "@types/swagger-ui-react": "^4.19.0"
+    "@types/swagger-ui-react": "^5.18.0"
   },
   "peerDependencies": {
     "typescript": "^5.7.3"
@@ -36,11 +36,11 @@
     "@fortawesome/free-regular-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
-    "@mui/icons-material": "^6.4.4",
-    "@mui/material": "^6.4.4",
+    "@mui/icons-material": "^6.4.5",
+    "@mui/material": "^6.4.5",
     "@reduxjs/toolkit": "^2.5.1",
     "filesize": "^10.1.6",
-    "material-ui-confirm": "^3.0.18",
+    "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^4.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -53,8 +53,8 @@
     "react-toastify": "^11.0.3",
     "react-use-error-boundary": "^3.0.0",
     "semver": "^7.7.1",
-    "swagger-ui-react": "^5.18.3",
-    "uuid": "^11.0.5"
+    "swagger-ui-react": "^5.19.0",
+    "uuid": "^11.1.0"
   },
   "scripts": {
     "nextversion": "bun run version.ts -i alpha",
