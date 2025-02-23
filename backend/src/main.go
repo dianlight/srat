@@ -24,6 +24,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
@@ -94,7 +95,7 @@ func main() {
 	configFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
 	templateFile = flag.String("template", "", "Template file")
-	smbConfigFile = flag.String("out", "", "Output file, if not defined output will be to console")
+	smbConfigFile = flag.String("out", "", "Output samba conf file")
 	roMode = flag.Bool("ro", false, "Read only mode")
 	hamode = flag.Bool("addon", false, "Run in addon mode")
 	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
@@ -120,24 +121,6 @@ func main() {
 	flag.Parse()
 
 	updateFilePath = os.TempDir() + "/" + filepath.Base(os.Args[0])
-	//log.Printf("Update file: %s\n", data.UpdateFilePath)
-
-	/* FIXME: Migrate to service
-	if *show_volumes {
-		volume := api.NewVolumeHandler(context.Background())
-		volumes, err := volume.GetVolumesData()
-		if err != nil {
-			log.Fatalf("Error fetching volumes: %v", err)
-			os.Exit(1)
-		}
-		pretty.Printf("\n%v\n", volumes)
-		os.Exit(0)
-	}
-	*/
-
-	//data.Config = aconfig
-
-	// End
 
 	overseer.Run(overseer.Config{
 		Program: prog,
@@ -177,7 +160,7 @@ func prog(state overseer.State) {
 	}
 
 	if *smbConfigFile == "" {
-		log.Println("Missing samba config going in test mode")
+		log.Fatal("Missing samba config!")
 	}
 
 	if *roMode {
@@ -190,18 +173,13 @@ func prog(state overseer.State) {
 	options = config.ReadOptionsFile(*optionsFile)
 
 	var apiContext, apiContextCancel = context.WithCancel(context.Background())
-	sharedResources := api.ContextState{}
+	sharedResources := dto.ContextState{}
 	sharedResources.UpdateFilePath = updateFilePath
 	sharedResources.ReadOnlyMode = *roMode
 	sharedResources.SambaConfigFile = *smbConfigFile
 	sharedResources.Template = templateData
 	sharedResources.DockerInterface = *dockerInterface
 	sharedResources.DockerNet = *dockerNetwork
-	//sharedResources.SSEBroker = api.NewSSEBroker()
-
-	//sharedResources.FromJSONConfig(*aconfig)
-	//apiContext = sharedResources.ToContext(apiContext)
-	//apiContext = api.StateToContext(&sharedResources, apiContext)
 
 	w := os.Stderr
 
@@ -222,7 +200,7 @@ func prog(state overseer.State) {
 			func() *gorm.DB { return dbom.GetDB() },
 			func() *slog.Logger { return logger },
 			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
-			func() *api.ContextState { return &sharedResources },
+			func() *dto.ContextState { return &sharedResources },
 			func() *overseer.State { return &state },
 			fx.Annotate(
 				func() fs.FS {

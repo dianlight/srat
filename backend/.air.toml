@@ -12,6 +12,8 @@ args_bin = [
   "./tmp/testdb.db",
   "-port",
   "8080",
+  "-out",
+  "./tmp/samba.conf",
 ]
 bin = "./tmp/srat"
 cmd = "CGO_ENABLED=0 go build -C src -ldflags=\"-s -w -X main.SRATVersion=\\\"TEST_AIR_INTERNAL\\\"\" -o ../tmp/srat"

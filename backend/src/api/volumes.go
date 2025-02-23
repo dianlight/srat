@@ -20,13 +20,13 @@ var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
 var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
 
 type VolumeHandler struct {
-	apiContext   *ContextState
+	apiContext   *dto.ContextState
 	vservice     service.VolumeServiceInterface
 	mount_repo   repository.MountPointPathRepositoryInterface
 	dirtyservice service.DirtyDataServiceInterface
 }
 
-func NewVolumeHandler(vservice service.VolumeServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, apiContext *ContextState, dirtyservice service.DirtyDataServiceInterface) *VolumeHandler {
+func NewVolumeHandler(vservice service.VolumeServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface) *VolumeHandler {
 	p := new(VolumeHandler)
 	p.vservice = vservice
 	p.mount_repo = mount_repo

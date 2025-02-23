@@ -20,14 +20,14 @@ import (
 
 type UpgradeHanler struct {
 	ctx         context.Context
-	apictx      *ContextState
+	apictx      *dto.ContextState
 	upgader     service.UpgradeServiceInterface
 	broadcaster service.BroadcasterServiceInterface
 	progress    dto.UpdateProgress
 	pw          *utility.ProgressWriter
 }
 
-func NewUpgradeHanler(ctx context.Context, apictx *ContextState, upgader service.UpgradeServiceInterface, broadcaster service.BroadcasterServiceInterface) *UpgradeHanler {
+func NewUpgradeHanler(ctx context.Context, apictx *dto.ContextState, upgader service.UpgradeServiceInterface, broadcaster service.BroadcasterServiceInterface) *UpgradeHanler {
 
 	p := new(UpgradeHanler)
 	p.ctx = ctx

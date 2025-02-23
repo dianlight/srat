@@ -20,11 +20,11 @@ import (
 type ShareHandler struct {
 	sharesQueueMutex sync.RWMutex
 	broadcaster      service.BroadcasterServiceInterface
-	apiContext       *ContextState
+	apiContext       *dto.ContextState
 	dirtyservice     service.DirtyDataServiceInterface
 }
 
-func NewShareHandler(broadcaster service.BroadcasterServiceInterface, apiContext *ContextState, dirtyService service.DirtyDataServiceInterface) *ShareHandler {
+func NewShareHandler(broadcaster service.BroadcasterServiceInterface, apiContext *dto.ContextState, dirtyService service.DirtyDataServiceInterface) *ShareHandler {
 	p := new(ShareHandler)
 	p.broadcaster = broadcaster
 	p.apiContext = apiContext

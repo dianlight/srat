@@ -43,18 +43,18 @@ func (m *MockSambaServiceInterface) EXPECT() *MockSambaServiceInterfaceMockRecor
 }
 
 // CreateConfigStream mocks base method.
-func (m *MockSambaServiceInterface) CreateConfigStream(dockerInterface, dockerNet string, templateData []byte) (*[]byte, error) {
+func (m *MockSambaServiceInterface) CreateConfigStream() (*[]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateConfigStream", dockerInterface, dockerNet, templateData)
+	ret := m.ctrl.Call(m, "CreateConfigStream")
 	ret0, _ := ret[0].(*[]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateConfigStream indicates an expected call of CreateConfigStream.
-func (mr *MockSambaServiceInterfaceMockRecorder) CreateConfigStream(dockerInterface, dockerNet, templateData any) *gomock.Call {
+func (mr *MockSambaServiceInterfaceMockRecorder) CreateConfigStream() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfigStream", reflect.TypeOf((*MockSambaServiceInterface)(nil).CreateConfigStream), dockerInterface, dockerNet, templateData)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateConfigStream", reflect.TypeOf((*MockSambaServiceInterface)(nil).CreateConfigStream))
 }
 
 // GetSambaProcess mocks base method.
@@ -86,30 +86,30 @@ func (mr *MockSambaServiceInterfaceMockRecorder) RestartSambaService() *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RestartSambaService", reflect.TypeOf((*MockSambaServiceInterface)(nil).RestartSambaService))
 }
 
-// StreamToFile mocks base method.
-func (m *MockSambaServiceInterface) StreamToFile(stream *[]byte, path string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StreamToFile", stream, path)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// StreamToFile indicates an expected call of StreamToFile.
-func (mr *MockSambaServiceInterfaceMockRecorder) StreamToFile(stream, path any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StreamToFile", reflect.TypeOf((*MockSambaServiceInterface)(nil).StreamToFile), stream, path)
-}
-
 // TestSambaConfig mocks base method.
-func (m *MockSambaServiceInterface) TestSambaConfig(path string) error {
+func (m *MockSambaServiceInterface) TestSambaConfig() error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TestSambaConfig", path)
+	ret := m.ctrl.Call(m, "TestSambaConfig")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TestSambaConfig indicates an expected call of TestSambaConfig.
-func (mr *MockSambaServiceInterfaceMockRecorder) TestSambaConfig(path any) *gomock.Call {
+func (mr *MockSambaServiceInterfaceMockRecorder) TestSambaConfig() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TestSambaConfig", reflect.TypeOf((*MockSambaServiceInterface)(nil).TestSambaConfig), path)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TestSambaConfig", reflect.TypeOf((*MockSambaServiceInterface)(nil).TestSambaConfig))
+}
+
+// WriteSambaConfig mocks base method.
+func (m *MockSambaServiceInterface) WriteSambaConfig() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WriteSambaConfig")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WriteSambaConfig indicates an expected call of WriteSambaConfig.
+func (mr *MockSambaServiceInterfaceMockRecorder) WriteSambaConfig() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteSambaConfig", reflect.TypeOf((*MockSambaServiceInterface)(nil).WriteSambaConfig))
 }

@@ -18,11 +18,11 @@ type UserHandler struct {
 	//ctx               context.Context
 	//broascasting      service.BroadcasterServiceInterface
 	//volumesQueueMutex sync.RWMutex
-	apiContext   *ContextState
+	apiContext   *dto.ContextState
 	dirtyservice service.DirtyDataServiceInterface
 }
 
-func NewUserHandler(apiContext *ContextState, dirtyservice service.DirtyDataServiceInterface) *UserHandler {
+func NewUserHandler(apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface) *UserHandler {
 	p := new(UserHandler)
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyservice

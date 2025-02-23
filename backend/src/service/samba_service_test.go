@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/dto"
 	service "github.com/dianlight/srat/service"
 	"github.com/stretchr/testify/suite"
 	"github.com/ztrue/tracerr"
@@ -14,16 +15,19 @@ import (
 type SambaServiceSuite struct {
 	suite.Suite
 	sambaService service.SambaServiceInterface
-	templateData []byte
+	apictx       dto.ContextState
 	//mockSambaService *MockSambaServiceInterface
 	// VariableThatShouldStartAtFive int
 }
 
 func TestSambaServiceSuite(t *testing.T) {
 	csuite := new(SambaServiceSuite)
-	csuite.sambaService = service.NewSambaService()
+	csuite.sambaService = service.NewSambaService(&csuite.apictx)
 	var err error
-	csuite.templateData, err = os.ReadFile("../templates/smb.gtpl")
+	csuite.apictx.Template, err = os.ReadFile("../templates/smb.gtpl")
+	csuite.apictx.DockerInterface = "hassio"
+	csuite.apictx.DockerNet = "172.30.32.0/23"
+
 	if err != nil {
 		t.Errorf("Cant read template file %s", err)
 	}
@@ -37,7 +41,7 @@ func TestSambaServiceSuite(t *testing.T) {
 }
 
 func (suite *SambaServiceSuite) TestCreateConfigStream() {
-	stream, err := suite.sambaService.CreateConfigStream("hassio", "172.30.32.0/23", suite.templateData)
+	stream, err := suite.sambaService.CreateConfigStream()
 	suite.Require().NoError(err, tracerr.SprintSourceColor(err))
 	suite.NotNil(stream)
 

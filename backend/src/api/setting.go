@@ -11,11 +11,11 @@ import (
 )
 
 type SettingsHanler struct {
-	apiContext   *ContextState
+	apiContext   *dto.ContextState
 	dirtyService service.DirtyDataServiceInterface
 }
 
-func NewSettingsHanler(apiContext *ContextState, dirtyService service.DirtyDataServiceInterface) *SettingsHanler {
+func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyDataServiceInterface) *SettingsHanler {
 	p := new(SettingsHanler)
 	p.apiContext = apiContext
 	p.dirtyService = dirtyService

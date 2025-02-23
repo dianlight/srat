@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
@@ -18,7 +17,7 @@ import (
 )
 
 var testContext = context.Background()
-var apiContextState api.ContextState
+var apiContextState dto.ContextState
 
 func TestMain(m *testing.M) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -56,7 +55,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Cant read template file %s", err)
 	}
 
-	apiContextState = api.ContextState{}
+	apiContextState = dto.ContextState{}
 	apiContextState.SambaConfigFile = "../../test/data/smb.conf"
 	apiContextState.Template = templateData
 	apiContextState.DockerInterface = "hassio"

@@ -34,7 +34,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
 import { NotificationCenter } from "./NotificationCenter"
 import { useSSE } from "react-hooks-sse"
-import { DtoEventType, usePutUpdateMutation, type DtoHealthPing, type DtoReleaseAsset, type DtoUpdateProgress } from "../store/sratApi"
+import { DtoEventType, usePutSambaApplyMutation, usePutUpdateMutation, type DtoHealthPing, type DtoReleaseAsset, type DtoUpdateProgress } from "../store/sratApi"
 import { useHealth } from "../hooks/healthHook";
 import { useAppSelector } from "../store/store";
 import { useReadOnly } from "../hooks/readonlyHook";
@@ -115,6 +115,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     });
 
     const [doUpdate] = usePutUpdateMutation();
+    const [restartSamba] = usePutSambaApplyMutation();
 
 
     const { mode, setMode } = useColorScheme();
@@ -157,19 +158,11 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             })
     }
 
-    function handleRoolback() {
+    function handleRestartNow() {
+        console.log("Doing restart")
+        restartSamba()
     }
-    /*
-        useEffect(() => {
-            const upd = ws.subscribe<DtoReleaseAsset>(DtoEventType.EventUpdate, (data) => {
-                // console.log("Got update", data)
-                setUpdateAssetStatus(data);
-            })
-            return () => {
-                ws.unsubscribe(upd);
-            };
-        }, [])
-    */
+
     useEffect(() => {
         const current = pkg.version;
 
@@ -223,9 +216,9 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                     </Tabs>
                     <Box sx={{ flexGrow: 0 }}>
                         {Object.values(health.health.dirty_tracking || {}).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
-                            <Tooltip title="Cancel Process Restart" arrow>
-                                <IconButton onClick={handleRoolback}>
-                                    <CancelIcon sx={{ color: 'white' }} />
+                            <Tooltip title="Restart Samba demon now!" arrow>
+                                <IconButton onClick={handleRestartNow}>
+                                    <RestartAltIcon sx={{ color: 'white' }} />
                                     <CircularProgress
                                         size={32}
                                         sx={{

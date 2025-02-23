@@ -9,11 +9,11 @@ import (
 )
 
 type SambaHanler struct {
-	apictx       *ContextState
+	apictx       *dto.ContextState
 	sambaService service.SambaServiceInterface
 }
 
-func NewSambaHanler(apictx *ContextState, sambaService service.SambaServiceInterface) *SambaHanler {
+func NewSambaHanler(apictx *dto.ContextState, sambaService service.SambaServiceInterface) *SambaHanler {
 	p := new(SambaHanler)
 	p.apictx = apictx
 	p.sambaService = sambaService
@@ -40,19 +40,13 @@ func (handler *SambaHanler) Patterns() []server.RouteDetail {
 //	@Router			/samba/apply [put]
 func (handler *SambaHanler) ApplySamba(w http.ResponseWriter, r *http.Request) {
 
-	stream, err := handler.sambaService.CreateConfigStream(handler.apictx.DockerInterface, handler.apictx.DockerNet, handler.apictx.Template)
+	err := handler.sambaService.WriteSambaConfig()
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
 
-	err = handler.sambaService.StreamToFile(stream, handler.apictx.SambaConfigFile)
-	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
-	}
-
-	err = handler.sambaService.TestSambaConfig(handler.apictx.SambaConfigFile)
+	err = handler.sambaService.TestSambaConfig()
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -80,7 +74,7 @@ func (handler *SambaHanler) ApplySamba(w http.ResponseWriter, r *http.Request) {
 func (handler *SambaHanler) GetSambaConfig(w http.ResponseWriter, r *http.Request) {
 	var smbConf dto.SmbConf
 
-	stream, err := handler.sambaService.CreateConfigStream(handler.apictx.DockerInterface, handler.apictx.DockerNet, handler.apictx.Template)
+	stream, err := handler.sambaService.CreateConfigStream()
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return

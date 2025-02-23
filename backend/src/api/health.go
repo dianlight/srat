@@ -20,18 +20,16 @@ var _healthHanlerIntanceMutex sync.Mutex
 
 type HealthHanler struct {
 	ctx                    context.Context
-	apictx                 *ContextState
+	apictx                 *dto.ContextState
 	OutputEventsCount      uint64
 	OutputEventsInterleave time.Duration
 	dto.HealthPing
-	//gh *github.Client
-	//updateChannel dto.UpdateChannel
 	broadcaster  service.BroadcasterServiceInterface
 	sambaService service.SambaServiceInterface
 	dirtyService service.DirtyDataServiceInterface
 }
 
-func NewHealthHandler(ctx context.Context, apictx *ContextState,
+func NewHealthHandler(ctx context.Context, apictx *dto.ContextState,
 	broadcaster service.BroadcasterServiceInterface,
 	sambaService service.SambaServiceInterface,
 	dirtyService service.DirtyDataServiceInterface) *HealthHanler {
