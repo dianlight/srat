@@ -21,16 +21,17 @@ type SambaServiceSuite struct {
 }
 
 func TestSambaServiceSuite(t *testing.T) {
-	csuite := new(SambaServiceSuite)
-	csuite.sambaService = service.NewSambaService(&csuite.apictx)
 	var err error
+	csuite := new(SambaServiceSuite)
+	dirtyservice := service.NewDirtyDataService(testContext)
 	csuite.apictx.Template, err = os.ReadFile("../templates/smb.gtpl")
-	csuite.apictx.DockerInterface = "hassio"
-	csuite.apictx.DockerNet = "172.30.32.0/23"
-
 	if err != nil {
 		t.Errorf("Cant read template file %s", err)
 	}
+	csuite.apictx.DockerInterface = "hassio"
+	csuite.apictx.DockerNet = "172.30.32.0/23"
+	csuite.sambaService = service.NewSambaService(&csuite.apictx, dirtyservice)
+
 	/*
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()

@@ -21,17 +21,21 @@ type SambaServiceInterface interface {
 	WriteSambaConfig() error
 	RestartSambaService() error
 	TestSambaConfig() error
+	WriteAndRestartSambaConfig() error
 }
 
 type SambaService struct {
 	DockerInterface string
 	DockerNet       string
 	apictx          *dto.ContextState
+	dirtyservice    DirtyDataServiceInterface
 }
 
-func NewSambaService(apictx *dto.ContextState) SambaServiceInterface {
+func NewSambaService(apictx *dto.ContextState, dirtyservice DirtyDataServiceInterface) SambaServiceInterface {
 	p := &SambaService{}
 	p.apictx = apictx
+	p.dirtyservice = dirtyservice
+	dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
 	return p
 }
 
@@ -114,5 +118,22 @@ func (self *SambaService) RestartSambaService() error {
 		}
 	}
 
+	return nil
+}
+
+// WriteSambaConfig Test and Restart
+func (self *SambaService) WriteAndRestartSambaConfig() error {
+	err := self.WriteSambaConfig()
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	err = self.TestSambaConfig()
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	err = self.RestartSambaService()
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
 	return nil
 }

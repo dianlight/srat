@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/ztrue/tracerr"
 )
 
 type DirtyDataServiceInterface interface {
@@ -13,7 +15,7 @@ type DirtyDataServiceInterface interface {
 	SetDirtyUsers()
 	SetDirtySettings()
 	GetDirtyDataTracker() dto.DataDirtyTracker
-	AddRestartCallback(callback func())
+	AddRestartCallback(callback func() error)
 	ResetDirtyStatus()
 	IsTimerRunning() bool
 }
@@ -22,14 +24,14 @@ type DirtyDataService struct {
 	ctx              context.Context
 	dataDirtyTracker dto.DataDirtyTracker
 	timer            *time.Timer
-	restartCallbacks *[]func()
+	restartCallbacks *[]func() error
 }
 
 func NewDirtyDataService(ctx context.Context) DirtyDataServiceInterface {
 	p := new(DirtyDataService)
 	p.ctx = ctx
 	p.dataDirtyTracker = dto.DataDirtyTracker{}
-	p.restartCallbacks = &[]func(){}
+	p.restartCallbacks = &[]func() error{}
 	return p
 }
 
@@ -41,7 +43,11 @@ func (p *DirtyDataService) startTimer() {
 	p.timer = time.AfterFunc(5*time.Second, func() {
 		p.dataDirtyTracker = dto.DataDirtyTracker{}
 		for _, callback := range *p.restartCallbacks {
-			callback()
+			slog.Debug("Calling callback for Restart", "callback", callback)
+			err := callback()
+			if err != nil {
+				slog.Warn("Error in restart callback", "err", tracerr.SprintSourceColor(err))
+			}
 		}
 	})
 }
@@ -80,7 +86,7 @@ func (p *DirtyDataService) GetDirtyDataTracker() dto.DataDirtyTracker {
 }
 
 // add a callback to be called when the timer is triggered
-func (p *DirtyDataService) AddRestartCallback(callback func()) {
+func (p *DirtyDataService) AddRestartCallback(callback func() error) {
 	*p.restartCallbacks = append(*p.restartCallbacks, callback)
 }
 

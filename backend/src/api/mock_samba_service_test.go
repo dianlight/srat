@@ -100,6 +100,20 @@ func (mr *MockSambaServiceInterfaceMockRecorder) TestSambaConfig() *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TestSambaConfig", reflect.TypeOf((*MockSambaServiceInterface)(nil).TestSambaConfig))
 }
 
+// WriteAndRestartSambaConfig mocks base method.
+func (m *MockSambaServiceInterface) WriteAndRestartSambaConfig() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WriteAndRestartSambaConfig")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WriteAndRestartSambaConfig indicates an expected call of WriteAndRestartSambaConfig.
+func (mr *MockSambaServiceInterfaceMockRecorder) WriteAndRestartSambaConfig() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteAndRestartSambaConfig", reflect.TypeOf((*MockSambaServiceInterface)(nil).WriteAndRestartSambaConfig))
+}
+
 // WriteSambaConfig mocks base method.
 func (m *MockSambaServiceInterface) WriteSambaConfig() error {
 	m.ctrl.T.Helper()
