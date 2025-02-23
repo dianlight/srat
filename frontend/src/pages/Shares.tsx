@@ -410,7 +410,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 <DialogContent>
                     <Stack spacing={2}>
                         <DialogContentText>
-                            Please enter your options and click Apply.
+                            Please enter your options and click Apply. // FIXME: Error if double user!
                         </DialogContentText>
                         <form id="editshareform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                             <Grid container spacing={2}>
