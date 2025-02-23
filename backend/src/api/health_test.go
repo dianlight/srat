@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/service"
 	"github.com/stretchr/testify/suite"
 	"github.com/tj/go-spin"
 	gomock "go.uber.org/mock/gomock"
@@ -19,8 +20,7 @@ type HealthHandlerSuite struct {
 	suite.Suite
 	mockBoradcaster  *MockBroadcasterServiceInterface
 	mockSambaService *MockSambaServiceInterface
-	//mockBrocker *MockBrokerInterface
-	// VariableThatShouldStartAtFive int
+	dirtyService     service.DirtyDataServiceInterface
 }
 
 func TestHealthHandlerSuite(t *testing.T) {
@@ -30,7 +30,9 @@ func TestHealthHandlerSuite(t *testing.T) {
 	defer ctrl.Finish()
 	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
 	csuite.mockSambaService = NewMockSambaServiceInterface(ctrl)
+	csuite.dirtyService = service.NewDirtyDataService(testContext)
 	csuite.mockSambaService.EXPECT().GetSambaProcess().AnyTimes()
+
 	//csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
 
 	suite.Run(t, csuite)
@@ -45,7 +47,7 @@ func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
 	}
 
 	rr := httptest.NewRecorder()
-	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService)
+	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService, suite.dirtyService)
 	handler := http.HandlerFunc(health.HealthCheckHandler)
 
 	handler.ServeHTTP(rr, req)
@@ -73,7 +75,7 @@ func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
 }
 
 func (suite *HealthHandlerSuite) TestHealthEventEmitter() {
-	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService)
+	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService, suite.dirtyService)
 	numcal := uint64(0)
 	startTime := time.Now()
 	suite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).Do((func(data any) {

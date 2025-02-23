@@ -246,6 +246,7 @@ func prog(state overseer.State) {
 			service.NewVolumeService,
 			service.NewSambaService,
 			service.NewUpgradeService,
+			service.NewDirtyDataService,
 			repository.NewMountPointPathRepository,
 			server.AsRoute(api.NewSSEBroker),
 			server.AsRoute(api.NewHealthHandler),

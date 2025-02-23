@@ -18,20 +18,17 @@ import (
 )
 
 type ShareHandler struct {
-	//ctx              context.Context
-	//apictx           *ContextState
 	sharesQueueMutex sync.RWMutex
 	broadcaster      service.BroadcasterServiceInterface
-	//sharesQueue      map[string]chan *[]dto.SharedResource
-	apiContext *ContextState
+	apiContext       *ContextState
+	dirtyservice     service.DirtyDataServiceInterface
 }
 
-func NewShareHandler(broadcaster service.BroadcasterServiceInterface, apiContext *ContextState) *ShareHandler {
+func NewShareHandler(broadcaster service.BroadcasterServiceInterface, apiContext *ContextState, dirtyService service.DirtyDataServiceInterface) *ShareHandler {
 	p := new(ShareHandler)
 	p.broadcaster = broadcaster
 	p.apiContext = apiContext
-	//p.ctx = ctx
-	//p.sharesQueue = map[string](chan *[]dto.SharedResource){}
+	p.dirtyservice = dirtyService
 	p.sharesQueueMutex = sync.RWMutex{}
 	broadcaster.AddOpenConnectionListener(func(broker service.BroadcasterServiceInterface) error {
 		p.notifyClient()
@@ -235,15 +232,12 @@ func (self *ShareHandler) CreateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//context_state := (&dto.Status{}).FromContext(r.Context())
-	//context_state := StateFromContext(r.Context())
 	err = conv.ExportedShareToSharedResource(*dbshare, &share)
-	//err = mapper.Map(context.Background(), &share, dbshare)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	self.apiContext.DataDirtyTracker.Shares = true
+	self.dirtyservice.SetDirtyShares()
 	go self.notifyClient()
 	HttpJSONReponse(w, share, &Options{
 		Code: http.StatusCreated,
@@ -333,7 +327,7 @@ func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	self.apiContext.DataDirtyTracker.Shares = true
+	self.dirtyservice.SetDirtyShares()
 	go self.notifyClient()
 	HttpJSONReponse(w, share, nil)
 }
@@ -380,8 +374,7 @@ func (self *ShareHandler) DeleteShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//context_state := StateFromContext(r.Context())
-	self.apiContext.DataDirtyTracker.Shares = true
+	self.dirtyservice.SetDirtyShares()
 	go self.notifyClient()
 	HttpJSONReponse(w, nil, &Options{
 		Code: http.StatusNoContent,

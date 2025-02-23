@@ -28,9 +28,13 @@ type HealthHanler struct {
 	//updateChannel dto.UpdateChannel
 	broadcaster  service.BroadcasterServiceInterface
 	sambaService service.SambaServiceInterface
+	dirtyService service.DirtyDataServiceInterface
 }
 
-func NewHealthHandler(ctx context.Context, apictx *ContextState, broadcaster service.BroadcasterServiceInterface, sambaService service.SambaServiceInterface) *HealthHanler {
+func NewHealthHandler(ctx context.Context, apictx *ContextState,
+	broadcaster service.BroadcasterServiceInterface,
+	sambaService service.SambaServiceInterface,
+	dirtyService service.DirtyDataServiceInterface) *HealthHanler {
 	_healthHanlerIntanceMutex.Lock()
 	defer _healthHanlerIntanceMutex.Unlock()
 	if _healthHanlerIntance != nil {
@@ -48,6 +52,7 @@ func NewHealthHandler(ctx context.Context, apictx *ContextState, broadcaster ser
 	p.broadcaster = broadcaster
 	p.sambaService = sambaService
 	p.OutputEventsCount = 0
+	p.dirtyService = dirtyService
 	if apictx.Heartbeat > 0 {
 		p.OutputEventsInterleave = time.Duration(apictx.Heartbeat) * time.Second
 	} else {
@@ -110,7 +115,7 @@ func (self *HealthHanler) run() error {
 		default:
 			//slog.Debug("Richiesto aggiornamento per Healthy")
 			self.checkSamba()
-			self.HealthPing.Dirty = self.apictx.DataDirtyTracker
+			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()
 			err := self.EventEmitter(self.HealthPing)
 			if err != nil {

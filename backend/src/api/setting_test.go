@@ -12,22 +12,23 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/service"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 )
 
 type SettingsHandlerSuite struct {
 	suite.Suite
-	//mockBoradcaster *MockBroadcasterServiceInterface
-	// VariableThatShouldStartAtFive int
+	dirtyService service.DirtyDataServiceInterface
 }
 
 func TestSettingsHandlerSuite(t *testing.T) {
 	csuite := new(SettingsHandlerSuite)
+	csuite.dirtyService = service.NewDirtyDataService(testContext)
 	suite.Run(t, csuite)
 }
 func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
-	api := api.NewSettingsHanler(&apiContextState)
+	api := api.NewSettingsHanler(&apiContextState, suite.dirtyService)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/global", nil)
@@ -60,11 +61,11 @@ func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
 
 	suite.Equal(expected, returned)
 
-	suite.False(apiContextState.DataDirtyTracker.Settings)
+	suite.False(suite.dirtyService.GetDirtyDataTracker().Settings)
 }
 
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
-	api := api.NewSettingsHanler(&apiContextState)
+	api := api.NewSettingsHanler(&apiContextState, suite.dirtyService)
 	glc := dto.Settings{
 		Workgroup: "pluto&admin",
 	}
@@ -87,7 +88,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 
 	suite.Equal(glc.Workgroup, res.Workgroup)
 	suite.EqualValues([]string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"}, res.AllowHost)
-	suite.True(apiContextState.DataDirtyTracker.Settings)
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Settings)
 
 	// Restore original state
 	var properties dbom.Properties

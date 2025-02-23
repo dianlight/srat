@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/service"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 	"github.com/thoas/go-funk"
@@ -19,12 +20,12 @@ import (
 
 type UserHandlerSuite struct {
 	suite.Suite
-	//mockBoradcaster *MockBroadcasterServiceInterface
-	// VariableThatShouldStartAtFive int
+	dirtyservice service.DirtyDataServiceInterface
 }
 
 func TestUserHandlerSuite(t *testing.T) {
 	csuite := new(UserHandlerSuite)
+	csuite.dirtyservice = service.NewDirtyDataService(testContext)
 	//ctrl := gomock.NewController(t)
 	//defer ctrl.Finish()
 	//csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
@@ -34,7 +35,7 @@ func TestUserHandlerSuite(t *testing.T) {
 }
 
 func (suite *UserHandlerSuite) TestListUsersHandler() {
-	api := api.NewUserHandler(&apiContextState)
+	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/users", nil)
@@ -77,7 +78,7 @@ func (suite *UserHandlerSuite) TestListUsersHandler() {
 }
 
 func (suite *UserHandlerSuite) TestGetUserHandler() {
-	api := api.NewUserHandler(&apiContextState)
+	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
 	req, err := http.NewRequestWithContext(testContext, "GET", "/useradmin", nil)
 	suite.Require().NoError(err)
 
@@ -100,7 +101,7 @@ func (suite *UserHandlerSuite) TestGetUserHandler() {
 }
 
 func (suite *UserHandlerSuite) TestCreateUserHandler() {
-	api := api.NewUserHandler(&apiContextState)
+	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
 
 	user := dto.User{
 		Username: pointer.String("PIPPO"),
@@ -142,7 +143,7 @@ func (suite *UserHandlerSuite) TestCreateUserHandler() {
 }
 
 func (suite *UserHandlerSuite) TestCreateUserDuplicateHandler() {
-	api := api.NewUserHandler(&apiContextState)
+	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
 	user := config.User{
 		Username: "backupuser",
 		Password: "\u003cbackupuser secret password\u003e",
@@ -170,7 +171,7 @@ func (suite *UserHandlerSuite) TestCreateUserDuplicateHandler() {
 }
 
 func (suite *UserHandlerSuite) TestUpdateUserHandler() {
-	api := api.NewUserHandler(&apiContextState)
+	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
 	user := dto.User{
 		Password: pointer.String("/pippo"),
 	}
@@ -205,7 +206,7 @@ func (suite *UserHandlerSuite) TestUpdateUserHandler() {
 }
 
 func (suite *UserHandlerSuite) TestUpdateAdminUserHandler() {
-	api := api.NewUserHandler(&apiContextState)
+	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
 	user := dto.User{
 		Password: pointer.String("/pluto||admin"),
 	}
@@ -234,7 +235,7 @@ func (suite *UserHandlerSuite) TestUpdateAdminUserHandler() {
 }
 
 func (suite *UserHandlerSuite) TestDeleteuserHandler() {
-	api := api.NewUserHandler(&apiContextState)
+	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/user/utente1", nil)

@@ -7,15 +7,18 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/server"
+	"github.com/dianlight/srat/service"
 )
 
 type SettingsHanler struct {
-	apiContext *ContextState
+	apiContext   *ContextState
+	dirtyService service.DirtyDataServiceInterface
 }
 
-func NewSettingsHanler(apiContext *ContextState) *SettingsHanler {
+func NewSettingsHanler(apiContext *ContextState, dirtyService service.DirtyDataServiceInterface) *SettingsHanler {
 	p := new(SettingsHanler)
 	p.apiContext = apiContext
+	p.dirtyService = dirtyService
 	return p
 }
 
@@ -55,7 +58,6 @@ func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 	}
 	var conv converter.DtoToDbomConverterImpl
 
-	//err = mapper.Map(context.Background(), &dbconfig, config)
 	err = conv.SettingsToProperties(config, &dbconfig)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
@@ -68,16 +70,12 @@ func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	//context_state := StateFromContext(r.Context())
-
-	//err = mapper.Map(context.Background(), &config, dbconfig)
 	err = conv.PropertiesToSettings(dbconfig, &config)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	self.apiContext.DataDirtyTracker.Settings = true
-	//UpdateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
+	self.dirtyService.SetDirtySettings()
 	HttpJSONReponse(w, config, nil)
 }
 

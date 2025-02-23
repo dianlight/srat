@@ -8,6 +8,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/server"
+	"github.com/dianlight/srat/service"
 	"github.com/gorilla/mux"
 	"github.com/xorcare/pointer"
 	"gorm.io/gorm"
@@ -17,15 +18,14 @@ type UserHandler struct {
 	//ctx               context.Context
 	//broascasting      service.BroadcasterServiceInterface
 	//volumesQueueMutex sync.RWMutex
-	apiContext *ContextState
+	apiContext   *ContextState
+	dirtyservice service.DirtyDataServiceInterface
 }
 
-func NewUserHandler(apiContext *ContextState) *UserHandler {
+func NewUserHandler(apiContext *ContextState, dirtyservice service.DirtyDataServiceInterface) *UserHandler {
 	p := new(UserHandler)
 	p.apiContext = apiContext
-	//p.ctx = ctx
-	//p.broascasting = broascasting
-	//p.volumesQueueMutex = sync.RWMutex{}
+	p.dirtyservice = dirtyservice
 	return p
 }
 
@@ -183,9 +183,7 @@ func (handler *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	//	context_state := (&dto.Status{}).FromContext(r.Context())
-	//context_state := StateFromContext(r.Context())
-	handler.apiContext.DataDirtyTracker.Users = true
+	handler.dirtyservice.SetDirtyUsers()
 	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
@@ -253,7 +251,7 @@ func (handler *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	//context_state := (&dto.Status{}).FromContext(r.Context())
 	//context_state := StateFromContext(r.Context())
-	handler.apiContext.DataDirtyTracker.Users = true
+	handler.dirtyservice.SetDirtyUsers()
 	HttpJSONReponse(w, user, nil)
 }
 
@@ -306,7 +304,7 @@ func (handler *UserHandler) UpdateAdminUser(w http.ResponseWriter, r *http.Reque
 
 	//context_state := (&dto.Status{}).FromContext(r.Context())
 	//context_state := StateFromContext(r.Context())
-	handler.apiContext.DataDirtyTracker.Users = true
+	handler.dirtyservice.SetDirtyUsers()
 	HttpJSONReponse(w, user, nil)
 }
 
@@ -345,9 +343,6 @@ func (handler *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//context_state := (&dto.Status{}).FromContext(r.Context())
-	//context_state := StateFromContext(r.Context())
-
-	handler.apiContext.DataDirtyTracker.Users = true
+	handler.dirtyservice.SetDirtyUsers()
 	HttpJSONReponse(w, nil, nil)
 }
