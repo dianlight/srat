@@ -9,8 +9,8 @@ export function useShare() {
 
     const statusSSE = useSSE(DtoEventType.Share, {} as DtoSharedResource, {
         parser(input: any): DtoSharedResource {
-            console.log("Got shares", input)
             const c = JSON.parse(input);
+            console.log("Got shares", c)
             setShares(c)
             return c;
         },

@@ -95,7 +95,7 @@ export function Shares() {
     }
 
     function onSubmitEditShare(data?: ShareEditProps) {
-        if (!data) return;
+        if (!data || !selected) return;
         if (!data.name || !data.mount_point_data?.path) {
             dispatch(addMessage("Unable to open share!"));
             return;
@@ -114,15 +114,13 @@ export function Shares() {
             */
             return;
         } else {
-            /*
-            api.share.shareUpdate(data.org_name, data).then((res) => {
-                setErrorInfo('')
-                //setSelectedUser(null);
-                //users.mutate();
-            }).catch(err => {
-                setErrorInfo(JSON.stringify(err));
-            })
-            */
+            updateShare({ shareName: selected[1].name || "", dtoSharedResource: { ...data, disabled: false } }).unwrap()
+                .then(() => {
+                    //            setErrorInfo('');
+                })
+                .catch(err => {
+                    dispatch(addMessage(JSON.stringify(err)));
+                });
         }
         setShowEdit(false);
         return false;
@@ -165,7 +163,7 @@ export function Shares() {
 
     return <InView>
         <PreviewDialog title={selected ? selected[0] : ""} objectToDisplay={selected?.[1]} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
-        <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[0] || "" }} open={showEdit} onClose={(data) => { setSelected(null); onSubmitEditShare(data); setShowEdit(false) }} />
+        <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[0] || "" }} open={showEdit} onClose={(data) => { onSubmitEditShare(data); setSelected(null); setShowEdit(false) }} />
         {read_only || <Fab color="primary" aria-label="add" sx={{
             float: 'right',
             top: '-20px',
@@ -191,11 +189,13 @@ export function Shares() {
                                 <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
                                     <SettingsIcon />
                                 </IconButton>
+                                {/* 
                                 <IconButton onClick={() => { setSelected([share, props]); setShowUserEdit(true) }} edge="end" aria-label="users">
                                     <Tooltip title="Manage Users">
                                         <GroupIcon />
                                     </Tooltip>
                                 </IconButton>
+                                */}
                                 {(props.usage !== DtoHAMountUsage.Internal) && (props.mount_point_data?.is_mounted ? (
                                     <IconButton onClick={() => onSubmitUnmount(share)} edge="end" aria-label="unmount">
                                         <Tooltip title="Unmount">
@@ -269,7 +269,7 @@ export function Shares() {
                                                 Mount Point: {props.mount_point_data.path}
                                             </Box>
                                         )}
-                                        {props.mount_point_data?.warnings && (
+                                        {props.mount_point_data?.warnings && props.usage !== DtoHAMountUsage.Internal && (
                                             <Box component="span" sx={{ display: 'block', color: 'orange' }}>
                                                 Warning: {props.mount_point_data.warnings}
                                             </Box>
@@ -278,6 +278,7 @@ export function Shares() {
                                             {props.users && props.users.length > 0 && (
                                                 <Tooltip title="Users with write access">
                                                     <Chip
+                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
                                                         size="small"
                                                         icon={<EditIcon />}
                                                         label={
@@ -297,6 +298,7 @@ export function Shares() {
                                             {props.ro_users && props.ro_users.length > 0 && (
                                                 <Tooltip title="Users with read-only access">
                                                     <Chip
+                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
                                                         size="small"
                                                         icon={<VisibilityIcon />}
                                                         label={
@@ -316,6 +318,7 @@ export function Shares() {
                                             {(props.usage && props.usage !== DtoHAMountUsage.Internal) && (
                                                 <Tooltip title="Share Usage">
                                                     <Chip
+                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
                                                         size="small"
                                                         icon={<FolderSpecialIcon />}
                                                         label={`Usage: ${props.usage}`}
@@ -326,6 +329,7 @@ export function Shares() {
                                             {props.timemachine && (
                                                 <Tooltip title="TimeMachine Enabled">
                                                     <Chip
+                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
                                                         size="small"
                                                         icon={<BackupIcon />}
                                                         label="TimeMachine"
