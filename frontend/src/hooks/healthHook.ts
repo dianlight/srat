@@ -18,14 +18,14 @@ export function useHealth() {
     const ssedata = useSSE(DtoEventType.Heartbeat, {} as DtoHealthPing, {
         parser(input: any): DtoHealthPing {
             const c = JSON.parse(input);
-            console.log("Got sse health data", c);
+            //console.log("Got sse health data", c);
             return c;
         },
     });
 
     useEffect(() => {
         if (data && (data.aliveTime || 0) > (health.aliveTime || 0)) {
-            console.log("Update Data from rest service", data);
+            //console.log("Update Data from rest service", data);
             setHealth(data);
         }
         if (error) {
@@ -35,7 +35,7 @@ export function useHealth() {
 
     useEffect(() => {
         if (ssedata && (ssedata.aliveTime || 0) > (health.aliveTime || 0)) {
-            console.log("Update Data from sse service", ssedata);
+            //console.log("Update Data from sse service", ssedata);
             setHealth(ssedata);
         }
     }, [ssedata]);
