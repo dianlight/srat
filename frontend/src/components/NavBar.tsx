@@ -229,7 +229,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                     <CircularProgress
                                         size={32}
                                         sx={{
-                                            color: "secondary",
+                                            color: "blueviolet",
                                             position: 'absolute',
                                             zIndex: 1,
                                         }}
