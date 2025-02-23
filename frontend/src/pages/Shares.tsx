@@ -27,7 +27,7 @@ import { AutocompleteElement, CheckboxElement, FormContainer, SelectElement, Tex
 import { Box, Container, Fab, Paper, Stack, Tooltip } from "@mui/material";
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import AddIcon from '@mui/icons-material/Add';
-import { Eject, DriveFileMove } from '@mui/icons-material';
+import { Eject, DriveFileMove, Label } from '@mui/icons-material';
 import { Chip, Typography } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import GroupIcon from '@mui/icons-material/Group';
@@ -38,7 +38,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useSSE } from "react-hooks-sse";
 import { useDispatch, useSelector } from "react-redux";
 import { useAppDispatch, useAppSelector, type RootState } from "../store/store";
-import { DtoEventType, DtoHAMountUsage, useGetSharesQuery, useGetUseradminQuery, useGetUsersQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
+import { DtoEventType, DtoHAMountUsage, useGetSharesQuery, useGetSharesUsagesQuery, useGetUseradminQuery, useGetUsersQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { addMessage } from "../store/errorSlice";
@@ -354,7 +354,6 @@ interface ShareEditPropsEdit extends ShareEditProps {
 }
 
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
-    //    const { data: admin, isLoading: isLoadingAdmin } = useGetUseradminQuery();
     const { data: users, isLoading } = useGetUsersQuery()
     const [editName, setEditName] = useState(false);
     const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditPropsEdit>(
@@ -422,20 +421,10 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                 {props.objectToEdit?.usage !== DtoHAMountUsage.Internal &&
                                     <Grid size={6}>
                                         <SelectElement sx={{ display: "flex" }} label="Usage" name="usage"
-                                            options={[
-                                                {
-                                                    id: 'native', label: 'Native'
-                                                },
-                                                {
-                                                    id: 'media', label: 'Media'
-                                                },
-                                                {
-                                                    id: 'share', label: 'Share'
-                                                },
-                                                {
-                                                    id: 'backup', label: 'Backup'
-                                                }
-                                            ]} required control={control} />
+                                            options={Object.keys(DtoHAMountUsage)
+                                                .filter(usage => usage.toLowerCase() !== DtoHAMountUsage.Internal)
+                                                .map(usage => { return { id: usage.toLowerCase(), label: usage } })}
+                                            required control={control} />
                                     </Grid>
                                 }
                                 {

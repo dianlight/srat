@@ -1,165 +1,211 @@
 import { emptySplitApi as api } from "./emptyApi";
-const injectedRtkApi = api.injectEndpoints({
-  endpoints: (build) => ({
-    getFilesystems: build.query<
-      GetFilesystemsApiResponse,
-      GetFilesystemsApiArg
-    >({
-      query: () => ({ url: `/filesystems` }),
-    }),
-    getHealth: build.query<GetHealthApiResponse, GetHealthApiArg>({
-      query: () => ({ url: `/health` }),
-    }),
-    getNics: build.query<GetNicsApiResponse, GetNicsApiArg>({
-      query: () => ({ url: `/nics` }),
-    }),
-    putRestart: build.mutation<PutRestartApiResponse, PutRestartApiArg>({
-      query: () => ({ url: `/restart`, method: "PUT" }),
-    }),
-    putSambaApply: build.mutation<
-      PutSambaApplyApiResponse,
-      PutSambaApplyApiArg
-    >({
-      query: () => ({ url: `/samba/apply`, method: "PUT" }),
-    }),
-    getSambaConfig: build.query<
-      GetSambaConfigApiResponse,
-      GetSambaConfigApiArg
-    >({
-      query: () => ({ url: `/samba/config` }),
-    }),
-    getSettings: build.query<GetSettingsApiResponse, GetSettingsApiArg>({
-      query: () => ({ url: `/settings` }),
-    }),
-    putSettings: build.mutation<PutSettingsApiResponse, PutSettingsApiArg>({
-      query: (queryArg) => ({
-        url: `/settings`,
-        method: "PUT",
-        body: queryArg.dtoSettings,
+export const addTagTypes = [
+  "system",
+  "samba",
+  "share",
+  "user",
+  "volume",
+] as const;
+const injectedRtkApi = api
+  .enhanceEndpoints({
+    addTagTypes,
+  })
+  .injectEndpoints({
+    endpoints: (build) => ({
+      getFilesystems: build.query<
+        GetFilesystemsApiResponse,
+        GetFilesystemsApiArg
+      >({
+        query: () => ({ url: `/filesystems` }),
+        providesTags: ["system"],
       }),
-    }),
-    patchSettings: build.mutation<
-      PatchSettingsApiResponse,
-      PatchSettingsApiArg
-    >({
-      query: (queryArg) => ({
-        url: `/settings`,
-        method: "PATCH",
-        body: queryArg.dtoSettings,
+      getHealth: build.query<GetHealthApiResponse, GetHealthApiArg>({
+        query: () => ({ url: `/health` }),
+        providesTags: ["system"],
       }),
-    }),
-    postShare: build.mutation<PostShareApiResponse, PostShareApiArg>({
-      query: (queryArg) => ({
-        url: `/share`,
-        method: "POST",
-        body: queryArg.dtoSharedResource,
+      getNics: build.query<GetNicsApiResponse, GetNicsApiArg>({
+        query: () => ({ url: `/nics` }),
+        providesTags: ["system"],
       }),
-    }),
-    getShareByShareName: build.query<
-      GetShareByShareNameApiResponse,
-      GetShareByShareNameApiArg
-    >({
-      query: (queryArg) => ({ url: `/share/${queryArg.shareName}` }),
-    }),
-    putShareByShareName: build.mutation<
-      PutShareByShareNameApiResponse,
-      PutShareByShareNameApiArg
-    >({
-      query: (queryArg) => ({
-        url: `/share/${queryArg.shareName}`,
-        method: "PUT",
-        body: queryArg.dtoSharedResource,
+      putRestart: build.mutation<PutRestartApiResponse, PutRestartApiArg>({
+        query: () => ({ url: `/restart`, method: "PUT" }),
+        invalidatesTags: ["system"],
       }),
-    }),
-    deleteShareByShareName: build.mutation<
-      DeleteShareByShareNameApiResponse,
-      DeleteShareByShareNameApiArg
-    >({
-      query: (queryArg) => ({
-        url: `/share/${queryArg.shareName}`,
-        method: "DELETE",
+      putSambaApply: build.mutation<
+        PutSambaApplyApiResponse,
+        PutSambaApplyApiArg
+      >({
+        query: () => ({ url: `/samba/apply`, method: "PUT" }),
+        invalidatesTags: ["samba"],
       }),
-    }),
-    getShares: build.query<GetSharesApiResponse, GetSharesApiArg>({
-      query: () => ({ url: `/shares` }),
-    }),
-    getSse: build.query<GetSseApiResponse, GetSseApiArg>({
-      query: () => ({ url: `/sse` }),
-    }),
-    getSseEvents: build.query<GetSseEventsApiResponse, GetSseEventsApiArg>({
-      query: () => ({ url: `/sse/events` }),
-    }),
-    putUpdate: build.mutation<PutUpdateApiResponse, PutUpdateApiArg>({
-      query: () => ({ url: `/update`, method: "PUT" }),
-    }),
-    postUser: build.mutation<PostUserApiResponse, PostUserApiArg>({
-      query: (queryArg) => ({
-        url: `/user`,
-        method: "POST",
-        body: queryArg.dtoUser,
+      getSambaConfig: build.query<
+        GetSambaConfigApiResponse,
+        GetSambaConfigApiArg
+      >({
+        query: () => ({ url: `/samba/config` }),
+        providesTags: ["samba"],
       }),
-    }),
-    putUserByUsername: build.mutation<
-      PutUserByUsernameApiResponse,
-      PutUserByUsernameApiArg
-    >({
-      query: (queryArg) => ({
-        url: `/user/${queryArg.username}`,
-        method: "PUT",
-        body: queryArg.dtoUser,
+      getSettings: build.query<GetSettingsApiResponse, GetSettingsApiArg>({
+        query: () => ({ url: `/settings` }),
+        providesTags: ["samba"],
       }),
-    }),
-    deleteUserByUsername: build.mutation<
-      DeleteUserByUsernameApiResponse,
-      DeleteUserByUsernameApiArg
-    >({
-      query: (queryArg) => ({
-        url: `/user/${queryArg.username}`,
-        method: "DELETE",
+      putSettings: build.mutation<PutSettingsApiResponse, PutSettingsApiArg>({
+        query: (queryArg) => ({
+          url: `/settings`,
+          method: "PUT",
+          body: queryArg.dtoSettings,
+        }),
+        invalidatesTags: ["samba"],
       }),
-    }),
-    getUseradmin: build.query<GetUseradminApiResponse, GetUseradminApiArg>({
-      query: () => ({ url: `/useradmin` }),
-    }),
-    putUseradmin: build.mutation<PutUseradminApiResponse, PutUseradminApiArg>({
-      query: (queryArg) => ({
-        url: `/useradmin`,
-        method: "PUT",
-        body: queryArg.dtoUser,
+      patchSettings: build.mutation<
+        PatchSettingsApiResponse,
+        PatchSettingsApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/settings`,
+          method: "PATCH",
+          body: queryArg.dtoSettings,
+        }),
+        invalidatesTags: ["samba"],
       }),
-    }),
-    getUsers: build.query<GetUsersApiResponse, GetUsersApiArg>({
-      query: () => ({ url: `/users` }),
-    }),
-    postVolumeByIdMount: build.mutation<
-      PostVolumeByIdMountApiResponse,
-      PostVolumeByIdMountApiArg
-    >({
-      query: (queryArg) => ({
-        url: `/volume/${queryArg.id}/mount`,
-        method: "POST",
-        body: queryArg.dtoMountPointData,
+      postShare: build.mutation<PostShareApiResponse, PostShareApiArg>({
+        query: (queryArg) => ({
+          url: `/share`,
+          method: "POST",
+          body: queryArg.dtoSharedResource,
+        }),
+        invalidatesTags: ["share"],
       }),
-    }),
-    deleteVolumeByIdMount: build.mutation<
-      DeleteVolumeByIdMountApiResponse,
-      DeleteVolumeByIdMountApiArg
-    >({
-      query: (queryArg) => ({
-        url: `/volume/${queryArg.id}/mount`,
-        method: "DELETE",
-        params: {
-          force: queryArg.force,
-          lazy: queryArg.lazy,
+      getShareByShareName: build.query<
+        GetShareByShareNameApiResponse,
+        GetShareByShareNameApiArg
+      >({
+        query: (queryArg) => ({ url: `/share/${queryArg.shareName}` }),
+        providesTags: ["share"],
+      }),
+      putShareByShareName: build.mutation<
+        PutShareByShareNameApiResponse,
+        PutShareByShareNameApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/share/${queryArg.shareName}`,
+          method: "PUT",
+          body: queryArg.dtoSharedResource,
+        }),
+        invalidatesTags: ["share"],
+      }),
+      deleteShareByShareName: build.mutation<
+        DeleteShareByShareNameApiResponse,
+        DeleteShareByShareNameApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/share/${queryArg.shareName}`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["share"],
+      }),
+      getShares: build.query<GetSharesApiResponse, GetSharesApiArg>({
+        query: () => ({ url: `/shares` }),
+        providesTags: ["share"],
+      }),
+      getSharesUsages: build.query<
+        GetSharesUsagesApiResponse,
+        GetSharesUsagesApiArg
+      >({
+        query: () => ({ url: `/shares/usages` }),
+        providesTags: ["share"],
+      }),
+      getSse: build.query<GetSseApiResponse, GetSseApiArg>({
+        query: () => ({ url: `/sse` }),
+        providesTags: ["system"],
+      }),
+      getSseEvents: build.query<GetSseEventsApiResponse, GetSseEventsApiArg>({
+        query: () => ({ url: `/sse/events` }),
+        providesTags: ["system"],
+      }),
+      putUpdate: build.mutation<PutUpdateApiResponse, PutUpdateApiArg>({
+        query: () => ({ url: `/update`, method: "PUT" }),
+        invalidatesTags: ["system"],
+      }),
+      postUser: build.mutation<PostUserApiResponse, PostUserApiArg>({
+        query: (queryArg) => ({
+          url: `/user`,
+          method: "POST",
+          body: queryArg.dtoUser,
+        }),
+        invalidatesTags: ["user"],
+      }),
+      putUserByUsername: build.mutation<
+        PutUserByUsernameApiResponse,
+        PutUserByUsernameApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/user/${queryArg.username}`,
+          method: "PUT",
+          body: queryArg.dtoUser,
+        }),
+        invalidatesTags: ["user"],
+      }),
+      deleteUserByUsername: build.mutation<
+        DeleteUserByUsernameApiResponse,
+        DeleteUserByUsernameApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/user/${queryArg.username}`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["user"],
+      }),
+      getUseradmin: build.query<GetUseradminApiResponse, GetUseradminApiArg>({
+        query: () => ({ url: `/useradmin` }),
+        providesTags: ["user"],
+      }),
+      putUseradmin: build.mutation<PutUseradminApiResponse, PutUseradminApiArg>(
+        {
+          query: (queryArg) => ({
+            url: `/useradmin`,
+            method: "PUT",
+            body: queryArg.dtoUser,
+          }),
+          invalidatesTags: ["user"],
         },
+      ),
+      getUsers: build.query<GetUsersApiResponse, GetUsersApiArg>({
+        query: () => ({ url: `/users` }),
+        providesTags: ["user"],
+      }),
+      postVolumeByIdMount: build.mutation<
+        PostVolumeByIdMountApiResponse,
+        PostVolumeByIdMountApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/volume/${queryArg.id}/mount`,
+          method: "POST",
+          body: queryArg.dtoMountPointData,
+        }),
+        invalidatesTags: ["volume"],
+      }),
+      deleteVolumeByIdMount: build.mutation<
+        DeleteVolumeByIdMountApiResponse,
+        DeleteVolumeByIdMountApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/volume/${queryArg.id}/mount`,
+          method: "DELETE",
+          params: {
+            force: queryArg.force,
+            lazy: queryArg.lazy,
+          },
+        }),
+        invalidatesTags: ["volume"],
+      }),
+      getVolumes: build.query<GetVolumesApiResponse, GetVolumesApiArg>({
+        query: () => ({ url: `/volumes` }),
+        providesTags: ["volume"],
       }),
     }),
-    getVolumes: build.query<GetVolumesApiResponse, GetVolumesApiArg>({
-      query: () => ({ url: `/volumes` }),
-    }),
-  }),
-  overrideExisting: false,
-});
+    overrideExisting: false,
+  });
 export { injectedRtkApi as sratApi };
 export type GetFilesystemsApiResponse = /** status 200 OK */ string[];
 export type GetFilesystemsApiArg = void;
@@ -211,6 +257,8 @@ export type DeleteShareByShareNameApiArg = {
 };
 export type GetSharesApiResponse = /** status 200 OK */ DtoSharedResource[];
 export type GetSharesApiArg = void;
+export type GetSharesUsagesApiResponse = /** status 200 OK */ DtoHAMountUsage[];
+export type GetSharesUsagesApiArg = void;
 export type GetSseApiResponse = unknown;
 export type GetSseApiArg = void;
 export type GetSseEventsApiResponse = /** status 200 OK */ DtoEventType[];
@@ -489,6 +537,7 @@ export const {
   usePutShareByShareNameMutation,
   useDeleteShareByShareNameMutation,
   useGetSharesQuery,
+  useGetSharesUsagesQuery,
   useGetSseQuery,
   useGetSseEventsQuery,
   usePutUpdateMutation,

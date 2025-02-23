@@ -40,76 +40,13 @@ func NewShareHandler(broadcaster service.BroadcasterServiceInterface, apiContext
 func (broker *ShareHandler) Patterns() []server.RouteDetail {
 	return []server.RouteDetail{
 		{Pattern: "/shares", Method: "GET", Handler: broker.ListShares},
+		{Pattern: "/shares/usages", Method: "GET", Handler: broker.ListShareUsages},
 		{Pattern: "/share/{share_name}", Method: "GET", Handler: broker.GetShare},
 		{Pattern: "/share", Method: "POST", Handler: broker.CreateShare},
 		{Pattern: "/share/{share_name}", Method: "PUT", Handler: broker.UpdateShare},
 		{Pattern: "/share/{share_name}", Method: "DELETE", Handler: broker.DeleteShare},
 	}
 }
-
-/*
-func GetSharedResources(ctx context.Context) (*dto.SharedResources, error) {
-	var shares dto.SharedResources
-	var dbshares dbom.ExportedShare
-	err := dbshares.GetAll()
-	if err!= nil {
-
-        return nil, err
-    }
-	shares.From(dbshares)
-
-	// Check all ID Matching and sign dirty!
-	for _, sdto := range shares {
-		if sdto.ID == nil {
-			ckdb := dbom.ExportedShare{}
-			err := ckdb.FromNameOrPath(sdto.Name, sdto.Path)
-			if err != nil {
-				return nil, err
-			}
-			if ckdb.Name != "" {
-				sdto.ID = &ckdb.ID
-				sdto.DirtyStatus = true
-			}
-			shares[sdto.Name] = sdto
-		} else {
-			dbshare := dbom.ExportedShare{}
-			dbshare.ID = *sdto.ID
-			err := dbshare.Get()
-			if err != nil {
-				return nil, err
-			}
-			nsdto := dto.SharedResource{}
-			nsdto.From(dbshare)
-
-			if !reflect.DeepEqual(nsdto, sdto) {
-				sdto.DirtyStatus = true
-				shares[sdto.Name] = sdto
-			}
-		}
-		// Check if mounted and wich path
-
-		if sdto.DeviceId == nil {
-			sstat := syscall.Stat_t{}
-			err := syscall.Stat(sdto.Path, &sstat)
-			if err != nil {
-				// check if error is not such file or directory
-				if os.IsNotExist(err) {
-					sdto.Invalid = true
-				} else {
-					return nil, err
-				}
-			} else {
-				sdto.DeviceId = &sstat.Dev
-			}
-		}
-		shares[sdto.Name] = sdto
-	}
-
-	// TODO: Popolate missing share and set to delete!
-
-	return &shares, nil
-}
-*/
 
 // ListShares godoc
 //
@@ -140,6 +77,18 @@ func (self *ShareHandler) ListShares(w http.ResponseWriter, r *http.Request) {
 		shares = append(shares, share)
 	}
 	HttpJSONReponse(w, shares, nil)
+}
+
+// ListShareUsages godoc
+//
+//	@Summary		List all available usages for shares
+//	@Description	List all available usages for shares
+//	@Tags			share
+//	@Produce		json
+//	@Success		200	{object}	[]dto.HAMountUsage
+//	@Router			/shares/usages [get]
+func (self *ShareHandler) ListShareUsages(w http.ResponseWriter, r *http.Request) {
+	//HttpJSONReponse(w, dto.HAMountUsages.All(), nil)
 }
 
 // GetShare godoc

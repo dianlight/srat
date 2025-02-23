@@ -798,6 +798,21 @@ paths:
       summary: List all configured shares
       tags:
       - share
+  /shares/usages:
+    get:
+      description: List all available usages for shares
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.HAMountUsage'
+            type: array
+      summary: List all available usages for shares
+      tags:
+      - share
   /sse:
     get:
       consumes:

@@ -11,6 +11,7 @@ import (
 // goverter:default:update
 // goverter:useZeroValueOnPointerInconsistency
 // goverter:update:ignoreZeroValueField
+// goverter:skipCopySameType
 // goverter:enum:unknown @error
 type DtoToDbomConverter interface {
 	// goverter:update target
