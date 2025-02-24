@@ -35,7 +35,7 @@ export function PreviewDialog(props: PreviewDialogProps) {
       aria-describedby="alert-dialog-description"
     >
       <DialogTitle id="alert-dialog-title">
-        {props.title}
+        Debug: {props.title}
       </DialogTitle>
       <DialogContent>
         <ObjectTable object={props.objectToDisplay} key={0} />
