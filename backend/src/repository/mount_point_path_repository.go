@@ -20,7 +20,7 @@ type MountPointPathRepositoryInterface interface {
 	Save(mp *dbom.MountPointPath) error
 	FindByID(id uint) (*dbom.MountPointPath, error)
 	FindByPath(path string) (*dbom.MountPointPath, error)
-	Exists(id uint) bool
+	Exists(id uint) (bool, error)
 	// Delete(mp *dbom.MountPointPath) error
 	// Update(mp *dbom.MountPointPath) error
 }
@@ -37,22 +37,28 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	defer r.mutex.Unlock()
 	tx := r.db.Begin()
 	defer tx.Rollback()
-	var existingRecord dbom.MountPointPath
-	res := tx.Limit(1).Find(&existingRecord, "path = ?", mp.Path)
-	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		return tracerr.Wrap(res.Error)
-	} else if res.RowsAffected > 0 {
-		if mp.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
-			return tracerr.Errorf("DeviceId mismatch for %s", mp.Path)
-		}
-		err := copier.CopyWithOption(mp, &existingRecord, copier.Option{IgnoreEmpty: true})
-		if err != nil {
-			return tracerr.Wrap(err)
+	//	slog.Debug("Save checkpoint", "mp", mp)
+	if mp.ID == 0 {
+		var existingRecord dbom.MountPointPath
+		res := tx.Limit(1).Find(&existingRecord, "path = ? and source = ?", mp.Path, mp.Source)
+		if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			return tracerr.Wrap(res.Error)
+		} else if res.RowsAffected > 0 {
+			if mp.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
+				return tracerr.Errorf("DeviceId mismatch for %s", mp.Path)
+			}
+			err := copier.CopyWithOption(&existingRecord, mp, copier.Option{IgnoreEmpty: true})
+			if err != nil {
+				return tracerr.Wrap(err)
+			}
+			*mp = existingRecord
 		}
 	}
 
+	// slog.Debug("Save checkpoint", "mp", mp)
 	err := tx.Save(mp).Error
 	if err != nil {
+		tracerr.PrintSourceColor(tracerr.Wrap(err))
 		return tracerr.Wrap(err)
 	}
 	tx.Commit()
@@ -90,8 +96,11 @@ func (r *MountPointPathRepository) Update(mp *dbom.MountPointPath) error {
 
 // Exists checks if a MountPointPath exists in the database by its ID.
 
-func (r *MountPointPathRepository) Exists(id uint) bool {
+func (r *MountPointPathRepository) Exists(id uint) (bool, error) {
 	var mp dbom.MountPointPath
 	err := r.db.First(&mp, id).Error
-	return err == nil
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	return true, err
 }

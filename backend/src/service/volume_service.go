@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"github.com/u-root/u-root/pkg/mount"
 	ublock "github.com/u-root/u-root/pkg/mount/block"
 	"github.com/ztrue/tracerr"
+	"gorm.io/gorm"
 )
 
 type VolumeServiceInterface interface {
@@ -109,9 +111,9 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) error {
 	}
 	var mp *mount.MountPoint
 	if dbom_mount_data.FSType == "" {
-		mp, err = mount.TryMount(dbom_mount_data.Source, dbom_mount_data.Path, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
+		mp, err = mount.TryMount("/dev/"+dbom_mount_data.Source, dbom_mount_data.Path, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
 	} else {
-		mp, err = mount.Mount(dbom_mount_data.Source, dbom_mount_data.Path, dbom_mount_data.FSType, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
+		mp, err = mount.Mount("/dev/"+dbom_mount_data.Source, dbom_mount_data.Path, dbom_mount_data.FSType, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
 	}
 	if err != nil {
 		slog.Error("Failed to mount volume:", "source", dbom_mount_data.Source, "fstype", dbom_mount_data.FSType, "path", dbom_mount_data.Path, "flags", flags, "mp", mp)
@@ -337,9 +339,27 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 				mount_data.Path = "/mnt/" + partition.Name
 			}
 		}
+
+		orgPath := mount_data.Path
+		for i := 1; i < 20; i++ {
+			ok, err := self.mount_repo.FindByPath(mount_data.Path)
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				break
+			}
+			if err != nil {
+				slog.Warn("Error search for a mount directory", "err", err)
+				continue
+			}
+			if ok.Source == partition.Name {
+				break
+			}
+			mount_data.Path = orgPath + "_(" + strconv.Itoa(i) + ")"
+		}
+
 		err = self.mount_repo.Save(mount_data)
 		if err != nil {
 			slog.Warn("Error saving mount point data", "err", err)
+			mount_data.IsInvalid = true
 			continue
 		}
 		conv.MountPointPathToMountPointData(*mount_data, &retBlockInfo.Partitions[i].MountPointData)

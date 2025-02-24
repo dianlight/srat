@@ -16,8 +16,9 @@ import (
 )
 
 var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
-var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
-var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
+
+//var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
+//var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
 
 type VolumeHandler struct {
 	apiContext   *dto.ContextState
@@ -201,7 +202,7 @@ func (self *VolumeHandler) UmountVolume(w http.ResponseWriter, r *http.Request) 
 	force := r.URL.Query().Get("force")
 	lazy := r.URL.Query().Get("lazy")
 
-	if !self.mount_repo.Exists(uint(id)) {
+	if ok, _ := self.mount_repo.Exists(uint(id)); ok {
 		HttpJSONReponse(w, dto.ErrorInfo{
 			Code: dto.ErrorCodes.UNMOUNT_FAIL,
 			Data: map[string]any{

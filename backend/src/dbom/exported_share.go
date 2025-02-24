@@ -10,11 +10,10 @@ import (
 )
 
 type ExportedShare struct {
-	ID               uint `gorm:"primarykey"`
+	Name             string `gorm:"primarykey"`
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	DeletedAt        gorm.DeletedAt `gorm:"index"`
-	Name             string         `gorm:"uniqueIndex"`
 	Disabled         bool
 	Users            []SambaUser `gorm:"many2many:user_rw_share;constraint:OnDelete:CASCADE;"`
 	RoUsers          []SambaUser `gorm:"many2many:user_ro_share;constraint:OnDelete:CASCADE;"`
@@ -33,6 +32,7 @@ func (p *ExportedShares) Load() error {
 func (p *ExportedShares) Save() error {
 	err := db.Save(p).Error
 	if err != nil {
+		//		tracerr.PrintSourceColor(tracerr.Wrap(err))
 		return tracerr.Wrap(err)
 	}
 	return nil

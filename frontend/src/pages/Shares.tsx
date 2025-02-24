@@ -42,6 +42,7 @@ import { DtoEventType, DtoHAMountUsage, useGetSharesQuery, useGetSharesUsagesQue
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { addMessage } from "../store/errorSlice";
+import { useVolume } from "../hooks/volumeHook";
 
 interface ShareEditProps extends DtoSharedResource {
     org_name: string,
@@ -359,6 +360,7 @@ interface ShareEditPropsEdit extends ShareEditProps {
 
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
     const { data: users, isLoading } = useGetUsersQuery()
+    const volumes = useVolume()
     const [editName, setEditName] = useState(false);
     const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditPropsEdit>(
         {
@@ -424,7 +426,10 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                 */}
                                 {props.objectToEdit?.usage !== DtoHAMountUsage.Internal &&
                                     <Grid size={6}>
-                                        <SelectElement sx={{ display: "flex" }} label="Usage" name="usage"
+                                        <SelectElement
+                                            sx={{ display: "flex" }}
+                                            label="Usage"
+                                            name="usage"
                                             options={Object.keys(DtoHAMountUsage)
                                                 .filter(usage => usage.toLowerCase() !== DtoHAMountUsage.Internal)
                                                 .map(usage => { return { id: usage.toLowerCase(), label: usage } })}
@@ -434,7 +439,14 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                 {
                                     props.objectToEdit?.usage !== DtoHAMountUsage.Internal && <>
                                         <Grid size={6}>
-                                            <TextFieldElement sx={{ display: "flex" }} name="mount_point_data.path" label="Mount Path" required control={control} />
+                                            <SelectElement sx={{ display: "flex" }}
+                                                label="Mount Path"
+                                                name="mount_point_data.path"
+                                                options={volumes.volumes?.partitions?.
+                                                    filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/"))
+                                                    .map(mount => { return { id: mount.mount_point_data?.path, label: mount.label + "(" + mount.name + ")" } })}
+                                                required
+                                                control={control} />
                                         </Grid>
                                         <Grid size={6}>
                                             <CheckboxElement label="Timemachine" name="timemachine" control={control} />

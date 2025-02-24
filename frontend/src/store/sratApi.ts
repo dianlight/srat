@@ -420,7 +420,6 @@ export type DtoUser = {
 };
 export type DtoSharedResource = {
   disabled?: boolean;
-  id?: number;
   invalid?: boolean;
   /** DeviceId       *uint64        `json:"device_id,omitempty"` */
   mount_point_data?: DtoMountPointData;

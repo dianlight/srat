@@ -2,9 +2,12 @@ package converter
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	osutil "github.com/snapcore/snapd/osutil"
+	"github.com/u-root/u-root/pkg/mount"
 )
 
 // goverter:converter
@@ -17,13 +20,14 @@ import (
 // goverter:default:update
 type ConfigToDtoConverter interface {
 	// goverter:update target
-	// goverter:ignore ID Invalid MountPointData
+	// goverter:ignore Invalid MountPointData
 	// goverter:context users
 	ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
 
 	// goverter:update target
-	// goverter:ignore  Flags Source IsInvalid InvalidError ID PrimaryPath Warnings
+	// goverter:ignore  Flags IsInvalid InvalidError ID PrimaryPath Warnings
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
+	// goverter:map Path Source | PathToSource
 	// goverter:map FS FSType
 	ShareToMountPointData(source config.Share, target *dto.MountPointData) error
 
@@ -69,4 +73,25 @@ func StringToDtoUser(username string, users []dto.User) (dto.User, error) {
 
 func DtoUserToString(user dto.User) string {
 	return *user.Username
+}
+
+func PathToSource(path string) string {
+	info, err := osutil.LoadMountInfo()
+	if err != nil {
+		slog.Warn("Error loading mount info", "err", err)
+		return ""
+	}
+	for _, m := range info {
+
+		if m.MountDir == path {
+			return m.MountSource
+		} else {
+			same, _ := mount.SameFilesystem(path, m.MountDir)
+			if same {
+				return m.MountSource
+			}
+		}
+
+	}
+	return ""
 }

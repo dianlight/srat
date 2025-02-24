@@ -369,8 +369,6 @@ definitions:
     properties:
       disabled:
         type: boolean
-      id:
-        type: integer
       invalid:
         type: boolean
       mount_point_data:

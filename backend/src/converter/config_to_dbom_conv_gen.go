@@ -101,6 +101,9 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 }
 func (c *ConfigToDbomConverterImpl) ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error {
 	if source.Path != "" {
+		target.Source = PathToSource(source.Path)
+	}
+	if source.Path != "" {
 		target.Path = source.Path
 	}
 	if source.FS != "" {

@@ -108,7 +108,7 @@ func (suite *ShareHandlerSuite) TestGetShareHandler() {
 		{Username: pointer.String("dianlight"), Password: pointer.String("hassio2010"), IsAdmin: pointer.Bool(true)},
 		{Username: pointer.String("rouser"), Password: pointer.String("rouser"), IsAdmin: pointer.Bool(false)},
 	})
-	expected.ID = resultShare.ID // Fix for testing
+	expected.Name = resultShare.Name // Fix for testing
 	expected.MountPointData.ID = resultShare.MountPointData.ID
 	expected.MountPointData.IsInvalid = resultShare.MountPointData.IsInvalid
 	expected.MountPointData.InvalidError = resultShare.MountPointData.InvalidError
@@ -147,7 +147,7 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 	var result dto.SharedResource
 	jsonError = json.Unmarshal(rr.Body.Bytes(), &result)
 	suite.Require().NoError(jsonError)
-	share.ID = result.ID
+	share.Name = result.Name
 	share.Users = []dto.User{
 		{Username: pointer.String("dianlight"), Password: pointer.String("hassio2010"), IsAdmin: pointer.Bool(true)},
 	} // Fix for testing

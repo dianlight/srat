@@ -32,10 +32,6 @@ func (c *DtoToDbomConverterImpl) BlockPartitionToMountPointPath(source dto.Block
 	return nil
 }
 func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error {
-	if source.ID != 0 {
-		pUint := source.ID
-		target.ID = &pUint
-	}
 	if source.Name != "" {
 		target.Name = source.Name
 	}
@@ -140,9 +136,6 @@ func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *
 	return nil
 }
 func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPointPath(source dto.SharedResource, target *dbom.ExportedShare) error {
-	if source.ID != nil {
-		target.ID = *source.ID
-	}
 	if source.Name != "" {
 		target.Name = source.Name
 	}

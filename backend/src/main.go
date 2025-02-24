@@ -18,6 +18,7 @@ import (
 
 	"github.com/jpillora/overseer"
 	"github.com/mattn/go-isatty"
+	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 
 	"github.com/dianlight/srat/api"
@@ -258,9 +259,9 @@ func prog(state overseer.State) {
 				if err != nil {
 					log.Fatalf("Cant load config file %s", err)
 				}
-				dbutil.FirstTimeJSONImporter(config, mount_repo)
+				err = dbutil.FirstTimeJSONImporter(config, mount_repo)
 				if err != nil {
-					log.Fatalf("Cant import json settings - %#v", err)
+					log.Fatalf("Cant import json settings - %s", tracerr.SprintSourceColor(err))
 				}
 			}
 		}),

@@ -103,9 +103,9 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 			fmt.Printf("Flags %+v\n", flags)
 			u.FSType = fs
 		}
-		if !strings.HasPrefix(u.Source, "/dev/") {
-			u.Source = "/dev/" + u.Source
-		}
+		//if !strings.HasPrefix(u.Source, "/dev/") {
+		//	u.Source = "/dev/" + u.Source
+		//}
 	}
 	return nil
 }

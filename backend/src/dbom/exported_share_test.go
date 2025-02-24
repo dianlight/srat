@@ -196,7 +196,7 @@ func TestExportedShareSaveUpdatesExisting(t *testing.T) {
 	require.NoError(t, err)
 
 	// Modify the share
-	initialShare.Name = "UpdatedTestShare"
+	initialShare.TimeMachine = true
 
 	// Save the modified share
 	err = initialShare.Save()
@@ -204,12 +204,12 @@ func TestExportedShareSaveUpdatesExisting(t *testing.T) {
 
 	// Retrieve the share from the database
 	var retrievedShare ExportedShare
-	err = db.First(&retrievedShare, initialShare.ID).Error
+	err = db.First(&retrievedShare, initialShare.Name).Error
 	require.NoError(t, err)
 
 	// Assert that the share was updated, not created anew
-	assert.Equal(t, initialShare.ID, retrievedShare.ID)
-	assert.Equal(t, "UpdatedTestShare", retrievedShare.Name)
+	assert.Equal(t, initialShare.Name, retrievedShare.Name)
+	assert.True(t, retrievedShare.TimeMachine)
 
 	// Verify that no new record was created
 	var count int64
@@ -261,7 +261,7 @@ func TestExportedShareSaveWithAssociations(t *testing.T) {
 
 	// Retrieve the share from the database
 	var retrievedShare ExportedShare
-	err = db.Preload("Users").First(&retrievedShare, share.ID).Error
+	err = db.Preload("Users").First(&retrievedShare, share.Name).Error
 	require.NoError(t, err)
 
 	// Assert that the share was saved correctly
@@ -277,7 +277,7 @@ func TestExportedShareSaveWithAssociations(t *testing.T) {
 }
 func TestExportedShareGetNonExistent(t *testing.T) {
 	// Create a new ExportedShare with a non-existent ID
-	nonExistentShare := ExportedShare{ID: 9999}
+	nonExistentShare := ExportedShare{Name: "9999"}
 
 	// Attempt to get the non-existent share
 	err := nonExistentShare.Get()
@@ -287,7 +287,7 @@ func TestExportedShareGetNonExistent(t *testing.T) {
 	assert.Equal(t, gorm.ErrRecordNotFound, err)
 
 	// Assert that the share's fields are still empty
-	assert.Equal(t, uint(9999), nonExistentShare.ID)
+	assert.Equal(t, "9999", nonExistentShare.Name)
 	assert.Empty(t, nonExistentShare.Name)
 	assert.Empty(t, nonExistentShare.Users)
 	assert.Empty(t, nonExistentShare.RoUsers)
@@ -313,7 +313,7 @@ func TestExportedShareGetConcurrent(t *testing.T) {
 	for i := 0; i < concurrentOps; i++ {
 		go func() {
 			defer wg.Done()
-			share := ExportedShare{ID: testShare.ID}
+			share := ExportedShare{Name: testShare.Name}
 			err := share.Get()
 			if err != nil {
 				errChan <- err

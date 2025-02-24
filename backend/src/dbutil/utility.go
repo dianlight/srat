@@ -32,6 +32,7 @@ func FirstTimeJSONImporter(config config.Config, mount_repository repository.Mou
 		if err != nil {
 			return tracerr.Wrap(err)
 		}
+		//		slog.Debug("Share ", "id", share.MountPointData.ID)
 		(*shares)[i] = share
 	}
 	err = shares.Save()
