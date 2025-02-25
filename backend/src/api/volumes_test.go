@@ -125,7 +125,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 
 	for _, d := range volumes.Partitions {
 		if strings.HasPrefix(d.Name, "bogus") && d.Label == "_EXT4" {
-			mockMountData.Source = "/dev/" + d.Name
+			mockMountData.Source = d.Name
 			mockMountData.Path = filepath.Join("/mnt", d.Label)
 			mockMountData.FSType = d.Type
 			mockMountData.Flags = []dto.MounDataFlag{dto.MS_NOATIME}

@@ -50,13 +50,13 @@
 				"github.vscode-github-actions",
 				"esbenp.prettier-vscode",
 				"mortenson.go-template-transpiler-extension",
-				"TabNine.tabnine-vscode",
-				"GitHub.copilot",
 				"jgclark.vscode-todo-highlight",
 				"Gruntfuggly.todo-tree",
 				"yy0931.vscode-sqlite3-editor",
 				"be5invis.toml",
-				"YashwanthByalla.branch-name-validator"
+				"YashwanthByalla.branch-name-validator",
+				"Google.geminicodeassist",
+				"VizzleTF.geminicommit"
 			]		
 		}
 	},
