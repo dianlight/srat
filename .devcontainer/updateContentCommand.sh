@@ -3,7 +3,7 @@
 apk add --no-cache go git make lsblk eudev gcc musl-dev linux-headers samba ethtool e2fsprogs e2fsprogs-extra fuse3 exfatprogs ntfs-3g-progs apfs-fuse
 
 #bun
-curl -fsSL https://bun.sh/install | bash
+curl -fsSL https://bun.sh/install | bash -s "bun-v1.2.3"
 
 GOBIN=/usr/local/bin/ go install github.com/rogpeppe/gohack@v1.0.2
 GOBIN=/usr/local/bin/ go install github.com/rakyll/gotest@v0.0.6

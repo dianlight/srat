@@ -35,12 +35,23 @@
         {
             "customType": "regex",
             "fileMatch": [
-                "package\\.json$",
+                "package\\.json$"
             ],
             "matchStrings": [
                 "\"packageManager\":\\s+\"(?<depName>.+)@(?<currentValue>[^\\s]+)\""
             ],
             "autoReplaceStringTemplate":  "\"packageManager\": \"{{{depName}}}@{{{newValue}}}\"",
+            "datasourceTemplate": "npm"
+        },        
+        {
+            "customType": "regex",
+            "fileMatch": [
+                "\\.devcontainer/.+\\.sh$"
+            ],
+            "matchStrings": [
+                "bash\\s+-s\\s+\"(?<depName>.+)-v(?<currentValue>[^\\s]+)\""
+            ],
+            "autoReplaceStringTemplate":  "bash -s \"{{{depName}}}-v{{{newValue}}}\"",
             "datasourceTemplate": "npm"
         },        
         {
