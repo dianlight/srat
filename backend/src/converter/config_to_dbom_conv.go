@@ -12,7 +12,7 @@ import (
 	"github.com/ztrue/tracerr"
 )
 
-func (c *ConfigToDbomConverterImpl) ConfigToDbomObjects(source config.Config, properties *dbom.Properties, users *dbom.SambaUsers, shares *dbom.ExportedShares) (err error) {
+func (c *ConfigToDbomConverterImpl) ConfigToDbomObjects(source config.Config, properties *dbom.Properties, users *dbom.SambaUsers, shares *[]dbom.ExportedShare) (err error) {
 	err = c.ConfigToProperties(source, properties)
 	if err != nil {
 		return
@@ -88,7 +88,7 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 	return nil
 }
 
-func (c *ConfigToDbomConverterImpl) DbomObjectsToConfig(properties dbom.Properties, users dbom.SambaUsers, shares dbom.ExportedShares, tconfig *config.Config) (err error) {
+func (c *ConfigToDbomConverterImpl) DbomObjectsToConfig(properties dbom.Properties, users dbom.SambaUsers, shares []dbom.ExportedShare, tconfig *config.Config) (err error) {
 	err = c.PropertiesToConfig(properties, tconfig)
 	if err != nil {
 		return

@@ -10,20 +10,22 @@ import (
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 	"github.com/xorcare/pointer"
+	"github.com/ztrue/tracerr"
 	gomock "go.uber.org/mock/gomock"
 	"gorm.io/gorm"
 )
 
 type ShareHandlerSuite struct {
 	suite.Suite
-	mockBoradcaster *MockBroadcasterServiceInterface
-	dirtyService    service.DirtyDataServiceInterface
+	mockBoradcaster     *MockBroadcasterServiceInterface
+	dirtyService        service.DirtyDataServiceInterface
+	exported_share_repo repository.ExportedShareRepositoryInterface
 }
 
 func TestShareHandlerSuite(t *testing.T) {
@@ -34,13 +36,15 @@ func TestShareHandlerSuite(t *testing.T) {
 	csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
 	csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
 
+	csuite.exported_share_repo = exported_share_repo
+
 	csuite.dirtyService = service.NewDirtyDataService(testContext)
 
 	suite.Run(t, csuite)
 }
 
 func (suite *ShareHandlerSuite) TestListShares() {
-	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/shares", nil)
@@ -78,7 +82,7 @@ func (suite *ShareHandlerSuite) TestListShares() {
 }
 
 func (suite *ShareHandlerSuite) TestGetShareHandler() {
-	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "GET", "/share/LIBRARY", nil)
@@ -117,7 +121,7 @@ func (suite *ShareHandlerSuite) TestGetShareHandler() {
 }
 
 func (suite *ShareHandlerSuite) TestCreateShareHandler() {
-	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
 
 	share := dto.SharedResource{
 		Name: "PIPPODD",
@@ -159,7 +163,7 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 }
 
 func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
-	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
 
 	share := dto.SharedResource{
 		Name: "LIBRARY",
@@ -199,7 +203,7 @@ func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
 }
 
 func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
-	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
 
 	share := dto.SharedResource{
 		MountPointData: &dto.MountPointData{
@@ -254,7 +258,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
 }
 
 func (suite *ShareHandlerSuite) TestUpdateShareHandlerEnableDisableShare() {
-	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
 
 	share := dto.SharedResource{
 		Disabled: pointer.Bool(true),
@@ -296,7 +300,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandlerEnableDisableShare() {
 }
 
 func (suite *ShareHandlerSuite) TestDeleteShareHandler() {
-	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService)
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
 	req, err := http.NewRequestWithContext(testContext, "DELETE", "/share/EFI", nil)
@@ -313,11 +317,8 @@ func (suite *ShareHandlerSuite) TestDeleteShareHandler() {
 	suite.Equal(http.StatusNoContent, rr.Code)
 
 	// Refresh shares list anche check that LIBRARY don't exists
-	share := dbom.ExportedShare{
-		Name: "EFI",
-	}
-	err = share.FromName("EFI")
+	share, err := exported_share_repo.FindByName("EFI")
 	if suite.Error(err, "Share %+v should not exist", share) {
-		suite.Equal(gorm.ErrRecordNotFound, err)
+		suite.Equal(gorm.ErrRecordNotFound, tracerr.Unwrap(err))
 	}
 }

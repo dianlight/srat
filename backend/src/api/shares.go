@@ -10,6 +10,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 	"github.com/gorilla/mux"
@@ -18,17 +19,23 @@ import (
 )
 
 type ShareHandler struct {
-	sharesQueueMutex sync.RWMutex
-	broadcaster      service.BroadcasterServiceInterface
-	apiContext       *dto.ContextState
-	dirtyservice     service.DirtyDataServiceInterface
+	sharesQueueMutex    sync.RWMutex
+	broadcaster         service.BroadcasterServiceInterface
+	apiContext          *dto.ContextState
+	dirtyservice        service.DirtyDataServiceInterface
+	exported_share_repo repository.ExportedShareRepositoryInterface
 }
 
-func NewShareHandler(broadcaster service.BroadcasterServiceInterface, apiContext *dto.ContextState, dirtyService service.DirtyDataServiceInterface) *ShareHandler {
+func NewShareHandler(broadcaster service.BroadcasterServiceInterface,
+	apiContext *dto.ContextState,
+	dirtyService service.DirtyDataServiceInterface,
+	exported_share_repo repository.ExportedShareRepositoryInterface,
+) *ShareHandler {
 	p := new(ShareHandler)
 	p.broadcaster = broadcaster
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyService
+	p.exported_share_repo = exported_share_repo
 	p.sharesQueueMutex = sync.RWMutex{}
 	broadcaster.AddOpenConnectionListener(func(broker service.BroadcasterServiceInterface) error {
 		p.notifyClient()
@@ -60,8 +67,8 @@ func (broker *ShareHandler) Patterns() []server.RouteDetail {
 //	@Router			/shares [get]
 func (self *ShareHandler) ListShares(w http.ResponseWriter, r *http.Request) {
 	var shares []dto.SharedResource
-	var dbshares dbom.ExportedShares
-	err := dbshares.Load()
+	var dbshares []dbom.ExportedShare
+	err := self.exported_share_repo.All(&dbshares)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -105,8 +112,7 @@ func (self *ShareHandler) ListShareUsages(w http.ResponseWriter, r *http.Request
 func (self *ShareHandler) GetShare(w http.ResponseWriter, r *http.Request) {
 	shareName := mux.Vars(r)["share_name"]
 
-	dbshare := dbom.ExportedShare{Name: shareName}
-	err := dbshare.FromName(shareName)
+	dbshare, err := self.exported_share_repo.FindByName(shareName)
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
 			Code: http.StatusNotFound,
@@ -118,7 +124,7 @@ func (self *ShareHandler) GetShare(w http.ResponseWriter, r *http.Request) {
 	}
 	share := dto.SharedResource{}
 	var conv converter.DtoToDbomConverterImpl
-	err = conv.ExportedShareToSharedResource(dbshare, &share)
+	err = conv.ExportedShareToSharedResource(*dbshare, &share)
 	//err = mapper.Map(context.Background(), &share, dbshare)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
@@ -169,7 +175,7 @@ func (self *ShareHandler) CreateShare(w http.ResponseWriter, r *http.Request) {
 		}
 		dbshare.Users = append(dbshare.Users, adminUser)
 	}
-	err = dbshare.Save()
+	err = self.exported_share_repo.Save(dbshare)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			HttpJSONReponse(w, fmt.Errorf("Share already exists"), &Options{
@@ -197,8 +203,8 @@ func (self *ShareHandler) notifyClient() {
 	self.sharesQueueMutex.RLock()
 	defer self.sharesQueueMutex.RUnlock()
 	var shares []dto.SharedResource
-	var dbshares = dbom.ExportedShares{}
-	err := dbshares.Load()
+	var dbshares = []dbom.ExportedShare{}
+	err := self.exported_share_repo.All(&dbshares)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -244,10 +250,7 @@ func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dbshare := &dbom.ExportedShare{
-		Name: share_name,
-	}
-	err = dbshare.FromName(share_name)
+	dbshare, err := self.exported_share_repo.FindByName(share_name)
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		HttpJSONReponse(w, tracerr.New("Share not found"), &Options{
 			Code: http.StatusNotFound,
@@ -264,7 +267,7 @@ func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = dbshare.Save()
+	err = self.exported_share_repo.Save(dbshare)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return
@@ -297,10 +300,7 @@ func (self *ShareHandler) DeleteShare(w http.ResponseWriter, r *http.Request) {
 	share_name := mux.Vars(r)["share_name"]
 
 	var share dto.SharedResource
-	dbshare := &dbom.ExportedShare{
-		Name: share_name,
-	}
-	err := dbshare.FromName(share_name)
+	dbshare, err := self.exported_share_repo.FindByName(share_name)
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
 			Code: http.StatusNotFound,
@@ -317,7 +317,7 @@ func (self *ShareHandler) DeleteShare(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
-	err = dbshare.Delete()
+	err = self.exported_share_repo.Delete(dbshare.Name)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)
 		return

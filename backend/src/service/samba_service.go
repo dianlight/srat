@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tempio"
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/ztrue/tracerr"
@@ -25,22 +26,24 @@ type SambaServiceInterface interface {
 }
 
 type SambaService struct {
-	DockerInterface string
-	DockerNet       string
-	apictx          *dto.ContextState
-	dirtyservice    DirtyDataServiceInterface
+	DockerInterface     string
+	DockerNet           string
+	apictx              *dto.ContextState
+	dirtyservice        DirtyDataServiceInterface
+	exported_share_repo repository.ExportedShareRepositoryInterface
 }
 
-func NewSambaService(apictx *dto.ContextState, dirtyservice DirtyDataServiceInterface) SambaServiceInterface {
+func NewSambaService(apictx *dto.ContextState, dirtyservice DirtyDataServiceInterface, exported_share_repo repository.ExportedShareRepositoryInterface) SambaServiceInterface {
 	p := &SambaService{}
 	p.apictx = apictx
 	p.dirtyservice = dirtyservice
+	p.exported_share_repo = exported_share_repo
 	dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
 	return p
 }
 
 func (self *SambaService) CreateConfigStream() (data *[]byte, err error) {
-	config, err := dbutil.JSONFromDatabase()
+	config, err := dbutil.JSONFromDatabase(self.exported_share_repo)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}

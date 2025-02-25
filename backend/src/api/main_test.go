@@ -18,6 +18,7 @@ import (
 
 var testContext = context.Background()
 var apiContextState dto.ContextState
+var exported_share_repo repository.ExportedShareRepositoryInterface
 
 func TestMain(m *testing.M) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -42,7 +43,8 @@ func TestMain(m *testing.M) {
 	}
 	config.UpdateChannel = string(dto.None)
 	mount_repo := repository.NewMountPointPathRepository(dbom.GetDB())
-	err = dbutil.FirstTimeJSONImporter(config, mount_repo)
+	exported_share_repo = repository.NewExportedShareRepository(dbom.GetDB())
+	err = dbutil.FirstTimeJSONImporter(config, mount_repo, exported_share_repo)
 	if err != nil {
 		log.Fatalf("Cant load json settings - %v", tracerr.SprintSourceColor(err))
 	}

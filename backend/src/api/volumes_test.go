@@ -185,17 +185,9 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
 	router.HandleFunc("/volume/{id}/mount", volume.UmountVolume).Methods("DELETE")
 
 	router.ServeHTTP(rr, req)
+	suite.Require().Equal(http.StatusNotFound, rr.Code)
 
-	if status := rr.Code; status != http.StatusNotFound {
-		suite.T().Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusNotFound)
-	}
-
-	expected := `{"code":"unmount_fail","data":{"ID":999999,"Message":"No mount point found for the provided ID"}}`
-	if rr.Body.String() != expected {
-		suite.T().Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), expected)
-	}
+	suite.Equal(`{"code":"unmount_fail","data":{"ID":999999,"Message":"No mount point found for the provided ID"}}`, rr.Body.String())
 }
 func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 

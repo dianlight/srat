@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	service "github.com/dianlight/srat/service"
 	"github.com/stretchr/testify/suite"
 	"github.com/ztrue/tracerr"
@@ -14,8 +15,9 @@ import (
 
 type SambaServiceSuite struct {
 	suite.Suite
-	sambaService service.SambaServiceInterface
-	apictx       dto.ContextState
+	sambaService        service.SambaServiceInterface
+	apictx              dto.ContextState
+	exported_share_repo repository.ExportedShareRepositoryInterface
 	//mockSambaService *MockSambaServiceInterface
 	// VariableThatShouldStartAtFive int
 }
@@ -30,7 +32,8 @@ func TestSambaServiceSuite(t *testing.T) {
 	}
 	csuite.apictx.DockerInterface = "hassio"
 	csuite.apictx.DockerNet = "172.30.32.0/23"
-	csuite.sambaService = service.NewSambaService(&csuite.apictx, dirtyservice)
+	csuite.exported_share_repo = exported_share_repo
+	csuite.sambaService = service.NewSambaService(&csuite.apictx, dirtyservice, exported_share_repo)
 
 	/*
 		ctrl := gomock.NewController(t)

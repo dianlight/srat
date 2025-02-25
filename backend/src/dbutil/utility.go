@@ -8,10 +8,13 @@ import (
 	"github.com/ztrue/tracerr"
 )
 
-func FirstTimeJSONImporter(config config.Config, mount_repository repository.MountPointPathRepositoryInterface) (err error) {
+func FirstTimeJSONImporter(config config.Config,
+	mount_repository repository.MountPointPathRepositoryInterface,
+	export_share_repository repository.ExportedShareRepositoryInterface,
+) (err error) {
 
 	var conv converter.ConfigToDbomConverterImpl
-	shares := &dbom.ExportedShares{}
+	shares := &[]dbom.ExportedShare{}
 	properties := &dbom.Properties{}
 	users := &dbom.SambaUsers{}
 
@@ -35,16 +38,16 @@ func FirstTimeJSONImporter(config config.Config, mount_repository repository.Mou
 		//		slog.Debug("Share ", "id", share.MountPointData.ID)
 		(*shares)[i] = share
 	}
-	err = shares.Save()
+	err = export_share_repository.SaveAll(shares)
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
 	return nil
 }
 
-func JSONFromDatabase() (tconfig config.Config, err error) {
+func JSONFromDatabase(export_share_repository repository.ExportedShareRepositoryInterface) (tconfig config.Config, err error) {
 	var conv converter.ConfigToDbomConverterImpl
-	shares := dbom.ExportedShares{}
+	shares := []dbom.ExportedShare{}
 	properties := dbom.Properties{}
 	users := dbom.SambaUsers{}
 
@@ -56,7 +59,7 @@ func JSONFromDatabase() (tconfig config.Config, err error) {
 	if err != nil {
 		return tconfig, tracerr.Wrap(err)
 	}
-	err = shares.Load()
+	err = export_share_repository.All(&shares)
 	if err != nil {
 		return tconfig, tracerr.Wrap(err)
 	}

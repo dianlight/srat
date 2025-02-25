@@ -227,6 +227,7 @@ func prog(state overseer.State) {
 			service.NewUpgradeService,
 			service.NewDirtyDataService,
 			repository.NewMountPointPathRepository,
+			repository.NewExportedShareRepository,
 			server.AsRoute(api.NewSSEBroker),
 			server.AsRoute(api.NewHealthHandler),
 			server.AsRoute(api.NewShareHandler),
@@ -242,7 +243,10 @@ func prog(state overseer.State) {
 			),
 			server.NewHTTPServer,
 		),
-		fx.Invoke(func(mount_repo repository.MountPointPathRepositoryInterface) {
+		fx.Invoke(func(
+			mount_repo repository.MountPointPathRepositoryInterface,
+			exported_share_repo repository.ExportedShareRepositoryInterface,
+		) {
 			// JSON Config  Migration if necessary
 			// Get config and migrate if DB is empty
 			var properties dbom.Properties
@@ -259,7 +263,7 @@ func prog(state overseer.State) {
 				if err != nil {
 					log.Fatalf("Cant load config file %s", err)
 				}
-				err = dbutil.FirstTimeJSONImporter(config, mount_repo)
+				err = dbutil.FirstTimeJSONImporter(config, mount_repo, exported_share_repo)
 				if err != nil {
 					log.Fatalf("Cant import json settings - %s", tracerr.SprintSourceColor(err))
 				}
