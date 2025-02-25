@@ -49,6 +49,7 @@ func (p *DirtyDataService) startTimer() {
 				slog.Warn("Error in restart callback", "err", tracerr.SprintSourceColor(err))
 			}
 		}
+		p.timer = nil
 	})
 }
 
