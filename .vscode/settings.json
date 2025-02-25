@@ -14,5 +14,8 @@
     "commitSage.commit.commitFormat": "emoji",
     "commitSage.commit.onlyStagedChanges": true,
     "commitSage.commit.promptForRefs": true,
-    "commitSage.gemini.model": "gemini-2.0-flash-exp"
+    "commitSage.gemini.model": "gemini-2.0-flash-exp",
+    "geminicodeassist.updateChannel": "Insiders",
+    "geminicodeassist.beta.enableGeneratedCodeDocumentationView": true,
+    "geminicodeassist.codeGenerationPaneViewEnabled": true
 }
