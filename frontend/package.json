@@ -38,7 +38,7 @@
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@mui/icons-material": "^6.4.5",
     "@mui/material": "^6.4.5",
-    "@reduxjs/toolkit": "^2.5.1",
+    "@reduxjs/toolkit": "^2.6.0",
     "filesize": "^10.1.6",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^4.0.1",
@@ -50,7 +50,7 @@
     "react-intersection-observer": "^9.15.1",
     "react-redux": "^9.2.0",
     "react-syntax-highlighter": "^15.6.1",
-    "react-toastify": "^11.0.3",
+    "react-toastify": "^11.0.5",
     "react-use-error-boundary": "^3.0.0",
     "semver": "^7.7.1",
     "swagger-ui-react": "^5.19.0",
@@ -65,7 +65,7 @@
     "clean": "rm -rf out",
     "dev": "bun --hot run bun.build.ts -w -s ./out",
     "dev:remote": "bun --hot run bun.build.ts -w -s ./out -c http://192.168.0.250:3000/",
-    "gen": "rtk-query-codegen-openapi api.config.js"
+    "gen": "rtk-query-codegen-openapi api.config.json"
   },
   "patchedDependencies": {
     "@gtramontina.com/bun-html-live-reload@1.0.1": "patches/@gtramontina.com%2Fbun-html-live-reload@1.0.1.patch"

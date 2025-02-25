@@ -25,7 +25,7 @@ format:
 	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
 	cd $(SRC_DIRS);go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 fmt
 	cd $(SRC_DIRS);go mod tidy	
-	cd $(SRC_DIRS);go run github.com/Antonboom/testifylint@latest --fix ./...
+	cd $(SRC_DIRS);go run github.com/Antonboom/testifylint@v1.5.2 --fix ./...
 	cd $(SRC_DIRS);go fmt
 
 .PHONY: clean
@@ -60,7 +60,6 @@ $(FRONTEND_DIRS)/node_modules:
 
 static: $(FRONTEND_DIRS)/node_modules
 	rm -rf $(SRC_DIRS)/static
-	cd $(FRONTEND_DIRS);bun run gen
+	#cd $(FRONTEND_DIRS);bun run gen
 	cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(SRC_DIRS)/static
-	#cp -r $(STATIC_DIRS) $(SRC_DIRS)/static

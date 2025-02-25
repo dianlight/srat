@@ -57,12 +57,13 @@
         {
             "customType": "regex",
             "fileMatch": [
-                "\\.go$"
+                "\\.go$",
+                "Makefile"
             ],
             "matchStrings": [
-                "//go:generate\\s+go\\s+run\\s+(?<depName>.+)@(?<currentValue>[^\\s]+)"
+                "go\\s+run\\s+(?<depName>.+)@(?<currentValue>[^\\s]+)"
             ],
-            "autoReplaceStringTemplate": "//go:generate go run {{{depName}}}@{{{newValue}}}",
+            "autoReplaceStringTemplate": "go run {{{depName}}}@{{{newValue}}}",
             "datasourceTemplate": "go"
         }
     ],
