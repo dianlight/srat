@@ -40,9 +40,10 @@
             "matchStrings": [
                 "\"packageManager\":\\s+\"(?<depName>.+)@(?<currentValue>[^\\s]+)\""
             ],
-            "autoReplaceStringTemplate":  "\"packageManager\": \"{{{depName}}}@{{{newValue}}}\""
+            "autoReplaceStringTemplate":  "\"packageManager\": \"{{{depName}}}@{{{newValue}}}\"",
             "datasourceTemplate": "npm"
-        },        {
+        },        
+        {
             "customType": "regex",
             "fileMatch": [
                 "\\.go$"
