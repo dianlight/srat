@@ -14,6 +14,7 @@
     "configMigration": true,
     "rebaseWhen": "behind-base-branch",
     "dependencyDashboard": true,
+    "separateMultipleMajor": true,
     "major": {
         "dependencyDashboardApproval": true
     },
@@ -32,6 +33,16 @@
             "datasourceTemplate": "go"
         },
         {
+            "customType": "regex",
+            "fileMatch": [
+                "packages\\.json$",
+            ],
+            "matchStrings": [
+                "\"packageManager\":\\s+\"(?<depName>.+)@(?<currentValue>[^\\s]+)\""
+            ],
+            "autoReplaceStringTemplate":  "\"packageManager\": \"{{{depName}}}@{{{newValue}}}\""
+            "datasourceTemplate": "npm"
+        },        {
             "customType": "regex",
             "fileMatch": [
                 "\\.go$"
