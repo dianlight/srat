@@ -65,7 +65,7 @@
     "clean": "rm -rf out",
     "dev": "bun --hot run bun.build.ts -w -s ./out",
     "dev:remote": "bun --hot run bun.build.ts -w -s ./out -c http://192.168.0.250:3000/",
-    "gen": "bunx @rtk-query/codegen-openapi api.config.js"
+    "gen": "rtk-query-codegen-openapi api.config.js"
   },
   "patchedDependencies": {
     "@gtramontina.com/bun-html-live-reload@1.0.1": "patches/@gtramontina.com%2Fbun-html-live-reload@1.0.1.patch"
