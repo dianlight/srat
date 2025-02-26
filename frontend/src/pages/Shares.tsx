@@ -380,6 +380,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
             props.onClose()
             return
         }
+        data.mount_point_data = volumes.volumes?.partitions?.find(mount => mount.mount_point_data?.id === data.mount_point_data?.id)?.mount_point_data;
         data.users = data.usersNames?.map(username => users?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
         data.ro_users = data.usersNames?.map(username => users?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
         //console.log(data)
@@ -432,10 +433,10 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                         <Grid size={6}>
                                             <SelectElement sx={{ display: "flex" }}
                                                 label="Mount Path"
-                                                name="mount_point_data.path"
+                                                name="mount_point_data.id"
                                                 options={volumes.volumes?.partitions?.
                                                     filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/"))
-                                                    .map(mount => { return { id: mount.mount_point_data?.path, label: mount.label + "(" + mount.name + ")" } })}
+                                                    .map(mount => { return { id: mount.mount_point_data?.id, label: mount.label + "(" + mount.name + ")" } })}
                                                 required
                                                 control={control} />
                                         </Grid>
