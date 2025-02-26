@@ -10,6 +10,7 @@ import (
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
@@ -326,6 +327,23 @@ func (suite *ShareHandlerSuite) TestDeleteShareHandler() {
 func (suite *ShareHandlerSuite) TestUpdateShareNameHandler() {
 	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
 
+	// Prepare create a share named OLD_NAME with users
+	old_share := dbom.ExportedShare{
+		Name: "OLD_NAME",
+		Users: []dbom.SambaUser{
+			{
+				Username: "dianlight_t",
+				Password: "hassio2010_t",
+				IsAdmin:  true,
+			},
+		},
+		MountPointData: dbom.MountPointPath{
+			Path: "/mnt/OLD_NAME",
+		},
+	}
+	err := exported_share_repo.Save(&old_share)
+	suite.Require().NoError(err)
+
 	share := dto.SharedResource{
 		Name: "NEW_NAME",
 	}
@@ -335,7 +353,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareNameHandler() {
 
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "PUT", "/share/UPDATER", strings.NewReader(string(jsonBody)))
+	req, err := http.NewRequestWithContext(testContext, "PUT", "/share/OLD_NAME", strings.NewReader(string(jsonBody)))
 	suite.Require().NoError(err)
 
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
@@ -354,7 +372,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareNameHandler() {
 	suite.EqualValues("NEW_NAME", rshare.Name)
 
 	// Check that old name is not found
-	_, err = exported_share_repo.FindByName("UPDATER")
+	_, err = exported_share_repo.FindByName("OLD_NAME")
 	suite.Require().Error(err)
 	suite.Equal(gorm.ErrRecordNotFound, tracerr.Unwrap(err))
 
@@ -363,6 +381,6 @@ func (suite *ShareHandlerSuite) TestUpdateShareNameHandler() {
 	suite.Require().NoError(err)
 
 	// Return to ooriginal name
-	err = exported_share_repo.UpdateName("NEW_NAME", "UPDATER")
+	err = exported_share_repo.Delete("NEW_NAME")
 	suite.NoError(err)
 }
