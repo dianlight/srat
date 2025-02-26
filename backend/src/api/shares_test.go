@@ -322,3 +322,47 @@ func (suite *ShareHandlerSuite) TestDeleteShareHandler() {
 		suite.Equal(gorm.ErrRecordNotFound, tracerr.Unwrap(err))
 	}
 }
+
+func (suite *ShareHandlerSuite) TestUpdateShareNameHandler() {
+	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
+
+	share := dto.SharedResource{
+		Name: "NEW_NAME",
+	}
+
+	jsonBody, jsonError := json.Marshal(share)
+	suite.Require().NoError(jsonError)
+
+	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
+	// pass 'nil' as the third parameter.
+	req, err := http.NewRequestWithContext(testContext, "PUT", "/share/UPDATER", strings.NewReader(string(jsonBody)))
+	suite.Require().NoError(err)
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/share/{share_name}", shareHandler.UpdateShare).Methods(http.MethodPut)
+	router.ServeHTTP(rr, req)
+
+	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	var rshare dto.SharedResource
+	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)
+	suite.Require().NoError(jsonError)
+
+	suite.EqualValues("NEW_NAME", rshare.Name)
+
+	// Check that old name is not found
+	_, err = exported_share_repo.FindByName("UPDATER")
+	suite.Require().Error(err)
+	suite.Equal(gorm.ErrRecordNotFound, tracerr.Unwrap(err))
+
+	// Check that new name is found
+	_, err = exported_share_repo.FindByName("NEW_NAME")
+	suite.Require().NoError(err)
+
+	// Return to ooriginal name
+	err = exported_share_repo.UpdateName("NEW_NAME", "UPDATER")
+	suite.NoError(err)
+}

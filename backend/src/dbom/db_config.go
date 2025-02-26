@@ -10,6 +10,7 @@ import (
 	//_ "github.com/ncruces/go-sqlite3/embed"
 	//"github.com/ncruces/go-sqlite3/gormlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var (
@@ -31,6 +32,7 @@ func InitDB(dbpath string) {
 		//db, err = gorm.Open(gormlite.Open(dbpath), &gorm.Config{
 		TranslateError:         true,
 		SkipDefaultTransaction: true,
+		Logger:                 logger.Default.LogMode(logger.Silent),
 	})
 
 	if err != nil {

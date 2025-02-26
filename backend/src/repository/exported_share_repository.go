@@ -20,6 +20,18 @@ type ExportedShareRepositoryInterface interface {
 	SaveAll(shares *[]dbom.ExportedShare) error
 	FindByName(name string) (*dbom.ExportedShare, error)
 	Delete(name string) error
+	UpdateName(old_name string, new_name string) error
+}
+
+func (p *ExportedShareRepository) UpdateName(old_name string, new_name string) error {
+	// Get / Save Users end RoUsers association
+
+	err := p.db.
+		Model(&dbom.ExportedShare{Name: old_name}).Update("name", new_name).Error
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	return nil
 }
 
 func NewExportedShareRepository(db *gorm.DB) ExportedShareRepositoryInterface {
@@ -63,5 +75,5 @@ func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) error {
 }
 
 func (p *ExportedShareRepository) Delete(name string) error {
-	return p.db.Delete(&dbom.ExportedShare{Name: name}).Error
+	return p.db.Select(clause.Associations).Delete(&dbom.ExportedShare{Name: name}).Error
 }

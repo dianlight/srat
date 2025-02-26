@@ -104,18 +104,9 @@ export function Shares() {
 
         // Save Data
         console.log(data);
-        if (data.org_name === "") {
-            /*
-            api.share.shareCreate(data).then((res) => {
-                setErrorInfo('')
-                setSelected(null);
-            }).catch(err => {
-                setErrorInfo(JSON.stringify(err));
-            })
-            */
-            return;
-        } else {
-            updateShare({ shareName: selected[1].name || "", dtoSharedResource: { ...data, disabled: false } }).unwrap()
+        if (data.org_name !== "") {
+
+            updateShare({ shareName: data.org_name, dtoSharedResource: { ...data, disabled: false } }).unwrap()
                 .then(() => {
                     //            setErrorInfo('');
                 })
@@ -163,8 +154,8 @@ export function Shares() {
     }
 
     return <InView>
-        <PreviewDialog title={selected ? selected[0] : ""} objectToDisplay={selected?.[1]} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
-        <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[0] || "" }} open={showEdit} onClose={(data) => { onSubmitEditShare(data); setSelected(null); setShowEdit(false) }} />
+        <PreviewDialog title={selected?.[1].name || ""} objectToDisplay={selected?.[1]} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
+        <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[1].name || "" }} open={showEdit} onClose={(data) => { onSubmitEditShare(data); setSelected(null); setShowEdit(false) }} />
         {read_only || <Fab color="primary" aria-label="add" sx={{
             float: 'right',
             top: '-20px',

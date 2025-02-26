@@ -239,6 +239,7 @@ func (self *ShareHandler) notifyClient() {
 //	@Failure		400			{object}	dto.ErrorInfo
 //	@Failure		405			{object}	dto.ErrorInfo
 //	@Failure		404			{object}	dto.ErrorInfo
+//	@Failure		409			{object}	dto.ErrorInfo
 //	@Failure		500			{object}	dto.ErrorInfo
 //	@Router			/share/{share_name} [put]
 func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
@@ -267,6 +268,18 @@ func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
 		HttpJSONReponse(w, err, nil)
 		return
 	}
+
+	if share_name != dbshare.Name {
+		err = self.exported_share_repo.UpdateName(share_name, dbshare.Name)
+		if err != nil {
+			HttpJSONReponse(w, err,
+				&Options{
+					Code: http.StatusConflict,
+				})
+			return
+		}
+	}
+
 	err = self.exported_share_repo.Save(dbshare)
 	if err != nil {
 		HttpJSONReponse(w, err, nil)

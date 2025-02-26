@@ -15,8 +15,8 @@ type ExportedShare struct {
 	UpdatedAt        time.Time
 	DeletedAt        gorm.DeletedAt `gorm:"index"`
 	Disabled         bool
-	Users            []SambaUser `gorm:"many2many:user_rw_share"`
-	RoUsers          []SambaUser `gorm:"many2many:user_ro_share"`
+	Users            []SambaUser `gorm:"many2many:user_rw_share;constraint:OnUpdate:CASCADE"`
+	RoUsers          []SambaUser `gorm:"many2many:user_ro_share;constraint:OnUpdate:CASCADE"`
 	TimeMachine      bool
 	Usage            dto.HAMountUsage
 	MountPointDataID uint

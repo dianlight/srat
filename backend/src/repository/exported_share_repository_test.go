@@ -194,3 +194,37 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Delete()
 	// Cleanup
 	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
+
+func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_UpdateName() {
+	// Arrange
+	share := &dbom.ExportedShare{
+		Name: "old_name",
+		MountPointData: dbom.MountPointPath{
+			Path:   "/mnt/old_name",
+			Source: "old_source",
+			FSType: "ext4",
+		},
+	}
+	err := suite.export_share_repo.Save(share)
+	suite.Require().NoError(err)
+
+	// Act
+	err = suite.export_share_repo.UpdateName("old_name", "new_name")
+
+	// Assert
+	suite.Require().NoError(err)
+
+	// Check that it is really updated
+	_, err = suite.export_share_repo.FindByName("old_name")
+	suite.Require().Error(err)
+	suite.True(errors.Is(err, gorm.ErrRecordNotFound))
+
+	newShare, err := suite.export_share_repo.FindByName("new_name")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(newShare)
+	suite.Equal("new_name", newShare.Name)
+
+	// Cleanup
+	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
+	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+}
