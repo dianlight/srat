@@ -49,6 +49,7 @@ require (
 	github.com/rekby/gpt v0.0.0-20200614112001-7da10aec5566 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
+	github.com/samber/lo v1.47.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
@@ -76,10 +77,10 @@ require (
 	github.com/gofri/go-github-ratelimit v1.1.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/itchyny/gojq v0.12.17
-	github.com/jaypipes/ghw v0.13.0
+	github.com/jaypipes/ghw v0.14.0
 	github.com/lmittmann/tint v1.0.7
 	github.com/rs/cors v1.11.1
-	github.com/snapcore/snapd v0.0.0-20250221142245-80568f15a7c3
+	github.com/snapcore/snapd v0.0.0-20250225202004-117ce2684700
 	github.com/thoas/go-funk v0.9.3
 	github.com/tj/go-spin v1.1.0
 	github.com/u-root/u-root v0.14.0
