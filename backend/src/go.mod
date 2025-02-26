@@ -80,7 +80,7 @@ require (
 	github.com/jaypipes/ghw v0.14.0
 	github.com/lmittmann/tint v1.0.7
 	github.com/rs/cors v1.11.1
-	github.com/snapcore/snapd v0.0.0-20250225202004-117ce2684700
+	github.com/snapcore/snapd v0.0.0-20250226073837-66700990d18d
 	github.com/thoas/go-funk v0.9.3
 	github.com/tj/go-spin v1.1.0
 	github.com/u-root/u-root v0.14.0
