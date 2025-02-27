@@ -1,0 +1,5 @@
+package: homeassistant
+output: supervisor.gen.go
+generate:
+  models: true
+  client: true

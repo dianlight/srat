@@ -1,0 +1,201 @@
+openapi: 3.1.0
+info:
+  title: Home Assistant Supervisor
+  description: |-
+    This is the porting on OpenApi 3.1.0 of the Home Assistant Supervisor API 
+    interface to perform calls from SRAT
+
+  contact:
+    email: lucio.tarantino@gmail.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 2025.02.4
+externalDocs:
+  description: Find out more about HA API
+  url: https://developers.home-assistant.io/docs/api/supervisor/endpoints
+servers:
+  - url: http://supervisor
+tags:
+  - name: core
+    description: |- 
+       Core Application API and Proxy 
+       See [HA Api Rest Code](https://developers.home-assistant.io/docs/api/rest/)
+       for Proxyed interfaces
+    externalDocs:
+      description: Proxyed Core Interface
+      url: https://developers.home-assistant.io/docs/api/rest/
+paths:
+  /core/info:
+    get:
+      tags:
+        - core
+      summary: Returns information about the Home Assistant core
+      description: Returns information about the Home Assistant core
+      operationId: getCoreInfo
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreInfo'
+  /core/api/states/{entity_id}:
+    get:
+      tags:
+        - core
+      summary: Returns a state object for specified entity_id. Returns 404 if not found.
+      description: Returns a state object for specified entity_id. Returns 404 if not found.
+      operationId: getEntityState
+      parameters:
+        - name: entity_id
+          in: path
+          description: Entity id of the states to query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityState'
+        '404':
+          description: Entity not found
+    post:
+      tags:
+        - core
+      summary: Updates or creates a state. You can create any state that you want, it does not have to be backed by an entity in Home Assistant.
+      description: |-
+         info
+          This endpoint sets the representation of a device within Home Assistant and will not communicate with the actual device. To communicate with the device, use the POST /api/services/<domain>/<service> endpoint.Returns a state object for specified entity_id. Returns 404 if not found.
+      operationId: postEntityState
+      parameters:
+        - name: entity_id
+          in: path
+          description: Entity id of the states to update
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityState'
+        '201':
+          description: successful operation and entity created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityState'
+components:
+  schemas:
+    CoreInfo:
+      type: object
+      properties:
+        version:
+          type: string
+          description: The installed core version
+        version_latest:
+          type:	string
+          description:	The latest published version in the active channel
+        update_available:
+          type: boolean
+          description: true if an update is available
+        arch:	
+          type: string
+          description:	The architecture of the host (armhf, aarch64, i386, amd64)
+        machine:	
+          type: string	
+          description:	The machine type that is running the host
+        ip_address:	
+          type: string	
+          description:	The internal docker IP address to the supervisor
+        image:	
+          type: string	
+          description:	The container image that is running the core
+        boot:	
+          type: boolean	
+          description:	true if it should start on boot
+        port:
+          type: number	
+          description:	The port Home Assistant is running on
+        ssl:
+          type:	boolean	
+          description:	true if Home Assistant is using SSL
+        watchdog:
+          type:	boolean	
+          description:	true if watchdog is enabled
+        wait_boot:
+          type:	number	
+          description:	Max time to wait during boot
+        audio_input:
+          type:	string
+          description:	The description of the audio input device
+        audio_output:
+          type:	string
+          description:	The description of the audio output device
+        backups_exclude_database:
+          type:	boolean	
+          description:	Backups exclude Home Assistant database file by default        
+    EntityState:
+      type: object
+      properties:
+        state: 
+          type: string 
+          description: String representation of the current state of the entity.
+          examples: [of]
+        entity_id:
+          type: string 
+          description: Entity ID. 
+          format: <domain>.<object_id> 
+          examples: [light.kitchen]
+        domain:	
+          type: string
+          description: Domain of the entity
+          examples: [light]
+        object_id:	
+          type: string
+          description: Object ID of entity. 
+          examples: [kitchen]
+        name:
+          type: string
+          description:	Name of the entity. Based on friendly_name attribute with fall back to object ID:. 
+          examples: [Kitchen ceiling]
+        last_changed:
+          type: string
+          format: date-time
+          description: Time the state changed in the state machine in UTC time. This is not updated if only state attributes change. 
+          examples: [2013-09-17 07:32:51.715874+00:00]
+        last_reported:
+          type: string
+          format: date-time
+          description: Time the state was written to the state machine in UTC time. This timestamp is updated regardless of any changes to the state or state attributes. 
+          examples: [2013-09-17 07:32:51.715874+00:00]
+        last_updated:	
+          type: string
+          format: date-time
+          description: Time the state or state attributes changed in the state machine in UTC time. This is not updated if neither state nor state attributes changed. 
+          examples: [2013-09-17 07:32:51.715874+00:00]
+        attributes:	
+          description: A dictionary with extra attributes related to the current state.
+          type: object
+        context:	
+          description: A dictionary with extra attributes related to the context of the state.
+          type: object
+  securitySchemes:
+    petstore_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://petstore3.swagger.io/oauth/authorize
+          scopes:
+            write:pets: modify pets in your account
+            read:pets: read your pets
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
