@@ -34,6 +34,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import BackupIcon from '@mui/icons-material/Backup';
+import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useSSE } from "react-hooks-sse";
 import { useDispatch, useSelector } from "react-redux";
@@ -181,6 +182,13 @@ export function Shares() {
                                 <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
                                     <SettingsIcon />
                                 </IconButton>
+                                {props.mount_point_data?.invalid &&
+                                    <IconButton onClick={() => { }} edge="end" aria-label="delete">
+                                        <Tooltip title="Delete share">
+                                            <DeleteIcon color="error" />
+                                        </Tooltip>
+                                    </IconButton>
+                                }
                                 {/* 
                                 <IconButton onClick={() => { setSelected([share, props]); setShowUserEdit(true) }} edge="end" aria-label="users">
                                     <Tooltip title="Manage Users">
@@ -226,6 +234,7 @@ export function Shares() {
                                         </span>
                                     </Tooltip>
                                 )}
+
                             </>
                             }
                         >
