@@ -126,6 +126,8 @@ github.com/samber/lo v1.47.0 h1:z7RynLwP5nbyRscyvcD043DWYoOcYRv3mV8lBeqOCLc=
 github.com/samber/lo v1.47.0/go.mod h1:RmDH9Ct32Qy3gduHQuKJ3gW1fMHAnE/fAzQuf6He5cU=
 github.com/shirou/gopsutil/v4 v4.25.1 h1:QSWkTc+fu9LTAWfkZwZ6j8MSUk4A2LV7rbH0ZqmLjXs=
 github.com/shirou/gopsutil/v4 v4.25.1/go.mod h1:RoUCUpndaJFtT+2zsZzzmhvbfGoDCJ7nFXKJf8GqJbI=
+github.com/shirou/gopsutil/v4 v4.25.2 h1:NMscG3l2CqtWFS86kj3vP7soOczqrQYIEhO/pMvvQkk=
+github.com/shirou/gopsutil/v4 v4.25.2/go.mod h1:34gBYJzyqCDT11b6bMHP0XCvWeU3J61XRT7a2EmCRTA=
 github.com/shopspring/decimal v1.4.0 h1:bxl37RwXBklmTi0C79JfXCEBD1cqqHt0bbgBAGFp81k=
 github.com/shopspring/decimal v1.4.0/go.mod h1:gawqmDU56v4yIKSwfBSFip1HdCCXN8/+DMd9qYNcwME=
 github.com/smartystreets/assertions v1.0.1 h1:voD4ITNjPL5jjBfgR/r8fPIIBrliWrWHeiJApdr3r4w=
@@ -138,6 +140,8 @@ github.com/snapcore/snapd v0.0.0-20250225202004-117ce2684700 h1:5ZHeXundjdW96kms
 github.com/snapcore/snapd v0.0.0-20250225202004-117ce2684700/go.mod h1:1lMC5hMAonU8TbtoHWfV3Ux1pfDkY+c9N1L+u4Z04Xc=
 github.com/snapcore/snapd v0.0.0-20250226073837-66700990d18d h1:SDJWwaUYGQoi/5ICMsbMQNG2Z28UtsErtWo+fnh6550=
 github.com/snapcore/snapd v0.0.0-20250226073837-66700990d18d/go.mod h1:1lMC5hMAonU8TbtoHWfV3Ux1pfDkY+c9N1L+u4Z04Xc=
+github.com/snapcore/snapd v0.0.0-20250228185938-4d4437a35a6b h1:q6MupzS3zxk9TqeHC/5su1aj8STQqQy90aRXvdsb0cA=
+github.com/snapcore/snapd v0.0.0-20250228185938-4d4437a35a6b/go.mod h1:qor7qfF4reOxIYwDHHQWnrg5rq7HvxoF8rjmgtMJe74=
 github.com/spf13/cast v1.7.1 h1:cuNEagBQEHWN1FnbGEjCXL2szYEXqfJPbP2HNUaca9Y=
 github.com/spf13/cast v1.7.1/go.mod h1:ancEpBxwJDODSW/UG4rDrAqiKolqNNh2DX3mk86cAdo=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
