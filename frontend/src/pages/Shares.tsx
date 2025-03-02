@@ -356,6 +356,7 @@ export function Shares() {
 interface ShareEditPropsEdit extends ShareEditProps {
     usersNames?: string[],
     roUsersNames?: string[],
+    volumeId?: number
 }
 
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
@@ -371,16 +372,22 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 ro_users: [],
                 timemachine: false,
                 usersNames: [],
-                roUsersNames: []
+                roUsersNames: [],
+                volumeId: undefined
             } : {
                 ...props.objectToEdit,
                 usersNames: props.objectToEdit?.users?.map(user => user.username as string) || [],
                 roUsersNames: props.objectToEdit?.ro_users?.map(user => user.username as string) || [],
+                volumeId: props.objectToEdit.mount_point_data?.id ?
+                    volumes.volumes?.partitions?.
+                        filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/")).
+                        find(mount => mount.mount_point_data?.id === props.objectToEdit?.mount_point_data?.id)?.mount_point_data?.id
+                    : undefined
             }
         },
     );
-    const selected_users = watch("usersNames")
-    const selected_ro_users = watch("roUsersNames")
+    //const selected_users = watch("usersNames")
+    //const selected_ro_users = watch("roUsersNames")
 
 
     function handleCloseSubmit(data?: ShareEditPropsEdit) {
@@ -389,7 +396,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
             props.onClose()
             return
         }
-        data.mount_point_data = volumes.volumes?.partitions?.find(mount => mount.mount_point_data?.id === data.mount_point_data?.id)?.mount_point_data;
+        data.mount_point_data = volumes.volumes?.partitions?.find(mount => mount.mount_point_data?.id === data.volumeId)?.mount_point_data;
         data.users = data.usersNames?.map(username => users?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
         data.ro_users = data.usersNames?.map(username => users?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
         //console.log(data)
@@ -441,11 +448,17 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                     props.objectToEdit?.usage !== DtoHAMountUsage.Internal && <>
                                         <Grid size={6}>
                                             <SelectElement sx={{ display: "flex" }}
-                                                label="Mount Path"
-                                                name="mount_point_data.id"
+                                                label="Volume"
+                                                name="volumeId"
                                                 options={volumes.volumes?.partitions?.
                                                     filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/"))
-                                                    .map(mount => { return { id: mount.mount_point_data?.id, label: mount.label + "(" + mount.name + ")" } })}
+                                                    .map(mount => {
+                                                        return {
+                                                            id: mount.mount_point_data?.id,
+                                                            label: mount.label + "(" + mount.name + ")",
+                                                            disabled: mount.label === "Invalid Volume"
+                                                        }
+                                                    })}
                                                 required
                                                 control={control} />
                                         </Grid>
