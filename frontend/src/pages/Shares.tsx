@@ -387,8 +387,8 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
             }
         },
     );
-    //const selected_users = watch("usersNames")
-    //const selected_ro_users = watch("roUsersNames")
+    const selected_users = watch("usersNames")
+    const selected_ro_users = watch("roUsersNames")
 
 
     function handleCloseSubmit(data?: ShareEditPropsEdit) {
@@ -474,7 +474,9 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                         label="Read and Write users"
                                         loading={isLoading}
                                         options={
-                                            (users?.map(user => ({ id: user.username, label: user.username })) || [])
+                                            (users?.
+                                                filter(user => selected_ro_users?.indexOf(user.username || "") == -1).
+                                                map(user => ({ id: user.username, label: user.username })) || [])
                                         }
                                         control={control}
                                         matchId
@@ -485,7 +487,9 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                         label="ReadOnly users"
                                         loading={isLoading}
                                         options={
-                                            (users?.map(user => ({ id: user.username, label: user.username })) || [])
+                                            (users?.
+                                                filter(user => selected_users?.indexOf(user.username || "") == -1).
+                                                map(user => ({ id: user.username, label: user.username })) || [])
                                         }
                                         control={control}
                                         matchId
