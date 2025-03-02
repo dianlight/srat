@@ -48,8 +48,8 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 		if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return tracerr.Wrap(res.Error)
 		} else if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			if mp.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
-				return tracerr.Errorf("DeviceId mismatch for %s", mp.Path)
+			if mp.DeviceId != 0 && existingRecord.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
+				return tracerr.Errorf("DeviceId mismatch for %s | mp:%d db:%d", mp.Path, mp.DeviceId, existingRecord.DeviceId)
 			}
 			//slog.Debug("Save checkpoint", "mp", mp, "exists", existingRecord)
 			err := copier.CopyWithOption(&existingRecord, mp, copier.Option{IgnoreEmpty: true})
@@ -62,7 +62,7 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	}
 
 	if strings.HasPrefix(mp.Source, "/dev") {
-		panic(tracerr.Errorf("Invalid Source with /dev prefix %v", mp))
+		panic(tracerr.SprintSourceColor(tracerr.Errorf("Invalid Source with /dev prefix %v", mp)))
 	}
 	// slog.Debug("Save checkpoint", "mp", mp)
 	err := tx.Save(mp).Error
