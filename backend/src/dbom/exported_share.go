@@ -38,9 +38,6 @@ func (u *ExportedShare) BeforeSave(tx *gorm.DB) error {
 		}
 		u.Users = saveuses
 		u.RoUsers = saveuses_r
-		//	if err := tx.Session(&gorm.Session{SkipHooks: true}).Save(u).Error; err != nil {
-		//		return tracerr.Wrap(err)
-		//	}
 	}
 	return nil
 }

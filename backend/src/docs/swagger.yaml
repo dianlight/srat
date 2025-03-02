@@ -766,6 +766,10 @@ paths:
           description: Method Not Allowed
           schema:
             $ref: '#/definitions/dto.ErrorInfo'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/dto.ErrorInfo'
         "500":
           description: Internal Server Error
           schema:

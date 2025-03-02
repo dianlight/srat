@@ -1,6 +1,8 @@
 package converter
 
 import (
+	"strings"
+
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/u-root/u-root/pkg/mount"
@@ -15,8 +17,8 @@ import (
 type MountToDbom interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt ID DeviceId PrimaryPath Flags IsInvalid InvalidError Warnings IsMounted
-	// goverter:map Device Source
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt ID DeviceId PrimaryPath IsInvalid InvalidError Warnings IsMounted
+	// goverter:map Device Source | removeDevPrefix
 	// goverter:map Flags Flags | uintptrToMounDataFlags
 	MountToMountPointPath(source *mount.MountPoint, target *dbom.MountPointPath) error
 }
@@ -25,4 +27,9 @@ func uintptrToMounDataFlags(source uintptr) (dto.MounDataFlags, error) {
 	var ret dto.MounDataFlags
 	err := ret.Scan(source)
 	return ret, err
+}
+
+func removeDevPrefix(source string) (string, error) {
+	ret, _ := strings.CutPrefix(source, "/dev/")
+	return ret, nil
 }

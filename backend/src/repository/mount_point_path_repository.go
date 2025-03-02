@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"strings"
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
@@ -37,24 +38,32 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	defer r.mutex.Unlock()
 	tx := r.db.Begin()
 	defer tx.Rollback()
-	//	slog.Debug("Save checkpoint", "mp", mp)
+	//slog.Debug("Save checkpoint", "mp", mp)
 	if mp.ID == 0 {
-		var existingRecord dbom.MountPointPath
+		//data, _ := r.All()
+		//slog.Debug("Chekp", "all", data)
+		existingRecord := dbom.MountPointPath{}
 		res := tx.Limit(1).Find(&existingRecord, "path = ? and source = ?", mp.Path, mp.Source)
+		//slog.Debug("Return", "res", res, "ext", existingRecord)
 		if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return tracerr.Wrap(res.Error)
-		} else if res.RowsAffected > 0 {
+		} else if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			if mp.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
 				return tracerr.Errorf("DeviceId mismatch for %s", mp.Path)
 			}
+			//slog.Debug("Save checkpoint", "mp", mp, "exists", existingRecord)
 			err := copier.CopyWithOption(&existingRecord, mp, copier.Option{IgnoreEmpty: true})
 			if err != nil {
 				return tracerr.Wrap(err)
 			}
 			*mp = existingRecord
+			//slog.Debug("Save checkpoint", "mp", mp, "exists", existingRecord)
 		}
 	}
 
+	if strings.HasPrefix(mp.Source, "/dev") {
+		panic(tracerr.Errorf("Invalid Source with /dev prefix %v", mp))
+	}
 	// slog.Debug("Save checkpoint", "mp", mp)
 	err := tx.Save(mp).Error
 	if err != nil {
@@ -78,7 +87,7 @@ func (r *MountPointPathRepository) FindByPath(path string) (*dbom.MountPointPath
 	return &mp, err
 }
 
-func (r *MountPointPathRepository) All() ([]dbom.MountPointPath, error) {
+func (r *MountPointPathRepository) All() (Data []dbom.MountPointPath, Error error) {
 	var mps []dbom.MountPointPath
 	err := r.db.Find(&mps).Error
 	return mps, err

@@ -329,7 +329,9 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 			continue
 		}
 		if mount_data.Path == "" {
-			if partition.FilesystemLabel != "unknown" {
+			if partition.MountPoint != "" {
+				mount_data.Path = partition.MountPoint
+			} else if partition.FilesystemLabel != "unknown" {
 				mount_data.Path = "/mnt/" + partition.FilesystemLabel
 			} else if partition.Label != "unknown" {
 				mount_data.Path = "/mnt/" + partition.Label
@@ -340,20 +342,22 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 			}
 		}
 
-		orgPath := mount_data.Path
-		for i := 1; i < 20; i++ {
-			ok, err := self.mount_repo.FindByPath(mount_data.Path)
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				break
+		if partition.MountPoint == "" {
+			orgPath := mount_data.Path
+			for i := 1; i < 20; i++ {
+				ok, err := self.mount_repo.FindByPath(mount_data.Path)
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					break
+				}
+				if err != nil {
+					slog.Warn("Error search for a mount directory", "err", err)
+					continue
+				}
+				if ok.Source == partition.Name {
+					break
+				}
+				mount_data.Path = orgPath + "_(" + strconv.Itoa(i) + ")"
 			}
-			if err != nil {
-				slog.Warn("Error search for a mount directory", "err", err)
-				continue
-			}
-			if ok.Source == partition.Name {
-				break
-			}
-			mount_data.Path = orgPath + "_(" + strconv.Itoa(i) + ")"
 		}
 
 		err = self.mount_repo.Save(mount_data)
