@@ -27,7 +27,7 @@ import { AutocompleteElement, CheckboxElement, FormContainer, SelectElement, Tex
 import { Box, Container, Fab, Paper, Stack, Tooltip } from "@mui/material";
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import AddIcon from '@mui/icons-material/Add';
-import { Eject, DriveFileMove, Label } from '@mui/icons-material';
+import { Eject, DriveFileMove, Label, MouseTwoTone } from '@mui/icons-material';
 import { Chip, Typography } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import GroupIcon from '@mui/icons-material/Group';
@@ -362,6 +362,7 @@ interface ShareEditPropsEdit extends ShareEditProps {
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
     const { data: users, isLoading } = useGetUsersQuery()
     const volumes = useVolume()
+    const shares = useShare()
     const [editName, setEditName] = useState(false);
     const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditPropsEdit>(
         {
@@ -451,8 +452,9 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                                 label="Volume"
                                                 name="volumeId"
                                                 options={volumes.volumes?.partitions?.
-                                                    filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/"))
-                                                    .map(mount => {
+                                                    filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/")).
+                                                    filter(mount => (shares.shares.map(share => share.mount_point_data?.id).indexOf(mount.mount_point_data?.id) == -1 || mount.mount_point_data?.id === props.objectToEdit?.mount_point_data?.id)).
+                                                    map(mount => {
                                                         return {
                                                             id: mount.mount_point_data?.id,
                                                             label: mount.label + "(" + mount.name + ")",
