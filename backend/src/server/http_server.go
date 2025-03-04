@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-fuego/fuego"
 	"github.com/jpillora/overseer"
 	"github.com/rs/cors"
@@ -60,10 +61,30 @@ func NewHTTPServer(lc fx.Lifecycle,
 			}),
 		),
 	)
-	// Simple configuration for OpenAPI spec generation
-	//srv.OpenAPI.Config.DisableLocalSave = false
-	//srv.OpenAPI.Config.PrettyFormatJSON = true
-	//srv.OpenAPI.Config.JSONFilePath = "src/docs/openapi.json"
+
+	srv.OpenAPI.Description().Info.Title = "SRAT API"
+	srv.OpenAPI.Description().Info.Description = "This are samba rest admin API"
+	srv.OpenAPI.Description().Info.Version = "1.0"
+	srv.OpenAPI.Description().Info.Contact = &openapi3.Contact{
+		Name:  "Lucio Tarantino",
+		Email: "lucio.tarantino@gmail.com",
+		URL:   "https://github.com/dianlight/srat",
+	}
+
+	srv.OpenAPI.Description().Security = []openapi3.SecurityRequirement{
+		{
+			"ApiKeyAuth": []string{},
+		},
+	}
+	srv.OpenAPI.Description().Components.SecuritySchemes = openapi3.SecuritySchemes{
+		"ApiKeyAuth": &openapi3.SecuritySchemeRef{
+			Value: openapi3.NewCSRFSecurityScheme().
+				WithName("X-Supervisor-Token").
+				WithDescription("HomeAssistant Supervisor Token").
+				WithIn("header"),
+		},
+	}
+
 	if hamode {
 		fuego.Use(srv, HAMiddleware)
 	}
@@ -85,12 +106,14 @@ func NewHTTPServer(lc fx.Lifecycle,
 		fuego.Handle(srv, "/", http.FileServerFS(fsRoot))
 	}
 
-	_, err = fs.ReadDir(static, "docs")
-	if err != nil {
-		slog.Warn("Docs directory not found:", "err", err)
-	} else {
-		fuego.Handle(srv, "/docs", http.FileServerFS(static))
-	}
+	/*
+		_, err = fs.ReadDir(static, "docs")
+		if err != nil {
+			slog.Warn("Docs directory not found:", "err", err)
+		} else {
+			fuego.Handle(srv, "/docs", http.FileServerFS(static))
+		}
+	*/
 
 	/*
 		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {

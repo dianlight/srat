@@ -63,18 +63,6 @@ var content embed.FS
 //go:embed templates/smb.gtpl
 var defaultTemplate embed.FS
 
-// @title						SRAT API
-// @version					1.0
-// @description				This are samba rest admin API
-// @contact.name				Lucio Tarantino
-// @contact.url				https://github.com/dianlight
-// @contact.email				lucio.tarantino@gmail.com
-// @license.name				Apache 2.0
-// @license.url				http://www.apache.org/licenses/LICENSE-2.0.html
-// @securitydefinitions.apikey	ApiKeyAuth
-// @in							header
-// @name						X-Supervisor-Token
-// @description				HomeAssistant Supervisor Token
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	w := os.Stderr
