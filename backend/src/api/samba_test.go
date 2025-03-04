@@ -2,14 +2,10 @@
 package api_test
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/dianlight/srat/api"
-	"github.com/dianlight/srat/dto"
-	"github.com/gorilla/mux"
+	"github.com/go-fuego/fuego"
 	"github.com/stretchr/testify/suite"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -37,21 +33,12 @@ func TestSambaHandlerSuite(t *testing.T) {
 }
 
 func (suite *SambaHandlerSuite) TestApplySambaHandler() {
-	api := api.NewSambaHanler(&apiContextState, suite.mockSambaService)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "POST", "/samba/apply", nil)
+	samba := api.NewSambaHanler(&apiContextState, suite.mockSambaService)
+	ctx := fuego.NewMockContextNoBody()
+
+	ok, err := samba.ApplySamba(ctx)
 	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/samba/apply", api.ApplySamba).Methods(http.MethodPost)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	suite.Equal(http.StatusNoContent, rr.Code, "Expected status code 204, got %d with Body %#v", rr.Code, rr.Body.String())
+	suite.True(ok)
 }
 
 /*
@@ -90,25 +77,11 @@ func TestGetSambaProcessStatus(t *testing.T) {
 */
 
 func (suite *SambaHandlerSuite) TestGetSambaConfig() {
-	api := api.NewSambaHanler(&apiContextState, suite.mockSambaService)
-	// Create a request to pass to our handler
-	req, err := http.NewRequestWithContext(testContext, "GET", "/samba", nil)
+	samba := api.NewSambaHanler(&apiContextState, suite.mockSambaService)
+	ctx := fuego.NewMockContextNoBody()
+
+	config, err := samba.GetSambaConfig(ctx)
 	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-	router := mux.NewRouter()
-	router.HandleFunc("/samba", api.GetSambaConfig).Methods(http.MethodGet)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	suite.Equal(http.StatusOK, rr.Code)
-
-	// Check the response body is what we expect.
-	var responseBody dto.SmbConf
-	err = json.Unmarshal(rr.Body.Bytes(), &responseBody)
-	suite.Require().NoError(err)
-
-	// Compare the response body with the expected SmbConf
-	suite.Equal("Test", responseBody.Data)
+	suite.NotNil(config)
+	suite.Equal("Test", config.Data)
 }
