@@ -2,7 +2,6 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -13,7 +12,7 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/go-fuego/fuego"
-	"github.com/gorilla/mux"
+	"github.com/go-fuego/fuego/option"
 	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 )
@@ -47,114 +46,59 @@ func NewShareHandler(
 }
 
 func (p *ShareHandler) Routers(srv *fuego.Server) error {
-	fuego.GetStd(srv, "/shares", p.ListShares)
-	fuego.GetStd(srv, "/shares/usages", p.ListShareUsages)
-	fuego.GetStd(srv, "/share/{share_name}", p.GetShare)
-	fuego.PostStd(srv, "/share", p.CreateShare)
-	fuego.PutStd(srv, "/share/{share_name}", p.UpdateShare)
-	fuego.DeleteStd(srv, "/share/{share_name}", p.DeleteShare)
+	fuego.Get(srv, "/shares", p.ListShares, option.Description("List all configured shares"), option.Tags("share"))
+	fuego.Get(srv, "/share/{share_name}", p.GetShare, option.Description("get share by Name"), option.Tags("share"))
+	fuego.Post(srv, "/share", p.CreateShare, option.Description("create e new share"), option.Tags("share"))
+	fuego.Put(srv, "/share/{share_name}", p.UpdateShare, option.Description("update e new share"), option.Tags("share"))
+	fuego.Delete(srv, "/share/{share_name}", p.DeleteShare, option.Description("delere a share"), option.Tags("share"))
 	return nil
 }
 
-// ListShares godoc
-//
-//	@Summary		List all configured shares
-//	@Description	List all configured shares
-//	@Tags			share
-//	@Produce		json
-//	@Success		200	{object}	[]dto.SharedResource
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/shares [get]
-func (self *ShareHandler) ListShares(w http.ResponseWriter, r *http.Request) {
+func (self *ShareHandler) ListShares(c fuego.ContextNoBody) ([]dto.SharedResource, error) {
 	var shares []dto.SharedResource
 	var dbshares []dbom.ExportedShare
 	err := self.exported_share_repo.All(&dbshares)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return shares, tracerr.Wrap(err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	for _, dbshare := range dbshares {
 		var share dto.SharedResource
 		err = conv.ExportedShareToSharedResource(dbshare, &share)
 		if err != nil {
-			HttpJSONReponse(w, err, nil)
-			return
+			return shares, tracerr.Wrap(err)
 		}
 		shares = append(shares, share)
 	}
-	HttpJSONReponse(w, shares, nil)
+	return shares, nil
 }
 
-// ListShareUsages godoc
-//
-//	@Summary		List all available usages for shares
-//	@Description	List all available usages for shares
-//	@Tags			share
-//	@Produce		json
-//	@Success		200	{object}	[]dto.HAMountUsage
-//	@Router			/shares/usages [get]
-func (self *ShareHandler) ListShareUsages(w http.ResponseWriter, r *http.Request) {
-	//HttpJSONReponse(w, dto.HAMountUsages.All(), nil)
-}
-
-// GetShare godoc
-//
-//	@Summary		Get a share
-//	@Description	get share by Name
-//	@Tags			share
-//	@Produce		json
-//	@Param			share_name	path		string	true	"Name"
-//	@Success		200			{object}	dto.SharedResource
-//	@Failure		405			{object}	dto.ErrorInfo
-//	@Failure		500			{object}	dto.ErrorInfo
-//	@Router			/share/{share_name} [get]
-func (self *ShareHandler) GetShare(w http.ResponseWriter, r *http.Request) {
-	shareName := mux.Vars(r)["share_name"]
+func (self *ShareHandler) GetShare(c fuego.ContextNoBody) (dto.SharedResource, error) {
+	shareName := c.PathParam("share_name")
 
 	dbshare, err := self.exported_share_repo.FindByName(shareName)
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
-			Code: http.StatusNotFound,
-		})
-		return
+		return dto.SharedResource{}, fuego.NotFoundError{
+			Title: "Share not found",
+		}
 	} else if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return dto.SharedResource{}, tracerr.Wrap(err)
 	}
 	share := dto.SharedResource{}
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.ExportedShareToSharedResource(*dbshare, &share)
-	//err = mapper.Map(context.Background(), &share, dbshare)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return dto.SharedResource{}, tracerr.Wrap(err)
 	}
 
-	HttpJSONReponse(w, share, nil)
+	return share, nil
 }
 
-// CreateShare godoc
-//
-//	@Summary		Create a share
-//	@Description	create e new share
-//	@Tags			share
-//	@Accept			json
-//	@Produce		json
-//	@Param			share	body		dto.SharedResource	true	"Create model"
-//	@Success		201		{object}	dto.SharedResource
-//	@Failure		400		{object}	dto.ErrorInfo
-//	@Failure		405		{object}	dto.ErrorInfo
-//	@Failure		409		{object}	dto.ErrorInfo
-//	@Failure		500		{object}	dto.ErrorInfo
-//	@Router			/share [post]
-func (self *ShareHandler) CreateShare(w http.ResponseWriter, r *http.Request) {
+func (self *ShareHandler) CreateShare(c fuego.ContextWithBody[dto.SharedResource]) (*dto.SharedResource, error) {
 
-	var share dto.SharedResource
-	err := HttpJSONRequest(&share, w, r)
+	share, err := c.Body()
 	if err != nil {
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	dbshare := &dbom.ExportedShare{
@@ -162,42 +106,37 @@ func (self *ShareHandler) CreateShare(w http.ResponseWriter, r *http.Request) {
 	}
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.SharedResourceToExportedShare(share, dbshare)
-	//err = mapper.Map(context.Background(), &dbshare, share)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	if len(dbshare.Users) == 0 {
 		adminUser := dbom.SambaUser{}
 		err = adminUser.GetAdmin()
 		if err != nil {
-			HttpJSONReponse(w, err, nil)
-			return
+			return nil, tracerr.Wrap(err)
 		}
 		dbshare.Users = append(dbshare.Users, adminUser)
 	}
 	err = self.exported_share_repo.Save(dbshare)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			HttpJSONReponse(w, fmt.Errorf("Share already exists"), &Options{
-				Code: http.StatusConflict,
-			})
-			return
+			return nil, fuego.ConflictError{
+				Title: "Share already exists"}
+
 		}
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	err = conv.ExportedShareToSharedResource(*dbshare, &share)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	self.dirtyservice.SetDirtyShares()
 	go self.notifyClient()
-	HttpJSONReponse(w, share, &Options{
-		Code: http.StatusCreated,
-	})
+
+	c.SetStatus(http.StatusCreated)
+
+	return &share, nil
 }
 
 func (self *ShareHandler) notifyClient() {
@@ -227,119 +166,75 @@ func (self *ShareHandler) notifyClient() {
 	self.broadcaster.BroadcastMessage(&event)
 }
 
-// UpdateShare godoc
-//
-//	@Summary		Update a share
-//	@Description	update e new share
-//	@Tags			share
-//	@Accept			json
-//	@Produce		json
-//	@Param			share_name	path		string				true	"Name"
-//	@Param			share		body		dto.SharedResource	true	"Update model"
-//	@Success		200			{object}	dto.SharedResource
-//	@Failure		400			{object}	dto.ErrorInfo
-//	@Failure		405			{object}	dto.ErrorInfo
-//	@Failure		404			{object}	dto.ErrorInfo
-//	@Failure		409			{object}	dto.ErrorInfo
-//	@Failure		500			{object}	dto.ErrorInfo
-//	@Router			/share/{share_name} [put]
-func (self *ShareHandler) UpdateShare(w http.ResponseWriter, r *http.Request) {
-	share_name := mux.Vars(r)["share_name"]
+func (self *ShareHandler) UpdateShare(c fuego.ContextWithBody[dto.SharedResource]) (*dto.SharedResource, error) {
+	share_name := c.PathParam("share_name")
 
-	var share dto.SharedResource
-	err := HttpJSONRequest(&share, w, r)
+	share, err := c.Body()
 	if err != nil {
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	dbshare, err := self.exported_share_repo.FindByName(share_name)
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		HttpJSONReponse(w, tracerr.New("Share not found"), &Options{
-			Code: http.StatusNotFound,
-		})
-		return
+		return nil, fuego.NotFoundError{
+			Title: "Share not found",
+		}
 	} else if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.SharedResourceToExportedShare(share, dbshare)
 	//	err = mapper.Map(context.Background(), &dbshare, share)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	if share_name != dbshare.Name {
 		err = self.exported_share_repo.UpdateName(share_name, dbshare.Name)
 		if err != nil {
-			HttpJSONReponse(w, err,
-				&Options{
-					Code: http.StatusConflict,
-				})
-			return
+			return nil, tracerr.Wrap(err)
 		}
 	}
 
 	err = self.exported_share_repo.Save(dbshare)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	err = conv.ExportedShareToSharedResource(*dbshare, &share)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	self.dirtyservice.SetDirtyShares()
 	go self.notifyClient()
-	HttpJSONReponse(w, share, nil)
+	return &share, nil
 }
 
-// DeleteShare godoc
-//
-//	@Summary		Delere a share
-//	@Description	delere a share
-//	@Tags			share
-//	@Param			share_name	path	string	true	"Name"
-//	@Success		204
-//	@Failure		400	{object}	dto.ErrorInfo
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Failure		404	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/share/{share_name} [delete]
-func (self *ShareHandler) DeleteShare(w http.ResponseWriter, r *http.Request) {
-	share_name := mux.Vars(r)["share_name"]
+func (self *ShareHandler) DeleteShare(c fuego.ContextNoBody) (bool, error) {
+	share_name := c.PathParam("share_name")
 
 	var share dto.SharedResource
 	dbshare, err := self.exported_share_repo.FindByName(share_name)
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		HttpJSONReponse(w, fmt.Errorf("Share not found"), &Options{
-			Code: http.StatusNotFound,
-		})
-		return
+		return false, fuego.NotFoundError{
+			Title: "Share not found",
+		}
 	} else if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return false, tracerr.Wrap(err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.SharedResourceToExportedShare(share, dbshare)
-	//err = mapper.Map(context.Background(), &dbshare, share)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return false, tracerr.Wrap(err)
 	}
 	err = self.exported_share_repo.Delete(dbshare.Name)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return false, tracerr.Wrap(err)
 	}
 
 	self.dirtyservice.SetDirtyShares()
 	go self.notifyClient()
-	HttpJSONReponse(w, nil, &Options{
-		Code: http.StatusNoContent,
-	})
+
+	return true, nil
 }

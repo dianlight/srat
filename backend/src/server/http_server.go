@@ -52,8 +52,9 @@ func NewHTTPServer(lc fx.Lifecycle,
 		),
 		fuego.WithEngineOptions(
 			fuego.WithOpenAPIConfig(fuego.OpenAPIConfig{
-				DisableSwaggerUI: false,                   // If true, the server will not serve the swagger ui nor the openapi json spec
-				DisableLocalSave: false,                   // If true, the server will not save the openapi json spec locally
+				DisableSwaggerUI: false, // If true, the server will not serve the swagger ui nor the openapi json spec
+				DisableLocalSave: false, // If true, the server will not save the openapi json spec locally
+				PrettyFormatJSON: true,
 				SwaggerURL:       "/swagger",              // URL to serve the swagger ui
 				SpecURL:          "/swagger/openapi.json", // URL to serve the openapi json spec
 				JSONFilePath:     "src/docs/openapi.json", // Local path to save the openapi json spec
