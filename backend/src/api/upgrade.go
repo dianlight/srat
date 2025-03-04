@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/utility"
+	"github.com/go-fuego/fuego"
 	"github.com/google/go-github/v69/github"
 )
 
@@ -34,13 +34,13 @@ func NewUpgradeHanler(ctx context.Context, apictx *dto.ContextState, upgader ser
 	p.apictx = apictx
 	p.upgader = upgader
 	p.broadcaster = broadcaster
+
 	return p
 }
 
-func (handler *UpgradeHanler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/update", Method: "PUT", Handler: handler.UpdateHandler},
-	}
+func (p *UpgradeHanler) Routers(srv *fuego.Server) error {
+	fuego.PutStd(srv, "/update", p.UpdateHandler)
+	return nil
 }
 
 // UpdateHandler godoc

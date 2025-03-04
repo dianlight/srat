@@ -6,8 +6,8 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
+	"github.com/go-fuego/fuego"
 )
 
 type SettingsHanler struct {
@@ -19,15 +19,15 @@ func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyD
 	p := new(SettingsHanler)
 	p.apiContext = apiContext
 	p.dirtyService = dirtyService
+
 	return p
 }
 
-func (broker *SettingsHanler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/settings", Method: "GET", Handler: broker.GetSettings},
-		{Pattern: "/settings", Method: "PUT", Handler: broker.UpdateSettings},
-		{Pattern: "/settings", Method: "PATCH", Handler: broker.UpdateSettings},
-	}
+func (handler *SettingsHanler) Routers(srv *fuego.Server) error {
+	fuego.GetStd(srv, "/settings", handler.GetSettings)
+	fuego.PutStd(srv, "/settings", handler.UpdateSettings)
+	fuego.PatchStd(srv, "/settings", handler.UpdateSettings)
+	return nil
 }
 
 // UpdateSettings godoc

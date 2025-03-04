@@ -7,8 +7,8 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
+	"github.com/go-fuego/fuego"
 	"github.com/gorilla/mux"
 	"github.com/xorcare/pointer"
 	"gorm.io/gorm"
@@ -26,17 +26,18 @@ func NewUserHandler(apiContext *dto.ContextState, dirtyservice service.DirtyData
 	p := new(UserHandler)
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyservice
+
 	return p
 }
 
-func (handler *UserHandler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/users", Method: "GET", Handler: handler.ListUsers},
-		{Pattern: "/useradmin", Method: "GET", Handler: handler.GetAdminUser},
-		{Pattern: "/useradmin", Method: "PUT", Handler: handler.UpdateAdminUser},
-		{Pattern: "/user/{id}", Method: "PUT", Handler: handler.UpdateUser},
-		{Pattern: "/user/{id}", Method: "DELETE", Handler: handler.DeleteUser},
-	}
+func (handler *UserHandler) Routers(srv *fuego.Server) error {
+	fuego.GetStd(srv, "/users", handler.ListUsers)
+	fuego.GetStd(srv, "/useradmin", handler.GetAdminUser)
+	fuego.PutStd(srv, "/useradmin", handler.UpdateAdminUser)
+	fuego.PostStd(srv, "/user", handler.CreateUser)
+	fuego.PutStd(srv, "/user/{username}", handler.UpdateUser)
+	fuego.DeleteStd(srv, "/user/{username}", handler.DeleteUser)
+	return nil
 }
 
 // ListUsers godoc

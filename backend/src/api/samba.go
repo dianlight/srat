@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
+	"github.com/go-fuego/fuego"
 )
 
 type SambaHanler struct {
@@ -17,14 +17,15 @@ func NewSambaHanler(apictx *dto.ContextState, sambaService service.SambaServiceI
 	p := new(SambaHanler)
 	p.apictx = apictx
 	p.sambaService = sambaService
+
 	return p
 }
 
-func (handler *SambaHanler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/samba/apply", Method: "PUT", Handler: handler.ApplySamba},
-		{Pattern: "/samba/config", Method: "GET", Handler: handler.GetSambaConfig},
-	}
+func (handler *SambaHanler) Routers(srv *fuego.Server) error {
+	fuego.PutStd(srv, "/samba/apply", handler.ApplySamba)
+	fuego.GetStd(srv, "/samba/config", handler.GetSambaConfig)
+
+	return nil
 }
 
 // ApplySamba godoc

@@ -9,8 +9,8 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
+	"github.com/go-fuego/fuego"
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )
@@ -33,15 +33,15 @@ func NewVolumeHandler(vservice service.VolumeServiceInterface, mount_repo reposi
 	p.mount_repo = mount_repo
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyservice
+
 	return p
 }
 
-func (broker *VolumeHandler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/volumes", Method: "GET", Handler: broker.ListVolumes},
-		{Pattern: "/volume/{id}/mount", Method: "POST", Handler: broker.MountVolume},
-		{Pattern: "/volume/{id}/mount", Method: "DELETE", Handler: broker.UmountVolume},
-	}
+func (p *VolumeHandler) Routers(srv *fuego.Server) error {
+	fuego.GetStd(srv, "/volumes", p.ListVolumes)
+	fuego.PostStd(srv, "/volume/{id}/mount", p.MountVolume)
+	fuego.DeleteStd(srv, "/volume/{id}/mount", p.UmountVolume)
+	return nil
 }
 
 // ListVolumes godoc

@@ -11,11 +11,11 @@ import (
 	"io/fs"
 	"log"
 	"log/slog"
-	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/go-fuego/fuego"
 	"github.com/jpillora/overseer"
 	"github.com/mattn/go-isatty"
 	"github.com/ztrue/tracerr"
@@ -238,10 +238,9 @@ func prog(state overseer.State) {
 			server.AsRoute(api.NewUpgradeHanler),
 			server.AsRoute(api.NewSystemHanler),
 			fx.Annotate(
-				server.NewMuxRouter,
-				fx.ParamTags(`group:"routes"`, `name:"ha_mode"`, `name:"static_fs"`),
+				server.NewHTTPServer,
+				fx.ParamTags("", "", "", "", `name:"ha_mode"`, `name:"static_fs"`, `group:"routes"`),
 			),
-			server.NewHTTPServer,
 		),
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
@@ -269,7 +268,7 @@ func prog(state overseer.State) {
 				}
 			}
 		}),
-		fx.Invoke(func(*http.Server) {}),
+		fx.Invoke(func(s *fuego.Server) {}),
 	).Run()
 
 	dbom.CloseDB()

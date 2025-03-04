@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
+	"github.com/go-fuego/fuego"
 )
 
 type BrokerHandler struct {
@@ -27,11 +27,10 @@ func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker *Brok
 	return
 }
 
-func (handler *BrokerHandler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/sse", Method: "GET", Handler: handler.Stream},
-		{Pattern: "/sse/events", Method: "GET", Handler: handler.EventTypeList},
-	}
+func (handler *BrokerHandler) Routers(srv *fuego.Server) error {
+	fuego.GetStd(srv, "/sse", handler.Stream)
+	fuego.GetStd(srv, "/sse/events", handler.EventTypeList)
+	return nil
 }
 
 // SSE Stream godoc

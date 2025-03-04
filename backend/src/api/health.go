@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-fuego/fuego"
 	"github.com/ztrue/tracerr"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 )
 
@@ -58,13 +58,14 @@ func NewHealthHandler(ctx context.Context, apictx *dto.ContextState,
 	}
 	go p.run()
 	_healthHanlerIntance = p
+
 	return p
 }
 
-func (broker *HealthHanler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/health", Method: "GET", Handler: broker.HealthCheckHandler},
-	}
+func (handler *HealthHanler) Routers(srv *fuego.Server) error {
+	fuego.GetStd(srv, "/health", handler.HealthCheckHandler)
+
+	return nil
 }
 
 // HealthCheckHandler godoc

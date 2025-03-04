@@ -10,7 +10,7 @@ import (
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
+	"github.com/go-fuego/fuego"
 	"github.com/jaypipes/ghw"
 	"github.com/jpillora/overseer"
 )
@@ -20,52 +20,16 @@ type SystemHanler struct {
 
 func NewSystemHanler() *SystemHanler {
 	p := new(SystemHanler)
+
 	return p
 }
 
-func (handler *SystemHanler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/restart", Method: "PUT", Handler: handler.RestartHandler},
-		{Pattern: "/nics", Method: "GET", Handler: handler.GetNICsHandler},
-		{Pattern: "/filesystems", Method: "GET", Handler: handler.GetFSHandler},
-	}
+func (p *SystemHanler) Routers(srv *fuego.Server) error {
+	fuego.PutStd(srv, "/restart", p.RestartHandler)
+	fuego.GetStd(srv, "/nics", p.GetNICsHandler)
+	fuego.GetStd(srv, "/filesystems", p.GetFSHandler)
+	return nil
 }
-
-/*
-// DirtyWsHandler handles WebSocket connections for monitoring changes in the dirty state of configuration sections.
-// It continuously checks for changes in the DirtySectionState and sends updates to the client when changes occur.
-//
-// Parameters:
-//   - ctx: A context.Context for handling cancellation of the WebSocket connection.
-//   - request: A WebSocketMessageEnvelope containing the initial request information.
-//   - c: A channel of *WebSocketMessageEnvelope used to send messages back to the WebSocket client.
-//
-// The function runs indefinitely, sending updates only when the DirtySectionState changes,
-// until the WebSocket connection is closed or the context is cancelled.
-func DirtyWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
-	var oldDritySectionState dto.DataDirtyTracker
-	//context_state := (&dto.Status{}).FromContext(ctx)
-	context_state := StateFromContext(ctx)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			if oldDritySectionState != context_state.DataDirtyTracker {
-				var message dto.WebSocketMessageEnvelope = dto.WebSocketMessageEnvelope{
-					Event: dto.EventHeartbeat,
-					Uid:   request.Uid,
-					Data:  &context_state.DataDirtyTracker,
-				}
-				c <- &message
-				copier.Copy(&oldDritySectionState, context_state.DataDirtyTracker)
-				//log.Printf("%v %v\n", oldDritySectionState, data.DirtySectionState)
-			}
-		}
-		time.Sleep(1 * time.Second)
-	}
-}
-*/
 
 // RestartHandler godoc
 //

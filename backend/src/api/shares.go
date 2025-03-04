@@ -11,8 +11,8 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
+	"github.com/go-fuego/fuego"
 	"github.com/gorilla/mux"
 	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
@@ -26,7 +26,8 @@ type ShareHandler struct {
 	exported_share_repo repository.ExportedShareRepositoryInterface
 }
 
-func NewShareHandler(broadcaster service.BroadcasterServiceInterface,
+func NewShareHandler(
+	broadcaster service.BroadcasterServiceInterface,
 	apiContext *dto.ContextState,
 	dirtyService service.DirtyDataServiceInterface,
 	exported_share_repo repository.ExportedShareRepositoryInterface,
@@ -41,18 +42,18 @@ func NewShareHandler(broadcaster service.BroadcasterServiceInterface,
 		p.notifyClient()
 		return nil
 	})
+
 	return p
 }
 
-func (broker *ShareHandler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/shares", Method: "GET", Handler: broker.ListShares},
-		{Pattern: "/shares/usages", Method: "GET", Handler: broker.ListShareUsages},
-		{Pattern: "/share/{share_name}", Method: "GET", Handler: broker.GetShare},
-		{Pattern: "/share", Method: "POST", Handler: broker.CreateShare},
-		{Pattern: "/share/{share_name}", Method: "PUT", Handler: broker.UpdateShare},
-		{Pattern: "/share/{share_name}", Method: "DELETE", Handler: broker.DeleteShare},
-	}
+func (p *ShareHandler) Routers(srv *fuego.Server) error {
+	fuego.GetStd(srv, "/shares", p.ListShares)
+	fuego.GetStd(srv, "/shares/usages", p.ListShareUsages)
+	fuego.GetStd(srv, "/share/{share_name}", p.GetShare)
+	fuego.PostStd(srv, "/share", p.CreateShare)
+	fuego.PutStd(srv, "/share/{share_name}", p.UpdateShare)
+	fuego.DeleteStd(srv, "/share/{share_name}", p.DeleteShare)
+	return nil
 }
 
 // ListShares godoc

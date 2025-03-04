@@ -6,19 +6,24 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"os"
-	"time"
 
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
+	"github.com/go-fuego/fuego"
 	"github.com/jpillora/overseer"
 	"github.com/rs/cors"
 	"github.com/ztrue/tracerr"
 	"go.uber.org/fx"
 )
 
-func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtClose context.CancelFunc) *http.Server {
-	handler := cors.New(
+func NewHTTPServer(lc fx.Lifecycle,
+	state *overseer.State,
+	cxtClose context.CancelFunc,
+	logger *slog.Logger,
+	//routes []Route,
+	hamode bool,
+	static fs.FS,
+	routes []Route,
+) *fuego.Server {
+	/*handler := cors.New(
 		cors.Options{
 			//AllowedOrigins:   []string{"*"},
 			AllowOriginFunc:  func(origin string) bool { return true },
@@ -28,22 +33,81 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtC
 			MaxAge:           300,
 		},
 	).Handler(mux)
-	loggedRouter := handlers.LoggingHandler(os.Stdout, handler)
-	srv := &http.Server{
-		ReadTimeout: time.Second * 15,
-		IdleTimeout: time.Second * 60,
-		Handler:     loggedRouter, // Pass our instance of gorilla/mux in.
-		//		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-		//			log.Printf("New connection: %s\n", c.RemoteAddr())
-		//			ctx = api.StateToContext(&sharedResources, ctx)
-		//			return ctx
-		//		},
+	*/
+	//loggedRouter := handlers.LoggingHandler(os.Stdout, handler)
+	srv := fuego.NewServer(
+		fuego.WithListener(state.Listener),
+		fuego.WithLogHandler(logger.Handler()),
+		fuego.WithGlobalMiddlewares(cors.New(
+			cors.Options{
+				//AllowedOrigins:   []string{"*"},
+				AllowOriginFunc:  func(origin string) bool { return true },
+				AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
+				AllowedHeaders:   []string{"*"},
+				AllowCredentials: true,
+				MaxAge:           300,
+			},
+		).Handler,
+		),
+		fuego.WithEngineOptions(
+			fuego.WithOpenAPIConfig(fuego.OpenAPIConfig{
+				DisableSwaggerUI: false,                   // If true, the server will not serve the swagger ui nor the openapi json spec
+				DisableLocalSave: false,                   // If true, the server will not save the openapi json spec locally
+				SwaggerURL:       "/swagger",              // URL to serve the swagger ui
+				SpecURL:          "/swagger/openapi.json", // URL to serve the openapi json spec
+				JSONFilePath:     "src/docs/openapi.json", // Local path to save the openapi json spec
+				//UIHandler:        DefaultOpenAPIHandler,   // Custom UI handler
+			}),
+		),
+	)
+	// Simple configuration for OpenAPI spec generation
+	//srv.OpenAPI.Config.DisableLocalSave = false
+	//srv.OpenAPI.Config.PrettyFormatJSON = true
+	//srv.OpenAPI.Config.JSONFilePath = "src/docs/openapi.json"
+	if hamode {
+		fuego.Use(srv, HAMiddleware)
 	}
+	for _, route := range routes {
+		err := route.Routers(srv)
+		if err != nil {
+			slog.Warn(err.Error())
+		}
+	}
+
+	slog.Info("Exposed static", "FS", static)
+
+	_, err := fs.ReadDir(static, "static")
+	if err != nil {
+		slog.Warn("Static directory not found:", "err", err)
+		fuego.Handle(srv, "/", http.FileServerFS(static))
+	} else {
+		fsRoot, _ := fs.Sub(static, "static")
+		fuego.Handle(srv, "/", http.FileServerFS(fsRoot))
+	}
+
+	_, err = fs.ReadDir(static, "docs")
+	if err != nil {
+		slog.Warn("Docs directory not found:", "err", err)
+	} else {
+		fuego.Handle(srv, "/docs", http.FileServerFS(static))
+	}
+
+	/*
+		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+			template, err := route.GetPathTemplate()
+			if err != nil {
+				return tracerr.Wrap(err)
+			}
+			slog.Debug("Route:", "template", template)
+			return nil
+		})
+	*/
+
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
 				slog.Debug("Starting HTTP server at", "listener", state.Address, "pid", state.ID)
-				if err := srv.Serve(state.Listener); err != nil {
+				if err := srv.Run(); err != nil {
 					if err == http.ErrServerClosed {
 						slog.Info("HTTP server stopped gracefully")
 					} else {
@@ -71,61 +135,59 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtC
 	return srv
 }
 
-type RouteDetail struct {
-	Pattern string
-	Method  string
-	Handler http.HandlerFunc
-}
-
+/*
+	type RouteDetail struct {
+		Pattern string
+		Method  string
+		Handler http.HandlerFunc
+	}
+*/
 type Route interface {
-	Patterns() []RouteDetail
+	Routers(srv *fuego.Server) error
 }
 
-func NewMuxRouter(routes []Route, hamode bool, static fs.FS) *mux.Router {
-	router := mux.NewRouter()
-	if hamode {
-		router.Use(HAMiddleware)
-	}
-	for _, route := range routes {
-		for _, detail := range route.Patterns() {
-			router.Handle(detail.Pattern, detail.Handler).Methods(detail.Method)
+/*
+	func NewMuxRouter(routes []Route, hamode bool, static fs.FS) *mux.Router {
+		router := mux.NewRouter()
+		if hamode {
+			router.Use(HAMiddleware)
 		}
-	}
-	// Static files
-	//router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	//	http.Redirect(w, r, "/static/", http.StatusPermanentRedirect)
-	//})
+		for _, route := range routes {
+			for _, detail := range route.Patterns() {
+				router.Handle(detail.Pattern, detail.Handler).Methods(detail.Method)
+			}
+		}
 
-	slog.Info("Exposed static", "FS", static)
+		slog.Info("Exposed static", "FS", static)
 
-	_, err := fs.ReadDir(static, "docs")
-	if err != nil {
-		slog.Warn("Docs directory not found:", "err", err)
-	} else {
-		router.PathPrefix("/docs").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
-	}
-
-	_, err = fs.ReadDir(static, "static")
-	if err != nil {
-		slog.Warn("Static directory not found:", "err", err)
-		router.PathPrefix("/").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
-	} else {
-		fsRoot, _ := fs.Sub(static, "static")
-		router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
-	}
-
-	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		template, err := route.GetPathTemplate()
+		_, err := fs.ReadDir(static, "docs")
 		if err != nil {
-			return tracerr.Wrap(err)
+			slog.Warn("Docs directory not found:", "err", err)
+		} else {
+			router.PathPrefix("/docs").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
 		}
-		slog.Debug("Route:", "template", template)
-		return nil
-	})
 
-	return router
-}
+		_, err = fs.ReadDir(static, "static")
+		if err != nil {
+			slog.Warn("Static directory not found:", "err", err)
+			router.PathPrefix("/").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
+		} else {
+			fsRoot, _ := fs.Sub(static, "static")
+			router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
+		}
 
+		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+			template, err := route.GetPathTemplate()
+			if err != nil {
+				return tracerr.Wrap(err)
+			}
+			slog.Debug("Route:", "template", template)
+			return nil
+		})
+
+		return router
+	}
+*/
 func AsRoute(f any) any {
 	return fx.Annotate(
 		f,
