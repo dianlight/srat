@@ -1,13 +1,13 @@
 package api
 
 import (
-	"net/http"
-
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"github.com/go-fuego/fuego"
+	"github.com/go-fuego/fuego/option"
+	"github.com/ztrue/tracerr"
 )
 
 type SettingsHanler struct {
@@ -24,85 +24,55 @@ func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyD
 }
 
 func (handler *SettingsHanler) Routers(srv *fuego.Server) error {
-	fuego.GetStd(srv, "/settings", handler.GetSettings)
-	fuego.PutStd(srv, "/settings", handler.UpdateSettings)
-	fuego.PatchStd(srv, "/settings", handler.UpdateSettings)
+	fuego.Get(srv, "/settings", handler.GetSettings, option.Tags("samba"), option.Description("Get the configuration for the global samba settings"))
+	fuego.Put(srv, "/settings", handler.UpdateSettings, option.Tags("samba"), option.Description("Update the configuration for the global samba settings"))
+	fuego.Patch(srv, "/settings", handler.UpdateSettings, option.Tags("samba"), option.Description("Update the configuration for the global samba settings"))
 	return nil
 }
 
-// UpdateSettings godoc
-//
-//	@Summary		Update the configuration for the global samba settings
-//	@Description	Update the configuration for the global samba settings
-//	@Tags			samba
-//	@Accept			json
-//	@Produce		json
-//	@Param			config	body		dto.Settings	true	"Update model"
-//	@Success		200		{object}	dto.Settings
-//	@Failure		400		{object}	dto.ErrorInfo
-//	@Failure		500		{object}	dto.ErrorInfo
-//	@Router			/settings [put]
-//	@Router			/settings [patch]
-func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
-	var config dto.Settings
-	err := HttpJSONRequest(&config, w, r)
+func (self *SettingsHanler) UpdateSettings(c fuego.ContextWithBody[dto.Settings]) (*dto.Settings, error) {
+	config, err := c.Body()
 	if err != nil {
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	var dbconfig dbom.Properties
 	err = dbconfig.Load()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 
 	err = conv.SettingsToProperties(config, &dbconfig)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	err = dbconfig.Save()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	err = conv.PropertiesToSettings(dbconfig, &config)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	self.dirtyService.SetDirtySettings()
-	HttpJSONReponse(w, config, nil)
+	return &config, nil
 }
 
-// GetSettings godoc
-//
-//	@Summary		Get the configuration for the global samba settings
-//	@Description	Get the configuration for the global samba settings
-//	@Tags			samba
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	dto.Settings
-//	@Failure		400	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/settings [get]
-func (self *SettingsHanler) GetSettings(w http.ResponseWriter, r *http.Request) {
+func (self *SettingsHanler) GetSettings(c fuego.ContextNoBody) (*dto.Settings, error) {
 	var dbsettings dbom.Properties
 	var conv converter.DtoToDbomConverterImpl
 	err := dbsettings.Load()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	var settings dto.Settings
 	err = conv.PropertiesToSettings(dbsettings, &settings)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
-	HttpJSONReponse(w, settings, nil)
+	return &settings, nil
+
 }
