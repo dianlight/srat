@@ -28,7 +28,7 @@ func TestSystemHandlerSuite(t *testing.T) {
 
 func (suite *SystemHandlerSuite) TestGetNICsHandler() {
 	ctx := fuego.NewMockContextNoBody()
-	response, err := api.NewSystemHanler().GetNICsHandler(ctx)
+	response, err := api.NewSystemHanler().RetrieveNetworkAdapters(ctx)
 	suite.Require().NoError(err)
 	suite.T().Logf("%v", response)
 
@@ -39,7 +39,7 @@ func (suite *SystemHandlerSuite) TestGetNICsHandler() {
 
 func (suite *SystemHandlerSuite) TestGetFSHandler() {
 	ctx := fuego.NewMockContextNoBody()
-	response, err := api.NewSystemHanler().GetFSHandler(ctx)
+	response, err := api.NewSystemHanler().RetrieveFilesystemTypes(ctx)
 	suite.Require().NoError(err)
 	suite.T().Logf("%v", response)
 

@@ -25,19 +25,19 @@ func NewSystemHanler() *SystemHanler {
 }
 
 func (p *SystemHanler) Routers(srv *fuego.Server) error {
-	fuego.Put(srv, "/restart", p.RestartHandler, option.Description("Restart the server ( useful in development )"), option.Tags("dev"))
-	fuego.Get(srv, "/nics", p.GetNICsHandler, option.Description("Return all network interfaces"), option.Tags("system"))
-	fuego.Get(srv, "/filesystems", p.GetFSHandler, option.Description("Return all supported fs"), option.Tags("system"))
+	fuego.Put(srv, "/restart", p.PerformServerRestart, option.Description("Restart the server ( useful in development )"), option.Tags("dev"))
+	fuego.Get(srv, "/nics", p.RetrieveNetworkAdapters, option.Description("Return all network interfaces"), option.Tags("system"))
+	fuego.Get(srv, "/filesystems", p.RetrieveFilesystemTypes, option.Description("Return all supported fs"), option.Tags("system"))
 	return nil
 }
 
-func (handler *SystemHanler) RestartHandler(c fuego.ContextNoBody) (bool, error) {
+func (handler *SystemHanler) PerformServerRestart(c fuego.ContextNoBody) (bool, error) {
 	slog.Debug("Restarting server...")
 	overseer.Restart()
 	return true, nil
 }
 
-func (handler *SystemHanler) GetNICsHandler(c fuego.ContextNoBody) (*dto.NetworkInfo, error) {
+func (handler *SystemHanler) RetrieveNetworkAdapters(c fuego.ContextNoBody) (*dto.NetworkInfo, error) {
 
 	net, err := ghw.Network()
 	if err != nil {
@@ -109,7 +109,7 @@ func (handler *SystemHanler) getFileSystems() ([]string, error) {
 	return ret, nil
 }
 
-func (handler *SystemHanler) GetFSHandler(c fuego.ContextNoBody) (dto.FilesystemTypes, error) {
+func (handler *SystemHanler) RetrieveFilesystemTypes(c fuego.ContextNoBody) (dto.FilesystemTypes, error) {
 
 	fs, err := handler.getFileSystems()
 	if err != nil {
