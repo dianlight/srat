@@ -3,11 +3,11 @@ package api
 import (
 	"context"
 	"log/slog"
-	"net/http"
 	"sync"
 	"time"
 
 	"github.com/go-fuego/fuego"
+	"github.com/go-fuego/fuego/option"
 	"github.com/ztrue/tracerr"
 
 	"github.com/dianlight/srat/converter"
@@ -63,22 +63,13 @@ func NewHealthHandler(ctx context.Context, apictx *dto.ContextState,
 }
 
 func (handler *HealthHanler) Routers(srv *fuego.Server) error {
-	fuego.GetStd(srv, "/health", handler.HealthCheckHandler)
+	fuego.Get(srv, "/health", handler.CheckHealthStatus, option.Tags("system"), option.Description("HealthCheck"))
 
 	return nil
 }
 
-// HealthCheckHandler godoc
-//
-//	@Summary		HealthCheck
-//	@Description	HealthCheck
-//	@Tags			system
-//	@Produce		json
-//	@Success		200 {object}	dto.HealthPing
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Router			/health [get]
-func (self *HealthHanler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	HttpJSONReponse(w, self, nil)
+func (self *HealthHanler) CheckHealthStatus(c fuego.ContextNoBody) (*dto.HealthPing, error) {
+	return &self.HealthPing, nil
 }
 
 func (self *HealthHanler) EventEmitter(data dto.HealthPing) error {

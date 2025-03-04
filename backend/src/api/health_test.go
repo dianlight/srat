@@ -1,16 +1,14 @@
 package api_test
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
+	"github.com/go-fuego/fuego"
 	"github.com/stretchr/testify/suite"
 	"github.com/tj/go-spin"
 	gomock "go.uber.org/mock/gomock"
@@ -40,34 +38,14 @@ func TestHealthHandlerSuite(t *testing.T) {
 
 func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
 
+	ctx := fuego.NewMockContextNoBody()
+
 	suite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
-	req, err := http.NewRequestWithContext(testContext, "GET", "/health", nil)
-	if err != nil {
-		suite.T().Fatal(err)
-	}
-
-	rr := httptest.NewRecorder()
 	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService, suite.dirtyService)
-	handler := http.HandlerFunc(health.HealthCheckHandler)
 
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		suite.T().Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-	expectedContentType := "application/json"
-	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
-		suite.T().Errorf("handler returned wrong content type: got %v want %v",
-			contentType, expectedContentType)
-	}
-
-	var response dto.HealthPing
-	err = json.Unmarshal(rr.Body.Bytes(), &response)
-	if err != nil {
-		suite.T().Errorf("Failed to unmarshal response body: %v", err)
-	}
+	response, err := health.CheckHealthStatus(ctx)
+	suite.Require().NoError(err)
+	suite.T().Logf("%v", response)
 
 	if !response.Alive {
 		suite.T().Errorf("Expected Alive to be true, got false")
