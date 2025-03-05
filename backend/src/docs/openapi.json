@@ -418,10 +418,12 @@
 				"description": "SharedResource schema",
 				"properties": {
 					"disabled": {
+						"description": "bool schema",
 						"nullable": true,
 						"type": "boolean"
 					},
 					"invalid": {
+						"description": "bool schema",
 						"nullable": true,
 						"type": "boolean"
 					},
@@ -480,7 +482,6 @@
 							"properties": {
 								"is_admin": {
 									"description": "bool schema",
-									"nullable": true,
 									"type": "boolean"
 								},
 								"password": {
@@ -497,6 +498,7 @@
 						"type": "array"
 					},
 					"timemachine": {
+						"description": "bool schema",
 						"nullable": true,
 						"type": "boolean"
 					},
@@ -509,7 +511,6 @@
 							"properties": {
 								"is_admin": {
 									"description": "bool schema",
-									"nullable": true,
 									"type": "boolean"
 								},
 								"password": {
@@ -577,7 +578,6 @@
 			},
 			"bool": {
 				"description": "bool schema",
-				"nullable": true,
 				"type": "boolean"
 			},
 			"unknown-interface": {

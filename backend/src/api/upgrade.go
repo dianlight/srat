@@ -94,11 +94,6 @@ func (handler *UpgradeHanler) UpdateHandler(c fuego.ContextNoBody) (*dto.UpdateP
 	return &handler.progress, nil
 }
 
-func (handler *UpgradeHanler) ProgressHandler(w http.ResponseWriter, r *http.Request) {
-
-	HttpJSONReponse(w, handler.progress, nil)
-}
-
 func (handler *UpgradeHanler) notifyClient() {
 	for {
 		select {
