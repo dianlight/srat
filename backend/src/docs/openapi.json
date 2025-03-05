@@ -1,6 +1,117 @@
 {
 	"components": {
 		"schemas": {
+			"BlockInfo": {
+				"description": "BlockInfo schema",
+				"properties": {
+					"partitions": {
+						"items": {
+							"nullable": true,
+							"properties": {
+								"default_mount_point": {
+									"type": "string"
+								},
+								"device_id": {
+									"maximum": 18446744073709552000,
+									"minimum": 0,
+									"nullable": true,
+									"type": "integer"
+								},
+								"filesystem_label": {
+									"type": "string"
+								},
+								"label": {
+									"type": "string"
+								},
+								"mount_data": {
+									"type": "string"
+								},
+								"mount_flags": {
+									"items": {
+										"type": "integer"
+									},
+									"type": "array"
+								},
+								"mount_point": {
+									"type": "string"
+								},
+								"mount_point_data": {
+									"properties": {
+										"flags": {
+											"items": {
+												"type": "integer"
+											},
+											"type": "array"
+										},
+										"fstype": {
+											"type": "string"
+										},
+										"id": {
+											"minimum": 0,
+											"type": "integer"
+										},
+										"invalid": {
+											"type": "boolean"
+										},
+										"invalid_error": {
+											"nullable": true,
+											"type": "string"
+										},
+										"is_mounted": {
+											"type": "boolean"
+										},
+										"path": {
+											"type": "string"
+										},
+										"primary_path": {
+											"type": "string"
+										},
+										"source": {
+											"type": "string"
+										},
+										"warnings": {
+											"nullable": true,
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"name": {
+									"type": "string"
+								},
+								"partition_flags": {
+									"items": {
+										"type": "integer"
+									},
+									"type": "array"
+								},
+								"read_only": {
+									"type": "boolean"
+								},
+								"size_bytes": {
+									"maximum": 18446744073709552000,
+									"minimum": 0,
+									"type": "integer"
+								},
+								"type": {
+									"type": "string"
+								},
+								"uuid": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"total_size_bytes": {
+						"maximum": 18446744073709552000,
+						"minimum": 0,
+						"type": "integer"
+					}
+				},
+				"type": "object"
+			},
 			"EventMessageEnvelope": {
 				"description": "EventMessageEnvelope schema",
 				"properties": {
@@ -165,6 +276,53 @@
 				},
 				"type": "object"
 			},
+			"MountPointData": {
+				"description": "MountPointData schema",
+				"nullable": true,
+				"properties": {
+					"flags": {
+						"items": {
+							"type": "integer"
+						},
+						"nullable": true,
+						"type": "array"
+					},
+					"fstype": {
+						"type": "string"
+					},
+					"id": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"invalid": {
+						"nullable": true,
+						"type": "boolean"
+					},
+					"invalid_error": {
+						"nullable": true,
+						"type": "string"
+					},
+					"is_mounted": {
+						"nullable": true,
+						"type": "boolean"
+					},
+					"path": {
+						"type": "string"
+					},
+					"primary_path": {
+						"type": "string"
+					},
+					"source": {
+						"nullable": true,
+						"type": "string"
+					},
+					"warnings": {
+						"nullable": true,
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
 			"NetworkInfo": {
 				"description": "NetworkInfo schema",
 				"properties": {
@@ -260,12 +418,10 @@
 				"description": "SharedResource schema",
 				"properties": {
 					"disabled": {
-						"description": "bool schema",
 						"nullable": true,
 						"type": "boolean"
 					},
 					"invalid": {
-						"description": "bool schema",
 						"nullable": true,
 						"type": "boolean"
 					},
@@ -276,6 +432,7 @@
 								"items": {
 									"type": "integer"
 								},
+								"nullable": true,
 								"type": "array"
 							},
 							"fstype": {
@@ -286,6 +443,7 @@
 								"type": "integer"
 							},
 							"invalid": {
+								"nullable": true,
 								"type": "boolean"
 							},
 							"invalid_error": {
@@ -293,6 +451,7 @@
 								"type": "string"
 							},
 							"is_mounted": {
+								"nullable": true,
 								"type": "boolean"
 							},
 							"path": {
@@ -302,6 +461,7 @@
 								"type": "string"
 							},
 							"source": {
+								"nullable": true,
 								"type": "string"
 							},
 							"warnings": {
@@ -320,6 +480,7 @@
 							"properties": {
 								"is_admin": {
 									"description": "bool schema",
+									"nullable": true,
 									"type": "boolean"
 								},
 								"password": {
@@ -336,7 +497,6 @@
 						"type": "array"
 					},
 					"timemachine": {
-						"description": "bool schema",
 						"nullable": true,
 						"type": "boolean"
 					},
@@ -349,6 +509,7 @@
 							"properties": {
 								"is_admin": {
 									"description": "bool schema",
+									"nullable": true,
 									"type": "boolean"
 								},
 								"password": {
@@ -416,6 +577,7 @@
 			},
 			"bool": {
 				"description": "bool schema",
+				"nullable": true,
 				"type": "boolean"
 			},
 			"unknown-interface": {
@@ -2086,74 +2248,32 @@
 		},
 		"/volume/{id}/mount": {
 			"delete": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*VolumeHandler).UmountVolume`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*VolumeHandler).UmountVolume`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nUmount the selected volume",
 				"operationId": "DELETE_/volume/:id/mount",
 				"parameters": [
 					{
-						"in": "path",
-						"name": "id",
-						"required": true,
+						"description": "Force Umount",
+						"in": "query",
+						"name": "force",
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"description": "Lazy Umount ",
+						"in": "query",
+						"name": "lazy",
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Accept",
 						"schema": {
 							"type": "string"
 						}
-					}
-				],
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
-								}
-							},
-							"application/xml": {
-								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
-								}
-							}
-						},
-						"description": "OK"
 					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							},
-							"application/xml": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							}
-						},
-						"description": "Bad Request _(validation or deserialization error)_"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							},
-							"application/xml": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							}
-						},
-						"description": "Internal Server Error _(panics)_"
-					},
-					"default": {
-						"description": ""
-					}
-				},
-				"summary": "umount volume"
-			},
-			"post": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*VolumeHandler).MountVolume`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
-				"operationId": "POST_/volume/:id/mount",
-				"parameters": [
 					{
 						"in": "path",
 						"name": "id",
@@ -2168,12 +2288,12 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/bool"
 								}
 							},
 							"application/xml": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/bool"
 								}
 							}
 						},
@@ -2213,24 +2333,122 @@
 						"description": ""
 					}
 				},
-				"summary": "mount volume"
+				"summary": "umount volume",
+				"tags": [
+					"volume"
+				]
+			},
+			"post": {
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*VolumeHandler).MountVolume`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nmount an existing volume",
+				"operationId": "POST_/volume/:id/mount",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"*/*": {
+							"schema": {
+								"$ref": "#/components/schemas/MountPointData"
+							}
+						}
+					},
+					"description": "Request body for dto.MountPointData",
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MountPointData"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/MountPointData"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Bad Request _(validation or deserialization error)_"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Internal Server Error _(panics)_"
+					},
+					"default": {
+						"description": ""
+					}
+				},
+				"summary": "mount volume",
+				"tags": [
+					"volume"
+				]
 			}
 		},
 		"/volumes": {
 			"get": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*VolumeHandler).ListVolumes`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*VolumeHandler).ListVolumes`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nList all available volumes",
 				"operationId": "GET_/volumes",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
 				"responses": {
 					"200": {
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/BlockInfo"
 								}
 							},
 							"application/xml": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/BlockInfo"
 								}
 							}
 						},
@@ -2270,7 +2488,10 @@
 						"description": ""
 					}
 				},
-				"summary": "list volumes"
+				"summary": "list volumes",
+				"tags": [
+					"volume"
+				]
 			}
 		}
 	},
@@ -2300,6 +2521,9 @@
 		},
 		{
 			"name": "user"
+		},
+		{
+			"name": "volume"
 		}
 	]
 }

@@ -1,22 +1,19 @@
 package api_test
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/api"
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/gorilla/mux"
+	"github.com/go-fuego/fuego"
 	"github.com/stretchr/testify/suite"
 	"github.com/thoas/go-funk"
 	gomock "go.uber.org/mock/gomock"
@@ -68,39 +65,9 @@ func TestVolumeHandlerSuite(t *testing.T) {
 
 func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
 	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo, &apiContextState, suite.dirtyservice)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "GET", "/volumes", nil)
-	if err != nil {
-		suite.T().Fatal(err)
-	}
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(volume.ListVolumes)
-
-	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
-	handler.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusOK {
-		suite.T().Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-	//suite.T().Log(pretty.Sprint(rr.Body))
-	if len(rr.Body.String()) == 0 {
-		suite.T().Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), "[]")
-	}
-
-	var volumes dto.BlockInfo
-	err2 := json.NewDecoder(rr.Body).Decode(&volumes)
-	if err2 != nil {
-		suite.T().Errorf("handler error in decode body %v", err2)
-	}
-	//suite.T(),Log(pretty.Sprint(volumes))
+	ctx := fuego.NewMockContextNoBody()
+	volumes, err := volume.ListVolumes(ctx)
+	suite.Require().NoError(err)
 
 	suite.NotNil(funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
 		return d.Label == "testvolume"
@@ -112,8 +79,6 @@ func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
 	}))
 
 }
-
-//var
 
 func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo, &apiContextState, suite.dirtyservice)
@@ -136,29 +101,18 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 	err = suite.mount_repo.Save(&mockMountData)
 	suite.Require().NoError(err)
 
-	body, _ := json.Marshal(mockMountData)
-	requestPath := fmt.Sprintf("/volume/%d/mount", mockMountData.ID)
-	//suite.T().Logf("Request path: %s", requestPath)
-	req, err := http.NewRequestWithContext(testContext, "POST", requestPath, bytes.NewBuffer(body))
+	conv := converter.DtoToDbomConverterImpl{}
+	var mockMountData1 dto.MountPointData
+	err = conv.MountPointPathToMountPointData(mockMountData, &mockMountData1)
 	suite.Require().NoError(err)
 
-	// Set up gorilla/mux router
-	router := mux.NewRouter()
-	router.HandleFunc("/volume/{id}/mount", volume.MountVolume).Methods("POST")
+	ctx := fuego.NewMockContext(mockMountData1)
+	ctx.PathParams = map[string]string{
+		"id": fmt.Sprintf("%d", mockMountData.ID),
+	}
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
+	responseData, err := volume.MountVolume(ctx)
 
-	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	suite.Equal(http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
-
-	// Check the response body is what we expecsuite.T().
-	var responseData dbom.MountPointPath
-	err = json.Unmarshal(rr.Body.Bytes(), &responseData)
 	suite.Require().NoError(err)
 
 	// Verify the response data
@@ -175,41 +129,25 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 
 func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
 	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo, &apiContextState, suite.dirtyservice)
-	req, err := http.NewRequestWithContext(testContext, "DELETE", "/volume/999999/mount", nil)
-	if err != nil {
-		suite.T().Fatal(err)
+	ctx := fuego.NewMockContextNoBody()
+	ctx.PathParams = map[string]string{
+		"id": "999999",
 	}
 
-	rr := httptest.NewRecorder()
-	router := mux.NewRouter()
-	router.HandleFunc("/volume/{id}/mount", volume.UmountVolume).Methods("DELETE")
-
-	router.ServeHTTP(rr, req)
-	suite.Require().Equal(http.StatusNotFound, rr.Code)
-
-	suite.Equal(`{"code":"unmount_fail","data":{"ID":999999,"Message":"No mount point found for the provided ID"}}`, rr.Body.String())
+	_, err := volume.UmountVolume(ctx)
+	suite.Require().Error(err)
+	//suite.ErrorIs(err, fuego.NotFoundError{})
 }
+
 func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 
 	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo, &apiContextState, suite.dirtyservice)
+	ctx := fuego.NewMockContextNoBody()
+	ctx.PathParams = map[string]string{
+		"id": "1",
+	}
 
-	// Create a request
-	req, err := http.NewRequestWithContext(testContext, "DELETE", fmt.Sprintf("/volume/%d/mount", 1), nil)
+	res, err := volume.UmountVolume(ctx)
 	suite.Require().NoError(err)
-
-	// Set up gorilla/mux router
-	router := mux.NewRouter()
-	router.HandleFunc("/volume/{id}/mount", volume.UmountVolume).Methods("DELETE")
-
-	// Create a ResponseRecorder
-	rr := httptest.NewRecorder()
-
-	// Serve the request
-	router.ServeHTTP(rr, req)
-
-	// Check the status code
-	suite.Equal(http.StatusNoContent, rr.Code, "Body %#v", rr.Body.String())
-
-	// Check that the response body is empty
-	suite.Empty(rr.Body.String(), "Body should be empty")
+	suite.True(res)
 }
