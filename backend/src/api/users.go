@@ -9,8 +9,9 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"github.com/go-fuego/fuego"
-	"github.com/gorilla/mux"
+	"github.com/go-fuego/fuego/option"
 	"github.com/xorcare/pointer"
+	"github.com/ztrue/tracerr"
 	"gorm.io/gorm"
 )
 
@@ -31,31 +32,20 @@ func NewUserHandler(apiContext *dto.ContextState, dirtyservice service.DirtyData
 }
 
 func (handler *UserHandler) Routers(srv *fuego.Server) error {
-	fuego.GetStd(srv, "/users", handler.ListUsers)
-	fuego.GetStd(srv, "/useradmin", handler.GetAdminUser)
-	fuego.PutStd(srv, "/useradmin", handler.UpdateAdminUser)
-	fuego.PostStd(srv, "/user", handler.CreateUser)
-	fuego.PutStd(srv, "/user/{username}", handler.UpdateUser)
-	fuego.DeleteStd(srv, "/user/{username}", handler.DeleteUser)
+	fuego.Get(srv, "/users", handler.ListUsers, option.Description("List all configured users"), option.Tags("user"))
+	fuego.Get(srv, "/useradmin", handler.GetAdminUser, option.Description("Get the admin user"), option.Tags("user"))
+	fuego.Put(srv, "/useradmin", handler.UpdateAdminUser, option.Description("Update admin user"), option.Tags("user"))
+	fuego.Post(srv, "/user", handler.CreateUser, option.Description("Create a user"), option.Tags("user"))
+	fuego.Put(srv, "/user/{username}", handler.UpdateUser, option.Description("Update a user"), option.Tags("user"))
+	fuego.Delete(srv, "/user/{username}", handler.DeleteUser, option.Description("Delete a user"), option.Tags("user"))
 	return nil
 }
 
-// ListUsers godoc
-//
-//	@Summary		List all configured users
-//	@Description	List all configured users
-//	@Tags			user
-//	@Produce		json
-//	@Success		200	{object}	[]dto.User
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/users [get]
-func (handler *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) ListUsers(c fuego.ContextNoBody) ([]dto.User, error) {
 	var dbusers dbom.SambaUsers
 	err := dbusers.Load()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	var users []dto.User
 	var conv converter.DtoToDbomConverterImpl
@@ -63,160 +53,69 @@ func (handler *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		var user dto.User
 		err = conv.SambaUserToUser(dbuser, &user)
 		if err != nil {
-			HttpJSONReponse(w, err, nil)
-			return
+			return nil, tracerr.Wrap(err)
 		}
 		if user.IsAdmin == nil {
 			user.IsAdmin = pointer.Bool(false)
 		}
 		users = append(users, user)
 	}
-	//err = mapper.Map(context.Background(), &users, dbusers)
-	//if err != nil {
-	//	HttpJSONReponse(w, err, nil)
-	//	return
-	//}
-	HttpJSONReponse(w, users, &Options{
-		Code: http.StatusOK,
-	})
+	return users, nil
 }
 
-// GetAdminUser godoc
-//
-//	@Summary		Get the admin user
-//	@Description	get the admin user
-//	@Tags			user
-//	@Produce		json
-//	@Success		200	{object}	dto.User
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/useradmin [get]
-func (handler *UserHandler) GetAdminUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
+func (handler *UserHandler) GetAdminUser(c fuego.ContextNoBody) (*dto.User, error) {
 	var adminUser dto.User
 	dbUser := dbom.SambaUser{
 		IsAdmin: true,
 	}
 	err := dbUser.GetAdmin()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.SambaUserToUser(dbUser, &adminUser)
-	//	err = mapper.Map(context.Background(), &adminUser, dbUser)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
-	HttpJSONReponse(w, adminUser, &Options{
-		Code: http.StatusOK,
-	})
+	return &adminUser, nil
 }
 
-// GetUser godoc
-//
-//	@Summary		Get a user
-//	@Description	get user by Name
-//	@Tags			user
-//
-//
-//	@Produce		json
-//	@Param			username	path		string	true	"Name"
-//	@Success		200			{object}	dto.User
-//	@Failure		405			{object}	dto.ErrorInfo
-//	@Failure		500			{object}	dto.ErrorInfo
-//	@Router			/user/{username} [get]
-/*
-func GetUser(w http.ResponseWriter, r *http.Request) {
-	username := mux.Vars(r)["username"]
-	w.Header().Set("Content-Type", "application/json")
-
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
-
-	user, index := context_state.Users.Get(username)
-	if index == -1 {
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-		user.ToResponse(http.StatusOK, w)
-	}
-
-}
-*/
-
-// CreateUser godoc
-//
-//	@Summary		Create a user
-//	@Description	create e new user
-//	@Tags			user
-//	@Accept			json
-//	@Produce		json
-//	@Param			user	body		dto.User	true	"Create model"
-//	@Success		201		{object}	dto.User
-//	@Failure		400		{object}	dto.ErrorInfo
-//	@Failure		405		{object}	dto.ErrorInfo
-//	@Failure		409		{object}	dto.ErrorInfo
-//	@Failure		500		{object}	dto.ErrorInfo
-//	@Router			/user [post]
-func (handler *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-
-	var user dto.User
-	err := HttpJSONRequest(&user, w, r)
+func (handler *UserHandler) CreateUser(c fuego.ContextWithBody[dto.User]) (*dto.User, error) {
+	user, err := c.Body()
 	if err != nil {
-		return
+		return nil, tracerr.Wrap(err)
 	}
+
 	var dbUser dbom.SambaUser
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.UserToSambaUser(user, &dbUser)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	err = dbUser.Create()
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			HttpJSONReponse(w, errors.New("User already exists"), &Options{
-				Code: http.StatusConflict,
-			})
+			return nil, fuego.ConflictError{
+				Title: "User already exists",
+			}
 		} else {
-			HttpJSONReponse(w, err, nil)
+			return nil, tracerr.Wrap(err)
 		}
-		return
 	}
 	handler.dirtyservice.SetDirtyUsers()
 	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
-	HttpJSONReponse(w, user, &Options{
-		Code: http.StatusCreated,
-	})
+	c.SetStatus(http.StatusCreated)
+	return &user, nil
 }
 
-// UpdateUser godoc
-//
-//	@Summary		Update a user
-//	@Description	update e user
-//	@Tags			user
-//	@Accept			json
-//	@Produce		json
-//	@Param			username	path		string		true	"Name"
-//	@Param			user		body		dto.User	true	"Update model"
-//	@Success		200			{object}	dto.User
-//	@Failure		400			{object}	dto.ErrorInfo
-//	@Failure		405			{object}	dto.ErrorInfo
-//	@Failure		404			{object}	dto.ErrorInfo
-//	@Failure		500			{object}	dto.ErrorInfo
-//	@Router			/user/{username} [put]
-func (handler *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	username := mux.Vars(r)["username"]
-
-	var user dto.User
-	err := HttpJSONRequest(&user, w, r)
+func (handler *UserHandler) UpdateUser(c fuego.ContextWithBody[dto.User]) (*dto.User, error) {
+	username := c.PathParam("username")
+	user, err := c.Body()
 	if err != nil {
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	dbUser := dbom.SambaUser{
@@ -225,104 +124,66 @@ func (handler *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	err = dbUser.Get()
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		w.WriteHeader(http.StatusNotFound)
-		return
+		return nil, fuego.NotFoundError{
+			Title: "User not found",
+		}
 	} else if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.UserToSambaUser(user, &dbUser)
-	//	err = mapper.Map(context.Background(), &dbUser, &user)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	err = dbUser.Save()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
-	//context_state := (&dto.Status{}).FromContext(r.Context())
-	//context_state := StateFromContext(r.Context())
 	handler.dirtyservice.SetDirtyUsers()
-	HttpJSONReponse(w, user, nil)
+
+	return &user, nil
 }
 
-// UpdateAdminUser godoc
-//
-//	@Summary		Update admin user
-//	@Description	update admin user
-//	@Tags			user
-//	@Accept			json
-//	@Produce		json
-//	@Param			user	body		dto.User	true	"Update model"
-//	@Success		200		{object}	dto.User
-//	@Failure		400		{object}	dto.ErrorInfo
-//	@Failure		405		{object}	dto.ErrorInfo
-//	@Failure		404		{object}	dto.ErrorInfo
-//	@Failure		500		{object}	dto.ErrorInfo
-//	@Router			/useradmin [put]
-func (handler *UserHandler) UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
+func (handler *UserHandler) UpdateAdminUser(c fuego.ContextWithBody[dto.User]) (*dto.User, error) {
 
-	var user dto.User
-	err := HttpJSONRequest(&user, w, r)
+	user, err := c.Body()
 	if err != nil {
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	dbUser := dbom.SambaUser{
 		IsAdmin: true,
 	}
 	err = dbUser.GetAdmin()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.UserToSambaUser(user, &dbUser)
-	//	err = mapper.Map(context.Background(), &dbUser, &user)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	err = dbUser.Save()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
-	//context_state := (&dto.Status{}).FromContext(r.Context())
-	//context_state := StateFromContext(r.Context())
 	handler.dirtyservice.SetDirtyUsers()
-	HttpJSONReponse(w, user, nil)
+	return &user, nil
 }
 
-// DeleteUser godoc
-//
-//	@Summary		Delete a user
-//	@Description	delete a user
-//	@Tags			user
-//	@Param			username	path	string	true	"Name"
-//	@Success		204
-//	@Failure		400	{object}	dto.ErrorInfo
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Failure		404	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/user/{username} [delete]
-func (handler *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	username := mux.Vars(r)["username"]
+func (handler *UserHandler) DeleteUser(c fuego.ContextNoBody) (bool, error) {
+
+	username := c.PathParam("username")
 
 	dbUser := dbom.SambaUser{
 		Username: username,
@@ -330,20 +191,17 @@ func (handler *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 	err := dbUser.Get()
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		HttpJSONReponse(w, nil, &Options{
-			Code: http.StatusNotFound,
-		})
-		return
+		return false, fuego.NotFoundError{
+			Title: "User not found",
+		}
 	} else if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return false, tracerr.Wrap(err)
 	}
 	err = dbUser.Delete()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return false, tracerr.Wrap(err)
 	}
 
 	handler.dirtyservice.SetDirtyUsers()
-	HttpJSONReponse(w, nil, nil)
+	return true, nil
 }

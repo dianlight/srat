@@ -6,6 +6,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"github.com/go-fuego/fuego"
+	"github.com/go-fuego/fuego/option"
 )
 
 type BrokerHandler struct {
@@ -28,33 +29,21 @@ func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker *Brok
 }
 
 func (handler *BrokerHandler) Routers(srv *fuego.Server) error {
-	fuego.GetStd(srv, "/sse", handler.Stream)
-	fuego.GetStd(srv, "/sse/events", handler.EventTypeList)
+	fuego.Get(srv, "/sse", handler.Stream, option.Description("Open a SSE stream"), option.Tags("system"))
+	//fuego.Get(srv, "/sse/events", handler.EventTypeList,option.Description("Return a list of available WSChannel events"),option.Tags("system"))
 	return nil
 }
 
-// SSE Stream godoc
-//
-// @Summary		Open a SSE stream
-// @Description	Open a SSE stream
-//
-//	@Accept			json
-//	@Produce		text/event-stream
-//
-// @Tags			system
-// @Success		200	{object} dto.EventMessageEnvelope
-// @Failure		500	{object}	dto.ErrorInfo
-// @Router			/sse [get]
-func (handler *BrokerHandler) Stream(w http.ResponseWriter, r *http.Request) {
-	err := handler.broadcaster.ProcessHttpChannel(w, r)
+func (handler *BrokerHandler) Stream(c fuego.ContextNoBody) (*dto.EventMessageEnvelope, error) {
+	err := handler.broadcaster.ProcessHttpChannel(c.Response(), c.Request())
 	if err != nil {
-		HttpJSONReponse(w, err, &Options{
-			Code: http.StatusInternalServerError,
-		})
-		return
+		return nil, err
+	} else {
+		return nil, nil
 	}
 }
 
+/*
 // EventTypeList godoc
 //
 //	@Summary		EventTypeList
@@ -64,6 +53,7 @@ func (handler *BrokerHandler) Stream(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	[]dto.EventType
 //	@Failure		500	{object}	string
 //	@Router			/sse/events [get]
-func (broker *BrokerHandler) EventTypeList(w http.ResponseWriter, rq *http.Request) {
+func (broker *BrokerHandler) EventTypeList(c fuego.ContextNoBody) ([]dto.EventType, error) {
 	HttpJSONReponse(w, dto.EventTypes, nil)
 }
+*/

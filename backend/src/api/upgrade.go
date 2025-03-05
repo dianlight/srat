@@ -15,7 +15,9 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/utility"
 	"github.com/go-fuego/fuego"
+	"github.com/go-fuego/fuego/option"
 	"github.com/google/go-github/v69/github"
+	"github.com/ztrue/tracerr"
 )
 
 type UpgradeHanler struct {
@@ -39,40 +41,31 @@ func NewUpgradeHanler(ctx context.Context, apictx *dto.ContextState, upgader ser
 }
 
 func (p *UpgradeHanler) Routers(srv *fuego.Server) error {
-	fuego.PutStd(srv, "/update", p.UpdateHandler)
+	fuego.Put(srv, "/update", p.UpdateHandler, option.Description("Start the update process"), option.Tags("system"))
 	return nil
 }
 
-// UpdateHandler godoc
-//
-//	@Summary		UpdateHandler
-//	@Description	Start the update process
-//	@Tags			system
-//	@Produce		json
-//	@Success		200 {object}	dto.UpdateProgress
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Router			/update [put]
-func (handler *UpgradeHanler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
+func (handler *UpgradeHanler) UpdateHandler(c fuego.ContextNoBody) (*dto.UpdateProgress, error) {
 
 	lastReleaseData := handler.upgader.GetLastReleaseData()
 	log.Printf("Updating to version %s", lastReleaseData.LastRelease)
 
 	var gh = github.NewClient(nil)
 	if lastReleaseData.ArchAsset.Size == 0 {
-		HttpJSONReponse(w, fmt.Errorf("No asset found for architecture %s", runtime.GOARCH), nil)
-		return
+		return nil, fuego.NotFoundError{
+			Title:  "No asset found",
+			Detail: fmt.Sprintf("No asset found for architecture %s", runtime.GOARCH),
+		}
 	}
 
 	rc, _, err := gh.Repositories.DownloadReleaseAsset(context.Background(), "dianlight", "srat", lastReleaseData.ArchAsset.ID, http.DefaultClient)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	//defer rc.Close()
 	tmpFile, err := os.OpenFile(handler.apictx.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	//defer tmpFile.Close()
 	handler.pw = utility.NewProgressWriter(tmpFile, lastReleaseData.ArchAsset.Size)
@@ -97,6 +90,11 @@ func (handler *UpgradeHanler) UpdateHandler(w http.ResponseWriter, r *http.Reque
 			time.Sleep(500 * time.Millisecond)
 		}
 	}()
+
+	return &handler.progress, nil
+}
+
+func (handler *UpgradeHanler) ProgressHandler(w http.ResponseWriter, r *http.Request) {
 
 	HttpJSONReponse(w, handler.progress, nil)
 }

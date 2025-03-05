@@ -1,6 +1,19 @@
 {
 	"components": {
 		"schemas": {
+			"EventMessageEnvelope": {
+				"description": "EventMessageEnvelope schema",
+				"properties": {
+					"data": {},
+					"event": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
 			"FilesystemType": {
 				"description": "FilesystemType schema",
 				"type": "string"
@@ -358,6 +371,44 @@
 				"description": "SmbConf schema",
 				"properties": {
 					"data": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"UpdateProgress": {
+				"description": "UpdateProgress schema",
+				"properties": {
+					"last_release": {
+						"nullable": true,
+						"type": "string"
+					},
+					"update_error": {
+						"nullable": true,
+						"type": "string"
+					},
+					"update_status": {
+						"maximum": 127,
+						"minimum": -128,
+						"type": "integer"
+					}
+				},
+				"type": "object"
+			},
+			"User": {
+				"description": "User schema",
+				"properties": {
+					"is_admin": {
+						"description": "bool schema",
+						"nullable": true,
+						"type": "boolean"
+					},
+					"password": {
+						"nullable": true,
+						"type": "string"
+					},
+					"username": {
+						"nullable": true,
 						"type": "string"
 					}
 				},
@@ -1432,19 +1483,28 @@
 		},
 		"/sse": {
 			"get": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*BrokerHandler).Stream`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*BrokerHandler).Stream`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nOpen a SSE stream",
 				"operationId": "GET_/sse",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
 				"responses": {
 					"200": {
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/EventMessageEnvelope"
 								}
 							},
 							"application/xml": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/EventMessageEnvelope"
 								}
 							}
 						},
@@ -1484,81 +1544,36 @@
 						"description": ""
 					}
 				},
-				"summary": "stream"
-			}
-		},
-		"/sse/events": {
-			"get": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*BrokerHandler).EventTypeList`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
-				"operationId": "GET_/sse/events",
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
-								}
-							},
-							"application/xml": {
-								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
-								}
-							}
-						},
-						"description": "OK"
-					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							},
-							"application/xml": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							}
-						},
-						"description": "Bad Request _(validation or deserialization error)_"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							},
-							"application/xml": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							}
-						},
-						"description": "Internal Server Error _(panics)_"
-					},
-					"default": {
-						"description": ""
-					}
-				},
-				"summary": "event type list"
+				"summary": "stream",
+				"tags": [
+					"system"
+				]
 			}
 		},
 		"/update": {
 			"put": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UpgradeHanler).UpdateHandler`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UpgradeHanler).UpdateHandler`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nStart the update process",
 				"operationId": "PUT_/update",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
 				"responses": {
 					"200": {
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/UpdateProgress"
 								}
 							},
 							"application/xml": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/UpdateProgress"
 								}
 							}
 						},
@@ -1598,24 +1613,47 @@
 						"description": ""
 					}
 				},
-				"summary": "update handler"
+				"summary": "update handler",
+				"tags": [
+					"system"
+				]
 			}
 		},
 		"/user": {
 			"post": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).CreateUser`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).CreateUser`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nCreate a user",
 				"operationId": "POST_/user",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"*/*": {
+							"schema": {
+								"$ref": "#/components/schemas/User"
+							}
+						}
+					},
+					"description": "Request body for dto.User",
+					"required": true
+				},
 				"responses": {
 					"200": {
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/User"
 								}
 							},
 							"application/xml": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/User"
 								}
 							}
 						},
@@ -1655,79 +1693,24 @@
 						"description": ""
 					}
 				},
-				"summary": "create user"
+				"summary": "create user",
+				"tags": [
+					"user"
+				]
 			}
 		},
 		"/user/{username}": {
 			"delete": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).DeleteUser`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).DeleteUser`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nDelete a user",
 				"operationId": "DELETE_/user/:username",
 				"parameters": [
 					{
-						"in": "path",
-						"name": "username",
-						"required": true,
+						"in": "header",
+						"name": "Accept",
 						"schema": {
 							"type": "string"
 						}
-					}
-				],
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
-								}
-							},
-							"application/xml": {
-								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
-								}
-							}
-						},
-						"description": "OK"
 					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							},
-							"application/xml": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							}
-						},
-						"description": "Bad Request _(validation or deserialization error)_"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							},
-							"application/xml": {
-								"schema": {
-									"$ref": "#/components/schemas/HTTPError"
-								}
-							}
-						},
-						"description": "Internal Server Error _(panics)_"
-					},
-					"default": {
-						"description": ""
-					}
-				},
-				"summary": "delete user"
-			},
-			"put": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).UpdateUser`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
-				"operationId": "PUT_/user/:username",
-				"parameters": [
 					{
 						"in": "path",
 						"name": "username",
@@ -1742,12 +1725,12 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/bool"
 								}
 							},
 							"application/xml": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/bool"
 								}
 							}
 						},
@@ -1787,24 +1770,122 @@
 						"description": ""
 					}
 				},
-				"summary": "update user"
+				"summary": "delete user",
+				"tags": [
+					"user"
+				]
+			},
+			"put": {
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).UpdateUser`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nUpdate a user",
+				"operationId": "PUT_/user/:username",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "username",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"*/*": {
+							"schema": {
+								"$ref": "#/components/schemas/User"
+							}
+						}
+					},
+					"description": "Request body for dto.User",
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/User"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/User"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Bad Request _(validation or deserialization error)_"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Internal Server Error _(panics)_"
+					},
+					"default": {
+						"description": ""
+					}
+				},
+				"summary": "update user",
+				"tags": [
+					"user"
+				]
 			}
 		},
 		"/useradmin": {
 			"get": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).GetAdminUser`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).GetAdminUser`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nGet the admin user",
 				"operationId": "GET_/useradmin",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
 				"responses": {
 					"200": {
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/User"
 								}
 							},
 							"application/xml": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/User"
 								}
 							}
 						},
@@ -1844,22 +1925,45 @@
 						"description": ""
 					}
 				},
-				"summary": "get admin user"
+				"summary": "get admin user",
+				"tags": [
+					"user"
+				]
 			},
 			"put": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).UpdateAdminUser`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).UpdateAdminUser`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nUpdate admin user",
 				"operationId": "PUT_/useradmin",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"*/*": {
+							"schema": {
+								"$ref": "#/components/schemas/User"
+							}
+						}
+					},
+					"description": "Request body for dto.User",
+					"required": true
+				},
 				"responses": {
 					"200": {
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/User"
 								}
 							},
 							"application/xml": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"$ref": "#/components/schemas/User"
 								}
 							}
 						},
@@ -1899,24 +2003,42 @@
 						"description": ""
 					}
 				},
-				"summary": "update admin user"
+				"summary": "update admin user",
+				"tags": [
+					"user"
+				]
 			}
 		},
 		"/users": {
 			"get": {
-				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).ListUsers`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"description": "#### Controller: \n\n`github.com/dianlight/srat/api.(*UserHandler).ListUsers`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\nList all configured users",
 				"operationId": "GET_/users",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
 				"responses": {
 					"200": {
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"items": {
+										"$ref": "#/components/schemas/User"
+									},
+									"type": "array"
 								}
 							},
 							"application/xml": {
 								"schema": {
-									"$ref": "#/components/schemas/unknown-interface"
+									"items": {
+										"$ref": "#/components/schemas/User"
+									},
+									"type": "array"
 								}
 							}
 						},
@@ -1956,7 +2078,10 @@
 						"description": ""
 					}
 				},
-				"summary": "list users"
+				"summary": "list users",
+				"tags": [
+					"user"
+				]
 			}
 		},
 		"/volume/{id}/mount": {
@@ -2172,6 +2297,9 @@
 		},
 		{
 			"name": "system"
+		},
+		{
+			"name": "user"
 		}
 	]
 }

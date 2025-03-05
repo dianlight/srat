@@ -1,10 +1,6 @@
 package api_test
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/api"
@@ -12,7 +8,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/gorilla/mux"
+	"github.com/go-fuego/fuego"
 	"github.com/stretchr/testify/suite"
 	"github.com/thoas/go-funk"
 	"github.com/xorcare/pointer"
@@ -35,26 +31,11 @@ func TestUserHandlerSuite(t *testing.T) {
 }
 
 func (suite *UserHandlerSuite) TestListUsersHandler() {
-	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "GET", "/users", nil)
+	userhandler := api.NewUserHandler(&apiContextState, suite.dirtyservice)
+	ctx := fuego.NewMockContextNoBody()
+	users, err := userhandler.ListUsers(ctx)
 	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(api.ListUsers)
-
-	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
-	handler.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	suite.Equal(http.StatusOK, rr.Code)
-
-	var users []dto.User
-	jsonError := json.Unmarshal(rr.Body.Bytes(), &users)
-	suite.Require().NoError(jsonError)
+	suite.NotEmpty(users)
 
 	// Check the response body is what we expect.
 	var configs config.Config
@@ -77,62 +58,32 @@ func (suite *UserHandlerSuite) TestListUsersHandler() {
 	}
 }
 
-func (suite *UserHandlerSuite) TestGetUserHandler() {
-	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
-	req, err := http.NewRequestWithContext(testContext, "GET", "/useradmin", nil)
+func (suite *UserHandlerSuite) TestGetUserAdminHandler() {
+	userhandler := api.NewUserHandler(&apiContextState, suite.dirtyservice)
+	ctx := fuego.NewMockContextNoBody()
+
+	ret, err := userhandler.GetAdminUser(ctx)
 	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/useradmin", api.GetAdminUser).Methods(http.MethodGet)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	suite.Equal(http.StatusOK, rr.Code)
-
-	ret := &dto.User{}
-	jsonError := json.Unmarshal(rr.Body.Bytes(), &ret)
-	suite.Require().NoError(jsonError)
 	suite.NotEmpty(ret)
 	suite.Equal("dianlight", *ret.Username)
 	suite.True(*ret.IsAdmin)
 }
 
 func (suite *UserHandlerSuite) TestCreateUserHandler() {
-	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
+	userhandler := api.NewUserHandler(&apiContextState, suite.dirtyservice)
 
 	user := dto.User{
 		Username: pointer.String("PIPPO"),
 		Password: pointer.String("PLUTO"),
 	}
+	ctx := fuego.NewMockContext(user)
 
-	jsonBody, jsonError := json.Marshal(user)
-	suite.Require().NoError(jsonError)
-
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "PUT", "/user/PIPPO", strings.NewReader(string(jsonBody)))
+	result, err := userhandler.CreateUser(ctx)
 	suite.Require().NoError(err)
+	suite.NotEmpty(result)
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/user/{username}", api.CreateUser).Methods(http.MethodPut)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	suite.Equal(http.StatusCreated, rr.Code)
-
-	// Check the response body is what we expect.
 	user.IsAdmin = pointer.Bool(false)
-	expected, jsonError := json.Marshal(user)
-	suite.Require().NoError(jsonError)
-	suite.Equal(string(expected), rr.Body.String())
 
-	//context_state := (&dto.ContextState{}).FromContext(testContext)
 	dbuser := dbom.SambaUser{
 		Username: "PIPPO",
 	}
@@ -143,110 +94,60 @@ func (suite *UserHandlerSuite) TestCreateUserHandler() {
 }
 
 func (suite *UserHandlerSuite) TestCreateUserDuplicateHandler() {
-	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
-	user := config.User{
-		Username: "backupuser",
-		Password: "\u003cbackupuser secret password\u003e",
+	userhandler := api.NewUserHandler(&apiContextState, suite.dirtyservice)
+	user := dto.User{
+		Username: pointer.String("backupuser"),
+		Password: pointer.String("\u003cbackupuser secret password\u003e"),
 	}
+	ctx := fuego.NewMockContext(user)
 
-	jsonBody, jsonError := json.Marshal(user)
-	suite.Require().NoError(jsonError)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "PUT", "/user/backupuser", strings.NewReader(string(jsonBody)))
-	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/user/{username}", api.CreateUser).Methods(http.MethodPut)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	suite.Equal(http.StatusConflict, rr.Code)
-
-	// Check the response body is what we expect.
-	suite.Contains(rr.Body.String(), "User already exists")
+	result, err := userhandler.CreateUser(ctx)
+	suite.Require().Error(err)
+	suite.Nil(result)
+	suite.ErrorAs(err, &fuego.ConflictError{})
 }
 
 func (suite *UserHandlerSuite) TestUpdateUserHandler() {
-	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
+	userhandler := api.NewUserHandler(&apiContextState, suite.dirtyservice)
 	user := dto.User{
 		Password: pointer.String("/pippo"),
 	}
-
-	//context_state := (&dto.ContextState{}).FromContext(testContext)
+	ctx := fuego.NewMockContext(user)
 	username := "utente2"
+	ctx.PathParams = map[string]string{
+		"username": username,
+	}
 
-	jsonBody, jsonError := json.Marshal(user)
-	suite.Require().NoError(jsonError)
-
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "PATCH", "/user/"+username, strings.NewReader(string(jsonBody)))
+	updated, err := userhandler.UpdateUser(ctx)
 	suite.Require().NoError(err)
+	suite.NotEmpty(updated)
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/user/{username}", api.UpdateUser).Methods(http.MethodPatch, http.MethodPost)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	suite.Equal(http.StatusOK, rr.Code)
-
-	// Check the response body is what we expect.
-	updated := dto.User{}
-	jsonError = json.Unmarshal(rr.Body.Bytes(), &updated)
-	suite.Require().NoError(jsonError)
 	suite.Equal(username, *updated.Username)
 	suite.Equal(*user.Password, *updated.Password)
 }
 
 func (suite *UserHandlerSuite) TestUpdateAdminUserHandler() {
-	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
+	userhandler := api.NewUserHandler(&apiContextState, suite.dirtyservice)
 	user := dto.User{
 		Password: pointer.String("/pluto||admin"),
 	}
-
-	jsonBody, jsonError := json.Marshal(user)
-	suite.Require().NoError(jsonError)
-	req, err := http.NewRequestWithContext(testContext, "PATCH", "/adminUser", strings.NewReader(string(jsonBody)))
+	ctx := fuego.NewMockContext(user)
+	ruser, err := userhandler.UpdateAdminUser(ctx)
 	suite.Require().NoError(err)
+	suite.NotEmpty(ruser)
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/adminUser", api.UpdateAdminUser).Methods(http.MethodPatch, http.MethodPost)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	suite.Equal(http.StatusOK, rr.Code)
-
-	// Check the response body is what we expect.
-	user.Username = pointer.String("dianlight")
-	user.IsAdmin = pointer.Bool(true)
-	expected, jsonError := json.Marshal(user)
-	suite.Require().NoError(jsonError)
-	suite.Equal(string(expected), rr.Body.String())
+	suite.Equal("dianlight", *ruser.Username)
+	suite.Equal(*user.Password, *ruser.Password)
+	suite.True(*ruser.IsAdmin)
 }
 
 func (suite *UserHandlerSuite) TestDeleteuserHandler() {
-	api := api.NewUserHandler(&apiContextState, suite.dirtyservice)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "DELETE", "/user/utente1", nil)
+	userhandler := api.NewUserHandler(&apiContextState, suite.dirtyservice)
+	ctx := fuego.NewMockContextNoBody()
+	ctx.PathParams = map[string]string{
+		"username": "utente1",
+	}
+	result, err := userhandler.DeleteUser(ctx)
 	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/user/{username}", api.DeleteUser).Methods(http.MethodDelete)
-	router.ServeHTTP(rr, req)
-
-	suite.Equal(http.StatusNoContent, rr.Code)
+	suite.True(result)
 }
