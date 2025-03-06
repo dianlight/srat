@@ -13,10 +13,10 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/pilebones/go-udev v0.9.0
-	github.com/shirou/gopsutil/v4 v4.25.1
+	github.com/shirou/gopsutil/v4 v4.25.2
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.0
-	golang.org/x/sys v0.30.0
+	golang.org/x/sys v0.31.0
 )
 
 require (
@@ -74,20 +74,20 @@ require (
 require (
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gobeam/stringy v0.0.7
-	github.com/gofri/go-github-ratelimit v1.1.0
+	github.com/gofri/go-github-ratelimit v1.1.1
 	github.com/gorilla/handlers v1.5.2
 	github.com/itchyny/gojq v0.12.17
 	github.com/jaypipes/ghw v0.14.0
 	github.com/lmittmann/tint v1.0.7
 	github.com/rs/cors v1.11.1
-	github.com/snapcore/snapd v0.0.0-20250226073837-66700990d18d
+	github.com/snapcore/snapd v0.0.0-20250306033031-f27389f13d46
 	github.com/thoas/go-funk v0.9.3
 	github.com/tj/go-spin v1.1.0
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
 	github.com/ztrue/tracerr v0.4.0
 	go.uber.org/fx v1.23.0
-	golang.org/x/time v0.10.0
+	golang.org/x/time v0.11.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/gorm v1.25.12
 )
