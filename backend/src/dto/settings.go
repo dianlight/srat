@@ -11,5 +11,5 @@ type Settings struct {
 	BindAllInterfaces bool          `json:"bind_all_interfaces,omitempty"`
 	LogLevel          string        `json:"log_level,omitempty"`
 	MultiChannel      bool          `json:"multi_channel,omitempty"`
-	UpdateChannel     UpdateChannel `json:"update_channel,omitempty"`
+	UpdateChannel     UpdateChannel `json:"update_channel,omitempty" enum:"stable,prerelease,none"`
 }

@@ -1,13 +1,14 @@
 package api
 
 import (
-	"net/http"
+	"context"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
+	"github.com/ztrue/tracerr"
 )
 
 type SettingsHanler struct {
@@ -22,12 +23,26 @@ func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyD
 	return p
 }
 
-func (broker *SettingsHanler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/settings", Method: "GET", Handler: broker.GetSettings},
-		{Pattern: "/settings", Method: "PUT", Handler: broker.UpdateSettings},
-		{Pattern: "/settings", Method: "PATCH", Handler: broker.UpdateSettings},
-	}
+/*
+func (self *SettingsHanler) HumaRoute(api *huma.API) error {
+	huma.Get(*api, "/settings", self.GetSettings)
+	huma.Put(*api, "/settings", self.UpdateSettings)
+	//	huma.Patch(*api, "/settings", self.UpdateSettings)
+	return nil
+}
+*/
+
+func (self *SettingsHanler) RegisterSettings(api huma.API) {
+	//slog.Debug("Autoregister Settings")
+	huma.Get(api, "/settings", self.GetSettings)
+	huma.Put(api, "/settings", self.UpdateSettings)
+	/*
+		huma.Register(api, huma.Operation{
+			OperationID: "ListItems",
+			Method: http.MethodGet,
+			Path: "/items",
+		}, s.ListItems)
+	*/
 }
 
 // UpdateSettings godoc
@@ -43,40 +58,35 @@ func (broker *SettingsHanler) Patterns() []server.RouteDetail {
 //	@Failure		500		{object}	dto.ErrorInfo
 //	@Router			/settings [put]
 //	@Router			/settings [patch]
-func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
-	var config dto.Settings
-	err := HttpJSONRequest(&config, w, r)
-	if err != nil {
-		return
-	}
+func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
+	//Name string `path:"name" maxLength:"30" example:"world" doc:"Name to greet"`
+	Body dto.Settings
+}) (*struct{ Body dto.Settings }, error) {
+	config := input.Body
 
 	var dbconfig dbom.Properties
-	err = dbconfig.Load()
+	err := dbconfig.Load()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 
 	err = conv.SettingsToProperties(config, &dbconfig)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	err = dbconfig.Save()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 
 	err = conv.PropertiesToSettings(dbconfig, &config)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	self.dirtyService.SetDirtySettings()
-	HttpJSONReponse(w, config, nil)
+	return &struct{ Body dto.Settings }{Body: config}, nil
 }
 
 // GetSettings godoc
@@ -90,19 +100,18 @@ func (self *SettingsHanler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 //	@Failure		400	{object}	dto.ErrorInfo
 //	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/settings [get]
-func (self *SettingsHanler) GetSettings(w http.ResponseWriter, r *http.Request) {
+func (self *SettingsHanler) GetSettings(ctx context.Context, input *struct{}) (*struct{ Body dto.Settings }, error) {
 	var dbsettings dbom.Properties
 	var conv converter.DtoToDbomConverterImpl
 	err := dbsettings.Load()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
 	}
 	var settings dto.Settings
 	err = conv.PropertiesToSettings(dbsettings, &settings)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, tracerr.Wrap(err)
+
 	}
-	HttpJSONReponse(w, settings, nil)
+	return &struct{ Body dto.Settings }{Body: settings}, nil
 }

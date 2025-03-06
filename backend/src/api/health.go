@@ -29,7 +29,9 @@ type HealthHanler struct {
 	dirtyService service.DirtyDataServiceInterface
 }
 
-func NewHealthHandler(ctx context.Context, apictx *dto.ContextState,
+func NewHealthHandler(
+	ctx context.Context,
+	apictx *dto.ContextState,
 	broadcaster service.BroadcasterServiceInterface,
 	sambaService service.SambaServiceInterface,
 	dirtyService service.DirtyDataServiceInterface) *HealthHanler {

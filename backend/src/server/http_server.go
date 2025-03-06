@@ -97,31 +97,32 @@ func NewMuxRouter(routes []Route, hamode bool, static fs.FS) *mux.Router {
 	//})
 
 	slog.Info("Exposed static", "FS", static)
-
-	_, err := fs.ReadDir(static, "docs")
-	if err != nil {
-		slog.Warn("Docs directory not found:", "err", err)
-	} else {
-		router.PathPrefix("/docs").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
-	}
-
-	_, err = fs.ReadDir(static, "static")
-	if err != nil {
-		slog.Warn("Static directory not found:", "err", err)
-		router.PathPrefix("/").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
-	} else {
-		fsRoot, _ := fs.Sub(static, "static")
-		router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
-	}
-
-	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		template, err := route.GetPathTemplate()
+	/*
+			_, err := fs.ReadDir(static, "docs")
+			if err != nil {
+				slog.Warn("Docs directory not found:", "err", err)
+			} else {
+				router.PathPrefix("/docs").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
+			}
+		_, err := fs.ReadDir(static, "static")
 		if err != nil {
-			return tracerr.Wrap(err)
+			slog.Warn("Static directory not found:", "err", err)
+			router.PathPrefix("/").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
+		} else {
+			fsRoot, _ := fs.Sub(static, "static")
+			router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
 		}
-		slog.Debug("Route:", "template", template)
-		return nil
-	})
+	*/
+	/*
+		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+			template, err := route.GetPathTemplate()
+			if err != nil {
+				return tracerr.Wrap(err)
+			}
+			slog.Debug("Route:", "template", template)
+			return nil
+		})
+	*/
 
 	return router
 }

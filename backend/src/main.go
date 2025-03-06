@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/mattn/go-isatty"
 	"github.com/ztrue/tracerr"
@@ -232,7 +234,7 @@ func prog(state overseer.State) {
 			server.AsRoute(api.NewHealthHandler),
 			server.AsRoute(api.NewShareHandler),
 			server.AsRoute(api.NewVolumeHandler),
-			server.AsRoute(api.NewSettingsHanler),
+			server.AsHumaRoute(api.NewSettingsHanler),
 			server.AsRoute(api.NewUserHandler),
 			server.AsRoute(api.NewSambaHanler),
 			server.AsRoute(api.NewUpgradeHanler),
@@ -242,6 +244,7 @@ func prog(state overseer.State) {
 				fx.ParamTags(`group:"routes"`, `name:"ha_mode"`, `name:"static_fs"`),
 			),
 			server.NewHTTPServer,
+			server.NewHumaAPI,
 		),
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
@@ -269,7 +272,35 @@ func prog(state overseer.State) {
 				}
 			}
 		}),
-		fx.Invoke(func(*http.Server) {}),
+		fx.Invoke(func(_ *http.Server, api huma.API, router *mux.Router) {
+			router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+				template, err := route.GetPathTemplate()
+				if err != nil {
+					return tracerr.Wrap(err)
+				}
+				slog.Debug("Route:", "template", template)
+				return nil
+			})
+
+			// FIXME: Disattivare quando compilazione
+			yaml, err := api.OpenAPI().YAML()
+			if err != nil {
+				slog.Error("Unable to generate YAML", "err", err)
+			}
+			err = os.WriteFile("src/docs/openapi.yaml", yaml, 0644)
+			if err != nil {
+				slog.Error("Unable to write YAML", "err", err)
+			}
+			json, err := api.OpenAPI().MarshalJSON()
+			if err != nil {
+				slog.Error("Unable to generate JSON", "err", err)
+			}
+			err = os.WriteFile("src/docs/openapi.json", json, 0644)
+			if err != nil {
+				slog.Error("Unable to write JSON", "err", err)
+			}
+
+		}),
 	).Run()
 
 	dbom.CloseDB()
