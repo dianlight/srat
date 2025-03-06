@@ -16,6 +16,16 @@ type SettingsHanler struct {
 	dirtyService service.DirtyDataServiceInterface
 }
 
+// NewSettingsHanler creates a new instance of SettingsHanler with the provided
+// apiContext and dirtyService. It initializes the SettingsHanler with the given
+// context state and dirty data service interface.
+//
+// Parameters:
+//   - apiContext: A pointer to dto.ContextState which holds the context state for the API.
+//   - dirtyService: An implementation of the DirtyDataServiceInterface which handles dirty data operations.
+//
+// Returns:
+//   - A pointer to the newly created SettingsHanler instance.
 func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyDataServiceInterface) *SettingsHanler {
 	p := new(SettingsHanler)
 	p.apiContext = apiContext
@@ -23,41 +33,32 @@ func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyD
 	return p
 }
 
-/*
-func (self *SettingsHanler) HumaRoute(api *huma.API) error {
-	huma.Get(*api, "/settings", self.GetSettings)
-	huma.Put(*api, "/settings", self.UpdateSettings)
-	//	huma.Patch(*api, "/settings", self.UpdateSettings)
-	return nil
-}
-*/
-
+// RegisterSettings registers the settings-related endpoints with the provided API.
+// It sets up the following routes:
+// - GET /settings: Retrieves the current settings.
+// - PUT /settings: Updates the current settings.
+//
+// Parameters:
+// - api: The huma.API instance to register the routes with.
 func (self *SettingsHanler) RegisterSettings(api huma.API) {
 	//slog.Debug("Autoregister Settings")
-	huma.Get(api, "/settings", self.GetSettings)
-	huma.Put(api, "/settings", self.UpdateSettings)
-	/*
-		huma.Register(api, huma.Operation{
-			OperationID: "ListItems",
-			Method: http.MethodGet,
-			Path: "/items",
-		}, s.ListItems)
-	*/
+	huma.Get(api, "/settings", self.GetSettings, huma.OperationTags("system"))
+	huma.Put(api, "/settings", self.UpdateSettings, huma.OperationTags("system"))
 }
 
-// UpdateSettings godoc
+// UpdateSettings updates the settings based on the provided input.
+// It loads the current database configuration, converts the input settings
+// to the database properties format, saves the updated configuration, and
+// then converts the updated properties back to the settings format.
+// Finally, it marks the settings as dirty to indicate that they have been changed.
 //
-//	@Summary		Update the configuration for the global samba settings
-//	@Description	Update the configuration for the global samba settings
-//	@Tags			samba
-//	@Accept			json
-//	@Produce		json
-//	@Param			config	body		dto.Settings	true	"Update model"
-//	@Success		200		{object}	dto.Settings
-//	@Failure		400		{object}	dto.ErrorInfo
-//	@Failure		500		{object}	dto.ErrorInfo
-//	@Router			/settings [put]
-//	@Router			/settings [patch]
+// Parameters:
+//   - ctx: The context for the request.
+//   - input: A struct containing the settings to be updated.
+//
+// Returns:
+//   - A struct containing the updated settings.
+//   - An error if any step in the process fails.
 func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 	//Name string `path:"name" maxLength:"30" example:"world" doc:"Name to greet"`
 	Body dto.Settings
@@ -89,17 +90,16 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 	return &struct{ Body dto.Settings }{Body: config}, nil
 }
 
-// GetSettings godoc
+// GetSettings retrieves the application settings from the database,
+// converts them to the DTO format, and returns them.
 //
-//	@Summary		Get the configuration for the global samba settings
-//	@Description	Get the configuration for the global samba settings
-//	@Tags			samba
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	dto.Settings
-//	@Failure		400	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/settings [get]
+// Parameters:
+//   - ctx: The context for the request.
+//   - input: An empty struct as input.
+//
+// Returns:
+//   - A struct containing the settings in the Body field.
+//   - An error if there is any issue loading or converting the settings.
 func (self *SettingsHanler) GetSettings(ctx context.Context, input *struct{}) (*struct{ Body dto.Settings }, error) {
 	var dbsettings dbom.Properties
 	var conv converter.DtoToDbomConverterImpl
