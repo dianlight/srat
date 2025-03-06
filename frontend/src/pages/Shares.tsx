@@ -36,16 +36,14 @@ import BlockIcon from '@mui/icons-material/Block';
 import BackupIcon from '@mui/icons-material/Backup';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { useSSE } from "react-hooks-sse";
-import { useDispatch, useSelector } from "react-redux";
-import { useAppDispatch, useAppSelector, type RootState } from "../store/store";
-import { DtoEventType, DtoHAMountUsage, useGetSharesQuery, useGetSharesUsagesQuery, useGetUseradminQuery, useGetUsersQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
+import { useAppDispatch, useAppSelector } from "../store/store";
+import { useGetUsersQuery, usePutShareByShareNameMutation, type SharedResource } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { addMessage } from "../store/errorSlice";
 import { useVolume } from "../hooks/volumeHook";
 
-interface ShareEditProps extends DtoSharedResource {
+interface ShareEditProps extends SharedResource {
     org_name: string,
 }
 
@@ -55,7 +53,7 @@ export function Shares() {
     const dispatch = useAppDispatch();
     const errors = useAppSelector((state) => state.errors.messages);
     const { shares, isLoading, error } = useShare();
-    const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
+    const [selected, setSelected] = useState<[string, SharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
     const [showUserEdit, setShowUserEdit] = useState<boolean>(false);
@@ -63,7 +61,7 @@ export function Shares() {
     const confirm = useConfirm();
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
 
-    function onSubmitDisableShare(cdata?: string, props?: DtoSharedResource) {
+    function onSubmitDisableShare(cdata?: string, props?: SharedResource) {
         console.log("Disable", cdata, props);
         if (!cdata) return
         confirm({
@@ -72,7 +70,7 @@ export function Shares() {
         })
             .then(({ confirmed, reason }) => {
                 if (confirmed) {
-                    updateShare({ shareName: props?.name || "", dtoSharedResource: { ...props, disabled: true } }).unwrap()
+                    updateShare({ shareName: props?.name || "", sharedResource: { ...props, disabled: true } }).unwrap()
                         .then(() => {
                             //                        setErrorInfo('');
                         })
@@ -85,9 +83,9 @@ export function Shares() {
             })
     }
 
-    function onSubmitEnableShare(cdata?: string, props?: DtoSharedResource) {
+    function onSubmitEnableShare(cdata?: string, props?: SharedResource) {
         console.log("Enable", cdata, props);
-        updateShare({ shareName: props?.name || "", dtoSharedResource: { ...props, disabled: false } }).unwrap()
+        updateShare({ shareName: props?.name || "", sharedResource: { ...props, disabled: false } }).unwrap()
             .then(() => {
                 //            setErrorInfo('');
             })
@@ -107,7 +105,7 @@ export function Shares() {
         console.log(data);
         if (data.org_name !== "") {
 
-            updateShare({ shareName: data.org_name, dtoSharedResource: { ...data, disabled: false } }).unwrap()
+            updateShare({ shareName: data.org_name, sharedResource: { ...data, disabled: false } }).unwrap()
                 .then(() => {
                     //            setErrorInfo('');
                 })

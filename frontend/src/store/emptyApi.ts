@@ -11,6 +11,14 @@ console.log("* API URL", APIURL + "/");
 export const emptySplitApi = createApi({
     baseQuery: fetchBaseQuery({
         baseUrl: APIURL,
+        prepareHeaders: (headers, { getState }) => {
+            headers.set('Accept', 'application/json')
+            //const token = getState().auth.token
+            //if (token) {
+            //    headers.set('authorization', `Bearer ${token}`)
+            //}
+            return headers
+        }
         /*
           HA use auto-generated headers see https://developers.home-assistant.io/docs/add-ons/security#authenticating-a-user-when-using-ingress
           this can be implemented to allow UI outside HA with authentication

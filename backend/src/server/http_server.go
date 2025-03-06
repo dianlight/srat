@@ -24,20 +24,17 @@ func NewHTTPServer(lc fx.Lifecycle,
 	static fs.FS,
 	routes []Route,
 ) *fuego.Server {
-	/*handler := cors.New(
-		cors.Options{
-			//AllowedOrigins:   []string{"*"},
-			AllowOriginFunc:  func(origin string) bool { return true },
-			AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
-			AllowedHeaders:   []string{"*"},
-			AllowCredentials: true,
-			MaxAge:           300,
-		},
-	).Handler(mux)
-	*/
-	//loggedRouter := handlers.LoggingHandler(os.Stdout, handler)
 	srv := fuego.NewServer(
 		fuego.WithListener(state.Listener),
+		fuego.WithSecurity(map[string]*openapi3.SecuritySchemeRef{
+			"ApiKeyAuth": {
+				Value: openapi3.NewCSRFSecurityScheme().
+					WithName("X-Supervisor-Token").
+					WithDescription("HomeAssistant Supervisor Token").
+					WithIn("header"),
+			},
+		}),
+		fuego.WithDisallowUnknownFields(true),
 		fuego.WithLogHandler(logger.Handler()),
 		fuego.WithGlobalMiddlewares(cors.New(
 			cors.Options{
@@ -61,6 +58,14 @@ func NewHTTPServer(lc fx.Lifecycle,
 				//UIHandler:        DefaultOpenAPIHandler,   // Custom UI handler
 			}),
 		),
+		fuego.WithRouteOptions(
+			fuego.OptionRequestContentType("application/json"),
+			fuego.OptionSecurity(openapi3.SecurityRequirement{
+				"ApiKeyAuth": []string{},
+			}),
+			//fuego.OptionHeader("Accept", "application/json", param.Default("application/json")),
+		//	fuego.OptionHeader("Content-Type", "application/json", param.Default("application/json")),
+		),
 	)
 
 	srv.OpenAPI.Description().Info.Title = "SRAT API"
@@ -71,20 +76,21 @@ func NewHTTPServer(lc fx.Lifecycle,
 		Email: "lucio.tarantino@gmail.com",
 		URL:   "https://github.com/dianlight/srat",
 	}
-
-	srv.OpenAPI.Description().Security = []openapi3.SecurityRequirement{
-		{
-			"ApiKeyAuth": []string{},
-		},
-	}
-	srv.OpenAPI.Description().Components.SecuritySchemes = openapi3.SecuritySchemes{
-		"ApiKeyAuth": &openapi3.SecuritySchemeRef{
-			Value: openapi3.NewCSRFSecurityScheme().
-				WithName("X-Supervisor-Token").
-				WithDescription("HomeAssistant Supervisor Token").
-				WithIn("header"),
-		},
-	}
+	/*
+		srv.OpenAPI.Description().Security = []openapi3.SecurityRequirement{
+			{
+				"ApiKeyAuth": []string{},
+			},
+		}
+		srv.OpenAPI.Description().Components.SecuritySchemes = openapi3.SecuritySchemes{
+			"ApiKeyAuth": &openapi3.SecuritySchemeRef{
+				Value: openapi3.NewCSRFSecurityScheme().
+					WithName("X-Supervisor-Token").
+					WithDescription("HomeAssistant Supervisor Token").
+					WithIn("header"),
+			},
+		}
+	*/
 
 	if hamode {
 		fuego.Use(srv, HAMiddleware)
@@ -97,36 +103,16 @@ func NewHTTPServer(lc fx.Lifecycle,
 	}
 
 	slog.Info("Exposed static", "FS", static)
-
-	_, err := fs.ReadDir(static, "static")
-	if err != nil {
-		slog.Warn("Static directory not found:", "err", err)
-		fuego.Handle(srv, "/", http.FileServerFS(static))
-	} else {
-		fsRoot, _ := fs.Sub(static, "static")
-		fuego.Handle(srv, "/", http.FileServerFS(fsRoot))
-	}
-
 	/*
-		_, err = fs.ReadDir(static, "docs")
+		_, err := fs.ReadDir(static, "static")
 		if err != nil {
-			slog.Warn("Docs directory not found:", "err", err)
+			slog.Warn("Static directory not found:", "err", err)
+			fuego.Handle(srv, "/", http.FileServerFS(static))
 		} else {
-			fuego.Handle(srv, "/docs", http.FileServerFS(static))
+			fsRoot, _ := fs.Sub(static, "static")
+			fuego.Handle(srv, "/", http.FileServerFS(fsRoot))
 		}
 	*/
-
-	/*
-		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-			template, err := route.GetPathTemplate()
-			if err != nil {
-				return tracerr.Wrap(err)
-			}
-			slog.Debug("Route:", "template", template)
-			return nil
-		})
-	*/
-
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
@@ -159,59 +145,10 @@ func NewHTTPServer(lc fx.Lifecycle,
 	return srv
 }
 
-/*
-	type RouteDetail struct {
-		Pattern string
-		Method  string
-		Handler http.HandlerFunc
-	}
-*/
 type Route interface {
 	Routers(srv *fuego.Server) error
 }
 
-/*
-	func NewMuxRouter(routes []Route, hamode bool, static fs.FS) *mux.Router {
-		router := mux.NewRouter()
-		if hamode {
-			router.Use(HAMiddleware)
-		}
-		for _, route := range routes {
-			for _, detail := range route.Patterns() {
-				router.Handle(detail.Pattern, detail.Handler).Methods(detail.Method)
-			}
-		}
-
-		slog.Info("Exposed static", "FS", static)
-
-		_, err := fs.ReadDir(static, "docs")
-		if err != nil {
-			slog.Warn("Docs directory not found:", "err", err)
-		} else {
-			router.PathPrefix("/docs").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
-		}
-
-		_, err = fs.ReadDir(static, "static")
-		if err != nil {
-			slog.Warn("Static directory not found:", "err", err)
-			router.PathPrefix("/").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
-		} else {
-			fsRoot, _ := fs.Sub(static, "static")
-			router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
-		}
-
-		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-			template, err := route.GetPathTemplate()
-			if err != nil {
-				return tracerr.Wrap(err)
-			}
-			slog.Debug("Route:", "template", template)
-			return nil
-		})
-
-		return router
-	}
-*/
 func AsRoute(f any) any {
 	return fx.Annotate(
 		f,

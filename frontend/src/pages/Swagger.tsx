@@ -9,7 +9,7 @@ import { apiUrl, emptySplitApi } from "../store/emptyApi";
 export function Swagger() {
 
     return <InView as="div">
-        <SwaggerUI url={apiUrl + "docs/swagger.json"} />
+        <SwaggerUI url={apiUrl + "/swagger/openapi.json"} />
     </InView>
 
 }

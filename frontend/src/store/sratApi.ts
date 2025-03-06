@@ -1,6 +1,7 @@
 import { emptySplitApi as api } from "./emptyApi";
 export const addTagTypes = [
   "system",
+  "dev",
   "samba",
   "share",
   "user",
@@ -16,46 +17,75 @@ const injectedRtkApi = api
         GetFilesystemsApiResponse,
         GetFilesystemsApiArg
       >({
-        query: () => ({ url: `/filesystems` }),
+        query: (queryArg) => ({
+          url: `/filesystems`,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
         providesTags: ["system"],
       }),
       getHealth: build.query<GetHealthApiResponse, GetHealthApiArg>({
-        query: () => ({ url: `/health` }),
+        query: (queryArg) => ({
+          url: `/health`,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
         providesTags: ["system"],
       }),
       getNics: build.query<GetNicsApiResponse, GetNicsApiArg>({
-        query: () => ({ url: `/nics` }),
+        query: (queryArg) => ({
+          url: `/nics`,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
         providesTags: ["system"],
       }),
       putRestart: build.mutation<PutRestartApiResponse, PutRestartApiArg>({
-        query: () => ({ url: `/restart`, method: "PUT" }),
-        invalidatesTags: ["system"],
+        query: (queryArg) => ({
+          url: `/restart`,
+          method: "PUT",
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
+        invalidatesTags: ["dev"],
       }),
       putSambaApply: build.mutation<
         PutSambaApplyApiResponse,
         PutSambaApplyApiArg
       >({
-        query: () => ({ url: `/samba/apply`, method: "PUT" }),
+        query: (queryArg) => ({
+          url: `/samba/apply`,
+          method: "PUT",
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
         invalidatesTags: ["samba"],
       }),
       getSambaConfig: build.query<
         GetSambaConfigApiResponse,
         GetSambaConfigApiArg
       >({
-        query: () => ({ url: `/samba/config` }),
+        query: (queryArg) => ({
+          url: `/samba/config`,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
         providesTags: ["samba"],
       }),
       getSettings: build.query<GetSettingsApiResponse, GetSettingsApiArg>({
-        query: () => ({ url: `/settings` }),
-        providesTags: ["samba"],
-      }),
-      putSettings: build.mutation<PutSettingsApiResponse, PutSettingsApiArg>({
         query: (queryArg) => ({
           url: `/settings`,
-          method: "PUT",
-          body: queryArg.dtoSettings,
+          headers: {
+            Accept: queryArg.accept,
+          },
         }),
-        invalidatesTags: ["samba"],
+        providesTags: ["samba"],
       }),
       patchSettings: build.mutation<
         PatchSettingsApiResponse,
@@ -64,7 +94,21 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/settings`,
           method: "PATCH",
-          body: queryArg.dtoSettings,
+          body: queryArg.settings,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
+        invalidatesTags: ["samba"],
+      }),
+      putSettings: build.mutation<PutSettingsApiResponse, PutSettingsApiArg>({
+        query: (queryArg) => ({
+          url: `/settings`,
+          method: "PUT",
+          body: queryArg.settings,
+          headers: {
+            Accept: queryArg.accept,
+          },
         }),
         invalidatesTags: ["samba"],
       }),
@@ -72,25 +116,10 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/share`,
           method: "POST",
-          body: queryArg.dtoSharedResource,
-        }),
-        invalidatesTags: ["share"],
-      }),
-      getShareByShareName: build.query<
-        GetShareByShareNameApiResponse,
-        GetShareByShareNameApiArg
-      >({
-        query: (queryArg) => ({ url: `/share/${queryArg.shareName}` }),
-        providesTags: ["share"],
-      }),
-      putShareByShareName: build.mutation<
-        PutShareByShareNameApiResponse,
-        PutShareByShareNameApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/share/${queryArg.shareName}`,
-          method: "PUT",
-          body: queryArg.dtoSharedResource,
+          body: queryArg.sharedResource,
+          headers: {
+            Accept: queryArg.accept,
+          },
         }),
         invalidatesTags: ["share"],
       }),
@@ -101,48 +130,74 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/share/${queryArg.shareName}`,
           method: "DELETE",
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
+        invalidatesTags: ["share"],
+      }),
+      getShareByShareName: build.query<
+        GetShareByShareNameApiResponse,
+        GetShareByShareNameApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/share/${queryArg.shareName}`,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
+        providesTags: ["share"],
+      }),
+      putShareByShareName: build.mutation<
+        PutShareByShareNameApiResponse,
+        PutShareByShareNameApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/share/${queryArg.shareName}`,
+          method: "PUT",
+          body: queryArg.sharedResource,
+          headers: {
+            Accept: queryArg.accept,
+          },
         }),
         invalidatesTags: ["share"],
       }),
       getShares: build.query<GetSharesApiResponse, GetSharesApiArg>({
-        query: () => ({ url: `/shares` }),
-        providesTags: ["share"],
-      }),
-      getSharesUsages: build.query<
-        GetSharesUsagesApiResponse,
-        GetSharesUsagesApiArg
-      >({
-        query: () => ({ url: `/shares/usages` }),
+        query: (queryArg) => ({
+          url: `/shares`,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
         providesTags: ["share"],
       }),
       getSse: build.query<GetSseApiResponse, GetSseApiArg>({
-        query: () => ({ url: `/sse` }),
-        providesTags: ["system"],
-      }),
-      getSseEvents: build.query<GetSseEventsApiResponse, GetSseEventsApiArg>({
-        query: () => ({ url: `/sse/events` }),
+        query: (queryArg) => ({
+          url: `/sse`,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
         providesTags: ["system"],
       }),
       putUpdate: build.mutation<PutUpdateApiResponse, PutUpdateApiArg>({
-        query: () => ({ url: `/update`, method: "PUT" }),
+        query: (queryArg) => ({
+          url: `/update`,
+          method: "PUT",
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
         invalidatesTags: ["system"],
       }),
       postUser: build.mutation<PostUserApiResponse, PostUserApiArg>({
         query: (queryArg) => ({
           url: `/user`,
           method: "POST",
-          body: queryArg.dtoUser,
-        }),
-        invalidatesTags: ["user"],
-      }),
-      putUserByUsername: build.mutation<
-        PutUserByUsernameApiResponse,
-        PutUserByUsernameApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/user/${queryArg.username}`,
-          method: "PUT",
-          body: queryArg.dtoUser,
+          body: queryArg.user,
+          headers: {
+            Accept: queryArg.accept,
+          },
         }),
         invalidatesTags: ["user"],
       }),
@@ -153,11 +208,33 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/user/${queryArg.username}`,
           method: "DELETE",
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
+        invalidatesTags: ["user"],
+      }),
+      putUserByUsername: build.mutation<
+        PutUserByUsernameApiResponse,
+        PutUserByUsernameApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/user/${queryArg.username}`,
+          method: "PUT",
+          body: queryArg.user,
+          headers: {
+            Accept: queryArg.accept,
+          },
         }),
         invalidatesTags: ["user"],
       }),
       getUseradmin: build.query<GetUseradminApiResponse, GetUseradminApiArg>({
-        query: () => ({ url: `/useradmin` }),
+        query: (queryArg) => ({
+          url: `/useradmin`,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
         providesTags: ["user"],
       }),
       putUseradmin: build.mutation<PutUseradminApiResponse, PutUseradminApiArg>(
@@ -165,25 +242,22 @@ const injectedRtkApi = api
           query: (queryArg) => ({
             url: `/useradmin`,
             method: "PUT",
-            body: queryArg.dtoUser,
+            body: queryArg.user,
+            headers: {
+              Accept: queryArg.accept,
+            },
           }),
           invalidatesTags: ["user"],
         },
       ),
       getUsers: build.query<GetUsersApiResponse, GetUsersApiArg>({
-        query: () => ({ url: `/users` }),
-        providesTags: ["user"],
-      }),
-      postVolumeByIdMount: build.mutation<
-        PostVolumeByIdMountApiResponse,
-        PostVolumeByIdMountApiArg
-      >({
         query: (queryArg) => ({
-          url: `/volume/${queryArg.id}/mount`,
-          method: "POST",
-          body: queryArg.dtoMountPointData,
+          url: `/users`,
+          headers: {
+            Accept: queryArg.accept,
+          },
         }),
-        invalidatesTags: ["volume"],
+        providesTags: ["user"],
       }),
       deleteVolumeByIdMount: build.mutation<
         DeleteVolumeByIdMountApiResponse,
@@ -192,6 +266,9 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/volume/${queryArg.id}/mount`,
           method: "DELETE",
+          headers: {
+            Accept: queryArg.accept,
+          },
           params: {
             force: queryArg.force,
             lazy: queryArg.lazy,
@@ -199,328 +276,333 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["volume"],
       }),
+      postVolumeByIdMount: build.mutation<
+        PostVolumeByIdMountApiResponse,
+        PostVolumeByIdMountApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/volume/${queryArg.id}/mount`,
+          method: "POST",
+          body: queryArg.mountPointData,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
+        invalidatesTags: ["volume"],
+      }),
       getVolumes: build.query<GetVolumesApiResponse, GetVolumesApiArg>({
-        query: () => ({ url: `/volumes` }),
+        query: (queryArg) => ({
+          url: `/volumes`,
+          headers: {
+            Accept: queryArg.accept,
+          },
+        }),
         providesTags: ["volume"],
       }),
     }),
     overrideExisting: false,
   });
 export { injectedRtkApi as sratApi };
-export type GetFilesystemsApiResponse = /** status 200 OK */ string[];
-export type GetFilesystemsApiArg = void;
-export type GetHealthApiResponse = /** status 200 OK */ DtoHealthPing;
-export type GetHealthApiArg = void;
-export type GetNicsApiResponse = /** status 200 OK */ DtoNetworkInfo;
-export type GetNicsApiArg = void;
-export type PutRestartApiResponse = unknown;
-export type PutRestartApiArg = void;
-export type PutSambaApplyApiResponse = unknown;
-export type PutSambaApplyApiArg = void;
-export type GetSambaConfigApiResponse = /** status 200 OK */ DtoSmbConf;
-export type GetSambaConfigApiArg = void;
-export type GetSettingsApiResponse = /** status 200 OK */ DtoSettings;
-export type GetSettingsApiArg = void;
-export type PutSettingsApiResponse = /** status 200 OK */ DtoSettings;
-export type PutSettingsApiArg = {
-  /** Update model */
-  dtoSettings: DtoSettings;
+export type GetFilesystemsApiResponse = /** status 200 OK */ FilesystemType[];
+export type GetFilesystemsApiArg = {
+  accept?: string;
 };
-export type PatchSettingsApiResponse = /** status 200 OK */ DtoSettings;
+export type GetHealthApiResponse = /** status 200 OK */ HealthPing;
+export type GetHealthApiArg = {
+  accept?: string;
+};
+export type GetNicsApiResponse = /** status 200 OK */ NetworkInfo;
+export type GetNicsApiArg = {
+  accept?: string;
+};
+export type PutRestartApiResponse = /** status 200 OK */ Bool;
+export type PutRestartApiArg = {
+  accept?: string;
+};
+export type PutSambaApplyApiResponse = /** status 200 OK */ Bool;
+export type PutSambaApplyApiArg = {
+  accept?: string;
+};
+export type GetSambaConfigApiResponse = /** status 200 OK */ SmbConf;
+export type GetSambaConfigApiArg = {
+  accept?: string;
+};
+export type GetSettingsApiResponse = /** status 200 OK */ Settings;
+export type GetSettingsApiArg = {
+  accept?: string;
+};
+export type PatchSettingsApiResponse = /** status 200 OK */ Settings;
 export type PatchSettingsApiArg = {
-  /** Update model */
-  dtoSettings: DtoSettings;
+  accept?: string;
+  /** Request body for dto.Settings */
+  settings: Settings;
 };
-export type PostShareApiResponse = /** status 201 Created */ DtoSharedResource;
+export type PutSettingsApiResponse = /** status 200 OK */ Settings;
+export type PutSettingsApiArg = {
+  accept?: string;
+  /** Request body for dto.Settings */
+  settings: Settings;
+};
+export type PostShareApiResponse = /** status 200 OK */ SharedResource;
 export type PostShareApiArg = {
-  /** Create model */
-  dtoSharedResource: DtoSharedResource;
+  accept?: string;
+  /** Request body for dto.SharedResource */
+  sharedResource: SharedResource;
+};
+export type DeleteShareByShareNameApiResponse = /** status 200 OK */ Bool;
+export type DeleteShareByShareNameApiArg = {
+  accept?: string;
+  shareName: string;
 };
 export type GetShareByShareNameApiResponse =
-  /** status 200 OK */ DtoSharedResource;
+  /** status 200 OK */ SharedResource;
 export type GetShareByShareNameApiArg = {
-  /** Name */
+  accept?: string;
   shareName: string;
 };
 export type PutShareByShareNameApiResponse =
-  /** status 200 OK */ DtoSharedResource;
+  /** status 200 OK */ SharedResource;
 export type PutShareByShareNameApiArg = {
-  /** Name */
+  accept?: string;
   shareName: string;
-  /** Update model */
-  dtoSharedResource: DtoSharedResource;
+  /** Request body for dto.SharedResource */
+  sharedResource: SharedResource;
 };
-export type DeleteShareByShareNameApiResponse = unknown;
-export type DeleteShareByShareNameApiArg = {
-  /** Name */
-  shareName: string;
+export type GetSharesApiResponse = /** status 200 OK */ SharedResource[];
+export type GetSharesApiArg = {
+  accept?: string;
 };
-export type GetSharesApiResponse = /** status 200 OK */ DtoSharedResource[];
-export type GetSharesApiArg = void;
-export type GetSharesUsagesApiResponse = /** status 200 OK */ DtoHAMountUsage[];
-export type GetSharesUsagesApiArg = void;
-export type GetSseApiResponse = unknown;
-export type GetSseApiArg = void;
-export type GetSseEventsApiResponse = /** status 200 OK */ DtoEventType[];
-export type GetSseEventsApiArg = void;
-export type PutUpdateApiResponse = /** status 200 OK */ DtoUpdateProgress;
-export type PutUpdateApiArg = void;
-export type PostUserApiResponse = /** status 201 Created */ DtoUser;
+export type GetSseApiResponse = /** status 200 OK */ EventMessageEnvelope;
+export type GetSseApiArg = {
+  accept?: string;
+};
+export type PutUpdateApiResponse = /** status 200 OK */ UpdateProgress;
+export type PutUpdateApiArg = {
+  accept?: string;
+};
+export type PostUserApiResponse = /** status 200 OK */ User;
 export type PostUserApiArg = {
-  /** Create model */
-  dtoUser: DtoUser;
+  accept?: string;
+  /** Request body for dto.User */
+  user: User;
 };
-export type PutUserByUsernameApiResponse = /** status 200 OK */ DtoUser;
-export type PutUserByUsernameApiArg = {
-  /** Name */
-  username: string;
-  /** Update model */
-  dtoUser: DtoUser;
-};
-export type DeleteUserByUsernameApiResponse = unknown;
+export type DeleteUserByUsernameApiResponse = /** status 200 OK */ Bool;
 export type DeleteUserByUsernameApiArg = {
-  /** Name */
+  accept?: string;
   username: string;
 };
-export type GetUseradminApiResponse = /** status 200 OK */ DtoUser;
-export type GetUseradminApiArg = void;
-export type PutUseradminApiResponse = /** status 200 OK */ DtoUser;
+export type PutUserByUsernameApiResponse = /** status 200 OK */ User;
+export type PutUserByUsernameApiArg = {
+  accept?: string;
+  username: string;
+  /** Request body for dto.User */
+  user: User;
+};
+export type GetUseradminApiResponse = /** status 200 OK */ User;
+export type GetUseradminApiArg = {
+  accept?: string;
+};
+export type PutUseradminApiResponse = /** status 200 OK */ User;
 export type PutUseradminApiArg = {
-  /** Update model */
-  dtoUser: DtoUser;
+  accept?: string;
+  /** Request body for dto.User */
+  user: User;
 };
-export type GetUsersApiResponse = /** status 200 OK */ DtoUser[];
-export type GetUsersApiArg = void;
-export type PostVolumeByIdMountApiResponse =
-  /** status 201 Created */ DtoMountPointData;
-export type PostVolumeByIdMountApiArg = {
-  /** id of the mountpoint to be mounted */
-  id: number;
-  /** Mount data */
-  dtoMountPointData: DtoMountPointData;
+export type GetUsersApiResponse = /** status 200 OK */ User[];
+export type GetUsersApiArg = {
+  accept?: string;
 };
-export type DeleteVolumeByIdMountApiResponse = unknown;
+export type DeleteVolumeByIdMountApiResponse = /** status 200 OK */ Bool;
 export type DeleteVolumeByIdMountApiArg = {
-  /** id of the mountpoint to be mounted */
-  id: number;
-  /** Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted. */
-  force: boolean;
-  /** Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted. */
-  lazy: boolean;
+  /** Force Umount */
+  force?: boolean;
+  /** Lazy Umount  */
+  lazy?: boolean;
+  accept?: string;
+  id: string;
 };
-export type GetVolumesApiResponse = /** status 200 OK */ DtoBlockInfo;
-export type GetVolumesApiArg = void;
-export type DtoErrorCode = {
-  errorCode?: ErrorCode;
-  errorMessage?: string;
-  httpCode?: number;
+export type PostVolumeByIdMountApiResponse =
+  /** status 200 OK */ MountPointData;
+export type PostVolumeByIdMountApiArg = {
+  accept?: string;
+  id: string;
+  /** Request body for dto.MountPointData */
+  mountPointData: MountPointData;
 };
-export type TracerrFrame = {
-  /** Func contains a function name. */
-  func?: string;
-  /** Line contains a line number. */
-  line?: number;
-  /** Path contains a file path. */
-  path?: string;
+export type GetVolumesApiResponse = /** status 200 OK */ BlockInfo;
+export type GetVolumesApiArg = {
+  accept?: string;
 };
-export type DtoErrorInfo = {
-  code?: DtoErrorCode;
-  data?: {
-    [key: string]: any;
-  };
-  deep_message?: string;
-  error?: any;
-  message?: string;
-  trace?: TracerrFrame[];
+export type FilesystemType = string;
+export type HttpError = {
+  /** Human readable error message */
+  detail?: string | null;
+  errors?:
+    | {
+        more?: {
+          [key: string]: any;
+        };
+        name?: string;
+        reason?: string;
+      }[]
+    | null;
+  instance?: string | null;
+  /** HTTP status code */
+  status?: number | null;
+  /** Short title of the error */
+  title?: string | null;
+  /** URL of the error type. Can be used to lookup the error in a documentation */
+  type?: string | null;
 };
-export type DtoDataDirtyTracker = {
-  settings?: boolean;
-  shares?: boolean;
-  users?: boolean;
-  volumes?: boolean;
-};
-export type DtoBinaryAsset = {
-  id?: number;
-  size?: number;
-};
-export type DtoReleaseAsset = {
-  arch_asset?: DtoBinaryAsset;
-  /** ProgressStatus int8        `json:"update_status"` */
-  last_release?: string;
-};
-export type DtoSambaProcessStatus = {
-  connections?: number;
-  cpu_percent?: number;
-  create_time?: string;
-  is_running?: boolean;
-  memory_percent?: number;
-  name?: string;
-  open_files?: number;
-  pid?: number;
-  status?: string[];
-};
-export type DtoHealthPing = {
+export type HealthPing = {
   alive?: boolean;
   aliveTime?: number;
-  dirty_tracking?: DtoDataDirtyTracker;
+  dirty_tracking?: {
+    settings?: boolean;
+    shares?: boolean;
+    users?: boolean;
+    volumes?: boolean;
+  };
   last_error?: string;
-  last_release?: DtoReleaseAsset;
+  last_release?: {
+    arch_asset?: {
+      id?: number;
+      size?: number;
+    } | null;
+    last_release?: string | null;
+  };
   read_only?: boolean;
-  samba_process_status?: DtoSambaProcessStatus;
+  samba_process_status?: {
+    connections?: number;
+    cpu_percent?: number;
+    create_time?: string;
+    is_running?: boolean;
+    memory_percent?: number;
+    name?: string;
+    open_files?: number;
+    pid?: number;
+    status?: string[];
+  };
 };
-export type DtoNic = {
-  /** Duplex is a string indicating the current duplex setting of this NIC,
-    e.g. "Full" */
-  duplex?: string;
-  /** IsVirtual is true if the NIC is entirely virtual/emulated, false
-    otherwise. */
-  is_virtual?: boolean;
-  /** MACAddress is the Media Access Control (MAC) address of this NIC. */
-  mac_address?: string;
-  /** Name is the string identifier the system gave this NIC. */
-  name?: string;
-  /** Speed is a string describing the link speed of this NIC, e.g. "1000Mb/s" */
-  speed?: string;
+export type NetworkInfo = {
+  nics?: {
+    duplex?: string;
+    is_virtual?: boolean;
+    mac_address?: string;
+    name?: string;
+    speed?: string;
+  }[];
 };
-export type DtoNetworkInfo = {
-  nics?: DtoNic[];
-};
-export type DtoSmbConf = {
+export type Bool = boolean;
+export type SmbConf = {
   data?: string;
 };
-export type DtoSettings = {
-  allow_hosts?: string[];
-  bind_all_interfaces?: boolean;
-  compatibility_mode?: boolean;
-  interfaces?: string[];
-  log_level?: string;
-  mountoptions?: string[];
-  multi_channel?: boolean;
-  recyle_bin_enabled?: boolean;
-  update_channel?: DtoUpdateChannel;
-  veto_files?: string[];
-  workgroup?: string;
+export type Settings = {
+  allow_hosts?: string[] | null;
+  bind_all_interfaces?: boolean | null;
+  compatibility_mode?: boolean | null;
+  interfaces?: string[] | null;
+  log_level?: string | null;
+  mountoptions?: string[] | null;
+  multi_channel?: boolean | null;
+  recyle_bin_enabled?: boolean | null;
+  update_channel?: string | null;
+  veto_files?: string[] | null;
+  workgroup?: string | null;
 };
-export type DtoMountPointData = {
-  flags?: DtoMounDataFlag[];
-  fstype?: string;
-  id?: number;
-  invalid?: boolean;
-  invalid_error?: string;
-  is_mounted?: boolean;
-  path?: string;
-  primary_path?: string;
-  source?: string;
-  warnings?: string;
+export type SharedResource = {
+  /** bool schema */
+  disabled?: boolean | null;
+  /** bool schema */
+  invalid?: boolean | null;
+  /** MountPointData schema */
+  mount_point_data?: {
+    flags?: number[] | null;
+    fstype?: string;
+    id?: number;
+    invalid?: boolean | null;
+    invalid_error?: string | null;
+    is_mounted?: boolean | null;
+    path?: string;
+    primary_path?: string;
+    source?: string | null;
+    warnings?: string | null;
+  } | null;
+  name?: string | null;
+  ro_users?: {
+    /** bool schema */
+    is_admin?: boolean;
+    password?: string | null;
+    username?: string | null;
+  }[];
+  /** bool schema */
+  timemachine?: boolean | null;
+  usage?: string | null;
+  users?: {
+    /** bool schema */
+    is_admin?: boolean;
+    password?: string | null;
+    username?: string | null;
+  }[];
 };
-export type DtoUser = {
-  is_admin?: boolean;
-  password?: string;
-  username?: string;
+export type EventMessageEnvelope = {
+  data?: any;
+  event?: string;
+  id?: string;
 };
-export type DtoSharedResource = {
-  disabled?: boolean;
-  invalid?: boolean;
-  /** DeviceId       *uint64        `json:"device_id,omitempty"` */
-  mount_point_data?: DtoMountPointData;
-  name?: string;
-  ro_users?: DtoUser[];
-  timemachine?: boolean;
-  usage?: DtoHAMountUsage;
-  users?: DtoUser[];
-};
-export type DtoUpdateProgress = {
-  last_release?: string;
-  update_error?: string;
+export type UpdateProgress = {
+  last_release?: string | null;
+  update_error?: string | null;
   update_status?: number;
 };
-export type DtoBlockPartition = {
-  /** MountPoint is the path where this partition is mounted last time */
-  default_mount_point?: string;
-  /** DeviceId is the ID of the block device this partition is on. */
-  device_id?: number;
-  /** FilesystemLabel is the label of the filesystem contained on the
-    partition. On Linux, this is derived from the `ID_FS_NAME` udev entry. */
-  filesystem_label?: string;
-  /** Label is the human-readable label given to the partition. On Linux, this
-    is derived from the `ID_PART_ENTRY_NAME` udev entry. */
-  label?: string;
-  /** MountData contains additional data associated with the partition. */
-  mount_data?: string;
-  /** MountFlags contains the mount flags for the partition. */
-  mount_flags?: DtoMounDataFlag[];
-  /** MountPoint is the path where this partition is mounted. */
-  mount_point?: string;
-  /** Relative MountPointData */
-  mount_point_data?: DtoMountPointData;
-  /** Name is the system name given to the partition, e.g. "sda1". */
-  name?: string;
-  /** PartiionFlags contains the mount flags for the partition. */
-  partition_flags?: DtoMounDataFlag[];
-  /** IsReadOnly indicates if the partition is marked read-only. */
-  read_only?: boolean;
-  /** SizeBytes contains the total amount of storage, in bytes, this partition
-    can consume. */
-  size_bytes?: number;
-  /** Type contains the type of the partition. */
-  type?: string;
-  /** UUID is the universally-unique identifier (UUID) for the partition.
-    This will be volume UUID on Darwin, PartUUID on linux, empty on Windows. */
-  uuid?: string;
+export type User = {
+  /** bool schema */
+  is_admin?: boolean | null;
+  password?: string | null;
+  username?: string | null;
 };
-export type DtoBlockInfo = {
-  /** Partitions contains an array of pointers to `Partition` structs, one for
-    each partition on any disk drive on the host system. */
-  partitions?: DtoBlockPartition[];
+export type MountPointData = {
+  flags?: number[] | null;
+  fstype?: string;
+  id?: number;
+  invalid?: boolean | null;
+  invalid_error?: string | null;
+  is_mounted?: boolean | null;
+  path?: string;
+  primary_path?: string;
+  source?: string | null;
+  warnings?: string | null;
+};
+export type BlockInfo = {
+  partitions?: ({
+    default_mount_point?: string;
+    device_id?: number | null;
+    filesystem_label?: string;
+    label?: string;
+    mount_data?: string;
+    mount_flags?: number[];
+    mount_point?: string;
+    mount_point_data?: {
+      flags?: number[];
+      fstype?: string;
+      id?: number;
+      invalid?: boolean;
+      invalid_error?: string | null;
+      is_mounted?: boolean;
+      path?: string;
+      primary_path?: string;
+      source?: string;
+      warnings?: string | null;
+    };
+    name?: string;
+    partition_flags?: number[];
+    read_only?: boolean;
+    size_bytes?: number;
+    type?: string;
+    uuid?: string;
+  } | null)[];
   total_size_bytes?: number;
 };
-export enum ErrorCode {
-  Unknown = 0,
-  GenericError = 1,
-  JsonMarshalError = 2,
-  JsonUnmarshalError = 3,
-  InvalidParameter = 4,
-  MountFail = 5,
-  UnmountFail = 6,
-  DeviceNotFound = 7,
-  NetworkTimeout = 8,
-  PermissionDenied = 9,
-}
-export enum DtoUpdateChannel {
-  Stable = "stable",
-  Prerelease = "prerelease",
-  None = "none",
-}
-export enum DtoMounDataFlag {
-  MsRdonly = 1,
-  MsNosuid = 2,
-  MsNodev = 4,
-  MsNoexec = 8,
-  MsSynchronous = 16,
-  MsRemount = 32,
-  MsMandlock = 64,
-  MsNoatime = 1024,
-  MsNodiratime = 2048,
-  MsBind = 4096,
-  MsLazytime = 33554432,
-  MsNouser = -2147483648,
-  MsRelatime = 2097152,
-}
-export enum DtoHAMountUsage {
-  None = "none",
-  Backup = "backup",
-  Media = "media",
-  Share = "share",
-  Internal = "internal",
-}
-export enum DtoEventType {
-  Hello = "hello",
-  Update = "update",
-  Heartbeat = "heartbeat",
-  Share = "share",
-  Volumes = "volumes",
-  Dirty = "dirty",
-}
 export const {
   useGetFilesystemsQuery,
   useGetHealthQuery,
@@ -529,24 +611,22 @@ export const {
   usePutSambaApplyMutation,
   useGetSambaConfigQuery,
   useGetSettingsQuery,
-  usePutSettingsMutation,
   usePatchSettingsMutation,
+  usePutSettingsMutation,
   usePostShareMutation,
+  useDeleteShareByShareNameMutation,
   useGetShareByShareNameQuery,
   usePutShareByShareNameMutation,
-  useDeleteShareByShareNameMutation,
   useGetSharesQuery,
-  useGetSharesUsagesQuery,
   useGetSseQuery,
-  useGetSseEventsQuery,
   usePutUpdateMutation,
   usePostUserMutation,
-  usePutUserByUsernameMutation,
   useDeleteUserByUsernameMutation,
+  usePutUserByUsernameMutation,
   useGetUseradminQuery,
   usePutUseradminMutation,
   useGetUsersQuery,
-  usePostVolumeByIdMountMutation,
   useDeleteVolumeByIdMountMutation,
+  usePostVolumeByIdMountMutation,
   useGetVolumesQuery,
 } = injectedRtkApi;

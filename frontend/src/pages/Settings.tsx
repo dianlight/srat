@@ -7,12 +7,12 @@ import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement, 
 import { MuiChipsInput } from 'mui-chips-input'
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
-import { useGetSettingsQuery, usePutSettingsMutation, type DtoSettings } from "../store/sratApi";
+import { useGetSettingsQuery, usePutSettingsMutation, type Settings } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
 
 export function Settings() {
     const read_only = useReadOnly();
-    const { data: globalConfig, isLoading, error } = useGetSettingsQuery();
+    const { data: globalConfig, isLoading, error } = useGetSettingsQuery({});
     const { control, handleSubmit, reset, watch, formState } = useForm({
         mode: "onBlur",
         values: globalConfig,
@@ -23,9 +23,9 @@ export function Settings() {
     const bindAllWatch = watch("bind_all_interfaces")
     let timer: NodeJS.Timer | null = null;
 
-    function handleCommit(data: DtoSettings) {
+    function handleCommit(data: Settings) {
         console.log(data);
-        update({ dtoSettings: data }).unwrap().then(res => {
+        update({ settings: data }).unwrap().then(res => {
             console.log(res)
         }).catch(err => console.log(err))
     }

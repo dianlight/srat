@@ -57,7 +57,7 @@ var frontend *string
 
 // Static files
 //
-//go:embed static/* docs/swagger.*
+//go:embed static/*
 var content embed.FS
 
 //go:embed templates/smb.gtpl

@@ -278,7 +278,6 @@
 			},
 			"MountPointData": {
 				"description": "MountPointData schema",
-				"nullable": true,
 				"properties": {
 					"flags": {
 						"items": {
@@ -428,6 +427,7 @@
 						"type": "boolean"
 					},
 					"mount_point_data": {
+						"description": "MountPointData schema",
 						"nullable": true,
 						"properties": {
 							"flags": {
@@ -674,6 +674,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "retrieve filesystem types",
 				"tags": [
 					"system"
@@ -743,6 +748,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "check health status",
 				"tags": [
 					"system"
@@ -812,6 +822,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "retrieve network adapters",
 				"tags": [
 					"system"
@@ -881,6 +896,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "perform server restart",
 				"tags": [
 					"dev"
@@ -950,6 +970,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "apply samba",
 				"tags": [
 					"samba"
@@ -1019,6 +1044,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "get samba config",
 				"tags": [
 					"samba"
@@ -1088,6 +1118,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "get settings",
 				"tags": [
 					"samba"
@@ -1107,7 +1142,7 @@
 				],
 				"requestBody": {
 					"content": {
-						"*/*": {
+						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/Settings"
 							}
@@ -1166,6 +1201,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "update settings",
 				"tags": [
 					"samba"
@@ -1185,7 +1225,7 @@
 				],
 				"requestBody": {
 					"content": {
-						"*/*": {
+						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/Settings"
 							}
@@ -1244,6 +1284,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "update settings",
 				"tags": [
 					"samba"
@@ -1265,7 +1310,7 @@
 				],
 				"requestBody": {
 					"content": {
-						"*/*": {
+						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/SharedResource"
 							}
@@ -1324,6 +1369,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "create share",
 				"tags": [
 					"share"
@@ -1401,6 +1451,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "delete share",
 				"tags": [
 					"share"
@@ -1476,6 +1531,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "get share",
 				"tags": [
 					"share"
@@ -1503,7 +1563,7 @@
 				],
 				"requestBody": {
 					"content": {
-						"*/*": {
+						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/SharedResource"
 							}
@@ -1562,6 +1622,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "update share",
 				"tags": [
 					"share"
@@ -1637,6 +1702,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "list shares",
 				"tags": [
 					"share"
@@ -1706,6 +1776,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "stream",
 				"tags": [
 					"system"
@@ -1775,6 +1850,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "update handler",
 				"tags": [
 					"system"
@@ -1796,7 +1876,7 @@
 				],
 				"requestBody": {
 					"content": {
-						"*/*": {
+						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/User"
 							}
@@ -1855,6 +1935,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "create user",
 				"tags": [
 					"user"
@@ -1932,6 +2017,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "delete user",
 				"tags": [
 					"user"
@@ -1959,7 +2049,7 @@
 				],
 				"requestBody": {
 					"content": {
-						"*/*": {
+						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/User"
 							}
@@ -2018,6 +2108,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "update user",
 				"tags": [
 					"user"
@@ -2087,6 +2182,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "get admin user",
 				"tags": [
 					"user"
@@ -2106,7 +2206,7 @@
 				],
 				"requestBody": {
 					"content": {
-						"*/*": {
+						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/User"
 							}
@@ -2165,6 +2265,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "update admin user",
 				"tags": [
 					"user"
@@ -2240,6 +2345,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "list users",
 				"tags": [
 					"user"
@@ -2333,6 +2443,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "umount volume",
 				"tags": [
 					"volume"
@@ -2360,7 +2475,7 @@
 				],
 				"requestBody": {
 					"content": {
-						"*/*": {
+						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/MountPointData"
 							}
@@ -2419,6 +2534,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "mount volume",
 				"tags": [
 					"volume"
@@ -2488,6 +2608,11 @@
 						"description": ""
 					}
 				},
+				"security": [
+					{
+						"ApiKeyAuth": []
+					}
+				],
 				"summary": "list volumes",
 				"tags": [
 					"volume"
@@ -2495,11 +2620,6 @@
 			}
 		}
 	},
-	"security": [
-		{
-			"ApiKeyAuth": []
-		}
-	],
 	"servers": [
 		{
 			"description": "local server",
