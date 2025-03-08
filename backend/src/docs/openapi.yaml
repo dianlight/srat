@@ -392,6 +392,13 @@ components:
     SharedResource:
       additionalProperties: false
       properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SharedResource.json
+          format: uri
+          readOnly: true
+          type: string
         disabled:
           type: boolean
         invalid:
@@ -650,6 +657,246 @@ paths:
       summary: Put settings
       tags:
         - system
+  /share:
+    post:
+      operationId: post-share
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SharedResource"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedResource"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Post share
+      tags:
+        - share
+  /share/{share_name}:
+    delete:
+      operationId: delete-share-by-share-name
+      parameters:
+        - description: Name of the share
+          example: world
+          in: path
+          name: share_name
+          required: true
+          schema:
+            description: Name of the share
+            examples:
+              - world
+            maxLength: 30
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Delete share by share name
+      tags:
+        - share
+    get:
+      operationId: get-share-by-share-name
+      parameters:
+        - description: Name of the share
+          example: world
+          in: path
+          name: share_name
+          required: true
+          schema:
+            description: Name of the share
+            examples:
+              - world
+            maxLength: 30
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedResource"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get share by share name
+      tags:
+        - share
+    patch:
+      description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
+      operationId: patch-share-by-share-name
+      parameters:
+        - description: Name of the share
+          example: world
+          in: path
+          name: share_name
+          required: true
+          schema:
+            description: Name of the share
+            examples:
+              - world
+            maxLength: 30
+            type: string
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              items:
+                $ref: "#/components/schemas/JsonPatchOp"
+              type:
+                - array
+                - "null"
+          application/merge-patch+json:
+            schema:
+              additionalProperties: false
+              properties:
+                $schema:
+                  description: A URL to the JSON Schema for this object.
+                  examples:
+                    - https://example.com/schemas/SharedResource.json
+                  format: uri
+                  readOnly: true
+                  type: string
+                disabled:
+                  type: boolean
+                invalid:
+                  type: boolean
+                mount_point_data: {}
+                name:
+                  type: string
+                ro_users:
+                  items: {}
+                  type: array
+                timemachine:
+                  type: boolean
+                usage:
+                  type: string
+                users:
+                  items: {}
+                  type: array
+              type: object
+          application/merge-patch+shorthand:
+            schema:
+              additionalProperties: false
+              properties:
+                $schema:
+                  description: A URL to the JSON Schema for this object.
+                  examples:
+                    - https://example.com/schemas/SharedResource.json
+                  format: uri
+                  readOnly: true
+                  type: string
+                disabled:
+                  type: boolean
+                invalid:
+                  type: boolean
+                mount_point_data: {}
+                name:
+                  type: string
+                ro_users:
+                  items: {}
+                  type: array
+                timemachine:
+                  type: boolean
+                usage:
+                  type: string
+                users:
+                  items: {}
+                  type: array
+              type: object
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedResource"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Patch share-by-share-name
+      tags:
+        - share
+    put:
+      operationId: put-share-by-share-name
+      parameters:
+        - description: Name of the share
+          example: world
+          in: path
+          name: share_name
+          required: true
+          schema:
+            description: Name of the share
+            examples:
+              - world
+            maxLength: 30
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SharedResource"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedResource"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Put share by share name
+      tags:
+        - share
+  /shares:
+    get:
+      operationId: list-shares
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/SharedResource"
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: List shares
+      tags:
+        - share
   /sse:
     get:
       operationId: sse
@@ -661,6 +908,50 @@ paths:
                 description: Each oneOf object in the array represents one possible Server Sent Events (SSE) message, serialized as UTF-8 text according to the SSE specification.
                 items:
                   oneOf:
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/EventType"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: hello
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event hello
+                      type: object
                     - properties:
                         data:
                           $ref: "#/components/schemas/ReleaseAsset"
@@ -732,50 +1023,6 @@ paths:
                         - data
                         - event
                       title: Event heartbeat
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: share
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event share
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/EventType"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: hello
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event hello
                       type: object
                 title: Server Sent Events
                 type: array
