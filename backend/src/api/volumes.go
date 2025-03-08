@@ -34,12 +34,30 @@ func NewVolumeHandler(vservice service.VolumeServiceInterface, mount_repo reposi
 	return p
 }
 
+// RegisterVolumeHandlers registers the HTTP handlers for volume-related operations.
+// It sets up the following routes:
+// - GET /volumes: Lists all volumes.
+// - POST /volume/{id}/mount: Mounts a volume with the specified ID.
+// - DELETE /volume/{id}/mount: Unmounts a volume with the specified ID.
+//
+// Parameters:
+// - api: The huma.API instance to register the handlers with.
 func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 	huma.Get(api, "/volumes", self.ListVolumes, huma.OperationTags("volume"))
 	huma.Post(api, "/volume/{id}/mount", self.MountVolume, huma.OperationTags("volume"))
 	huma.Delete(api, "/volume/{id}/mount", self.UmountVolume, huma.OperationTags("volume"))
 }
 
+// ListVolumes retrieves a list of volumes by calling the vservice's GetVolumesData method.
+// It returns a struct containing the volumes data wrapped in a dto.BlockInfo, or an error if the retrieval fails.
+//
+// Parameters:
+// - ctx: The context for the request, which can be used for cancellation and deadlines.
+// - input: An empty struct as input, which is not used in this function.
+//
+// Returns:
+// - A struct containing the volumes data wrapped in a dto.BlockInfo.
+// - An error if there is an issue retrieving the volumes data.
 func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body *dto.BlockInfo }, error) {
 	volumes, err := self.vservice.GetVolumesData()
 	if err != nil {
@@ -48,6 +66,24 @@ func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*s
 	return &struct{ Body *dto.BlockInfo }{Body: volumes}, nil
 }
 
+// MountVolume handles the mounting of a volume based on the provided input.
+// It validates the input data, checks for consistency, and attempts to mount the volume using the volume service.
+// If the mounting process encounters an error, it returns an appropriate HTTP error response.
+// Upon successful mounting, it retrieves the mounted volume data from the repository, converts it, and marks the volumes as dirty.
+//
+// Parameters:
+//   - ctx: The context for the request.
+//   - input: A struct containing the ID of the driver to mount and the body with mount point data.
+//
+// Returns:
+//   - A struct containing the mounted volume data in the body, or an error if the mounting process fails.
+//
+// Possible Errors:
+//   - 409 Conflict: If the provided ID in the request is inconsistent.
+//   - 406 Not Acceptable: If an invalid parameter is provided.
+//   - 404 Not Found: If the device is not found.
+//   - 422 Unprocessable Entity: If the mounting process fails.
+//   - 500 Internal Server Error: For unknown errors or other internal server errors.
 func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 	ID   uint `path:"id" exclusiveMinimum:"0" example:"1234" doc:"ID of the driver to mount"`
 	Body dto.MountPointData
@@ -96,6 +132,22 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 	return &struct{ Body dto.MountPointData }{Body: mounted_data}, nil
 }
 
+// UmountVolume handles the unmounting of a volume based on the provided input parameters.
+// It checks if the volume exists, and if so, proceeds to unmount it using the specified options.
+// If the volume does not exist, it returns a 404 error.
+//
+// Parameters:
+//
+//	ctx - The context for the request.
+//	input - A struct containing the following fields:
+//	  ID - The ID of the volume to unmount. Must be a positive integer.
+//	  Force - A boolean indicating whether to force the unmount operation. Default is false.
+//	  Lazy - A boolean indicating whether to perform a lazy unmount operation. Default is false.
+//
+// Returns:
+//
+//	An empty struct and nil error if the operation is successful.
+//	An error if the volume does not exist or if the unmount operation fails.
 func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 	ID    uint `path:"id" exclusiveMinimum:"0" example:"1234" doc:"ID of the driver to mount"`
 	Force bool `query:"force" default:"false" doc:"Force umount operation"`
