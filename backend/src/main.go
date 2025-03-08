@@ -236,7 +236,7 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewSettingsHanler),
 			server.AsHumaRoute(api.NewUserHandler),
 			server.AsHumaRoute(api.NewSambaHanler),
-			server.AsRoute(api.NewUpgradeHanler),
+			server.AsHumaRoute(api.NewUpgradeHanler),
 			server.AsRoute(api.NewSystemHanler),
 			fx.Annotate(
 				server.NewMuxRouter,

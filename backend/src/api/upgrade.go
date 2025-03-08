@@ -11,8 +11,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/utility"
 	"github.com/google/go-github/v69/github"
@@ -37,42 +37,49 @@ func NewUpgradeHanler(ctx context.Context, apictx *dto.ContextState, upgader ser
 	return p
 }
 
-func (handler *UpgradeHanler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/update", Method: "PUT", Handler: handler.UpdateHandler},
-	}
+func (self *UpgradeHanler) RegisterUpgradeHanler(api huma.API) {
+	huma.Put(api, "/update", self.UpdateHandler, huma.OperationTags("system"))
 }
 
-// UpdateHandler godoc
+// UpdateHandler handles the update process for the application.
+// It retrieves the latest release data, downloads the release asset,
+// and writes it to a temporary file while tracking the progress.
 //
-//	@Summary		UpdateHandler
-//	@Description	Start the update process
-//	@Tags			system
-//	@Produce		json
-//	@Success		200 {object}	dto.UpdateProgress
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Router			/update [put]
-func (handler *UpgradeHanler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
+// Parameters:
+//   - ctx: The context for the request.
+//   - input: A pointer to an input struct (currently unused).
+//
+// Returns:
+//   - A pointer to a struct containing the update progress body.
+//   - An error if any occurs during the update process.
+//
+// The function performs the following steps:
+//  1. Retrieves the latest release data.
+//  2. Logs the version being updated to.
+//  3. Checks if the release asset size is zero and returns a 404 error if true.
+//  4. Downloads the release asset from GitHub.
+//  5. Opens a temporary file for writing the update.
+//  6. Initializes a progress writer to track the update progress.
+//  7. Starts a goroutine to copy the downloaded asset to the temporary file and update the progress.
+//  8. Starts a goroutine to periodically sleep (purpose unclear).
+func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.UpdateProgress }, error) {
 
 	lastReleaseData := handler.upgader.GetLastReleaseData()
 	log.Printf("Updating to version %s", lastReleaseData.LastRelease)
 
 	var gh = github.NewClient(nil)
 	if lastReleaseData.ArchAsset.Size == 0 {
-		HttpJSONReponse(w, fmt.Errorf("No asset found for architecture %s", runtime.GOARCH), nil)
-		return
+		return nil, huma.Error404NotFound(fmt.Sprintf("No asset found for architecture %s", runtime.GOARCH))
 	}
 
 	rc, _, err := gh.Repositories.DownloadReleaseAsset(context.Background(), "dianlight", "srat", lastReleaseData.ArchAsset.ID, http.DefaultClient)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	//defer rc.Close()
 	tmpFile, err := os.OpenFile(handler.apictx.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	//defer tmpFile.Close()
 	handler.pw = utility.NewProgressWriter(tmpFile, lastReleaseData.ArchAsset.Size)
@@ -98,9 +105,15 @@ func (handler *UpgradeHanler) UpdateHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}()
 
-	HttpJSONReponse(w, handler.progress, nil)
+	return nil, nil
 }
 
+// notifyClient listens for progress updates and notifies the client accordingly.
+// It runs an infinite loop that waits for either the context to be done or for progress updates.
+// When the context is done, it logs an error message and returns.
+// When a progress update is received, it logs the progress, updates the progress status,
+// broadcasts the progress to the client, and checks if the update process is complete.
+// If the update process is complete, it logs a success message and returns.
 func (handler *UpgradeHanler) notifyClient() {
 	for {
 		select {

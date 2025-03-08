@@ -445,6 +445,13 @@ components:
     UpdateProgress:
       additionalProperties: false
       properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/UpdateProgress.json
+          format: uri
+          readOnly: true
+          type: string
         last_release:
           type: string
         update_error:
@@ -966,6 +973,24 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          $ref: "#/components/schemas/ReleaseAsset"
+                        event:
+                          const: update
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event update
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/UpdateProgress"
                         event:
                           const: updating
@@ -1062,24 +1087,6 @@ paths:
                         - event
                       title: Event hello
                       type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/ReleaseAsset"
-                        event:
-                          const: update
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event update
-                      type: object
                 title: Server Sent Events
                 type: array
           description: OK
@@ -1090,6 +1097,25 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       summary: Server sent events
+  /update:
+    put:
+      operationId: put-update
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateProgress"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Put update
+      tags:
+        - system
   /user:
     post:
       operationId: post-user
