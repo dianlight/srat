@@ -79,10 +79,9 @@ func (suite *HealthHandlerSuite) TestHealthEventEmitter() {
 	numcal := uint64(0)
 	startTime := time.Now()
 	suite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).Do((func(data any) {
-		msg := data.(*dto.EventMessageEnvelope)
-		suite.NotNil(msg.Data)
-		if msg.Event != dto.EventHeartbeat {
-			suite.T().Errorf("Expected Event to be Heartbeat, got %v", msg.Event)
+		msg, ok := data.(*dto.HealthPing)
+		if !ok {
+			suite.T().Errorf("Expected Event to be Heartbeat, got %#v", msg)
 		}
 		numcal++
 		return

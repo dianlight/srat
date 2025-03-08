@@ -37,10 +37,6 @@ func NewShareHandler(broadcaster service.BroadcasterServiceInterface,
 	p.dirtyservice = dirtyService
 	p.exported_share_repo = exported_share_repo
 	p.sharesQueueMutex = sync.RWMutex{}
-	broadcaster.AddOpenConnectionListener(func(broker service.BroadcasterServiceInterface) error {
-		p.notifyClient()
-		return nil
-	})
 	return p
 }
 
@@ -219,11 +215,7 @@ func (self *ShareHandler) notifyClient() {
 		}
 		shares = append(shares, share)
 	}
-
-	var event dto.EventMessageEnvelope
-	event.Event = dto.EventShare
-	event.Data = shares
-	self.broadcaster.BroadcastMessage(&event)
+	self.broadcaster.BroadcastMessage(shares)
 }
 
 // UpdateShare godoc

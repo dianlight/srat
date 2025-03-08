@@ -230,7 +230,7 @@ func prog(state overseer.State) {
 			service.NewDirtyDataService,
 			repository.NewMountPointPathRepository,
 			repository.NewExportedShareRepository,
-			server.AsRoute(api.NewSSEBroker),
+			server.AsHumaRoute(api.NewSSEBroker),
 			server.AsRoute(api.NewHealthHandler),
 			server.AsRoute(api.NewShareHandler),
 			server.AsRoute(api.NewVolumeHandler),

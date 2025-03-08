@@ -83,11 +83,7 @@ func (self *HealthHanler) HealthCheckHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (self *HealthHanler) EventEmitter(data dto.HealthPing) error {
-	msg := dto.EventMessageEnvelope{
-		Event: dto.EventHeartbeat,
-		Data:  data,
-	}
-	_, err := self.broadcaster.BroadcastMessage(&msg)
+	_, err := self.broadcaster.BroadcastMessage(data)
 	if err != nil {
 		slog.Error("Error broadcasting health message: %w", "err", err)
 		return tracerr.Wrap(err)

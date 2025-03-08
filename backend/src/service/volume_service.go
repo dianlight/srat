@@ -384,9 +384,5 @@ func (self *VolumeService) NotifyClient() {
 		return
 	}
 
-	var event dto.EventMessageEnvelope
-	event.Event = dto.EventVolumes
-	event.Data = data
-	slog.Debug("Sending event to clients", "event", pretty.Sprint(event))
-	self.broascasting.BroadcastMessage(&event)
+	self.broascasting.BroadcastMessage(data)
 }

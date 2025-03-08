@@ -111,10 +111,7 @@ func (handler *UpgradeHanler) notifyClient() {
 			slog.Debug(fmt.Sprintf("Notified client of progress update, bytes written: %d", n))
 			handler.progress.ProgressStatus = handler.pw.Percent()
 			slog.Debug(fmt.Sprintf("Copied %d bytes progress %d%%\n", handler.pw.Written(), handler.progress.ProgressStatus))
-			var event dto.EventMessageEnvelope
-			event.Event = dto.EventUpdate
-			event.Data = handler.progress
-			handler.broadcaster.BroadcastMessage(&event)
+			handler.broadcaster.BroadcastMessage(handler.progress)
 			if handler.progress.ProgressStatus >= 100 {
 				slog.Info("Update process completed successfully")
 				return

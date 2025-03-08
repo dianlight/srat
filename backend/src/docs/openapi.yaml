@@ -1,5 +1,115 @@
 components:
   schemas:
+    BinaryAsset:
+      additionalProperties: false
+      properties:
+        id:
+          format: int64
+          type: integer
+        size:
+          format: int64
+          type: integer
+      required:
+        - size
+        - id
+      type: object
+    BlockInfo:
+      additionalProperties: false
+      properties:
+        partitions:
+          items:
+            $ref: "#/components/schemas/BlockPartition"
+          type:
+            - array
+            - "null"
+        total_size_bytes:
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - total_size_bytes
+        - partitions
+      type: object
+    BlockPartition:
+      additionalProperties: false
+      properties:
+        default_mount_point:
+          type: string
+        device_id:
+          format: int64
+          minimum: 0
+          type:
+            - integer
+            - "null"
+        filesystem_label:
+          type: string
+        label:
+          type: string
+        mount_data:
+          type: string
+        mount_flags:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
+        mount_point:
+          type: string
+        mount_point_data:
+          $ref: "#/components/schemas/MountPointData"
+        name:
+          type: string
+        partition_flags:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
+        read_only:
+          type: boolean
+        size_bytes:
+          format: int64
+          minimum: 0
+          type: integer
+        type:
+          type: string
+        uuid:
+          type: string
+      required:
+        - name
+        - label
+        - mount_point
+        - default_mount_point
+        - size_bytes
+        - type
+        - read_only
+        - uuid
+        - filesystem_label
+        - partition_flags
+        - mount_flags
+        - mount_data
+        - device_id
+        - mount_point_data
+      type: object
+    DataDirtyTracker:
+      additionalProperties: false
+      properties:
+        settings:
+          type: boolean
+        shares:
+          type: boolean
+        users:
+          type: boolean
+        volumes:
+          type: boolean
+      required:
+        - shares
+        - users
+        - volumes
+        - settings
+      type: object
     ErrorDetail:
       additionalProperties: false
       properties:
@@ -59,6 +169,41 @@ components:
           format: uri
           type: string
       type: object
+    EventType:
+      additionalProperties: false
+      properties:
+        Name:
+          type: string
+      required:
+        - Name
+      type: object
+    HealthPing:
+      additionalProperties: false
+      properties:
+        alive:
+          type: boolean
+        aliveTime:
+          format: int64
+          type: integer
+        dirty_tracking:
+          $ref: "#/components/schemas/DataDirtyTracker"
+        last_error:
+          type: string
+        last_release:
+          $ref: "#/components/schemas/ReleaseAsset"
+        read_only:
+          type: boolean
+        samba_process_status:
+          $ref: "#/components/schemas/SambaProcessStatus"
+      required:
+        - alive
+        - aliveTime
+        - read_only
+        - samba_process_status
+        - last_error
+        - dirty_tracking
+        - last_release
+      type: object
     JsonPatchOp:
       additionalProperties: false
       properties:
@@ -83,6 +228,92 @@ components:
       required:
         - op
         - path
+      type: object
+    MountPointData:
+      additionalProperties: false
+      properties:
+        flags:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
+        fstype:
+          type: string
+        id:
+          format: int64
+          minimum: 0
+          type: integer
+        invalid:
+          type: boolean
+        invalid_error:
+          type: string
+        is_mounted:
+          type: boolean
+        path:
+          type: string
+        primary_path:
+          type: string
+        source:
+          type: string
+        warnings:
+          type: string
+      required:
+        - id
+        - path
+        - primary_path
+        - fstype
+      type: object
+    ReleaseAsset:
+      additionalProperties: false
+      properties:
+        arch_asset:
+          $ref: "#/components/schemas/BinaryAsset"
+        last_release:
+          type: string
+      type: object
+    SambaProcessStatus:
+      additionalProperties: false
+      properties:
+        connections:
+          format: int64
+          type: integer
+        cpu_percent:
+          format: double
+          type: number
+        create_time:
+          format: date-time
+          type: string
+        is_running:
+          type: boolean
+        memory_percent:
+          format: float
+          type: number
+        name:
+          type: string
+        open_files:
+          format: int64
+          type: integer
+        pid:
+          format: int32
+          type: integer
+        status:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+      required:
+        - pid
+        - name
+        - create_time
+        - cpu_percent
+        - memory_percent
+        - open_files
+        - connections
+        - status
+        - is_running
       type: object
     Settings:
       additionalProperties: false
@@ -136,6 +367,64 @@ components:
             - "null"
         workgroup:
           type: string
+      type: object
+    SharedResource:
+      additionalProperties: false
+      properties:
+        disabled:
+          type: boolean
+        invalid:
+          type: boolean
+        mount_point_data:
+          $ref: "#/components/schemas/MountPointData"
+        name:
+          type: string
+        ro_users:
+          items:
+            $ref: "#/components/schemas/User"
+          type:
+            - array
+            - "null"
+        timemachine:
+          type: boolean
+        usage:
+          type: string
+        users:
+          items:
+            $ref: "#/components/schemas/User"
+          type:
+            - array
+            - "null"
+      required:
+        - users
+        - ro_users
+      type: object
+    UpdateProgress:
+      additionalProperties: false
+      properties:
+        last_release:
+          type: string
+        update_error:
+          type: string
+        update_status:
+          format: int32
+          type: integer
+      required:
+        - update_status
+      type: object
+    User:
+      additionalProperties: false
+      properties:
+        is_admin:
+          type: boolean
+        password:
+          type: string
+        username:
+          type:
+            - string
+            - "null"
+      required:
+        - username
       type: object
   securitySchemes:
     ApiKeyAuth:
@@ -321,5 +610,142 @@ paths:
       summary: Put settings
       tags:
         - system
+  /sse:
+    get:
+      operationId: sse
+      responses:
+        "200":
+          content:
+            text/event-stream:
+              schema:
+                description: Each oneOf object in the array represents one possible Server Sent Events (SSE) message, serialized as UTF-8 text according to the SSE specification.
+                items:
+                  oneOf:
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/UpdateProgress"
+                        event:
+                          const: updating
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event updating
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/BlockInfo"
+                        event:
+                          const: volumes
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event volumes
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/HealthPing"
+                        event:
+                          const: heartbeat
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event heartbeat
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/EventType"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: hello
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event hello
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/ReleaseAsset"
+                        event:
+                          const: update
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event update
+                      type: object
+                title: Server Sent Events
+                type: array
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Server sent events
 security:
   - ApiKeyAuth: []

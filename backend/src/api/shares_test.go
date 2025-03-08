@@ -34,7 +34,6 @@ func TestShareHandlerSuite(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
-	csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
 	csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
 
 	csuite.exported_share_repo = exported_share_repo
