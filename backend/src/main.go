@@ -234,7 +234,7 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewShareHandler),
 			server.AsHumaRoute(api.NewVolumeHandler),
 			server.AsHumaRoute(api.NewSettingsHanler),
-			server.AsRoute(api.NewUserHandler),
+			server.AsHumaRoute(api.NewUserHandler),
 			server.AsRoute(api.NewSambaHanler),
 			server.AsRoute(api.NewUpgradeHanler),
 			server.AsRoute(api.NewSystemHanler),
