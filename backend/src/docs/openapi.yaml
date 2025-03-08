@@ -286,6 +286,45 @@ components:
         - primary_path
         - fstype
       type: object
+    NIC:
+      additionalProperties: false
+      properties:
+        duplex:
+          type: string
+        is_virtual:
+          type: boolean
+        mac_address:
+          type: string
+        name:
+          type: string
+        speed:
+          type: string
+      required:
+        - name
+        - mac_address
+        - is_virtual
+        - speed
+        - duplex
+      type: object
+    NetworkInfo:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/NetworkInfo.json
+          format: uri
+          readOnly: true
+          type: string
+        nics:
+          items:
+            $ref: "#/components/schemas/NIC"
+          type:
+            - array
+            - "null"
+      required:
+        - nics
+      type: object
     ReleaseAsset:
       additionalProperties: false
       properties:
@@ -503,6 +542,29 @@ info:
   version: 1.0.0
 openapi: 3.1.0
 paths:
+  /filesystems:
+    get:
+      operationId: list-filesystems
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: List filesystems
+      tags:
+        - system
   /health:
     get:
       operationId: get-health
@@ -520,6 +582,40 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       summary: Get health
+      tags:
+        - system
+  /nics:
+    get:
+      operationId: get-nics
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetworkInfo"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get nics
+      tags:
+        - system
+  /restart:
+    put:
+      operationId: put-restart
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Put restart
       tags:
         - system
   /samba/apply:
@@ -973,6 +1069,50 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/EventType"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: hello
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event hello
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/ReleaseAsset"
                         event:
                           const: update
@@ -1042,50 +1182,6 @@ paths:
                         - data
                         - event
                       title: Event heartbeat
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: share
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event share
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/EventType"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: hello
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event hello
                       type: object
                 title: Server Sent Events
                 type: array

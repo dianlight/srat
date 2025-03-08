@@ -237,7 +237,7 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewUserHandler),
 			server.AsHumaRoute(api.NewSambaHanler),
 			server.AsHumaRoute(api.NewUpgradeHanler),
-			server.AsRoute(api.NewSystemHanler),
+			server.AsHumaRoute(api.NewSystemHanler),
 			fx.Annotate(
 				server.NewMuxRouter,
 				fx.ParamTags(`group:"routes"`, `name:"ha_mode"`, `name:"static_fs"`),
