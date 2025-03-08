@@ -427,6 +427,21 @@ components:
         - users
         - ro_users
       type: object
+    SmbConf:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SmbConf.json
+          format: uri
+          readOnly: true
+          type: string
+        data:
+          type: string
+      required:
+        - data
+      type: object
     UpdateProgress:
       additionalProperties: false
       properties:
@@ -500,6 +515,40 @@ paths:
       summary: Get health
       tags:
         - system
+  /samba/apply:
+    put:
+      operationId: put-samba-apply
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Put samba apply
+      tags:
+        - samba
+  /samba/config:
+    get:
+      operationId: get-samba-config
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmbConf"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get samba config
+      tags:
+        - samba
   /settings:
     get:
       operationId: get-settings
