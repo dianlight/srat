@@ -27,6 +27,25 @@ func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker *Brok
 	return
 }
 
+// RegisterSse registers a Server-Sent Events (SSE) endpoint with the given API.
+// It sets up the SSE endpoint at the path "/sse" with the HTTP GET method and
+// provides a summary "Server sent events". The function maps various event types
+// to their corresponding data structures and processes the HTTP channel using
+// the broadcaster.
+//
+// Parameters:
+//   - api: The huma.API instance to register the SSE endpoint with.
+//
+// Event Types:
+//   - EVENTHELLO:     []dto.EventType
+//   - EVENTUPDATE:    dto.ReleaseAsset
+//   - EVENTUPDATING:  dto.UpdateProgress
+//   - EVENTVOLUMES:   dto.BlockInfo
+//   - EVENTHEARTBEAT: dto.HealthPing
+//   - EVENTSHARE:     []dto.SharedResource
+//
+// The function processes the HTTP channel by calling self.broadcaster.ProcessHttpChannel
+// with the provided SSE sender.
 func (self *BrokerHandler) RegisterSse(api huma.API) {
 	sse.Register(api, huma.Operation{
 		OperationID: "sse",
