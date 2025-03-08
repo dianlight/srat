@@ -16,6 +16,13 @@ components:
     BlockInfo:
       additionalProperties: false
       properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/BlockInfo.json
+          format: uri
+          readOnly: true
+          type: string
         partitions:
           items:
             $ref: "#/components/schemas/BlockPartition"
@@ -232,6 +239,13 @@ components:
     MountPointData:
       additionalProperties: false
       properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/MountPointData.json
+          format: uri
+          readOnly: true
+          type: string
         flags:
           items:
             format: int64
@@ -623,64 +637,6 @@ paths:
                   oneOf:
                     - properties:
                         data:
-                          $ref: "#/components/schemas/BlockInfo"
-                        event:
-                          const: volumes
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event volumes
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/HealthPing"
-                        event:
-                          const: heartbeat
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event heartbeat
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: share
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event share
-                      type: object
-                    - properties:
-                        data:
                           items:
                             $ref: "#/components/schemas/EventType"
                           type:
@@ -737,6 +693,64 @@ paths:
                         - event
                       title: Event updating
                       type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/BlockInfo"
+                        event:
+                          const: volumes
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event volumes
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/HealthPing"
+                        event:
+                          const: heartbeat
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event heartbeat
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
+                      type: object
                 title: Server Sent Events
                 type: array
           description: OK
@@ -747,5 +761,107 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       summary: Server sent events
+  /volume/{id}/mount:
+    delete:
+      operationId: delete-volume-by-id-mount
+      parameters:
+        - description: ID of the driver to mount
+          example: 1234
+          in: path
+          name: id
+          required: true
+          schema:
+            description: ID of the driver to mount
+            examples:
+              - 1234
+            exclusiveMinimum: 0
+            format: int64
+            minimum: 0
+            type: integer
+        - description: Force umount operation
+          explode: false
+          in: query
+          name: force
+          schema:
+            default: false
+            description: Force umount operation
+            type: boolean
+        - description: Lazy umount operation
+          explode: false
+          in: query
+          name: lazy
+          schema:
+            default: false
+            description: Lazy umount operation
+            type: boolean
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Delete volume by ID mount
+      tags:
+        - volume
+    post:
+      operationId: post-volume-by-id-mount
+      parameters:
+        - description: ID of the driver to mount
+          example: 1234
+          in: path
+          name: id
+          required: true
+          schema:
+            description: ID of the driver to mount
+            examples:
+              - 1234
+            exclusiveMinimum: 0
+            format: int64
+            minimum: 0
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MountPointData"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MountPointData"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Post volume by ID mount
+      tags:
+        - volume
+  /volumes:
+    get:
+      operationId: get-volumes
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockInfo"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get volumes
+      tags:
+        - volume
 security:
   - ApiKeyAuth: []

@@ -1,6 +1,5 @@
 package main
 
-//go:generate go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 init --pd --parseInternal --outputTypes json,yaml
 //go:generate go run github.com/jmattheis/goverter/cmd/goverter@v1.8.0 gen ./converter
 
 import (
@@ -59,7 +58,7 @@ var frontend *string
 
 // Static files
 //
-//go:embed static/* docs/swagger.*
+//go:embed static/*
 var content embed.FS
 
 //go:embed templates/smb.gtpl
@@ -233,7 +232,7 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewSSEBroker),
 			server.AsRoute(api.NewHealthHandler),
 			server.AsRoute(api.NewShareHandler),
-			server.AsRoute(api.NewVolumeHandler),
+			server.AsHumaRoute(api.NewVolumeHandler),
 			server.AsHumaRoute(api.NewSettingsHanler),
 			server.AsRoute(api.NewUserHandler),
 			server.AsRoute(api.NewSambaHanler),
