@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
@@ -32,6 +32,7 @@ func TestHealthHandlerSuite(t *testing.T) {
 	csuite.mockSambaService = NewMockSambaServiceInterface(ctrl)
 	csuite.dirtyService = service.NewDirtyDataService(testContext)
 	csuite.mockSambaService.EXPECT().GetSambaProcess().AnyTimes()
+	csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
 
 	//csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
 
@@ -39,32 +40,15 @@ func TestHealthHandlerSuite(t *testing.T) {
 }
 
 func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
+	healthHandler := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService, suite.dirtyService)
+	_, api := humatest.New(suite.T())
+	healthHandler.RegisterVolumeHandlers(api)
 
-	suite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
-	req, err := http.NewRequestWithContext(testContext, "GET", "/health", nil)
-	if err != nil {
-		suite.T().Fatal(err)
-	}
-
-	rr := httptest.NewRecorder()
-	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService, suite.dirtyService)
-	handler := http.HandlerFunc(health.HealthCheckHandler)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		suite.T().Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-	expectedContentType := "application/json"
-	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
-		suite.T().Errorf("handler returned wrong content type: got %v want %v",
-			contentType, expectedContentType)
-	}
+	rr := api.Get("/health")
+	suite.Equal(http.StatusOK, rr.Code)
 
 	var response dto.HealthPing
-	err = json.Unmarshal(rr.Body.Bytes(), &response)
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	if err != nil {
 		suite.T().Errorf("Failed to unmarshal response body: %v", err)
 	}
@@ -79,7 +63,7 @@ func (suite *HealthHandlerSuite) TestHealthEventEmitter() {
 	numcal := uint64(0)
 	startTime := time.Now()
 	suite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).Do((func(data any) {
-		msg, ok := data.(*dto.HealthPing)
+		msg, ok := data.(dto.HealthPing)
 		if !ok {
 			suite.T().Errorf("Expected Event to be Heartbeat, got %#v", msg)
 		}
@@ -96,6 +80,4 @@ func (suite *HealthHandlerSuite) TestHealthEventEmitter() {
 	if numcal != 0 {
 		suite.Equal(health.OutputEventsCount, numcal)
 	}
-
-	//t.Log(health)
 }

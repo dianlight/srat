@@ -3,15 +3,14 @@ package api
 import (
 	"context"
 	"log/slog"
-	"net/http"
 	"sync"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/ztrue/tracerr"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 )
 
@@ -63,25 +62,35 @@ func NewHealthHandler(
 	return p
 }
 
-func (broker *HealthHanler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/health", Method: "GET", Handler: broker.HealthCheckHandler},
-	}
+// RegisterVolumeHandlers registers the health check handler for the API.
+// It sets up an endpoint at "/health" that responds to GET requests with the
+// HealthCheckHandler function. The endpoint is tagged with "system".
+func (self *HealthHanler) RegisterVolumeHandlers(api huma.API) {
+	huma.Get(api, "/health", self.HealthCheckHandler, huma.OperationTags("system"))
 }
 
-// HealthCheckHandler godoc
+// HealthCheckHandler handles the health check request and returns the health status.
 //
-//	@Summary		HealthCheck
-//	@Description	HealthCheck
-//	@Tags			system
-//	@Produce		json
-//	@Success		200 {object}	dto.HealthPing
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Router			/health [get]
-func (self *HealthHanler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	HttpJSONReponse(w, self, nil)
+// Parameters:
+// - ctx: The context for the request.
+// - input: An empty struct as input.
+//
+// Returns:
+// - A struct containing the health status in the Body field.
+// - An error if the health check fails.
+func (self *HealthHanler) HealthCheckHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.HealthPing }, error) {
+	return &struct{ Body dto.HealthPing }{Body: self.HealthPing}, nil
 }
 
+// EventEmitter broadcasts a health ping message using the broadcaster.
+// It increments the OutputEventsCount if the message is successfully broadcasted.
+// If an error occurs during broadcasting, it logs the error and wraps it before returning.
+//
+// Parameters:
+//   - data: dto.HealthPing containing the health ping message to be broadcasted.
+//
+// Returns:
+//   - error: An error if the broadcasting fails, otherwise nil.
 func (self *HealthHanler) EventEmitter(data dto.HealthPing) error {
 	_, err := self.broadcaster.BroadcastMessage(data)
 	if err != nil {
@@ -92,6 +101,11 @@ func (self *HealthHanler) EventEmitter(data dto.HealthPing) error {
 	return nil
 }
 
+// checkSamba checks the status of the Samba process using the sambaService.
+// If the Samba process is running, it converts the process information to a
+// SambaProcessStatus DTO and updates the HealthPing.SambaProcessStatus field.
+// If the Samba process is not running or an error occurs, it sets the
+// HealthPing.SambaProcessStatus.Pid to -1.
 func (self *HealthHanler) checkSamba() {
 	sambaProcess, err := self.sambaService.GetSambaProcess()
 	if err == nil && sambaProcess != nil {
@@ -102,6 +116,18 @@ func (self *HealthHanler) checkSamba() {
 	}
 }
 
+// run is a method of HealthHandler that continuously monitors the health status
+// of the system. It listens for a cancellation signal from the context and
+// performs health checks at regular intervals. If the context is cancelled,
+// it logs the closure and wraps the context error before returning it.
+//
+// The method performs the following actions in a loop:
+// 1. Checks if the context is done and exits the loop if it is.
+// 2. Calls checkSamba to perform a Samba health check.
+// 3. Updates the HealthPing.Dirty status with the latest dirty data tracker.
+// 4. Updates the AliveTime with the current time in milliseconds.
+// 5. Emits a health message using the EventEmitter and logs any errors.
+// 6. Sleeps for the duration specified by OutputEventsInterleave before repeating.
 func (self *HealthHanler) run() error {
 	for {
 		select {
