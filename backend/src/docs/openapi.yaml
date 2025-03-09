@@ -56,8 +56,21 @@ components:
           type: string
         mount_flags:
           items:
-            format: int64
-            type: integer
+            enum:
+              - MS_RDONLY
+              - MS_NOSUID
+              - MS_NODEV
+              - MS_NOEXEC
+              - MS_SYNCHRONOUS
+              - MS_REMOUNT
+              - MS_MANDLOCK
+              - MS_NOATIME
+              - MS_NODIRATIME
+              - MS_BIND
+              - MS_LAZYTIME
+              - MS_NOUSER
+              - MS_RELATIME
+            type: string
           type:
             - array
             - "null"
@@ -69,8 +82,21 @@ components:
           type: string
         partition_flags:
           items:
-            format: int64
-            type: integer
+            enum:
+              - MS_RDONLY
+              - MS_NOSUID
+              - MS_NODEV
+              - MS_NOEXEC
+              - MS_SYNCHRONOUS
+              - MS_REMOUNT
+              - MS_MANDLOCK
+              - MS_NOATIME
+              - MS_NODIRATIME
+              - MS_BIND
+              - MS_LAZYTIME
+              - MS_NOUSER
+              - MS_RELATIME
+            type: string
           type:
             - array
             - "null"
@@ -176,14 +202,6 @@ components:
           format: uri
           type: string
       type: object
-    EventType:
-      additionalProperties: false
-      properties:
-        Name:
-          type: string
-      required:
-        - Name
-      type: object
     HealthPing:
       additionalProperties: false
       properties:
@@ -255,8 +273,21 @@ components:
           type: string
         flags:
           items:
-            format: int64
-            type: integer
+            enum:
+              - MS_RDONLY
+              - MS_NOSUID
+              - MS_NODEV
+              - MS_NOEXEC
+              - MS_SYNCHRONOUS
+              - MS_REMOUNT
+              - MS_MANDLOCK
+              - MS_NOATIME
+              - MS_NODIRATIME
+              - MS_BIND
+              - MS_LAZYTIME
+              - MS_NOUSER
+              - MS_RELATIME
+            type: string
           type:
             - array
             - "null"
@@ -283,8 +314,6 @@ components:
       required:
         - id
         - path
-        - primary_path
-        - fstype
       type: object
     NIC:
       additionalProperties: false
@@ -388,9 +417,7 @@ components:
         allow_hosts:
           items:
             type: string
-          type:
-            - array
-            - "null"
+          type: array
         bind_all_interfaces:
           type: boolean
         compatibility_mode:
@@ -398,9 +425,7 @@ components:
         interfaces:
           items:
             type: string
-          type:
-            - array
-            - "null"
+          type: array
         log_level:
           type: string
         mountoptions:
@@ -422,9 +447,7 @@ components:
         veto_files:
           items:
             type: string
-          type:
-            - array
-            - "null"
+          type: array
         workgroup:
           type: string
       type: object
@@ -455,6 +478,12 @@ components:
         timemachine:
           type: boolean
         usage:
+          enum:
+            - none
+            - backup
+            - media
+            - share
+            - internal
           type: string
         users:
           items:
@@ -462,9 +491,6 @@ components:
           type:
             - array
             - "null"
-      required:
-        - users
-        - ro_users
       type: object
     SmbConf:
       additionalProperties: false
@@ -521,6 +547,25 @@ components:
             - "null"
       required:
         - username
+      type: object
+    Welcome:
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+        supported_events:
+          enum:
+            - hello
+            - update
+            - updating
+            - volumes
+            - heartbeat
+            - share
+            - dirty
+          type: string
+      required:
+        - message
+        - supported_events
       type: object
   securitySchemes:
     ApiKeyAuth:
@@ -946,6 +991,12 @@ paths:
                 timemachine:
                   type: boolean
                 usage:
+                  enum:
+                    - none
+                    - backup
+                    - media
+                    - share
+                    - internal
                   type: string
                 users:
                   items: {}
@@ -975,6 +1026,12 @@ paths:
                 timemachine:
                   type: boolean
                 usage:
+                  enum:
+                    - none
+                    - backup
+                    - media
+                    - share
+                    - internal
                   type: string
                 users:
                   items: {}
@@ -1069,24 +1126,6 @@ paths:
                   oneOf:
                     - properties:
                         data:
-                          $ref: "#/components/schemas/ReleaseAsset"
-                        event:
-                          const: update
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event update
-                      type: object
-                    - properties:
-                        data:
                           $ref: "#/components/schemas/UpdateProgress"
                         event:
                           const: updating
@@ -1163,11 +1202,7 @@ paths:
                       type: object
                     - properties:
                         data:
-                          items:
-                            $ref: "#/components/schemas/EventType"
-                          type:
-                            - array
-                            - "null"
+                          $ref: "#/components/schemas/Welcome"
                         event:
                           const: hello
                           description: The event name.
@@ -1182,6 +1217,24 @@ paths:
                         - data
                         - event
                       title: Event hello
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/ReleaseAsset"
+                        event:
+                          const: update
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event update
                       type: object
                 title: Server Sent Events
                 type: array

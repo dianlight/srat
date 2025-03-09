@@ -9,7 +9,6 @@ const (
 	eventUpdating                   // "updating"
 	eventVolumes                    // "volumes"
 	eventHeartbeat                  // "heartbeat"
-
-	eventShare // "share"
-	eventDirty // "dirty"
+	eventShare                      // "share"
+	eventDirty                      // "dirty"
 )

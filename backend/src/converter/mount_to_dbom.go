@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/dianlight/srat/dbom"
-	"github.com/dianlight/srat/dto"
 	"github.com/u-root/u-root/pkg/mount"
 )
 
@@ -23,8 +22,8 @@ type MountToDbom interface {
 	MountToMountPointPath(source *mount.MountPoint, target *dbom.MountPointPath) error
 }
 
-func uintptrToMounDataFlags(source uintptr) (dto.MounDataFlags, error) {
-	var ret dto.MounDataFlags
+func uintptrToMounDataFlags(source uintptr) (dbom.MounDataFlags, error) {
+	var ret dbom.MounDataFlags
 	err := ret.Scan(source)
 	return ret, err
 }

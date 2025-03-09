@@ -37,7 +37,7 @@ func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker *Brok
 //   - api: The huma.API instance to register the SSE endpoint with.
 //
 // Event Types:
-//   - EVENTHELLO:     []dto.EventType
+//   - EVENTHELLO:     dto.Welcome
 //   - EVENTUPDATE:    dto.ReleaseAsset
 //   - EVENTUPDATING:  dto.UpdateProgress
 //   - EVENTVOLUMES:   dto.BlockInfo
@@ -53,7 +53,7 @@ func (self *BrokerHandler) RegisterSse(api huma.API) {
 		Path:        "/sse",
 		Summary:     "Server sent events",
 	}, map[string]any{
-		dto.EventTypes.EVENTHELLO.Name:     []dto.EventType{},
+		dto.EventTypes.EVENTHELLO.Name:     dto.Welcome{},
 		dto.EventTypes.EVENTUPDATE.Name:    dto.ReleaseAsset{},
 		dto.EventTypes.EVENTUPDATING.Name:  dto.UpdateProgress{},
 		dto.EventTypes.EVENTVOLUMES.Name:   dto.BlockInfo{},

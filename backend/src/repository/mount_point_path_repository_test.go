@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/dbom"
-	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -50,7 +49,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 		//Label:  "Test Drive",
 		Source: "test_drive",
 		FSType: "ext4",
-		Flags:  []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
+		Flags:  []dbom.MounDataFlag{dbom.MS_RDONLY, dbom.MS_NOATIME},
 		//Data:   "rw,noatime",
 		//DeviceId: 12344,
 	}
@@ -69,7 +68,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 			//Label:  "Test 1",
 			Source: "test1",
 			FSType: "ext4",
-			Flags:  []dto.MounDataFlag{dto.MS_RDONLY, dto.MS_NOATIME},
+			Flags:  []dbom.MounDataFlag{dbom.MS_RDONLY, dbom.MS_NOATIME},
 			//Data:     "rw,noatime",
 			DeviceId: 12345,
 		},
@@ -78,7 +77,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 			//Label:  "Test 2",
 			Source: "test2",
 			FSType: "ntfs",
-			Flags:  []dto.MounDataFlag{dto.MS_BIND},
+			Flags:  []dbom.MounDataFlag{dbom.MS_BIND},
 			//Data:     "bind",
 			DeviceId: 12346,
 		},

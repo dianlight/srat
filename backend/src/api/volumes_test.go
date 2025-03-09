@@ -107,7 +107,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 			mockMountPath.Source = d.Name
 			mockMountPath.Path = filepath.Join("/mnt", d.Label)
 			mockMountPath.FSType = d.Type
-			mockMountPath.Flags = []dto.MounDataFlag{dto.MS_NOATIME}
+			mockMountPath.Flags = []dbom.MounDataFlag{dbom.MS_NOATIME}
 			suite.T().Logf("Selected loop device: %v", mockMountPath)
 			break
 		}
@@ -122,19 +122,19 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	// Check the response body is what we expecsuite.T().
-	var responseData dbom.MountPointPath
+	var responseData dto.MountPointData
 	err = json.Unmarshal(rr.Body.Bytes(), &responseData)
 	suite.Require().NoError(err)
 
 	// Verify the response data
-	if !strings.HasPrefix(responseData.Path, mockMountPath.Path) {
-		suite.T().Errorf("Unexpected path in response: got %v want %v", responseData.Path, mockMountPath.Path)
+	if !strings.HasPrefix(responseData.Path, mockMountData.Path) {
+		suite.T().Errorf("Unexpected path in response: got %v want %v", responseData.Path, mockMountData.Path)
 	}
-	if responseData.FSType != mockMountPath.FSType {
-		suite.T().Errorf("Unexpected FSType in response: got %v want %v", responseData.FSType, mockMountPath.FSType)
+	if responseData.FSType != mockMountData.FSType {
+		suite.T().Errorf("Unexpected FSType in response: got %v want %v", responseData.FSType, mockMountData.FSType)
 	}
-	if !reflect.DeepEqual(responseData.Flags, mockMountPath.Flags) {
-		suite.T().Errorf("Unexpected Flags in response: got %v want %v", responseData.Flags, mockMountPath.Flags)
+	if !reflect.DeepEqual(responseData.Flags, mockMountData.Flags) {
+		suite.T().Errorf("Unexpected Flags in response: got %v want %v", responseData.Flags, mockMountData.Flags)
 	}
 }
 
