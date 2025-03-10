@@ -7,7 +7,7 @@ import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement, 
 import { MuiChipsInput } from 'mui-chips-input'
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
-import { useGetSettingsQuery, usePutSettingsMutation, type DtoSettings } from "../store/sratApi";
+import { useGetSettingsQuery, usePutSettingsMutation, type Settings } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
 
 export function Settings() {
@@ -15,7 +15,7 @@ export function Settings() {
     const { data: globalConfig, isLoading, error } = useGetSettingsQuery();
     const { control, handleSubmit, reset, watch, formState } = useForm({
         mode: "onBlur",
-        values: globalConfig,
+        values: globalConfig as Settings,
         disabled: read_only,
     });
     const [update, updateResponse] = usePutSettingsMutation();
@@ -23,9 +23,9 @@ export function Settings() {
     const bindAllWatch = watch("bind_all_interfaces")
     let timer: NodeJS.Timer | null = null;
 
-    function handleCommit(data: DtoSettings) {
+    function handleCommit(data: Settings) {
         console.log(data);
-        update({ dtoSettings: data }).unwrap().then(res => {
+        update({ settings: data }).unwrap().then(res => {
             console.log(res)
         }).catch(err => console.log(err))
     }
@@ -73,6 +73,7 @@ export function Settings() {
                             <Controller
                                 name="allow_hosts"
                                 control={control}
+                                defaultValue={[]}
                                 disabled={read_only}
                                 render={({ field }) => <MuiChipsInput label="Allow Hosts" {...field} />}
                             />
@@ -86,6 +87,7 @@ export function Settings() {
                             <Controller
                                 name="veto_files"
                                 control={control}
+                                defaultValue={[]}
                                 disabled={read_only}
                                 render={({ field }) => <MuiChipsInput label="Veto Files" {...field} />}
                             />
@@ -98,6 +100,7 @@ export function Settings() {
                                 name="interfaces"
                                 disabled={bindAllWatch || read_only}
                                 control={control}
+                                defaultValue={[]}
                                 render={({ field }) => <MuiChipsInput label="Interfaces" {...field} />}
                             />
                         </Grid>

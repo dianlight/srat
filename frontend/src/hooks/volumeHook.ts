@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { DtoEventType, useGetSharesQuery, useGetVolumesQuery, type DtoBlockInfo, type DtoSharedResource } from "../store/sratApi";
+import { Supported_events, useGetSharesQuery, useGetVolumesQuery, type BlockInfo, type SharedResource } from "../store/sratApi";
 import { useSSE } from "react-hooks-sse";
 
 export function useVolume() {
 
-    const [volumes, setVolumes] = useState<DtoBlockInfo>({} as DtoBlockInfo);
+    const [volumes, setVolumes] = useState<BlockInfo>({} as BlockInfo);
     const { data, error, isLoading } = useGetVolumesQuery();
 
-    const statusSSE = useSSE(DtoEventType.Volumes, {} as DtoBlockInfo, {
-        parser(input: any): DtoBlockInfo {
+    const statusSSE = useSSE(Supported_events.Volumes, {} as BlockInfo, {
+        parser(input: any): BlockInfo {
             console.log("Got volumes", input)
             const c = JSON.parse(input);
             setVolumes(c);
@@ -18,7 +18,7 @@ export function useVolume() {
 
     useEffect(() => {
         if (data) {
-            setVolumes(data);
+            setVolumes(data as BlockInfo);
         }
         if (error) {
             console.error("Error fetching volumes:", error);

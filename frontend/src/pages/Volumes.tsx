@@ -19,7 +19,7 @@ import { toast } from "react-toastify";
 import { useSSE } from "react-hooks-sse";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
-import { DtoMounDataFlag, useDeleteVolumeByIdMountMutation, useGetFilesystemsQuery, usePostVolumeByIdMountMutation, type DtoBlockPartition, type DtoMountPointData } from "../store/sratApi";
+import { Flags, useDeleteVolumeByIdMountMutation, useGetFilesystemsQuery, usePostVolumeByIdMountMutation, type BlockPartition, type MountPointData } from "../store/sratApi";
 
 
 export function Volumes() {
@@ -28,7 +28,7 @@ export function Volumes() {
     const [showMount, setShowMount] = useState<boolean>(false);
 
     const { volumes, isLoading, error } = useVolume();
-    const [selected, setSelected] = useState<DtoBlockPartition | undefined>(undefined);
+    const [selected, setSelected] = useState<BlockPartition | undefined>(undefined);
     const confirm = useConfirm();
     const [mountVolume, mountVolumeResult] = usePostVolumeByIdMountMutation();
     const [umountVolume, umountVolumeResult] = useDeleteVolumeByIdMountMutation();
@@ -41,11 +41,11 @@ export function Volumes() {
         });
     };
 
-    function onSubmitMountVolume(data?: DtoMountPointData) {
+    function onSubmitMountVolume(data?: MountPointData) {
         console.log("Mount", data)
         if (!data || !data.id) return
-        mountVolume({ id: data.id, dtoMountPointData: data }).unwrap().then((res) => {
-            toast.info(`Volume ${res.path} mounted successfully.`);
+        mountVolume({ id: data.id, mountPointData: data }).unwrap().then((res) => {
+            toast.info(`Volume ${(res as MountPointData).path} mounted successfully.`);
             setSelected(undefined);
         }).catch(err => {
             console.error("Error:", err, err.data);
@@ -58,14 +58,14 @@ export function Volumes() {
         return true;
     }
 
-    function handleCreateShare(partition: DtoBlockPartition) {
+    function handleCreateShare(partition: BlockPartition) {
         //navigate(`/shares/create?path=${partition.mount_point}`);
     }
 
-    function handleGoToShare(partition: DtoBlockPartition) {
+    function handleGoToShare(partition: BlockPartition) {
     }
 
-    function onSubmitUmountVolume(data: DtoBlockPartition, force = false) {
+    function onSubmitUmountVolume(data: BlockPartition, force = false) {
         console.log("Umount", data)
         confirm({
             title: `Umount ${data.label}?`,
@@ -94,7 +94,7 @@ export function Volumes() {
 
 
     return <InView>
-        <VolumeMountDialog objectToEdit={selected} open={showMount} onClose={(data) => { setSelected({}); onSubmitMountVolume(data); setShowMount(false) }} />
+        <VolumeMountDialog objectToEdit={selected} open={showMount} onClose={(data) => { setSelected(undefined); onSubmitMountVolume(data); setShowMount(false) }} />
         <PreviewDialog title={selected?.name || ""} objectToDisplay={selected} open={showPreview} onClose={() => { setSelected(undefined); setShowPreview(false) }} />
         <br />
         <List dense={true}>
@@ -168,20 +168,21 @@ export function Volumes() {
     </InView >
 }
 
-interface MountPointData extends DtoMountPointData {
+interface xMountPointData extends MountPointData {
     flagsNames?: string[];
 }
 
 
-function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPointData) => void, objectToEdit?: DtoBlockPartition }) {
-    const mountpointData: MountPointData = {}
-    const { control, handleSubmit, watch, formState: { errors } } = useForm<MountPointData>(
+function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointData) => void, objectToEdit?: BlockPartition }) {
+    //const mountpointData: xMountPointData = {}
+    const { control, handleSubmit, watch, formState: { errors } } = useForm<xMountPointData>(
         {
             values: {
-                id: props.objectToEdit?.mount_point_data?.id,
+                path: props.objectToEdit?.mount_point || "",
+                id: props.objectToEdit?.mount_point_data?.id || -1,
                 fstype: props.objectToEdit?.type,
                 flags: props.objectToEdit?.mount_point_data?.flags,
-                flagsNames: props.objectToEdit?.mount_point_data?.flags?.map(v => DtoMounDataFlag[v]) || [],
+                flagsNames: props.objectToEdit?.mount_point_data?.flags?.map(v => v.toString()) || [],
             },
         },
     );
@@ -189,12 +190,14 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
 
     function handleCloseSubmit(data?: MountPointData) {
         if (data) {
+            /*
             data.flags = data.flagsNames?.map(v => Object.values(DtoMounDataFlag)
                 .filter(v2 => !(typeof v2 === 'string')).find((v1, ix) => {
                     // console.log(v1, v, DtoMounDataFlag[v1])
                     return DtoMounDataFlag[v1] === v
                 })
             ).filter(v3 => v3 !== undefined);
+            */
         }
         console.log("Close", data)
         props.onClose(data)
@@ -219,7 +222,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                                 <Grid2 size={6}>
                                     <AutocompleteElement name="fstype" label="File System Type"
                                         required control={control}
-                                        options={filesystems || []}
+                                        options={filesystems as string[] || []}
                                     />
                                 </Grid2>
                                 <Grid2 size={6}>
@@ -227,7 +230,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                                         multiple
                                         name="flagsNames"
                                         label="Mount Flags"
-                                        options={Object.values(DtoMounDataFlag).filter((v) => typeof v === "string") as string[]}
+                                        options={Object.values(Flags).filter((v) => typeof v === "string") as string[]}
                                         control={control}
                                     />
                                 </Grid2>
@@ -241,7 +244,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: DtoMountPoin
                     </Stack>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => handleCloseSubmit(mountpointData)}>Cancel</Button>
+                    <Button onClick={() => handleCloseSubmit()}>Cancel</Button>
                     <Button type="submit" form="mountvolumeform">Mount</Button>
                 </DialogActions>
             </Dialog>

@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"io/fs"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humamux"
@@ -23,7 +22,7 @@ func NewHumaAPI(v struct {
 	CxtClose context.CancelFunc
 	Routes   []HumaRoute `group:"api_routes"`
 	Hamode   bool        `name:"ha_mode"`
-	Static   fs.FS       `name:"static_fs"`
+	// Static   fs.FS       `name:"static_fs"`
 }) huma.API {
 	config := huma.DefaultConfig("SRAT API", "1.0.0")
 	config.Info.Description = "This are samba rest admin API"

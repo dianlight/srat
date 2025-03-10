@@ -1,5 +1,5 @@
-import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { Fragment, useState } from "react";
+import { useForm } from "react-hook-form";
 import { Fab, List, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Dialog, DialogTitle, Stack, DialogContent, DialogContentText, Grid2 as Grid, DialogActions, Button } from "@mui/material";
 import { InView } from "react-intersection-observer";
 import { useConfirm } from "material-ui-confirm";
@@ -8,15 +8,13 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import { PasswordElement, PasswordRepeatElement, TextFieldElement } from "react-hook-form-mui";
-import { stringWidth } from "bun";
-import { useDeleteUserByUsernameMutation, useGetUseradminQuery, useGetUsersQuery, usePostUserMutation, usePutUseradminMutation, usePutUserByUsernameMutation, type DtoUser } from "../store/sratApi";
+import { useDeleteUserByUsernameMutation, useGetUseradminQuery, useGetUsersQuery, usePostUserMutation, usePutUseradminMutation, usePutUserByUsernameMutation, type User } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
 
 
 
-interface UsersProps extends DtoUser {
+interface UsersProps extends User {
     doCreate?: boolean
     "password-repeat"?: string
 }
@@ -26,7 +24,7 @@ export function Users() {
     const users = useGetUsersQuery();
     const admin = useGetUseradminQuery();
     const [errorInfo, setErrorInfo] = useState<string>('')
-    const [selected, setSelected] = useState<UsersProps>({});
+    const [selected, setSelected] = useState<UsersProps>({ username: "", password: "" });
     const confirm = useConfirm();
     const [showEdit, setShowEdit] = useState<boolean>(false);
     const [userCreate] = usePostUserMutation();
@@ -46,25 +44,25 @@ export function Users() {
         // Save Data
         console.log(data);
         if (data.doCreate) {
-            userCreate({ dtoUser: data }).unwrap().then((res) => {
+            userCreate({ user: data }).unwrap().then((res) => {
                 setErrorInfo('')
-                setSelected({});
+                setSelected({ username: "", password: "" });
                 users.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
             })
             return;
         } else if (data.is_admin) {
-            userAdminUpdate({ dtoUser: data }).unwrap().then((res) => {
+            userAdminUpdate({ user: data }).unwrap().then((res) => {
                 setErrorInfo('')
                 admin.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
             })
         } else {
-            userUpdate({ username: data.username, dtoUser: data }).unwrap().then((res) => {
-                setErrorInfo('')
-                setSelected({});
+            userUpdate({ username: data.username, user: data }).unwrap().then((res) => {
+                setErrorInfo('');
+                setSelected({ username: "", password: "" });
                 users.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
@@ -89,7 +87,7 @@ export function Users() {
                     }
                     userDelete({ username: data.username }).unwrap().then((res) => {
                         setErrorInfo('')
-                        setSelected({});
+                        setSelected({ username: "", password: "" });
                         users.refetch();
                     }).catch(err => {
                         setErrorInfo(JSON.stringify(err));
@@ -102,18 +100,18 @@ export function Users() {
 
     return (
         <InView>
-            <UserEditDialog objectToEdit={selected} open={showEdit} onClose={(data) => { setSelected({}); onSubmitEditUser(data); setShowEdit(false) }} />
-            {read_only || <Fab key="fab_users" color="primary" aria-label="add" sx={{
+            <UserEditDialog objectToEdit={selected} open={showEdit} onClose={(data) => { setSelected({ username: "", password: "", doCreate: false }); onSubmitEditUser(data); setShowEdit(false) }} />
+            {read_only || <Fab color="primary" aria-label="add" sx={{
                 float: 'right',
                 top: '-20px',
                 margin: '-8px'
             }} size="small"
-                onClick={() => { setSelected({ doCreate: true }); setShowEdit(true) }}
+                onClick={() => { setSelected({ username: "", password: "", doCreate: true }); setShowEdit(true) }}
             >
                 <PersonAddIcon />
             </Fab>}
             <List dense={true}>
-                {users.isSuccess && users.data!/*.sort((a, b) => {
+                {users.isSuccess && Array.isArray(users.data) && users.data/*.sort((a, b) => {
                     if (a.is_admin) {
                         return -1;
                     } else if (b.is_admin) {

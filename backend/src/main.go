@@ -204,20 +204,20 @@ func prog(state overseer.State) {
 			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
 			func() *dto.ContextState { return &sharedResources },
 			func() *overseer.State { return &state },
-			fx.Annotate(
-				func() fs.FS {
-					if frontend == nil || *frontend == "" {
-						return content
-					} else {
-						_, err := os.Stat(*frontend)
-						if err != nil {
-							log.Fatalf("Cant access frontend folder %s - %s", *frontend, err)
-						}
-						return os.DirFS(*frontend)
+			//	fx.Annotate(
+			func() fs.FS {
+				if frontend == nil || *frontend == "" {
+					return content
+				} else {
+					_, err := os.Stat(*frontend)
+					if err != nil {
+						log.Fatalf("Cant access frontend folder %s - %s", *frontend, err)
 					}
-				},
-				fx.ResultTags(`name:"static_fs"`),
-			),
+					return os.DirFS(*frontend)
+				}
+			},
+			//		fx.ResultTags(`name:"static_fs"`),
+			//	),
 			fx.Annotate(
 				func() bool { return *hamode },
 				fx.ResultTags(`name:"ha_mode"`),
@@ -240,7 +240,7 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewSystemHanler),
 			fx.Annotate(
 				server.NewMuxRouter,
-				fx.ParamTags(`group:"routes"`, `name:"ha_mode"`, `name:"static_fs"`),
+				fx.ParamTags(`name:"ha_mode"`),
 			),
 			server.NewHTTPServer,
 			server.NewHumaAPI,
@@ -271,7 +271,18 @@ func prog(state overseer.State) {
 				}
 			}
 		}),
-		fx.Invoke(func(_ *http.Server, api huma.API, router *mux.Router) {
+		fx.Invoke(func(_ *http.Server, api huma.API, router *mux.Router, static fs.FS) {
+			// Static Routes
+			_, err := fs.ReadDir(static, "static")
+			if err != nil {
+				slog.Warn("Static directory not found:", "err", err)
+				router.Path("/{file}.html").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
+			} else {
+				fsRoot, _ := fs.Sub(static, "static")
+				router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
+			}
+
+			//
 			router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 				template, err := route.GetPathTemplate()
 				if err != nil {

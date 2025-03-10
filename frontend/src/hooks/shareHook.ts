@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { DtoEventType, useGetSharesQuery, type DtoSharedResource } from "../store/sratApi";
+import { Supported_events, useGetSharesQuery, type SharedResource } from "../store/sratApi";
 import { useSSE } from "react-hooks-sse";
 
 export function useShare() {
 
-    const [shares, setShares] = useState<DtoSharedResource[]>([]);
+    const [shares, setShares] = useState<SharedResource[]>([]);
     const { data, error, isLoading } = useGetSharesQuery();
 
-    const statusSSE = useSSE(DtoEventType.Share, {} as DtoSharedResource, {
-        parser(input: any): DtoSharedResource {
+    const statusSSE = useSSE(Supported_events.Share, {} as SharedResource, {
+        parser(input: any): SharedResource {
             const c = JSON.parse(input);
             console.log("Got shares", c)
             setShares(c)
@@ -18,7 +18,7 @@ export function useShare() {
 
     useEffect(() => {
         if (data) {
-            setShares(data);
+            setShares(data as SharedResource[]);
         }
         if (error) {
             console.error("Error fetching shares:", error);

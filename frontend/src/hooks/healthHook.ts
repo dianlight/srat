@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react";
-import { DtoEventType, useGetHealthQuery, useGetSharesQuery, useGetVolumesQuery, type DtoBlockInfo, type DtoDataDirtyTracker, type DtoHealthPing, type DtoReleaseAsset, type DtoSambaProcessStatus, type DtoSharedResource } from "../store/sratApi";
+import { useGetHealthQuery, Supported_events, useGetVolumesQuery, type BlockInfo, type DataDirtyTracker, type HealthPing, type ReleaseAsset, type SambaProcessStatus, type SharedResource } from "../store/sratApi";
 import { useSSE } from "react-hooks-sse";
 
 export function useHealth() {
 
-    const [health, setHealth] = useState<DtoHealthPing>({
+    const [health, setHealth] = useState<HealthPing>({
         alive: false,
         read_only: true,
         aliveTime: 0,
-        dirty_tracking: {} as DtoDataDirtyTracker,
+        dirty_tracking: {} as DataDirtyTracker,
         last_error: "",
-        last_release: {} as DtoReleaseAsset,
-        samba_process_status: {} as DtoSambaProcessStatus
+        last_release: {} as ReleaseAsset,
+        samba_process_status: {} as SambaProcessStatus
     });
 
     const { data, error, isLoading } = useGetHealthQuery();
-    const ssedata = useSSE(DtoEventType.Heartbeat, {} as DtoHealthPing, {
-        parser(input: any): DtoHealthPing {
+    const ssedata = useSSE(Supported_events.Heartbeat, {} as HealthPing, {
+        parser(input: any): HealthPing {
             const c = JSON.parse(input);
             //console.log("Got sse health data", c);
             return c;
@@ -24,9 +24,9 @@ export function useHealth() {
     });
 
     useEffect(() => {
-        if (data && (data.aliveTime || 0) > (health.aliveTime || 0)) {
+        if (data && ((data as HealthPing).aliveTime || 0) > (health.aliveTime || 0)) {
             //console.log("Update Data from rest service", data);
-            setHealth(data);
+            setHealth(data as HealthPing);
         }
         if (error) {
             console.error("Error fetching health data:", error);
