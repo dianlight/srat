@@ -3,10 +3,9 @@ package api_test
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
+	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
@@ -14,7 +13,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 	"github.com/xorcare/pointer"
 	"github.com/ztrue/tracerr"
@@ -34,7 +32,6 @@ func TestShareHandlerSuite(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
-	csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
 	csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
 
 	csuite.exported_share_repo = exported_share_repo
@@ -46,23 +43,11 @@ func TestShareHandlerSuite(t *testing.T) {
 
 func (suite *ShareHandlerSuite) TestListShares() {
 	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "GET", "/shares", nil)
-	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(shareHandler.ListShares)
-
-	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
-	handler.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
+	_, api := humatest.New(suite.T())
+	shareHandler.RegisterShareHandler(api)
+	rr := api.Get("/shares")
 	suite.Equal(http.StatusOK, rr.Code, "Body %#v", rr.Body.String())
 
-	// Check the response body is what we expect.
 	resultsDto := []dto.SharedResource{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultsDto)
 	suite.Require().NoError(jsonError, "Body %#v", rr.Body.String())
@@ -84,23 +69,12 @@ func (suite *ShareHandlerSuite) TestListShares() {
 
 func (suite *ShareHandlerSuite) TestGetShareHandler() {
 	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "GET", "/share/LIBRARY", nil)
-	suite.Require().NoError(err)
+	_, api := humatest.New(suite.T())
+	shareHandler.RegisterShareHandler(api)
+	rr := api.Get("/share/LIBRARY")
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", shareHandler.GetShare).Methods(http.MethodGet)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
 	suite.Require().Equal(http.StatusOK, rr.Code)
 
-	// Check the response body is what we expect.
-	//context_state := (&dto.ContextState{}).FromContext(testContext)
 	resultShare := dto.SharedResource{}
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &resultShare)
 	suite.Require().NoError(jsonError, "Body %#v", rr.Body.String())
@@ -123,6 +97,8 @@ func (suite *ShareHandlerSuite) TestGetShareHandler() {
 
 func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
+	_, api := humatest.New(suite.T())
+	shareHandler.RegisterShareHandler(api)
 
 	share := dto.SharedResource{
 		Name: "PIPPODD",
@@ -130,27 +106,12 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 			Path:   "/pippo",
 			FSType: "tmpfs"},
 	}
-
-	jsonBody, jsonError := json.Marshal(share)
-	suite.Require().NoError(jsonError)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "POST", "/share", strings.NewReader(string(jsonBody)))
-	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/share", shareHandler.CreateShare).Methods(http.MethodPost)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
+	rr := api.Post("/share", share)
 	suite.Equal(http.StatusCreated, rr.Code)
 
 	// Check the response body is what we expect.
 	var result dto.SharedResource
-	jsonError = json.Unmarshal(rr.Body.Bytes(), &result)
+	jsonError := json.Unmarshal(rr.Body.Bytes(), &result)
 	suite.Require().NoError(jsonError)
 	share.Name = result.Name
 	share.Users = []dto.User{
@@ -165,6 +126,8 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 
 func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
 	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
+	_, api := humatest.New(suite.T())
+	shareHandler.RegisterShareHandler(api)
 
 	share := dto.SharedResource{
 		Name: "LIBRARY",
@@ -182,29 +145,17 @@ func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
 		Usage: "media",
 	}
 
-	jsonBody, jsonError := json.Marshal(share)
-	suite.Require().NoError(jsonError)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "POST", "/share/LIBRARY", strings.NewReader(string(jsonBody)))
-	suite.Require().NoError(err)
+	rr := api.Post("/share", share)
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", shareHandler.CreateShare).Methods(http.MethodPost)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
 	suite.Equal(http.StatusConflict, rr.Code)
 
-	// Check the response body is what we expect.
 	suite.Contains(rr.Body.String(), "Share already exists")
 }
 
 func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
 	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
+	_, api := humatest.New(suite.T())
+	shareHandler.RegisterShareHandler(api)
 
 	share := dto.SharedResource{
 		MountPointData: &dto.MountPointData{
@@ -212,109 +163,52 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
 		},
 	}
 
-	jsonBody, jsonError := json.Marshal(share)
-	suite.Require().NoError(jsonError)
-
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "PATCH", "/share/UPDATER", strings.NewReader(string(jsonBody)))
-	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", shareHandler.UpdateShare).Methods(http.MethodPatch, http.MethodPost)
-	router.ServeHTTP(rr, req)
+	rr := api.Put("/share/UPDATER", share)
 
 	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	var rshare dto.SharedResource
-	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)
+	jsonError := json.Unmarshal(rr.Body.Bytes(), &rshare)
 	suite.Require().NoError(jsonError)
 
 	suite.EqualValues("UPDATER", rshare.Name)
 	suite.EqualValues(share.MountPointData.Path, rshare.MountPointData.Path)
-
-	/*
-	   // Check the response body is what we expect.
-	   share.FS = "ext4"
-	   share.Name = "LIBRARY"
-
-	   	share.RoUsers = []dto.User{
-	   		{Username: pointer.String("rouser")},
-	   	}
-
-	   share.TimeMachine = true
-
-	   	share.Users = []dto.User{
-	   		{Username: pointer.String("dianlight")},
-	   	}
-
-	   share.Usage = dto.UsageAsMedia
-	   expected, jsonError := json.Marshal(share)
-	   require.NoError(suite.T(), jsonError)
-	   assert.Equal(suite.T(), string(expected)[:len(expected)-3], rr.Body.String()[:len(expected)-3])
-	*/
 }
 
 func (suite *ShareHandlerSuite) TestUpdateShareHandlerEnableDisableShare() {
 	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
+	_, api := humatest.New(suite.T())
+	shareHandler.RegisterShareHandler(api)
 
 	share := dto.SharedResource{
 		Disabled: pointer.Bool(true),
 	}
 
-	jsonBody, jsonError := json.Marshal(share)
-	suite.Require().NoError(jsonError)
-	req, err := http.NewRequestWithContext(testContext, "PATCH", "/share/UPDATER", strings.NewReader(string(jsonBody)))
-	suite.Require().NoError(err)
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", shareHandler.UpdateShare).Methods(http.MethodPatch, http.MethodPost)
-	router.ServeHTTP(rr, req)
-
+	rr := api.Put("/share/UPDATER", share)
 	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	var rshare dto.SharedResource
-	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)
+	jsonError := json.Unmarshal(rr.Body.Bytes(), &rshare)
 	suite.Require().NoError(jsonError)
 
 	suite.EqualValues("UPDATER", rshare.Name)
 	suite.Assert().True(*rshare.Disabled)
 
 	share.Disabled = pointer.Bool(false)
-	jsonBody, jsonError = json.Marshal(share)
-	suite.Require().NoError(jsonError)
-	req, err = http.NewRequestWithContext(testContext, "PATCH", "/share/UPDATER", strings.NewReader(string(jsonBody)))
-	suite.Require().NoError(err)
-	rr = httptest.NewRecorder()
-
-	router.HandleFunc("/share/{share_name}", shareHandler.UpdateShare).Methods(http.MethodPatch, http.MethodPost)
-	router.ServeHTTP(rr, req)
+	rr = api.Put("/share/UPDATER", share)
 	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
-	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)
+	var rshare2 dto.SharedResource
+	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare2)
 	suite.Require().NoError(jsonError)
-	suite.EqualValues("UPDATER", rshare.Name)
-	suite.Assert().False(*rshare.Disabled)
+	suite.EqualValues("UPDATER", rshare2.Name)
+	suite.Assert().Nil(rshare2.Disabled)
 }
 
 func (suite *ShareHandlerSuite) TestDeleteShareHandler() {
 	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "DELETE", "/share/EFI", nil)
-	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", shareHandler.DeleteShare).Methods(http.MethodDelete)
-	router.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
+	_, api := humatest.New(suite.T())
+	shareHandler.RegisterShareHandler(api)
+	rr := api.Delete("/share/EFI")
 	suite.Equal(http.StatusNoContent, rr.Code)
 
 	// Refresh shares list anche check that LIBRARY don't exists
@@ -326,6 +220,8 @@ func (suite *ShareHandlerSuite) TestDeleteShareHandler() {
 
 func (suite *ShareHandlerSuite) TestUpdateShareNameHandler() {
 	shareHandler := api.NewShareHandler(suite.mockBoradcaster, &apiContextState, suite.dirtyService, suite.exported_share_repo)
+	_, api := humatest.New(suite.T())
+	shareHandler.RegisterShareHandler(api)
 
 	// Prepare create a share named OLD_NAME with users
 	old_share := dbom.ExportedShare{
@@ -348,25 +244,12 @@ func (suite *ShareHandlerSuite) TestUpdateShareNameHandler() {
 		Name: "NEW_NAME",
 	}
 
-	jsonBody, jsonError := json.Marshal(share)
-	suite.Require().NoError(jsonError)
-
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "PUT", "/share/OLD_NAME", strings.NewReader(string(jsonBody)))
-	suite.Require().NoError(err)
-
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-
-	router := mux.NewRouter()
-	router.HandleFunc("/share/{share_name}", shareHandler.UpdateShare).Methods(http.MethodPut)
-	router.ServeHTTP(rr, req)
+	rr := api.Put("/share/OLD_NAME", share)
 
 	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	var rshare dto.SharedResource
-	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare)
+	jsonError := json.Unmarshal(rr.Body.Bytes(), &rshare)
 	suite.Require().NoError(jsonError)
 
 	suite.EqualValues("NEW_NAME", rshare.Name)

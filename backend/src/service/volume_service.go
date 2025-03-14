@@ -244,18 +244,23 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 					if partition.Type == "unknown" && rblock.FSType != "" {
 						partition.Type = rblock.FSType
 					}
-					partition.PartitionFlags = []dto.MounDataFlag{}
+					partition.PartitionFlags = []string{}
 				} else {
 					partition.Type = fs
-					partition.PartitionFlags.Scan(flags)
+					tmp := dto.MountFlags{}
+					tmp.Scan(flags)
+					partition.PartitionFlags = tmp.Strings()
 				}
 
 				if partition.MountPoint != "" {
 					stat := syscall.Statfs_t{}
 					err := syscall.Statfs(partition.MountPoint, &stat)
 					if err == nil {
-						partition.MountFlags.Scan(stat.Flags)
+						tmp := dto.MountFlags{}
+						tmp.Scan(stat.Flags)
+						partition.MountFlags = tmp.Strings()
 					}
+
 				}
 
 				if partition.Type == "unknown" || partition.Type == "swap" || partition.Type == "" {
@@ -298,14 +303,18 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 					fs, flags, err := mount.FSFromBlock("/dev/" + v.Name)
 					if err == nil {
 						partition.Type = strings.Replace(d.Type, "unknown", fs, 1)
-						partition.PartitionFlags.Scan(flags)
+						tmp := dto.MountFlags{}
+						tmp.Scan(flags)
+						partition.PartitionFlags = tmp.Strings()
 					}
 
 					if partition.MountPoint != "" {
 						stat := syscall.Statfs_t{}
 						err := syscall.Statfs(partition.MountPoint, &stat)
 						if err == nil {
-							partition.MountFlags.Scan(stat.Flags)
+							tmp := dto.MountFlags{}
+							tmp.Scan(stat.Flags)
+							partition.MountFlags = tmp.Strings()
 						}
 					}
 
@@ -324,6 +333,8 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 		var conv converter.DtoToDbomConverterImpl
 		var mount_data = &dbom.MountPointPath{}
 		err = conv.BlockPartitionToMountPointPath(*partition, mount_data)
+		slog.Debug("1.lags", "flapartition", partition.MountFlags, "mount_data", mount_data.Flags)
+
 		if err != nil {
 			slog.Warn("Error converting partition to mount point data", "err", err)
 			continue
@@ -367,6 +378,8 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 			continue
 		}
 		conv.MountPointPathToMountPointData(*mount_data, &retBlockInfo.Partitions[i].MountPointData)
+		slog.Debug("2.lags", "mount_data", mount_data.Flags, "flapartition", retBlockInfo.Partitions[i].MountPointData.Flags)
+
 	}
 
 	//pretty.Print(retBlockInfo)
@@ -384,9 +397,5 @@ func (self *VolumeService) NotifyClient() {
 		return
 	}
 
-	var event dto.EventMessageEnvelope
-	event.Event = dto.EventVolumes
-	event.Data = data
-	slog.Debug("Sending event to clients", "event", pretty.Sprint(event))
-	self.broascasting.BroadcastMessage(&event)
+	self.broascasting.BroadcastMessage(data)
 }

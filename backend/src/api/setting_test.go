@@ -3,17 +3,15 @@ package api_test
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
+	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -28,35 +26,23 @@ func TestSettingsHandlerSuite(t *testing.T) {
 	suite.Run(t, csuite)
 }
 func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
-	api := api.NewSettingsHanler(&apiContextState, suite.dirtyService)
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequestWithContext(testContext, "GET", "/global", nil)
-	suite.Require().NoError(err)
+	settings := api.NewSettingsHanler(&apiContextState, suite.dirtyService)
+	_, api := humatest.New(suite.T())
+	settings.RegisterSettings(api)
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(api.GetSettings)
-
-	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
-	handler.ServeHTTP(rr, req)
-
-	// Check the status code is what we expect.
-	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+	resp := api.Get("/settings")
+	suite.Equal(http.StatusOK, resp.Code)
 
 	var config config.Config
-	err = config.FromContext(testContext)
+	err := config.FromContext(testContext)
 	suite.Require().NoError(err)
 	var expected dto.Settings
 	var conv converter.ConfigToDtoConverterImpl
 	err = conv.ConfigToSettings(config, &expected)
-	//err = mapper.Map(context.Background(), &expected, config)
 	suite.Require().NoError(err)
 
-	// Check the response body is what we expect.
 	var returned dto.Settings
-	jsonError := json.Unmarshal(rr.Body.Bytes(), &returned)
+	jsonError := json.Unmarshal(resp.Body.Bytes(), &returned)
 	suite.Require().NoError(jsonError)
 
 	suite.Equal(expected, returned)
@@ -65,25 +51,19 @@ func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
 }
 
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
-	api := api.NewSettingsHanler(&apiContextState, suite.dirtyService)
+	settings := api.NewSettingsHanler(&apiContextState, suite.dirtyService)
+	_, api := humatest.New(suite.T())
+	settings.RegisterSettings(api)
+
 	glc := dto.Settings{
 		Workgroup: "pluto&admin",
 	}
 
-	jsonBody, jsonError := json.Marshal(glc)
-	suite.Require().NoError(jsonError)
-	req, err := http.NewRequestWithContext(testContext, "PATCH", "/global", strings.NewReader(string(jsonBody)))
-	suite.Require().NoError(err)
-
-	rr := httptest.NewRecorder()
-	router := mux.NewRouter()
-	router.HandleFunc("/global", api.UpdateSettings).Methods(http.MethodPatch, http.MethodPost)
-	router.ServeHTTP(rr, req)
-
+	rr := api.Put("/settings", glc)
 	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	var res dto.Settings
-	err = json.Unmarshal(rr.Body.Bytes(), &res)
+	err := json.Unmarshal(rr.Body.Bytes(), &res)
 	suite.Require().NoError(err, "Body %#v", rr.Body.String())
 
 	suite.Equal(glc.Workgroup, res.Workgroup)

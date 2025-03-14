@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianlight/srat/dto"
 	"github.com/gobeam/stringy"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
@@ -23,7 +22,7 @@ type MountPointPath struct {
 	Path         string `gorm:"uniqueIndex"`
 	PrimaryPath  string
 	FSType       string
-	Flags        dto.MounDataFlags `gorm:"type:mount_data_flags"`
+	Flags        MounDataFlags `gorm:"type:mount_data_flags"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`

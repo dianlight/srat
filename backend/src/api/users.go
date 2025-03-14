@@ -1,15 +1,14 @@
 package api
 
 import (
+	"context"
 	"errors"
-	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
-	"github.com/gorilla/mux"
 	"github.com/xorcare/pointer"
 	"gorm.io/gorm"
 )
@@ -29,32 +28,31 @@ func NewUserHandler(apiContext *dto.ContextState, dirtyservice service.DirtyData
 	return p
 }
 
-func (handler *UserHandler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/users", Method: "GET", Handler: handler.ListUsers},
-		{Pattern: "/useradmin", Method: "GET", Handler: handler.GetAdminUser},
-		{Pattern: "/useradmin", Method: "PUT", Handler: handler.UpdateAdminUser},
-		{Pattern: "/user/{id}", Method: "PUT", Handler: handler.UpdateUser},
-		{Pattern: "/user/{id}", Method: "DELETE", Handler: handler.DeleteUser},
-	}
+func (self *UserHandler) RegisterUserHandler(api huma.API) {
+	huma.Get(api, "/users", self.ListUsers, huma.OperationTags("user"))
+	huma.Get(api, "/useradmin", self.GetAdminUser, huma.OperationTags("user"))
+	huma.Put(api, "/useradmin", self.UpdateAdminUser, huma.OperationTags("user"))
+	huma.Post(api, "/user", self.CreateUser, huma.OperationTags("user"))
+	huma.Put(api, "/user/{username}", self.UpdateUser, huma.OperationTags("user"))
+	huma.Delete(api, "/user/{username}", self.DeleteUser, huma.OperationTags("user"))
 }
 
-// ListUsers godoc
+// ListUsers retrieves a list of users from the database, converts them to DTO format,
+// and returns them in the response body. If any error occurs during the process,
+// it returns the error.
 //
-//	@Summary		List all configured users
-//	@Description	List all configured users
-//	@Tags			user
-//	@Produce		json
-//	@Success		200	{object}	[]dto.User
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/users [get]
-func (handler *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+// Parameters:
+//   - ctx: The context for the request.
+//   - input: An empty struct as input.
+//
+// Returns:
+//   - A struct containing a slice of dto.User in the Body field.
+//   - An error if any issue occurs during loading or conversion of users.
+func (handler *UserHandler) ListUsers(ctx context.Context, input *struct{}) (*struct{ Body []dto.User }, error) {
 	var dbusers dbom.SambaUsers
 	err := dbusers.Load()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	var users []dto.User
 	var conv converter.DtoToDbomConverterImpl
@@ -62,250 +60,183 @@ func (handler *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		var user dto.User
 		err = conv.SambaUserToUser(dbuser, &user)
 		if err != nil {
-			HttpJSONReponse(w, err, nil)
-			return
+			return nil, err
 		}
 		if user.IsAdmin == nil {
 			user.IsAdmin = pointer.Bool(false)
 		}
 		users = append(users, user)
 	}
-	//err = mapper.Map(context.Background(), &users, dbusers)
-	//if err != nil {
-	//	HttpJSONReponse(w, err, nil)
-	//	return
-	//}
-	HttpJSONReponse(w, users, &Options{
-		Code: http.StatusOK,
-	})
+	return &struct{ Body []dto.User }{Body: users}, nil
 }
 
-// GetAdminUser godoc
+// GetAdminUser retrieves the admin user from the database and converts it to a DTO user.
+// It takes a context and an empty input struct as parameters and returns a struct containing the DTO user or an error.
 //
-//	@Summary		Get the admin user
-//	@Description	get the admin user
-//	@Tags			user
-//	@Produce		json
-//	@Success		200	{object}	dto.User
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/useradmin [get]
-func (handler *UserHandler) GetAdminUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
+// Parameters:
+// - ctx: The context for the request.
+// - input: An empty input struct.
+//
+// Returns:
+// - A struct containing the DTO user in the Body field.
+// - An error if there is any issue retrieving or converting the user.
+func (handler *UserHandler) GetAdminUser(ctx context.Context, input *struct{}) (*struct{ Body dto.User }, error) {
 	var adminUser dto.User
 	dbUser := dbom.SambaUser{
 		IsAdmin: true,
 	}
 	err := dbUser.GetAdmin()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.SambaUserToUser(dbUser, &adminUser)
-	//	err = mapper.Map(context.Background(), &adminUser, dbUser)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
-	HttpJSONReponse(w, adminUser, &Options{
-		Code: http.StatusOK,
-	})
+	return &struct{ Body dto.User }{Body: adminUser}, nil
 }
 
-// GetUser godoc
+// CreateUser handles the creation of a new user. It takes a context and an input
+// struct containing the user data in the form of a dto.User. The function converts
+// the dto.User to a dbom.SambaUser, attempts to create the user in the database,
+// and handles any errors that occur during this process. If the user already exists,
+// it returns a 409 Conflict error. If the creation is successful, it sets the dirty
+// users flag, converts the dbom.SambaUser back to a dto.User, and returns the created
+// user.
 //
-//	@Summary		Get a user
-//	@Description	get user by Name
-//	@Tags			user
+// Parameters:
+//   - ctx: The context for the request, used for cancellation and deadlines.
+//   - input: A struct containing the user data in the form of a dto.User.
 //
-//
-//	@Produce		json
-//	@Param			username	path		string	true	"Name"
-//	@Success		200			{object}	dto.User
-//	@Failure		405			{object}	dto.ErrorInfo
-//	@Failure		500			{object}	dto.ErrorInfo
-//	@Router			/user/{username} [get]
-/*
-func GetUser(w http.ResponseWriter, r *http.Request) {
-	username := mux.Vars(r)["username"]
-	w.Header().Set("Content-Type", "application/json")
+// Returns:
+//   - A struct containing the created user in the form of a dto.User.
+//   - An error if the creation fails or if the user already exists.
+func (handler *UserHandler) CreateUser(ctx context.Context, input *struct {
+	Body dto.User
+}) (*struct {
+	Status int
+	Body   dto.User
+}, error) {
 
-	context_state := (&dto.ContextState{}).FromContext(r.Context())
-
-	user, index := context_state.Users.Get(username)
-	if index == -1 {
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-		user.ToResponse(http.StatusOK, w)
-	}
-
-}
-*/
-
-// CreateUser godoc
-//
-//	@Summary		Create a user
-//	@Description	create e new user
-//	@Tags			user
-//	@Accept			json
-//	@Produce		json
-//	@Param			user	body		dto.User	true	"Create model"
-//	@Success		201		{object}	dto.User
-//	@Failure		400		{object}	dto.ErrorInfo
-//	@Failure		405		{object}	dto.ErrorInfo
-//	@Failure		409		{object}	dto.ErrorInfo
-//	@Failure		500		{object}	dto.ErrorInfo
-//	@Router			/user [post]
-func (handler *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-
-	var user dto.User
-	err := HttpJSONRequest(&user, w, r)
-	if err != nil {
-		return
-	}
 	var dbUser dbom.SambaUser
 	var conv converter.DtoToDbomConverterImpl
-	err = conv.UserToSambaUser(user, &dbUser)
+	err := conv.UserToSambaUser(input.Body, &dbUser)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	err = dbUser.Create()
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			HttpJSONReponse(w, errors.New("User already exists"), &Options{
-				Code: http.StatusConflict,
-			})
-		} else {
-			HttpJSONReponse(w, err, nil)
+			return nil, huma.Error409Conflict("User already exists")
 		}
-		return
+		return nil, err
 	}
+
+	var user dto.User
 	handler.dirtyservice.SetDirtyUsers()
 	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
-	HttpJSONReponse(w, user, &Options{
-		Code: http.StatusCreated,
-	})
+
+	return &struct {
+		Status int
+		Body   dto.User
+	}{Status: 201, Body: user}, nil
+
 }
 
-// UpdateUser godoc
+// UpdateUser updates an existing user in the database.
+// It retrieves the user by username, updates the user details, and saves the changes.
+// If the user is not found, it returns a 404 error.
+// If any other error occurs during the process, it returns the error.
+// Finally, it marks the user data as dirty.
 //
-//	@Summary		Update a user
-//	@Description	update e user
-//	@Tags			user
-//	@Accept			json
-//	@Produce		json
-//	@Param			username	path		string		true	"Name"
-//	@Param			user		body		dto.User	true	"Update model"
-//	@Success		200			{object}	dto.User
-//	@Failure		400			{object}	dto.ErrorInfo
-//	@Failure		405			{object}	dto.ErrorInfo
-//	@Failure		404			{object}	dto.ErrorInfo
-//	@Failure		500			{object}	dto.ErrorInfo
-//	@Router			/user/{username} [put]
-func (handler *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	username := mux.Vars(r)["username"]
-
-	var user dto.User
-	err := HttpJSONRequest(&user, w, r)
-	if err != nil {
-		return
-	}
+// Parameters:
+//   - ctx: The context for the request.
+//   - input: A struct containing the username and the user details to be updated.
+//
+// Returns:
+//   - A struct containing the updated user details.
+//   - An error if any issue occurs during the update process.
+func (handler *UserHandler) UpdateUser(ctx context.Context, input *struct {
+	UserName string `path:"username" maxLength:"30" example:"world" doc:"Username"`
+	Body     dto.User
+}) (*struct{ Body dto.User }, error) {
 
 	dbUser := dbom.SambaUser{
-		Username: username,
+		Username: input.UserName,
 		IsAdmin:  false,
 	}
-	err = dbUser.Get()
+	err := dbUser.Get()
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		w.WriteHeader(http.StatusNotFound)
-		return
+		return nil, huma.Error404NotFound("User not found")
 	} else if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	var conv converter.DtoToDbomConverterImpl
-	err = conv.UserToSambaUser(user, &dbUser)
-	//	err = mapper.Map(context.Background(), &dbUser, &user)
+	err = conv.UserToSambaUser(input.Body, &dbUser)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 
 	err = dbUser.Save()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
+	var user dto.User
 	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 
-	//context_state := (&dto.Status{}).FromContext(r.Context())
-	//context_state := StateFromContext(r.Context())
 	handler.dirtyservice.SetDirtyUsers()
-	HttpJSONReponse(w, user, nil)
+
+	return &struct{ Body dto.User }{Body: user}, nil
 }
 
-// UpdateAdminUser godoc
+// UpdateAdminUser updates the details of an admin user in the system.
+// It retrieves the current admin user from the database, converts the input DTO user to the database model,
+// saves the updated user back to the database, and then converts the updated database model back to a DTO user.
+// Finally, it marks the users as dirty to indicate that they have been updated.
 //
-//	@Summary		Update admin user
-//	@Description	update admin user
-//	@Tags			user
-//	@Accept			json
-//	@Produce		json
-//	@Param			user	body		dto.User	true	"Update model"
-//	@Success		200		{object}	dto.User
-//	@Failure		400		{object}	dto.ErrorInfo
-//	@Failure		405		{object}	dto.ErrorInfo
-//	@Failure		404		{object}	dto.ErrorInfo
-//	@Failure		500		{object}	dto.ErrorInfo
-//	@Router			/useradmin [put]
-func (handler *UserHandler) UpdateAdminUser(w http.ResponseWriter, r *http.Request) {
+// Parameters:
+// - ctx: The context for the request, which may include deadlines, cancellation signals, and other request-scoped values.
+// - input: A struct containing the user details to be updated.
+//
+// Returns:
+// - A struct containing the updated user details.
+// - An error if any operation fails during the update process.
+func (handler *UserHandler) UpdateAdminUser(ctx context.Context, input *struct {
+	Body dto.User
+}) (*struct{ Body dto.User }, error) {
 
-	var user dto.User
-	err := HttpJSONRequest(&user, w, r)
-	if err != nil {
-		return
-	}
 	dbUser := dbom.SambaUser{
 		IsAdmin: true,
 	}
-	err = dbUser.GetAdmin()
+	err := dbUser.GetAdmin()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	var conv converter.DtoToDbomConverterImpl
-	err = conv.UserToSambaUser(user, &dbUser)
-	//	err = mapper.Map(context.Background(), &dbUser, &user)
+	err = conv.UserToSambaUser(input.Body, &dbUser)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	err = dbUser.Save()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
+	var user dto.User
 	err = conv.SambaUserToUser(dbUser, &user)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 
-	//context_state := (&dto.Status{}).FromContext(r.Context())
-	//context_state := StateFromContext(r.Context())
 	handler.dirtyservice.SetDirtyUsers()
-	HttpJSONReponse(w, user, nil)
+
+	return &struct{ Body dto.User }{Body: user}, nil
 }
 
 // DeleteUser godoc
@@ -320,29 +251,26 @@ func (handler *UserHandler) UpdateAdminUser(w http.ResponseWriter, r *http.Reque
 //	@Failure		404	{object}	dto.ErrorInfo
 //	@Failure		500	{object}	dto.ErrorInfo
 //	@Router			/user/{username} [delete]
-func (handler *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	username := mux.Vars(r)["username"]
+func (handler *UserHandler) DeleteUser(ctx context.Context, input *struct {
+	UserName string `path:"username" maxLength:"30" example:"world" doc:"Username"`
+}) (*struct{}, error) {
 
 	dbUser := dbom.SambaUser{
-		Username: username,
+		Username: input.UserName,
 		IsAdmin:  false,
 	}
 	err := dbUser.Get()
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		HttpJSONReponse(w, nil, &Options{
-			Code: http.StatusNotFound,
-		})
-		return
+		return nil, huma.Error404NotFound("User not found")
 	} else if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	err = dbUser.Delete()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 
 	handler.dirtyservice.SetDirtyUsers()
-	HttpJSONReponse(w, nil, nil)
+
+	return &struct{}{}, nil
 }

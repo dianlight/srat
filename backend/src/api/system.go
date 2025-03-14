@@ -2,15 +2,15 @@ package api
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/jaypipes/ghw"
 	"github.com/jpillora/overseer"
 )
@@ -23,92 +23,52 @@ func NewSystemHanler() *SystemHanler {
 	return p
 }
 
-func (handler *SystemHanler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/restart", Method: "PUT", Handler: handler.RestartHandler},
-		{Pattern: "/nics", Method: "GET", Handler: handler.GetNICsHandler},
-		{Pattern: "/filesystems", Method: "GET", Handler: handler.GetFSHandler},
-	}
+func (self *SystemHanler) RegisterSystemHanler(api huma.API) {
+	huma.Put(api, "/restart", self.RestartHandler, huma.OperationTags("system"))
+	huma.Get(api, "/nics", self.GetNICsHandler, huma.OperationTags("system"))
+	huma.Get(api, "/filesystems", self.GetFSHandler, huma.OperationTags("system"))
 }
 
-/*
-// DirtyWsHandler handles WebSocket connections for monitoring changes in the dirty state of configuration sections.
-// It continuously checks for changes in the DirtySectionState and sends updates to the client when changes occur.
+// RestartHandler handles the request to restart the server.
+// It logs the restart action and calls the overseer to perform the restart.
 //
 // Parameters:
-//   - ctx: A context.Context for handling cancellation of the WebSocket connection.
-//   - request: A WebSocketMessageEnvelope containing the initial request information.
-//   - c: A channel of *WebSocketMessageEnvelope used to send messages back to the WebSocket client.
+//   - ctx: The context for the request.
+//   - input: An empty struct as input.
 //
-// The function runs indefinitely, sending updates only when the DirtySectionState changes,
-// until the WebSocket connection is closed or the context is cancelled.
-func DirtyWsHandler(ctx context.Context, request dto.WebSocketMessageEnvelope, c chan *dto.WebSocketMessageEnvelope) {
-	var oldDritySectionState dto.DataDirtyTracker
-	//context_state := (&dto.Status{}).FromContext(ctx)
-	context_state := StateFromContext(ctx)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			if oldDritySectionState != context_state.DataDirtyTracker {
-				var message dto.WebSocketMessageEnvelope = dto.WebSocketMessageEnvelope{
-					Event: dto.EventHeartbeat,
-					Uid:   request.Uid,
-					Data:  &context_state.DataDirtyTracker,
-				}
-				c <- &message
-				copier.Copy(&oldDritySectionState, context_state.DataDirtyTracker)
-				//log.Printf("%v %v\n", oldDritySectionState, data.DirtySectionState)
-			}
-		}
-		time.Sleep(1 * time.Second)
-	}
-}
-*/
-
-// RestartHandler godoc
-//
-//	@Summary		RestartHandler
-//	@Description	Restart the server ( useful in development )
-//	@Tags			system
-//	@Produce		json
-//	@Success		204
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Router			/restart [put]
-func (handler *SystemHanler) RestartHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
-
+// Returns:
+//   - An empty struct and an error, both of which are nil.
+func (handler *SystemHanler) RestartHandler(ctx context.Context, input *struct{}) (*struct{}, error) {
 	slog.Debug("Restarting server...")
 	overseer.Restart()
+	return nil, nil
 }
 
-// GetNICsHandler godoc
+// GetNICsHandler handles the request to retrieve network interface card (NIC) information.
+// It uses the ghw library to get the network information and converts it to a DTO (Data Transfer Object).
 //
-//	@Summary		GetNICsHandler
-//	@Description	Return all network interfaces
-//	@Tags			system
-//	@Produce		json
-//	@Success		200 {object}	dto.NetworkInfo
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Router			/nics [get]
-func (handler *SystemHanler) GetNICsHandler(w http.ResponseWriter, r *http.Request) {
+// Parameters:
+//   - ctx: The context for the request, which can be used for cancellation and deadlines.
+//   - input: An empty struct as input, as no specific input is required for this handler.
+//
+// Returns:
+//   - A struct containing the network information in the Body field.
+//   - An error if there is any issue retrieving or converting the network information.
+func (handler *SystemHanler) GetNICsHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.NetworkInfo }, error) {
 
 	net, err := ghw.Network()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 
 	var info dto.NetworkInfo
 	var conv converter.NetToDtoImpl
 	err = conv.NetInfoToNetworkInfo(*net, &info)
-	//err = mapper.Map(context.Background(), &info, net)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
-	HttpJSONReponse(w, info, nil)
+
+	return &struct{ Body dto.NetworkInfo }{Body: info}, nil
 }
 
 // ReadLinesOffsetN reads contents from file and splits them by new line.
@@ -167,30 +127,26 @@ func (handler *SystemHanler) getFileSystems() ([]string, error) {
 	return ret, nil
 }
 
-// GetFSHandler godoc
+// GetFSHandler retrieves the filesystem types available on the system.
+// It returns a struct containing a slice of FilesystemTypes and an error if any occurred during the retrieval process.
 //
-//	@Summary		GetFSHandler
-//	@Description	Return all supported fs
-//	@Tags			system
-//	@Produce		json
-//	@Success		200 {object}	dto.FilesystemTypes
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Router			/filesystems [get]
-func (handler *SystemHanler) GetFSHandler(w http.ResponseWriter, r *http.Request) {
+// Parameters:
+//   - ctx: The context for the request, used for cancellation and deadlines.
+//   - input: An empty struct, reserved for future use.
+//
+// Returns:
+//   - A pointer to a struct containing a slice of FilesystemTypes in the Body field.
+//   - An error if there was an issue retrieving the filesystem types.
+func (handler *SystemHanler) GetFSHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.FilesystemTypes }, error) {
 
 	fs, err := handler.getFileSystems()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	var xfs dto.FilesystemTypes
 	for _, fsi := range fs {
 		xfs = append(xfs, dto.FilesystemType(fsi))
 	}
-	//err = mapper.Map(context.Background(), &xfs, fs)
-	//if err != nil {
-	//	HttpJSONReponse(w, err, nil)
-	//	return
-	//}
-	HttpJSONReponse(w, xfs, nil)
+	return &struct{ Body dto.FilesystemTypes }{Body: xfs}, nil
+
 }

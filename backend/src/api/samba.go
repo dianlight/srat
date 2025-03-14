@@ -1,10 +1,10 @@
 package api
 
 import (
-	"net/http"
+	"context"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 )
 
@@ -20,66 +20,61 @@ func NewSambaHanler(apictx *dto.ContextState, sambaService service.SambaServiceI
 	return p
 }
 
-func (handler *SambaHanler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/samba/apply", Method: "PUT", Handler: handler.ApplySamba},
-		{Pattern: "/samba/config", Method: "GET", Handler: handler.GetSambaConfig},
-	}
+func (self *SambaHanler) RegisterSambaHandler(api huma.API) {
+	huma.Get(api, "/samba/config", self.GetSambaConfig, huma.OperationTags("samba"))
+	huma.Put(api, "/samba/apply", self.ApplySamba, huma.OperationTags("samba"))
 }
 
-// ApplySamba godoc
+// ApplySamba applies the Samba configuration by writing, testing, and restarting the Samba service.
+// It returns an error if any of the steps fail.
 //
-//	@Summary		Write the samba config and send signal ro restart
-//	@Description	Write the samba config and send signal ro restart
-//	@Tags			samba
-//	@Accept			json
-//	@Produce		json
-//	@Success		204
-//	@Failure		400	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/samba/apply [put]
-func (handler *SambaHanler) ApplySamba(w http.ResponseWriter, r *http.Request) {
+// Parameters:
+//   - ctx: The context for the operation.
+//   - input: A pointer to an empty struct.
+//
+// Returns:
+//   - A pointer to an empty struct.
+//   - An error if any of the steps fail.
+func (handler *SambaHanler) ApplySamba(ctx context.Context, input *struct{}) (*struct{}, error) {
 
 	err := handler.sambaService.WriteSambaConfig()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 
 	err = handler.sambaService.TestSambaConfig()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 
 	err = handler.sambaService.RestartSambaService()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 
-	HttpJSONReponse(w, nil, nil)
+	return nil, nil
 }
 
-// GetSambaConfig godoc
+// GetSambaConfig retrieves the Samba configuration.
+// It creates a configuration stream using the sambaService and converts it to a string.
+// The configuration is then returned wrapped in a struct containing the dto.SmbConf.
 //
-//	@Summary		Get the generated samba config
-//	@Description	Get the generated samba config
-//	@Tags			samba
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	dto.SmbConf
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/samba/config [get]
-func (handler *SambaHanler) GetSambaConfig(w http.ResponseWriter, r *http.Request) {
+// Parameters:
+//   - ctx: The context for the request.
+//   - input: An empty struct.
+//
+// Returns:
+//   - A struct containing the Samba configuration in the Body field.
+//   - An error if there is an issue creating the configuration stream.
+func (handler *SambaHanler) GetSambaConfig(ctx context.Context, input *struct{}) (*struct{ Body dto.SmbConf }, error) {
 	var smbConf dto.SmbConf
 
 	stream, err := handler.sambaService.CreateConfigStream()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 
 	smbConf.Data = string(*stream)
-	HttpJSONReponse(w, smbConf, nil)
+
+	return &struct{ Body dto.SmbConf }{Body: smbConf}, nil
 }

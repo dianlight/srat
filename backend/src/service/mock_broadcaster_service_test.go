@@ -10,11 +10,9 @@
 package service_test
 
 import (
-	http "net/http"
 	reflect "reflect"
 
-	dto "github.com/dianlight/srat/dto"
-	service "github.com/dianlight/srat/service"
+	sse "github.com/danielgtaylor/huma/v2/sse"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -44,39 +42,11 @@ func (m *MockBroadcasterServiceInterface) EXPECT() *MockBroadcasterServiceInterf
 	return m.recorder
 }
 
-// AddCloseConnectionListener mocks base method.
-func (m *MockBroadcasterServiceInterface) AddCloseConnectionListener(ws func(service.BroadcasterServiceInterface) error) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddCloseConnectionListener", ws)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AddCloseConnectionListener indicates an expected call of AddCloseConnectionListener.
-func (mr *MockBroadcasterServiceInterfaceMockRecorder) AddCloseConnectionListener(ws any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddCloseConnectionListener", reflect.TypeOf((*MockBroadcasterServiceInterface)(nil).AddCloseConnectionListener), ws)
-}
-
-// AddOpenConnectionListener mocks base method.
-func (m *MockBroadcasterServiceInterface) AddOpenConnectionListener(ws func(service.BroadcasterServiceInterface) error) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddOpenConnectionListener", ws)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AddOpenConnectionListener indicates an expected call of AddOpenConnectionListener.
-func (mr *MockBroadcasterServiceInterfaceMockRecorder) AddOpenConnectionListener(ws any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddOpenConnectionListener", reflect.TypeOf((*MockBroadcasterServiceInterface)(nil).AddOpenConnectionListener), ws)
-}
-
 // BroadcastMessage mocks base method.
-func (m *MockBroadcasterServiceInterface) BroadcastMessage(msg *dto.EventMessageEnvelope) (*dto.EventMessageEnvelope, error) {
+func (m *MockBroadcasterServiceInterface) BroadcastMessage(msg any) (any, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BroadcastMessage", msg)
-	ret0, _ := ret[0].(*dto.EventMessageEnvelope)
+	ret0, _ := ret[0].(any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -88,15 +58,13 @@ func (mr *MockBroadcasterServiceInterfaceMockRecorder) BroadcastMessage(msg any)
 }
 
 // ProcessHttpChannel mocks base method.
-func (m *MockBroadcasterServiceInterface) ProcessHttpChannel(w http.ResponseWriter, r *http.Request) error {
+func (m *MockBroadcasterServiceInterface) ProcessHttpChannel(send sse.Sender) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ProcessHttpChannel", w, r)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "ProcessHttpChannel", send)
 }
 
 // ProcessHttpChannel indicates an expected call of ProcessHttpChannel.
-func (mr *MockBroadcasterServiceInterfaceMockRecorder) ProcessHttpChannel(w, r any) *gomock.Call {
+func (mr *MockBroadcasterServiceInterfaceMockRecorder) ProcessHttpChannel(send any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessHttpChannel", reflect.TypeOf((*MockBroadcasterServiceInterface)(nil).ProcessHttpChannel), w, r)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessHttpChannel", reflect.TypeOf((*MockBroadcasterServiceInterface)(nil).ProcessHttpChannel), send)
 }

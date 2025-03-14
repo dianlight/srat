@@ -129,11 +129,7 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 }
 
 func (self *UpgradeService) EventEmitter(ctx context.Context, data dto.ReleaseAsset) error {
-	msg := dto.EventMessageEnvelope{
-		Event: dto.EventUpdate,
-		Data:  data,
-	}
-	_, err := self.broadcaster.BroadcastMessage(&msg)
+	_, err := self.broadcaster.BroadcastMessage(data)
 	if err != nil {
 		slog.Error("Error broadcasting update message: %w", "err", err)
 		return tracerr.Wrap(err)
