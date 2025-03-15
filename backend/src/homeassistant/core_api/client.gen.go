@@ -130,6 +130,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetApi request
+	GetApi(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetEntityState request
 	GetEntityState(ctx context.Context, entityId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -137,6 +140,18 @@ type ClientInterface interface {
 	PostEntityStateWithBody(ctx context.Context, entityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostEntityState(ctx context.Context, entityId string, body PostEntityStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetApi(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetEntityState(ctx context.Context, entityId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -173,6 +188,33 @@ func (c *Client) PostEntityState(ctx context.Context, entityId string, body Post
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetApiRequest generates requests for GetApi
+func NewGetApiRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/api/")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetEntityStateRequest generates requests for GetEntityState
@@ -299,6 +341,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetApiWithResponse request
+	GetApiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiResponse, error)
+
 	// GetEntityStateWithResponse request
 	GetEntityStateWithResponse(ctx context.Context, entityId string, reqEditors ...RequestEditorFn) (*GetEntityStateResponse, error)
 
@@ -306,6 +351,31 @@ type ClientWithResponsesInterface interface {
 	PostEntityStateWithBodyWithResponse(ctx context.Context, entityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostEntityStateResponse, error)
 
 	PostEntityStateWithResponse(ctx context.Context, entityId string, body PostEntityStateJSONRequestBody, reqEditors ...RequestEditorFn) (*PostEntityStateResponse, error)
+}
+
+type GetApiResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Result *GetApi200Result `json:"result,omitempty"`
+	}
+}
+type GetApi200Result string
+
+// Status returns HTTPResponse.Status
+func (r GetApiResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetApiResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GetEntityStateResponse struct {
@@ -353,6 +423,15 @@ func (r PostEntityStateResponse) StatusCode() int {
 	return 0
 }
 
+// GetApiWithResponse request returning *GetApiResponse
+func (c *ClientWithResponses) GetApiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiResponse, error) {
+	rsp, err := c.GetApi(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetApiResponse(rsp)
+}
+
 // GetEntityStateWithResponse request returning *GetEntityStateResponse
 func (c *ClientWithResponses) GetEntityStateWithResponse(ctx context.Context, entityId string, reqEditors ...RequestEditorFn) (*GetEntityStateResponse, error) {
 	rsp, err := c.GetEntityState(ctx, entityId, reqEditors...)
@@ -377,6 +456,34 @@ func (c *ClientWithResponses) PostEntityStateWithResponse(ctx context.Context, e
 		return nil, err
 	}
 	return ParsePostEntityStateResponse(rsp)
+}
+
+// ParseGetApiResponse parses an HTTP response from a GetApiWithResponse call
+func ParseGetApiResponse(rsp *http.Response) (*GetApiResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetApiResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Result *GetApi200Result `json:"result,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGetEntityStateResponse parses an HTTP response from a GetEntityStateWithResponse call

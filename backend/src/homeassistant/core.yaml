@@ -31,7 +31,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CoreInfo'
+                type: object
+                properties:
+                  result:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    $ref: '#/components/schemas/CoreInfo'
   /core/reboot:
     post:
       tags:
@@ -106,7 +112,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CoreCheck'
+                type: object
+                properties:
+                  result:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    $ref: '#/components/schemas/CoreCheck'
         '400':
           description: Configurazione del Core non valida.
   /core/repair:

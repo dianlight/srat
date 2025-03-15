@@ -549,8 +549,12 @@ type ClientWithResponsesInterface interface {
 type CheckCoreConfigResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CoreCheck
+	JSON200      *struct {
+		Data   *CoreCheck                `json:"data,omitempty"`
+		Result *CheckCoreConfig200Result `json:"result,omitempty"`
+	}
 }
+type CheckCoreConfig200Result string
 
 // Status returns HTTPResponse.Status
 func (r CheckCoreConfigResponse) Status() string {
@@ -571,8 +575,12 @@ func (r CheckCoreConfigResponse) StatusCode() int {
 type GetCoreInfoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CoreInfo
+	JSON200      *struct {
+		Data   *CoreInfo             `json:"data,omitempty"`
+		Result *GetCoreInfo200Result `json:"result,omitempty"`
+	}
 }
+type GetCoreInfo200Result string
 
 // Status returns HTTPResponse.Status
 func (r GetCoreInfoResponse) Status() string {
@@ -781,7 +789,10 @@ func ParseCheckCoreConfigResponse(rsp *http.Response) (*CheckCoreConfigResponse,
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest CoreCheck
+		var dest struct {
+			Data   *CoreCheck                `json:"data,omitempty"`
+			Result *CheckCoreConfig200Result `json:"result,omitempty"`
+		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -807,7 +818,10 @@ func ParseGetCoreInfoResponse(rsp *http.Response) (*GetCoreInfoResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest CoreInfo
+		var dest struct {
+			Data   *CoreInfo             `json:"data,omitempty"`
+			Result *GetCoreInfo200Result `json:"result,omitempty"`
+		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

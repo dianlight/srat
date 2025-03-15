@@ -17,6 +17,23 @@ tags:
   - name: core_api
     description: Core API Proxy
 paths:
+  /core/api/:
+    get:
+      tags:
+        - core_api
+      operationId: getApi
+      summary: Returns a message if the API is up and running.
+      responses:
+        "200":
+          description: API is up and running.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    enum: ["API running."]
   /core/api/states/{entity_id}:
     get:
       tags:
@@ -34,13 +51,13 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Operazione riuscita.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EntityState'
-        '404':
+                $ref: "#/components/schemas/EntityState"
+        "404":
           description: Entità non trovata.
     post:
       tags:
@@ -64,20 +81,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntityState'
+              $ref: "#/components/schemas/EntityState"
       responses:
-        '200':
+        "200":
           description: Operazione riuscita.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EntityState'
-        '201':
+                $ref: "#/components/schemas/EntityState"
+        "201":
           description: Operazione riuscita, entità creata.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EntityState'
+                $ref: "#/components/schemas/EntityState"
 components:
   schemas:
     EntityState:
@@ -86,47 +103,47 @@ components:
         state:
           type: string
           description: Rappresentazione testuale dello stato corrente dell'entità.
-          examples:
+          example:
             - "on"
             - "off"
         entity_id:
           type: string
           description: ID dell'entità.
           format: "<domain>.<object_id>"
-          examples:
+          example:
             - "light.kitchen"
         domain:
           type: string
           description: Dominio dell'entità.
-          examples:
+          example:
             - "light"
         object_id:
           type: string
           description: ID dell'oggetto dell'entità.
-          examples:
+          example:
             - "kitchen"
         name:
           type: string
           description: Nome dell'entità. Basato sull'attributo friendly_name, con fallback all'ID dell'oggetto.
-          examples:
+          example:
             - "Kitchen ceiling"
         last_changed:
           type: string
           format: date-time
           description: Ora in cui lo stato è cambiato nella macchina a stati in tempo UTC. Non viene aggiornato se cambiano solo gli attributi di stato.
-          examples:
+          example:
             - "2013-09-17T07:32:51.715874+00:00"
         last_reported:
           type: string
           format: date-time
           description: Ora in cui lo stato è stato scritto nella macchina a stati in tempo UTC. Questo timestamp viene aggiornato indipendentemente da eventuali modifiche allo stato o agli attributi di stato.
-          examples:
+          example:
             - "2013-09-17T07:32:51.715874+00:00"
         last_updated:
           type: string
           format: date-time
           description: Ora in cui lo stato o gli attributi di stato sono cambiati nella macchina a stati in tempo UTC. Non viene aggiornato se non sono cambiati né lo stato né gli attributi di stato.
-          examples:
+          example:
             - "2013-09-17T07:32:51.715874+00:00"
         attributes:
           type: object

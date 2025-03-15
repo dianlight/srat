@@ -11,34 +11,116 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
-// Hardware defines model for Hardware.
-type Hardware struct {
-	// Attributes Attributi del dispositivo hardware.
+// Device defines model for Device.
+type Device struct {
+	// Attributes Attributes of the device.
 	Attributes *map[string]interface{} `json:"attributes,omitempty"`
 
-	// Capabilities Capacità del dispositivo hardware.
+	// ById Device by id.
+	ById *string `json:"by_id,omitempty"`
+
+	// ByPath Device by path.
+	ByPath *string `json:"by_path,omitempty"`
+
+	// Capabilities Capabilities of the device.
 	Capabilities *[]string `json:"capabilities,omitempty"`
 
-	// DeviceType Tipo del dispositivo hardware.
-	DeviceType *string `json:"device_type,omitempty"`
+	// Description Description of the device.
+	Description *string `json:"description,omitempty"`
 
-	// Name Nome del dispositivo hardware.
+	// DevPath Device path.
+	DevPath *string `json:"dev_path,omitempty"`
+
+	// Links List of links to other devices.
+	Links *[]string `json:"links,omitempty"`
+
+	// Name Name of the device.
 	Name *string `json:"name,omitempty"`
 
-	// Path Percorso del dispositivo hardware.
+	// Path Path of the device.
 	Path *string `json:"path,omitempty"`
 
-	// Subsystem Sottosistema del dispositivo hardware.
+	// Subsystem Subsystem of the device.
 	Subsystem *string `json:"subsystem,omitempty"`
 
-	// UsedBy Componenti che utilizzano il dispositivo hardware.
+	// Sysfs Sysfs of the device.
+	Sysfs *string `json:"sysfs,omitempty"`
+
+	// Type Type of the device.
+	Type *string `json:"type,omitempty"`
+
+	// UsedBy List of add-ons that use this device.
 	UsedBy *[]string `json:"used_by,omitempty"`
+}
+
+// Drive defines model for Drive.
+type Drive struct {
+	// ConnectionBus Physical connection bus of the drive (USB, etc.).
+	ConnectionBus *string `json:"connection_bus,omitempty"`
+
+	// Ejectable Is the drive ejectable by the system?
+	Ejectable *bool `json:"ejectable,omitempty"`
+
+	// Filesystems A list of filesystem partitions on the drive.
+	Filesystems *[]Filesystem `json:"filesystems,omitempty"`
+
+	// Id Unique and persistent id for drive.
+	Id *string `json:"id,omitempty"`
+
+	// Model Drive model.
+	Model *string `json:"model,omitempty"`
+
+	// Removable Is the drive removable by the user?
+	Removable *bool `json:"removable,omitempty"`
+
+	// Seat Identifier of seat drive is plugged into.
+	Seat *string `json:"seat,omitempty"`
+
+	// Serial Drive serial number.
+	Serial *string `json:"serial,omitempty"`
+
+	// Size Size of the drive in bytes.
+	Size *int `json:"size,omitempty"`
+
+	// TimeDetected Time drive was detected by system.
+	TimeDetected *time.Time `json:"time_detected,omitempty"`
+
+	// Vendor Drive vendor.
+	Vendor *string `json:"vendor,omitempty"`
+}
+
+// Filesystem defines model for Filesystem.
+type Filesystem struct {
+	// Device Special device file for the filesystem (e.g. /dev/sda1).
+	Device *string `json:"device,omitempty"`
+
+	// Id Unique and persistent id for filesystem.
+	Id *string `json:"id,omitempty"`
+
+	// MountPoints List of paths where the filesystem is mounted.
+	MountPoints *[]string `json:"mount_points,omitempty"`
+
+	// Name Name of the filesystem (if known).
+	Name *string `json:"name,omitempty"`
+
+	// Size Size of the filesystem in bytes.
+	Size *int `json:"size,omitempty"`
+
+	// System true if filesystem considered a system/internal device.
+	System *bool `json:"system,omitempty"`
+}
+
+// HardwareInfo defines model for HardwareInfo.
+type HardwareInfo struct {
+	Devices *[]Device `json:"devices,omitempty"`
+	Drives  *[]Drive  `json:"drives,omitempty"`
 }
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
@@ -114,12 +196,12 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// GetHardware request
-	GetHardware(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetHardwareInfo request
+	GetHardwareInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) GetHardware(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetHardwareRequest(c.Server)
+func (c *Client) GetHardwareInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetHardwareInfoRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -130,8 +212,8 @@ func (c *Client) GetHardware(ctx context.Context, reqEditors ...RequestEditorFn)
 	return c.Client.Do(req)
 }
 
-// NewGetHardwareRequest generates requests for GetHardware
-func NewGetHardwareRequest(server string) (*http.Request, error) {
+// NewGetHardwareInfoRequest generates requests for GetHardwareInfo
+func NewGetHardwareInfoRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -139,7 +221,7 @@ func NewGetHardwareRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/hardware")
+	operationPath := fmt.Sprintf("/hardware/info")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -200,18 +282,22 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// GetHardwareWithResponse request
-	GetHardwareWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHardwareResponse, error)
+	// GetHardwareInfoWithResponse request
+	GetHardwareInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHardwareInfoResponse, error)
 }
 
-type GetHardwareResponse struct {
+type GetHardwareInfoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]Hardware
+	JSON200      *struct {
+		Data   *HardwareInfo             `json:"data,omitempty"`
+		Result *GetHardwareInfo200Result `json:"result,omitempty"`
+	}
 }
+type GetHardwareInfo200Result string
 
 // Status returns HTTPResponse.Status
-func (r GetHardwareResponse) Status() string {
+func (r GetHardwareInfoResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -219,38 +305,41 @@ func (r GetHardwareResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetHardwareResponse) StatusCode() int {
+func (r GetHardwareInfoResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-// GetHardwareWithResponse request returning *GetHardwareResponse
-func (c *ClientWithResponses) GetHardwareWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHardwareResponse, error) {
-	rsp, err := c.GetHardware(ctx, reqEditors...)
+// GetHardwareInfoWithResponse request returning *GetHardwareInfoResponse
+func (c *ClientWithResponses) GetHardwareInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHardwareInfoResponse, error) {
+	rsp, err := c.GetHardwareInfo(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetHardwareResponse(rsp)
+	return ParseGetHardwareInfoResponse(rsp)
 }
 
-// ParseGetHardwareResponse parses an HTTP response from a GetHardwareWithResponse call
-func ParseGetHardwareResponse(rsp *http.Response) (*GetHardwareResponse, error) {
+// ParseGetHardwareInfoResponse parses an HTTP response from a GetHardwareInfoWithResponse call
+func ParseGetHardwareInfoResponse(rsp *http.Response) (*GetHardwareInfoResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetHardwareResponse{
+	response := &GetHardwareInfoResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []Hardware
+		var dest struct {
+			Data   *HardwareInfo             `json:"data,omitempty"`
+			Result *GetHardwareInfo200Result `json:"result,omitempty"`
+		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

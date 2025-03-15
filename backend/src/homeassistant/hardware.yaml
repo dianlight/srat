@@ -1,4 +1,4 @@
-openapi: 3.1.0
+openapi: 3.0.0
 info:
   title: API Supervisor Home Assistant - Hardware
   version: 2025.3.0
@@ -9,56 +9,154 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
 externalDocs:
-  description: Find out more about HA API
-  url: https://developers.home-assistant.io/docs/api/supervisor/endpoints/#hardware
+  description: Find out more about HA Supervisor Hardware API
+  url: https://developers.home-assistant.io/docs/api/supervisor/hardware/
 servers:
   - url: http://supervisor/core # Sostituisci con l'URL corretto
 paths:
-  /hardware:
+  /hardware/info:
     get:
-      summary: Ottieni informazioni sull'hardware.
-      operationId: getHardware
+      summary: Ottieni informazioni sull'hardware del sistema.
+      operationId: getHardwareInfo
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Informazioni sull'hardware.
+          description: Informazioni sull'hardware del sistema.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Hardware'
+                type: object
+                properties:
+                  result:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    $ref: '#/components/schemas/HardwareInfo'
 components:
-  schemas:
-    Hardware:
+  schemas:    
+    Device:
       type: object
       properties:
         name:
           type: string
-          description: Nome del dispositivo hardware.
+          description: Name of the device.
         path:
           type: string
-          description: Percorso del dispositivo hardware.
+          description: Path of the device.
+        type:
+          type: string
+          description: Type of the device.
         subsystem:
           type: string
-          description: Sottosistema del dispositivo hardware.
-        device_type:
-          type: string
-          description: Tipo del dispositivo hardware.
+          description: Subsystem of the device.
         capabilities:
           type: array
           items:
             type: string
-          description: Capacità del dispositivo hardware.
+          description: Capabilities of the device.
         used_by:
           type: array
           items:
             type: string
-          description: Componenti che utilizzano il dispositivo hardware.
+          description: List of add-ons that use this device.
+        links:
+          type: array
+          items:
+            type: string
+          description: List of links to other devices.
         attributes:
           type: object
-          description: Attributi del dispositivo hardware.
+          description: Attributes of the device.
+        dev_path:
+          type: string
+          description: Device path.
+        by_id:
+          type: string
+          description: Device by id.
+        by_path:
+          type: string
+          description: Device by path.
+        description:
+          type: string
+          description: Description of the device.
+        sysfs:
+          type: string
+          description: Sysfs of the device.
+    HardwareInfo:
+      type: object
+      properties:
+        devices:
+          type: array
+          items:            
+            $ref: '#/components/schemas/Device'            
+        drives:
+          type: array
+          items:
+            $ref: '#/components/schemas/Drive'
+    Drive:
+      type: object
+      properties:
+        vendor:
+          type: string
+          description: Drive vendor.
+        model:
+          type: string
+          description: Drive model.
+        serial:
+          type: string
+          description: Drive serial number.
+        id:
+          type: string
+          description: Unique and persistent id for drive.
+        size:
+          type: integer
+          description: Size of the drive in bytes.
+        time_detected:
+          type: string
+          format: date-time
+          description: Time drive was detected by system.
+        connection_bus:
+          type: string
+          description: Physical connection bus of the drive (USB, etc.).
+        seat:
+          type: string
+          description: Identifier of seat drive is plugged into.
+        removable:
+          type: boolean
+          description: Is the drive removable by the user?
+        ejectable:
+          type: boolean
+          description: Is the drive ejectable by the system?
+        filesystems:
+          type: array
+          items:
+            $ref: '#/components/schemas/Filesystem'
+          description: A list of filesystem partitions on the drive.
+    Filesystem:
+      type: object
+      properties:
+        device:
+          type: string
+          description: Special device file for the filesystem (e.g. /dev/sda1).
+        id:
+          type: string
+          description: Unique and persistent id for filesystem.
+        size:
+          type: integer
+          description: Size of the filesystem in bytes.
+        name:
+          type: string
+          description: Name of the filesystem (if known).
+        system:
+          type: boolean
+          description: true if filesystem considered a system/internal device.
+        mount_points:
+          type: array
+          items:
+            type: string
+          description: List of paths where the filesystem is mounted.
+
   securitySchemes:
     bearerAuth:
       type: http

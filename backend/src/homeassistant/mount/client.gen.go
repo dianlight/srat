@@ -20,90 +20,66 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
-// Defines values for MountCreateType.
+// Defines values for MountType.
 const (
-	Bind MountCreateType = "bind"
-	Cifs MountCreateType = "cifs"
-	Nfs  MountCreateType = "nfs"
+	Cifs MountType = "cifs"
+	Nfs  MountType = "nfs"
+)
+
+// Defines values for MountUsage.
+const (
+	Backup MountUsage = "backup"
+	Media  MountUsage = "media"
+	Share  MountUsage = "share"
 )
 
 // Mount defines model for Mount.
 type Mount struct {
-	// AutoUpdate If the mount should be auto-updated.
-	AutoUpdate *bool `json:"auto_update,omitempty"`
-
-	// Available Available space in bytes.
-	Available *int `json:"available,omitempty"`
-
-	// Device Device path.
-	Device *string `json:"device,omitempty"`
-
 	// Name Name of the mount.
 	Name *string `json:"name,omitempty"`
 
-	// Options Mount options.
-	Options *[]string `json:"options,omitempty"`
+	// Password (cifs mounts only) Password to use for authentication
+	Password *string `json:"password,omitempty"`
 
-	// Protected If the mount is protected.
-	Protected *bool `json:"protected,omitempty"`
+	// Path (nfs mounts only) Path to mount from the network share
+	Path *string `json:"path,omitempty"`
+
+	// Port Port to use (if not using the standard one for the mount type)
+	Port *int `json:"port,omitempty"`
 
 	// ReadOnly If the mount is read-only.
 	ReadOnly *bool `json:"read_only,omitempty"`
 
-	// Slug Slug of the mount.
-	Slug *string `json:"slug,omitempty"`
+	// Server IP address or hostname of the network share server
+	Server *string `json:"server,omitempty"`
 
-	// Total Total space in bytes.
-	Total *int `json:"total,omitempty"`
+	// Share (cifs mounts only) Share to mount from the network share
+	Share *string `json:"share,omitempty"`
 
-	// Type Type of the mount.
-	Type *string `json:"type,omitempty"`
-
-	// Usage Used space in bytes.
-	Usage *int `json:"usage,omitempty"`
-
-	// Uuid UUID of the mount.
-	Uuid *string `json:"uuid,omitempty"`
-}
-
-// MountCreate defines model for MountCreate.
-type MountCreate struct {
-	// Device Device path.
-	Device *string `json:"device,omitempty"`
-
-	// Name Name of the mount.
-	Name *string `json:"name,omitempty"`
-
-	// Options Mount options.
-	Options *[]string `json:"options,omitempty"`
-
-	// Protected If the mount is protected.
-	Protected *bool `json:"protected,omitempty"`
-
-	// ReadOnly If the mount is read-only.
-	ReadOnly *bool `json:"read_only,omitempty"`
+	// State Current state of the mount (active, failed, etc.)
+	State *string `json:"state,omitempty"`
 
 	// Type Type of the mount.
-	Type *MountCreateType `json:"type,omitempty"`
+	Type *MountType `json:"type,omitempty"`
+
+	// Usage Usage of the mount (backup, media, or share)
+	Usage *MountUsage `json:"usage,omitempty"`
+
+	// Username (cifs mounts only) Username to use for authentication
+	Username *string `json:"username,omitempty"`
 }
 
-// MountCreateType Type of the mount.
-type MountCreateType string
+// MountType Type of the mount.
+type MountType string
 
-// MountUpdate defines model for MountUpdate.
-type MountUpdate struct {
-	// AutoUpdate If the mount should be auto-updated.
-	AutoUpdate *bool `json:"auto_update,omitempty"`
-
-	// Options Mount options.
-	Options *[]string `json:"options,omitempty"`
-}
+// MountUsage Usage of the mount (backup, media, or share)
+type MountUsage string
 
 // CreateMountJSONRequestBody defines body for CreateMount for application/json ContentType.
-type CreateMountJSONRequestBody = MountCreate
+type CreateMountJSONRequestBody = Mount
 
 // UpdateMountJSONRequestBody defines body for UpdateMount for application/json ContentType.
-type UpdateMountJSONRequestBody = MountUpdate
+type UpdateMountJSONRequestBody = Mount
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -186,9 +162,6 @@ type ClientInterface interface {
 
 	CreateMount(ctx context.Context, body CreateMountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetMountInfo request
-	GetMountInfo(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// RemoveMount request
 	RemoveMount(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -196,6 +169,9 @@ type ClientInterface interface {
 	UpdateMountWithBody(ctx context.Context, mountName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateMount(ctx context.Context, mountName string, body UpdateMountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReloadMount request
+	ReloadMount(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetMounts(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -234,18 +210,6 @@ func (c *Client) CreateMount(ctx context.Context, body CreateMountJSONRequestBod
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetMountInfo(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetMountInfoRequest(c.Server, mountName)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) RemoveMount(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRemoveMountRequest(c.Server, mountName)
 	if err != nil {
@@ -272,6 +236,18 @@ func (c *Client) UpdateMountWithBody(ctx context.Context, mountName string, cont
 
 func (c *Client) UpdateMount(ctx context.Context, mountName string, body UpdateMountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateMountRequest(c.Server, mountName, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ReloadMount(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReloadMountRequest(c.Server, mountName)
 	if err != nil {
 		return nil, err
 	}
@@ -329,7 +305,7 @@ func NewCreateMountRequestWithBody(server string, contentType string, body io.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/mounts/create")
+	operationPath := fmt.Sprintf("/mounts")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -345,40 +321,6 @@ func NewCreateMountRequestWithBody(server string, contentType string, body io.Re
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetMountInfoRequest generates requests for GetMountInfo
-func NewGetMountInfoRequest(server string, mountName string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "mount_name", runtime.ParamLocationPath, mountName)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/mounts/%s/info", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -399,7 +341,7 @@ func NewRemoveMountRequest(server string, mountName string) (*http.Request, erro
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/mounts/%s/remove", pathParam0)
+	operationPath := fmt.Sprintf("/mounts/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -409,7 +351,7 @@ func NewRemoveMountRequest(server string, mountName string) (*http.Request, erro
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +386,7 @@ func NewUpdateMountRequestWithBody(server string, mountName string, contentType 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/mounts/%s/update", pathParam0)
+	operationPath := fmt.Sprintf("/mounts/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -454,12 +396,46 @@ func NewUpdateMountRequestWithBody(server string, mountName string, contentType 
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), body)
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewReloadMountRequest generates requests for ReloadMount
+func NewReloadMountRequest(server string, mountName string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "mount_name", runtime.ParamLocationPath, mountName)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/mounts/%s/reload", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -515,9 +491,6 @@ type ClientWithResponsesInterface interface {
 
 	CreateMountWithResponse(ctx context.Context, body CreateMountJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMountResponse, error)
 
-	// GetMountInfoWithResponse request
-	GetMountInfoWithResponse(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*GetMountInfoResponse, error)
-
 	// RemoveMountWithResponse request
 	RemoveMountWithResponse(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*RemoveMountResponse, error)
 
@@ -525,13 +498,23 @@ type ClientWithResponsesInterface interface {
 	UpdateMountWithBodyWithResponse(ctx context.Context, mountName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMountResponse, error)
 
 	UpdateMountWithResponse(ctx context.Context, mountName string, body UpdateMountJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMountResponse, error)
+
+	// ReloadMountWithResponse request
+	ReloadMountWithResponse(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*ReloadMountResponse, error)
 }
 
 type GetMountsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]Mount
+	JSON200      *struct {
+		Data *struct {
+			DefaultBackupMount *string  `json:"default_backup_mount,omitempty"`
+			Mounts             *[]Mount `json:"mounts,omitempty"`
+		} `json:"data,omitempty"`
+		Result *GetMounts200Result `json:"result,omitempty"`
+	}
 }
+type GetMounts200Result string
 
 // Status returns HTTPResponse.Status
 func (r GetMountsResponse) Status() string {
@@ -552,8 +535,12 @@ func (r GetMountsResponse) StatusCode() int {
 type CreateMountResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Mount
+	JSON200      *struct {
+		Data   *Mount                `json:"data,omitempty"`
+		Result *CreateMount200Result `json:"result,omitempty"`
+	}
 }
+type CreateMount200Result string
 
 // Status returns HTTPResponse.Status
 func (r CreateMountResponse) Status() string {
@@ -565,28 +552,6 @@ func (r CreateMountResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateMountResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetMountInfoResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Mount
-}
-
-// Status returns HTTPResponse.Status
-func (r GetMountInfoResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetMountInfoResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -617,8 +582,12 @@ func (r RemoveMountResponse) StatusCode() int {
 type UpdateMountResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Mount
+	JSON200      *struct {
+		Data   *Mount                `json:"data,omitempty"`
+		Result *UpdateMount200Result `json:"result,omitempty"`
+	}
 }
+type UpdateMount200Result string
 
 // Status returns HTTPResponse.Status
 func (r UpdateMountResponse) Status() string {
@@ -630,6 +599,27 @@ func (r UpdateMountResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateMountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ReloadMountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r ReloadMountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReloadMountResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -662,15 +652,6 @@ func (c *ClientWithResponses) CreateMountWithResponse(ctx context.Context, body 
 	return ParseCreateMountResponse(rsp)
 }
 
-// GetMountInfoWithResponse request returning *GetMountInfoResponse
-func (c *ClientWithResponses) GetMountInfoWithResponse(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*GetMountInfoResponse, error) {
-	rsp, err := c.GetMountInfo(ctx, mountName, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetMountInfoResponse(rsp)
-}
-
 // RemoveMountWithResponse request returning *RemoveMountResponse
 func (c *ClientWithResponses) RemoveMountWithResponse(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*RemoveMountResponse, error) {
 	rsp, err := c.RemoveMount(ctx, mountName, reqEditors...)
@@ -697,6 +678,15 @@ func (c *ClientWithResponses) UpdateMountWithResponse(ctx context.Context, mount
 	return ParseUpdateMountResponse(rsp)
 }
 
+// ReloadMountWithResponse request returning *ReloadMountResponse
+func (c *ClientWithResponses) ReloadMountWithResponse(ctx context.Context, mountName string, reqEditors ...RequestEditorFn) (*ReloadMountResponse, error) {
+	rsp, err := c.ReloadMount(ctx, mountName, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReloadMountResponse(rsp)
+}
+
 // ParseGetMountsResponse parses an HTTP response from a GetMountsWithResponse call
 func ParseGetMountsResponse(rsp *http.Response) (*GetMountsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -712,7 +702,13 @@ func ParseGetMountsResponse(rsp *http.Response) (*GetMountsResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []Mount
+		var dest struct {
+			Data *struct {
+				DefaultBackupMount *string  `json:"default_backup_mount,omitempty"`
+				Mounts             *[]Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *GetMounts200Result `json:"result,omitempty"`
+		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -738,33 +734,10 @@ func ParseCreateMountResponse(rsp *http.Response) (*CreateMountResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Mount
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
+		var dest struct {
+			Data   *Mount                `json:"data,omitempty"`
+			Result *CreateMount200Result `json:"result,omitempty"`
 		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetMountInfoResponse parses an HTTP response from a GetMountInfoWithResponse call
-func ParseGetMountInfoResponse(rsp *http.Response) (*GetMountInfoResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetMountInfoResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Mount
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -806,12 +779,31 @@ func ParseUpdateMountResponse(rsp *http.Response) (*UpdateMountResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Mount
+		var dest struct {
+			Data   *Mount                `json:"data,omitempty"`
+			Result *UpdateMount200Result `json:"result,omitempty"`
+		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseReloadMountResponse parses an HTTP response from a ReloadMountWithResponse call
+func ParseReloadMountResponse(rsp *http.Response) (*ReloadMountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReloadMountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil
