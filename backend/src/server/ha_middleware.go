@@ -21,7 +21,7 @@ func HAMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("X-Supervisor-Token")
 		if tokenString == "" {
-			log.Printf("Not in a HomeAssistant environment!")
+			log.Printf("Not in a HomeAssistant environment! %#v", r.Header)
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
