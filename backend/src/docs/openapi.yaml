@@ -1126,6 +1126,46 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/Welcome"
+                        event:
+                          const: hello
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event hello
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/ReleaseAsset"
                         event:
                           const: update
@@ -1195,46 +1235,6 @@ paths:
                         - data
                         - event
                       title: Event heartbeat
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: share
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event share
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/Welcome"
-                        event:
-                          const: hello
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event hello
                       type: object
                 title: Server Sent Events
                 type: array
