@@ -1,0 +1,141 @@
+openapi: 3.0.0
+info:
+  title: API Supervisor Home Assistant - Core API Proxy
+  version: 2025.3.0
+  description: API per interagire con il Core tramite il Supervisor di Home Assistant (Proxy).
+  contact:
+    email: lucio.tarantino@gmail.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+externalDocs:
+  description: Find out more about HA API Core
+  url: https://developers.home-assistant.io/docs/api/rest/
+servers:
+  - url: http://supervisor/core # Sostituisci con l'URL corretto
+tags:
+  - name: core_api
+    description: Core API Proxy
+paths:
+  /core/api/states/{entity_id}:
+    get:
+      tags:
+        - core_api
+      summary: Ottieni lo stato di una entità.
+      description: Restituisce lo stato di una entità specificata tramite l'entity_id. Restituisce 404 se non trovata.
+      operationId: getEntityState
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: entity_id
+          in: path
+          description: ID dell'entità di cui si vuole ottenere lo stato.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Operazione riuscita.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityState'
+        '404':
+          description: Entità non trovata.
+    post:
+      tags:
+        - core_api
+      summary: Aggiorna o crea lo stato di una entità.
+      description: |-
+        Aggiorna o crea lo stato di una entità. È possibile creare qualsiasi stato, non deve essere necessariamente supportato da un'entità in Home Assistant.
+        Questo endpoint imposta la rappresentazione di un dispositivo all'interno di Home Assistant e non comunicherà con il dispositivo reale. Per comunicare con il dispositivo, utilizzare l'endpoint POST /api/services/<domain>/<service>.
+      operationId: postEntityState
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: entity_id
+          in: path
+          description: ID dell'entità di cui si vuole aggiornare lo stato.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Stato dell'entità da aggiornare o creare.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntityState'
+      responses:
+        '200':
+          description: Operazione riuscita.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityState'
+        '201':
+          description: Operazione riuscita, entità creata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityState'
+components:
+  schemas:
+    EntityState:
+      type: object
+      properties:
+        state:
+          type: string
+          description: Rappresentazione testuale dello stato corrente dell'entità.
+          examples:
+            - "on"
+            - "off"
+        entity_id:
+          type: string
+          description: ID dell'entità.
+          format: "<domain>.<object_id>"
+          examples:
+            - "light.kitchen"
+        domain:
+          type: string
+          description: Dominio dell'entità.
+          examples:
+            - "light"
+        object_id:
+          type: string
+          description: ID dell'oggetto dell'entità.
+          examples:
+            - "kitchen"
+        name:
+          type: string
+          description: Nome dell'entità. Basato sull'attributo friendly_name, con fallback all'ID dell'oggetto.
+          examples:
+            - "Kitchen ceiling"
+        last_changed:
+          type: string
+          format: date-time
+          description: Ora in cui lo stato è cambiato nella macchina a stati in tempo UTC. Non viene aggiornato se cambiano solo gli attributi di stato.
+          examples:
+            - "2013-09-17T07:32:51.715874+00:00"
+        last_reported:
+          type: string
+          format: date-time
+          description: Ora in cui lo stato è stato scritto nella macchina a stati in tempo UTC. Questo timestamp viene aggiornato indipendentemente da eventuali modifiche allo stato o agli attributi di stato.
+          examples:
+            - "2013-09-17T07:32:51.715874+00:00"
+        last_updated:
+          type: string
+          format: date-time
+          description: Ora in cui lo stato o gli attributi di stato sono cambiati nella macchina a stati in tempo UTC. Non viene aggiornato se non sono cambiati né lo stato né gli attributi di stato.
+          examples:
+            - "2013-09-17T07:32:51.715874+00:00"
+        attributes:
+          type: object
+          description: Un dizionario con attributi extra relativi allo stato corrente.
+        context:
+          type: object
+          description: Un dizionario con attributi extra relativi al contesto dello stato.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

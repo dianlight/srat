@@ -1,0 +1,196 @@
+openapi: 3.0.0
+info:
+  title: API Supervisor Home Assistant - Core
+  version: 2025.3.0
+  description: API per interagire con il Core tramite il Supervisor di Home Assistant.
+  contact:
+    email: lucio.tarantino@gmail.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+externalDocs:
+  description: Find out more about HA API
+  url: https://developers.home-assistant.io/docs/api/supervisor/endpoints/#core
+servers:
+  - url: http://supervisor/core # Sostituisci con l'URL corretto
+tags:
+  - name: core
+    description: Core management
+paths:
+  /core/info:
+    get:
+      tags:
+        - core
+      summary: Ottieni informazioni sul Core.
+      operationId: getCoreInfo
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Informazioni sul Core.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreInfo'
+  /core/reboot:
+    post:
+      tags:
+        - core
+      summary: Riavvia il Core.
+      operationId: rebootCore
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Core riavviato con successo.
+        '400':
+          description: Richiesta non valida.
+  /core/restart:
+    post:
+      tags:
+        - core
+      summary: Riavvia il Core.
+      operationId: restartCore
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Core riavviato con successo.
+        '400':
+          description: Richiesta non valida.
+  /core/update:
+    post:
+      tags:
+        - core
+      summary: Aggiorna il Core.
+      operationId: updateCore
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Opzioni di aggiornamento del Core.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreUpdate'
+      responses:
+        '200':
+          description: Core aggiornato con successo.
+        '400':
+          description: Richiesta non valida.
+  /core/logs:
+    get:
+      tags:
+        - core
+      summary: Ottieni i log del Core.
+      operationId: getCoreLogs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Log del Core.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /core/check:
+    post:
+      tags:
+        - core
+      summary: Controlla la configurazione del Core.
+      operationId: checkCoreConfig
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Configurazione del Core valida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreCheck'
+        '400':
+          description: Configurazione del Core non valida.
+  /core/repair:
+    post:
+      tags:
+        - core
+      summary: Ripara il Core.
+      operationId: repairCore
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Core riparato con successo.
+        '400':
+          description: Richiesta non valida.
+components:
+  schemas:
+    CoreInfo:
+      type: object
+      properties:
+        version:
+          type: string
+          description: La versione installata del Core.
+        version_latest:
+          type: string
+          description: L'ultima versione pubblicata nel canale attivo.
+        update_available:
+          type: boolean
+          description: True se è disponibile un aggiornamento.
+        arch:
+          type: string
+          description: L'architettura dell'host (armhf, aarch64, i386, amd64).
+        machine:
+          type: string
+          description: Il tipo di macchina che esegue l'host.
+        ip_address:
+          type: string
+          description: L'indirizzo IP Docker interno del Supervisor.
+        image:
+          type: string
+          description: L'immagine del container che esegue il Core.
+        boot:
+          type: boolean
+          description: True se deve avviarsi all'avvio.
+        port:
+          type: integer
+          description: La porta su cui è in esecuzione Home Assistant.
+        ssl:
+          type: boolean
+          description: True se Home Assistant utilizza SSL.
+        watchdog:
+          type: boolean
+          description: True se il watchdog è abilitato.
+        wait_boot:
+          type: integer
+          description: Tempo massimo di attesa durante l'avvio.
+        audio_input:
+          type: string
+          description: La descrizione del dispositivo di input audio.
+        audio_output:
+          type: string
+          description: La descrizione del dispositivo di output audio.
+        backups_exclude_database:
+          type: boolean
+          description: I backup escludono il file del database di Home Assistant per impostazione predefinita.
+    CoreUpdate:
+      type: object
+      properties:
+        version:
+          type: string
+          description: La versione a cui aggiornare.
+    CoreCheck:
+      type: object
+      properties:
+        result:
+          type: string
+          description: Risultato del controllo della configurazione.
+        errors:
+          type: array
+          items:
+            type: string
+          description: Lista di errori.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

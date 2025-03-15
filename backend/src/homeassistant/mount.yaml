@@ -1,0 +1,212 @@
+openapi: 3.1.0
+info:
+  title: API Supervisor Home Assistant - Mounts
+  version: 2025.3.0
+  description: API per interagire con i mount tramite il Supervisor di Home Assistant.
+  contact:
+    email: lucio.tarantino@gmail.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+externalDocs:
+  description: Find out more about HA API
+  url: https://developers.home-assistant.io/docs/api/supervisor/endpoints/#mounts
+servers:
+  - url: http://supervisor/core # Sostituisci con l'URL corretto
+paths:
+  /mounts:
+    get:
+      summary: Ottieni informazioni sui mount.
+      operationId: getMounts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Informazioni sui mount.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Mount'
+  /mounts/{mount_name}/info:
+    get:
+      summary: Get information about a specific mount.
+      operationId: getMountInfo
+      parameters:
+        - name: mount_name
+          security:
+            - bearerAuth: []
+          in: path
+          description: Name of the mount to get information about.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Information about the mount.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mount'
+        '404':
+          description: Mount not found.
+  /mounts/{mount_name}/update:
+    post:
+      summary: Update a mount.
+      operationId: updateMount
+      parameters:
+        - name: mount_name
+          security:
+            - bearerAuth: []
+          in: path
+          description: Name of the mount to update.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Mount configuration to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MountUpdate'
+      responses:
+        '200':
+          description: Mount updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mount'
+        '400':
+          description: Bad request.
+        '404':
+          description: Mount not found.
+  /mounts/{mount_name}/remove:
+    post:
+      summary: Remove a mount.
+      operationId: removeMount
+      parameters:
+        - name: mount_name
+          security:
+            - bearerAuth: []
+          in: path
+          description: Name of the mount to remove.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Mount removed successfully.
+        '400':
+          description: Bad request.
+        '404':
+          description: Mount not found.
+  /mounts/create:
+    post:
+      summary: Create a new mount.
+      operationId: createMount
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Mount configuration to create.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MountCreate'
+      responses:
+        '200':
+          description: Mount created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mount'
+        '400':
+          description: Bad request.
+components:
+  schemas:
+    Mount:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the mount.
+        usage:
+          type: integer
+          description: Used space in bytes.
+        total:
+          type: integer
+          description: Total space in bytes.
+        device:
+          type: string
+          description: Device path.
+        available:
+          type: integer
+          description: Available space in bytes.
+        protected:
+          type: boolean
+          description: If the mount is protected.
+        read_only:
+          type: boolean
+          description: If the mount is read-only.
+        type:
+          type: string
+          description: Type of the mount.
+        uuid:
+          type: string
+          description: UUID of the mount.
+        slug:
+          type: string
+          description: Slug of the mount.
+        auto_update:
+          type: boolean
+          description: If the mount should be auto-updated.
+        options:
+          type: array
+          items:
+            type: string
+          description: Mount options.
+    MountUpdate:
+      type: object
+      properties:
+        auto_update:
+          type: boolean
+          description: If the mount should be auto-updated.
+        options:
+          type: array
+          items:
+            type: string
+          description: Mount options.
+    MountCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the mount.
+        type:
+          type: string
+          description: Type of the mount.
+          enum:
+            - cifs
+            - nfs
+            - bind
+        device:
+          type: string
+          description: Device path.
+        options:
+          type: array
+          items:
+            type: string
+          description: Mount options.
+        protected:
+          type: boolean
+          description: If the mount is protected.
+        read_only:
+          type: boolean
+          description: If the mount is read-only.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

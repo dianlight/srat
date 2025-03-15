@@ -1,5 +1,6 @@
-package: homeassistant
-output: supervisor.gen.go
+# yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/HEAD/configuration-schema.json
+#package: homeassistant
+#output: supervisor.gen.go
 generate:
   models: true
   client: true
