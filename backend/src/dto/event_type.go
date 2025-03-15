@@ -1,20 +1,14 @@
 package dto
 
-type EventType string
+//go:generate go run github.com/zarldev/goenums@v0.3.5 event_type.go
+type eventType int // Name[string]
 
 const (
-	EventHello     EventType = "hello"
-	EventUpdate    EventType = "update"
-	EventHeartbeat EventType = "heartbeat"
-	EventShare     EventType = "share"
-	EventVolumes   EventType = "volumes"
-	EventDirty     EventType = "dirty"
+	eventHello     eventType = iota // "hello"
+	eventUpdate                     // "update"
+	eventUpdating                   // "updating"
+	eventVolumes                    // "volumes"
+	eventHeartbeat                  // "heartbeat"
+	eventShare                      // "share"
+	eventDirty                      // "dirty"
 )
-
-var EventTypes = []string{
-	string(EventHello),
-	string(EventUpdate),
-	string(EventHeartbeat),
-	string(EventShare),
-	string(EventVolumes),
-}

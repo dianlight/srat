@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/sse"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 )
 
@@ -14,9 +16,7 @@ type BrokerHandler struct {
 
 type BrokerInterface interface {
 	Stream(w http.ResponseWriter, r *http.Request)
-	BroadcastMessage(msg *dto.EventMessageEnvelope) (*dto.EventMessageEnvelope, error)
-	AddOpenConnectionListener(ws func(broker BrokerInterface) error) error
-	AddCloseConnectionListener(ws func(broker BrokerInterface) error) error
+	BroadcastMessage(msg any) (any, error)
 }
 
 func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker *BrokerHandler) {
@@ -27,44 +27,39 @@ func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker *Brok
 	return
 }
 
-func (handler *BrokerHandler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/sse", Method: "GET", Handler: handler.Stream},
-		{Pattern: "/sse/events", Method: "GET", Handler: handler.EventTypeList},
-	}
-}
-
-// SSE Stream godoc
+// RegisterSse registers a Server-Sent Events (SSE) endpoint with the given API.
+// It sets up the SSE endpoint at the path "/sse" with the HTTP GET method and
+// provides a summary "Server sent events". The function maps various event types
+// to their corresponding data structures and processes the HTTP channel using
+// the broadcaster.
 //
-// @Summary		Open a SSE stream
-// @Description	Open a SSE stream
+// Parameters:
+//   - api: The huma.API instance to register the SSE endpoint with.
 //
-//	@Accept			json
-//	@Produce		text/event-stream
+// Event Types:
+//   - EVENTHELLO:     dto.Welcome
+//   - EVENTUPDATE:    dto.ReleaseAsset
+//   - EVENTUPDATING:  dto.UpdateProgress
+//   - EVENTVOLUMES:   dto.BlockInfo
+//   - EVENTHEARTBEAT: dto.HealthPing
+//   - EVENTSHARE:     []dto.SharedResource
 //
-// @Tags			system
-// @Success		200	{object} dto.EventMessageEnvelope
-// @Failure		500	{object}	dto.ErrorInfo
-// @Router			/sse [get]
-func (handler *BrokerHandler) Stream(w http.ResponseWriter, r *http.Request) {
-	err := handler.broadcaster.ProcessHttpChannel(w, r)
-	if err != nil {
-		HttpJSONReponse(w, err, &Options{
-			Code: http.StatusInternalServerError,
-		})
-		return
-	}
-}
-
-// EventTypeList godoc
-//
-//	@Summary		EventTypeList
-//	@Description	Return a list of available WSChannel events
-//	@Tags			system
-//	@Produce		json
-//	@Success		200	{object}	[]dto.EventType
-//	@Failure		500	{object}	string
-//	@Router			/sse/events [get]
-func (broker *BrokerHandler) EventTypeList(w http.ResponseWriter, rq *http.Request) {
-	HttpJSONReponse(w, dto.EventTypes, nil)
+// The function processes the HTTP channel by calling self.broadcaster.ProcessHttpChannel
+// with the provided SSE sender.
+func (self *BrokerHandler) RegisterSse(api huma.API) {
+	sse.Register(api, huma.Operation{
+		OperationID: "sse",
+		Method:      http.MethodGet,
+		Path:        "/sse",
+		Summary:     "Server sent events",
+	}, map[string]any{
+		dto.EventTypes.EVENTHELLO.Name:     dto.Welcome{},
+		dto.EventTypes.EVENTUPDATE.Name:    dto.ReleaseAsset{},
+		dto.EventTypes.EVENTUPDATING.Name:  dto.UpdateProgress{},
+		dto.EventTypes.EVENTVOLUMES.Name:   dto.BlockInfo{},
+		dto.EventTypes.EVENTHEARTBEAT.Name: dto.HealthPing{},
+		dto.EventTypes.EVENTSHARE.Name:     []dto.SharedResource{},
+	}, func(ctx context.Context, input *struct{}, send sse.Sender) {
+		self.broadcaster.ProcessHttpChannel(send)
+	})
 }

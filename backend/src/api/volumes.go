@@ -1,17 +1,15 @@
 package api
 
 import (
+	"context"
 	"errors"
-	"net/http"
 	"regexp"
-	"strconv"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
-	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
-	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )
 
@@ -36,193 +34,135 @@ func NewVolumeHandler(vservice service.VolumeServiceInterface, mount_repo reposi
 	return p
 }
 
-func (broker *VolumeHandler) Patterns() []server.RouteDetail {
-	return []server.RouteDetail{
-		{Pattern: "/volumes", Method: "GET", Handler: broker.ListVolumes},
-		{Pattern: "/volume/{id}/mount", Method: "POST", Handler: broker.MountVolume},
-		{Pattern: "/volume/{id}/mount", Method: "DELETE", Handler: broker.UmountVolume},
-	}
+// RegisterVolumeHandlers registers the HTTP handlers for volume-related operations.
+// It sets up the following routes:
+// - GET /volumes: Lists all volumes.
+// - POST /volume/{id}/mount: Mounts a volume with the specified ID.
+// - DELETE /volume/{id}/mount: Unmounts a volume with the specified ID.
+//
+// Parameters:
+// - api: The huma.API instance to register the handlers with.
+func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
+	huma.Get(api, "/volumes", self.ListVolumes, huma.OperationTags("volume"))
+	huma.Post(api, "/volume/{id}/mount", self.MountVolume, huma.OperationTags("volume"))
+	huma.Delete(api, "/volume/{id}/mount", self.UmountVolume, huma.OperationTags("volume"))
 }
 
-// ListVolumes godoc
+// ListVolumes retrieves a list of volumes by calling the vservice's GetVolumesData method.
+// It returns a struct containing the volumes data wrapped in a dto.BlockInfo, or an error if the retrieval fails.
 //
-//	@Summary		List all available volumes
-//	@Description	List all available volumes
-//	@Tags			volume
-//	@Produce		json
-//	@Success		200	{object}	dto.BlockInfo
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/volumes [get]
-func (self *VolumeHandler) ListVolumes(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
+// Parameters:
+// - ctx: The context for the request, which can be used for cancellation and deadlines.
+// - input: An empty struct as input, which is not used in this function.
+//
+// Returns:
+// - A struct containing the volumes data wrapped in a dto.BlockInfo.
+// - An error if there is an issue retrieving the volumes data.
+func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body *dto.BlockInfo }, error) {
 	volumes, err := self.vservice.GetVolumesData()
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
-	HttpJSONReponse(w, volumes, nil)
+	return &struct{ Body *dto.BlockInfo }{Body: volumes}, nil
 }
 
-// MountVolume godoc
+// MountVolume handles the mounting of a volume based on the provided input.
+// It validates the input data, checks for consistency, and attempts to mount the volume using the volume service.
+// If the mounting process encounters an error, it returns an appropriate HTTP error response.
+// Upon successful mounting, it retrieves the mounted volume data from the repository, converts it, and marks the volumes as dirty.
 //
-//	@Summary		mount an existing volume
-//	@Description	mount an existing volume
-//	@Tags			volume
-//	@Accept			json
-//	@Produce		json
-//	@Param			id			path		uint				true	"id of the mountpoint to be mounted"
-//	@Param			mount_data	body		dto.MountPointData	true	"Mount data"
-//	@Success		201			{object}	dto.MountPointData
-//	@Failure		400			{object}	dto.ErrorInfo
-//	@Failure		405			{object}	dto.ErrorInfo
-//	@Failure		409			{object}	dto.ErrorInfo
-//	@Failure		500			{object}	dto.ErrorInfo
-//	@Router			/volume/{id}/mount [post]
-func (self *VolumeHandler) MountVolume(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseUint(mux.Vars(r)["id"], 10, 32)
-	if err != nil {
-		HttpJSONReponse(w, dto.NewErrorInfo(
-			dto.ErrorCodes.INVALID_PARAMETER,
-			map[string]any{
-				"Key":     "ID",
-				"Message": "Path parameter is not a valid uint!",
-			},
-			nil), &Options{
-			Code: http.StatusBadRequest,
-		})
-		return
+// Parameters:
+//   - ctx: The context for the request.
+//   - input: A struct containing the ID of the driver to mount and the body with mount point data.
+//
+// Returns:
+//   - A struct containing the mounted volume data in the body, or an error if the mounting process fails.
+//
+// Possible Errors:
+//   - 409 Conflict: If the provided ID in the request is inconsistent.
+//   - 406 Not Acceptable: If an invalid parameter is provided.
+//   - 404 Not Found: If the device is not found.
+//   - 422 Unprocessable Entity: If the mounting process fails.
+//   - 500 Internal Server Error: For unknown errors or other internal server errors.
+func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
+	ID   uint `path:"id" exclusiveMinimum:"0" example:"1234" doc:"ID of the driver to mount"`
+	Body dto.MountPointData
+}) (*struct{ Body dto.MountPointData }, error) {
+
+	mount_data := input.Body
+
+	if mount_data.ID != 0 && mount_data.ID != input.ID {
+		return nil, huma.Error409Conflict("Inconsistent ID provided in the request")
 	}
 
-	var mount_data dto.MountPointData
-	err = HttpJSONRequest(&mount_data, w, r)
-	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
-	}
+	mount_data.ID = input.ID
 
-	if mount_data.ID != 0 && mount_data.ID != uint(id) {
-		HttpJSONReponse(w, dto.NewErrorInfo(
-			dto.ErrorCodes.INVALID_PARAMETER,
-			map[string]any{
-				"Key":     "ID",
-				"Message": "Inconsistent ID provided in the request",
-			}, nil),
-			&Options{
-				Code: http.StatusBadRequest,
-			})
-		return
-	}
-
-	mount_data.ID = uint(id)
-
-	err = self.vservice.MountVolume(mount_data)
+	err := self.vservice.MountVolume(mount_data)
 	if err != nil {
 		if einfo, ok := err.(*dto.ErrorInfo); ok {
 			switch einfo.Code {
 			case dto.ErrorCodes.INVALID_PARAMETER:
-				HttpJSONReponse(w, einfo, &Options{
-					Code: http.StatusBadRequest,
-				})
-				return
+				return nil, huma.Error406NotAcceptable("Invalid Parameter", einfo)
 			case dto.ErrorCodes.DEVICE_NOT_FOUND:
-				HttpJSONReponse(w, einfo, &Options{
-					Code: http.StatusNotFound,
-				})
-				return
+				return nil, huma.Error404NotFound("Device Not Found", einfo)
 			case dto.ErrorCodes.MOUNT_FAIL:
-				HttpJSONReponse(w, einfo, &Options{
-					Code: http.StatusBadRequest,
-				})
-				return
+				return nil, huma.Error422UnprocessableEntity(einfo.Message, einfo)
 			default:
-				HttpJSONReponse(w, einfo, nil)
-				return
+				return nil, huma.Error500InternalServerError(einfo.Message, einfo)
 			}
 		}
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, huma.Error500InternalServerError("Unkown Error", err)
 	}
 
-	dbom_mount_data, err := self.mount_repo.FindByID(uint(id))
+	dbom_mount_data, err := self.mount_repo.FindByID(input.ID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			HttpJSONReponse(w, dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
-				"Device":  dbom_mount_data.Source,
-				"Path":    dbom_mount_data.Path,
-				"Message": "Mount Record Not Found",
-			}, err), &Options{
-				Code: http.StatusNotFound,
-			})
-			return
+			return nil, huma.Error404NotFound("Internal:Device Not Found", err)
 		}
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	var conv converter.DtoToDbomConverterImpl
 	mounted_data := dto.MountPointData{}
 	err = conv.MountPointPathToMountPointData(*dbom_mount_data, &mounted_data)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 	self.dirtyservice.SetDirtyVolumes()
-	HttpJSONReponse(w, mounted_data, nil)
-	//}
+
+	return &struct{ Body dto.MountPointData }{Body: mounted_data}, nil
 }
 
-// UmountVolume godoc
+// UmountVolume handles the unmounting of a volume based on the provided input parameters.
+// It checks if the volume exists, and if so, proceeds to unmount it using the specified options.
+// If the volume does not exist, it returns a 404 error.
 //
-//	@Summary		Umount the selected volume
-//	@Description	Umount the selected volume
-//	@Tags			volume
-//	@Param			id		path	uint	true	"id of the mountpoint to be mounted"
-//	@Param			force	query	bool	true	"Umount forcefully - forces an unmount regardless of currently open or otherwise used files within the file system to be unmounted."
-//	@Param			lazy	query	bool	true	"Umount lazily - disallows future uses of any files below path -- i.e. it hides the file system mounted at path, but the file system itself is still active and any currently open files can continue to be used. When all references to files from this file system are gone, the file system will actually be unmounted."
-//	@Success		204
-//	@Failure		404	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/volume/{id}/mount [delete]
-func (self *VolumeHandler) UmountVolume(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	id, err := strconv.ParseUint(mux.Vars(r)["id"], 10, 32)
-	if err != nil {
-		HttpJSONReponse(w, dto.ErrorInfo{
-			Code: dto.ErrorCodes.INVALID_PARAMETER,
-			Data: map[string]any{
-				"Key":     "ID",
-				"Message": "Inconsistent ID provided in the request",
-			},
-		}, &Options{
-			Code: http.StatusBadRequest,
-		})
-		return
-	}
-	force := r.URL.Query().Get("force")
-	lazy := r.URL.Query().Get("lazy")
+// Parameters:
+//
+//	ctx - The context for the request.
+//	input - A struct containing the following fields:
+//	  ID - The ID of the volume to unmount. Must be a positive integer.
+//	  Force - A boolean indicating whether to force the unmount operation. Default is false.
+//	  Lazy - A boolean indicating whether to perform a lazy unmount operation. Default is false.
+//
+// Returns:
+//
+//	An empty struct and nil error if the operation is successful.
+//	An error if the volume does not exist or if the unmount operation fails.
+func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
+	ID    uint `path:"id" exclusiveMinimum:"0" example:"1234" doc:"ID of the driver to mount"`
+	Force bool `query:"force" default:"false" doc:"Force umount operation"`
+	Lazy  bool `query:"lazy" default:"false" doc:"Lazy umount operation"`
+}) (*struct{}, error) {
 
-	if ok, _ := self.mount_repo.Exists(uint(id)); !ok {
-		HttpJSONReponse(w, dto.ErrorInfo{
-			Code: dto.ErrorCodes.UNMOUNT_FAIL,
-			Data: map[string]any{
-				"ID":      id,
-				"Message": "No mount point found for the provided ID",
-			},
-		}, &Options{
-			Code: http.StatusNotFound,
-		})
-		return
+	if ok, _ := self.mount_repo.Exists(input.ID); !ok {
+		return nil, huma.Error404NotFound("No mount point found for the provided ID", nil)
 	}
 
-	err = self.vservice.UnmountVolume(uint(id), force == "true", lazy == "true")
+	err := self.vservice.UnmountVolume(input.ID, input.Force, input.Lazy)
 	if err != nil {
-		HttpJSONReponse(w, err, nil)
-		return
+		return nil, err
 	}
 
 	self.dirtyservice.SetDirtyVolumes()
-
-	HttpJSONReponse(w, nil, nil)
-	return
+	return nil, nil
 }

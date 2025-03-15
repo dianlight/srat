@@ -34,7 +34,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
 import { NotificationCenter } from "./NotificationCenter"
 import { useSSE } from "react-hooks-sse"
-import { DtoEventType, usePutSambaApplyMutation, usePutUpdateMutation, type DtoHealthPing, type DtoReleaseAsset, type DtoUpdateProgress } from "../store/sratApi"
+import { Supported_events, usePutSambaApplyMutation, usePutUpdateMutation, type HealthPing, type ReleaseAsset, type UpdateProgress } from "../store/sratApi"
 import { useHealth } from "../hooks/healthHook";
 import { useAppSelector } from "../store/store";
 import { useReadOnly } from "../hooks/readonlyHook";
@@ -107,8 +107,8 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
     //  const [updateAssetStatus, setUpdateAssetStatus] = useState<DtoReleaseAsset>({});
 
-    const updateAssetStatus = useSSE(DtoEventType.Update, {} as DtoUpdateProgress, {
-        parser(input: any): DtoReleaseAsset {
+    const updateAssetStatus = useSSE(Supported_events.Update, {} as UpdateProgress, {
+        parser(input: any): ReleaseAsset {
             console.log("Got version", input)
             return JSON.parse(input);
         },
@@ -147,7 +147,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             .then(({ confirmed, reason }) => {
                 if (confirmed) {
                     doUpdate().unwrap().then((res) => {
-                        updateAssetStatus.update_status = res.update_status;
+                        updateAssetStatus.update_status = (res as UpdateProgress).update_status;
                         //users.mutate();
                     }).catch(err => {
                         console.error(err);

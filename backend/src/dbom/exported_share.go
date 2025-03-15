@@ -15,8 +15,8 @@ type ExportedShare struct {
 	UpdatedAt        time.Time
 	DeletedAt        gorm.DeletedAt `gorm:"index"`
 	Disabled         bool
-	Users            []SambaUser `gorm:"many2many:user_rw_share"`
-	RoUsers          []SambaUser `gorm:"many2many:user_ro_share"`
+	Users            []SambaUser `gorm:"many2many:user_rw_share;constraint:OnUpdate:CASCADE"`
+	RoUsers          []SambaUser `gorm:"many2many:user_ro_share;constraint:OnUpdate:CASCADE"`
 	TimeMachine      bool
 	Usage            dto.HAMountUsage
 	MountPointDataID uint
@@ -38,9 +38,6 @@ func (u *ExportedShare) BeforeSave(tx *gorm.DB) error {
 		}
 		u.Users = saveuses
 		u.RoUsers = saveuses_r
-		//	if err := tx.Session(&gorm.Session{SkipHooks: true}).Save(u).Error; err != nil {
-		//		return tracerr.Wrap(err)
-		//	}
 	}
 	return nil
 }

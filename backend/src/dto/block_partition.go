@@ -24,9 +24,9 @@ type BlockPartition struct {
 	// partition. On Linux, this is derived from the `ID_FS_NAME` udev entry.
 	FilesystemLabel string `json:"filesystem_label"`
 	// PartiionFlags contains the mount flags for the partition.
-	PartitionFlags MounDataFlags `json:"partition_flags"`
+	PartitionFlags []string `json:"partition_flags" enum:"MS_RDONLY,MS_NOSUID,MS_NODEV,MS_NOEXEC,MS_SYNCHRONOUS,MS_REMOUNT,MS_MANDLOCK,MS_NOATIME,MS_NODIRATIME,MS_BIND,MS_LAZYTIME,MS_NOUSER,MS_RELATIME"`
 	// MountFlags contains the mount flags for the partition.
-	MountFlags MounDataFlags `json:"mount_flags"`
+	MountFlags []string `json:"mount_flags" enum:"MS_RDONLY,MS_NOSUID,MS_NODEV,MS_NOEXEC,MS_SYNCHRONOUS,MS_REMOUNT,MS_MANDLOCK,MS_NOATIME,MS_NODIRATIME,MS_BIND,MS_LAZYTIME,MS_NOUSER,MS_RELATIME"`
 	// MountData contains additional data associated with the partition.
 	MountData string `json:"mount_data"`
 	// DeviceId is the ID of the block device this partition is on.

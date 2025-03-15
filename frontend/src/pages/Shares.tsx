@@ -1,5 +1,5 @@
-import { Fragment, useContext, useEffect, useRef, useState } from "react";
-import { set, useForm } from "react-hook-form";
+import { Fragment, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
 import { InView } from "react-intersection-observer";
 import Grid from "@mui/material/Grid2";
 import List from "@mui/material/List";
@@ -9,7 +9,6 @@ import ListItemAvatar from "@mui/material/ListItemAvatar";
 import Avatar from "@mui/material/Avatar";
 import ListItemText from "@mui/material/ListItemText";
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
-import FolderDeleteIcon from '@mui/icons-material/FolderDelete';
 import SettingsIcon from '@mui/icons-material/Settings';
 import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import { PreviewDialog } from "../components/PreviewDialog";
@@ -21,30 +20,27 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
-import TextField from "@mui/material/TextField";
 import DialogActions from "@mui/material/DialogActions";
-import { AutocompleteElement, CheckboxElement, FormContainer, SelectElement, TextFieldElement } from 'react-hook-form-mui'
-import { Box, Container, Fab, Paper, Stack, Tooltip } from "@mui/material";
+import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement } from 'react-hook-form-mui'
+import { Box, Fab, Stack, Tooltip } from "@mui/material";
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import AddIcon from '@mui/icons-material/Add';
-import { Eject, DriveFileMove, Label } from '@mui/icons-material';
+import { Eject, DriveFileMove } from '@mui/icons-material';
 import { Chip, Typography } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import GroupIcon from '@mui/icons-material/Group';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import BackupIcon from '@mui/icons-material/Backup';
+import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { useSSE } from "react-hooks-sse";
-import { useDispatch, useSelector } from "react-redux";
-import { useAppDispatch, useAppSelector, type RootState } from "../store/store";
-import { DtoEventType, DtoHAMountUsage, useGetSharesQuery, useGetSharesUsagesQuery, useGetUseradminQuery, useGetUsersQuery, usePutShareByShareNameMutation, type DtoSharedResource, type DtoUser } from "../store/sratApi";
+import { useAppDispatch, useAppSelector } from "../store/store";
+import { Usage, useGetUsersQuery, usePutShareByShareNameMutation, type SharedResource, type User } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { addMessage } from "../store/errorSlice";
 import { useVolume } from "../hooks/volumeHook";
 
-interface ShareEditProps extends DtoSharedResource {
+interface ShareEditProps extends SharedResource {
     org_name: string,
 }
 
@@ -54,7 +50,7 @@ export function Shares() {
     const dispatch = useAppDispatch();
     const errors = useAppSelector((state) => state.errors.messages);
     const { shares, isLoading, error } = useShare();
-    const [selected, setSelected] = useState<[string, DtoSharedResource] | null>(null);
+    const [selected, setSelected] = useState<[string, SharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
     const [showUserEdit, setShowUserEdit] = useState<boolean>(false);
@@ -62,16 +58,16 @@ export function Shares() {
     const confirm = useConfirm();
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
 
-    function onSubmitDisableShare(cdata?: string, props?: DtoSharedResource) {
+    function onSubmitDisableShare(cdata?: string, props?: SharedResource) {
         console.log("Disable", cdata, props);
-        if (!cdata) return
+        if (!cdata || !props) return
         confirm({
             title: `Disable ${props?.name}?`,
             description: "If you disable this share, all of its configurations will be retained."
         })
             .then(({ confirmed, reason }) => {
                 if (confirmed) {
-                    updateShare({ shareName: props?.name || "", dtoSharedResource: { ...props, disabled: true } }).unwrap()
+                    updateShare({ shareName: props?.name || "", sharedResource: { ...props, disabled: true } }).unwrap()
                         .then(() => {
                             //                        setErrorInfo('');
                         })
@@ -84,9 +80,10 @@ export function Shares() {
             })
     }
 
-    function onSubmitEnableShare(cdata?: string, props?: DtoSharedResource) {
+    function onSubmitEnableShare(cdata?: string, props?: SharedResource) {
         console.log("Enable", cdata, props);
-        updateShare({ shareName: props?.name || "", dtoSharedResource: { ...props, disabled: false } }).unwrap()
+        if (!cdata || !props) return
+        updateShare({ shareName: props?.name || "", sharedResource: { ...props, disabled: false } }).unwrap()
             .then(() => {
                 //            setErrorInfo('');
             })
@@ -104,18 +101,9 @@ export function Shares() {
 
         // Save Data
         console.log(data);
-        if (data.org_name === "") {
-            /*
-            api.share.shareCreate(data).then((res) => {
-                setErrorInfo('')
-                setSelected(null);
-            }).catch(err => {
-                setErrorInfo(JSON.stringify(err));
-            })
-            */
-            return;
-        } else {
-            updateShare({ shareName: selected[1].name || "", dtoSharedResource: { ...data, disabled: false } }).unwrap()
+        if (data.org_name !== "") {
+
+            updateShare({ shareName: data.org_name, sharedResource: { ...data, disabled: false } }).unwrap()
                 .then(() => {
                     //            setErrorInfo('');
                 })
@@ -163,8 +151,8 @@ export function Shares() {
     }
 
     return <InView>
-        <PreviewDialog title={selected ? selected[0] : ""} objectToDisplay={selected?.[1]} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
-        <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[0] || "" }} open={showEdit} onClose={(data) => { onSubmitEditShare(data); setSelected(null); setShowEdit(false) }} />
+        <PreviewDialog title={selected?.[1].name || ""} objectToDisplay={selected?.[1]} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
+        <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[1].name || "" }} open={showEdit} onClose={(data) => { onSubmitEditShare(data); setSelected(null); setShowEdit(false) }} />
         {read_only || <Fab color="primary" aria-label="add" sx={{
             float: 'right',
             top: '-20px',
@@ -190,6 +178,13 @@ export function Shares() {
                                 <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
                                     <SettingsIcon />
                                 </IconButton>
+                                {props.mount_point_data?.invalid &&
+                                    <IconButton onClick={() => { }} edge="end" aria-label="delete">
+                                        <Tooltip title="Delete share">
+                                            <DeleteIcon color="error" />
+                                        </Tooltip>
+                                    </IconButton>
+                                }
                                 {/* 
                                 <IconButton onClick={() => { setSelected([share, props]); setShowUserEdit(true) }} edge="end" aria-label="users">
                                     <Tooltip title="Manage Users">
@@ -197,7 +192,7 @@ export function Shares() {
                                     </Tooltip>
                                 </IconButton>
                                 */}
-                                {(props.usage !== DtoHAMountUsage.Internal) && (props.mount_point_data?.is_mounted ? (
+                                {(props.usage !== Usage.Internal) && (props.mount_point_data?.is_mounted ? (
                                     <IconButton onClick={() => onSubmitUnmount(share)} edge="end" aria-label="unmount">
                                         <Tooltip title="Unmount">
                                             <Eject />
@@ -235,6 +230,7 @@ export function Shares() {
                                         </span>
                                     </Tooltip>
                                 )}
+
                             </>
                             }
                         >
@@ -270,7 +266,7 @@ export function Shares() {
                                                 Mount Point: {props.mount_point_data.path}
                                             </Box>
                                         )}
-                                        {props.mount_point_data?.warnings && props.usage !== DtoHAMountUsage.Internal && (
+                                        {props.mount_point_data?.warnings && props.usage !== Usage.Internal && (
                                             <Box component="span" sx={{ display: 'block', color: 'orange' }}>
                                                 Warning: {props.mount_point_data.warnings}
                                             </Box>
@@ -316,7 +312,7 @@ export function Shares() {
                                                     />
                                                 </Tooltip>
                                             )}
-                                            {(props.usage && props.usage !== DtoHAMountUsage.Internal) && (
+                                            {(props.usage && props.usage !== Usage.Internal) && (
                                                 <Tooltip title="Share Usage">
                                                     <Chip
                                                         onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
@@ -356,11 +352,13 @@ export function Shares() {
 interface ShareEditPropsEdit extends ShareEditProps {
     usersNames?: string[],
     roUsersNames?: string[],
+    volumeId?: number
 }
 
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
     const { data: users, isLoading } = useGetUsersQuery()
     const volumes = useVolume()
+    const shares = useShare()
     const [editName, setEditName] = useState(false);
     const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditPropsEdit>(
         {
@@ -371,11 +369,17 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 ro_users: [],
                 timemachine: false,
                 usersNames: [],
-                roUsersNames: []
+                roUsersNames: [],
+                volumeId: undefined
             } : {
                 ...props.objectToEdit,
                 usersNames: props.objectToEdit?.users?.map(user => user.username as string) || [],
                 roUsersNames: props.objectToEdit?.ro_users?.map(user => user.username as string) || [],
+                volumeId: props.objectToEdit.mount_point_data?.id ?
+                    volumes.volumes?.partitions?.
+                        filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/")).
+                        find(mount => mount.mount_point_data?.id === props.objectToEdit?.mount_point_data?.id)?.mount_point_data?.id
+                    : undefined
             }
         },
     );
@@ -389,8 +393,9 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
             props.onClose()
             return
         }
-        data.users = data.usersNames?.map(username => users?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
-        data.ro_users = data.usersNames?.map(username => users?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
+        data.mount_point_data = volumes.volumes?.partitions?.find(mount => mount.mount_point_data?.id === data.volumeId)?.mount_point_data;
+        data.users = data.usersNames?.map(username => (users as User[])?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
+        data.ro_users = data.usersNames?.map(username => (users as User[])?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
         //console.log(data)
         props.onClose(data)
     }
@@ -424,27 +429,34 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                     <TextFieldElement name="name" label="Share Name" required control={control} />
                                 </Grid>
                                 */}
-                                {props.objectToEdit?.usage !== DtoHAMountUsage.Internal &&
+                                {props.objectToEdit?.usage !== Usage.Internal &&
                                     <Grid size={6}>
                                         <SelectElement
                                             sx={{ display: "flex" }}
                                             label="Usage"
                                             name="usage"
-                                            options={Object.keys(DtoHAMountUsage)
-                                                .filter(usage => usage.toLowerCase() !== DtoHAMountUsage.Internal)
+                                            options={Object.keys(Usage)
+                                                .filter(usage => usage.toLowerCase() !== Usage.Internal)
                                                 .map(usage => { return { id: usage.toLowerCase(), label: usage } })}
                                             required control={control} />
                                     </Grid>
                                 }
                                 {
-                                    props.objectToEdit?.usage !== DtoHAMountUsage.Internal && <>
+                                    props.objectToEdit?.usage !== Usage.Internal && <>
                                         <Grid size={6}>
                                             <SelectElement sx={{ display: "flex" }}
-                                                label="Mount Path"
-                                                name="mount_point_data.path"
+                                                label="Volume"
+                                                name="volumeId"
                                                 options={volumes.volumes?.partitions?.
-                                                    filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/"))
-                                                    .map(mount => { return { id: mount.mount_point_data?.path, label: mount.label + "(" + mount.name + ")" } })}
+                                                    filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/")).
+                                                    filter(mount => (shares.shares.map(share => share.mount_point_data?.id).indexOf(mount.mount_point_data?.id) == -1 || mount.mount_point_data?.id === props.objectToEdit?.mount_point_data?.id)).
+                                                    map(mount => {
+                                                        return {
+                                                            id: mount.mount_point_data?.id,
+                                                            label: mount.label + "(" + mount.name + ")",
+                                                            disabled: mount.label === "Invalid Volume"
+                                                        }
+                                                    })}
                                                 required
                                                 control={control} />
                                         </Grid>
@@ -458,7 +470,9 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                         label="Read and Write users"
                                         loading={isLoading}
                                         options={
-                                            (users?.map(user => ({ id: user.username, label: user.username })) || [])
+                                            ((users as User[])?.
+                                                filter(user => selected_ro_users?.indexOf(user.username || "") == -1).
+                                                map(user => ({ id: user.username, label: user.username })) || [])
                                         }
                                         control={control}
                                         matchId
@@ -469,7 +483,9 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                         label="ReadOnly users"
                                         loading={isLoading}
                                         options={
-                                            (users?.map(user => ({ id: user.username, label: user.username })) || [])
+                                            ((users as User[])?.
+                                                filter(user => selected_users?.indexOf(user.username || "") == -1).
+                                                map(user => ({ id: user.username, label: user.username })) || [])
                                         }
                                         control={control}
                                         matchId

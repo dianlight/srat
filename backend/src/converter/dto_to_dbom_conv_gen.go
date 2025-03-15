@@ -24,7 +24,7 @@ func (c *DtoToDbomConverterImpl) BlockPartitionToMountPointPath(source dto.Block
 		target.FSType = source.Type
 	}
 	if source.PartitionFlags != nil {
-		target.Flags = source.PartitionFlags
+		target.Flags = stringsToMountDataFlags(source.PartitionFlags)
 	}
 	if source.MountPoint != "" {
 		target.IsMounted = isMountPointValid(source.MountPoint)
@@ -77,7 +77,7 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 		target.FSType = source.FSType
 	}
 	if source.Flags != nil {
-		target.Flags = source.Flags
+		target.Flags = stringsToMountDataFlags(source.Flags)
 	}
 	if source.IsInvalid != false {
 		target.IsInvalid = source.IsInvalid
@@ -107,7 +107,7 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 		target.FSType = source.FSType
 	}
 	if source.Flags != nil {
-		target.Flags = source.Flags
+		target.Flags = mountDataFlagsToStrings(source.Flags)
 	}
 	if source.Source != "" {
 		target.Source = source.Source

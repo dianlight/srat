@@ -17,7 +17,7 @@ import { SSEProvider, type Listener, type Source } from 'react-hooks-sse';
 //import { apiContext } from './Contexts.ts';
 import { store } from './store/store.ts'
 import { Provider } from 'react-redux'
-import { DtoEventType } from './store/sratApi.ts';
+import { Supported_events } from './store/sratApi.ts';
 import { apiUrl } from './store/emptyApi.ts';
 
 const theme = createTheme({
@@ -62,7 +62,7 @@ class SSESource implements Source {
     }
 
     addEventListener(name: string, listener: Listener): void {
-        if (name === DtoEventType.Heartbeat) {
+        if (name === Supported_events.Heartbeat) {
             this.heartbeatListener.push(listener);
         }
         if (!this.listeners.has(name)) {

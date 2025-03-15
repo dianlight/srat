@@ -13,10 +13,10 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/pilebones/go-udev v0.9.0
-	github.com/shirou/gopsutil/v4 v4.25.1
+	github.com/shirou/gopsutil/v4 v4.25.2
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.0
-	golang.org/x/sys v0.30.0
+	golang.org/x/sys v0.31.0
 )
 
 require (
@@ -25,12 +25,16 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
+	github.com/danielgtaylor/mexpr v1.9.0 // indirect
+	github.com/danielgtaylor/shorthand/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.8.2 // indirect
+	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/getkin/kin-openapi v0.127.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
@@ -68,6 +72,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.9.0 // indirect
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/dig v1.18.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
@@ -89,22 +94,23 @@ require (
 )
 
 require (
+	github.com/danielgtaylor/huma/v2 v2.30.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gobeam/stringy v0.0.7
-	github.com/gofri/go-github-ratelimit v1.1.0
+	github.com/gofri/go-github-ratelimit v1.1.1
 	github.com/gorilla/handlers v1.5.2
 	github.com/itchyny/gojq v0.12.17
 	github.com/jaypipes/ghw v0.14.0
 	github.com/lmittmann/tint v1.0.7
 	github.com/rs/cors v1.11.1
-	github.com/snapcore/snapd v0.0.0-20250226073837-66700990d18d
+	github.com/snapcore/snapd v0.0.0-20250306033031-f27389f13d46
 	github.com/thoas/go-funk v0.9.3
 	github.com/tj/go-spin v1.1.0
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
 	github.com/ztrue/tracerr v0.4.0
 	go.uber.org/fx v1.23.0
-	golang.org/x/time v0.10.0
+	golang.org/x/time v0.11.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/gorm v1.25.12
 )

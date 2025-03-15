@@ -3,6 +3,7 @@ package converter
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
@@ -83,12 +84,13 @@ func PathToSource(path string) string {
 	}
 	for _, m := range info {
 
+		after, _ := strings.CutPrefix(m.MountSource, "/dev/")
 		if m.MountDir == path {
-			return m.MountSource
+			return after
 		} else {
 			same, _ := mount.SameFilesystem(path, m.MountDir)
 			if same {
-				return m.MountSource
+				return after
 			}
 		}
 

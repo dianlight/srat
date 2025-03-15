@@ -1,4 +1,4 @@
-package dto
+package dbom
 
 import (
 	"database/sql/driver"

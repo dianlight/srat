@@ -7,11 +7,11 @@ import { getGitCommitHash } from '../macro/getGitCommitHash.ts' with { type: 'ma
 import Stack from "@mui/material/Stack";
 import { AppBar, Link, Toolbar, Tooltip } from "@mui/material";
 import { useContext } from "react";
-import { usePutRestartMutation, type DtoHealthPing } from "../store/sratApi.ts";
+import { usePutRestartMutation, type HealthPing } from "../store/sratApi.ts";
 //import { apiContext } from "../Contexts.ts";
 
 
-export function Footer(props: { healthData: DtoHealthPing }) {
+export function Footer(props: { healthData: HealthPing }) {
 
     const [restart, { isLoading }] = usePutRestartMutation();
 
