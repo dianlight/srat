@@ -7,7 +7,7 @@ import { apiUrl } from "../store/emptyApi";
 export function Swagger() {
 
     return <InView as="div">
-        <SwaggerUI url={apiUrl + "/openapi-3.0.json"} />
+        <SwaggerUI url={apiUrl + "openapi-3.0.json"} />
     </InView>
 
 }

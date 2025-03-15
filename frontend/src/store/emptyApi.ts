@@ -3,8 +3,8 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 
 let APIURL = process.env.APIURL;
 if (process.env.APIURL === "dynamic") {
-    APIURL = window.location.href.substring(0, window.location.href.lastIndexOf('/static/') + 1);
-    console.info(`Dynamic not APIURL provided, using generated: ${APIURL}/`)
+    APIURL = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+    console.info(`Dynamic APIURL provided, using generated: ${APIURL}/ from ${window.location.href}`)
 }
 console.log("* API URL", APIURL + "/");
 // initialize an empty api service that we'll inject endpoints into later as needed
