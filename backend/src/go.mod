@@ -1,9 +1,11 @@
 module github.com/dianlight/srat
 
 go 1.24.0
+
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/gofri/go-github-ratelimit v1.1.1
+	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v69 v69.2.0
 	github.com/gorilla/mux v1.8.1
@@ -97,7 +99,6 @@ require (
 	github.com/danielgtaylor/huma/v2 v2.31.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gobeam/stringy v0.0.7
-	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/gorilla/handlers v1.5.2
 	github.com/itchyny/gojq v0.12.17
 	github.com/jaypipes/ghw v0.15.0
