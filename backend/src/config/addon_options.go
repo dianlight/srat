@@ -57,7 +57,7 @@ type Options struct {
 	Interfaces        []string     `json:"interfaces"`
 	BindAllInterfaces bool         `json:"bind_all_interfaces"`
 	LogLevel          string       `json:"log_level"`
-	MOF               string       `json:"meaning_of_life"`
+	MOF               int          `json:"meaning_of_life"`
 	MultiChannel      bool         `json:"multi_channel"`
 }
 
