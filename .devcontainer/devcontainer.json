@@ -58,8 +58,7 @@
 				"be5invis.toml",
 				"VizzleTF.geminicommit",
 				"google.geminicodeassist",
-				"philosowaffle.openapi-designer",
-				"42Crunch.vscode-openapi"
+				"zoellner.openapi-preview"
 			]		
 		}
 	},
