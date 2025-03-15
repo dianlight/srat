@@ -94,16 +94,16 @@ require (
 )
 
 require (
-	github.com/danielgtaylor/huma/v2 v2.30.0
+	github.com/danielgtaylor/huma/v2 v2.31.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/gofri/go-github-ratelimit v1.1.1
 	github.com/gorilla/handlers v1.5.2
 	github.com/itchyny/gojq v0.12.17
-	github.com/jaypipes/ghw v0.14.0
+	github.com/jaypipes/ghw v0.15.0
 	github.com/lmittmann/tint v1.0.7
 	github.com/rs/cors v1.11.1
-	github.com/snapcore/snapd v0.0.0-20250306033031-f27389f13d46
+	github.com/snapcore/snapd v0.0.0-20250314152246-823f84f544fa
 	github.com/thoas/go-funk v0.9.3
 	github.com/tj/go-spin v1.1.0
 	github.com/u-root/u-root v0.14.0
