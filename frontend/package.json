@@ -41,7 +41,7 @@
     "@reduxjs/toolkit": "^2.6.0",
     "filesize": "^10.1.6",
     "material-ui-confirm": "^4.0.0",
-    "mui-chips-input": "^4.0.1",
+    "mui-chips-input": "^6.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
@@ -80,7 +80,7 @@
     "tree-sitter",
     "tree-sitter-json"
   ],
-  "packageManager": "bun@1.2.3",
+  "packageManager": "bun@1.2.5",
   "engines": {
     "bun": ">=1.2.2"
   },
