@@ -146,7 +146,7 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
 	rr := api.Delete("/volume/999999/mount")
 	suite.Require().Equal(http.StatusNotFound, rr.Code)
 
-	suite.Equal(`{"title":"Not Found","status":404,"detail":"No mount point found for the provided ID","errors":[null]}`, strings.TrimSpace(rr.Body.String()))
+	suite.JSONEq(`{"title":"Not Found","status":404,"detail":"No mount point found for the provided ID","errors":[null]}`, rr.Body.String())
 }
 func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo, &apiContextState, suite.dirtyservice)

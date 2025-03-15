@@ -1,7 +1,6 @@
 package repository_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/dianlight/srat/dbom"
@@ -119,7 +118,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_FindByNa
 
 	// Assert
 	suite.Require().Error(err)
-	suite.True(errors.Is(err, gorm.ErrRecordNotFound))
+	suite.Require().ErrorIs(err, gorm.ErrRecordNotFound)
 	suite.Nil(foundShare)
 }
 
@@ -189,7 +188,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Delete()
 	// Check that it is really deleted
 	_, err = suite.export_share_repo.FindByName("delete_me")
 	suite.Require().Error(err)
-	suite.True(errors.Is(err, gorm.ErrRecordNotFound))
+	suite.Require().ErrorIs(err, gorm.ErrRecordNotFound)
 
 	// Cleanup
 	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
@@ -217,7 +216,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_UpdateNa
 	// Check that it is really updated
 	_, err = suite.export_share_repo.FindByName("old_name")
 	suite.Require().Error(err)
-	suite.True(errors.Is(err, gorm.ErrRecordNotFound))
+	suite.Require().ErrorIs(err, gorm.ErrRecordNotFound)
 
 	newShare, err := suite.export_share_repo.FindByName("new_name")
 	suite.Require().NoError(err)

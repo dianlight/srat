@@ -77,10 +77,10 @@ func (self *ShareHandler) ListShares(ctx context.Context, input *struct{}) (*str
 
 // GetShare retrieves a shared resource by its name.
 //
-// @param ctx - The context for the request.
-// @param input - A struct containing the ShareName, which is the name of the share to retrieve.
+//	@param	ctx		-	The	context	for			the	request.
+//	@param	input	-	A	struct	containing	the	ShareName,	which	is	the	name	of	the	share	to	retrieve.
 //
-// @return A struct containing the shared resource in the Body field, or an error if the share is not found or another error occurs.
+//	@return	A struct containing the shared resource in the Body field, or an error if the share is not found or another error occurs.
 //
 // The ShareName field in the input struct has the following tags:
 // - path:"share_name": Indicates that this field is part of the URL path.
