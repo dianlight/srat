@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/shirou/gopsutil/v4/net"
 	"github.com/shirou/gopsutil/v4/process"
 )
 
@@ -27,5 +28,11 @@ func int64ToTime(source int64) (time.Time, error) {
 }
 
 func sliceToLen(source any) (int, error) {
-	return len(source.([]any)), nil
+	switch v := source.(type) {
+	case []process.OpenFilesStat:
+		return len(v), nil
+	case []net.ConnectionStat:
+		return len(v), nil
+	}
+	return 0, nil
 }
