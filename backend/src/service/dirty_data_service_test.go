@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -26,50 +25,50 @@ func (suite *DirtyDataServiceTestSuite) SetupTest() {
 }
 
 func (suite *DirtyDataServiceTestSuite) TestNewDirtyDataService() {
-	assert.NotNil(suite.T(), suite.dirtyDataService)
-	assert.Equal(suite.T(), dto.DataDirtyTracker{}, suite.dirtyDataService.GetDirtyDataTracker())
+	suite.NotNil(suite.dirtyDataService)
+	suite.Equal(dto.DataDirtyTracker{}, suite.dirtyDataService.GetDirtyDataTracker())
 }
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtyShares() {
 	suite.dirtyDataService.SetDirtyShares()
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
-	assert.True(suite.T(), tracker.Shares)
-	assert.False(suite.T(), tracker.Volumes)
-	assert.False(suite.T(), tracker.Users)
-	assert.False(suite.T(), tracker.Settings)
-	assert.True(suite.T(), suite.dirtyDataService.IsTimerRunning())
+	suite.True(tracker.Shares)
+	suite.False(tracker.Volumes)
+	suite.False(tracker.Users)
+	suite.False(tracker.Settings)
+	suite.True(suite.dirtyDataService.IsTimerRunning())
 }
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtyVolumes() {
 	suite.dirtyDataService.SetDirtyVolumes()
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
-	assert.False(suite.T(), tracker.Shares)
-	assert.True(suite.T(), tracker.Volumes)
-	assert.False(suite.T(), tracker.Users)
-	assert.False(suite.T(), tracker.Settings)
-	assert.True(suite.T(), suite.dirtyDataService.IsTimerRunning())
+	suite.False(tracker.Shares)
+	suite.True(tracker.Volumes)
+	suite.False(tracker.Users)
+	suite.False(tracker.Settings)
+	suite.True(suite.dirtyDataService.IsTimerRunning())
 
 }
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtyUsers() {
 	suite.dirtyDataService.SetDirtyUsers()
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
-	assert.False(suite.T(), tracker.Shares)
-	assert.False(suite.T(), tracker.Volumes)
-	assert.True(suite.T(), tracker.Users)
-	assert.False(suite.T(), tracker.Settings)
-	assert.True(suite.T(), suite.dirtyDataService.IsTimerRunning())
+	suite.False(tracker.Shares)
+	suite.False(tracker.Volumes)
+	suite.True(tracker.Users)
+	suite.False(tracker.Settings)
+	suite.True(suite.dirtyDataService.IsTimerRunning())
 
 }
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtySettings() {
 	suite.dirtyDataService.SetDirtySettings()
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
-	assert.False(suite.T(), tracker.Shares)
-	assert.False(suite.T(), tracker.Volumes)
-	assert.False(suite.T(), tracker.Users)
-	assert.True(suite.T(), tracker.Settings)
-	assert.True(suite.T(), suite.dirtyDataService.IsTimerRunning())
+	suite.False(tracker.Shares)
+	suite.False(tracker.Volumes)
+	suite.False(tracker.Users)
+	suite.True(tracker.Settings)
+	suite.True(suite.dirtyDataService.IsTimerRunning())
 
 }
 
@@ -81,11 +80,11 @@ func (suite *DirtyDataServiceTestSuite) TestResetDirtyStatus() {
 
 	suite.dirtyDataService.ResetDirtyStatus()
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
-	assert.False(suite.T(), tracker.Shares)
-	assert.False(suite.T(), tracker.Volumes)
-	assert.False(suite.T(), tracker.Users)
-	assert.False(suite.T(), tracker.Settings)
-	assert.False(suite.T(), suite.dirtyDataService.IsTimerRunning())
+	suite.False(tracker.Shares)
+	suite.False(tracker.Volumes)
+	suite.False(tracker.Users)
+	suite.False(tracker.Settings)
+	suite.False(suite.dirtyDataService.IsTimerRunning())
 
 }
 
@@ -98,8 +97,8 @@ func (suite *DirtyDataServiceTestSuite) TestAddRestartCallback() {
 	suite.dirtyDataService.AddRestartCallback(callback)
 	suite.dirtyDataService.SetDirtySettings()
 	time.Sleep(6 * time.Second)
-	assert.True(suite.T(), callbackCalled)
-	assert.False(suite.T(), suite.dirtyDataService.IsTimerRunning())
+	suite.True(callbackCalled)
+	suite.False(suite.dirtyDataService.IsTimerRunning())
 
 }
 
@@ -108,16 +107,16 @@ func (suite *DirtyDataServiceTestSuite) TestTimerResetOnMultipleSetDirty() {
 	time.Sleep(1 * time.Second)
 	suite.dirtyDataService.SetDirtyVolumes()
 
-	assert.True(suite.T(), suite.dirtyDataService.IsTimerRunning())
+	suite.True(suite.dirtyDataService.IsTimerRunning())
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
 
-	assert.True(suite.T(), tracker.Shares)
-	assert.True(suite.T(), tracker.Volumes)
+	suite.True(tracker.Shares)
+	suite.True(tracker.Volumes)
 
 	time.Sleep(6 * time.Second)
 	tracker = suite.dirtyDataService.GetDirtyDataTracker()
-	assert.False(suite.T(), tracker.Shares)
-	assert.False(suite.T(), tracker.Volumes)
-	assert.False(suite.T(), suite.dirtyDataService.IsTimerRunning())
+	suite.False(tracker.Shares)
+	suite.False(tracker.Volumes)
+	suite.False(suite.dirtyDataService.IsTimerRunning())
 
 }

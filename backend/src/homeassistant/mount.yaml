@@ -1,0 +1,199 @@
+openapi: 3.0.0
+info:
+  title: API Supervisor Home Assistant - Mounts
+  version: 2025.3.0
+  description: API per interagire con i mount tramite il Supervisor di Home Assistant.
+  contact:
+    email: lucio.tarantino@gmail.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+externalDocs:
+  description: Find out more about HA API
+  url: https://developers.home-assistant.io/docs/api/supervisor/endpoints/#mounts
+servers:
+  - url: http://supervisor/core # Sostituisci con l'URL corretto
+paths:
+  /mounts:
+    get:
+      summary: Ottieni informazioni sui mount.
+      operationId: getMounts
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Informazioni sui mount.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    type: object
+                    properties:
+                      mounts:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Mount"
+                      default_backup_mount:
+                        type: string
+    post:
+      summary: Create a new mount.
+      operationId: createMount
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Mount configuration to create.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Mount"
+      responses:
+        "200":
+          description: Mount created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    $ref: "#/components/schemas/Mount"
+        "400":
+          description: Bad request.
+  /mounts/{mount_name}:
+    put:
+      summary: Update a mount.
+      operationId: updateMount
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: mount_name
+          in: path
+          description: Name of the mount to update.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Mount configuration to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Mount"
+      responses:
+        "200":
+          description: Mount updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    $ref: "#/components/schemas/Mount"
+        "400":
+          description: Bad request.
+        "404":
+          description: Mount not found.
+    delete:
+      summary: Remove a mount.
+      operationId: removeMount
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: mount_name
+          in: path
+          description: Name of the mount to remove.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Mount removed successfully.
+        "400":
+          description: Bad request.
+        "404":
+          description: Mount not found.
+  /mounts/{mount_name}/reload:
+    post:
+      summary: Reload a mount.
+      operationId: reloadMount
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: mount_name
+          in: path
+          description: Name of the mount to reload.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Mount reload successfully.
+        "400":
+          description: Bad request.
+        "404":
+          description: Mount not found.
+components:
+  schemas:
+    Mount:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the mount.
+        type:
+          type: string
+          enum:
+            - cifs
+            - nfs
+          description: Type of the mount.
+        usage:
+          type: string
+          enum:
+            - backup
+            - media
+            - share
+          description: Usage of the mount (backup, media, or share)
+        server:
+          type: string
+          format: "hostname"
+          description: "IP address or hostname of the network share server"
+        port:
+          type: integer
+          description: Port to use (if not using the standard one for the mount type)
+        read_only:
+          type: boolean
+          description: If the mount is read-only.
+        path:
+          type: string
+          description: (nfs mounts only) Path to mount from the network share
+        share:
+          type: string
+          description: (cifs mounts only) Share to mount from the network share
+        username:
+          type: string
+          description: (cifs mounts only) Username to use for authentication
+          writeOnly: true
+        password:
+          type: string
+          description: (cifs mounts only) Password to use for authentication
+          writeOnly: true
+        state:
+          type: string
+          description: Current state of the mount (active, failed, etc.)
+          readOnly: true
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

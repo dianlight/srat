@@ -11,7 +11,7 @@
     ],
     "makefile.configureOnOpen": false,
     "better-comments.highlightPlainText": true,
-    "commitSage.commit.commitFormat": "conventional",
+    "commitSage.commit.commitFormat": "emoji",
     "commitSage.commit.onlyStagedChanges": true,
     "commitSage.commit.promptForRefs": true,
     "commitSage.gemini.model": "gemini-2.0-flash-exp",

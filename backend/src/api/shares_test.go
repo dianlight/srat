@@ -192,7 +192,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandlerEnableDisableShare() {
 	suite.Require().NoError(jsonError)
 
 	suite.EqualValues("UPDATER", rshare.Name)
-	suite.Assert().True(*rshare.Disabled)
+	suite.True(*rshare.Disabled)
 
 	share.Disabled = pointer.Bool(false)
 	rr = api.Put("/share/UPDATER", share)
@@ -201,7 +201,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandlerEnableDisableShare() {
 	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare2)
 	suite.Require().NoError(jsonError)
 	suite.EqualValues("UPDATER", rshare2.Name)
-	suite.Assert().Nil(rshare2.Disabled)
+	suite.Nil(rshare2.Disabled)
 }
 
 func (suite *ShareHandlerSuite) TestDeleteShareHandler() {

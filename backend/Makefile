@@ -37,6 +37,10 @@ clean:
 test: $(ALL_SRCS) static
 	cd $(SRC_DIRS);gotest -coverpkg=./... ./...
 
+.PHONY: test_ci
+test_ci: $(ALL_SRCS)
+	cd $(SRC_DIRS)/homeassistant/; gotest -coverpkg=./... ./...
+
 .PHONY: docs
 docs: gen 
 
