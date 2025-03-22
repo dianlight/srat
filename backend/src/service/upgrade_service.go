@@ -10,7 +10,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/gofri/go-github-ratelimit/github_ratelimit"
+	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v69/github"
 	"github.com/ztrue/tracerr"
 	"golang.org/x/time/rate"
@@ -39,10 +39,7 @@ func NewUpgradeService(ctx context.Context, broadcaster BroadcasterServiceInterf
 	//p.updateQueueMutex = sync.RWMutex{}
 	p.lastReleaseData = dto.ReleaseAsset{}
 	p.broadcaster = broadcaster
-	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
-	if err != nil {
-		panic(tracerr.Errorf("Error: %v\n", err))
-	}
+	rateLimiter := github_ratelimit.NewClient(nil)
 	p.gh = github.NewClient(rateLimiter)
 	go p.run()
 	return p

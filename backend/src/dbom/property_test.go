@@ -271,7 +271,7 @@ func TestPropertiesAddLargeValue(t *testing.T) {
 
 	// Check if the property was added successfully
 	assert.Len(t, *p, 1)
-	assert.NotNil(t, "largeKey", (*p)["largeKey"])
+	assert.NotNil(t, "largeKey", "%+v", (*p)["largeKey"])
 
 	// Verify that the property was added to the database
 	var dbProp Property

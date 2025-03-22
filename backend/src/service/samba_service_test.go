@@ -69,7 +69,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 	for k := range result {
 		keys = append(keys, k)
 	}
-	suite.Len(keys, len(expected), result)
+	suite.Len(keys, len(expected), "%+v", result)
 	m1 := regexp.MustCompile(`/\*(.*)\*/`)
 
 	for k, v := range result {
@@ -96,7 +96,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 				line = m1.ReplaceAllString(line, "")
 			}
 
-			suite.Require().EqualValues(strings.TrimSpace(elines[i]), strings.TrimSpace(line), "On Section [%s] Line:%d\n%d:\n%s\n%d:", k, i, low, strings.Join(lines[low:hight], "\n"), hight)
+			suite.Require().Equal(strings.TrimSpace(elines[i]), strings.TrimSpace(line), "On Section [%s] Line:%d\n%d:\n%s\n%d:", k, i, low, strings.Join(lines[low:hight], "\n"), hight)
 		}
 
 	}

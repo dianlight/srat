@@ -4,8 +4,6 @@ go 1.24.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
-	github.com/gofri/go-github-ratelimit v1.1.1
-	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v69 v69.2.0
 	github.com/gorilla/mux v1.8.1
@@ -20,6 +18,8 @@ require (
 	go.uber.org/mock v0.5.0
 	golang.org/x/sys v0.31.0
 )
+
+require github.com/gofri/go-github-ratelimit/v2 v2.0.2
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
@@ -67,7 +67,6 @@ require (
 	github.com/rekby/gpt v0.0.0-20200614112001-7da10aec5566 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
-	github.com/samber/lo v1.47.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/speakeasy-api/openapi-overlay v0.9.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect

@@ -92,7 +92,7 @@ func (suite *ShareHandlerSuite) TestGetShareHandler() {
 	expected.MountPointData.IsInvalid = resultShare.MountPointData.IsInvalid
 	expected.MountPointData.InvalidError = resultShare.MountPointData.InvalidError
 	//assert.Equal(suite.T(), config.Shares["LIBRARY"], resultShare)
-	suite.EqualValues(expected, resultShare, "Body %#v", rr.Body.String())
+	suite.Equal(expected, resultShare, "Body %#v", rr.Body.String())
 }
 
 func (suite *ShareHandlerSuite) TestCreateShareHandler() {
@@ -121,7 +121,7 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 	share.MountPointData.ID = result.MountPointData.ID
 	share.MountPointData.IsInvalid = result.MountPointData.IsInvalid
 	share.MountPointData.InvalidError = result.MountPointData.InvalidError
-	suite.EqualValues(share, result)
+	suite.Equal(share, result)
 }
 
 func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
@@ -171,8 +171,8 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &rshare)
 	suite.Require().NoError(jsonError)
 
-	suite.EqualValues("UPDATER", rshare.Name)
-	suite.EqualValues(share.MountPointData.Path, rshare.MountPointData.Path)
+	suite.Equal("UPDATER", rshare.Name)
+	suite.Equal(share.MountPointData.Path, rshare.MountPointData.Path)
 }
 
 func (suite *ShareHandlerSuite) TestUpdateShareHandlerEnableDisableShare() {
@@ -191,7 +191,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandlerEnableDisableShare() {
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &rshare)
 	suite.Require().NoError(jsonError)
 
-	suite.EqualValues("UPDATER", rshare.Name)
+	suite.Equal("UPDATER", rshare.Name)
 	suite.True(*rshare.Disabled)
 
 	share.Disabled = pointer.Bool(false)
@@ -200,7 +200,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandlerEnableDisableShare() {
 	var rshare2 dto.SharedResource
 	jsonError = json.Unmarshal(rr.Body.Bytes(), &rshare2)
 	suite.Require().NoError(jsonError)
-	suite.EqualValues("UPDATER", rshare2.Name)
+	suite.Equal("UPDATER", rshare2.Name)
 	suite.Nil(rshare2.Disabled)
 }
 
@@ -252,7 +252,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareNameHandler() {
 	jsonError := json.Unmarshal(rr.Body.Bytes(), &rshare)
 	suite.Require().NoError(jsonError)
 
-	suite.EqualValues("NEW_NAME", rshare.Name)
+	suite.Equal("NEW_NAME", rshare.Name)
 
 	// Check that old name is not found
 	_, err = exported_share_repo.FindByName("OLD_NAME")

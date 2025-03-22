@@ -85,7 +85,7 @@ func TestMigrateConfigFromVersion0ToCurrent(t *testing.T) {
 	}
 
 	// Check that no extra shares were added
-	assert.Equal(t, len(initialConfig.Shares), len(expectedShares))
+	assert.Len(t, initialConfig.Shares, len(expectedShares))
 }
 
 func TestMigrateConfigSetsVersionToCurrent(t *testing.T) {
@@ -152,7 +152,7 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 		assert.Equal(t, "native", share.FS)
 	}
 
-	assert.Equal(t, len(initialConfig.Shares), len(expectedShares))
+	assert.Len(t, initialConfig.Shares, len(expectedShares))
 
 	//assert.Len(t, initialConfig.Options.ACL, 2)
 
