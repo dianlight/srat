@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
-	github.com/gofri/go-github-ratelimit v1.1.1
+	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v69 v69.2.0
