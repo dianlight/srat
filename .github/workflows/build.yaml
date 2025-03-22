@@ -39,7 +39,7 @@ jobs:
       matrix:
         variant:
           #- {"name": "srat_i386","suffix":"_386", "args": "GOARCH=386"}
-          - {"name": "srat_amd64","suffix":"_amd64", "args": "GOARCH=amd64"}
+          - {"name": "srat_x86_64","suffix":"_x86_64", "args": "GOARCH=amd64"}
           #- {"name": "srat_armhf","suffix":"_armhf", "args": "GOARM=6 GOARCH=arm"}
           - {"name": "srat_armv7","suffix":"_armv7", "args": "GOARM=7 GOARCH=arm"}
           - {"name": "srat_aarch64", "suffix":"_aarch64","args": "GOARCH=arm64"}
@@ -89,7 +89,7 @@ jobs:
       matrix:
         variant:
           #- {"name": "srat_i386","suffix":"_386", "args": "GOARCH=386"}
-          - {"name": "srat_amd64","suffix":"_amd64", "args": "GOARCH=amd64"}
+          - {"name": "srat_x86_64","suffix":"_x86_64", "args": "GOARCH=amd64"}
           #- {"name": "srat_armhf","suffix":"_armhf", "args": "GOARM=6 GOARCH=arm"}
           - {"name": "srat_armv7","suffix":"_armv7", "args": "GOARM=7 GOARCH=arm"}
           - {"name": "srat_aarch64", "suffix":"_aarch64","args": "GOARCH=arm64"}
