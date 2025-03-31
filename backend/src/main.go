@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -204,7 +205,6 @@ func prog(state overseer.State) {
 			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
 			func() *dto.ContextState { return &sharedResources },
 			func() *overseer.State { return &state },
-			//	fx.Annotate(
 			func() fs.FS {
 				if frontend == nil || *frontend == "" {
 					return content
@@ -216,8 +216,6 @@ func prog(state overseer.State) {
 					return os.DirFS(*frontend)
 				}
 			},
-			//		fx.ResultTags(`name:"static_fs"`),
-			//	),
 			fx.Annotate(
 				func() bool { return *hamode },
 				fx.ResultTags(`name:"ha_mode"`),
@@ -271,46 +269,78 @@ func prog(state overseer.State) {
 				}
 			}
 		}),
-		fx.Invoke(func(_ *http.Server, api huma.API, router *mux.Router, static fs.FS) {
-			// Static Routes
-			_, err := fs.ReadDir(static, "static")
-			if err != nil {
-				slog.Warn("Static directory not found:", "err", err)
-				router.Path("/{file}.html").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
-			} else {
-				fsRoot, _ := fs.Sub(static, "static")
-				router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
-			}
+		fx.Invoke(
+			fx.Annotate(
+				func(
+					_ *http.Server,
+					api huma.API,
+					router *mux.Router,
+					static fs.FS,
+					ha_mode bool,
+				) {
 
-			//
-			router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-				template, err := route.GetPathTemplate()
-				if err != nil {
-					return tracerr.Wrap(err)
-				}
-				slog.Debug("Route:", "template", template)
-				return nil
-			})
+					// Addon-LocalUpdate deploy
+					if !ha_mode {
+						executablePath, err := os.Executable()
+						if err != nil {
+							slog.Error("Error getting executable path:", "err", err)
+						} else {
+							slog.Info("Serving executable", "path", executablePath)
+							router.Path("/srat_" + runtime.GOARCH).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+								http.ServeFile(w, r, executablePath)
+							}).Methods(http.MethodGet)
+							if runtime.GOARCH != "amd64" {
+								router.Path("/srat_x86_64").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+									http.ServeFile(w, r, executablePath+"_x86_64")
+								}).Methods(http.MethodGet)
+							}
+						}
 
-			// FIXME: Disattivare quando compilazione
-			yaml, err := api.OpenAPI().YAML()
-			if err != nil {
-				slog.Error("Unable to generate YAML", "err", err)
-			}
-			err = os.WriteFile("src/docs/openapi.yaml", yaml, 0644)
-			if err != nil {
-				slog.Error("Unable to write YAML", "err", err)
-			}
-			json, err := api.OpenAPI().MarshalJSON()
-			if err != nil {
-				slog.Error("Unable to generate JSON", "err", err)
-			}
-			err = os.WriteFile("src/docs/openapi.json", json, 0644)
-			if err != nil {
-				slog.Error("Unable to write JSON", "err", err)
-			}
+					}
 
-		}),
+					// Static Routes
+					_, err := fs.ReadDir(static, "static")
+					if err != nil {
+						slog.Warn("Static directory not found:", "err", err)
+						router.Path("/{file}.html").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
+					} else {
+						fsRoot, _ := fs.Sub(static, "static")
+						router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
+					}
+
+					//
+					router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+						template, err := route.GetPathTemplate()
+						if err != nil {
+							return tracerr.Wrap(err)
+						}
+						slog.Debug("Route:", "template", template)
+						return nil
+					})
+
+					if !ha_mode {
+						yaml, err := api.OpenAPI().YAML()
+						if err != nil {
+							slog.Error("Unable to generate YAML", "err", err)
+						}
+						err = os.WriteFile("src/docs/openapi.yaml", yaml, 0644)
+						if err != nil {
+							slog.Error("Unable to write YAML", "err", err)
+						}
+						json, err := api.OpenAPI().MarshalJSON()
+						if err != nil {
+							slog.Error("Unable to generate JSON", "err", err)
+						}
+						err = os.WriteFile("src/docs/openapi.json", json, 0644)
+						if err != nil {
+							slog.Error("Unable to write JSON", "err", err)
+						}
+					}
+
+				},
+				fx.ParamTags("", "", "", "", `name:"ha_mode"`),
+			),
+		),
 	).Run()
 
 	dbom.CloseDB()

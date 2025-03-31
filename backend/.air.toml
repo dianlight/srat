@@ -16,8 +16,7 @@ args_bin = [
   "./tmp/samba.conf",
 ]
 bin = "./tmp/srat"
-cmd = "CGO_ENABLED=0 go build -C src -ldflags=\"-s -w -X main.SRATVersion=\\\"TEST_AIR_INTERNAL\\\"\" -o ../tmp/srat"
-pre_cmd = []
+cmd = "make test_build"
 delay = 1000
 exclude_dir = ["assets", "tmp", "vendor", "testdata"]
 exclude_file = []
@@ -33,6 +32,7 @@ log = "build-errors.log"
 poll = false
 poll_interval = 0
 post_cmd = []
+pre_cmd = []
 rerun = false
 rerun_delay = 500
 send_interrupt = true

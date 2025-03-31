@@ -20,6 +20,12 @@ $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	mkdir dist || :  2>/dev/null
 	cd $(SRC_DIRS);CGO_ENABLED=0 $(AARGS) go build -ldflags="-s -w -X main.SRATVersion=$(VERSION)" -o ../$(@)$(SUFFIX)
 
+test_build: $(SRC_DIRS) $(STATIC_DIRS)
+	mkdir tmp || :  2>/dev/null
+	CGO_ENABLED=0 go build -C src -ldflags="-s -w -X main.SRATVersion=\"TEST_AIR_INTERNAL\"" -o ../tmp/srat
+	CGO_ENABLED=0 GOARCH=amd64 go build -C src -ldflags="-s -w -X main.SRATVersion=\"TEST_AIR_INTERNAL\"" -o ../tmp/srat_x86_64	
+
+
 .PHONY: format
 format:
 	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
