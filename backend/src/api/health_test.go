@@ -40,7 +40,7 @@ func TestHealthHandlerSuite(t *testing.T) {
 }
 
 func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
-	healthHandler := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService, suite.dirtyService)
+	healthHandler := api.NewHealthHandler(api.HealthHandlerParams{Ctx: testContext, Apictx: &apiContextState, Broadcaster: suite.mockBoradcaster, SambaService: suite.mockSambaService, DirtyService: suite.dirtyService})
 	_, api := humatest.New(suite.T())
 	healthHandler.RegisterVolumeHandlers(api)
 
@@ -59,7 +59,7 @@ func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
 }
 
 func (suite *HealthHandlerSuite) TestHealthEventEmitter() {
-	health := api.NewHealthHandler(testContext, &apiContextState, suite.mockBoradcaster, suite.mockSambaService, suite.dirtyService)
+	health := api.NewHealthHandler(api.HealthHandlerParams{Ctx: testContext, Apictx: &apiContextState, Broadcaster: suite.mockBoradcaster, SambaService: suite.mockSambaService, DirtyService: suite.dirtyService})
 	numcal := uint64(0)
 	startTime := time.Now()
 	suite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).Do((func(data any) {

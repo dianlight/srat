@@ -295,15 +295,6 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
-          data: UpdateProgress;
-          /** The event name. */
-          event: "updating";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
           data: BlockInfo;
           /** The event name. */
           event: "volumes";
@@ -343,6 +334,15 @@ export type SseApiResponse = /** status 200 OK */
           data: ReleaseAsset;
           /** The event name. */
           event: "update";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: UpdateProgress;
+          /** The event name. */
+          event: "updating";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -476,6 +476,7 @@ export type HealthPing = {
   last_release: ReleaseAsset;
   read_only: boolean;
   samba_process_status: SambaProcessStatus;
+  secure_mode: boolean;
 };
 export type Nic = {
   duplex: string;
@@ -552,13 +553,6 @@ export type SharedResource = {
   usage?: Usage;
   users?: User[] | null;
 };
-export type UpdateProgress = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  last_release?: string;
-  update_error?: string;
-  update_status: number;
-};
 export type BlockPartition = {
   default_mount_point: string;
   device_id: number | null;
@@ -584,6 +578,13 @@ export type BlockInfo = {
 export type Welcome = {
   message: string;
   supported_events: Supported_events;
+};
+export type UpdateProgress = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  last_release?: string;
+  update_error?: string;
+  update_status: number;
 };
 export enum Update_channel {
   Stable = "stable",

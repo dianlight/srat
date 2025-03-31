@@ -8,4 +8,5 @@ type HealthPing struct {
 	LastError          string             `json:"last_error"`
 	Dirty              DataDirtyTracker   `json:"dirty_tracking"`
 	LastRelease        ReleaseAsset       `json:"last_release"`
+	SecureMode         bool               `json:"secure_mode"`
 }

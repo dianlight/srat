@@ -38,6 +38,8 @@ import { Supported_events, usePutSambaApplyMutation, usePutUpdateMutation, type 
 import { useHealth } from "../hooks/healthHook";
 import { useAppSelector } from "../store/store";
 import { useReadOnly } from "../hooks/readonlyHook";
+import LockOpenIcon from '@mui/icons-material/LockOpen';
+import LockIcon from '@mui/icons-material/Lock';
 
 function a11yProps(index: number) {
     return {
@@ -215,6 +217,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                         <Tab label="API Docs" {...a11yProps(4)} />
                     </Tabs>
                     <Box sx={{ flexGrow: 0 }}>
+
                         {Object.values(health.health.dirty_tracking || {}).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
                             <Tooltip title="Restart Samba demon now!" arrow>
                                 <IconButton onClick={handleRestartNow}>
@@ -230,6 +233,13 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                 </IconButton>
                             </Tooltip>
                         }
+                        <IconButton>
+                            <Tooltip title={health.health.secure_mode ? "Secure Mode Enabled" : "Secure Mode Disabled"} arrow>
+                                {health.health.secure_mode ?
+                                    <LockIcon sx={{ color: 'white' }} /> :
+                                    <LockOpenIcon sx={{ color: 'red' }} />}
+                            </Tooltip>
+                        </IconButton>
                         {read_only &&
                             <IconButton>
                                 <Tooltip title="ReadOnly Mode" arrow>

@@ -8,6 +8,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/ztrue/tracerr"
+	"go.uber.org/fx"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
@@ -28,12 +29,17 @@ type HealthHanler struct {
 	dirtyService service.DirtyDataServiceInterface
 }
 
-func NewHealthHandler(
-	ctx context.Context,
-	apictx *dto.ContextState,
-	broadcaster service.BroadcasterServiceInterface,
-	sambaService service.SambaServiceInterface,
-	dirtyService service.DirtyDataServiceInterface) *HealthHanler {
+type HealthHandlerParams struct {
+	fx.In
+	Ctx          context.Context
+	Apictx       *dto.ContextState
+	Broadcaster  service.BroadcasterServiceInterface
+	SambaService service.SambaServiceInterface
+	DirtyService service.DirtyDataServiceInterface
+	HaMode       bool `name:"ha_mode"`
+}
+
+func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	_healthHanlerIntanceMutex.Lock()
 	defer _healthHanlerIntanceMutex.Unlock()
 	if _healthHanlerIntance != nil {
@@ -43,17 +49,18 @@ func NewHealthHandler(
 	p := new(HealthHanler)
 	p.Alive = true
 	p.AliveTime = time.Now().UnixMilli()
-	p.ReadOnly = apictx.ReadOnlyMode
+	p.ReadOnly = param.Apictx.ReadOnlyMode
 	p.SambaProcessStatus.Pid = -1
 	p.LastError = ""
-	p.ctx = ctx
-	p.apictx = apictx
-	p.broadcaster = broadcaster
-	p.sambaService = sambaService
+	p.ctx = param.Ctx
+	p.apictx = param.Apictx
+	p.broadcaster = param.Broadcaster
+	p.sambaService = param.SambaService
 	p.OutputEventsCount = 0
-	p.dirtyService = dirtyService
-	if apictx.Heartbeat > 0 {
-		p.OutputEventsInterleave = time.Duration(apictx.Heartbeat) * time.Second
+	p.dirtyService = param.DirtyService
+	p.SecureMode = param.HaMode
+	if param.Apictx.Heartbeat > 0 {
+		p.OutputEventsInterleave = time.Duration(param.Apictx.Heartbeat) * time.Second
 	} else {
 		p.OutputEventsInterleave = 5 * time.Second
 	}
