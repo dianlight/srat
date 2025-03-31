@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/core"
 	"github.com/dianlight/srat/homeassistant/core_api"
 	"github.com/dianlight/srat/homeassistant/hardware"
+	"github.com/dianlight/srat/homeassistant/ingress"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"github.com/stretchr/testify/suite"
@@ -21,6 +22,7 @@ type SupervisorCITestSuite struct {
 	coreAPIClient  *core_api.ClientWithResponses
 	hardwareClient *hardware.ClientWithResponses
 	mountClient    *mount.ClientWithResponses
+	ingressClient  *ingress.ClientWithResponses
 	ctx            context.Context
 }
 
@@ -70,6 +72,12 @@ func (suite *SupervisorCITestSuite) SetupTest() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	suite.ingressClient, err = ingress.NewClientWithResponses(supervisorURL, ingress.WithRequestEditorFn(bearerAuth.Intercept))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 // TestCoreInfo verifies that we can retrieve core info.
@@ -83,10 +91,11 @@ func (suite *SupervisorCITestSuite) TestCoreInfo() {
 	suite.Require().NotNil(resp.JSON200.Data.Version, "Response object is %v", resp.JSON200)
 }
 
-// TestCoreApiGetApi verify that core api are reached
-func (suite *SupervisorCITestSuite) TestCoreApiGetApi() {
-	resp, err := suite.coreAPIClient.GetApiWithResponse(suite.ctx)
+// TestCoreApiGetEntityStae verify that core api are reached
+func (suite *SupervisorCITestSuite) TestCoreApiGetEntityStae() {
+	resp, err := suite.coreAPIClient.GetEntityStateWithResponse(suite.ctx, "sun.sun")
 	suite.Require().NoError(err)
+	suite.T().Log(string(resp.Body[:]))
 	suite.Require().Equal(200, resp.StatusCode(), "Expected status code 200 but got %d body %s", resp.StatusCode(), resp.Status())
 	suite.Require().NotNil(resp.JSON200)
 }
@@ -131,3 +140,29 @@ func (suite *SupervisorCITestSuite) TestGetMounts() {
 	suite.Require().NotNil(resp.JSON200)
 	suite.NotEmpty(*resp.JSON200)
 }
+
+// TestGetIngress verifies that we can get ingress info
+func (suite *SupervisorCITestSuite) TestGetIngress() {
+	resp, err := suite.ingressClient.GetIngressPanelsWithResponse(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Body)
+	suite.T().Log(string(resp.Body[:]))
+	suite.Require().Equal(200, resp.StatusCode(), "Expected status code 200 but got %d body %s", resp.StatusCode(), resp.Status())
+	suite.Require().NotNil(resp.JSON200)
+	suite.Require().NotNil(resp.JSON200.Data)
+	suite.Require().NotEmpty(*resp.JSON200.Data)
+	suite.Require().NotNil(*resp.JSON200.Data.Panels)
+}
+
+// TestSession verifies that we can get session info
+/*
+func (suite *SupervisorCITestSuite) TestSession() {
+	resp, err := suite.ingressClient.ValidateIngressSessionWithResponse(suite.ctx, ingress.ValidateIngressSessionJSONRequestBody{
+		Session: pointer.String("99e1cef4990da49a6023c70a5df269a805bc5d187fe6a1ee33386ae7b0171a50b171737489152f77d2bd53e39cf30698a98e0c13347cf97cb247b5390d2be1d0"),
+	})
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Body)
+	suite.T().Log(string(resp.Body[:]))
+	suite.Require().Equal(200, resp.StatusCode(), "Expected status code 200 but got %d body %s", resp.StatusCode(), resp.Status())
+}
+*/

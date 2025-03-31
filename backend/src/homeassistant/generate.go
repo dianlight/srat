@@ -6,3 +6,4 @@ package homeassistant
 //go:generate go tool oapi-codegen -config cfg.yaml  -package core_api -o core_api/client.gen.go core_api.yaml
 //go:generate go tool oapi-codegen -config cfg.yaml  -package hardware -o hardware/client.gen.go hardware.yaml
 //go:generate go tool oapi-codegen -config cfg.yaml  -package mount -o mount/client.gen.go mount.yaml
+//go:generate go tool oapi-codegen -config cfg.yaml  -package ingress -o ingress/client.gen.go ingress.yaml
