@@ -17,5 +17,6 @@
     "commitSage.gemini.model": "gemini-2.0-flash-exp",
     "geminicodeassist.updateChannel": "Default",
     "geminicodeassist.beta.enableGeneratedCodeDocumentationView": true,
-    "geminicodeassist.codeGenerationPaneViewEnabled": true
+    "geminicodeassist.codeGenerationPaneViewEnabled": true,
+    "remote.localPortHost": "allInterfaces"
 }
