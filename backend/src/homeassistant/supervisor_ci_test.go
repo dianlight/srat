@@ -25,6 +25,9 @@ type SupervisorCITestSuite struct {
 }
 
 // TestSupervisorCITestSuite is the test entrypoint
+// $> export SUPERVISOR_URL=http://homeassistant2.local/
+// $> export SUPERVISOR_TOKEN=your_token
+// &docker> docker inspect addon_local_sambanas | grep SUPERVISOR_TOKEN
 func TestSupervisorCITestSuite(t *testing.T) {
 	// Skip test if Supervisor URL or Token are not set
 	if os.Getenv("SUPERVISOR_URL") == "" || os.Getenv("SUPERVISOR_TOKEN") == "" {
