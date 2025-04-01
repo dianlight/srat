@@ -192,18 +192,6 @@ func prog(state overseer.State) {
 	sharedResources.DockerInterface = *dockerInterface
 	sharedResources.DockerNet = *dockerNetwork
 
-	//w := os.Stderr
-
-	// create a new logger
-	/*
-		logger := slog.New(tint.NewHandler(w, &tint.Options{
-			NoColor:    !isatty.IsTerminal(w.Fd()),
-			Level:      slog.LevelDebug,
-			TimeFormat: time.RFC3339,
-			AddSource:  true,
-		}))
-	*/
-
 	// New FX
 	fx.New(
 		fx.WithLogger(func(log *slog.Logger) fxevent.Logger {

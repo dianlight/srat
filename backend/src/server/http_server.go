@@ -34,14 +34,11 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtC
 		WithRequestID: false,
 	})(sloghttp.Recovery(handler))
 	srv := &http.Server{
-		ReadTimeout: time.Second * 15,
-		IdleTimeout: time.Second * 60,
-		Handler:     loggedRouter, // Pass our instance of gorilla/mux in.
-		//		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-		//			log.Printf("New connection: %s\n", c.RemoteAddr())
-		//			ctx = api.StateToContext(&sharedResources, ctx)
-		//			return ctx
-		//		},
+		ReadTimeout:  time.Second * 15,
+		WriteTimeout: time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+		Handler:      loggedRouter,
+		ErrorLog:     slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
