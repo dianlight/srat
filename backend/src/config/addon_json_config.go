@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"slices"
 
@@ -161,7 +162,7 @@ func (in *Config) MigrateConfig() error {
 
 	// From version 0 to version 1 - Default shares ain config
 	if in.ConfigSpecVersion == 0 {
-		log.Printf("Migrating config from version 0 to version 1")
+		slog.Debug("Migrating config from version 0 to version 1")
 		in.ConfigSpecVersion = 1
 		in.UpdateChannel = "stable"
 		if in.Shares == nil {
@@ -176,7 +177,7 @@ func (in *Config) MigrateConfig() error {
 	}
 	// From version 1 to version 2 - ACL in Share object
 	if in.ConfigSpecVersion == 1 {
-		log.Printf("Migrating config from version 1 to version 2")
+		slog.Debug("Migrating config from version 1 to version 2")
 		in.ConfigSpecVersion = 2
 		for shareName, share := range in.Shares {
 			share.Name = shareName
@@ -203,7 +204,7 @@ func (in *Config) MigrateConfig() error {
 
 	// From version 2 to version 3 - Users in share
 	if in.ConfigSpecVersion == 2 {
-		log.Printf("Migrating config from version 2 to version 3")
+		slog.Debug("Migrating config from version 2 to version 3")
 		in.ConfigSpecVersion = 3
 		for shareName, share := range in.Shares {
 			/*

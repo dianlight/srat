@@ -295,6 +295,24 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
+          data: BlockInfo;
+          /** The event name. */
+          event: "volumes";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: HealthPing;
+          /** The event name. */
+          event: "heartbeat";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: SharedResource[] | null;
           /** The event name. */
           event: "share";
@@ -325,24 +343,6 @@ export type SseApiResponse = /** status 200 OK */
           data: UpdateProgress;
           /** The event name. */
           event: "updating";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: BlockInfo;
-          /** The event name. */
-          event: "volumes";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: HealthPing;
-          /** The event name. */
-          event: "heartbeat";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -553,17 +553,6 @@ export type SharedResource = {
   usage?: Usage;
   users?: User[] | null;
 };
-export type Welcome = {
-  message: string;
-  supported_events: Supported_events;
-};
-export type UpdateProgress = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  last_release?: string;
-  update_error?: string;
-  update_status: number;
-};
 export type BlockPartition = {
   default_mount_point: string;
   device_id: number | null;
@@ -585,6 +574,17 @@ export type BlockInfo = {
   $schema?: string;
   partitions: BlockPartition[] | null;
   total_size_bytes: number;
+};
+export type Welcome = {
+  message: string;
+  supported_events: Supported_events;
+};
+export type UpdateProgress = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  last_release?: string;
+  update_error?: string;
+  update_status: number;
 };
 export enum Update_channel {
   Stable = "stable",
@@ -621,15 +621,6 @@ export enum Usage {
   Share = "share",
   Internal = "internal",
 }
-export enum Supported_events {
-  Hello = "hello",
-  Update = "update",
-  Updating = "updating",
-  Volumes = "volumes",
-  Heartbeat = "heartbeat",
-  Share = "share",
-  Dirty = "dirty",
-}
 export enum Mount_flags {
   MsRdonly = "MS_RDONLY",
   MsNosuid = "MS_NOSUID",
@@ -659,6 +650,15 @@ export enum Partition_flags {
   MsLazytime = "MS_LAZYTIME",
   MsNouser = "MS_NOUSER",
   MsRelatime = "MS_RELATIME",
+}
+export enum Supported_events {
+  Hello = "hello",
+  Update = "update",
+  Updating = "updating",
+  Volumes = "volumes",
+  Heartbeat = "heartbeat",
+  Share = "share",
+  Dirty = "dirty",
 }
 export const {
   useGetFilesystemsQuery,

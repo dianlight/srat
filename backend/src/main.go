@@ -38,6 +38,7 @@ import (
 	"github.com/lmittmann/tint"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
+	"moul.io/banner"
 )
 
 var SRATVersion string
@@ -145,8 +146,9 @@ func main() {
 
 func prog(state overseer.State) {
 
-	fmt.Printf("SRAT: SambaNAS Rest Administration Interface (%s)\n", state.ID)
-	fmt.Printf("SRAT Version: %s\n\n", SRATVersion)
+	fmt.Println(banner.Inline("srat"))
+	fmt.Printf("SambaNAS Rest Administration Interface (%s)\n", state.ID)
+	fmt.Printf("Version: %s\n\n", SRATVersion)
 	slog.Debug("Startup Options", "Flags", os.Args)
 
 	// Check template file
@@ -314,7 +316,7 @@ func prog(state overseer.State) {
 						if err != nil {
 							slog.Error("Error getting executable path:", "err", err)
 						} else {
-							slog.Info("Serving executable", "path", executablePath)
+							slog.Debug("Serving executable", "path", executablePath)
 							router.Path("/srat_" + runtime.GOARCH).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 								http.ServeFile(w, r, executablePath)
 							}).Methods(http.MethodGet)
