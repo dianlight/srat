@@ -332,7 +332,7 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 		var conv converter.DtoToDbomConverterImpl
 		var mount_data = &dbom.MountPointPath{}
 		err = conv.BlockPartitionToMountPointPath(*partition, mount_data)
-		slog.Debug("1.lags", "flapartition", partition.MountFlags, "mount_data", mount_data.Flags)
+		//		slog.Debug("1.lags", "flapartition", partition.MountFlags, "mount_data", mount_data.Flags)
 
 		if err != nil {
 			slog.Warn("Error converting partition to mount point data", "err", err)
@@ -377,7 +377,7 @@ func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
 			continue
 		}
 		conv.MountPointPathToMountPointData(*mount_data, &retBlockInfo.Partitions[i].MountPointData)
-		slog.Debug("2.lags", "mount_data", mount_data.Flags, "flapartition", retBlockInfo.Partitions[i].MountPointData.Flags)
+		//		slog.Debug("2.lags", "mount_data", mount_data.Flags, "flapartition", retBlockInfo.Partitions[i].MountPointData.Flags)
 
 	}
 

@@ -1,8 +1,6 @@
 package converter
 
 import (
-	"log/slog"
-
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 )
@@ -95,7 +93,7 @@ func mountDataFlagsToStrings(source dbom.MounDataFlags) (dest []string) {
 				break
 			}
 		}
-		slog.Debug("Transf", "flag", flag, "val", val, "dest", dest)
+		//		slog.Debug("Transf", "flag", flag, "val", val, "dest", dest)
 	}
 	return dest
 

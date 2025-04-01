@@ -145,9 +145,9 @@ func main() {
 
 func prog(state overseer.State) {
 
-	log.Printf("SRAT: SambaNAS Rest Administration Interface (%s)\n", state.ID)
-	log.Printf("SRAT Version: %s\n", SRATVersion)
-	log.Printf("\nFlags: %v\n", os.Args)
+	fmt.Printf("SRAT: SambaNAS Rest Administration Interface (%s)\n", state.ID)
+	fmt.Printf("SRAT Version: %s\n\n", SRATVersion)
+	slog.Debug("Startup Options", "Flags", os.Args)
 
 	// Check template file
 	if *templateFile == "" {
@@ -190,24 +190,33 @@ func prog(state overseer.State) {
 	sharedResources.DockerInterface = *dockerInterface
 	sharedResources.DockerNet = *dockerNetwork
 
-	w := os.Stderr
+	//w := os.Stderr
 
 	// create a new logger
-	logger := slog.New(tint.NewHandler(w, &tint.Options{
-		NoColor:    !isatty.IsTerminal(w.Fd()),
-		Level:      slog.LevelDebug,
-		TimeFormat: time.RFC3339,
-		AddSource:  true,
-	}))
+	/*
+		logger := slog.New(tint.NewHandler(w, &tint.Options{
+			NoColor:    !isatty.IsTerminal(w.Fd()),
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+			AddSource:  true,
+		}))
+	*/
 
 	// New FX
 	fx.New(
 		fx.WithLogger(func(log *slog.Logger) fxevent.Logger {
-			return &fxevent.SlogLogger{Logger: log}
+			log.Debug("Starting FX")
+
+			fxlog := &fxevent.SlogLogger{
+				Logger: log,
+			}
+			fxlog.UseLogLevel(slog.LevelDebug)
+			fxlog.UseErrorLevel(slog.LevelError)
+			return fxlog
 		}),
 		fx.Provide(
 			func() *gorm.DB { return dbom.GetDB() },
-			func() *slog.Logger { return logger },
+			func() *slog.Logger { return slog.Default() },
 			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
 			func() *dto.ContextState { return &sharedResources },
 			func() *overseer.State { return &state },
