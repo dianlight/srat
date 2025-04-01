@@ -6,14 +6,13 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/dianlight/srat/homeassistant/ingress"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/rs/cors"
+	sloghttp "github.com/samber/slog-http"
 	"go.uber.org/fx"
 )
 
@@ -28,7 +27,12 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtC
 			MaxAge:           300,
 		},
 	).Handler(mux)
-	loggedRouter := handlers.LoggingHandler(os.Stdout, handler)
+	//loggedRouter := handlers.LoggingHandler(os.Stdout, handler)
+	loggedRouter := sloghttp.NewWithConfig(slog.Default(), sloghttp.Config{
+		DefaultLevel:  slog.LevelDebug,
+		WithUserAgent: false,
+		WithRequestID: false,
+	})(sloghttp.Recovery(handler))
 	srv := &http.Server{
 		ReadTimeout: time.Second * 15,
 		IdleTimeout: time.Second * 60,

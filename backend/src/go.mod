@@ -22,6 +22,11 @@ require (
 require github.com/gofri/go-github-ratelimit/v2 v2.0.2
 
 require (
+	go.opentelemetry.io/otel v1.29.0 // indirect
+	go.opentelemetry.io/otel/trace v1.29.0 // indirect
+)
+
+require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
@@ -103,6 +108,7 @@ require (
 	github.com/jaypipes/ghw v0.15.0
 	github.com/lmittmann/tint v1.0.7
 	github.com/rs/cors v1.11.1
+	github.com/samber/slog-http v1.6.0
 	github.com/snapcore/snapd v0.0.0-20250314152246-823f84f544fa
 	github.com/thoas/go-funk v0.9.3
 	github.com/tj/go-spin v1.1.0
