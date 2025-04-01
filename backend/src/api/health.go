@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 
 	"github.com/dianlight/srat/converter"
@@ -102,7 +102,7 @@ func (self *HealthHanler) EventEmitter(data dto.HealthPing) error {
 	_, err := self.broadcaster.BroadcastMessage(data)
 	if err != nil {
 		slog.Error("Error broadcasting health message: %w", "err", err)
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	self.OutputEventsCount++
 	return nil
@@ -140,7 +140,7 @@ func (self *HealthHanler) run() error {
 		select {
 		case <-self.ctx.Done():
 			slog.Info("Run process closed", "err", self.ctx.Err())
-			return tracerr.Wrap(self.ctx.Err())
+			return errors.WithStack(self.ctx.Err())
 		default:
 			//slog.Debug("Richiesto aggiornamento per Healthy")
 			self.checkSamba()

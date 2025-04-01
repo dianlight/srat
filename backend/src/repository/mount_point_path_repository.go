@@ -1,13 +1,12 @@
 package repository
 
 import (
-	"errors"
 	"strings"
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/jinzhu/copier"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
 
@@ -46,15 +45,15 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 		res := tx.Limit(1).Find(&existingRecord, "path = ? and source = ?", mp.Path, mp.Source)
 		//slog.Debug("Return", "res", res, "ext", existingRecord)
 		if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return tracerr.Wrap(res.Error)
+			return errors.WithStack(res.Error)
 		} else if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			if mp.DeviceId != 0 && existingRecord.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
-				return tracerr.Errorf("DeviceId mismatch for %s | mp:%d db:%d", mp.Path, mp.DeviceId, existingRecord.DeviceId)
+				return errors.Errorf("DeviceId mismatch for %s | mp:%d db:%d", mp.Path, mp.DeviceId, existingRecord.DeviceId)
 			}
 			//slog.Debug("Save checkpoint", "mp", mp, "exists", existingRecord)
 			err := copier.CopyWithOption(&existingRecord, mp, copier.Option{IgnoreEmpty: true})
 			if err != nil {
-				return tracerr.Wrap(err)
+				return errors.WithStack(err)
 			}
 			*mp = existingRecord
 			//slog.Debug("Save checkpoint", "mp", mp, "exists", existingRecord)
@@ -62,13 +61,12 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	}
 
 	if strings.HasPrefix(mp.Source, "/dev") {
-		panic(tracerr.SprintSourceColor(tracerr.Errorf("Invalid Source with /dev prefix %v", mp)))
+		panic(errors.Errorf("Invalid Source with /dev prefix %v", mp))
 	}
 	// slog.Debug("Save checkpoint", "mp", mp)
 	err := tx.Save(mp).Error
 	if err != nil {
-		tracerr.PrintSourceColor(tracerr.Wrap(err))
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	tx.Commit()
 	return nil

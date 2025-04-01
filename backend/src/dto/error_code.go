@@ -1,8 +1,11 @@
 package dto
 
-type errorCode int // ErrorMessage[string],HttpCode[int]
+import "gitlab.com/tozd/go/errors"
 
-//go:generate go run github.com/zarldev/goenums@v0.3.5 error_code.go
+//type errorCode int // ErrorMessage[string],HttpCode[int]
+
+//go_:generate go run github.com/zarldev/goenums@v0.3.5 error_code.go
+/*
 const (
 	unknown              errorCode = iota // invalid
 	generic_error                         // "An unexpected error occurred",500
@@ -15,3 +18,8 @@ const (
 	network_timeout                       // "Network operation timed out",408
 	permission_denied                     // "Permission denied for {{.Action}}",403
 )
+*/
+
+var ErrorMountFail = errors.Base("Unable to mount {{.Device}} on {{.Path}}. {{.Message}}")
+var ErrorDeviceNotFound = errors.Base("Device not found {{.DeviceID}}")
+var ErrorInvalidParameter = errors.Base("Invalid parameter: {{.Key}}. {{.Message}}")

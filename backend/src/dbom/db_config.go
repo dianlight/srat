@@ -1,14 +1,8 @@
 package dbom
 
 import (
-
-	//"gorm.io/driver/sqlite"
-
 	"github.com/glebarez/sqlite"
-	"github.com/ztrue/tracerr"
-
-	//_ "github.com/ncruces/go-sqlite3/embed"
-	//"github.com/ncruces/go-sqlite3/gormlite"
+	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -36,7 +30,7 @@ func InitDB(dbpath string) {
 	})
 
 	if err != nil {
-		panic(tracerr.Errorf("failed to connect database %s", dbpath))
+		panic(errors.Errorf("failed to connect database %s", dbpath))
 	}
 	// Migrate the schema
 	db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{})

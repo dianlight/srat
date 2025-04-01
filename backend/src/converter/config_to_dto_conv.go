@@ -6,19 +6,19 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/xorcare/pointer"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 )
 
 func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, settings *dto.Settings, users *[]dto.User, shares *[]dto.SharedResource) error {
 	err := c.ConfigToSettings(source, settings)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	for _, user := range source.OtherUsers {
 		var tuser dto.User
 		err := c.OtherUserToUser(user, &tuser)
 		if err != nil {
-			return tracerr.Wrap(err)
+			return errors.WithStack(err)
 		}
 		tuser.IsAdmin = pointer.Bool(false)
 		*users = append(*users, tuser)
@@ -26,7 +26,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 	var auser dto.User
 	err = c.ConfigToUser(source, &auser)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	auser.IsAdmin = pointer.Bool(true)
 	*users = append(*users, auser)
@@ -34,7 +34,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 		var sharedResource dto.SharedResource
 		err := c.ShareToSharedResource(share, &sharedResource, *users)
 		if err != nil {
-			return tracerr.Wrap(err)
+			return errors.WithStack(err)
 		}
 		*shares = append(*shares, sharedResource)
 	}
@@ -44,7 +44,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, users []dto.User, shares []dto.SharedResource, target *config.Config) error {
 	err := c.SettingsToConfig(settings, target, c)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	for _, user := range users {
 		var tuser config.User
@@ -54,7 +54,7 @@ func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, use
 		} else {
 			err := c.UserToOtherUser(user, &tuser)
 			if err != nil {
-				return tracerr.Wrap(err)
+				return errors.WithStack(err)
 			}
 			target.OtherUsers = append(target.OtherUsers, tuser)
 		}
@@ -63,7 +63,7 @@ func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, use
 		var tshare config.Share
 		err := c.SharedResourceToShare(share, &tshare)
 		if err != nil {
-			return tracerr.Wrap(err)
+			return errors.WithStack(err)
 		}
 		target.Shares[share.Name] = tshare
 	}
@@ -73,12 +73,12 @@ func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, use
 func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, target *dto.SharedResource, context []dto.User) error {
 	err := c.ShareToSharedResourceNoMountPointData(source, target, context)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	var mountPointData dto.MountPointData
 	err = c.ShareToMountPointData(source, &mountPointData)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	target.MountPointData = &mountPointData
 	return nil

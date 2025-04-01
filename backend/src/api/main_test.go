@@ -13,7 +13,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"github.com/snapcore/snapd/osutil"
-	"github.com/ztrue/tracerr"
 )
 
 var testContext = context.Background()
@@ -39,14 +38,14 @@ func TestMain(m *testing.M) {
 	err = config.LoadConfig("../../test/data/config.json")
 	// Setting/Properties
 	if err != nil {
-		log.Fatalf("Cant load config file %s", err)
+		log.Fatalf("Cant load config file %#+v", err)
 	}
 	config.UpdateChannel = string(dto.None)
 	mount_repo := repository.NewMountPointPathRepository(dbom.GetDB())
 	exported_share_repo = repository.NewExportedShareRepository(dbom.GetDB())
 	err = dbutil.FirstTimeJSONImporter(config, mount_repo, exported_share_repo)
 	if err != nil {
-		log.Fatalf("Cant load json settings - %v", tracerr.SprintSourceColor(err))
+		log.Fatalf("Cant load json settings - %#+v", err)
 	}
 	// End
 
@@ -54,7 +53,7 @@ func TestMain(m *testing.M) {
 	//options := config.ReadOptionsFile("../../test/data/options.json")
 	templateData, err := os.ReadFile("../templates/smb.gtpl")
 	if err != nil {
-		log.Fatalf("Cant read template file %s", err)
+		log.Fatalf("Cant read template file %#+v", err)
 	}
 
 	apiContextState = dto.ContextState{}

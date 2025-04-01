@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
 
@@ -22,7 +22,7 @@ func (self *Properties) Load() error {
 	var props []Property
 	err := db.Model(&Property{}).Find(&props).Error
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	*self = make(Properties, len(props))
 	for _, prop := range props {
@@ -35,7 +35,7 @@ func (self *Properties) Save() error {
 	for _, prop := range *self {
 		err := db.Save(&prop).Error
 		if err != nil {
-			return tracerr.Wrap(err)
+			return errors.WithStack(err)
 		}
 	}
 	return nil
@@ -61,11 +61,11 @@ func (self *Properties) Add(key string, value any) error {
 
 	result := tx.Model(&Property{}).Where(Property{Key: key}).Assign(prop).FirstOrCreate(&prop)
 	if result.Error != nil {
-		return tracerr.Wrap(result.Error)
+		return errors.WithStack(result.Error)
 	}
 
 	(*self)[key] = prop
-	return tracerr.Wrap(tx.Commit().Error)
+	return errors.WithStack(tx.Commit().Error)
 }
 
 func (self *Properties) Remove(key string) error {

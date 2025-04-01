@@ -10,7 +10,6 @@ import (
 	"github.com/dianlight/srat/repository"
 	service "github.com/dianlight/srat/service"
 	"github.com/stretchr/testify/suite"
-	"github.com/ztrue/tracerr"
 )
 
 type SambaServiceSuite struct {
@@ -46,7 +45,7 @@ func TestSambaServiceSuite(t *testing.T) {
 
 func (suite *SambaServiceSuite) TestCreateConfigStream() {
 	stream, err := suite.sambaService.CreateConfigStream()
-	suite.Require().NoError(err, tracerr.SprintSourceColor(err))
+	suite.Require().NoError(err)
 	suite.NotNil(stream)
 
 	fsbyte, err := os.ReadFile("../../test/data/smb.conf")

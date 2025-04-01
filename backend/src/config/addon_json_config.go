@@ -9,7 +9,7 @@ import (
 	"slices"
 
 	"github.com/jinzhu/copier"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 )
 
 type Share struct {
@@ -90,7 +90,7 @@ type Config struct {
 func (self *Config) ReadFromFile(file string) error {
 	configFile, err := os.ReadFile(file)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	// Parse json
 	return self.ReadConfigBuffer(configFile)
@@ -277,7 +277,7 @@ func (in *Config) MigrateConfig() error {
 func (self *Config) LoadConfig(file string) error {
 	err := self.ReadFromFile(file)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	self.MigrateConfig()
 	return nil

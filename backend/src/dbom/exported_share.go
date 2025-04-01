@@ -1,11 +1,10 @@
 package dbom
 
 import (
-	"errors"
 	"time"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
 
@@ -25,7 +24,7 @@ type ExportedShare struct {
 
 func (u *ExportedShare) BeforeSave(tx *gorm.DB) error {
 	if u.Name == "" {
-		return tracerr.Errorf("Invalid name for exported share")
+		return errors.Errorf("Invalid name for exported share")
 	}
 	if errors.Is(tx.First(&ExportedShare{}, "name = ?", u.Name).Error, gorm.ErrRecordNotFound) {
 		// Create without users
@@ -34,7 +33,7 @@ func (u *ExportedShare) BeforeSave(tx *gorm.DB) error {
 		saveuses_r := u.RoUsers
 		u.RoUsers = nil
 		if err := tx.Session(&gorm.Session{SkipHooks: true}).Create(u).Error; err != nil {
-			return tracerr.Wrap(err)
+			return errors.WithStack(err)
 		}
 		u.Users = saveuses
 		u.RoUsers = saveuses_r

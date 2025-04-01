@@ -250,8 +250,8 @@ github.com/xorcare/pointer v1.2.2/go.mod h1:azsKh7oVwYB7C1o8P284fG8MvtErX/F5/dqX
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
-github.com/ztrue/tracerr v0.4.0 h1:vT5PFxwIGs7rCg9ZgJ/y0NmOpJkPCPFK8x0vVIYzd04=
-github.com/ztrue/tracerr v0.4.0/go.mod h1:PaFfYlas0DfmXNpo7Eay4MFhZUONqvXM+T2HyGPpngk=
+gitlab.com/tozd/go/errors v0.10.0 h1:A98kL+gaDvWnY6ZB/u8zP+sYaWsWUGBHeFMtamvW/74=
+gitlab.com/tozd/go/errors v0.10.0/go.mod h1:q3Ugr0C8dCzMEkrzjjlV2qNsm9e0KvqBjwcbcjCpBe4=
 go.uber.org/dig v1.18.0 h1:imUL1UiY0Mg4bqbFfsRQO5G4CGRBec/ZujWTvSVp3pw=
 go.uber.org/dig v1.18.0/go.mod h1:Us0rSJiThwCv2GteUN0Q7OKvU7n5J4dxZ9JKUXozFdE=
 go.uber.org/fx v1.23.0 h1:lIr/gYWQGfTwGcSXWXu4vP5Ws6iqnNEIY+F/aFzCKTg=

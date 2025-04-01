@@ -10,7 +10,7 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tempio"
 	"github.com/shirou/gopsutil/v4/process"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 )
 
 type SambaServiceInterface interface {
@@ -45,7 +45,7 @@ func NewSambaService(apictx *dto.ContextState, dirtyservice DirtyDataServiceInte
 func (self *SambaService) CreateConfigStream() (data *[]byte, err error) {
 	config, err := dbutil.JSONFromDatabase(self.exported_share_repo)
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return nil, errors.WithStack(err)
 	}
 	// End
 	//ctsx := ctx.Value("context_state").(*dto.Status)
@@ -53,7 +53,7 @@ func (self *SambaService) CreateConfigStream() (data *[]byte, err error) {
 	config.DockerNet = self.apictx.DockerNet
 	config_2 := config.ConfigToMap()
 	datar, err := tempio.RenderTemplateBuffer(config_2, self.apictx.Template)
-	return &datar, tracerr.Wrap(err)
+	return &datar, errors.WithStack(err)
 }
 
 // GetSambaProcess retrieves the Samba process (smbd) if it's running.
@@ -68,7 +68,7 @@ func (self *SambaService) GetSambaProcess() (*process.Process, error) {
 	var allProcess, err = process.Processes()
 	if err != nil {
 		log.Fatal(err)
-		return nil, tracerr.Wrap(err)
+		return nil, errors.WithStack(err)
 	}
 	for _, p := range allProcess {
 		var name, err = p.Name()
@@ -85,12 +85,12 @@ func (self *SambaService) GetSambaProcess() (*process.Process, error) {
 func (self *SambaService) WriteSambaConfig() error {
 	stream, err := self.CreateConfigStream()
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 
 	err = os.WriteFile(self.apictx.SambaConfigFile, *stream, 0644)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -101,7 +101,7 @@ func (self *SambaService) TestSambaConfig() error {
 	cmd := exec.Command("testparm", "-s", self.apictx.SambaConfigFile)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return tracerr.Errorf("Error executing testparm: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
+		return errors.Errorf("Error executing testparm: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
 	}
 	return nil
 }
@@ -109,7 +109,7 @@ func (self *SambaService) TestSambaConfig() error {
 func (self *SambaService) RestartSambaService() error {
 	process, err := self.GetSambaProcess()
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 
 	// Exec smbcontrol smbd reload-config
@@ -117,7 +117,7 @@ func (self *SambaService) RestartSambaService() error {
 		cmdr := exec.Command("smbcontrol", "smbd", "reload-config")
 		out, err := cmdr.CombinedOutput()
 		if err != nil {
-			return tracerr.Errorf("Error executing testparm: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
+			return errors.Errorf("Error executing smbcontrol: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
 		}
 	}
 
@@ -128,15 +128,15 @@ func (self *SambaService) RestartSambaService() error {
 func (self *SambaService) WriteAndRestartSambaConfig() error {
 	err := self.WriteSambaConfig()
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	err = self.TestSambaConfig()
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	err = self.RestartSambaService()
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	return nil
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/stretchr/testify/suite"
 	"github.com/xorcare/pointer"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 	gomock "go.uber.org/mock/gomock"
 	"gorm.io/gorm"
 )
@@ -214,7 +214,7 @@ func (suite *ShareHandlerSuite) TestDeleteShareHandler() {
 	// Refresh shares list anche check that LIBRARY don't exists
 	share, err := exported_share_repo.FindByName("EFI")
 	if suite.Error(err, "Share %+v should not exist", share) {
-		suite.Equal(gorm.ErrRecordNotFound, tracerr.Unwrap(err))
+		suite.Equal(gorm.ErrRecordNotFound, errors.Unwrap(err))
 	}
 }
 
@@ -257,7 +257,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareNameHandler() {
 	// Check that old name is not found
 	_, err = exported_share_repo.FindByName("OLD_NAME")
 	suite.Require().Error(err)
-	suite.Equal(gorm.ErrRecordNotFound, tracerr.Unwrap(err))
+	suite.Equal(gorm.ErrRecordNotFound, errors.Unwrap(err))
 
 	// Check that new name is found
 	_, err = exported_share_repo.FindByName("NEW_NAME")

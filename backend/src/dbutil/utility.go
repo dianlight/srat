@@ -5,7 +5,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/repository"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 )
 
 func FirstTimeJSONImporter(config config.Config,
@@ -20,27 +20,27 @@ func FirstTimeJSONImporter(config config.Config,
 
 	err = conv.ConfigToDbomObjects(config, properties, users, shares)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	err = properties.Save()
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	err = users.Save()
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	for i, share := range *shares {
 		err = mount_repository.Save(&share.MountPointData)
 		if err != nil {
-			return tracerr.Wrap(err)
+			return errors.WithStack(err)
 		}
 		//		slog.Debug("Share ", "id", share.MountPointData.ID)
 		(*shares)[i] = share
 	}
 	err = export_share_repository.SaveAll(shares)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -53,21 +53,21 @@ func JSONFromDatabase(export_share_repository repository.ExportedShareRepository
 
 	err = properties.Load()
 	if err != nil {
-		return tconfig, tracerr.Wrap(err)
+		return tconfig, errors.WithStack(err)
 	}
 	err = users.Load()
 	if err != nil {
-		return tconfig, tracerr.Wrap(err)
+		return tconfig, errors.WithStack(err)
 	}
 	err = export_share_repository.All(&shares)
 	if err != nil {
-		return tconfig, tracerr.Wrap(err)
+		return tconfig, errors.WithStack(err)
 	}
 
 	tconfig = config.Config{}
 	err = conv.DbomObjectsToConfig(properties, users, shares, &tconfig)
 	if err != nil {
-		return tconfig, tracerr.Wrap(err)
+		return tconfig, errors.WithStack(err)
 	}
 	for _, cshare := range tconfig.Shares {
 		if cshare.Usage == "media" {

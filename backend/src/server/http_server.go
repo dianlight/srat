@@ -2,17 +2,18 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/dianlight/srat/homeassistant/ingress"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/rs/cors"
-	"github.com/ztrue/tracerr"
 	"go.uber.org/fx"
 )
 
@@ -46,7 +47,7 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtC
 					if err == http.ErrServerClosed {
 						slog.Info("HTTP server stopped gracefully")
 					} else {
-						log.Fatal(tracerr.SprintSourceColor(err))
+						log.Fatal(fmt.Sprintf("%#+v", err))
 					}
 				}
 			}()
@@ -60,7 +61,7 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtC
 			//defer cancel()
 			//err := srv.Shutdown(ctx)
 			//if err != nil {
-			//	return tracerr.Wrap(err)
+			//	return errors.WithStack(err)
 			//}
 			//time.Sleep(15 * time.Second)
 			slog.Info("HTTP server stopped")
@@ -70,9 +71,10 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtC
 	return srv
 }
 
-func NewMuxRouter(hamode bool) *mux.Router {
+func NewMuxRouter(hamode bool, ingressClient_ *ingress.ClientWithResponses) *mux.Router {
 	router := mux.NewRouter()
 	if hamode {
+		ingressClient = ingressClient_
 		router.Use(HAMiddleware)
 	}
 

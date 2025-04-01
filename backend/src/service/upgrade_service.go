@@ -12,7 +12,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v69/github"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 	"golang.org/x/time/rate"
 )
 
@@ -50,7 +50,7 @@ func (self *UpgradeService) run() error {
 		select {
 		case <-self.ctx.Done():
 			slog.Info("Run process closed", "err", self.ctx.Err())
-			return tracerr.Wrap(self.ctx.Err())
+			return errors.WithStack(self.ctx.Err())
 		default:
 			self.updateLimiter.Do(func() {
 				slog.Debug("Version Checking...")
@@ -73,7 +73,7 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 	properties.Load()
 	value, err := properties.GetValue("UpdateChannel")
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	updateChannel := dto.UpdateChannel(value.(string))
 
@@ -108,7 +108,7 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 					if asset.GetName() == fmt.Sprintf("srat_%s", arch) {
 						err = conv.ReleaseAssetToBinaryAsset(asset, &self.lastReleaseData.ArchAsset)
 						if err != nil {
-							return tracerr.Wrap(err)
+							return errors.WithStack(err)
 						}
 						break
 					}
@@ -129,7 +129,7 @@ func (self *UpgradeService) EventEmitter(ctx context.Context, data dto.ReleaseAs
 	_, err := self.broadcaster.BroadcastMessage(data)
 	if err != nil {
 		slog.Error("Error broadcasting update message: %w", "err", err)
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	return nil
 }

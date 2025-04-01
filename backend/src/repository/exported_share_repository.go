@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -29,7 +29,7 @@ func (p *ExportedShareRepository) UpdateName(old_name string, new_name string) e
 	err := p.db.
 		Model(&dbom.ExportedShare{Name: old_name}).Update("name", new_name).Error
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -44,7 +44,7 @@ func NewExportedShareRepository(db *gorm.DB) ExportedShareRepositoryInterface {
 func (r *ExportedShareRepository) All(shares *[]dbom.ExportedShare) error {
 	err := r.db.Preload(clause.Associations).Find(shares).Error
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	return err
 }
@@ -53,7 +53,7 @@ func (p *ExportedShareRepository) FindByName(name string) (*dbom.ExportedShare, 
 	var share dbom.ExportedShare
 	err := p.db.Preload(clause.Associations).First(&share, "name = ?", name).Error
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return nil, errors.WithStack(err)
 	}
 	return &share, nil
 }
@@ -61,7 +61,7 @@ func (p *ExportedShareRepository) FindByName(name string) (*dbom.ExportedShare, 
 func (p *ExportedShareRepository) SaveAll(shares *[]dbom.ExportedShare) error {
 	err := p.db.Session(&gorm.Session{FullSaveAssociations: true}).Save(shares).Error
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -69,7 +69,7 @@ func (p *ExportedShareRepository) SaveAll(shares *[]dbom.ExportedShare) error {
 func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) error {
 	err := p.db.Session(&gorm.Session{FullSaveAssociations: true}).Save(share).Error
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	return nil
 }

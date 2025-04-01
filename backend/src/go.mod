@@ -108,7 +108,7 @@ require (
 	github.com/tj/go-spin v1.1.0
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
-	github.com/ztrue/tracerr v0.4.0
+	gitlab.com/tozd/go/errors v0.10.0
 	go.uber.org/fx v1.23.0
 	golang.org/x/time v0.11.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect

@@ -8,7 +8,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 )
 
 type SettingsHanler struct {
@@ -68,23 +68,23 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 	var dbconfig dbom.Properties
 	err := dbconfig.Load()
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return nil, errors.WithStack(err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 
 	err = conv.SettingsToProperties(config, &dbconfig)
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return nil, errors.WithStack(err)
 	}
 
 	err = dbconfig.Save()
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return nil, errors.WithStack(err)
 	}
 
 	err = conv.PropertiesToSettings(dbconfig, &config)
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return nil, errors.WithStack(err)
 	}
 	self.dirtyService.SetDirtySettings()
 	return &struct{ Body dto.Settings }{Body: config}, nil
@@ -105,12 +105,12 @@ func (self *SettingsHanler) GetSettings(ctx context.Context, input *struct{}) (*
 	var conv converter.DtoToDbomConverterImpl
 	err := dbsettings.Load()
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return nil, errors.WithStack(err)
 	}
 	var settings dto.Settings
 	err = conv.PropertiesToSettings(dbsettings, &settings)
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return nil, errors.WithStack(err)
 
 	}
 	return &struct{ Body dto.Settings }{Body: settings}, nil

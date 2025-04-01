@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/ztrue/tracerr"
 )
 
 type DirtyDataServiceInterface interface {
@@ -46,7 +45,7 @@ func (p *DirtyDataService) startTimer() {
 			slog.Debug("Calling callback for Restart", "callback", callback)
 			err := callback()
 			if err != nil {
-				slog.Warn("Error in restart callback", "err", tracerr.SprintSourceColor(err))
+				slog.Warn("Error in restart callback", "err", err)
 			}
 		}
 		p.timer = nil

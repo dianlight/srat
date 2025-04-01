@@ -20,7 +20,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/mattn/go-isatty"
-	"github.com/ztrue/tracerr"
+	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
+	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 
 	"github.com/dianlight/srat/api"
@@ -28,6 +29,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/homeassistant/ingress"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
@@ -56,6 +58,8 @@ var updateFilePath string
 var configFile *string
 var dbfile *string
 var frontend *string
+var supervisorURL *string
+var supervisorToken *string
 
 // Static files
 //
@@ -105,6 +109,8 @@ func main() {
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
 	dockerNetwork = flag.String("docker-network", "", "Docker network")
 	frontend = flag.String("frontend", "", "Frontend path - if missing the internal is used")
+	supervisorToken = flag.String("ha_token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
+	supervisorURL = flag.String("ha_url", "http://supervisor/", "HomeAssistant Supervisor URL")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -242,6 +248,20 @@ func prog(state overseer.State) {
 			),
 			server.NewHTTPServer,
 			server.NewHumaAPI,
+			func() *securityprovider.SecurityProviderBearerToken {
+				sp, err := securityprovider.NewSecurityProviderBearerToken(*supervisorToken)
+				if err != nil {
+					log.Fatalf("Failed to create security provider: %s", err)
+				}
+				return sp
+			},
+			func(bearerAuth *securityprovider.SecurityProviderBearerToken) *ingress.ClientWithResponses {
+				ingressClient, err := ingress.NewClientWithResponses(*supervisorURL, ingress.WithRequestEditorFn(bearerAuth.Intercept))
+				if err != nil {
+					log.Fatal(err)
+				}
+				return ingressClient
+			},
 		),
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
@@ -252,7 +272,7 @@ func prog(state overseer.State) {
 			var properties dbom.Properties
 			err := properties.Load()
 			if err != nil {
-				log.Fatalf("Cant load properties - %s", err)
+				log.Fatalf("Cant load properties - %#+v", err)
 			}
 			versionInDB, err := properties.GetValue("version")
 			if err != nil || versionInDB.(string) == "" {
@@ -261,11 +281,11 @@ func prog(state overseer.State) {
 				err := config.LoadConfig(*configFile)
 				// Setting/Properties
 				if err != nil {
-					log.Fatalf("Cant load config file %s", err)
+					log.Fatalf("Cant load config file %#+v", err)
 				}
 				err = dbutil.FirstTimeJSONImporter(config, mount_repo, exported_share_repo)
 				if err != nil {
-					log.Fatalf("Cant import json settings - %s", tracerr.SprintSourceColor(err))
+					log.Fatalf("Cant import json settings - %#+v", err)
 				}
 			}
 		}),
@@ -312,7 +332,7 @@ func prog(state overseer.State) {
 					router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 						template, err := route.GetPathTemplate()
 						if err != nil {
-							return tracerr.Wrap(err)
+							return errors.WithMessage(err)
 						}
 						slog.Debug("Route:", "template", template)
 						return nil

@@ -97,21 +97,17 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 
 	mount_data.ID = input.ID
 
-	err := self.vservice.MountVolume(mount_data)
-	if err != nil {
-		if einfo, ok := err.(*dto.ErrorInfo); ok {
-			switch einfo.Code {
-			case dto.ErrorCodes.INVALID_PARAMETER:
-				return nil, huma.Error406NotAcceptable("Invalid Parameter", einfo)
-			case dto.ErrorCodes.DEVICE_NOT_FOUND:
-				return nil, huma.Error404NotFound("Device Not Found", einfo)
-			case dto.ErrorCodes.MOUNT_FAIL:
-				return nil, huma.Error422UnprocessableEntity(einfo.Message, einfo)
-			default:
-				return nil, huma.Error500InternalServerError(einfo.Message, einfo)
-			}
+	errE := self.vservice.MountVolume(mount_data)
+	if errE != nil {
+		if errors.Is(errE, dto.ErrorMountFail) {
+			return nil, huma.Error422UnprocessableEntity(errE.Details()["Message"].(string), errE)
+		} else if errors.Is(errE, dto.ErrorDeviceNotFound) {
+			return nil, huma.Error404NotFound("Device Not Found", errE)
+		} else if errors.Is(errE, dto.ErrorInvalidParameter) {
+			return nil, huma.Error406NotAcceptable("Invalid Parameter", errE)
+		} else {
+			return nil, huma.Error500InternalServerError("Unknown Error", errE)
 		}
-		return nil, huma.Error500InternalServerError("Unkown Error", err)
 	}
 
 	dbom_mount_data, err := self.mount_repo.FindByID(input.ID)

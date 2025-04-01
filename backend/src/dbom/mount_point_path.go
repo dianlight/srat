@@ -11,7 +11,7 @@ import (
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/xorcare/pointer"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
 
@@ -34,7 +34,7 @@ type MountPointPath struct {
 
 func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 	if u.Path == "" {
-		return tracerr.Errorf("path cannot be empty")
+		return errors.Errorf("path cannot be empty")
 	}
 	u.Path = stringy.New(u.Path).SnakeCase().Get()
 	u.Warnings = nil
@@ -46,11 +46,11 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 	err = syscall.Stat(u.Path, &sstat)
 	if os.IsNotExist(err) {
 		u.IsInvalid = true
-		u.InvalidError = pointer.String(tracerr.Sprint(err))
+		u.InvalidError = pointer.String(fmt.Sprintf("error: %#+v", err))
 	} else if !strings.HasPrefix(u.Path, "/") {
-		return tracerr.Errorf("path %s is not a valid mountpoint", u.Path)
+		return errors.Errorf("path %s is not a valid mountpoint", u.Path)
 	} else if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	if u.DeviceId == 0 || u.DeviceId != sstat.Dev {
 		u.DeviceId = sstat.Dev
@@ -59,7 +59,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 		stat := syscall.Statfs_t{}
 		err = syscall.Statfs(u.Path, &stat)
 		if err != nil {
-			return tracerr.Wrap(err)
+			return errors.WithStack(err)
 		}
 		if len(u.Flags) == 0 {
 			u.Flags.Scan(stat.Flags)
@@ -69,7 +69,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 			u.InvalidError = pointer.String("Unknown device source for " + u.Path)
 			info, err := osutil.LoadMountInfo()
 			if err != nil {
-				return tracerr.Wrap(err)
+				return errors.WithStack(err)
 			}
 			for _, m := range info {
 
@@ -100,7 +100,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 			fs, flags, err := mount.FSFromBlock(u.Source)
 			if err != nil {
 				u.IsInvalid = true
-				u.InvalidError = pointer.String(tracerr.Sprint(err))
+				u.InvalidError = pointer.String(fmt.Sprintf("error: %#+v", err))
 			}
 			fmt.Printf("Flags %+v\n", flags)
 			u.FSType = fs

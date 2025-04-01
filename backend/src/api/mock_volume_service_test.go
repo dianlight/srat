@@ -13,6 +13,7 @@ import (
 	reflect "reflect"
 
 	dto "github.com/dianlight/srat/dto"
+	errors "gitlab.com/tozd/go/errors"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -58,10 +59,10 @@ func (mr *MockVolumeServiceInterfaceMockRecorder) GetVolumesData() *gomock.Call 
 }
 
 // MountVolume mocks base method.
-func (m *MockVolumeServiceInterface) MountVolume(md dto.MountPointData) error {
+func (m *MockVolumeServiceInterface) MountVolume(md dto.MountPointData) errors.E {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MountVolume", md)
-	ret0, _ := ret[0].(error)
+	ret0, _ := ret[0].(errors.E)
 	return ret0
 }
 
@@ -84,10 +85,10 @@ func (mr *MockVolumeServiceInterfaceMockRecorder) NotifyClient() *gomock.Call {
 }
 
 // UnmountVolume mocks base method.
-func (m *MockVolumeServiceInterface) UnmountVolume(id uint, force, lazy bool) error {
+func (m *MockVolumeServiceInterface) UnmountVolume(id uint, force, lazy bool) errors.E {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnmountVolume", id, force, lazy)
-	ret0, _ := ret[0].(error)
+	ret0, _ := ret[0].(errors.E)
 	return ret0
 }
 

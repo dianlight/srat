@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"os"
 	"strconv"
@@ -22,13 +21,13 @@ import (
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 	ublock "github.com/u-root/u-root/pkg/mount/block"
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
 
 type VolumeServiceInterface interface {
-	MountVolume(md dto.MountPointData) error
-	UnmountVolume(id uint, force bool, lazy bool) error
+	MountVolume(md dto.MountPointData) errors.E
+	UnmountVolume(id uint, force bool, lazy bool) errors.E
 	GetVolumesData() (*dto.BlockInfo, error)
 	NotifyClient()
 }
@@ -52,44 +51,44 @@ func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterf
 	return p
 }
 
-func (ms *VolumeService) MountVolume(md dto.MountPointData) error {
+func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 	dbom_mount_data, err := ms.mount_repo.FindByID(md.ID)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.MountPointDataToMountPointPath(md, dbom_mount_data)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 
 	if dbom_mount_data.Source == "" {
-		return tracerr.Wrap(dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
-			"Device":  dbom_mount_data.Source,
-			"Path":    dbom_mount_data.Path,
-			"Message": "Source device is empty",
-		}, nil))
+		return errors.WithDetails(dto.ErrorDeviceNotFound,
+			"Device", dbom_mount_data.Source,
+			"Path", dbom_mount_data.Path,
+			"Message", "Source device is empty",
+		)
 	}
 
 	if dbom_mount_data.Path == "" {
-		return tracerr.Wrap(dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
-			"Device":  dbom_mount_data.Source,
-			"Path":    dbom_mount_data.Path,
-			"Message": "Mount point path is empty",
-		}, nil))
+		return errors.WithDetails(dto.ErrorInvalidParameter,
+			"Device", dbom_mount_data.Source,
+			"Path", dbom_mount_data.Path,
+			"Message", "Mount point path is empty",
+		)
 	}
 
 	ok, err := osutil.IsMounted(dbom_mount_data.Path)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 
 	if dbom_mount_data.IsMounted && ok {
-		return dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
-			"Device":  dbom_mount_data.Source,
-			"Path":    dbom_mount_data.Path,
-			"Message": "Volume is already mounted",
-		}, nil)
+		return errors.WithDetails(dto.ErrorMountFail,
+			"Device", dbom_mount_data.Source,
+			"Path", dbom_mount_data.Path,
+			"Message", "Volume is already mounted",
+		)
 	}
 
 	orgPath := dbom_mount_data.Path
@@ -97,17 +96,17 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) error {
 		dbom_mount_data.Path = orgPath + "_(" + strconv.Itoa(i) + ")"
 		ok, err = osutil.IsMounted(dbom_mount_data.Path)
 		if err != nil {
-			return tracerr.Wrap(err)
+			return errors.WithStack(err)
 		}
 	}
 
 	flags, err := dbom_mount_data.Flags.Value()
 	if err != nil {
-		return tracerr.Wrap(dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
-			"Device":  dbom_mount_data.Source,
-			"Path":    dbom_mount_data.Path,
-			"Message": "Invalid Flags",
-		}, err))
+		return errors.WithDetails(errors.Basef("%w Invalid Flags %w", dto.ErrorInvalidParameter, err),
+			"Device", dbom_mount_data.Source,
+			"Path", dbom_mount_data.Path,
+			"Message", "Invalid Flags",
+		)
 	}
 	var mp *mount.MountPoint
 	if dbom_mount_data.FSType == "" {
@@ -117,40 +116,40 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) error {
 	}
 	if err != nil {
 		slog.Error("Failed to mount volume:", "source", dbom_mount_data.Source, "fstype", dbom_mount_data.FSType, "path", dbom_mount_data.Path, "flags", flags, "mp", mp)
-		return tracerr.Wrap(dto.NewErrorInfo(dto.ErrorCodes.MOUNT_FAIL, map[string]any{
-			"Device":  dbom_mount_data.Source,
-			"Path":    dbom_mount_data.Path,
-			"Message": "Mount failed",
-		}, err))
+		return errors.WithDetails(errors.Basef("%w Mount Error %w", dto.ErrorMountFail, err),
+			"Device", dbom_mount_data.Source,
+			"Path", dbom_mount_data.Path,
+			"Message", "Mount failed",
+		)
 	} else {
 		var convm converter.MountToDbomImpl
 		err = convm.MountToMountPointPath(mp, dbom_mount_data)
 		if err != nil {
-			return tracerr.Wrap(err)
+			return errors.WithStack(err)
 		}
 		dbom_mount_data.IsMounted = true
 		err = ms.mount_repo.Save(dbom_mount_data)
 		if err != nil {
-			return tracerr.Wrap(err)
+			return errors.WithStack(err)
 		}
 		ms.NotifyClient()
 	}
 	return nil
 }
 
-func (ms *VolumeService) UnmountVolume(id uint, force bool, lazy bool) error {
+func (ms *VolumeService) UnmountVolume(id uint, force bool, lazy bool) errors.E {
 	dbom_mount_data, err := ms.mount_repo.FindByID(id)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	err = mount.Unmount(dbom_mount_data.Path, force, lazy)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	dbom_mount_data.IsMounted = false
 	err = ms.mount_repo.Save(dbom_mount_data)
 	if err != nil {
-		return tracerr.Wrap(err)
+		return errors.WithStack(err)
 	}
 	ms.NotifyClient()
 	return nil
@@ -162,7 +161,7 @@ func (self *VolumeService) udevEventHandler() {
 
 	conn := new(netlink.UEventConn)
 	if err := conn.Connect(netlink.UdevEvent); err != nil {
-		slog.Error("Unable to connect to Netlink Kobject UEvent socket", "err", tracerr.SprintSourceColor(err))
+		slog.Error("Unable to connect to Netlink Kobject UEvent socket", "err", err)
 	}
 	defer conn.Close()
 
@@ -187,7 +186,7 @@ func (self *VolumeService) udevEventHandler() {
 		select {
 		case <-self.ctx.Done():
 			close(quit)
-			slog.Info("Run process closed", "err", tracerr.SprintSourceColor(self.ctx.Err()))
+			slog.Info("Run process closed", "err", self.ctx.Err())
 			return
 		case uevent := <-queue:
 			slog.Info("Handle", "event", pretty.Sprint(uevent))
@@ -197,7 +196,7 @@ func (self *VolumeService) udevEventHandler() {
 				self.NotifyClient()
 			}
 		case err := <-errors:
-			slog.Error("ERROR:", "err", tracerr.SprintSourceColor(err))
+			slog.Error("ERROR:", "err", err)
 		}
 	}
 

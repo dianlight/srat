@@ -3,7 +3,7 @@ package patherr
 import (
 	"fmt"
 
-	"github.com/ztrue/tracerr"
+	"gitlab.com/tozd/go/errors"
 )
 
 type Error struct {
@@ -20,7 +20,7 @@ func Wrap(err error, path ...any) error {
 		err.Path = append(path, err.Path...)
 		return err
 	}
-	return tracerr.Wrap(&Error{Inner: err, Path: path})
+	return errors.WithDetails(err, "Path", path)
 }
 
 func Key(v any) any      { return v }
