@@ -60,6 +60,7 @@ var dbfile *string
 var frontend *string
 var supervisorURL *string
 var supervisorToken *string
+var logLevel slog.Level
 
 // Static files
 //
@@ -69,34 +70,10 @@ var content embed.FS
 //go:embed templates/smb.gtpl
 var defaultTemplate embed.FS
 
-// @title						SRAT API
-// @version					1.0
-// @description				This are samba rest admin API
-// @contact.name				Lucio Tarantino
-// @contact.url				https://github.com/dianlight
-// @contact.email				lucio.tarantino@gmail.com
-// @license.name				Apache 2.0
-// @license.url				http://www.apache.org/licenses/LICENSE-2.0.html
-// @securitydefinitions.apikey	ApiKeyAuth
-// @in							header
-// @name						X-Supervisor-Token
-// @description				HomeAssistant Supervisor Token
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	w := os.Stderr
-
-	// create a new logger
-	//logger := slog.New(tint.NewHandler(w, nil))
-
 	// set global logger with custom options
-	slog.SetDefault(slog.New(
-		tint.NewHandler(w, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.RFC3339,
-			NoColor:    !isatty.IsTerminal(w.Fd()),
-			AddSource:  true,
-		}),
-	))
 
 	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
 	configFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
@@ -109,8 +86,9 @@ func main() {
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
 	dockerNetwork = flag.String("docker-network", "", "Docker network")
 	frontend = flag.String("frontend", "", "Frontend path - if missing the internal is used")
-	supervisorToken = flag.String("ha_token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
-	supervisorURL = flag.String("ha_url", "http://supervisor/", "HomeAssistant Supervisor URL")
+	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
+	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
+	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -128,6 +106,28 @@ func main() {
 	}
 
 	flag.Parse()
+
+	switch *logLevelString {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "info":
+		logLevel = slog.LevelInfo
+	case "warn":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	default:
+		log.Fatalf("Invalid log level: %s", *logLevelString)
+	}
+
+	slog.SetDefault(slog.New(
+		tint.NewHandler(w, &tint.Options{
+			Level:      logLevel,
+			TimeFormat: time.RFC3339,
+			NoColor:    !isatty.IsTerminal(w.Fd()),
+			AddSource:  true,
+		}),
+	))
 
 	updateFilePath = os.TempDir() + "/" + filepath.Base(os.Args[0])
 
