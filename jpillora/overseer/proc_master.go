@@ -105,7 +105,7 @@ func (mp *master) setupSignalling() {
 	mp.restarted = make(chan bool)
 	mp.descriptorsReleased = make(chan bool)
 	//read all master process signals
-	signals := make(chan os.Signal)
+	signals := make(chan os.Signal, 1)
 	signal.Notify(signals)
 	go func() {
 		for s := range signals {
