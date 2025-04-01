@@ -28,7 +28,6 @@ test_build: $(SRC_DIRS) $(STATIC_DIRS)
 
 .PHONY: format
 format:
-	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest fmt
 	cd $(SRC_DIRS);go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 fmt
 	cd $(SRC_DIRS);go mod tidy	
 	cd $(SRC_DIRS);go run github.com/Antonboom/testifylint@v1.6.0 --fix ./...
@@ -51,7 +50,6 @@ test_ci: $(ALL_SRCS)
 docs: gen 
 
 gen: $(SRCS)
-	#docker run --rm -v $(SRC_DIRS):/code ghcr.io/swaggo/swag:latest init
 	mkdir -p $(SRC_DIRS)/static && touch $(SRC_DIRS)/static/.nodelete
 	cd $(SRC_DIRS);go generate ./...
 
