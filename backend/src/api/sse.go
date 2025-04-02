@@ -15,16 +15,17 @@ type BrokerHandler struct {
 }
 
 type BrokerInterface interface {
-	Stream(w http.ResponseWriter, r *http.Request)
-	BroadcastMessage(msg any) (any, error)
+	RegisterSse(api huma.API)
+	// Stream(w http.ResponseWriter, r *http.Request)
+	// BroadcastMessage(msg any) (any, error)
 }
 
-func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker *BrokerHandler) {
+func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker BrokerInterface) {
 	// Instantiate a broker
 	broker = &BrokerHandler{
 		broadcaster: broadcaster,
 	}
-	return
+	return broker
 }
 
 // RegisterSse registers a Server-Sent Events (SSE) endpoint with the given API.
@@ -48,10 +49,12 @@ func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker *Brok
 // with the provided SSE sender.
 func (self *BrokerHandler) RegisterSse(api huma.API) {
 	sse.Register(api, huma.Operation{
-		OperationID: "sse",
-		Method:      http.MethodGet,
-		Path:        "/sse",
-		Summary:     "Server sent events",
+		OperationID:     "sse",
+		Method:          http.MethodGet,
+		Path:            "/sse",
+		Summary:         "Server sent events",
+		BodyReadTimeout: -1,
+		Tags:            []string{"system"},
 	}, map[string]any{
 		dto.EventTypes.EVENTHELLO.Name:     dto.Welcome{},
 		dto.EventTypes.EVENTUPDATE.Name:    dto.ReleaseAsset{},

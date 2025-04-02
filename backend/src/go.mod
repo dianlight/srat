@@ -22,8 +22,29 @@ require (
 require github.com/gofri/go-github-ratelimit/v2 v2.0.2
 
 require (
+	github.com/Antonboom/testifylint v1.6.0 // indirect
+	github.com/air-verse/air v1.61.7 // indirect
+	github.com/bep/godartsass v1.2.0 // indirect
+	github.com/bep/godartsass/v2 v2.1.0 // indirect
+	github.com/bep/golibsass v1.2.0 // indirect
+	github.com/cli/safeexec v1.0.1 // indirect
+	github.com/creack/pty v1.1.23 // indirect
+	github.com/fatih/color v1.17.0 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/gobwas/glob v0.2.3 // indirect
+	github.com/gohugoio/hugo v0.134.3 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/pelletier/go-toml v1.9.5 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
+	github.com/rakyll/gotest v0.0.6 // indirect
+	github.com/rogpeppe/gohack v1.0.2 // indirect
+	github.com/spf13/afero v1.11.0 // indirect
+	github.com/tdewolff/parse/v2 v2.7.15 // indirect
 	go.opentelemetry.io/otel v1.29.0 // indirect
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect
+	golang.org/x/tools/go/vcs v0.1.0-deprecated // indirect
+	google.golang.org/protobuf v1.35.1 // indirect
+	gopkg.in/errgo.v2 v2.1.0 // indirect
 )
 
 require (
@@ -39,7 +60,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
-	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/getkin/kin-openapi v0.127.0 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
@@ -83,13 +103,13 @@ require (
 	go.uber.org/dig v1.18.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
-	golang.org/x/mod v0.23.0 // indirect
-	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
-	golang.org/x/tools v0.30.0 // indirect
+	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/tools v0.31.0 // indirect
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	howett.net/plist v1.0.1 // indirect
@@ -103,7 +123,6 @@ require (
 	github.com/danielgtaylor/huma/v2 v2.31.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gobeam/stringy v0.0.7
-	github.com/gorilla/handlers v1.5.2
 	github.com/itchyny/gojq v0.12.17
 	github.com/jaypipes/ghw v0.15.0
 	github.com/lmittmann/tint v1.0.7
@@ -122,6 +141,15 @@ require (
 	moul.io/banner v1.0.1
 )
 
-replace github.com/jpillora/overseer => ../../jpillora/overseer
+tool (
+	github.com/Antonboom/testifylint
+	github.com/air-verse/air
+	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
+	github.com/rakyll/gotest
+	github.com/rogpeppe/gohack
+	go.uber.org/mock/mockgen
+)
 
-tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
+replace github.com/samber/slog-http => /root/gohack/github.com/samber/slog-http
+
+replace github.com/jpillora/overseer => /root/gohack/github.com/jpillora/overseer

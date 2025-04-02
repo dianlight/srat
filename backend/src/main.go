@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -90,6 +91,7 @@ func main() {
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
+	singleInstance := flag.Bool("single-instance", false, "Single instance mode - only one instance of the addon can run ***ONLY FOR DEBUG***")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -132,16 +134,34 @@ func main() {
 
 	updateFilePath = os.TempDir() + "/" + filepath.Base(os.Args[0])
 
-	overseer.Run(overseer.Config{
-		Program: prog,
-		Address: fmt.Sprintf(":%d", *http_port),
-		Fetcher: &fetcher.File{
-			Path:     updateFilePath,
-			Interval: 1 * time.Second,
-		},
-		TerminateTimeout: 60,
-		Debug:            false,
-	})
+	if *singleInstance {
+		slog.Debug("Single instance mode")
+		// Run the program directly
+		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", *http_port))
+		if err != nil {
+			log.Fatalf("Failed to listen on port %d: %s", *http_port, err)
+		}
+		prog(overseer.State{
+			Address:  fmt.Sprintf(":%d", *http_port),
+			Listener: listener,
+		})
+		os.Exit(0)
+	} else {
+		overseer.Run(overseer.Config{
+			Program: prog,
+			Address: fmt.Sprintf(":%d", *http_port),
+			Fetcher: &fetcher.File{
+				Path:     updateFilePath,
+				Interval: 1 * time.Second,
+			},
+			TerminateTimeout: 60,
+			Debug:            false,
+		})
+	}
+}
+
+type writeDeadliner interface {
+	SetWriteDeadline(time.Time) error
 }
 
 func prog(state overseer.State) {
@@ -150,6 +170,8 @@ func prog(state overseer.State) {
 	fmt.Printf("SambaNAS Rest Administration Interface (%s)\n", state.ID)
 	fmt.Printf("Version: %s\n\n", SRATVersion)
 	slog.Debug("Startup Options", "Flags", os.Args)
+
+	slog.Debug("Starting SRAT", "version", SRATVersion, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
 
 	// Check template file
 	if *templateFile == "" {
