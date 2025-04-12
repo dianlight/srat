@@ -16,8 +16,8 @@ import (
 type MountToDbom interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt ID DeviceId PrimaryPath IsInvalid InvalidError Warnings IsMounted
-	// goverter:map Device Source | removeDevPrefix
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt DeviceId IsInvalid InvalidError Warnings IsMounted
+	// goverter:map Device Device | removeDevPrefix
 	// goverter:map Flags Flags | uintptrToMounDataFlags
 	MountToMountPointPath(source *mount.MountPoint, target *dbom.MountPointPath) error
 }

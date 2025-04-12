@@ -12,15 +12,15 @@ type MountToDbomImpl struct{}
 
 func (c *MountToDbomImpl) MountToMountPointPath(source *mount.MountPoint, target *dbom.MountPointPath) error {
 	if source != nil {
+		if source.Path != "" {
+			target.Path = source.Path
+		}
 		if source.Device != "" {
 			xstring, err := removeDevPrefix(source.Device)
 			if err != nil {
 				return err
 			}
-			target.Source = xstring
-		}
-		if source.Path != "" {
-			target.Path = source.Path
+			target.Device = xstring
 		}
 		if source.FSType != "" {
 			target.FSType = source.FSType

@@ -26,9 +26,9 @@ type ConfigToDtoConverter interface {
 	ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
 
 	// goverter:update target
-	// goverter:ignore  Flags IsInvalid InvalidError ID PrimaryPath Warnings
+	// goverter:ignore  Flags IsInvalid InvalidError Warnings
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
-	// goverter:map Path Source | PathToSource
+	// goverter:map Path Device | PathToSource
 	// goverter:map FS FSType
 	ShareToMountPointData(source config.Share, target *dto.MountPointData) error
 

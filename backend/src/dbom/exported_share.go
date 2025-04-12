@@ -9,17 +9,17 @@ import (
 )
 
 type ExportedShare struct {
-	Name             string `gorm:"primarykey"`
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	DeletedAt        gorm.DeletedAt `gorm:"index"`
-	Disabled         bool
-	Users            []SambaUser `gorm:"many2many:user_rw_share;constraint:OnUpdate:CASCADE"`
-	RoUsers          []SambaUser `gorm:"many2many:user_ro_share;constraint:OnUpdate:CASCADE"`
-	TimeMachine      bool
-	Usage            dto.HAMountUsage
-	MountPointDataID uint
-	MountPointData   MountPointPath `gorm:"foreignKey:MountPointDataID;references:ID;"`
+	Name               string `gorm:"primarykey"`
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	DeletedAt          gorm.DeletedAt `gorm:"index"`
+	Disabled           bool
+	Users              []SambaUser `gorm:"many2many:user_rw_share;constraint:OnUpdate:CASCADE"`
+	RoUsers            []SambaUser `gorm:"many2many:user_ro_share;constraint:OnUpdate:CASCADE"`
+	TimeMachine        bool
+	Usage              dto.HAMountUsage
+	MountPointDataPath string
+	MountPointData     MountPointPath `gorm:"foreignKey:MountPointDataPath;references:Path;"`
 }
 
 func (u *ExportedShare) BeforeSave(tx *gorm.DB) error {

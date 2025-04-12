@@ -80,6 +80,9 @@ type Drive struct {
 	// Removable Is the drive removable by the user?
 	Removable *bool `json:"removable,omitempty"`
 
+	// Revision Drive revisio.
+	Revision *string `json:"revision,omitempty"`
+
 	// Seat Identifier of seat drive is plugged into.
 	Seat *string `json:"seat,omitempty"`
 

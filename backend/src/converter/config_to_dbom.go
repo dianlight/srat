@@ -16,17 +16,18 @@ import (
 // goverter:wrapErrorsUsing github.com/dianlight/srat/converter/patherr
 type ConfigToDbomConverter interface {
 	// goverter:update target
-	// goverter:ignore MountPointData MountPointDataID
+	// goverter:ignore MountPointData
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:map Path MountPointDataPath
 	// goverter:context users
 	ShareToExportedShareNoMountPointPath(source config.Share, target *dbom.ExportedShare, users *dbom.SambaUsers) error
 
 	// goverter:update target
-	// goverter:ignore Flags ID DeviceId IsInvalid InvalidError
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt PrimaryPath Warnings
+	// goverter:ignore Flags DeviceId IsInvalid InvalidError
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt Warnings
 	// goverter:map FS FSType
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
-	// goverter:map Path Source | PathToSource
+	// goverter:map Path Device | PathToSource
 	ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error
 
 	// goverter:update target

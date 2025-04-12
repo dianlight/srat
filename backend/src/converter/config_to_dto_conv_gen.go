@@ -137,7 +137,7 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, ta
 		target.FSType = source.FS
 	}
 	if source.Path != "" {
-		target.Source = PathToSource(source.Path)
+		target.Device = PathToSource(source.Path)
 	}
 	if source.Path != "" {
 		xbool, err := osutil.IsMounted(source.Path)

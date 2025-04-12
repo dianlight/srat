@@ -5,30 +5,25 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/lsblk"
+	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/repository"
-	"github.com/jaypipes/ghw"
-	"github.com/jinzhu/copier"
 	"github.com/kr/pretty"
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
-	ublock "github.com/u-root/u-root/pkg/mount/block"
 	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
 
 type VolumeServiceInterface interface {
 	MountVolume(md dto.MountPointData) errors.E
-	UnmountVolume(id uint, force bool, lazy bool) errors.E
-	GetVolumesData() (*dto.BlockInfo, error)
+	UnmountVolume(id string, force bool, lazy bool) errors.E
+	GetVolumesData() (*[]dto.Disk, error)
 	NotifyClient()
 }
 
@@ -37,14 +32,16 @@ type VolumeService struct {
 	volumesQueueMutex sync.RWMutex
 	broascasting      BroadcasterServiceInterface
 	mount_repo        repository.MountPointPathRepositoryInterface
+	hardwareClient    *hardware.ClientWithResponses
 }
 
-func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface) VolumeServiceInterface {
+func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient *hardware.ClientWithResponses) VolumeServiceInterface {
 	p := &VolumeService{
 		ctx:               ctx,
 		broascasting:      broascasting,
 		volumesQueueMutex: sync.RWMutex{},
 		mount_repo:        mount_repo,
+		hardwareClient:    hardwareClient,
 	}
 	p.GetVolumesData()
 	go p.udevEventHandler()
@@ -52,7 +49,7 @@ func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterf
 }
 
 func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
-	dbom_mount_data, err := ms.mount_repo.FindByID(md.ID)
+	dbom_mount_data, err := ms.mount_repo.FindByPath(md.Path)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -62,9 +59,9 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 		return errors.WithStack(err)
 	}
 
-	if dbom_mount_data.Source == "" {
+	if dbom_mount_data.Device == "" {
 		return errors.WithDetails(dto.ErrorDeviceNotFound,
-			"Device", dbom_mount_data.Source,
+			"Device", dbom_mount_data.Device,
 			"Path", dbom_mount_data.Path,
 			"Message", "Source device is empty",
 		)
@@ -72,7 +69,7 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 
 	if dbom_mount_data.Path == "" {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
-			"Device", dbom_mount_data.Source,
+			"Device", dbom_mount_data.Device,
 			"Path", dbom_mount_data.Path,
 			"Message", "Mount point path is empty",
 		)
@@ -85,7 +82,7 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 
 	if dbom_mount_data.IsMounted && ok {
 		return errors.WithDetails(dto.ErrorMountFail,
-			"Device", dbom_mount_data.Source,
+			"Device", dbom_mount_data.Device,
 			"Path", dbom_mount_data.Path,
 			"Message", "Volume is already mounted",
 		)
@@ -103,21 +100,21 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 	flags, err := dbom_mount_data.Flags.Value()
 	if err != nil {
 		return errors.WithDetails(errors.Basef("%w Invalid Flags %w", dto.ErrorInvalidParameter, err),
-			"Device", dbom_mount_data.Source,
+			"Device", dbom_mount_data.Device,
 			"Path", dbom_mount_data.Path,
 			"Message", "Invalid Flags",
 		)
 	}
 	var mp *mount.MountPoint
 	if dbom_mount_data.FSType == "" {
-		mp, err = mount.TryMount("/dev/"+dbom_mount_data.Source, dbom_mount_data.Path, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
+		mp, err = mount.TryMount("/dev/"+dbom_mount_data.Device, dbom_mount_data.Path, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
 	} else {
-		mp, err = mount.Mount("/dev/"+dbom_mount_data.Source, dbom_mount_data.Path, dbom_mount_data.FSType, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
+		mp, err = mount.Mount("/dev/"+dbom_mount_data.Device, dbom_mount_data.Path, dbom_mount_data.FSType, "" /*mount_data.Data*/, uintptr(flags.(int64)), func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) })
 	}
 	if err != nil {
-		slog.Error("Failed to mount volume:", "source", dbom_mount_data.Source, "fstype", dbom_mount_data.FSType, "path", dbom_mount_data.Path, "flags", flags, "mp", mp)
+		slog.Error("Failed to mount volume:", "source", dbom_mount_data.Device, "fstype", dbom_mount_data.FSType, "path", dbom_mount_data.Path, "flags", flags, "mp", mp)
 		return errors.WithDetails(errors.Basef("%w Mount Error %w", dto.ErrorMountFail, err),
-			"Device", dbom_mount_data.Source,
+			"Device", dbom_mount_data.Device,
 			"Path", dbom_mount_data.Path,
 			"Message", "Mount failed",
 		)
@@ -137,8 +134,8 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 	return nil
 }
 
-func (ms *VolumeService) UnmountVolume(id uint, force bool, lazy bool) errors.E {
-	dbom_mount_data, err := ms.mount_repo.FindByID(id)
+func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) errors.E {
+	dbom_mount_data, err := ms.mount_repo.FindByPath(path)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -202,187 +199,259 @@ func (self *VolumeService) udevEventHandler() {
 
 }
 
-func (self *VolumeService) GetVolumesData() (*dto.BlockInfo, error) {
-	blockInfo, err := ghw.Block()
-	retBlockInfo := &dto.BlockInfo{}
+func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 
-	copier.Copy(retBlockInfo, blockInfo)
+	ret := []dto.Disk{}
+	conv := converter.HaHardwareToDtoImpl{}
+	dbconv := converter.DtoToDbomConverterImpl{}
+	//lsconv := converter.LsblkToDbomConverterImpl{}
 
-	//pretty.Print(blockInfo)
-	//pretty.Print(retBlockInfo)
+	hwser, err := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx, nil)
+	if err != nil {
+		slog.Warn("Error getting hardware info fallback to direct system!", "err", err)
+		/*
+			blockInfo, err := ghw.Block()
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
 
-	if err == nil {
-		for _, v := range blockInfo.Disks {
-			if len(v.Partitions) == 0 {
+			if err == nil {
+				for _, v := range blockInfo.Disks {
 
-				rblock, err := ublock.Device(v.Name)
-				if err != nil {
-					slog.Warn("Error getting block device for device", "dev", v.Name, "err", err)
-					continue
-				}
+					if len(v.Partitions) == 0 {
 
-				var partition = &dto.BlockPartition{
-					Name: rblock.Name,
-					Type: rblock.FSType,
-					UUID: rblock.FsUUID,
-				}
-
-				lsbkInfo, err := lsblk.GetInfoFromDevice(v.Name)
-				if err != nil {
-					slog.Debug("GetLabelsFromDevice failed", "err", err)
-					continue
-				}
-
-				if lsbkInfo.Partlabel == "unknown" {
-					lsbkInfo.Partlabel = lsbkInfo.Label
-				}
-
-				fs, flags, err := mount.FSFromBlock("/dev/" + v.Name)
-				if err != nil {
-					partition.Type = lsbkInfo.Fstype
-					if partition.Type == "unknown" && rblock.FSType != "" {
-						partition.Type = rblock.FSType
-					}
-					partition.PartitionFlags = []string{}
-				} else {
-					partition.Type = fs
-					tmp := dto.MountFlags{}
-					tmp.Scan(flags)
-					partition.PartitionFlags = tmp.Strings()
-				}
-
-				if partition.MountPoint != "" {
-					stat := syscall.Statfs_t{}
-					err := syscall.Statfs(partition.MountPoint, &stat)
-					if err == nil {
-						tmp := dto.MountFlags{}
-						tmp.Scan(stat.Flags)
-						partition.MountFlags = tmp.Strings()
-					}
-
-				}
-
-				if partition.Type == "unknown" || partition.Type == "swap" || partition.Type == "" {
-					continue
-				}
-
-				partition.Label = lsbkInfo.Partlabel
-				partition.FilesystemLabel = lsbkInfo.Label
-				partition.SizeBytes = v.SizeBytes
-				partition.MountPoint = lsbkInfo.Mountpoint
-
-				retBlockInfo.Partitions = append(retBlockInfo.Partitions, partition)
-
-			} else {
-				for _, d := range v.Partitions {
-					var partition = &dto.BlockPartition{}
-					copier.Copy(&partition, &d)
-
-					if partition.Label == "unknown" || partition.FilesystemLabel == "unknown" || partition.Type == "unknown" {
-						lsbkInfo, err := lsblk.GetInfoFromDevice(d.Name)
-						if err == nil {
-							if lsbkInfo.Label != "unknown" {
-								partition.FilesystemLabel = strings.Replace(partition.FilesystemLabel, "unknown", lsbkInfo.Label, 1)
-							}
-							if lsbkInfo.Partlabel != "unknown" {
-								partition.Label = strings.Replace(partition.Label, "unknown", lsbkInfo.Partlabel, 1)
-							}
-							if lsbkInfo.Fstype != "unknown" {
-								partition.Type = strings.Replace(partition.Type, "unknown", lsbkInfo.Fstype, 1)
-							}
+						rblock, err := ublock.Device(v.Name)
+						if err != nil {
+							slog.Warn("Error getting block device for device", "dev", v.Name, "err", err)
+							continue
 						}
-					}
 
-					if partition.Label == "unknown" {
-						partition.Label = partition.FilesystemLabel
-					}
-					if partition.Label == "unknown" && partition.FilesystemLabel == "unknown" {
-						partition.Label = partition.UUID
-					}
-					fs, flags, err := mount.FSFromBlock("/dev/" + v.Name)
-					if err == nil {
-						partition.Type = strings.Replace(d.Type, "unknown", fs, 1)
-						tmp := dto.MountFlags{}
-						tmp.Scan(flags)
-						partition.PartitionFlags = tmp.Strings()
-					}
+						var partition = &dto.BlockPartition{
+							Name: rblock.Name,
+							Type: rblock.FSType,
+							UUID: rblock.FsUUID,
+						}
 
-					if partition.MountPoint != "" {
-						stat := syscall.Statfs_t{}
-						err := syscall.Statfs(partition.MountPoint, &stat)
-						if err == nil {
+						lsbkInfo, err := lsblk.GetInfoFromDevice(v.Name)
+						if err != nil {
+							slog.Debug("GetLabelsFromDevice failed", "err", err)
+							continue
+						}
+
+						if lsbkInfo.Partlabel == "unknown" {
+							lsbkInfo.Partlabel = lsbkInfo.Label
+						}
+
+						fs, flags, err := mount.FSFromBlock("/dev/" + v.Name)
+						if err != nil {
+							partition.Type = lsbkInfo.Fstype
+							if partition.Type == "unknown" && rblock.FSType != "" {
+								partition.Type = rblock.FSType
+							}
+							partition.PartitionFlags = []string{}
+						} else {
+							partition.Type = fs
 							tmp := dto.MountFlags{}
-							tmp.Scan(stat.Flags)
-							partition.MountFlags = tmp.Strings()
+							tmp.Scan(flags)
+							partition.PartitionFlags = tmp.Strings()
+						}
+
+						if partition.MountPoint != "" {
+							stat := syscall.Statfs_t{}
+							err := syscall.Statfs(partition.MountPoint, &stat)
+							if err == nil {
+								tmp := dto.MountFlags{}
+								tmp.Scan(stat.Flags)
+								partition.MountFlags = tmp.Strings()
+							}
+
+						}
+
+						if partition.Type == "unknown" || partition.Type == "swap" || partition.Type == "" {
+							continue
+						}
+
+						partition.Label = lsbkInfo.Partlabel
+						partition.FilesystemLabel = lsbkInfo.Label
+						partition.SizeBytes = v.SizeBytes
+						partition.MountPoint = lsbkInfo.Mountpoint
+
+						retBlockInfo.Partitions = append(retBlockInfo.Partitions, partition)
+
+					} else {
+						for _, d := range v.Partitions {
+							var partition = &dto.BlockPartition{}
+							copier.Copy(&partition, &d)
+
+							if partition.Label == "unknown" || partition.FilesystemLabel == "unknown" || partition.Type == "unknown" {
+								lsbkInfo, err := lsblk.GetInfoFromDevice(d.Name)
+								if err == nil {
+									if lsbkInfo.Label != "unknown" {
+										partition.FilesystemLabel = strings.Replace(partition.FilesystemLabel, "unknown", lsbkInfo.Label, 1)
+									}
+									if lsbkInfo.Partlabel != "unknown" {
+										partition.Label = strings.Replace(partition.Label, "unknown", lsbkInfo.Partlabel, 1)
+									}
+									if lsbkInfo.Fstype != "unknown" {
+										partition.Type = strings.Replace(partition.Type, "unknown", lsbkInfo.Fstype, 1)
+									}
+								}
+							}
+
+							if partition.Label == "unknown" {
+								partition.Label = partition.FilesystemLabel
+							}
+							if partition.Label == "unknown" && partition.FilesystemLabel == "unknown" {
+								partition.Label = partition.UUID
+							}
+							fs, flags, err := mount.FSFromBlock("/dev/" + v.Name)
+							if err == nil {
+								partition.Type = strings.Replace(d.Type, "unknown", fs, 1)
+								tmp := dto.MountFlags{}
+								tmp.Scan(flags)
+								partition.PartitionFlags = tmp.Strings()
+							}
+
+							if partition.MountPoint != "" {
+								stat := syscall.Statfs_t{}
+								err := syscall.Statfs(partition.MountPoint, &stat)
+								if err == nil {
+									tmp := dto.MountFlags{}
+									tmp.Scan(stat.Flags)
+									partition.MountFlags = tmp.Strings()
+								}
+							}
+
+							if partition.Type == "unknown" || partition.Type == "swap" || partition.Type == "" {
+								continue
+							}
+
+							retBlockInfo.Partitions = append(retBlockInfo.Partitions, partition)
 						}
 					}
-
-					if partition.Type == "unknown" || partition.Type == "swap" || partition.Type == "" {
-						continue
-					}
-
-					retBlockInfo.Partitions = append(retBlockInfo.Partitions, partition)
 				}
 			}
+		*/
+	} else {
+
+		for _, drive := range *hwser.JSON200.Data.Drives {
+			if drive.Filesystems == nil || len(*drive.Filesystems) == 0 {
+				continue
+			}
+			var diskDto dto.Disk
+			err = conv.DriveToDisk(drive, &diskDto)
+			if err != nil {
+				slog.Warn("Error converting drive to disk", "err", err)
+				continue
+			}
+			if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 {
+				continue
+			}
+
+			ret = append(ret, diskDto)
 		}
 	}
 
-	// Popolate MountPoints from partitions
-	for i, partition := range retBlockInfo.Partitions {
-		var conv converter.DtoToDbomConverterImpl
-		var mount_data = &dbom.MountPointPath{}
-		err = conv.BlockPartitionToMountPointPath(*partition, mount_data)
-		//		slog.Debug("1.lags", "flapartition", partition.MountFlags, "mount_data", mount_data.Flags)
-
-		if err != nil {
-			slog.Warn("Error converting partition to mount point data", "err", err)
+	for _, disk := range ret {
+		if disk.Partitions == nil || len(*disk.Partitions) == 0 {
 			continue
 		}
-		if mount_data.Path == "" {
-			if partition.MountPoint != "" {
-				mount_data.Path = partition.MountPoint
-			} else if partition.FilesystemLabel != "unknown" {
-				mount_data.Path = "/mnt/" + partition.FilesystemLabel
-			} else if partition.Label != "unknown" {
-				mount_data.Path = "/mnt/" + partition.Label
-			} else if partition.UUID != "" {
-				mount_data.Path = "/mnt/" + partition.UUID
-			} else {
-				mount_data.Path = "/mnt/" + partition.Name
-			}
-		}
-
-		if partition.MountPoint == "" {
-			orgPath := mount_data.Path
-			for i := 1; i < 20; i++ {
-				ok, err := self.mount_repo.FindByPath(mount_data.Path)
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					break
-				}
-				if err != nil {
+		for i, partition := range *disk.Partitions {
+			for j, mountPoint := range *partition.MountPointData {
+				mountPointPath, err := self.mount_repo.FindByPath(mountPoint.Path)
+				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 					slog.Warn("Error search for a mount directory", "err", err)
 					continue
 				}
-				if ok.Source == partition.Name {
-					break
+
+				if mountPointPath == nil {
+					mountPointPath = &dbom.MountPointPath{}
 				}
-				mount_data.Path = orgPath + "_(" + strconv.Itoa(i) + ")"
+
+				err = dbconv.MountPointDataToMountPointPath(mountPoint, mountPointPath)
+				if err != nil {
+					slog.Warn("Error converting partition to mount point data", "err", err)
+					continue
+				}
+
+				err = self.mount_repo.Save(mountPointPath)
+				if err != nil {
+					if errors.Is(err, gorm.ErrDuplicatedKey) {
+						slog.Warn("Duplicate Key!", "data", mountPointPath, "err", err)
+					} else {
+						slog.Warn("Error saving mount point data", "data", mountPointPath, "err", err)
+					}
+					mountPointPath.IsInvalid = true
+					continue
+				}
+
+				dbconv.MountPointPathToMountPointData(*mountPointPath, &(*(*disk.Partitions)[i].MountPointData)[j])
 			}
 		}
-
-		err = self.mount_repo.Save(mount_data)
-		if err != nil {
-			slog.Warn("Error saving mount point data", "err", err)
-			mount_data.IsInvalid = true
-			continue
-		}
-		conv.MountPointPathToMountPointData(*mount_data, &retBlockInfo.Partitions[i].MountPointData)
-		//		slog.Debug("2.lags", "mount_data", mount_data.Flags, "flapartition", retBlockInfo.Partitions[i].MountPointData.Flags)
-
 	}
 
+	/*
+		// Popolate MountPoints from partitions
+		for i, partition := range retBlockInfo.Partitions {
+			var conv converter.DtoToDbomConverterImpl
+			var mount_data = &dbom.MountPointPath{}
+			err = conv.BlockPartitionToMountPointPath(*partition, mount_data)
+			//		slog.Debug("1.lags", "flapartition", partition.MountFlags, "mount_data", mount_data.Flags)
+
+			if err != nil {
+				slog.Warn("Error converting partition to mount point data", "err", err)
+				continue
+			}
+			if mount_data.MountPoint == "" {
+				if partition.MountPoint != "" {
+					mount_data.MountPoint = partition.MountPoint
+				} else if partition.FilesystemLabel != "unknown" {
+					mount_data.MountPoint = "/mnt/" + partition.FilesystemLabel
+				} else if partition.Label != "unknown" {
+					mount_data.MountPoint = "/mnt/" + partition.Label
+				} else if partition.UUID != "" {
+					mount_data.MountPoint = "/mnt/" + partition.UUID
+				} else {
+					mount_data.MountPoint = "/mnt/" + partition.Name
+				}
+			}
+
+			if partition.MountPoint == "" {
+				orgPath := mount_data.MountPoint
+				for i := 1; i < 20; i++ {
+					ok, err := self.mount_repo.FindByPath(mount_data.MountPoint)
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						break
+					}
+					if err != nil {
+						slog.Warn("Error search for a mount directory", "err", err)
+						continue
+					}
+					if ok.Device == partition.Name {
+						break
+					}
+					mount_data.MountPoint = orgPath + "_(" + strconv.Itoa(i) + ")"
+				}
+			}
+
+			err = self.mount_repo.Save(mount_data)
+			if err != nil {
+				if errors.Is(err, gorm.ErrDuplicatedKey) {
+					slog.Warn("Duplicate Key!", "data", mount_data, "err", err)
+				} else {
+					slog.Warn("Error saving mount point data", "data", mount_data, "err", err)
+				}
+				mount_data.IsInvalid = true
+				continue
+			}
+			conv.MountPointPathToMountPointData(*mount_data, &retBlockInfo.Partitions[i].MountPointData)
+			//		slog.Debug("2.lags", "mount_data", mount_data.Flags, "flapartition", retBlockInfo.Partitions[i].MountPointData.Flags)
+
+		}
+	*/
+
 	//pretty.Print(retBlockInfo)
-	return retBlockInfo, err
+	return &ret, err
 }
 
 func (self *VolumeService) NotifyClient() {

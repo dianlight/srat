@@ -59,9 +59,9 @@ func (suite *ShareHandlerSuite) TestListShares() {
 	for _, sdto := range resultsDto {
 		suite.NotEmpty(sdto.MountPointData.Path)
 		if sdto.MountPointData.IsInvalid {
-			suite.NoDirExists(sdto.MountPointData.Path, "DeviceId %s is Invalid=true but %s exist (%s)", sdto.MountPointData.Source, sdto.MountPointData.Path, *sdto.MountPointData.InvalidError)
+			suite.NoDirExists(sdto.MountPointData.Path, "DeviceId %s is Invalid=true but %s exist (%s)", sdto.MountPointData.Device, sdto.MountPointData.Path, *sdto.MountPointData.InvalidError)
 		} else {
-			suite.DirExists(sdto.MountPointData.Path, "DeviceId %s is Invalid=false but %s doesn't exist", sdto.MountPointData.Source, sdto.MountPointData.Path)
+			suite.DirExists(sdto.MountPointData.Path, "DeviceId %s is Invalid=false but %s doesn't exist", sdto.MountPointData.Device, sdto.MountPointData.Path)
 		}
 	}
 
@@ -88,7 +88,7 @@ func (suite *ShareHandlerSuite) TestGetShareHandler() {
 		{Username: pointer.String("rouser"), Password: pointer.String("rouser"), IsAdmin: pointer.Bool(false)},
 	})
 	expected.Name = resultShare.Name // Fix for testing
-	expected.MountPointData.ID = resultShare.MountPointData.ID
+	expected.MountPointData.Path = resultShare.MountPointData.Path
 	expected.MountPointData.IsInvalid = resultShare.MountPointData.IsInvalid
 	expected.MountPointData.InvalidError = resultShare.MountPointData.InvalidError
 	//assert.Equal(suite.T(), config.Shares["LIBRARY"], resultShare)
@@ -118,7 +118,7 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 		{Username: pointer.String("dianlight"), Password: pointer.String("hassio2010"), IsAdmin: pointer.Bool(true)},
 	} // Fix for testing
 	//share.Usage = "none"
-	share.MountPointData.ID = result.MountPointData.ID
+	share.MountPointData.Path = result.MountPointData.Path
 	share.MountPointData.IsInvalid = result.MountPointData.IsInvalid
 	share.MountPointData.InvalidError = result.MountPointData.InvalidError
 	suite.Equal(share, result)

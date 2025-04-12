@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -18,11 +19,8 @@ type MountPointPathRepository struct {
 type MountPointPathRepositoryInterface interface {
 	All() ([]dbom.MountPointPath, error)
 	Save(mp *dbom.MountPointPath) error
-	FindByID(id uint) (*dbom.MountPointPath, error)
 	FindByPath(path string) (*dbom.MountPointPath, error)
-	Exists(id uint) (bool, error)
-	// Delete(mp *dbom.MountPointPath) error
-	// Update(mp *dbom.MountPointPath) error
+	Exists(id string) (bool, error)
 }
 
 func NewMountPointPathRepository(db *gorm.DB) MountPointPathRepositoryInterface {
@@ -38,29 +36,32 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	tx := r.db.Begin()
 	defer tx.Rollback()
 	//slog.Debug("Save checkpoint", "mp", mp)
-	if mp.ID == 0 {
-		//data, _ := r.All()
-		//slog.Debug("Chekp", "all", data)
-		existingRecord := dbom.MountPointPath{}
-		res := tx.Limit(1).Find(&existingRecord, "path = ? and source = ?", mp.Path, mp.Source)
-		//slog.Debug("Return", "res", res, "ext", existingRecord)
-		if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return errors.WithStack(res.Error)
-		} else if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			if mp.DeviceId != 0 && existingRecord.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
-				return errors.Errorf("DeviceId mismatch for %s | mp:%d db:%d", mp.Path, mp.DeviceId, existingRecord.DeviceId)
-			}
-			//slog.Debug("Save checkpoint", "mp", mp, "exists", existingRecord)
-			err := copier.CopyWithOption(&existingRecord, mp, copier.Option{IgnoreEmpty: true})
-			if err != nil {
-				return errors.WithStack(err)
-			}
-			*mp = existingRecord
-			//slog.Debug("Save checkpoint", "mp", mp, "exists", existingRecord)
+
+	existingRecord := dbom.MountPointPath{}
+	res := tx.Debug().Take(&existingRecord, "path = ?", mp.Path)
+
+	slog.Warn("Return", "res", res, "ext", existingRecord)
+	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		// Errore Generico
+		return errors.WithStack(res.Error)
+	} else if res.Error == nil {
+		// Record Found
+		if mp.DeviceId != 0 && existingRecord.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
+			return errors.Errorf("DeviceId mismatch for %s | mp:%d db:%d", mp.Path, mp.DeviceId, existingRecord.DeviceId)
 		}
+		slog.Warn("Save checkpoint", "mp", mp, "exists", existingRecord)
+		err := copier.CopyWithOption(&existingRecord, mp, copier.Option{IgnoreEmpty: true})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		*mp = existingRecord
+		slog.Warn("Save checkpoint", "mp", mp, "exists", existingRecord)
+	} else {
+		// Record Not Found
+		slog.Debug("New MountPoint", "mp", mp)
 	}
 
-	if strings.HasPrefix(mp.Source, "/dev") {
+	if strings.HasPrefix(mp.Device, "/dev") {
 		panic(errors.Errorf("Invalid Source with /dev prefix %v", mp))
 	}
 	// slog.Debug("Save checkpoint", "mp", mp)
@@ -71,12 +72,6 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	tx.Commit()
 	return nil
 
-}
-
-func (r *MountPointPathRepository) FindByID(id uint) (*dbom.MountPointPath, error) {
-	var mp dbom.MountPointPath
-	err := r.db.First(&mp, id).Error
-	return &mp, err
 }
 
 func (r *MountPointPathRepository) FindByPath(path string) (*dbom.MountPointPath, error) {
@@ -91,21 +86,9 @@ func (r *MountPointPathRepository) All() (Data []dbom.MountPointPath, Error erro
 	return mps, err
 }
 
-/*
-func (r *MountPointPathRepository) Delete(mp *dbom.MountPointPath) error {
-	return r.db.Delete(mp).Error
-}
-
-func (r *MountPointPathRepository) Update(mp *dbom.MountPointPath) error {
-	return r.db.Save(mp).Error
-}
-*/
-
-// Exists checks if a MountPointPath exists in the database by its ID.
-
-func (r *MountPointPathRepository) Exists(id uint) (bool, error) {
+func (r *MountPointPathRepository) Exists(path string) (bool, error) {
 	var mp dbom.MountPointPath
-	err := r.db.First(&mp, id).Error
+	err := r.db.Where("path = ?", path).First(&mp).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return false, nil
 	}

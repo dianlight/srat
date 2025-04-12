@@ -45,9 +45,8 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveWithoutData() 
 func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 
 	testMountPoint := dbom.MountPointPath{
-		Path: "/mnt/test",
-		//Label:  "Test Drive",
-		Source: "test_drive",
+		Path:   "/mnt/test",
+		Device: "test_drive",
 		FSType: "ext4",
 		Flags:  []dbom.MounDataFlag{dbom.MS_RDONLY, dbom.MS_NOATIME},
 		//Data:   "rw,noatime",
@@ -66,7 +65,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 		{
 			Path: "/mnt/test1",
 			//Label:  "Test 1",
-			Source: "test1",
+			Device: "test1",
 			FSType: "ext4",
 			Flags:  []dbom.MounDataFlag{dbom.MS_RDONLY, dbom.MS_NOATIME},
 			//Data:     "rw,noatime",
@@ -75,7 +74,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 		{
 			Path: "/mnt/test2",
 			//Label:  "Test 2",
-			Source: "test2",
+			Device: "test2",
 			FSType: "ntfs",
 			Flags:  []dbom.MounDataFlag{dbom.MS_BIND},
 			//Data:     "bind",
@@ -101,7 +100,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 	for i, mp := range mountPoints {
 		suite.Equal(expectedMountPoints[i].Path, mp.Path)
 		//assert.Equal(t, expectedMountPoints[i].Label, mp.Label)
-		suite.Equal(expectedMountPoints[i].Source, mp.Source)
+		suite.Equal(expectedMountPoints[i].Device, mp.Device)
 		suite.Equal(expectedMountPoints[i].FSType, mp.FSType)
 		suite.Equal(expectedMountPoints[i].Flags, mp.Flags)
 		//assert.Equal(t, expectedMountPoints[i].Data, mp.Data)

@@ -103,6 +103,9 @@ components:
         model:
           type: string
           description: Drive model.
+        revision:
+          type: string
+          description: Drive revisio.
         serial:
           type: string
           description: Drive serial number.

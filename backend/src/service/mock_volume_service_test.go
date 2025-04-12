@@ -44,10 +44,10 @@ func (m *MockVolumeServiceInterface) EXPECT() *MockVolumeServiceInterfaceMockRec
 }
 
 // GetVolumesData mocks base method.
-func (m *MockVolumeServiceInterface) GetVolumesData() (*dto.BlockInfo, error) {
+func (m *MockVolumeServiceInterface) GetVolumesData() (*[]dto.Disk, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetVolumesData")
-	ret0, _ := ret[0].(*dto.BlockInfo)
+	ret0, _ := ret[0].(*[]dto.Disk)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -85,7 +85,7 @@ func (mr *MockVolumeServiceInterfaceMockRecorder) NotifyClient() *gomock.Call {
 }
 
 // UnmountVolume mocks base method.
-func (m *MockVolumeServiceInterface) UnmountVolume(id uint, force, lazy bool) errors.E {
+func (m *MockVolumeServiceInterface) UnmountVolume(id string, force, lazy bool) errors.E {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnmountVolume", id, force, lazy)
 	ret0, _ := ret[0].(errors.E)

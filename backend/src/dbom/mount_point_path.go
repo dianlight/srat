@@ -16,11 +16,9 @@ import (
 )
 
 type MountPointPath struct {
-	ID           uint `gorm:"primarykey"`
+	Path         string `gorm:"primarykey"`
 	DeviceId     uint64
-	Source       string
-	Path         string `gorm:"uniqueIndex"`
-	PrimaryPath  string
+	Device       string
 	FSType       string
 	Flags        MounDataFlags `gorm:"type:mount_data_flags"`
 	CreatedAt    time.Time
@@ -64,7 +62,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 		if len(u.Flags) == 0 {
 			u.Flags.Scan(stat.Flags)
 		}
-		if u.Source == "" {
+		if u.Device == "" {
 			u.IsInvalid = true
 			u.InvalidError = pointer.String("Unknown device source for " + u.Path)
 			info, err := osutil.LoadMountInfo()
@@ -74,8 +72,8 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 			for _, m := range info {
 
 				if m.MountDir == u.Path {
-					u.Source = m.MountSource
-					u.PrimaryPath = m.MountDir
+					u.Device = m.MountSource
+					//u.PrimaryPath = m.MountDir
 					u.FSType = m.FsType
 					//u.Data = m.
 					u.IsInvalid = false
@@ -84,8 +82,8 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 				} else {
 					same, _ := mount.SameFilesystem(u.Path, m.MountDir)
 					if same {
-						u.PrimaryPath = m.MountDir
-						u.Source = m.MountSource
+						//u.PrimaryPath = m.MountDir
+						u.Device = m.MountSource
 						u.FSType = m.FsType
 						//u.Data = m.
 						u.IsInvalid = false
@@ -96,8 +94,8 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 				}
 			}
 		}
-		if u.FSType == "" && u.Source != "" {
-			fs, flags, err := mount.FSFromBlock(u.Source)
+		if u.FSType == "" && u.Device != "" {
+			fs, flags, err := mount.FSFromBlock(u.Device)
 			if err != nil {
 				u.IsInvalid = true
 				u.InvalidError = pointer.String(fmt.Sprintf("error: %#+v", err))

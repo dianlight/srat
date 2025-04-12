@@ -30,6 +30,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/homeassistant/ingress"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
@@ -63,6 +64,7 @@ var frontend *string
 var supervisorURL *string
 var supervisorToken *string
 var logLevel slog.Level
+var automount *bool
 
 // Static files
 //
@@ -92,6 +94,7 @@ func main() {
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	singleInstance := flag.Bool("single-instance", false, "Single instance mode - only one instance of the addon can run ***ONLY FOR DEBUG***")
+	automount = flag.Bool("automount", false, "Automount mode - mount all shares automatically")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -168,7 +171,8 @@ func prog(state overseer.State) {
 
 	fmt.Println(banner.Inline("srat"))
 	fmt.Printf("SambaNAS Rest Administration Interface (%s)\n", state.ID)
-	fmt.Printf("Version: %s\n\n", SRATVersion)
+	fmt.Printf("Version: %s\n", SRATVersion)
+	fmt.Printf("Listening on %v\n\n", &state.Addresses)
 	slog.Debug("Startup Options", "Flags", os.Args)
 
 	slog.Debug("Starting SRAT", "version", SRATVersion, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
@@ -283,10 +287,18 @@ func prog(state overseer.State) {
 				}
 				return ingressClient
 			},
+			func(bearerAuth *securityprovider.SecurityProviderBearerToken) *hardware.ClientWithResponses {
+				hardwareClient, err := hardware.NewClientWithResponses(*supervisorURL, hardware.WithRequestEditorFn(bearerAuth.Intercept))
+				if err != nil {
+					log.Fatal(err)
+				}
+				return hardwareClient
+			},
 		),
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
 			exported_share_repo repository.ExportedShareRepositoryInterface,
+			hardwareClient *hardware.ClientWithResponses,
 		) {
 			// JSON Config  Migration if necessary
 			// Get config and migrate if DB is empty
@@ -307,6 +319,11 @@ func prog(state overseer.State) {
 				err = dbutil.FirstTimeJSONImporter(config, mount_repo, exported_share_repo)
 				if err != nil {
 					log.Fatalf("Cant import json settings - %#+v", err)
+				}
+			} else {
+				if automount != nil && *automount {
+					// Automount all shares
+					slog.Info("******* Automounting all shares! ********")
 				}
 			}
 		}),
@@ -385,19 +402,6 @@ func prog(state overseer.State) {
 	).Run()
 
 	dbom.CloseDB()
-	/*
-			// Static files
-		globalRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/static/", http.StatusPermanentRedirect)
-		})
-		globalRouter.PathPrefix("/").Handler(http.FileServerFS(content)).Methods(http.MethodGet)
-
-		// Print content directory recursively
-			fs.WalkDir(content, ".", func(p string, d fs.DirEntry, err error) error {
-				log.Printf("dir=%s, path=%s\n", path.Dir(p), p)
-				return nil
-			})
-	*/
 
 	log.Println("shutting down")
 	os.Exit(0)

@@ -97,14 +97,17 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 	if source.Usage != "" {
 		target.Usage = dto.HAMountUsage(source.Usage)
 	}
+	if source.Path != "" {
+		target.MountPointDataPath = source.Path
+	}
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error {
 	if source.Path != "" {
-		target.Source = PathToSource(source.Path)
+		target.Path = source.Path
 	}
 	if source.Path != "" {
-		target.Path = source.Path
+		target.Device = PathToSource(source.Path)
 	}
 	if source.FS != "" {
 		target.FSType = source.FS

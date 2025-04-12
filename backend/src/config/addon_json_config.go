@@ -207,48 +207,6 @@ func (in *Config) MigrateConfig() error {
 		slog.Debug("Migrating config from version 2 to version 3")
 		in.ConfigSpecVersion = 3
 		for shareName, share := range in.Shares {
-			/*
-				for ix, user := range share.Users {
-					switch user.(type) {
-					case string:
-						{
-							ux := funk.Find(in.OtherUsers, func(u User) bool { return u.Username == user.(string) })
-							if ux != nil {
-								share.Users[ix] = ux
-							} else if user.(string) == in.Username {
-								share.Users[ix] = User{Username: in.Username, Password: in.Password}
-							} else {
-								share.Users[ix] = User{Username: user.(string), Password: "<invalid password>"}
-							}
-						}
-					case User:
-					default:
-						{
-							log.Printf("Unknown user type in share %s: %T", shareName, user)
-						}
-					}
-				}
-				for ix, user := range share.RoUsers {
-					switch user.(type) {
-					case string:
-						{
-							ux := funk.Find(in.OtherUsers, func(u User) bool { return u.Username == user.(string) })
-							if ux != nil {
-								share.RoUsers[ix] = ux
-							} else if user.(string) == in.Username {
-								share.RoUsers[ix] = User{Username: in.Username, Password: in.Password}
-							} else {
-								share.RoUsers[ix] = User{Username: user.(string), Password: "<invalid password>"}
-							}
-						}
-					case User:
-					default:
-						{
-							log.Printf("Unknown rouser type in share %s: %T", shareName, user)
-						}
-					}
-				}
-			*/
 			if share.Usage == "" && in.Automount {
 				share.Usage = "media"
 				in.Shares[shareName] = share

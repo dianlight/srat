@@ -137,8 +137,15 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 	dbshare := &dbom.ExportedShare{
 		Name: input.Body.Name,
 	}
+	_, err := self.exported_share_repo.FindByName(input.Body.Name)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	} else if err == nil {
+		return nil, huma.Error409Conflict("Share already exists")
+	}
+
 	var conv converter.DtoToDbomConverterImpl
-	err := conv.SharedResourceToExportedShare(input.Body, dbshare)
+	err = conv.SharedResourceToExportedShare(input.Body, dbshare)
 	if err != nil {
 		return nil, err
 	}

@@ -28,7 +28,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Save() {
 		Name: "test_share",
 		MountPointData: dbom.MountPointPath{
 			Path:   "/mnt/test_share",
-			Source: "test_source",
+			Device: "test_source",
 			FSType: "ext4",
 		},
 	}
@@ -51,7 +51,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_SaveAll(
 			Name: "test_share1",
 			MountPointData: dbom.MountPointPath{
 				Path:   "/mnt/test_share1",
-				Source: "test_source1",
+				Device: "test_source1",
 				FSType: "ext4",
 			},
 		},
@@ -59,7 +59,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_SaveAll(
 			Name: "test_share2",
 			MountPointData: dbom.MountPointPath{
 				Path:   "/mnt/test_share2",
-				Source: "test_source2",
+				Device: "test_source2",
 				FSType: "ntfs",
 			},
 		},
@@ -81,7 +81,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_FindByNa
 		Name: "find_me",
 		MountPointData: dbom.MountPointPath{
 			Path:   "/mnt/find_me",
-			Source: "find_source",
+			Device: "find_source",
 			FSType: "ext4",
 		},
 		Users: []dbom.SambaUser{
@@ -129,7 +129,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 			Name: "all_share1",
 			MountPointData: dbom.MountPointPath{
 				Path:   "/mnt/all_share1",
-				Source: "all_source1",
+				Device: "all_source1",
 				FSType: "ext4",
 			},
 			Users:   []dbom.SambaUser{},
@@ -139,7 +139,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 			Name: "all_share2",
 			MountPointData: dbom.MountPointPath{
 				Path:   "/mnt/all_share2",
-				Source: "all_source2",
+				Device: "all_source2",
 				FSType: "ntfs",
 			},
 			Users:   []dbom.SambaUser{},
@@ -172,7 +172,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Delete()
 		Name: "delete_me",
 		MountPointData: dbom.MountPointPath{
 			Path:   "/mnt/delete_me",
-			Source: "delete_source",
+			Device: "delete_source",
 			FSType: "ext4",
 		},
 	}
@@ -200,7 +200,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_UpdateNa
 		Name: "old_name",
 		MountPointData: dbom.MountPointPath{
 			Path:   "/mnt/old_name",
-			Source: "old_source",
+			Device: "old_source",
 			FSType: "ext4",
 		},
 	}

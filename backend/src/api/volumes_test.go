@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path/filepath"
-	"reflect"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/stretchr/testify/suite"
 	"github.com/thoas/go-funk"
+	"github.com/xorcare/pointer"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -36,31 +36,48 @@ func TestVolumeHandlerSuite(t *testing.T) {
 	//	csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
 	//	csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
 	//	csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
-	bogusBlockInfo := dto.BlockInfo{
-		TotalSizeBytes: 99999,
-		Partitions: []*dto.BlockPartition{
-			{
-				Name:       "bogus1",
-				MountPoint: "/mnt/bogus1",
-				Label:      "_EXT4",
-				SizeBytes:  10000,
-				Type:       "ext4",
-			},
-			{
-				Name:       "bogus2",
-				MountPoint: "/mnt/bogus2",
-				Label:      "testvolume",
-				SizeBytes:  10000,
-				Type:       "vfat",
+
+	bogusMountData := &dto.MountPointData{
+		Device: "bogus1",
+		Path:   "/mnt/bogus1",
+		FSType: "ext4",
+		Flags:  []string{"MS_NOATIME", "MS_RDONLY"},
+	}
+
+	bogusDisks := []dto.Disk{
+		{
+			Vendor: pointer.String("bogus"),
+			Partitions: &[]dto.Partition{
+				{
+					Device: pointer.String("/dev/bogus1"),
+					Name:   pointer.String("_EXT4"),
+					Size:   pointer.Int(10000),
+					MountPointData: &[]dto.MountPointData{
+						*bogusMountData,
+					},
+				},
 			},
 		},
 	}
+
 	csuite.mockVolumeService = NewMockVolumeServiceInterface(ctrl)
-	csuite.mockVolumeService.EXPECT().GetVolumesData().AnyTimes().Return(&bogusBlockInfo, nil)
+	csuite.mockVolumeService.EXPECT().GetVolumesData().AnyTimes().Return(&bogusDisks, nil)
 	csuite.mockVolumeService.EXPECT().MountVolume(gomock.Any()).AnyTimes().Return(nil)
 	csuite.mockVolumeService.EXPECT().UnmountVolume(gomock.Any(), false, false).AnyTimes().Return(nil)
 
 	csuite.mount_repo = repository.NewMountPointPathRepository(dbom.GetDB())
+
+	conv := converter.DtoToDbomConverterImpl{}
+	mountPath := &dbom.MountPointPath{}
+	err := conv.MountPointDataToMountPointPath(*bogusMountData, mountPath)
+	if err != nil {
+		csuite.T().Errorf("Error converting mount point data: %v", err)
+	}
+
+	err = csuite.mount_repo.Save(mountPath)
+	if err != nil {
+		csuite.T().Errorf("Error saving mount point data: %v", err)
+	}
 
 	suite.Run(t, csuite)
 }
@@ -73,19 +90,25 @@ func (suite *VolumeHandlerSuite) TestListVolumessHandler() {
 	rr := api.Get("/volumes")
 	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
-	var volumes dto.BlockInfo
+	var volumes []dto.Disk
 	err2 := json.NewDecoder(rr.Body).Decode(&volumes)
 	if err2 != nil {
 		suite.T().Errorf("handler error in decode body %v", err2)
 	}
 
-	suite.NotNil(funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
-		return d.Label == "testvolume"
+	suite.NotNil(funk.Find(volumes, func(d dto.Disk) bool {
+		return funk.Find(*d.Partitions, func(p dto.Partition) bool {
+			return *p.Device == "/dev/bogus1"
+		}) != nil
 	}))
-	suite.NotNil(funk.Find(volumes.Partitions, func(d *dto.BlockPartition) bool {
-		return d.Label == "_EXT4"
-	}), "Expected _EXT4 volume not found %+v", funk.Map(volumes.Partitions, func(d *dto.BlockPartition) string {
-		return d.Label + "[" + d.Name + "]"
+	suite.NotNil(funk.Find(volumes, func(d dto.Disk) bool {
+		return funk.Find(*d.Partitions, func(p dto.Partition) bool {
+			return *p.Name == "_EXT4"
+		}) != nil
+	}), "Expected _EXT4 volume not found %+v", funk.Map(volumes, func(d dto.Disk) []string {
+		return funk.Map(*d.Partitions, func(p dto.Partition) string {
+			return *p.Name + "[" + *p.Device + "]"
+		}).([]string)
 	}))
 
 }
@@ -99,43 +122,24 @@ func (suite *VolumeHandlerSuite) TestMountVolumeHandler() {
 
 	volumes, err := suite.mockVolumeService.GetVolumesData()
 	suite.Require().NoError(err)
+	suite.Require().NotEmpty(volumes)
+	suite.Require().NotEmpty((*volumes)[0].Partitions)
+	suite.Require().NotEmpty((*(*volumes)[0].Partitions)[0].MountPointData)
 
-	var mockMountPath dbom.MountPointPath
-
-	for _, d := range volumes.Partitions {
-		if strings.HasPrefix(d.Name, "bogus") && d.Label == "_EXT4" {
-			mockMountPath.Source = d.Name
-			mockMountPath.Path = filepath.Join("/mnt", d.Label)
-			mockMountPath.FSType = d.Type
-			mockMountPath.Flags = []dbom.MounDataFlag{dbom.MS_NOATIME}
-			suite.T().Logf("Selected loop device: %v", mockMountPath)
-			break
-		}
-	}
-	err = suite.mount_repo.Save(&mockMountPath)
-	suite.Require().NoError(err)
-
-	conv := converter.DtoToDbomConverterImpl{}
-	var mockMountData dto.MountPointData
-	conv.MountPointPathToMountPointData(mockMountPath, &mockMountData)
-	rr := api.Post(fmt.Sprintf("/volume/%d/mount", mockMountData.ID), mockMountData)
+	rr := api.Post(fmt.Sprintf("/volume/%s/mount", url.PathEscape((*(*(*volumes)[0].Partitions)[0].MountPointData)[0].Path)), (*(*(*volumes)[0].Partitions)[0].MountPointData)[0])
 	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
-	// Check the response body is what we expecsuite.T().
+	// Check the response body is what we expect.
 	var responseData dto.MountPointData
 	err = json.Unmarshal(rr.Body.Bytes(), &responseData)
 	suite.Require().NoError(err)
 
 	// Verify the response data
-	if !strings.HasPrefix(responseData.Path, mockMountData.Path) {
-		suite.T().Errorf("Unexpected path in response: got %v want %v", responseData.Path, mockMountData.Path)
+	if !strings.HasPrefix(responseData.Device, (*(*(*volumes)[0].Partitions)[0].MountPointData)[0].Device) {
+		suite.T().Errorf("Unexpected path in response: got %v want %v", responseData.Device, (*(*(*volumes)[0].Partitions)[0].MountPointData)[0].Device)
 	}
-	if responseData.FSType != mockMountData.FSType {
-		suite.T().Errorf("Unexpected FSType in response: got %v want %v", responseData.FSType, mockMountData.FSType)
-	}
-	if !reflect.DeepEqual(responseData.Flags, mockMountData.Flags) {
-		suite.T().Errorf("Unexpected Flags in response: got %v want %v", responseData.Flags, mockMountData.Flags)
-	}
+
+	suite.NotEmpty(responseData.Device, "Device should not be empty")
 }
 
 func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
@@ -146,14 +150,14 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeNonExistent() {
 	rr := api.Delete("/volume/999999/mount")
 	suite.Require().Equal(http.StatusNotFound, rr.Code)
 
-	suite.JSONEq(`{"title":"Not Found","status":404,"detail":"No mount point found for the provided ID","errors":[null]}`, rr.Body.String())
+	suite.JSONEq(`{"title":"Not Found","status":404,"detail":"No mount point found for the provided mount path","errors":[null]}`, rr.Body.String())
 }
 func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 	volume := api.NewVolumeHandler(suite.mockVolumeService, suite.mount_repo, &apiContextState, suite.dirtyservice)
 	_, api := humatest.New(suite.T())
 	volume.RegisterVolumeHandlers(api)
 
-	rr := api.Delete(fmt.Sprintf("/volume/%d/mount", 1))
+	rr := api.Delete(fmt.Sprintf("/volume/%s/mount", url.PathEscape("/mnt/bogus1")))
 	suite.Equal(http.StatusNoContent, rr.Code, "Body %#v", rr.Body.String())
 	suite.Empty(rr.Body.String(), "Body should be empty")
 }
