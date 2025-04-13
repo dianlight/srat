@@ -1,7 +1,5 @@
 package dto
 
-import "time"
-
 // Disk defines model for  Disk.
 type Disk struct {
 	// ConnectionBus Physical connection bus of the drive (USB, etc.).
@@ -35,7 +33,7 @@ type Disk struct {
 	Size *int `json:"size,omitempty"`
 
 	// TimeDetected Time drive was detected by system.
-	TimeDetected *time.Time `json:"time_detected,omitempty"`
+	//TimeDetected *time.Time `json:"time_detected,omitempty"`
 
 	// Vendor Drive vendor.
 	Vendor *string `json:"vendor,omitempty"`

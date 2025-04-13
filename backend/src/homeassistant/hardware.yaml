@@ -115,10 +115,10 @@ components:
         size:
           type: integer
           description: Size of the drive in bytes.
-        time_detected:
-          type: string
-          format: date-time
-          description: Time drive was detected by system.
+        #time_detected:
+        #  type: string
+        #  format: date-time
+        #  description: Time drive was detected by system.
         connection_bus:
           type: string
           description: Physical connection bus of the drive (USB, etc.).

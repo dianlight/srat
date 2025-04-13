@@ -287,7 +287,7 @@ func prog(state overseer.State) {
 				}
 				return ingressClient
 			},
-			func(bearerAuth *securityprovider.SecurityProviderBearerToken) *hardware.ClientWithResponses {
+			func(bearerAuth *securityprovider.SecurityProviderBearerToken) hardware.ClientWithResponsesInterface {
 				hardwareClient, err := hardware.NewClientWithResponses(*supervisorURL, hardware.WithRequestEditorFn(bearerAuth.Intercept))
 				if err != nil {
 					log.Fatal(err)
@@ -298,7 +298,7 @@ func prog(state overseer.State) {
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
 			exported_share_repo repository.ExportedShareRepositoryInterface,
-			hardwareClient *hardware.ClientWithResponses,
+			hardwareClient hardware.ClientWithResponsesInterface,
 		) {
 			// JSON Config  Migration if necessary
 			// Get config and migrate if DB is empty

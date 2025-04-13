@@ -16,13 +16,6 @@ components:
     BlockInfo:
       additionalProperties: false
       properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/BlockInfo.json
-          format: uri
-          readOnly: true
-          type: string
         partitions:
           items:
             $ref: "#/components/schemas/BlockPartition"
@@ -142,6 +135,38 @@ components:
         - users
         - volumes
         - settings
+      type: object
+    Disk:
+      additionalProperties: false
+      properties:
+        connection_bus:
+          type: string
+        ejectable:
+          type: boolean
+        id:
+          type: string
+        model:
+          type: string
+        partitions:
+          items:
+            $ref: "#/components/schemas/Partition"
+          type: array
+        removable:
+          type: boolean
+        revision:
+          type: string
+        seat:
+          type: string
+        serial:
+          type: string
+        size:
+          format: int64
+          type: integer
+        time_detected:
+          format: date-time
+          type: string
+        vendor:
+          type: string
       type: object
     ErrorDetail:
       additionalProperties: false
@@ -274,6 +299,8 @@ components:
           format: uri
           readOnly: true
           type: string
+        device:
+          type: string
         flags:
           items:
             enum:
@@ -296,10 +323,6 @@ components:
             - "null"
         fstype:
           type: string
-        id:
-          format: int64
-          minimum: 0
-          type: integer
         invalid:
           type: boolean
         invalid_error:
@@ -308,14 +331,9 @@ components:
           type: boolean
         path:
           type: string
-        primary_path:
-          type: string
-        source:
-          type: string
         warnings:
           type: string
       required:
-        - id
         - path
       type: object
     NIC:
@@ -356,6 +374,25 @@ components:
             - "null"
       required:
         - nics
+      type: object
+    Partition:
+      additionalProperties: false
+      properties:
+        device:
+          type: string
+        id:
+          type: string
+        mount_point_data:
+          items:
+            $ref: "#/components/schemas/MountPointData"
+          type: array
+        name:
+          type: string
+        size:
+          format: int64
+          type: integer
+        system:
+          type: boolean
       type: object
     ReleaseAsset:
       additionalProperties: false
@@ -1129,6 +1166,24 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          $ref: "#/components/schemas/UpdateProgress"
+                        event:
+                          const: updating
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event updating
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/BlockInfo"
                         event:
                           const: volumes
@@ -1220,24 +1275,6 @@ paths:
                         - data
                         - event
                       title: Event update
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/UpdateProgress"
-                        event:
-                          const: updating
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event updating
                       type: object
                 title: Server Sent Events
                 type: array
@@ -1489,23 +1526,20 @@ paths:
       summary: List users
       tags:
         - user
-  /volume/{id}/mount:
+  /volume/{mount_path}/mount:
     delete:
-      operationId: delete-volume-by-id-mount
+      operationId: delete-volume-by-mount-path-mount
       parameters:
-        - description: ID of the driver to mount
-          example: 1234
+        - description: Thepath to mount (URL Encoded)
+          example: "%2Fmnt%2Ftest"
           in: path
-          name: id
+          name: mount_path
           required: true
           schema:
-            description: ID of the driver to mount
+            description: Thepath to mount (URL Encoded)
             examples:
-              - 1234
-            exclusiveMinimum: 0
-            format: int64
-            minimum: 0
-            type: integer
+              - "%2Fmnt%2Ftest"
+            type: string
         - description: Force umount operation
           explode: false
           in: query
@@ -1531,25 +1565,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
-      summary: Delete volume by ID mount
+      summary: Delete volume by mount path mount
       tags:
         - volume
     post:
-      operationId: post-volume-by-id-mount
+      operationId: post-volume-by-mount-path-mount
       parameters:
-        - description: ID of the driver to mount
-          example: 1234
+        - description: The path to mount (URL Encoded)
+          example: "%2Fmnt%2Ftest"
           in: path
-          name: id
+          name: mount_path
           required: true
           schema:
-            description: ID of the driver to mount
+            description: The path to mount (URL Encoded)
             examples:
-              - 1234
-            exclusiveMinimum: 0
-            format: int64
-            minimum: 0
-            type: integer
+              - "%2Fmnt%2Ftest"
+            type: string
       requestBody:
         content:
           application/json:
@@ -1569,18 +1600,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
-      summary: Post volume by ID mount
+      summary: Post volume by mount path mount
       tags:
         - volume
   /volumes:
     get:
-      operationId: get-volumes
+      operationId: list-volumes
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BlockInfo"
+                items:
+                  $ref: "#/components/schemas/Disk"
+                type:
+                  - array
+                  - "null"
           description: OK
         default:
           content:
@@ -1588,7 +1623,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
-      summary: Get volumes
+      summary: List volumes
       tags:
         - volume
 security:

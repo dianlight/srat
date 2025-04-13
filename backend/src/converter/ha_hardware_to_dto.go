@@ -40,7 +40,6 @@ func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointD
 	fstype, flags, err := mount.FSFromBlock(*source.Device)
 	if err != nil {
 		slog.Warn("Failed to get filesystem type and flags", "device", source.Device, "error", err)
-		return nil
 	}
 
 	M_flags := dto.MountFlags{}

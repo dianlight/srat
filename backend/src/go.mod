@@ -39,6 +39,7 @@ require (
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/rogpeppe/gohack v1.0.2 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tdewolff/parse/v2 v2.7.15 // indirect
 	go.opentelemetry.io/otel v1.29.0 // indirect
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect

@@ -32,10 +32,10 @@ type VolumeService struct {
 	volumesQueueMutex sync.RWMutex
 	broascasting      BroadcasterServiceInterface
 	mount_repo        repository.MountPointPathRepositoryInterface
-	hardwareClient    *hardware.ClientWithResponses
+	hardwareClient    hardware.ClientWithResponsesInterface
 }
 
-func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient *hardware.ClientWithResponses) VolumeServiceInterface {
+func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface) VolumeServiceInterface {
 	p := &VolumeService{
 		ctx:               ctx,
 		broascasting:      broascasting,
@@ -43,7 +43,7 @@ func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterf
 		mount_repo:        mount_repo,
 		hardwareClient:    hardwareClient,
 	}
-	p.GetVolumesData()
+	//p.GetVolumesData()
 	go p.udevEventHandler()
 	return p
 }
@@ -206,7 +206,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 	dbconv := converter.DtoToDbomConverterImpl{}
 	//lsconv := converter.LsblkToDbomConverterImpl{}
 
-	hwser, err := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx, nil)
+	hwser, err := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx)
 	if err != nil {
 		slog.Warn("Error getting hardware info fallback to direct system!", "err", err)
 		/*

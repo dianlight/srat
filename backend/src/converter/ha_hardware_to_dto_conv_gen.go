@@ -48,9 +48,6 @@ func (c *HaHardwareToDtoImpl) DriveToDisk(source hardware.Drive, target *dto.Dis
 	if source.Size != nil {
 		target.Size = source.Size
 	}
-	if source.TimeDetected != nil {
-		target.TimeDetected = source.TimeDetected
-	}
 	if source.Vendor != nil {
 		target.Vendor = source.Vendor
 	}

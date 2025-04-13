@@ -121,6 +121,7 @@ const injectedRtkApi = api
       }),
       sse: build.query<SseApiResponse, SseApiArg>({
         query: () => ({ url: `/sse` }),
+        providesTags: ["system"],
       }),
       putUpdate: build.mutation<PutUpdateApiResponse, PutUpdateApiArg>({
         query: () => ({ url: `/update`, method: "PUT" }),

@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 const (
@@ -91,9 +90,6 @@ type Drive struct {
 
 	// Size Size of the drive in bytes.
 	Size *int `json:"size,omitempty"`
-
-	// TimeDetected Time drive was detected by system.
-	TimeDetected *time.Time `json:"time_detected,omitempty"`
 
 	// Vendor Drive vendor.
 	Vendor *string `json:"vendor,omitempty"`
