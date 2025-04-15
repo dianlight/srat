@@ -158,7 +158,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 	// Assert
 	suite.Require().NoError(err)
 	suite.Require().Len(allShares, 2)
-	if !cmp.Equal(shares, allShares, cmpopts.IgnoreFields(dbom.ExportedShare{}, "CreatedAt", "UpdatedAt", "DeletedAt", "MountPointDataID", "MountPointData")) {
+	if !cmp.Equal(shares, allShares, cmpopts.IgnoreFields(dbom.ExportedShare{}, "CreatedAt", "UpdatedAt", "DeletedAt", "MountPointDataPath", "MountPointData")) {
 		suite.Equal(shares, allShares)
 	}
 

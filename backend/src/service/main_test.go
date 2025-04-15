@@ -6,12 +6,14 @@ import (
 	"log/slog"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
+	"github.com/lmittmann/tint"
 	"github.com/snapcore/snapd/osutil"
 )
 
@@ -21,6 +23,14 @@ var exported_share_repo repository.ExportedShareRepositoryInterface
 
 func TestMain(m *testing.M) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	slog.SetDefault(slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+			//NoColor:    !isatty.IsTerminal(os.Stderr.Fd()),
+			AddSource: true,
+		}),
+	))
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 
 	os.Setenv("HOSTNAME", "test-host")

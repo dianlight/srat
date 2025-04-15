@@ -20,6 +20,8 @@ const (
 )
 */
 
-var ErrorMountFail = errors.Base("Unable to mount {{.Device}} on {{.Path}}. {{.Message}}")
-var ErrorDeviceNotFound = errors.Base("Device not found {{.DeviceID}}")
-var ErrorInvalidParameter = errors.Base("Invalid parameter: {{.Key}}. {{.Message}}")
+var ErrorMountFail = errors.Base("Mount Fail")
+var ErrorUnmountFail = errors.Base("Umount Fail")
+var ErrorDeviceNotFound = errors.Base("Device not found")
+var ErrorInvalidParameter = errors.Base("Invalid parameter")
+var ErrorDatabaseError = errors.Base("Database error")
