@@ -460,9 +460,10 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 				mountPointPathDB, err := self.mount_repo.FindByPath(mountPointDto.Path)
 				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 					slog.Warn("Error searching for mount point in DB", "path", mountPointDto.Path, "err", err)
-					mountPointDto.IsInvalid = true                                          // Mark DTO as invalid due to DB error
-					*mountPointDto.InvalidError = errors.Wrap(err, "DB find error").Error() // Updated to use Error() method
-					continue                                                                // Skip this mount point
+					mountPointDto.IsInvalid = true // Mark DTO as invalid due to DB error
+					invalidError := errors.Wrap(err, "DB find error").Error()
+					mountPointDto.InvalidError = &invalidError
+					continue // Skip this mount point
 				}
 
 				isNewRecord := errors.Is(err, gorm.ErrRecordNotFound)
@@ -478,9 +479,10 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 				err = dbconv.MountPointDataToMountPointPath(*mountPointDto, mountPointPathDB)
 				if err != nil {
 					slog.Warn("Error converting DTO mount point data to DBOM", "path", mountPointDto.Path, "err", err)
-					mountPointDto.IsInvalid = true                                                         // Mark DTO as invalid due to conversion error
-					*mountPointDto.InvalidError = errors.Wrap(err, "DTO to DBOM conversion error").Error() // Updated to use Error() method
-					continue                                                                               // Skip this mount point
+					mountPointDto.IsInvalid = true                                           // Mark DTO as invalid due to conversion error
+					invalidError := errors.Wrap(err, "DTO to DBOM conversion error").Error() // Updated to use Error() method
+					mountPointDto.InvalidError = &invalidError
+					continue // Skip this mount point
 				}
 
 				// Check OS mount status *before* saving, update IsMounted in DB object
@@ -502,9 +504,10 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 				err = self.mount_repo.Save(mountPointPathDB)
 				if err != nil {
 					slog.Warn("Error saving mount point data to DB", "path", mountPointPathDB.Path, "data", mountPointPathDB, "err", err)
-					mountPointDto.IsInvalid = true                                          // Mark DTO as invalid due to DB save error
-					*mountPointDto.InvalidError = errors.Wrap(err, "DB save error").Error() // Updated to use Error() method
-					continue                                                                // Skip this mount point
+					mountPointDto.IsInvalid = true                            // Mark DTO as invalid due to DB save error
+					invalidError := errors.Wrap(err, "DB save error").Error() // Updated to use Error() method
+					mountPointDto.InvalidError = &invalidError
+					continue // Skip this mount point
 				}
 
 				// Convert the final DB state (after save and OS check) back to the DTO
@@ -513,9 +516,11 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 				if err != nil {
 					// This conversion should ideally not fail if the reverse worked
 					slog.Error("Error converting DBOM mount point data back to DTO", "path", mountPointPathDB.Path, "err", err)
-					mountPointDto.IsInvalid = true                                                         // Mark DTO as invalid
-					*mountPointDto.InvalidError = errors.Wrap(err, "DBOM to DTO conversion error").Error() // Updated to use Error() method
+					mountPointDto.IsInvalid = true                                           // Mark DTO as invalid
+					invalidError := errors.Wrap(err, "DBOM to DTO conversion error").Error() // Updated to use Error() method
+					mountPointDto.InvalidError = &invalidError                               // Set the invalid error
 					// Continue, but DTO might be slightly inconsistent
+					continue
 				}
 				slog.Debug("Successfully synced mount point with DB", "path", mountPointDto.Path, "is_mounted", mountPointDto.IsMounted)
 			}

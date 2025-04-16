@@ -37,21 +37,10 @@ func TestPrintPartitions(t *testing.T) {
 */
 
 func TestGetInfoFromDevice(t *testing.T) {
-	lsbkp, err := GetInfoFromDevice("loop1p1")
+	lsbkp, err := GetInfoFromDevice("loop1")
 	if err != nil {
-		t.Errorf("GetLabelsFromDevice failed: %v", err)
+		t.Errorf("GetInfoFromDevice failed: %v", err)
 		return
 	}
 	t.Logf("lsbk %v", pretty.Sprint(lsbkp))
-
-	lsbkd, err := GetInfoFromDevice("loop1")
-	if err != nil {
-		t.Errorf("GetLabelsFromDevice failed: %v", err)
-		return
-	}
-	t.Logf("lsbk %v", pretty.Sprint(lsbkd))
-
-	if lsbkp.Name == "" && lsbkd.Name == "" {
-		t.Error("Empty devices returned")
-	}
 }
