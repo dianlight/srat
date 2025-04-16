@@ -32,7 +32,7 @@ type SupervisorCITestSuite struct {
 // &docker> docker inspect addon_local_sambanas | grep SUPERVISOR_TOKEN
 func TestSupervisorCITestSuite(t *testing.T) {
 	// Skip test if Supervisor URL or Token are not set
-	if os.Getenv("SUPERVISOR_URL") == "" || os.Getenv("SUPERVISOR_TOKEN") == "" {
+	if os.Getenv("SUPERVISOR_URL") == "" || os.Getenv("SUPERVISOR_TOKEN") == "" || os.Getenv("SUPERVISOR_TOKEN") == "<put me here!>" {
 		t.Skip("Skipping Supervisor integration tests because SUPERVISOR_URL or SUPERVISOR_TOKEN is not set")
 	}
 	suite.Run(t, new(SupervisorCITestSuite))
