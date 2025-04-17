@@ -172,7 +172,7 @@ func prog(state overseer.State) {
 	fmt.Println(banner.Inline("srat"))
 	fmt.Printf("SambaNAS Rest Administration Interface (%s)\n", state.ID)
 	fmt.Printf("Version: %s\n", SRATVersion)
-	fmt.Printf("Listening on %v\n\n", &state.Addresses)
+	fmt.Printf("Listening on %v\n\n", state.Addresses)
 	slog.Debug("Startup Options", "Flags", os.Args)
 
 	slog.Debug("Starting SRAT", "version", SRATVersion, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
@@ -197,7 +197,7 @@ func prog(state overseer.State) {
 	}
 
 	if *smbConfigFile == "" {
-		log.Fatal("Missing samba config!")
+		log.Fatalf("Missing samba config! %s", *smbConfigFile)
 	}
 
 	if *roMode {
@@ -381,7 +381,7 @@ func prog(state overseer.State) {
 						if err != nil {
 							slog.Error("Unable to generate YAML", "err", err)
 						}
-						err = os.WriteFile("src/docs/openapi.yaml", yaml, 0644)
+						err = os.WriteFile("docs/openapi.yaml", yaml, 0644)
 						if err != nil {
 							slog.Error("Unable to write YAML", "err", err)
 						}
@@ -389,7 +389,7 @@ func prog(state overseer.State) {
 						if err != nil {
 							slog.Error("Unable to generate JSON", "err", err)
 						}
-						err = os.WriteFile("src/docs/openapi.json", json, 0644)
+						err = os.WriteFile("docs/openapi.json", json, 0644)
 						if err != nil {
 							slog.Error("Unable to write JSON", "err", err)
 						}

@@ -1,12 +1,10 @@
 import { NavBar } from "./components/NavBar";
 import { Footer } from "./components/Footer";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 //import { DirtyDataContext, ModeContext } from "./Contexts";
 import { useErrorBoundary } from "react-use-error-boundary";
 import Container from "@mui/material/Container";
 import { Backdrop, CircularProgress, Typography } from "@mui/material";
-import { useSSE, SSEProvider } from 'react-hooks-sse';
-import { DtoEventType, type DtoDataDirtyTracker, type DtoHealthPing } from "./store/sratApi";
 import { useHealth } from "./hooks/healthHook";
 
 
@@ -118,5 +116,6 @@ export function App() {
         </>
         /*
             </DirtyDataContext.Provider>
-        </ModeContext.Provider>*/)
+        </ModeContext.Provider>*/
+    );
 }

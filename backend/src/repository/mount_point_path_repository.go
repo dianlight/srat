@@ -38,7 +38,7 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	//slog.Debug("Save checkpoint", "mp", mp)
 
 	existingRecord := dbom.MountPointPath{}
-	res := tx.Debug().Take(&existingRecord, "path = ?", mp.Path)
+	res := tx.Take(&existingRecord, "path = ?", mp.Path)
 
 	slog.Warn("Return", "res", res, "ext", existingRecord)
 	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
@@ -62,7 +62,8 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	}
 
 	if strings.HasPrefix(mp.Device, "/dev") {
-		panic(errors.Errorf("Invalid Source with /dev prefix %v", mp))
+		mp.Device = strings.TrimPrefix(mp.Device, "/dev/")
+		//panic(errors.Errorf("Invalid Source with /dev prefix %v", mp))
 	}
 	// slog.Debug("Save checkpoint", "mp", mp)
 	err := tx.Save(mp).Error

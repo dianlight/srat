@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Fab, List, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Dialog, DialogTitle, Stack, DialogContent, DialogContentText, Grid2 as Grid, DialogActions, Button } from "@mui/material";
+import { Fab, List, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Dialog, DialogTitle, Stack, DialogContent, DialogContentText, Grid as Grid, DialogActions, Button } from "@mui/material";
 import { InView } from "react-intersection-observer";
 import { useConfirm } from "material-ui-confirm";
 import PersonAddIcon from '@mui/icons-material/PersonAdd';

@@ -1,7 +1,7 @@
 import { DevTool } from "@hookform/devtools";
 import { useContext, useEffect, useRef } from "react";
 import { InView } from "react-intersection-observer";
-import Grid from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 import Button from "@mui/material/Button";
 import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement, useForm, Controller } from "react-hook-form-mui";
 import { MuiChipsInput } from 'mui-chips-input'

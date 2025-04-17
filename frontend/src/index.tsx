@@ -21,7 +21,11 @@ import { Supported_events } from './store/sratApi.ts';
 import { apiUrl } from './store/emptyApi.ts';
 
 const theme = createTheme({
+    cssVariables: {
+        colorSchemeSelector: 'class',
+    },
     colorSchemes: {
+        light: true,
         dark: true,
     },
 });

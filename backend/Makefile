@@ -58,7 +58,7 @@ gen: $(SRCS)
 .PHONY: dev
 dev:
 	#cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json $(ARGS)
-	air
+	cd $(SRC_DIRS);go tool air
 
 .PHONY: update
 update:

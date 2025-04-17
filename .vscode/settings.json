@@ -1,22 +1,24 @@
 {
-    "conventionalCommits.scopes": [
-      "api",
-      "gh_actions",
-      "monorepo",
-      "webapp",
-      "http_server",
-      "samba",
-      "docker",
-      "sensors"
-    ],
-    "makefile.configureOnOpen": false,
-    "better-comments.highlightPlainText": true,
-    "commitSage.commit.commitFormat": "emoji",
-    "commitSage.commit.onlyStagedChanges": true,
-    "commitSage.commit.promptForRefs": true,
-    "commitSage.gemini.model": "gemini-2.0-flash-exp",
-    "geminicodeassist.updateChannel": "Default",
-    "geminicodeassist.beta.enableGeneratedCodeDocumentationView": true,
-    "geminicodeassist.codeGenerationPaneViewEnabled": true,
-    "remote.localPortHost": "allInterfaces"
+  "conventionalCommits.scopes": [
+    "api",
+    "gh_actions",
+    "monorepo",
+    "webapp",
+    "http_server",
+    "samba",
+    "docker",
+    "sensors"
+  ],
+  "makefile.configureOnOpen": false,
+  "better-comments.highlightPlainText": true,
+  "commitSage.commit.commitFormat": "emoji",
+  "commitSage.commit.onlyStagedChanges": true,
+  "commitSage.commit.promptForRefs": true,
+  "commitSage.gemini.model": "gemini-2.0-flash-exp",
+  "geminicodeassist.updateChannel": "Default",
+  "geminicodeassist.beta.enableGeneratedCodeDocumentationView": true,
+  "geminicodeassist.codeGenerationPaneViewEnabled": true,
+  "remote.localPortHost": "allInterfaces",
+  "typescript.inlayHints.parameterTypes.enabled": true,
+  "typescript.inlayHints.propertyDeclarationTypes.enabled": true
 }

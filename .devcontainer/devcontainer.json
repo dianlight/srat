@@ -1,11 +1,14 @@
 {
 	"name": "SRAT",
 	"image": "ghcr.io/hassio-addons/base:17.2.1",
-	"runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined","--privileged"],
+	"runArgs": [
+		"--cap-add=SYS_PTRACE",
+		"--security-opt",
+		"seccomp=unconfined",
+		"--privileged"
+	],
 	"updateContentCommand": {
-		"mainScrip":"./.devcontainer/updateContentCommand.sh",
-		"removeLoop":"./.devcontainer/removeTestDevices.sh",
-		"createLoop":"./.devcontainer/createTestDevices.sh"
+		"mainScrip": "./.devcontainer/updateContentCommand.sh"
 	},
 	"portsAttributes": {
 		"8080": {
@@ -13,15 +16,15 @@
 			"onAutoForward": "silent",
 			"protocol": "http",
 			"hostPort": 8080,
-            "containerPort": 8080
+			"containerPort": 8080
 		},
 		"3000": {
 			"label": "FrontEnd",
 			"onAutoForward": "silent",
 			"protocol": "http",
 			"hostPort": 3000,
-            "containerPort": 3000
-		},		
+			"containerPort": 3000
+		},
 		"8090": {
 			"label": "Dev Autoreload",
 			"onAutoForward": "silent",
@@ -29,27 +32,27 @@
 			"requireLocalPort": true,
 			"protocol": "http",
 			"hostPort": 8090,
-            "containerPort": 8090
-		}		
-	},	
+			"containerPort": 8090
+		}
+	},
 	"remoteEnv": {
-		"BUN_INSTALL":"${containerEnv:HOME}/.bun",
-		"PATH":"${containerEnv:HOME}/.bun/bin:${containerEnv:PATH}",
-		"SUPERVISOR_URL":"http://homeassistant2.local/",
-		"SUPERVISOR_TOKEN":"<put me here!>"
+		"BUN_INSTALL": "${containerEnv:HOME}/.bun",
+		"PATH": "${containerEnv:HOME}/.bun/bin:${containerEnv:PATH}",
+		"SUPERVISOR_URL": "http://homeassistant2.local/",
+		"SUPERVISOR_TOKEN": "<put me here!>"
 	},
 	"customizations": {
 		"vscode": {
-			"settings": { 
+			"settings": {
 				"terminal.integrated.profiles.linux": {
 					"bash": {
-					  "path": "/bin/bash"
+						"path": "/bin/bash"
 					}
-				  },
+				},
 				"terminal.integrated.defaultProfile.linux": "bash",
 				"go.toolsManagement.checkForUpdates": "local",
 				"go.useLanguageServer": true,
-				"go.lintTool":"golangci-lint",
+				"go.lintTool": "golangci-lint",
 				"go.lintFlags": [
 					"--fast"
 				]
@@ -68,7 +71,7 @@
 				"VizzleTF.geminicommit",
 				"google.geminicodeassist",
 				"zoellner.openapi-preview"
-			]		
+			]
 		}
 	},
 	"features": {

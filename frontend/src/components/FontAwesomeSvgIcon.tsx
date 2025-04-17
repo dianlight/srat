@@ -25,9 +25,9 @@ export const FontAwesomeSvgIcon = React.forwardRef<SVGSVGElement, FontAwesomeSvg
                      *
                      * @see https://fontawesome.com/how-to-use/on-the-web/styling/duotone-icons#changing-opacity
                      */
-                    svgPathData.map((d: string, i: number) => (
+                    (svgPathData.map((d: string, i: number) => (
                         <path style={{ opacity: i === 0 ? 0.4 : 1 }} d={d} />
-                    ))
+                    )))
                 )}
             </SvgIcon>
         );

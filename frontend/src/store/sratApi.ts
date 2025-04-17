@@ -185,12 +185,12 @@ const injectedRtkApi = api
         query: () => ({ url: `/users` }),
         providesTags: ["user"],
       }),
-      deleteVolumeByIdMount: build.mutation<
-        DeleteVolumeByIdMountApiResponse,
-        DeleteVolumeByIdMountApiArg
+      deleteVolumeByMountPathMount: build.mutation<
+        DeleteVolumeByMountPathMountApiResponse,
+        DeleteVolumeByMountPathMountApiArg
       >({
         query: (queryArg) => ({
-          url: `/volume/${queryArg.id}/mount`,
+          url: `/volume/${queryArg.mountPath}/mount`,
           method: "DELETE",
           params: {
             force: queryArg.force,
@@ -199,12 +199,12 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["volume"],
       }),
-      postVolumeByIdMount: build.mutation<
-        PostVolumeByIdMountApiResponse,
-        PostVolumeByIdMountApiArg
+      postVolumeByMountPathMount: build.mutation<
+        PostVolumeByMountPathMountApiResponse,
+        PostVolumeByMountPathMountApiArg
       >({
         query: (queryArg) => ({
-          url: `/volume/${queryArg.id}/mount`,
+          url: `/volume/${queryArg.mountPath}/mount`,
           method: "POST",
           body: queryArg.mountPointData,
         }),
@@ -296,33 +296,6 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
-          data: BlockInfo;
-          /** The event name. */
-          event: "volumes";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: HealthPing;
-          /** The event name. */
-          event: "heartbeat";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: SharedResource[] | null;
-          /** The event name. */
-          event: "share";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
           data: Welcome;
           /** The event name. */
           event: "hello";
@@ -344,6 +317,33 @@ export type SseApiResponse = /** status 200 OK */
           data: UpdateProgress;
           /** The event name. */
           event: "updating";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: BlockInfo;
+          /** The event name. */
+          event: "volumes";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: HealthPing;
+          /** The event name. */
+          event: "heartbeat";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: SharedResource[] | null;
+          /** The event name. */
+          event: "share";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -396,26 +396,26 @@ export type GetUsersApiResponse =
   | /** status 200 OK */ (User[] | null)
   | /** status default Error */ ErrorModel;
 export type GetUsersApiArg = void;
-export type DeleteVolumeByIdMountApiResponse =
+export type DeleteVolumeByMountPathMountApiResponse =
   /** status default Error */ ErrorModel;
-export type DeleteVolumeByIdMountApiArg = {
-  /** ID of the driver to mount */
-  id: number;
+export type DeleteVolumeByMountPathMountApiArg = {
+  /** Thepath to mount (URL Encoded) */
+  mountPath: string;
   /** Force umount operation */
   force?: boolean;
   /** Lazy umount operation */
   lazy?: boolean;
 };
-export type PostVolumeByIdMountApiResponse = /** status 200 OK */
+export type PostVolumeByMountPathMountApiResponse = /** status 200 OK */
   | MountPointData
   | /** status default Error */ ErrorModel;
-export type PostVolumeByIdMountApiArg = {
-  /** ID of the driver to mount */
-  id: number;
+export type PostVolumeByMountPathMountApiArg = {
+  /** The path to mount (URL Encoded) */
+  mountPath: string;
   mountPointData: MountPointData;
 };
-export type GetVolumesApiResponse = /** status 200 OK */
-  | BlockInfo
+export type GetVolumesApiResponse =
+  | /** status 200 OK */ (Disk[] | null)
   | /** status default Error */ ErrorModel;
 export type GetVolumesApiArg = void;
 export type ErrorDetail = {
@@ -524,15 +524,13 @@ export type JsonPatchOp = {
 export type MountPointData = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  device?: string;
   flags?: Flags[] | null;
   fstype?: string;
-  id: number;
   invalid?: boolean;
   invalid_error?: string;
   is_mounted?: boolean;
   path: string;
-  primary_path?: string;
-  source?: string;
   warnings?: string;
 };
 export type User = {
@@ -554,6 +552,17 @@ export type SharedResource = {
   usage?: Usage;
   users?: User[] | null;
 };
+export type Welcome = {
+  message: string;
+  supported_events: Supported_events;
+};
+export type UpdateProgress = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  last_release?: string;
+  update_error?: string;
+  update_status: number;
+};
 export type BlockPartition = {
   default_mount_point: string;
   device_id: number | null;
@@ -571,21 +580,29 @@ export type BlockPartition = {
   uuid: string;
 };
 export type BlockInfo = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
   partitions: BlockPartition[] | null;
   total_size_bytes: number;
 };
-export type Welcome = {
-  message: string;
-  supported_events: Supported_events;
+export type Partition = {
+  device?: string;
+  id?: string;
+  mount_point_data?: MountPointData[];
+  name?: string;
+  size?: number;
+  system?: boolean;
 };
-export type UpdateProgress = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  last_release?: string;
-  update_error?: string;
-  update_status: number;
+export type Disk = {
+  connection_bus?: string;
+  ejectable?: boolean;
+  id?: string;
+  model?: string;
+  partitions?: Partition[];
+  removable?: boolean;
+  revision?: string;
+  seat?: string;
+  serial?: string;
+  size?: number;
+  vendor?: string;
 };
 export enum Update_channel {
   Stable = "stable",
@@ -622,6 +639,15 @@ export enum Usage {
   Share = "share",
   Internal = "internal",
 }
+export enum Supported_events {
+  Hello = "hello",
+  Update = "update",
+  Updating = "updating",
+  Volumes = "volumes",
+  Heartbeat = "heartbeat",
+  Share = "share",
+  Dirty = "dirty",
+}
 export enum Mount_flags {
   MsRdonly = "MS_RDONLY",
   MsNosuid = "MS_NOSUID",
@@ -652,15 +678,6 @@ export enum Partition_flags {
   MsNouser = "MS_NOUSER",
   MsRelatime = "MS_RELATIME",
 }
-export enum Supported_events {
-  Hello = "hello",
-  Update = "update",
-  Updating = "updating",
-  Volumes = "volumes",
-  Heartbeat = "heartbeat",
-  Share = "share",
-  Dirty = "dirty",
-}
 export const {
   useGetFilesystemsQuery,
   useGetHealthQuery,
@@ -686,7 +703,7 @@ export const {
   usePatchUseradminMutation,
   usePutUseradminMutation,
   useGetUsersQuery,
-  useDeleteVolumeByIdMountMutation,
-  usePostVolumeByIdMountMutation,
+  useDeleteVolumeByMountPathMountMutation,
+  usePostVolumeByMountPathMountMutation,
   useGetVolumesQuery,
 } = injectedRtkApi;

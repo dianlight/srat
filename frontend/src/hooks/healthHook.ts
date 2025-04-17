@@ -11,7 +11,8 @@ export function useHealth() {
         dirty_tracking: {} as DataDirtyTracker,
         last_error: "",
         last_release: {} as ReleaseAsset,
-        samba_process_status: {} as SambaProcessStatus
+        samba_process_status: {} as SambaProcessStatus,
+        secure_mode: false,
     });
 
     const { data, error, isLoading } = useGetHealthQuery();

@@ -1,7 +1,7 @@
 import { Fragment, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { InView } from "react-intersection-observer";
-import Grid from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import IconButton from "@mui/material/IconButton";
@@ -375,8 +375,8 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 ...props.objectToEdit,
                 usersNames: props.objectToEdit?.users?.map(user => user.username as string) || [],
                 roUsersNames: props.objectToEdit?.ro_users?.map(user => user.username as string) || [],
-                volumeId: props.objectToEdit.mount_point_data?.id ?
-                    volumes.volumes?.partitions?.
+                volumeId: props.objectToEdit.mount_point_data?.path ?
+                    volumes.disks?.partitions?.
                         filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/")).
                         find(mount => mount.mount_point_data?.id === props.objectToEdit?.mount_point_data?.id)?.mount_point_data?.id
                     : undefined
@@ -393,7 +393,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
             props.onClose()
             return
         }
-        data.mount_point_data = volumes.volumes?.partitions?.find(mount => mount.mount_point_data?.id === data.volumeId)?.mount_point_data;
+        data.mount_point_data = volumes.disks?.partitions?.find(mount => mount.mount_point_data?.id === data.volumeId)?.mount_point_data;
         data.users = data.usersNames?.map(username => (users as User[])?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
         data.ro_users = data.usersNames?.map(username => (users as User[])?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
         //console.log(data)
@@ -447,7 +447,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                             <SelectElement sx={{ display: "flex" }}
                                                 label="Volume"
                                                 name="volumeId"
-                                                options={volumes.volumes?.partitions?.
+                                                options={volumes.disks?.partitions?.
                                                     filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/")).
                                                     filter(mount => (shares.shares.map(share => share.mount_point_data?.id).indexOf(mount.mount_point_data?.id) == -1 || mount.mount_point_data?.id === props.objectToEdit?.mount_point_data?.id)).
                                                     map(mount => {
