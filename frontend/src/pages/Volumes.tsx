@@ -9,8 +9,6 @@ import StorageIcon from '@mui/icons-material/Storage';
 import CreditScoreIcon from '@mui/icons-material/CreditScore';
 import ExpandLess from '@mui/icons-material/ExpandLess'; // Import expand icons
 import ExpandMore from '@mui/icons-material/ExpandMore'; // Import expand icons
-import ComputerIcon from '@mui/icons-material/Computer'; // Example icon for parent disk
-import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest'; // <-- Import a system icon example
 import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
 import { faPlug, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
@@ -20,6 +18,13 @@ import { toast } from "react-toastify";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { Flags, useDeleteVolumeByMountPathMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathMountMutation, type Partition, type Disk, type MountPointData } from "../store/sratApi";
+// Add EjectIcon to your imports
+import EjectIcon from '@mui/icons-material/Eject';
+import UsbIcon from '@mui/icons-material/Usb';
+import SdStorageIcon from '@mui/icons-material/SdStorage';
+// ... other icon imports ...
+import ComputerIcon from '@mui/icons-material/Computer';
+import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 
 
 export function Volumes() {
@@ -201,7 +206,29 @@ export function Volumes() {
                         >
                             <ListItemAvatar>
                                 <Avatar>
-                                    <ComputerIcon /> {/* Icon for the parent disk */}
+                                    {/* --- UPDATED DYNAMIC ICON LOGIC --- */}
+                                    {(() => {
+                                        // Prioritize specific known removable bus types
+                                        switch (disk.connection_bus?.toLowerCase()) {
+                                            case 'usb':
+                                                return <UsbIcon />;
+                                            case 'sdio':
+                                            case 'mmc': // Often used for SD cards
+                                                return <SdStorageIcon />;
+                                            // Add other specific bus cases if needed
+                                        }
+
+                                        // If not a specific removable bus, check the removable flag
+                                        if (disk.removable) {
+                                            // You could use EjectIcon or maybe UsbIcon as a generic removable indicator
+                                            return <EjectIcon />;
+                                        }
+
+                                        // Default for non-removable or unknown bus types
+                                        // You could add specific icons for 'sata', 'nvme' etc. here if desired
+                                        return <ComputerIcon />;
+                                    })()}
+                                    {/* --- END UPDATED DYNAMIC ICON LOGIC --- */}
                                 </Avatar>
                             </ListItemAvatar>
                             <ListItemText
@@ -251,7 +278,7 @@ export function Volumes() {
                                                     <ListItem
                                                         // Prevent ListItem's default padding from interfering
                                                         disablePadding
-                                                        secondaryAction={!read_only && (
+                                                        secondaryAction={!read_only && !partition.system && (
                                                             <Stack direction="row" spacing={0.5} alignItems="center">
                                                                 {/* Mount Button */}
                                                                 {!isMounted && (
