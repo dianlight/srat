@@ -10,6 +10,7 @@ import CreditScoreIcon from '@mui/icons-material/CreditScore';
 import ExpandLess from '@mui/icons-material/ExpandLess'; // Import expand icons
 import ExpandMore from '@mui/icons-material/ExpandMore'; // Import expand icons
 import ComputerIcon from '@mui/icons-material/Computer'; // Example icon for parent disk
+import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest'; // <-- Import a system icon example
 import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
 import { faPlug, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
@@ -49,7 +50,12 @@ export function Volumes() {
     function onSubmitMountVolume(data?: MountPointData) {
         console.log("Mount", data)
         if (!data || !data.path) return
-        mountVolume({ mountPath: data.path, mountPointData: data }).unwrap().then((res) => {
+        // Assuming your Partition type includes 'device' or similar needed by MountPointData
+        const submitData: MountPointData = {
+            ...data,
+            device: selected?.name // Add the device identifier if needed by the API
+        };
+        mountVolume({ mountPath: data.path, mountPointData: submitData }).unwrap().then((res) => {
             toast.info(`Volume ${(res as MountPointData).path} mounted successfully.`);
             setSelected(undefined);
         }).catch(err => {
@@ -67,39 +73,41 @@ export function Volumes() {
     function handleCreateShare(partition: Partition) {
         // TODO: Implement navigation or action to create a share
         // navigate(`/shares/create?path=${partition.mount_point}`);
-        console.log("Create share for:", partition.mount_point);
+        console.log("Create share for:", partition);
         toast.info("Create share functionality not yet implemented.");
     }
 
     function handleGoToShare(partition: Partition) {
         // TODO: Implement navigation or action to go to an existing share
-        console.log("Go to share for:", partition.mount_point);
+        console.log("Go to share for:", partition);
         toast.info("Go to share functionality not yet implemented.");
     }
 
     function onSubmitUmountVolume(data: Partition, force = false) {
         console.log("Umount", data)
-        if (!data.mount_point_data?.path) {
+        // Ensure mount_point_data exists and has at least one entry with a path
+        const mountPath = data.mount_point_data?.[0]?.path;
+        if (!mountPath) {
             toast.error("Cannot unmount: Missing mount point path.");
             return;
         }
         confirm({
-            title: `Unmount ${data.label || data.name}?`,
-            description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${data.label || data.name}?`
+            title: `Unmount ${data.name}?`,
+            description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${data.name}?`
         })
             .then(({ confirmed, reason }) => {
                 if (confirmed) {
                     umountVolume({
-                        mountPath: data.mount_point_data!.path, // Updated to use path instead of id
+                        mountPath: mountPath, // Use the extracted path
                         force: force,
                         lazy: true, // Consider if lazy unmount is always desired
                     }).unwrap().then((res) => {
                         setSelected(undefined);
-                        toast.info(`Volume ${data.label || data.name} unmounted successfully.`);
+                        toast.info(`Volume ${data.name} unmounted successfully.`);
                     }).catch(err => {
                         console.error("Unmount Error:", err);
                         const errorMsg = err.data?.message || err.status || 'Unknown error';
-                        toast.error(`Error unmounting ${data.label || data.name}: ${errorMsg}`, { data: { error: err } });
+                        toast.error(`Error unmounting ${data.name}: ${errorMsg}`, { data: { error: err } });
                     })
                 } else if (reason === "cancel") {
                     console.log("Unmount cancelled")
@@ -170,8 +178,8 @@ export function Volumes() {
                                                             <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
                                                         </IconButton>
                                                     </Tooltip>
-                                                    {/* Share Buttons */}
-                                                    {!shareExists(partition.mount_point!) ? ( // Added non-null assertion assuming mount_point exists if mount_point_data does
+                                                    {/* Share Buttons - Check based on the first mount point path */}
+                                                    {!shareExists(partition.mount_point_data[0]?.path!) ? (
                                                         <Tooltip title="Create Share">
                                                             <IconButton onClick={(e) => { e.stopPropagation(); handleCreateShare(partition) }} edge="end" aria-label="create share">
                                                                 <AddIcon />
@@ -189,7 +197,13 @@ export function Volumes() {
                                         >
                                             <ListItemAvatar>
                                                 <Avatar>
-                                                    {partition.name === 'hassos-data' ? <CreditScoreIcon /> : <StorageIcon />}
+                                                    {/* Updated Icon Logic */}
+                                                    {partition.name === 'hassos-data'
+                                                        ? <CreditScoreIcon /> // Specific case for hassos-data
+                                                        : partition.system // Check if it's a system partition
+                                                            ? <SettingsSuggestIcon /> // System partition icon
+                                                            : <StorageIcon /> // Default storage icon
+                                                    }
                                                 </Avatar>
                                             </ListItemAvatar>
                                             <ListItemText
@@ -232,17 +246,25 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
     // Use useEffect to update form values when objectToEdit changes or dialog opens
     useEffect(() => {
         if (props.open && props.objectToEdit) {
+            // Suggest a mount path: /mnt/label or /mnt/name or /mnt/uuid or /mnt/new_mount
+            const suggestedName = props.objectToEdit.name || props.objectToEdit.id || 'new_mount';
+            // Basic sanitization: replace spaces and potentially problematic characters
+            const sanitizedName = suggestedName.replace(/[\s\\/:"*?<>|]+/g, '_');
+
             reset({
-                path: props.objectToEdit.mount_point || `/mnt/${props.objectToEdit.label || props.objectToEdit.name || props.objectToEdit.uuid || 'new_mount'}`, // Suggest a mount point
-                id: props.objectToEdit.mount_point_data?.id || -1, // Should likely be undefined or null if new
-                fstype: props.objectToEdit.type || undefined, // Use undefined if no type
-                flags: props.objectToEdit.mount_point_data?.flags,
-                // Convert numeric flags back to string names if your API/type expects numbers
-                flagsNames: props.objectToEdit.mount_point_data?.flags?.map(flag => Flags[flag]).filter(Boolean) || [],
-                // data: props.objectToEdit.mount_point_data?.data || '', // If you add the data field back
+                // Use the actual mount point if it exists, otherwise generate suggestion
+                path: props.objectToEdit.mount_point_data?.[0]?.path || `/mnt/${sanitizedName}`,
+                // id is usually assigned by the backend, maybe don't set it here unless editing?
+                // id: props.objectToEdit.mount_point_data?.id || undefined,
+                fstype: props.objectToEdit.mount_point_data?.[0]?.fstype || undefined, // Use partition type as default fstype
+                // Use flags from the first mount point data if available
+                flags: props.objectToEdit.mount_point_data?.[0]?.flags,
+                // Convert numeric flags back to string names for the Autocomplete
+                flagsNames: props.objectToEdit.mount_point_data?.[0]?.flags?.map(flag => flag.toString()).filter(Boolean) || [],
+                // data: props.objectToEdit.mount_point_data?.[0]?.data || '', // Use data from first mount point
             });
         } else if (!props.open) {
-            reset({}); // Clear form when closing if desired
+            reset({}); // Clear form when closing
         }
     }, [props.open, props.objectToEdit, reset]);
 
@@ -257,13 +279,12 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
 
             submitData = {
                 path: formData.path, // Use path from form
-                id: formData.id, // Use id from form
+                // id: formData.id, // Usually backend-assigned, maybe omit unless editing an existing mount config
                 fstype: formData.fstype,
                 flags: numericFlags,
                 // data: formData.data, // If you add the data field back
-                // You might need to add other required fields from Partition like uuid or name here
-                // depending on what your mountVolume mutation expects in MountPointData
-                // Example: device: props.objectToEdit.name
+                // Add the device identifier (partition name/path) required by the API
+                device: props.objectToEdit.name // Assuming 'name' is the device identifier like /dev/sda1
             };
             console.log("Submitting Mount Data:", submitData);
         } else {
@@ -287,42 +308,46 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             >
                 <DialogTitle>
                     {/* More descriptive title */}
-                    Mount Volume: {props.objectToEdit?.label || props.objectToEdit?.name} ({props.objectToEdit?.name})
+                    Mount Volume: {props.objectToEdit?.name} ({props.objectToEdit?.id})
                 </DialogTitle>
                 {/* Use form tag here to wrap content and actions */}
-                <form id="mountvolumeform" onSubmit={handleSubmit(handleCloseSubmit)}>
+                {/* Add noValidate to prevent browser default validation interfering with react-hook-form */}
+                <form id="mountvolumeform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                     <DialogContent>
-                        <Stack spacing={2}>
+                        <Stack spacing={2} sx={{ pt: 1 }}> {/* Add some padding top */}
                             <DialogContentText>
                                 Configure mount options for the volume. The suggested path is based on the volume label or name.
                             </DialogContentText>
                             {/* Removed duplicate form tag */}
                             <Grid container spacing={2}>
-                                <Grid item xs={12}> {/* Use item prop */}
+                                <Grid size={12}> {/* Use item prop */}
                                     {/* Add TextField for Mount Path */}
-                                    <TextFieldElement name="path" label="Mount Path" control={control} required fullWidth />
+                                    <TextFieldElement name="path" label="Mount Path" control={control} required fullWidth
+                                    />
                                 </Grid>
-                                <Grid item xs={6}> {/* Use item prop */}
+                                <Grid size={6}> {/* Use item prop */}
                                     <AutocompleteElement name="fstype" label="File System Type"
-                                        required
+                                        // required // Making this optional allows auto-detection by the backend potentially
                                         control={control}
-                                        options={filesystems || []} // Ensure options is always an array
+                                        options={filesystems as [] || []} // Ensure options is always an array
+                                        loading={isLoading}
                                         autocompleteProps={{
-                                            loading: isLoading, // Show loading indicator
-                                            disabled: !!props.objectToEdit?.type // Disable if type is pre-filled?
+                                            freeSolo: true, // Allow typing custom fstype if needed
+                                            // Disable if type is pre-filled and shouldn't be changed?
+                                            // disabled: !!props.objectToEdit?.type
                                         }}
                                         textFieldProps={{
-                                            helperText: error ? 'Error loading filesystems' : (isLoading ? 'Loading...' : ''),
+                                            helperText: error ? 'Error loading filesystems' : (isLoading ? 'Loading...' : 'Leave blank to auto-detect (if supported)'),
                                             error: !!error
                                         }}
                                     />
                                 </Grid>
-                                <Grid item xs={6}> {/* Use item prop */}
+                                <Grid size={6}> {/* Use item prop */}
                                     <AutocompleteElement
                                         multiple
                                         name="flagsNames"
                                         label="Mount Flags"
-                                        // Provide string options based on the Flags enum keys
+                                        // Provide string options based on the Flags enum keys (filtering out numeric keys)
                                         options={Object.keys(Flags).filter((v) => isNaN(Number(v)))}
                                         control={control}
                                         autocompleteProps={{
@@ -332,7 +357,9 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                 </Grid>
                                 {/*
                                     <Grid item xs={12}> // Use item prop
-                                        <TextFieldElement name="data" label="Additional Mount Data (e.g., uid=1000)" control={control} fullWidth />
+                                        <TextFieldElement name="data" label="Options (e.g., uid=1000,gid=1000)" control={control} fullWidth
+                                            helperText="Comma-separated key=value pairs"
+                                        />
                                     </Grid>
                                     */}
                             </Grid>
@@ -352,6 +379,6 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
 
 // Helper to check if a value is a string key of the Flags enum
 function isFlagsKey(key: string): key is keyof typeof Flags {
-    return Object.keys(Flags).includes(key);
+    // Ensure Flags is treated as an object for Object.keys
+    return Object.keys(Flags as object).includes(key);
 }
-
