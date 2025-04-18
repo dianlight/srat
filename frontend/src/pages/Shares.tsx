@@ -352,7 +352,6 @@ export function Shares() {
 interface ShareEditPropsEdit extends ShareEditProps {
     usersNames?: string[],
     roUsersNames?: string[],
-    volumeId?: number
 }
 
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
@@ -370,16 +369,17 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 timemachine: false,
                 usersNames: [],
                 roUsersNames: [],
-                volumeId: undefined
             } : {
                 ...props.objectToEdit,
                 usersNames: props.objectToEdit?.users?.map(user => user.username as string) || [],
                 roUsersNames: props.objectToEdit?.ro_users?.map(user => user.username as string) || [],
+                /*
                 volumeId: props.objectToEdit.mount_point_data?.path ?
                     volumes.disks?.partitions?.
                         filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/")).
-                        find(mount => mount.mount_point_data?.id === props.objectToEdit?.mount_point_data?.id)?.mount_point_data?.id
+                        find(mount => mount.mount_point_data?.id === props.objectToEdit?.mount_point_data?.path)?.mount_point_data?.id
                     : undefined
+                    */
             }
         },
     );
@@ -393,7 +393,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
             props.onClose()
             return
         }
-        data.mount_point_data = volumes.disks?.partitions?.find(mount => mount.mount_point_data?.id === data.volumeId)?.mount_point_data;
+        data.mount_point_data = volumes.disks?.flatMap(disk => disk.partitions)?.flatMap(partition => partition?.mount_point_data).find(mount_point_data => mount_point_data?.path === data?.mount_point_data?.path);
         data.users = data.usersNames?.map(username => (users as User[])?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
         data.ro_users = data.usersNames?.map(username => (users as User[])?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
         //console.log(data)
@@ -446,15 +446,15 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                         <Grid size={6}>
                                             <SelectElement sx={{ display: "flex" }}
                                                 label="Volume"
-                                                name="volumeId"
-                                                options={volumes.disks?.partitions?.
-                                                    filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/")).
-                                                    filter(mount => (shares.shares.map(share => share.mount_point_data?.id).indexOf(mount.mount_point_data?.id) == -1 || mount.mount_point_data?.id === props.objectToEdit?.mount_point_data?.id)).
+                                                name="mount_point_data"
+                                                options={volumes.disks?.flatMap(disk => disk.partitions)?.flatMap(partition => partition?.mount_point_data).
+                                                    filter(mount => mount?.path?.startsWith("/mnt/")).
+                                                    filter(mount => (shares.shares.map(share => share.mount_point_data?.path).indexOf(mount?.path) == -1 || mount?.path === props.objectToEdit?.mount_point_data?.path)).
                                                     map(mount => {
                                                         return {
-                                                            id: mount.mount_point_data?.id,
-                                                            label: mount.label + "(" + mount.name + ")",
-                                                            disabled: mount.label === "Invalid Volume"
+                                                            id: mount?.path,
+                                                            label: mount?.path + "(" + mount?.device + ")",
+                                                            //  disabled: mount.label === "Invalid Volume"
                                                         }
                                                     })}
                                                 required
