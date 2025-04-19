@@ -57,7 +57,7 @@ var hamode *bool
 var dockerInterface *string
 var dockerNetwork *string
 var roMode *bool
-var updateFilePath string
+var updateFilePath *string
 var configFile *string
 var dbfile *string
 var frontend *string
@@ -95,6 +95,7 @@ func main() {
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	singleInstance := flag.Bool("single-instance", false, "Single instance mode - only one instance of the addon can run ***ONLY FOR DEBUG***")
 	automount = flag.Bool("automount", false, "Automount mode - mount all shares automatically")
+	updateFilePath = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -135,8 +136,6 @@ func main() {
 		}),
 	))
 
-	updateFilePath = os.TempDir() + "/" + filepath.Base(os.Args[0])
-
 	if *singleInstance {
 		slog.Debug("Single instance mode")
 		// Run the program directly
@@ -154,7 +153,7 @@ func main() {
 			Program: prog,
 			Address: fmt.Sprintf(":%d", *http_port),
 			Fetcher: &fetcher.File{
-				Path:     updateFilePath,
+				Path:     *updateFilePath,
 				Interval: 1 * time.Second,
 			},
 			TerminateTimeout: 60,
@@ -211,7 +210,7 @@ func prog(state overseer.State) {
 
 	var apiContext, apiContextCancel = context.WithCancel(context.Background())
 	sharedResources := dto.ContextState{}
-	sharedResources.UpdateFilePath = updateFilePath
+	sharedResources.UpdateFilePath = *updateFilePath
 	sharedResources.ReadOnlyMode = *roMode
 	sharedResources.SambaConfigFile = *smbConfigFile
 	sharedResources.Template = templateData
@@ -403,6 +402,6 @@ func prog(state overseer.State) {
 
 	dbom.CloseDB()
 
-	log.Println("shutting down")
+	log.Println("shutting down ")
 	os.Exit(0)
 }

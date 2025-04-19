@@ -26,7 +26,7 @@ test_build: $(SRC_DIRS) $(STATIC_DIRS)
 	mkdir tmp > /dev/null 2>&1 || :   
 	CGO_ENABLED=0 go build -C src -gcflags=all="-N -l" -ldflags="-s -w -X main.SRATVersion=\"TEST_AIR_INTERNAL\"" -o ../tmp/srat
 	CGO_ENABLED=0 GOARCH=amd64 go build -C src -gcflags=all="-N -l" -ldflags="-s -w -X main.SRATVersion=\"TEST_AIR_INTERNAL\"" -o ../tmp/srat_x86_64	
-
+	[ -f /mnt/remote/bootconfig.json ] && cp tmp/srat_x86_64 /mnt/remote/srat_x86_64 || echo "No remote mount found use make mount_remote"
 
 .PHONY: format
 format:
@@ -86,3 +86,9 @@ gen_patch:
 	mkdir patches > /dev/null 2>&1 || :  
 	cd ${HOME}/gohack/github.com/samber/slog-http; git diff > $(ROOT_DIR)/patches/slog-http.patch
 	cd ${HOME}/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
+
+
+.PHONY: mount_remote
+mount_remote:
+	mkdir -p /mnt/remote > /dev/null 2>&1 || :
+	sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 root@192.168.0.68:/addon_configs/local_sambanas /mnt/remote
