@@ -4,10 +4,8 @@ package main
 
 import (
 	"context"
-	"embed"
 	"flag"
 	"fmt"
-	"io/fs"
 	"log"
 	"log/slog"
 	"net"
@@ -15,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -47,7 +46,6 @@ var options *config.Options
 var smbConfigFile *string
 
 // var globalRouter *mux.Router
-var templateData []byte
 var optionsFile *string
 var http_port *int
 var templateFile *string
@@ -65,14 +63,6 @@ var supervisorToken *string
 var logLevel slog.Level
 var automount *bool
 
-// Static files
-//
-//go:embed static/*
-var content embed.FS
-
-//go:embed templates/smb.gtpl
-var defaultTemplate embed.FS
-
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	w := os.Stderr
@@ -81,14 +71,16 @@ func main() {
 	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
 	configFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
-	templateFile = flag.String("template", "", "Template file")
 	smbConfigFile = flag.String("out", "", "Output samba conf file")
 	roMode = flag.Bool("ro", false, "Read only mode")
 	hamode = flag.Bool("addon", false, "Run in addon mode")
 	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
 	dockerNetwork = flag.String("docker-network", "", "Docker network")
-	frontend = flag.String("frontend", "", "Frontend path - if missing the internal is used")
+	if !is_embed {
+		frontend = flag.String("frontend", "", "Frontend path - if missing the internal is used")
+		templateFile = flag.String("template", "", "Template file")
+	}
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
@@ -179,25 +171,6 @@ func prog(state overseer.State) {
 
 	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
 
-	// Check template file
-	if *templateFile == "" {
-		templateDatan, err := defaultTemplate.ReadFile("templates/smb.gtpl")
-		if err != nil {
-			log.Fatal(err)
-		}
-		templateData = templateDatan
-	} else {
-		templateDatan, err := os.ReadFile(*templateFile)
-		if err != nil {
-			log.Fatalf("Cant read template file %s - %s", *templateFile, err)
-		}
-		templateData = templateDatan
-	}
-
-	if len(templateData) == 0 {
-		log.Fatal("Missing template file")
-	}
-
 	if *smbConfigFile == "" {
 		log.Fatalf("Missing samba config! %s", *smbConfigFile)
 	}
@@ -206,7 +179,11 @@ func prog(state overseer.State) {
 		log.Println("Read only mode")
 	}
 
-	dbom.InitDB(*dbfile + "?cache=shared&_pragma=foreign_keys(1)")
+	if !strings.Contains(*dbfile, "?") {
+		*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
+	}
+
+	dbom.InitDB(*dbfile)
 
 	// Get options
 	options = config.ReadOptionsFile(*optionsFile)
@@ -216,7 +193,7 @@ func prog(state overseer.State) {
 	sharedResources.UpdateFilePath = *updateFilePath
 	sharedResources.ReadOnlyMode = *roMode
 	sharedResources.SambaConfigFile = *smbConfigFile
-	sharedResources.Template = templateData
+	sharedResources.Template = getTemplateData()
 	sharedResources.DockerInterface = *dockerInterface
 	sharedResources.DockerNet = *dockerNetwork
 
@@ -238,17 +215,20 @@ func prog(state overseer.State) {
 			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
 			func() *dto.ContextState { return &sharedResources },
 			func() *overseer.State { return &state },
-			func() fs.FS {
-				if frontend == nil || *frontend == "" {
-					return content
-				} else {
-					_, err := os.Stat(*frontend)
-					if err != nil {
-						log.Fatalf("Cant access frontend folder %s - %s", *frontend, err)
+			getFrontend,
+			/*
+				func() fs.FS {
+					if frontend == nil || *frontend == "" {
+						return content
+					} else {
+						_, err := os.Stat(*frontend)
+						if err != nil {
+							log.Fatalf("Cant access frontend folder %s - %s", *frontend, err)
+						}
+						return os.DirFS(*frontend)
 					}
-					return os.DirFS(*frontend)
-				}
-			},
+				},
+			*/
 			fx.Annotate(
 				func() bool { return *hamode },
 				fx.ResultTags(`name:"ha_mode"`),
@@ -335,7 +315,7 @@ func prog(state overseer.State) {
 					_ *http.Server,
 					api huma.API,
 					router *mux.Router,
-					static fs.FS,
+					static http.FileSystem,
 					ha_mode bool,
 				) {
 
@@ -359,15 +339,31 @@ func prog(state overseer.State) {
 					}
 
 					// Static Routes
-					_, err := fs.ReadDir(static, "static")
-					if err != nil {
-						slog.Warn("Static directory not found:", "err", err)
-						router.Path("/{file}.html").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
-					} else {
-						fsRoot, _ := fs.Sub(static, "static")
-						router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
-					}
-
+					/*
+						hfiles, err := static.Open(".")
+						if err != nil {
+							slog.Error("Error reading static directory:", "err", err)
+							panic(err)
+						}
+						files, err := hfiles.Readdir(0)
+						if err != nil {
+							slog.Error("Error reading static directory:", "err", err)
+							panic(err)
+						}
+						slog.Debug("Static files:", "files", files)
+					*/
+					router.PathPrefix("/").Handler(http.FileServer(static)).Methods(http.MethodGet)
+					/*
+						if slices.ContainsFunc(files, func(f fs.DirEntry) bool {
+							return f.IsDir() && f.Name() == "static"
+						}) {
+							fsRoot, _ := fs.Sub(static, "static")
+							router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
+						} else {
+							slog.Warn("Static directory not found:", "err", err)
+							router.Path("/").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
+						}
+					*/
 					//
 					router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 						template, err := route.GetPathTemplate()

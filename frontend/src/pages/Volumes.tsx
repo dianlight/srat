@@ -17,7 +17,7 @@ import { AutocompleteElement, useForm, TextFieldElement } from "react-hook-form-
 import { toast } from "react-toastify";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
-import { Flags, useDeleteVolumeByMountPathMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathMountMutation, type Partition, type Disk, type MountPointData } from "../store/sratApi";
+import { Flags, useDeleteVolumeByMountPathMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathMountMutation, type Partition, type Disk, type MountPointData, Type } from "../store/sratApi";
 // Add EjectIcon to your imports
 import EjectIcon from '@mui/icons-material/Eject';
 import UsbIcon from '@mui/icons-material/Usb';
@@ -350,6 +350,7 @@ export function Volumes() {
                                                                     {partition.size != null && <Chip label={`Size: ${filesize(partition.size, { round: 0 })}`} size="small" variant="outlined" />}
                                                                     {partition.mount_point_data?.[0]?.fstype && <Chip label={`Type: ${partition.mount_point_data[0].fstype}`} size="small" variant="outlined" />}
                                                                     {isMounted && <Chip label={`Mount: ${partition.mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
+                                                                    {partition.host_mount_point_data && <Chip label={`Mount: ${partition.host_mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
                                                                     {partition.id && <Chip label={`UUID: ${partition.id}`} size="small" variant="outlined" />}
                                                                     {partition.device && <Chip label={`Dev: ${partition.device}`} size="small" variant="outlined" />}
                                                                 </Stack>
@@ -438,7 +439,8 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             fstype: formData.fstype || undefined,
             flags: numericFlags,
             // data: formData.data,
-            device: props.objectToEdit.name // Ensure device name is included
+            device: props.objectToEdit.name, // Ensure device name is included
+            type: Type.Addon,
         };
         console.log("Submitting Mount Data:", submitData);
         props.onClose(submitData);

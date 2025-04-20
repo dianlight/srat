@@ -20,5 +20,6 @@
   "geminicodeassist.codeGenerationPaneViewEnabled": true,
   "remote.localPortHost": "allInterfaces",
   "typescript.inlayHints.parameterTypes.enabled": true,
-  "typescript.inlayHints.propertyDeclarationTypes.enabled": true
+  "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
+  "go.buildTags": "embedallowed_no"
 }
