@@ -99,6 +99,6 @@ func PathToSource(path string) string {
 	return ""
 }
 
-func pathToType(path string) string {
+func pathToType(_ string) string {
 	return "ADDON"
 }
