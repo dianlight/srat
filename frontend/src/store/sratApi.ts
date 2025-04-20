@@ -323,7 +323,7 @@ export type SseApiResponse = /** status 200 OK */
           retry?: number;
         }
       | {
-          data: BlockInfo;
+          data: Disk[] | null;
           /** The event name. */
           event: "volumes";
           /** The event ID. */
@@ -472,6 +472,7 @@ export type HealthPing = {
   $schema?: string;
   alive: boolean;
   aliveTime: number;
+  build_version: string;
   dirty_tracking: DataDirtyTracker;
   last_error: string;
   last_release: ReleaseAsset;
@@ -531,6 +532,7 @@ export type MountPointData = {
   invalid_error?: string;
   is_mounted?: boolean;
   path: string;
+  type: Type;
   warnings?: string;
 };
 export type User = {
@@ -563,28 +565,9 @@ export type UpdateProgress = {
   update_error?: string;
   update_status: number;
 };
-export type BlockPartition = {
-  default_mount_point: string;
-  device_id: number | null;
-  filesystem_label: string;
-  label: string;
-  mount_data: string;
-  mount_flags: Mount_flags[] | null;
-  mount_point: string;
-  mount_point_data: MountPointData;
-  name: string;
-  partition_flags: Partition_flags[] | null;
-  read_only: boolean;
-  size_bytes: number;
-  type: string;
-  uuid: string;
-};
-export type BlockInfo = {
-  partitions: BlockPartition[] | null;
-  total_size_bytes: number;
-};
 export type Partition = {
   device?: string;
+  host_mount_point_data?: MountPointData[];
   id?: string;
   mount_point_data?: MountPointData[];
   name?: string;
@@ -632,6 +615,10 @@ export enum Flags {
   MsNouser = "MS_NOUSER",
   MsRelatime = "MS_RELATIME",
 }
+export enum Type {
+  Host = "HOST",
+  Addon = "ADDON",
+}
 export enum Usage {
   None = "none",
   Backup = "backup",
@@ -647,36 +634,6 @@ export enum Supported_events {
   Heartbeat = "heartbeat",
   Share = "share",
   Dirty = "dirty",
-}
-export enum Mount_flags {
-  MsRdonly = "MS_RDONLY",
-  MsNosuid = "MS_NOSUID",
-  MsNodev = "MS_NODEV",
-  MsNoexec = "MS_NOEXEC",
-  MsSynchronous = "MS_SYNCHRONOUS",
-  MsRemount = "MS_REMOUNT",
-  MsMandlock = "MS_MANDLOCK",
-  MsNoatime = "MS_NOATIME",
-  MsNodiratime = "MS_NODIRATIME",
-  MsBind = "MS_BIND",
-  MsLazytime = "MS_LAZYTIME",
-  MsNouser = "MS_NOUSER",
-  MsRelatime = "MS_RELATIME",
-}
-export enum Partition_flags {
-  MsRdonly = "MS_RDONLY",
-  MsNosuid = "MS_NOSUID",
-  MsNodev = "MS_NODEV",
-  MsNoexec = "MS_NOEXEC",
-  MsSynchronous = "MS_SYNCHRONOUS",
-  MsRemount = "MS_REMOUNT",
-  MsMandlock = "MS_MANDLOCK",
-  MsNoatime = "MS_NOATIME",
-  MsNodiratime = "MS_NODIRATIME",
-  MsBind = "MS_BIND",
-  MsLazytime = "MS_LAZYTIME",
-  MsNouser = "MS_NOUSER",
-  MsRelatime = "MS_RELATIME",
 }
 export const {
   useGetFilesystemsQuery,

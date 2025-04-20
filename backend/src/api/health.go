@@ -10,6 +10,7 @@ import (
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
@@ -59,6 +60,7 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	p.OutputEventsCount = 0
 	p.dirtyService = param.DirtyService
 	p.SecureMode = param.HaMode
+	p.BuildVersion = config.BuildVersion()
 	if param.Apictx.Heartbeat > 0 {
 		p.OutputEventsInterleave = time.Duration(param.Apictx.Heartbeat) * time.Second
 	} else {

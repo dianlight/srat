@@ -10,7 +10,10 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go)  
 TEST_SRCS := $(filter %_test.go, $(ALL_SRCS))
 SRCS := $(filter-out %_test.go, $(ALL_SRCS))
-VERSION ?= "TEST_INTERNAL"
+
+VERSION?="$(shell git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2> /dev/null | sed 's/^.//')"
+COMMIT_HASH="$(shell git rev-parse --short HEAD)"
+BUILD_TIMESTAMP="$(shell date '+%Y-%m-%dT%H:%M:%S')"
 
 all: PREREQUISITE build
 
@@ -20,12 +23,12 @@ build: $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	mkdir dist > /dev/null 2>&1 || :   
-	cd $(SRC_DIRS);CGO_ENABLED=0 $(AARGS) go build -ldflags="-s -w -X main.SRATVersion=$(VERSION)" -o ../$(@)$(SUFFIX)
+	cd $(SRC_DIRS);CGO_ENABLED=0 $(AARGS) go build -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../$(@)$(SUFFIX)
 
 test_build: $(SRC_DIRS) $(STATIC_DIRS)
 	mkdir tmp > /dev/null 2>&1 || :   
-	CGO_ENABLED=0 go build -C src -gcflags=all="-N -l" -ldflags="-s -w -X main.SRATVersion=\"TEST_AIR_INTERNAL\"" -o ../tmp/srat
-	CGO_ENABLED=0 GOARCH=amd64 go build -C src -gcflags=all="-N -l" -ldflags="-s -w -X main.SRATVersion=\"TEST_AIR_INTERNAL\"" -o ../tmp/srat_x86_64	
+	CGO_ENABLED=0 go build -C src -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/srat
+	CGO_ENABLED=0 GOARCH=amd64 go build -C src -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/srat_x86_64	
 	[ -f /mnt/remote/bootconfig.json ] && cp tmp/srat_x86_64 /mnt/remote/srat_x86_64 || echo "No remote mount found use make mount_remote"
 
 .PHONY: format

@@ -13,112 +13,6 @@ components:
         - size
         - id
       type: object
-    BlockInfo:
-      additionalProperties: false
-      properties:
-        partitions:
-          items:
-            $ref: "#/components/schemas/BlockPartition"
-          type:
-            - array
-            - "null"
-        total_size_bytes:
-          format: int64
-          minimum: 0
-          type: integer
-      required:
-        - total_size_bytes
-        - partitions
-      type: object
-    BlockPartition:
-      additionalProperties: false
-      properties:
-        default_mount_point:
-          type: string
-        device_id:
-          format: int64
-          minimum: 0
-          type:
-            - integer
-            - "null"
-        filesystem_label:
-          type: string
-        label:
-          type: string
-        mount_data:
-          type: string
-        mount_flags:
-          items:
-            enum:
-              - MS_RDONLY
-              - MS_NOSUID
-              - MS_NODEV
-              - MS_NOEXEC
-              - MS_SYNCHRONOUS
-              - MS_REMOUNT
-              - MS_MANDLOCK
-              - MS_NOATIME
-              - MS_NODIRATIME
-              - MS_BIND
-              - MS_LAZYTIME
-              - MS_NOUSER
-              - MS_RELATIME
-            type: string
-          type:
-            - array
-            - "null"
-        mount_point:
-          type: string
-        mount_point_data:
-          $ref: "#/components/schemas/MountPointData"
-        name:
-          type: string
-        partition_flags:
-          items:
-            enum:
-              - MS_RDONLY
-              - MS_NOSUID
-              - MS_NODEV
-              - MS_NOEXEC
-              - MS_SYNCHRONOUS
-              - MS_REMOUNT
-              - MS_MANDLOCK
-              - MS_NOATIME
-              - MS_NODIRATIME
-              - MS_BIND
-              - MS_LAZYTIME
-              - MS_NOUSER
-              - MS_RELATIME
-            type: string
-          type:
-            - array
-            - "null"
-        read_only:
-          type: boolean
-        size_bytes:
-          format: int64
-          minimum: 0
-          type: integer
-        type:
-          type: string
-        uuid:
-          type: string
-      required:
-        - name
-        - label
-        - mount_point
-        - default_mount_point
-        - size_bytes
-        - type
-        - read_only
-        - uuid
-        - filesystem_label
-        - partition_flags
-        - mount_flags
-        - mount_data
-        - device_id
-        - mount_point_data
-      type: object
     DataDirtyTracker:
       additionalProperties: false
       properties:
@@ -239,6 +133,8 @@ components:
         aliveTime:
           format: int64
           type: integer
+        build_version:
+          type: string
         dirty_tracking:
           $ref: "#/components/schemas/DataDirtyTracker"
         last_error:
@@ -260,6 +156,7 @@ components:
         - dirty_tracking
         - last_release
         - secure_mode
+        - build_version
       type: object
     JsonPatchOp:
       additionalProperties: false
@@ -328,10 +225,16 @@ components:
           type: boolean
         path:
           type: string
+        type:
+          enum:
+            - HOST
+            - ADDON
+          type: string
         warnings:
           type: string
       required:
         - path
+        - type
       type: object
     NIC:
       additionalProperties: false
@@ -377,6 +280,10 @@ components:
       properties:
         device:
           type: string
+        host_mount_point_data:
+          items:
+            $ref: "#/components/schemas/MountPointData"
+          type: array
         id:
           type: string
         mount_point_data:
@@ -1163,6 +1070,46 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          $ref: "#/components/schemas/HealthPing"
+                        event:
+                          const: heartbeat
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event heartbeat
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/Welcome"
                         event:
                           const: hello
@@ -1217,7 +1164,11 @@ paths:
                       type: object
                     - properties:
                         data:
-                          $ref: "#/components/schemas/BlockInfo"
+                          items:
+                            $ref: "#/components/schemas/Disk"
+                          type:
+                            - array
+                            - "null"
                         event:
                           const: volumes
                           description: The event name.
@@ -1232,46 +1183,6 @@ paths:
                         - data
                         - event
                       title: Event volumes
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/HealthPing"
-                        event:
-                          const: heartbeat
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event heartbeat
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: share
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event share
                       type: object
                 title: Server Sent Events
                 type: array

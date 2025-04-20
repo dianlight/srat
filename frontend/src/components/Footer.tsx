@@ -46,9 +46,11 @@ export function Footer(props: { healthData: HealthPing }) {
                         my: 1
                     }}
                 >
-                    <Typography variant="caption">
-                        <Link href={pkg.repository.url + "/commit/" + getGitCommitHash()}>Version {pkg.version}</Link>
-                    </Typography>
+                    <Tooltip title={props.healthData.build_version} arrow placement="top">
+                        <Typography variant="caption">
+                            <Link href={pkg.repository.url + "/commit/" + getGitCommitHash()}>Version {pkg.version}</Link>
+                        </Typography>
+                    </Tooltip>
 
                     <Typography variant="caption">
                         © 2024-2025 Copyright {pkg.author.name}

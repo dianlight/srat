@@ -43,7 +43,6 @@ import (
 	"moul.io/banner"
 )
 
-var SRATVersion string
 var options *config.Options
 var smbConfigFile *string
 
@@ -106,7 +105,9 @@ func main() {
 		writer := flag.CommandLine.Output()
 
 		fmt.Fprint(writer, "SRAT: SambaNAS Rest Administration Interface\n")
-		fmt.Fprintf(writer, "Version: %s\n", SRATVersion)
+		fmt.Fprintf(writer, "Version: %s\n", config.Version)
+		fmt.Fprintf(writer, "Commit Hash: %s\n", config.CommitHash)
+		fmt.Fprintf(writer, "Build Timestamp: %s\n", config.BuildTimestamp)
 		fmt.Fprintf(writer, "Documentation: https://github.com/dianlight/SRAT\n\n")
 
 		flag.PrintDefaults()
@@ -170,11 +171,13 @@ func prog(state overseer.State) {
 
 	fmt.Println(banner.Inline("srat"))
 	fmt.Printf("SambaNAS Rest Administration Interface (%s)\n", state.ID)
-	fmt.Printf("Version: %s\n", SRATVersion)
+	fmt.Printf("Version: %s\n", config.Version)
+	fmt.Printf("Commit Hash: %s\n", config.CommitHash)
+	fmt.Printf("Build Timestamp: %s\n", config.BuildTimestamp)
 	fmt.Printf("Listening on %v\n\n", state.Addresses)
 	slog.Debug("Startup Options", "Flags", os.Args)
 
-	slog.Debug("Starting SRAT", "version", SRATVersion, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
+	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
 
 	// Check template file
 	if *templateFile == "" {
