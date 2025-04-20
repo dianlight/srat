@@ -1,28 +1,29 @@
 package converter
 
 import (
-	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/lsblk"
 )
 
 // goverter:converter
-// goverter:output:file ./lsblk_to_dbom_conv_gen.go
+// goverter:output:file ./lsblk_to_dto_conv_gen.go
 // goverter:output:package github.com/dianlight/srat/converter
 // goverter:default:update
 // goverter:useZeroValueOnPointerInconsistency
 // goverter:update:ignoreZeroValueField
 // goverter:skipCopySameType
 // goverter:enum:unknown @error
-type LsblkToDbomConverter interface {
+type LsblkToDtoConverter interface {
 	// goverter:update target
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore DeviceId IsInvalid InvalidError Warnings Flags CreatedAt UpdatedAt DeletedAt
+	// goverter:ignore IsInvalid InvalidError Warnings Flags
 	// goverter:map Name Device
 	// goverter:map Mountpoint Path
 	// goverter:map Fstype FSType
 	// goverter:map Mountpoint IsMounted | isMounted
+	// goverter:map Mountpoint Type | pathToType
 	// goverter:useZeroValueOnPointerInconsistency
-	LsblkInfoToMountPointPath(source *lsblk.LSBKInfo, target *dbom.MountPointPath) error
+	LsblkInfoToMountPointData(source *lsblk.LSBKInfo, target *dto.MountPointData) error
 }
 
 func isMounted(mountpoint string) bool {

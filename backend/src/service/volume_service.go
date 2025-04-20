@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
+	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/snapcore/snapd/osutil"
@@ -401,6 +402,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 	ret := []dto.Disk{}
 	conv := converter.HaHardwareToDtoImpl{}
 	dbconv := converter.DtoToDbomConverterImpl{}
+	lsblkconv := converter.LsblkToDtoConverterImpl{}
 
 	hwser, err := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx)
 	if err != nil {
@@ -450,9 +452,21 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 		}
 		for partIdx := range *disk.Partitions {
 			partition := &(*disk.Partitions)[partIdx] // Get pointer
-			if partition.MountPointData == nil {
-				continue
+			if partition.MountPointData == nil || len(*partition.MountPointData) == 0 {
+				info, err := lsblk.GetInfoFromDevice(*partition.Device)
+				if err != nil {
+					slog.Warn("Error getting info from device", "device", *partition.Device, "err", err)
+					continue
+				}
+				mountPointDto := &dto.MountPointData{}
+				err = lsblkconv.LsblkInfoToMountPointData(info, mountPointDto)
+				if err != nil {
+					slog.Warn("Error converting Lsblk info to MountPointData", "device", *partition.Device, "err", err)
+					continue
+				}
+				partition.MountPointData = &[]dto.MountPointData{*mountPointDto} // Wrap in slice
 			}
+
 			for mpIdx := range *partition.MountPointData {
 				mountPointDto := &(*partition.MountPointData)[mpIdx] // Get pointer
 
@@ -485,29 +499,31 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 					continue // Skip this mount point
 				}
 
-				// Check OS mount status *before* saving, update IsMounted in DB object
-				isMountedOS, osCheckErr := osutil.IsMounted(mountPointPathDB.Path)
-				if osCheckErr != nil {
-					// Log error but proceed, maybe path doesn't exist yet for new mounts
-					slog.Warn("Error checking OS mount status", "path", mountPointPathDB.Path, "err", osCheckErr)
-					// Keep IsMounted as potentially set by DTO conversion unless OS definitively says not mounted
-					if !isMountedOS {
-						mountPointPathDB.IsMounted = false
+				if mountPointPathDB.Type == "ADDON" {
+					// Check OS mount status *before* saving, update IsMounted in DB object
+					isMountedOS, osCheckErr := osutil.IsMounted(mountPointPathDB.Path)
+					if osCheckErr != nil {
+						// Log error but proceed, maybe path doesn't exist yet for new mounts
+						slog.Warn("Error checking OS mount status", "path", mountPointPathDB.Path, "err", osCheckErr)
+						// Keep IsMounted as potentially set by DTO conversion unless OS definitively says not mounted
+						if !isMountedOS {
+							mountPointPathDB.IsMounted = false
+						}
+					} else {
+						// Trust the OS check
+						mountPointPathDB.IsMounted = isMountedOS
+						slog.Debug("OS mount status check", "path", mountPointPathDB.Path, "is_mounted", isMountedOS)
 					}
-				} else {
-					// Trust the OS check
-					mountPointPathDB.IsMounted = isMountedOS
-					slog.Debug("OS mount status check", "path", mountPointPathDB.Path, "is_mounted", isMountedOS)
-				}
 
-				// Save the updated DB object (Create or Update)
-				err = self.mount_repo.Save(mountPointPathDB)
-				if err != nil {
-					slog.Warn("Error saving mount point data to DB", "path", mountPointPathDB.Path, "data", mountPointPathDB, "err", err)
-					mountPointDto.IsInvalid = true                            // Mark DTO as invalid due to DB save error
-					invalidError := errors.Wrap(err, "DB save error").Error() // Updated to use Error() method
-					mountPointDto.InvalidError = &invalidError
-					continue // Skip this mount point
+					// Save the updated DB object (Create or Update)
+					err = self.mount_repo.Save(mountPointPathDB)
+					if err != nil {
+						slog.Warn("Error saving mount point data to DB", "path", mountPointPathDB.Path, "data", mountPointPathDB, "err", err)
+						mountPointDto.IsInvalid = true                            // Mark DTO as invalid due to DB save error
+						invalidError := errors.Wrap(err, "DB save error").Error() // Updated to use Error() method
+						mountPointDto.InvalidError = &invalidError
+						continue // Skip this mount point
+					}
 				}
 
 				// Convert the final DB state (after save and OS check) back to the DTO
@@ -524,6 +540,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 				}
 				slog.Debug("Successfully synced mount point with DB", "path", mountPointDto.Path, "is_mounted", mountPointDto.IsMounted)
 			}
+
 		}
 	}
 

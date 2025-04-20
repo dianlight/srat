@@ -59,6 +59,9 @@ type Partition struct {
 	// System true if filesystem considered a system/internal device.
 	System *bool `json:"system,omitempty"`
 
-	// MountPointData to mount on the addon-side ( created only if no mountpoint exists on the host side and is not a system/internal device )
+	// MountPointData to mount on the host-side
+	HostMountPointData *[]MountPointData `json:"host_mount_point_data,omitempty"`
+
+	// MountPointData to mount on the addon-side
 	MountPointData *[]MountPointData `json:"mount_point_data,omitempty"`
 }

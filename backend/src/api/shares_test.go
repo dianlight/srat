@@ -104,7 +104,9 @@ func (suite *ShareHandlerSuite) TestCreateShareHandler() {
 		Name: "PIPPODD",
 		MountPointData: &dto.MountPointData{
 			Path:   "/pippo",
-			FSType: "tmpfs"},
+			FSType: "tmpfs",
+			Type:   "ADDON",
+		},
 	}
 	rr := api.Post("/share", share)
 	suite.Equal(http.StatusCreated, rr.Code)
@@ -134,6 +136,7 @@ func (suite *ShareHandlerSuite) TestCreateShareDuplicateHandler() {
 		MountPointData: &dto.MountPointData{
 			Path:   "/mnt/LIBRARY",
 			FSType: "ext4",
+			Type:   "ADDON",
 		},
 		RoUsers: []dto.User{
 			{Username: pointer.String("rouser")},
@@ -160,6 +163,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareHandler() {
 	share := dto.SharedResource{
 		MountPointData: &dto.MountPointData{
 			Path: "/pippo_efi",
+			Type: "ADDON",
 		},
 	}
 
@@ -235,6 +239,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareNameHandler() {
 		},
 		MountPointData: dbom.MountPointPath{
 			Path: "/mnt/OLD_NAME",
+			Type: "ADDON",
 		},
 	}
 	err := exported_share_repo.Save(&old_share)

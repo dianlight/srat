@@ -30,6 +30,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Save() {
 			Path:   "/mnt/test_share",
 			Device: "test_source",
 			FSType: "ext4",
+			Type:   "ADDON",
 		},
 	}
 
@@ -53,6 +54,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_SaveAll(
 				Path:   "/mnt/test_share1",
 				Device: "test_source1",
 				FSType: "ext4",
+				Type:   "ADDON",
 			},
 		},
 		{
@@ -61,6 +63,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_SaveAll(
 				Path:   "/mnt/test_share2",
 				Device: "test_source2",
 				FSType: "ntfs",
+				Type:   "ADDON",
 			},
 		},
 	}
@@ -83,6 +86,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_FindByNa
 			Path:   "/mnt/find_me",
 			Device: "find_source",
 			FSType: "ext4",
+			Type:   "ADDON",
 		},
 		Users: []dbom.SambaUser{
 			{Username: "user1a", Password: "pass1"},
@@ -131,6 +135,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 				Path:   "/mnt/all_share1",
 				Device: "all_source1",
 				FSType: "ext4",
+				Type:   "ADDON",
 			},
 			Users:   []dbom.SambaUser{},
 			RoUsers: []dbom.SambaUser{},
@@ -141,6 +146,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 				Path:   "/mnt/all_share2",
 				Device: "all_source2",
 				FSType: "ntfs",
+				Type:   "ADDON",
 			},
 			Users:   []dbom.SambaUser{},
 			RoUsers: []dbom.SambaUser{},
@@ -174,6 +180,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Delete()
 			Path:   "/mnt/delete_me",
 			Device: "delete_source",
 			FSType: "ext4",
+			Type:   "ADDON",
 		},
 	}
 	err := suite.export_share_repo.Save(share)
@@ -202,6 +209,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_UpdateNa
 			Path:   "/mnt/old_name",
 			Device: "old_source",
 			FSType: "ext4",
+			Type:   "ADDON",
 		},
 	}
 	err := suite.export_share_repo.Save(share)

@@ -19,6 +19,7 @@ type MountToDbom interface {
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt DeviceId IsInvalid InvalidError Warnings IsMounted
 	// goverter:map Device Device | removeDevPrefix
 	// goverter:map Flags Flags | uintptrToMounDataFlags
+	// goverter:map Device Type | pathToType
 	MountToMountPointPath(source *mount.MountPoint, target *dbom.MountPointPath) error
 }
 

@@ -34,6 +34,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveWithoutData() 
 
 	testMountPoint := dbom.MountPointPath{
 		Path: "/addons",
+		Type: "ADDON",
 	}
 
 	err := suite.mount_repo.Save(&testMountPoint)
@@ -49,6 +50,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 		Device: "test_drive",
 		FSType: "ext4",
 		Flags:  []dbom.MounDataFlag{dbom.MS_RDONLY, dbom.MS_NOATIME},
+		Type:   "ADDON",
 		//Data:   "rw,noatime",
 		//DeviceId: 12344,
 	}
@@ -70,6 +72,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 			Flags:  []dbom.MounDataFlag{dbom.MS_RDONLY, dbom.MS_NOATIME},
 			//Data:     "rw,noatime",
 			DeviceId: 12345,
+			Type:     "ADDON",
 		},
 		{
 			Path: "/mnt/test2",
@@ -79,6 +82,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 			Flags:  []dbom.MounDataFlag{dbom.MS_BIND},
 			//Data:     "bind",
 			DeviceId: 12346,
+			Type:     "ADDON",
 		},
 	}
 

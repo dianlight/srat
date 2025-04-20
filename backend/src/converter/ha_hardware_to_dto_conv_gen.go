@@ -75,7 +75,7 @@ func (c *HaHardwareToDtoImpl) FilesystemToPartition(source hardware.Filesystem, 
 		target.System = &xbool
 	}
 	if source != (hardware.Filesystem{}) {
-		target.MountPointData = mountPointsToMountPointDatas(source)
+		target.HostMountPointData = mountPointsToMountPointDatas(source)
 	}
 	return nil
 }
@@ -101,6 +101,6 @@ func (c *HaHardwareToDtoImpl) filesystemToPartition(source hardware.Filesystem) 
 		xbool := *source.System
 		dtoPartition.System = &xbool
 	}
-	dtoPartition.MountPointData = mountPointsToMountPointDatas(source)
+	dtoPartition.HostMountPointData = mountPointsToMountPointDatas(source)
 	return dtoPartition
 }

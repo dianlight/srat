@@ -107,6 +107,9 @@ func (c *ConfigToDbomConverterImpl) ShareToMountPointPath(source config.Share, t
 		target.Path = source.Path
 	}
 	if source.Path != "" {
+		target.Type = pathToType(source.Path)
+	}
+	if source.Path != "" {
 		target.Device = PathToSource(source.Path)
 	}
 	if source.FS != "" {

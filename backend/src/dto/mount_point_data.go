@@ -2,6 +2,7 @@ package dto
 
 type MountPointData struct {
 	Path         string   `json:"path"`
+	Type         string   `json:"type" enum:"HOST,ADDON"` // Type of the mountpoint.
 	FSType       string   `json:"fstype,omitempty"`
 	Flags        []string `json:"flags,omitempty" enum:"MS_RDONLY,MS_NOSUID,MS_NODEV,MS_NOEXEC,MS_SYNCHRONOUS,MS_REMOUNT,MS_MANDLOCK,MS_NOATIME,MS_NODIRATIME,MS_BIND,MS_LAZYTIME,MS_NOUSER,MS_RELATIME"`
 	Device       string   `json:"device,omitempty"` // Source Device source of the filesystem (e.g. /dev/sda1).

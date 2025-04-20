@@ -16,6 +16,9 @@ func (c *MountToDbomImpl) MountToMountPointPath(source *mount.MountPoint, target
 			target.Path = source.Path
 		}
 		if source.Device != "" {
+			target.Type = pathToType(source.Device)
+		}
+		if source.Device != "" {
 			xstring, err := removeDevPrefix(source.Device)
 			if err != nil {
 				return err

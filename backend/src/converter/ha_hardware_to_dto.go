@@ -24,13 +24,16 @@ type HaHardwareToDto interface {
 
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:map . MountPointData | mountPointsToMountPointDatas
+	// goverter:ignore MountPointData
+	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
 	filesystemToPartition(source hardware.Filesystem) dto.Partition
 
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:map . MountPointData | mountPointsToMountPointDatas
+	// goverter:ignore MountPointData
+	// g.overter:map . MountPointData | mountPointsToMountPointDatas
+	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
 	FilesystemToPartition(source hardware.Filesystem, target *dto.Partition) error
 }
 
@@ -52,7 +55,9 @@ func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointD
 			FSType:    fstype,
 			Flags:     M_flags.Strings(),
 			IsMounted: true,
+			Type:      "HOST",
 		})
 	}
+
 	return &mountPointDatas
 }

@@ -1,5 +1,7 @@
 package dto
 
+// DEPRECATED: use Partition instead
+/*
 type BlockPartition struct {
 	// Name is the system name given to the partition, e.g. "sda1".
 	Name string `json:"name"`
@@ -34,3 +36,4 @@ type BlockPartition struct {
 	// Relative MountPointData
 	MountPointData MountPointData `json:"mount_point_data"`
 }
+*/

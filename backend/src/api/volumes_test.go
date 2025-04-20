@@ -42,6 +42,7 @@ func TestVolumeHandlerSuite(t *testing.T) {
 		Path:   "/mnt/bogus1",
 		FSType: "ext4",
 		Flags:  []string{"MS_NOATIME", "MS_RDONLY"},
+		Type:   "ADDON",
 	}
 
 	bogusDisks := []dto.Disk{

@@ -28,6 +28,7 @@ type ConfigToDbomConverter interface {
 	// goverter:map FS FSType
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Path Device | PathToSource
+	// goverter:map Path Type | pathToType
 	ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error
 
 	// goverter:update target

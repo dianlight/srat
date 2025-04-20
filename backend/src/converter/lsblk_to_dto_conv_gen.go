@@ -4,22 +4,25 @@
 package converter
 
 import (
-	dbom "github.com/dianlight/srat/dbom"
+	dto "github.com/dianlight/srat/dto"
 	lsblk "github.com/dianlight/srat/lsblk"
 )
 
-type LsblkToDbomConverterImpl struct{}
+type LsblkToDtoConverterImpl struct{}
 
-func (c *LsblkToDbomConverterImpl) LsblkInfoToMountPointPath(source *lsblk.LSBKInfo, target *dbom.MountPointPath) error {
+func (c *LsblkToDtoConverterImpl) LsblkInfoToMountPointData(source *lsblk.LSBKInfo, target *dto.MountPointData) error {
 	if source != nil {
 		if source.Mountpoint != "" {
 			target.Path = source.Mountpoint
 		}
-		if source.Name != "" {
-			target.Device = source.Name
+		if source.Mountpoint != "" {
+			target.Type = pathToType(source.Mountpoint)
 		}
 		if source.Fstype != "" {
 			target.FSType = source.Fstype
+		}
+		if source.Name != "" {
+			target.Device = source.Name
 		}
 		if source.Mountpoint != "" {
 			target.IsMounted = isMounted(source.Mountpoint)

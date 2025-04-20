@@ -17,6 +17,7 @@ import (
 
 type MountPointPath struct {
 	Path         string `gorm:"primarykey"`
+	Type         string `gorm:"not null;default:null"`
 	DeviceId     uint64
 	Device       string
 	FSType       string

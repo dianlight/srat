@@ -43,6 +43,9 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 	if source.Path != "" {
 		target.Path = source.Path
 	}
+	if source.Type != "" {
+		target.Type = source.Type
+	}
 	if source.Device != "" {
 		target.Device = source.Device
 	}
@@ -69,6 +72,9 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error {
 	if source.Path != "" {
 		target.Path = source.Path
+	}
+	if source.Type != "" {
+		target.Type = source.Type
 	}
 	if source.FSType != "" {
 		target.FSType = source.FSType

@@ -29,6 +29,7 @@ type ConfigToDtoConverter interface {
 	// goverter:ignore  Flags IsInvalid InvalidError Warnings
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Path Device | PathToSource
+	// goverter:map Path Type | pathToType
 	// goverter:map FS FSType
 	ShareToMountPointData(source config.Share, target *dto.MountPointData) error
 
@@ -96,4 +97,8 @@ func PathToSource(path string) string {
 
 	}
 	return ""
+}
+
+func pathToType(path string) string {
+	return "ADDON"
 }
