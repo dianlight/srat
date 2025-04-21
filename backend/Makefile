@@ -45,7 +45,7 @@ clean:
 
 .PHONY: test
 test: $(ALL_SRCS) static
-	cd $(SRC_DIRS);go tool gotest -coverpkg=./... ./...
+	cd $(SRC_DIRS);GOMAXPROCS=1 go tool gotest -coverpkg=./... ./...
 
 .PHONY: test_ci
 test_ci: $(ALL_SRCS)

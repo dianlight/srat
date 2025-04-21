@@ -40,7 +40,7 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	existingRecord := dbom.MountPointPath{}
 	res := tx.Take(&existingRecord, "path = ?", mp.Path)
 
-	slog.Warn("Return", "res", res, "ext", existingRecord)
+	//slog.Warn("Return", "res", res, "ext", existingRecord)
 	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		// Errore Generico
 		return errors.WithStack(res.Error)
@@ -49,13 +49,13 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 		if mp.DeviceId != 0 && existingRecord.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
 			return errors.Errorf("DeviceId mismatch for %s | mp:%d db:%d", mp.Path, mp.DeviceId, existingRecord.DeviceId)
 		}
-		slog.Warn("Save checkpoint", "mp", mp, "exists", existingRecord)
+		//slog.Warn("Save checkpoint", "mp", mp, "exists", existingRecord)
 		err := copier.CopyWithOption(&existingRecord, mp, copier.Option{IgnoreEmpty: true})
 		if err != nil {
 			return errors.WithStack(err)
 		}
 		*mp = existingRecord
-		slog.Warn("Save checkpoint", "mp", mp, "exists", existingRecord)
+		//slog.Warn("Save checkpoint", "mp", mp, "exists", existingRecord)
 	} else {
 		// Record Not Found
 		slog.Debug("New MountPoint", "mp", mp)

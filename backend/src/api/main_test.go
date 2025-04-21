@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/dianlight/srat/config"
@@ -16,6 +17,7 @@ import (
 )
 
 var testContext = context.Background()
+var testContextCancel context.CancelFunc
 var apiContextState dto.ContextState
 var exported_share_repo repository.ExportedShareRepositoryInterface
 
@@ -65,8 +67,12 @@ func TestMain(m *testing.M) {
 	//sharedResources.SSEBroker = NewMockBrokerInterface(ctrl) //
 	//testContext = api.StateToContext(&apiContextState, testContext)
 	testContext = config.ToContext(testContext)
+	testContext, testContextCancel = context.WithCancel(testContext)
 
 	retErr := m.Run()
+
+	testContextCancel()
+	testContext.Value("wg").(*sync.WaitGroup).Wait()
 
 	os.Exit(retErr)
 

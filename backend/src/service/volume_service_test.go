@@ -114,8 +114,8 @@ type VolumeServiceTestSuite struct {
 	mockMountRepo      *MockMountPointPathRepository
 	mockHardwareClient *MockClientWithResponses
 	volumeService      service.VolumeServiceInterface
-	ctx                context.Context
-	cancel             context.CancelFunc
+	//ctx                context.Context
+	//cancel             context.CancelFunc
 }
 
 func TestVolumeServiceTestSuite(t *testing.T) {
@@ -127,7 +127,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 	suite.mockBroadcaster = new(MockBroadcaster)
 	suite.mockMountRepo = new(MockMountPointPathRepository)
 	suite.mockHardwareClient = new(MockClientWithResponses)
-	suite.ctx, suite.cancel = context.WithCancel(context.Background())
+	//suite.ctx, suite.cancel = context.WithCancel(context.Background())
 
 	/*
 		// Load the JSON data from the file
@@ -163,11 +163,12 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		suite.mockMountRepo.On("Save", mock.Anything).Return(nil).Maybe()
 
 	*/
-	suite.volumeService = service.NewVolumeService(suite.ctx, suite.mockBroadcaster, suite.mockMountRepo, suite.mockHardwareClient)
+	suite.volumeService = service.NewVolumeService( /*suite.ctx*/ testContext, suite.mockBroadcaster, suite.mockMountRepo, suite.mockHardwareClient)
 }
 
 func (suite *VolumeServiceTestSuite) TearDownTest() {
-	suite.cancel()
+	testContextCancel()
+	//suite.cancel()
 	// suite.ctrl.Finish() // Removed gomock verification
 	suite.mockBroadcaster.AssertExpectations(suite.T())
 	suite.mockMountRepo.AssertExpectations(suite.T())
@@ -218,7 +219,7 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 	// Mock NotifyClient's internal GetVolumesData call
 	suite.mockHardwareClient.On(
 		"GetHardwareInfoWithResponse",
-		suite.ctx,
+		/*suite.ctx*/ testContext,
 		mock.Anything,
 	).Return(
 		&hardware.GetHardwareInfoResponse{
@@ -335,7 +336,7 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_Success() {
 	// Expect NotifyClient after successful unmount and save
 	suite.mockHardwareClient.On(
 		"GetHardwareInfoWithResponse",
-		suite.ctx,
+		/*suite.ctx*/ testContext,
 		mock.Anything,
 	).Return(
 		&hardware.GetHardwareInfoResponse{
@@ -410,7 +411,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1", IsMounted: true} // Initial state in DB
 	dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, Device: "sda2", IsMounted: true} // Initial state in DB
 
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse", suite.ctx, mock.Anything).Return(mockHWResponse, nil).Once()
+	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
+		mock.Anything).Return(mockHWResponse, nil).Once()
 
 	// Expect FindByPath and Save for each mount point found in hardware data
 	suite.mockMountRepo.On("FindByPath", mountPath1).Return(dbomMountData1, nil).Once()
@@ -465,7 +467,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 
 func (suite *VolumeServiceTestSuite) TestGetVolumesData_HardwareClientError() {
 	expectedErr := errors.New("hardware client failed")
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse", suite.ctx, mock.Anything).Return(nil, expectedErr).Once()
+	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
+		mock.Anything).Return(nil, expectedErr).Once()
 	// Fallback logic is commented out, so we expect the error to propagate
 
 	disks, err := suite.volumeService.GetVolumesData()
@@ -492,7 +495,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_NotF
 	mountPath1 := "/mnt/newfs"
 	expectedErr := gorm.ErrRecordNotFound
 
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse", suite.ctx, mock.Anything).Return(mockHWResponse, nil).Once()
+	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
+		mock.Anything).Return(mockHWResponse, nil).Once()
 	suite.mockMountRepo.On("FindByPath", mountPath1).Return(nil, expectedErr).Once()
 
 	// If FindByPath returns ErrRecordNotFound, Save *should* be called to create the record
@@ -532,7 +536,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_Othe
 	mountPath1 := "/mnt/errorfs"
 	expectedErr := errors.New("some other db error")
 
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse", suite.ctx, mock.Anything).Return(mockHWResponse, nil).Once()
+	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
+		mock.Anything).Return(mockHWResponse, nil).Once()
 	suite.mockMountRepo.On("FindByPath", mountPath1).Return(nil, expectedErr).Once()
 
 	// Save should NOT be called if FindByPath fails with an unexpected error
@@ -572,7 +577,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1", IsMounted: true}
 	expectedErr := errors.New("DB save error")
 
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse", suite.ctx, mock.Anything).Return(mockHWResponse, nil).Once()
+	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
+		mock.Anything).Return(mockHWResponse, nil).Once()
 	suite.mockMountRepo.On("FindByPath", mountPath1).Return(dbomMountData1, nil).Once()
 	suite.mockMountRepo.On("Save", mock.Anything).Return(expectedErr).Once()
 
@@ -615,7 +621,8 @@ func (suite *VolumeServiceTestSuite) TestNotifyClient_GetVolumesDataError() {
 	suite.mockMountRepo.On("Save", mock.Anything).Return(nil).Once() // Unmount Save succeeds
 
 	// Mock GetVolumesData inside NotifyClient to fail
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse", suite.ctx, mock.Anything).Return(nil, expectedErr).Once()
+	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
+		mock.Anything).Return(nil, expectedErr).Once()
 
 	// Expect BroadcastMessage NOT to be called
 	suite.mockBroadcaster.AssertNotCalled(suite.T(), "BroadcastMessage", mock.Anything)

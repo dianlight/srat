@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"slices"
+	"sync"
 
 	"github.com/jinzhu/copier"
 	"gitlab.com/tozd/go/errors"
@@ -248,7 +249,7 @@ func (self *Config) FromContext(ctx context.Context) error {
 }
 
 func (self *Config) ToContext(ctx context.Context) context.Context {
-	return context.WithValue(ctx, "samba_json_config", self)
+	return context.WithValue(context.WithValue(ctx, "wg", &sync.WaitGroup{}), "samba_json_config", self)
 }
 
 // Mapping Functions

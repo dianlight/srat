@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/dianlight/srat/homeassistant/ingress"
@@ -16,7 +17,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtClose context.CancelFunc) *http.Server {
+func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, apiContext context.Context, cxtClose context.CancelFunc) *http.Server {
 	handler := cors.New(
 		cors.Options{
 			//AllowedOrigins:   []string{"*"},
@@ -42,7 +43,9 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, cxtC
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			apiContext.Value("wg").(*sync.WaitGroup).Add(1)
 			go func() {
+				defer apiContext.Value("wg").(*sync.WaitGroup).Done()
 				slog.Debug("Starting HTTP server at", "listener", state.Address, "pid", state.ID)
 				if err := srv.Serve(state.Listener); err != nil {
 					if err == http.ErrServerClosed {

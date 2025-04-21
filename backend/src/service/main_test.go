@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 	"github.com/snapcore/snapd/osutil"
 )
 
-var testContext = context.Background()
+var testContext, testContextCancel = context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 var apiContextState dto.ContextState
 var exported_share_repo repository.ExportedShareRepositoryInterface
 
@@ -60,6 +61,8 @@ func TestMain(m *testing.M) {
 	// End
 
 	retErr := m.Run()
+	testContextCancel()
+	testContext.Value("wg").(*sync.WaitGroup).Wait()
 
 	os.Exit(retErr)
 

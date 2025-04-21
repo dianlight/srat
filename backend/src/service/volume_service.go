@@ -46,7 +46,11 @@ func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterf
 		hardwareClient:    hardwareClient,
 	}
 	//p.GetVolumesData()
-	go p.udevEventHandler()
+	ctx.Value("wg").(*sync.WaitGroup).Add(1)
+	go func() {
+		defer ctx.Value("wg").(*sync.WaitGroup).Done()
+		p.udevEventHandler()
+	}()
 	return p
 }
 

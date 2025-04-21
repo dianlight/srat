@@ -34,8 +34,10 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.134.3 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/ovechkin-dm/go-dyno v0.5.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
+	github.com/petermattis/goid v0.0.0-20250319124200-ccd6737f222a // indirect
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/rogpeppe/gohack v1.0.2 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
@@ -127,6 +129,7 @@ require (
 	github.com/itchyny/gojq v0.12.17
 	github.com/jaypipes/ghw v0.15.0
 	github.com/lmittmann/tint v1.0.7
+	github.com/ovechkin-dm/mockio/v2 v2.0.0-rc1
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.6.0
 	github.com/snapcore/snapd v0.0.0-20250314152246-823f84f544fa

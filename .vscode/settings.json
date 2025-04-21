@@ -21,5 +21,10 @@
   "remote.localPortHost": "allInterfaces",
   "typescript.inlayHints.parameterTypes.enabled": true,
   "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
-  "go.buildTags": "embedallowed_no"
+  "go.buildTags": "embedallowed_no",
+  "testing.showAllMessages": true,
+  "go.disableConcurrentTests": true,
+  "go.testEnvVars": {
+    "GOMAXPROCS": "1",
+  }
 }

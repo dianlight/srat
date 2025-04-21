@@ -66,7 +66,11 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	} else {
 		p.OutputEventsInterleave = 5 * time.Second
 	}
-	go p.run()
+	param.Ctx.Value("wg").(*sync.WaitGroup).Add(1)
+	go func() {
+		defer param.Ctx.Value("wg").(*sync.WaitGroup).Done()
+		p.run()
+	}()
 	_healthHanlerIntance = p
 	return p
 }

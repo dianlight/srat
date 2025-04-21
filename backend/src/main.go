@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -188,7 +189,7 @@ func prog(state overseer.State) {
 	// Get options
 	options = config.ReadOptionsFile(*optionsFile)
 
-	var apiContext, apiContextCancel = context.WithCancel(context.Background())
+	var apiContext, apiContextCancel = context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	sharedResources := dto.ContextState{}
 	sharedResources.UpdateFilePath = *updateFilePath
 	sharedResources.ReadOnlyMode = *roMode
@@ -399,8 +400,10 @@ func prog(state overseer.State) {
 		),
 	).Run()
 
+	slog.Info("Stopping SRAT", "pid", state.ID)
 	dbom.CloseDB()
+	apiContext.Value("wg").(*sync.WaitGroup).Wait()
+	slog.Info("SRAT stopped", "pid", state.ID)
 
-	log.Println("shutting down ")
 	os.Exit(0)
 }
