@@ -19,6 +19,7 @@ type DirtyDataServiceTestSuite struct {
 	dirtyDataService DirtyDataServiceInterface
 	ctx              context.Context
 	cancel           context.CancelFunc
+	app              *fxtest.App
 }
 
 func TestDirtyDataServiceTestSuite(t *testing.T) {
@@ -26,9 +27,7 @@ func TestDirtyDataServiceTestSuite(t *testing.T) {
 }
 
 func (suite *DirtyDataServiceTestSuite) SetupTest() {
-	//suite.ctx = context.Background()
-	//suite.dirtyDataService = NewDirtyDataService(suite.ctx)
-	app := fxtest.New(suite.T(),
+	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
@@ -40,12 +39,13 @@ func (suite *DirtyDataServiceTestSuite) SetupTest() {
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
-	defer app.RequireStart().RequireStop()
+	suite.app.RequireStart()
 }
 
 func (suite *DirtyDataServiceTestSuite) TearDownTest() {
 	suite.cancel()
 	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.app.RequireStop()
 }
 
 func (suite *DirtyDataServiceTestSuite) TestNewDirtyDataService() {

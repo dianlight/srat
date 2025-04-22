@@ -26,6 +26,7 @@ type SambaServiceSuite struct {
 	ctrl   *matchers.MockController
 	ctx    context.Context
 	cancel context.CancelFunc
+	app    *fxtest.App
 }
 
 func TestSambaServiceSuite(t *testing.T) {
@@ -36,7 +37,7 @@ func (suite *SambaServiceSuite) SetupSuite() {
 
 	os.Setenv("HOSTNAME", "test-host")
 
-	app := fxtest.New(suite.T(),
+	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
@@ -66,7 +67,7 @@ func (suite *SambaServiceSuite) SetupSuite() {
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
-	defer app.RequireStart().RequireStop()
+	suite.app.RequireStart()
 
 	/*
 	   var err error
@@ -90,6 +91,7 @@ func (suite *SambaServiceSuite) SetupSuite() {
 func (suite *SambaServiceSuite) TearDownTest() {
 	suite.cancel()
 	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.app.RequireStop()
 }
 
 func (suite *SambaServiceSuite) TestCreateConfigStream() {

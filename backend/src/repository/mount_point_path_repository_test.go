@@ -1,6 +1,8 @@
 package repository_test
 
 import (
+	"context"
+	"sync"
 	"testing"
 
 	"github.com/dianlight/srat/dbom"
@@ -8,26 +10,49 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
 )
 
 type MountPointPathRepositorySuite struct {
 	suite.Suite
 	mount_repo repository.MountPointPathRepositoryInterface
-	// VariableThatShouldStartAtFive int
+	ctx        context.Context
+	cancel     context.CancelFunc
+	db         *gorm.DB
+	app        *fxtest.App
 }
 
 func TestMountPointPathRepositorySuite(t *testing.T) {
-	csuite := new(MountPointPathRepositorySuite)
-	csuite.mount_repo = repository.NewMountPointPathRepository(dbom.GetDB())
-	/*
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		csuite.mockBoradcaster = NewMockBroadcasterServiceInterface(ctrl)
-		csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
-		csuite.mockBoradcaster.EXPECT().BroadcastMessage(gomock.Any()).AnyTimes()
-	*/
-	suite.Run(t, csuite)
+	suite.Run(t, new(MountPointPathRepositorySuite))
+}
+
+func (suite *MountPointPathRepositorySuite) SetupTest() {
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() (context.Context, context.CancelFunc) {
+				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+			},
+			fx.Annotate(
+				func() string { return "file::memory:?cache=shared&_pragma=foreign_keys(1)" },
+				fx.ResultTags(`name:"db_path"`),
+			),
+			dbom.NewDB,
+			repository.NewMountPointPathRepository,
+		),
+		fx.Populate(&suite.mount_repo),
+		fx.Populate(&suite.ctx),
+		fx.Populate(&suite.cancel),
+		fx.Populate(&suite.db),
+	)
+	defer suite.app.RequireStart()
+}
+
+func (suite *MountPointPathRepositorySuite) TearDownTest() {
+	suite.cancel()
+	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.app.RequireStop()
 }
 
 func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveWithoutData() {
@@ -40,7 +65,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveWithoutData() 
 	err := suite.mount_repo.Save(&testMountPoint)
 
 	suite.Require().NoError(err)
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
 
 func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
@@ -58,7 +83,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 	err := suite.mount_repo.Save(&testMountPoint)
 
 	suite.Require().NoError(err)
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
 
 func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {

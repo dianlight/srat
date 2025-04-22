@@ -10,13 +10,13 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func NewDB(v struct {
+func NewDB(lc fx.Lifecycle, v struct {
 	fx.In
-	lc     fx.Lifecycle
-	dbPath string `name:"db_path"`
+
+	DbPath string `name:"db_path"`
 }) *gorm.DB {
 
-	db, err := gorm.Open(sqlite.Open(v.dbPath), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open(v.DbPath), &gorm.Config{
 		//db, err = gorm.Open(gormlite.Open(dbpath), &gorm.Config{
 		TranslateError:         true,
 		SkipDefaultTransaction: true,
@@ -24,12 +24,15 @@ func NewDB(v struct {
 	})
 
 	if err != nil {
-		panic(errors.Errorf("failed to connect database %s", v.dbPath))
+		panic(errors.Errorf("failed to connect database %s", v.DbPath))
 	}
 	// Migrate the schema
 	db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{})
 
-	v.lc.Append(fx.Hook{
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return nil
+		},
 		OnStop: func(ctx context.Context) error {
 			sqlDB, err := db.DB()
 			if err != nil {
@@ -40,5 +43,6 @@ func NewDB(v struct {
 			return nil
 		},
 	})
+
 	return db
 }

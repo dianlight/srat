@@ -38,6 +38,7 @@ type VolumeServiceTestSuite struct {
 	ctrl               *matchers.MockController
 	ctx                context.Context
 	cancel             context.CancelFunc
+	app                *fxtest.App
 }
 
 func TestVolumeServiceTestSuite(t *testing.T) {
@@ -51,7 +52,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 	}
 	osutil.MockMountInfo(string(data))
 
-	app := fxtest.New(suite.T(),
+	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
@@ -68,7 +69,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
-	defer app.RequireStart().RequireStop()
+	suite.app.RequireStart()
 	//suite.ctx, suite.cancel = context.WithCancel(context.Background())
 
 	/*
@@ -111,6 +112,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 func (suite *VolumeServiceTestSuite) TearDownTest() {
 	suite.cancel()
 	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.app.RequireStop()
 	/*
 		testContextCancel()
 		//suite.cancel()

@@ -1,6 +1,8 @@
 package repository_test
 
 import (
+	"context"
+	"sync"
 	"testing"
 
 	"github.com/dianlight/srat/dbom"
@@ -8,18 +10,51 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
 )
 
 type ExportedSharesRepositorySuite struct {
 	suite.Suite
 	export_share_repo repository.ExportedShareRepositoryInterface
+	ctx               context.Context
+	cancel            context.CancelFunc
+	db                *gorm.DB
+	app               *fxtest.App
 }
 
 func TestExportedSharesSuite(t *testing.T) {
-	csuite := new(ExportedSharesRepositorySuite)
-	csuite.export_share_repo = repository.NewExportedShareRepository(dbom.GetDB())
-	suite.Run(t, csuite)
+	suite.Run(t, new(ExportedSharesRepositorySuite))
+}
+
+func (suite *ExportedSharesRepositorySuite) SetupTest() {
+	//suite.ctx = context.Background()
+	//suite.dirtyDataService = NewDirtyDataService(suite.ctx)
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() (context.Context, context.CancelFunc) {
+				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+			},
+			fx.Annotate(
+				func() string { return "file::memory:?cache=shared&_pragma=foreign_keys(1)" },
+				fx.ResultTags(`name:"db_path"`),
+			),
+			dbom.NewDB,
+			repository.NewExportedShareRepository,
+		),
+		fx.Populate(&suite.export_share_repo),
+		fx.Populate(&suite.ctx),
+		fx.Populate(&suite.cancel),
+		fx.Populate(&suite.db),
+	)
+	suite.app.RequireStart()
+}
+
+func (suite *ExportedSharesRepositorySuite) TearDownTest() {
+	suite.cancel()
+	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.app.RequireStop()
 }
 
 func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Save() {
@@ -41,8 +76,8 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Save() {
 	suite.Require().NoError(err)
 
 	// Cleanup
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
 
 func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_SaveAll() {
@@ -74,8 +109,8 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_SaveAll(
 	// Assert
 	suite.Require().NoError(err)
 	// Cleanup
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
 
 func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_FindByName() {
@@ -111,9 +146,9 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_FindByNa
 	suite.Len(foundShare.RoUsers, 2)
 
 	// Cleanup
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
 }
 
 func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_FindByName_NotFound() {
@@ -169,8 +204,8 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 	}
 
 	// Cleanup
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
 func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Delete() {
 	// Arrange
@@ -198,7 +233,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Delete()
 	suite.Require().ErrorIs(err, gorm.ErrRecordNotFound)
 
 	// Cleanup
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
 
 func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_UpdateName() {
@@ -232,6 +267,6 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_UpdateNa
 	suite.Equal("new_name", newShare.Name)
 
 	// Cleanup
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
-	dbom.GetDB().Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
