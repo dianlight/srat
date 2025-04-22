@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v69/github"
 	"gitlab.com/tozd/go/errors"
@@ -27,11 +27,12 @@ type UpgradeService struct {
 	broadcaster     BroadcasterServiceInterface
 	lastReleaseData dto.ReleaseAsset
 	updateLimiter   rate.Sometimes
+	props_repo      repository.PropertyRepositoryInterface
 	//updateQueue      map[string](chan *dto.ReleaseAsset)
 	//updateQueueMutex sync.RWMutex
 }
 
-func NewUpgradeService(ctx context.Context, broadcaster BroadcasterServiceInterface) UpgradeServiceInterface {
+func NewUpgradeService(ctx context.Context, broadcaster BroadcasterServiceInterface, props_repo repository.PropertyRepositoryInterface) UpgradeServiceInterface {
 	p := new(UpgradeService)
 	p.updateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 	p.ctx = ctx
@@ -39,6 +40,7 @@ func NewUpgradeService(ctx context.Context, broadcaster BroadcasterServiceInterf
 	//p.updateQueueMutex = sync.RWMutex{}
 	p.lastReleaseData = dto.ReleaseAsset{}
 	p.broadcaster = broadcaster
+	p.props_repo = props_repo
 	rateLimiter := github_ratelimit.NewClient(nil)
 	p.gh = github.NewClient(rateLimiter)
 	go p.run()
@@ -69,8 +71,10 @@ func (self *UpgradeService) run() error {
 }
 
 func (self *UpgradeService) checkSoftwareVersion() error {
-	var properties dbom.Properties
-	properties.Load()
+	properties, err := self.props_repo.All()
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	value, err := properties.GetValue("UpdateChannel")
 	if err != nil {
 		return errors.WithStack(err)

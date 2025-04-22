@@ -17,6 +17,7 @@ type SambaUser struct {
 	IsAdmin   bool
 }
 
+/*
 func (p *SambaUsers) Load() error {
 	return db.Find(p).Error
 }

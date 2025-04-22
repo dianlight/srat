@@ -31,19 +31,23 @@ type SambaService struct {
 	apictx              *dto.ContextState
 	dirtyservice        DirtyDataServiceInterface
 	exported_share_repo repository.ExportedShareRepositoryInterface
+	prop_repo           repository.PropertyRepositoryInterface
+	samba_user_repo     repository.SambaUserRepositoryInterface
 }
 
-func NewSambaService(apictx *dto.ContextState, dirtyservice DirtyDataServiceInterface, exported_share_repo repository.ExportedShareRepositoryInterface) SambaServiceInterface {
+func NewSambaService(apictx *dto.ContextState, dirtyservice DirtyDataServiceInterface, exported_share_repo repository.ExportedShareRepositoryInterface, prop_repo repository.PropertyRepositoryInterface, samba_user_repo repository.SambaUserRepositoryInterface) SambaServiceInterface {
 	p := &SambaService{}
 	p.apictx = apictx
 	p.dirtyservice = dirtyservice
 	p.exported_share_repo = exported_share_repo
+	p.prop_repo = prop_repo
+	p.samba_user_repo = samba_user_repo
 	dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
 	return p
 }
 
 func (self *SambaService) CreateConfigStream() (data *[]byte, err error) {
-	config, err := dbutil.JSONFromDatabase(self.exported_share_repo)
+	config, err := dbutil.JSONFromDatabase(self.exported_share_repo, self.prop_repo, self.samba_user_repo)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

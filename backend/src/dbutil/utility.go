@@ -10,7 +10,9 @@ import (
 
 func FirstTimeJSONImporter(config config.Config,
 	mount_repository repository.MountPointPathRepositoryInterface,
+	props_repository repository.PropertyRepositoryInterface,
 	export_share_repository repository.ExportedShareRepositoryInterface,
+	users_repository repository.SambaUserRepositoryInterface,
 ) (err error) {
 
 	var conv converter.ConfigToDbomConverterImpl
@@ -22,11 +24,11 @@ func FirstTimeJSONImporter(config config.Config,
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = properties.Save()
+	err = props_repository.SaveAll(properties)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = users.Save()
+	err = users_repository.SaveAll(users)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -45,17 +47,19 @@ func FirstTimeJSONImporter(config config.Config,
 	return nil
 }
 
-func JSONFromDatabase(export_share_repository repository.ExportedShareRepositoryInterface) (tconfig config.Config, err error) {
+func JSONFromDatabase(
+	export_share_repository repository.ExportedShareRepositoryInterface,
+	props_repository repository.PropertyRepositoryInterface,
+	users_repository repository.SambaUserRepositoryInterface,
+) (tconfig config.Config, err error) {
 	var conv converter.ConfigToDbomConverterImpl
 	shares := []dbom.ExportedShare{}
-	properties := dbom.Properties{}
-	users := dbom.SambaUsers{}
 
-	err = properties.Load()
+	properties, err := props_repository.All()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
-	err = users.Load()
+	users, err := users_repository.All()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}

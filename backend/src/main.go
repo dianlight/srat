@@ -23,7 +23,6 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"gitlab.com/tozd/go/errors"
-	"gorm.io/gorm"
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
@@ -184,7 +183,7 @@ func prog(state overseer.State) {
 		*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
 	}
 
-	dbom.InitDB(*dbfile)
+	//dbom.InitDB(*dbfile)
 
 	// Get options
 	options = config.ReadOptionsFile(*optionsFile)
@@ -211,7 +210,7 @@ func prog(state overseer.State) {
 			return fxlog
 		}),
 		fx.Provide(
-			func() *gorm.DB { return dbom.GetDB() },
+			dbom.NewDB,
 			func() *slog.Logger { return slog.Default() },
 			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
 			func() *dto.ContextState { return &sharedResources },
@@ -234,6 +233,10 @@ func prog(state overseer.State) {
 				func() bool { return *hamode },
 				fx.ResultTags(`name:"ha_mode"`),
 			),
+			fx.Annotate(
+				func() string { return *dbfile },
+				fx.ResultTags(`name:"db_path"`),
+			),
 			service.NewBroadcasterService,
 			service.NewVolumeService,
 			service.NewSambaService,
@@ -241,6 +244,8 @@ func prog(state overseer.State) {
 			service.NewDirtyDataService,
 			repository.NewMountPointPathRepository,
 			repository.NewExportedShareRepository,
+			repository.NewPropertyRepositoryRepository,
+			repository.NewSambaUserRepository,
 			server.AsHumaRoute(api.NewSSEBroker),
 			server.AsHumaRoute(api.NewHealthHandler),
 			server.AsHumaRoute(api.NewShareHandler),
@@ -280,13 +285,12 @@ func prog(state overseer.State) {
 		),
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
+			props_repo repository.PropertyRepositoryInterface,
 			exported_share_repo repository.ExportedShareRepositoryInterface,
 			hardwareClient hardware.ClientWithResponsesInterface,
+			samba_user_repo repository.SambaUserRepositoryInterface,
 		) {
-			// JSON Config  Migration if necessary
-			// Get config and migrate if DB is empty
-			var properties dbom.Properties
-			err := properties.Load()
+			properties, err := props_repo.All()
 			if err != nil {
 				log.Fatalf("Cant load properties - %#+v", err)
 			}
@@ -299,7 +303,7 @@ func prog(state overseer.State) {
 				if err != nil {
 					log.Fatalf("Cant load config file %#+v", err)
 				}
-				err = dbutil.FirstTimeJSONImporter(config, mount_repo, exported_share_repo)
+				err = dbutil.FirstTimeJSONImporter(config, mount_repo, props_repo, exported_share_repo, samba_user_repo)
 				if err != nil {
 					log.Fatalf("Cant import json settings - %#+v", err)
 				}
@@ -401,7 +405,7 @@ func prog(state overseer.State) {
 	).Run()
 
 	slog.Info("Stopping SRAT", "pid", state.ID)
-	dbom.CloseDB()
+	//dbom.CloseDB()
 	apiContext.Value("wg").(*sync.WaitGroup).Wait()
 	slog.Info("SRAT stopped", "pid", state.ID)
 

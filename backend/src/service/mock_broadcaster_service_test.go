@@ -8,7 +8,7 @@
 
 // Package service_test is a generated GoMock package.
 package service_test
-
+/*
 import (
 	reflect "reflect"
 
@@ -68,3 +68,4 @@ func (mr *MockBroadcasterServiceInterfaceMockRecorder) ProcessHttpChannel(send a
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessHttpChannel", reflect.TypeOf((*MockBroadcasterServiceInterface)(nil).ProcessHttpChannel), send)
 }
+*/

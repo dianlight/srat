@@ -1,23 +1,6 @@
 package service_test
 
-import (
-	"context"
-	"log"
-	"log/slog"
-	"os"
-	"sync"
-	"testing"
-	"time"
-
-	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/dbom"
-	"github.com/dianlight/srat/dbutil"
-	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
-	"github.com/lmittmann/tint"
-	"github.com/snapcore/snapd/osutil"
-)
-
+/*
 var testContext, testContextCancel = context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 var apiContextState dto.ContextState
 var exported_share_repo repository.ExportedShareRepositoryInterface
@@ -67,3 +50,4 @@ func TestMain(m *testing.M) {
 	os.Exit(retErr)
 
 }
+*/

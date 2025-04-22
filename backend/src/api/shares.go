@@ -22,18 +22,21 @@ type ShareHandler struct {
 	apiContext          *dto.ContextState
 	dirtyservice        service.DirtyDataServiceInterface
 	exported_share_repo repository.ExportedShareRepositoryInterface
+	user_repo           repository.SambaUserRepositoryInterface
 }
 
 func NewShareHandler(broadcaster service.BroadcasterServiceInterface,
 	apiContext *dto.ContextState,
 	dirtyService service.DirtyDataServiceInterface,
 	exported_share_repo repository.ExportedShareRepositoryInterface,
+	user_repo repository.SambaUserRepositoryInterface,
 ) *ShareHandler {
 	p := new(ShareHandler)
 	p.broadcaster = broadcaster
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyService
 	p.exported_share_repo = exported_share_repo
+	p.user_repo = user_repo
 	p.sharesQueueMutex = sync.RWMutex{}
 	return p
 }
@@ -150,8 +153,7 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 		return nil, err
 	}
 	if len(dbshare.Users) == 0 {
-		adminUser := dbom.SambaUser{}
-		err = adminUser.GetAdmin()
+		adminUser, err := self.user_repo.GetAdmin()
 		if err != nil {
 			return nil, err
 		}

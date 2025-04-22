@@ -1,28 +1,22 @@
 package dbom
 
 import (
+	"context"
+
 	"github.com/glebarez/sqlite"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-var (
-	db *gorm.DB
-)
+func NewDB(v struct {
+	fx.In
+	lc     fx.Lifecycle
+	dbPath string `name:"db_path"`
+}) *gorm.DB {
 
-// initDB initializes the database connection and performs schema migration.
-//
-// It opens a connection to the SQLite database specified by dbpath using GORM,
-// and automatically migrates the MountPointData schema.
-//
-// Parameters:
-//   - dbpath: A string representing the path to the SQLite database file.
-//
-// The function panics if it fails to connect to the database.
-func InitDB(dbpath string) {
-	var err error
-	db, err = gorm.Open(sqlite.Open(dbpath), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open(v.dbPath), &gorm.Config{
 		//db, err = gorm.Open(gormlite.Open(dbpath), &gorm.Config{
 		TranslateError:         true,
 		SkipDefaultTransaction: true,
@@ -30,29 +24,21 @@ func InitDB(dbpath string) {
 	})
 
 	if err != nil {
-		panic(errors.Errorf("failed to connect database %s", dbpath))
+		panic(errors.Errorf("failed to connect database %s", v.dbPath))
 	}
 	// Migrate the schema
 	db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{})
-	/*
-	   result, _ := db.Debug().Migrator().ColumnTypes(&Property{})
 
-	   	for _, v := range result {
-	   		fmt.Printf("%+v\n", v)
-	   	}
-	*/
-}
-
-func CloseDB() {
-	sqlDB, err := db.DB()
-	if err != nil {
-		panic(err)
-	}
-
-	// Close
-	sqlDB.Close()
-}
-
-func GetDB() *gorm.DB {
+	v.lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			sqlDB, err := db.DB()
+			if err != nil {
+				panic(err)
+			}
+			// Close
+			sqlDB.Close()
+			return nil
+		},
+	})
 	return db
 }

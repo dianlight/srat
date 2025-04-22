@@ -8,6 +8,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/xorcare/pointer"
 	"gorm.io/gorm"
@@ -19,12 +20,14 @@ type UserHandler struct {
 	//volumesQueueMutex sync.RWMutex
 	apiContext   *dto.ContextState
 	dirtyservice service.DirtyDataServiceInterface
+	user_repo    repository.SambaUserRepositoryInterface
 }
 
-func NewUserHandler(apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface) *UserHandler {
+func NewUserHandler(apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface, user_repo repository.SambaUserRepositoryInterface) *UserHandler {
 	p := new(UserHandler)
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyservice
+	p.user_repo = user_repo
 	return p
 }
 
@@ -49,8 +52,7 @@ func (self *UserHandler) RegisterUserHandler(api huma.API) {
 //   - A struct containing a slice of dto.User in the Body field.
 //   - An error if any issue occurs during loading or conversion of users.
 func (handler *UserHandler) ListUsers(ctx context.Context, input *struct{}) (*struct{ Body []dto.User }, error) {
-	var dbusers dbom.SambaUsers
-	err := dbusers.Load()
+	dbusers, err := handler.user_repo.All()
 	if err != nil {
 		return nil, err
 	}
@@ -82,10 +84,7 @@ func (handler *UserHandler) ListUsers(ctx context.Context, input *struct{}) (*st
 // - An error if there is any issue retrieving or converting the user.
 func (handler *UserHandler) GetAdminUser(ctx context.Context, input *struct{}) (*struct{ Body dto.User }, error) {
 	var adminUser dto.User
-	dbUser := dbom.SambaUser{
-		IsAdmin: true,
-	}
-	err := dbUser.GetAdmin()
+	dbUser, err := handler.user_repo.GetAdmin()
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +124,7 @@ func (handler *UserHandler) CreateUser(ctx context.Context, input *struct {
 	if err != nil {
 		return nil, err
 	}
-	err = dbUser.Create()
+	err = handler.user_repo.Create(&dbUser)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, huma.Error409Conflict("User already exists")
@@ -165,28 +164,24 @@ func (handler *UserHandler) UpdateUser(ctx context.Context, input *struct {
 	Body     dto.User
 }) (*struct{ Body dto.User }, error) {
 
-	dbUser := dbom.SambaUser{
-		Username: input.UserName,
-		IsAdmin:  false,
-	}
-	err := dbUser.Get()
+	dbUser, err := handler.user_repo.GetUserByName(input.UserName)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, huma.Error404NotFound("User not found")
 	} else if err != nil {
 		return nil, err
 	}
 	var conv converter.DtoToDbomConverterImpl
-	err = conv.UserToSambaUser(input.Body, &dbUser)
+	err = conv.UserToSambaUser(input.Body, dbUser)
 	if err != nil {
 		return nil, err
 	}
 
-	err = dbUser.Save()
+	err = handler.user_repo.Save(dbUser)
 	if err != nil {
 		return nil, err
 	}
 	var user dto.User
-	err = conv.SambaUserToUser(dbUser, &user)
+	err = conv.SambaUserToUser(*dbUser, &user)
 	if err != nil {
 		return nil, err
 	}
@@ -212,10 +207,7 @@ func (handler *UserHandler) UpdateAdminUser(ctx context.Context, input *struct {
 	Body dto.User
 }) (*struct{ Body dto.User }, error) {
 
-	dbUser := dbom.SambaUser{
-		IsAdmin: true,
-	}
-	err := dbUser.GetAdmin()
+	dbUser, err := handler.user_repo.GetAdmin()
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +216,7 @@ func (handler *UserHandler) UpdateAdminUser(ctx context.Context, input *struct {
 	if err != nil {
 		return nil, err
 	}
-	err = dbUser.Save()
+	err = handler.user_repo.Save(&dbUser)
 	if err != nil {
 		return nil, err
 	}
@@ -255,18 +247,10 @@ func (handler *UserHandler) DeleteUser(ctx context.Context, input *struct {
 	UserName string `path:"username" maxLength:"30" example:"world" doc:"Username"`
 }) (*struct{}, error) {
 
-	dbUser := dbom.SambaUser{
-		Username: input.UserName,
-		IsAdmin:  false,
-	}
-	err := dbUser.Get()
+	err := handler.user_repo.Delete(input.UserName)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, huma.Error404NotFound("User not found")
 	} else if err != nil {
-		return nil, err
-	}
-	err = dbUser.Delete()
-	if err != nil {
 		return nil, err
 	}
 

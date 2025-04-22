@@ -5,8 +5,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"gitlab.com/tozd/go/errors"
 )
@@ -14,6 +14,7 @@ import (
 type SettingsHanler struct {
 	apiContext   *dto.ContextState
 	dirtyService service.DirtyDataServiceInterface
+	props_repo   repository.PropertyRepositoryInterface
 }
 
 // NewSettingsHanler creates a new instance of SettingsHanler with the provided
@@ -26,10 +27,11 @@ type SettingsHanler struct {
 //
 // Returns:
 //   - A pointer to the newly created SettingsHanler instance.
-func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyDataServiceInterface) *SettingsHanler {
+func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyDataServiceInterface, props_repo repository.PropertyRepositoryInterface) *SettingsHanler {
 	p := new(SettingsHanler)
 	p.apiContext = apiContext
 	p.dirtyService = dirtyService
+	p.props_repo = props_repo
 	return p
 }
 
@@ -65,8 +67,7 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 }) (*struct{ Body dto.Settings }, error) {
 	config := input.Body
 
-	var dbconfig dbom.Properties
-	err := dbconfig.Load()
+	dbconfig, err := self.props_repo.All()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -77,7 +78,7 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 		return nil, errors.WithStack(err)
 	}
 
-	err = dbconfig.Save()
+	dbconfig, err = self.props_repo.All()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -101,14 +102,13 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 //   - A struct containing the settings in the Body field.
 //   - An error if there is any issue loading or converting the settings.
 func (self *SettingsHanler) GetSettings(ctx context.Context, input *struct{}) (*struct{ Body dto.Settings }, error) {
-	var dbsettings dbom.Properties
 	var conv converter.DtoToDbomConverterImpl
-	err := dbsettings.Load()
+	dbconfig, err := self.props_repo.All()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	var settings dto.Settings
-	err = conv.PropertiesToSettings(dbsettings, &settings)
+	err = conv.PropertiesToSettings(dbconfig, &settings)
 	if err != nil {
 		return nil, errors.WithStack(err)
 

@@ -1,10 +1,8 @@
 package dbom
 
 import (
-	"context"
 	"time"
 
-	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
 
@@ -18,75 +16,41 @@ type Property struct {
 
 type Properties map[string]Property
 
-func (self *Properties) Load() error {
-	var props []Property
-	err := db.Model(&Property{}).Find(&props).Error
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	*self = make(Properties, len(props))
-	for _, prop := range props {
-		(*self)[prop.Key] = prop
-	}
-	return nil
-}
-
-func (self *Properties) Save() error {
-	for _, prop := range *self {
-		err := db.Save(&prop).Error
-		if err != nil {
-			return errors.WithStack(err)
+/*
+	func (self *Properties) Add(key string, value any) error {
+		prop := Property{
+			Key:   key,
+			Value: value,
 		}
-	}
-	return nil
-}
 
-func (self *Properties) DeleteAll() error {
-	result := db.Session(&gorm.Session{AllowGlobalUpdate: true}).Model(&Property{}).Delete(&Property{})
-	if result.Error != nil {
-		return result.Error
-	}
-	*self = nil
-	return nil
-}
+		tx := db.WithContext(context.Background()).Begin()
+		tx.Unscoped().Model(&Property{}).Where("key", key).Update("deleted_at", nil)
 
-func (self *Properties) Add(key string, value any) error {
-	prop := Property{
-		Key:   key,
-		Value: value,
+		result := tx.Model(&Property{}).Where(Property{Key: key}).Assign(prop).FirstOrCreate(&prop)
+		if result.Error != nil {
+			return errors.WithStack(result.Error)
+		}
+
+		(*self)[key] = prop
+		return errors.WithStack(tx.Commit().Error)
 	}
 
-	tx := db.WithContext(context.Background()).Begin()
-	tx.Unscoped().Model(&Property{}).Where("key", key).Update("deleted_at", nil)
+	func (self *Properties) Remove(key string) error {
+		result := db.WithContext(context.Background()).Model(&Property{}).Where("key = ?", key).Delete(&Property{})
+		if result.Error != nil {
+			return result.Error
+		}
 
-	result := tx.Model(&Property{}).Where(Property{Key: key}).Assign(prop).FirstOrCreate(&prop)
-	if result.Error != nil {
-		return errors.WithStack(result.Error)
+		delete(*self, key)
+
+		return nil
 	}
-
-	(*self)[key] = prop
-	return errors.WithStack(tx.Commit().Error)
-}
-
-func (self *Properties) Remove(key string) error {
-	result := db.WithContext(context.Background()).Model(&Property{}).Where("key = ?", key).Delete(&Property{})
-	if result.Error != nil {
-		return result.Error
-	}
-
-	delete(*self, key)
-
-	return nil
-}
-
+*/
 func (self *Properties) Get(key string) (*Property, error) {
-	var prop Property
-	result := db.WithContext(context.Background()).Table("properties").Where("key = ?", key).First(&prop)
-	if result.Error != nil {
-		return nil, result.Error
+	prop, ok := (*self)[key]
+	if !ok {
+		return nil, gorm.ErrRecordNotFound
 	}
-	(*self)[key] = prop
-
 	return &prop, nil
 }
 
@@ -98,6 +62,7 @@ func (self *Properties) GetValue(key string) (interface{}, error) {
 	return prop.Value, nil
 }
 
+/*
 func (self *Properties) SetValue(key string, value any) error {
 	prop, err := self.Get(key)
 	if err != nil {
@@ -113,3 +78,4 @@ func (self *Properties) SetValue(key string, value any) error {
 	(*self)[key] = *prop
 	return nil
 }
+*/

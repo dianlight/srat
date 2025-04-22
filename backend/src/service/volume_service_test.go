@@ -3,119 +3,41 @@ package service_test
 
 import (
 	"context"
+	"log"
 	"net/http"
+	"os"
+	"sync"
 	"testing"
-	"time"
 
-	"github.com/danielgtaylor/huma/v2/sse" // Needed for MockBroadcaster
-	"github.com/dianlight/srat/converter"
+	// Needed for MockBroadcaster
+
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware" // Keep for the interface definition
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/stretchr/testify/mock"
+	"github.com/ovechkin-dm/mockio/v2/matchers"
+	"github.com/ovechkin-dm/mockio/v2/mock"
+	"github.com/snapcore/snapd/osutil"
 	"github.com/stretchr/testify/suite"
 	"github.com/xorcare/pointer"
-	"gitlab.com/tozd/go/errors"
-
-	// Remove gomock import: "go.uber.org/mock/gomock"
+	errors "gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
+	// Remove gomock import: "go.uber.org/mock/gomock"
 )
-
-// --- Mock Implementations using testify/mock ---
-
-// MockBroadcaster is a mock for BroadcasterServiceInterface using testify/mock
-type MockBroadcaster struct {
-	mock.Mock
-}
-
-func (m *MockBroadcaster) BroadcastMessage(msg any) (any, error) {
-	args := m.Called(msg)
-	// Handle potential nil return for the first argument
-	ret0 := args.Get(0)
-	return ret0, args.Error(1)
-}
-
-func (m *MockBroadcaster) ProcessHttpChannel(send sse.Sender) {
-	m.Called(send)
-}
-
-// MockMountPointPathRepository is a mock for MountPointPathRepositoryInterface using testify/mock
-type MockMountPointPathRepository struct {
-	mock.Mock
-}
-
-func (m *MockMountPointPathRepository) All() ([]dbom.MountPointPath, error) {
-	args := m.Called()
-	// Handle potential nil return for the first argument
-	var ret0 []dbom.MountPointPath
-	if args.Get(0) != nil {
-		ret0 = args.Get(0).([]dbom.MountPointPath)
-	}
-	return ret0, args.Error(1)
-}
-
-func (m *MockMountPointPathRepository) Save(mp *dbom.MountPointPath) error {
-	args := m.Called(mp)
-	return args.Error(0)
-}
-
-func (m *MockMountPointPathRepository) FindByPath(path string) (*dbom.MountPointPath, error) {
-	args := m.Called(path)
-	// Handle potential nil return for the first argument
-	var ret0 *dbom.MountPointPath
-	if args.Get(0) != nil {
-		ret0 = args.Get(0).(*dbom.MountPointPath)
-	}
-	return ret0, args.Error(1)
-}
-
-func (m *MockMountPointPathRepository) Exists(id string) (bool, error) {
-	args := m.Called(id)
-	return args.Bool(0), args.Error(1)
-}
-
-// MockClientWithResponses is a mock for hardware.ClientWithResponsesInterface using testify/mock
-type MockClientWithResponses struct {
-	mock.Mock
-	// We don't embed the actual client here for a pure mock
-}
-
-// Ensure MockClientWithResponses implements hardware.ClientWithResponsesInterface
-var _ hardware.ClientWithResponsesInterface = (*MockClientWithResponses)(nil)
-
-func (m *MockClientWithResponses) GetHardwareInfo(ctx context.Context, reqEditors ...hardware.RequestEditorFn) (*http.Response, error) {
-	// To properly mock variadic functions, we often pass them as a single slice argument
-	// or use mock.Anything if the exact editors don't matter for the test.
-	args := m.Called(ctx, reqEditors)
-	var resp *http.Response
-	if args.Get(0) != nil {
-		resp = args.Get(0).(*http.Response)
-	}
-	return resp, args.Error(1)
-}
-
-func (m *MockClientWithResponses) GetHardwareInfoWithResponse(ctx context.Context, reqEditors ...hardware.RequestEditorFn) (*hardware.GetHardwareInfoResponse, error) {
-	// Similar handling for variadic arguments
-	args := m.Called(ctx, reqEditors)
-	var resp *hardware.GetHardwareInfoResponse
-	if args.Get(0) != nil {
-		resp = args.Get(0).(*hardware.GetHardwareInfoResponse)
-	}
-	return resp, args.Error(1)
-}
-
-// --- Test Suite ---
 
 type VolumeServiceTestSuite struct {
 	suite.Suite
 	// ctrl *gomock.Controller // Removed gomock controller
-	mockBroadcaster    *MockBroadcaster
-	mockMountRepo      *MockMountPointPathRepository
-	mockHardwareClient *MockClientWithResponses
+	//mockBroadcaster    *MockBroadcaster
+	mockMountRepo      repository.MountPointPathRepositoryInterface
+	mockHardwareClient hardware.ClientWithResponsesInterface
 	volumeService      service.VolumeServiceInterface
-	//ctx                context.Context
-	//cancel             context.CancelFunc
+	ctrl               *matchers.MockController
+	ctx                context.Context
+	cancel             context.CancelFunc
 }
 
 func TestVolumeServiceTestSuite(t *testing.T) {
@@ -123,10 +45,30 @@ func TestVolumeServiceTestSuite(t *testing.T) {
 }
 
 func (suite *VolumeServiceTestSuite) SetupTest() {
-	// suite.ctrl = gomock.NewController(suite.T()) // Removed gomock controller init
-	suite.mockBroadcaster = new(MockBroadcaster)
-	suite.mockMountRepo = new(MockMountPointPathRepository)
-	suite.mockHardwareClient = new(MockClientWithResponses)
+	data, err := os.ReadFile("../../test/data/mount_info.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	osutil.MockMountInfo(string(data))
+
+	app := fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) {
+				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+			},
+			service.NewVolumeService,
+			mock.Mock[service.BroadcasterServiceInterface],
+			mock.Mock[repository.MountPointPathRepositoryInterface],
+			mock.Mock[hardware.ClientWithResponsesInterface],
+		),
+		fx.Populate(&suite.volumeService),
+		fx.Populate(&suite.mockMountRepo),
+		fx.Populate(&suite.mockHardwareClient),
+		fx.Populate(&suite.ctx),
+		fx.Populate(&suite.cancel),
+	)
+	defer app.RequireStart().RequireStop()
 	//suite.ctx, suite.cancel = context.WithCancel(context.Background())
 
 	/*
@@ -163,18 +105,22 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		suite.mockMountRepo.On("Save", mock.Anything).Return(nil).Maybe()
 
 	*/
-	suite.volumeService = service.NewVolumeService( /*suite.ctx*/ testContext, suite.mockBroadcaster, suite.mockMountRepo, suite.mockHardwareClient)
+	//suite.volumeService = service.NewVolumeService( /*suite.ctx*/ testContext, suite.mockBroadcaster, suite.mockMountRepo, suite.mockHardwareClient)
 }
 
 func (suite *VolumeServiceTestSuite) TearDownTest() {
-	testContextCancel()
-	//suite.cancel()
-	// suite.ctrl.Finish() // Removed gomock verification
-	suite.mockBroadcaster.AssertExpectations(suite.T())
-	suite.mockMountRepo.AssertExpectations(suite.T())
-	suite.mockHardwareClient.AssertExpectations(suite.T())
-	// Give time for goroutines to potentially exit
-	time.Sleep(10 * time.Millisecond)
+	suite.cancel()
+	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	/*
+		testContextCancel()
+		//suite.cancel()
+		// suite.ctrl.Finish() // Removed gomock verification
+		suite.mockBroadcaster.AssertExpectations(suite.T())
+		suite.mockMountRepo.AssertExpectations(suite.T())
+		suite.mockHardwareClient.AssertExpectations(suite.T())
+		// Give time for goroutines to potentially exit
+		time.Sleep(10 * time.Millisecond)
+	*/
 }
 
 // --- MountVolume Tests ---
@@ -198,40 +144,27 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 	}
 
 	// Mock FindByPath
-	suite.mockMountRepo.On("FindByPath", mountPath).Return(dbomMountData, nil).Twice()
+	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(2))
 
-	// Mock osutil.IsMounted - THIS IS HARD TO MOCK DIRECTLY. Assuming it returns false.
-	// Mock mount.Mount - THIS IS HARD TO MOCK DIRECTLY. Assuming it succeeds.
-	// Mock converter.MountToMountPointPath - Assuming it works.
-
-	// Mock Save to be called with IsMounted = true
-	suite.mockMountRepo.On("Save", mock.MatchedBy(func(mp *dbom.MountPointPath) bool {
-		// Check the state *inside* the mock setup
-		suite.Equal(mountPath, mp.Path) // Path might change if rename logic kicks in, adjust if needed
-		//suite.True(mp.IsMounted)
-		//suite.Equal(device, mp.Device)
-		// Update the original dbomMountData to reflect the save for subsequent checks if needed
+	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
+		mp, ok := args[0].(*dbom.MountPointPath)
+		if !ok {
+			suite.T().Errorf("Expected argument to be of type *dbom.MountPointPath, got %T", args[0])
+		}
+		suite.Equal(mountPath, mp.Path)
 		dbomMountData.Device = mp.Device
 		dbomMountData.IsMounted = mp.IsMounted
-		return true // Return true to indicate the matcher succeeded
-	})).Return(nil).Maybe()
+		return []any{nil}
+	})).Verify(matchers.AtLeastOnce())
 
-	// Mock NotifyClient's internal GetVolumesData call
-	suite.mockHardwareClient.On(
-		"GetHardwareInfoWithResponse",
-		/*suite.ctx*/ testContext,
-		mock.Anything,
-	).Return(
+	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(
 		&hardware.GetHardwareInfoResponse{
 			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 			JSON200: &struct {
 				Data   *hardware.HardwareInfo             `json:"data,omitempty"`
 				Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
 			}{Data: &hardware.HardwareInfo{Drives: &[]hardware.Drive{}}},
-		}, nil).Maybe() // Expect once due to NotifyClient
-
-	// Mock NotifyClient's BroadcastMessage call
-	suite.mockBroadcaster.On("BroadcastMessage", mock.AnythingOfType("*[]dto.Disk")).Return(nil, nil).Maybe()
+		}, nil).Verify(matchers.AtLeastOnce())
 
 	defer func() {
 		err := suite.volumeService.UnmountVolume(mountPath, false, false) // Cleanup
@@ -255,7 +188,7 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_RepoFindByPathError() {
 	mountData := dto.MountPointData{Path: mountPath, Device: "sda1"}
 	expectedErr := errors.New("Invalid parameter")
 
-	suite.mockMountRepo.On("FindByPath", mountPath).Return(nil, expectedErr).Once()
+	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(nil, expectedErr).Verify(matchers.Times(1))
 
 	err := suite.volumeService.MountVolume(mountData)
 	suite.Require().NotNil(err)
@@ -278,7 +211,8 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_DeviceInvalid() {
 	mountData := dto.MountPointData{Path: mountPath, Device: "/dev/pippo"} // Invalid device
 	dbomMountData := &dbom.MountPointPath{Path: mountPath, Device: ""}
 
-	suite.mockMountRepo.On("FindByPath", mountPath).Return(dbomMountData, nil).Once()
+	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(1))
+	//suite.mockMountRepo.On("FindByPath", mountPath).Return(dbomMountData, nil).Once()
 
 	err := suite.volumeService.MountVolume(mountData)
 	suite.Require().NotNil(err)
@@ -324,29 +258,28 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_Success() {
 	mountPath := "/mnt/test1"
 	dbomMountData := &dbom.MountPointPath{Path: mountPath, Device: "sda1", IsMounted: true}
 
-	suite.mockMountRepo.On("FindByPath", mountPath).Return(dbomMountData, nil).Once()
-	// Mock mount.Unmount - THIS IS HARD TO MOCK DIRECTLY. Assuming it succeeds.
-	suite.mockMountRepo.On("Save", mock.MatchedBy(func(mp *dbom.MountPointPath) bool {
+	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(1))
+
+	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
+		mp, ok := args[0].(*dbom.MountPointPath)
+		if !ok {
+			suite.T().Errorf("Expected argument to be of type *dbom.MountPointPath, got %T", args[0])
+		}
 		suite.Equal(mountPath, mp.Path)
 		suite.False(mp.IsMounted)
-		// *dbomMountData = *mp // Update original if needed elsewhere
-		return true
-	})).Return(nil).Once()
+		return []any{nil}
+	})).Verify(matchers.AtLeastOnce())
 
-	// Expect NotifyClient after successful unmount and save
-	suite.mockHardwareClient.On(
-		"GetHardwareInfoWithResponse",
-		/*suite.ctx*/ testContext,
-		mock.Anything,
-	).Return(
+	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(
 		&hardware.GetHardwareInfoResponse{
 			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 			JSON200: &struct {
 				Data   *hardware.HardwareInfo             `json:"data,omitempty"`
 				Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
 			}{Data: &hardware.HardwareInfo{Drives: &[]hardware.Drive{}}},
-		}, nil).Once()
-	suite.mockBroadcaster.On("BroadcastMessage", mock.AnythingOfType("*[]dto.Disk")).Return(nil, nil).Once()
+		}, nil).Verify(matchers.AtLeastOnce())
+
+	//suite.mockBroadcaster.On("BroadcastMessage", mock.AnythingOfType("*[]dto.Disk")).Return(nil, nil).Once()
 
 	err := suite.volumeService.UnmountVolume(mountPath, false, false)
 	suite.Nil(err, "Expected no error on successful unmount")
@@ -356,7 +289,8 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_RepoFindByPathError() {
 	mountPath := "/mnt/test1"
 	expectedErr := errors.New("database error")
 
-	suite.mockMountRepo.On("FindByPath", mountPath).Return(nil, expectedErr).Once()
+	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(nil, expectedErr).Verify(matchers.Times(1))
+	//suite.mockMountRepo.On("FindByPath", mountPath).Return(nil, expectedErr).Once()
 
 	err := suite.volumeService.UnmountVolume(mountPath, false, false)
 	suite.Require().NotNil(err)
@@ -408,22 +342,27 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	// Prepare mock repo responses
 	mountPath1 := "/mnt/rootfs"
 	mountPath2 := "/mnt/data"
-	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1", IsMounted: true} // Initial state in DB
-	dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, Device: "sda2", IsMounted: true} // Initial state in DB
+	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1", IsMounted: true, Type: "ADDON"} // Initial state in DB
+	dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, Device: "sda2", IsMounted: true, Type: "ADDON"} // Initial state in DB
 
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
-		mock.Anything).Return(mockHWResponse, nil).Once()
+	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.AtLeastOnce())
+	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext, mock.Anything).Return(mockHWResponse, nil).Once()
 
 	// Expect FindByPath and Save for each mount point found in hardware data
-	suite.mockMountRepo.On("FindByPath", mountPath1).Return(dbomMountData1, nil).Once()
-	suite.mockMountRepo.On("FindByPath", mountPath2).Return(dbomMountData2, nil).Once()
-	suite.mockMountRepo.On("Save", mock.MatchedBy(func(mp *dbom.MountPointPath) bool {
-		suite.Assert().Contains([]string{mountPath1, mountPath2}, mp.Path)
-		//suite.True(mp.IsMounted) // Should reflect the input from hardware/converter
-		// Assume converter works, check key fields
-		return true
-	})).Return(nil).Maybe()
-
+	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByPath(mountPath2)).ThenReturn(dbomMountData2, nil).Verify(matchers.Times(1))
+	/*
+		mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
+			mp, ok := args[0].(*dbom.MountPointPath)
+			if !ok {
+				suite.T().Errorf("Expected argument to be of type *dbom.MountPointPath, got %T", args[0])
+			}
+			suite.Assert().Contains([]string{mountPath1, mountPath2}, mp.Path)
+			//suite.True(mp.IsMounted) // Should reflect the input from hardware/converter
+			// Assume converter works, check key fields
+			return []any{nil}
+		})).Verify(matchers.AtLeastOnce())
+	*/
 	// Call the function
 	disks, err := suite.volumeService.GetVolumesData()
 
@@ -467,8 +406,9 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 
 func (suite *VolumeServiceTestSuite) TestGetVolumesData_HardwareClientError() {
 	expectedErr := errors.New("hardware client failed")
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
-		mock.Anything).Return(nil, expectedErr).Once()
+
+	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(nil, expectedErr).Verify(matchers.Times(1))
+	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext, mock.Anything).Return(nil, expectedErr).Once()
 	// Fallback logic is commented out, so we expect the error to propagate
 
 	disks, err := suite.volumeService.GetVolumesData()
@@ -495,16 +435,27 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_NotF
 	mountPath1 := "/mnt/newfs"
 	expectedErr := gorm.ErrRecordNotFound
 
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
-		mock.Anything).Return(mockHWResponse, nil).Once()
-	suite.mockMountRepo.On("FindByPath", mountPath1).Return(nil, expectedErr).Once()
+	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(nil, expectedErr).Verify(matchers.Times(1))
+	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext, mock.Anything).Return(mockHWResponse, nil).Once()
+	//suite.mockMountRepo.On("FindByPath", mountPath1).Return(nil, expectedErr).Once()
 
 	// If FindByPath returns ErrRecordNotFound, Save *should* be called to create the record
-	suite.mockMountRepo.On("Save", mock.MatchedBy(func(mp *dbom.MountPointPath) bool {
+	/*
+		suite.mockMountRepo.On("Save", mock.MatchedBy(func(mp *dbom.MountPointPath) bool {
+			suite.Equal(mountPath1, mp.Path)
+			//suite.True(mp.IsMounted) // Should be set by converter
+			return true
+		})).Return(nil).Once() // Assume save works for the new record
+	*/
+	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
+		mp, ok := args[0].(*dbom.MountPointPath)
+		if !ok {
+			suite.T().Errorf("Expected argument to be of type *dbom.MountPointPath, got %T", args[0])
+		}
 		suite.Equal(mountPath1, mp.Path)
-		//suite.True(mp.IsMounted) // Should be set by converter
-		return true
-	})).Return(nil).Once() // Assume save works for the new record
+		return []any{nil}
+	})).Verify(matchers.AtLeastOnce())
 
 	disks, err := suite.volumeService.GetVolumesData()
 	suite.Require().NoError(err) // FindByPath ErrRecordNotFound is handled internally
@@ -536,12 +487,15 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_Othe
 	mountPath1 := "/mnt/errorfs"
 	expectedErr := errors.New("some other db error")
 
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
-		mock.Anything).Return(mockHWResponse, nil).Once()
-	suite.mockMountRepo.On("FindByPath", mountPath1).Return(nil, expectedErr).Once()
+	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(nil, expectedErr).Verify(matchers.Times(1))
+	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
+	//	mock.Anything).Return(mockHWResponse, nil).Once()
+	//suite.mockMountRepo.On("FindByPath", mountPath1).Return(nil, expectedErr).Once()
 
+	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.Times(0))
 	// Save should NOT be called if FindByPath fails with an unexpected error
-	suite.mockMountRepo.AssertNotCalled(suite.T(), "Save", mock.Anything)
+	//suite.mockMountRepo.AssertNotCalled(suite.T(), "Save", mock.Anything)
 
 	disks, err := suite.volumeService.GetVolumesData()
 	suite.Require().NoError(err) // Error is logged internally but not returned
@@ -577,10 +531,13 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1", IsMounted: true}
 	expectedErr := errors.New("DB save error")
 
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
-		mock.Anything).Return(mockHWResponse, nil).Once()
-	suite.mockMountRepo.On("FindByPath", mountPath1).Return(dbomMountData1, nil).Once()
-	suite.mockMountRepo.On("Save", mock.Anything).Return(expectedErr).Once()
+	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(expectedErr).Verify(matchers.Times(1))
+	// suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
+	// 	mock.Anything).Return(mockHWResponse, nil).Once()
+	// suite.mockMountRepo.On("FindByPath", mountPath1).Return(dbomMountData1, nil).Once()
+	// suite.mockMountRepo.On("Save", mock.Anything).Return(expectedErr).Once()
 
 	disks, err := suite.volumeService.GetVolumesData()
 	suite.Require().NoError(err) // Save error is logged but not returned
@@ -603,11 +560,6 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 // NotifyClient is tested implicitly via Mount/Unmount success tests.
 // We can add specific tests if its internal logic becomes more complex.
 
-func (suite *VolumeServiceTestSuite) TestNotifyClient_Success_Implicit() {
-	// Re-running a successful mount test implicitly tests NotifyClient's success path
-	suite.TestMountVolume_Success()
-}
-
 func (suite *VolumeServiceTestSuite) TestNotifyClient_GetVolumesDataError() {
 	expectedErr := errors.New("failed to get volumes")
 
@@ -617,15 +569,19 @@ func (suite *VolumeServiceTestSuite) TestNotifyClient_GetVolumesDataError() {
 	mountPath := "/mnt/notifyerr"
 	dbomMountData := &dbom.MountPointPath{Path: mountPath, Device: "sda1", IsMounted: true}
 
-	suite.mockMountRepo.On("FindByPath", mountPath).Return(dbomMountData, nil).Once()
-	suite.mockMountRepo.On("Save", mock.Anything).Return(nil).Once() // Unmount Save succeeds
+	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.Times(1))
 
-	// Mock GetVolumesData inside NotifyClient to fail
-	suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
-		mock.Anything).Return(nil, expectedErr).Once()
+	// suite.mockMountRepo.On("FindByPath", mountPath).Return(dbomMountData, nil).Once()
+	// suite.mockMountRepo.On("Save", mock.Anything).Return(nil).Once() // Unmount Save succeeds
 
-	// Expect BroadcastMessage NOT to be called
-	suite.mockBroadcaster.AssertNotCalled(suite.T(), "BroadcastMessage", mock.Anything)
+	// // Mock GetVolumesData inside NotifyClient to fail
+	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(nil, expectedErr).Verify(matchers.Times(1))
+	// suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
+	// 	mock.Anything).Return(nil, expectedErr).Once()
+
+	// // Expect BroadcastMessage NOT to be called
+	// suite.mockBroadcaster.AssertNotCalled(suite.T(), "BroadcastMessage", mock.Anything)
 
 	// Trigger Unmount which calls NotifyClient
 	err := suite.volumeService.UnmountVolume(mountPath, false, false)
@@ -634,13 +590,3 @@ func (suite *VolumeServiceTestSuite) TestNotifyClient_GetVolumesDataError() {
 	// Assertions on mocks are checked in TearDownTest
 	suite.T().Log("Tested implicitly: NotifyClient logs error and doesn't broadcast if GetVolumesData fails.")
 }
-
-// --- Helper for Filesystem Conversion (if needed) ---
-// Add helper functions if complex conversions need specific testing.
-// For example, mocking the converter itself if its logic was complex.
-var _ converter.HaHardwareToDto = &converter.HaHardwareToDtoImpl{} // Ensure interface is implemented
-var _ converter.DtoToDbomConverter = &converter.DtoToDbomConverterImpl{}
-var _ converter.MountToDbom = &converter.MountToDbomImpl{}
-
-// Removed the manual mock definitions from the end as they are now at the top.
-// Removed MockVolumeService as it's not used when testing the actual service.

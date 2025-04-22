@@ -2,17 +2,23 @@ package service
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/ovechkin-dm/mockio/v2/matchers"
+	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 )
 
 type DirtyDataServiceTestSuite struct {
 	suite.Suite
 	dirtyDataService DirtyDataServiceInterface
 	ctx              context.Context
+	cancel           context.CancelFunc
 }
 
 func TestDirtyDataServiceTestSuite(t *testing.T) {
@@ -20,8 +26,26 @@ func TestDirtyDataServiceTestSuite(t *testing.T) {
 }
 
 func (suite *DirtyDataServiceTestSuite) SetupTest() {
-	suite.ctx = context.Background()
-	suite.dirtyDataService = NewDirtyDataService(suite.ctx)
+	//suite.ctx = context.Background()
+	//suite.dirtyDataService = NewDirtyDataService(suite.ctx)
+	app := fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) {
+				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+			},
+			NewDirtyDataService,
+		),
+		fx.Populate(&suite.dirtyDataService),
+		fx.Populate(&suite.ctx),
+		fx.Populate(&suite.cancel),
+	)
+	defer app.RequireStart().RequireStop()
+}
+
+func (suite *DirtyDataServiceTestSuite) TearDownTest() {
+	suite.cancel()
+	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
 }
 
 func (suite *DirtyDataServiceTestSuite) TestNewDirtyDataService() {

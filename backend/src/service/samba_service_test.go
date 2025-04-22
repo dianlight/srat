@@ -1,46 +1,95 @@
 package service_test
 
 import (
+	"context"
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	service "github.com/dianlight/srat/service"
+	"github.com/ovechkin-dm/mockio/v2/matchers"
+	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 )
 
 type SambaServiceSuite struct {
 	suite.Suite
-	sambaService        service.SambaServiceInterface
-	apictx              dto.ContextState
-	exported_share_repo repository.ExportedShareRepositoryInterface
-	//mockSambaService *MockSambaServiceInterface
-	// VariableThatShouldStartAtFive int
+	sambaService service.SambaServiceInterface
+	//apictx              dto.ContextState
+	//exported_share_repo repository.ExportedShareRepositoryInterface
+	ctrl   *matchers.MockController
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func TestSambaServiceSuite(t *testing.T) {
-	var err error
-	csuite := new(SambaServiceSuite)
-	dirtyservice := service.NewDirtyDataService(testContext)
-	csuite.apictx.Template, err = os.ReadFile("../templates/smb.gtpl")
-	if err != nil {
-		t.Errorf("Cant read template file %s", err)
-	}
-	csuite.apictx.DockerInterface = "hassio"
-	csuite.apictx.DockerNet = "172.30.32.0/23"
-	csuite.exported_share_repo = exported_share_repo
-	csuite.sambaService = service.NewSambaService(&csuite.apictx, dirtyservice, exported_share_repo)
+	suite.Run(t, new(SambaServiceSuite))
+}
+
+func (suite *SambaServiceSuite) SetupSuite() {
+
+	os.Setenv("HOSTNAME", "test-host")
+
+	app := fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) {
+				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+			},
+			func() *dto.ContextState {
+				sharedResources := dto.ContextState{}
+				sharedResources.DockerInterface = "hassio"
+				sharedResources.DockerNet = "172.30.32.0/23"
+				var err error
+				sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
+				if err != nil {
+					suite.T().Errorf("Cant read template file %s", err)
+				}
+
+				return &sharedResources
+			},
+			service.NewSambaService,
+			mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[repository.ExportedShareRepositoryInterface],
+			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[repository.SambaUserRepositoryInterface],
+		),
+		fx.Populate(&suite.sambaService),
+		//fx.Populate(&suite.mockMountRepo),
+		//fx.Populate(&suite.mockHardwareClient),
+		fx.Populate(&suite.ctx),
+		fx.Populate(&suite.cancel),
+	)
+	defer app.RequireStart().RequireStop()
 
 	/*
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		csuite.mockSambaService = NewMockSambaServiceInterface(ctrl)
-		//csuite.mockBoradcaster.EXPECT().AddOpenConnectionListener(gomock.Any()).AnyTimes()
+	   var err error
+	   csuite := new(SambaServiceSuite)
+	   dirtyservice := service.NewDirtyDataService(testContext)
+	   csuite.apictx.Template, err = os.ReadFile("../templates/smb.gtpl")
+
+	   	if err != nil {
+	   		t.Errorf("Cant read template file %s", err)
+	   	}
+
+	   csuite.apictx.DockerInterface = "hassio"
+	   csuite.apictx.DockerNet = "172.30.32.0/23"
+	   csuite.exported_share_repo = exported_share_repo
+	   csuite.sambaService = service.NewSambaService(&csuite.apictx, dirtyservice, exported_share_repo)
+
+	   suite.Run(t, csuite)
 	*/
-	suite.Run(t, csuite)
+}
+
+func (suite *SambaServiceSuite) TearDownTest() {
+	suite.cancel()
+	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
 }
 
 func (suite *SambaServiceSuite) TestCreateConfigStream() {
