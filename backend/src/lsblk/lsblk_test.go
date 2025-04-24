@@ -37,7 +37,8 @@ func TestPrintPartitions(t *testing.T) {
 */
 
 func TestGetInfoFromDevice(t *testing.T) {
-	lsbkp, err := GetInfoFromDevice("loop1")
+	lsbkint := NewLSBKInterpreter()
+	lsbkp, err := lsbkint.GetInfoFromDevice("loop1")
 	if err != nil {
 		t.Errorf("GetInfoFromDevice failed: %v", err)
 		return

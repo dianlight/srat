@@ -35,15 +35,17 @@ type VolumeService struct {
 	broascasting      BroadcasterServiceInterface
 	mount_repo        repository.MountPointPathRepositoryInterface
 	hardwareClient    hardware.ClientWithResponsesInterface
+	lsblk             lsblk.LSBLKInterpreterInterface
 }
 
-func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface) VolumeServiceInterface {
+func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface, lsblk lsblk.LSBLKInterpreterInterface) VolumeServiceInterface {
 	p := &VolumeService{
 		ctx:               ctx,
 		broascasting:      broascasting,
 		volumesQueueMutex: sync.RWMutex{},
 		mount_repo:        mount_repo,
 		hardwareClient:    hardwareClient,
+		lsblk:             lsblk,
 	}
 	//p.GetVolumesData()
 	ctx.Value("wg").(*sync.WaitGroup).Add(1)
@@ -457,7 +459,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 		for partIdx := range *disk.Partitions {
 			partition := &(*disk.Partitions)[partIdx] // Get pointer
 			if partition.MountPointData == nil || len(*partition.MountPointData) == 0 {
-				info, err := lsblk.GetInfoFromDevice(*partition.Device)
+				info, err := self.lsblk.GetInfoFromDevice(*partition.Device)
 				if err != nil {
 					slog.Warn("Error getting info from device", "device", *partition.Device, "err", err)
 					continue

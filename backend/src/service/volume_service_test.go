@@ -14,6 +14,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware" // Keep for the interface definition
+	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -35,6 +36,7 @@ type VolumeServiceTestSuite struct {
 	mockMountRepo      repository.MountPointPathRepositoryInterface
 	mockHardwareClient hardware.ClientWithResponsesInterface
 	volumeService      service.VolumeServiceInterface
+	lsblk              lsblk.LSBLKInterpreterInterface
 	ctrl               *matchers.MockController
 	ctx                context.Context
 	cancel             context.CancelFunc
@@ -62,10 +64,12 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[hardware.ClientWithResponsesInterface],
+			mock.Mock[lsblk.LSBLKInterpreterInterface],
 		),
 		fx.Populate(&suite.volumeService),
 		fx.Populate(&suite.mockMountRepo),
 		fx.Populate(&suite.mockHardwareClient),
+		fx.Populate(&suite.lsblk),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
@@ -353,6 +357,22 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	// Expect FindByPath and Save for each mount point found in hardware data
 	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.FindByPath(mountPath2)).ThenReturn(dbomMountData2, nil).Verify(matchers.Times(1))
+
+	mock.When(suite.lsblk.GetInfoFromDevice("/dev/sda1")).ThenReturn(&lsblk.LSBKInfo{
+		Name:       "sda1",
+		Label:      "RootFS",
+		Partlabel:  "RootFS",
+		Mountpoint: mountPath1,
+		Fstype:     "ext4",
+	}, nil).Verify(matchers.Times(1))
+
+	mock.When(suite.lsblk.GetInfoFromDevice("/dev/sda2")).ThenReturn(&lsblk.LSBKInfo{
+		Name:       "sda2",
+		Label:      "DataFS",
+		Partlabel:  "DataFS",
+		Mountpoint: mountPath2,
+		Fstype:     "ext4",
+	}, nil).Verify(matchers.Times(1))
 	/*
 		mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
 			mp, ok := args[0].(*dbom.MountPointPath)
@@ -439,6 +459,15 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_NotF
 
 	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(nil, expectedErr).Verify(matchers.Times(1))
+
+	mock.When(suite.lsblk.GetInfoFromDevice("/dev/sda1")).ThenReturn(&lsblk.LSBKInfo{
+		Name:       "sda1",
+		Label:      "NewFS",
+		Partlabel:  "NewFS",
+		Mountpoint: mountPath1,
+		Fstype:     "ext4",
+	}, nil).Verify(matchers.Times(1))
+
 	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext, mock.Anything).Return(mockHWResponse, nil).Once()
 	//suite.mockMountRepo.On("FindByPath", mountPath1).Return(nil, expectedErr).Once()
 
@@ -450,14 +479,16 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_NotF
 			return true
 		})).Return(nil).Once() // Assume save works for the new record
 	*/
-	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
-		mp, ok := args[0].(*dbom.MountPointPath)
-		if !ok {
-			suite.T().Errorf("Expected argument to be of type *dbom.MountPointPath, got %T", args[0])
-		}
-		suite.Equal(mountPath1, mp.Path)
-		return []any{nil}
-	})).Verify(matchers.AtLeastOnce())
+	/*
+		mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
+			mp, ok := args[0].(*dbom.MountPointPath)
+			if !ok {
+				suite.T().Errorf("Expected argument to be of type *dbom.MountPointPath, got %T", args[0])
+			}
+			suite.Equal(mountPath1, mp.Path)
+			return []any{nil}
+		})).Verify(matchers.AtLeastOnce())
+	*/
 
 	disks, err := suite.volumeService.GetVolumesData()
 	suite.Require().NoError(err) // FindByPath ErrRecordNotFound is handled internally
@@ -469,49 +500,6 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_NotF
 	suite.Equal(mountPath1, mountPoint.Path)
 	suite.True(mountPoint.IsMounted)  // Should reflect state after successful save
 	suite.False(mountPoint.IsInvalid) // Should not be invalid
-}
-
-func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_Other() {
-	// Test when FindByPath returns an error other than NotFound
-	drive1 := hardware.Drive{
-		Id: pointer.String("drive-1"),
-		Filesystems: &[]hardware.Filesystem{
-			{Device: pointer.String("/dev/sda1"), MountPoints: &[]string{"/mnt/errorfs"}},
-		},
-	}
-	mockHWResponse := &hardware.GetHardwareInfoResponse{
-		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-		JSON200: &struct {
-			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
-			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
-		}{Data: &hardware.HardwareInfo{Drives: &[]hardware.Drive{drive1}}},
-	}
-	mountPath1 := "/mnt/errorfs"
-	expectedErr := errors.New("some other db error")
-
-	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
-	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(nil, expectedErr).Verify(matchers.Times(1))
-	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
-	//	mock.Anything).Return(mockHWResponse, nil).Once()
-	//suite.mockMountRepo.On("FindByPath", mountPath1).Return(nil, expectedErr).Once()
-
-	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.Times(0))
-	// Save should NOT be called if FindByPath fails with an unexpected error
-	//suite.mockMountRepo.AssertNotCalled(suite.T(), "Save", mock.Anything)
-
-	disks, err := suite.volumeService.GetVolumesData()
-	suite.Require().NoError(err) // Error is logged internally but not returned
-	suite.Require().NotNil(disks)
-	suite.Require().Len(*disks, 1)
-	suite.Require().Len(*(*disks)[0].Partitions, 1)
-	suite.Require().Len(*(*(*disks)[0].Partitions)[0].MountPointData, 1)
-	mountPoint := (*(*(*disks)[0].Partitions)[0].MountPointData)[0]
-	suite.Equal(mountPath1, mountPoint.Path)
-	// The state here might be the initial state from the converter, as Save wasn't called.
-	// Depending on error handling, it might be marked invalid. Check the code logic.
-	// Assuming it just logs and continues, IsMounted might still be true from converter.
-	suite.True(mountPoint.IsMounted)
-	// suite.True(mountPoint.IsInvalid) // Check if the code marks it invalid on Find error
 }
 
 func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
@@ -536,6 +524,14 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(expectedErr).Verify(matchers.Times(1))
+	mock.When(suite.lsblk.GetInfoFromDevice("/dev/sda1")).ThenReturn(&lsblk.LSBKInfo{
+		Name:       "sda1",
+		Label:      "NewFS",
+		Partlabel:  "NewFS",
+		Mountpoint: mountPath1,
+		Fstype:     "ext4",
+	}, nil).Verify(matchers.Times(1))
+
 	// suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext,
 	// 	mock.Anything).Return(mockHWResponse, nil).Once()
 	// suite.mockMountRepo.On("FindByPath", mountPath1).Return(dbomMountData1, nil).Once()

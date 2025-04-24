@@ -31,6 +31,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/homeassistant/ingress"
+	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
@@ -237,6 +238,7 @@ func prog(state overseer.State) {
 				func() string { return *dbfile },
 				fx.ResultTags(`name:"db_path"`),
 			),
+			lsblk.NewLSBKInterpreter,
 			service.NewBroadcasterService,
 			service.NewVolumeService,
 			service.NewSambaService,

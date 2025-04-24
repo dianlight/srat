@@ -9,6 +9,7 @@ import (
 	"log"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/itchyny/gojq"
 )
@@ -81,10 +82,35 @@ type _Device struct {
 	ReadOnly    bool        `json:"ro"`
 }
 
-var jqpartition *gojq.Code
-var jqdevice *gojq.Code
+type LSBKInfo struct {
+	Name       string `json:"name"`
+	Label      string `json:"label"`
+	Partlabel  string `json:"partlabel"`
+	Mountpoint string `json:"mountpoint"`
+	Fstype     string `json:"fstype"`
+}
 
-func init() {
+var _lsbkInterpreterInstance LSBLKInterpreterInterface
+var _lsbkInterpreterInstanceMutex sync.Mutex
+
+type LSBLKInterpreterInterface interface {
+	GetInfoFromDevice(devName string) (info *LSBKInfo, err error)
+}
+
+type LSBKInterpreter struct {
+	jqpartition *gojq.Code
+	jqdevice    *gojq.Code
+}
+
+func NewLSBKInterpreter() LSBLKInterpreterInterface {
+	_lsbkInterpreterInstanceMutex.Lock()
+	defer _lsbkInterpreterInstanceMutex.Unlock()
+	if _lsbkInterpreterInstance != nil {
+		return _lsbkInterpreterInstance
+	}
+	self := &LSBKInterpreter{}
+	_lsbkInterpreterInstance = self
+
 	query, err := gojq.Parse(".blockdevices[]| select(.children) | .children[] | select(.name == $p )")
 	if err != nil {
 		log.Fatalln(err)
@@ -96,7 +122,7 @@ func init() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	jqpartition = jq
+	self.jqpartition = jq
 	query2, err := gojq.Parse(".blockdevices[]| select(.name == $p )")
 	if err != nil {
 		log.Fatalln(err)
@@ -108,10 +134,12 @@ func init() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	jqdevice = jq2
+	self.jqdevice = jq2
+
+	return _lsbkInterpreterInstance
 }
 
-func runCmd(command string) (output []byte, err error) {
+func (*LSBKInterpreter) runCmd(command string) (output []byte, err error) {
 	if len(command) == 0 {
 		return nil, errors.New("invalid command")
 	}
@@ -120,19 +148,11 @@ func runCmd(command string) (output []byte, err error) {
 	return output, err
 }
 
-type LSBKInfo struct {
-	Name       string `json:"name"`
-	Label      string `json:"label"`
-	Partlabel  string `json:"partlabel"`
-	Mountpoint string `json:"mountpoint"`
-	Fstype     string `json:"fstype"`
-}
-
-func GetInfoFromDevice(devName string) (info *LSBKInfo, err error) {
+func (self *LSBKInterpreter) GetInfoFromDevice(devName string) (info *LSBKInfo, err error) {
 
 	result := &LSBKInfo{}
 
-	output, err := runCmd("lsblk -b -J -o name,label,partlabel,mountpoint,fstype")
+	output, err := self.runCmd("lsblk -b -J -o name,label,partlabel,mountpoint,fstype")
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +164,7 @@ func GetInfoFromDevice(devName string) (info *LSBKInfo, err error) {
 		return nil, err
 	}
 
-	iter := jqpartition.Run(lsblkRsp, devName)
+	iter := self.jqpartition.Run(lsblkRsp, devName)
 	for {
 		v, ok := iter.Next()
 		if !ok {
@@ -170,7 +190,7 @@ func GetInfoFromDevice(devName string) (info *LSBKInfo, err error) {
 	}
 
 	if result.Name == "" {
-		iter := jqdevice.Run(lsblkRsp, devName)
+		iter := self.jqdevice.Run(lsblkRsp, devName)
 		for {
 			v, ok := iter.Next()
 			if !ok {
@@ -197,6 +217,8 @@ func GetInfoFromDevice(devName string) (info *LSBKInfo, err error) {
 	}
 
 	//fmt.Printf("--->\n%v\n", *result)
-
+	if result.Name == "" {
+		return nil, fmt.Errorf("device %s not found", devName)
+	}
 	return result, nil
 }
