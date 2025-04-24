@@ -151,7 +151,6 @@ tool (
 	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 	github.com/rakyll/gotest
 	github.com/rogpeppe/gohack
-	go.uber.org/mock/mockgen
 )
 
 replace github.com/samber/slog-http => /root/gohack/github.com/samber/slog-http

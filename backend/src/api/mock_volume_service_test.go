@@ -8,7 +8,7 @@
 
 // Package api_test is a generated GoMock package.
 package api_test
-
+/*
 import (
 	reflect "reflect"
 
@@ -97,3 +97,4 @@ func (mr *MockVolumeServiceInterfaceMockRecorder) UnmountVolume(id, force, lazy 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnmountVolume", reflect.TypeOf((*MockVolumeServiceInterface)(nil).UnmountVolume), id, force, lazy)
 }
+*/

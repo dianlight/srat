@@ -192,15 +192,11 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 		suite.Require().NoError(err)
 	}
 
-	// Act
-	allShares := []dbom.ExportedShare{}
-	err := suite.export_share_repo.All(&allShares)
-
-	// Assert
+	allShares, err := suite.export_share_repo.All()
 	suite.Require().NoError(err)
-	suite.Require().Len(allShares, 2)
-	if !cmp.Equal(shares, allShares, cmpopts.IgnoreFields(dbom.ExportedShare{}, "CreatedAt", "UpdatedAt", "DeletedAt", "MountPointDataPath", "MountPointData")) {
-		suite.Equal(shares, allShares)
+	suite.Require().Len(*allShares, 2)
+	if !cmp.Equal(shares, *allShares, cmpopts.IgnoreFields(dbom.ExportedShare{}, "CreatedAt", "UpdatedAt", "DeletedAt", "MountPointDataPath", "MountPointData")) {
+		suite.Equal(shares, *allShares)
 	}
 
 	// Cleanup

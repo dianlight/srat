@@ -15,7 +15,7 @@ type ExportedShareRepository struct {
 }
 
 type ExportedShareRepositoryInterface interface {
-	All(shares *[]dbom.ExportedShare) error
+	All() (*[]dbom.ExportedShare, error)
 	Save(share *dbom.ExportedShare) error
 	SaveAll(shares *[]dbom.ExportedShare) error
 	FindByName(name string) (*dbom.ExportedShare, error)
@@ -41,12 +41,13 @@ func NewExportedShareRepository(db *gorm.DB) ExportedShareRepositoryInterface {
 	}
 }
 
-func (r *ExportedShareRepository) All(shares *[]dbom.ExportedShare) error {
-	err := r.db.Preload(clause.Associations).Find(shares).Error
+func (r *ExportedShareRepository) All() (*[]dbom.ExportedShare, error) {
+	var shares []dbom.ExportedShare
+	err := r.db.Preload(clause.Associations).Find(&shares).Error
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
-	return err
+	return &shares, nil
 }
 
 func (p *ExportedShareRepository) FindByName(name string) (*dbom.ExportedShare, error) {

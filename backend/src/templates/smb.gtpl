@@ -40,7 +40,7 @@
    # End PR#167
 
    netbios name = {{ env "HOSTNAME" }}
-   workgroup = {{ .workgroup }}
+   workgroup = {{ .workgroup | default "NOWORKGROUP" }}
    server string = Samba NAS HomeAssistant config
    multicast dns register = {{ if or .wsdd .wsdd2 }}no{{ else }}yes{{ end }}
 

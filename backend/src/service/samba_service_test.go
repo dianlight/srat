@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	service "github.com/dianlight/srat/service"
@@ -22,18 +23,20 @@ type SambaServiceSuite struct {
 	suite.Suite
 	sambaService service.SambaServiceInterface
 	//apictx              dto.ContextState
-	//exported_share_repo repository.ExportedShareRepositoryInterface
-	ctrl   *matchers.MockController
-	ctx    context.Context
-	cancel context.CancelFunc
-	app    *fxtest.App
+	exported_share_repo repository.ExportedShareRepositoryInterface
+	property_repo       repository.PropertyRepositoryInterface
+	samba_user_repo     repository.SambaUserRepositoryInterface
+	ctrl                *matchers.MockController
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	app                 *fxtest.App
 }
 
 func TestSambaServiceSuite(t *testing.T) {
 	suite.Run(t, new(SambaServiceSuite))
 }
 
-func (suite *SambaServiceSuite) SetupSuite() {
+func (suite *SambaServiceSuite) SetupTest() {
 
 	os.Setenv("HOSTNAME", "test-host")
 
@@ -62,30 +65,13 @@ func (suite *SambaServiceSuite) SetupSuite() {
 			mock.Mock[repository.SambaUserRepositoryInterface],
 		),
 		fx.Populate(&suite.sambaService),
-		//fx.Populate(&suite.mockMountRepo),
-		//fx.Populate(&suite.mockHardwareClient),
+		fx.Populate(&suite.property_repo),
+		fx.Populate(&suite.exported_share_repo),
+		fx.Populate(&suite.samba_user_repo),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
 	suite.app.RequireStart()
-
-	/*
-	   var err error
-	   csuite := new(SambaServiceSuite)
-	   dirtyservice := service.NewDirtyDataService(testContext)
-	   csuite.apictx.Template, err = os.ReadFile("../templates/smb.gtpl")
-
-	   	if err != nil {
-	   		t.Errorf("Cant read template file %s", err)
-	   	}
-
-	   csuite.apictx.DockerInterface = "hassio"
-	   csuite.apictx.DockerNet = "172.30.32.0/23"
-	   csuite.exported_share_repo = exported_share_repo
-	   csuite.sambaService = service.NewSambaService(&csuite.apictx, dirtyservice, exported_share_repo)
-
-	   suite.Run(t, csuite)
-	*/
 }
 
 func (suite *SambaServiceSuite) TearDownTest() {
@@ -95,6 +81,167 @@ func (suite *SambaServiceSuite) TearDownTest() {
 }
 
 func (suite *SambaServiceSuite) TestCreateConfigStream() {
+
+	mock.When(suite.samba_user_repo.All()).ThenReturn(dbom.SambaUsers{
+		{
+			Username: "dianlight",
+			IsAdmin:  true,
+		},
+	}, nil).Verify(matchers.Times(1))
+	mock.When(suite.samba_user_repo.GetAdmin()).ThenReturn(dbom.SambaUser{}, nil).Verify(matchers.Times(0))
+	mock.When(suite.samba_user_repo.GetUserByName("dianlight")).ThenReturn(&dbom.SambaUser{
+		Username: "dianlight",
+	}, nil).Verify(matchers.Times(0))
+
+	mock.When(suite.property_repo.All()).ThenReturn(dbom.Properties{
+		"Workgroup": {
+			Key:   "Workgroup",
+			Value: "WORKGROUP",
+		},
+		"AllowHost": {
+			Key:   "AllowHost",
+			Value: []string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"},
+		},
+		"Interfaces": {
+			Key:   "Interfaces",
+			Value: []string{"wlan0", "end0"},
+		},
+		"BindAllInterfaces": {
+			Key:   "BindAllInterfaces",
+			Value: true,
+		},
+		"CompatibilityMode": {
+			Key:   "CompatibilityMode",
+			Value: false,
+		},
+		"EnableRecycleBin": {
+			Key:   "EnableRecycleBin",
+			Value: false,
+		},
+		"VetoFiles": {
+			Key:   "VetoFiles",
+			Value: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
+		},
+	}, nil)
+
+	mock.When(suite.exported_share_repo.All()).ThenReturn(&[]dbom.ExportedShare{
+		{
+			Name:               "CONFIG",
+			MountPointDataPath: "/homeassistant",
+			MountPointData: dbom.MountPointPath{
+				Path: "/homeassistant",
+			},
+			Users: []dbom.SambaUser{
+				{
+					Username: "dianlight",
+				},
+			},
+		},
+		{
+			Name:               "MEDIA",
+			MountPointDataPath: "/media",
+			MountPointData: dbom.MountPointPath{
+				Path: "/media",
+			},
+			Users: []dbom.SambaUser{
+				{
+					Username: "dianlight",
+					IsAdmin:  true,
+				},
+			},
+		},
+		{
+			Name:               "BACKUP",
+			MountPointDataPath: "/backup",
+			MountPointData: dbom.MountPointPath{
+				Path: "/backup",
+			},
+			Users: []dbom.SambaUser{
+				{
+					Username: "dianlight",
+				},
+			},
+		},
+		{
+			Name:               "SHARE",
+			MountPointDataPath: "/share",
+			MountPointData: dbom.MountPointPath{
+				Path: "/share",
+			},
+			Users: []dbom.SambaUser{
+				{
+					Username: "dianlight",
+					IsAdmin:  true,
+				},
+			},
+		},
+		{
+			Name:               "ADDONS",
+			MountPointDataPath: "/addons",
+			MountPointData: dbom.MountPointPath{
+				Path: "/addons",
+			},
+			Users: []dbom.SambaUser{
+				{
+					Username: "dianlight",
+					IsAdmin:  true,
+				},
+			},
+		},
+		{
+			Name:               "ADDON_CONFIGS",
+			MountPointDataPath: "/addon_configs",
+			MountPointData: dbom.MountPointPath{
+				Path: "/addon_configs",
+			},
+			Users: []dbom.SambaUser{
+				{
+					Username: "dianlight",
+					IsAdmin:  true,
+				},
+			},
+		},
+		{
+			Name:               "EFI",
+			MountPointDataPath: "/mnt/EFI",
+			MountPointData: dbom.MountPointPath{
+				Path: "/mnt/EFI",
+			},
+			Users: []dbom.SambaUser{
+				{
+					Username: "dianlight",
+					IsAdmin:  true,
+				},
+			},
+		},
+		{
+			Name:               "LIBRARY",
+			MountPointDataPath: "/mnt/LIBRARY",
+			MountPointData: dbom.MountPointPath{
+				Path: "/mnt/LIBRARY",
+			},
+			Users: []dbom.SambaUser{
+				{
+					Username: "dianlight",
+					IsAdmin:  true,
+				},
+			},
+		},
+		{
+			Name:               "UPDATER",
+			MountPointDataPath: "/mnt/Updater",
+			MountPointData: dbom.MountPointPath{
+				Path: "/mnt/Updater",
+			},
+			Users: []dbom.SambaUser{
+				{
+					Username: "dianlight",
+					IsAdmin:  true,
+				},
+			},
+		},
+	}, nil)
+
 	stream, err := suite.sambaService.CreateConfigStream()
 	suite.Require().NoError(err)
 	suite.NotNil(stream)
@@ -128,7 +275,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 		var lines = strings.Split(v, "\n")
 
 		for i, line := range lines {
-			if strings.HasPrefix(strings.TrimSpace(line), "# DEBUG:") && strings.HasPrefix(strings.TrimSpace(elines[i]), "# DEBUG:") {
+			if strings.HasPrefix(strings.TrimSpace(line), "# ") && strings.HasPrefix(strings.TrimSpace(elines[i]), "# ") {
 				continue
 			}
 			low := i - 5

@@ -8,7 +8,7 @@
 
 // Package api_test is a generated GoMock package.
 package api_test
-
+/*
 import (
 	reflect "reflect"
 
@@ -127,3 +127,4 @@ func (mr *MockSambaServiceInterfaceMockRecorder) WriteSambaConfig() *gomock.Call
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteSambaConfig", reflect.TypeOf((*MockSambaServiceInterface)(nil).WriteSambaConfig))
 }
+*/

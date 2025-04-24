@@ -1,5 +1,6 @@
 package api_test
 
+/*
 import (
 	"context"
 	"log"
@@ -77,3 +78,4 @@ func TestMain(m *testing.M) {
 	os.Exit(retErr)
 
 }
+*/

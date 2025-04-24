@@ -53,7 +53,6 @@ func JSONFromDatabase(
 	users_repository repository.SambaUserRepositoryInterface,
 ) (tconfig config.Config, err error) {
 	var conv converter.ConfigToDbomConverterImpl
-	shares := []dbom.ExportedShare{}
 
 	properties, err := props_repository.All()
 	if err != nil {
@@ -63,13 +62,13 @@ func JSONFromDatabase(
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
-	err = export_share_repository.All(&shares)
+	shares, err := export_share_repository.All()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
 
 	tconfig = config.Config{}
-	err = conv.DbomObjectsToConfig(properties, users, shares, &tconfig)
+	err = conv.DbomObjectsToConfig(properties, users, *shares, &tconfig)
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}

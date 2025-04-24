@@ -61,13 +61,12 @@ func (self *ShareHandler) RegisterShareHandler(api huma.API) {
 //   - An error if there is any issue retrieving or converting the shared resources.
 func (self *ShareHandler) ListShares(ctx context.Context, input *struct{}) (*struct{ Body []dto.SharedResource }, error) {
 	var shares []dto.SharedResource
-	var dbshares []dbom.ExportedShare
-	err := self.exported_share_repo.All(&dbshares)
+	dbshares, err := self.exported_share_repo.All()
 	if err != nil {
 		return nil, err
 	}
 	var conv converter.DtoToDbomConverterImpl
-	for _, dbshare := range dbshares {
+	for _, dbshare := range *dbshares {
 		var share dto.SharedResource
 		err = conv.ExportedShareToSharedResource(dbshare, &share)
 		if err != nil {
@@ -188,14 +187,13 @@ func (self *ShareHandler) notifyClient() {
 	self.sharesQueueMutex.RLock()
 	defer self.sharesQueueMutex.RUnlock()
 	var shares []dto.SharedResource
-	var dbshares = []dbom.ExportedShare{}
-	err := self.exported_share_repo.All(&dbshares)
+	dbshares, err := self.exported_share_repo.All()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 	var conv converter.DtoToDbomConverterImpl
-	for _, dbshare := range dbshares {
+	for _, dbshare := range *dbshares {
 		var share dto.SharedResource
 		err = conv.ExportedShareToSharedResource(dbshare, &share)
 		if err != nil {
