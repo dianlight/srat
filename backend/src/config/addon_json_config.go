@@ -1,14 +1,12 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
 	"os"
 	"slices"
-	"sync"
 
 	"github.com/jinzhu/copier"
 	"gitlab.com/tozd/go/errors"
@@ -243,14 +241,18 @@ func (self *Config) LoadConfig(file string) error {
 	return nil
 }
 
+/*
 func (self *Config) FromContext(ctx context.Context) error {
 	*self = *ctx.Value("samba_json_config").(*Config)
 	return nil
 }
+*/
 
+/*
 func (self *Config) ToContext(ctx context.Context) context.Context {
-	return context.WithValue(context.WithValue(ctx, "wg", &sync.WaitGroup{}), "samba_json_config", self)
+	return context.WithValue(ctx, "samba_json_config", self)
 }
+*/
 
 // Mapping Functions
 /*

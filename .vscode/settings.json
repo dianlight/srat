@@ -26,5 +26,9 @@
   "go.disableConcurrentTests": true,
   "go.testEnvVars": {
     "GOMAXPROCS": "1",
-  }
+  },
+  "github.copilot.chat.agent.thinkingTool": true,
+  "go.inlayHints.assignVariableTypes": true,
+  "go.inlayHints.compositeLiteralFields": true,
+  "go.inlayHints.constantValues": true
 }

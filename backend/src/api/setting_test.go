@@ -1,9 +1,11 @@
 package api_test
 
-/*
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"os"
+	"sync"
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
@@ -12,34 +14,132 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
+	"github.com/ovechkin-dm/mockio/v2/matchers"
+	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 )
 
 type SettingsHandlerSuite struct {
 	suite.Suite
-	dirtyService service.DirtyDataServiceInterface
+	dirtyService           service.DirtyDataServiceInterface
+	mockPropertyRepository repository.PropertyRepositoryInterface
+	api                    *api.SettingsHanler
+	config                 config.Config
+	//
+	ctx    context.Context
+	cancel context.CancelFunc
+	app    *fxtest.App
+}
+
+// SetupSuite runs once before the tests in the suite are run
+func (suite *SettingsHandlerSuite) SetupTest() {
+
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) {
+				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+			},
+			fx.Annotate(
+				func() bool { return false },
+				fx.ResultTags(`name:"ha_mode"`),
+			),
+			api.NewSettingsHanler,
+			service.NewDirtyDataService,
+			//			mock.Mock[service.BroadcasterServiceInterface],
+			//			mock.Mock[service.SambaServiceInterface],
+			//mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[repository.PropertyRepositoryInterface],
+
+			func() *dto.ContextState {
+				sharedResources := dto.ContextState{}
+				sharedResources.ReadOnlyMode = false
+				sharedResources.Heartbeat = 1
+				sharedResources.DockerInterface = "hassio"
+				sharedResources.DockerNet = "172.30.32.0/23"
+				var err error
+				sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
+				if err != nil {
+					suite.T().Errorf("Cant read template file %s", err)
+				}
+
+				return &sharedResources
+			},
+			func() config.Config {
+				err := suite.config.LoadConfig("../../test/data/config.json")
+				if err != nil {
+					suite.T().Errorf("Cant read config file %s", err)
+				}
+				return suite.config
+			},
+		),
+		fx.Populate(&suite.mockPropertyRepository),
+		fx.Populate(&suite.dirtyService),
+		fx.Populate(&suite.config),
+		fx.Populate(&suite.ctx),
+		fx.Populate(&suite.cancel),
+		fx.Populate(&suite.api),
+	)
+	suite.app.RequireStart()
+
+	mock.When(suite.mockPropertyRepository.All()).ThenReturn(dbom.Properties{
+		"Workgroup": dbom.Property{
+			Key:   "Workgroup",
+			Value: suite.config.Workgroup,
+		},
+		"Mountoptions": dbom.Property{
+			Key:   "Mountoptions",
+			Value: suite.config.Mountoptions,
+		},
+		"AllowHost": dbom.Property{
+			Key:   "AllowHost",
+			Value: suite.config.AllowHost,
+		},
+		"VetoFiles": dbom.Property{
+			Key:   "VetoFiles",
+			Value: suite.config.VetoFiles,
+		},
+		"Interfaces": dbom.Property{
+			Key:   "Interfaces",
+			Value: suite.config.Interfaces,
+		},
+		"BindAllInterfaces": dbom.Property{
+			Key:   "BindAllInterfaces",
+			Value: suite.config.BindAllInterfaces,
+		},
+		"UpdateChannel": dbom.Property{
+			Key:   "UpdateChannel",
+			Value: suite.config.UpdateChannel,
+		},
+	}, nil)
+
+}
+
+// TearDownSuite runs once after all tests in the suite have finished
+func (suite *SettingsHandlerSuite) TearDownTest() {
+	suite.cancel()
+	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.app.RequireStop()
 }
 
 func TestSettingsHandlerSuite(t *testing.T) {
-	csuite := new(SettingsHandlerSuite)
-	csuite.dirtyService = service.NewDirtyDataService(testContext)
-	suite.Run(t, csuite)
+	suite.Run(t, new(SettingsHandlerSuite))
 }
+
 func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
-	settings := api.NewSettingsHanler(&apiContextState, suite.dirtyService)
 	_, api := humatest.New(suite.T())
-	settings.RegisterSettings(api)
+	suite.api.RegisterSettings(api)
 
 	resp := api.Get("/settings")
 	suite.Equal(http.StatusOK, resp.Code)
 
-	var config config.Config
-	err := config.FromContext(testContext)
-	suite.Require().NoError(err)
 	var expected dto.Settings
 	var conv converter.ConfigToDtoConverterImpl
-	err = conv.ConfigToSettings(config, &expected)
+	err := conv.ConfigToSettings(suite.config, &expected)
 	suite.Require().NoError(err)
 
 	var returned dto.Settings
@@ -52,9 +152,8 @@ func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
 }
 
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
-	settings := api.NewSettingsHanler(&apiContextState, suite.dirtyService)
 	_, api := humatest.New(suite.T())
-	settings.RegisterSettings(api)
+	suite.api.RegisterSettings(api)
 
 	glc := dto.Settings{
 		Workgroup: "pluto&admin",
@@ -72,12 +171,11 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Settings)
 
 	// Restore original state
-	var properties dbom.Properties
-	if err := properties.Load(); err != nil {
+	_, err = suite.mockPropertyRepository.All()
+	if err != nil {
 		suite.T().Fatalf("Failed to load properties: %v", err)
 	}
-	if err := properties.SetValue("Workgroup", "WORKGROUP"); err != nil {
-		suite.T().Fatalf("Failed to add workgroup property: %v", err)
-	}
+	//if err := properties.SetValue("Workgroup", "WORKGROUP"); err != nil {
+	//	suite.T().Fatalf("Failed to add workgroup property: %v", err)
+	//}
 }
-*/
