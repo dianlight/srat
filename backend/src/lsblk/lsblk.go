@@ -150,6 +150,8 @@ func (*LSBKInterpreter) runCmd(command string) (output []byte, err error) {
 
 func (self *LSBKInterpreter) GetInfoFromDevice(devName string) (info *LSBKInfo, err error) {
 
+	devName, _ = strings.CutPrefix(devName, "/dev/")
+
 	result := &LSBKInfo{}
 
 	output, err := self.runCmd("lsblk -b -J -o name,label,partlabel,mountpoint,fstype")

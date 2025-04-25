@@ -2,6 +2,9 @@ package dbom
 
 import (
 	"context"
+	"log/slog"
+	"os"
+	"strings"
 
 	"github.com/glebarez/sqlite"
 	"gitlab.com/tozd/go/errors"
@@ -27,7 +30,15 @@ func NewDB(lc fx.Lifecycle, v struct {
 		panic(errors.Errorf("failed to connect database %s", v.DbPath))
 	}
 	// Migrate the schema
-	db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{})
+	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{})
+	if err != nil {
+		slog.Error("failed to migrate database", "error", err, "path", v.DbPath)
+		slog.Warn("Resetting Database to Default State")
+		sqlDB, _ := db.DB()
+		sqlDB.Close()
+		os.Remove(strings.Split(v.DbPath, "?")[0])
+		return NewDB(lc, v)
+	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
