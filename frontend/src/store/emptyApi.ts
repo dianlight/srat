@@ -24,7 +24,16 @@ async function testURL(url: string): Promise<boolean> {
     }
 }
 
+if (APIURL === undefined || APIURL === "" || APIURL === "dynamic") {
+    APIURL = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+    console.info(`Dynamic APIURL provided, using generated: ${APIURL}/ from ${window.location.href}`)
+    if (!(await testURL(APIURL + "/health"))) {
+        APIURL = "http://localhost:8080";
+        console.error("APIURL is not reachable, using default: http://localhost:8080");
+    }
+}
 
+/*
 // test if APIURL is set and if is reaceable
 if (APIURL === undefined || APIURL === "") {
     console.error("APIURL is not set, using default: http://localhost:8080");
@@ -33,6 +42,7 @@ if (APIURL === undefined || APIURL === "") {
     APIURL = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
     console.info(`Dynamic APIURL provided, using generated: ${APIURL}/ from ${window.location.href}`)
 }
+    */
 console.log("* API URL", APIURL + "/", "Reachable: ", await testURL(APIURL));
 
 // initialize an empty api service that we'll inject endpoints into later as needed
