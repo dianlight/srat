@@ -22,9 +22,9 @@
     "customManagers": [
         {
             "customType": "regex",
-            "fileMatch": [
-                "\\.github/workflows/.+\\.ya?ml$",
-                "\\.devcontainer/.+\\.sh$"
+            "managerFilePatterns": [
+                "/\\.github/workflows/.+\\.ya?ml$/",
+                "/\\.devcontainer/.+\\.sh$/"
             ],
             "matchStrings": [
                 "go\\s+install\\s+(?<depName>.+)@(?<currentValue>[^\\s]+)"
@@ -34,31 +34,31 @@
         },
         {
             "customType": "regex",
-            "fileMatch": [
-                "package\\.json$"
+            "managerFilePatterns": [
+                "/package\\.json$/"
             ],
             "matchStrings": [
                 "\"packageManager\":\\s+\"(?<depName>.+)@(?<currentValue>[^\\s]+)\""
             ],
-            "autoReplaceStringTemplate":  "\"packageManager\": \"{{{depName}}}@{{{newValue}}}\"",
+            "autoReplaceStringTemplate": "\"packageManager\": \"{{{depName}}}@{{{newValue}}}\"",
             "datasourceTemplate": "npm"
-        },        
+        },
         {
             "customType": "regex",
-            "fileMatch": [
-                "\\.devcontainer/.+\\.sh$"
+            "managerFilePatterns": [
+                "/\\.devcontainer/.+\\.sh$/"
             ],
             "matchStrings": [
                 "bash\\s+-s\\s+\"(?<depName>.+)-v(?<currentValue>[^\\s]+)\""
             ],
-            "autoReplaceStringTemplate":  "bash -s \"{{{depName}}}-v{{{newValue}}}\"",
+            "autoReplaceStringTemplate": "bash -s \"{{{depName}}}-v{{{newValue}}}\"",
             "datasourceTemplate": "npm"
-        },        
+        },
         {
             "customType": "regex",
-            "fileMatch": [
-                "\\.go$",
-                "Makefile"
+            "managerFilePatterns": [
+                "/\\.go$/",
+                "/Makefile/"
             ],
             "matchStrings": [
                 "go\\s+run\\s+(?<depName>.+)@(?<currentValue>[^\\s]+)"
