@@ -7,7 +7,6 @@ import (
 	"os/user"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"gitlab.com/tozd/go/errors" // Import the new errors package
@@ -54,7 +53,7 @@ func runCommand(command string, args ...string) (string, error) {
 
 	if err != nil {
 		// Use errors.Errorf for structured error information
-		return stdout, errors.ErrorfWithDetails(err, "command execution failed",
+		return stdout, errors.WithDetails(err, "command execution failed",
 			"command", command,
 			"args", args,
 			"stderr", stderr,
@@ -77,7 +76,7 @@ func runCommandWithInput(stdinContent string, command string, args ...string) (s
 	stderr := stderrData.String()
 
 	if err != nil {
-		return stdout, errors.ErrorfWithDetails(err, "command execution with input failed",
+		return stdout, errors.WithDetails(err, "command execution with input failed",
 			"command", command,
 			"args", args,
 			"stdin_preview", func() string {
@@ -106,7 +105,6 @@ func GetByUsername(username string) (*UserInfo, error) {
 		Username:    sysUser.Username,
 		Name:        sysUser.Name,
 		HomeDir:     sysUser.HomeDir,
-		Shell:       sysUser.Shell,
 		IsSambaUser: false,
 	}
 
@@ -137,7 +135,7 @@ func GetByUsername(username string) (*UserInfo, error) {
 			}
 		}
 	} else {
-		var e *errors.Error
+		var e errors.E
 		if errors.As(err, &e) {
 			details := e.Details()
 			if stderr, ok := details["stderr"].(string); ok && (strings.Contains(stderr, "No such user") || strings.Contains(stderr, "does not exist")) {
@@ -184,7 +182,7 @@ func CreateSambaUser(username string, password string, options UserOptions) erro
 	_, err := runCommand("useradd", useraddArgs...)
 	if err != nil {
 		// Check if the error is because the user already exists
-		var e *errors.Error
+		var e errors.E
 		userExists := false
 		if errors.As(err, &e) {
 			details := e.Details()
@@ -221,7 +219,7 @@ func DeleteSambaUser(username string, deleteSystemUser bool, deleteHomeDir bool)
 	if err != nil {
 		// Check if the error is "user not found" which is not fatal if we also want to delete system user
 		isUserNotFoundErr := false
-		var e *errors.Error
+		var e errors.E
 		if errors.As(err, &e) {
 			details := e.Details()
 			if stderr, ok := details["stderr"].(string); ok {
@@ -240,7 +238,6 @@ func DeleteSambaUser(username string, deleteSystemUser bool, deleteHomeDir bool)
 		}
 		// If isUserNotFoundErr, we can proceed to system user deletion without erroring here.
 	}
-
 
 	if deleteSystemUser {
 		userdelArgs := []string{}
@@ -290,7 +287,7 @@ func RenameUsername(oldUsername string, newUsername string, renameHomeDir bool, 
 		return errors.Errorf("new username '%s' already appears to be a Samba user", newUsername)
 	} else if sambaErr != nil { // GetByUsername returned an error
 		// Check if it's a pdbedit execution error (not just "user not found" for samba part)
-		var e *errors.Error
+		var e errors.E
 		isPdbeditIssue := false
 		if errors.As(sambaErr, &e) {
 			details := e.Details()
@@ -375,9 +372,4 @@ func ListSambaUsers() ([]string, error) {
 	}
 
 	return users, nil
-}
-
-// Helper to get effective UID.
-func getEffectiveUID() int {
-	return syscall.Geteuid()
 }
