@@ -80,9 +80,12 @@
     "tree-sitter",
     "tree-sitter-json"
   ],
-  "packageManager": "bun@1.2.10",
+  "packageManager": "bun@1.2.13",
   "engines": {
-    "bun": ">=1.2.10"
+    "bun": ">=1.2.13"
+  },
+  "bugs": {
+    "url": "https://github.com/dianlight/srat/issues"
   },
   "homepage": "https://github.com/dianlight/srat#readme",
   "license": "MIT"
