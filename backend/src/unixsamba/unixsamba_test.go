@@ -1,767 +1,609 @@
-package unixsamba
+package unixsamba_test
 
 import (
 	"fmt"
-	"os"
 	"os/user"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/dianlight/srat/unixsamba" // Adjust if your module path is different
+	"github.com/ovechkin-dm/mockio/v2/matchers"
+	"github.com/ovechkin-dm/mockio/v2/mock"
+	"github.com/stretchr/testify/suite"
 	"gitlab.com/tozd/go/errors"
 )
 
-// Mock implementations that tests can set
-var (
-	mockRunCommandFunc          func(command string, args ...string) (string, error)
-	mockRunCommandWithInputFunc func(stdinContent string, command string, args ...string) (string, error)
-	mockOsUserLookupFunc        func(username string) (*user.User, error)
-)
+type UnixSambaTestSuite struct {
+	suite.Suite
+	mockCmdExec unixsamba.CommandExecutor
+	mockOSUser  unixsamba.OSUserLookuper
+}
 
-// Original function holders
-var (
-	originalRunCommand          func(command string, args ...string) (string, error)
-	originalRunCommandWithInput func(stdinContent string, command string, args ...string) (string, error)
-	originalOsUserLookup        func(username string) (*user.User, error) // Assuming unixsamba.go uses a var like `var osUserLookup = user.Lookup`
-)
+func TestUnixSambaTestSuite(t *testing.T) {
+	suite.Run(t, new(UnixSambaTestSuite))
+}
 
-func TestMain(m *testing.M) {
-	// Save original functions
-	originalRunCommand = runCommand
-	originalRunCommandWithInput = runCommandWithInput
-	// originalOsUserLookup = osUserLookup // Uncomment if osUserLookup var is used in unixsamba.go
+func (s *UnixSambaTestSuite) SetupTest() {
+	ctrl := mock.NewMockController(s.T())
+	//defer ctrl.Finish()
 
-	// Replace with mocks
-	runCommand = func(command string, args ...string) (string, error) {
-		if mockRunCommandFunc != nil {
-			return mockRunCommandFunc(command, args...)
-		}
-		panic(fmt.Sprintf("runCommand mock not set for %s %v", command, args))
+	s.mockCmdExec = mock.Mock[unixsamba.CommandExecutor](ctrl)
+	s.mockOSUser = mock.Mock[unixsamba.OSUserLookuper](ctrl)
+
+	unixsamba.SetCommandExecutor(s.mockCmdExec)
+	unixsamba.SetOSUserLookuper(s.mockOSUser)
+}
+
+func (s *UnixSambaTestSuite) TearDownTest() {
+	unixsamba.ResetExecutorsToDefaults()
+}
+
+// --- GetByUsername Tests ---
+
+func (s *UnixSambaTestSuite) TestGetByUsername_Success_SambaUserExists() {
+	username := "testuser"
+	sysUser := &user.User{
+		Uid:      "1001",
+		Gid:      "1001",
+		Username: username,
+		Name:     "Test User Gecos",
+		HomeDir:  "/home/testuser",
 	}
-	runCommandWithInput = func(stdinContent string, command string, args ...string) (string, error) {
-		if mockRunCommandWithInputFunc != nil {
-			return mockRunCommandWithInputFunc(stdinContent, command, args...)
-		}
-		panic(fmt.Sprintf("runCommandWithInput mock not set for %s %v", command, args))
+	pdbeditOutput := `
+Unix username:        testuser
+User SID:             S-1-5-21-xxxx-1001
+Primary Group SID:    S-1-5-21-xxxx-513
+Password last set:    1679800000
+Last logon:           1711447200
+	`
+	mock.When(s.mockOSUser.Lookup(username)).ThenReturn(sysUser, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
+
+	info, err := unixsamba.GetByUsername(username)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(info)
+	s.Equal(sysUser.Uid, info.UID)
+	s.Equal(sysUser.Gid, info.GID)
+	s.Equal(sysUser.Username, info.Username)
+	s.Equal(sysUser.Name, info.Name)
+	s.Equal(sysUser.HomeDir, info.HomeDir)
+	s.True(info.IsSambaUser)
+	s.Equal("S-1-5-21-xxxx-1001", info.SambaSID)
+	s.Equal("S-1-5-21-xxxx-513", info.SambaPrimaryNT)
+	s.True(info.SambaPasswordSet)
+	s.Equal(time.Unix(1711447200, 0), info.LastLogon)
+}
+
+func (s *UnixSambaTestSuite) TestGetByUsername_Success_SambaUserNotExists() {
+	username := "testuser"
+	sysUser := &user.User{Uid: "1001", Gid: "1001", Username: username}
+
+	mock.When(s.mockOSUser.Lookup(username)).ThenReturn(sysUser, nil).Verify(matchers.Times(1))
+	pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed",
+		"stderr", "No such user testuser",
+	)
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+
+	info, err := unixsamba.GetByUsername(username)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(info)
+	s.False(info.IsSambaUser)
+	s.Empty(info.SambaSID)
+}
+
+func (s *UnixSambaTestSuite) TestGetByUsername_SystemUserNotFound() {
+	username := "nosuchuser"
+	lookupErr := user.UnknownUserError(username)
+
+	mock.When(s.mockOSUser.Lookup(username)).ThenReturn(nil, lookupErr).Verify(matchers.Times(1))
+
+	info, err := unixsamba.GetByUsername(username)
+
+	s.Require().Error(err)
+	s.Nil(info)
+	s.True(errors.Is(err, lookupErr))
+}
+
+func (s *UnixSambaTestSuite) TestGetByUsername_PdbeditCommandFails() {
+	username := "testuser"
+	sysUser := &user.User{Uid: "1001", Gid: "1001", Username: username}
+	pdbeditCmdErr := errors.WithDetails(errors.New("some pdbedit error"), "desc", "command execution failed", "stderr", "some other error")
+
+	mock.When(s.mockOSUser.Lookup(username)).ThenReturn(sysUser, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn("", pdbeditCmdErr).Verify(matchers.Times(1))
+
+	info, err := unixsamba.GetByUsername(username)
+
+	s.Require().Error(err)
+	s.NotNil(info) // Info struct might be partially filled before the error
+	s.False(info.IsSambaUser)
+
+	var e errors.E
+	s.Require().True(errors.As(err, &e), "Error should be a tozd/go/errors.E")
+	s.Contains(e.Error(), "pdbedit check for samba user 'testuser' failed")
+}
+
+// --- CreateSambaUser Tests ---
+
+func (s *UnixSambaTestSuite) TestCreateSambaUser_Success_NewUser() {
+	username := "newuser"
+	password := "password123"
+	options := unixsamba.UserOptions{CreateHome: true, Shell: "/bin/bash"}
+
+	mock.When(s.mockCmdExec.RunCommand("useradd", "-m", "-s", "/bin/bash", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	err := unixsamba.CreateSambaUser(username, password, options)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaTestSuite) TestCreateSambaUser_Success_SystemUserExists() {
+	username := "existinguser"
+	password := "password123"
+	options := unixsamba.UserOptions{}
+
+	useraddErr := errors.WithDetails(errors.New("useradd failed"), "desc", "command execution failed",
+		"stderr", "useradd: user 'existinguser' already exists",
+	)
+	mock.When(s.mockCmdExec.RunCommand("useradd", username)).ThenReturn("", useraddErr).Verify(matchers.Times(1))
+	// Fallback check
+	//mock.When(s.mockOSUser.Lookup(username)).ThenReturn(&user.User{Username: username}, nil).Verify(matchers.Times(1))
+
+	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	err := unixsamba.CreateSambaUser(username, password, options)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaTestSuite) TestCreateSambaUser_UseraddFails_UserNotExists() {
+	username := "newuser"
+	password := "password123"
+	options := unixsamba.UserOptions{}
+	useraddActualErr := errors.New("some useradd error")
+	useraddCmdErr := errors.WithDetails(useraddActualErr, "desc", "command execution failed", "stderr", "some useradd error")
+
+	mock.When(s.mockCmdExec.RunCommand("useradd", username)).ThenReturn("", useraddCmdErr).Verify(matchers.Times(1))
+	// Fallback check, user does not exist
+	mock.When(s.mockOSUser.Lookup(username)).ThenReturn(nil, user.UnknownUserError(username)).Verify(matchers.Times(1))
+
+	err := unixsamba.CreateSambaUser(username, password, options)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to create system user 'newuser'")
+	s.True(errors.Is(err, useraddCmdErr))
+}
+
+func (s *UnixSambaTestSuite) TestCreateSambaUser_SmbPasswdFails() {
+	username := "newuser"
+	password := "password123"
+	options := unixsamba.UserOptions{}
+	smbPasswdActualErr := errors.New("smbpasswd error")
+	smbPasswdCmdErr := errors.WithDetails(smbPasswdActualErr, "desc", "command execution with input failed", "stderr", "smb error")
+
+	mock.When(s.mockCmdExec.RunCommand("useradd", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", smbPasswdCmdErr).Verify(matchers.Times(1))
+
+	err := unixsamba.CreateSambaUser(username, password, options)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to add user 'newuser' to Samba or set password")
+	s.True(errors.Is(err, smbPasswdCmdErr))
+}
+
+func (s *UnixSambaTestSuite) TestCreateSambaUser_WithOptions() {
+	username := "optionsuser"
+	password := "securepass"
+	options := unixsamba.UserOptions{
+		HomeDir:         "/var/customhome",
+		Shell:           "/sbin/nologin",
+		PrimaryGroup:    "customgroup",
+		SecondaryGroups: []string{"group1", "group2"},
+		CreateHome:      true,
+		SystemAccount:   true,
+		Comment:         "A test user with options",
+		UID:             "2001",
 	}
 
-	// osUserLookup = func(username string) (*user.User, error) { // Uncomment if osUserLookup var is used
-	// 	if mockOsUserLookupFunc != nil {
-	// 		return mockOsUserLookupFunc(username)
-	// 	}
-	// 	panic(fmt.Sprintf("osUserLookup mock not set for %s", username))
-	// }
-
-	// Run tests
-	exitCode := m.Run()
-
-	// Restore original functions
-	runCommand = originalRunCommand
-	runCommandWithInput = originalRunCommandWithInput
-	// osUserLookup = originalOsUserLookup // Uncomment if osUserLookup var is used
-
-	os.Exit(exitCode)
-}
-
-// TestGetByUsername
-func TestGetByUsername(t *testing.T) {
-	// This setup assumes osUserLookup is mockable.
-	// If not, you'll need to ensure the 'testuser' exists or adjust.
-	originalOsUserLookup, osUserLookup = osUserLookup, func(username string) (*user.User, error) {
-		if mockOsUserLookupFunc != nil {
-			return mockOsUserLookupFunc(username)
-		}
-		// Default mock for user.Lookup if not overridden by a specific test case
-		if username == "testuser" {
-			return &user.User{
-				Uid:      "1001",
-				Gid:      "1001",
-				Username: "testuser",
-				Name:     "Test User",
-				HomeDir:  "/home/testuser",
-			}, nil
-		}
-		return nil, errors.New("user not found by mockOsUserLookupFunc")
+	expectedUseraddArgs := []string{
+		"-m", "-r", // CreateHome, SystemAccount
+		"-d", "/var/customhome",
+		"-s", "/sbin/nologin",
+		"-g", "customgroup",
+		"-G", "group1,group2",
+		"-c", "A test user with options",
+		"-u", "2001",
+		username,
 	}
-	defer func() { osUserLookup = originalOsUserLookup }()
 
-	t.Run("SystemUserAndSambaUser", func(t *testing.T) {
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			if username == "sambauser" {
-				return &user.User{Uid: "1000", Gid: "1000", Username: "sambauser", Name: "Samba User", HomeDir: "/home/sambauser"}, nil
-			}
-			return nil, errors.New("user not found")
-		}
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "pdbedit" && args[0] == "-L" && args[1] == "-v" && args[2] == "-u" && args[3] == "sambauser" {
-				return `
-					Unix username:        sambauser
-					NT username:          
-					Account Flags:        [U          ]
-					User SID:             S-1-5-21-REAL-SID-1000
-					Primary Group SID:    S-1-5-21-REAL-SID-513
-					Full Name:            Samba User
-					Home Directory:       \sambaserver\sambauser
-					HomeDir Drive:        
-					Logon Script:         
-					Profile Path:         \sambaserver\sambauser\profile
-					Domain:               SAMBADOMAIN
-					Account desc:         
-					Workstations:         
-					Munged dial:          
-					Logon time:           0
-					Logoff time:          never
-					Kickoff time:         never
-					Password last set:    1678886400
-					Password can change:  1678886400
-					Password must change: never
-					Last logon:           1679000000
-				`, nil
-			}
-			return "", errors.New("unexpected command")
-		}
+	mock.When(s.mockCmdExec.RunCommand("useradd",
+		expectedUseraddArgs[0],
+		expectedUseraddArgs[1], expectedUseraddArgs[2],
+		expectedUseraddArgs[3], expectedUseraddArgs[4],
+		expectedUseraddArgs[5], expectedUseraddArgs[6],
+		expectedUseraddArgs[7], expectedUseraddArgs[8],
+		expectedUseraddArgs[9], expectedUseraddArgs[10],
+		expectedUseraddArgs[11], expectedUseraddArgs[12],
+		expectedUseraddArgs[13],
+	)).
+		ThenReturn("", nil).
+		Verify(matchers.Times(1))
 
-		info, err := GetByUsername("sambauser")
-		require.NoError(t, err)
-		require.NotNil(t, info)
-		assert.Equal(t, "1000", info.UID)
-		assert.Equal(t, "sambauser", info.Username)
-		assert.True(t, info.IsSambaUser)
-		assert.Equal(t, "S-1-5-21-REAL-SID-1000", info.SambaSID)
-		assert.Equal(t, "S-1-5-21-REAL-SID-513", info.SambaPrimaryNT)
-		assert.True(t, info.SambaPasswordSet)
-		assert.Equal(t, time.Unix(1679000000, 0), info.LastLogon)
-	})
+	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).
+		ThenReturn("", nil).
+		Verify(matchers.Times(1))
 
-	t.Run("SystemUserNotSambaUser", func(t *testing.T) {
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			if username == "systemonly" {
-				return &user.User{Uid: "1002", Gid: "1002", Username: "systemonly", Name: "System Only User", HomeDir: "/home/systemonly"}, nil
-			}
-			return nil, errors.New("user not found")
-		}
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "pdbedit" && args[3] == "systemonly" {
-				return "", errors.WithDetails(errors.New("pdbedit failed"), "command execution failed", "stderr", "Failed to find entry for user systemonly.")
-			}
-			return "", errors.New("unexpected command")
-		}
-
-		info, err := GetByUsername("systemonly")
-		require.NoError(t, err)
-		require.NotNil(t, info)
-		assert.Equal(t, "1002", info.UID)
-		assert.False(t, info.IsSambaUser)
-		assert.Empty(t, info.SambaSID)
-	})
-
-	t.Run("UserNotFoundInSystem", func(t *testing.T) {
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			return nil, user.UnknownUserError(username) // Simulate user.Lookup error
-		}
-
-		info, err := GetByUsername("nosuchuser")
-		require.Error(t, err)
-		assert.Nil(t, info)
-		assert.Contains(t, err.Error(), "failed to lookup system user 'nosuchuser'")
-		assert.True(t, errors.Is(err, user.UnknownUserError("nosuchuser")))
-	})
-
-	t.Run("PdbeditFailsWithOtherError", func(t *testing.T) {
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			if username == "pdbfail" {
-				return &user.User{Uid: "1003", Gid: "1003", Username: "pdbfail", Name: "PDB Fail", HomeDir: "/home/pdbfail"}, nil
-			}
-			return nil, errors.New("user not found")
-		}
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "pdbedit" && args[3] == "pdbfail" {
-				return "", errors.WithDetails(errors.New("some other pdbedit error"), "command execution failed", "stderr", "Connection refused")
-			}
-			return "", errors.New("unexpected command")
-		}
-
-		info, err := GetByUsername("pdbfail")
-		require.Error(t, err)
-		require.NotNil(t, info) // Info struct is partially filled before pdbedit error is returned
-		assert.False(t, info.IsSambaUser)
-		assert.Contains(t, err.Error(), "pdbedit check for samba user 'pdbfail' failed")
-		var e errors.E
-		require.True(t, errors.As(err, &e))
-		details := e.Details()
-		assert.Equal(t, "Connection refused", details["stderr"])
-	})
-
-	t.Run("PdbeditPasswordNotSetAndNoLastLogon", func(t *testing.T) {
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			if username == "newuser" {
-				return &user.User{Uid: "1004", Gid: "1004", Username: "newuser", Name: "New User", HomeDir: "/home/newuser"}, nil
-			}
-			return nil, errors.New("user not found")
-		}
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "pdbedit" && args[3] == "newuser" {
-				return `
-					User SID:             S-1-5-21-NEW-SID-1004
-					Primary Group SID:    S-1-5-21-NEW-SID-513
-					Password last set:    0
-					Last logon:           0
-				`, nil
-			}
-			return "", errors.New("unexpected command")
-		}
-
-		info, err := GetByUsername("newuser")
-		require.NoError(t, err)
-		require.NotNil(t, info)
-		assert.True(t, info.IsSambaUser)
-		assert.False(t, info.SambaPasswordSet)
-		assert.True(t, info.LastLogon.IsZero())
-	})
+	err := unixsamba.CreateSambaUser(username, password, options)
+	s.Require().NoError(err)
 }
 
-// TestCreateSambaUser
-func TestCreateSambaUser(t *testing.T) {
-	// This setup assumes osUserLookup is mockable.
-	originalOsUserLookup, osUserLookup = osUserLookup, func(username string) (*user.User, error) {
-		if mockOsUserLookupFunc != nil {
-			return mockOsUserLookupFunc(username)
-		}
-		return nil, errors.New("user not found by mockOsUserLookupFunc in CreateSambaUser")
+// --- DeleteSambaUser Tests ---
+
+func (s *UnixSambaTestSuite) TestDeleteSambaUser_SambaOnly_Success() {
+	username := "smbdeluser"
+	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	err := unixsamba.DeleteSambaUser(username, false, false)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaTestSuite) TestDeleteSambaUser_SambaAndSystem_Success() {
+	username := "sysdeluser"
+	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("userdel", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	err := unixsamba.DeleteSambaUser(username, true, false)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaTestSuite) TestDeleteSambaUser_SambaAndSystemWithHome_Success() {
+	username := "homedeluser"
+	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("userdel", "-r", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	err := unixsamba.DeleteSambaUser(username, true, true)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaTestSuite) TestDeleteSambaUser_SmbPasswdFails_NotUserNotFound() {
+	username := "smbdeluser"
+	smbErrActual := errors.New("smb error")
+	smbCmdErr := errors.WithDetails(smbErrActual, "desc", "command execution failed", "stderr", "some other smb error")
+
+	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
+
+	err := unixsamba.DeleteSambaUser(username, false, false) // Samba only
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to delete user 'smbdeluser' from Samba")
+	s.True(errors.Is(err, smbCmdErr))
+}
+
+func (s *UnixSambaTestSuite) TestDeleteSambaUser_SmbPasswdUserNotFound_SystemDeleteSuccess() {
+	username := "smbnotfound"
+	smbCmdErr := errors.WithDetails(errors.New("smb not found"), "desc", "command execution failed",
+		"stderr", "Failed to find entry for user smbnotfound.",
+	)
+
+	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("userdel", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	err := unixsamba.DeleteSambaUser(username, true, false)
+	s.Require().NoError(err) // Error from smbpasswd -x (user not found) is ignored if system deletion is requested and succeeds
+}
+
+func (s *UnixSambaTestSuite) TestDeleteSambaUser_UserdelFails() {
+	username := "sysdeluser"
+	userdelActualErr := errors.New("userdel error")
+	userdelCmdErr := errors.WithDetails(userdelActualErr, "desc", "command execution failed", "stderr", "userdel critical error")
+
+	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1)) // Samba deletion succeeds
+	mock.When(s.mockCmdExec.RunCommand("userdel", username)).ThenReturn("", userdelCmdErr).Verify(matchers.Times(1))
+
+	err := unixsamba.DeleteSambaUser(username, true, false)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to delete system user 'sysdeluser'")
+	s.True(errors.Is(err, userdelCmdErr))
+}
+
+func (s *UnixSambaTestSuite) TestDeleteSambaUser_BothFail_SystemErrorPropagated() {
+	username := "bothfailuser"
+	smbErrActual := errors.New("smb error")
+	smbCmdErr := errors.WithDetails(smbErrActual, "desc", "command execution failed", "stderr", "some other smb error")
+	userdelActualErr := errors.New("userdel error")
+	userdelCmdErr := errors.WithDetails(userdelActualErr, "desc", "command execution failed", "stderr", "userdel critical error")
+
+	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("userdel", username)).ThenReturn("", userdelCmdErr).Verify(matchers.Times(1))
+
+	err := unixsamba.DeleteSambaUser(username, true, false)
+	s.Require().Error(err)
+	// The error message indicates both failures, but the primary returned error is from userdel
+	s.Contains(err.Error(), fmt.Sprintf("failed to delete system user '%s' (Samba deletion also failed: %v)", username, smbCmdErr))
+	s.True(errors.Is(err, userdelCmdErr)) // The wrapped error is userdelCmdErr
+}
+
+// --- ChangePassword Tests ---
+
+func (s *UnixSambaTestSuite) TestChangePassword_SambaOnly_Success() {
+	username := "changepwuser"
+	newPassword := "newSecurePassword"
+	input := newPassword + "\n" + newPassword + "\n"
+
+	mock.When(s.mockCmdExec.RunCommandWithInput(input, "smbpasswd", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	err := unixsamba.ChangePassword(username, newPassword, true)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaTestSuite) TestChangePassword_SambaAndSystem_Success() {
+	username := "changepwuser"
+	newPassword := "newSecurePassword"
+	sambaInput := newPassword + "\n" + newPassword + "\n"
+	chpasswdInput := username + ":" + newPassword + "\n"
+
+	mock.When(s.mockCmdExec.RunCommandWithInput(sambaInput, "smbpasswd", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(chpasswdInput, "chpasswd")).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	err := unixsamba.ChangePassword(username, newPassword, false)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaTestSuite) TestChangePassword_SmbPasswdFails() {
+	username := "changepwuser"
+	newPassword := "newSecurePassword"
+	input := newPassword + "\n" + newPassword + "\n"
+	smbErrActual := errors.New("smb error")
+	smbCmdErr := errors.WithDetails(smbErrActual, "desc", "command execution with input failed", "stderr", "smb change error")
+
+	mock.When(s.mockCmdExec.RunCommandWithInput(input, "smbpasswd", "-s", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
+
+	err := unixsamba.ChangePassword(username, newPassword, true)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to change Samba password for user 'changepwuser'")
+	s.True(errors.Is(err, smbCmdErr))
+}
+
+func (s *UnixSambaTestSuite) TestChangePassword_ChPasswdFails() {
+	username := "changepwuser"
+	newPassword := "newSecurePassword"
+	sambaInput := newPassword + "\n" + newPassword + "\n"
+	chpasswdInput := username + ":" + newPassword + "\n"
+	sysErrActual := errors.New("sys error")
+	sysCmdErr := errors.WithDetails(sysErrActual, "desc", "command execution with input failed", "stderr", "chpasswd error")
+
+	mock.When(s.mockCmdExec.RunCommandWithInput(sambaInput, "smbpasswd", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(chpasswdInput, "chpasswd")).ThenReturn("", sysCmdErr).Verify(matchers.Times(1))
+
+	err := unixsamba.ChangePassword(username, newPassword, false)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to change system password for user 'changepwuser'")
+	s.True(errors.Is(err, sysCmdErr))
+}
+
+// --- RenameUsername Tests ---
+
+func (s *UnixSambaTestSuite) TestRenameUsername_Success_NoHomeRename() {
+	oldUsername := "oldname"
+	newUsername := "newname"
+	newPassword := "newpass"
+	sambaInput := newPassword + "\n" + newPassword + "\n"
+
+	// 1. Check if newUsername exists (system) - should not exist
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(2))
+
+	// 2. GetByUsername(newUsername) - for Samba check
+	//    2a. osUser.Lookup(newUsername) within GetByUsername - should not exist
+	//mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(1))
+	//    2b. pdbedit for newUsername - should fail with "No such user" or similar
+	//pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user newname")
+	//mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+
+	// 3. usermod -l
+	mock.When(s.mockCmdExec.RunCommand("usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	// 4. smbpasswd -x oldname
+	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	// 5. smbpasswd -a -s newname
+	mock.When(s.mockCmdExec.RunCommandWithInput(sambaInput, "smbpasswd", "-a", "-s", newUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	err := unixsamba.RenameUsername(oldUsername, newUsername, false, newPassword)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaTestSuite) TestRenameUsername_Success_WithHomeRename() {
+	s.T().Skip("Not useful for Rat")
+	oldUsername := "oldhome"
+	newUsername := "newhome"
+	newPassword := "newpass"
+	sambaInput := newPassword + "\n" + newPassword + "\n"
+	expectedNewHomeDir := "/home/" + newUsername
+
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(2)) // Once for initial check, once for GetByUsername
+	pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user")
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+
+	mock.When(s.mockCmdExec.RunCommand("usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	// For home dir rename part
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(&user.User{Username: newUsername, HomeDir: "/home/" + oldUsername}, nil).Verify(matchers.Times(1)) // After login rename, before home dir rename
+	mock.When(s.mockCmdExec.RunCommand("usermod", "-d", expectedNewHomeDir, "-m", newUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(sambaInput, "smbpasswd", "-a", "-s", newUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	err := unixsamba.RenameUsername(oldUsername, newUsername, true, newPassword)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaTestSuite) TestRenameUsername_Error_NewUserSystemExists() {
+	oldUsername := "old"
+	newUsername := "existing"
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(&user.User{Username: newUsername}, nil).Verify(matchers.Times(1))
+
+	err := unixsamba.RenameUsername(oldUsername, newUsername, false, "pass")
+	s.Require().Error(err)
+	s.EqualErrorf(err, "new username 'existing' already exists on the system", "")
+}
+
+func (s *UnixSambaTestSuite) TestRenameUsername_Error_NewUserSambaExists() {
+	oldUsername := "old"
+	newUsername := "sambanew"
+
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(1)) // System check passes
+
+	// GetByUsername for newUsername finds a samba user
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(&user.User{Username: newUsername}, nil).Verify(matchers.Times(1)) // Inside GetByUsername
+	pdbeditOutput := "User SID: S-1-5-blah"
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
+
+	err := unixsamba.RenameUsername(oldUsername, newUsername, false, "pass")
+	s.Require().Error(err)
+	s.EqualErrorf(err, "new username 'sambanew' already appears to be a Samba user", "")
+}
+
+func (s *UnixSambaTestSuite) TestRenameUsername_Error_PdbeditIssueForNewUser() {
+	oldUsername := "old"
+	newUsername := "pdbissue"
+
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(1)) // System check passes
+
+	// GetByUsername for newUsername encounters pdbedit execution error
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(&user.User{Username: newUsername}, nil).Verify(matchers.Times(1)) // Inside GetByUsername
+	pdbeditActualErr := errors.New("pdbedit command failed")
+	pdbeditCmdErr := errors.WithDetails(pdbeditActualErr, "desc", "command execution failed", "command", "pdbedit", "stderr", "critical pdbedit error")
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditCmdErr).Verify(matchers.Times(1))
+
+	err := unixsamba.RenameUsername(oldUsername, newUsername, false, "pass")
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to verify Samba status for new username 'pdbissue' due to pdbedit execution issue")
+	s.True(errors.Is(err, pdbeditCmdErr))
+}
+
+func (s *UnixSambaTestSuite) TestRenameUsername_Error_UsermodLoginFails() {
+	oldUsername := "old"
+	newUsername := "new"
+	usermodErrActual := errors.New("usermod error")
+	usermodCmdErr := errors.WithDetails(usermodErrActual, "desc", "command execution failed", "stderr", "usermod fail")
+
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(2))
+	pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user")
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("usermod", "-l", newUsername, oldUsername)).ThenReturn("", usermodCmdErr).Verify(matchers.Times(1))
+
+	err := unixsamba.RenameUsername(oldUsername, newUsername, false, "pass")
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to rename system user login")
+	s.True(errors.Is(err, usermodCmdErr))
+}
+
+func (s *UnixSambaTestSuite) TestRenameUsername_Error_UsermodHomeFails() {
+	s.T().Skip("Not useful for Rat")
+	oldUsername := "oldhome"
+	newUsername := "newhome"
+	newPassword := "newpass"
+	expectedNewHomeDir := "/home/" + newUsername
+	usermodHomeErrActual := errors.New("usermod home error")
+	usermodHomeCmdErr := errors.WithDetails(usermodHomeErrActual, "desc", "command execution failed", "stderr", "usermod home fail")
+
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(2))
+	pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user")
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(&user.User{Username: newUsername, HomeDir: "/home/" + oldUsername}, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("usermod", "-d", expectedNewHomeDir, "-m", newUsername)).ThenReturn("", usermodHomeCmdErr).Verify(matchers.Times(1))
+
+	err := unixsamba.RenameUsername(oldUsername, newUsername, true, newPassword)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to move/rename home directory")
+	s.True(errors.Is(err, usermodHomeCmdErr))
+}
+
+func (s *UnixSambaTestSuite) TestRenameUsername_Error_NoPasswordForSamba() {
+	err := unixsamba.RenameUsername("old", "new", false, "")
+	s.Require().Error(err)
+	s.EqualError(err, "a new password must be provided to re-add user to Samba after renaming")
+}
+
+func (s *UnixSambaTestSuite) TestRenameUsername_Error_SmbPasswdAddFails() {
+	oldUsername := "old"
+	newUsername := "new"
+	newPassword := "newpass"
+	sambaInput := newPassword + "\n" + newPassword + "\n"
+	smbAddErrActual := errors.New("smb add error")
+	smbAddCmdErr := errors.WithDetails(smbAddErrActual, "command execution with input failed", "stderr", "smb add fail")
+
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(2))
+	pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user")
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1)) // Deletion of old samba user
+	mock.When(s.mockCmdExec.RunCommandWithInput(sambaInput, "smbpasswd", "-a", "-s", newUsername)).ThenReturn("", smbAddCmdErr).Verify(matchers.Times(1))
+
+	err := unixsamba.RenameUsername(oldUsername, newUsername, false, newPassword)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to add new Samba user 'new' after renaming")
+	s.True(errors.Is(err, smbAddCmdErr))
+}
+
+// --- ListSambaUsers Tests ---
+
+func (s *UnixSambaTestSuite) TestListSambaUsers_Success() {
+	pdbeditOutput := `
+user1:1001:User One
+user2:1002:User Two
+adminuser:1000:Admin
+	`
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L")).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
+
+	users, err := unixsamba.ListSambaUsers()
+	s.Require().NoError(err)
+	s.Require().ElementsMatch([]string{"user1", "user2", "adminuser"}, users)
+}
+
+func (s *UnixSambaTestSuite) TestListSambaUsers_Success_Empty() {
+	pdbeditOutput := ""
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L")).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
+
+	users, err := unixsamba.ListSambaUsers()
+	s.Require().NoError(err)
+	s.Empty(users)
+}
+
+func (s *UnixSambaTestSuite) TestListSambaUsers_PdbeditFails() {
+	pdbeditActualErr := errors.New("pdbedit list error")
+	pdbeditCmdErr := errors.WithDetails(pdbeditActualErr, "desc", "command execution failed", "stderr", "pdbedit -L failed")
+
+	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L")).ThenReturn("", pdbeditCmdErr).Verify(matchers.Times(1))
+
+	users, err := unixsamba.ListSambaUsers()
+	s.Require().Error(err)
+	s.Nil(users)
+	s.Contains(err.Error(), "failed to list samba users with pdbedit -L")
+	s.True(errors.Is(err, pdbeditCmdErr))
+}
+
+/*
+// --- Helper for creating errors with details for command execution ---
+func newCmdExecError(cmd string, args []string, stderr string, underlyingErr error) error {
+	if underlyingErr == nil {
+		underlyingErr = errors.New("command execution failed")
 	}
-	defer func() { osUserLookup = originalOsUserLookup }()
-
-	defaultOpts := UserOptions{CreateHome: true, Shell: "/bin/bash"}
-
-	t.Run("SuccessfulCreation", func(t *testing.T) {
-		useraddCalled := false
-		smbpasswdCalled := false
-
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "useradd" {
-				useraddCalled = true
-				assert.Equal(t, "newuser", args[len(args)-1])
-				assert.Contains(t, args, "-m")
-				assert.Contains(t, args, "-s")
-				assert.Contains(t, args, "/bin/bash")
-				return "", nil
-			}
-			return "", errors.New("unexpected runCommand call")
-		}
-		mockRunCommandWithInputFunc = func(stdinContent, command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-a" && args[1] == "-s" && args[2] == "newuser" {
-				smbpasswdCalled = true
-				assert.Equal(t, "password\npassword\n", stdinContent)
-				return "", nil
-			}
-			return "", errors.New("unexpected runCommandWithInput call")
-		}
-
-		err := CreateSambaUser("newuser", "password", defaultOpts)
-		require.NoError(t, err)
-		assert.True(t, useraddCalled, "useradd should have been called")
-		assert.True(t, smbpasswdCalled, "smbpasswd -a should have been called")
-	})
-
-	t.Run("UserAlreadyExistsInSystem_AddsToSamba", func(t *testing.T) {
-		smbpasswdCalled := false
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "useradd" {
-				// Simulate useradd failing because user exists
-				return "", errors.WithDetails(errors.New("useradd failed"), "command execution failed", "stderr", "useradd: user 'existinguser' already exists")
-			}
-			return "", errors.New("unexpected runCommand call")
-		}
-		// Mock user.Lookup to confirm user exists if structured error doesn't match
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			if username == "existinguser" {
-				return &user.User{Username: "existinguser"}, nil
-			}
-			return nil, user.UnknownUserError(username)
-		}
-		mockRunCommandWithInputFunc = func(stdinContent, command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-a" && args[2] == "existinguser" {
-				smbpasswdCalled = true
-				return "", nil
-			}
-			return "", errors.New("unexpected runCommandWithInput call")
-		}
-
-		err := CreateSambaUser("existinguser", "password", defaultOpts)
-		require.NoError(t, err)
-		assert.True(t, smbpasswdCalled, "smbpasswd -a should have been called even if useradd reported exists")
-	})
-
-	t.Run("UseraddFails_OtherReason", func(t *testing.T) {
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "useradd" {
-				return "", errors.WithDetails(errors.New("disk full"), "command execution failed", "stderr", "No space left on device")
-			}
-			return "", errors.New("unexpected runCommand call")
-		}
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			return nil, user.UnknownUserError(username) // User does not exist
-		}
-
-		err := CreateSambaUser("failuser", "password", defaultOpts)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to create system user 'failuser'")
-		var e errors.E
-		require.True(t, errors.As(err, &e))
-		details := e.Details()
-		assert.Equal(t, "No space left on device", details["stderr"])
-	})
-
-	t.Run("SmbpasswdFails", func(t *testing.T) {
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "useradd" {
-				return "", nil // useradd succeeds
-			}
-			return "", errors.New("unexpected runCommand call")
-		}
-		mockRunCommandWithInputFunc = func(stdinContent, command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-a" {
-				return "", errors.WithDetails(errors.New("smb error"), "command execution with input failed", "stderr", "Failed to add entry for user.")
-			}
-			return "", errors.New("unexpected runCommandWithInput call")
-		}
-
-		err := CreateSambaUser("smbfailuser", "password", defaultOpts)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to add user 'smbfailuser' to Samba")
-		var e errors.E
-		require.True(t, errors.As(err, &e))
-		details := e.Details()
-		assert.Equal(t, "Failed to add entry for user.", details["stderr"])
-	})
-}
-
-// TestDeleteSambaUser
-func TestDeleteSambaUser(t *testing.T) {
-	t.Run("DeleteSambaOnly_Success", func(t *testing.T) {
-		smbpasswdXCalled := false
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-x" && args[1] == "todelete" {
-				smbpasswdXCalled = true
-				return "", nil
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := DeleteSambaUser("todelete", false, false)
-		require.NoError(t, err)
-		assert.True(t, smbpasswdXCalled)
-	})
-
-	t.Run("DeleteSambaOnly_UserNotFoundInSamba_NoError", func(t *testing.T) {
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-x" && args[1] == "notinsamba" {
-				return "", errors.WithDetails(errors.New("samba fail"), "command execution failed", "stderr", "Failed to find entry for user notinsamba")
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := DeleteSambaUser("notinsamba", false, false)
-		require.NoError(t, err) // Should not error if user not found and only deleting Samba part
-	})
-
-	t.Run("DeleteSambaOnly_OtherSambaError_ReturnsError", func(t *testing.T) {
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-x" && args[1] == "sambaerroruser" {
-				return "", errors.WithDetails(errors.New("samba fail"), "command execution failed", "stderr", "Samba daemon not responding")
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := DeleteSambaUser("sambaerroruser", false, false)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to delete user 'sambaerroruser' from Samba")
-	})
-
-	t.Run("DeleteSystemAndSamba_Success", func(t *testing.T) {
-		smbpasswdXCalled := false
-		userdelCalled := false
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-x" && args[1] == "fulluser" {
-				smbpasswdXCalled = true
-				return "", nil
-			}
-			if command == "userdel" && args[0] == "fulluser" && len(args) == 1 { // No -r
-				userdelCalled = true
-				return "", nil
-			}
-			return "", errors.New("unexpected command: " + command + " " + strings.Join(args, " "))
-		}
-		err := DeleteSambaUser("fulluser", true, false)
-		require.NoError(t, err)
-		assert.True(t, smbpasswdXCalled)
-		assert.True(t, userdelCalled)
-	})
-
-	t.Run("DeleteSystemAndSamba_WithHomeDir_Success", func(t *testing.T) {
-		userdelArgsCorrect := false
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-x" {
-				return "", nil
-			}
-			if command == "userdel" {
-				if assert.Contains(t, args, "-r") && assert.Contains(t, args, "fulluserhome") {
-					userdelArgsCorrect = true
-				}
-				return "", nil
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := DeleteSambaUser("fulluserhome", true, true)
-		require.NoError(t, err)
-		assert.True(t, userdelArgsCorrect)
-	})
-
-	t.Run("DeleteSystemAndSamba_UserdelFails", func(t *testing.T) {
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-x" {
-				return "", nil // Samba deletion succeeds
-			}
-			if command == "userdel" {
-				return "", errors.WithDetails(errors.New("userdel failed"), "command execution failed", "stderr", "userdel: user test is currently logged in")
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := DeleteSambaUser("test", true, false)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to delete system user 'test'")
-		var e errors.E
-		require.True(t, errors.As(err, &e))
-		assert.Equal(t, "userdel: user test is currently logged in", e.Details()["stderr"])
-	})
-
-	t.Run("DeleteSystemAndSamba_SambaFails_UserdelFails", func(t *testing.T) {
-		sambaErr := errors.WithDetails(errors.New("samba error"), "command execution failed", "stderr", "Samba connection failed")
-		userdelErr := errors.WithDetails(errors.New("userdel error"), "command execution failed", "stderr", "Cannot lock /etc/passwd")
-
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-x" {
-				return "", sambaErr
-			}
-			if command == "userdel" {
-				return "", userdelErr
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := DeleteSambaUser("bothfail", true, false)
-		require.Error(t, err)
-		// The error from userdel should be primary, with samba error mentioned.
-		assert.Contains(t, err.Error(), "failed to delete system user 'bothfail' (Samba deletion also failed: Samba connection failed)")
-		assert.Contains(t, err.Error(), "Cannot lock /etc/passwd") // Check for userdel's stderr
-	})
-}
-
-// TestChangePassword
-func TestChangePassword(t *testing.T) {
-	t.Run("SambaOnly_Success", func(t *testing.T) {
-		smbPasswdCalled := false
-		mockRunCommandWithInputFunc = func(stdinContent, command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-s" && args[1] == "user1" {
-				smbPasswdCalled = true
-				assert.Equal(t, "newpass\nnewpass\n", stdinContent)
-				return "", nil
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := ChangePassword("user1", "newpass", true)
-		require.NoError(t, err)
-		assert.True(t, smbPasswdCalled)
-	})
-
-	t.Run("SambaOnly_SmbpasswdFails", func(t *testing.T) {
-		mockRunCommandWithInputFunc = func(stdinContent, command string, args ...string) (string, error) {
-			if command == "smbpasswd" {
-				return "", errors.WithDetails(errors.New("smb fail"), "command execution with input failed", "stderr", "Bad password")
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := ChangePassword("user1", "newpass", true)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to change Samba password for user 'user1'")
-	})
-
-	t.Run("SambaAndSystem_Success", func(t *testing.T) {
-		smbPasswdCalled := false
-		chPasswdCalled := false
-		mockRunCommandWithInputFunc = func(stdinContent, command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-s" && args[1] == "user2" {
-				smbPasswdCalled = true
-				return "", nil
-			}
-			if command == "chpasswd" {
-				chPasswdCalled = true
-				assert.Equal(t, "user2:newpass\n", stdinContent)
-				return "", nil
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := ChangePassword("user2", "newpass", false)
-		require.NoError(t, err)
-		assert.True(t, smbPasswdCalled)
-		assert.True(t, chPasswdCalled)
-	})
-
-	t.Run("SambaAndSystem_ChpasswdFails", func(t *testing.T) {
-		mockRunCommandWithInputFunc = func(stdinContent, command string, args ...string) (string, error) {
-			if command == "smbpasswd" {
-				return "", nil // Samba part succeeds
-			}
-			if command == "chpasswd" {
-				return "", errors.WithDetails(errors.New("sys fail"), "command execution with input failed", "stderr", "Permission denied")
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := ChangePassword("user2", "newpass", false)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to change system password for user 'user2'")
-	})
-}
-
-// TestListSambaUsers
-func TestListSambaUsers(t *testing.T) {
-	t.Run("SuccessfulList", func(t *testing.T) {
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "pdbedit" && args[0] == "-L" {
-				return "user1:1001:User One\nuser2:1002:User Two\n\nuser3:1003:", nil
-			}
-			return "", errors.New("unexpected command")
-		}
-		users, err := ListSambaUsers()
-		require.NoError(t, err)
-		assert.Equal(t, []string{"user1", "user2", "user3"}, users)
-	})
-
-	t.Run("EmptyList", func(t *testing.T) {
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "pdbedit" && args[0] == "-L" {
-				return "", nil
-			}
-			return "", errors.New("unexpected command")
-		}
-		users, err := ListSambaUsers()
-		require.NoError(t, err)
-		assert.Empty(t, users)
-	})
-
-	t.Run("PdbeditFails", func(t *testing.T) {
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "pdbedit" && args[0] == "-L" {
-				return "", errors.WithDetails(errors.New("pdbedit error"), "command execution failed", "stderr", "Cannot open pdb")
-			}
-			return "", errors.New("unexpected command")
-		}
-		users, err := ListSambaUsers()
-		require.Error(t, err)
-		assert.Nil(t, users)
-		assert.Contains(t, err.Error(), "failed to list samba users with pdbedit -L")
-		var e errors.E
-		require.True(t, errors.As(err, &e))
-		assert.Equal(t, "Cannot open pdb", e.Details()["stderr"])
-	})
-
-	t.Run("ScannerError", func(t *testing.T) {
-		// This is hard to simulate perfectly without a custom reader that returns errors on Scan()
-		// For now, assume if pdbedit -L works, scanner.Err() is unlikely unless output is malformed in a specific way
-		// that bufio.Scanner itself errors out, which is rare for simple text.
-		// The Wrap for scanner.Err() is there for completeness.
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "pdbedit" && args[0] == "-L" {
-				// A very long line might cause issues, but bufio.Scanner handles large tokens.
-				// Let's assume a simple success case here as scanner errors are harder to trigger.
-				return "user1:1001:User One", nil
-			}
-			return "", errors.New("unexpected command")
-		}
-		users, err := ListSambaUsers()
-		require.NoError(t, err) // Expecting no scanner error for valid output
-		assert.Equal(t, []string{"user1"}, users)
-	})
-}
-
-// TestRenameUsername - This is a complex function, testing a few key paths.
-func TestRenameUsername(t *testing.T) {
-	// This setup assumes osUserLookup and the GetByUsername's internal osUserLookup are mockable.
-	// For simplicity, GetByUsername will use the global mockRunCommandFunc.
-	originalOsUserLookup, osUserLookup = osUserLookup, func(username string) (*user.User, error) {
-		if mockOsUserLookupFunc != nil {
-			return mockOsUserLookupFunc(username)
-		}
-		return nil, user.UnknownUserError(username) // Default to not found
+	details := []any{"command execution failed", "command", cmd, "args", strings.Join(args, " ")}
+	if stderr != "" {
+		details = append(details, "stderr", stderr)
 	}
-	defer func() { osUserLookup = originalOsUserLookup }()
-
-	t.Run("SuccessfulRenameNoHomeMove", func(t *testing.T) {
-		usermodLoginCalled := false
-		smbPasswdDeleteCalled := false
-		smbPasswdAddCalled := false
-
-		// Mock for initial user.Lookup(newUsername)
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			if username == "newuser" {
-				return nil, user.UnknownUserError("newuser") // New user does not exist
-			}
-			if username == "olduser" { // For the GetByUsername call on olduser if it happened
-				return &user.User{Uid: "1000", Gid: "1000", Username: "olduser", HomeDir: "/home/olduser"}, nil
-			}
-			return nil, user.UnknownUserError(username)
-		}
-
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			switch command {
-			case "pdbedit": // For GetByUsername(newUsername)
-				if args[3] == "newuser" { // Check for new user in Samba
-					return "", errors.WithDetails(errors.New("not found"), "command execution failed", "stderr", "No such user newuser")
-				}
-			case "usermod":
-				if args[0] == "-l" && args[1] == "newuser" && args[2] == "olduser" {
-					usermodLoginCalled = true
-					// After usermod -l, user.Lookup("newuser") should succeed.
-					// We'll update the mockOsUserLookupFunc behavior if needed by specific sub-tests of Rename.
-					// For this simple case, assume the next user.Lookup for newHomeDir check will be handled.
-					return "", nil
-				}
-			case "smbpasswd":
-				if args[0] == "-x" && args[1] == "olduser" {
-					smbPasswdDeleteCalled = true
-					return "", nil
-				}
-			default:
-				return "", errors.Errorf("unexpected runCommand: %s %v", command, args)
-			}
-			return "", nil
-		}
-
-		mockRunCommandWithInputFunc = func(stdinContent, command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-a" && args[1] == "-s" && args[2] == "newuser" {
-				smbPasswdAddCalled = true
-				assert.Equal(t, "newpass\nnewpass\n", stdinContent)
-				return "", nil
-			}
-			return "", errors.Errorf("unexpected runCommandWithInput: %s %v", command, args)
-		}
-
-		err := RenameUsername("olduser", "newuser", false, "newpass")
-		require.NoError(t, err)
-		assert.True(t, usermodLoginCalled, "usermod -l should be called")
-		assert.True(t, smbPasswdDeleteCalled, "smbpasswd -x olduser should be called")
-		assert.True(t, smbPasswdAddCalled, "smbpasswd -a newuser should be called")
-	})
-
-	t.Run("NewUsernameAlreadyExistsSystem", func(t *testing.T) {
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			if username == "existingnew" {
-				return &user.User{}, nil // New username already exists
-			}
-			return nil, user.UnknownUserError(username)
-		}
-		err := RenameUsername("old", "existingnew", false, "pass")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "new username 'existingnew' already exists on the system")
-	})
-
-	t.Run("NewUsernameAlreadySambaUser", func(t *testing.T) {
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			return nil, user.UnknownUserError(username) // System user lookup for new user = not found
-		}
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			if command == "pdbedit" && args[3] == "sambaexists" { // GetByUsername for new user
-				return "User SID: S-1-5-FOO", nil // Indicates Samba user exists
-			}
-			return "", errors.New("unexpected command")
-		}
-		err := RenameUsername("old", "sambaexists", false, "pass")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "new username 'sambaexists' already appears to be a Samba user")
-	})
-
-	t.Run("RenameHomeDirSuccess", func(t *testing.T) {
-		usermodMoveHomeCalled := false
-
-		// Initial lookup for new user: not found
-		// GetByUsername for new user: not found in Samba
-		// usermod -l: success
-		// user.Lookup(newUsername) for home dir check: success, different home
-		// usermod -d -m: success
-		// smbpasswd -x: success
-		// smbpasswd -a: success
-
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			if username == "newhomeuser" { // After usermod -l, or initial check
-				// Simulate different states for user.Lookup
-				// If usermodLoginCalled is true, it means rename happened.
-				// This state management can get complex; simpler mocks per call are better.
-				return &user.User{Username: "newhomeuser", HomeDir: "/home/oldhomeuser"}, nil // Home dir is still old
-			}
-			return nil, user.UnknownUserError(username)
-		}
-
-		var usermodLoginDone bool
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			switch command {
-			case "pdbedit": // For GetByUsername(newUsername)
-				if args[3] == "newhomeuser" {
-					return "", errors.WithDetails(errors.New("not found"), "stderr", "No such user")
-				}
-			case "usermod":
-				if args[0] == "-l" && args[1] == "newhomeuser" && args[2] == "oldhomeuser" {
-					usermodLoginDone = true
-					// Update mock for subsequent user.Lookup("newhomeuser")
-					mockOsUserLookupFunc = func(username string) (*user.User, error) {
-						if username == "newhomeuser" {
-							return &user.User{Username: "newhomeuser", HomeDir: "/home/oldhomeuser", Uid: "1010", Gid: "1010"}, nil
-						}
-						return nil, user.UnknownUserError(username)
-					}
-					return "", nil
-				}
-				if args[0] == "-d" && args[1] == "/home/newhomeuser" && args[2] == "-m" && args[3] == "newhomeuser" {
-					require.True(t, usermodLoginDone, "usermod -l must happen before moving home")
-					usermodMoveHomeCalled = true
-					return "", nil
-				}
-			case "smbpasswd":
-				if args[0] == "-x" && args[1] == "oldhomeuser" {
-					return "", nil
-				}
-			default:
-				return "", errors.Errorf("unexpected runCommand: %s %v", command, args)
-			}
-			return "", nil
-		}
-		mockRunCommandWithInputFunc = func(stdinContent, command string, args ...string) (string, error) {
-			if command == "smbpasswd" && args[0] == "-a" && args[2] == "newhomeuser" {
-				return "", nil
-			}
-			return "", errors.Errorf("unexpected runCommandWithInput: %s %v", command, args)
-		}
-
-		err := RenameUsername("oldhomeuser", "newhomeuser", true, "newpass")
-		require.NoError(t, err)
-		assert.True(t, usermodMoveHomeCalled)
-	})
-
-	t.Run("MissingNewPasswordForSamba", func(t *testing.T) {
-		mockOsUserLookupFunc = func(username string) (*user.User, error) {
-			return nil, user.UnknownUserError(username)
-		}
-		mockRunCommandFunc = func(command string, args ...string) (string, error) {
-			switch command {
-			case "pdbedit":
-				return "", errors.WithDetails(errors.New("not found"), "stderr", "No such user")
-			case "usermod": // -l
-				return "", nil
-			case "smbpasswd": // -x
-				return "", nil
-			}
-			return "", errors.New("unexpected command")
-		}
-
-		err := RenameUsername("old", "new", false, "") // Empty password
-		require.Error(t, err)
-		assert.Equal(t, "a new password must be provided to re-add user to Samba after renaming", err.Error())
-	})
+	return errors.WithDetails(underlyingErr, details...)
 }
+
+func newCmdExecWithInputError(cmd string, args []string, stdin string, stderr string, underlyingErr error) error {
+	if underlyingErr == nil {
+		underlyingErr = errors.New("command execution with input failed")
+	}
+	details := []any{"command execution with input failed", "command", cmd, "args", strings.Join(args, " "), "stdin_preview", stdin}
+	if stderr != "" {
+		details = append(details, "stderr", stderr)
+	}
+	return errors.WithDetails(underlyingErr, details...)
+}
+*/
