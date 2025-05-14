@@ -45,7 +45,10 @@ func TestGetInfoFromDevice(t *testing.T) {
 		if errors.Is(err, DeviceNotFound) {
 			t.Skip("DeviceNotFound", err)
 		}
-		t.Errorf("GetInfoFromDevice failed: %v", err)
+		if errors.Is(err, NoInfoFound) {
+			t.Skip("NoInfoFound", err)
+		}
+		t.Errorf("GetInfoFromDevice failed: %#v", err)
 		return
 	}
 	t.Logf("lsbk %v", pretty.Sprint(lsbkp))

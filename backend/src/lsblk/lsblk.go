@@ -103,7 +103,10 @@ type LSBKInterpreter struct {
 	jqdevice    *gojq.Code
 }
 
-var DeviceNotFound = errors.Base("device not found")
+var (
+	DeviceNotFound = errors.Base("device not found")
+	NoInfoFound    = errors.Base("device info not found")
+)
 
 func NewLSBKInterpreter() LSBLKInterpreterInterface {
 	_lsbkInterpreterInstanceMutex.Lock()
@@ -157,7 +160,7 @@ func (self *LSBKInterpreter) GetInfoFromDevice(devName string) (info *LSBKInfo, 
 
 	// check if file devName exists using os.OpenFile
 	if _, err := os.OpenFile(fmt.Sprintf("/dev/%s", devName), os.O_RDONLY, 0); err != nil {
-		return nil, errors.Wrap(DeviceNotFound, fmt.Sprintf("device %s not found", devName))
+		return nil, errors.WithDetails(DeviceNotFound, "desc", fmt.Sprintf("device %s not found", devName), "err", err.Error())
 	}
 
 	result := &LSBKInfo{}
@@ -228,7 +231,7 @@ func (self *LSBKInterpreter) GetInfoFromDevice(devName string) (info *LSBKInfo, 
 
 	//fmt.Printf("--->\n%v\n", *result)
 	if result.Name == "" {
-		return nil, fmt.Errorf("device %s not found", devName)
+		return nil, errors.WithDetails(NoInfoFound, "device", devName)
 	}
 	return result, nil
 }
