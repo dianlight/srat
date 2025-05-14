@@ -1,6 +1,7 @@
 package lsblk
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/kr/pretty"
@@ -37,9 +38,13 @@ func TestPrintPartitions(t *testing.T) {
 */
 
 func TestGetInfoFromDevice(t *testing.T) {
+
 	lsbkint := NewLSBKInterpreter()
 	lsbkp, err := lsbkint.GetInfoFromDevice("loop1")
 	if err != nil {
+		if errors.Is(err, DeviceNotFound) {
+			t.Skip("DeviceNotFound", err)
+		}
 		t.Errorf("GetInfoFromDevice failed: %v", err)
 		return
 	}

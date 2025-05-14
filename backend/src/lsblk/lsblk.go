@@ -4,14 +4,15 @@ package lsblk
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
 
 	"github.com/itchyny/gojq"
+	"gitlab.com/tozd/go/errors"
 )
 
 type Device struct {
@@ -102,6 +103,8 @@ type LSBKInterpreter struct {
 	jqdevice    *gojq.Code
 }
 
+var DeviceNotFound = errors.Base("device not found")
+
 func NewLSBKInterpreter() LSBLKInterpreterInterface {
 	_lsbkInterpreterInstanceMutex.Lock()
 	defer _lsbkInterpreterInstanceMutex.Unlock()
@@ -151,6 +154,11 @@ func (*LSBKInterpreter) runCmd(command string) (output []byte, err error) {
 func (self *LSBKInterpreter) GetInfoFromDevice(devName string) (info *LSBKInfo, err error) {
 
 	devName, _ = strings.CutPrefix(devName, "/dev/")
+
+	// check if file devName exists using os.OpenFile
+	if _, err := os.OpenFile(fmt.Sprintf("/dev/%s", devName), os.O_RDONLY, 0); err != nil {
+		return nil, errors.Wrap(DeviceNotFound, fmt.Sprintf("device %s not found", devName))
+	}
 
 	result := &LSBKInfo{}
 
