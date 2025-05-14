@@ -7,7 +7,7 @@ curl -fsSL https://bun.sh/install | bash -s "bun-v1.2.13"
 
 #GOBIN=/usr/local/bin/ go install github.com/rogpeppe/gohack@v1.0.2
 #GOBIN=/usr/local/bin/ go install github.com/rakyll/gotest@v0.0.6
-#GOBIN=/usr/local/bin/ go install github.com/Antonboom/testifylint@v1.6.0
+#GOBIN=/usr/local/bin/ go install github.com/Antonboom/testifylint@v1.6.1
 ##GOBIN=/usr/local/bin/ go install github.com/ramya-rao-a/go-outline@1.0.0
 ##GOBIN=/usr/local/bin/ go install go.uber.org/mock/mockgen@v0.5.0
 ##GOBIN=/usr/local/bin/ go install github.com/cortesi/modd/cmd/modd@latest
