@@ -2,6 +2,8 @@ package repository_test
 
 import (
 	"context"
+	"log"
+	"os"
 	"sync"
 	"testing"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/snapcore/snapd/osutil"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -29,6 +32,11 @@ func TestExportedSharesSuite(t *testing.T) {
 }
 
 func (suite *ExportedSharesRepositorySuite) SetupTest() {
+	data, err := os.ReadFile("../../test/data/mount_info.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	osutil.MockMountInfo(string(data))
 	//suite.ctx = context.Background()
 	//suite.dirtyDataService = NewDirtyDataService(suite.ctx)
 	suite.app = fxtest.New(suite.T(),
