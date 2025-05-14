@@ -9,6 +9,7 @@ import (
 type Property struct {
 	Key       string      `gorm:"primaryKey"`
 	Value     interface{} `gorm:"serializer:json"`
+	Internal  bool        `gorm:"default:false"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -16,36 +17,6 @@ type Property struct {
 
 type Properties map[string]Property
 
-/*
-	func (self *Properties) Add(key string, value any) error {
-		prop := Property{
-			Key:   key,
-			Value: value,
-		}
-
-		tx := db.WithContext(context.Background()).Begin()
-		tx.Unscoped().Model(&Property{}).Where("key", key).Update("deleted_at", nil)
-
-		result := tx.Model(&Property{}).Where(Property{Key: key}).Assign(prop).FirstOrCreate(&prop)
-		if result.Error != nil {
-			return errors.WithStack(result.Error)
-		}
-
-		(*self)[key] = prop
-		return errors.WithStack(tx.Commit().Error)
-	}
-
-	func (self *Properties) Remove(key string) error {
-		result := db.WithContext(context.Background()).Model(&Property{}).Where("key = ?", key).Delete(&Property{})
-		if result.Error != nil {
-			return result.Error
-		}
-
-		delete(*self, key)
-
-		return nil
-	}
-*/
 func (self *Properties) Get(key string) (*Property, error) {
 	prop, ok := (*self)[key]
 	if !ok {
@@ -60,6 +31,18 @@ func (self *Properties) GetValue(key string) (interface{}, error) {
 		return nil, err
 	}
 	return prop.Value, nil
+}
+
+func (self *Properties) AddInternalValue(key string, value any) error {
+	prop, err := self.Get(key)
+	if err != nil {
+		prop = &Property{Key: key}
+	}
+
+	prop.Value = value
+	prop.Internal = true
+	(*self)[key] = *prop
+	return nil
 }
 
 /*

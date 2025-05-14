@@ -20,21 +20,24 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
+	"github.com/m1/go-generate-password/generator"
 	"github.com/mattn/go-isatty"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"gitlab.com/tozd/go/errors"
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
-	"github.com/dianlight/srat/dbutil"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/homeassistant/ingress"
+	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/unixsamba"
 
 	"github.com/jpillora/overseer/fetcher"
 	"github.com/lmittmann/tint"
@@ -63,6 +66,7 @@ var supervisorURL *string
 var supervisorToken *string
 var logLevel slog.Level
 var automount *bool
+var addonIpAddress *string
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -88,6 +92,7 @@ func main() {
 	singleInstance := flag.Bool("single-instance", false, "Single instance mode - only one instance of the addon can run ***ONLY FOR DEBUG***")
 	automount = flag.Bool("automount", false, "Automount mode - mount all shares automatically")
 	updateFilePath = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
+	addonIpAddress = flag.String("ip-address", "$(bashio::addon.ip_address)", "Addon IP address")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -190,13 +195,14 @@ func prog(state overseer.State) {
 	options = config.ReadOptionsFile(*optionsFile)
 
 	var apiContext, apiContextCancel = context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
-	sharedResources := dto.ContextState{}
-	sharedResources.UpdateFilePath = *updateFilePath
-	sharedResources.ReadOnlyMode = *roMode
-	sharedResources.SambaConfigFile = *smbConfigFile
-	sharedResources.Template = getTemplateData()
-	sharedResources.DockerInterface = *dockerInterface
-	sharedResources.DockerNet = *dockerNetwork
+	staticConfig := dto.ContextState{}
+	staticConfig.AddonIpAddress = *addonIpAddress
+	staticConfig.UpdateFilePath = *updateFilePath
+	staticConfig.ReadOnlyMode = *roMode
+	staticConfig.SambaConfigFile = *smbConfigFile
+	staticConfig.Template = getTemplateData()
+	staticConfig.DockerInterface = *dockerInterface
+	staticConfig.DockerNet = *dockerNetwork
 
 	// New FX
 	fx.New(
@@ -214,22 +220,9 @@ func prog(state overseer.State) {
 			dbom.NewDB,
 			func() *slog.Logger { return slog.Default() },
 			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
-			func() *dto.ContextState { return &sharedResources },
+			func() *dto.ContextState { return &staticConfig },
 			func() *overseer.State { return &state },
 			getFrontend,
-			/*
-				func() fs.FS {
-					if frontend == nil || *frontend == "" {
-						return content
-					} else {
-						_, err := os.Stat(*frontend)
-						if err != nil {
-							log.Fatalf("Cant access frontend folder %s - %s", *frontend, err)
-						}
-						return os.DirFS(*frontend)
-					}
-				},
-			*/
 			fx.Annotate(
 				func() bool { return *hamode },
 				fx.ResultTags(`name:"ha_mode"`),
@@ -244,6 +237,7 @@ func prog(state overseer.State) {
 			service.NewSambaService,
 			service.NewUpgradeService,
 			service.NewDirtyDataService,
+			service.NewSupervisorService,
 			repository.NewMountPointPathRepository,
 			repository.NewExportedShareRepository,
 			repository.NewPropertyRepositoryRepository,
@@ -284,6 +278,13 @@ func prog(state overseer.State) {
 				}
 				return hardwareClient
 			},
+			func(bearerAuth *securityprovider.SecurityProviderBearerToken) mount.ClientWithResponsesInterface {
+				mountClient, err := mount.NewClientWithResponses(*supervisorURL, mount.WithRequestEditorFn(bearerAuth.Intercept))
+				if err != nil {
+					log.Fatal(err)
+				}
+				return mountClient
+			},
 		),
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
@@ -291,12 +292,9 @@ func prog(state overseer.State) {
 			exported_share_repo repository.ExportedShareRepositoryInterface,
 			hardwareClient hardware.ClientWithResponsesInterface,
 			samba_user_repo repository.SambaUserRepositoryInterface,
+			volume_service service.VolumeServiceInterface,
 		) {
-			properties, err := props_repo.All()
-			if err != nil {
-				log.Fatalf("Cant load properties - %#+v", err)
-			}
-			versionInDB, err := properties.GetValue("version")
+			versionInDB, err := props_repo.Value("version", true)
 			if err != nil || versionInDB.(string) == "" {
 				// Migrate from JSON to DB
 				var config config.Config
@@ -305,14 +303,52 @@ func prog(state overseer.State) {
 				if err != nil {
 					log.Fatalf("Cant load config file %#+v", err)
 				}
-				err = dbutil.FirstTimeJSONImporter(config, mount_repo, props_repo, exported_share_repo, samba_user_repo)
+
+				pwdgen, err := generator.NewWithDefault()
+				if err != nil {
+					log.Fatalf("Cant generate password %#+v", err)
+				}
+				_ha_mount_user_password_, err := pwdgen.Generate()
+				if err != nil {
+					log.Fatalf("Cant generate password %#+v", err)
+				}
+
+				err = unixsamba.CreateSambaUser("_ha_mount_user_", *_ha_mount_user_password_, unixsamba.UserOptions{
+					CreateHome:    false,
+					SystemAccount: false,
+					Shell:         "/sbin/nologin",
+				})
+				if err != nil {
+					log.Fatalf("Cant create samba user %#+v", err)
+				}
+
+				err = firstTimeJSONImporter(config, mount_repo, props_repo, exported_share_repo, samba_user_repo, *_ha_mount_user_password_)
 				if err != nil {
 					log.Fatalf("Cant import json settings - %#+v", err)
 				}
+
 			} else {
 				if automount != nil && *automount {
 					// Automount all shares
 					slog.Info("******* Automounting all shares! ********")
+					all, err := mount_repo.All()
+					if err != nil {
+						log.Fatalf("Cant load mounts - %#+v", err)
+					}
+					for _, mnt := range all {
+						if mnt.Type == "ADDON" && !mnt.IsMounted {
+							slog.Info("Automounting share", "path", mnt.Path)
+							err := volume_service.MountVolume(dto.MountPointData{
+								Path:   mnt.Path,
+								Device: mnt.Device,
+								FSType: mnt.FSType,
+								Flags:  mnt.Flags.ToStringSlice(),
+							})
+							if err != nil {
+								slog.Error("Error automounting share", "path", mnt.Path, "err", err)
+							}
+						}
+					}
 				}
 			}
 		}),
@@ -404,6 +440,13 @@ func prog(state overseer.State) {
 				fx.ParamTags("", "", "", "", `name:"ha_mode"`),
 			),
 		),
+		fx.Invoke(func(
+			samba_service service.SambaServiceInterface,
+		) {
+			// Generate Samba Config and restart Samba
+			samba_service.WriteAndRestartSambaConfig()
+		},
+		),
 	).Run()
 
 	slog.Info("Stopping SRAT", "pid", state.ID)
@@ -412,4 +455,46 @@ func prog(state overseer.State) {
 	slog.Info("SRAT stopped", "pid", state.ID)
 
 	os.Exit(0)
+}
+
+func firstTimeJSONImporter(config config.Config,
+	mount_repository repository.MountPointPathRepositoryInterface,
+	props_repository repository.PropertyRepositoryInterface,
+	export_share_repository repository.ExportedShareRepositoryInterface,
+	users_repository repository.SambaUserRepositoryInterface,
+	_ha_mount_user_password_ string,
+) (err error) {
+
+	var conv converter.ConfigToDbomConverterImpl
+	shares := &[]dbom.ExportedShare{}
+	properties := &dbom.Properties{}
+	users := &dbom.SambaUsers{}
+
+	err = conv.ConfigToDbomObjects(config, properties, users, shares)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	properties.AddInternalValue("_ha_mount_user_password_", _ha_mount_user_password_)
+
+	err = props_repository.SaveAll(properties)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = users_repository.SaveAll(users)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	for i, share := range *shares {
+		err = mount_repository.Save(&share.MountPointData)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		//		slog.Debug("Share ", "id", share.MountPointData.ID)
+		(*shares)[i] = share
+	}
+	err = export_share_repository.SaveAll(shares)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }

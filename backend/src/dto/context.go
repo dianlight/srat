@@ -1,6 +1,7 @@
 package dto
 
 type ContextState struct {
+	AddonIpAddress  string
 	ReadOnlyMode    bool
 	UpdateFilePath  string
 	SambaConfigFile string

@@ -71,11 +71,7 @@ func (self *UpgradeService) run() error {
 }
 
 func (self *UpgradeService) checkSoftwareVersion() error {
-	properties, err := self.props_repo.All()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	value, err := properties.GetValue("UpdateChannel")
+	value, err := self.props_repo.Value("UpdateChannel", false)
 	if err != nil {
 		return errors.WithStack(err)
 	}

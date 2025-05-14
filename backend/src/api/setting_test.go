@@ -86,7 +86,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 	)
 	suite.app.RequireStart()
 
-	mock.When(suite.mockPropertyRepository.All()).ThenReturn(dbom.Properties{
+	mock.When(suite.mockPropertyRepository.All(mock.Any[bool]())).ThenReturn(dbom.Properties{
 		"Workgroup": dbom.Property{
 			Key:   "Workgroup",
 			Value: suite.config.Workgroup,
@@ -171,7 +171,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Settings)
 
 	// Restore original state
-	_, err = suite.mockPropertyRepository.All()
+	_, err = suite.mockPropertyRepository.All(false)
 	if err != nil {
 		suite.T().Fatalf("Failed to load properties: %v", err)
 	}

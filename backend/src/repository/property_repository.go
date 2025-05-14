@@ -14,9 +14,10 @@ type PropertyRepository struct {
 }
 
 type PropertyRepositoryInterface interface {
-	All() (dbom.Properties, error)
+	All(include_internal bool) (dbom.Properties, error)
 	SaveAll(props *dbom.Properties) error
-	DeleteAll() (dbom.Properties, error)
+	//DeleteAll() (dbom.Properties, error)
+	Value(key string, include_internal bool) (interface{}, error)
 }
 
 func NewPropertyRepositoryRepository(db *gorm.DB) PropertyRepositoryInterface {
@@ -26,9 +27,9 @@ func NewPropertyRepositoryRepository(db *gorm.DB) PropertyRepositoryInterface {
 	}
 }
 
-func (self *PropertyRepository) All() (dbom.Properties, error) {
+func (self *PropertyRepository) All(include_internal bool) (dbom.Properties, error) {
 	var props []dbom.Property
-	err := self.db.Model(&dbom.Property{}).Find(&props).Error
+	err := self.db.Model(&dbom.Property{}).Find(&props, "internal = ? or internal = false", include_internal).Error
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -50,12 +51,23 @@ func (self *PropertyRepository) SaveAll(props *dbom.Properties) error {
 	return nil
 }
 
+/*
 func (self *PropertyRepository) DeleteAll() (dbom.Properties, error) {
 	result := self.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Model(&dbom.Property{}).Delete(&dbom.Property{})
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return self.All()
+	return self.All(true)
+}
+*/
+
+func (self *PropertyRepository) Value(key string, include_internal bool) (interface{}, error) {
+	var prop dbom.Property
+	err := self.db.Model(&dbom.Property{}).First(&prop, "key = ? and (internal = ? or internal = false)", key, include_internal).Error
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return prop.Value, nil
 }
 
 /*

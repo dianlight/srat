@@ -67,15 +67,14 @@ func ResetExecutorsToDefaults() {
 
 // UserOptions specifies parameters for creating a new system user.
 type UserOptions struct {
-	HomeDir         string
-	Shell           string
-	PrimaryGroup    string
-	SecondaryGroups []string
-	CreateHome      bool
-	SystemAccount   bool
-	Comment         string
-	UID             string
-	GID             string
+	HomeDir       string
+	Shell         string
+	PrimaryGroup  string
+	GECOS         []string
+	CreateHome    bool
+	SystemAccount bool
+	UID           string
+	GID           string
 }
 
 // RunCommand is the actual implementation for running commands.
@@ -92,7 +91,7 @@ func (d *defaultCommandExecutor) RunCommand(command string, args ...string) (str
 
 	if err != nil {
 		// Use errors.Errorf for structured error information
-		return stdout, errors.WithDetails(err, "command execution failed",
+		return stdout, errors.WithDetails(err, "desc", "command execution failed",
 			"command", command,
 			"args", args,
 			"stderr", stderr,
@@ -198,33 +197,31 @@ func GetByUsername(username string) (*UserInfo, error) {
 // CreateSambaUser creates a system Unix user and then adds them to the Samba database.
 func CreateSambaUser(username string, password string, options UserOptions) error {
 	useraddArgs := []string{}
-	if options.CreateHome {
-		useraddArgs = append(useraddArgs, "-m")
+	if !options.CreateHome {
+		useraddArgs = append(useraddArgs, "-H")
 	}
 	if options.SystemAccount {
-		useraddArgs = append(useraddArgs, "-r")
+		useraddArgs = append(useraddArgs, "-S")
 	}
 	if options.HomeDir != "" {
-		useraddArgs = append(useraddArgs, "-d", options.HomeDir)
+		useraddArgs = append(useraddArgs, "-h", options.HomeDir)
 	}
 	if options.Shell != "" {
 		useraddArgs = append(useraddArgs, "-s", options.Shell)
 	}
 	if options.PrimaryGroup != "" {
-		useraddArgs = append(useraddArgs, "-g", options.PrimaryGroup)
+		useraddArgs = append(useraddArgs, "-G", options.PrimaryGroup)
 	}
-	if len(options.SecondaryGroups) > 0 {
-		useraddArgs = append(useraddArgs, "-G", strings.Join(options.SecondaryGroups, ","))
-	}
-	if options.Comment != "" {
-		useraddArgs = append(useraddArgs, "-c", options.Comment)
+	if len(options.GECOS) > 0 {
+		useraddArgs = append(useraddArgs, "-g", strings.Join(options.GECOS, ","))
 	}
 	if options.UID != "" {
 		useraddArgs = append(useraddArgs, "-u", options.UID)
 	}
+	useraddArgs = append(useraddArgs, "-D") //  Don't assign a password
 	useraddArgs = append(useraddArgs, username)
 
-	_, err := cmdExec.RunCommand("useradd", useraddArgs...)
+	_, err := cmdExec.RunCommand("adduser", useraddArgs...)
 	if err != nil {
 		// Check if the error is because the user already exists
 		var e errors.E

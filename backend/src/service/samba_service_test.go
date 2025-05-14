@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/repository"
 	service "github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -60,9 +61,11 @@ func (suite *SambaServiceSuite) SetupTest() {
 			},
 			service.NewSambaService,
 			mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[service.SupervisorServiceInterface],
 			mock.Mock[repository.ExportedShareRepositoryInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
+			mock.Mock[mount.ClientWithResponsesInterface],
 		),
 		fx.Populate(&suite.sambaService),
 		fx.Populate(&suite.property_repo),
@@ -93,7 +96,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 		Username: "dianlight",
 	}, nil).Verify(matchers.Times(0))
 
-	mock.When(suite.property_repo.All()).ThenReturn(dbom.Properties{
+	mock.When(suite.property_repo.All(mock.Any[bool]())).ThenReturn(dbom.Properties{
 		"Workgroup": {
 			Key:   "Workgroup",
 			Value: "WORKGROUP",

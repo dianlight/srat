@@ -143,3 +143,44 @@ func (a *MounDataFlags) UnmarshalJSON(b []byte) error {
 func (a MounDataFlags) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]MounDataFlag(a))
 }
+
+func (self MounDataFlags) ToStringSlice() []string {
+	var flags []string
+	for _, flag := range self {
+		flags = append(flags, flag.String())
+	}
+	return flags
+}
+
+func (self MounDataFlag) String() string {
+	switch self {
+	case MS_RDONLY:
+		return "MS_RDONLY"
+	case MS_NOSUID:
+		return "MS_NOSUID"
+	case MS_NODEV:
+		return "MS_NODEV"
+	case MS_NOEXEC:
+		return "MS_NOEXEC"
+	case MS_SYNCHRONOUS:
+		return "MS_SYNCHRONOUS"
+	case MS_REMOUNT:
+		return "MS_REMOUNT"
+	case MS_MANDLOCK:
+		return "MS_MANDLOCK"
+	case MS_NOATIME:
+		return "MS_NOATIME"
+	case MS_NODIRATIME:
+		return "MS_NODIRATIME"
+	case MS_BIND:
+		return "MS_BIND"
+	case MS_LAZYTIME:
+		return "MS_LAZYTIME"
+	case MS_NOUSER:
+		return "MS_NOUSER"
+	case MS_RELATIME:
+		return "MS_RELATIME"
+	default:
+		return "unknown"
+	}
+}

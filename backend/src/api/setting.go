@@ -67,7 +67,7 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 }) (*struct{ Body dto.Settings }, error) {
 	config := input.Body
 
-	dbconfig, err := self.props_repo.All()
+	dbconfig, err := self.props_repo.All(false)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -78,7 +78,7 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 		return nil, errors.WithStack(err)
 	}
 
-	dbconfig, err = self.props_repo.All()
+	dbconfig, err = self.props_repo.All(false)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -103,7 +103,7 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 //   - An error if there is any issue loading or converting the settings.
 func (self *SettingsHanler) GetSettings(ctx context.Context, input *struct{}) (*struct{ Body dto.Settings }, error) {
 	var conv converter.DtoToDbomConverterImpl
-	dbconfig, err := self.props_repo.All()
+	dbconfig, err := self.props_repo.All(false)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
