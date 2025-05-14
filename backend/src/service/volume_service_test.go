@@ -402,9 +402,9 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	// --- Assertions for Partition 1 ---
 	part1 := (*disk.Partitions)[0]
 	suite.Require().NotNil(part1.Device)
-	suite.EqualValues(*(*drive1.Filesystems)[0].Device, *part1.Device)
+	suite.Equal(*(*drive1.Filesystems)[0].Device, *part1.Device)
 	suite.Require().NotNil(part1.Name)
-	suite.EqualValues(*(*drive1.Filesystems)[0].Name, *part1.Name)
+	suite.Equal(*(*drive1.Filesystems)[0].Name, *part1.Name)
 	suite.Require().NotNil(part1.MountPointData)
 	suite.Require().Len(*part1.MountPointData, 1, "Expected 1 mount point for partition 1")
 	mountPoint1 := (*part1.MountPointData)[0]
@@ -415,9 +415,9 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	// --- Assertions for Partition 2 ---
 	part2 := (*disk.Partitions)[1]
 	suite.Require().NotNil(part2.Device)
-	suite.EqualValues(*(*drive1.Filesystems)[1].Device, *part2.Device)
+	suite.Equal(*(*drive1.Filesystems)[1].Device, *part2.Device)
 	suite.Require().NotNil(part2.Name)
-	suite.EqualValues(*(*drive1.Filesystems)[1].Name, *part2.Name)
+	suite.Equal(*(*drive1.Filesystems)[1].Name, *part2.Name)
 	suite.Require().NotNil(part2.MountPointData)
 	suite.Require().Len(*part2.MountPointData, 1, "Expected 1 mount point for partition 2")
 	mountPoint2 := (*part2.MountPointData)[0]
@@ -435,7 +435,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_HardwareClientError() {
 
 	disks, err := suite.volumeService.GetVolumesData()
 	suite.Nil(disks)
-	suite.Require().NotNil(err)
+	suite.Require().Error(err)
 	suite.ErrorIs(err, expectedErr)
 }
 

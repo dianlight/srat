@@ -442,7 +442,7 @@ func (s *UnixSambaTestSuite) TestRenameUsername_Error_NewUserSystemExists() {
 
 	err := unixsamba.RenameUsername(oldUsername, newUsername, false, "pass")
 	s.Require().Error(err)
-	s.EqualErrorf(err, "new username 'existing' already exists on the system", "")
+	s.EqualError(err, "new username 'existing' already exists on the system")
 }
 
 func (s *UnixSambaTestSuite) TestRenameUsername_Error_NewUserSambaExists() {
@@ -459,7 +459,7 @@ func (s *UnixSambaTestSuite) TestRenameUsername_Error_NewUserSambaExists() {
 
 	err := unixsamba.RenameUsername(oldUsername, newUsername, false, "pass")
 	s.Require().Error(err)
-	s.EqualErrorf(err, "new username 'sambanew' already appears to be a Samba user", "")
+	s.EqualError(err, "new username 'sambanew' already appears to be a Samba user")
 }
 
 func (s *UnixSambaTestSuite) TestRenameUsername_Error_PdbeditIssueForNewUser() {
