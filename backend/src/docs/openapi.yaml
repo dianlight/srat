@@ -472,7 +472,7 @@ components:
         - update_status
       type: object
     User:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
@@ -1070,6 +1070,24 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          $ref: "#/components/schemas/Welcome"
+                        event:
+                          const: hello
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event hello
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/ReleaseAsset"
                         event:
                           const: update
@@ -1165,24 +1183,6 @@ paths:
                         - data
                         - event
                       title: Event share
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/Welcome"
-                        event:
-                          const: hello
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event hello
                       type: object
                 title: Server Sent Events
                 type: array
@@ -1304,89 +1304,6 @@ paths:
       tags:
         - user
   /useradmin:
-    get:
-      operationId: get-useradmin
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-          description: OK
-        default:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-      summary: Get useradmin
-      tags:
-        - user
-    patch:
-      description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
-      operationId: patch-useradmin
-      requestBody:
-        content:
-          application/json-patch+json:
-            schema:
-              items:
-                $ref: "#/components/schemas/JsonPatchOp"
-              type:
-                - array
-                - "null"
-          application/merge-patch+json:
-            schema:
-              additionalProperties: false
-              properties:
-                $schema:
-                  description: A URL to the JSON Schema for this object.
-                  examples:
-                    - https://example.com/schemas/User.json
-                  format: uri
-                  readOnly: true
-                  type: string
-                is_admin:
-                  type: boolean
-                password:
-                  type: string
-                username:
-                  type: string
-              type: object
-          application/merge-patch+shorthand:
-            schema:
-              additionalProperties: false
-              properties:
-                $schema:
-                  description: A URL to the JSON Schema for this object.
-                  examples:
-                    - https://example.com/schemas/User.json
-                  format: uri
-                  readOnly: true
-                  type: string
-                is_admin:
-                  type: boolean
-                password:
-                  type: string
-                username:
-                  type: string
-              type: object
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-          description: OK
-        default:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-      summary: Patch useradmin
-      tags:
-        - user
     put:
       operationId: put-useradmin
       requestBody:

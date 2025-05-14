@@ -28,7 +28,6 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, apiC
 			MaxAge:           300,
 		},
 	).Handler(mux)
-	//loggedRouter := handlers.LoggingHandler(os.Stdout, handler)
 	loggedRouter := sloghttp.NewWithConfig(slog.Default(), sloghttp.Config{
 		DefaultLevel:  slog.LevelDebug,
 		WithUserAgent: false,

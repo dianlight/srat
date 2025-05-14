@@ -11,6 +11,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { PasswordElement, PasswordRepeatElement, TextFieldElement } from "react-hook-form-mui";
 import { useDeleteUserByUsernameMutation, useGetUseradminQuery, useGetUsersQuery, usePostUserMutation, usePutUseradminMutation, usePutUserByUsernameMutation, type User } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
+import { toast } from "react-toastify";
 
 
 
@@ -22,7 +23,7 @@ interface UsersProps extends User {
 export function Users() {
     const read_only = useReadOnly();
     const users = useGetUsersQuery();
-    const admin = useGetUseradminQuery();
+    //const admin = useGetUseradminQuery();
     const [errorInfo, setErrorInfo] = useState<string>('')
     const [selected, setSelected] = useState<UsersProps>({ username: "", password: "" });
     const confirm = useConfirm();
@@ -50,14 +51,17 @@ export function Users() {
                 users.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
+                console.error(err);
+                toast.error(`Error userCreate ${data.username}: ${JSON.stringify(err)}`, { data: { error: err } });
             })
             return;
         } else if (data.is_admin) {
             userAdminUpdate({ user: data }).unwrap().then((res) => {
                 setErrorInfo('')
-                admin.refetch();
+                users.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
+                console.error(err);
             })
         } else {
             userUpdate({ username: data.username, user: data }).unwrap().then((res) => {
@@ -66,6 +70,7 @@ export function Users() {
                 users.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
+                console.error(err);
             })
         }
         // formRef.current?.reset();
@@ -111,7 +116,7 @@ export function Users() {
                 <PersonAddIcon />
             </Fab>}
             <List dense={true}>
-                {users.isSuccess && Array.isArray(users.data) && users.data/*.sort((a, b) => {
+                {users.isSuccess && Array.isArray(users.data) && users.data.slice().sort((a, b) => {
                     if (a.is_admin) {
                         return -1;
                     } else if (b.is_admin) {
@@ -121,7 +126,7 @@ export function Users() {
                     } else {
                         return (a.username || "") > (b.username || "") ? -1 : 1;
                     }
-                })*/.map((user) =>
+                }).map((user) =>
                     <Fragment key={user.username || "admin"}>
                         <ListItemButton>
                             <ListItem
@@ -170,7 +175,8 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
             values: props.objectToEdit?.doCreate ? {
                 username: "",
                 password: "",
-                is_admin: false
+                is_admin: false,
+                doCreate: true
             } : props.objectToEdit
         },
     );

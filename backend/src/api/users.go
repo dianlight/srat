@@ -33,7 +33,7 @@ func NewUserHandler(apiContext *dto.ContextState, dirtyservice service.DirtyData
 
 func (self *UserHandler) RegisterUserHandler(api huma.API) {
 	huma.Get(api, "/users", self.ListUsers, huma.OperationTags("user"))
-	huma.Get(api, "/useradmin", self.GetAdminUser, huma.OperationTags("user"))
+	//huma.Get(api, "/useradmin", self.GetAdminUser, huma.OperationTags("user"))
 	huma.Put(api, "/useradmin", self.UpdateAdminUser, huma.OperationTags("user"))
 	huma.Post(api, "/user", self.CreateUser, huma.OperationTags("user"))
 	huma.Put(api, "/user/{username}", self.UpdateUser, huma.OperationTags("user"))
@@ -70,30 +70,6 @@ func (handler *UserHandler) ListUsers(ctx context.Context, input *struct{}) (*st
 		users = append(users, user)
 	}
 	return &struct{ Body []dto.User }{Body: users}, nil
-}
-
-// GetAdminUser retrieves the admin user from the database and converts it to a DTO user.
-// It takes a context and an empty input struct as parameters and returns a struct containing the DTO user or an error.
-//
-// Parameters:
-// - ctx: The context for the request.
-// - input: An empty input struct.
-//
-// Returns:
-// - A struct containing the DTO user in the Body field.
-// - An error if there is any issue retrieving or converting the user.
-func (handler *UserHandler) GetAdminUser(ctx context.Context, input *struct{}) (*struct{ Body dto.User }, error) {
-	var adminUser dto.User
-	dbUser, err := handler.user_repo.GetAdmin()
-	if err != nil {
-		return nil, err
-	}
-	var conv converter.DtoToDbomConverterImpl
-	err = conv.SambaUserToUser(dbUser, &adminUser)
-	if err != nil {
-		return nil, err
-	}
-	return &struct{ Body dto.User }{Body: adminUser}, nil
 }
 
 // CreateUser handles the creation of a new user. It takes a context and an input
