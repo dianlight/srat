@@ -296,6 +296,24 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
+          data: ReleaseAsset;
+          /** The event name. */
+          event: "update";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: UpdateProgress;
+          /** The event name. */
+          event: "updating";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: Disk[] | null;
           /** The event name. */
           event: "volumes";
@@ -326,24 +344,6 @@ export type SseApiResponse = /** status 200 OK */
           data: Welcome;
           /** The event name. */
           event: "hello";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: ReleaseAsset;
-          /** The event name. */
-          event: "update";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: UpdateProgress;
-          /** The event name. */
-          event: "updating";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -554,6 +554,13 @@ export type SharedResource = {
   usage?: Usage;
   users?: User[] | null;
 };
+export type UpdateProgress = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  last_release?: string;
+  update_error?: string;
+  update_status: number;
+};
 export type Partition = {
   device?: string;
   host_mount_point_data?: MountPointData[];
@@ -579,13 +586,6 @@ export type Disk = {
 export type Welcome = {
   message: string;
   supported_events: Supported_events;
-};
-export type UpdateProgress = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  last_release?: string;
-  update_error?: string;
-  update_status: number;
 };
 export enum Update_channel {
   Stable = "stable",

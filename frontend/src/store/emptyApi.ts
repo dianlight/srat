@@ -2,6 +2,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 
 let APIURL = process.env.APIURL;
+console.debug("Configuration APIURL", APIURL)
 async function testURL(url: string): Promise<boolean> {
     try {
         const parsedUrl = new URL(url);
