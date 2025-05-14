@@ -85,7 +85,11 @@ async function build(): Promise<BuildOutput | void> {
                 console.log(`Request ${req.mode} ${url.pathname} ==> ${path}`)
                 return new Response(Bun.file(path))
             },
-            port: 3000
+            port: 3000,
+            development: {
+                console: true,
+                hmr: true,
+            }
         }
 
         Bun.serve(htmlLiveReload(serve, { buildConfig, watchPath: import.meta.dir + "/src" }));

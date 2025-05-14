@@ -18,7 +18,7 @@
     "@gtramontina.com/bun-html-live-reload": "^1.0.1",
     "@hookform/devtools": "^4.4.0",
     "@rtk-query/codegen-openapi": "^2.0.0",
-    "@types/bun": "^1.2.9",
+    "@types/bun": "^1.2.13",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@types/react-syntax-highlighter": "^15.5.13",
