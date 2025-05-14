@@ -33,10 +33,11 @@ test_build: $(SRC_DIRS) $(STATIC_DIRS)
 
 .PHONY: format
 format:
-	#cd $(SRC_DIRS);go run github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc4 fmt
+	cd $(SRC_DIRS);go tool gohack undo
 	cd $(SRC_DIRS);go mod tidy	
 	cd $(SRC_DIRS);go tool testifylint --fix ./...
 	cd $(SRC_DIRS);go fmt
+	make patch
 
 .PHONY: clean
 clean:
