@@ -8,6 +8,10 @@ import (
 	"strings"
 	"sync"
 
+	"fmt"
+	"regexp"
+	"syscall"
+
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -120,6 +124,12 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 			if err != nil {
 				return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error finding loop device", "Device", real_device, "Error", err)
 			}
+
+			err = ms.createBlockDevice(loopd)
+			if err != nil {
+				slog.Error("Error setting loop device", "device", real_device, "loop_device", loopd, "err", err)
+			}
+
 			err = loop.SetFile(loopd, deviceName)
 			if err != nil {
 				slog.Error("Error setting loop device", "device", real_device, "loop_device", loopd, "err", err)
@@ -573,4 +583,44 @@ func (self *VolumeService) NotifyClient() {
 		// Log the error from broadcasting
 		slog.Error("Failed to broadcast volume data update", "err", broadcastErr)
 	}
+}
+
+func (self *VolumeService) createBlockDevice(device string) error {
+	// Controlla se il dispositivo esiste già
+	if _, err := os.Stat(device); !os.IsNotExist(err) {
+		return fmt.Errorf("il dispositivo %s esiste già", device)
+	}
+
+	// Estrai i numeri major e minor dal nome del dispositivo
+	major, minor, err := extractMajorMinor(device)
+	if err != nil {
+		return fmt.Errorf("errore durante l'estrazione dei numeri major e minor: %v", err)
+	}
+
+	// Crea il dispositivo di blocco usando la syscall mknod
+	dev := (major << 8) | minor
+	err = syscall.Mknod(device, syscall.S_IFBLK|0660, dev)
+	if err != nil {
+		return fmt.Errorf("errore durante la creazione del dispositivo di blocco: %v", err)
+	}
+
+	return nil
+}
+
+func extractMajorMinor(device string) (int, int, error) {
+	re := regexp.MustCompile(`/dev/loop(\d+)`)
+	matches := re.FindStringSubmatch(device)
+	if len(matches) != 2 {
+		return 0, 0, fmt.Errorf("formato del dispositivo non valido")
+	}
+
+	minor, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return 0, 0, fmt.Errorf("errore durante la conversione del numero minor: %v", err)
+	}
+
+	// Il numero major per i dispositivi di loop è generalmente 7
+	major := 7
+
+	return major, minor, nil
 }
