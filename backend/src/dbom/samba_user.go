@@ -19,12 +19,14 @@ type SambaUser struct {
 	IsAdmin   bool
 }
 
+/*
 func (u *SambaUser) BeforeSave(tx *gorm.DB) error {
 	if u.Username == "" {
-		return errors.Errorf("username cannot be empty")
+		return errors.Errorf("username cannot be empty %#v", u)
 	}
 	return nil
 }
+*/
 
 func (u *SambaUser) BeforeCreate(tx *gorm.DB) error {
 	err := unixsamba.CreateSambaUser(u.Username, u.Password, unixsamba.UserOptions{

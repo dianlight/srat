@@ -482,13 +482,14 @@ components:
           readOnly: true
           type: string
         is_admin:
+          default: false
           type: boolean
         password:
           type: string
         username:
-          type:
-            - string
-            - "null"
+          maxLength: 30
+          pattern: "[a-z]+"
+          type: string
       required:
         - username
       type: object
@@ -1072,7 +1073,7 @@ paths:
                         data:
                           $ref: "#/components/schemas/Welcome"
                         event:
-                          const: hello
+                          const: "\"hello\""
                           description: The event name.
                           type: string
                         id:
@@ -1084,13 +1085,13 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event hello
+                      title: Event "hello"
                       type: object
                     - properties:
                         data:
                           $ref: "#/components/schemas/ReleaseAsset"
                         event:
-                          const: update
+                          const: "\"update\""
                           description: The event name.
                           type: string
                         id:
@@ -1102,13 +1103,13 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event update
+                      title: Event "update"
                       type: object
                     - properties:
                         data:
                           $ref: "#/components/schemas/UpdateProgress"
                         event:
-                          const: updating
+                          const: "\"updating\""
                           description: The event name.
                           type: string
                         id:
@@ -1120,7 +1121,7 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event updating
+                      title: Event "updating"
                       type: object
                     - properties:
                         data:
@@ -1130,7 +1131,7 @@ paths:
                             - array
                             - "null"
                         event:
-                          const: volumes
+                          const: "\"volumes\""
                           description: The event name.
                           type: string
                         id:
@@ -1142,13 +1143,13 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event volumes
+                      title: Event "volumes"
                       type: object
                     - properties:
                         data:
                           $ref: "#/components/schemas/HealthPing"
                         event:
-                          const: heartbeat
+                          const: "\"heartbeat\""
                           description: The event name.
                           type: string
                         id:
@@ -1160,7 +1161,7 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event heartbeat
+                      title: Event "heartbeat"
                       type: object
                     - properties:
                         data:
@@ -1170,7 +1171,7 @@ paths:
                             - array
                             - "null"
                         event:
-                          const: share
+                          const: "\"share\""
                           description: The event name.
                           type: string
                         id:
@@ -1182,7 +1183,7 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event share
+                      title: Event "share"
                       type: object
                 title: Server Sent Events
                 type: array
@@ -1254,6 +1255,7 @@ paths:
             examples:
               - world
             maxLength: 30
+            minimum: 1
             type: string
       responses:
         "204":

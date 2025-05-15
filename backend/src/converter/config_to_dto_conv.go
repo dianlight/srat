@@ -5,7 +5,6 @@ package converter
 import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -20,7 +19,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		tuser.IsAdmin = pointer.Bool(false)
+		tuser.IsAdmin = false
 		*users = append(*users, tuser)
 	}
 	var auser dto.User
@@ -28,7 +27,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	auser.IsAdmin = pointer.Bool(true)
+	auser.IsAdmin = true
 	*users = append(*users, auser)
 	for _, share := range source.Shares {
 		var sharedResource dto.SharedResource
@@ -48,9 +47,9 @@ func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, use
 	}
 	for _, user := range users {
 		var tuser config.User
-		if *user.IsAdmin {
-			target.Username = *user.Username
-			target.Password = *user.Password
+		if user.IsAdmin {
+			target.Username = user.Username
+			target.Password = user.Password
 		} else {
 			err := c.UserToOtherUser(user, &tuser)
 			if err != nil {

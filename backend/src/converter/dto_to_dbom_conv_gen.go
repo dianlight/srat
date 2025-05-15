@@ -100,12 +100,9 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	return nil
 }
 func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *dto.User) error {
-	pString := source.Username
-	target.Username = &pString
-	pString2 := source.Password
-	target.Password = &pString2
-	pBool := source.IsAdmin
-	target.IsAdmin = &pBool
+	target.Username = source.Username
+	target.Password = source.Password
+	target.IsAdmin = source.IsAdmin
 	return nil
 }
 func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPointPath(source dto.SharedResource, target *dbom.ExportedShare) error {
@@ -131,24 +128,21 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 	return nil
 }
 func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.SambaUser) error {
-	if source.Username != nil {
-		target.Username = *source.Username
+	if source.Username != "" {
+		target.Username = source.Username
 	}
-	if source.Password != nil {
-		target.Password = *source.Password
+	if source.Password != "" {
+		target.Password = source.Password
 	}
-	if source.IsAdmin != nil {
-		target.IsAdmin = *source.IsAdmin
+	if source.IsAdmin != false {
+		target.IsAdmin = source.IsAdmin
 	}
 	return nil
 }
 func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) dto.User {
 	var dtoUser dto.User
-	pString := source.Username
-	dtoUser.Username = &pString
-	pString2 := source.Password
-	dtoUser.Password = &pString2
-	pBool := source.IsAdmin
-	dtoUser.IsAdmin = &pBool
+	dtoUser.Username = source.Username
+	dtoUser.Password = source.Password
+	dtoUser.IsAdmin = source.IsAdmin
 	return dtoUser
 }

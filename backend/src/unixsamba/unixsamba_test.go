@@ -246,7 +246,7 @@ func (s *UnixSambaTestSuite) TestDeleteSambaUser_SambaOnly_Success() {
 func (s *UnixSambaTestSuite) TestDeleteSambaUser_SambaAndSystem_Success() {
 	username := "sysdeluser"
 	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("userdel", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("deluser", username)).ThenReturn("", nil).Verify(matchers.Times(1))
 
 	err := unixsamba.DeleteSambaUser(username, true, false)
 	s.Require().NoError(err)
@@ -255,7 +255,7 @@ func (s *UnixSambaTestSuite) TestDeleteSambaUser_SambaAndSystem_Success() {
 func (s *UnixSambaTestSuite) TestDeleteSambaUser_SambaAndSystemWithHome_Success() {
 	username := "homedeluser"
 	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("userdel", "-r", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("deluser", "--remove-home", username)).ThenReturn("", nil).Verify(matchers.Times(1))
 
 	err := unixsamba.DeleteSambaUser(username, true, true)
 	s.Require().NoError(err)
@@ -281,7 +281,7 @@ func (s *UnixSambaTestSuite) TestDeleteSambaUser_SmbPasswdUserNotFound_SystemDel
 	)
 
 	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("userdel", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("deluser", username)).ThenReturn("", nil).Verify(matchers.Times(1))
 
 	err := unixsamba.DeleteSambaUser(username, true, false)
 	s.Require().NoError(err) // Error from smbpasswd -x (user not found) is ignored if system deletion is requested and succeeds
@@ -293,7 +293,7 @@ func (s *UnixSambaTestSuite) TestDeleteSambaUser_UserdelFails() {
 	userdelCmdErr := errors.WithDetails(userdelActualErr, "desc", "command execution failed", "stderr", "userdel critical error")
 
 	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1)) // Samba deletion succeeds
-	mock.When(s.mockCmdExec.RunCommand("userdel", username)).ThenReturn("", userdelCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("deluser", username)).ThenReturn("", userdelCmdErr).Verify(matchers.Times(1))
 
 	err := unixsamba.DeleteSambaUser(username, true, false)
 	s.Require().Error(err)
@@ -309,7 +309,7 @@ func (s *UnixSambaTestSuite) TestDeleteSambaUser_BothFail_SystemErrorPropagated(
 	userdelCmdErr := errors.WithDetails(userdelActualErr, "desc", "command execution failed", "stderr", "userdel critical error")
 
 	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("userdel", username)).ThenReturn("", userdelCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("deluser", username)).ThenReturn("", userdelCmdErr).Verify(matchers.Times(1))
 
 	err := unixsamba.DeleteSambaUser(username, true, false)
 	s.Require().Error(err)

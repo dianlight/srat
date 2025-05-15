@@ -61,23 +61,19 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 }
 func (c *ConfigToDtoConverterImpl) ConfigToUser(source config.Config, target *dto.User) error {
 	if source.Username != "" {
-		pString := source.Username
-		target.Username = &pString
+		target.Username = source.Username
 	}
 	if source.Password != "" {
-		pString2 := source.Password
-		target.Password = &pString2
+		target.Password = source.Password
 	}
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) OtherUserToUser(source config.User, target *dto.User) error {
 	if source.Username != "" {
-		pString := source.Username
-		target.Username = &pString
+		target.Username = source.Username
 	}
 	if source.Password != "" {
-		pString2 := source.Password
-		target.Password = &pString2
+		target.Password = source.Password
 	}
 	return nil
 }
@@ -230,11 +226,11 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) UserToOtherUser(source dto.User, target *config.User) error {
-	if source.Username != nil {
-		target.Username = *source.Username
+	if source.Username != "" {
+		target.Username = source.Username
 	}
-	if source.Password != nil {
-		target.Password = *source.Password
+	if source.Password != "" {
+		target.Password = source.Password
 	}
 	return nil
 }

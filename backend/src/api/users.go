@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/converter"
@@ -10,7 +11,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/xorcare/pointer"
 	"gorm.io/gorm"
 )
 
@@ -64,9 +64,6 @@ func (handler *UserHandler) ListUsers(ctx context.Context, input *struct{}) (*st
 		if err != nil {
 			return nil, err
 		}
-		if user.IsAdmin == nil {
-			user.IsAdmin = pointer.Bool(false)
-		}
 		users = append(users, user)
 	}
 	return &struct{ Body []dto.User }{Body: users}, nil
@@ -88,7 +85,7 @@ func (handler *UserHandler) ListUsers(ctx context.Context, input *struct{}) (*st
 //   - A struct containing the created user in the form of a dto.User.
 //   - An error if the creation fails or if the user already exists.
 func (handler *UserHandler) CreateUser(ctx context.Context, input *struct {
-	Body dto.User
+	Body dto.User `required:"true"`
 }) (*struct {
 	Status int
 	Body   dto.User
@@ -100,11 +97,13 @@ func (handler *UserHandler) CreateUser(ctx context.Context, input *struct {
 	if err != nil {
 		return nil, err
 	}
+	slog.Debug("User", "in", input.Body, "db", dbUser)
 	err = handler.user_repo.Create(&dbUser)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, huma.Error409Conflict("User already exists")
 		}
+		slog.Error("error", "err", err)
 		return nil, err
 	}
 
@@ -207,20 +206,8 @@ func (handler *UserHandler) UpdateAdminUser(ctx context.Context, input *struct {
 	return &struct{ Body dto.User }{Body: user}, nil
 }
 
-// DeleteUser godoc
-//
-//	@Summary		Delete a user
-//	@Description	delete a user
-//	@Tags			user
-//	@Param			username	path	string	true	"Name"
-//	@Success		204
-//	@Failure		400	{object}	dto.ErrorInfo
-//	@Failure		405	{object}	dto.ErrorInfo
-//	@Failure		404	{object}	dto.ErrorInfo
-//	@Failure		500	{object}	dto.ErrorInfo
-//	@Router			/user/{username} [delete]
 func (handler *UserHandler) DeleteUser(ctx context.Context, input *struct {
-	UserName string `path:"username" maxLength:"30" example:"world" doc:"Username"`
+	UserName string `path:"username" minimum:"1" maxLength:"30" example:"world" doc:"Username"`
 }) (*struct{}, error) {
 
 	err := handler.user_repo.Delete(input.UserName)

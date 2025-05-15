@@ -115,7 +115,7 @@ func (d *defaultCommandExecutor) RunCommandWithInput(stdinContent string, comman
 	stderr := stderrData.String()
 
 	if err != nil {
-		return stdout, errors.WithDetails(err,"desc", "command execution with input failed",
+		return stdout, errors.WithDetails(err, "desc", "command execution with input failed",
 			"command", command,
 			"args", args,
 			"stdin_preview", func() string {
@@ -281,10 +281,10 @@ func DeleteSambaUser(username string, deleteSystemUser bool, deleteHomeDir bool)
 	if deleteSystemUser {
 		userdelArgs := []string{}
 		if deleteHomeDir {
-			userdelArgs = append(userdelArgs, "-r")
+			userdelArgs = append(userdelArgs, "--remove-home")
 		}
 		userdelArgs = append(userdelArgs, username)
-		_, sysErr := cmdExec.RunCommand("userdel", userdelArgs...)
+		_, sysErr := cmdExec.RunCommand("deluser", userdelArgs...)
 		if sysErr != nil {
 			// If Samba deletion also failed (and it wasn't "user not found")
 			if !sambaUserDeleted {
