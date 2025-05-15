@@ -32,17 +32,9 @@ jobs:
       - run: echo ${{ steps.version.outputs.version }}
 
   test:
-    name: Test ${{ matrix.variant.name }}
+    name: Test
     runs-on: ubuntu-latest
     needs: setversion
-    strategy:
-      matrix:
-        variant:
-          #- {"name": "srat_i386","suffix":"_386", "args": "GOARCH=386"}
-          - {"name": "srat_x86_64","suffix":"_x86_64", "args": "GOARCH=amd64"}
-          #- {"name": "srat_armhf","suffix":"_armhf", "args": "GOARM=6 GOARCH=arm"}
-          - {"name": "srat_armv7","suffix":"_armv7", "args": "GOARM=7 GOARCH=arm"}
-          - {"name": "srat_aarch64", "suffix":"_aarch64","args": "GOARCH=arm64"}
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v4.2.2
@@ -60,7 +52,7 @@ jobs:
 
     - run: "sudo apt-get install -y samba" 
 
-    - name: Prepare env for ${{ matrix.variant.name }} ${{ needs.setversion.outputs.version }}
+    - name: Prepare env for ${{ needs.setversion.outputs.version }}
       run: |
         cd backend
         make patch
@@ -70,27 +62,19 @@ jobs:
         cd ..
         #sudo .devcontainer/createTestDevices.sh 
 
-    - name: Test ${{ matrix.variant.name }} ${{ needs.setversion.outputs.version }}
+    - name: Test ${{ needs.setversion.outputs.version }}
       run: |
         cd backend
         sudo -E PATH="$PATH" make test
         cd ..
 
   build:
-    name: Build ${{ matrix.variant.name }}
+    name: Build 
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     needs:
       - setversion
       - test
-    strategy:
-      matrix:
-        variant:
-          #- {"name": "srat_i386","suffix":"_386", "args": "GOARCH=386"}
-          - {"name": "srat_x86_64","suffix":"_x86_64", "args": "GOARCH=amd64"}
-          #- {"name": "srat_armhf","suffix":"_armhf", "args": "GOARM=6 GOARCH=arm"}
-          - {"name": "srat_armv7","suffix":"_armv7", "args": "GOARM=7 GOARCH=arm"}
-          - {"name": "srat_aarch64", "suffix":"_aarch64","args": "GOARCH=arm64"}
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v4.2.2
@@ -108,7 +92,7 @@ jobs:
 
     - run: "sudo apt-get install -y samba" 
 
-    - name: Prepare env for ${{ matrix.variant.name }} ${{ needs.setversion.outputs.version }}
+    - name: Prepare env for ${{ needs.setversion.outputs.version }}
       run: |
         cd frontend
         bun install
@@ -146,16 +130,15 @@ jobs:
               sha: context.sha
             })
 
-
-    - name: Build ${{ matrix.variant.name }} ${{ needs.setversion.outputs.version }}
+    - name: BuildAll
       run: |
-        sudo -E PATH="$PATH" make BUILD AARGS="${{ matrix.variant.args }}" SUFFIX="${{ matrix.variant.suffix }}" VERSION=${{ needs.setversion.outputs.version }}
+        sudo -E PATH="$PATH" make ALL VERSION=${{ needs.setversion.outputs.version }}
 
-    - name: Upload ${{ matrix.variant.name }}
+    - name: Upload 
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.variant.name }}
-        path: backend/dist/${{ matrix.variant.name }}
+        name: binary
+        path: backend/dist/srat_*
         retention-days: 7
         overwrite: true
 
