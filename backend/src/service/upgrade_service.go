@@ -11,7 +11,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v69/github"
+	"github.com/google/go-github/v72/github"
 	"gitlab.com/tozd/go/errors"
 	"golang.org/x/time/rate"
 )
