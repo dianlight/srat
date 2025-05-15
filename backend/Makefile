@@ -45,7 +45,7 @@ clean:
 	rm -rf dist
 
 .PHONY: test
-test: $(ALL_SRCS) static
+test: $(ALL_SRCS) 
 	cd $(SRC_DIRS);GOMAXPROCS=1 go tool gotest -coverpkg=./... ./...
 
 .PHONY: test_ci
