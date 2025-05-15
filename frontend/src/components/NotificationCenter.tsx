@@ -8,9 +8,11 @@ import Card from '@mui/material/Card';
 import { FontAwesomeSvgIcon } from "./FontAwesomeSvgIcon";
 import { faCheckDouble, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import CheckIcon from '@mui/icons-material/Check';
+import type { ErrorModel } from "../store/sratApi";
 
 interface Data {
     exclude: boolean
+    error?: ErrorModel
 }
 
 export function NotificationCenter() {
@@ -111,15 +113,6 @@ export function NotificationCenter() {
                             </Box>
                         </Toolbar>
                         <Divider />
-                        {/*
-                    <ul>
-                        {notifications.map(notification => (
-                            <li key={notification.id}>
-                                <span>{JSON.stringify(notification)}</span>
-                            </li>
-                        ))}
-                    </ul>
-                    */}
                         <Stack sx={{ width: '100%', minHeight: '10em' }} spacing={0}>
                             {notifications.filter((n) => !n.read || showRead).map(notification => (
                                 <Alert
@@ -157,7 +150,21 @@ export function NotificationCenter() {
                                     }
                                     sx={{ mb: 2 }}
                                 >
-                                    {notification.content?.toLocaleString()}
+                                    <Typography variant="subtitle2" gutterBottom>
+                                        {notification.content?.toLocaleString()}
+                                    </Typography>
+                                    <Divider />
+                                    {notification.data?.error &&
+                                        <>
+                                            {notification.data.error.title && <Typography variant="body2" gutterBottom>{notification.data.error.title}</Typography>}
+                                            {notification.data.error.detail && <Typography variant="body2" gutterBottom>{notification.data.error.detail}</Typography>}
+                                            {notification.data.error.errors?.map(error =>
+                                                <Typography variant="body2" gutterBottom>
+                                                    {error.message} {error.value} {error.location}
+                                                </Typography>
+                                            )}
+                                        </>
+                                    }
                                 </Alert>
                             ))}
                         </Stack>

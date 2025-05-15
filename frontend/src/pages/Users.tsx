@@ -9,7 +9,7 @@ import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { PasswordElement, PasswordRepeatElement, TextFieldElement } from "react-hook-form-mui";
-import { useDeleteUserByUsernameMutation, useGetUseradminQuery, useGetUsersQuery, usePostUserMutation, usePutUseradminMutation, usePutUserByUsernameMutation, type User } from "../store/sratApi";
+import { useDeleteUserByUsernameMutation, useGetUsersQuery, usePostUserMutation, usePutUseradminMutation, usePutUserByUsernameMutation, type User } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { toast } from "react-toastify";
 
@@ -35,6 +35,7 @@ export function Users() {
 
     function onSubmitEditUser(data?: UsersProps) {
         if (!data || !data.username || !data.password) {
+            console.log("Data is invalid", data)
             setErrorInfo('Unable to update user!');
             return;
         }
@@ -52,7 +53,7 @@ export function Users() {
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
                 console.error(err);
-                toast.error(`Error userCreate ${data.username}: ${JSON.stringify(err)}`, { data: { error: err } });
+                toast.error(`Error userCreate ${data.username}`, { data: { error: err.data } });
             })
             return;
         } else if (data.is_admin) {
@@ -61,6 +62,7 @@ export function Users() {
                 users.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
+                toast.error(`Error userAdminUpdate ${data.username}`, { data: { error: err.data } });
                 console.error(err);
             })
         } else {
@@ -70,6 +72,7 @@ export function Users() {
                 users.refetch();
             }).catch(err => {
                 setErrorInfo(JSON.stringify(err));
+                toast.error(`Error userUpdate ${data.username}`, { data: { error: err.data } });
                 console.error(err);
             })
         }
@@ -203,7 +206,13 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
                         <form id="editshareform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                             <Grid container spacing={2}>
                                 <Grid size={6}>
-                                    <TextFieldElement name="username" label="User Name" required control={control} disabled={props.objectToEdit?.username ? (props.objectToEdit.is_admin ? false : true) : false} />
+                                    <TextFieldElement name="username" label="User Name" required control={control}
+                                        slotProps={props.objectToEdit?.username ? (props.objectToEdit.is_admin ? {} : {
+                                            input: {
+                                                readOnly: true,
+                                            },
+                                        }) : {}}
+                                    />
                                 </Grid>
                                 <Grid size={6}>
                                     <PasswordElement name="password" label="Password"
