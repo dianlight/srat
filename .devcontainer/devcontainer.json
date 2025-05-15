@@ -58,7 +58,6 @@
 				]
 			},
 			"extensions": [
-				"golang.Go",
 				"vivaxy.vscode-conventional-commits",
 				"ms-vscode.makefile-tools",
 				"github.vscode-github-actions",
@@ -70,7 +69,8 @@
 				"be5invis.toml",
 				"VizzleTF.geminicommit",
 				"google.geminicodeassist",
-				"zoellner.openapi-preview"
+				"zoellner.openapi-preview",
+				"golang.go"
 			]
 		}
 	},
