@@ -23,6 +23,8 @@ type SambaUserRepositoryInterface interface {
 
 	Delete(name string) error
 	GetUserByName(name string) (*dbom.SambaUser, error)
+
+	Rename(oldname string, newname string) error
 }
 
 func NewSambaUserRepository(db *gorm.DB) SambaUserRepositoryInterface {
@@ -33,7 +35,7 @@ func NewSambaUserRepository(db *gorm.DB) SambaUserRepositoryInterface {
 }
 
 func (p *SambaUserRepository) GetAdmin() (dbom.SambaUser, error) {
-	ret := p.db.Where("is_admin = ?", true).First(p)
+	ret := p.db.Model(&dbom.SambaUser{}).Where("is_admin = ?", true).First(p)
 	if ret.Error != nil {
 		return dbom.SambaUser{}, ret.Error
 	}
@@ -96,64 +98,8 @@ func (self *SambaUserRepository) SaveAll(users *dbom.SambaUsers) error {
 	return nil
 }
 
-/*
-func (self *PropertyRepository) DeleteAll() (dbom.Properties, error) {
-	result := self.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Model(&dbom.Property{}).Delete(&dbom.Property{})
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return self.All()
-}
-*/
-
-/*
-func (p *PropertyRepository) UpdateName(old_name string, new_name string) error {
-	// Get / Save Users end RoUsers association
-
-	err := p.db.
-		Model(&dbom.ExportedShare{Name: old_name}).Update("name", new_name).Error
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
+func (self *SambaUserRepository) Rename(oldname string, newname string) error {
+	return self.db.Unscoped().Model(&dbom.SambaUser{}).Where("username = ?", oldname).Update("username", newname).Error
 }
 
-
-
-func (r *ExportedShareRepository) All(shares *[]dbom.ExportedShare) error {
-	err := r.db.Preload(clause.Associations).Find(shares).Error
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return err
-}
-
-func (p *ExportedShareRepository) FindByName(name string) (*dbom.ExportedShare, error) {
-	var share dbom.ExportedShare
-	err := p.db.Preload(clause.Associations).First(&share, "name = ?", name).Error
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return &share, nil
-}
-
-func (p *ExportedShareRepository) SaveAll(shares *[]dbom.ExportedShare) error {
-	err := p.db.Session(&gorm.Session{FullSaveAssociations: true}).Save(shares).Error
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) error {
-	err := p.db.Session(&gorm.Session{FullSaveAssociations: true}).Save(share).Error
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
-
-func (p *ExportedShareRepository) Delete(name string) error {
-	return p.db.Select(clause.Associations).Delete(&dbom.ExportedShare{Name: name}).Error
-}
-*/
+//func (self *SambaUserRepository)

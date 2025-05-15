@@ -155,7 +155,7 @@ export function Users() {
                                 </ListItemAvatar>
                                 <ListItemText
                                     primary={user.username}
-                                    secondary={JSON.stringify(user)}
+                                    secondary={/*JSON.stringify(user)*/""}
                                 />
                             </ListItem>
                         </ListItemButton>

@@ -135,8 +135,8 @@ func (handler *UserHandler) CreateUser(ctx context.Context, input *struct {
 //   - A struct containing the updated user details.
 //   - An error if any issue occurs during the update process.
 func (handler *UserHandler) UpdateUser(ctx context.Context, input *struct {
-	UserName string `path:"username" maxLength:"30" example:"world" doc:"Username"`
-	Body     dto.User
+	UserName string   `path:"username" maxLength:"30" example:"world" doc:"Username"`
+	Body     dto.User `required:"true"`
 }) (*struct{ Body dto.User }, error) {
 
 	dbUser, err := handler.user_repo.GetUserByName(input.UserName)
@@ -179,13 +179,21 @@ func (handler *UserHandler) UpdateUser(ctx context.Context, input *struct {
 // - A struct containing the updated user details.
 // - An error if any operation fails during the update process.
 func (handler *UserHandler) UpdateAdminUser(ctx context.Context, input *struct {
-	Body dto.User
+	Body dto.User `required:"true"`
 }) (*struct{ Body dto.User }, error) {
 
 	dbUser, err := handler.user_repo.GetAdmin()
 	if err != nil {
 		return nil, err
 	}
+
+	if dbUser.Username != input.Body.Username {
+		err = handler.user_repo.Rename(dbUser.Username, input.Body.Username)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.UserToSambaUser(input.Body, &dbUser)
 	if err != nil {
