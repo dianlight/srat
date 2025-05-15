@@ -40,7 +40,7 @@ type ConfigToDtoConverter interface {
 	SharedResourceToShare(source dto.SharedResource, target *config.Share) error
 
 	// goverter:update target
-	// goverter:ignore IsAdmin
+	// goverter:ignore IsAdmin _
 	OtherUserToUser(source config.User, target *dto.User) error
 
 	// goverter:update target
@@ -59,7 +59,7 @@ type ConfigToDtoConverter interface {
 	SettingsToConfig(source dto.Settings, target *config.Config, conv ConfigToDtoConverter) error
 
 	// goverter:update target
-	// goverter:ignore IsAdmin
+	// goverter:ignore IsAdmin _
 	ConfigToUser(source config.Config, target *dto.User) error
 }
 

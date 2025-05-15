@@ -12,6 +12,7 @@ import (
 // goverter:useZeroValueOnPointerInconsistency
 // goverter:update:ignoreZeroValueField
 // goverter:skipCopySameType
+// goverter:ignoreUnexported
 // goverter:enum:unknown @error
 type DtoToDbomConverter interface {
 	// goverter:update target
@@ -44,6 +45,7 @@ type DtoToDbomConverter interface {
 	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error
 
 	// goverter:update target
+	// goverter:ignore _
 	// goverter:update:ignoreZeroValueField:basic no
 	SambaUserToUser(source dbom.SambaUser, target *dto.User) error
 

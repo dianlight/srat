@@ -1,7 +1,8 @@
 //go:build embedallowed
-// +build embedallowed
 
 package main
+
+//go:generate make -C .. static
 
 import (
 	"embed"
