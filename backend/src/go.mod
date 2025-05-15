@@ -12,10 +12,10 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/pilebones/go-udev v0.9.0
-	github.com/shirou/gopsutil/v4 v4.25.2
+	github.com/pilebones/go-udev v0.9.1
+	github.com/shirou/gopsutil/v4 v4.25.4
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/sys v0.31.0
+	golang.org/x/sys v0.33.0
 )
 
 require (
@@ -24,7 +24,7 @@ require (
 )
 
 require (
-	github.com/Antonboom/testifylint v1.6.0 // indirect
+	github.com/Antonboom/testifylint v1.6.1 // indirect
 	github.com/air-verse/air v1.61.7 // indirect
 	github.com/bep/godartsass v1.2.0 // indirect
 	github.com/bep/godartsass/v2 v2.1.0 // indirect
@@ -104,7 +104,7 @@ require (
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.uber.org/dig v1.18.0 // indirect
+	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
@@ -124,24 +124,24 @@ require (
 )
 
 require (
-	github.com/danielgtaylor/huma/v2 v2.31.0
+	github.com/danielgtaylor/huma/v2 v2.32.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/itchyny/gojq v0.12.17
-	github.com/jaypipes/ghw v0.15.0
+	github.com/jaypipes/ghw v0.16.0
 	github.com/lmittmann/tint v1.0.7
 	github.com/ovechkin-dm/mockio/v2 v2.0.0-rc1
 	github.com/rs/cors v1.11.1
-	github.com/samber/slog-http v1.6.0
-	github.com/snapcore/snapd v0.0.0-20250314152246-823f84f544fa
+	github.com/samber/slog-http v1.7.0
+	github.com/snapcore/snapd v0.0.0-20250514203619-72c072d29ea5
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
 	gitlab.com/tozd/go/errors v0.10.0
-	go.uber.org/fx v1.23.0
+	go.uber.org/fx v1.24.0
 	golang.org/x/time v0.11.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/gorm v1.25.12
+	gorm.io/gorm v1.26.1
 	moul.io/banner v1.0.1
 )
 
