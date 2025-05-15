@@ -4,7 +4,7 @@ import "gitlab.com/tozd/go/errors"
 
 //type errorCode int // ErrorMessage[string],HttpCode[int]
 
-//go_:generate go run github.com/zarldev/goenums@v0.3.5 error_code.go
+//go_:generate go run github.com/zarldev/goenums@v0.3.8 error_code.go
 /*
 const (
 	unknown              errorCode = iota // invalid
