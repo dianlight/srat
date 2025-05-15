@@ -6,6 +6,7 @@ repos:
     hooks:
     -   id: gohack-disable 
         name: disable gohack
+        stages: [pre-commit]
         description: Disable gohack before commit
         entry: sh -c 'cd backend/src && go tool gohack undo'
         language: system
@@ -17,6 +18,7 @@ repos:
         stages: [post-commit]
         description: Enable gohack after commit
         entry:  make -C backend patch
+        always_run: true
         language: system
 #        files: ^backend/src/
         types: [text]
