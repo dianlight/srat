@@ -115,7 +115,7 @@ func (d *defaultCommandExecutor) RunCommandWithInput(stdinContent string, comman
 	stderr := stderrData.String()
 
 	if err != nil {
-		return stdout, errors.WithDetails(err, "command execution with input failed",
+		return stdout, errors.WithDetails(err,"desc", "command execution with input failed",
 			"command", command,
 			"args", args,
 			"stdin_preview", func() string {
