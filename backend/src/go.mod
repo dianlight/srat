@@ -21,6 +21,7 @@ require (
 require (
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/google/go-github/v69 v69.2.0
+	github.com/google/go-github/v71 v71.0.0
 	github.com/m1/go-generate-password v0.2.0
 )
 
