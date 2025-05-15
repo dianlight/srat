@@ -152,7 +152,3 @@ tool (
 	github.com/rakyll/gotest
 	github.com/rogpeppe/gohack
 )
-
-replace github.com/samber/slog-http => /root/gohack/github.com/samber/slog-http
-
-replace github.com/jpillora/overseer => /root/gohack/github.com/jpillora/overseer

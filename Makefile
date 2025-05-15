@@ -6,7 +6,7 @@ SUFFIX ?= "_$(ARCH)"
 
 
 
-ALL: 
+ALL:
 #ifeq ($(ARCH),"amd64")
 	cd $(BACKEND_DIRS);$(MAKE) AARGS="GOARCH=amd64" SUFFIX="_x86_64" _SUFFIX="$(SUFFIX)" VERSION=$(VERSION)
 #else ifeq ($(ARCH), "armv7")
@@ -22,10 +22,16 @@ ALL:
 
 
 #PREREQUISITE:
-#	cd $(BACKEND_DIRS);$(MAKE) PREREQUISITE	
+#	cd $(BACKEND_DIRS);$(MAKE) PREREQUISITE
+
+.PHONY: prepare
+prepare:
+	pre-commit install
+	cd $(BACKEND_DIRS);$(MAKE) PREREQUISITE
+	cd $(FRONTEND_DIRS); bun install
+
 
 .PHONY: clean
 clean:
 	cd $(FRONTEND_DIRS); bun clean
 	cd $(BACKEND_DIRS);$(MAKE) clean
-
