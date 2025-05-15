@@ -156,21 +156,6 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["user"],
       }),
-      getUseradmin: build.query<GetUseradminApiResponse, GetUseradminApiArg>({
-        query: () => ({ url: `/useradmin` }),
-        providesTags: ["user"],
-      }),
-      patchUseradmin: build.mutation<
-        PatchUseradminApiResponse,
-        PatchUseradminApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/useradmin`,
-          method: "PATCH",
-          body: queryArg.body,
-        }),
-        invalidatesTags: ["user"],
-      }),
       putUseradmin: build.mutation<PutUseradminApiResponse, PutUseradminApiArg>(
         {
           query: (queryArg) => ({
@@ -298,7 +283,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: ReleaseAsset;
           /** The event name. */
-          event: "update";
+          event: '"update"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -307,7 +292,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: UpdateProgress;
           /** The event name. */
-          event: "updating";
+          event: '"updating"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -316,7 +301,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: Disk[] | null;
           /** The event name. */
-          event: "volumes";
+          event: '"volumes"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -325,7 +310,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: HealthPing;
           /** The event name. */
-          event: "heartbeat";
+          event: '"heartbeat"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -334,7 +319,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: SharedResource[] | null;
           /** The event name. */
-          event: "share";
+          event: '"share"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -343,7 +328,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: Welcome;
           /** The event name. */
-          event: "hello";
+          event: '"hello"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -375,16 +360,6 @@ export type PutUserByUsernameApiArg = {
   /** Username */
   username: string;
   user: User;
-};
-export type GetUseradminApiResponse = /** status 200 OK */
-  | User
-  | /** status default Error */ ErrorModel;
-export type GetUseradminApiArg = void;
-export type PatchUseradminApiResponse = /** status 200 OK */
-  | User
-  | /** status default Error */ ErrorModel;
-export type PatchUseradminApiArg = {
-  body: JsonPatchOp[] | null;
 };
 export type PutUseradminApiResponse = /** status 200 OK */
   | User
@@ -540,7 +515,8 @@ export type User = {
   $schema?: string;
   is_admin?: boolean;
   password?: string;
-  username: string | null;
+  username: string;
+  [key: string]: any;
 };
 export type SharedResource = {
   /** A URL to the JSON Schema for this object. */
@@ -656,8 +632,6 @@ export const {
   usePostUserMutation,
   useDeleteUserByUsernameMutation,
   usePutUserByUsernameMutation,
-  useGetUseradminQuery,
-  usePatchUseradminMutation,
   usePutUseradminMutation,
   useGetUsersQuery,
   useDeleteVolumeByMountPathMountMutation,
