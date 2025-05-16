@@ -6,6 +6,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type SambaUserRepository struct {
@@ -35,7 +36,7 @@ func NewSambaUserRepository(db *gorm.DB) SambaUserRepositoryInterface {
 }
 
 func (p *SambaUserRepository) GetAdmin() (dbom.SambaUser, error) {
-	ret := p.db.Model(&dbom.SambaUser{}).Where("is_admin = ?", true).First(p)
+	ret := p.db.Model(&dbom.SambaUser{}).Preload(clause.Associations).Where("is_admin = ?", true).First(p)
 	if ret.Error != nil {
 		return dbom.SambaUser{}, ret.Error
 	}
@@ -52,7 +53,7 @@ func (p *SambaUserRepository) GetAdmin() (dbom.SambaUser, error) {
 
 func (self *SambaUserRepository) All() (dbom.SambaUsers, error) {
 	var users []dbom.SambaUser
-	err := self.db.Model(&dbom.SambaUser{}).Find(&users).Error
+	err := self.db.Model(&dbom.SambaUser{}).Preload(clause.Associations).Find(&users).Error
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -77,7 +78,7 @@ func (self *SambaUserRepository) Create(user *dbom.SambaUser) error {
 
 func (self *SambaUserRepository) GetUserByName(name string) (*dbom.SambaUser, error) {
 	var user dbom.SambaUser
-	err := self.db.Model(&dbom.SambaUser{}).Where("username = ? and is_admin = false", name).First(&user).Error
+	err := self.db.Model(&dbom.SambaUser{}).Preload(clause.Associations).Where("username = ? and is_admin = false", name).First(&user).Error
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

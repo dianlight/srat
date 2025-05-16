@@ -103,6 +103,18 @@ func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *
 	target.Username = source.Username
 	target.Password = source.Password
 	target.IsAdmin = source.IsAdmin
+	if source.RwShares != nil {
+		target.RwShares = make([]string, len(source.RwShares))
+		for i := 0; i < len(source.RwShares); i++ {
+			target.RwShares[i] = exportedShareToString(source.RwShares[i])
+		}
+	}
+	if source.RoShares != nil {
+		target.RoShares = make([]string, len(source.RoShares))
+		for j := 0; j < len(source.RoShares); j++ {
+			target.RoShares[j] = exportedShareToString(source.RoShares[j])
+		}
+	}
 	return nil
 }
 func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPointPath(source dto.SharedResource, target *dbom.ExportedShare) error {
@@ -137,6 +149,18 @@ func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.S
 	if source.IsAdmin != false {
 		target.IsAdmin = source.IsAdmin
 	}
+	if source.RwShares != nil {
+		target.RwShares = make([]dbom.ExportedShare, len(source.RwShares))
+		for i := 0; i < len(source.RwShares); i++ {
+			target.RwShares[i] = stringToExportedShare(source.RwShares[i])
+		}
+	}
+	if source.RoShares != nil {
+		target.RoShares = make([]dbom.ExportedShare, len(source.RoShares))
+		for j := 0; j < len(source.RoShares); j++ {
+			target.RoShares[j] = stringToExportedShare(source.RoShares[j])
+		}
+	}
 	return nil
 }
 func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) dto.User {
@@ -144,5 +168,17 @@ func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) d
 	dtoUser.Username = source.Username
 	dtoUser.Password = source.Password
 	dtoUser.IsAdmin = source.IsAdmin
+	if source.RwShares != nil {
+		dtoUser.RwShares = make([]string, len(source.RwShares))
+		for i := 0; i < len(source.RwShares); i++ {
+			dtoUser.RwShares[i] = exportedShareToString(source.RwShares[i])
+		}
+	}
+	if source.RoShares != nil {
+		dtoUser.RoShares = make([]string, len(source.RoShares))
+		for j := 0; j < len(source.RoShares); j++ {
+			dtoUser.RoShares[j] = exportedShareToString(source.RoShares[j])
+		}
+	}
 	return dtoUser
 }

@@ -281,6 +281,15 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
+          data: Welcome;
+          /** The event name. */
+          event: '"hello"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: ReleaseAsset;
           /** The event name. */
           event: '"update"';
@@ -320,15 +329,6 @@ export type SseApiResponse = /** status 200 OK */
           data: SharedResource[] | null;
           /** The event name. */
           event: '"share"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: Welcome;
-          /** The event name. */
-          event: '"hello"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -515,6 +515,8 @@ export type User = {
   $schema?: string;
   is_admin?: boolean;
   password?: string;
+  ro_shares?: string[] | null;
+  rw_shares?: string[] | null;
   username: string;
   [key: string]: any;
 };
@@ -529,6 +531,10 @@ export type SharedResource = {
   timemachine?: boolean;
   usage?: Usage;
   users?: User[] | null;
+};
+export type Welcome = {
+  message: string;
+  supported_events: Supported_events;
 };
 export type UpdateProgress = {
   /** A URL to the JSON Schema for this object. */
@@ -558,10 +564,6 @@ export type Disk = {
   serial?: string;
   size?: number;
   vendor?: string;
-};
-export type Welcome = {
-  message: string;
-  supported_events: Supported_events;
 };
 export enum Update_channel {
   Stable = "stable",

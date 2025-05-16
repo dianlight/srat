@@ -12,6 +12,8 @@ import (
 // goverter:useZeroValueOnPointerInconsistency
 // goverter:update:ignoreZeroValueField
 // goverter:skipCopySameType
+// goverter:extend exportedShareToString
+// goverter:extend stringToExportedShare
 // goverter:ignoreUnexported
 // goverter:enum:unknown @error
 type DtoToDbomConverter interface {
@@ -53,31 +55,7 @@ type DtoToDbomConverter interface {
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignoreMissing
 	UserToSambaUser(source dto.User, target *dbom.SambaUser) error
-	/*
-		// goverter:update target
-		// goverter:ignore CreatedAt UpdatedAt DeletedAt ID
-		// goverter:ignore IsInvalid InvalidError Warnings
-		// goverter:map Name Device
-		// goverter:map Type FSType
-		// goverter:map PartitionFlags Flags | stringsToMountDataFlags
-		// goverter:map MountPoint IsMounted | isMountPointValid
-		BlockPartitionToMountPointPath(source dto.BlockPartition, target *dbom.MountPointPath) error
-	*/
-	/*
-		// goverter:update target
-		// goverter:ignore CreatedAt UpdatedAt DeletedAt DeviceId IsMounted
-		// goverter:ignore IsInvalid InvalidError Warnings
-		// goverter:map Id MountPoint | idToMountPoint
-		// goverter:map Device FSType | deviceToFSType
-		// goverter:map Device Flags | deviceToMounDataFlags
-		// goverter:map Id ID
-		PartitionToMountPointPath(source dto.Partition, target *dbom.MountPointPath) error
-	*/
 }
-
-//func isMountPointValid(source string) bool {
-//	return source != ""
-//}
 
 func stringsToMountDataFlags(source []string) (dest dbom.MounDataFlags) {
 	tmp := dto.MountFlags{}
@@ -112,33 +90,12 @@ func mountDataFlagsToStrings(source dbom.MounDataFlags) (dest []string) {
 
 }
 
-/*
-func idToMountPoint(id *string) (string, error) {
-	if id == nil || *id == "" {
-		return "", nil
-	}
-	return "/mnt/" + *id, nil
+func exportedShareToString(source dbom.ExportedShare) string {
+	return source.Name
 }
-*/
 
-/*
-	func deviceToFSType(device *string) (string, error) {
-	fs, _, err := mount.FSFromBlock(*device)
-	if err != nil {
-		return "", err
+func stringToExportedShare(source string) dbom.ExportedShare {
+	return dbom.ExportedShare{
+		Name: source,
 	}
-	return fs, nil
 }
-*/
-
-/*
-func deviceToMounDataFlags(device *string) (dbom.MounDataFlags, error) {
-	_, flags, err := mount.FSFromBlock(*device)
-	if err != nil {
-		return nil, err
-	}
-	tmp := dbom.MounDataFlags{}
-	tmp.Scan(flags)
-	return tmp, nil
-}
-*/

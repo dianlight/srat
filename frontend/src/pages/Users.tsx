@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Fab, List, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Dialog, DialogTitle, Stack, DialogContent, DialogContentText, Grid as Grid, DialogActions, Button } from "@mui/material";
+import { Fab, List, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Dialog, DialogTitle, Stack, DialogContent, DialogContentText, Grid as Grid, DialogActions, Button, Chip, Box, Tooltip, Typography } from "@mui/material";
 import { InView } from "react-intersection-observer";
 import { useConfirm } from "material-ui-confirm";
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -12,6 +12,9 @@ import { PasswordElement, PasswordRepeatElement, TextFieldElement } from "react-
 import { useDeleteUserByUsernameMutation, useGetUsersQuery, usePostUserMutation, usePutUseradminMutation, usePutUserByUsernameMutation, type User } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { toast } from "react-toastify";
+import { useShare } from "../hooks/shareHook";
+import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 
 
@@ -23,6 +26,7 @@ interface UsersProps extends User {
 export function Users() {
     const read_only = useReadOnly();
     const users = useGetUsersQuery();
+    const { shares } = useShare();
     //const admin = useGetUseradminQuery();
     const [errorInfo, setErrorInfo] = useState<string>('')
     const [selected, setSelected] = useState<UsersProps>({ username: "", password: "" });
@@ -118,50 +122,87 @@ export function Users() {
             >
                 <PersonAddIcon />
             </Fab>}
-            <List dense={true}>
+            <List dense={true} sx={{ pt: 2 }}>
                 {users.isSuccess && Array.isArray(users.data) && users.data.slice().sort((a, b) => {
-                    if (a.is_admin) {
-                        return -1;
-                    } else if (b.is_admin) {
-                        return 1;
-                    } else if (a.username === b.username) {
-                        return 0;
-                    } else {
-                        return (a.username || "") > (b.username || "") ? -1 : 1;
-                    }
-                }).map((user) =>
-                    <Fragment key={user.username || "admin"}>
-                        <ListItemButton>
-                            <ListItem
-                                secondaryAction={!read_only && <>
-                                    <IconButton onClick={() => { setSelected(user); setShowEdit(true) }} edge="end" aria-label="settings">
-                                        <ManageAccountsIcon />
-                                    </IconButton>
-                                    {user.is_admin ||
-                                        <IconButton onClick={() => onSubmitDeleteUser(user)} edge="end" aria-label="delete">
-                                            <PersonRemoveIcon />
-                                        </IconButton>
-                                    }
-                                </>
-                                }
-                            >
-                                <ListItemAvatar>
-                                    <Avatar>
-                                        {user.is_admin ?
-                                            <AdminPanelSettingsIcon /> :
-                                            <AssignmentIndIcon />}
+                    // Sort admin users to the top, then alphabetically by username
+                    if (a.is_admin && !b.is_admin) return -1;
+                    if (!a.is_admin && b.is_admin) return 1;
+                    return (a.username || "").localeCompare(b.username || "");
+                }).map((user) => {
+                    const userRwShares = shares ? Object.values(shares).filter(share => share.users?.some(u => u.username === user.username)) : [];
+                    const userRoShares = shares ? Object.values(shares).filter(share => share.ro_users?.some(u => u.username === user.username)) : [];
 
-                                    </Avatar>
-                                </ListItemAvatar>
-                                <ListItemText
-                                    primary={user.username}
-                                    secondary={/*JSON.stringify(user)*/""}
-                                />
-                            </ListItem>
+                    return <Fragment key={user.username || "admin"}>
+                        <ListItemButton sx={{ alignItems: 'flex-start' }}>
+                            <ListItemAvatar sx={{ pt: 1 }}>
+                                <Avatar>
+                                    {user.is_admin ?
+                                        <AdminPanelSettingsIcon /> :
+                                        <AssignmentIndIcon />}
+                                </Avatar>
+                            </ListItemAvatar>
+                            <ListItemText
+                                primary={user.username}
+                                secondary={
+                                    <Box sx={{ mt: 0.5, _display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                        {userRwShares.length > 0 && (
+                                            <Tooltip title={`Shares with read-write access for ${user.username}`}>
+                                                <Chip
+                                                    icon={<EditIcon fontSize="small" />}
+                                                    label={
+                                                        <Box component="span" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            {userRwShares.map((share, index) => (
+                                                                <Typography variant="caption" key={share.name}>
+                                                                    {share.name}{index < userRwShares.length - 1 ? ',' : ''}
+                                                                </Typography>
+                                                            ))}
+                                                        </Box>
+                                                    }
+                                                    size="small"
+                                                    variant="outlined"
+                                                    onClick={(e) => { e.stopPropagation(); /* Optionally handle click, e.g., navigate to shares page */ }}
+                                                />
+                                            </Tooltip>
+                                        )}
+                                        {userRoShares.length > 0 && (
+                                            <Tooltip title={`Shares with read-only access for ${user.username}`}>
+                                                <Chip
+                                                    icon={<VisibilityIcon fontSize="small" />}
+                                                    label={
+                                                        <Box component="span" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            {userRoShares.map((share, index) => (
+                                                                <Typography variant="caption" key={share.name}>
+                                                                    {share.name}{index < userRoShares.length - 1 ? ',' : ''}
+                                                                </Typography>
+                                                            ))}
+                                                        </Box>
+                                                    }
+                                                    size="small"
+                                                    variant="outlined"
+                                                    onClick={(e) => { e.stopPropagation(); /* Optionally handle click */ }}
+                                                />
+                                            </Tooltip>
+                                        )}
+                                        {(userRwShares.length === 0 && userRoShares.length === 0) && (
+                                            <Typography variant="caption" sx={{ fontStyle: 'italic' }}>No shares assigned</Typography>
+                                        )}
+                                    </Box>
+                                }
+                            />
+                            {!read_only && <Stack direction="column" spacing={0} sx={{ pl: 1 }}>
+                                <IconButton onClick={() => { setSelected(user); setShowEdit(true) }} edge="end" aria-label="settings" size="small">
+                                    <ManageAccountsIcon />
+                                </IconButton>
+                                {!user.is_admin &&
+                                    <IconButton onClick={() => onSubmitDeleteUser(user)} edge="end" aria-label="delete" size="small">
+                                        <PersonRemoveIcon />
+                                    </IconButton>
+                                }
+                            </Stack>}
                         </ListItemButton>
                         <Divider component="li" />
                     </Fragment>
-                )}
+                })}
             </List>
         </InView>
     )

@@ -38,14 +38,14 @@ type ConfigToDbomConverter interface {
 
 	// goverter:update target
 	// goverter:ignore IsAdmin
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt  RwShares RoShares
 	UserToUSambaUser(source config.User, target *dbom.SambaUser) error
 
 	// goverter:update target
 	SambaUserToUser(source dbom.SambaUser, target *config.User) error
 
 	// goverter:update target
-	// goverter:ignore IsAdmin CreatedAt UpdatedAt DeletedAt
+	// goverter:ignore IsAdmin CreatedAt UpdatedAt DeletedAt RwShares RoShares
 	ConfigToSambaUser(source config.Config, target *dbom.SambaUser) error
 }
 

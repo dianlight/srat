@@ -17,16 +17,9 @@ type SambaUser struct {
 	Username  string         `gorm:"primaryKey"`
 	Password  string
 	IsAdmin   bool
+	RwShares  []ExportedShare `gorm:"many2many:user_rw_share;constraint:OnUpdate:CASCADE"`
+	RoShares  []ExportedShare `gorm:"many2many:user_ro_share;constraint:OnUpdate:CASCADE"`
 }
-
-/*
-func (u *SambaUser) BeforeSave(tx *gorm.DB) error {
-	if u.Username == "" {
-		return errors.Errorf("username cannot be empty %#v", u)
-	}
-	return nil
-}
-*/
 
 func (u *SambaUser) BeforeCreate(tx *gorm.DB) error {
 	err := unixsamba.CreateSambaUser(u.Username, u.Password, unixsamba.UserOptions{
