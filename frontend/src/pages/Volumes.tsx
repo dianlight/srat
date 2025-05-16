@@ -1,8 +1,8 @@
-import { Fragment, useState, useEffect } from "react";
+import { Fragment, useState, useEffect, useRef } from "react";
 import { InView } from "react-intersection-observer";
 import { PreviewDialog } from "../components/PreviewDialog";
-import List from "@mui/material/List";
-import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Collapse, Chip } from "@mui/material"; // Import Collapse and Chip
+import List from "@mui/material/List"; // Import Collapse and Chip
+import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Collapse, Chip, Switch, FormControlLabel } from "@mui/material"; // Import Collapse and Chip, Switch, FormControlLabel
 import ShareIcon from '@mui/icons-material/Share';
 import AddIcon from '@mui/icons-material/Add';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -42,6 +42,7 @@ export function Volumes() {
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showMount, setShowMount] = useState<boolean>(false);
 
+    const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(true); // Default to hide system partitions
     // Assuming useVolume returns an array of disk objects, where each disk has a 'partitions' array
     // If the structure is different (e.g., a flat list of partitions with parent info), the grouping logic needs adjustment
     const { disks, isLoading, error } = useVolume();
@@ -50,6 +51,45 @@ export function Volumes() {
     const [mountVolume, mountVolumeResult] = usePostVolumeByMountPathMountMutation();
     const [umountVolume, umountVolumeResult] = useDeleteVolumeByMountPathMountMutation();
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({}); // State for collapse, key is disk identifier
+    const initialAutoOpenDone = useRef(false);
+
+    useEffect(() => {
+        // This effect runs when disks data is loaded to open the first visible disk "at start".
+        // It should only run once for the initial auto-open.
+        if (isLoading || !Array.isArray(disks) || disks.length === 0 || initialAutoOpenDone.current) {
+            //console.log(isLoading, !Array.isArray(disks), initialAutoOpenDone.current)
+            return;
+        }
+
+        //console.log("Rendering!", disks.length)
+
+        // At this point, isLoading is false, disks is an array, and initial auto-open hasn't happened.
+        if (disks.length > 0) {
+            let firstVisibleDiskIdentifier: string | null = null;
+            for (let i = 0; i < disks.length; i++) {
+                const disk = disks[i];
+                const diskIdentifier = disk.id || `disk-${i}`; // Must match identifier logic in render
+
+                // Determine if this disk would be visible based on current hideSystemPartitions state
+                const filteredPartitions = disk.partitions?.filter(p => !(hideSystemPartitions && p.system)) || [];
+                const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
+                const allPartitionsAreHiddenByToggle = hasActualPartitions && filteredPartitions.length === 0 && hideSystemPartitions;
+
+                //console.log(filteredPartitions.length, hideSystemPartitions, allPartitionsAreHiddenByToggle, diskIdentifier)
+
+                if (!allPartitionsAreHiddenByToggle) {
+                    firstVisibleDiskIdentifier = diskIdentifier;
+                    break; // Found the first disk that will be rendered
+                }
+            }
+
+            if (firstVisibleDiskIdentifier) {
+                console.log("Opening first visible disk:", firstVisibleDiskIdentifier);
+                setOpenGroups({ [firstVisibleDiskIdentifier]: true });
+            }
+        }
+        initialAutoOpenDone.current = true; // Mark initial auto-open as done
+    }, [disks, isLoading, hideSystemPartitions]); // hideSystemPartitions is included as its initial state affects the first visible disk
 
 
     // Toggle collapse state for a group (disk)
@@ -226,12 +266,39 @@ export function Volumes() {
                 setShowPreview(false);
             }} />
         <br />
+        <Stack direction="row" justifyContent="flex-start" sx={{ pl: 2, mb: 1 }}>
+            <FormControlLabel
+                control={
+                    <Switch
+                        checked={hideSystemPartitions}
+                        onChange={(e) => setHideSystemPartitions(e.target.checked)}
+                        name="hideSystemPartitions"
+                        size="small"
+                    />
+                }
+                label={<Typography variant="body2">Hide system partitions</Typography>}
+            />
+        </Stack>
         <List dense={true}>
             <Divider />
             {/* Iterate over disks */}
             {validDisks.map((disk, diskIdx) => {
                 const diskIdentifier = disk.id || `disk-${diskIdx}`;
                 const isGroupOpen = !!openGroups[diskIdentifier];
+
+                const filteredPartitions = disk.partitions?.filter(partition => !(hideSystemPartitions && partition.system)) || [];
+
+                // Determine if the disk itself should be hidden
+                // A disk is hidden if:
+                // 1. The "hideSystemPartitions" toggle is on.
+                // 2. The disk actually has partitions.
+                // 3. All of its partitions are system partitions (meaning filteredPartitions would be empty).
+                const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
+                const allPartitionsAreHiddenByToggle = hasActualPartitions && filteredPartitions.length === 0 && hideSystemPartitions;
+
+                if (allPartitionsAreHiddenByToggle) {
+                    return null; // Don't render this disk if all its partitions are hidden by the toggle
+                }
 
                 return (
                     <Fragment key={diskIdentifier}>
@@ -282,8 +349,8 @@ export function Volumes() {
                         {/* Collapsible Section for Partitions */}
                         {disk.partitions && disk.partitions.length > 0 && (
                             <Collapse in={isGroupOpen} timeout="auto" unmountOnExit>
-                                <List component="div" disablePadding dense={true} sx={{ pl: 4 }}>
-                                    {disk.partitions.map((partition, partIdx) => {
+                                <List component="div" disablePadding dense={true} sx={{ pl: 4 }} >
+                                    {filteredPartitions.map((partition, partIdx) => {
                                         const partitionIdentifier = partition.id || `${diskIdentifier}-part-${partIdx}`;
                                         const isMounted = partition.mount_point_data && partition.mount_point_data.length > 0;
                                         const firstMountPath = partition.mount_point_data?.[0]?.path;
@@ -358,13 +425,22 @@ export function Volumes() {
                                                         />
                                                     </ListItem>
                                                 </ListItemButton>
-                                                {partIdx < (disk.partitions?.length || 0) - 1 && (
+                                                {partIdx < filteredPartitions.length - 1 && (
                                                     <Divider variant="inset" component="li" sx={{ ml: 4 }} />
                                                 )}
                                             </Fragment>
                                         );
                                     })}
+                                    {isGroupOpen && disk.partitions && disk.partitions.length > 0 && filteredPartitions.length === 0 && hideSystemPartitions && (
+                                        <ListItem dense sx={{ pl: 1 }}>
+                                            <ListItemText
+                                                secondary="System partitions are hidden."
+                                                secondaryTypographyProps={{ variant: 'caption', fontStyle: 'italic' }}
+                                            />
+                                        </ListItem>
+                                    )}
                                 </List>
+
                             </Collapse>
                         )}
                         <Divider />
