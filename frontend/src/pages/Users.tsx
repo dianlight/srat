@@ -151,6 +151,7 @@ export function Users() {
                                                     icon={<EditIcon fontSize="small" />}
                                                     label={
                                                         <Box component="span" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            Shares:
                                                             {userRwShares.map((share, index) => (
                                                                 <Typography variant="caption" key={share.name}>
                                                                     {share.name}{index < userRwShares.length - 1 ? ',' : ''}
@@ -170,6 +171,7 @@ export function Users() {
                                                     icon={<VisibilityIcon fontSize="small" />}
                                                     label={
                                                         <Box component="span" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            Shares:
                                                             {userRoShares.map((share, index) => (
                                                                 <Typography variant="caption" key={share.name}>
                                                                     {share.name}{index < userRoShares.length - 1 ? ',' : ''}
