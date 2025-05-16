@@ -225,6 +225,8 @@ components:
           type: boolean
         path:
           type: string
+        path_hash:
+          type: string
         type:
           enum:
             - HOST
@@ -1083,6 +1085,60 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          $ref: "#/components/schemas/Welcome"
+                        event:
+                          const: "\"hello\""
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event "hello"
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/ReleaseAsset"
+                        event:
+                          const: "\"update\""
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event "update"
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/UpdateProgress"
+                        event:
+                          const: "\"updating\""
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event "updating"
+                      type: object
+                    - properties:
+                        data:
                           items:
                             $ref: "#/components/schemas/Disk"
                           type:
@@ -1142,60 +1198,6 @@ paths:
                         - data
                         - event
                       title: Event "share"
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/Welcome"
-                        event:
-                          const: "\"hello\""
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event "hello"
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/ReleaseAsset"
-                        event:
-                          const: "\"update\""
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event "update"
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/UpdateProgress"
-                        event:
-                          const: "\"updating\""
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event "updating"
                       type: object
                 title: Server Sent Events
                 type: array
@@ -1365,19 +1367,14 @@ paths:
       summary: List users
       tags:
         - user
-  /volume/{mount_path}/mount:
+  /volume/{mount_path_hash}/mount:
     delete:
-      operationId: delete-volume-by-mount-path-mount
+      operationId: delete-volume-by-mount-path-hash-mount
       parameters:
-        - description: Thepath to mount (URL Encoded)
-          example: "%2Fmnt%2Ftest"
-          in: path
-          name: mount_path
+        - in: path
+          name: mount_path_hash
           required: true
           schema:
-            description: Thepath to mount (URL Encoded)
-            examples:
-              - "%2Fmnt%2Ftest"
             type: string
         - description: Force umount operation
           explode: false
@@ -1404,21 +1401,16 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
-      summary: Delete volume by mount path mount
+      summary: Delete volume by mount path hash mount
       tags:
         - volume
     post:
-      operationId: post-volume-by-mount-path-mount
+      operationId: post-volume-by-mount-path-hash-mount
       parameters:
-        - description: The path to mount (URL Encoded)
-          example: "%2Fmnt%2Ftest"
-          in: path
-          name: mount_path
+        - in: path
+          name: mount_path_hash
           required: true
           schema:
-            description: The path to mount (URL Encoded)
-            examples:
-              - "%2Fmnt%2Ftest"
             type: string
       requestBody:
         content:
@@ -1439,7 +1431,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
-      summary: Post volume by mount path mount
+      summary: Post volume by mount path hash mount
       tags:
         - volume
   /volumes:

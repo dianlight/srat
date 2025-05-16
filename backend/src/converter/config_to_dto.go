@@ -30,6 +30,7 @@ type ConfigToDtoConverter interface {
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Path Device | PathToSource
 	// goverter:map Path Type | pathToType
+	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:MD5
 	// goverter:map FS FSType
 	ShareToMountPointData(source config.Share, target *dto.MountPointData) error
 

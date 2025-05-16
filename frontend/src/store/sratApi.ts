@@ -170,12 +170,12 @@ const injectedRtkApi = api
         query: () => ({ url: `/users` }),
         providesTags: ["user"],
       }),
-      deleteVolumeByMountPathMount: build.mutation<
-        DeleteVolumeByMountPathMountApiResponse,
-        DeleteVolumeByMountPathMountApiArg
+      deleteVolumeByMountPathHashMount: build.mutation<
+        DeleteVolumeByMountPathHashMountApiResponse,
+        DeleteVolumeByMountPathHashMountApiArg
       >({
         query: (queryArg) => ({
-          url: `/volume/${queryArg.mountPath}/mount`,
+          url: `/volume/${queryArg.mountPathHash}/mount`,
           method: "DELETE",
           params: {
             force: queryArg.force,
@@ -184,12 +184,12 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["volume"],
       }),
-      postVolumeByMountPathMount: build.mutation<
-        PostVolumeByMountPathMountApiResponse,
-        PostVolumeByMountPathMountApiArg
+      postVolumeByMountPathHashMount: build.mutation<
+        PostVolumeByMountPathHashMountApiResponse,
+        PostVolumeByMountPathHashMountApiArg
       >({
         query: (queryArg) => ({
-          url: `/volume/${queryArg.mountPath}/mount`,
+          url: `/volume/${queryArg.mountPathHash}/mount`,
           method: "POST",
           body: queryArg.mountPointData,
         }),
@@ -281,15 +281,6 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
-          data: Welcome;
-          /** The event name. */
-          event: '"hello"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
           data: ReleaseAsset;
           /** The event name. */
           event: '"update"';
@@ -334,6 +325,15 @@ export type SseApiResponse = /** status 200 OK */
           /** The retry time in milliseconds. */
           retry?: number;
         }
+      | {
+          data: Welcome;
+          /** The event name. */
+          event: '"hello"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
     )[]
   | /** status default Error */ ErrorModel;
 export type SseApiArg = void;
@@ -371,22 +371,20 @@ export type GetUsersApiResponse =
   | /** status 200 OK */ (User[] | null)
   | /** status default Error */ ErrorModel;
 export type GetUsersApiArg = void;
-export type DeleteVolumeByMountPathMountApiResponse =
+export type DeleteVolumeByMountPathHashMountApiResponse =
   /** status default Error */ ErrorModel;
-export type DeleteVolumeByMountPathMountApiArg = {
-  /** Thepath to mount (URL Encoded) */
-  mountPath: string;
+export type DeleteVolumeByMountPathHashMountApiArg = {
+  mountPathHash: string;
   /** Force umount operation */
   force?: boolean;
   /** Lazy umount operation */
   lazy?: boolean;
 };
-export type PostVolumeByMountPathMountApiResponse = /** status 200 OK */
+export type PostVolumeByMountPathHashMountApiResponse = /** status 200 OK */
   | MountPointData
   | /** status default Error */ ErrorModel;
-export type PostVolumeByMountPathMountApiArg = {
-  /** The path to mount (URL Encoded) */
-  mountPath: string;
+export type PostVolumeByMountPathHashMountApiArg = {
+  mountPathHash: string;
   mountPointData: MountPointData;
 };
 export type GetVolumesApiResponse =
@@ -507,6 +505,7 @@ export type MountPointData = {
   invalid_error?: string;
   is_mounted?: boolean;
   path: string;
+  path_hash?: string;
   type: Type;
   warnings?: string;
 };
@@ -531,10 +530,6 @@ export type SharedResource = {
   timemachine?: boolean;
   usage?: Usage;
   users?: User[] | null;
-};
-export type Welcome = {
-  message: string;
-  supported_events: Supported_events;
 };
 export type UpdateProgress = {
   /** A URL to the JSON Schema for this object. */
@@ -564,6 +559,10 @@ export type Disk = {
   serial?: string;
   size?: number;
   vendor?: string;
+};
+export type Welcome = {
+  message: string;
+  supported_events: Supported_events;
 };
 export enum Update_channel {
   Stable = "stable",
@@ -636,7 +635,7 @@ export const {
   usePutUserByUsernameMutation,
   usePutUseradminMutation,
   useGetUsersQuery,
-  useDeleteVolumeByMountPathMountMutation,
-  usePostVolumeByMountPathMountMutation,
+  useDeleteVolumeByMountPathHashMountMutation,
+  usePostVolumeByMountPathHashMountMutation,
   useGetVolumesQuery,
 } = injectedRtkApi;

@@ -44,6 +44,7 @@ type DtoToDbomConverter interface {
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
 	// goverter:map Flags Flags | mountDataFlagsToStrings
+	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:MD5
 	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error
 
 	// goverter:update target

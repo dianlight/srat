@@ -6,6 +6,7 @@ package converter
 import (
 	dbom "github.com/dianlight/srat/dbom"
 	dto "github.com/dianlight/srat/dto"
+	xhashes "github.com/shomali11/util/xhashes"
 )
 
 type DtoToDbomConverterImpl struct{}
@@ -72,6 +73,9 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error {
 	if source.Path != "" {
 		target.Path = source.Path
+	}
+	if source.Path != "" {
+		target.PathHash = xhashes.MD5(source.Path)
 	}
 	if source.Type != "" {
 		target.Type = source.Type

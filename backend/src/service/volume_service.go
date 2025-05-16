@@ -19,6 +19,7 @@ import (
 	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/pilebones/go-udev/netlink"
+	"github.com/shomali11/util/xhashes"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/u-root/u-root/pkg/mount/loop"
@@ -30,6 +31,7 @@ type VolumeServiceInterface interface {
 	MountVolume(md dto.MountPointData) errors.E
 	UnmountVolume(id string, force bool, lazy bool) errors.E
 	GetVolumesData() (*[]dto.Disk, error)
+	PathHashToPath(pathhash string) (string, errors.E)
 	NotifyClient()
 }
 
@@ -297,7 +299,18 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 	return nil
 }
 
-// ... rest of the file remains the same ...
+func (ms *VolumeService) PathHashToPath(pathhash string) (string, errors.E) {
+	dbom_mount_data, err := ms.mount_repo.All()
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	for _, mount_data := range dbom_mount_data {
+		if xhashes.MD5(mount_data.Path) == pathhash {
+			return mount_data.Path, nil
+		}
+	}
+	return "", errors.New("PathHash not found")
+}
 
 func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) errors.E {
 	dbom_mount_data, err := ms.mount_repo.FindByPath(path)

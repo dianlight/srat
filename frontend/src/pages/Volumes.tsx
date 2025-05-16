@@ -17,7 +17,7 @@ import { AutocompleteElement, useForm, TextFieldElement } from "react-hook-form-
 import { toast } from "react-toastify";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
-import { Flags, useDeleteVolumeByMountPathMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathMountMutation, type Partition, type Disk, type MountPointData, Type } from "../store/sratApi";
+import { Flags, useDeleteVolumeByMountPathHashMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathHashMountMutation, type Partition, type Disk, type MountPointData, Type } from "../store/sratApi";
 // Add EjectIcon to your imports
 import EjectIcon from '@mui/icons-material/Eject';
 import UsbIcon from '@mui/icons-material/Usb';
@@ -25,6 +25,7 @@ import SdStorageIcon from '@mui/icons-material/SdStorage';
 // ... other icon imports ...
 import ComputerIcon from '@mui/icons-material/Computer';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
+import MD5 from "crypto-js/md5";
 
 // --- Helper functions (decodeEscapeSequence, onSubmitMountVolume, etc.) remain the same ---
 function decodeEscapeSequence(source: string) {
@@ -48,8 +49,8 @@ export function Volumes() {
     const { disks, isLoading, error } = useVolume();
     const [selected, setSelected] = useState<Partition | Disk | undefined>(undefined); // Can hold a disk or partition
     const confirm = useConfirm();
-    const [mountVolume, mountVolumeResult] = usePostVolumeByMountPathMountMutation();
-    const [umountVolume, umountVolumeResult] = useDeleteVolumeByMountPathMountMutation();
+    const [mountVolume, mountVolumeResult] = usePostVolumeByMountPathHashMountMutation();
+    const [umountVolume, umountVolumeResult] = useDeleteVolumeByMountPathHashMountMutation();
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({}); // State for collapse, key is disk identifier
     const initialAutoOpenDone = useRef(false);
 
@@ -116,7 +117,7 @@ export function Volumes() {
         };
         console.log("Submitting Mount Data:", submitData);
 
-        mountVolume({ mountPath: data.path, mountPointData: submitData }).unwrap().then((res) => {
+        mountVolume({ mountPathHash: data.path_hash || "", mountPointData: submitData }).unwrap().then((res) => {
             toast.info(`Volume ${(res as MountPointData).path || selected.name} mounted successfully.`);
             setSelected(undefined); // Clear selection after successful mount
             setShowMount(false); // Close the mount dialog
@@ -156,8 +157,8 @@ export function Volumes() {
     function onSubmitUmountVolume(partition: Partition, force = false) {
         console.log("Umount Request", partition, "Force:", force);
         // Ensure mount_point_data exists and has at least one entry with a path
-        const mountPath = partition.mount_point_data?.[0]?.path;
-        if (!mountPath) {
+        const mountData = partition.mount_point_data?.[0];
+        if (!mountData?.path) {
             toast.error("Cannot unmount: Missing mount point path.");
             console.error("Missing mount path for partition:", partition);
             return;
@@ -168,15 +169,15 @@ export function Volumes() {
 
         confirm({
             title: `Unmount ${displayName}?`,
-            description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${displayName} (${partition.name}) mounted at ${mountPath}?`,
+            description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${displayName} (${partition.name}) mounted at ${mountData}?`,
             confirmationText: force ? "Force Unmount" : "Unmount",
             cancellationText: "Cancel",
             confirmationButtonProps: { color: force ? "error" : "primary" }
         })
             .then(() => { // Only proceed if confirmed
-                console.log(`Proceeding with ${force ? 'forced ' : ''}unmount for:`, mountPath);
+                console.log(`Proceeding with ${force ? 'forced ' : ''}unmount for:`, mountData.path);
                 umountVolume({
-                    mountPath: mountPath, // Use the extracted path
+                    mountPathHash: mountData.path_hash || "", // Use the extracted path
                     force: force,
                     // lazy: true, // Consider if lazy unmount is always desired
                 }).unwrap().then(() => {
@@ -512,6 +513,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
 
         const submitData: MountPointData = {
             path: formData.path,
+            path_hash: MD5(formData.path).toString(),
             fstype: formData.fstype || undefined,
             flags: numericFlags,
             // data: formData.data,

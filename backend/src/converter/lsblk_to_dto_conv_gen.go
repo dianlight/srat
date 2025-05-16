@@ -6,6 +6,7 @@ package converter
 import (
 	dto "github.com/dianlight/srat/dto"
 	lsblk "github.com/dianlight/srat/lsblk"
+	xhashes "github.com/shomali11/util/xhashes"
 )
 
 type LsblkToDtoConverterImpl struct{}
@@ -14,6 +15,9 @@ func (c *LsblkToDtoConverterImpl) LsblkInfoToMountPointData(source *lsblk.LSBKIn
 	if source != nil {
 		if source.Mountpoint != "" {
 			target.Path = source.Mountpoint
+		}
+		if source.Mountpoint != "" {
+			target.PathHash = xhashes.MD5(source.Mountpoint)
 		}
 		if source.Mountpoint != "" {
 			target.Type = pathToType(source.Mountpoint)

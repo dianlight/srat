@@ -6,6 +6,7 @@ package converter
 import (
 	config "github.com/dianlight/srat/config"
 	dto "github.com/dianlight/srat/dto"
+	xhashes "github.com/shomali11/util/xhashes"
 	osutil "github.com/snapcore/snapd/osutil"
 )
 
@@ -128,6 +129,9 @@ func (c *ConfigToDtoConverterImpl) SettingsToConfig(source dto.Settings, target 
 func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, target *dto.MountPointData) error {
 	if source.Path != "" {
 		target.Path = source.Path
+	}
+	if source.Path != "" {
+		target.PathHash = xhashes.MD5(source.Path)
 	}
 	if source.Path != "" {
 		target.Type = pathToType(source.Path)
