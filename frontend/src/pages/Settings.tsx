@@ -1,5 +1,5 @@
 import { DevTool } from "@hookform/devtools";
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useRef, useCallback } from "react";
 import { InView } from "react-intersection-observer";
 import Grid from "@mui/material/Grid";
 import Button from "@mui/material/Button";
@@ -9,11 +9,12 @@ import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
 import { useGetSettingsQuery, usePutSettingsMutation, type Settings } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
+import debounce from 'lodash.debounce';
 
 export function Settings() {
     const read_only = useReadOnly();
-    const { data: globalConfig, isLoading, error } = useGetSettingsQuery();
-    const { control, handleSubmit, reset, watch, formState } = useForm({
+    const { data: globalConfig, isLoading, error, refetch } = useGetSettingsQuery();
+    const { control, handleSubmit, reset, watch, formState, subscribe } = useForm({
         mode: "onBlur",
         values: globalConfig as Settings,
         disabled: read_only,
@@ -21,25 +22,41 @@ export function Settings() {
     const [update, updateResponse] = usePutSettingsMutation();
 
     const bindAllWatch = watch("bind_all_interfaces")
-    let timer: NodeJS.Timer | null = null;
+
+    const debouncedCommit = debounce((data: Settings) => {
+        //console.log("Committing")
+        handleCommit(data);
+    }, 500, { leading: true });
 
     function handleCommit(data: Settings) {
-        console.log(data);
+        //console.log(data);
         update({ settings: data }).unwrap().then(res => {
-            console.log(res)
-        }).catch(err => console.log(err))
+            //console.log(res)
+            // reset(res as Settings)
+        }).catch(err => {
+            console.error(err)
+            reset()
+        })
     }
 
     useEffect(() => {
-        // if (!formState.isDirty) return;
-        // TypeScript users 
-        const subscription = watch(() => {
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(handleSubmit(handleCommit), 1000)
+        // make sure to unsubscribe;
+        const callback = subscribe({
+            formState: {
+                isDirty: true,
+            },
+            callback: ({ values }) => {
+                //console.log(values);
+                //console.log(formState.isDirty, formState.isSubmitted, formState.isSubmitting)
+                handleSubmit(debouncedCommit)()
+            }
         })
-        //const subscription = watch(handleSubmit(onSubmit));
-        return () => subscription.unsubscribe();
-    }, [handleSubmit, watch]);
+
+        return () => callback();
+
+        // You can also just return the subscribe
+        // return subscribe();
+    }, [subscribe, handleSubmit])
 
     return (
         <InView>

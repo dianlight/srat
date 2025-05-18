@@ -67,7 +67,7 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 }) (*struct{ Body dto.Settings }, error) {
 	config := input.Body
 
-	dbconfig, err := self.props_repo.All(false)
+	dbconfig, err := self.props_repo.All(true)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -78,7 +78,7 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 		return nil, errors.WithStack(err)
 	}
 
-	dbconfig, err = self.props_repo.All(false)
+	err = self.props_repo.SaveAll(&dbconfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
