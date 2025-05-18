@@ -54,7 +54,7 @@ export function Shares() {
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
     const [showUserEdit, setShowUserEdit] = useState<boolean>(false);
-    const formRef = useRef<HTMLFormElement>(null);
+    //const formRef = useRef<HTMLFormElement>(null);
     const confirm = useConfirm();
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
 
@@ -420,7 +420,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 <DialogContent>
                     <Stack spacing={2}>
                         <DialogContentText>
-                            Please enter your options and click Apply. // FIXME: Error if double user!
+                            Please enter or modify the Samba share data.
                         </DialogContentText>
                         <form id="editshareform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                             <Grid container spacing={2}>
