@@ -11,31 +11,25 @@ import (
 	"gitlab.com/tozd/go/errors"
 )
 
-// MountFlag represents a single mount option/flag.
-type MountFlag struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	NeedsValue  bool   `json:"needsValue,omitempty"` // Add NeedsValue field
-	Value       string `json:"value,omitempty"`      // Add Value field for flags like "uid=<arg>"
-	// Could add Type (e.g., "standard", "ext4", "nfs") or Category if needed
-	// Could add ValueType (e.g., "boolean", "string", "integer") for validation/UI
-}
-
 // FilesystemServiceInterface defines the methods for managing filesystem types and mount flags.
 type FilesystemServiceInterface interface {
 	// GetSupportedFilesystemTypes returns a list of filesystem types explicitly supported or known by the application.
 	GetSupportedFilesystemTypes() ([]string, errors.E)
 
 	// GetStandardMountFlags returns a list of common, filesystem-agnostic mount flags.
-	GetStandardMountFlags() ([]MountFlag, errors.E)
+	GetStandardMountFlags() ([]dto.MountFlag, errors.E)
 
 	// GetFilesystemSpecificMountFlags returns a list of mount flags specific to a given filesystem type.
 	// Returns an empty list if the filesystem type is not recognized or has no specific flags.
-	GetFilesystemSpecificMountFlags(fsType string) ([]MountFlag, errors.E)
+	GetFilesystemSpecificMountFlags(fsType string) ([]dto.MountFlag, errors.E)
 
 	// GetMountFlagsAndData converts a list of MountFlag structs into the syscall flags (uintptr)
 	// and the data string (string) for the syscall.Mount function.
-	GetMountFlagsAndData(inputFlags []MountFlag) (uintptr, string, errors.E)
+	MountFlagsToSyscallFlagAndData(inputFlags []dto.MountFlag) (uintptr, string, errors.E)
+
+	SyscallFlagToMountFlag(syscallFlag uintptr) ([]dto.MountFlag, errors.E)
+
+	SyscallDataToMountFlag(data string) ([]dto.MountFlag, errors.E)
 }
 
 // FilesystemService implements the FilesystemServiceInterface.
@@ -44,8 +38,8 @@ type FilesystemService struct {
 
 	// Hardcoded lists for now. Could be loaded from config/DB in the future.
 	supportedFilesystems []string
-	standardMountFlags   []MountFlag
-	fsSpecificMountFlags map[string][]MountFlag
+	standardMountFlags   []dto.MountFlag
+	fsSpecificMountFlags map[string][]dto.MountFlag
 }
 
 // NewFilesystemService creates and initializes a new FilesystemService.
@@ -67,7 +61,7 @@ func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
 		"zfs",     // ZFS filesystem
 	}
 
-	standardFlags := []MountFlag{
+	standardFlags := []dto.MountFlag{
 		{Name: "ro", Description: "Mount read-only"},
 		{Name: "rw", Description: "Mount read-write (default)"}, // NeedsValue: false (default state)
 		{Name: "sync", Description: "All I/O to the filesystem should be done synchronously."},
@@ -88,7 +82,7 @@ func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
 		// All standard flags are boolean/switch flags, so NeedsValue is false by default or explicitly set.
 	}
 
-	fsSpecificFlags := map[string][]MountFlag{
+	fsSpecificFlags := map[string][]dto.MountFlag{
 		"ntfs": {
 			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true},
 			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true},
@@ -142,16 +136,16 @@ func (s *FilesystemService) GetSupportedFilesystemTypes() ([]string, errors.E) {
 }
 
 // GetStandardMountFlags returns the list of standard mount flags.
-func (s *FilesystemService) GetStandardMountFlags() ([]MountFlag, errors.E) {
+func (s *FilesystemService) GetStandardMountFlags() ([]dto.MountFlag, errors.E) {
 	return s.standardMountFlags, nil
 }
 
 // GetFilesystemSpecificMountFlags returns the list of mount flags specific to the given filesystem type.
-func (s *FilesystemService) GetFilesystemSpecificMountFlags(fsType string) ([]MountFlag, errors.E) {
+func (s *FilesystemService) GetFilesystemSpecificMountFlags(fsType string) ([]dto.MountFlag, errors.E) {
 	flags, ok := s.fsSpecificMountFlags[fsType]
 	if !ok {
 		// Return an empty list if no specific flags are defined for this type
-		return []MountFlag{}, nil
+		return []dto.MountFlag{}, nil
 	}
 	return flags, nil
 }
@@ -162,7 +156,7 @@ func (s *FilesystemService) GetFilesystemSpecificMountFlags(fsType string) ([]Mo
 // Flags with values (e.g., "uid=<arg>") or flags representing default/permissive states (e.g., "rw", "defaults")
 // are typically ignored by this function as they don't directly set a bit in the syscall flags parameter
 // or are handled by the absence of restrictive flags.
-func (s *FilesystemService) GetMountFlagsAndData(inputFlags []MountFlag) (uintptr, string, errors.E) {
+func (s *FilesystemService) MountFlagsToSyscallFlagAndData(inputFlags []dto.MountFlag) (uintptr, string, errors.E) {
 	var syscallFlagValue uintptr = 0
 	var dataFlags []string
 
@@ -212,16 +206,16 @@ func (s *FilesystemService) GetMountFlagsAndData(inputFlags []MountFlag) (uintpt
 		lowerFlagName := strings.ToLower(rawFlagName) // Use lowercase for map lookups
 
 		// --- New Validation Check ---
-		if !mf.NeedsValue && mf.Value != "" {
+		if !mf.NeedsValue && mf.FlagValue != "" {
 			return 0, "", errors.WithDetails(dto.ErrorInvalidParameter,
 				"Flag", mf.Name,
-				"Value", mf.Value,
+				"Value", mf.FlagValue,
 				"Message", "Boolean/switch flag was provided with a value")
 		}
 
 		// If a Value is provided in the struct, use it regardless of the Name format
-		if mf.Value != "" {
-			formattedFlag := fmt.Sprintf("%s=%s", rawFlagName, mf.Value)
+		if mf.FlagValue != "" {
+			formattedFlag := fmt.Sprintf("%s=%s", rawFlagName, mf.FlagValue)
 			slog.Debug("GetMountFlagsAndData: Collecting data flag with explicit value", "flag", formattedFlag)
 			dataFlags = append(dataFlags, formattedFlag)
 			continue
@@ -242,4 +236,94 @@ func (s *FilesystemService) GetMountFlagsAndData(inputFlags []MountFlag) (uintpt
 	dataString := strings.Join(dataFlags, ",")
 
 	return syscallFlagValue, dataString, nil
+}
+
+// SyscallFlagToMountFlag converts a syscall flag bitmask (uintptr) back into a slice of dto.MountFlag.
+func (s *FilesystemService) SyscallFlagToMountFlag(syscallFlag uintptr) ([]dto.MountFlag, errors.E) {
+	var result []dto.MountFlag
+
+	// Build a lookup for descriptions from standardMountFlags by lowercase name
+	stdFlagDetails := make(map[string]dto.MountFlag)
+	for _, f := range s.standardMountFlags {
+		stdFlagDetails[strings.ToLower(f.Name)] = f
+	}
+
+	// Iterate through the map of known syscall flags.
+	// Note: The order of flags in the result slice will depend on map iteration order,
+	// which is not guaranteed. If a specific order is needed, consider iterating over a slice.
+	for nameInMap, sysVal := range dto.MountFlagsMap() {
+		if sysVal == 0 { // Skip zero-value flags if any (e.g. placeholder)
+			continue
+		}
+		if (syscallFlag & sysVal) == sysVal {
+			// This flag bit is set.
+			mountFlag := dto.MountFlag{
+				Name:       nameInMap, // Default to the name from flagMap
+				NeedsValue: false,     // Syscall bitmask flags are inherently boolean
+			}
+
+			// Try to find more details (like original casing and description)
+			if detail, ok := stdFlagDetails[strings.ToLower(nameInMap)]; ok {
+				mountFlag.Name = detail.Name // Use original casing
+				mountFlag.Description = detail.Description
+			} else {
+				slog.Debug("SyscallFlagToMountFlag: No detailed description in standardMountFlags for syscall flag", "flagName", nameInMap)
+			}
+			result = append(result, mountFlag)
+		}
+	}
+	return result, nil
+}
+
+// SyscallDataToMountFlag converts a mount data string (e.g., "uid=1000,gid=1000")
+// back into a slice of dto.MountFlag.
+func (s *FilesystemService) SyscallDataToMountFlag(data string) ([]dto.MountFlag, errors.E) {
+	var result []dto.MountFlag
+	if data == "" {
+		return result, nil
+	}
+
+	options := strings.Split(data, ",")
+
+	// For descriptions, we can check standard and fs-specific flags (best-effort).
+	nameToDescMap := make(map[string]dto.MountFlag)
+	for _, mf := range s.standardMountFlags {
+		nameToDescMap[strings.ToLower(mf.Name)] = mf
+	}
+	for _, fsFlags := range s.fsSpecificMountFlags { // Iterate through all filesystem types
+		for _, mf := range fsFlags {
+			if _, exists := nameToDescMap[strings.ToLower(mf.Name)]; !exists { // Avoid overwriting standard flags
+				nameToDescMap[strings.ToLower(mf.Name)] = mf
+			}
+		}
+	}
+
+	for _, opt := range options {
+		opt = strings.TrimSpace(opt)
+		if opt == "" {
+			continue
+		}
+
+		parts := strings.SplitN(opt, "=", 2)
+		name := strings.TrimSpace(parts[0])
+		mountFlag := dto.MountFlag{Name: name}
+
+		if len(parts) == 2 {
+			mountFlag.FlagValue = strings.TrimSpace(parts[1])
+			mountFlag.NeedsValue = true
+		} else {
+			mountFlag.NeedsValue = false // Standalone option in data string
+		}
+
+		if descFlag, ok := nameToDescMap[strings.ToLower(name)]; ok {
+			mountFlag.Description = descFlag.Description
+			// Note: descFlag.NeedsValue could also be consulted here if it's considered more authoritative
+			// than the presence of "=" in parsing. For now, parsing dictates NeedsValue.
+		} else {
+			slog.Debug("SyscallDataToMountFlag: No description found for data flag", "flagName", name)
+		}
+		result = append(result, mountFlag)
+	}
+
+	return result, nil
 }

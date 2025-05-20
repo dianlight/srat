@@ -2,13 +2,62 @@ package dbom
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"fmt"
-
-	"gitlab.com/tozd/go/errors"
-	"golang.org/x/sys/unix"
+	"strings"
 )
 
+type MounDataFlag struct {
+	Name       string
+	NeedsValue bool   // Add NeedsValue field
+	FlagValue  string // Add Value field for flags like "uid=<arg>"
+}
+
+type MounDataFlags []MounDataFlag
+
+func (self *MounDataFlags) Scan(value interface{}) error {
+	svalue, ok := value.([]string)
+	if !ok {
+		return fmt.Errorf("invalid value type for MounDataFlags: %T", value)
+	}
+	for _, flag := range svalue {
+		if strings.Contains(flag, "=") {
+			// Extract the value after the '='
+			parts := strings.SplitN(flag, "=", 2)
+			if len(parts) == 2 {
+				self.Add(MounDataFlag{
+					Name:       parts[0],
+					NeedsValue: true,
+					FlagValue:  parts[1],
+				})
+			}
+		} else {
+			self.Add(MounDataFlag{
+				Name:       flag,
+				NeedsValue: false,
+			})
+		}
+	}
+	return nil
+}
+
+func (self *MounDataFlags) Add(value MounDataFlag) error {
+	*self = append(*self, value)
+	return nil
+}
+
+func (self MounDataFlags) Value() (driver.Value, error) {
+	flags := make([]string, len(self))
+	for ix, flag := range self {
+		if flag.NeedsValue {
+			flags[ix] = fmt.Sprintf("%s=%s", flag.Name, flag.FlagValue)
+		} else {
+			flags[ix] = flag.Name
+		}
+	}
+	return flags, nil
+}
+
+/*
 type MounDataFlag int
 type MounDataFlags []MounDataFlag
 
@@ -184,3 +233,4 @@ func (self MounDataFlag) String() string {
 		return "unknown"
 	}
 }
+*/

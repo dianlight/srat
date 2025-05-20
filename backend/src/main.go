@@ -238,6 +238,7 @@ func prog(state overseer.State) {
 			service.NewUpgradeService,
 			service.NewDirtyDataService,
 			service.NewSupervisorService,
+			service.NewFilesystemService,
 			repository.NewMountPointPathRepository,
 			repository.NewExportedShareRepository,
 			repository.NewPropertyRepositoryRepository,
@@ -293,6 +294,7 @@ func prog(state overseer.State) {
 			hardwareClient hardware.ClientWithResponsesInterface,
 			samba_user_repo repository.SambaUserRepositoryInterface,
 			volume_service service.VolumeServiceInterface,
+			fs_service service.FilesystemServiceInterface,
 		) {
 			versionInDB, err := props_repo.Value("version", true)
 			if err != nil || versionInDB.(string) == "" {
@@ -338,12 +340,10 @@ func prog(state overseer.State) {
 					for _, mnt := range all {
 						if mnt.Type == "ADDON" && !mnt.IsMounted {
 							slog.Info("Automounting share", "path", mnt.Path)
-							err := volume_service.MountVolume(dto.MountPointData{
-								Path:   mnt.Path,
-								Device: mnt.Device,
-								FSType: mnt.FSType,
-								Flags:  mnt.Flags.ToStringSlice(),
-							})
+							conv := converter.DtoToDbomConverterImpl{}
+							mpd := dto.MountPointData{}
+							conv.MountPointPathToMountPointData(mnt, &mpd)
+							err := volume_service.MountVolume(mpd)
 							if err != nil {
 								slog.Error("Error automounting share", "path", mnt.Path, "err", err)
 							}

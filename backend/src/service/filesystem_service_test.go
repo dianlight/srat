@@ -122,7 +122,7 @@ func (suite *FilesystemServiceTestSuite) TestGetFilesystemSpecificMountFlags() {
 func (suite *FilesystemServiceTestSuite) TestGetMountFlagsAndData() {
 	testCases := []struct {
 		name             string
-		inputFlags       []service.MountFlag
+		inputFlags       []dto.MountFlag
 		expectedSyscall  uintptr
 		expectedData     string
 		expectError      bool
@@ -130,97 +130,97 @@ func (suite *FilesystemServiceTestSuite) TestGetMountFlagsAndData() {
 	}{
 		{
 			name:            "Empty input",
-			inputFlags:      []service.MountFlag{},
+			inputFlags:      []dto.MountFlag{},
 			expectedSyscall: 0,
 			expectedData:    "",
 		},
 		{
 			name:            "Standard ro flag",
-			inputFlags:      []service.MountFlag{{Name: "ro"}},
+			inputFlags:      []dto.MountFlag{{Name: "ro"}},
 			expectedSyscall: syscall.MS_RDONLY,
 			expectedData:    "",
 		},
 		{
 			name:            "Standard nosuid and noexec flags",
-			inputFlags:      []service.MountFlag{{Name: "nosuid"}, {Name: "noexec"}},
+			inputFlags:      []dto.MountFlag{{Name: "nosuid"}, {Name: "noexec"}},
 			expectedSyscall: syscall.MS_NOSUID | syscall.MS_NOEXEC,
 			expectedData:    "",
 		},
 		{
 			name:            "Flag with value (uid)",
-			inputFlags:      []service.MountFlag{{Name: "uid", Value: "1000", NeedsValue: true}},
+			inputFlags:      []dto.MountFlag{{Name: "uid", FlagValue: "1000", NeedsValue: true}},
 			expectedSyscall: 0,
 			expectedData:    "uid=1000",
 		},
 		{
 			name:            "Mixed flags (ro, uid)",
-			inputFlags:      []service.MountFlag{{Name: "ro"}, {Name: "uid", Value: "1000", NeedsValue: true}},
+			inputFlags:      []dto.MountFlag{{Name: "ro"}, {Name: "uid", FlagValue: "1000", NeedsValue: true}},
 			expectedSyscall: syscall.MS_RDONLY,
 			expectedData:    "uid=1000",
 		},
 		{
 			name:            "Multiple data flags",
-			inputFlags:      []service.MountFlag{{Name: "uid", Value: "1000", NeedsValue: true}, {Name: "gid", Value: "1001", NeedsValue: true}},
+			inputFlags:      []dto.MountFlag{{Name: "uid", FlagValue: "1000", NeedsValue: true}, {Name: "gid", FlagValue: "1001", NeedsValue: true}},
 			expectedSyscall: 0,
 			expectedData:    "uid=1000,gid=1001",
 		},
 		{
 			name:            "Ignored flags (rw, defaults, async)",
-			inputFlags:      []service.MountFlag{{Name: "rw"}, {Name: "defaults"}, {Name: "async"}},
+			inputFlags:      []dto.MountFlag{{Name: "rw"}, {Name: "defaults"}, {Name: "async"}},
 			expectedSyscall: 0,
 			expectedData:    "",
 		},
 		{
 			name:            "Unknown flag",
-			inputFlags:      []service.MountFlag{{Name: "unknownflag"}},
+			inputFlags:      []dto.MountFlag{{Name: "unknownflag"}},
 			expectedSyscall: 0,
 			expectedData:    "", // Unknown flags for bitmask are ignored, those for data field would be passed if Value is set
 		},
 		{
 			name:            "Flag with value for unknown flag",
-			inputFlags:      []service.MountFlag{{Name: "mycustomflag", Value: "myvalue", NeedsValue: true}},
+			inputFlags:      []dto.MountFlag{{Name: "mycustomflag", FlagValue: "myvalue", NeedsValue: true}},
 			expectedSyscall: 0,
 			expectedData:    "mycustomflag=myvalue",
 		},
 		{
 			name:             "Boolean flag with unexpected value",
-			inputFlags:       []service.MountFlag{{Name: "ro", Value: "true", NeedsValue: false}},
+			inputFlags:       []dto.MountFlag{{Name: "ro", FlagValue: "true", NeedsValue: false}},
 			expectError:      true,
 			expectedErrorMsg: "Boolean/switch flag was provided with a value",
 		},
 		{
 			name:            "Flag with explicit NeedsValue false and no value",
-			inputFlags:      []service.MountFlag{{Name: "noatime", NeedsValue: false}},
+			inputFlags:      []dto.MountFlag{{Name: "noatime", NeedsValue: false}},
 			expectedSyscall: syscall.MS_NOATIME,
 			expectedData:    "",
 		},
 		{
 			name:            "Flag with explicit NeedsValue true and value",
-			inputFlags:      []service.MountFlag{{Name: "fmask", Value: "0022", NeedsValue: true}},
+			inputFlags:      []dto.MountFlag{{Name: "fmask", FlagValue: "0022", NeedsValue: true}},
 			expectedSyscall: 0,
 			expectedData:    "fmask=0022",
 		},
 		{
 			name:            "Case insensitivity for syscall flags",
-			inputFlags:      []service.MountFlag{{Name: "Ro"}},
+			inputFlags:      []dto.MountFlag{{Name: "Ro"}},
 			expectedSyscall: syscall.MS_RDONLY,
 			expectedData:    "",
 		},
 		{
 			name:            "Flag with spaces (should be trimmed for syscall, preserved for data)",
-			inputFlags:      []service.MountFlag{{Name: " nosuid "}},
+			inputFlags:      []dto.MountFlag{{Name: " nosuid "}},
 			expectedSyscall: syscall.MS_NOSUID,
 			expectedData:    "",
 		},
 		{
 			name:            "Bind and rec flags",
-			inputFlags:      []service.MountFlag{{Name: "bind"}, {Name: "rec"}},
+			inputFlags:      []dto.MountFlag{{Name: "bind"}, {Name: "rec"}},
 			expectedSyscall: syscall.MS_BIND | syscall.MS_REC,
 			expectedData:    "",
 		},
 		{
 			name:            "ACL flag",
-			inputFlags:      []service.MountFlag{{Name: "acl"}},
+			inputFlags:      []dto.MountFlag{{Name: "acl"}},
 			expectedSyscall: syscall.MS_POSIXACL,
 			expectedData:    "",
 		},
@@ -228,7 +228,7 @@ func (suite *FilesystemServiceTestSuite) TestGetMountFlagsAndData() {
 
 	for _, tc := range testCases {
 		suite.T().Run(tc.name, func(t *testing.T) {
-			syscallVal, dataVal, err := suite.fsService.GetMountFlagsAndData(tc.inputFlags)
+			syscallVal, dataVal, err := suite.fsService.MountFlagsToSyscallFlagAndData(tc.inputFlags)
 
 			if tc.expectError {
 				require.Error(t, err)

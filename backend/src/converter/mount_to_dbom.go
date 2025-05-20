@@ -18,12 +18,19 @@ type MountToDbom interface {
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt DeviceId IsInvalid InvalidError Warnings IsMounted
 	// goverter:map Device Device | removeDevPrefix
-	// goverter:map Flags Flags | uintptrToMounDataFlags
+	// goverter:map Flags Flags | uintptrToMounFlags
+	// goverter:map Data Data | stringToMounFlags
 	// goverter:map Device Type | pathToType
 	MountToMountPointPath(source *mount.MountPoint, target *dbom.MountPointPath) error
 }
 
-func uintptrToMounDataFlags(source uintptr) (dbom.MounDataFlags, error) {
+func uintptrToMounFlags(source uintptr) (dbom.MounDataFlags, error) {
+	var ret dbom.MounDataFlags
+	err := ret.Scan(source)
+	return ret, err
+}
+
+func stringToMounFlags(source string) (dbom.MounDataFlags, error) {
 	var ret dbom.MounDataFlags
 	err := ret.Scan(source)
 	return ret, err

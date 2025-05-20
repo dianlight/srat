@@ -143,10 +143,12 @@ func (handler *SystemHanler) GetFSHandler(ctx context.Context, input *struct{}) 
 	if err != nil {
 		return nil, err
 	}
-	var xfs dto.FilesystemTypes
-	for _, fsi := range fs {
-		xfs = append(xfs, dto.FilesystemType(fsi))
+	xfs := make(dto.FilesystemTypes, len(fs))
+	for i, fsi := range fs {
+		xfs[i] = dto.FilesystemType{
+			Name: fsi,
+			Type: fsi,
+		}
 	}
 	return &struct{ Body dto.FilesystemTypes }{Body: xfs}, nil
-
 }

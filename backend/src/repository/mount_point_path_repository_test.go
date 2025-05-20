@@ -74,9 +74,15 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 		Path:   "/mnt/test",
 		Device: "test_drive",
 		FSType: "ext4",
-		Flags:  []dbom.MounDataFlag{dbom.MS_RDONLY, dbom.MS_NOATIME},
-		Type:   "ADDON",
-		//Data:   "rw,noatime",
+		Flags: dbom.MounDataFlags{
+			dbom.MounDataFlag{Name: "noatime", NeedsValue: false},
+			dbom.MounDataFlag{Name: "ro", NeedsValue: false},
+		},
+		Type: "ADDON",
+		Data: dbom.MounDataFlags{
+			dbom.MounDataFlag{Name: "umask", NeedsValue: true, FlagValue: "1000"},
+			dbom.MounDataFlag{Name: "force", NeedsValue: false},
+		},
 		//DeviceId: 12344,
 	}
 
@@ -94,7 +100,10 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 			//Label:  "Test 1",
 			Device: "test1",
 			FSType: "ext4",
-			Flags:  []dbom.MounDataFlag{dbom.MS_RDONLY, dbom.MS_NOATIME},
+			Flags: dbom.MounDataFlags{
+				dbom.MounDataFlag{Name: "noatime", NeedsValue: false},
+				dbom.MounDataFlag{Name: "rw", NeedsValue: false},
+			},
 			//Data:     "rw,noatime",
 			DeviceId: 12345,
 			Type:     "ADDON",
@@ -104,7 +113,10 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 			//Label:  "Test 2",
 			Device: "test2",
 			FSType: "ntfs",
-			Flags:  []dbom.MounDataFlag{dbom.MS_BIND},
+			Flags: dbom.MounDataFlags{
+				dbom.MounDataFlag{Name: "noexec", NeedsValue: false},
+				dbom.MounDataFlag{Name: "ro", NeedsValue: false},
+			},
 			//Data:     "bind",
 			DeviceId: 12346,
 			Type:     "ADDON",

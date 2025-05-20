@@ -139,7 +139,9 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 			}
 			real_device = loopd // Update the device to the loop device
 			dbom_mount_data.Device = loopd
-			dbom_mount_data.Flags.Add(dbom.MS_RDONLY)
+			dbom_mount_data.Flags.Add(dbom.MounDataFlag{
+				Name: "ro",
+			})
 		}
 		slog.Debug("Device found using raw name", "device", real_device, "type", fi.Mode().Type())
 	} else if os.IsNotExist(errStatRaw) {

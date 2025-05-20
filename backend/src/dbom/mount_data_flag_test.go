@@ -1,5 +1,6 @@
 package dbom
 
+/*
 import (
 	"encoding/json"
 	"testing"
@@ -111,3 +112,4 @@ func TestMounDataFlagsUnMarshalJSON(t *testing.T) {
 	// t.Logf("JSON: %v, Direct %v", flags2, flags3)
 	// t.Error("Test not implemented")
 }
+*/

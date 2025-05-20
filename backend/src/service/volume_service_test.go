@@ -139,13 +139,15 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 		Path:   mountPath,
 		Device: device,
 		FSType: fsType,
-		Flags:  []string{"MS_NOATIME"},
+		Flags: dto.MountFlags{
+			dto.MountFlag{Name: "noatime", NeedsValue: false},
+		},
 	}
 	dbomMountData := &dbom.MountPointPath{
 		Path:      mountPath,
 		Device:    device,
 		FSType:    fsType,
-		Flags:     dbom.MounDataFlags{dbom.MS_NOATIME},
+		Flags:     dbom.MounDataFlags{dbom.MounDataFlag{Name: "noatime", NeedsValue: false}},
 		IsMounted: false, // Initially not mounted
 	}
 

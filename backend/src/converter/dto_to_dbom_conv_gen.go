@@ -53,9 +53,8 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 	if source.FSType != "" {
 		target.FSType = source.FSType
 	}
-	if source.Flags != nil {
-		target.Flags = stringsToMountDataFlags(source.Flags)
-	}
+	target.Flags = c.dtoMountFlagsToDbomMounDataFlags(source.Flags)
+	target.Data = c.dtoMountFlagsToDbomMounDataFlags(source.CustomFlags)
 	if source.IsInvalid != false {
 		target.IsInvalid = source.IsInvalid
 	}
@@ -83,9 +82,16 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	if source.FSType != "" {
 		target.FSType = source.FSType
 	}
-	if source.Flags != nil {
-		target.Flags = mountDataFlagsToStrings(source.Flags)
+	dtoMountFlags, err := c.dbomMounDataFlagsToDtoMountFlags(source.Flags)
+	if err != nil {
+		return err
 	}
+	target.Flags = dtoMountFlags
+	dtoMountFlags2, err := c.dbomMounDataFlagsToDtoMountFlags(source.Data)
+	if err != nil {
+		return err
+	}
+	target.CustomFlags = dtoMountFlags2
 	if source.Device != "" {
 		target.Device = source.Device
 	}
@@ -167,6 +173,20 @@ func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.S
 	}
 	return nil
 }
+func (c *DtoToDbomConverterImpl) dbomMounDataFlagsToDtoMountFlags(source dbom.MounDataFlags) (dto.MountFlags, error) {
+	var dtoMountFlags dto.MountFlags
+	if source != nil {
+		dtoMountFlags = make(dto.MountFlags, len(source))
+		for i := 0; i < len(source); i++ {
+			dtoMountFlag, err := c.mountDataFlagToMountFlag(source[i])
+			if err != nil {
+				return nil, err
+			}
+			dtoMountFlags[i] = dtoMountFlag
+		}
+	}
+	return dtoMountFlags, nil
+}
 func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) dto.User {
 	var dtoUser dto.User
 	dtoUser.Username = source.Username
@@ -185,4 +205,28 @@ func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) d
 		}
 	}
 	return dtoUser
+}
+func (c *DtoToDbomConverterImpl) dtoMountFlagToDbomMounDataFlag(source dto.MountFlag) dbom.MounDataFlag {
+	var dbomMounDataFlag dbom.MounDataFlag
+	dbomMounDataFlag.Name = source.Name
+	dbomMounDataFlag.NeedsValue = source.NeedsValue
+	dbomMounDataFlag.FlagValue = source.FlagValue
+	return dbomMounDataFlag
+}
+func (c *DtoToDbomConverterImpl) dtoMountFlagsToDbomMounDataFlags(source dto.MountFlags) dbom.MounDataFlags {
+	var dbomMounDataFlags dbom.MounDataFlags
+	if source != nil {
+		dbomMounDataFlags = make(dbom.MounDataFlags, len(source))
+		for i := 0; i < len(source); i++ {
+			dbomMounDataFlags[i] = c.dtoMountFlagToDbomMounDataFlag(source[i])
+		}
+	}
+	return dbomMounDataFlags
+}
+func (c *DtoToDbomConverterImpl) mountDataFlagToMountFlag(source dbom.MounDataFlag) (dto.MountFlag, error) {
+	var dtoMountFlag dto.MountFlag
+	dtoMountFlag.Name = source.Name
+	dtoMountFlag.NeedsValue = source.NeedsValue
+	dtoMountFlag.FlagValue = source.FlagValue
+	return dtoMountFlag, nil
 }
