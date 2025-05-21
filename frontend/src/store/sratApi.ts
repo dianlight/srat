@@ -204,7 +204,7 @@ const injectedRtkApi = api
   });
 export { injectedRtkApi as sratApi };
 export type GetFilesystemsApiResponse =
-  | /** status 200 OK */ (string[] | null)
+  | /** status 200 OK */ (FilesystemType[] | null)
   | /** status default Error */ ErrorModel;
 export type GetFilesystemsApiArg = void;
 export type GetHealthApiResponse = /** status 200 OK */
@@ -281,24 +281,6 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
-          data: ReleaseAsset;
-          /** The event name. */
-          event: '"update"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: UpdateProgress;
-          /** The event name. */
-          event: '"updating"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
           data: Disk[] | null;
           /** The event name. */
           event: '"volumes"';
@@ -329,6 +311,24 @@ export type SseApiResponse = /** status 200 OK */
           data: Welcome;
           /** The event name. */
           event: '"hello"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: ReleaseAsset;
+          /** The event name. */
+          event: '"update"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: UpdateProgress;
+          /** The event name. */
+          event: '"updating"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -391,6 +391,17 @@ export type GetVolumesApiResponse =
   | /** status 200 OK */ (Disk[] | null)
   | /** status default Error */ ErrorModel;
 export type GetVolumesApiArg = void;
+export type MountFlag = {
+  name: string;
+  needsValue?: boolean;
+  value?: string;
+};
+export type FilesystemType = {
+  customMountFlags: MountFlag[] | null;
+  mountFlags: MountFlag[] | null;
+  name: string;
+  type: string;
+};
 export type ErrorDetail = {
   /** Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
   location?: string;
@@ -498,8 +509,9 @@ export type JsonPatchOp = {
 export type MountPointData = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  custom_flags?: MountFlag[] | null;
   device?: string;
-  flags?: Flags[] | null;
+  flags?: MountFlag[] | null;
   fstype?: string;
   invalid?: boolean;
   invalid_error?: string;
@@ -531,13 +543,6 @@ export type SharedResource = {
   usage?: Usage;
   users?: User[] | null;
 };
-export type UpdateProgress = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  last_release?: string;
-  update_error?: string;
-  update_status: number;
-};
 export type Partition = {
   device?: string;
   host_mount_point_data?: MountPointData[];
@@ -564,6 +569,13 @@ export type Welcome = {
   message: string;
   supported_events: Supported_events;
 };
+export type UpdateProgress = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  last_release?: string;
+  update_error?: string;
+  update_status: number;
+};
 export enum Update_channel {
   Stable = "stable",
   Prerelease = "prerelease",
@@ -576,21 +588,6 @@ export enum Op {
   Move = "move",
   Copy = "copy",
   Test = "test",
-}
-export enum Flags {
-  MsRdonly = "MS_RDONLY",
-  MsNosuid = "MS_NOSUID",
-  MsNodev = "MS_NODEV",
-  MsNoexec = "MS_NOEXEC",
-  MsSynchronous = "MS_SYNCHRONOUS",
-  MsRemount = "MS_REMOUNT",
-  MsMandlock = "MS_MANDLOCK",
-  MsNoatime = "MS_NOATIME",
-  MsNodiratime = "MS_NODIRATIME",
-  MsBind = "MS_BIND",
-  MsLazytime = "MS_LAZYTIME",
-  MsNouser = "MS_NOUSER",
-  MsRelatime = "MS_RELATIME",
 }
 export enum Type {
   Host = "HOST",

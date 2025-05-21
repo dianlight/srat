@@ -115,6 +115,54 @@ func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
 			// ZFS has many properties managed by `zfs set`, but some can be mount options.
 			// zfsutil, noauto do not need values. context, fscontext do.
 		},
+		"ext2": {
+			{Name: "acl", Description: "Enable POSIX Access Control Lists support", NeedsValue: false},
+			{Name: "user_xattr", Description: "Enable user extended attributes", NeedsValue: false},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true},
+			{Name: "discard", Description: "Enable discard/TRIM support", NeedsValue: false},
+			// ext2 specific flags are limited, often sharing with ext3/ext4 or standard flags.
+		},
+		"ext3": {
+			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true},
+			{Name: "journal_checksum", Description: "Enable journal checksumming", NeedsValue: false},
+			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously", NeedsValue: false},
+			{Name: "acl", Description: "Enable POSIX Access Control Lists support", NeedsValue: false},
+			{Name: "user_xattr", Description: "Enable user extended attributes", NeedsValue: false},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true},
+			{Name: "discard", Description: "Enable discard/TRIM support", NeedsValue: false},
+			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true},
+			// ext3 shares many flags with ext4, particularly journaling ones.
+		},
+		"vfat": {
+			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true},
+			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true},
+			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true},
+			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true},
+			{Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true},
+			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true},
+			{Name: "codepage", Description: "Codepage for short filenames (e.g., 437)", NeedsValue: true},
+			{Name: "shortname", Description: "Shortname case (lower, win95, mixed)", NeedsValue: true},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true},
+		},
+		"exfat": {
+			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true},
+			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true},
+			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true},
+			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true},
+			{Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true},
+		},
+		"ext4": {
+			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true},
+			{Name: "discard", Description: "Enable discard/TRIM support", NeedsValue: false},
+			{Name: "nodiscard", Description: "Disable discard/TRIM support (default)", NeedsValue: false},
+			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true},
+			{Name: "auto_da_alloc", Description: "Enable delayed allocation (default)", NeedsValue: false},
+			{Name: "noauto_da_alloc", Description: "Disable delayed allocation", NeedsValue: false},
+			{Name: "journal_checksum", Description: "Enable journal checksumming", NeedsValue: false},
+			{Name: "nojournal_checksum", Description: "Disable journal checksumming (default)", NeedsValue: false},
+			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously", NeedsValue: false}, // This one was correct
+		},
 		// Add more filesystem types with specific flags as needed
 	}
 

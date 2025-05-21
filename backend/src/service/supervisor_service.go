@@ -54,18 +54,19 @@ func (self *SupervisorService) refreshNetworkMountShare() error {
 	_supervisor_api_mutex.Lock()
 	defer _supervisor_api_mutex.Unlock()
 
-	resp, err := self.mount_client.GetMountsWithResponse(self.apiContext)
-	if err != nil {
-		return errors.Errorf("Error getting mounts from ha_supervisor: %w", err)
+	if self.staticConfig.AddonIpAddress != "demo" {
+		resp, err := self.mount_client.GetMountsWithResponse(self.apiContext)
+		if err != nil {
+			return errors.Errorf("Error getting mounts from ha_supervisor: %w", err)
+		}
+		if resp.StatusCode() != 200 {
+			return errors.Errorf("Error getting mounts from ha_supervisor: %d %#v", resp.StatusCode(), resp)
+		}
+		self.supervisor_mounts = make(map[string]mount.Mount) // Initialize the map
+		for _, mnt := range *resp.JSON200.Data.Mounts {
+			self.supervisor_mounts[*mnt.Name] = mnt // Populate the map
+		}
 	}
-	if resp.StatusCode() != 200 {
-		return errors.Errorf("Error getting mounts from ha_supervisor: %d %#v", resp.StatusCode(), resp)
-	}
-	self.supervisor_mounts = make(map[string]mount.Mount) // Initialize the map
-	for _, mnt := range *resp.JSON200.Data.Mounts {
-		self.supervisor_mounts[*mnt.Name] = mnt // Populate the map
-	}
-
 	return nil
 }
 

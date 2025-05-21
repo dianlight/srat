@@ -23,6 +23,7 @@ import (
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/u-root/u-root/pkg/mount/loop"
+	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
@@ -43,9 +44,10 @@ type VolumeService struct {
 	hardwareClient    hardware.ClientWithResponsesInterface
 	lsblk             lsblk.LSBLKInterpreterInterface
 	fs_service        FilesystemServiceInterface
+	staticConfig      *dto.ContextState
 }
 
-func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface, lsblk lsblk.LSBLKInterpreterInterface, fs_service FilesystemServiceInterface) VolumeServiceInterface {
+func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface, lsblk lsblk.LSBLKInterpreterInterface, fs_service FilesystemServiceInterface, staticConfig *dto.ContextState) VolumeServiceInterface {
 	p := &VolumeService{
 		ctx:               ctx,
 		broascasting:      broascasting,
@@ -54,6 +56,7 @@ func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterf
 		hardwareClient:    hardwareClient,
 		lsblk:             lsblk,
 		fs_service:        fs_service,
+		staticConfig:      staticConfig,
 	}
 	//p.GetVolumesData()
 	ctx.Value("wg").(*sync.WaitGroup).Add(1)
@@ -438,6 +441,27 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 	conv := converter.HaHardwareToDtoImpl{}
 	dbconv := converter.DtoToDbomConverterImpl{}
 	lsblkconv := converter.LsblkToDtoConverterImpl{}
+
+	if self.staticConfig.AddonIpAddress == "demo" {
+		ret = append(ret, dto.Disk{
+			Id: pointer.String("DemoDisk"),
+			Partitions: &[]dto.Partition{
+				{
+					Id:     pointer.String("DemoPartition"),
+					Device: pointer.String("/dev/bogus"),
+					System: pointer.Bool(false),
+					MountPointData: &[]dto.MountPointData{
+						{
+							Path:      "/mnt/bogus",
+							FSType:    "ext4",
+							IsMounted: false,
+						},
+					},
+				},
+			},
+		})
+		return &ret, nil
+	}
 
 	hwser, err := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx)
 	if err != nil {

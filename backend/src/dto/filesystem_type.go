@@ -7,8 +7,10 @@ import (
 )
 
 type FilesystemType struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Name             string     `json:"name"`
+	Type             string     `json:"type"`
+	MountFlags       MountFlags `json:"mountFlags"`
+	CustomMountFlags MountFlags `json:"customMountFlags"`
 }
 
 type FilesystemTypes []FilesystemType
