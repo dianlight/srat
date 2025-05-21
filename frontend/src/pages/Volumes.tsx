@@ -353,9 +353,9 @@ export function Volumes() {
                                     <List component="div" disablePadding dense={true} sx={{ pl: 4 }} >
                                         {filteredPartitions.map((partition, partIdx) => {
                                             const partitionIdentifier = partition.id || `${diskIdentifier}-part-${partIdx}`;
-                                            const isMounted = partition.mount_point_data 
-                                            && partition.mount_point_data.length > 0 
-                                            && partition.mount_point_data.some(mpd => mpd.is_mounted);
+                                            const isMounted = partition.mount_point_data
+                                                && partition.mount_point_data.length > 0
+                                                && partition.mount_point_data.some(mpd => mpd.is_mounted);
                                             const firstMountPath = partition.mount_point_data?.[0]?.path;
                                             const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
                                             const partitionNameDecoded = decodeEscapeSequence(partition.name || "Unknown Partition");
@@ -481,26 +481,26 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             const sanitizedName = suggestedName.replace(/[\s\\/:"*?<>|]+/g, '_');
             const existingMountData = props.objectToEdit.mount_point_data?.[0];
 
-           /*
-            const getFlagNames = (flags: Flags[] | undefined): string[] => {
-                if (!flags) return [];
-                return flags
-                    .map(flagValue => {
-                        // Find the string key corresponding to the numeric value in the Flags enum
-                        const key = Object.keys(Flags).find(k => Flags[k as keyof typeof Flags] === flagValue);
-                        return key; // Return the string key (e.g., "ReadOnly")
-                    })
-                    .filter((name): name is string => typeof name === 'string'); // Filter out undefined/numeric keys
-            };
-            */
+            /*
+             const getFlagNames = (flags: Flags[] | undefined): string[] => {
+                 if (!flags) return [];
+                 return flags
+                     .map(flagValue => {
+                         // Find the string key corresponding to the numeric value in the Flags enum
+                         const key = Object.keys(Flags).find(k => Flags[k as keyof typeof Flags] === flagValue);
+                         return key; // Return the string key (e.g., "ReadOnly")
+                     })
+                     .filter((name): name is string => typeof name === 'string'); // Filter out undefined/numeric keys
+             };
+             */
 
 
             reset({
                 path: existingMountData?.path || `/mnt/${sanitizedName}`,
                 fstype: existingMountData?.fstype || undefined, // Use existing or let backend detect
                 //flags: existingMountData?.flags, // Keep numeric flags if needed internally
-                flagsNames: existingMountData?.flags?.map( flg => flg.name), // Populate Autocomplete with string names
-                customFlagsNames: existingMountData?.custom_flags?.map(flag => flag.needsValue?flag.name+"="+flag.value:flag.name), // Split custom flags into array
+                flagsNames: existingMountData?.flags?.map(flg => flg.name), // Populate Autocomplete with string names
+                customFlagsNames: existingMountData?.custom_flags?.map(flag => flag.needsValue ? flag.name + "=" + flag.value : flag.name), // Split custom flags into array
                 // data: existingMountData?.data || '',
             });
         } else if (!props.open) {
@@ -563,7 +563,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         control={control}
                                         required
                                         fullWidth
-                                        slotProps={{ inputLabel: {shrink: true }}} // Ensure label is always shrunk
+                                        slotProps={{ inputLabel: { shrink: true } }} // Ensure label is always shrunk
                                         helperText="Path must start with /mnt/"
                                     />
                                 </Grid>
@@ -572,7 +572,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         name="fstype"
                                         label="File System Type"
                                         control={control}
-                                        options={fsLoading ? [] : (filesystems as FilesystemType[] || []).map(fs => fs.name)} 
+                                        options={fsLoading ? [] : (filesystems as FilesystemType[] || []).map(fs => fs.name)}
                                         autocompleteProps={{
                                             freeSolo: true,
                                             //value: watch('fstype') || null, // Ensure controlled component
@@ -591,7 +591,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         multiple
                                         name="flagsNames"
                                         label="Mount Flags"
-                                        options={fsLoading ? [] :(filesystems as FilesystemType[])[0]?.mountFlags?.map(mf => mf.name)||[]} // Use string keys for options
+                                        options={fsLoading ? [] : (filesystems as FilesystemType[])[0]?.mountFlags?.filter(mf => !mf.needsValue).map(mf => mf.name) || []} // Use string keys for options
                                         control={control}
                                         autocompleteProps={{
                                             disableCloseOnSelect: true,
@@ -609,7 +609,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         multiple
                                         name="customFlagsNames"
                                         label="FileSystem specific Mount Flags"
-                                        options={fsLoading ? [] :(filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags?.map(mf => mf.name)||[]} // Use string keys for options
+                                        options={fsLoading ? [] : (filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags?.filter(mf => !mf.needsValue).map(mf => mf.name) || []} // Use string keys for options
                                         control={control}
                                         autocompleteProps={{
                                             disableCloseOnSelect: true,
@@ -618,7 +618,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                             //isOptionEqualToValue: (option, value) => option === value,
                                         }}
                                         textFieldProps={{
-                                           // disabled: fsLoading ? false :(filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags?.length === 0 || false,
+                                            // disabled: fsLoading ? false :(filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags?.length === 0 || false,
                                             InputLabelProps: { shrink: true }
                                         }}
                                     />
