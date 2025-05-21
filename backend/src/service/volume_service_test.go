@@ -61,6 +61,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 			},
 			service.NewVolumeService,
+			service.NewFilesystemService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[hardware.ClientWithResponsesInterface],
