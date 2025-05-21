@@ -21,8 +21,8 @@ const { values, positionals } = parseArgs({
         apiContextUrl: {
             type: 'string',
             short: 'c',
-            default: 'http://localhost:8080',
-            description: 'Specify the URL of the API context (in watching mode) (default: http://localhost:8080)'
+            default: "'dynamic'",
+            description: 'Specify the URL of the API context (in watching mode) (default: dynamic)'
         },
         outDir: {
             type: 'string',
