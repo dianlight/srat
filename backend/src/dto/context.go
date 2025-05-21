@@ -9,4 +9,5 @@ type ContextState struct {
 	DockerInterface string
 	DockerNet       string
 	Heartbeat       int
+	SupervisorURL   string
 }

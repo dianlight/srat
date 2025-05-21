@@ -442,7 +442,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 	dbconv := converter.DtoToDbomConverterImpl{}
 	lsblkconv := converter.LsblkToDtoConverterImpl{}
 
-	if self.staticConfig.AddonIpAddress == "demo" {
+	if self.staticConfig.SupervisorURL == "demo" {
 		ret = append(ret, dto.Disk{
 			Id: pointer.String("DemoDisk"),
 			Partitions: &[]dto.Partition{
