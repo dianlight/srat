@@ -42,9 +42,10 @@ type VolumeService struct {
 	mount_repo        repository.MountPointPathRepositoryInterface
 	hardwareClient    hardware.ClientWithResponsesInterface
 	lsblk             lsblk.LSBLKInterpreterInterface
+	fs_service        FilesystemServiceInterface
 }
 
-func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface, lsblk lsblk.LSBLKInterpreterInterface) VolumeServiceInterface {
+func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface, lsblk lsblk.LSBLKInterpreterInterface, fs_service FilesystemServiceInterface) VolumeServiceInterface {
 	p := &VolumeService{
 		ctx:               ctx,
 		broascasting:      broascasting,
@@ -52,6 +53,7 @@ func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterf
 		mount_repo:        mount_repo,
 		hardwareClient:    hardwareClient,
 		lsblk:             lsblk,
+		fs_service:        fs_service,
 	}
 	//p.GetVolumesData()
 	ctx.Value("wg").(*sync.WaitGroup).Add(1)
@@ -230,27 +232,29 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 		}
 	}
 
-	flags, err := dbom_mount_data.Flags.Value()
+	conv.MountPointPathToMountPointData(*dbom_mount_data, &md)
+
+	flags, data, err := ms.fs_service.MountFlagsToSyscallFlagAndData(md.Flags)
 	if err != nil {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
 			"Device", real_device,
-			"Path", dbom_mount_data.Path,
+			"Path", md.Path,
 			"Message", "Invalid Flags",
 			"Error", err,
 		)
 	}
 
-	slog.Debug("Attempting to mount volume", "device", real_device, "path", dbom_mount_data.Path, "fstype", dbom_mount_data.FSType, "flags", flags)
+	slog.Debug("Attempting to mount volume", "device", real_device, "path", dbom_mount_data.Path, "fstype", dbom_mount_data.FSType, "flags", flags, "data", data)
 
 	var mp *mount.MountPoint
 	mountFunc := func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) }
 
 	if dbom_mount_data.FSType == "" {
 		// Use TryMount if FSType is not specified
-		mp, err = mount.TryMount(real_device, dbom_mount_data.Path, "" /*data*/, uintptr(flags.(int64)), mountFunc)
+		mp, err = mount.TryMount(real_device, dbom_mount_data.Path, data, flags, mountFunc)
 	} else {
 		// Use Mount if FSType is specified
-		mp, err = mount.Mount(real_device, dbom_mount_data.Path, dbom_mount_data.FSType, "" /*data*/, uintptr(flags.(int64)), mountFunc)
+		mp, err = mount.Mount(real_device, dbom_mount_data.Path, dbom_mount_data.FSType, data, flags, mountFunc)
 	}
 
 	if err != nil {
