@@ -15,11 +15,11 @@ type MounDataFlag struct {
 type MounDataFlags []MounDataFlag
 
 func (self *MounDataFlags) Scan(value interface{}) error {
-	svalue, ok := value.([]string)
+	svalue, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("invalid value type for MounDataFlags: %T", value)
 	}
-	for _, flag := range svalue {
+	for _, flag := range strings.Split(svalue, ",") {
 		if strings.Contains(flag, "=") {
 			// Extract the value after the '='
 			parts := strings.SplitN(flag, "=", 2)
@@ -30,7 +30,7 @@ func (self *MounDataFlags) Scan(value interface{}) error {
 					FlagValue:  parts[1],
 				})
 			}
-		} else {
+		} else if flag != "" {
 			self.Add(MounDataFlag{
 				Name:       flag,
 				NeedsValue: false,
@@ -54,8 +54,18 @@ func (self MounDataFlags) Value() (driver.Value, error) {
 			flags[ix] = flag.Name
 		}
 	}
-	return flags, nil
+	return strings.Join(flags, ","), nil
 }
+
+func (MounDataFlags) GormDataType() string {
+	return "text"
+}
+
+/*
+func (MounDataFlags) GormDBDataType(db *gorm.DB, field *schema.Field) string {
+	return "TEXT"
+}
+*/
 
 /*
 type MounDataFlag int
