@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/unixsamba"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -57,6 +58,7 @@ func (suite *ExportedSharesRepositorySuite) SetupTest() {
 			),
 			dbom.NewDB,
 			repository.NewExportedShareRepository,
+			service.NewFilesystemService,
 		),
 		fx.Populate(&suite.export_share_repo),
 		fx.Populate(&suite.ctx),

@@ -5,7 +5,6 @@ package converter
 
 import (
 	config "github.com/dianlight/srat/config"
-	patherr "github.com/dianlight/srat/converter/patherr"
 	dbom "github.com/dianlight/srat/dbom"
 	dto "github.com/dianlight/srat/dto"
 	osutil "github.com/snapcore/snapd/osutil"
@@ -76,7 +75,7 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 		for i := 0; i < len(source.Users); i++ {
 			dbomSambaUser, err := StringToSambaUser(source.Users[i], context)
 			if err != nil {
-				return patherr.Wrap(err, patherr.Field("Users"), patherr.Index(i))
+				return err
 			}
 			target.Users[i] = dbomSambaUser
 		}
@@ -86,7 +85,7 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 		for j := 0; j < len(source.RoUsers); j++ {
 			dbomSambaUser2, err := StringToSambaUser(source.RoUsers[j], context)
 			if err != nil {
-				return patherr.Wrap(err, patherr.Field("RoUsers"), patherr.Index(j))
+				return err
 			}
 			target.RoUsers[j] = dbomSambaUser2
 		}
@@ -118,7 +117,7 @@ func (c *ConfigToDbomConverterImpl) ShareToMountPointPath(source config.Share, t
 	if source.Path != "" {
 		xbool, err := osutil.IsMounted(source.Path)
 		if err != nil {
-			return patherr.Wrap(err, patherr.Field("IsMounted"))
+			return err
 		}
 		target.IsMounted = xbool
 	}

@@ -92,7 +92,7 @@ func main() {
 	singleInstance := flag.Bool("single-instance", false, "Single instance mode - only one instance of the addon can run ***ONLY FOR DEBUG***")
 	automount = flag.Bool("automount", false, "Automount mode - mount all shares automatically")
 	updateFilePath = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
-	addonIpAddress = flag.String("ip-address", "$(bashio::addon.ip_address)", "Addon IP address")
+	addonIpAddress = flag.String("ip-address", "demo", "Addon IP address // $(bashio::addon.ip_address)")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -238,6 +238,7 @@ func prog(state overseer.State) {
 			service.NewUpgradeService,
 			service.NewDirtyDataService,
 			service.NewSupervisorService,
+			service.NewFilesystemService,
 			repository.NewMountPointPathRepository,
 			repository.NewExportedShareRepository,
 			repository.NewPropertyRepositoryRepository,
@@ -293,6 +294,7 @@ func prog(state overseer.State) {
 			hardwareClient hardware.ClientWithResponsesInterface,
 			samba_user_repo repository.SambaUserRepositoryInterface,
 			volume_service service.VolumeServiceInterface,
+			fs_service service.FilesystemServiceInterface,
 		) {
 			versionInDB, err := props_repo.Value("version", true)
 			if err != nil || versionInDB.(string) == "" {
@@ -338,12 +340,10 @@ func prog(state overseer.State) {
 					for _, mnt := range all {
 						if mnt.Type == "ADDON" && !mnt.IsMounted {
 							slog.Info("Automounting share", "path", mnt.Path)
-							err := volume_service.MountVolume(dto.MountPointData{
-								Path:   mnt.Path,
-								Device: mnt.Device,
-								FSType: mnt.FSType,
-								Flags:  mnt.Flags.ToStringSlice(),
-							})
+							conv := converter.DtoToDbomConverterImpl{}
+							mpd := dto.MountPointData{}
+							conv.MountPointPathToMountPointData(mnt, &mpd)
+							err := volume_service.MountVolume(mpd)
 							if err != nil {
 								slog.Error("Error automounting share", "path", mnt.Path, "err", err)
 							}

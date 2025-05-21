@@ -46,11 +46,11 @@ clean:
 
 .PHONY: test
 test: $(ALL_SRCS) 
-	cd $(SRC_DIRS);GOMAXPROCS=1 go tool gotest -coverpkg=./... ./...
+	cd $(SRC_DIRS);GOMAXPROCS=1 go tool gotest -failfast -coverpkg=./... ./...
 
 .PHONY: test_ci
 test_ci: $(ALL_SRCS)
-	cd $(SRC_DIRS)/homeassistant/;go tool gotest -coverpkg=./... ./...
+	cd $(SRC_DIRS)/homeassistant/;go tool gotest -failfast -coverpkg=./... ./...
 
 .PHONY: docs
 docs: gen 

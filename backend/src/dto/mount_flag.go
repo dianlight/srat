@@ -1,5 +1,6 @@
 package dto
 
+/*
 import (
 	"database/sql/driver"
 	"fmt"
@@ -7,8 +8,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:generate go run github.com/dmarkham/enumer@v1.5.11 -type=MountFlag -json -sql -trimprefix=MF_
+//go:g.enerate go run github.com/dmarkham/enumer@v1.5.11 -type=MountFlag -json -sql -trimprefix=MF_
 type MountFlag int
+
 type MountFlags []MountFlag
 
 const (
@@ -74,3 +76,4 @@ func (self MountFlags) Strings() (dest []string) {
 	}
 	return
 }
+*/

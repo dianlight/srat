@@ -23,6 +23,7 @@ import (
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/u-root/u-root/pkg/mount/loop"
+	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
@@ -42,9 +43,11 @@ type VolumeService struct {
 	mount_repo        repository.MountPointPathRepositoryInterface
 	hardwareClient    hardware.ClientWithResponsesInterface
 	lsblk             lsblk.LSBLKInterpreterInterface
+	fs_service        FilesystemServiceInterface
+	staticConfig      *dto.ContextState
 }
 
-func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface, lsblk lsblk.LSBLKInterpreterInterface) VolumeServiceInterface {
+func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface, lsblk lsblk.LSBLKInterpreterInterface, fs_service FilesystemServiceInterface, staticConfig *dto.ContextState) VolumeServiceInterface {
 	p := &VolumeService{
 		ctx:               ctx,
 		broascasting:      broascasting,
@@ -52,6 +55,8 @@ func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterf
 		mount_repo:        mount_repo,
 		hardwareClient:    hardwareClient,
 		lsblk:             lsblk,
+		fs_service:        fs_service,
+		staticConfig:      staticConfig,
 	}
 	//p.GetVolumesData()
 	ctx.Value("wg").(*sync.WaitGroup).Add(1)
@@ -139,7 +144,9 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 			}
 			real_device = loopd // Update the device to the loop device
 			dbom_mount_data.Device = loopd
-			dbom_mount_data.Flags.Add(dbom.MS_RDONLY)
+			dbom_mount_data.Flags.Add(dbom.MounDataFlag{
+				Name: "ro",
+			})
 		}
 		slog.Debug("Device found using raw name", "device", real_device, "type", fi.Mode().Type())
 	} else if os.IsNotExist(errStatRaw) {
@@ -228,27 +235,29 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 		}
 	}
 
-	flags, err := dbom_mount_data.Flags.Value()
+	conv.MountPointPathToMountPointData(*dbom_mount_data, &md)
+
+	flags, data, err := ms.fs_service.MountFlagsToSyscallFlagAndData(md.Flags)
 	if err != nil {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
 			"Device", real_device,
-			"Path", dbom_mount_data.Path,
+			"Path", md.Path,
 			"Message", "Invalid Flags",
 			"Error", err,
 		)
 	}
 
-	slog.Debug("Attempting to mount volume", "device", real_device, "path", dbom_mount_data.Path, "fstype", dbom_mount_data.FSType, "flags", flags)
+	slog.Debug("Attempting to mount volume", "device", real_device, "path", dbom_mount_data.Path, "fstype", dbom_mount_data.FSType, "flags", flags, "data", data)
 
 	var mp *mount.MountPoint
 	mountFunc := func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) }
 
 	if dbom_mount_data.FSType == "" {
 		// Use TryMount if FSType is not specified
-		mp, err = mount.TryMount(real_device, dbom_mount_data.Path, "" /*data*/, uintptr(flags.(int64)), mountFunc)
+		mp, err = mount.TryMount(real_device, dbom_mount_data.Path, data, flags, mountFunc)
 	} else {
 		// Use Mount if FSType is specified
-		mp, err = mount.Mount(real_device, dbom_mount_data.Path, dbom_mount_data.FSType, "" /*data*/, uintptr(flags.(int64)), mountFunc)
+		mp, err = mount.Mount(real_device, dbom_mount_data.Path, dbom_mount_data.FSType, data, flags, mountFunc)
 	}
 
 	if err != nil {
@@ -432,6 +441,27 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 	conv := converter.HaHardwareToDtoImpl{}
 	dbconv := converter.DtoToDbomConverterImpl{}
 	lsblkconv := converter.LsblkToDtoConverterImpl{}
+
+	if self.staticConfig.AddonIpAddress == "demo" {
+		ret = append(ret, dto.Disk{
+			Id: pointer.String("DemoDisk"),
+			Partitions: &[]dto.Partition{
+				{
+					Id:     pointer.String("DemoPartition"),
+					Device: pointer.String("/dev/bogus"),
+					System: pointer.Bool(false),
+					MountPointData: &[]dto.MountPointData{
+						{
+							Path:      "/mnt/bogus",
+							FSType:    "ext4",
+							IsMounted: false,
+						},
+					},
+				},
+			},
+		})
+		return &ret, nil
+	}
 
 	hwser, err := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx)
 	if err != nil {

@@ -21,7 +21,8 @@ type MountPointPath struct {
 	DeviceId     uint64
 	Device       string
 	FSType       string
-	Flags        MounDataFlags `gorm:"type:mount_data_flags"`
+	Flags        MounDataFlags `g_orm:"type:text"`
+	Data         MounDataFlags `g_orm:"type:text"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`

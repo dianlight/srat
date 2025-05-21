@@ -11,15 +11,18 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/service"
 	"github.com/jaypipes/ghw"
 	"github.com/jpillora/overseer"
 )
 
 type SystemHanler struct {
+	fs_service service.FilesystemServiceInterface
 }
 
-func NewSystemHanler() *SystemHanler {
+func NewSystemHanler(fs_service service.FilesystemServiceInterface) *SystemHanler {
 	p := new(SystemHanler)
+	p.fs_service = fs_service
 	return p
 }
 
@@ -143,10 +146,17 @@ func (handler *SystemHanler) GetFSHandler(ctx context.Context, input *struct{}) 
 	if err != nil {
 		return nil, err
 	}
-	var xfs dto.FilesystemTypes
-	for _, fsi := range fs {
-		xfs = append(xfs, dto.FilesystemType(fsi))
+	xfs := make(dto.FilesystemTypes, len(fs))
+	for i, fsi := range fs {
+		flags, _ := handler.fs_service.GetStandardMountFlags()
+		data, _ := handler.fs_service.GetFilesystemSpecificMountFlags(fsi)
+
+		xfs[i] = dto.FilesystemType{
+			Name:             fsi,
+			Type:             fsi,
+			MountFlags:       flags,
+			CustomMountFlags: data,
+		}
 	}
 	return &struct{ Body dto.FilesystemTypes }{Body: xfs}, nil
-
 }

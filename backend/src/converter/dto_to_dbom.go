@@ -36,14 +36,16 @@ type DtoToDbomConverter interface {
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignore DeviceId
-	// goverter:map Flags Flags | stringsToMountDataFlags
+	// goverter:map Flags Flags
+	// goverter:map CustomFlags Data
 	// goverter:useUnderlyingTypeMethods
 	MountPointDataToMountPointPath(source dto.MountPointData, target *dbom.MountPointPath) error
 
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:map Flags Flags | mountDataFlagsToStrings
+	// goverter:map Flags Flags
+	// goverter:map Data CustomFlags
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:MD5
 	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error
 
@@ -56,41 +58,50 @@ type DtoToDbomConverter interface {
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignoreMissing
 	UserToSambaUser(source dto.User, target *dbom.SambaUser) error
+
+	// goverter:ignore Description
+	mountDataFlagToMountFlag(source dbom.MounDataFlag) (dest dto.MountFlag, err error)
 }
 
-func stringsToMountDataFlags(source []string) (dest dbom.MounDataFlags) {
-	tmp := dto.MountFlags{}
-	tmp.Scan(source)
-	for _, flag := range tmp {
-		val, err := flag.Value()
-		if err != nil {
-			continue
-		}
-		var tmp1 dbom.MounDataFlag
-		tmp1.Scan(val)
-		dest.Add(tmp1)
-	}
-	return dest
-}
-
-func mountDataFlagsToStrings(source dbom.MounDataFlags) (dest []string) {
-	for _, flag := range source {
-		val, err := flag.Value()
-		if err != nil {
-			continue
-		}
-		for _, mflag := range dto.MountFlagValues() {
-			if int(mflag) == val {
-				dest = append(dest, mflag.String())
-				break
+/*
+	func stringsToMountDataFlags(source []string) (dest dbom.MounDataFlags) {
+		tmp := dto.MountFlags{}
+		tmp.Scan(source)
+		for _, flag := range tmp {
+			val, err := flag.Value()
+			if err != nil {
+				continue
 			}
+			var tmp1 dbom.MounDataFlag
+			tmp1.Scan(val)
+			dest.Add(tmp1)
 		}
-		//		slog.Debug("Transf", "flag", flag, "val", val, "dest", dest)
+		return dest
 	}
-	return dest
 
-}
+	func mountFlagsToStrings(source dto.MountFlags) (dest []string) {
+		for _, flag := range source {
+			val, err := flag.Value()
+			if err != nil {
+				continue
+			}
+			dest = append(dest, val.(string))
+		}
+		return dest
+	}
 
+	func stringToMountFlags(source []string) (dest []dto.MountFlag) {
+		for _, flag := range source {
+			var tmp dto.MountFlag
+			err := tmp.Scan(flag)
+			if err != nil {
+				continue
+			}
+			dest = append(dest, tmp)
+		}
+		return dest
+	}
+*/
 func exportedShareToString(source dbom.ExportedShare) string {
 	return source.Name
 }

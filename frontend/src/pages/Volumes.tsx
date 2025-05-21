@@ -17,7 +17,7 @@ import { AutocompleteElement, useForm, TextFieldElement } from "react-hook-form-
 import { toast } from "react-toastify";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
-import { Flags, useDeleteVolumeByMountPathHashMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathHashMountMutation, type Partition, type Disk, type MountPointData, Type } from "../store/sratApi";
+import { useDeleteVolumeByMountPathHashMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathHashMountMutation, type Partition, type Disk, type MountPointData, Type, type FilesystemType } from "../store/sratApi";
 // Add EjectIcon to your imports
 import EjectIcon from '@mui/icons-material/Eject';
 import UsbIcon from '@mui/icons-material/Usb';
@@ -236,233 +236,241 @@ export function Volumes() {
     };
 
 
-    return <InView>
-        {/* Pass selected (could be disk or partition) to mount dialog */}
-        <VolumeMountDialog
-            // Type guard to ensure we only pass Partitions to the mount dialog
-            objectToEdit={selected && !(selected as Disk).partitions && (selected as Partition).name ? selected as Partition : undefined}
-            open={showMount}
-            onClose={(data) => {
-                if (data) {
-                    onSubmitMountVolume(data);
-                } else {
+    return (
+        <InView>
+            {/* Pass selected (could be disk or partition) to mount dialog */}
+            <VolumeMountDialog
+                // Type guard to ensure we only pass Partitions to the mount dialog
+                objectToEdit={selected && !(selected as Disk).partitions && (selected as Partition).name ? selected as Partition : undefined}
+                open={showMount}
+                onClose={(data) => {
+                    if (data) {
+                        onSubmitMountVolume(data);
+                    } else {
+                        setSelected(undefined);
+                        setShowMount(false);
+                    }
+                }} />
+            {/* PreviewDialog can show details for both disks and partitions */}
+            <PreviewDialog
+                // Improved title logic using type guards
+                title={
+                    selected
+                        ? (selected as Disk).model // If it has a model, it's likely a Disk
+                            ? `Disk: ${(selected as Disk).model}`
+                            : `Partition: ${decodeEscapeSequence((selected as Partition).name || 'Unknown')}` // Otherwise, assume Partition
+                        : "Details"
+                }
+                objectToDisplay={selected}
+                open={showPreview}
+                onClose={() => {
                     setSelected(undefined);
-                    setShowMount(false);
-                }
-            }} />
-        {/* PreviewDialog can show details for both disks and partitions */}
-        <PreviewDialog
-            // Improved title logic using type guards
-            title={
-                selected
-                    ? (selected as Disk).model // If it has a model, it's likely a Disk
-                        ? `Disk: ${(selected as Disk).model}`
-                        : `Partition: ${decodeEscapeSequence((selected as Partition).name || 'Unknown')}` // Otherwise, assume Partition
-                    : "Details"
-            }
-            objectToDisplay={selected}
-            open={showPreview}
-            onClose={() => {
-                setSelected(undefined);
-                setShowPreview(false);
-            }} />
-        <br />
-        <Stack direction="row" justifyContent="flex-start" sx={{ pl: 2, mb: 1 }}>
-            <FormControlLabel
-                control={
-                    <Switch
-                        checked={hideSystemPartitions}
-                        onChange={(e) => setHideSystemPartitions(e.target.checked)}
-                        name="hideSystemPartitions"
-                        size="small"
-                    />
-                }
-                label={<Typography variant="body2">Hide system partitions</Typography>}
-            />
-        </Stack>
-        <List dense={true}>
-            <Divider />
-            {/* Iterate over disks */}
-            {validDisks.map((disk, diskIdx) => {
-                const diskIdentifier = disk.id || `disk-${diskIdx}`;
-                const isGroupOpen = !!openGroups[diskIdentifier];
+                    setShowPreview(false);
+                }} />
+            <br />
+            <Stack direction="row" justifyContent="flex-start" sx={{ pl: 2, mb: 1 }}>
+                <FormControlLabel
+                    control={
+                        <Switch
+                            checked={hideSystemPartitions}
+                            onChange={(e) => setHideSystemPartitions(e.target.checked)}
+                            name="hideSystemPartitions"
+                            size="small"
+                        />
+                    }
+                    label={<Typography variant="body2">Hide system partitions</Typography>}
+                />
+            </Stack>
+            <List dense={true}>
+                <Divider />
+                {/* Iterate over disks */}
+                {validDisks.map((disk, diskIdx) => {
+                    const diskIdentifier = disk.id || `disk-${diskIdx}`;
+                    const isGroupOpen = !!openGroups[diskIdentifier];
 
-                const filteredPartitions = disk.partitions?.filter(partition => !(hideSystemPartitions && partition.system)) || [];
+                    const filteredPartitions = disk.partitions?.filter(partition => !(hideSystemPartitions && partition.system)) || [];
 
-                // Determine if the disk itself should be hidden
-                // A disk is hidden if:
-                // 1. The "hideSystemPartitions" toggle is on.
-                // 2. The disk actually has partitions.
-                // 3. All of its partitions are system partitions (meaning filteredPartitions would be empty).
-                const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
-                const allPartitionsAreHiddenByToggle = hasActualPartitions && filteredPartitions.length === 0 && hideSystemPartitions;
+                    // Determine if the disk itself should be hidden
+                    // A disk is hidden if:
+                    // 1. The "hideSystemPartitions" toggle is on.
+                    // 2. The disk actually has partitions.
+                    // 3. All of its partitions are system partitions (meaning filteredPartitions would be empty).
+                    const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
+                    const allPartitionsAreHiddenByToggle = hasActualPartitions && filteredPartitions.length === 0 && hideSystemPartitions;
 
-                if (allPartitionsAreHiddenByToggle) {
-                    return null; // Don't render this disk if all its partitions are hidden by the toggle
-                }
+                    if (allPartitionsAreHiddenByToggle) {
+                        return null; // Don't render this disk if all its partitions are hidden by the toggle
+                    }
 
-                return (
-                    <Fragment key={diskIdentifier}>
-                        {/* Header Row for the Physical Disk */}
-                        <ListItemButton
-                            onClick={() => { setSelected(disk); setShowPreview(true); }}
-                            sx={{ pl: 0, alignItems: 'flex-start' }} // Align items top for multi-line secondary
-                        >
-                            <ListItemAvatar sx={{ pt: 1 }}> {/* Add padding top to align avatar with first line */}
-                                <Avatar>
-                                    {renderDiskIcon(disk)}
-                                </Avatar>
-                            </ListItemAvatar>
-                            <ListItemText
-                                primary={`Disk: ${disk.model?.toUpperCase() || `Disk ${diskIdx + 1}`}`}
-                                disableTypography
-                                secondary={
-                                    <Stack spacing={0.5} sx={{ pt: 0.5 }}> {/* Stack for secondary info */}
-                                        <Typography variant="caption" component="div"> {/* Wrap partition count */}
-                                            {`${disk.partitions?.length || 0} partition(s)`}
-                                        </Typography>
-                                        {/* Conditionally display other disk details */}
-                                        <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
-                                            {disk.size != null && <Chip label={`Size: ${filesize(disk.size, { round: 1 })}`} size="small" variant="outlined" />}
-                                            {disk.vendor && <Chip label={`Vendor: ${disk.vendor}`} size="small" variant="outlined" />}
-                                            {disk.serial && <Chip label={`Serial: ${disk.serial}`} size="small" variant="outlined" />}
-                                            {disk.connection_bus && <Chip label={`Bus: ${disk.connection_bus}`} size="small" variant="outlined" />}
-                                            {disk.revision && <Chip label={`Rev: ${disk.revision}`} size="small" variant="outlined" />}
+                    return (
+                        <Fragment key={diskIdentifier}>
+                            {/* Header Row for the Physical Disk */}
+                            <ListItemButton
+                                onClick={() => { setSelected(disk); setShowPreview(true); }}
+                                sx={{ pl: 0, alignItems: 'flex-start' }} // Align items top for multi-line secondary
+                            >
+                                <ListItemAvatar sx={{ pt: 1 }}> {/* Add padding top to align avatar with first line */}
+                                    <Avatar>
+                                        {renderDiskIcon(disk)}
+                                    </Avatar>
+                                </ListItemAvatar>
+                                <ListItemText
+                                    primary={`Disk: ${disk.model?.toUpperCase() || `Disk ${diskIdx + 1}`}`}
+                                    disableTypography
+                                    secondary={
+                                        <Stack spacing={0.5} sx={{ pt: 0.5 }}> {/* Stack for secondary info */}
+                                            <Typography variant="caption" component="div"> {/* Wrap partition count */}
+                                                {`${disk.partitions?.length || 0} partition(s)`}
+                                            </Typography>
+                                            {/* Conditionally display other disk details */}
+                                            <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+                                                {disk.size != null && <Chip label={`Size: ${filesize(disk.size, { round: 1 })}`} size="small" variant="outlined" />}
+                                                {disk.vendor && <Chip label={`Vendor: ${disk.vendor}`} size="small" variant="outlined" />}
+                                                {disk.serial && <Chip label={`Serial: ${disk.serial}`} size="small" variant="outlined" />}
+                                                {disk.connection_bus && <Chip label={`Bus: ${disk.connection_bus}`} size="small" variant="outlined" />}
+                                                {disk.revision && <Chip label={`Rev: ${disk.revision}`} size="small" variant="outlined" />}
+                                            </Stack>
                                         </Stack>
-                                    </Stack>
-                                }
-                            />
-                            {/* Conditionally render IconButton only if there are partitions */}
+                                    }
+                                />
+                                {/* Conditionally render IconButton only if there are partitions */}
+                                {disk.partitions && disk.partitions.length > 0 && (
+                                    <IconButton
+                                        edge="end"
+                                        size="small"
+                                        onClick={(e) => { e.stopPropagation(); handleToggleGroup(diskIdentifier); }}
+                                        aria-label={isGroupOpen ? 'Collapse partitions' : 'Expand partitions'}
+                                        aria-expanded={isGroupOpen}
+                                        sx={{ mt: 0.5 }} // Adjust margin top to align better
+                                    >
+                                        {isGroupOpen ? <ExpandLess /> : <ExpandMore />}
+                                    </IconButton>
+                                )}
+                            </ListItemButton>
+                            {/* Collapsible Section for Partitions */}
                             {disk.partitions && disk.partitions.length > 0 && (
-                                <IconButton
-                                    edge="end"
-                                    size="small"
-                                    onClick={(e) => { e.stopPropagation(); handleToggleGroup(diskIdentifier); }}
-                                    aria-label={isGroupOpen ? 'Collapse partitions' : 'Expand partitions'}
-                                    aria-expanded={isGroupOpen}
-                                    sx={{ mt: 0.5 }} // Adjust margin top to align better
-                                >
-                                    {isGroupOpen ? <ExpandLess /> : <ExpandMore />}
-                                </IconButton>
-                            )}
-                        </ListItemButton>
+                                <Collapse in={isGroupOpen} timeout="auto" unmountOnExit>
+                                    <List component="div" disablePadding dense={true} sx={{ pl: 4 }} >
+                                        {filteredPartitions.map((partition, partIdx) => {
+                                            const partitionIdentifier = partition.id || `${diskIdentifier}-part-${partIdx}`;
+                                            const isMounted = partition.mount_point_data 
+                                            && partition.mount_point_data.length > 0 
+                                            && partition.mount_point_data.some(mpd => mpd.is_mounted);
+                                            const firstMountPath = partition.mount_point_data?.[0]?.path;
+                                            const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
+                                            const partitionNameDecoded = decodeEscapeSequence(partition.name || "Unknown Partition");
 
-                        {/* Collapsible Section for Partitions */}
-                        {disk.partitions && disk.partitions.length > 0 && (
-                            <Collapse in={isGroupOpen} timeout="auto" unmountOnExit>
-                                <List component="div" disablePadding dense={true} sx={{ pl: 4 }} >
-                                    {filteredPartitions.map((partition, partIdx) => {
-                                        const partitionIdentifier = partition.id || `${diskIdentifier}-part-${partIdx}`;
-                                        const isMounted = partition.mount_point_data && partition.mount_point_data.length > 0;
-                                        const firstMountPath = partition.mount_point_data?.[0]?.path;
-                                        const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
-                                        const partitionNameDecoded = decodeEscapeSequence(partition.name || "Unknown Partition");
-
-                                        return (
-                                            <Fragment key={partitionIdentifier}>
-                                                <ListItemButton
-                                                    sx={{ pl: 1, alignItems: 'flex-start' }} // Align items top
-                                                    onClick={() => { setSelected(partition); setShowPreview(true); }}
-                                                >
-                                                    <ListItem
-                                                        disablePadding
-                                                        secondaryAction={!read_only && !partition.system && ( // Only show actions if not read-only and not system partition
-                                                            <Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}> {/* Reduced spacing */}
-                                                                {!isMounted && (
-                                                                    <Tooltip title="Mount Partition">
-                                                                        <IconButton onClick={(e) => { e.stopPropagation(); setSelected(partition); setShowMount(true); }} edge="end" aria-label="mount" size="small">
-                                                                            <FontAwesomeSvgIcon icon={faPlug} />
-                                                                        </IconButton>
-                                                                    </Tooltip>
-                                                                )}
-                                                                {isMounted && (
-                                                                    <>
-                                                                        <Tooltip title="Unmount Partition">
-                                                                            <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, false); }} edge="end" aria-label="unmount" size="small">
-                                                                                <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
-                                                                            </IconButton>
-                                                                        </Tooltip>
-                                                                        <Tooltip title="Force Unmount Partition">
-                                                                            <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, true); }} edge="end" aria-label="force unmount" size="small">
-                                                                                <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
-                                                                            </IconButton>
-                                                                        </Tooltip>
-                                                                        {showShareActions && !shareExists(firstMountPath) ? (
-                                                                            <Tooltip title="Create Share">
-                                                                                <IconButton onClick={(e) => { e.stopPropagation(); handleCreateShare(partition); }} edge="end" aria-label="create share" size="small">
-                                                                                    <AddIcon fontSize="small" />
-                                                                                </IconButton>
-                                                                            </Tooltip>
-                                                                        ) : showShareActions && (
-                                                                            <Tooltip title="Go to Share">
-                                                                                <IconButton onClick={(e) => { e.stopPropagation(); handleGoToShare(partition); }} edge="end" aria-label="go to share" size="small">
-                                                                                    <ShareIcon fontSize="small" />
-                                                                                </IconButton>
-                                                                            </Tooltip>
-                                                                        )}
-                                                                    </>
-                                                                )}
-                                                            </Stack>
-                                                        )}
+                                            return (
+                                                <Fragment key={partitionIdentifier}>
+                                                    <ListItemButton
+                                                        sx={{ pl: 1, alignItems: 'flex-start' }} // Align items top
+                                                        onClick={() => { setSelected(partition); setShowPreview(true); }}
                                                     >
-                                                        <ListItemAvatar sx={{ minWidth: 'auto', pr: 1.5, pt: 0.5 }}> {/* Align avatar */}
-                                                            <Avatar sx={{ width: 32, height: 32 }}>
-                                                                {renderPartitionIcon(partition)}
-                                                            </Avatar>
-                                                        </ListItemAvatar>
-                                                        <ListItemText
-                                                            primary={partitionNameDecoded}
-                                                            disableTypography
-                                                            secondary={
-                                                                <Stack spacing={1} direction="row" flexWrap="wrap" alignItems="center" sx={{ pt: 0.5 }}>
-                                                                    {partition.size != null && <Chip label={`Size: ${filesize(partition.size, { round: 0 })}`} size="small" variant="outlined" />}
-                                                                    {partition.mount_point_data?.[0]?.fstype && <Chip label={`Type: ${partition.mount_point_data[0].fstype}`} size="small" variant="outlined" />}
-                                                                    {isMounted && <Chip label={`Mount: ${partition.mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
-                                                                    {partition.host_mount_point_data && <Chip label={`Mount: ${partition.host_mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
-                                                                    {partition.id && <Chip label={`UUID: ${partition.id}`} size="small" variant="outlined" />}
-                                                                    {partition.device && <Chip label={`Dev: ${partition.device}`} size="small" variant="outlined" />}
-                                                                </Stack>
-                                                            }
-                                                        />
-                                                    </ListItem>
-                                                </ListItemButton>
-                                                {partIdx < filteredPartitions.length - 1 && (
-                                                    <Divider variant="inset" component="li" sx={{ ml: 4 }} />
-                                                )}
-                                            </Fragment>
-                                        );
-                                    })}
-                                    {isGroupOpen && disk.partitions && disk.partitions.length > 0 && filteredPartitions.length === 0 && hideSystemPartitions && (
-                                        <ListItem dense sx={{ pl: 1 }}>
-                                            <ListItemText
-                                                secondary="System partitions are hidden."
-                                                secondaryTypographyProps={{ variant: 'caption', fontStyle: 'italic' }}
-                                            />
-                                        </ListItem>
-                                    )}
-                                </List>
+                                                        <ListItem
+                                                            disablePadding
+                                                            secondaryAction={!read_only && !partition.system && ( // Only show actions if not read-only and not system partition
+                                                                (<Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}> {/* Reduced spacing */}
+                                                                    {!isMounted && (
+                                                                        <Tooltip title="Mount Partition">
+                                                                            <IconButton onClick={(e) => { e.stopPropagation(); setSelected(partition); setShowMount(true); }} edge="end" aria-label="mount" size="small">
+                                                                                <FontAwesomeSvgIcon icon={faPlug} />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    )}
+                                                                    {isMounted && (
+                                                                        <>
+                                                                            <Tooltip title="Unmount Partition">
+                                                                                <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, false); }} edge="end" aria-label="unmount" size="small">
+                                                                                    <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
+                                                                                </IconButton>
+                                                                            </Tooltip>
+                                                                            <Tooltip title="Force Unmount Partition">
+                                                                                <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, true); }} edge="end" aria-label="force unmount" size="small">
+                                                                                    <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
+                                                                                </IconButton>
+                                                                            </Tooltip>
+                                                                            {showShareActions && !shareExists(firstMountPath) ? (
+                                                                                <Tooltip title="Create Share">
+                                                                                    <IconButton onClick={(e) => { e.stopPropagation(); handleCreateShare(partition); }} edge="end" aria-label="create share" size="small">
+                                                                                        <AddIcon fontSize="small" />
+                                                                                    </IconButton>
+                                                                                </Tooltip>
+                                                                            ) : showShareActions && (
+                                                                                <Tooltip title="Go to Share">
+                                                                                    <IconButton onClick={(e) => { e.stopPropagation(); handleGoToShare(partition); }} edge="end" aria-label="go to share" size="small">
+                                                                                        <ShareIcon fontSize="small" />
+                                                                                    </IconButton>
+                                                                                </Tooltip>
+                                                                            )}
+                                                                        </>
+                                                                    )}
+                                                                </Stack>)
+                                                            )}
+                                                        >
+                                                            <ListItemAvatar sx={{ minWidth: 'auto', pr: 1.5, pt: 0.5 }}> {/* Align avatar */}
+                                                                <Avatar sx={{ width: 32, height: 32 }}>
+                                                                    {renderPartitionIcon(partition)}
+                                                                </Avatar>
+                                                            </ListItemAvatar>
+                                                            <ListItemText
+                                                                primary={partitionNameDecoded}
+                                                                disableTypography
+                                                                secondary={
+                                                                    <Stack spacing={1} direction="row" flexWrap="wrap" alignItems="center" sx={{ pt: 0.5 }}>
+                                                                        {partition.size != null && <Chip label={`Size: ${filesize(partition.size, { round: 0 })}`} size="small" variant="outlined" />}
+                                                                        {partition.mount_point_data?.[0]?.fstype && <Chip label={`Type: ${partition.mount_point_data[0].fstype}`} size="small" variant="outlined" />}
+                                                                        {isMounted && <Chip label={`Mount: ${partition.mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
+                                                                        {partition.host_mount_point_data && <Chip label={`Mount: ${partition.host_mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
+                                                                        {partition.id && <Chip label={`UUID: ${partition.id}`} size="small" variant="outlined" />}
+                                                                        {partition.device && <Chip label={`Dev: ${partition.device}`} size="small" variant="outlined" />}
+                                                                    </Stack>
+                                                                }
+                                                            />
+                                                        </ListItem>
+                                                    </ListItemButton>
+                                                    {partIdx < filteredPartitions.length - 1 && (
+                                                        <Divider variant="inset" component="li" sx={{ ml: 4 }} />
+                                                    )}
+                                                </Fragment>
+                                            );
+                                        })}
+                                        {isGroupOpen && disk.partitions && disk.partitions.length > 0 && filteredPartitions.length === 0 && hideSystemPartitions && (
+                                            <ListItem dense sx={{ pl: 1 }}>
+                                                <ListItemText
+                                                    secondary="System partitions are hidden."
+                                                    slotProps={{
+                                                        secondary: { variant: 'caption', fontStyle: 'italic' }
+                                                    }}
+                                                />
+                                            </ListItem>
+                                        )}
+                                    </List>
 
-                            </Collapse>
-                        )}
-                        <Divider />
-                    </Fragment>
-                );
-            })}
-        </List>
-    </InView >
+                                </Collapse>
+                            )}
+                            <Divider />
+                        </Fragment>
+                    );
+                })}
+            </List>
+        </InView >
+    );
 }
 
 // --- VolumeMountDialog component ---
 // (Includes previous fixes and improvements)
 
+
 interface xMountPointData extends MountPointData {
     flagsNames?: string[]; // Array of flag names (strings) for the Autocomplete
+    customFlagsNames?: string[]; // Array of custom flags (strings) for the TextField
 }
+
 
 
 function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointData) => void, objectToEdit?: Partition }) {
     const { control, handleSubmit, watch, reset, formState: { errors, isDirty } } = useForm<xMountPointData>({
-        defaultValues: { path: '', fstype: '', flagsNames: [] }
+        defaultValues: { path: '', fstype: '', flagsNames: [], customFlagsNames: [] }, // Default values for the form
     });
     const { data: filesystems, isLoading: fsLoading, error: fsError } = useGetFilesystemsQuery();
 
@@ -473,7 +481,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             const sanitizedName = suggestedName.replace(/[\s\\/:"*?<>|]+/g, '_');
             const existingMountData = props.objectToEdit.mount_point_data?.[0];
 
-            // Helper to safely get flag names from numeric values
+           /*
             const getFlagNames = (flags: Flags[] | undefined): string[] => {
                 if (!flags) return [];
                 return flags
@@ -484,13 +492,15 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                     })
                     .filter((name): name is string => typeof name === 'string'); // Filter out undefined/numeric keys
             };
+            */
 
 
             reset({
                 path: existingMountData?.path || `/mnt/${sanitizedName}`,
                 fstype: existingMountData?.fstype || undefined, // Use existing or let backend detect
-                flags: existingMountData?.flags, // Keep numeric flags if needed internally
-                flagsNames: getFlagNames(existingMountData?.flags || undefined), // Populate Autocomplete with string names
+                //flags: existingMountData?.flags, // Keep numeric flags if needed internally
+                flagsNames: existingMountData?.flags?.map( flg => flg.name), // Populate Autocomplete with string names
+                customFlagsNames: existingMountData?.custom_flags?.map(flag => flag.needsValue?flag.name+"="+flag.value:flag.name), // Split custom flags into array
                 // data: existingMountData?.data || '',
             });
         } else if (!props.open) {
@@ -506,17 +516,19 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             return;
         }
 
+        /*
         const numericFlags = formData.flagsNames
             ?.map(name => Flags[name as keyof typeof Flags])
             .filter((value): value is Flags => typeof value === 'number')
             || undefined;
 
+            */
         const submitData: MountPointData = {
             path: formData.path,
             path_hash: MD5(formData.path).toString(),
             fstype: formData.fstype || undefined,
-            flags: numericFlags,
-            // data: formData.data,
+            //flags: numericFlags,
+            //custom_flags: formData.customFlagsNames,
             device: props.objectToEdit.name, // Ensure device name is included
             type: Type.Addon,
         };
@@ -551,20 +563,21 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         control={control}
                                         required
                                         fullWidth
-                                        InputLabelProps={{ shrink: true }}
+                                        slotProps={{ inputLabel: {shrink: true }}} // Ensure label is always shrunk
+                                        helperText="Path must start with /mnt/"
                                     />
                                 </Grid>
-                                <Grid size={6}> {/* Corrected Grid usage */}
+                                <Grid size={6}> {/* FS Type */}
                                     <AutocompleteElement
                                         name="fstype"
                                         label="File System Type"
                                         control={control}
-                                        options={filesystems as [] || []}
+                                        options={fsLoading ? [] : (filesystems as FilesystemType[] || []).map(fs => fs.name)} 
                                         autocompleteProps={{
                                             freeSolo: true,
-                                            value: watch('fstype') || null, // Ensure controlled component
-                                            getOptionLabel: (option) => typeof option === 'string' ? option : '',
-                                            isOptionEqualToValue: (option, value) => option === value,
+                                            //value: watch('fstype') || null, // Ensure controlled component
+                                            //getOptionLabel: (option) => typeof option === 'string' ? option : '',
+                                            //isOptionEqualToValue: (option, value) => option === value,
                                         }}
                                         textFieldProps={{
                                             helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
@@ -573,29 +586,43 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         }}
                                     />
                                 </Grid>
-                                <Grid size={6}> {/* Corrected Grid usage */}
+                                <Grid size={6}> {/* FS Flags */}
                                     <AutocompleteElement
                                         multiple
                                         name="flagsNames"
                                         label="Mount Flags"
-                                        options={Object.keys(Flags).filter((v) => isNaN(Number(v)))} // Use string keys for options
+                                        options={fsLoading ? [] :(filesystems as FilesystemType[])[0]?.mountFlags?.map(mf => mf.name)||[]} // Use string keys for options
                                         control={control}
                                         autocompleteProps={{
                                             disableCloseOnSelect: true,
-                                            value: watch('flagsNames') || [], // Ensure controlled component
-                                            getOptionLabel: (option) => typeof option === 'string' ? option : '',
-                                            isOptionEqualToValue: (option, value) => option === value,
+                                            //value: watch('flagsNames') || [], // Ensure controlled component
+                                            //getOptionLabel: (option) => typeof option === 'string' ? option : '',
+                                            //isOptionEqualToValue: (option, value) => option === value,
                                         }}
                                         textFieldProps={{
                                             InputLabelProps: { shrink: true }
                                         }}
                                     />
                                 </Grid>
-                                {/* Optional Data Field
-                                    <Grid item xs={12}>
-                                        <TextFieldElement name="data" label="Options (e.g., uid=1000)" control={control} fullWidth helperText="Comma-separated key=value pairs" InputLabelProps={{ shrink: true }}/>
-                                    </Grid>
-                                */}
+                                <Grid size={6}> {/* FS CustomFlags */}
+                                    <AutocompleteElement
+                                        multiple
+                                        name="customFlagsNames"
+                                        label="FileSystem specific Mount Flags"
+                                        options={fsLoading ? [] :(filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags?.map(mf => mf.name)||[]} // Use string keys for options
+                                        control={control}
+                                        autocompleteProps={{
+                                            disableCloseOnSelect: true,
+                                            //value: watch('flagsNames') || [], // Ensure controlled component
+                                            //getOptionLabel: (option) => typeof option === 'string' ? option : '',
+                                            //isOptionEqualToValue: (option, value) => option === value,
+                                        }}
+                                        textFieldProps={{
+                                           // disabled: fsLoading ? false :(filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags?.length === 0 || false,
+                                            InputLabelProps: { shrink: true }
+                                        }}
+                                    />
+                                </Grid>
                             </Grid>
                         </Stack>
                     </DialogContent>
@@ -609,8 +636,10 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
     );
 }
 
+/*
 // Helper to check if a value is a string key of the Flags enum (remains the same)
 function isFlagsKey(key: string): key is keyof typeof Flags {
     // Ensure Flags is treated as an object for Object.keys
     return Object.keys(Flags as object).includes(key);
 }
+*/

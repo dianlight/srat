@@ -118,6 +118,31 @@ components:
           format: uri
           type: string
       type: object
+    FilesystemType:
+      additionalProperties: false
+      properties:
+        customMountFlags:
+          items:
+            $ref: "#/components/schemas/MountFlag"
+          type:
+            - array
+            - "null"
+        mountFlags:
+          items:
+            $ref: "#/components/schemas/MountFlag"
+          type:
+            - array
+            - "null"
+        name:
+          type: string
+        type:
+          type: string
+      required:
+        - name
+        - type
+        - mountFlags
+        - customMountFlags
+      type: object
     HealthPing:
       additionalProperties: false
       properties:
@@ -183,6 +208,18 @@ components:
         - op
         - path
       type: object
+    MountFlag:
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        needsValue:
+          type: boolean
+        value:
+          type: string
+      required:
+        - name
+      type: object
     MountPointData:
       additionalProperties: false
       properties:
@@ -193,25 +230,17 @@ components:
           format: uri
           readOnly: true
           type: string
+        custom_flags:
+          items:
+            $ref: "#/components/schemas/MountFlag"
+          type:
+            - array
+            - "null"
         device:
           type: string
         flags:
           items:
-            enum:
-              - MS_RDONLY
-              - MS_NOSUID
-              - MS_NODEV
-              - MS_NOEXEC
-              - MS_SYNCHRONOUS
-              - MS_REMOUNT
-              - MS_MANDLOCK
-              - MS_NOATIME
-              - MS_NODIRATIME
-              - MS_BIND
-              - MS_LAZYTIME
-              - MS_NOUSER
-              - MS_RELATIME
-            type: string
+            $ref: "#/components/schemas/MountFlag"
           type:
             - array
             - "null"
@@ -555,7 +584,7 @@ paths:
             application/json:
               schema:
                 items:
-                  type: string
+                  $ref: "#/components/schemas/FilesystemType"
                 type:
                   - array
                   - "null"

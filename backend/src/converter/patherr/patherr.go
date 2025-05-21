@@ -1,5 +1,6 @@
 package patherr
 
+/*
 import (
 	"fmt"
 
@@ -26,3 +27,4 @@ func Wrap(err error, path ...any) error {
 func Key(v any) any      { return v }
 func Index(v int) any    { return v }
 func Field(v string) any { return v }
+*/

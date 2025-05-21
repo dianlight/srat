@@ -32,7 +32,7 @@ type HaHardwareToDto interface {
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
 	// goverter:ignore MountPointData
-	// g.overter:map . MountPointData | mountPointsToMountPointDatas
+	// goverter:map . MountPointData | mountPointsToMountPointDatas
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
 	FilesystemToPartition(source hardware.Filesystem, target *dto.Partition) error
 }
@@ -40,22 +40,20 @@ type HaHardwareToDto interface {
 func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointData {
 	var mountPointDatas []dto.MountPointData
 
-	fstype, flags, err := mount.FSFromBlock(*source.Device)
+	fstype, _, err := mount.FSFromBlock(*source.Device)
 	if err != nil {
 		slog.Warn("Failed to get filesystem type and flags", "device", source.Device, "error", err)
 	}
 
-	M_flags := dto.MountFlags{}
-	M_flags.Scan(flags)
-
 	for _, s := range *source.MountPoints {
 		mountPointDatas = append(mountPointDatas, dto.MountPointData{
-			Path:      s,
-			Device:    *source.Device,
-			FSType:    fstype,
-			Flags:     M_flags.Strings(),
-			IsMounted: true,
-			Type:      "HOST",
+			Path:        s,
+			Device:      *source.Device,
+			FSType:      fstype,
+			Flags:       []dto.MountFlag{},
+			CustomFlags: []dto.MountFlag{},
+			IsMounted:   true,
+			Type:        "HOST",
 		})
 	}
 

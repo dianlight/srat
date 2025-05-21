@@ -16,7 +16,7 @@ import (
 type LsblkToDtoConverter interface {
 	// goverter:update target
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore IsInvalid InvalidError Warnings Flags
+	// goverter:ignore IsInvalid InvalidError Warnings Flags CustomFlags
 	// goverter:map Name Device
 	// goverter:map Mountpoint Path
 	// goverter:map Fstype FSType
