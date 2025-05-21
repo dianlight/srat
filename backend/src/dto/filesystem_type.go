@@ -18,7 +18,7 @@ type FilesystemTypes []FilesystemType
 // MountFlag represents a single mount option/flag.
 type MountFlag struct {
 	Name        string `json:"name"`
-	Description string `json:"-"`
+	Description string `json:"description,omitempty"`
 	NeedsValue  bool   `json:"needsValue,omitempty"` // Add NeedsValue field
 	FlagValue   string `json:"value,omitempty"`      // Add Value field for flags like "uid=<arg>"
 }
