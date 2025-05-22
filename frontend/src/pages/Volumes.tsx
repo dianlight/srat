@@ -13,7 +13,7 @@ import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
 import { faPlug, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
-import { AutocompleteElement, useForm, TextFieldElement, MultiSelectElement, Controller } from "react-hook-form-mui"; // Import TextFieldElement
+import { AutocompleteElement, useForm, TextFieldElement, MultiSelectElement, Controller, useFieldArray } from "react-hook-form-mui"; // Import TextFieldElement
 import { toast } from "react-toastify";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
@@ -462,17 +462,22 @@ export function Volumes() {
 
 
 interface xMountPointData extends MountPointData {
-    flags?: MountFlag[]; // Array of flags (enum) for the Autocomplete
-    custom_flags?: MountFlag[]; // Array of custom flags (enum) for the TextField
-    flagsNames?: string[]; // Array of flag names (strings) for the Autocomplete
-    customFlagsNames?: string[]; // Array of custom flags (strings) for the TextField
+    //    flags?: MountFlag[]; // Array of flags (enum) for the Autocomplete
+    //    custom_flags?: MountFlag[]; // Array of custom flags (enum) for the TextField
+    //    flagsNames?: string[]; // Array of flag names (strings) for the Autocomplete
+    //    customFlagsNames?: string[]; // Array of custom flags (strings) for the TextField
+    custom_flags_values: MountFlag[]; // Array of custom flags (enum) for the TextField
 }
 
 
 
 function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointData) => void, objectToEdit?: Partition }) {
-    const { control, handleSubmit, watch, reset, formState: { errors, isDirty } } = useForm<xMountPointData>({
-        defaultValues: { path: '', fstype: '', flagsNames: [], customFlagsNames: [] }, // Default values for the form
+    const { control, handleSubmit, watch, reset, formState: { errors, isDirty }, register, setValue } = useForm<xMountPointData>({
+        defaultValues: { path: '', fstype: ''/*, flagsNames: [], customFlagsNames: []*/ }, // Default values for the form
+    });
+    const { fields, append, prepend, remove, swap, move, insert, replace } = useFieldArray({
+        control, // control props comes from useForm (optional: if you are using FormProvider)
+        name: "custom_flags_values", // unique name for your Field Array
     });
     const { data: filesystems, isLoading: fsLoading, error: fsError } = useGetFilesystemsQuery();
 
@@ -483,26 +488,12 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             const sanitizedName = suggestedName.replace(/[\s\\/:"*?<>|]+/g, '_');
             const existingMountData = props.objectToEdit.mount_point_data?.[0];
 
-            /*
-             const getFlagNames = (flags: Flags[] | undefined): string[] => {
-                 if (!flags) return [];
-                 return flags
-                     .map(flagValue => {
-                         // Find the string key corresponding to the numeric value in the Flags enum
-                         const key = Object.keys(Flags).find(k => Flags[k as keyof typeof Flags] === flagValue);
-                         return key; // Return the string key (e.g., "ReadOnly")
-                     })
-                     .filter((name): name is string => typeof name === 'string'); // Filter out undefined/numeric keys
-             };
-             */
-
-
             reset({
                 path: existingMountData?.path || `/mnt/${sanitizedName}`,
                 fstype: existingMountData?.fstype || undefined, // Use existing or let backend detect
                 flags: existingMountData?.flags || [], // Keep numeric flags if needed internally
-                flagsNames: existingMountData?.flags?.map(flg => flg.name), // Populate Autocomplete with string names
-                customFlagsNames: existingMountData?.custom_flags?.map(flag => flag.needsValue ? flag.name + "=" + flag.value : flag.name), // Split custom flags into array
+                // flagsNames: existingMountData?.flags?.map(flg => flg.name), // Populate Autocomplete with string names
+                // customFlagsNames: existingMountData?.custom_flags?.map(flag => flag.needsValue ? flag.name + "=" + flag.value : flag.name), // Split custom flags into array
                 custom_flags: existingMountData?.custom_flags || [], // Keep numeric flags if needed internally
             });
         } else if (!props.open) {
@@ -581,15 +572,20 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         autocompleteProps={{
                                             freeSolo: true,
                                             size: "small",
-                                            //value: watch('fstype') || null, // Ensure controlled component
-                                            //getOptionLabel: (option) => typeof option === 'string' ? option : '',
-                                            //isOptionEqualToValue: (option, value) => option === value,
+                                            onChange: (event, value) => {
+                                                console.log("FS Type changed:", value);
+                                                setValue('custom_flags', []); // Clear custom flags when FS type changes
+                                                setValue('custom_flags_values', []); // Clear custom flags values when FS type changes
+                                                //setValue('flags', []); // Clear flags when FS type changes
+                                                //setValue('fstype', value); // Update the form value
+                                            }
                                         }}
                                         textFieldProps={{
                                             helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
                                             error: !!fsError,
                                             InputLabelProps: { shrink: true }
                                         }}
+
                                     />
                                 </Grid>
                                 <Grid size={6}> {/* FS Flags */}
@@ -598,7 +594,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         <AutocompleteElement
                                             multiple
                                             name="flags"
-                                            label="FileSystem specific Mount Flags"
+                                            label="Mount Flags"
                                             options={fsLoading ? [] : (filesystems as FilesystemType[])[0]?.mountFlags || []} // Use string keys for options
                                             control={control}
                                             autocompleteProps={{
@@ -616,22 +612,11 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                                 isOptionEqualToValue(option, value) {
                                                     return option.name === value.name;
                                                 },
-                                                /*
-                                                renderValue: (values, getItemProps) =>
-                                                    values.map((option, index) => {
-                                                        const { key, ...itemProps } = getItemProps({ index });
-                                                        console.log(values, option)
-                                                        return (
-                                                            <Chip
-                                                                key={key}
-                                                                variant="outlined"
-                                                                label={option?.name || "bobo"}
-                                                                size="small"
-                                                                {...itemProps}
-                                                            />
-                                                        );
-                                                    })
-                                                */
+                                            }}
+                                            textFieldProps={{
+                                                //helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
+                                                //error: !!fsError,
+                                                InputLabelProps: { shrink: true }
                                             }}
                                         />
                                     }
@@ -649,7 +634,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                                 size: "small",
                                                 limitTags: 5,
                                                 getOptionKey: (option) => option.name,
-                                                getOptionLabel: (option) => option.name,
+                                                // getOptionLabel: (option) => option.name,
                                                 renderOption: (props, option) => (
                                                     <li {...props} key={option.name}>
                                                         <Tooltip title={option.description || ""}>
@@ -660,26 +645,67 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                                 isOptionEqualToValue(option, value) {
                                                     return option.name === value.name;
                                                 },
-                                                /*
                                                 renderValue: (values, getItemProps) =>
                                                     values.map((option, index) => {
                                                         const { key, ...itemProps } = getItemProps({ index });
-                                                        console.log(values, option)
+                                                        //console.log(values, option)
                                                         return (
                                                             <Chip
+                                                                color={option.needsValue ? "warning" : "default"}
                                                                 key={key}
-                                                                variant="outlined"
+                                                                variant="filled"
                                                                 label={option?.name || "bobo"}
                                                                 size="small"
                                                                 {...itemProps}
                                                             />
                                                         );
-                                                    })
-                                                */
+                                                    }),
+                                                onChange: (event, value) => {
+                                                    console.log(event, value)
+                                                    replace(value.filter(v => v.needsValue)); // Only keep flags that need values
+                                                },
                                             }}
                                         />
                                     }
                                 </Grid>
+                                {fields.map((field, index) => (
+                                    <Grid size={6}> {/* FS CustomFlags Values */}
+                                        {/*
+                                        <TextField
+                                            key={field.id} // important to include key with field's id
+                                            label={field.name}
+                                            id="outlined-size-small"
+                                            required
+
+                                            helperText={field.value_description}
+                                            size="small"
+                                            {...register(`custom_flags_values.${index}.value`, {
+                                                required: true,
+                                                pattern: RegExp(field.value_validation_regex || ".*"),
+                                            })}
+                                        />
+                                        */}
+                                        <TextFieldElement
+                                            key={field.id}
+                                            size="small"
+                                            name={`custom_flags_values.${index}.value`}
+                                            label={field.name}
+                                            control={control}
+                                            required
+                                            fullWidth
+                                            variant="outlined"
+                                            rules={{
+                                                required: true,
+                                                pattern: {
+                                                    value: RegExp(field.value_validation_regex || ".*"),
+                                                    message: `Invalid value for ${field.name}. ${field.value_description}`,
+                                                },
+                                            }}
+                                            slotProps={{ inputLabel: { shrink: true } }} // Ensure label is always shrunk
+                                            helperText={field.value_description}
+                                        />
+                                    </Grid>
+                                ))}
                             </Grid>
                         </Stack>
                     </DialogContent>
