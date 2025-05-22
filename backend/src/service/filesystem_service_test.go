@@ -27,13 +27,13 @@ func TestFilesystemServiceTestSuite(t *testing.T) {
 func (suite *FilesystemServiceTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.fsService = service.NewFilesystemService(suite.ctx)
-	require.NotNil(suite.T(), suite.fsService, "FilesystemService should be initialized")
+	suite.Require().NotNil(suite.fsService, "FilesystemService should be initialized")
 }
 
 func (suite *FilesystemServiceTestSuite) TestGetStandardMountFlags() {
 	stdFlags, err := suite.fsService.GetStandardMountFlags()
-	require.NoError(suite.T(), err)
-	require.NotNil(suite.T(), stdFlags)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(stdFlags)
 
 	// Check for a few expected flags
 	foundRo := false
@@ -46,62 +46,62 @@ func (suite *FilesystemServiceTestSuite) TestGetStandardMountFlags() {
 			foundNoExec = true
 		}
 	}
-	assert.True(suite.T(), foundRo, "Standard flag 'ro' not found")
-	assert.True(suite.T(), foundNoExec, "Standard flag 'noexec' not found")
+	suite.True(foundRo, "Standard flag 'ro' not found")
+	suite.True(foundNoExec, "Standard flag 'noexec' not found")
 
 	// Verify it's not empty
-	assert.NotEmpty(suite.T(), stdFlags)
+	suite.NotEmpty(stdFlags)
 }
 
 func (suite *FilesystemServiceTestSuite) TestGetFilesystemSpecificMountFlags() {
 	// Test with a known filesystem type (ntfs)
 	ntfsFlags, err := suite.fsService.GetFilesystemSpecificMountFlags("ntfs")
-	require.NoError(suite.T(), err)
-	require.NotNil(suite.T(), ntfsFlags)
-	assert.NotEmpty(suite.T(), ntfsFlags, "Expected specific flags for ntfs")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(ntfsFlags)
+	suite.NotEmpty(ntfsFlags, "Expected specific flags for ntfs")
 
 	foundUID := false
 	for _, flag := range ntfsFlags {
 		if flag.Name == "uid" {
 			foundUID = true
-			assert.True(suite.T(), flag.NeedsValue, "ntfs uid flag should need a value")
+			suite.True(flag.NeedsValue, "ntfs uid flag should need a value")
 		}
 	}
-	assert.True(suite.T(), foundUID, "ntfs specific flag 'uid' not found")
+	suite.True(foundUID, "ntfs specific flag 'uid' not found")
 
 	// Test with another known filesystem type (ntfs3)
 	ntfs3Flags, err := suite.fsService.GetFilesystemSpecificMountFlags("ntfs3")
-	require.NoError(suite.T(), err)
-	require.NotNil(suite.T(), ntfs3Flags)
-	assert.NotEmpty(suite.T(), ntfs3Flags, "Expected specific flags for ntfs3")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(ntfs3Flags)
+	suite.NotEmpty(ntfs3Flags, "Expected specific flags for ntfs3")
 	foundForce := false
 	for _, flag := range ntfs3Flags {
 		if flag.Name == "force" {
 			foundForce = true
-			assert.False(suite.T(), flag.NeedsValue, "ntfs3 force flag should not need a value")
+			suite.False(flag.NeedsValue, "ntfs3 force flag should not need a value")
 		}
 	}
-	assert.True(suite.T(), foundForce, "ntfs3 specific flag 'force' not found")
+	suite.True(foundForce, "ntfs3 specific flag 'force' not found")
 
 	// Test with an unknown filesystem type
 	unknownFlags, err := suite.fsService.GetFilesystemSpecificMountFlags("someunknownfs")
-	require.NoError(suite.T(), err)
-	require.NotNil(suite.T(), unknownFlags)
-	assert.Empty(suite.T(), unknownFlags, "Expected no specific flags for an unknown filesystem type")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(unknownFlags)
+	suite.Empty(unknownFlags, "Expected no specific flags for an unknown filesystem type")
 
 	// Test with zfs
 	zfsFlags, err := suite.fsService.GetFilesystemSpecificMountFlags("zfs")
-	require.NoError(suite.T(), err)
-	require.NotNil(suite.T(), zfsFlags)
-	assert.NotEmpty(suite.T(), zfsFlags)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(zfsFlags)
+	suite.NotEmpty(zfsFlags)
 	foundContext := false
 	for _, flag := range zfsFlags {
 		if flag.Name == "context" {
 			foundContext = true
-			assert.True(suite.T(), flag.NeedsValue, "zfs context flag should need a value")
+			suite.True(flag.NeedsValue, "zfs context flag should need a value")
 		}
 	}
-	assert.True(suite.T(), foundContext, "zfs specific flag 'context' not found")
+	suite.True(foundContext, "zfs specific flag 'context' not found")
 }
 
 func (suite *FilesystemServiceTestSuite) TestGetMountFlagsAndData() {
