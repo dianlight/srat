@@ -2,7 +2,7 @@ import { Fragment, useState, useEffect, useRef } from "react";
 import { InView } from "react-intersection-observer";
 import { PreviewDialog } from "../components/PreviewDialog";
 import List from "@mui/material/List"; // Import Collapse and Chip
-import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Collapse, Chip, Switch, FormControlLabel } from "@mui/material"; // Import Collapse and Chip, Switch, FormControlLabel
+import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Collapse, Chip, Switch, FormControlLabel, Autocomplete, TextField } from "@mui/material"; // Import Collapse and Chip, Switch, FormControlLabel
 import ShareIcon from '@mui/icons-material/Share';
 import AddIcon from '@mui/icons-material/Add';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -13,11 +13,11 @@ import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
 import { faPlug, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
-import { AutocompleteElement, useForm, TextFieldElement } from "react-hook-form-mui"; // Import TextFieldElement
+import { AutocompleteElement, useForm, TextFieldElement, MultiSelectElement, Controller } from "react-hook-form-mui"; // Import TextFieldElement
 import { toast } from "react-toastify";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
-import { useDeleteVolumeByMountPathHashMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathHashMountMutation, type Partition, type Disk, type MountPointData, Type, type FilesystemType } from "../store/sratApi";
+import { useDeleteVolumeByMountPathHashMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathHashMountMutation, type Partition, type Disk, type MountPointData, Type, type FilesystemType, type MountFlag } from "../store/sratApi";
 // Add EjectIcon to your imports
 import EjectIcon from '@mui/icons-material/Eject';
 import UsbIcon from '@mui/icons-material/Usb';
@@ -462,6 +462,8 @@ export function Volumes() {
 
 
 interface xMountPointData extends MountPointData {
+    flags?: MountFlag[]; // Array of flags (enum) for the Autocomplete
+    custom_flags?: MountFlag[]; // Array of custom flags (enum) for the TextField
     flagsNames?: string[]; // Array of flag names (strings) for the Autocomplete
     customFlagsNames?: string[]; // Array of custom flags (strings) for the TextField
 }
@@ -498,10 +500,10 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             reset({
                 path: existingMountData?.path || `/mnt/${sanitizedName}`,
                 fstype: existingMountData?.fstype || undefined, // Use existing or let backend detect
-                //flags: existingMountData?.flags, // Keep numeric flags if needed internally
+                flags: existingMountData?.flags || [], // Keep numeric flags if needed internally
                 flagsNames: existingMountData?.flags?.map(flg => flg.name), // Populate Autocomplete with string names
                 customFlagsNames: existingMountData?.custom_flags?.map(flag => flag.needsValue ? flag.name + "=" + flag.value : flag.name), // Split custom flags into array
-                // data: existingMountData?.data || '',
+                custom_flags: existingMountData?.custom_flags || [], // Keep numeric flags if needed internally
             });
         } else if (!props.open) {
             reset(); // Reset to default values when closing
@@ -516,6 +518,8 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             return;
         }
 
+        console.log("Form Data:", formData);
+
         /*
         const numericFlags = formData.flagsNames
             ?.map(name => Flags[name as keyof typeof Flags])
@@ -527,8 +531,8 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             path: formData.path,
             path_hash: MD5(formData.path).toString(),
             fstype: formData.fstype || undefined,
-            //flags: numericFlags,
-            //custom_flags: formData.customFlagsNames,
+            flags: formData.flags,
+            custom_flags: formData.custom_flags,
             device: props.objectToEdit.name, // Ensure device name is included
             type: Type.Addon,
         };
@@ -556,8 +560,9 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                 Configure mount options for the volume. The suggested path is based on the volume name.
                             </DialogContentText>
                             <Grid container spacing={2}>
-                                <Grid size={12}> {/* Corrected Grid usage */}
+                                <Grid size={6}> {/* Corrected Grid usage */}
                                     <TextFieldElement
+                                        size="small"
                                         name="path"
                                         label="Mount Path"
                                         control={control}
@@ -575,6 +580,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         options={fsLoading ? [] : (filesystems as FilesystemType[] || []).map(fs => fs.name)}
                                         autocompleteProps={{
                                             freeSolo: true,
+                                            size: "small",
                                             //value: watch('fstype') || null, // Ensure controlled component
                                             //getOptionLabel: (option) => typeof option === 'string' ? option : '',
                                             //isOptionEqualToValue: (option, value) => option === value,
@@ -587,41 +593,92 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                     />
                                 </Grid>
                                 <Grid size={6}> {/* FS Flags */}
-                                    <AutocompleteElement
-                                        multiple
-                                        name="flagsNames"
-                                        label="Mount Flags"
-                                        options={fsLoading ? [] : (filesystems as FilesystemType[])[0]?.mountFlags?.filter(mf => !mf.needsValue).map(mf => mf.name) || []} // Use string keys for options
-                                        control={control}
-                                        autocompleteProps={{
-                                            disableCloseOnSelect: true,
-                                            //value: watch('flagsNames') || [], // Ensure controlled component
-                                            //getOptionLabel: (option) => typeof option === 'string' ? option : '',
-                                            //isOptionEqualToValue: (option, value) => option === value,
-                                        }}
-                                        textFieldProps={{
-                                            InputLabelProps: { shrink: true }
-                                        }}
-                                    />
+                                    {
+                                        !fsLoading && ((filesystems as FilesystemType[])[0]?.mountFlags || []).length > 0 &&
+                                        <AutocompleteElement
+                                            multiple
+                                            name="flags"
+                                            label="FileSystem specific Mount Flags"
+                                            options={fsLoading ? [] : (filesystems as FilesystemType[])[0]?.mountFlags || []} // Use string keys for options
+                                            control={control}
+                                            autocompleteProps={{
+                                                size: "small",
+                                                limitTags: 5,
+                                                getOptionKey: (option) => option.name,
+                                                getOptionLabel: (option) => option.name,
+                                                renderOption: (props, option) => (
+                                                    <li {...props} key={option.name}>
+                                                        <Tooltip title={option.description || ""}>
+                                                            <span>{option.name} {option.needsValue ? <span style={{ fontSize: '0.8em', color: '#888' }}>(Requires Value)</span> : null}</span>
+                                                        </Tooltip>
+                                                    </li>
+                                                ),
+                                                isOptionEqualToValue(option, value) {
+                                                    return option.name === value.name;
+                                                },
+                                                /*
+                                                renderValue: (values, getItemProps) =>
+                                                    values.map((option, index) => {
+                                                        const { key, ...itemProps } = getItemProps({ index });
+                                                        console.log(values, option)
+                                                        return (
+                                                            <Chip
+                                                                key={key}
+                                                                variant="outlined"
+                                                                label={option?.name || "bobo"}
+                                                                size="small"
+                                                                {...itemProps}
+                                                            />
+                                                        );
+                                                    })
+                                                */
+                                            }}
+                                        />
+                                    }
                                 </Grid>
                                 <Grid size={6}> {/* FS CustomFlags */}
-                                    <AutocompleteElement
-                                        multiple
-                                        name="customFlagsNames"
-                                        label="FileSystem specific Mount Flags"
-                                        options={fsLoading ? [] : (filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags?.filter(mf => !mf.needsValue).map(mf => mf.name) || []} // Use string keys for options
-                                        control={control}
-                                        autocompleteProps={{
-                                            disableCloseOnSelect: true,
-                                            //value: watch('flagsNames') || [], // Ensure controlled component
-                                            //getOptionLabel: (option) => typeof option === 'string' ? option : '',
-                                            //isOptionEqualToValue: (option, value) => option === value,
-                                        }}
-                                        textFieldProps={{
-                                            // disabled: fsLoading ? false :(filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags?.length === 0 || false,
-                                            InputLabelProps: { shrink: true }
-                                        }}
-                                    />
+                                    {
+                                        !fsLoading && ((filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags || []).length > 0 &&
+                                        <AutocompleteElement
+                                            multiple
+                                            name="custom_flags"
+                                            label="FileSystem specific Mount Flags"
+                                            options={fsLoading ? [] : (filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags/*?.filter(mf => !mf.needsValue)*/ || []} // Use string keys for options
+                                            control={control}
+                                            autocompleteProps={{
+                                                size: "small",
+                                                limitTags: 5,
+                                                getOptionKey: (option) => option.name,
+                                                getOptionLabel: (option) => option.name,
+                                                renderOption: (props, option) => (
+                                                    <li {...props} key={option.name}>
+                                                        <Tooltip title={option.description || ""}>
+                                                            <span>{option.name} {option.needsValue ? <span style={{ fontSize: '0.8em', color: '#888' }}>(Requires Value)</span> : null}</span>
+                                                        </Tooltip>
+                                                    </li>
+                                                ),
+                                                isOptionEqualToValue(option, value) {
+                                                    return option.name === value.name;
+                                                },
+                                                /*
+                                                renderValue: (values, getItemProps) =>
+                                                    values.map((option, index) => {
+                                                        const { key, ...itemProps } = getItemProps({ index });
+                                                        console.log(values, option)
+                                                        return (
+                                                            <Chip
+                                                                key={key}
+                                                                variant="outlined"
+                                                                label={option?.name || "bobo"}
+                                                                size="small"
+                                                                {...itemProps}
+                                                            />
+                                                        );
+                                                    })
+                                                */
+                                            }}
+                                        />
+                                    }
                                 </Grid>
                             </Grid>
                         </Stack>
