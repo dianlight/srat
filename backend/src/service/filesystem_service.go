@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -13,9 +14,6 @@ import (
 
 // FilesystemServiceInterface defines the methods for managing filesystem types and mount flags.
 type FilesystemServiceInterface interface {
-	// GetSupportedFilesystemTypes returns a list of filesystem types explicitly supported or known by the application.
-	GetSupportedFilesystemTypes() ([]string, errors.E)
-
 	// GetStandardMountFlags returns a list of common, filesystem-agnostic mount flags.
 	GetStandardMountFlags() ([]dto.MountFlag, errors.E)
 
@@ -34,158 +32,205 @@ type FilesystemServiceInterface interface {
 
 // FilesystemService implements the FilesystemServiceInterface.
 type FilesystemService struct {
-	// ctx context.Context // Currently not needed, but could be added for future async operations
-
-	// Hardcoded lists for now. Could be loaded from config/DB in the future.
-	supportedFilesystems []string
-	standardMountFlags   []dto.MountFlag
+	// standardMountFlags holds common, filesystem-agnostic mount flags.
+	standardMountFlags []dto.MountFlag
+	// fsSpecificMountFlags maps filesystem types to their specific mount flags.
 	fsSpecificMountFlags map[string][]dto.MountFlag
+
+	// Precomputed lookup maps for efficiency
+	// standardMountFlagsByName maps lowercase standard flag names to their MountFlag struct.
+	standardMountFlagsByName map[string]dto.MountFlag
+	// allKnownMountFlagsByName maps all lowercase known flag names (standard and specific)
+	// to their MountFlag struct, used for description lookups. Standard flags take precedence on conflict.
+	allKnownMountFlagsByName map[string]dto.MountFlag
 }
 
-// NewFilesystemService creates and initializes a new FilesystemService.
-func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
-	// Initialize hardcoded data
-	supportedFS := []string{
-		"auto", // Common option to detect automatically
-		"ext4",
-		"xfs",
-		"btrfs",
-		"f2fs",
-		"ntfs",  // Older NTFS driver / ntfs-3g (userspace)
-		"ntfs3", // Newer kernel NTFS driver
-		"vfat",  // FAT32
-		"exfat",
-		"tmpfs",
-		"iso9660", // CD-ROM / DVD images
-		"udf",     // DVD / Blu-ray images
-		"zfs",     // ZFS filesystem
-	}
-
-	standardFlags := []dto.MountFlag{
+// Package-level variables for default configurations.
+// These are used to initialize a new FilesystemService.
+var (
+	// defaultStandardMountFlags is the initial list of common, filesystem-agnostic mount flags.
+	defaultStandardMountFlags = []dto.MountFlag{
 		{Name: "ro", Description: "Mount read-only"},
-		{Name: "rw", Description: "Mount read-write (default)"}, // NeedsValue: false (default state)
+		{Name: "rw", Description: "Mount read-write (default)"},
 		{Name: "sync", Description: "All I/O to the filesystem should be done synchronously."},
-		{Name: "async", Description: "All I/O to the filesystem should be done asynchronously."}, // NeedsValue: false (default state)
-		{Name: "atime", Description: "Do not use noatime feature (default)"},                     // NeedsValue: false (default state)
+		{Name: "async", Description: "All I/O to the filesystem should be done asynchronously."},
+		{Name: "atime", Description: "Do not use noatime feature (default)"},
 		{Name: "noatime", Description: "Do not update inode access times on this filesystem."},
 		{Name: "diratime", Description: "Update directory inode access times on this filesystem."},
 		{Name: "nodiratime", Description: "Do not update directory inode access times on this filesystem."},
-		{Name: "dev", Description: "Interpret character or block special devices on the filesystem."}, // NeedsValue: false (default state)
+		{Name: "dev", Description: "Interpret character or block special devices on the filesystem."},
 		{Name: "nodev", Description: "Do not interpret character or block special devices on the filesystem."},
-		{Name: "exec", Description: "Permit execution of binaries."}, // NeedsValue: false (default state)
+		{Name: "exec", Description: "Permit execution of binaries."},
 		{Name: "noexec", Description: "Do not permit execution of binaries."},
-		{Name: "suid", Description: "Permit set-user-id or set-group-id bits to take effect."}, // NeedsValue: false (default state)
+		{Name: "suid", Description: "Permit set-user-id or set-group-id bits to take effect."},
 		{Name: "nosuid", Description: "Do not permit set-user-id or set-group-id bits to take effect."},
 		{Name: "remount", Description: "Attempt to remount an already-mounted filesystem."},
-		{Name: "defaults", Description: "Use default options: rw, suid, dev, exec, auto, nouser, async."}, // NeedsValue: false (composite default)
-		// Add more common flags as needed
-		// All standard flags are boolean/switch flags, so NeedsValue is false by default or explicitly set.
+		{Name: "defaults", Description: "Use default options: rw, suid, dev, exec, auto, nouser, async."},
 	}
 
-	fsSpecificFlags := map[string][]dto.MountFlag{
+	// defaultFsSpecificMountFlags maps filesystem types to their specific mount flags.
+	defaultFsSpecificMountFlags = map[string][]dto.MountFlag{
 		"ntfs": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true},
-			{Name: "permissions", Description: "Respect NTFS permissions", NeedsValue: false},
-			{Name: "acl", Description: "Enable ACL support", NeedsValue: false},
-			{Name: "exec", Description: "Allow executing files (use with caution)", NeedsValue: false}, // Note: 'exec' is also a standard flag
-			// Add more ntfs specific flags
-			// uid, gid, fmask, dmask need values. permissions, acl, exec do not.
+			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "permissions", Description: "Respect NTFS permissions"},
+			{Name: "acl", Description: "Enable ACL support"},
+			{Name: "exec", Description: "Allow executing files (use with caution)"},
 		},
 		"ntfs3": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true},
-			{Name: "permissions", Description: "Respect NTFS permissions", NeedsValue: false},
-			{Name: "acl", Description: "Enable ACL support", NeedsValue: false},
-			{Name: "force", Description: "Force mount even if the volume is marked dirty", NeedsValue: false},
-			{Name: "norecover", Description: "Do not try to recover a dirty volume (default for ntfs3)", NeedsValue: false},
-			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true},
-			// Add more ntfs3 specific flags
-			// uid, gid, fmask, dmask, iocharset need values. permissions, acl, force, norecover do not.
+			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "permissions", Description: "Respect NTFS permissions"},
+			{Name: "acl", Description: "Enable ACL support"},
+			{Name: "force", Description: "Force mount even if the volume is marked dirty"},
+			{Name: "norecover", Description: "Do not try to recover a dirty volume (default for ntfs3)"},
+			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
 		},
 		"zfs": {
-			{Name: "zfsutil", Description: "Indicates that the mount is managed by ZFS utilities", NeedsValue: false},
-			{Name: "noauto", Description: "Can be used to prevent automatic mounting by zfs-mount-generator", NeedsValue: false},
-			{Name: "context", Description: "Set SELinux context for all files/directories", NeedsValue: true},
-			{Name: "fscontext", Description: "Set SELinux context for the filesystem superblock", NeedsValue: true},
-			// ZFS has many properties managed by `zfs set`, but some can be mount options.
-			// zfsutil, noauto do not need values. context, fscontext do.
+			{Name: "zfsutil", Description: "Indicates that the mount is managed by ZFS utilities"},
+			{Name: "noauto", Description: "Can be used to prevent automatic mounting by zfs-mount-generator"},
+			{Name: "context", Description: "Set SELinux context for all files/directories", NeedsValue: true, ValueDescription: "SELinux context string", ValueValidationRegex: `^[\w:.-]+$`},
+			{Name: "fscontext", Description: "Set SELinux context for the filesystem superblock", NeedsValue: true, ValueDescription: "SELinux context string", ValueValidationRegex: `^[\w:.-]+$`},
 		},
 		"ext2": {
-			{Name: "acl", Description: "Enable POSIX Access Control Lists support", NeedsValue: false},
-			{Name: "user_xattr", Description: "Enable user extended attributes", NeedsValue: false},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true},
-			{Name: "discard", Description: "Enable discard/TRIM support", NeedsValue: false},
-			// ext2 specific flags are limited, often sharing with ext3/ext4 or standard flags.
+			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
+			{Name: "user_xattr", Description: "Enable user extended attributes"},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
+			{Name: "discard", Description: "Enable discard/TRIM support"},
 		},
 		"ext3": {
-			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true},
-			{Name: "journal_checksum", Description: "Enable journal checksumming", NeedsValue: false},
-			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously", NeedsValue: false},
-			{Name: "acl", Description: "Enable POSIX Access Control Lists support", NeedsValue: false},
-			{Name: "user_xattr", Description: "Enable user extended attributes", NeedsValue: false},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true},
-			{Name: "discard", Description: "Enable discard/TRIM support", NeedsValue: false},
-			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true},
-			// ext3 shares many flags with ext4, particularly journaling ones.
+			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true, ValueDescription: "One of: journal, ordered, writeback", ValueValidationRegex: `^(journal|ordered|writeback)$`},
+			{Name: "journal_checksum", Description: "Enable journal checksumming"},
+			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously"},
+			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
+			{Name: "user_xattr", Description: "Enable user extended attributes"},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
+			{Name: "discard", Description: "Enable discard/TRIM support"},
+			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true, ValueDescription: "0 or 1", ValueValidationRegex: `^[01]$`},
 		},
 		"vfat": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true},
-			{Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true},
-			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true},
-			{Name: "codepage", Description: "Codepage for short filenames (e.g., 437)", NeedsValue: true},
-			{Name: "shortname", Description: "Shortname case (lower, win95, mixed)", NeedsValue: true},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true},
+			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
+			{Name: "codepage", Description: "Codepage for short filenames (e.g., 437)", NeedsValue: true, ValueDescription: "Codepage number (e.g., 437)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "shortname", Description: "Shortname case (lower, win95, winnt, mixed)", NeedsValue: true, ValueDescription: "One of: lower, win95, winnt, mixed", ValueValidationRegex: `^(lower|win95|winnt|mixed)$`},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
 		},
 		"exfat": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true},
-			{Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true},
+			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
 		},
 		"ext4": {
-			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true},
-			{Name: "discard", Description: "Enable discard/TRIM support", NeedsValue: false},
-			{Name: "nodiscard", Description: "Disable discard/TRIM support (default)", NeedsValue: false},
-			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true},
-			{Name: "auto_da_alloc", Description: "Enable delayed allocation (default)", NeedsValue: false},
-			{Name: "noauto_da_alloc", Description: "Disable delayed allocation", NeedsValue: false},
-			{Name: "journal_checksum", Description: "Enable journal checksumming", NeedsValue: false},
-			{Name: "nojournal_checksum", Description: "Disable journal checksumming (default)", NeedsValue: false},
-			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously", NeedsValue: false}, // This one was correct
+			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true, ValueDescription: "One of: journal, ordered, writeback", ValueValidationRegex: `^(journal|ordered|writeback)$`},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
+			{Name: "discard", Description: "Enable discard/TRIM support"},
+			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true, ValueDescription: "0 or 1", ValueValidationRegex: `^[01]$`},
+			{Name: "noauto_da_alloc", Description: "Disable delayed allocation"},
+			{Name: "journal_checksum", Description: "Enable journal checksumming"},
+			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously"},
 		},
-		// Add more filesystem types with specific flags as needed
+	}
+
+	// syscallFlagMap maps mount flag names (lowercase) to their corresponding syscall constants.
+	// This map includes flags that SET a bit. Flags like "rw" or "async"
+	// represent the ABSENCE of a restrictive bit and are handled by not setting MS_RDONLY or MS_SYNCHRONOUS.
+	// "defaults" is also handled by the base state (0) and subsequent overrides.
+	syscallFlagMap = map[string]uintptr{
+		"ro":          syscall.MS_RDONLY,
+		"nosuid":      syscall.MS_NOSUID,
+		"nodev":       syscall.MS_NODEV,
+		"noexec":      syscall.MS_NOEXEC,
+		"sync":        syscall.MS_SYNCHRONOUS,
+		"remount":     syscall.MS_REMOUNT,
+		"mand":        syscall.MS_MANDLOCK,
+		"dirsync":     syscall.MS_DIRSYNC,
+		"noatime":     syscall.MS_NOATIME,
+		"nodiratime":  syscall.MS_NODIRATIME,
+		"bind":        syscall.MS_BIND,
+		"rec":         syscall.MS_REC, // Used with MS_BIND for recursive bind mounts (rbind)
+		"silent":      syscall.MS_SILENT,
+		"posixacl":    syscall.MS_POSIXACL,
+		"acl":         syscall.MS_POSIXACL, // Common alias for posixacl
+		"unbindable":  syscall.MS_UNBINDABLE,
+		"private":     syscall.MS_PRIVATE,
+		"slave":       syscall.MS_SLAVE,
+		"shared":      syscall.MS_SHARED,
+		"relatime":    syscall.MS_RELATIME,
+		"strictatime": syscall.MS_STRICTATIME,
+		// "lazytime":    syscall.MS_LAZYTIME, // Not universally available, explicitly not mapped
+	}
+
+	// ignoredSyscallFlags are descriptive, represent default states, or are handled by other mechanisms
+	// (like the data field of mount) when converting to syscall flags. These will be ignored without warning.
+	ignoredSyscallFlags = map[string]bool{
+		"rw":       true,
+		"async":    true,
+		"atime":    true,
+		"diratime": true,
+		"dev":      true,
+		"exec":     true,
+		"suid":     true,
+		"defaults": true,
+		"auto":     true, // mount(8) option, not direct syscall flag
+		"nouser":   true, // mount(8) option
+		"user":     true, // mount(8) option
+		"_netdev":  true, // mount(8) option
+		"nofail":   true, // mount(8) option
+	}
+)
+
+// NewFilesystemService creates and initializes a new FilesystemService.
+func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
+	// Initialize precomputed maps for efficient lookups
+	stdFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags))
+	for _, f := range defaultStandardMountFlags {
+		stdFlagsByName[strings.ToLower(f.Name)] = f
+	}
+
+	allKnownFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags)+len(defaultFsSpecificMountFlags)) // Estimate size
+	for k, v := range stdFlagsByName {
+		allKnownFlagsByName[k] = v
+	}
+	for _, fsFlags := range defaultFsSpecificMountFlags {
+		for _, f := range fsFlags {
+			lowerName := strings.ToLower(f.Name)
+			// Standard flags take precedence for descriptions if names collide.
+			if _, exists := allKnownFlagsByName[lowerName]; !exists {
+				allKnownFlagsByName[lowerName] = f
+			}
+		}
 	}
 
 	p := &FilesystemService{
-		// ctx: ctx,
-		supportedFilesystems: supportedFS,
-		standardMountFlags:   standardFlags,
-		fsSpecificMountFlags: fsSpecificFlags,
+		standardMountFlags:   defaultStandardMountFlags,
+		fsSpecificMountFlags: defaultFsSpecificMountFlags,
+
+		standardMountFlagsByName: stdFlagsByName,
+		allKnownMountFlagsByName: allKnownFlagsByName,
 	}
 	return p
 }
 
-// GetSupportedFilesystemTypes returns the list of supported filesystem types.
-func (s *FilesystemService) GetSupportedFilesystemTypes() ([]string, errors.E) {
-	// In a real-world scenario, this might dynamically check /proc/filesystems
-	// or filter a predefined list based on system capabilities.
-	// For now, return the hardcoded list.
-	return s.supportedFilesystems, nil
-}
-
 // GetStandardMountFlags returns the list of standard mount flags.
 func (s *FilesystemService) GetStandardMountFlags() ([]dto.MountFlag, errors.E) {
-	return s.standardMountFlags, nil
+	var filteredFlags []dto.MountFlag
+	for _, flag := range s.standardMountFlags {
+		// Check if the lowercase version of the flag name is in the ignoredSyscallFlags map
+		if _, isIgnored := ignoredSyscallFlags[strings.ToLower(flag.Name)]; !isIgnored {
+			filteredFlags = append(filteredFlags, flag)
+		}
+	}
+	return filteredFlags, nil
 }
 
 // GetFilesystemSpecificMountFlags returns the list of mount flags specific to the given filesystem type.
@@ -208,47 +253,6 @@ func (s *FilesystemService) MountFlagsToSyscallFlagAndData(inputFlags []dto.Moun
 	var syscallFlagValue uintptr = 0
 	var dataFlags []string
 
-	// Map of mount flag names (lowercase) to their corresponding syscall constants.
-	// This map includes flags that SET a bit. Flags like "rw" or "async"
-	// represent the ABSENCE of a restrictive bit and are handled by not setting MS_RDONLY or MS_SYNCHRONOUS.
-	// "defaults" is also handled by the base state (0) and subsequent overrides.
-	flagMap := map[string]uintptr{
-		"ro":          syscall.MS_RDONLY,
-		"nosuid":      syscall.MS_NOSUID,
-		"nodev":       syscall.MS_NODEV,
-		"noexec":      syscall.MS_NOEXEC,
-		"sync":        syscall.MS_SYNCHRONOUS,
-		"remount":     syscall.MS_REMOUNT,
-		"mand":        syscall.MS_MANDLOCK,
-		"dirsync":     syscall.MS_DIRSYNC,
-		"noatime":     syscall.MS_NOATIME,
-		"nodiratime":  syscall.MS_NODIRATIME,
-		"bind":        syscall.MS_BIND,
-		"rec":         syscall.MS_REC, // Used with MS_BIND for recursive bind mounts (rbind)
-		"silent":      syscall.MS_SILENT,
-		"posixacl":    syscall.MS_POSIXACL,
-		"acl":         syscall.MS_POSIXACL, // Common alias for posixacl
-		"unbindable":  syscall.MS_UNBINDABLE,
-		"private":     syscall.MS_PRIVATE,
-		"slave":       syscall.MS_SLAVE,
-		"shared":      syscall.MS_SHARED,
-		"relatime":    syscall.MS_RELATIME,
-		"strictatime": syscall.MS_STRICTATIME,
-		// "lazytime":    syscall.MS_LAZYTIME, // Ignore LAZYTIME
-	}
-
-	// Flags that are descriptive, represent default states, or are handled by other mechanisms (like the data field of mount).
-	// These will be ignored without warning.
-	ignoredFlags := map[string]bool{
-		"rw": true, "async": true, "atime": true, "diratime": true,
-		"dev": true, "exec": true, "suid": true, "defaults": true,
-		"auto":    true, // mount(8) option, not direct syscall flag
-		"nouser":  true, // mount(8) option
-		"user":    true, // mount(8) option
-		"_netdev": true, // mount(8) option
-		"nofail":  true, // mount(8) option
-	}
-
 	for _, mf := range inputFlags {
 		rawFlagName := strings.TrimSpace(mf.Name)
 		lowerFlagName := strings.ToLower(rawFlagName) // Use lowercase for map lookups
@@ -263,20 +267,35 @@ func (s *FilesystemService) MountFlagsToSyscallFlagAndData(inputFlags []dto.Moun
 
 		// If a Value is provided in the struct, use it regardless of the Name format
 		if mf.FlagValue != "" {
+			// Validate the value if a regex is provided
+			if mf.NeedsValue && mf.ValueValidationRegex != "" {
+				compiledRegex, err := regexp.Compile(mf.ValueValidationRegex)
+				if err != nil {
+					// This is a configuration error in the predefined regex
+					slog.Error("Invalid validation regex configured for flag", "flag", mf.Name, "regex", mf.ValueValidationRegex, "error", err)
+					// Potentially return an internal server error, or log and proceed without validation for this flag
+					// For now, let's return an error to make it explicit
+					return 0, "", errors.WithDetails(err, "Message", "Invalid validation regex", "flag", mf.Name)
+				}
+				if !compiledRegex.MatchString(mf.FlagValue) {
+					return 0, "", errors.WithDetails(dto.ErrorInvalidParameter,
+						"Flag", mf.Name, "Value", mf.FlagValue,
+						"Message", fmt.Sprintf("Value for flag '%s' does not match expected format. %s", mf.Name, mf.ValueDescription))
+				}
+			}
 			formattedFlag := fmt.Sprintf("%s=%s", rawFlagName, mf.FlagValue)
-			slog.Debug("GetMountFlagsAndData: Collecting data flag with explicit value", "flag", formattedFlag)
+			slog.Debug("MountFlagsToSyscallFlagAndData: Collecting data flag with explicit value", "flag", formattedFlag)
 			dataFlags = append(dataFlags, formattedFlag)
 			continue
 		}
 
-		if val, ok := flagMap[lowerFlagName]; ok {
-			//lowerFlagName := strings.ToLower(rawFlagName) // Ensure lowercase for map lookup
-			slog.Debug("GetMountFlagsAndData: Adding syscall flag to bitmask", "flag", rawFlagName, "value", val)
+		if val, ok := syscallFlagMap[lowerFlagName]; ok {
+			slog.Debug("MountFlagsToSyscallFlagAndData: Adding syscall flag to bitmask", "flag", rawFlagName, "value", val)
 			syscallFlagValue |= val
-		} else if ignoredFlags[lowerFlagName] {
-			slog.Debug("GetMountFlagsAndData: Ignoring known descriptive/default flag", "flag", rawFlagName)
+		} else if ignoredSyscallFlags[lowerFlagName] {
+			slog.Debug("MountFlagsToSyscallFlagAndData: Ignoring known descriptive/default flag", "flag", rawFlagName)
 		} else if rawFlagName != "" {
-			slog.Warn("GetSyscallFlags: Unknown or unhandled mount flag for bitmask generation", "flag", mf.Name)
+			slog.Warn("MountFlagsToSyscallFlagAndData: Unknown or unhandled mount flag for bitmask generation", "flag", mf.Name)
 		}
 	}
 
@@ -289,12 +308,6 @@ func (s *FilesystemService) MountFlagsToSyscallFlagAndData(inputFlags []dto.Moun
 // SyscallFlagToMountFlag converts a syscall flag bitmask (uintptr) back into a slice of dto.MountFlag.
 func (s *FilesystemService) SyscallFlagToMountFlag(syscallFlag uintptr) ([]dto.MountFlag, errors.E) {
 	var result []dto.MountFlag
-
-	// Build a lookup for descriptions from standardMountFlags by lowercase name
-	stdFlagDetails := make(map[string]dto.MountFlag)
-	for _, f := range s.standardMountFlags {
-		stdFlagDetails[strings.ToLower(f.Name)] = f
-	}
 
 	// Iterate through the map of known syscall flags.
 	// Note: The order of flags in the result slice will depend on map iteration order,
@@ -311,7 +324,7 @@ func (s *FilesystemService) SyscallFlagToMountFlag(syscallFlag uintptr) ([]dto.M
 			}
 
 			// Try to find more details (like original casing and description)
-			if detail, ok := stdFlagDetails[strings.ToLower(nameInMap)]; ok {
+			if detail, ok := s.standardMountFlagsByName[strings.ToLower(nameInMap)]; ok {
 				mountFlag.Name = detail.Name // Use original casing
 				mountFlag.Description = detail.Description
 			} else {
@@ -333,19 +346,6 @@ func (s *FilesystemService) SyscallDataToMountFlag(data string) ([]dto.MountFlag
 
 	options := strings.Split(data, ",")
 
-	// For descriptions, we can check standard and fs-specific flags (best-effort).
-	nameToDescMap := make(map[string]dto.MountFlag)
-	for _, mf := range s.standardMountFlags {
-		nameToDescMap[strings.ToLower(mf.Name)] = mf
-	}
-	for _, fsFlags := range s.fsSpecificMountFlags { // Iterate through all filesystem types
-		for _, mf := range fsFlags {
-			if _, exists := nameToDescMap[strings.ToLower(mf.Name)]; !exists { // Avoid overwriting standard flags
-				nameToDescMap[strings.ToLower(mf.Name)] = mf
-			}
-		}
-	}
-
 	for _, opt := range options {
 		opt = strings.TrimSpace(opt)
 		if opt == "" {
@@ -363,10 +363,11 @@ func (s *FilesystemService) SyscallDataToMountFlag(data string) ([]dto.MountFlag
 			mountFlag.NeedsValue = false // Standalone option in data string
 		}
 
-		if descFlag, ok := nameToDescMap[strings.ToLower(name)]; ok {
+		if descFlag, ok := s.allKnownMountFlagsByName[strings.ToLower(name)]; ok {
 			mountFlag.Description = descFlag.Description
-			// Note: descFlag.NeedsValue could also be consulted here if it's considered more authoritative
-			// than the presence of "=" in parsing. For now, parsing dictates NeedsValue.
+			// If the flag from allKnownMountFlagsByName indicates it needs a value, copy its description and regex
+			mountFlag.ValueDescription = descFlag.ValueDescription
+			mountFlag.ValueValidationRegex = descFlag.ValueValidationRegex
 		} else {
 			slog.Debug("SyscallDataToMountFlag: No description found for data flag", "flagName", name)
 		}

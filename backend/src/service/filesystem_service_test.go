@@ -30,21 +30,6 @@ func (suite *FilesystemServiceTestSuite) SetupTest() {
 	require.NotNil(suite.T(), suite.fsService, "FilesystemService should be initialized")
 }
 
-func (suite *FilesystemServiceTestSuite) TestGetSupportedFilesystemTypes() {
-	fsTypes, err := suite.fsService.GetSupportedFilesystemTypes()
-	require.NoError(suite.T(), err)
-	require.NotNil(suite.T(), fsTypes)
-
-	// Check for a few expected types
-	assert.Contains(suite.T(), fsTypes, "ext4")
-	assert.Contains(suite.T(), fsTypes, "ntfs")
-	assert.Contains(suite.T(), fsTypes, "vfat")
-	assert.Contains(suite.T(), fsTypes, "auto")
-
-	// Verify it's not empty
-	assert.NotEmpty(suite.T(), fsTypes)
-}
-
 func (suite *FilesystemServiceTestSuite) TestGetStandardMountFlags() {
 	stdFlags, err := suite.fsService.GetStandardMountFlags()
 	require.NoError(suite.T(), err)
