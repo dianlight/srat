@@ -281,24 +281,6 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
-          data: HealthPing;
-          /** The event name. */
-          event: '"heartbeat"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: SharedResource[] | null;
-          /** The event name. */
-          event: '"share"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
           data: Welcome;
           /** The event name. */
           event: '"hello"';
@@ -329,6 +311,24 @@ export type SseApiResponse = /** status 200 OK */
           data: Disk[] | null;
           /** The event name. */
           event: '"volumes"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: HealthPing;
+          /** The event name. */
+          event: '"heartbeat"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: SharedResource[] | null;
+          /** The event name. */
+          event: '"share"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -396,6 +396,8 @@ export type MountFlag = {
   name: string;
   needsValue?: boolean;
   value?: string;
+  value_description?: string;
+  value_validation_regex?: string;
 };
 export type FilesystemType = {
   customMountFlags: MountFlag[] | null;

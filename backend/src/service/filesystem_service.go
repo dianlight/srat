@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -70,36 +71,74 @@ var (
 	// defaultFsSpecificMountFlags maps filesystem types to their specific mount flags.
 	defaultFsSpecificMountFlags = map[string][]dto.MountFlag{
 		"ntfs": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true},
+			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
 			{Name: "permissions", Description: "Respect NTFS permissions"},
 			{Name: "acl", Description: "Enable ACL support"},
 			{Name: "exec", Description: "Allow executing files (use with caution)"},
 		},
 		"ntfs3": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true},
+			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
 			{Name: "permissions", Description: "Respect NTFS permissions"},
 			{Name: "acl", Description: "Enable ACL support"},
 			{Name: "force", Description: "Force mount even if the volume is marked dirty"},
 			{Name: "norecover", Description: "Do not try to recover a dirty volume (default for ntfs3)"},
-			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true},
+			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
 		},
 		"zfs": {
 			{Name: "zfsutil", Description: "Indicates that the mount is managed by ZFS utilities"},
 			{Name: "noauto", Description: "Can be used to prevent automatic mounting by zfs-mount-generator"},
-			{Name: "context", Description: "Set SELinux context for all files/directories", NeedsValue: true},
-			{Name: "fscontext", Description: "Set SELinux context for the filesystem superblock", NeedsValue: true},
+			{Name: "context", Description: "Set SELinux context for all files/directories", NeedsValue: true, ValueDescription: "SELinux context string", ValueValidationRegex: `^[\w:.-]+$`},
+			{Name: "fscontext", Description: "Set SELinux context for the filesystem superblock", NeedsValue: true, ValueDescription: "SELinux context string", ValueValidationRegex: `^[\w:.-]+$`},
 		},
-		"ext2":  {{Name: "acl", Description: "Enable POSIX Access Control Lists support"}, {Name: "user_xattr", Description: "Enable user extended attributes"}, {Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true}, {Name: "discard", Description: "Enable discard/TRIM support"}},
-		"ext3":  {{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true}, {Name: "journal_checksum", Description: "Enable journal checksumming"}, {Name: "journal_async_commit", Description: "Commit data blocks asynchronously"}, {Name: "acl", Description: "Enable POSIX Access Control Lists support"}, {Name: "user_xattr", Description: "Enable user extended attributes"}, {Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true}, {Name: "discard", Description: "Enable discard/TRIM support"}, {Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true}},
-		"vfat":  {{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true}, {Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true}, {Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true}, {Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true}, {Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true}, {Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true}, {Name: "codepage", Description: "Codepage for short filenames (e.g., 437)", NeedsValue: true}, {Name: "shortname", Description: "Shortname case (lower, win95, mixed)", NeedsValue: true}, {Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true}},
-		"exfat": {{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true}, {Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true}, {Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true}, {Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true}, {Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true}},
-		"ext4":  {{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true}, {Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true}, {Name: "discard", Description: "Enable discard/TRIM support"}, {Name: "nodiscard", Description: "Disable discard/TRIM support (default)"}, {Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true}, {Name: "auto_da_alloc", Description: "Enable delayed allocation (default)"}, {Name: "noauto_da_alloc", Description: "Disable delayed allocation"}, {Name: "journal_checksum", Description: "Enable journal checksumming"}, {Name: "nojournal_checksum", Description: "Disable journal checksumming (default)"}, {Name: "journal_async_commit", Description: "Commit data blocks asynchronously"}},
+		"ext2": {
+			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
+			{Name: "user_xattr", Description: "Enable user extended attributes"},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
+			{Name: "discard", Description: "Enable discard/TRIM support"},
+		},
+		"ext3": {
+			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true, ValueDescription: "One of: journal, ordered, writeback", ValueValidationRegex: `^(journal|ordered|writeback)$`},
+			{Name: "journal_checksum", Description: "Enable journal checksumming"},
+			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously"},
+			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
+			{Name: "user_xattr", Description: "Enable user extended attributes"},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
+			{Name: "discard", Description: "Enable discard/TRIM support"},
+			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true, ValueDescription: "0 or 1", ValueValidationRegex: `^[01]$`},
+		},
+		"vfat": {
+			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
+			{Name: "codepage", Description: "Codepage for short filenames (e.g., 437)", NeedsValue: true, ValueDescription: "Codepage number (e.g., 437)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "shortname", Description: "Shortname case (lower, win95, winnt, mixed)", NeedsValue: true, ValueDescription: "One of: lower, win95, winnt, mixed", ValueValidationRegex: `^(lower|win95|winnt|mixed)$`},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
+		},
+		"exfat": {
+			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+			{Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
+		},
+		"ext4": {
+			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true, ValueDescription: "One of: journal, ordered, writeback", ValueValidationRegex: `^(journal|ordered|writeback)$`},
+			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
+			{Name: "discard", Description: "Enable discard/TRIM support"},
+			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true, ValueDescription: "0 or 1", ValueValidationRegex: `^[01]$`},
+			{Name: "noauto_da_alloc", Description: "Disable delayed allocation"},
+			{Name: "journal_checksum", Description: "Enable journal checksumming"},
+			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously"},
+		},
 	}
 
 	// syscallFlagMap maps mount flag names (lowercase) to their corresponding syscall constants.
@@ -228,6 +267,22 @@ func (s *FilesystemService) MountFlagsToSyscallFlagAndData(inputFlags []dto.Moun
 
 		// If a Value is provided in the struct, use it regardless of the Name format
 		if mf.FlagValue != "" {
+			// Validate the value if a regex is provided
+			if mf.NeedsValue && mf.ValueValidationRegex != "" {
+				compiledRegex, err := regexp.Compile(mf.ValueValidationRegex)
+				if err != nil {
+					// This is a configuration error in the predefined regex
+					slog.Error("Invalid validation regex configured for flag", "flag", mf.Name, "regex", mf.ValueValidationRegex, "error", err)
+					// Potentially return an internal server error, or log and proceed without validation for this flag
+					// For now, let's return an error to make it explicit
+					return 0, "", errors.WithDetails(err, "Message", "Invalid validation regex", "flag", mf.Name)
+				}
+				if !compiledRegex.MatchString(mf.FlagValue) {
+					return 0, "", errors.WithDetails(dto.ErrorInvalidParameter,
+						"Flag", mf.Name, "Value", mf.FlagValue,
+						"Message", fmt.Sprintf("Value for flag '%s' does not match expected format. %s", mf.Name, mf.ValueDescription))
+				}
+			}
 			formattedFlag := fmt.Sprintf("%s=%s", rawFlagName, mf.FlagValue)
 			slog.Debug("MountFlagsToSyscallFlagAndData: Collecting data flag with explicit value", "flag", formattedFlag)
 			dataFlags = append(dataFlags, formattedFlag)
@@ -310,8 +365,9 @@ func (s *FilesystemService) SyscallDataToMountFlag(data string) ([]dto.MountFlag
 
 		if descFlag, ok := s.allKnownMountFlagsByName[strings.ToLower(name)]; ok {
 			mountFlag.Description = descFlag.Description
-			// Note: descFlag.NeedsValue could also be consulted here if it's considered more authoritative
-			// than the presence of "=" in parsing. For now, parsing dictates NeedsValue.
+			// If the flag from allKnownMountFlagsByName indicates it needs a value, copy its description and regex
+			mountFlag.ValueDescription = descFlag.ValueDescription
+			mountFlag.ValueValidationRegex = descFlag.ValueValidationRegex
 		} else {
 			slog.Debug("SyscallDataToMountFlag: No description found for data flag", "flagName", name)
 		}
