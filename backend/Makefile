@@ -94,5 +94,6 @@ gen_patch:
 
 .PHONY: mount_remote
 mount_remote:
+	umount -l /mnt/remote > /dev/null 2>&1 || :
 	mkdir -p /mnt/remote > /dev/null 2>&1 || :
 	sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 root@192.168.0.68:/addon_configs/local_sambanas /mnt/remote
