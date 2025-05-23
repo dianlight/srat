@@ -70,7 +70,8 @@
 				"VizzleTF.geminicommit",
 				"google.geminicodeassist",
 				"zoellner.openapi-preview",
-				"golang.go"
+				"golang.go",
+				"oorzc.mind-map"
 			]
 		}
 	},
