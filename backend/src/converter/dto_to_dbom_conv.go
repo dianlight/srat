@@ -12,6 +12,14 @@ import (
 	"gitlab.com/tozd/go/errors"
 )
 
+type DtoToDbomConverterInterface interface {
+	DtoToDbomConverter
+	SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error
+	ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) error
+	SettingsToProperties(source dto.Settings, target *dbom.Properties) error
+	PropertiesToSettings(source dbom.Properties, target *dto.Settings) error
+}
+
 func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, target *dbom.Properties) error {
 	keys := funk.Keys(source)
 	for _, key := range keys.([]string) {

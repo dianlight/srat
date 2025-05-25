@@ -598,6 +598,8 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 					continue
 				}
 				slog.Debug("Successfully synced mount point with DB", "path", mountPointDto.Path, "is_mounted", mountPointDto.IsMounted)
+
+				(*partition.MountPointData)[mpIdx] = *mountPointDto // Update the DTO in place
 			}
 
 		}

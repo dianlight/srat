@@ -23,13 +23,15 @@ var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
 type VolumeHandler struct {
 	apiContext   *dto.ContextState
 	vservice     service.VolumeServiceInterface
+	shareService service.ShareServiceInterface
 	mount_repo   repository.MountPointPathRepositoryInterface
 	dirtyservice service.DirtyDataServiceInterface
 }
 
-func NewVolumeHandler(vservice service.VolumeServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface) *VolumeHandler {
+func NewVolumeHandler(vservice service.VolumeServiceInterface, shareService service.ShareServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface) *VolumeHandler {
 	p := new(VolumeHandler)
 	p.vservice = vservice
+	p.shareService = shareService
 	p.mount_repo = mount_repo
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyservice
@@ -54,6 +56,25 @@ func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*s
 	volumes, err := self.vservice.GetVolumesData()
 	if err != nil {
 		return nil, err
+	}
+	// Integrate Disk with share status
+	for i, disk := range *volumes {
+		for j, volume := range *disk.Partitions {
+			for k, mountPoint := range *volume.MountPointData {
+				shared, err := self.shareService.GetShareFromPath(mountPoint.Path)
+				if err != nil {
+					if errors.Is(err, dto.ErrorShareNotFound) {
+						continue
+					} else {
+						// Some other error occurred, return it
+						return nil, err
+					}
+				}
+				shares := (*(*(*volumes)[i].Partitions)[j].MountPointData)[k].Shares
+				shares = append(shares, *shared)
+				(*(*(*volumes)[i].Partitions)[j].MountPointData)[k].Shares = shares
+			}
+		}
 	}
 	return &struct{ Body *[]dto.Disk }{Body: volumes}, nil
 }

@@ -19,6 +19,7 @@ type ExportedShareRepositoryInterface interface {
 	Save(share *dbom.ExportedShare) error
 	SaveAll(shares *[]dbom.ExportedShare) error
 	FindByName(name string) (*dbom.ExportedShare, error)
+	FindByMountPath(path string) (*dbom.ExportedShare, error)
 	Delete(name string) error
 	UpdateName(old_name string, new_name string) error
 }
@@ -59,6 +60,16 @@ func (p *ExportedShareRepository) FindByName(name string) (*dbom.ExportedShare, 
 	return &share, nil
 }
 
+// FindByMountPath retrieves a specific share by its associated mount path.
+func (p *ExportedShareRepository) FindByMountPath(path string) (*dbom.ExportedShare, error) {
+	var share dbom.ExportedShare
+	// The ExportedShare table has a MountPointDataPath column which is the foreign key to MountPointPath.Path
+	err := p.db.Preload(clause.Associations).Where("mount_point_data_path = ?", path).First(&share).Error
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return &share, nil
+}
 func (p *ExportedShareRepository) SaveAll(shares *[]dbom.ExportedShare) error {
 	err := p.db.Session(&gorm.Session{FullSaveAssociations: true}).Save(shares).Error
 	if err != nil {

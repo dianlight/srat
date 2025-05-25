@@ -2,41 +2,34 @@ package api
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net/http"
 	"sync"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"gorm.io/gorm"
+	"gitlab.com/tozd/go/errors" // Using aliased tozd/go/errors
 )
 
 type ShareHandler struct {
-	sharesQueueMutex    sync.RWMutex
-	broadcaster         service.BroadcasterServiceInterface
-	apiContext          *dto.ContextState
-	dirtyservice        service.DirtyDataServiceInterface
-	exported_share_repo repository.ExportedShareRepositoryInterface
-	user_repo           repository.SambaUserRepositoryInterface
+	sharesQueueMutex sync.RWMutex
+	broadcaster      service.BroadcasterServiceInterface
+	apiContext       *dto.ContextState
+	dirtyservice     service.DirtyDataServiceInterface
+	shareService     service.ShareServiceInterface
 }
 
 func NewShareHandler(broadcaster service.BroadcasterServiceInterface,
 	apiContext *dto.ContextState,
 	dirtyService service.DirtyDataServiceInterface,
-	exported_share_repo repository.ExportedShareRepositoryInterface,
-	user_repo repository.SambaUserRepositoryInterface,
+	shareService service.ShareServiceInterface,
 ) *ShareHandler {
 	p := new(ShareHandler)
 	p.broadcaster = broadcaster
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyService
-	p.exported_share_repo = exported_share_repo
-	p.user_repo = user_repo
+	p.shareService = shareService
 	p.sharesQueueMutex = sync.RWMutex{}
 	return p
 }
@@ -47,6 +40,8 @@ func (self *ShareHandler) RegisterShareHandler(api huma.API) {
 	huma.Post(api, "/share", self.CreateShare, huma.OperationTags("share"))
 	huma.Put(api, "/share/{share_name}", self.UpdateShare, huma.OperationTags("share"))
 	huma.Delete(api, "/share/{share_name}", self.DeleteShare, huma.OperationTags("share"))
+	huma.Put(api, "/share/{share_name}/disable", self.DisableShare, huma.OperationTags("share"))
+	huma.Put(api, "/share/{share_name}/enable", self.EnableShare, huma.OperationTags("share"))
 }
 
 // ListShares retrieves a list of shared resources from the repository,
@@ -60,19 +55,9 @@ func (self *ShareHandler) RegisterShareHandler(api huma.API) {
 //   - A struct containing a slice of shared resources in the response body.
 //   - An error if there is any issue retrieving or converting the shared resources.
 func (self *ShareHandler) ListShares(ctx context.Context, input *struct{}) (*struct{ Body []dto.SharedResource }, error) {
-	var shares []dto.SharedResource
-	dbshares, err := self.exported_share_repo.All()
+	shares, err := self.shareService.ListShares()
 	if err != nil {
-		return nil, err
-	}
-	var conv converter.DtoToDbomConverterImpl
-	for _, dbshare := range *dbshares {
-		var share dto.SharedResource
-		err = conv.ExportedShareToSharedResource(dbshare, &share)
-		if err != nil {
-			return nil, err
-		}
-		shares = append(shares, share)
+		return nil, errors.Wrap(err, "failed to list shares")
 	}
 	return &struct{ Body []dto.SharedResource }{Body: shares}, nil
 }
@@ -96,21 +81,14 @@ func (self *ShareHandler) ListShares(ctx context.Context, input *struct{}) (*str
 func (self *ShareHandler) GetShare(ctx context.Context, input *struct {
 	ShareName string `path:"share_name" maxLength:"30" example:"world" doc:"Name of the share"`
 }) (*struct{ Body dto.SharedResource }, error) {
-
-	dbshare, err := self.exported_share_repo.FindByName(input.ShareName)
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, huma.Error404NotFound("Share not found")
-	} else if err != nil {
-		return nil, err
-	}
-	share := dto.SharedResource{}
-	var conv converter.DtoToDbomConverterImpl
-	err = conv.ExportedShareToSharedResource(*dbshare, &share)
+	share, err := self.shareService.GetShare(input.ShareName)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, dto.ErrorShareNotFound) {
+			return nil, huma.Error404NotFound(err.Error())
+		}
+		return nil, errors.Wrapf(err, "failed to get share %s", input.ShareName)
 	}
-
-	return &struct{ Body dto.SharedResource }{Body: share}, nil
+	return &struct{ Body dto.SharedResource }{Body: *share}, nil
 }
 
 // CreateShare handles the creation of a new shared resource.
@@ -135,41 +113,12 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 	Status int
 	Body   dto.SharedResource
 }, error) {
-
-	dbshare := &dbom.ExportedShare{
-		Name: input.Body.Name,
-	}
-	_, err := self.exported_share_repo.FindByName(input.Body.Name)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	} else if err == nil {
-		return nil, huma.Error409Conflict("Share already exists")
-	}
-
-	var conv converter.DtoToDbomConverterImpl
-	err = conv.SharedResourceToExportedShare(input.Body, dbshare)
+	createdShare, err := self.shareService.CreateShare(input.Body)
 	if err != nil {
-		return nil, err
-	}
-	if len(dbshare.Users) == 0 {
-		adminUser, err := self.user_repo.GetAdmin()
-		if err != nil {
-			return nil, err
+		if errors.Is(err, dto.ErrorShareAlreadyExists) {
+			return nil, huma.Error409Conflict(err.Error())
 		}
-		dbshare.Users = append(dbshare.Users, adminUser)
-	}
-	err = self.exported_share_repo.Save(dbshare)
-	if err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, huma.Error409Conflict("Share already exists")
-		}
-		return nil, err
-	}
-
-	var share dto.SharedResource
-	err = conv.ExportedShareToSharedResource(*dbshare, &share)
-	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to create share %s", input.Body.Name)
 	}
 	self.dirtyservice.SetDirtyShares()
 	go self.notifyClient()
@@ -177,7 +126,7 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 	return &struct {
 		Status int
 		Body   dto.SharedResource
-	}{Status: http.StatusCreated, Body: share}, nil
+	}{Status: http.StatusCreated, Body: *createdShare}, nil
 }
 
 // notifyClient retrieves all exported shares from the repository, converts them to shared resources,
@@ -186,21 +135,11 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 func (self *ShareHandler) notifyClient() {
 	self.sharesQueueMutex.RLock()
 	defer self.sharesQueueMutex.RUnlock()
-	var shares []dto.SharedResource
-	dbshares, err := self.exported_share_repo.All()
+
+	shares, err := self.shareService.ListShares()
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error listing shares in notifyClient: %v", err)
 		return
-	}
-	var conv converter.DtoToDbomConverterImpl
-	for _, dbshare := range *dbshares {
-		var share dto.SharedResource
-		err = conv.ExportedShareToSharedResource(dbshare, &share)
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-		shares = append(shares, share)
 	}
 	self.broadcaster.BroadcastMessage(shares)
 }
@@ -231,40 +170,20 @@ func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
 	ShareName string `path:"share_name" maxLength:"30" example:"world" doc:"Name of the share"`
 	Body      dto.SharedResource
 }) (*struct{ Body dto.SharedResource }, error) {
-
-	dbshare, err := self.exported_share_repo.FindByName(input.ShareName)
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, huma.Error404NotFound("Share not found")
-	} else if err != nil {
-		return nil, err
-	}
-	var conv converter.DtoToDbomConverterImpl
-	err = conv.SharedResourceToExportedShare(input.Body, dbshare)
+	updatedShare, err := self.shareService.UpdateShare(input.ShareName, input.Body)
 	if err != nil {
-		return nil, err
-	}
-
-	if input.ShareName != dbshare.Name {
-		err = self.exported_share_repo.UpdateName(input.ShareName, dbshare.Name)
-		if err != nil {
-			return nil, huma.Error409Conflict("Share already exists")
+		if errors.Is(err, dto.ErrorShareNotFound) {
+			return nil, huma.Error404NotFound(err.Error())
 		}
-	}
-
-	err = self.exported_share_repo.Save(dbshare)
-	if err != nil {
-		return nil, err
-	}
-
-	var share dto.SharedResource
-	err = conv.ExportedShareToSharedResource(*dbshare, &share)
-	if err != nil {
-		return nil, err
+		if errors.Is(err, dto.ErrorShareAlreadyExists) {
+			return nil, huma.Error409Conflict(err.Error())
+		}
+		return nil, errors.Wrapf(err, "failed to update share %s", input.ShareName)
 	}
 
 	self.dirtyservice.SetDirtyShares()
 	go self.notifyClient()
-	return &struct{ Body dto.SharedResource }{Body: share}, nil
+	return &struct{ Body dto.SharedResource }{Body: *updatedShare}, nil
 }
 
 // DeleteShare handles the deletion of a shared resource by its name.
@@ -283,24 +202,49 @@ func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
 func (self *ShareHandler) DeleteShare(ctx context.Context, input *struct {
 	ShareName string `path:"share_name" maxLength:"30" example:"world" doc:"Name of the share"`
 }) (*struct{}, error) {
-	var share dto.SharedResource
-	dbshare, err := self.exported_share_repo.FindByName(input.ShareName)
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, huma.Error404NotFound("Share not found")
-	} else if err != nil {
-		return nil, err
-	}
-	var conv converter.DtoToDbomConverterImpl
-	err = conv.SharedResourceToExportedShare(share, dbshare)
+	err := self.shareService.DeleteShare(input.ShareName)
 	if err != nil {
-		return nil, err
-	}
-	err = self.exported_share_repo.Delete(dbshare.Name)
-	if err != nil {
-		return nil, err
+		if errors.Is(err, dto.ErrorShareNotFound) {
+			return nil, huma.Error404NotFound(err.Error())
+		}
+		return nil, errors.Wrapf(err, "failed to delete share %s", input.ShareName)
 	}
 
 	self.dirtyservice.SetDirtyShares()
 	go self.notifyClient()
 	return &struct{}{}, nil
+}
+
+// DisableShare disables a shared resource.
+func (self *ShareHandler) DisableShare(ctx context.Context, input *struct {
+	ShareName string `path:"share_name" maxLength:"30" doc:"Name of the share to disable"`
+}) (*struct{ Body dto.SharedResource }, error) {
+	disabledShare, err := self.shareService.DisableShare(input.ShareName)
+	if err != nil {
+		if errors.Is(err, dto.ErrorShareNotFound) {
+			return nil, huma.Error404NotFound(err.Error())
+		}
+		return nil, errors.Wrapf(err, "failed to disable share %s", input.ShareName)
+	}
+
+	self.dirtyservice.SetDirtyShares()
+	go self.notifyClient()
+	return &struct{ Body dto.SharedResource }{Body: *disabledShare}, nil
+}
+
+// EnableShare enables a shared resource.
+func (self *ShareHandler) EnableShare(ctx context.Context, input *struct {
+	ShareName string `path:"share_name" maxLength:"30" doc:"Name of the share to enable"`
+}) (*struct{ Body dto.SharedResource }, error) {
+	enabledShare, err := self.shareService.EnableShare(input.ShareName)
+	if err != nil {
+		if errors.Is(err, dto.ErrorShareNotFound) {
+			return nil, huma.Error404NotFound(err.Error())
+		}
+		return nil, errors.Wrapf(err, "failed to enable share %s", input.ShareName)
+	}
+
+	self.dirtyservice.SetDirtyShares()
+	go self.notifyClient()
+	return &struct{ Body dto.SharedResource }{Body: *enabledShare}, nil
 }

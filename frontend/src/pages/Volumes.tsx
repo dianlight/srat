@@ -130,14 +130,6 @@ export function Volumes() {
         })
     }
 
-    function shareExists(mountPoint: string | undefined): boolean {
-        if (!mountPoint) return false;
-        // TODO: Implement actual share checking logic if needed
-        // Example: return shares.some(share => share.path === mountPoint);
-        // console.warn("Share existence check not implemented, assuming true for path:", mountPoint);
-        return false; // Placeholder - Assume share doesn't exist by default
-    }
-
     function handleCreateShare(partition: Partition) {
         // TODO: Implement navigation or action to create a share
         // const mountPath = partition.mount_point_data?.[0]?.path;
@@ -173,7 +165,7 @@ export function Volumes() {
             confirmationText: force ? "Force Unmount" : "Unmount",
             cancellationText: "Cancel",
             confirmationButtonProps: { color: force ? "error" : "primary" },
-            acknowledgement: "Please confirm this action carefully.",
+            acknowledgement: `Please confirm this action carefully. Unmounting may lead to data loss or corruption if the volume is in use. ${force ? 'NOTE:Configured shares will be disabled!' : ''}`,
         })
             .then((crseult) => { // Only proceed if confirmed
                 if (crseult.reason === "confirm") {
@@ -356,6 +348,9 @@ export function Volumes() {
                                             const isMounted = partition.mount_point_data
                                                 && partition.mount_point_data.length > 0
                                                 && partition.mount_point_data.some(mpd => mpd.is_mounted);
+                                            const hasShares = partition.mount_point_data
+                                                && partition.mount_point_data.length > 0
+                                                && partition.mount_point_data.some(mpd => mpd.shares && mpd.shares.length > 0);
                                             const firstMountPath = partition.mount_point_data?.[0]?.path;
                                             const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
                                             const partitionNameDecoded = decodeEscapeSequence(partition.name || "Unknown Partition");
@@ -379,17 +374,20 @@ export function Volumes() {
                                                                     )}
                                                                     {isMounted && (
                                                                         <>
-                                                                            <Tooltip title="Unmount Partition">
-                                                                                <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, false); }} edge="end" aria-label="unmount" size="small">
-                                                                                    <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
-                                                                                </IconButton>
-                                                                            </Tooltip>
+                                                                            {!hasShares && (
+                                                                                <Tooltip title="Unmount Partition">
+                                                                                    <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, false); }} edge="end" aria-label="unmount" size="small">
+                                                                                        <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
+                                                                                    </IconButton>
+                                                                                </Tooltip>
+                                                                            )
+                                                                            }
                                                                             <Tooltip title="Force Unmount Partition">
                                                                                 <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, true); }} edge="end" aria-label="force unmount" size="small">
                                                                                     <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
                                                                                 </IconButton>
                                                                             </Tooltip>
-                                                                            {showShareActions && !shareExists(firstMountPath) ? (
+                                                                            {(showShareActions && !hasShares) ? (
                                                                                 <Tooltip title="Create Share">
                                                                                     <IconButton onClick={(e) => { e.stopPropagation(); handleCreateShare(partition); }} edge="end" aria-label="create share" size="small">
                                                                                         <AddIcon fontSize="small" />

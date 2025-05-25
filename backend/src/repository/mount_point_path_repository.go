@@ -70,6 +70,7 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	tx.First(mp, "path = ?", mp.Path)
 	tx.Commit()
 	return nil
 

@@ -17,6 +17,29 @@ import (
 // goverter:ignoreUnexported
 // goverter:enum:unknown @error
 type DtoToDbomConverter interface {
+
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:map MountPointData.Path MountPointDataPath
+	sharedResourceToExportedShare(source dto.SharedResource) (dbom.ExportedShare, error)
+
+	// goverter:ignore Invalid
+	exportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error)
+
+	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:MD5
+	// goverter:map Data CustomFlags
+	mountPointPathToMountPointData(source dbom.MountPointPath) (dto.MountPointData, error)
+
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:ignore DeviceId
+	// goverter:map  CustomFlags Data
+	mountPointDataToMountPointPath(source dto.MountPointData) (dbom.MountPointPath, error)
+
+	// goverter:ignore Description ValueDescription ValueValidationRegex
+	mountDataFlagToMountFlag(source dbom.MounDataFlag) (dest dto.MountFlag, err error)
+
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	userToSambaUser(source dto.User) (dbom.SambaUser, error)
+
 	// goverter:update target
 	// goverter:ignore Invalid
 	// goverter:useUnderlyingTypeMethods
@@ -58,9 +81,6 @@ type DtoToDbomConverter interface {
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignoreMissing
 	UserToSambaUser(source dto.User, target *dbom.SambaUser) error
-
-	// goverter:ignore Description
-	mountDataFlagToMountFlag(source dbom.MounDataFlag) (dest dto.MountFlag, err error)
 }
 
 /*

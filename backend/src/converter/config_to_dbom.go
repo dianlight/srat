@@ -24,9 +24,10 @@ type ConfigToDbomConverter interface {
 
 	// goverter:update target
 	// goverter:ignore Flags DeviceId IsInvalid InvalidError
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt Warnings Data
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt Warnings Data Shares
 	// goverter:map FS FSType
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
+	// goverter:map Path IsToMountAtStartup | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Path Device | PathToSource
 	// goverter:map Path Type | pathToType
 	ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error

@@ -61,11 +61,24 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 	if source.IsMounted != false {
 		target.IsMounted = source.IsMounted
 	}
+	if source.IsToMountAtStartup != false {
+		target.IsToMountAtStartup = source.IsToMountAtStartup
+	}
 	if source.InvalidError != nil {
 		target.InvalidError = source.InvalidError
 	}
 	if source.Warnings != nil {
 		target.Warnings = source.Warnings
+	}
+	if source.Shares != nil {
+		target.Shares = make([]dbom.ExportedShare, len(source.Shares))
+		for i := 0; i < len(source.Shares); i++ {
+			dbomExportedShare, err := c.sharedResourceToExportedShare(source.Shares[i])
+			if err != nil {
+				return err
+			}
+			target.Shares[i] = dbomExportedShare
+		}
 	}
 	return nil
 }
@@ -101,11 +114,24 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	if source.IsInvalid != false {
 		target.IsInvalid = source.IsInvalid
 	}
+	if source.IsToMountAtStartup != false {
+		target.IsToMountAtStartup = source.IsToMountAtStartup
+	}
 	if source.InvalidError != nil {
 		target.InvalidError = source.InvalidError
 	}
 	if source.Warnings != nil {
 		target.Warnings = source.Warnings
+	}
+	if source.Shares != nil {
+		target.Shares = make([]dto.SharedResource, len(source.Shares))
+		for i := 0; i < len(source.Shares); i++ {
+			dtoSharedResource, err := c.exportedShareToSharedResource(source.Shares[i])
+			if err != nil {
+				return err
+			}
+			target.Shares[i] = dtoSharedResource
+		}
 	}
 	return nil
 }
@@ -187,6 +213,13 @@ func (c *DtoToDbomConverterImpl) dbomMounDataFlagsToDtoMountFlags(source dbom.Mo
 	}
 	return dtoMountFlags, nil
 }
+func (c *DtoToDbomConverterImpl) dbomMountPointPathToPDtoMountPointData(source dbom.MountPointPath) (*dto.MountPointData, error) {
+	dtoMountPointData, err := c.mountPointPathToMountPointData(source)
+	if err != nil {
+		return nil, err
+	}
+	return &dtoMountPointData, nil
+}
 func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) dto.User {
 	var dtoUser dto.User
 	dtoUser.Username = source.Username
@@ -223,10 +256,170 @@ func (c *DtoToDbomConverterImpl) dtoMountFlagsToDbomMounDataFlags(source dto.Mou
 	}
 	return dbomMounDataFlags
 }
+func (c *DtoToDbomConverterImpl) exportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error) {
+	var dtoSharedResource dto.SharedResource
+	dtoSharedResource.Name = source.Name
+	pBool := source.Disabled
+	dtoSharedResource.Disabled = &pBool
+	if source.Users != nil {
+		dtoSharedResource.Users = make([]dto.User, len(source.Users))
+		for i := 0; i < len(source.Users); i++ {
+			dtoSharedResource.Users[i] = c.dbomSambaUserToDtoUser(source.Users[i])
+		}
+	}
+	if source.RoUsers != nil {
+		dtoSharedResource.RoUsers = make([]dto.User, len(source.RoUsers))
+		for j := 0; j < len(source.RoUsers); j++ {
+			dtoSharedResource.RoUsers[j] = c.dbomSambaUserToDtoUser(source.RoUsers[j])
+		}
+	}
+	pBool2 := source.TimeMachine
+	dtoSharedResource.TimeMachine = &pBool2
+	dtoSharedResource.Usage = source.Usage
+	pDtoMountPointData, err := c.dbomMountPointPathToPDtoMountPointData(source.MountPointData)
+	if err != nil {
+		return dtoSharedResource, err
+	}
+	dtoSharedResource.MountPointData = pDtoMountPointData
+	return dtoSharedResource, nil
+}
 func (c *DtoToDbomConverterImpl) mountDataFlagToMountFlag(source dbom.MounDataFlag) (dto.MountFlag, error) {
 	var dtoMountFlag dto.MountFlag
 	dtoMountFlag.Name = source.Name
 	dtoMountFlag.NeedsValue = source.NeedsValue
 	dtoMountFlag.FlagValue = source.FlagValue
 	return dtoMountFlag, nil
+}
+func (c *DtoToDbomConverterImpl) mountPointDataToMountPointPath(source dto.MountPointData) (dbom.MountPointPath, error) {
+	var dbomMountPointPath dbom.MountPointPath
+	dbomMountPointPath.Path = source.Path
+	dbomMountPointPath.Type = source.Type
+	dbomMountPointPath.Device = source.Device
+	dbomMountPointPath.FSType = source.FSType
+	dbomMountPointPath.Flags = c.dtoMountFlagsToDbomMounDataFlags(source.Flags)
+	dbomMountPointPath.Data = c.dtoMountFlagsToDbomMounDataFlags(source.CustomFlags)
+	dbomMountPointPath.IsInvalid = source.IsInvalid
+	dbomMountPointPath.IsMounted = source.IsMounted
+	dbomMountPointPath.IsToMountAtStartup = source.IsToMountAtStartup
+	dbomMountPointPath.InvalidError = source.InvalidError
+	dbomMountPointPath.Warnings = source.Warnings
+	if source.Shares != nil {
+		dbomMountPointPath.Shares = make([]dbom.ExportedShare, len(source.Shares))
+		for i := 0; i < len(source.Shares); i++ {
+			dbomExportedShare, err := c.sharedResourceToExportedShare(source.Shares[i])
+			if err != nil {
+				return dbomMountPointPath, err
+			}
+			dbomMountPointPath.Shares[i] = dbomExportedShare
+		}
+	}
+	return dbomMountPointPath, nil
+}
+func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.MountPointPath) (dto.MountPointData, error) {
+	var dtoMountPointData dto.MountPointData
+	dtoMountPointData.Path = source.Path
+	dtoMountPointData.PathHash = xhashes.MD5(source.Path)
+	dtoMountPointData.Type = source.Type
+	dtoMountPointData.FSType = source.FSType
+	dtoMountFlags, err := c.dbomMounDataFlagsToDtoMountFlags(source.Flags)
+	if err != nil {
+		return dtoMountPointData, err
+	}
+	dtoMountPointData.Flags = dtoMountFlags
+	dtoMountFlags2, err := c.dbomMounDataFlagsToDtoMountFlags(source.Data)
+	if err != nil {
+		return dtoMountPointData, err
+	}
+	dtoMountPointData.CustomFlags = dtoMountFlags2
+	dtoMountPointData.Device = source.Device
+	dtoMountPointData.IsMounted = source.IsMounted
+	dtoMountPointData.IsInvalid = source.IsInvalid
+	dtoMountPointData.IsToMountAtStartup = source.IsToMountAtStartup
+	dtoMountPointData.InvalidError = source.InvalidError
+	dtoMountPointData.Warnings = source.Warnings
+	if source.Shares != nil {
+		dtoMountPointData.Shares = make([]dto.SharedResource, len(source.Shares))
+		for i := 0; i < len(source.Shares); i++ {
+			dtoSharedResource, err := c.exportedShareToSharedResource(source.Shares[i])
+			if err != nil {
+				return dtoMountPointData, err
+			}
+			dtoMountPointData.Shares[i] = dtoSharedResource
+		}
+	}
+	return dtoMountPointData, nil
+}
+func (c *DtoToDbomConverterImpl) pDtoMountPointDataToDbomMountPointPath(source *dto.MountPointData) (dbom.MountPointPath, error) {
+	var dbomMountPointPath dbom.MountPointPath
+	if source != nil {
+		dbomMountPointPath2, err := c.mountPointDataToMountPointPath((*source))
+		if err != nil {
+			return dbomMountPointPath, err
+		}
+		dbomMountPointPath = dbomMountPointPath2
+	}
+	return dbomMountPointPath, nil
+}
+func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.SharedResource) (dbom.ExportedShare, error) {
+	var dbomExportedShare dbom.ExportedShare
+	dbomExportedShare.Name = source.Name
+	if source.Disabled != nil {
+		dbomExportedShare.Disabled = *source.Disabled
+	}
+	if source.Users != nil {
+		dbomExportedShare.Users = make([]dbom.SambaUser, len(source.Users))
+		for i := 0; i < len(source.Users); i++ {
+			dbomSambaUser, err := c.userToSambaUser(source.Users[i])
+			if err != nil {
+				return dbomExportedShare, err
+			}
+			dbomExportedShare.Users[i] = dbomSambaUser
+		}
+	}
+	if source.RoUsers != nil {
+		dbomExportedShare.RoUsers = make([]dbom.SambaUser, len(source.RoUsers))
+		for j := 0; j < len(source.RoUsers); j++ {
+			dbomSambaUser2, err := c.userToSambaUser(source.RoUsers[j])
+			if err != nil {
+				return dbomExportedShare, err
+			}
+			dbomExportedShare.RoUsers[j] = dbomSambaUser2
+		}
+	}
+	if source.TimeMachine != nil {
+		dbomExportedShare.TimeMachine = *source.TimeMachine
+	}
+	dbomExportedShare.Usage = source.Usage
+	var pString *string
+	if source.MountPointData != nil {
+		pString = &source.MountPointData.Path
+	}
+	if pString != nil {
+		dbomExportedShare.MountPointDataPath = *pString
+	}
+	dbomMountPointPath, err := c.pDtoMountPointDataToDbomMountPointPath(source.MountPointData)
+	if err != nil {
+		return dbomExportedShare, err
+	}
+	dbomExportedShare.MountPointData = dbomMountPointPath
+	return dbomExportedShare, nil
+}
+func (c *DtoToDbomConverterImpl) userToSambaUser(source dto.User) (dbom.SambaUser, error) {
+	var dbomSambaUser dbom.SambaUser
+	dbomSambaUser.Username = source.Username
+	dbomSambaUser.Password = source.Password
+	dbomSambaUser.IsAdmin = source.IsAdmin
+	if source.RwShares != nil {
+		dbomSambaUser.RwShares = make([]dbom.ExportedShare, len(source.RwShares))
+		for i := 0; i < len(source.RwShares); i++ {
+			dbomSambaUser.RwShares[i] = stringToExportedShare(source.RwShares[i])
+		}
+	}
+	if source.RoShares != nil {
+		dbomSambaUser.RoShares = make([]dbom.ExportedShare, len(source.RoShares))
+		for j := 0; j < len(source.RoShares); j++ {
+			dbomSambaUser.RoShares[j] = stringToExportedShare(source.RoShares[j])
+		}
+	}
+	return dbomSambaUser, nil
 }

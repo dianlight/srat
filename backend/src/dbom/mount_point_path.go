@@ -16,27 +16,29 @@ import (
 )
 
 type MountPointPath struct {
-	Path         string `gorm:"primarykey"`
-	Type         string `gorm:"not null;default:null"`
-	DeviceId     uint64
-	Device       string
-	FSType       string
-	Flags        MounDataFlags `g_orm:"type:text"`
-	Data         MounDataFlags `g_orm:"type:text"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	DeletedAt    gorm.DeletedAt `gorm:"index"`
-	IsInvalid    bool
-	IsMounted    bool
-	InvalidError *string
-	Warnings     *string
+	Path               string `gorm:"primarykey"`
+	Type               string `gorm:"not null;default:null"`
+	DeviceId           uint64
+	Device             string
+	FSType             string
+	Flags              MounDataFlags
+	Data               MounDataFlags
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	DeletedAt          gorm.DeletedAt `gorm:"index"`
+	IsInvalid          bool
+	IsMounted          bool
+	IsToMountAtStartup bool `gorm:"default:false"` // If true, mount point should be mounted at startup.
+	InvalidError       *string
+	Warnings           *string
+	Shares             []ExportedShare `gorm:"foreignKey:MountPointDataPath;references:Path;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
 }
 
 func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 	if u.Path == "" {
 		return errors.Errorf("path cannot be empty")
 	}
-	u.Path = stringy.New(u.Path).SnakeCase().Get()
+	u.Path = stringy.New(u.Path).SnakeCase().Get() // FIXME: Why snake case? Should we use kebab case or keep it as is?
 	u.Warnings = nil
 	u.IsInvalid = false
 	u.InvalidError = nil
@@ -97,7 +99,7 @@ func (u *MountPointPath) BeforeSave(tx *gorm.DB) (err error) {
 			}
 		}
 		if u.FSType == "" && u.Device != "" {
-			fs, flags, err := mount.FSFromBlock(u.Device)
+			fs, flags, err := mount.FSFromBlock(u.Device) // FIXME: this is not a good way to get the filesystem type
 			if err != nil {
 				u.IsInvalid = true
 				u.InvalidError = pointer.String(fmt.Sprintf("error: %#+v", err))

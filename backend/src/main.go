@@ -240,6 +240,7 @@ func prog(state overseer.State) {
 			service.NewDirtyDataService,
 			service.NewSupervisorService,
 			service.NewFilesystemService,
+			service.NewShareService,
 			repository.NewMountPointPathRepository,
 			repository.NewExportedShareRepository,
 			repository.NewPropertyRepositoryRepository,
@@ -383,31 +384,7 @@ func prog(state overseer.State) {
 					}
 
 					// Static Routes
-					/*
-						hfiles, err := static.Open(".")
-						if err != nil {
-							slog.Error("Error reading static directory:", "err", err)
-							panic(err)
-						}
-						files, err := hfiles.Readdir(0)
-						if err != nil {
-							slog.Error("Error reading static directory:", "err", err)
-							panic(err)
-						}
-						slog.Debug("Static files:", "files", files)
-					*/
 					router.PathPrefix("/").Handler(http.FileServer(static)).Methods(http.MethodGet)
-					/*
-						if slices.ContainsFunc(files, func(f fs.DirEntry) bool {
-							return f.IsDir() && f.Name() == "static"
-						}) {
-							fsRoot, _ := fs.Sub(static, "static")
-							router.PathPrefix("/").Handler(http.FileServerFS(fsRoot)).Methods(http.MethodGet)
-						} else {
-							slog.Warn("Static directory not found:", "err", err)
-							router.Path("/").Handler(http.FileServerFS(static)).Methods(http.MethodGet)
-						}
-					*/
 					//
 					router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 						template, err := route.GetPathTemplate()

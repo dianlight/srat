@@ -149,6 +149,13 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, ta
 		}
 		target.IsMounted = xbool
 	}
+	if source.Path != "" {
+		xbool2, err := osutil.IsMounted(source.Path)
+		if err != nil {
+			return err
+		}
+		target.IsToMountAtStartup = xbool2
+	}
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, context []dto.User) error {

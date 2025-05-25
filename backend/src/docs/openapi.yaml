@@ -258,10 +258,18 @@ components:
           type: string
         is_mounted:
           type: boolean
+        is_to_mount_at_startup:
+          type: boolean
         path:
           type: string
         path_hash:
           type: string
+        shares:
+          items:
+            $ref: "#/components/schemas/SharedResource"
+          type:
+            - array
+            - "null"
         type:
           enum:
             - HOST
@@ -1084,6 +1092,62 @@ paths:
       summary: Put share by share name
       tags:
         - share
+  /share/{share_name}/disable:
+    put:
+      operationId: put-share-by-share-name-disable
+      parameters:
+        - description: Name of the share to disable
+          in: path
+          name: share_name
+          required: true
+          schema:
+            description: Name of the share to disable
+            maxLength: 30
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedResource"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Put share by share name disable
+      tags:
+        - share
+  /share/{share_name}/enable:
+    put:
+      operationId: put-share-by-share-name-enable
+      parameters:
+        - description: Name of the share to enable
+          in: path
+          name: share_name
+          required: true
+          schema:
+            description: Name of the share to enable
+            maxLength: 30
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedResource"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Put share by share name enable
+      tags:
+        - share
   /shares:
     get:
       operationId: list-shares
@@ -1118,24 +1182,6 @@ paths:
                 description: Each oneOf object in the array represents one possible Server Sent Events (SSE) message, serialized as UTF-8 text according to the SSE specification.
                 items:
                   oneOf:
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/Welcome"
-                        event:
-                          const: "\"hello\""
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event "hello"
-                      type: object
                     - properties:
                         data:
                           $ref: "#/components/schemas/ReleaseAsset"
@@ -1233,6 +1279,24 @@ paths:
                         - data
                         - event
                       title: Event "share"
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/Welcome"
+                        event:
+                          const: "\"hello\""
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event "hello"
                       type: object
                 title: Server Sent Events
                 type: array

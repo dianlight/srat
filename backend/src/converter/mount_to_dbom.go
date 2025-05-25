@@ -16,7 +16,7 @@ import (
 type MountToDbom interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt DeviceId IsInvalid InvalidError Warnings IsMounted
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt DeviceId IsInvalid InvalidError Warnings IsMounted IsToMountAtStartup Shares
 	// goverter:map Device Device | removeDevPrefix
 	// goverter:map Flags Flags | uintptrToMounFlags
 	// goverter:map Data Data | stringToMounFlags
