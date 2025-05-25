@@ -115,6 +115,26 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["share"],
       }),
+      putShareByShareNameDisable: build.mutation<
+        PutShareByShareNameDisableApiResponse,
+        PutShareByShareNameDisableApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/share/${queryArg.shareName}/disable`,
+          method: "PUT",
+        }),
+        invalidatesTags: ["share"],
+      }),
+      putShareByShareNameEnable: build.mutation<
+        PutShareByShareNameEnableApiResponse,
+        PutShareByShareNameEnableApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/share/${queryArg.shareName}/enable`,
+          method: "PUT",
+        }),
+        invalidatesTags: ["share"],
+      }),
       getShares: build.query<GetSharesApiResponse, GetSharesApiArg>({
         query: () => ({ url: `/shares` }),
         providesTags: ["share"],
@@ -274,21 +294,26 @@ export type PutShareByShareNameApiArg = {
   shareName: string;
   sharedResource: SharedResource;
 };
+export type PutShareByShareNameDisableApiResponse = /** status 200 OK */
+  | SharedResource
+  | /** status default Error */ ErrorModel;
+export type PutShareByShareNameDisableApiArg = {
+  /** Name of the share to disable */
+  shareName: string;
+};
+export type PutShareByShareNameEnableApiResponse = /** status 200 OK */
+  | SharedResource
+  | /** status default Error */ ErrorModel;
+export type PutShareByShareNameEnableApiArg = {
+  /** Name of the share to enable */
+  shareName: string;
+};
 export type GetSharesApiResponse =
   | /** status 200 OK */ (SharedResource[] | null)
   | /** status default Error */ ErrorModel;
 export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
-      | {
-          data: HealthPing;
-          /** The event name. */
-          event: '"heartbeat"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
       | {
           data: SharedResource[] | null;
           /** The event name. */
@@ -329,6 +354,15 @@ export type SseApiResponse = /** status 200 OK */
           data: Disk[] | null;
           /** The event name. */
           event: '"volumes"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: HealthPing;
+          /** The event name. */
+          event: '"heartbeat"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -541,6 +575,7 @@ export type SharedResource = {
   $schema?: string;
   disabled?: boolean;
   invalid?: boolean;
+  is_ha_mounted?: boolean;
   mount_point_data?: MountPointData;
   name?: string;
   ro_users?: User[] | null;
@@ -629,6 +664,8 @@ export const {
   useGetShareByShareNameQuery,
   usePatchShareByShareNameMutation,
   usePutShareByShareNameMutation,
+  usePutShareByShareNameDisableMutation,
+  usePutShareByShareNameEnableMutation,
   useGetSharesQuery,
   useSseQuery,
   usePutUpdateMutation,

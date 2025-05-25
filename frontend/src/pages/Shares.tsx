@@ -34,7 +34,7 @@ import BackupIcon from '@mui/icons-material/Backup';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAppDispatch, useAppSelector } from "../store/store";
-import { Usage, useGetUsersQuery, usePutShareByShareNameMutation, type SharedResource, type User } from "../store/sratApi";
+import { Usage, useDeleteShareByShareNameMutation, useGetUsersQuery, usePutShareByShareNameMutation, type SharedResource, type User } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { addMessage } from "../store/errorSlice";
@@ -57,13 +57,15 @@ export function Shares() {
     //const formRef = useRef<HTMLFormElement>(null);
     const confirm = useConfirm();
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
+    const [deleteShare, updateDeleteShareResult] = useDeleteShareByShareNameMutation();
 
     function onSubmitDisableShare(cdata?: string, props?: SharedResource) {
         console.log("Disable", cdata, props);
         if (!cdata || !props) return
         confirm({
             title: `Disable ${props?.name}?`,
-            description: "If you disable this share, all of its configurations will be retained."
+            description: "If you disable this share, all of its configurations will be retained.",
+            acknowledgement: "I understand that disabling the share will retain its configurations but prevent access to it.",
         })
             .then(({ confirmed, reason }) => {
                 if (confirmed) {
@@ -92,6 +94,29 @@ export function Shares() {
             });
     }
 
+    function onSubmitDeleteShare(cdata?: string, props?: SharedResource) {
+        console.log("Delete", cdata, props);
+        if (!cdata || !props) return
+        confirm({
+            title: `Delete ${props?.name}?`,
+            description: "This action cannot be undone. Are you sure you want to delete this share?",
+            acknowledgement: "I understand that deleting the share will remove it permanently.",
+        })
+            .then(({ confirmed, reason }) => {
+                if (confirmed) {
+                    deleteShare({ shareName: props?.name || "" }).unwrap()
+                        .then(() => {
+                            //                        setErrorInfo('');
+                        })
+                        .catch(err => {
+                            dispatch(addMessage(JSON.stringify(err)));
+                        });
+                } else if (reason === "cancel") {
+                    console.log("cancel")
+                }
+            })
+    }
+
     function onSubmitEditShare(data?: ShareEditProps) {
         if (!data || !selected) return;
         if (!data.name || !data.mount_point_data?.path) {
@@ -113,41 +138,6 @@ export function Shares() {
         }
         setShowEdit(false);
         return false;
-    }
-
-    function onSubmitUnmount(share: string): void {
-        confirm({
-            title: `Unmount ${share}?`,
-            description: "Are you sure you want to unmount this share?"
-        })
-            .then(() => {
-                /*
-                api.share.unmountShare(share).then((res) => {
-                    console.log(`Share ${share} unmounted successfully`);
-                    // Optionally update the state or perform other actions
-                }).catch(err => {
-                    console.error(`Failed to unmount share ${share}`, err);
-                    setErrorInfo(`Failed to unmount share ${share}: ${err.message}`);
-                });
-                */
-            })
-            .catch(() => {
-                // Handle cancel action if needed
-            });
-    }
-
-    function onSubmitMount(share: string): void {
-        confirm({
-            title: `Mount ${share}?`,
-            description: "Are you sure you want to mount this share?"
-        })
-            .then(({ confirmed, reason }) => {
-                if (confirmed) {
-                    // TODO: 
-                } else if (reason === "cancel") {
-                    console.log("cancel")
-                }
-            })
     }
 
     return <InView>
@@ -178,13 +168,11 @@ export function Shares() {
                                 <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
                                     <SettingsIcon />
                                 </IconButton>
-                                {props.mount_point_data?.invalid &&
-                                    <IconButton onClick={() => { }} edge="end" aria-label="delete">
-                                        <Tooltip title="Delete share">
-                                            <DeleteIcon color="error" />
-                                        </Tooltip>
-                                    </IconButton>
-                                }
+                                <IconButton onClick={() => onSubmitDeleteShare(share, props)} edge="end" aria-label="delete">
+                                    <Tooltip title="Delete share">
+                                        <DeleteIcon color="error" />
+                                    </Tooltip>
+                                </IconButton>
                                 {/* 
                                 <IconButton onClick={() => { setSelected([share, props]); setShowUserEdit(true) }} edge="end" aria-label="users">
                                     <Tooltip title="Manage Users">
@@ -192,19 +180,6 @@ export function Shares() {
                                     </Tooltip>
                                 </IconButton>
                                 */}
-                                {(props.usage !== Usage.Internal) && (props.mount_point_data?.is_mounted ? (
-                                    <IconButton onClick={() => onSubmitUnmount(share)} edge="end" aria-label="unmount">
-                                        <Tooltip title="Unmount">
-                                            <Eject />
-                                        </Tooltip>
-                                    </IconButton>
-                                ) : (
-                                    <IconButton onClick={() => onSubmitMount(share)} edge="end" aria-label="mount">
-                                        <Tooltip title="Mount">
-                                            <DriveFileMove />
-                                        </Tooltip>
-                                    </IconButton>
-                                ))}
                                 {props.disabled ? (
                                     <Tooltip title="Enable share">
                                         <span>
@@ -248,14 +223,14 @@ export function Shares() {
                                 primary={
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                         {props.name}
-                                        {props.mount_point_data?.is_mounted && (
+                                        {/*props.mount_point_data?.is_mounted && (
                                             <Chip
                                                 size="small"
                                                 color="success"
                                                 label="Mounted"
                                                 icon={<CheckCircleIcon />}
                                             />
-                                        )}
+                                        )*/}
                                     </Box>
                                 }
                                 onClick={() => { setSelected([share, props]); setShowPreview(true) }}
@@ -263,7 +238,7 @@ export function Shares() {
                                     <Typography variant="body2" component="div">
                                         {props.mount_point_data?.path && (
                                             <Box component="span" sx={{ display: 'block' }}>
-                                                Mount Point: {props.mount_point_data.path}
+                                                Path: {props.mount_point_data.path}
                                             </Box>
                                         )}
                                         {props.mount_point_data?.warnings && props.usage !== Usage.Internal && (
@@ -278,10 +253,11 @@ export function Shares() {
                                                         onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
                                                         size="small"
                                                         icon={<EditIcon />}
+                                                        variant="outlined"
                                                         label={
                                                             <span>
                                                                 Users: {props.users.map(u => (
-                                                                    <span key={u.username} style={{ color: u.is_admin ? 'yellow' : 'inherit' }}>
+                                                                    <span key={u.username} style={{ color: u.is_admin ? 'primary' : 'inherit' }}>
                                                                         {u.username}
                                                                         {u !== props.users![props.users!.length - 1] && ', '}
                                                                     </span>
@@ -298,10 +274,11 @@ export function Shares() {
                                                         onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
                                                         size="small"
                                                         icon={<VisibilityIcon />}
+                                                        variant="outlined"
                                                         label={
                                                             <span>
                                                                 Read-only Users: {props.ro_users.map(u => (
-                                                                    <span key={u.username} style={{ color: u.is_admin ? 'yellow' : 'inherit' }}>
+                                                                    <span key={u.username} style={{ color: u.is_admin ? 'primary' : 'inherit' }}>
                                                                         {u.username}
                                                                         {u !== props.ro_users![props.ro_users!.length - 1] && ', '}
                                                                     </span>
@@ -313,11 +290,13 @@ export function Shares() {
                                                 </Tooltip>
                                             )}
                                             {(props.usage && props.usage !== Usage.Internal) && (
-                                                <Tooltip title="Share Usage">
+                                                <Tooltip title={`Share Usage: ${props.is_ha_mounted ? 'HA Mounted' : 'Not HA Mounted'}`}>
                                                     <Chip
                                                         onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
                                                         size="small"
+                                                        variant="outlined"
                                                         icon={<FolderSpecialIcon />}
+                                                        disabled={!props.is_ha_mounted}
                                                         label={`Usage: ${props.usage}`}
                                                         sx={{ my: 0.5 }}
                                                     />
@@ -328,6 +307,7 @@ export function Shares() {
                                                     <Chip
                                                         onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
                                                         size="small"
+                                                        variant="outlined"
                                                         icon={<BackupIcon />}
                                                         label="TimeMachine"
                                                         color="secondary"

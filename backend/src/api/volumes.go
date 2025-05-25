@@ -60,6 +60,9 @@ func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*s
 	// Integrate Disk with share status
 	for i, disk := range *volumes {
 		for j, volume := range *disk.Partitions {
+			if volume.MountPointData == nil {
+				continue
+			}
 			for k, mountPoint := range *volume.MountPointData {
 				shared, err := self.shareService.GetShareFromPath(mountPoint.Path)
 				if err != nil {
