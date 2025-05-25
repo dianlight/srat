@@ -113,9 +113,9 @@ export function Volumes() {
         // Ensure device is included in submitData if required by API
         const submitData: MountPointData = {
             ...data,
-            device: selected.name // Assuming partition name is the device identifier
+            device: selected.device
         };
-        console.log("Submitting Mount Data:", submitData);
+        //console.log("Submitting Mount Data:", submitData);
 
         mountVolume({ mountPathHash: data.path_hash || "", mountPointData: submitData }).unwrap().then((res) => {
             toast.info(`Volume ${(res as MountPointData).path || selected.name} mounted successfully.`);
@@ -124,9 +124,9 @@ export function Volumes() {
         }).catch(err => {
             console.error("Mount Error:", err);
             const errorData = err?.data || {};
-            const errorMsg = errorData?.message || err?.status || 'Unknown mount error';
-            const errorCode = errorData?.code || 'Error';
-            toast.error(`${errorCode}: ${errorMsg}`, { data: { error: err } });
+            const errorMsg = errorData?.detail || errorData?.message || err?.status || 'Unknown mount error';
+            const errorCode = errorData?.status || 'Error';
+            toast.error(`${errorCode}: ${errorMsg}`, { data: { error: errorData || err } });
         })
     }
 
@@ -169,14 +169,14 @@ export function Volumes() {
 
         confirm({
             title: `Unmount ${displayName}?`,
-            description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${displayName} (${partition.name}) mounted at ${mountData}?`,
+            description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${displayName} (${partition.device}) mounted at ${mountData.path}?`,
             confirmationText: force ? "Force Unmount" : "Unmount",
             cancellationText: "Cancel",
-            confirmationButtonProps: { color: force ? "error" : "primary" }
-
+            confirmationButtonProps: { color: force ? "error" : "primary" },
+            acknowledgement: "Please confirm this action carefully.",
         })
             .then((crseult) => { // Only proceed if confirmed
-                if (crseult.reason !== "confirm") {
+                if (crseult.reason === "confirm") {
                     console.log(`Proceeding with ${force ? 'forced ' : ''}unmount for:`, mountData.path);
                     umountVolume({
                         mountPathHash: mountData.path_hash || "", // Use the extracted path
@@ -457,15 +457,8 @@ export function Volumes() {
     );
 }
 
-// --- VolumeMountDialog component ---
-// (Includes previous fixes and improvements)
-
 
 interface xMountPointData extends MountPointData {
-    //    flags?: MountFlag[]; // Array of flags (enum) for the Autocomplete
-    //    custom_flags?: MountFlag[]; // Array of custom flags (enum) for the TextField
-    //    flagsNames?: string[]; // Array of flag names (strings) for the Autocomplete
-    //    customFlagsNames?: string[]; // Array of custom flags (strings) for the TextField
     custom_flags_values: MountFlag[]; // Array of custom flags (enum) for the TextField
 }
 
@@ -492,8 +485,6 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                 path: existingMountData?.path || `/mnt/${sanitizedName}`,
                 fstype: existingMountData?.fstype || undefined, // Use existing or let backend detect
                 flags: existingMountData?.flags || [], // Keep numeric flags if needed internally
-                // flagsNames: existingMountData?.flags?.map(flg => flg.name), // Populate Autocomplete with string names
-                // customFlagsNames: existingMountData?.custom_flags?.map(flag => flag.needsValue ? flag.name + "=" + flag.value : flag.name), // Split custom flags into array
                 custom_flags: existingMountData?.custom_flags || [], // Keep numeric flags if needed internally
             });
         } else if (!props.open) {
@@ -509,22 +500,26 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             return;
         }
 
-        console.log("Form Data:", formData);
 
-        /*
-        const numericFlags = formData.flagsNames
-            ?.map(name => Flags[name as keyof typeof Flags])
-            .filter((value): value is Flags => typeof value === 'number')
-            || undefined;
+        const custom_flags = (formData.custom_flags || []).map(flag => {
+            if (formData.custom_flags_values && formData.custom_flags_values.length > 0) {
+                const flagValue = formData.custom_flags_values.find(fv => fv.name === flag.name);
+                return {
+                    ...flag,
+                    value: flagValue ? flagValue.value : '' // Use the value from custom_flags_values if available
+                };
+            }
+            return flag // Return the flag as is if no custom values are provided
+        });
+        //console.debug("Form Data:", formData,custom_flags);
 
-            */
         const submitData: MountPointData = {
             path: formData.path,
             path_hash: MD5(formData.path).toString(),
             fstype: formData.fstype || undefined,
             flags: formData.flags,
-            custom_flags: formData.custom_flags,
-            device: props.objectToEdit.name, // Ensure device name is included
+            custom_flags: custom_flags,
+            //device: props.objectToEdit.device, // Ensure device name is included
             type: Type.Addon,
         };
         console.log("Submitting Mount Data:", submitData);
@@ -576,8 +571,6 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                                 console.log("FS Type changed:", value);
                                                 setValue('custom_flags', []); // Clear custom flags when FS type changes
                                                 setValue('custom_flags_values', []); // Clear custom flags values when FS type changes
-                                                //setValue('flags', []); // Clear flags when FS type changes
-                                                //setValue('fstype', value); // Update the form value
                                             }
                                         }}
                                         textFieldProps={{
@@ -670,21 +663,6 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                 </Grid>
                                 {fields.map((field, index) => (
                                     <Grid size={6}> {/* FS CustomFlags Values */}
-                                        {/*
-                                        <TextField
-                                            key={field.id} // important to include key with field's id
-                                            label={field.name}
-                                            id="outlined-size-small"
-                                            required
-
-                                            helperText={field.value_description}
-                                            size="small"
-                                            {...register(`custom_flags_values.${index}.value`, {
-                                                required: true,
-                                                pattern: RegExp(field.value_validation_regex || ".*"),
-                                            })}
-                                        />
-                                        */}
                                         <TextFieldElement
                                             key={field.id}
                                             size="small"
@@ -711,7 +689,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={handleCancel} color="secondary">Cancel</Button>
-                        <Button type="submit" variant="contained" disabled={!isDirty}>Mount</Button> {/* Disable if form not changed */}
+                        <Button type="submit" variant="contained">Mount</Button> {/* Disable if form not changed */}
                     </DialogActions>
                 </form>
             </Dialog>
