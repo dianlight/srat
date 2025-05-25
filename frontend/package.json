@@ -68,7 +68,7 @@
     "gowatch": "bun run bun.build.ts -w -o ../backend/src/static",
     "clean": "rm -rf out",
     "dev": "bun --hot run bun.build.ts -w -s ./out",
-    "dev:remote": "bun --hot run bun.build.ts -w -s ./out -c http://192.168.0.250:3000/",
+    "dev:remote": "bun --hot run bun.build.ts -w -s ./out -c http://192.168.0.68:3000/",
     "gen": "rtk-query-codegen-openapi api.config.json"
   },
   "patchedDependencies": {
