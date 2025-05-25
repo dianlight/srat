@@ -34,14 +34,18 @@ import BackupIcon from '@mui/icons-material/Backup';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAppDispatch, useAppSelector } from "../store/store";
-import { Usage, useDeleteShareByShareNameMutation, useGetUsersQuery, usePutShareByShareNameMutation, type SharedResource, type User } from "../store/sratApi";
+import { Usage, useDeleteShareByShareNameMutation, useGetUsersQuery, usePutShareByShareNameMutation, type MountPointData, type SharedResource, type User } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { addMessage } from "../store/errorSlice";
 import { useVolume } from "../hooks/volumeHook";
+import { toast } from "react-toastify";
 
 interface ShareEditProps extends SharedResource {
     org_name: string,
+    trashbin?: boolean, // TODO: Implement TrashBin support
+    //usersNames?: string[],
+    //roUsersNames?: string[],
 }
 
 
@@ -127,16 +131,17 @@ export function Shares() {
         // Save Data
         console.log(data);
         if (data.org_name !== "") {
-
-            updateShare({ shareName: data.org_name, sharedResource: { ...data, disabled: false } }).unwrap()
-                .then(() => {
-                    //            setErrorInfo('');
+            updateShare({ shareName: data.org_name, sharedResource: data }).unwrap()
+                .then((res) => {
+                    toast.info(`Share ${(res as SharedResource).name || selected[0]} modified successfully.`);
+                    setSelected(null);
+                    setShowEdit(false);
                 })
                 .catch(err => {
                     dispatch(addMessage(JSON.stringify(err)));
                 });
         }
-        setShowEdit(false);
+
         return false;
     }
 
@@ -168,11 +173,13 @@ export function Shares() {
                                 <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
                                     <SettingsIcon />
                                 </IconButton>
-                                <IconButton onClick={() => onSubmitDeleteShare(share, props)} edge="end" aria-label="delete">
-                                    <Tooltip title="Delete share">
-                                        <DeleteIcon color="error" />
-                                    </Tooltip>
-                                </IconButton>
+                                {props.usage !== Usage.Internal &&
+                                    <IconButton onClick={() => onSubmitDeleteShare(share, props)} edge="end" aria-label="delete">
+                                        <Tooltip title="Delete share">
+                                            <DeleteIcon color="error" />
+                                        </Tooltip>
+                                    </IconButton>
+                                }
                                 {/* 
                                 <IconButton onClick={() => { setSelected([share, props]); setShowUserEdit(true) }} edge="end" aria-label="users">
                                     <Tooltip title="Manage Users">
@@ -255,14 +262,14 @@ export function Shares() {
                                                         icon={<EditIcon />}
                                                         variant="outlined"
                                                         label={
-                                                            <span>
+                                                            <Typography variant="body2" component="span">
                                                                 Users: {props.users.map(u => (
-                                                                    <span key={u.username} style={{ color: u.is_admin ? 'primary' : 'inherit' }}>
+                                                                    <Typography variant="body2" component="span" key={u.username} color={u.is_admin ? 'warning' : 'inherit'}>
                                                                         {u.username}
                                                                         {u !== props.users![props.users!.length - 1] && ', '}
-                                                                    </span>
+                                                                    </Typography>
                                                                 ))}
-                                                            </span>
+                                                            </Typography>
                                                         }
                                                         sx={{ my: 0.5 }}
                                                     />
@@ -278,7 +285,7 @@ export function Shares() {
                                                         label={
                                                             <span>
                                                                 Read-only Users: {props.ro_users.map(u => (
-                                                                    <span key={u.username} style={{ color: u.is_admin ? 'primary' : 'inherit' }}>
+                                                                    <span key={u.username} style={{ color: u.is_admin ? 'warning' : 'inherit' }}>
                                                                         {u.username}
                                                                         {u !== props.ro_users![props.ro_users!.length - 1] && ', '}
                                                                     </span>
@@ -328,18 +335,12 @@ export function Shares() {
     </InView>
 }
 
-
-interface ShareEditPropsEdit extends ShareEditProps {
-    usersNames?: string[],
-    roUsersNames?: string[],
-}
-
 function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
-    const { data: users, isLoading } = useGetUsersQuery()
-    const volumes = useVolume()
+    const { data: users, isLoading: usLoading, error: usError } = useGetUsersQuery()
+    const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume()
     const shares = useShare()
     const [editName, setEditName] = useState(false);
-    const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditPropsEdit>(
+    const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditProps>(
         {
             values: !props.objectToEdit ? {
                 org_name: "",
@@ -347,12 +348,11 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 users: [],
                 ro_users: [],
                 timemachine: false,
-                usersNames: [],
-                roUsersNames: [],
+                usage: Usage.None,
             } : {
                 ...props.objectToEdit,
-                usersNames: props.objectToEdit?.users?.map(user => user.username as string) || [],
-                roUsersNames: props.objectToEdit?.ro_users?.map(user => user.username as string) || [],
+                //usersNames: props.objectToEdit?.users?.map(user => user.username as string) || [],
+                //roUsersNames: props.objectToEdit?.ro_users?.map(user => user.username as string) || [],
                 /*
                 volumeId: props.objectToEdit.mount_point_data?.path ?
                     volumes.disks?.partitions?.
@@ -363,20 +363,15 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
             }
         },
     );
-    const selected_users = watch("usersNames")
-    const selected_ro_users = watch("roUsersNames")
 
 
-    function handleCloseSubmit(data?: ShareEditPropsEdit) {
+    function handleCloseSubmit(data?: ShareEditProps) {
         setEditName(false)
         if (!data) {
             props.onClose()
             return
         }
-        data.mount_point_data = volumes.disks?.flatMap(disk => disk.partitions)?.flatMap(partition => partition?.mount_point_data).find(mount_point_data => mount_point_data?.path === data?.mount_point_data?.path);
-        data.users = data.usersNames?.map(username => (users as User[])?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
-        data.ro_users = data.usersNames?.map(username => (users as User[])?.find(userobj => userobj.username === username)).filter(v3 => v3 !== undefined)
-        //console.log(data)
+        console.log(data)
         props.onClose(data)
     }
 
@@ -400,7 +395,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 <DialogContent>
                     <Stack spacing={2}>
                         <DialogContentText>
-                            Please enter or modify the Samba share data.
+                            Please enter or modify share properties.
                         </DialogContentText>
                         <form id="editshareform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                             <Grid container spacing={2}>
@@ -413,6 +408,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                     <Grid size={6}>
                                         <SelectElement
                                             sx={{ display: "flex" }}
+                                            size="small"
                                             label="Usage"
                                             name="usage"
                                             options={Object.keys(Usage)
@@ -424,53 +420,144 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                 {
                                     props.objectToEdit?.usage !== Usage.Internal && <>
                                         <Grid size={6}>
-                                            <SelectElement sx={{ display: "flex" }}
+                                            <AutocompleteElement
                                                 label="Volume"
                                                 name="mount_point_data"
-                                                options={volumes.disks?.flatMap(disk => disk.partitions)?.flatMap(partition => partition?.mount_point_data).
-                                                    filter(mount => mount?.path?.startsWith("/mnt/")).
-                                                    filter(mount => (shares.shares.map(share => share.mount_point_data?.path).indexOf(mount?.path) == -1 || mount?.path === props.objectToEdit?.mount_point_data?.path)).
-                                                    map(mount => {
-                                                        return {
-                                                            id: mount?.path,
-                                                            label: mount?.path + "(" + mount?.device + ")",
-                                                            //  disabled: mount.label === "Invalid Volume"
-                                                        }
-                                                    })}
+                                                options={volumes?.flatMap(disk => disk.partitions)?.filter(Boolean).filter(partition => !partition?.system).flatMap(partition => partition?.mount_point_data).filter(mp => mp?.path !== "") as MountPointData[] || [] as MountPointData[]}
+                                                control={control}
                                                 required
-                                                control={control} />
+                                                loading={vlLoading}
+                                                autocompleteProps={{
+                                                    size: "small",
+                                                    renderValue: (value) => {
+                                                        return value.path || "--";
+                                                    },
+                                                    getOptionLabel: (option: MountPointData) => option?.path || "",
+                                                    getOptionKey: (option) => option?.path_hash || "",
+                                                    renderOption: (props, option) => (
+                                                        <li {...props} key={option.path_hash}>
+                                                            <Typography variant="body2">{option.path}</Typography>
+                                                        </li>
+                                                    ),
+                                                    isOptionEqualToValue(option, value) {
+                                                        return option.path_hash === value.path_hash;
+                                                    },
+                                                }}
+                                            />
                                         </Grid>
                                         <Grid size={6}>
-                                            <CheckboxElement label="Timemachine" name="timemachine" control={control} />
-                                        </Grid></>
+                                            <CheckboxElement label="Support Timemachine Backups" name="timemachine" control={control} />
+                                        </Grid>
+                                        <Grid size={6}>
+                                            <CheckboxElement disabled label="Support TrashBin" name="trashbin" control={control} />
+                                        </Grid>
+                                    </>
                                 }
-                                <Grid size={12}>
-                                    <AutocompleteElement
-                                        name="usersNames"
-                                        label="Read and Write users"
-                                        loading={isLoading}
-                                        options={
-                                            ((users as User[])?.
-                                                filter(user => selected_ro_users?.indexOf(user.username || "") == -1).
-                                                map(user => ({ id: user.username, label: user.username })) || [])
-                                        }
-                                        control={control}
-                                        matchId
-                                        multiple
-                                    />
-                                    <AutocompleteElement
-                                        name="roUsersNames"
-                                        label="ReadOnly users"
-                                        loading={isLoading}
-                                        options={
-                                            ((users as User[])?.
-                                                filter(user => selected_users?.indexOf(user.username || "") == -1).
-                                                map(user => ({ id: user.username, label: user.username })) || [])
-                                        }
-                                        control={control}
-                                        matchId
-                                        multiple
-                                    />
+                                <Grid size={6}>
+                                    {
+                                        !usLoading && ((users as User[]) || []).length > 0 &&
+                                        <AutocompleteElement
+                                            multiple
+                                            name="users"
+                                            label="Read and Write users"
+                                            options={usLoading ? [] : (users as User[]) || []} // Use string keys for options
+                                            control={control}
+                                            loading={usLoading}
+                                            autocompleteProps={{
+                                                size: "small",
+                                                limitTags: 5,
+                                                getOptionKey: (option) => option.username || "",
+                                                getOptionLabel: (option) => option.username || "",
+                                                renderOption: (props, option) => (
+                                                    <li {...props} key={option.username}>
+                                                        <Typography variant="body2" color={option.is_admin ? "warning" : "default"}>{option.username}</Typography>
+                                                    </li>
+                                                ),
+                                                getOptionDisabled: (option) => {
+                                                    if (watch("ro_users")?.find(user => user.username === option.username)) {
+                                                        return true; // Disable if the user is already in the users list
+                                                    }
+                                                    return false;
+                                                },
+                                                isOptionEqualToValue(option, value) {
+                                                    return option.username === value.username;
+                                                },
+                                                renderValue: (values, getItemProps) =>
+                                                    values.map((option, index) => {
+                                                        const { key, ...itemProps } = getItemProps({ index });
+                                                        //console.log(values, option)
+                                                        return (
+                                                            <Chip
+                                                                color={option.is_admin ? "warning" : "default"}
+                                                                key={key}
+                                                                variant="outlined"
+                                                                label={option?.username || "bobo"}
+                                                                size="small"
+                                                                {...itemProps}
+                                                            />
+                                                        );
+                                                    }),
+                                            }}
+                                            textFieldProps={{
+                                                //helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
+                                                //error: !!fsError,
+                                                InputLabelProps: { shrink: true }
+                                            }}
+                                        />
+                                    }
+                                </Grid>
+                                <Grid size={6}>
+                                    {
+                                        !usLoading && ((users as User[]) || []).length > 0 &&
+                                        <AutocompleteElement
+                                            multiple
+                                            name="ro_users"
+                                            label="Read Only users"
+                                            options={usLoading ? [] : (users as User[]) || []} // Use string keys for options
+                                            control={control}
+                                            loading={usLoading}
+                                            autocompleteProps={{
+                                                size: "small",
+                                                limitTags: 5,
+                                                getOptionKey: (option) => option.username || "",
+                                                getOptionLabel: (option) => option.username || "",
+                                                renderOption: (props, option) => (
+                                                    <li {...props} key={option.username}>
+                                                        <Typography variant="body2" color={option.is_admin ? "warning" : "default"}>{option.username}</Typography>
+                                                    </li>
+                                                ),
+                                                getOptionDisabled: (option) => {
+                                                    if (watch("users")?.find(user => user.username === option.username)) {
+                                                        return true; // Disable if the user is already in the users list
+                                                    }
+                                                    return false;
+                                                },
+                                                isOptionEqualToValue(option, value) {
+                                                    return option.username === value.username;
+                                                },
+                                                renderValue: (values, getItemProps) =>
+                                                    values.map((option, index) => {
+                                                        const { key, ...itemProps } = getItemProps({ index });
+                                                        //console.log(values, option)
+                                                        return (
+                                                            <Chip
+                                                                color={option.is_admin ? "warning" : "default"}
+                                                                key={key}
+                                                                variant="outlined"
+                                                                label={option?.username || "bobo"}
+                                                                size="small"
+                                                                {...itemProps}
+                                                            />
+                                                        );
+                                                    }),
+                                            }}
+                                            textFieldProps={{
+                                                //helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
+                                                //error: !!fsError,
+                                                InputLabelProps: { shrink: true }
+                                            }}
+                                        />
+                                    }
                                 </Grid>
                             </Grid>
                         </form>

@@ -441,7 +441,7 @@ components:
           type: string
       type: object
     SharedResource:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
@@ -973,7 +973,7 @@ paths:
                 - "null"
           application/merge-patch+json:
             schema:
-              additionalProperties: false
+              additionalProperties: true
               properties:
                 $schema:
                   description: A URL to the JSON Schema for this object.
@@ -1010,7 +1010,7 @@ paths:
               type: object
           application/merge-patch+shorthand:
             schema:
-              additionalProperties: false
+              additionalProperties: true
               properties:
                 $schema:
                   description: A URL to the JSON Schema for this object.
@@ -1190,24 +1190,6 @@ paths:
                   oneOf:
                     - properties:
                         data:
-                          $ref: "#/components/schemas/Welcome"
-                        event:
-                          const: "\"hello\""
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event "hello"
-                      type: object
-                    - properties:
-                        data:
                           $ref: "#/components/schemas/ReleaseAsset"
                         event:
                           const: "\"update\""
@@ -1303,6 +1285,24 @@ paths:
                         - data
                         - event
                       title: Event "share"
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/Welcome"
+                        event:
+                          const: "\"hello\""
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event "hello"
                       type: object
                 title: Server Sent Events
                 type: array

@@ -108,7 +108,7 @@ func (self *ShareHandler) GetShare(ctx context.Context, input *struct {
 // - A struct containing the status code and the created shared resource DTO.
 // - An error if any step in the process fails.
 func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
-	Body dto.SharedResource
+	Body dto.SharedResource `required:"true"`
 }) (*struct {
 	Status int
 	Body   dto.SharedResource
@@ -167,8 +167,8 @@ func (self *ShareHandler) notifyClient() {
 //  5. Converts the updated database share model back to the DTO.
 //  6. Marks shares as dirty and notifies the client asynchronously.
 func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
-	ShareName string `path:"share_name" maxLength:"30" example:"world" doc:"Name of the share"`
-	Body      dto.SharedResource
+	ShareName string             `path:"share_name" maxLength:"30" example:"world" doc:"Name of the share"`
+	Body      dto.SharedResource `required:"true"`
 }) (*struct{ Body dto.SharedResource }, error) {
 	updatedShare, err := self.shareService.UpdateShare(input.ShareName, input.Body)
 	if err != nil {

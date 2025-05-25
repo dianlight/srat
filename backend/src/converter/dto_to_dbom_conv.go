@@ -67,6 +67,8 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.Shared
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	target.Users = make([]dbom.SambaUser, 0, len(source.Users))
+	target.RoUsers = make([]dbom.SambaUser, 0, len(source.RoUsers))
 	for _, _dtoUser := range source.Users {
 		var user dbom.SambaUser
 		err := c.UserToSambaUser(_dtoUser, &user)

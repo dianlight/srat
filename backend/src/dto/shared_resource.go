@@ -1,6 +1,7 @@
 package dto
 
 type SharedResource struct {
+	_           struct{}     `json:"-" additionalProperties:"true"`
 	Name        string       `json:"name,omitempty"  mapper:"mapkey"`
 	Disabled    *bool        `json:"disabled,omitempty"`
 	Users       []User       `json:"users,omitempty"`
