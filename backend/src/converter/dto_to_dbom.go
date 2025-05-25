@@ -22,7 +22,7 @@ type DtoToDbomConverter interface {
 	// goverter:map MountPointData.Path MountPointDataPath
 	sharedResourceToExportedShare(source dto.SharedResource) (dbom.ExportedShare, error)
 
-	// goverter:ignore Invalid
+	// goverter:ignore Invalid IsHAMounted
 	exportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error)
 
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:MD5
@@ -41,7 +41,7 @@ type DtoToDbomConverter interface {
 	userToSambaUser(source dto.User) (dbom.SambaUser, error)
 
 	// goverter:update target
-	// goverter:ignore Invalid
+	// goverter:ignore Invalid IsHAMounted
 	// goverter:useUnderlyingTypeMethods
 	// goverter:ignore MountPointData
 	// goverter:useZeroValueOnPointerInconsistency

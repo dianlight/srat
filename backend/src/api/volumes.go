@@ -132,7 +132,16 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
 	}
 
-	err = self.vservice.UnmountVolume(mountPath, input.Force, input.Lazy)
+	// Disable all share services for this mount point
+	_, errE := self.shareService.DisableShareFromPath(mountPath)
+	if errE != nil {
+		if errors.Is(errE, dto.ErrorShareNotFound) {
+			return nil, huma.Error404NotFound("No share found for the provided mount path", errE)
+		}
+		return nil, huma.Error500InternalServerError("Failed to disable share for mount point", err)
+	}
+
+	err = self.vservice.UnmountVolume(mountPath, input.Force, input.Lazy && !input.Force)
 	if err != nil {
 		return nil, huma.Error406NotAcceptable(fmt.Sprintf("%v", err.Details()["Detail"]), err)
 	}

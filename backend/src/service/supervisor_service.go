@@ -19,6 +19,8 @@ var _supervisor_api_mutex sync.Mutex
 type SupervisorServiceInterface interface {
 	NetworkMountShare(dbom.ExportedShare) error
 	NetworkUnmountShare(dbom.ExportedShare) error
+	NetworkGetAllMounted() ([]mount.Mount, error)
+	NetworkGetMountByName(name string) (*mount.Mount, error)
 }
 
 type SupervisorService struct {
@@ -115,7 +117,43 @@ func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) error
 	return nil
 }
 
-func (self *SupervisorService) NetworkUnmountShare(dbom.ExportedShare) error {
-	self.refreshNetworkMountShare()
+func (self *SupervisorService) NetworkUnmountShare(share dbom.ExportedShare) error {
+	resp, err := self.mount_client.RemoveMountWithResponse(self.apiContext, share.Name)
+	if err != nil {
+		return errors.Errorf("Error unmounting share %s from ha_supervisor: %w", share.Name, err)
+	}
+	if resp.StatusCode() != 200 {
+		return errors.Errorf("Error unmounting share %s from ha_supervisor: %d %#v", share.Name, resp.StatusCode(), resp)
+	}
 	return nil
+}
+
+// NetworkGetAllMounted retrieves all mounts currently known by the supervisor.
+func (self *SupervisorService) NetworkGetAllMounted() ([]mount.Mount, error) {
+	if err := self.refreshNetworkMountShare(); err != nil {
+		return nil, errors.Wrap(err, "failed to refresh supervisor mounts")
+	}
+	_supervisor_api_mutex.Lock()
+	defer _supervisor_api_mutex.Unlock()
+
+	allMounts := make([]mount.Mount, 0, len(self.supervisor_mounts))
+	for _, mnt := range self.supervisor_mounts {
+		allMounts = append(allMounts, mnt)
+	}
+	return allMounts, nil
+}
+
+// NetworkGetMountByName retrieves a specific mount by its name from the supervisor.
+func (self *SupervisorService) NetworkGetMountByName(name string) (*mount.Mount, error) {
+	if err := self.refreshNetworkMountShare(); err != nil {
+		return nil, errors.Wrapf(err, "failed to refresh supervisor mounts before getting share '%s'", name)
+	}
+	_supervisor_api_mutex.Lock()
+	defer _supervisor_api_mutex.Unlock()
+
+	mnt, ok := self.supervisor_mounts[name]
+	if !ok {
+		return nil, nil // errors.WithDetails(dto.ErrorDeviceNotFound, "Name", name, "Message", "supervisor mount not found")
+	}
+	return &mnt, nil
 }

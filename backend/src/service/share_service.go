@@ -5,6 +5,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
+	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
@@ -19,23 +20,31 @@ type ShareServiceInterface interface {
 	DeleteShare(name string) error
 	DisableShare(name string) (*dto.SharedResource, error)
 	EnableShare(name string) (*dto.SharedResource, error)
+	DisableShareFromPath(path string) (*dto.SharedResource, error)
+	EnableShareFromPath(path string) (*dto.SharedResource, error)
 }
 
 type shareService struct {
-	shareRepo repository.ExportedShareRepositoryInterface
-	userRepo  repository.SambaUserRepositoryInterface
-	converter converter.DtoToDbomConverterInterface
+	shareRepo  repository.ExportedShareRepositoryInterface
+	userRepo   repository.SambaUserRepositoryInterface
+	converter  converter.DtoToDbomConverterInterface
+	supervisor SupervisorServiceInterface
+	dirty      DirtyDataServiceInterface // Optional, if needed for dirty data handling
 }
 
 // NewShareService creates a new instance of ShareServiceInterface.
 func NewShareService(
 	shareRepo repository.ExportedShareRepositoryInterface,
 	userRepo repository.SambaUserRepositoryInterface,
+	supervisor SupervisorServiceInterface,
+	dirty DirtyDataServiceInterface,
 ) ShareServiceInterface {
 	return &shareService{
-		shareRepo: shareRepo,
-		userRepo:  userRepo,
-		converter: &converter.DtoToDbomConverterImpl{},
+		shareRepo:  shareRepo,
+		userRepo:   userRepo,
+		supervisor: supervisor,
+		converter:  &converter.DtoToDbomConverterImpl{},
+		dirty:      dirty,
 	}
 }
 
@@ -53,6 +62,19 @@ func (s *shareService) ListShares() ([]dto.SharedResource, error) {
 			if err := s.converter.ExportedShareToSharedResource(dbShare, &dtoShare); err != nil {
 				return nil, errors.Wrapf(err, "failed to convert dbom.ExportedShare to dto.SharedResource for share %s", dbShare.Name)
 			}
+			// Check Supervisor status
+			if dtoShare.Usage != "internal" && dtoShare.Usage != "none" {
+				mount, err := s.supervisor.NetworkGetMountByName(dtoShare.Name)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to get network mount for share %s", dtoShare.Name)
+				}
+				if mount == nil {
+					dtoShare.IsHAMounted = pointer.Bool(false)
+				} else {
+					dtoShare.IsHAMounted = pointer.Bool(true)
+				}
+			}
+
 			dtoShares = append(dtoShares, dtoShare)
 		}
 	}
@@ -90,6 +112,18 @@ func (s *shareService) GetShareFromPath(path string) (*dto.SharedResource, error
 	if err := s.converter.ExportedShareToSharedResource(*dbShare, &dtoShare); err != nil {
 		return nil, errors.Wrapf(err, "failed to convert dbom.ExportedShare to dto.SharedResource for share %s (path %s)", dbShare.Name, path)
 	}
+
+	// Check supervisor status
+	if dtoShare.Usage != "internal" && dtoShare.Usage != "none" {
+		if mount, err := s.supervisor.NetworkGetMountByName(dtoShare.Name); err != nil {
+			return nil, errors.Wrapf(err, "failed to get network mount for share %s (path %s)", dtoShare.Name, path)
+		} else if mount == nil {
+			dtoShare.IsHAMounted = pointer.Bool(false)
+		} else {
+			dtoShare.IsHAMounted = pointer.Bool(true)
+		}
+	}
+
 	return &dtoShare, nil
 }
 
@@ -196,6 +230,7 @@ func (s *shareService) setShareDisabledStatus(name string, disabled bool) (*dto.
 	if err := s.converter.ExportedShareToSharedResource(*dbShare, &dtoShare); err != nil {
 		return nil, errors.Wrapf(err, "failed to convert dbom.ExportedShare to dto.SharedResource for share '%s'", dbShare.Name)
 	}
+	s.dirty.SetDirtyShares()
 	return &dtoShare, nil
 }
 
@@ -207,4 +242,31 @@ func (s *shareService) DisableShare(name string) (*dto.SharedResource, error) {
 // EnableShare enables a shared resource.
 func (s *shareService) EnableShare(name string) (*dto.SharedResource, error) {
 	return s.setShareDisabledStatus(name, false)
+}
+
+// DisableShareFromPath disables a shared resource identified by its mount path.
+func (s *shareService) DisableShareFromPath(path string) (*dto.SharedResource, error) {
+	share, err := s.GetShareFromPath(path)
+	if err != nil {
+		// GetShareFromPath already wraps dto.ErrorShareNotFound
+		return nil, errors.Wrapf(err, "failed to get share from path '%s' for disabling", path)
+	}
+	if share.Disabled != nil && *share.Disabled && share.IsHAMounted != nil && *share.IsHAMounted {
+		err = s.supervisor.NetworkUnmountShare(dbom.ExportedShare{Name: share.Name})
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to unmount share '%s' from supervisor before disabling", share.Name)
+		}
+	}
+
+	return s.setShareDisabledStatus(share.Name, true)
+}
+
+// EnableShareFromPath enables a shared resource identified by its mount path.
+func (s *shareService) EnableShareFromPath(path string) (*dto.SharedResource, error) {
+	share, err := s.GetShareFromPath(path)
+	if err != nil {
+		// GetShareFromPath already wraps dto.ErrorShareNotFound
+		return nil, errors.Wrapf(err, "failed to get share from path '%s' for enabling", path)
+	}
+	return s.setShareDisabledStatus(share.Name, false)
 }

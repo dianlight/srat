@@ -21,7 +21,7 @@ import (
 // goverter:default:update
 type ConfigToDtoConverter interface {
 	// goverter:update target
-	// goverter:ignore Invalid MountPointData
+	// goverter:ignore Invalid MountPointData IsHAMounted
 	// goverter:context users
 	ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
 
