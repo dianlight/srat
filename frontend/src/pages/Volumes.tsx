@@ -173,30 +173,30 @@ export function Volumes() {
             confirmationText: force ? "Force Unmount" : "Unmount",
             cancellationText: "Cancel",
             confirmationButtonProps: { color: force ? "error" : "primary" }
+
         })
-            .then(() => { // Only proceed if confirmed
-                console.log(`Proceeding with ${force ? 'forced ' : ''}unmount for:`, mountData.path);
-                umountVolume({
-                    mountPathHash: mountData.path_hash || "", // Use the extracted path
-                    force: force,
-                    // lazy: true, // Consider if lazy unmount is always desired
-                }).unwrap().then(() => {
-                    toast.info(`Volume ${displayName} unmounted successfully.`);
-                    // Optionally clear selection if the unmounted item was selected
-                    if (selected?.id === partition.id) {
-                        setSelected(undefined);
-                    }
-                }).catch(err => {
-                    console.error("Unmount Error:", err);
-                    const errorData = err?.data || {};
-                    const errorMsg = errorData?.message || err?.status || 'Unknown error';
-                    toast.error(`Error unmounting ${displayName}: ${errorMsg}`, { data: { error: err } });
-                })
+            .then((crseult) => { // Only proceed if confirmed
+                if (crseult.reason !== "confirm") {
+                    console.log(`Proceeding with ${force ? 'forced ' : ''}unmount for:`, mountData.path);
+                    umountVolume({
+                        mountPathHash: mountData.path_hash || "", // Use the extracted path
+                        force: force,
+                        lazy: true, // Consider if lazy unmount is always desired
+                    }).unwrap().then(() => {
+                        toast.info(`Volume ${displayName} unmounted successfully.`);
+                        // Optionally clear selection if the unmounted item was selected
+                        if (selected?.id === partition.id) {
+                            setSelected(undefined);
+                        }
+
+                    }).catch(err => {
+                        console.error("Unmount Error:", err);
+                        const errorData = err?.data || {};
+                        const errorMsg = errorData?.message || err?.status || 'Unknown error';
+                        toast.error(`Error unmounting ${displayName}: ${errorMsg}`, { data: { error: err } });
+                    })
+                }
             })
-            .catch(() => {
-                // This catch block handles cancellation of the confirm dialog
-                console.log("Unmount cancelled by user.");
-            });
     }
 
 

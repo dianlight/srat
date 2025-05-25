@@ -40,7 +40,7 @@ type HaHardwareToDto interface {
 func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointData {
 	var mountPointDatas []dto.MountPointData
 
-	fstype, _, err := mount.FSFromBlock(*source.Device)
+	fstype, _, err := mount.FSFromBlock(*source.Device) // FIXME: this is not a good way to get the filesystem type
 	if err != nil {
 		slog.Warn("Failed to get filesystem type and flags", "device", source.Device, "error", err)
 	}

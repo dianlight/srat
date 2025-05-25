@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -112,7 +113,7 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 
 	err = self.vservice.UnmountVolume(mountPath, input.Force, input.Lazy)
 	if err != nil {
-		return nil, err
+		return nil, huma.Error406NotAcceptable(fmt.Sprintf("%v", err.Details()["Detail"]), err)
 	}
 
 	self.dirtyservice.SetDirtyVolumes()
