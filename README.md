@@ -1,5 +1,5 @@
 
-# SambaNAS Rest Administration Tool
+# SambaNAS Rest Administration Tool ![SRAT](docs/full_logo.png)
 
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/dianlight/srat?include_prereleases)](https://img.shields.io/github/v/release/dianlight/srat?include_prereleases)
 [![GitHub last commit](https://img.shields.io/github/last-commit/dianlight/srat)](https://img.shields.io/github/last-commit/dianlight/srat)

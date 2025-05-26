@@ -1,4 +1,5 @@
 import logo from "../img/logo.png"
+import icon from "../img/icon.png"
 import github from "../img/github.svg"
 import pkg from '../../package.json'
 import { useContext, useEffect, useState } from "react"
@@ -128,6 +129,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     const confirm = useConfirm();
     const [tabId, setTabId] = useState<string>(() => uuidv4())
     const theme = useTheme();
+    const [isLogoHovered, setIsLogoHovered] = useState(false);
     const matches = useMediaQuery(theme.breakpoints.up('sm'));
 
 
@@ -196,7 +198,13 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             <Container maxWidth="xl">
                 <Toolbar disableGutters>
                     {matches &&
-                        <img id="logo-container" className="brand-logo" alt="SRAT -- Samba Rest Adminitration Tool" src={logo} />
+                        <img
+                            id="logo-container"
+                            className="brand-logo"
+                            alt="SRAT -- Samba Rest Adminitration Tool"
+                            src={isLogoHovered ? icon : logo}
+                            onMouseEnter={() => setIsLogoHovered(true)}
+                            onMouseLeave={() => setIsLogoHovered(false)} />
                     }
                     <Tabs
                         sx={{ flexGrow: 1, display: { xs: 'flex', md: 'flex' } }}
