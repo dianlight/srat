@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
@@ -81,6 +82,7 @@ func (p *ExportedShareRepository) SaveAll(shares *[]dbom.ExportedShare) error {
 func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) error {
 	err := p.db.Session(&gorm.Session{FullSaveAssociations: true}).Save(share).Error
 	if err != nil {
+		slog.Error("Failed to save share", "share", share, "error", err)
 		return errors.WithStack(err)
 	}
 	return nil
