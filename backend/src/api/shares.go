@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 
@@ -178,6 +179,7 @@ func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorShareAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
+		slog.Error("Failed to update share", "share_name", input.ShareName, "error", err)
 		return nil, errors.Wrapf(err, "failed to update share %s", input.ShareName)
 	}
 

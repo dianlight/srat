@@ -34,7 +34,7 @@ import BackupIcon from '@mui/icons-material/Backup';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAppDispatch, useAppSelector } from "../store/store";
-import { Usage, useDeleteShareByShareNameMutation, useGetUsersQuery, usePutShareByShareNameMutation, type MountPointData, type SharedResource, type User } from "../store/sratApi";
+import { Usage, useDeleteShareByShareNameMutation, useGetUsersQuery, usePostShareMutation, usePutShareByShareNameMutation, type MountPointData, type SharedResource, type User } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { addMessage } from "../store/errorSlice";
@@ -62,6 +62,7 @@ export function Shares() {
     const confirm = useConfirm();
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
     const [deleteShare, updateDeleteShareResult] = useDeleteShareByShareNameMutation();
+    const [createShare, createShareResult] = usePostShareMutation();
 
     function onSubmitDisableShare(cdata?: string, props?: SharedResource) {
         console.log("Disable", cdata, props);
@@ -122,7 +123,8 @@ export function Shares() {
     }
 
     function onSubmitEditShare(data?: ShareEditProps) {
-        if (!data || !selected) return;
+        console.log("Edit Share", data, selected);
+        if (!data) return;
         if (!data.name || !data.mount_point_data?.path) {
             dispatch(addMessage("Unable to open share!"));
             return;
@@ -133,7 +135,17 @@ export function Shares() {
         if (data.org_name !== "") {
             updateShare({ shareName: data.org_name, sharedResource: data }).unwrap()
                 .then((res) => {
-                    toast.info(`Share ${(res as SharedResource).name || selected[0]} modified successfully.`);
+                    toast.info(`Share ${(res as SharedResource).name} modified successfully.`);
+                    setSelected(null);
+                    setShowEdit(false);
+                })
+                .catch(err => {
+                    dispatch(addMessage(JSON.stringify(err)));
+                });
+        } else {
+            createShare({ sharedResource: data }).unwrap()
+                .then((res) => {
+                    toast.info(`Share ${(res as SharedResource).name || data.name} created successfully.`);
                     setSelected(null);
                     setShowEdit(false);
                 })
@@ -440,7 +452,9 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                                         </li>
                                                     ),
                                                     isOptionEqualToValue(option, value) {
-                                                        return option.path_hash === value.path_hash;
+                                                        //console.log("Comparing", option, value);
+                                                        if (!value || !option) return false;
+                                                        return option.path_hash === value?.path_hash;
                                                     },
                                                 }}
                                             />
