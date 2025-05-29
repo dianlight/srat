@@ -122,7 +122,7 @@ export function Users() {
             >
                 <PersonAddIcon />
             </Fab>}
-            <List dense={true} sx={{ pt: 2 }}>
+            <List dense={true} sx={{ pt: 2 }} component="span">
                 {users.isSuccess && Array.isArray(users.data) && users.data.slice().sort((a, b) => {
                     // Sort admin users to the top, then alphabetically by username
                     if (a.is_admin && !b.is_admin) return -1;
@@ -142,9 +142,16 @@ export function Users() {
                                 </Avatar>
                             </ListItemAvatar>
                             <ListItemText
+                                sx={{ flexGrow: 1, overflowWrap: 'break-word' }}
                                 primary={user.username}
+                                slotProps={{
+                                    secondary: {
+                                        component: 'span',
+
+                                    }
+                                }}
                                 secondary={
-                                    <Box sx={{ mt: 0.5, _display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                    <Box component="span" sx={{ mt: 0.5, _display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                                         {userRwShares.length > 0 && (
                                             <Tooltip title={`Shares with read-write access for ${user.username}`}>
                                                 <Chip
@@ -153,7 +160,7 @@ export function Users() {
                                                         <Box component="span" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
                                                             Shares:
                                                             {userRwShares.map((share, index) => (
-                                                                <Typography variant="caption" key={share.name}>
+                                                                <Typography component="span" variant="caption" key={share.name}>
                                                                     {share.name}{index < userRwShares.length - 1 ? ',' : ''}
                                                                 </Typography>
                                                             ))}
@@ -173,7 +180,7 @@ export function Users() {
                                                         <Box component="span" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
                                                             Shares:
                                                             {userRoShares.map((share, index) => (
-                                                                <Typography variant="caption" key={share.name}>
+                                                                <Typography component="span" variant="caption" key={share.name}>
                                                                     {share.name}{index < userRoShares.length - 1 ? ',' : ''}
                                                                 </Typography>
                                                             ))}
@@ -243,13 +250,12 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
                 <DialogContent>
                     <Stack spacing={2}>
                         <DialogContentText>
-                            To subscribe to this website, please enter your email address here. We
-                            will send updates occasionally.
+                            Please enter the username and password for the user.
                         </DialogContentText>
                         <form id="editshareform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                             <Grid container spacing={2}>
                                 <Grid size={6}>
-                                    <TextFieldElement name="username" label="User Name" required control={control}
+                                    <TextFieldElement size="small" name="username" autoComplete="username" label="User Name" required control={control}
                                         slotProps={props.objectToEdit?.username ? (props.objectToEdit.is_admin ? {} : {
                                             input: {
                                                 readOnly: true,
@@ -258,9 +264,9 @@ function UserEditDialog(props: { open: boolean, onClose: (data?: UsersProps) => 
                                     />
                                 </Grid>
                                 <Grid size={6}>
-                                    <PasswordElement name="password" label="Password"
+                                    <PasswordElement size="small" autoComplete="new-password" name="password" label="Password"
                                         required control={control} />
-                                    <PasswordRepeatElement passwordFieldName={'password'} name={'password-repeat'} margin={'dense'} label={'Repeat Password'} required control={control} />
+                                    <PasswordRepeatElement size="small" autoComplete="new-password" passwordFieldName={'password'} name={'password-repeat'} margin={'dense'} label={'Repeat Password'} required control={control} />
                                 </Grid>
                             </Grid>
                         </form>
