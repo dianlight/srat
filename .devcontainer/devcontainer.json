@@ -81,5 +81,8 @@
 		},
 		"ghcr.io/cirolosapio/devcontainers-features/alpine-gh-cli:0": {},
 		"ghcr.io/cirolosapio/devcontainers-features/alpine-jq:0": {}
-	}
+	},
+	"mounts": [
+		"type=bind,source=${localEnv:HOME}/.ssh,target=/root/.ssh,readonly"
+	]
 }
