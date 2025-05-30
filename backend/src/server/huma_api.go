@@ -1,13 +1,10 @@
 package server
 
 import (
-	"context"
-
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humamux"
 	"github.com/danielgtaylor/huma/v2/autopatch"
 	"github.com/gorilla/mux"
-	"github.com/jpillora/overseer"
 	"go.uber.org/fx"
 )
 
@@ -17,12 +14,8 @@ type HumaRoute interface {
 
 func NewHumaAPI(v struct {
 	fx.In
-	Mux      *mux.Router
-	State    *overseer.State
-	CxtClose context.CancelFunc
-	Routes   []HumaRoute `group:"api_routes"`
-	Hamode   bool        `name:"ha_mode"`
-	// Static   fs.FS       `name:"static_fs"`
+	Mux    *mux.Router
+	Routes []HumaRoute `group:"api_routes"`
 }) huma.API {
 	config := huma.DefaultConfig("SRAT API", "1.0.0")
 	config.Info.Description = "This are samba rest admin API"

@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2024.12.0.dev2502",
+  "version": "TEST_INTERNAL_MULTIARCH",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -65,7 +65,7 @@
     "version": "bun run version.ts",
     "build": "bun run bun.build.ts",
     "watch": "bun run bun.build.ts -w",
-    "gowatch": "bun run bun.build.ts -w -o ../backend/src/static",
+    "gowatch": "bun run bun.build.ts -w -o ../backend/src/web/static",
     "clean": "rm -rf out",
     "dev": "bun --hot run bun.build.ts -w -s ./out",
     "dev:remote": "bun --hot run bun.build.ts -w -s ./out -c http://192.168.0.68:3000/",

@@ -2,7 +2,7 @@ TARGET_EXEC=srat
 BUILD_DIR := ./dist
 SRC_DIRS := ./src
 FRONTEND_DIRS := ../frontend
-STATIC_DIRS := ./src/static
+STATIC_DIRS := ./src/web/static
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 
@@ -14,6 +14,7 @@ SRCS := $(filter-out %_test.go, $(ALL_SRCS))
 VERSION?="$(shell git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2> /dev/null | sed 's/^.//')"
 COMMIT_HASH="$(shell git rev-parse --short HEAD)"
 BUILD_TIMESTAMP="$(shell date '+%Y-%m-%dT%H:%M:%S')"
+ARCH ?= $(shell arch)
 
 all: PREREQUISITE build
 
@@ -23,12 +24,12 @@ build: $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	mkdir dist > /dev/null 2>&1 || :   
-	cd $(SRC_DIRS);CGO_ENABLED=0 $(AARGS) go build -tags=embedallowed -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../$(@)$(SUFFIX)
+	CGO_ENABLED=0 $(AARGS) go build -C src -tags=embedallowed -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../dist/$(ARCH)/ ./...
 
 test_build: $(SRC_DIRS) $(STATIC_DIRS)
 	mkdir tmp > /dev/null 2>&1 || :   
-	CGO_ENABLED=0 go build -C src -tags=embedallowed_no -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/srat
-	CGO_ENABLED=0 GOARCH=amd64 go build  -C src -tags=embedallowed -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/srat_x86_64	
+	CGO_ENABLED=0 go build -C src -tags=embedallowed_no -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/srat  ./cmd/srat-server
+	CGO_ENABLED=0 GOARCH=amd64 go build  -C src -tags=embedallowed -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/srat_x86_64 ./cmd/srat-server
 	[ -f /mnt/remote/bootconfig.json ] && cp tmp/srat_x86_64 /mnt/remote/srat_x86_64 || echo "No remote mount found use make mount_remote"
 
 .PHONY: format
@@ -56,13 +57,17 @@ test_ci: $(ALL_SRCS)
 docs: gen 
 
 gen: $(SRCS)
-	mkdir -p $(SRC_DIRS)/static && touch $(SRC_DIRS)/static/.nodelete
-	cd $(SRC_DIRS);go generate ./...
+	go generate -C $(SRC_DIRS)  ./...
+	go run -C src ./cmd/srat-openapi -out ../docs
+
+.PHONY: dev_cli
+dev_cli:
+	go run -C src ./cmd/srat-cli -opt ../test/data/options.json -conf ../test/data/config.json -db ../tmp/testdb.db -out ../tmp/samba.conf  -ha-url $(SUPERVISOR_URL)
 
 .PHONY: dev
 dev:
-	#cd $(SRC_DIRS);go run . -opt ../test/data/options.json -conf ../test/data/config.json $(ARGS)
 	cd $(SRC_DIRS);go tool air
+
 
 .PHONY: update
 update:
@@ -76,7 +81,7 @@ static: $(FRONTEND_DIRS)/node_modules
 	rm -rf $(SRC_DIRS)/static
 	#cd $(FRONTEND_DIRS);bun run gen
 	cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
-	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(SRC_DIRS)/static
+	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS)
 
 patch:
 	cd $(SRC_DIRS);go tool gohack undo

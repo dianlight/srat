@@ -25,6 +25,7 @@ import (
 	"github.com/u-root/u-root/pkg/mount/loop"
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
 
@@ -47,21 +48,35 @@ type VolumeService struct {
 	staticConfig      *dto.ContextState
 }
 
-func NewVolumeService(ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface, lsblk lsblk.LSBLKInterpreterInterface, fs_service FilesystemServiceInterface, staticConfig *dto.ContextState) VolumeServiceInterface {
+type VolumeServiceProps struct {
+	fx.In
+	Ctx               context.Context
+	Broadcaster       BroadcasterServiceInterface
+	MountPointRepo    repository.MountPointPathRepositoryInterface
+	HardwareClient    hardware.ClientWithResponsesInterface `optional:"true"`
+	LsblkInterpreter  lsblk.LSBLKInterpreterInterface
+	FilesystemService FilesystemServiceInterface
+	StaticConfig      *dto.ContextState
+}
+
+func NewVolumeService(
+	in VolumeServiceProps,
+	//ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface, lsblk lsblk.LSBLKInterpreterInterface, fs_service FilesystemServiceInterface, staticConfig *dto.ContextState
+) VolumeServiceInterface {
 	p := &VolumeService{
-		ctx:               ctx,
-		broascasting:      broascasting,
+		ctx:               in.Ctx,
+		broascasting:      in.Broadcaster,
 		volumesQueueMutex: sync.RWMutex{},
-		mount_repo:        mount_repo,
-		hardwareClient:    hardwareClient,
-		lsblk:             lsblk,
-		fs_service:        fs_service,
-		staticConfig:      staticConfig,
+		mount_repo:        in.MountPointRepo,
+		hardwareClient:    in.HardwareClient,
+		lsblk:             in.LsblkInterpreter,
+		fs_service:        in.FilesystemService,
+		staticConfig:      in.StaticConfig,
 	}
 	//p.GetVolumesData()
-	ctx.Value("wg").(*sync.WaitGroup).Add(1)
+	in.Ctx.Value("wg").(*sync.WaitGroup).Add(1)
 	go func() {
-		defer ctx.Value("wg").(*sync.WaitGroup).Done()
+		defer in.Ctx.Value("wg").(*sync.WaitGroup).Done()
 		p.udevEventHandler()
 	}()
 	return p

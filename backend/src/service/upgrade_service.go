@@ -58,11 +58,11 @@ func (self *UpgradeService) run() error {
 				slog.Debug("Version Checking...")
 				err := self.checkSoftwareVersion()
 				if err != nil {
-					slog.Error("Error checking for updates: %w", "err", err)
+					slog.Error("Error checking for updates", "err", err)
 				}
 				err = self.EventEmitter(self.ctx, self.lastReleaseData)
 				if err != nil {
-					slog.Error("Error emitting vrsion message: %w", "err", err)
+					slog.Error("Error emitting vrsion message", "err", err)
 				}
 			})
 			time.Sleep(time.Second * 10)
@@ -73,7 +73,7 @@ func (self *UpgradeService) run() error {
 func (self *UpgradeService) checkSoftwareVersion() error {
 	value, err := self.props_repo.Value("UpdateChannel", false)
 	if err != nil {
-		return errors.WithStack(err)
+		value = "stable"
 	}
 	updateChannel := dto.UpdateChannel(value.(string))
 

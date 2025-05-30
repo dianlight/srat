@@ -315,15 +315,6 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
-          data: SharedResource[] | null;
-          /** The event name. */
-          event: '"share"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
           data: Welcome;
           /** The event name. */
           event: '"hello"';
@@ -363,6 +354,15 @@ export type SseApiResponse = /** status 200 OK */
           data: HealthPing;
           /** The event name. */
           event: '"heartbeat"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: SharedResource[] | null;
+          /** The event name. */
+          event: '"share"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -582,6 +582,7 @@ export type SharedResource = {
   timemachine?: boolean;
   usage?: Usage;
   users?: User[] | null;
+  [key: string]: any;
 };
 export type Welcome = {
   message: string;

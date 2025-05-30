@@ -1,5 +1,7 @@
 dist/
 node_modules/
 backend/src/static/
+backend/src/web/static/*
+!backend/src/web/static/.keep
 .DS_Store
 backend/tmp/

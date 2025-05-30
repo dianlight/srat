@@ -1,0 +1,3 @@
+package converter
+
+//go:generate go run github.com/jmattheis/goverter/cmd/goverter@v1.8.3 gen ./...

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
@@ -34,19 +35,23 @@ type SupervisorService struct {
 	staticConfig      *dto.ContextState
 }
 
-func NewSupervisorService(
-	apiContext context.Context,
-	staticConfig *dto.ContextState,
-	apiContextCancel context.CancelFunc,
-	prop_repo repository.PropertyRepositoryInterface,
-	mount_client mount.ClientWithResponsesInterface,
-) SupervisorServiceInterface {
+type SupervisorServiceParams struct {
+	fx.In
+	ApiContext       context.Context
+	ApiContextCancel context.CancelFunc
+	MountClient      mount.ClientWithResponsesInterface `optional:"true"`
+	PropertyRepo     repository.PropertyRepositoryInterface
+	StaticConfig     *dto.ContextState
+	//DirtyService      DirtyDataServiceInterface
+}
+
+func NewSupervisorService(in SupervisorServiceParams) SupervisorServiceInterface {
 	p := &SupervisorService{}
-	p.apiContext = apiContext
-	p.apiContextCancel = apiContextCancel
-	p.mount_client = mount_client
-	p.prop_repo = prop_repo
-	p.staticConfig = staticConfig
+	p.apiContext = in.ApiContext
+	p.apiContextCancel = in.ApiContextCancel
+	p.mount_client = in.MountClient
+	p.prop_repo = in.PropertyRepo
+	p.staticConfig = in.StaticConfig
 	p.supervisor_mounts = make(map[string]mount.Mount)
 	//dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
 	return p

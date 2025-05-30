@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianlight/srat/homeassistant/ingress"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/rs/cors"
@@ -17,7 +16,13 @@ import (
 	"go.uber.org/fx"
 )
 
-func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, apiContext context.Context, cxtClose context.CancelFunc) *http.Server {
+func NewHTTPServer(
+	lc fx.Lifecycle,
+	mux *mux.Router,
+	state *overseer.State,
+	apiContext context.Context,
+	cxtClose context.CancelFunc,
+) *http.Server {
 	handler := cors.New(
 		cors.Options{
 			//AllowedOrigins:   []string{"*"},
@@ -74,10 +79,9 @@ func NewHTTPServer(lc fx.Lifecycle, mux *mux.Router, state *overseer.State, apiC
 	return srv
 }
 
-func NewMuxRouter(hamode bool, ingressClient_ *ingress.ClientWithResponses) *mux.Router {
+func NewMuxRouter(hamode bool) *mux.Router {
 	router := mux.NewRouter()
 	if hamode {
-		ingressClient = ingressClient_
 		router.Use(HAMiddleware)
 	}
 

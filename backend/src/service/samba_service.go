@@ -14,6 +14,7 @@ import (
 	"github.com/dianlight/srat/tempio"
 	"github.com/shirou/gopsutil/v4/process"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 )
 
 type SambaServiceInterface interface {
@@ -40,23 +41,28 @@ type SambaService struct {
 	mount_client        mount.ClientWithResponsesInterface
 }
 
-func NewSambaService(apictx *dto.ContextState,
-	dirtyservice DirtyDataServiceInterface,
-	exported_share_repo repository.ExportedShareRepositoryInterface,
-	prop_repo repository.PropertyRepositoryInterface,
-	samba_user_repo repository.SambaUserRepositoryInterface,
-	mount_client mount.ClientWithResponsesInterface,
-	su SupervisorServiceInterface,
-) SambaServiceInterface {
+type SambaServiceParams struct {
+	fx.In
+
+	Apictx              *dto.ContextState
+	Dirtyservice        DirtyDataServiceInterface
+	Exported_share_repo repository.ExportedShareRepositoryInterface
+	Prop_repo           repository.PropertyRepositoryInterface
+	Samba_user_repo     repository.SambaUserRepositoryInterface
+	Mount_client        mount.ClientWithResponsesInterface `optional:"true"`
+	Su                  SupervisorServiceInterface
+}
+
+func NewSambaService(in SambaServiceParams) SambaServiceInterface {
 	p := &SambaService{}
-	p.apictx = apictx
-	p.dirtyservice = dirtyservice
-	p.exported_share_repo = exported_share_repo
-	p.prop_repo = prop_repo
-	p.samba_user_repo = samba_user_repo
-	p.mount_client = mount_client
-	p.supervisor_service = su
-	dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
+	p.apictx = in.Apictx
+	p.dirtyservice = in.Dirtyservice
+	p.exported_share_repo = in.Exported_share_repo
+	p.prop_repo = in.Prop_repo
+	p.samba_user_repo = in.Samba_user_repo
+	p.mount_client = in.Mount_client
+	p.supervisor_service = in.Su
+	in.Dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
 	return p
 }
 
