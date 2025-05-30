@@ -320,65 +320,6 @@ func prog(state overseer.State) {
 
 			}
 		}),
-		fx.Invoke(func(
-			mount_repo repository.MountPointPathRepositoryInterface,
-			props_repo repository.PropertyRepositoryInterface,
-			exported_share_repo repository.ExportedShareRepositoryInterface,
-			hardwareClient hardware.ClientWithResponsesInterface,
-			samba_user_repo repository.SambaUserRepositoryInterface,
-			volume_service service.VolumeServiceInterface,
-			fs_service service.FilesystemServiceInterface,
-			samba_service service.SambaServiceInterface,
-		) {
-			// Autocreate users
-			slog.Info("******* Autocreating users ********")
-			users, err := samba_user_repo.All()
-			if err != nil {
-				log.Fatalf("Cant load users - %#+v", err)
-			}
-			for _, user := range users {
-				slog.Info("Autocreating user", "name", user.Username)
-				err = unixsamba.CreateSambaUser(user.Username, user.Password, unixsamba.UserOptions{
-					CreateHome:    false,
-					SystemAccount: false,
-					Shell:         "/sbin/nologin",
-				})
-				if err != nil {
-					slog.Error("Error autocreating user", "name", user.Username, "err", err)
-				} else {
-					slog.Info("User created successfully", "name", user.Username)
-				}
-			}
-			slog.Info("******* Autocreating users done! ********")
-
-			// Automount all volumes
-			slog.Info("******* Automounting all shares! ********")
-			all, err := mount_repo.All()
-			if err != nil {
-				log.Fatalf("Cant load mounts - %#+v", err)
-			}
-			for _, mnt := range all {
-				if mnt.Type == "ADDON" && mnt.IsToMountAtStartup {
-					slog.Info("Automounting share", "path", mnt.Path)
-					conv := converter.DtoToDbomConverterImpl{}
-					mpd := dto.MountPointData{}
-					conv.MountPointPathToMountPointData(mnt, &mpd)
-					err := volume_service.MountVolume(mpd)
-					if err != nil {
-						slog.Error("Error automounting share", "path", mnt.Path, "err", err)
-					}
-				}
-			}
-			slog.Info("******* Automounting all shares done! ********")
-
-			// Apply config to samba
-			slog.Info("******* Applying Samba config ********")
-			err = samba_service.WriteAndRestartSambaConfig()
-			if err != nil {
-				log.Fatalf("Cant apply samba config - %#+v", err)
-			}
-			slog.Info("******* Samba config applied! ********")
-		}),
 		fx.Invoke(
 			fx.Annotate(
 				func(

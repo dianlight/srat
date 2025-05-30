@@ -594,7 +594,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                                 getOptionKey: (option) => option.name,
                                                 getOptionLabel: (option) => option.name,
                                                 renderOption: (props, option) => (
-                                                    <li {...props} key={option.name}>
+                                                    <li key={option.name} {...props} >
                                                         <Tooltip title={option.description || ""}>
                                                             <span>{option.name} {option.needsValue ? <span style={{ fontSize: '0.8em', color: '#888' }}>(Requires Value)</span> : null}</span>
                                                         </Tooltip>
@@ -627,7 +627,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                                 getOptionKey: (option) => option.name,
                                                 // getOptionLabel: (option) => option.name,
                                                 renderOption: (props, option) => (
-                                                    <li {...props} key={option.name}>
+                                                    <li key={option.name} {...props} >
                                                         <Tooltip title={option.description || ""}>
                                                             <span>{option.name} {option.needsValue ? <span style={{ fontSize: '0.8em', color: '#888' }}>(Requires Value)</span> : null}</span>
                                                         </Tooltip>

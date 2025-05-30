@@ -26,11 +26,12 @@ func NewHTTPServer(
 	handler := cors.New(
 		cors.Options{
 			//AllowedOrigins:   []string{"*"},
-			AllowOriginFunc:  func(origin string) bool { return true },
-			AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
-			AllowedHeaders:   []string{"*"},
-			AllowCredentials: true,
-			MaxAge:           300,
+			AllowOriginFunc:     func(origin string) bool { return true },
+			AllowedMethods:      []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
+			AllowedHeaders:      []string{"*"},
+			AllowCredentials:    true,
+			AllowPrivateNetwork: true,
+			MaxAge:              300,
 		},
 	).Handler(mux)
 	loggedRouter := sloghttp.NewWithConfig(slog.Default(), sloghttp.Config{

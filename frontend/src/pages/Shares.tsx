@@ -447,7 +447,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                                     getOptionLabel: (option: MountPointData) => option?.path || "",
                                                     getOptionKey: (option) => option?.path_hash || "",
                                                     renderOption: (props, option) => (
-                                                        <li {...props} key={option.path_hash}>
+                                                        <li key={option.path_hash} {...props} >
                                                             <Typography variant="body2">{option.path}</Typography>
                                                         </li>
                                                     ),
@@ -483,7 +483,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                                 getOptionKey: (option) => option.username || "",
                                                 getOptionLabel: (option) => option.username || "",
                                                 renderOption: (props, option) => (
-                                                    <li {...props} key={option.username}>
+                                                    <li key={option.username} {...props} >
                                                         <Typography variant="body2" color={option.is_admin ? "warning" : "default"}>{option.username}</Typography>
                                                     </li>
                                                 ),
@@ -536,7 +536,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                                 getOptionKey: (option) => option.username || "",
                                                 getOptionLabel: (option) => option.username || "",
                                                 renderOption: (props, option) => (
-                                                    <li {...props} key={option.username}>
+                                                    <li key={option.username} {...props}>
                                                         <Typography variant="body2" color={option.is_admin ? "warning" : "default"}>{option.username}</Typography>
                                                     </li>
                                                 ),

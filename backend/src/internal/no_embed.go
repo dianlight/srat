@@ -20,7 +20,7 @@ func GetFrontend() (fs http.FileSystem) {
 
 	if Frontend == nil || *Frontend == "" {
 		Frontend = new(string)
-		*Frontend = "static"
+		*Frontend = "web/static"
 	}
 
 	dir := http.Dir(*Frontend)
