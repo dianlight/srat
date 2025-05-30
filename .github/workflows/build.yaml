@@ -32,7 +32,7 @@ jobs:
       - run: echo ${{ steps.version.outputs.version }}
 
   build:
-    name: Test
+    name: Test & Build
     runs-on: ubuntu-latest
     needs: setversion
     steps:
