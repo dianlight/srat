@@ -442,12 +442,12 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                                 autocompleteProps={{
                                                     size: "small",
                                                     renderValue: (value) => {
-                                                        return value.path || "--";
+                                                        return (value as MountPointData).path || "--";
                                                     },
-                                                    getOptionLabel: (option: MountPointData) => option?.path || "",
-                                                    getOptionKey: (option) => option?.path_hash || "",
+                                                    getOptionLabel: (option) => (option as MountPointData)?.path || "",
+                                                    getOptionKey: (option) => (option as MountPointData)?.path_hash || "",
                                                     renderOption: (props, option) => (
-                                                        <li key={option.path_hash} {...props} >
+                                                        <li {...props} >
                                                             <Typography variant="body2">{option.path}</Typography>
                                                         </li>
                                                     ),
@@ -480,10 +480,10 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                             autocompleteProps={{
                                                 size: "small",
                                                 limitTags: 5,
-                                                getOptionKey: (option) => option.username || "",
-                                                getOptionLabel: (option) => option.username || "",
+                                                getOptionKey: (option) => (option as User).username || "",
+                                                getOptionLabel: (option) => (option as User).username || "",
                                                 renderOption: (props, option) => (
-                                                    <li key={option.username} {...props} >
+                                                    <li {...props} >
                                                         <Typography variant="body2" color={option.is_admin ? "warning" : "default"}>{option.username}</Typography>
                                                     </li>
                                                 ),
@@ -502,10 +502,10 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                                         //console.log(values, option)
                                                         return (
                                                             <Chip
-                                                                color={option.is_admin ? "warning" : "default"}
+                                                                color={(option as User).is_admin ? "warning" : "default"}
                                                                 key={key}
                                                                 variant="outlined"
-                                                                label={option?.username || "bobo"}
+                                                                label={(option as User)?.username || "bobo"}
                                                                 size="small"
                                                                 {...itemProps}
                                                             />
@@ -533,10 +533,10 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                             autocompleteProps={{
                                                 size: "small",
                                                 limitTags: 5,
-                                                getOptionKey: (option) => option.username || "",
-                                                getOptionLabel: (option) => option.username || "",
+                                                getOptionKey: (option) => (option as User).username || "",
+                                                getOptionLabel: (option) => (option as User).username || "",
                                                 renderOption: (props, option) => (
-                                                    <li key={option.username} {...props}>
+                                                    <li {...props}>
                                                         <Typography variant="body2" color={option.is_admin ? "warning" : "default"}>{option.username}</Typography>
                                                     </li>
                                                 ),
@@ -555,10 +555,10 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                                         //console.log(values, option)
                                                         return (
                                                             <Chip
-                                                                color={option.is_admin ? "warning" : "default"}
+                                                                color={(option as User).is_admin ? "warning" : "default"}
                                                                 key={key}
                                                                 variant="outlined"
-                                                                label={option?.username || "bobo"}
+                                                                label={(option as User)?.username || "bobo"}
                                                                 size="small"
                                                                 {...itemProps}
                                                             />

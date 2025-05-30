@@ -591,10 +591,10 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                             autocompleteProps={{
                                                 size: "small",
                                                 limitTags: 5,
-                                                getOptionKey: (option) => option.name,
-                                                getOptionLabel: (option) => option.name,
+                                                getOptionKey: (option) => (option as MountFlag).name,
+                                                getOptionLabel: (option) => (option as MountFlag).name,
                                                 renderOption: (props, option) => (
-                                                    <li key={option.name} {...props} >
+                                                    <li {...props} >
                                                         <Tooltip title={option.description || ""}>
                                                             <span>{option.name} {option.needsValue ? <span style={{ fontSize: '0.8em', color: '#888' }}>(Requires Value)</span> : null}</span>
                                                         </Tooltip>
@@ -624,10 +624,10 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                             autocompleteProps={{
                                                 size: "small",
                                                 limitTags: 5,
-                                                getOptionKey: (option) => option.name,
+                                                getOptionKey: (option) => (option as MountFlag).name,
                                                 // getOptionLabel: (option) => option.name,
                                                 renderOption: (props, option) => (
-                                                    <li key={option.name} {...props} >
+                                                    <li {...props} >
                                                         <Tooltip title={option.description || ""}>
                                                             <span>{option.name} {option.needsValue ? <span style={{ fontSize: '0.8em', color: '#888' }}>(Requires Value)</span> : null}</span>
                                                         </Tooltip>
@@ -642,10 +642,10 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                                         //console.log(values, option)
                                                         return (
                                                             <Chip
-                                                                color={option.needsValue ? "warning" : "default"}
+                                                                color={(option as MountFlag).needsValue ? "warning" : "default"}
                                                                 key={key}
                                                                 variant="filled"
-                                                                label={option?.name || "bobo"}
+                                                                label={(option as MountFlag)?.name || "bobo"}
                                                                 size="small"
                                                                 {...itemProps}
                                                             />
@@ -653,7 +653,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                                     }),
                                                 onChange: (event, value) => {
                                                     console.log(event, value)
-                                                    replace(value.filter(v => v.needsValue)); // Only keep flags that need values
+                                                    replace((value as MountFlag[]).filter(v => v.needsValue)); // Only keep flags that need values
                                                 },
                                             }}
                                         />
