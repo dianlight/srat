@@ -40,6 +40,16 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 	}
 	return nil
 }
+func (c *DtoToDbomConverterImpl) MountFlagsToMountDataFlags(source []dto.MountFlag) dbom.MounDataFlags {
+	var dbomMounDataFlags dbom.MounDataFlags
+	if source != nil {
+		dbomMounDataFlags = make(dbom.MounDataFlags, len(source))
+		for i := 0; i < len(source); i++ {
+			dbomMounDataFlags[i] = c.dtoMountFlagToDbomMounDataFlag(source[i])
+		}
+	}
+	return dbomMounDataFlags
+}
 func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.MountPointData, target *dbom.MountPointPath) error {
 	if source.Path != "" {
 		target.Path = source.Path

@@ -298,8 +298,13 @@ func main() {
 					conv.MountPointPathToMountPointData(mnt, &mpd)
 					err := volume_service.MountVolume(mpd)
 					if err != nil {
-						slog.Error("Error automounting share", "path", mnt.Path, "err", err)
+						if errors.Is(err, dto.ErrorAlreadyMounted) {
+							slog.Info("Share already mounted", "path", mnt.Path)
+						} else {
+							slog.Error("Error automounting share", "path", mnt.Path, "err", err)
+						}
 					}
+					slog.Debug("Share automounted", "path", mnt.Path)
 				}
 			}
 			slog.Info("******* Automounting all shares done! ********")

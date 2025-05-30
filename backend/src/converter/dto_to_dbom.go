@@ -37,6 +37,10 @@ type DtoToDbomConverter interface {
 	// goverter:ignore Description ValueDescription ValueValidationRegex
 	mountDataFlagToMountFlag(source dbom.MounDataFlag) (dest dto.MountFlag, err error)
 
+	MountFlagsToMountDataFlags(source []dto.MountFlag) (dest dbom.MounDataFlags)
+
+	//
+
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	userToSambaUser(source dto.User) (dbom.SambaUser, error)
 

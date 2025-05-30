@@ -209,7 +209,7 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 
 	if dbom_mount_data.IsMounted && ok {
 		slog.Warn("Volume already mounted according to DB and OS check", "device", real_device, "path", dbom_mount_data.Path)
-		return errors.WithDetails(dto.ErrorMountFail,
+		return errors.WithDetails(dto.ErrorAlreadyMounted,
 			"Device", real_device,
 			"Path", dbom_mount_data.Path,
 			"Message", "Volume is already mounted",
@@ -296,6 +296,13 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 			// Log error but proceed, as mount succeeded
 			slog.Warn("Failed to convert mount details back to DBOM", "err", err)
 			// Don't return error here, mount was successful
+		}
+
+		mflags, errE := ms.fs_service.SyscallFlagToMountFlag(mp.Flags)
+		if errE != nil {
+			slog.Warn("Failed to convert mount flags back to DTO", "err", errE)
+		} else {
+			dbom_mount_data.Flags = conv.MountFlagsToMountDataFlags(mflags)
 		}
 		dbom_mount_data.IsMounted = true
 		// Use the validated real_device path in the DB record
