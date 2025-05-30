@@ -37,7 +37,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.134.3 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/ovechkin-dm/go-dyno v0.5.1 // indirect
+	github.com/ovechkin-dm/go-dyno v0.5.2 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/petermattis/goid v0.0.0-20250319124200-ccd6737f222a // indirect
@@ -129,12 +129,12 @@ require (
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gobeam/stringy v0.0.7
 	github.com/itchyny/gojq v0.12.17
-	github.com/jaypipes/ghw v0.16.0
-	github.com/lmittmann/tint v1.0.7
-	github.com/ovechkin-dm/mockio/v2 v2.0.0-rc1
+	github.com/jaypipes/ghw v0.17.0
+	github.com/lmittmann/tint v1.1.1
+	github.com/ovechkin-dm/mockio/v2 v2.0.0-rc3
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250514203619-72c072d29ea5
+	github.com/snapcore/snapd v0.0.0-20250530131406-bd27a9e1415d
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
@@ -142,7 +142,7 @@ require (
 	go.uber.org/fx v1.24.0
 	golang.org/x/time v0.11.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/gorm v1.26.1
+	gorm.io/gorm v1.30.0
 	moul.io/banner v1.0.1
 )
 
