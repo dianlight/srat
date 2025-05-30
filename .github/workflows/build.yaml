@@ -31,7 +31,7 @@ jobs:
         uses: home-assistant/actions/helpers/version@master
       - run: echo ${{ steps.version.outputs.version }}
 
-  test:
+  build:
     name: Test
     runs-on: ubuntu-latest
     needs: setversion
@@ -68,38 +68,9 @@ jobs:
         sudo -E PATH="$PATH" make test
         cd ..
 
-  build:
-    name: Build 
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    needs:
-      - setversion
-      - test
-    steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v4.2.2
-      with:
-        fetch-depth: 0
-    - name: Setup go ${{ env.GOLANG_VERSION }}
-      uses: actions/setup-go@v5.5.0
-      with:
-        go-version: ${{ env.GOLANG_VERSION }}
-
-    - uses: oven-sh/setup-bun@v2
-      with:
-        bun-version-file: frontend/package.json
-        #bun-version: latest
-
-    - run: "sudo apt-get install -y samba" 
-
-    - name: Prepare env for ${{ needs.setversion.outputs.version }}
-      run: |
-        cd frontend
-        bun install
-        cd ..
-
     - name: Check if ${{ needs.setversion.outputs.version }} exists
       uses: mukunku/tag-exists-action@v1.6.0
+      if: github.event_name != 'pull_request'
       id: checkTag
       with: 
         tag: '${{ needs.setversion.outputs.version }}'
@@ -108,7 +79,7 @@ jobs:
 
     - name: Update tag ${{ needs.setversion.outputs.version }}
       uses: actions/github-script@v7
-      if: ${{ steps.checkTag.outputs.exists == true}}
+      if: ${{ github.event_name != 'pull_request' && steps.checkTag.outputs.exists == true}}
       with:
         script: |
             github.rest.git.updateRef({
@@ -120,7 +91,7 @@ jobs:
 
     - name: Create tag ${{ needs.setversion.outputs.version }}
       uses: actions/github-script@v7
-      if: ${{ steps.checkTag.outputs.exists == false }}
+      if: ${{ github.event_name != 'pull_request' && steps.checkTag.outputs.exists == false }}
       with:
         script: |
             github.rest.git.createRef({
@@ -131,14 +102,17 @@ jobs:
             })
 
     - name: BuildAll
+      id: built_all
+      if: github.event_name != 'pull_request'
       run: |
         sudo -E PATH="$PATH" make ALL VERSION=${{ needs.setversion.outputs.version }}
 
     - name: Upload 
+      if: steps.built_all.conclusion == 'success'
       uses: actions/upload-artifact@v4
       with:
         name: binary
-        path: backend/**/*
+        path: backend/dist/**/srat*
         retention-days: 7
         overwrite: true
 
@@ -156,24 +130,52 @@ jobs:
     - uses: actions/download-artifact@v4
       with:
         merge-multiple: true
-    - name: Upload release asset for ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
+    - name: Prepare temporary directory
+      run: |
+        mkdir -p /tmp/release_assets
+     
+    - name: Find and rename files
+      run: |
+          # Loop through each architecture directory under 'dist'
+          for arch_dir in ${{ github.workspace }}/*/; do
+            # Extract the architecture name (e.g., 'amd64', 'arm64')
+            arch=$(basename "$arch_dir")
+            
+            # Find all files starting with 'srat' in the current arch_dir
+            # Rename them and move them to the /tmp/release_assets directory
+            # The new name format will be srat*_{arch}
+            find "$arch_dir" -maxdepth 1 -type f -name "srat*" -print0 | while IFS= read -r -d $'\0' file; do
+              filename=$(basename "$file")
+              new_filename="${filename%.*}_${arch}.${filename##*.}" # Appends _arch before the extension
+              if [[ "$filename" == *.* ]]; then # If there's an extension
+                new_filename="${filename%.*}_${arch}.${filename##*.}"
+              else # If no extension
+                new_filename="${filename}_${arch}"
+              fi
+              mv "$file" "/tmp/release_assets/$new_filename"
+              echo "Renamed '$file' to '/tmp/release_assets/$new_filename'"
+            done
+          done
+  
+    - name: List renamed files (for debugging)
+      run: ls -l /tmp/release_assets/
+  
+    - name: Create Release and Upload Assets
       uses: softprops/action-gh-release@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
-        name: Release ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
-        draft: ${{ github.event_name !='release' }}
-        prerelease: ${{ github.event_name !='release' }}
-        generate_release_notes: true
-        files: |
-          ${{ github.workspace }}/**/srat*
-
-#    - name: Signing asset
-#      if: github.event_name == 'release'
-#      uses: home-assistant/actions/helpers/codenotary@master
-#      with:
-#        source: "${{ github.workspace }}/${{ matrix.variant.name }}"
-#        user: ${{ secrets.VCN_USER }}
-#        password: ${{ secrets.VCN_PASSWORD }}
-#        organisation: ${{ secrets.VCN_ORG }}
+          tag_name: ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
+          name: Release ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
+          draft: ${{ github.event_name !='release' }}
+          prerelease: ${{ github.event_name !='release' }}
+          generate_release_notes: true
+          files: /tmp/release_assets/* # Upload all files from the temporary directory
+          body: |
+            # Release Notes for ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
+            
+            This release includes the following architecture-specific binaries:
+            
+            * Binaries renamed from `/dist/{arch}/srat*` to `/tmp/srat*_{arch}`.
+            
+            Please find the assets attached below.
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GITHUB_TOKEN is automatically provided by GitHub
