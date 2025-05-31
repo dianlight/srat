@@ -44,13 +44,14 @@ jobs:
       uses: actions/setup-go@v5.5.0
       with:
         go-version: ${{ env.GOLANG_VERSION }}
+        cache-dependency-path: "**/*.sum"
 
     - uses: oven-sh/setup-bun@v2
       with:
         bun-version-file: frontend/package.json
         #bun-version: latest
 
-    - run: "sudo apt-get install -y samba" 
+    #- run: "sudo apt-get install -y samba" 
 
     - name: Prepare env for ${{ needs.setversion.outputs.version }}
       run: |
