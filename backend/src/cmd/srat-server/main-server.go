@@ -54,6 +54,7 @@ var supervisorURL *string
 var supervisorToken *string
 var logLevel slog.Level
 var addonIpAddress *string
+var logLevelString *string
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -73,7 +74,7 @@ func main() {
 	}
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
-	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
+	logLevelString = flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	singleInstance := flag.Bool("single-instance", false, "Single instance mode - only one instance of the addon can run ***ONLY FOR DEBUG***")
 	updateFilePath = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
 	addonIpAddress = flag.String("ip-address", "127.0.0.1", "Addon IP address // $(bashio::addon.ip_address)")
@@ -294,6 +295,24 @@ func prog(state overseer.State) {
 				fx.ParamTags("", "", "", "", `name:"ha_mode"`),
 			),
 		),
+		fx.Invoke(func(
+			props_repo repository.PropertyRepositoryInterface,
+			samba_service service.SambaServiceInterface,
+		) {
+			// Setting the actual Log_Level
+			err := props_repo.SetValue("log_level", *logLevelString)
+			if err != nil {
+				log.Fatalf("Cant set log level - %#+v", err)
+			}
+
+			// Apply config to samba
+			slog.Info("******* Applying Samba config ********")
+			err = samba_service.WriteAndRestartSambaConfig()
+			if err != nil {
+				log.Fatalf("Cant apply samba config - %#+v", err)
+			}
+			slog.Info("******* Samba config applied! ********")
+		}),
 	).Run()
 
 	slog.Info("Stopping SRAT", "pid", state.ID)
