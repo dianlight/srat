@@ -45,13 +45,13 @@ func main() {
 	flag.Parse()
 
 	switch *logLevelString {
-	case "debug":
+	case "trace", "debug":
 		logLevel = slog.LevelDebug
-	case "info":
+	case "info", "notice":
 		logLevel = slog.LevelInfo
-	case "warn":
+	case "warn", "warning":
 		logLevel = slog.LevelWarn
-	case "error":
+	case "error", "fatal":
 		logLevel = slog.LevelError
 	default:
 		log.Fatalf("Invalid log level: %s", *logLevelString)

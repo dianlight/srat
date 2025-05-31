@@ -52,7 +52,8 @@
    load printers = no
    disable spoolss = yes
 
-   {{ $log_level := dict "trace" "5" "debug" "4" "info" "3" "notice" "2" "warning" "1" "error" "1"  "fatal" "1" -}}
+# DEBUG: Log Level: {{ .log_level }}
+   {{ $log_level := dict "trace" "5" "debug" "4" "info" "3" "notice" "2" "warning" "1" "error" "1"  "fatal" "0" -}}
    log level = {{ .log_level | default "warning" | get $log_level }}
 
    bind interfaces only = {{ .bind_all_interfaces | default false | ternary "no" "yes" }}

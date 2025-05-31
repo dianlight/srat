@@ -46,6 +46,7 @@ var dbfile *string
 var supervisorURL *string
 var supervisorToken *string
 var logLevel slog.Level
+var logLevelString *string
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -64,7 +65,7 @@ func main() {
 	}
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
-	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
+	logLevelString = flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 
 	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
@@ -80,13 +81,13 @@ func main() {
 	flag.Parse()
 
 	switch *logLevelString {
-	case "debug":
+	case "trace", "debug":
 		logLevel = slog.LevelDebug
-	case "info":
+	case "info", "notice":
 		logLevel = slog.LevelInfo
-	case "warn":
+	case "warn", "warning":
 		logLevel = slog.LevelWarn
-	case "error":
+	case "error", "fatal":
 		logLevel = slog.LevelError
 	default:
 		log.Fatalf("Invalid log level: %s", *logLevelString)
@@ -248,6 +249,12 @@ func main() {
 			fs_service service.FilesystemServiceInterface,
 			samba_service service.SambaServiceInterface,
 		) {
+			// Setting the actual Log_Level
+			err := props_repo.SetValue("log_level", *logLevelString)
+			if err != nil {
+				log.Fatalf("Cant set log level - %#+v", err)
+			}
+
 			// Autocreate users
 			slog.Info("******* Autocreating users ********")
 			users, err := samba_user_repo.All()
