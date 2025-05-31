@@ -13,7 +13,7 @@ import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
 import { faPlug, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
-import { AutocompleteElement, useForm, TextFieldElement, MultiSelectElement, Controller, useFieldArray } from "react-hook-form-mui"; // Import TextFieldElement
+import { AutocompleteElement, useForm, TextFieldElement, MultiSelectElement, Controller, useFieldArray, CheckboxElement } from "react-hook-form-mui"; // Import TextFieldElement
 import { toast } from "react-toastify";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
@@ -222,9 +222,16 @@ export function Volumes() {
 
     // Helper function to render partition icon
     const renderPartitionIcon = (partition: Partition) => {
-        if (partition.name === 'hassos-data') return <CreditScoreIcon fontSize="small" />;
-        if (partition.system) return <SettingsSuggestIcon fontSize="small" />;
-        return <StorageIcon fontSize="small" />;
+        const isToMountAtStartup = partition.mount_point_data?.[0]?.is_to_mount_at_startup === true;
+        const iconColorProp = isToMountAtStartup ? { color: "primary" as const } : {};
+
+        if (partition.name === 'hassos-data') {
+            return <CreditScoreIcon fontSize="small" {...iconColorProp} />;
+        }
+        if (partition.system) {
+            return <SettingsSuggestIcon fontSize="small" {...iconColorProp} />;
+        }
+        return <StorageIcon fontSize="small" {...iconColorProp} />;
     };
 
 
@@ -484,6 +491,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                 fstype: existingMountData?.fstype || undefined, // Use existing or let backend detect
                 flags: existingMountData?.flags || [], // Keep numeric flags if needed internally
                 custom_flags: existingMountData?.custom_flags || [], // Keep numeric flags if needed internally
+                is_to_mount_at_startup: existingMountData?.is_to_mount_at_startup || false, // Initialize the switch state
             });
         } else if (!props.open) {
             reset(); // Reset to default values when closing
@@ -518,6 +526,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             flags: formData.flags,
             custom_flags: custom_flags,
             //device: props.objectToEdit.device, // Ensure device name is included
+            is_to_mount_at_startup: formData.is_to_mount_at_startup, // Include the switch value in submitted data
             type: Type.Addon,
         };
         console.log("Submitting Mount Data:", submitData);
@@ -682,6 +691,14 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         />
                                     </Grid>
                                 ))}
+                                <Grid size={12}>
+                                    <CheckboxElement
+                                        name="is_to_mount_at_startup"
+                                        label="Mount at startup"
+                                        control={control}
+                                        size="small"
+                                    />
+                                </Grid>
                             </Grid>
                         </Stack>
                     </DialogContent>
