@@ -75,7 +75,7 @@ jobs:
       with: 
         tag: '${{ needs.setversion.outputs.version }}'
     
-    - run: echo ${{ steps.checkTag.outputs.exists }}
+    - run: echo ${{ steps.checkTag.outputs.exists }} ${{ github.event_name }}
 
     - name: Update tag ${{ needs.setversion.outputs.version }}
       uses: actions/github-script@v7
@@ -107,8 +107,8 @@ jobs:
       run: |
         sudo -E PATH="$PATH" make ALL VERSION=${{ needs.setversion.outputs.version }}
 
-        - name: Prepare temporary directory for zips
-        run: |
+    - name: Prepare temporary directory for zips
+      run: |
           mkdir -p /tmp/build_artifacts
   
     - name: Find architectures and create zip archives
