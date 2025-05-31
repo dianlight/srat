@@ -357,7 +357,12 @@ export function Volumes() {
                                                 && partition.mount_point_data.some(mpd => mpd.is_mounted);
                                             const hasShares = partition.mount_point_data
                                                 && partition.mount_point_data.length > 0
-                                                && partition.mount_point_data.some(mpd => mpd.shares && mpd.shares.length > 0);
+                                                && partition.mount_point_data.some(mpd => {
+                                                    return mpd.shares &&
+                                                        mpd.shares.length > 0 &&
+                                                        mpd.shares.some(share => !share.disabled)
+                                                });
+
                                             const firstMountPath = partition.mount_point_data?.[0]?.path;
                                             const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
                                             const partitionNameDecoded = decodeEscapeSequence(partition.name || "Unknown Partition");
