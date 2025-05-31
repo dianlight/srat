@@ -107,12 +107,55 @@ jobs:
       run: |
         sudo -E PATH="$PATH" make ALL VERSION=${{ needs.setversion.outputs.version }}
 
+        - name: Prepare temporary directory for zips
+        run: |
+          mkdir -p /tmp/build_artifacts
+  
+    - name: Find architectures and create zip archives
+      id: create_zips
+      run: |
+        # Initialize an array to store paths of created zip files
+        declare -a zip_files_created
+        
+        # Loop through each architecture directory under 'backend/dist'
+        for arch_dir in backend/dist/*/; do
+          # Extract the architecture name (e.g., 'amd64', 'arm64')
+          arch=$(basename "$arch_dir")
+          
+          # Define the output zip file path
+          zip_file_path="/tmp/build_artifacts/srat_${arch}.zip"
+          
+          echo "Processing architecture: ${arch}"
+          echo "Zipping contents of '${arch_dir}' into '${zip_file_path}'"
+          
+          # Change directory into the architecture folder
+          # Then, zip all its contents (files and subdirectories)
+          # The -r flag is for recursive inclusion
+          # The ./* pattern ensures that only the contents are zipped, not the arch_dir itself
+          if [ -d "$arch_dir" ]; then
+            (cd "$arch_dir" && zip -r "$zip_file_path" ./*)
+            echo "Successfully created ${zip_file_path}"
+            # Add the created zip file path to the array
+            zip_files_created+=("$zip_file_path")
+          else
+            echo "Warning: Directory ${arch_dir} does not exist or is not a directory. Skipping."
+          fi
+        done
+        
+        # Output the list of created zip files as a comma-separated string
+        # This makes it accessible to subsequent steps
+        echo "zip_paths=${zip_files_created[*]}" >> "$GITHUB_OUTPUT"
+
+    - name: List generated zip files (for debugging)
+      run: ls -l /tmp/build_artifacts/
+  
+
     - name: Upload 
       if: steps.built_all.conclusion == 'success'
       uses: actions/upload-artifact@v4
       with:
         name: binary
-        path: backend/dist/**/srat*
+        path: /tmp/build_artifacts/*
         retention-days: 7
         overwrite: true
 
@@ -127,40 +170,14 @@ jobs:
       uses: hugo19941994/delete-draft-releases@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+
     - uses: actions/download-artifact@v4
+      id: download_art
       with:
         merge-multiple: true
-    - name: Prepare temporary directory
-      run: |
-        mkdir -p /tmp/release_assets
-     
-    - name: Find and rename files
-      run: |
-          # Loop through each architecture directory under 'dist'
-          for arch_dir in ${{ github.workspace }}/*/; do
-            # Extract the architecture name (e.g., 'amd64', 'arm64')
-            arch=$(basename "$arch_dir")
-            
-            # Find all files starting with 'srat' in the current arch_dir
-            # Rename them and move them to the /tmp/release_assets directory
-            # The new name format will be srat*_{arch}
-            find "$arch_dir" -maxdepth 1 -type f -name "srat*" -print0 | while IFS= read -r -d $'\0' file; do
-              filename=$(basename "$file")
-              new_filename="${filename%.*}_${arch}.${filename##*.}" # Appends _arch before the extension
-              if [[ "$filename" == *.* ]]; then # If there's an extension
-                new_filename="${filename%.*}_${arch}.${filename##*.}"
-              else # If no extension
-                new_filename="${filename}_${arch}"
-              fi
-              mv "$file" "/tmp/release_assets/$new_filename"
-              echo "Renamed '$file' to '/tmp/release_assets/$new_filename'"
-            done
-          done
+
   
-    - name: List renamed files (for debugging)
-      run: ls -l /tmp/release_assets/
-  
-    - name: Create Release and Upload Assets
+    - name: Create Release and Upload Assets from ${{ steps.download_art.outputs.download-path }}
       uses: softprops/action-gh-release@v2
       with:
           tag_name: ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
@@ -168,13 +185,9 @@ jobs:
           draft: ${{ github.event_name !='release' }}
           prerelease: ${{ github.event_name !='release' }}
           generate_release_notes: true
-          files: /tmp/release_assets/* # Upload all files from the temporary directory
+          files: ${{ steps.download_art.outputs.download-path }}/* 
           body: |
             # Release Notes for ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
-            
-            This release includes the following architecture-specific binaries:
-            
-            * Binaries renamed from `/dist/{arch}/srat*` to `/tmp/srat*_{arch}`.
             
             Please find the assets attached below.
       env:

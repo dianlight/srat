@@ -104,6 +104,8 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 					arch := runtime.GOARCH
 					if arch == "arm64" {
 						arch = "aarch64"
+					} else if arch == "amd64" {
+						arch = "x86_64"
 					}
 					if asset.GetName() == fmt.Sprintf("srat-server_%s", arch) {
 						err = conv.ReleaseAssetToBinaryAsset(asset, &self.lastReleaseData.ArchAsset)
