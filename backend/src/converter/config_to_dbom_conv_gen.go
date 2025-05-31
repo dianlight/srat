@@ -119,14 +119,7 @@ func (c *ConfigToDbomConverterImpl) ShareToMountPointPath(source config.Share, t
 		if err != nil {
 			return err
 		}
-		target.IsMounted = xbool
-	}
-	if source.Path != "" {
-		xbool2, err := osutil.IsMounted(source.Path)
-		if err != nil {
-			return err
-		}
-		target.IsToMountAtStartup = xbool2
+		target.IsToMountAtStartup = xbool
 	}
 	return nil
 }

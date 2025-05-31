@@ -26,7 +26,9 @@ type DtoToDbomConverter interface {
 	exportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error)
 
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:MD5
+	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Data CustomFlags
+	// goverter:ignore IsInvalid InvalidError Warnings
 	mountPointPathToMountPointData(source dbom.MountPointPath) (dto.MountPointData, error)
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
@@ -71,8 +73,10 @@ type DtoToDbomConverter interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
+	// goverter:ignore IsInvalid InvalidError Warnings
 	// goverter:map Flags Flags
 	// goverter:map Data CustomFlags
+	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:MD5
 	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error
 

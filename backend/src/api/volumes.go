@@ -64,6 +64,19 @@ func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*s
 				continue
 			}
 			for k, mountPoint := range *volume.MountPointData {
+				// Load additional data fro mountada from DB
+				dbom_mount_data, err := self.mount_repo.FindByDevice(mountPoint.Device)
+				if err != nil {
+					if !errors.Is(err, gorm.ErrRecordNotFound) {
+						return nil, err
+					}
+				} else {
+					var conv converter.DtoToDbomConverterImpl
+					conv.MountPointPathToMountPointData(*dbom_mount_data, &mountPoint)
+					(*volume.MountPointData)[k] = mountPoint
+				}
+
+				// Get Shares
 				shared, err := self.shareService.GetShareFromPath(mountPoint.Path)
 				if err != nil {
 					if errors.Is(err, dto.ErrorShareNotFound) {

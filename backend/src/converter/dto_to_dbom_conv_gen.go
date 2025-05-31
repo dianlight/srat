@@ -7,6 +7,7 @@ import (
 	dbom "github.com/dianlight/srat/dbom"
 	dto "github.com/dianlight/srat/dto"
 	xhashes "github.com/shomali11/util/xhashes"
+	osutil "github.com/snapcore/snapd/osutil"
 )
 
 type DtoToDbomConverterImpl struct{}
@@ -65,20 +66,8 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 	}
 	target.Flags = c.dtoMountFlagsToDbomMounDataFlags(source.Flags)
 	target.Data = c.dtoMountFlagsToDbomMounDataFlags(source.CustomFlags)
-	if source.IsInvalid != false {
-		target.IsInvalid = source.IsInvalid
-	}
-	if source.IsMounted != false {
-		target.IsMounted = source.IsMounted
-	}
 	if source.IsToMountAtStartup != false {
 		target.IsToMountAtStartup = source.IsToMountAtStartup
-	}
-	if source.InvalidError != nil {
-		target.InvalidError = source.InvalidError
-	}
-	if source.Warnings != nil {
-		target.Warnings = source.Warnings
 	}
 	if source.Shares != nil {
 		target.Shares = make([]dbom.ExportedShare, len(source.Shares))
@@ -118,20 +107,15 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	if source.Device != "" {
 		target.Device = source.Device
 	}
-	if source.IsMounted != false {
-		target.IsMounted = source.IsMounted
-	}
-	if source.IsInvalid != false {
-		target.IsInvalid = source.IsInvalid
+	if source.Path != "" {
+		xbool, err := osutil.IsMounted(source.Path)
+		if err != nil {
+			return err
+		}
+		target.IsMounted = xbool
 	}
 	if source.IsToMountAtStartup != false {
 		target.IsToMountAtStartup = source.IsToMountAtStartup
-	}
-	if source.InvalidError != nil {
-		target.InvalidError = source.InvalidError
-	}
-	if source.Warnings != nil {
-		target.Warnings = source.Warnings
 	}
 	if source.Shares != nil {
 		target.Shares = make([]dto.SharedResource, len(source.Shares))
@@ -308,11 +292,7 @@ func (c *DtoToDbomConverterImpl) mountPointDataToMountPointPath(source dto.Mount
 	dbomMountPointPath.FSType = source.FSType
 	dbomMountPointPath.Flags = c.dtoMountFlagsToDbomMounDataFlags(source.Flags)
 	dbomMountPointPath.Data = c.dtoMountFlagsToDbomMounDataFlags(source.CustomFlags)
-	dbomMountPointPath.IsInvalid = source.IsInvalid
-	dbomMountPointPath.IsMounted = source.IsMounted
 	dbomMountPointPath.IsToMountAtStartup = source.IsToMountAtStartup
-	dbomMountPointPath.InvalidError = source.InvalidError
-	dbomMountPointPath.Warnings = source.Warnings
 	if source.Shares != nil {
 		dbomMountPointPath.Shares = make([]dbom.ExportedShare, len(source.Shares))
 		for i := 0; i < len(source.Shares); i++ {
@@ -342,11 +322,12 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 	}
 	dtoMountPointData.CustomFlags = dtoMountFlags2
 	dtoMountPointData.Device = source.Device
-	dtoMountPointData.IsMounted = source.IsMounted
-	dtoMountPointData.IsInvalid = source.IsInvalid
+	xbool, err := osutil.IsMounted(source.Path)
+	if err != nil {
+		return dtoMountPointData, err
+	}
+	dtoMountPointData.IsMounted = xbool
 	dtoMountPointData.IsToMountAtStartup = source.IsToMountAtStartup
-	dtoMountPointData.InvalidError = source.InvalidError
-	dtoMountPointData.Warnings = source.Warnings
 	if source.Shares != nil {
 		dtoMountPointData.Shares = make([]dto.SharedResource, len(source.Shares))
 		for i := 0; i < len(source.Shares); i++ {

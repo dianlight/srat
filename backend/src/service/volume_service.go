@@ -207,8 +207,8 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 		ok = false // Ensure ok is false if IsMounted errored
 	}
 
-	if dbom_mount_data.IsMounted && ok {
-		slog.Warn("Volume already mounted according to DB and OS check", "device", real_device, "path", dbom_mount_data.Path)
+	if ok {
+		slog.Warn("Volume already mounted according to OS check", "device", real_device, "path", dbom_mount_data.Path)
 		return errors.WithDetails(dto.ErrorAlreadyMounted,
 			"Device", real_device,
 			"Path", dbom_mount_data.Path,
@@ -216,13 +216,15 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 		)
 	}
 
-	// Handle potential mount point conflicts if OS says it's mounted but DB doesn't
-	if ok && !dbom_mount_data.IsMounted {
-		slog.Warn("Mount point path is already in use by another mount, but not tracked in DB for this record.", "path", dbom_mount_data.Path)
-		// Option 1: Fail
-		// return errors.WithDetails(dto.ErrorMountFail, "Path", dbom_mount_data.Path, "Message", "Mount point path already in use")
-		// Option 2: Try renaming (as below) - Keep existing logic
-	}
+	/*
+		// Handle potential mount point conflicts if OS says it's mounted but DB doesn't
+		if ok && !dbom_mount_data.IsMounted {
+			slog.Warn("Mount point path is already in use by another mount, but not tracked in DB for this record.", "path", dbom_mount_data.Path)
+			// Option 1: Fail
+			// return errors.WithDetails(dto.ErrorMountFail, "Path", dbom_mount_data.Path, "Message", "Mount point path already in use")
+			// Option 2: Try renaming (as below) - Keep existing logic
+		}
+	*/
 
 	// Rename logic if path is already mounted (even if DB state was inconsistent)
 	orgPath := dbom_mount_data.Path
@@ -304,7 +306,6 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 		} else {
 			dbom_mount_data.Flags = conv.MountFlagsToMountDataFlags(mflags)
 		}
-		dbom_mount_data.IsMounted = true
 		// Use the validated real_device path in the DB record
 		dbom_mount_data.Device = real_device // Store the original name, not the /dev/ path potentially
 
@@ -393,7 +394,6 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 
 	// Update DB state only if the record was found initially
 	if dbom_mount_data != nil {
-		dbom_mount_data.IsMounted = false
 		err = ms.mount_repo.Save(dbom_mount_data)
 		if err != nil {
 			// Log error, but unmount succeeded. State might be inconsistent in DB.
@@ -582,19 +582,17 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 
 				if mountPointPathDB.Type == "ADDON" {
 					// Check OS mount status *before* saving, update IsMounted in DB object
-					isMountedOS, osCheckErr := osutil.IsMounted(mountPointPathDB.Path)
-					if osCheckErr != nil {
-						// Log error but proceed, maybe path doesn't exist yet for new mounts
-						slog.Warn("Error checking OS mount status", "path", mountPointPathDB.Path, "err", osCheckErr)
-						// Keep IsMounted as potentially set by DTO conversion unless OS definitively says not mounted
-						if !isMountedOS {
-							mountPointPathDB.IsMounted = false
+					/*
+						isMountedOS, osCheckErr := osutil.IsMounted(mountPointPathDB.Path)
+						if osCheckErr != nil {
+							// Log error but proceed, maybe path doesn't exist yet for new mounts
+							slog.Warn("Error checking OS mount status", "path", mountPointPathDB.Path, "err", osCheckErr)
+							// Keep IsMounted as potentially set by DTO conversion unless OS definitively says not mounted
+						} else {
+							// Trust the OS check
+							slog.Debug("OS mount status check", "path", mountPointPathDB.Path, "is_mounted", isMountedOS)
 						}
-					} else {
-						// Trust the OS check
-						mountPointPathDB.IsMounted = isMountedOS
-						slog.Debug("OS mount status check", "path", mountPointPathDB.Path, "is_mounted", isMountedOS)
-					}
+					*/
 
 					// Save the updated DB object (Create or Update)
 					err = self.mount_repo.Save(mountPointPathDB)

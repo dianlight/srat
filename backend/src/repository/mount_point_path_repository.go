@@ -20,6 +20,7 @@ type MountPointPathRepositoryInterface interface {
 	All() ([]dbom.MountPointPath, error)
 	Save(mp *dbom.MountPointPath) error
 	FindByPath(path string) (*dbom.MountPointPath, error)
+	FindByDevice(device string) (*dbom.MountPointPath, error)
 	Exists(id string) (bool, error)
 }
 
@@ -82,6 +83,13 @@ func (r *MountPointPathRepository) FindByPath(path string) (*dbom.MountPointPath
 	return &mp, err
 }
 
+func (r *MountPointPathRepository) FindByDevice(device string) (*dbom.MountPointPath, error) {
+	var mp dbom.MountPointPath
+	// Ensure we search for the base device name, without "/dev/" prefix
+	normalizedDevice := strings.TrimPrefix(device, "/dev/")
+	err := r.db.Where("device = ?", normalizedDevice).First(&mp).Error
+	return &mp, errors.WithStack(err)
+}
 func (r *MountPointPathRepository) All() (Data []dbom.MountPointPath, Error error) {
 	var mps []dbom.MountPointPath
 	err := r.db.Find(&mps).Error
