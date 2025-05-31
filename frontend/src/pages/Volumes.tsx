@@ -13,11 +13,11 @@ import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
 import { faPlug, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
-import { AutocompleteElement, useForm, TextFieldElement, MultiSelectElement, Controller, useFieldArray, CheckboxElement } from "react-hook-form-mui"; // Import TextFieldElement
+import { AutocompleteElement, useForm, TextFieldElement, Controller, useFieldArray, CheckboxElement } from "react-hook-form-mui"; // Import TextFieldElement
 import { toast } from "react-toastify";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
-import { useDeleteVolumeByMountPathHashMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathHashMountMutation, type Partition, type Disk, type MountPointData, Type, type FilesystemType, type MountFlag } from "../store/sratApi";
+import { useDeleteVolumeByMountPathHashMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathHashMountMutation, usePostVolumeDiskByDiskIdEjectMutation, type Partition, type Disk, type MountPointData, Type, type FilesystemType, type MountFlag } from "../store/sratApi";
 // Add EjectIcon to your imports
 import EjectIcon from '@mui/icons-material/Eject';
 import UsbIcon from '@mui/icons-material/Usb';
@@ -51,6 +51,7 @@ export function Volumes() {
     const confirm = useConfirm();
     const [mountVolume, mountVolumeResult] = usePostVolumeByMountPathHashMountMutation();
     const [umountVolume, umountVolumeResult] = useDeleteVolumeByMountPathHashMountMutation();
+    const [ejectDiskMutation, ejectDiskResult] = usePostVolumeDiskByDiskIdEjectMutation();
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({}); // State for collapse, key is disk identifier
     const initialAutoOpenDone = useRef(false);
 
@@ -167,8 +168,8 @@ export function Volumes() {
             confirmationButtonProps: { color: force ? "error" : "primary" },
             acknowledgement: `Please confirm this action carefully. Unmounting may lead to data loss or corruption if the volume is in use. ${force ? 'NOTE:Configured shares will be disabled!' : ''}`,
         })
-            .then((crseult) => { // Only proceed if confirmed
-                if (crseult.reason === "confirm") {
+            .then(({ reason }) => { // Only proceed if confirmed
+                if (reason === "confirm") {
                     console.log(`Proceeding with ${force ? 'forced ' : ''}unmount for:`, mountData.path);
                     umountVolume({
                         mountPathHash: mountData.path_hash || "", // Use the extracted path
@@ -191,6 +192,42 @@ export function Volumes() {
             })
     }
 
+    function onSubmitEjectDisk(disk: Disk) {
+        if (read_only || !disk || !disk.removable) {
+            toast.error("Disk is not ejectable or action is not permitted.");
+            return;
+        }
+
+        const diskName = disk.model || disk.id || "this disk";
+
+        const sharesExistOnDisk = disk.partitions?.some(partition =>
+            partition.mount_point_data?.some(mpd =>
+                mpd.shares?.some(share => !share.disabled)
+            )
+        ) || false;
+
+        const description = `Do you really want to eject the disk ${diskName}? This will unmount all its partitions. ${sharesExistOnDisk ? "Any configured shares on this disk will be disabled." : ""}`;
+        const acknowledgement = `I understand that ejecting the disk will make it inaccessible ${sharesExistOnDisk ? "and disable related shares" : ""}.`;
+
+        confirm({
+            title: `Eject ${diskName}?`,
+            description: description,
+            confirmationText: "Eject",
+            cancellationText: "Cancel",
+            confirmationButtonProps: { color: "error" },
+            acknowledgement: acknowledgement,
+        })
+            .then(({ reason }) => {
+                if (reason === "confirm" && disk.id) {
+                    ejectDiskMutation({ diskId: disk.id }).unwrap()
+                        .then(() => toast.info(`Disk ${diskName} ejected successfully.`))
+                        .catch(err => {
+                            console.error("Eject Error:", err);
+                            toast.error(`Error ejecting disk ${diskName}: ${err.data?.detail || err.data?.message || err.message || 'Unknown error'}`);
+                        });
+                }
+            });
+    }
 
     // Handle loading and error states
     if (isLoading) {
@@ -332,19 +369,32 @@ export function Volumes() {
                                         </Stack>
                                     }
                                 />
-                                {/* Conditionally render IconButton only if there are partitions */}
-                                {disk.partitions && disk.partitions.length > 0 && (
-                                    <IconButton
-                                        edge="end"
-                                        size="small"
-                                        onClick={(e) => { e.stopPropagation(); handleToggleGroup(diskIdentifier); }}
-                                        aria-label={isGroupOpen ? 'Collapse partitions' : 'Expand partitions'}
-                                        aria-expanded={isGroupOpen}
-                                        sx={{ mt: 0.5 }} // Adjust margin top to align better
-                                    >
-                                        {isGroupOpen ? <ExpandLess /> : <ExpandMore />}
-                                    </IconButton>
-                                )}
+                                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ ml: 1, mt: 0.5 }}>
+                                    {!read_only && disk.removable && (
+                                        <Tooltip title={`Eject disk ${disk.model || disk.id}`}>
+                                            <IconButton
+                                                size="small"
+                                                onClick={(e) => { e.stopPropagation(); onSubmitEjectDisk(disk); }}
+                                                aria-label="Eject disk"
+                                            >
+                                                <EjectIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    {/* Conditionally render Expand/Collapse IconButton only if there are partitions */}
+                                    {disk.partitions && disk.partitions.length > 0 && (
+                                        <Tooltip title={isGroupOpen ? 'Collapse partitions' : 'Expand partitions'}>
+                                            <IconButton
+                                                size="small"
+                                                onClick={(e) => { e.stopPropagation(); handleToggleGroup(diskIdentifier); }}
+                                                aria-label={isGroupOpen ? 'Collapse partitions' : 'Expand partitions'}
+                                                aria-expanded={isGroupOpen}
+                                            >
+                                                {isGroupOpen ? <ExpandLess /> : <ExpandMore />}
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                </Stack>
                             </ListItemButton>
                             {/* Collapsible Section for Partitions */}
                             {disk.partitions && disk.partitions.length > 0 && (

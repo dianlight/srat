@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"fmt"
+	"os/exec"
 	"regexp"
 	"syscall"
 
@@ -35,6 +36,7 @@ type VolumeServiceInterface interface {
 	GetVolumesData() (*[]dto.Disk, error)
 	PathHashToPath(pathhash string) (string, errors.E)
 	NotifyClient()
+	EjectDisk(diskID string) error
 }
 
 type VolumeService struct {
@@ -45,6 +47,7 @@ type VolumeService struct {
 	hardwareClient    hardware.ClientWithResponsesInterface
 	lsblk             lsblk.LSBLKInterpreterInterface
 	fs_service        FilesystemServiceInterface
+	shareService      ShareServiceInterface // Added for disabling shares
 	staticConfig      *dto.ContextState
 }
 
@@ -56,6 +59,7 @@ type VolumeServiceProps struct {
 	HardwareClient    hardware.ClientWithResponsesInterface `optional:"true"`
 	LsblkInterpreter  lsblk.LSBLKInterpreterInterface
 	FilesystemService FilesystemServiceInterface
+	ShareService      ShareServiceInterface // Added
 	StaticConfig      *dto.ContextState
 }
 
@@ -72,6 +76,7 @@ func NewVolumeService(
 		lsblk:             in.LsblkInterpreter,
 		fs_service:        in.FilesystemService,
 		staticConfig:      in.StaticConfig,
+		shareService:      in.ShareService, // Added
 	}
 	//p.GetVolumesData()
 	in.Ctx.Value("wg").(*sync.WaitGroup).Add(1)
@@ -688,4 +693,66 @@ func extractMajorMinor(device string) (int, int, error) {
 	major := 7
 
 	return major, minor, nil
+}
+
+func (self *VolumeService) EjectDisk(diskID string) error {
+	slog.Info("Attempting to eject disk", "disk_id", diskID)
+
+	allDisks, err := self.GetVolumesData()
+	if err != nil {
+		return errors.Wrapf(err, "failed to get volume data before ejecting disk %s", diskID)
+	}
+
+	var targetDisk *dto.Disk
+	for i, d := range *allDisks {
+		if d.Id != nil && *d.Id == diskID {
+			targetDisk = &(*allDisks)[i]
+			break
+		}
+	}
+
+	if targetDisk == nil {
+		return errors.WithDetails(dto.ErrorDeviceNotFound, "DiskID", diskID, "Message", "Disk not found")
+	}
+
+	if targetDisk.Removable == nil || !*targetDisk.Removable {
+		return errors.WithDetails(dto.ErrorInvalidParameter, "DiskID", diskID, "Message", "Disk is not removable")
+	}
+
+	// Unmount all mounted partitions of this disk
+	if targetDisk.Partitions != nil {
+		for _, partition := range *targetDisk.Partitions {
+			if partition.MountPointData != nil {
+				for _, mpd := range *partition.MountPointData {
+					if mpd.IsMounted {
+						slog.Info("Disabling shares for path before unmount during eject", "path", mpd.Path, "disk_id", diskID)
+						_, shareErr := self.shareService.DisableShareFromPath(mpd.Path)
+						if shareErr != nil && !errors.Is(shareErr, dto.ErrorShareNotFound) {
+							slog.Warn("Failed to disable share during eject, proceeding with unmount", "path", mpd.Path, "error", shareErr)
+							// Not returning error here, will attempt unmount anyway
+						}
+
+						slog.Info("Unmounting partition during eject", "path", mpd.Path, "disk_id", diskID)
+						unmountErr := self.UnmountVolume(mpd.Path, true, true) // Force and lazy unmount
+						if unmountErr != nil {
+							// If unmount fails, we should probably stop and not try to eject.
+							return errors.Wrapf(unmountErr, "failed to unmount partition %s during eject of disk %s", mpd.Path, diskID)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Eject the physical disk
+	devicePath := "/dev/" + *targetDisk.Id // Assuming Disk.Id is the device name like "sda"
+	slog.Info("Executing eject command", "device_path", devicePath)
+	cmd := exec.Command("eject", devicePath)
+	if ejectErr := cmd.Run(); ejectErr != nil {
+		return errors.Wrapf(ejectErr, "failed to eject disk %s using command", devicePath)
+	}
+
+	slog.Info("Disk ejected successfully", "disk_id", diskID, "device_path", devicePath)
+	go self.NotifyClient() // Notify clients of the change
+	return nil
 }

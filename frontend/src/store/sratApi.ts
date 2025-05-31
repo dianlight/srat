@@ -190,6 +190,16 @@ const injectedRtkApi = api
         query: () => ({ url: `/users` }),
         providesTags: ["user"],
       }),
+      postVolumeDiskByDiskIdEject: build.mutation<
+        PostVolumeDiskByDiskIdEjectApiResponse,
+        PostVolumeDiskByDiskIdEjectApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/volume/disk/${queryArg.diskId}/eject`,
+          method: "POST",
+        }),
+        invalidatesTags: ["volume"],
+      }),
       deleteVolumeByMountPathHashMount: build.mutation<
         DeleteVolumeByMountPathHashMountApiResponse,
         DeleteVolumeByMountPathHashMountApiArg
@@ -315,33 +325,6 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
-          data: Disk[] | null;
-          /** The event name. */
-          event: '"volumes"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: HealthPing;
-          /** The event name. */
-          event: '"heartbeat"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: SharedResource[] | null;
-          /** The event name. */
-          event: '"share"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
           data: Welcome;
           /** The event name. */
           event: '"hello"';
@@ -363,6 +346,33 @@ export type SseApiResponse = /** status 200 OK */
           data: UpdateProgress;
           /** The event name. */
           event: '"updating"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: Disk[] | null;
+          /** The event name. */
+          event: '"volumes"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: HealthPing;
+          /** The event name. */
+          event: '"heartbeat"';
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: SharedResource[] | null;
+          /** The event name. */
+          event: '"share"';
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -405,6 +415,12 @@ export type GetUsersApiResponse =
   | /** status 200 OK */ (User[] | null)
   | /** status default Error */ ErrorModel;
 export type GetUsersApiArg = void;
+export type PostVolumeDiskByDiskIdEjectApiResponse =
+  /** status default Error */ ErrorModel;
+export type PostVolumeDiskByDiskIdEjectApiArg = {
+  /** The ID of the disk to eject (e.g., sda, sdb) */
+  diskId: string;
+};
 export type DeleteVolumeByMountPathHashMountApiResponse =
   /** status default Error */ ErrorModel;
 export type DeleteVolumeByMountPathHashMountApiArg = {
@@ -585,6 +601,17 @@ export type SharedResource = {
   users?: User[] | null;
   [key: string]: any;
 };
+export type Welcome = {
+  message: string;
+  supported_events: Supported_events;
+};
+export type UpdateProgress = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  last_release?: string;
+  update_error?: string;
+  update_status: number;
+};
 export type Partition = {
   device?: string;
   host_mount_point_data?: MountPointData[];
@@ -606,17 +633,6 @@ export type Disk = {
   serial?: string;
   size?: number;
   vendor?: string;
-};
-export type Welcome = {
-  message: string;
-  supported_events: Supported_events;
-};
-export type UpdateProgress = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  last_release?: string;
-  update_error?: string;
-  update_status: number;
 };
 export enum Update_channel {
   Stable = "stable",
@@ -676,6 +692,7 @@ export const {
   usePutUserByUsernameMutation,
   usePutUseradminMutation,
   useGetUsersQuery,
+  usePostVolumeDiskByDiskIdEjectMutation,
   useDeleteVolumeByMountPathHashMountMutation,
   usePostVolumeByMountPathHashMountMutation,
   useGetVolumesQuery,

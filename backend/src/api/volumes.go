@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
 	"regexp"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -50,6 +52,7 @@ func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 	huma.Get(api, "/volumes", self.ListVolumes, huma.OperationTags("volume"))
 	huma.Post(api, "/volume/{mount_path_hash}/mount", self.MountVolume, huma.OperationTags("volume"))
 	huma.Delete(api, "/volume/{mount_path_hash}/mount", self.UmountVolume, huma.OperationTags("volume"))
+	huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
 }
 
 func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body *[]dto.Disk }, error) {
@@ -164,4 +167,29 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 
 	self.dirtyservice.SetDirtyVolumes()
 	return nil, nil
+}
+
+func (self *VolumeHandler) EjectDiskHandler(ctx context.Context, input *struct {
+	DiskID string `path:"disk_id" doc:"The ID of the disk to eject (e.g., sda, sdb)"`
+}) (*struct{ Status int }, error) {
+	if self.apiContext.ReadOnlyMode {
+		return nil, huma.Error403Forbidden("Cannot eject disk in read-only mode")
+	}
+
+	err := self.vservice.EjectDisk(input.DiskID)
+	if err != nil {
+		if errors.Is(err, dto.ErrorDeviceNotFound) {
+			return nil, huma.Error404NotFound(fmt.Sprintf("Disk '%s' not found or not ejectable", input.DiskID), err)
+		}
+		if errors.Is(err, dto.ErrorInvalidParameter) {
+			return nil, huma.Error400BadRequest(fmt.Sprintf("Invalid parameter for ejecting disk '%s'", input.DiskID), err)
+		}
+		// Log the full error for server-side debugging
+		slog.Error("Failed to eject disk", "disk_id", input.DiskID, "error", fmt.Sprintf("%+v", err)) // Log with stack trace if available
+		// Return a more generic error to the client
+		return nil, huma.Error500InternalServerError(fmt.Sprintf("Failed to eject disk '%s': %s", input.DiskID, err.Error()), err)
+	}
+
+	// Return 204 No Content on success
+	return &struct{ Status int }{Status: http.StatusNoContent}, nil
 }

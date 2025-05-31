@@ -1196,28 +1196,6 @@ paths:
                   oneOf:
                     - properties:
                         data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: "\"share\""
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event "share"
-                      type: object
-                    - properties:
-                        data:
                           $ref: "#/components/schemas/Welcome"
                         event:
                           const: "\"hello\""
@@ -1309,6 +1287,28 @@ paths:
                         - data
                         - event
                       title: Event "heartbeat"
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: "\"share\""
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event "share"
                       type: object
                 title: Server Sent Events
                 type: array
@@ -1478,6 +1478,29 @@ paths:
       summary: List users
       tags:
         - user
+  /volume/disk/{disk_id}/eject:
+    post:
+      operationId: post-volume-disk-by-disk-id-eject
+      parameters:
+        - description: The ID of the disk to eject (e.g., sda, sdb)
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The ID of the disk to eject (e.g., sda, sdb)
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Post volume disk by disk ID eject
+      tags:
+        - volume
   /volume/{mount_path_hash}/mount:
     delete:
       operationId: delete-volume-by-mount-path-hash-mount
