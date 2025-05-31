@@ -63,12 +63,18 @@ jobs:
         cd ..
         #sudo .devcontainer/createTestDevices.sh 
 
-    - name: Test ${{ needs.setversion.outputs.version }}
+    - name: Test Backend ${{ needs.setversion.outputs.version }}
       run: |
         cd backend
         sudo -E PATH="$PATH" make test
         cd ..
-
+    - name: Test Frontend ${{ needs.setversion.outputs.version }} (not yet implemented)
+      if: false 
+      run: |
+          cd frontend
+          sudo -E PATH="$PATH" bun test
+          cd ..
+  
     - name: Check if ${{ needs.setversion.outputs.version }} exists
       uses: mukunku/tag-exists-action@v1.6.0
       if: github.event_name != 'pull_request'
