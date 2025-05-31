@@ -70,7 +70,7 @@ func main() {
 	staticConfig := dto.ContextState{}
 
 	// New FX
-	fx.New(
+	app := fx.New(
 		fx.WithLogger(func(log *slog.Logger) fxevent.Logger {
 			log.Debug("Starting FX")
 			fxlog := &fxevent.SlogLogger{
@@ -144,7 +144,11 @@ func main() {
 				}
 			},
 		),
-	).Start(context.Background())
+	)
+
+	app.Start(context.Background())
+	apiContextCancel()
+	app.Stop(context.Background())
 
 	os.Exit(0)
 }
