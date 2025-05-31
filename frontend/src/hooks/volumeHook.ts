@@ -9,8 +9,8 @@ export function useVolume() {
 
     const statusSSE = useSSE(Supported_events.Volumes, [] as Disk[], {
         parser(input: any): Disk[] {
-            console.log("Got disks", input)
             const c = JSON.parse(input);
+            console.log("Got disks", c)
             setDisks(c as Disk[]);
             return c;
         },

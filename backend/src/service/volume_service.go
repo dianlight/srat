@@ -326,7 +326,7 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 			return errors.WithDetails(dto.ErrorDatabaseError, "Detail", "Failed to save mount state after successful mount. Volume has been unmounted.",
 				"Device", real_device, "Path", dbom_mount_data.Path, "Error", err)
 		}
-		ms.NotifyClient()
+		go ms.NotifyClient()
 	}
 	return nil
 }
@@ -402,7 +402,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 			// However, the DB is now potentially out of sync.
 		}
 	}
-	ms.NotifyClient()
+	go ms.NotifyClient()
 	return nil
 
 }
@@ -441,7 +441,7 @@ func (self *VolumeService) udevEventHandler() {
 				// Trigger notification on add/remove/change events for block devices
 				if action == "add" || action == "remove" || action == "change" {
 					slog.Info("Relevant Udev event detected, triggering client notification.", "action", action, "devname", devName)
-					self.NotifyClient()
+					go self.NotifyClient()
 				}
 			}
 			// Optional: Log other events at debug level if needed

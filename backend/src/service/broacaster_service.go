@@ -13,15 +13,19 @@ type BroadcasterServiceInterface interface {
 }
 
 type BroadcasterService struct {
-	ctx      context.Context
-	notifier chan any
+	ctx         context.Context
+	notifier    chan any
+	SentCounter int64
+	DropCounter int64
 }
 
 func NewBroadcasterService(ctx context.Context) (broker BroadcasterServiceInterface) {
 	// Instantiate a broker
 	rbroker := &BroadcasterService{
-		ctx:      ctx,
-		notifier: make(chan any, 1),
+		ctx:         ctx,
+		notifier:    make(chan any, 10),
+		SentCounter: 0,
+		DropCounter: 0,
 	}
 
 	broker = rbroker
@@ -29,7 +33,14 @@ func NewBroadcasterService(ctx context.Context) (broker BroadcasterServiceInterf
 }
 
 func (broker *BroadcasterService) BroadcastMessage(msg any) (any, error) {
-	broker.notifier <- msg
+	select {
+	case broker.notifier <- msg:
+		broker.SentCounter++
+		//slog.Debug("Queued Message", "msg", msg)
+	default:
+		//slog.Debug("Dropped Message", "msg", msg)
+		broker.DropCounter++
+	}
 	return msg, nil
 }
 

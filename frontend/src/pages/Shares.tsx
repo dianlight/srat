@@ -44,8 +44,6 @@ import { toast } from "react-toastify";
 interface ShareEditProps extends SharedResource {
     org_name: string,
     trashbin?: boolean, // TODO: Implement TrashBin support
-    //usersNames?: string[],
-    //roUsersNames?: string[],
 }
 
 
@@ -242,14 +240,6 @@ export function Shares() {
                                 primary={
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                         {props.name}
-                                        {/*props.mount_point_data?.is_mounted && (
-                                            <Chip
-                                                size="small"
-                                                color="success"
-                                                label="Mounted"
-                                                icon={<CheckCircleIcon />}
-                                            />
-                                        )*/}
                                     </Box>
                                 }
                                 onClick={() => { setSelected([share, props]); setShowPreview(true) }}
@@ -363,15 +353,6 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 usage: Usage.None,
             } : {
                 ...props.objectToEdit,
-                //usersNames: props.objectToEdit?.users?.map(user => user.username as string) || [],
-                //roUsersNames: props.objectToEdit?.ro_users?.map(user => user.username as string) || [],
-                /*
-                volumeId: props.objectToEdit.mount_point_data?.path ?
-                    volumes.disks?.partitions?.
-                        filter(mount => mount.mount_point_data?.path?.startsWith("/mnt/")).
-                        find(mount => mount.mount_point_data?.id === props.objectToEdit?.mount_point_data?.path)?.mount_point_data?.id
-                    : undefined
-                    */
             }
         },
     );
