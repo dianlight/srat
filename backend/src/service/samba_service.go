@@ -182,11 +182,14 @@ func (self *SambaService) RestartSambaService() error {
 	}
 
 	for _, share := range *shares {
+		if share.Disabled {
+			continue
+		}
 		switch share.Usage {
 		case "media", "share", "backup":
 			err = self.supervisor_service.NetworkMountShare(share)
 			if err != nil {
-				slog.Error("Mounting error", "err", err)
+				slog.Error("Mounting error", "share", share, "err", err)
 			}
 		}
 	}

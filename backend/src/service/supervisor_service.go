@@ -67,7 +67,7 @@ func (self *SupervisorService) refreshNetworkMountShare() error {
 			return errors.Errorf("Error getting mounts from ha_supervisor: %w", err)
 		}
 		if resp.StatusCode() != 200 {
-			return errors.Errorf("Error getting mounts from ha_supervisor: %d %#v", resp.StatusCode(), resp)
+			return errors.Errorf("Error getting mounts from ha_supervisor: %d %#v", resp.StatusCode(), string(resp.Body))
 		}
 		self.supervisor_mounts = make(map[string]mount.Mount) // Initialize the map
 		for _, mnt := range *resp.JSON200.Data.Mounts {
@@ -81,17 +81,20 @@ func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) error
 	self.refreshNetworkMountShare()
 	conv := converter.HaSupervisorToDbomImpl{}
 
+	mountUsername := pointer.String("_ha_mount_user_")
+	pwd, err := self.prop_repo.Value("_ha_mount_user_password_", true)
+	if err != nil {
+		return errors.Errorf("Error getting password for mount %s from ha_supervisor: %w", share.Name, err)
+	}
+	mountPassword := pointer.String(pwd.(string))
+
 	rmount, ok := self.supervisor_mounts[share.Name]
 	if !ok {
 		// new mount
 		rmount = mount.Mount{}
 		conv.ExportedShareToMount(share, &rmount)
-		rmount.Username = pointer.String("_ha_mount_user_")
-		pwd, err := self.prop_repo.Value("_ha_mount_user_password_", true)
-		if err != nil {
-			return errors.Errorf("Error getting password for mount %s from ha_supervisor: %w", share.Name, err)
-		}
-		rmount.Password = pointer.String(pwd.(string))
+		rmount.Username = mountUsername
+		rmount.Password = mountPassword
 		rmount.Server = &self.staticConfig.AddonIpAddress
 
 		resp, err := self.mount_client.CreateMountWithResponse(self.apiContext, rmount)
@@ -101,22 +104,16 @@ func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) error
 		if resp.StatusCode() != 200 {
 			return errors.Errorf("Error updating mount %s from ha_supervisor: %d %#v", *rmount.Name, resp.StatusCode(), resp)
 		}
-	} else if string(share.Usage) != string(*rmount.Usage) {
+	} else if string(share.Usage) != string(*rmount.Usage) || *rmount.State != "active" {
 		conv.ExportedShareToMount(share, &rmount)
+		rmount.Username = mountUsername
+		rmount.Password = mountPassword
 		resp, err := self.mount_client.UpdateMountWithResponse(self.apiContext, *rmount.Name, rmount)
 		if err != nil {
 			return errors.Errorf("Error updating mount %s from ha_supervisor: %w", *rmount.Name, err)
 		}
 		if resp.StatusCode() != 200 {
-			return errors.Errorf("Error updating mount %s from ha_supervisor: %d %#v", *rmount.Name, resp.StatusCode(), resp)
-		}
-	} else if *rmount.State != "active" {
-		resp, err := self.mount_client.ReloadMountWithResponse(self.apiContext, *rmount.Name)
-		if err != nil {
-			return errors.Errorf("Error reloading mount %s from ha_supervisor: %w", *rmount.Name, err)
-		}
-		if resp.StatusCode() != 200 {
-			return errors.Errorf("Error reloading mount %s from ha_supervisor: %d %#v", *rmount.Name, resp.StatusCode(), resp)
+			return errors.Errorf("Error updating mount %s from ha_supervisor: %d %#v", *rmount.Name, resp.StatusCode(), string(resp.Body))
 		}
 	}
 	return nil

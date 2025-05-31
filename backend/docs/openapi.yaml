@@ -452,6 +452,8 @@ components:
           type: string
         disabled:
           type: boolean
+        ha_status:
+          type: string
         invalid:
           type: boolean
         is_ha_mounted:
@@ -984,6 +986,8 @@ paths:
                   type: string
                 disabled:
                   type: boolean
+                ha_status:
+                  type: string
                 invalid:
                   type: boolean
                 is_ha_mounted:
@@ -1021,6 +1025,8 @@ paths:
                   type: string
                 disabled:
                   type: boolean
+                ha_status:
+                  type: string
                 invalid:
                   type: boolean
                 is_ha_mounted:
@@ -1191,46 +1197,6 @@ paths:
                     - properties:
                         data:
                           items:
-                            $ref: "#/components/schemas/Disk"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: "\"volumes\""
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event "volumes"
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/HealthPing"
-                        event:
-                          const: "\"heartbeat\""
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event "heartbeat"
-                      type: object
-                    - properties:
-                        data:
-                          items:
                             $ref: "#/components/schemas/SharedResource"
                           type:
                             - array
@@ -1303,6 +1269,46 @@ paths:
                         - data
                         - event
                       title: Event "updating"
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/Disk"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: "\"volumes\""
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event "volumes"
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/HealthPing"
+                        event:
+                          const: "\"heartbeat\""
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event "heartbeat"
                       type: object
                 title: Server Sent Events
                 type: array

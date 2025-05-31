@@ -63,22 +63,32 @@ func (s *shareService) ListShares() ([]dto.SharedResource, error) {
 				return nil, errors.Wrapf(err, "failed to convert dbom.ExportedShare to dto.SharedResource for share %s", dbShare.Name)
 			}
 			// Check Supervisor status
-			if dtoShare.Usage != "internal" && dtoShare.Usage != "none" {
-				mount, err := s.supervisor.NetworkGetMountByName(dtoShare.Name)
-				if err != nil {
-					return nil, errors.Wrapf(err, "failed to get network mount for share %s", dtoShare.Name)
-				}
-				if mount == nil {
-					dtoShare.IsHAMounted = pointer.Bool(false)
-				} else {
-					dtoShare.IsHAMounted = pointer.Bool(true)
-				}
+			err = s.getHaStatus(&dtoShare)
+			if err != nil {
+				return nil, err
 			}
 
 			dtoShares = append(dtoShares, dtoShare)
 		}
 	}
 	return dtoShares, nil
+}
+
+func (s *shareService) getHaStatus(dtoShare *dto.SharedResource) error {
+	if dtoShare.Usage != "internal" && dtoShare.Usage != "none" {
+		mount, err := s.supervisor.NetworkGetMountByName(dtoShare.Name)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get network mount for share %s", dtoShare.Name)
+		}
+		if mount == nil {
+			dtoShare.IsHAMounted = pointer.Bool(false)
+			dtoShare.HaStatus = pointer.String("not mounted")
+		} else {
+			dtoShare.IsHAMounted = pointer.Bool(true)
+			dtoShare.HaStatus = mount.State
+		}
+	}
+	return nil
 }
 
 // GetShare retrieves a specific share by its name.
@@ -95,6 +105,12 @@ func (s *shareService) GetShare(name string) (*dto.SharedResource, error) {
 	if err := s.converter.ExportedShareToSharedResource(*dbShare, &dtoShare); err != nil {
 		return nil, errors.Wrapf(err, "failed to convert dbom.ExportedShare to dto.SharedResource for share '%s'", dbShare.Name)
 	}
+
+	err = s.getHaStatus(&dtoShare)
+	if err != nil {
+		return nil, err
+	}
+
 	return &dtoShare, nil
 }
 

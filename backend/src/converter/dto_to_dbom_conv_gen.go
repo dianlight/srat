@@ -114,6 +114,13 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 		}
 		target.IsMounted = xbool
 	}
+	if source.Path != "" {
+		xbool2, err := isPathDirNotExists(source.Path)
+		if err != nil {
+			return err
+		}
+		target.IsInvalid = xbool2
+	}
 	if source.IsToMountAtStartup != false {
 		target.IsToMountAtStartup = source.IsToMountAtStartup
 	}
@@ -327,6 +334,11 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 		return dtoMountPointData, err
 	}
 	dtoMountPointData.IsMounted = xbool
+	xbool2, err := isPathDirNotExists(source.Path)
+	if err != nil {
+		return dtoMountPointData, err
+	}
+	dtoMountPointData.IsInvalid = xbool2
 	dtoMountPointData.IsToMountAtStartup = source.IsToMountAtStartup
 	if source.Shares != nil {
 		dtoMountPointData.Shares = make([]dto.SharedResource, len(source.Shares))

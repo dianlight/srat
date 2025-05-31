@@ -148,11 +148,10 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 		},
 	}
 	dbomMountData := &dbom.MountPointPath{
-		Path:      mountPath,
-		Device:    device,
-		FSType:    fsType,
-		Flags:     dbom.MounDataFlags{dbom.MounDataFlag{Name: "noatime", NeedsValue: false}},
-		IsMounted: false, // Initially not mounted
+		Path:   mountPath,
+		Device: device,
+		FSType: fsType,
+		Flags:  dbom.MounDataFlags{dbom.MounDataFlag{Name: "noatime", NeedsValue: false}},
 	}
 
 	// Mock FindByPath
@@ -165,7 +164,6 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 		}
 		suite.Equal(mountPath, mp.Path)
 		dbomMountData.Device = mp.Device
-		dbomMountData.IsMounted = mp.IsMounted
 		return []any{nil}
 	})).Verify(matchers.AtLeastOnce())
 
@@ -268,7 +266,7 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_MountFails() {
 
 func (suite *VolumeServiceTestSuite) TestUnmountVolume_Success() {
 	mountPath := "/mnt/test1"
-	dbomMountData := &dbom.MountPointPath{Path: mountPath, Device: "sda1", IsMounted: true}
+	dbomMountData := &dbom.MountPointPath{Path: mountPath, Device: "sda1"}
 
 	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(1))
 
@@ -278,7 +276,6 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_Success() {
 			suite.T().Errorf("Expected argument to be of type *dbom.MountPointPath, got %T", args[0])
 		}
 		suite.Equal(mountPath, mp.Path)
-		suite.False(mp.IsMounted)
 		return []any{nil}
 	})).Verify(matchers.AtLeastOnce())
 
@@ -354,8 +351,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	// Prepare mock repo responses
 	mountPath1 := "/mnt/rootfs"
 	mountPath2 := "/mnt/data"
-	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1", IsMounted: true, Type: "ADDON"} // Initial state in DB
-	dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, Device: "sda2", IsMounted: true, Type: "ADDON"} // Initial state in DB
+	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1", Type: "ADDON"} // Initial state in DB
+	dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, Device: "sda2", Type: "ADDON"} // Initial state in DB
 
 	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.AtLeastOnce())
 	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext, mock.Anything).Return(mockHWResponse, nil).Once()
@@ -524,7 +521,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 		}{Data: &hardware.HardwareInfo{Drives: &[]hardware.Drive{drive1}}},
 	}
 	mountPath1 := "/mnt/rootfs"
-	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1", IsMounted: true}
+	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1"}
 	expectedErr := errors.New("DB save error")
 
 	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
@@ -571,7 +568,7 @@ func (suite *VolumeServiceTestSuite) TestNotifyClient_GetVolumesDataError() {
 	// Let's simulate it being called after an Unmount, but GetVolumesData fails.
 
 	mountPath := "/mnt/notifyerr"
-	dbomMountData := &dbom.MountPointPath{Path: mountPath, Device: "sda1", IsMounted: true}
+	dbomMountData := &dbom.MountPointPath{Path: mountPath, Device: "sda1"}
 
 	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.Times(1))
