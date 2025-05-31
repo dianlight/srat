@@ -4,12 +4,8 @@ tmp_dir = "../tmp"
 
 [build]
 args_bin = [
-  "-opt",
-  "../test/data/options.json",
-  "-conf",
-  "../test/data/config.json",
   "-db",
-  "../tmp/testdb.db",
+  "/tmp/testdb.db",
   "-port",
   "8080",
   "-out",

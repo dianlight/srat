@@ -58,20 +58,22 @@ docs: gen
 
 gen: $(SRCS)
 	go generate -C $(SRC_DIRS)  ./...
-	go run -C src ./cmd/srat-openapi -out ../docs
+	go run -C $(SRC_DIRS) ./cmd/srat-openapi -out ../docs
 
 .PHONY: dev_cli
 dev_cli:
-	go run -C src ./cmd/srat-cli -opt ../test/data/options.json -conf ../test/data/config.json -db ../tmp/testdb.db -out ../tmp/samba.conf  -ha-url $(SUPERVISOR_URL)
+	mkdir ./tmp > /dev/null 2>&1 || :
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -opt ../test/data/options.json -conf ../test/data/config.json -db /tmp/testdb.db -out ../tmp/samba.conf  -ha-url $(SUPERVISOR_URL)
 
 .PHONY: dev
 dev:
-	cd $(SRC_DIRS);go tool air
+	make dev_cli
+	go tool -C $(SRC_DIRS) air -c .air.toml
 
 
 .PHONY: update
 update:
-	cd $(SRC_DIRS);go get -u ./...
+	go get -C $(SRC_DIRS) -u ./...
 
 
 $(FRONTEND_DIRS)/node_modules:
@@ -84,11 +86,11 @@ static: $(FRONTEND_DIRS)/node_modules
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS)
 
 patch:
-	cd $(SRC_DIRS);go tool gohack undo
+	go tool -C $(SRC_DIRS) gohack undo
 	rm -rf ${HOME}/gohack
-	cd $(SRC_DIRS);go tool gohack get -vcs github.com/samber/slog-http
+	go tool -C $(SRC_DIRS) gohack get -vcs github.com/samber/slog-http
 	cd ${HOME}/gohack/github.com/samber/slog-http; git apply $(ROOT_DIR)/patches/slog-http.patch
-	cd $(SRC_DIRS);go tool gohack get -vcs github.com/jpillora/overseer	
+	go tool -C $(SRC_DIRS) gohack get -vcs github.com/jpillora/overseer	
 	cd ${HOME}/gohack/github.com/jpillora/overseer; git apply $(ROOT_DIR)/patches/overseer.patch
 
 gen_patch:

@@ -164,21 +164,6 @@ func main() {
 			repository.NewExportedShareRepository,
 			repository.NewPropertyRepositoryRepository,
 			repository.NewSambaUserRepository,
-			//			server.AsHumaRoute(api.NewSSEBroker),
-			//			server.AsHumaRoute(api.NewHealthHandler),
-			//			server.AsHumaRoute(api.NewShareHandler),
-			//			server.AsHumaRoute(api.NewVolumeHandler),
-			//			server.AsHumaRoute(api.NewSettingsHanler),
-			//			server.AsHumaRoute(api.NewUserHandler),
-			//			server.AsHumaRoute(api.NewSambaHanler),
-			//			server.AsHumaRoute(api.NewUpgradeHanler),
-			//			server.AsHumaRoute(api.NewSystemHanler),
-			//			fx.Annotate(
-			//				server.NewMuxRouter,
-			//				fx.ParamTags(`name:"ha_mode"`),
-			//			),
-			//			server.NewHTTPServer,
-			//			server.NewHumaAPI,
 			func() *securityprovider.SecurityProviderBearerToken {
 				sp, err := securityprovider.NewSecurityProviderBearerToken(*supervisorToken)
 				if err != nil {
@@ -317,83 +302,7 @@ func main() {
 			}
 			slog.Info("******* Samba config applied! ********")
 		}),
-	/*
-			fx.Invoke(
-				fx.Annotate(
-					func(
-						_ *http.Server,
-						api huma.API,
-						router *mux.Router,
-						static http.FileSystem,
-						ha_mode bool,
-						shutdowner fx.Shutdowner,
-					) {
-						if daemonMode != nil && !*daemonMode {
-							shutdowner.Shutdown()
-							return
-						}
-						// Addon-LocalUpdate deploy
-						if !ha_mode {
-							executablePath, err := os.Executable()
-							if err != nil {
-								slog.Error("Error getting executable path:", "err", err)
-							} else {
-								slog.Debug("Serving executable", "path", executablePath)
-								router.Path("/srat_" + runtime.GOARCH).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-									http.ServeFile(w, r, executablePath)
-								}).Methods(http.MethodGet)
-								if runtime.GOARCH != "amd64" {
-									router.Path("/srat_x86_64").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-										http.ServeFile(w, r, executablePath+"_x86_64")
-									}).Methods(http.MethodGet)
-								}
-							}
-
-						}
-
-						// Static Routes
-						router.PathPrefix("/").Handler(http.FileServer(static)).Methods(http.MethodGet)
-						//
-						router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-							template, err := route.GetPathTemplate()
-							if err != nil {
-								return errors.WithMessage(err)
-							}
-							slog.Debug("Route:", "template", template)
-							return nil
-						})
-
-						if *swagger {
-							yaml, err := api.OpenAPI().YAML()
-							if err != nil {
-								slog.Error("Unable to generate YAML", "err", err)
-							}
-							err = os.WriteFile("docs/openapi.yaml", yaml, 0644)
-							if err != nil {
-								slog.Error("Unable to write YAML", "err", err)
-							}
-							json, err := api.OpenAPI().MarshalJSON()
-							if err != nil {
-								slog.Error("Unable to generate JSON", "err", err)
-							}
-							err = os.WriteFile("docs/openapi.json", json, 0644)
-							if err != nil {
-								slog.Error("Unable to write JSON", "err", err)
-							}
-						}
-
-					},
-					fx.ParamTags("", "", "", "", `name:"ha_mode"`),
-				),
-		),
-	*/
 	).Start(context.Background())
-	/*
-		slog.Info("Stopping SRAT", "pid", state.ID)
-		//dbom.CloseDB()
-		apiContext.Value("wg").(*sync.WaitGroup).Wait()
-		slog.Info("SRAT stopped", "pid", state.ID)
-	*/
 	os.Exit(0)
 }
 
@@ -425,6 +334,7 @@ func firstTimeJSONImporter(config config.Config,
 		return errors.WithStack(err)
 	}
 	for i, share := range *shares {
+		share.MountPointData.IsToMountAtStartup = false
 		err = mount_repository.Save(&share.MountPointData)
 		if err != nil {
 			return errors.WithStack(err)

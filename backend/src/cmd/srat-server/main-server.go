@@ -18,14 +18,12 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
-	"github.com/m1/go-generate-password/generator"
 	"github.com/mattn/go-isatty"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"gitlab.com/tozd/go/errors"
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
@@ -36,7 +34,6 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/unixsamba"
 
 	"github.com/jpillora/overseer/fetcher"
 	"github.com/lmittmann/tint"
@@ -44,34 +41,25 @@ import (
 	"go.uber.org/fx/fxevent"
 )
 
-var options *config.Options
 var smbConfigFile *string
 
-// var globalRouter *mux.Router
-var optionsFile *string
 var http_port *int
-var wait time.Duration
 var hamode *bool
 var dockerInterface *string
 var dockerNetwork *string
 var roMode *bool
 var updateFilePath *string
-var configFile *string
 var dbfile *string
 var supervisorURL *string
 var supervisorToken *string
 var logLevel slog.Level
 var addonIpAddress *string
-var daemonMode *bool
-var swagger *bool
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	w := os.Stderr
 	// set global logger with custom options
 
-	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
-	configFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
 	smbConfigFile = flag.String("out", "", "Output samba conf file")
 	roMode = flag.Bool("ro", false, "Read only mode")
@@ -90,17 +78,8 @@ func main() {
 	updateFilePath = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
 	addonIpAddress = flag.String("ip-address", "127.0.0.1", "Addon IP address // $(bashio::addon.ip_address)")
 
-	daemonMode = flag.Bool("daemon", true, "Start as daemon (default). If false the program exit after the startup process")
-	swagger = flag.Bool("generate", false, "Generate the OpenAPI specification")
-
-	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
-
-	// Headless CLI mode (execute a command and exit)
-	//show_volumes := flag.Bool("show-volumes", false, "Show volumes in headless CLI mode and exit")
-
 	flag.Usage = func() {
 		internal.Banner("srat")
-
 		flag.PrintDefaults()
 	}
 
@@ -176,11 +155,6 @@ func prog(state overseer.State) {
 	if !strings.Contains(*dbfile, "?") {
 		*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
 	}
-
-	//dbom.InitDB(*dbfile)
-
-	// Get options
-	options = config.ReadOptionsFile(*optionsFile)
 
 	var apiContext, apiContextCancel = context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	staticConfig := dto.ContextState{}
@@ -276,50 +250,6 @@ func prog(state overseer.State) {
 				return mountClient
 			},
 		),
-		fx.Invoke(func(
-			mount_repo repository.MountPointPathRepositoryInterface,
-			props_repo repository.PropertyRepositoryInterface,
-			exported_share_repo repository.ExportedShareRepositoryInterface,
-			hardwareClient hardware.ClientWithResponsesInterface,
-			samba_user_repo repository.SambaUserRepositoryInterface,
-			volume_service service.VolumeServiceInterface,
-			fs_service service.FilesystemServiceInterface,
-		) {
-			versionInDB, err := props_repo.Value("version", true)
-			if err != nil || versionInDB.(string) == "" {
-				// Migrate from JSON to DB
-				var config config.Config
-				err := config.LoadConfig(*configFile)
-				// Setting/Properties
-				if err != nil {
-					log.Fatalf("Cant load config file %#+v", err)
-				}
-
-				pwdgen, err := generator.NewWithDefault()
-				if err != nil {
-					log.Fatalf("Cant generate password %#+v", err)
-				}
-				_ha_mount_user_password_, err := pwdgen.Generate()
-				if err != nil {
-					log.Fatalf("Cant generate password %#+v", err)
-				}
-
-				err = unixsamba.CreateSambaUser("_ha_mount_user_", *_ha_mount_user_password_, unixsamba.UserOptions{
-					CreateHome:    false,
-					SystemAccount: false,
-					Shell:         "/sbin/nologin",
-				})
-				if err != nil {
-					log.Fatalf("Cant create samba user %#+v", err)
-				}
-
-				err = firstTimeJSONImporter(config, mount_repo, props_repo, exported_share_repo, samba_user_repo, *_ha_mount_user_password_)
-				if err != nil {
-					log.Fatalf("Cant import json settings - %#+v", err)
-				}
-
-			}
-		}),
 		fx.Invoke(
 			fx.Annotate(
 				func(
@@ -330,10 +260,6 @@ func prog(state overseer.State) {
 					ha_mode bool,
 					shutdowner fx.Shutdowner,
 				) {
-					if daemonMode != nil && !*daemonMode {
-						shutdowner.Shutdown()
-						return
-					}
 					// Addon-LocalUpdate deploy
 					if !ha_mode {
 						executablePath, err := os.Executable()
@@ -364,26 +290,6 @@ func prog(state overseer.State) {
 						slog.Debug("Route:", "template", template)
 						return nil
 					})
-
-					if *swagger {
-						yaml, err := api.OpenAPI().YAML()
-						if err != nil {
-							slog.Error("Unable to generate YAML", "err", err)
-						}
-						err = os.WriteFile("docs/openapi.yaml", yaml, 0644)
-						if err != nil {
-							slog.Error("Unable to write YAML", "err", err)
-						}
-						json, err := api.OpenAPI().MarshalJSON()
-						if err != nil {
-							slog.Error("Unable to generate JSON", "err", err)
-						}
-						err = os.WriteFile("docs/openapi.json", json, 0644)
-						if err != nil {
-							slog.Error("Unable to write JSON", "err", err)
-						}
-					}
-
 				},
 				fx.ParamTags("", "", "", "", `name:"ha_mode"`),
 			),
@@ -396,46 +302,4 @@ func prog(state overseer.State) {
 	slog.Info("SRAT stopped", "pid", state.ID)
 
 	os.Exit(0)
-}
-
-func firstTimeJSONImporter(config config.Config,
-	mount_repository repository.MountPointPathRepositoryInterface,
-	props_repository repository.PropertyRepositoryInterface,
-	export_share_repository repository.ExportedShareRepositoryInterface,
-	users_repository repository.SambaUserRepositoryInterface,
-	_ha_mount_user_password_ string,
-) (err error) {
-
-	var conv converter.ConfigToDbomConverterImpl
-	shares := &[]dbom.ExportedShare{}
-	properties := &dbom.Properties{}
-	users := &dbom.SambaUsers{}
-
-	err = conv.ConfigToDbomObjects(config, properties, users, shares)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	properties.AddInternalValue("_ha_mount_user_password_", _ha_mount_user_password_)
-
-	err = props_repository.SaveAll(properties)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	err = users_repository.SaveAll(users)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	for i, share := range *shares {
-		err = mount_repository.Save(&share.MountPointData)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		//		slog.Debug("Share ", "id", share.MountPointData.ID)
-		(*shares)[i] = share
-	}
-	err = export_share_repository.SaveAll(shares)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
 }
