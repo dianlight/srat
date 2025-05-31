@@ -174,22 +174,22 @@ func (self *SambaService) RestartSambaService() error {
 		if err != nil {
 			return errors.Errorf("Error executing smbcontrol: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
 		}
-	}
-	// remount network share on ha_core
-	shares, err := self.exported_share_repo.All()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	for _, share := range *shares {
-		if share.Disabled {
-			continue
+		// remount network share on ha_core
+		shares, err := self.exported_share_repo.All()
+		if err != nil {
+			return errors.WithStack(err)
 		}
-		switch share.Usage {
-		case "media", "share", "backup":
-			err = self.supervisor_service.NetworkMountShare(share)
-			if err != nil {
-				slog.Error("Mounting error", "share", share, "err", err)
+
+		for _, share := range *shares {
+			if share.Disabled {
+				continue
+			}
+			switch share.Usage {
+			case "media", "share", "backup":
+				err = self.supervisor_service.NetworkMountShare(share)
+				if err != nil {
+					slog.Error("Mounting error", "share", share, "err", err)
+				}
 			}
 		}
 	}
