@@ -87,13 +87,14 @@ static: $(FRONTEND_DIRS)/node_modules
 	cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS)
 
+.ONESHELL: 
 patch:
 	go tool -C $(SRC_DIRS) gohack undo
 	rm -rf ${HOME}/gohack
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/samber/slog-http
-	cd ${HOME}/gohack/github.com/samber/slog-http; git apply $(ROOT_DIR)/patches/slog-http.patch
+	git -C ${HOME}/gohack/github.com/samber/slog-http apply $(ROOT_DIR)/patches/slog-http.patch
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/jpillora/overseer	
-	cd ${HOME}/gohack/github.com/jpillora/overseer; git apply $(ROOT_DIR)/patches/overseer.patch
+	git -C ${HOME}/gohack/github.com/jpillora/overseer apply $(ROOT_DIR)/patches/overseer.patch
 
 gen_patch:
 	mkdir patches > /dev/null 2>&1 || :  
