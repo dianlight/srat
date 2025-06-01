@@ -73,6 +73,7 @@ func NewHTTPServer(
 			//	return errors.WithStack(err)
 			//}
 			//time.Sleep(15 * time.Second)
+			apiContext.Value("wg").(*sync.WaitGroup).Done()
 			slog.Info("HTTP server stopped")
 			return nil
 		},

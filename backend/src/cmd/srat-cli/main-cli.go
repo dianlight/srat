@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -33,12 +34,13 @@ import (
 	"go.uber.org/fx/fxevent"
 )
 
-var options *config.Options
+// var options *config.Options
 var smbConfigFile *string
 
 // var globalRouter *mux.Router
-var optionsFile *string
-var wait time.Duration
+//var optionsFile *string
+
+// var wait time.Duration
 var dockerInterface *string
 var dockerNetwork *string
 var configFile *string
@@ -51,34 +53,69 @@ var logLevelString *string
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	w := os.Stderr
-	// set global logger with custom options
 
-	optionsFile = flag.String("opt", "/data/options.json", "Addon Options json file")
-	configFile = flag.String("conf", "", "Config json file, can be omitted if used in a pipe")
-	smbConfigFile = flag.String("out", "", "Output samba conf file")
-	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
-	dockerInterface = flag.String("docker-interface", "", "Docker interface")
-	dockerNetwork = flag.String("docker-network", "", "Docker network")
-	if !internal.Is_embed {
-		//		internal.Frontend = flag.String("frontend", "", "Frontend path - if missing the internal is used")
-		internal.TemplateFile = flag.String("template", "", "Template file")
-	}
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
+	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	logLevelString = flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 
-	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
+	// set global logger with custom options
+	startCmd := flag.NewFlagSet("start", flag.ExitOnError)
+	/*optionsFile = */ startCmd.String("opt", "/data/options.json", "Addon Options json file (Unused for now)")
+	configFile = startCmd.String("conf", "/config/bootconfig.json", "Addon Config json file")
+	smbConfigFile = startCmd.String("out", "", "Output samba conf file")
+	dockerInterface = startCmd.String("docker-interface", "", "Docker interface")
+	dockerNetwork = startCmd.String("docker-network", "", "Docker network")
+	if !internal.Is_embed {
+		//		internal.Frontend = flag.String("frontend", "", "Frontend path - if missing the internal is used")
+		internal.TemplateFile = startCmd.String("template", "", "Template file")
+	}
+
+	stopCmd := flag.NewFlagSet("stop", flag.ExitOnError)
+
+	//	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
 
 	// Headless CLI mode (execute a command and exit)
 	//show_volumes := flag.Bool("show-volumes", false, "Show volumes in headless CLI mode and exit")
 
 	internal.Banner("srat-cli")
 	flag.Usage = func() {
-
+		fmt.Printf("Usage %s <config_options...> <command> <command_options...>\n", os.Args[0])
+		fmt.Println("Config Options:")
 		flag.PrintDefaults()
+		fmt.Println("Command start:")
+		startCmd.PrintDefaults()
+		fmt.Println("Command stop:")
+		stopCmd.PrintDefaults()
+	}
+	startCmd.Usage = func() {
+		fmt.Println("Usage:")
+		startCmd.PrintDefaults()
+	}
+	stopCmd.Usage = func() {
+		fmt.Println("Usage:")
+		stopCmd.PrintDefaults()
 	}
 
 	flag.Parse()
+
+	if len(flag.Args()) < 1 {
+		slog.Error("Expected 'start' or 'stop' subcommands")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	command := flag.Args()[0]
+	switch command {
+	case "start":
+		startCmd.Parse(flag.Args()[1:])
+	case "stop":
+		stopCmd.Parse(flag.Args()[1:])
+	default:
+		slog.Error("Unknwon command", "command", command)
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	switch *logLevelString {
 	case "trace", "debug":
@@ -105,7 +142,7 @@ func main() {
 	slog.Debug("Startup Options", "Flags", os.Args)
 	//	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
 
-	if *smbConfigFile == "" {
+	if command == "start" && *smbConfigFile == "" {
 		log.Fatalf("Missing samba config! %s", *smbConfigFile)
 	}
 
@@ -116,7 +153,7 @@ func main() {
 	//dbom.InitDB(*dbfile)
 
 	// Get options
-	options = config.ReadOptionsFile(*optionsFile)
+	//options = config.ReadOptionsFile(*optionsFile)
 
 	var apiContext, apiContextCancel = context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	staticConfig := dto.ContextState{}
@@ -204,8 +241,8 @@ func main() {
 			volume_service service.VolumeServiceInterface,
 			fs_service service.FilesystemServiceInterface,
 		) {
-			versionInDB, err := props_repo.Value("version", true)
-			if err != nil || versionInDB.(string) == "" {
+			versionInDB, err := props_repo.Value("ConfigSpecVersion", true)
+			if err != nil || versionInDB == nil {
 				// Migrate from JSON to DB
 				var config config.Config
 				err := config.LoadConfig(*configFile)
@@ -248,6 +285,7 @@ func main() {
 			volume_service service.VolumeServiceInterface,
 			fs_service service.FilesystemServiceInterface,
 			samba_service service.SambaServiceInterface,
+			supervisor_service service.SupervisorServiceInterface,
 		) {
 			// Setting the actual Log_Level
 			err := props_repo.SetValue("log_level", *logLevelString)
@@ -255,59 +293,83 @@ func main() {
 				log.Fatalf("Cant set log level - %#+v", err)
 			}
 
-			// Autocreate users
-			slog.Info("******* Autocreating users ********")
-			users, err := samba_user_repo.All()
-			if err != nil {
-				log.Fatalf("Cant load users - %#+v", err)
-			}
-			for _, user := range users {
-				slog.Info("Autocreating user", "name", user.Username)
-				err = unixsamba.CreateSambaUser(user.Username, user.Password, unixsamba.UserOptions{
-					CreateHome:    false,
-					SystemAccount: false,
-					Shell:         "/sbin/nologin",
-				})
-				if err != nil {
-					slog.Error("Error autocreating user", "name", user.Username, "err", err)
-				} else {
-					slog.Info("User created successfully", "name", user.Username)
-				}
-			}
-			slog.Info("******* Autocreating users done! ********")
+			if command == "start" {
 
-			// Automount all volumes
-			slog.Info("******* Automounting all shares! ********")
-			all, err := mount_repo.All()
-			if err != nil {
-				log.Fatalf("Cant load mounts - %#+v", err)
-			}
-			for _, mnt := range all {
-				if mnt.Type == "ADDON" && mnt.IsToMountAtStartup {
-					slog.Info("Automounting share", "path", mnt.Path)
-					conv := converter.DtoToDbomConverterImpl{}
-					mpd := dto.MountPointData{}
-					conv.MountPointPathToMountPointData(mnt, &mpd)
-					err := volume_service.MountVolume(mpd)
+				// Autocreate users
+				slog.Info("******* Autocreating users ********")
+				users, err := samba_user_repo.All()
+				if err != nil {
+					log.Fatalf("Cant load users - %#+v", err)
+				}
+				for _, user := range users {
+					slog.Info("Autocreating user", "name", user.Username)
+					err = unixsamba.CreateSambaUser(user.Username, user.Password, unixsamba.UserOptions{
+						CreateHome:    false,
+						SystemAccount: false,
+						Shell:         "/sbin/nologin",
+					})
 					if err != nil {
-						if errors.Is(err, dto.ErrorAlreadyMounted) {
-							slog.Info("Share already mounted", "path", mnt.Path)
-						} else {
-							slog.Error("Error automounting share", "path", mnt.Path, "err", err)
+						slog.Error("Error autocreating user", "name", user.Username, "err", err)
+					} else {
+						slog.Info("User created successfully", "name", user.Username)
+					}
+				}
+				slog.Info("******* Autocreating users done! ********")
+
+				// Automount all volumes
+				slog.Info("******* Automounting all shares! ********")
+				all, err := mount_repo.All()
+				if err != nil {
+					log.Fatalf("Cant load mounts - %#+v", err)
+				}
+				for _, mnt := range all {
+					if mnt.Type == "ADDON" && mnt.IsToMountAtStartup {
+						slog.Info("Automounting share", "path", mnt.Path)
+						conv := converter.DtoToDbomConverterImpl{}
+						mpd := dto.MountPointData{}
+						conv.MountPointPathToMountPointData(mnt, &mpd)
+						err := volume_service.MountVolume(mpd)
+						if err != nil {
+							if errors.Is(err, dto.ErrorAlreadyMounted) {
+								slog.Info("Share already mounted", "path", mnt.Path)
+							} else {
+								slog.Error("Error automounting share", "path", mnt.Path, "err", err)
+							}
+						}
+						slog.Debug("Share automounted", "path", mnt.Path)
+					}
+				}
+				slog.Info("******* Automounting all shares done! ********")
+
+				// Apply config to samba
+				slog.Info("******* Applying Samba config ********")
+				err = samba_service.WriteAndRestartSambaConfig()
+				if err != nil {
+					log.Fatalf("Cant apply samba config - %#+v", err)
+				}
+				slog.Info("******* Samba config applied! ********")
+			} else if command == "stop" {
+				slog.Info("******* Unmounting all shares from Homeassistant ********")
+				// remount network share on ha_core
+				shares, err := exported_share_repo.All()
+				if err != nil {
+					log.Fatalf("Can't get Shares - %#+v", err)
+				}
+
+				for _, share := range *shares {
+					if share.Disabled {
+						continue
+					}
+					switch share.Usage {
+					case "media", "share", "backup":
+						err = supervisor_service.NetworkUnmountShare(share)
+						if err != nil {
+							slog.Error("UnMounting error", "share", share, "err", err)
 						}
 					}
-					slog.Debug("Share automounted", "path", mnt.Path)
 				}
+				slog.Info("******* Unmounted all shares from Homeassistant ********")
 			}
-			slog.Info("******* Automounting all shares done! ********")
-
-			// Apply config to samba
-			slog.Info("******* Applying Samba config ********")
-			err = samba_service.WriteAndRestartSambaConfig()
-			if err != nil {
-				log.Fatalf("Cant apply samba config - %#+v", err)
-			}
-			slog.Info("******* Samba config applied! ********")
 		}),
 	)
 	app.Start(context.Background())

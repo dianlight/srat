@@ -61,9 +61,11 @@ gen: $(SRCS)
 	go run -C $(SRC_DIRS) ./cmd/srat-openapi -out ../docs
 
 .PHONY: dev_cli
+.ONESHELL: 
 dev_cli:
 	mkdir ./tmp > /dev/null 2>&1 || :
-	go run -C $(SRC_DIRS) ./cmd/srat-cli -opt ../test/data/options.json -conf ../test/data/config.json -db /tmp/testdb.db -out ../tmp/samba.conf  -ha-url $(SUPERVISOR_URL)
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug -ha-url $(SUPERVISOR_URL) start -opt ../test/data/options.json -conf ../test/data/config.json -out ../tmp/samba.conf 
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug -ha-url $(SUPERVISOR_URL) stop
 
 .PHONY: dev
 dev:

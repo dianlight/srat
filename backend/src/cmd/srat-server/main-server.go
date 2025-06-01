@@ -131,6 +131,7 @@ func main() {
 			TerminateTimeout: 60,
 			Debug:            false,
 		})
+		slog.Debug("Stopping main process", "pid", os.Getpid())
 	}
 }
 
