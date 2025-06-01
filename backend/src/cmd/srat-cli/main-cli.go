@@ -287,8 +287,8 @@ func main() {
 			samba_service service.SambaServiceInterface,
 			supervisor_service service.SupervisorServiceInterface,
 		) {
-			// Setting the actual Log_Level
-			err := props_repo.SetValue("log_level", *logLevelString)
+			// Setting the actual LogLevel
+			err := props_repo.SetValue("LogLevel", *logLevelString)
 			if err != nil {
 				log.Fatalf("Cant set log level - %#+v", err)
 			}
