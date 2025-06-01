@@ -127,7 +127,6 @@ require (
 require (
 	github.com/danielgtaylor/huma/v2 v2.32.0
 	github.com/glebarez/sqlite v1.11.0
-	github.com/gobeam/stringy v0.0.7
 	github.com/itchyny/gojq v0.12.17
 	github.com/jaypipes/ghw v0.17.0
 	github.com/lmittmann/tint v1.1.1
