@@ -8,7 +8,7 @@ github.com/control-center/serviced/utils/iostat
 github.com/lufia/iostat
 
 
-github.com/shirou/gopsutil/v3
+github.com/shirou/gopsutil/v4
 
 
 # Minimal Size for LoopBack Disk 
