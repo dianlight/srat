@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"log/slog"
 	"sync"
 
 	"gitlab.com/tozd/go/errors"
@@ -96,13 +98,16 @@ func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) error
 		rmount.Username = mountUsername
 		rmount.Password = mountPassword
 		rmount.Server = &self.staticConfig.AddonIpAddress
+		rmount.Type = pointer.Any(mount.MountType("cifs")).(*mount.MountType)
 
 		resp, err := self.mount_client.CreateMountWithResponse(self.apiContext, rmount)
 		if err != nil {
 			return errors.Errorf("Error creating mount %s from ha_supervisor: %w", share.Name, err)
 		}
 		if resp.StatusCode() != 200 {
-			return errors.Errorf("Error updating mount %s from ha_supervisor: %d %#v", *rmount.Name, resp.StatusCode(), resp)
+			rjson, _ := json.Marshal(rmount)
+			slog.Error("Error creating mount from ha_supervisor", "share", share, "req", string(rjson), "resp", resp)
+			return errors.Errorf("Error creating mount %s from ha_supervisor: %d \nReq:%#v\nResp:%#v", *rmount.Name, resp.StatusCode(), string(rjson), string(resp.Body))
 		}
 	} else if string(share.Usage) != string(*rmount.Usage) || *rmount.State != "active" {
 		conv.ExportedShareToMount(share, &rmount)

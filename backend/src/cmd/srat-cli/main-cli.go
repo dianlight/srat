@@ -294,9 +294,20 @@ func main() {
 			}
 
 			if command == "start" {
-
 				// Autocreate users
 				slog.Info("******* Autocreating users ********")
+				_ha_mount_user_password_, err := props_repo.Value("_ha_mount_user_password_", true)
+				if err != nil {
+					log.Fatalf("Cant get password for _ha_mount_user_ user - %#+v", err)
+				}
+				err = unixsamba.CreateSambaUser("_ha_mount_user_", _ha_mount_user_password_.(string), unixsamba.UserOptions{
+					CreateHome:    false,
+					SystemAccount: false,
+					Shell:         "/sbin/nologin",
+				})
+				if err != nil {
+					log.Fatalf("Cant create samba user %#+v", err)
+				}
 				users, err := samba_user_repo.All()
 				if err != nil {
 					log.Fatalf("Cant load users - %#+v", err)
