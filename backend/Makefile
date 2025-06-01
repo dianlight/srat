@@ -30,7 +30,7 @@ test_build: $(SRC_DIRS) $(STATIC_DIRS)
 	mkdir -p tmp/x86_64 > /dev/null 2>&1 || :   
 	CGO_ENABLED=0 go build -C $(SRC_DIRS) -tags=embedallowed_no -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/srat  ./cmd/srat-server
 	CGO_ENABLED=0 GOARCH=amd64 go build  -C $(SRC_DIRS) -tags=embedallowed -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/x86_64/ ./...
-	[ -f /mnt/remote/bootconfig.json ] && find ./tmp/x86_64/ -name "srat*"  -exec sh -c 'cp -v $$@ /mnt/remote/$${1##*/}_x86_64' _ {} \; || echo "No remote mount found use make mount_remote"
+	[ -f /mnt/remote/bootconfig.json ] && find ./tmp/x86_64/ -name "srat*" -exec cp -v {} /mnt/remote/ \; || echo "No remote mount found use make mount_remote"
 
 .PHONY: format
 format:
