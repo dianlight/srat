@@ -35,7 +35,6 @@ type VolumeServiceInterface interface {
 	UnmountVolume(id string, force bool, lazy bool) errors.E
 	GetVolumesData() (*[]dto.Disk, error)
 	PathHashToPath(pathhash string) (string, errors.E)
-	NotifyClient()
 	EjectDisk(diskID string) error
 }
 
@@ -331,7 +330,7 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 			return errors.WithDetails(dto.ErrorDatabaseError, "Detail", "Failed to save mount state after successful mount. Volume has been unmounted.",
 				"Device", real_device, "Path", dbom_mount_data.Path, "Error", err)
 		}
-		go ms.NotifyClient()
+		go ms.notifyClient()
 	}
 	return nil
 }
@@ -407,7 +406,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 			// However, the DB is now potentially out of sync.
 		}
 	}
-	go ms.NotifyClient()
+	go ms.notifyClient()
 	return nil
 
 }
@@ -446,7 +445,7 @@ func (self *VolumeService) udevEventHandler() {
 				// Trigger notification on add/remove/change events for block devices
 				if action == "add" || action == "remove" || action == "change" {
 					slog.Info("Relevant Udev event detected, triggering client notification.", "action", action, "devname", devName)
-					go self.NotifyClient()
+					go self.notifyClient()
 				}
 			}
 			// Optional: Log other events at debug level if needed
@@ -634,7 +633,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 	return &ret, nil // Return nil error on success
 }
 
-func (self *VolumeService) NotifyClient() {
+func (self *VolumeService) notifyClient() {
 	slog.Debug("Notifying client about volume changes...")
 	self.volumesQueueMutex.Lock()
 	defer self.volumesQueueMutex.Unlock()
@@ -753,6 +752,6 @@ func (self *VolumeService) EjectDisk(diskID string) error {
 	}
 
 	slog.Info("Disk ejected successfully", "disk_id", diskID, "device_path", devicePath)
-	go self.NotifyClient() // Notify clients of the change
+	go self.notifyClient() // Notify clients of the change
 	return nil
 }

@@ -65,6 +65,7 @@ export function Settings() {
                     <Grid container spacing={2}>
                         <Grid size={4}>
                             <SelectElement label="Update Channel" name="update_channel"
+                                size="small"
                                 options={[
                                     {
                                         id: 'none',
@@ -84,7 +85,14 @@ export function Settings() {
                             <Divider />
                         </Grid>
                         <Grid size={4}>
-                            <TextFieldElement sx={{ display: "flex" }} name="workgroup" label="Workgroup" required control={control} disabled={read_only} />
+                            <TextFieldElement
+                                size="small"
+                                sx={{ display: "flex" }}
+                                name="workgroup"
+                                label="Workgroup"
+                                required
+                                control={control}
+                                disabled={read_only} />
                         </Grid>
                         <Grid size={8}>
                             <Controller
