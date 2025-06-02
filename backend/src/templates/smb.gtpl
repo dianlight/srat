@@ -53,8 +53,9 @@
    disable spoolss = yes
 
 # DEBUG: Log Level: {{ .log_level }}
-   {{ $log_level := dict "trace" "5" "debug" "4" "info" "3" "notice" "2" "warning" "1" "error" "1"  "fatal" "0" -}}
-   log level = {{ .log_level | default "warning" | get $log_level }}
+   debug class = yes
+   {{ $log_level := dict "trace" "5" "debug" "auth_audit:4 auth:4 vfs:4" "info" "auth_audit:3 auth:3 vfs:3" "notice" "auth_audit:2 auth:2 vfs:2" "warning" "auth_audit:1 auth:1 vfs:1" "error" "auth_audit:1 auth:1 vfs:1"  "fatal" "0" -}}
+   log level = {{ .log_level | default "fatal" | get $log_level }}
 
    bind interfaces only = {{ .bind_all_interfaces | default false | ternary "no" "yes" }}
    interfaces = 127.0.0.1 {{ .interfaces | join " " }} {{ .docker_interface | default " "}}
