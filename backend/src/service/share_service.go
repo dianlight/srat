@@ -1,6 +1,9 @@
 package service
 
 import (
+	"log/slog"
+	"sync"
+
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -25,11 +28,13 @@ type ShareServiceInterface interface {
 }
 
 type shareService struct {
-	shareRepo  repository.ExportedShareRepositoryInterface
-	userRepo   repository.SambaUserRepositoryInterface
-	converter  converter.DtoToDbomConverterInterface
-	supervisor SupervisorServiceInterface
-	dirty      DirtyDataServiceInterface // Optional, if needed for dirty data handling
+	shareRepo   repository.ExportedShareRepositoryInterface
+	userRepo    repository.SambaUserRepositoryInterface
+	converter   converter.DtoToDbomConverterInterface
+	supervisor  SupervisorServiceInterface
+	dirty       DirtyDataServiceInterface
+	broadcaster BroadcasterServiceInterface
+	notifyMu    sync.RWMutex
 }
 
 // NewShareService creates a new instance of ShareServiceInterface.
@@ -38,14 +43,38 @@ func NewShareService(
 	userRepo repository.SambaUserRepositoryInterface,
 	supervisor SupervisorServiceInterface,
 	dirty DirtyDataServiceInterface,
+	broadcaster BroadcasterServiceInterface,
 ) ShareServiceInterface {
 	return &shareService{
-		shareRepo:  shareRepo,
-		userRepo:   userRepo,
-		supervisor: supervisor,
-		converter:  &converter.DtoToDbomConverterImpl{},
-		dirty:      dirty,
+		shareRepo:   shareRepo,
+		userRepo:    userRepo,
+		supervisor:  supervisor,
+		converter:   &converter.DtoToDbomConverterImpl{},
+		dirty:       dirty,
+		broadcaster: broadcaster,
+		notifyMu:    sync.RWMutex{},
 	}
+}
+
+func (s *shareService) notifyClient() {
+	slog.Debug("Notifying client about share changes...")
+	// Lock to prevent concurrent modifications to the data being broadcasted,
+	// though ListShares should ideally be concurrent-safe.
+	s.notifyMu.RLock()
+	defer s.notifyMu.RUnlock()
+
+	data, err := s.ListShares() // This already converts to DTOs
+	if err != nil {
+		slog.Error("Unable to fetch shares data for notification", "err", err)
+		return
+	}
+
+	slog.Debug("Broadcasting updated shares data", "share_count", len(data))
+	_, broadcastErr := s.broadcaster.BroadcastMessage(data)
+	if broadcastErr != nil {
+		slog.Error("Failed to broadcast share data update", "err", broadcastErr)
+	}
+
 }
 
 // ListShares retrieves all shared resources.
@@ -176,6 +205,7 @@ func (s *shareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 	if err := s.converter.ExportedShareToSharedResource(*dbShare, &createdDtoShare); err != nil {
 		return nil, errors.Wrapf(err, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
 	}
+	go s.notifyClient()
 	return &createdDtoShare, nil
 }
 
@@ -214,6 +244,7 @@ func (s *shareService) UpdateShare(currentName string, shareUpdate dto.SharedRes
 	if err := s.converter.ExportedShareToSharedResource(*dbShare, &updatedDtoShare); err != nil {
 		return nil, errors.Wrapf(err, "failed to convert updated dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
 	}
+	go s.notifyClient()
 	return &updatedDtoShare, nil
 }
 
@@ -225,6 +256,7 @@ func (s *shareService) DeleteShare(name string) error {
 	if err := s.shareRepo.Delete(name); err != nil {
 		return errors.Wrapf(err, "failed to delete share '%s' from repository", name)
 	}
+	go s.notifyClient()
 	return nil
 }
 
@@ -247,6 +279,7 @@ func (s *shareService) setShareDisabledStatus(name string, disabled bool) (*dto.
 		return nil, errors.Wrapf(err, "failed to convert dbom.ExportedShare to dto.SharedResource for share '%s'", dbShare.Name)
 	}
 	s.dirty.SetDirtyShares()
+	go s.notifyClient()
 	return &dtoShare, nil
 }
 

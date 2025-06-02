@@ -325,9 +325,18 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
+          data: SharedResource[] | null;
+          /** The event name. */
+          event: "share";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: Welcome;
           /** The event name. */
-          event: '"hello"';
+          event: "hello";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -336,7 +345,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: ReleaseAsset;
           /** The event name. */
-          event: '"update"';
+          event: "update";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -345,7 +354,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: UpdateProgress;
           /** The event name. */
-          event: '"updating"';
+          event: "updating";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -354,7 +363,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: Disk[] | null;
           /** The event name. */
-          event: '"volumes"';
+          event: "volumes";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -363,16 +372,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: HealthPing;
           /** The event name. */
-          event: '"heartbeat"';
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: SharedResource[] | null;
-          /** The event name. */
-          event: '"share"';
+          event: "heartbeat";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -486,6 +486,7 @@ export type DataDirtyTracker = {
   volumes: boolean;
 };
 export type BinaryAsset = {
+  browser_download_url?: string;
   id: number;
   size: number;
 };

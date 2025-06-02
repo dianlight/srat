@@ -18,6 +18,9 @@ func (c *GitHubToDtoImpl) ReleaseAssetToBinaryAsset(source *github.ReleaseAsset,
 		if source.ID != nil {
 			target.ID = *source.ID
 		}
+		if source.BrowserDownloadURL != nil {
+			target.BrowserDownloadURL = *source.BrowserDownloadURL
+		}
 	}
 	return nil
 }
