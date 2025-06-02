@@ -54,7 +54,7 @@
 
 # DEBUG: Log Level: {{ .log_level }}
    debug class = yes
-   {{ $log_level := dict "trace" "5" "debug" "auth_audit:4 auth:4 vfs:4" "info" "auth_audit:3 auth:3 vfs:3" "notice" "auth_audit:2 auth:2 vfs:2" "warning" "auth_audit:1 auth:1 vfs:1" "error" "auth_audit:1 auth:1 vfs:1"  "fatal" "0" -}}
+   {{ $log_level := dict "trace" "5" "debug" "auth_audit:4 auth:4 vfs:4" "info" "auth_audit:2 auth:2 vfs:2" "notice" "auth_audit:1 auth:1 vfs:2" "warning" "auth_audit:1 auth:0 vfs:1" "error" "auth_audit:1 auth:0 vfs:1"  "fatal" "0" -}}
    log level = {{ .log_level | default "fatal" | get $log_level }}
 
    bind interfaces only = {{ .bind_all_interfaces | default false | ternary "no" "yes" }}
