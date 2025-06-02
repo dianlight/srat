@@ -1,6 +1,8 @@
 package dto
 
-//go:generate go run github.com/zarldev/goenums@v0.3.8 event_type.go
+// g.o:generate go run github.com/zarldev/goenums@v0.3.8 event_type.go
+//
+//go:generate go tool goenums event_type.go
 type eventType int // Name[string]
 
 const (

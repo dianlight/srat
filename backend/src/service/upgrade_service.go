@@ -87,6 +87,7 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 			if _, ok := err.(*github.RateLimitError); ok {
 				slog.Warn("Github API hit rate limit")
 			}
+			slog.Warn("Error getting releases", "err", err)
 		} else if len(releases) > 0 {
 			conv := converter.GitHubToDtoImpl{}
 			for _, release := range releases {
@@ -117,6 +118,7 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 				}
 				break
 			}
+			slog.Info("Latest release found", "channel", updateChannel, "version", self.lastReleaseData.LastRelease, "asset", self.lastReleaseData.ArchAsset)
 		} else {
 			slog.Debug("No Releases found")
 			self.lastReleaseData = dto.ReleaseAsset{}

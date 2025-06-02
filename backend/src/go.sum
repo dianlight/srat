@@ -67,6 +67,8 @@ github.com/danielgtaylor/mexpr v1.9.1 h1:nA9bsGRmNlJeVCPFgGf7WhrLuKag/+iWfOaJ03i
 github.com/danielgtaylor/mexpr v1.9.1/go.mod h1:kAivYNRnBeE/IJinqBvVFvLrX54xX//9zFYwADo4Bc8=
 github.com/danielgtaylor/shorthand/v2 v2.2.0 h1:hVsemdRq6v3JocP6YRTfu9rOoghZI9PFmkngdKqzAVQ=
 github.com/danielgtaylor/shorthand/v2 v2.2.0/go.mod h1:t5QfaNf7DPru9ZLIIhPQSO7Gyvajm3euw7LxB/MTUqE=
+github.com/dave/jennifer v1.6.0 h1:MQ/6emI2xM7wt0tJzJzyUik2Q3Tcn2eE0vtYgh4GPVI=
+github.com/dave/jennifer v1.6.0/go.mod h1:AxTG893FiZKqxy3FP1kL80VMshSMuz2G+EgvszgGRnk=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -197,6 +199,8 @@ github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD
 github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
 github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
+github.com/jmattheis/goverter v1.8.3 h1:UdBIY0EREVIxJBGhpmGuGj4sfh4gRpLWtbCVrkOCvo8=
+github.com/jmattheis/goverter v1.8.3/go.mod h1:c8TVzpum2NThy2eJ/Wz3tyqRxzpElP2xDfoHOIDrNSQ=
 github.com/josharian/intern v1.0.0 h1:vlS4z54oSdjm0bgjRigI+G1HpF+tI+9rE5LLzOg8HmY=
 github.com/josharian/intern v1.0.0/go.mod h1:5DoeVV0s6jJacbCEi61lwdGj/aVlrQvzHFFd8Hwg//Y=
 github.com/jpillora/overseer v1.1.6 h1:3ygYfNcR3FfOr22miu3vR1iQcXKMHbmULBh98rbkIyo=
@@ -387,6 +391,8 @@ github.com/yuin/goldmark-emoji v1.0.4 h1:vCwMkPZSNefSUnOW2ZKRUjBSD5Ok3W78IXhGxxA
 github.com/yuin/goldmark-emoji v1.0.4/go.mod h1:tTkZEbwu5wkPmgTcitqddVxY9osFZiavD+r4AzQrh1U=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
+github.com/zarldev/goenums v0.4.0 h1:dxU0WWUCVYLIWDLvE0qPDUkYG1WXz85JhERuuaXQVMo=
+github.com/zarldev/goenums v0.4.0/go.mod h1:pTXcmLdGEGQdIlbe28DgP5q/Drc6mJoEoBwCurKw0Pc=
 gitlab.com/tozd/go/errors v0.10.0 h1:A98kL+gaDvWnY6ZB/u8zP+sYaWsWUGBHeFMtamvW/74=
 gitlab.com/tozd/go/errors v0.10.0/go.mod h1:q3Ugr0C8dCzMEkrzjjlV2qNsm9e0KvqBjwcbcjCpBe4=
 go.opentelemetry.io/otel v1.36.0 h1:UumtzIklRBY6cI/lllNZlALOF5nNIzJVb16APdvgTXg=

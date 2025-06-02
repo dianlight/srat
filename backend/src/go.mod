@@ -31,10 +31,12 @@ require (
 	github.com/bep/golibsass v1.2.0 // indirect
 	github.com/cli/safeexec v1.0.1 // indirect
 	github.com/creack/pty v1.1.23 // indirect
+	github.com/dave/jennifer v1.6.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.139.4 // indirect
+	github.com/jmattheis/goverter v1.8.3 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
@@ -46,6 +48,7 @@ require (
 	github.com/rogpeppe/gohack v1.0.2 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/tdewolff/parse/v2 v2.7.15 // indirect
+	github.com/zarldev/goenums v0.4.0 // indirect
 	go.opentelemetry.io/otel v1.36.0 // indirect
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
 	golang.org/x/tools/go/vcs v0.1.0-deprecated // indirect
@@ -109,7 +112,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/exp v0.0.0-20250531010427-b6e5de432a8b // indirect
+	golang.org/x/exp v0.0.0-20250531010427-b6e5de432a8b
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
@@ -148,7 +151,9 @@ require (
 tool (
 	github.com/Antonboom/testifylint
 	github.com/air-verse/air
+	github.com/jmattheis/goverter/cmd/goverter
 	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 	github.com/rakyll/gotest
 	github.com/rogpeppe/gohack
+	github.com/zarldev/goenums
 )

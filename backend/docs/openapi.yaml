@@ -1196,27 +1196,9 @@ paths:
                   oneOf:
                     - properties:
                         data:
-                          $ref: "#/components/schemas/Welcome"
-                        event:
-                          const: "\"hello\""
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event "hello"
-                      type: object
-                    - properties:
-                        data:
                           $ref: "#/components/schemas/ReleaseAsset"
                         event:
-                          const: "\"update\""
+                          const: update
                           description: The event name.
                           type: string
                         id:
@@ -1228,13 +1210,13 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event "update"
+                      title: Event update
                       type: object
                     - properties:
                         data:
                           $ref: "#/components/schemas/UpdateProgress"
                         event:
-                          const: "\"updating\""
+                          const: updating
                           description: The event name.
                           type: string
                         id:
@@ -1246,7 +1228,7 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event "updating"
+                      title: Event updating
                       type: object
                     - properties:
                         data:
@@ -1256,7 +1238,7 @@ paths:
                             - array
                             - "null"
                         event:
-                          const: "\"volumes\""
+                          const: volumes
                           description: The event name.
                           type: string
                         id:
@@ -1268,13 +1250,13 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event "volumes"
+                      title: Event volumes
                       type: object
                     - properties:
                         data:
                           $ref: "#/components/schemas/HealthPing"
                         event:
-                          const: "\"heartbeat\""
+                          const: heartbeat
                           description: The event name.
                           type: string
                         id:
@@ -1286,7 +1268,7 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event "heartbeat"
+                      title: Event heartbeat
                       type: object
                     - properties:
                         data:
@@ -1296,7 +1278,7 @@ paths:
                             - array
                             - "null"
                         event:
-                          const: "\"share\""
+                          const: share
                           description: The event name.
                           type: string
                         id:
@@ -1308,7 +1290,25 @@ paths:
                       required:
                         - data
                         - event
-                      title: Event "share"
+                      title: Event share
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/Welcome"
+                        event:
+                          const: hello
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event hello
                       type: object
                 title: Server Sent Events
                 type: array
