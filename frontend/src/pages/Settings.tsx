@@ -7,13 +7,16 @@ import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement, 
 import { MuiChipsInput } from 'mui-chips-input'
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
-import { useGetSettingsQuery, usePutSettingsMutation, type Settings } from "../store/sratApi";
+import { useGetNicsQuery, useGetSettingsQuery, usePutSettingsMutation, type NetworkInfo, type Settings } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
 import debounce from 'lodash.debounce';
+import { NIL } from "uuid";
 
 export function Settings() {
     const read_only = useReadOnly();
     const { data: globalConfig, isLoading, error, refetch } = useGetSettingsQuery();
+    const { data: nic, isLoading: inLoadinf } = useGetNicsQuery();
+
     const { control, handleSubmit, reset, watch, formState, subscribe } = useForm({
         mode: "onBlur",
         values: globalConfig as Settings,
@@ -23,22 +26,25 @@ export function Settings() {
 
     const bindAllWatch = watch("bind_all_interfaces")
 
+    /*
     const debouncedCommit = debounce((data: Settings) => {
         //console.log("Committing")
         handleCommit(data);
     }, 500, { leading: true });
+    */
 
     function handleCommit(data: Settings) {
-        //console.log(data);
+        console.log(data);
         update({ settings: data }).unwrap().then(res => {
             //console.log(res)
-            // reset(res as Settings)
+            reset(res as Settings)
         }).catch(err => {
             console.error(err)
             reset()
         })
     }
 
+    /*
     useEffect(() => {
         // make sure to unsubscribe;
         const callback = subscribe({
@@ -57,6 +63,7 @@ export function Settings() {
         // You can also just return the subscribe
         // return subscribe();
     }, [subscribe, handleSubmit])
+    */
 
     return (
         <InView>
@@ -100,13 +107,13 @@ export function Settings() {
                                 control={control}
                                 defaultValue={[]}
                                 disabled={read_only}
-                                render={({ field }) => <MuiChipsInput label="Allow Hosts" {...field} />}
+                                render={({ field }) => <MuiChipsInput size="small" label="Allow Hosts" {...field} />}
                             />
                         </Grid>
                         <Grid size={4}>
-                            <CheckboxElement id="compatibility_mode" label="Compatibility Mode" name="compatibility_mode" control={control} disabled={read_only} />
-                            <CheckboxElement id="multi_channel" label="Multi Channel Mode" name="multi_channel" control={control} disabled={read_only} />
-                            <CheckboxElement id="recyle_bin_enabled" label="RecycleBin" name="recyle_bin_enabled" control={control} disabled={read_only} />
+                            <CheckboxElement size="small" id="compatibility_mode" label="Compatibility Mode" name="compatibility_mode" control={control} disabled={read_only} />
+                            <CheckboxElement size="small" id="multi_channel" label="Multi Channel Mode" name="multi_channel" control={control} disabled={read_only} />
+                            <CheckboxElement size="small" id="recyle_bin_enabled" label="RecycleBin" name="recyle_bin_enabled" control={control} disabled={read_only} />
                         </Grid>
                         <Grid size={8}>
                             <Controller
@@ -114,24 +121,28 @@ export function Settings() {
                                 control={control}
                                 defaultValue={[]}
                                 disabled={read_only}
-                                render={({ field }) => <MuiChipsInput label="Veto Files" {...field} />}
+                                render={({ field }) => <MuiChipsInput size="small" label="Veto Files" {...field} />}
                             />
                         </Grid>
                         <Grid size={4}>
-                            <CheckboxElement id="bind_all_interfaces" label="Bind All Interfaces" name="bind_all_interfaces" control={control} disabled={read_only} />
+                            <CheckboxElement size="small" id="bind_all_interfaces" label="Bind All Interfaces" name="bind_all_interfaces" control={control} disabled={read_only} />
                         </Grid>
                         <Grid size={8}>
-                            <Controller
+                            <AutocompleteElement
+                                multiple
+                                label="Interfaces"
                                 name="interfaces"
-                                disabled={bindAllWatch || read_only}
+                                options={(nic as NetworkInfo)?.nics?.map(nc => nc.name) || []}
                                 control={control}
-                                defaultValue={[]}
-                                render={({ field }) => <MuiChipsInput label="Interfaces" {...field} />}
+                                loading={inLoadinf}
+                                autocompleteProps={{
+                                    size: "small",
+                                    disabled: bindAllWatch || read_only
+                                }}
                             />
                         </Grid>
                     </Grid>
                 </form>
-                {/*
                 <Divider />
                 <Stack direction="row"
                     spacing={2}
@@ -142,7 +153,6 @@ export function Settings() {
                     <Button onClick={() => reset()} disabled={!formState.isDirty}>Reset</Button>
                     <Button type="submit" form="settingsform" disabled={!formState.isDirty}>Apply</Button>
                 </Stack>
-                */}
             </Stack>
             {/*   <DevTool control={control} />  set up the dev tool */}
         </InView >
