@@ -28,6 +28,7 @@ import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import UpdateIcon from '@mui/icons-material/Update';
 import UpdateDisabledIcon from '@mui/icons-material/UpdateDisabled';
 import MD5 from "crypto-js/md5";
+import { useFormState } from "react-dom";
 
 // --- Helper functions (decodeEscapeSequence, onSubmitMountVolume, etc.) remain the same ---
 function decodeEscapeSequence(source: string) {
@@ -597,11 +598,13 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                 custom_flags: existingMountData?.custom_flags || [], // Keep numeric flags if needed internally
                 is_to_mount_at_startup: existingMountData?.is_to_mount_at_startup || false, // Initialize the switch state
             });
+
+            const valueFlags = ([] as MountFlag[]).concat(existingMountData?.custom_flags || [], existingMountData?.flags || [])
+            replace(valueFlags.filter(v => v.needsValue))
         } else if (!props.open) {
             reset(); // Reset to default values when closing
         }
     }, [props.open, props.objectToEdit, reset]);
-
 
     function handleCloseSubmit(formData: xMountPointData) {
         if (!props.objectToEdit) {
