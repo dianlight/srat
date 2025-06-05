@@ -13,11 +13,11 @@ import { useConfirm } from "material-ui-confirm";
 import { filesize } from "filesize";
 import { faPlug, faPlugCircleXmark, faPlugCircleMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
-import { AutocompleteElement, useForm, TextFieldElement, Controller, useFieldArray, CheckboxElement } from "react-hook-form-mui"; // Import TextFieldElement
+import { AutocompleteElement, useForm, TextFieldElement, Controller, useFieldArray, CheckboxElement, } from "react-hook-form-mui"; // Import TextFieldElement
 import { toast } from "react-toastify";
 import { useVolume } from "../hooks/volumeHook";
 import { useReadOnly } from "../hooks/readonlyHook";
-import { useDeleteVolumeByMountPathHashMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathHashMountMutation, usePostVolumeDiskByDiskIdEjectMutation, type Partition, type Disk, type MountPointData, Type, type FilesystemType, type MountFlag } from "../store/sratApi";
+import { useDeleteVolumeByMountPathHashMountMutation, useGetFilesystemsQuery, usePostVolumeByMountPathHashMountMutation, usePostVolumeDiskByDiskIdEjectMutation, type Partition, type Disk, type MountPointData, Type, type FilesystemType, type MountFlag, usePatchVolumeByMountPathHashSettingsMutation } from "../store/sratApi";
 // Add EjectIcon to your imports
 import EjectIcon from '@mui/icons-material/Eject';
 import UsbIcon from '@mui/icons-material/Usb';
@@ -25,6 +25,8 @@ import SdStorageIcon from '@mui/icons-material/SdStorage';
 // ... other icon imports ...
 import ComputerIcon from '@mui/icons-material/Computer';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
+import UpdateIcon from '@mui/icons-material/Update';
+import UpdateDisabledIcon from '@mui/icons-material/UpdateDisabled';
 import MD5 from "crypto-js/md5";
 
 // --- Helper functions (decodeEscapeSequence, onSubmitMountVolume, etc.) remain the same ---
@@ -36,6 +38,7 @@ function decodeEscapeSequence(source: string) {
         return String.fromCharCode(parseInt(String(group1), 16));
     });
 };
+
 
 
 export function Volumes() {
@@ -52,6 +55,7 @@ export function Volumes() {
     const [mountVolume, mountVolumeResult] = usePostVolumeByMountPathHashMountMutation();
     const [umountVolume, umountVolumeResult] = useDeleteVolumeByMountPathHashMountMutation();
     const [ejectDiskMutation, ejectDiskResult] = usePostVolumeDiskByDiskIdEjectMutation();
+    const [patchMountSettings, patchMountSettingsResult] = usePatchVolumeByMountPathHashSettingsMutation();
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({}); // State for collapse, key is disk identifier
     const initialAutoOpenDone = useRef(false);
 
@@ -229,6 +233,35 @@ export function Volumes() {
             });
     }
 
+    function handleToggleAutomount(partition: Partition) {
+        if (read_only) return;
+
+        const mountData = partition.mount_point_data?.[0];
+        if (!mountData || !mountData.path_hash) {
+            toast.error("Cannot toggle automount: Missing mount point data.");
+            console.error("Missing mount data for partition:", partition);
+            return;
+        }
+
+        const newAutomountState = !mountData.is_to_mount_at_startup;
+        const actionText = newAutomountState ? "enable" : "disable";
+        const partitionName = decodeEscapeSequence(partition.name || 'this volume');
+
+        console.log(partition)
+
+        patchMountSettings({
+            mountPathHash: mountData.path_hash,
+            mountPointData: { ...mountData, is_to_mount_at_startup: newAutomountState }
+        }).unwrap()
+            .then(() => {
+                toast.info(`Automount ${actionText}d for ${partitionName}.`);
+            })
+            .catch((err: any) => {
+                console.error(`Error toggling automount for ${partitionName}:`, err);
+                toast.error(`Failed to ${actionText} automount for ${partitionName}: ${err.data?.detail || err.message || 'Unknown error'}`);
+            });
+
+    }
     // Handle loading and error states
     if (isLoading) {
         return <Typography>Loading volumes...</Typography>;
@@ -427,6 +460,21 @@ export function Volumes() {
                                                             disablePadding
                                                             secondaryAction={!read_only && !partition.system && ( // Only show actions if not read-only and not system partition
                                                                 (<Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}> {/* Reduced spacing */}
+                                                                    {/* Automount Toggle Button */}
+                                                                    {partition.mount_point_data?.[0]?.is_to_mount_at_startup ? (
+                                                                        <Tooltip title="Disable mount at startup">
+                                                                            <IconButton onClick={(e) => { e.stopPropagation(); handleToggleAutomount(partition); }} edge="end" aria-label="disable automount" size="small">
+                                                                                <UpdateDisabledIcon />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    ) : (
+                                                                        <Tooltip title="Enable mount at startup">
+                                                                            <IconButton onClick={(e) => { e.stopPropagation(); handleToggleAutomount(partition); }} edge="end" aria-label="enable automount" size="small">
+                                                                                <UpdateIcon />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    )
+                                                                    }
                                                                     {!isMounted && (
                                                                         <Tooltip title="Mount Partition">
                                                                             <IconButton onClick={(e) => { e.stopPropagation(); setSelected(partition); setShowMount(true); }} edge="end" aria-label="mount" size="small">
@@ -533,6 +581,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
         name: "custom_flags_values", // unique name for your Field Array
     });
     const { data: filesystems, isLoading: fsLoading, error: fsError } = useGetFilesystemsQuery();
+    const [mounting, setMounting] = useState(false)
 
     // Use useEffect to update form values when objectToEdit changes or dialog opens
     useEffect(() => {
@@ -585,6 +634,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
             type: Type.Addon,
         };
         console.log("Submitting Mount Data:", submitData);
+        setMounting(true)
         props.onClose(submitData);
     }
 
@@ -759,7 +809,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={handleCancel} color="secondary">Cancel</Button>
-                        <Button type="submit" variant="contained">Mount</Button> {/* Disable if form not changed */}
+                        <Button type="submit" loading={mounting} variant="contained">Mount</Button> {/* Disable if form not changed */}
                     </DialogActions>
                 </form>
             </Dialog>

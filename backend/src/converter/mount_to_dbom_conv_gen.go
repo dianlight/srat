@@ -29,11 +29,11 @@ func (c *MountToDbomImpl) MountToMountPointPath(source *mount.MountPoint, target
 			target.FSType = source.FSType
 		}
 		if source.Data != "" {
-			dbomMounDataFlags, err := stringToMounFlags(source.Data)
+			pDbomMounDataFlags, err := stringToMounFlags(source.Data)
 			if err != nil {
 				return err
 			}
-			target.Data = dbomMounDataFlags
+			target.Data = pDbomMounDataFlags
 		}
 	}
 	return nil

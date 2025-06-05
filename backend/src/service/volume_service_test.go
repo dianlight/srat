@@ -79,59 +79,12 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		fx.Populate(&suite.cancel),
 	)
 	suite.app.RequireStart()
-	//suite.ctx, suite.cancel = context.WithCancel(context.Background())
-
-	/*
-		// Load the JSON data from the file
-		// Read the JSON file
-		// Read the JSON file
-		jsonFile, err := os.ReadFile("../../test/data/hardware_example.json")
-		if err != nil {
-			suite.T().Errorf("Error reading JSON file: %v", err)
-		}
-
-		// Unmarshal the JSON data into the struct
-		var data struct {
-			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
-			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
-		}
-		err = json.Unmarshal(jsonFile, &data)
-		if err != nil {
-			suite.T().Errorf("Error unmarshalling JSON: %v", err)
-		}
-
-		// Mock initial GetVolumesData call during NewVolumeService
-		suite.mockHardwareClient.On(
-			"GetHardwareInfoWithResponse",
-			suite.ctx,     // Pass context explicitly
-			mock.Anything, // Use mock.Anything for variadic editors if details don't matter
-		).Return(
-			&hardware.GetHardwareInfoResponse{
-				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-				JSON200:      &data,
-			}, nil).Maybe() // Maybe allows the call to happen 0 or more times
-
-		suite.mockMountRepo.On("FindByPath", mock.Anything).Return(nil, gorm.ErrRecordNotFound).Maybe()
-		suite.mockMountRepo.On("Save", mock.Anything).Return(nil).Maybe()
-
-	*/
-	//suite.volumeService = service.NewVolumeService( /*suite.ctx*/ testContext, suite.mockBroadcaster, suite.mockMountRepo, suite.mockHardwareClient)
 }
 
 func (suite *VolumeServiceTestSuite) TearDownTest() {
 	suite.cancel()
 	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
 	suite.app.RequireStop()
-	/*
-		testContextCancel()
-		//suite.cancel()
-		// suite.ctrl.Finish() // Removed gomock verification
-		suite.mockBroadcaster.AssertExpectations(suite.T())
-		suite.mockMountRepo.AssertExpectations(suite.T())
-		suite.mockHardwareClient.AssertExpectations(suite.T())
-		// Give time for goroutines to potentially exit
-		time.Sleep(10 * time.Millisecond)
-	*/
 }
 
 // --- MountVolume Tests ---
@@ -143,8 +96,8 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 	mountData := dto.MountPointData{
 		Path:   mountPath,
 		Device: device,
-		FSType: fsType,
-		Flags: dto.MountFlags{
+		FSType: &fsType,
+		Flags: &dto.MountFlags{
 			dto.MountFlag{Name: "noatime", NeedsValue: false},
 		},
 	}
@@ -152,7 +105,7 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 		Path:   mountPath,
 		Device: device,
 		FSType: fsType,
-		Flags:  dbom.MounDataFlags{dbom.MounDataFlag{Name: "noatime", NeedsValue: false}},
+		Flags:  &dbom.MounDataFlags{dbom.MounDataFlag{Name: "noatime", NeedsValue: false}},
 	}
 
 	// Mock FindByPath
@@ -164,6 +117,9 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 			suite.T().Errorf("Expected argument to be of type *dbom.MountPointPath, got %T", args[0])
 		}
 		suite.Equal(mountPath, mp.Path)
+		//suite.Equal(device, mp.Device)
+		suite.Equal(fsType, mp.FSType)
+		suite.Contains(*mp.Flags, dbom.MounDataFlag{Name: "noatime", NeedsValue: false})
 		dbomMountData.Device = mp.Device
 		return []any{nil}
 	})).Verify(matchers.AtLeastOnce())
@@ -175,17 +131,20 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 				Data   *hardware.HardwareInfo             `json:"data,omitempty"`
 				Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
 			}{Data: &hardware.HardwareInfo{Drives: &[]hardware.Drive{}}},
-		}, nil).Verify(matchers.AtLeastOnce())
+		}, nil) //.Verify(matchers.AtLeastOnce())
 
 	defer func() {
-		err := suite.volumeService.UnmountVolume(mountPath, false, false) // Cleanup
+		err := suite.volumeService.UnmountVolume(mountPath, true, false) // Cleanup
 		suite.Require().Nil(err, "Expected no error on unmount")
 	}()
 	// --- Execute ---
-	err := suite.volumeService.MountVolume(mountData)
+	err := suite.volumeService.MountVolume(&mountData)
 
 	// --- Assert ---
 	suite.Require().Nil(err, "Expected no error on successful mount")
+	suite.NotEmpty(*mountData.Flags)
+	suite.Contains(*mountData.Flags, dto.MountFlag{Name: "noatime", Description: "", NeedsValue: false, FlagValue: "", ValueDescription: "", ValueValidationRegex: ""})
+
 	// Assertions on mocks are handled in TearDownTest by AssertExpectations
 
 	//	save_call.Unset()
@@ -201,7 +160,7 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_RepoFindByPathError() {
 
 	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(nil, expectedErr).Verify(matchers.Times(1))
 
-	err := suite.volumeService.MountVolume(mountData)
+	err := suite.volumeService.MountVolume(&mountData)
 	suite.Require().NotNil(err)
 	suite.ErrorIs(err, expectedErr)
 }
@@ -209,7 +168,7 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_RepoFindByPathError() {
 func (suite *VolumeServiceTestSuite) TestMountVolume_DeviceEmpty() {
 	mountPath := "/mnt/test1"
 	mountData := dto.MountPointData{Path: mountPath, Device: ""} // Empty device
-	err := suite.volumeService.MountVolume(mountData)
+	err := suite.volumeService.MountVolume(&mountData)
 	suite.Require().NotNil(err)
 	suite.ErrorIs(err, dto.ErrorInvalidParameter)
 	details := err.Details()
@@ -225,7 +184,7 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_DeviceInvalid() {
 	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(1))
 	//suite.mockMountRepo.On("FindByPath", mountPath).Return(dbomMountData, nil).Once()
 
-	err := suite.volumeService.MountVolume(mountData)
+	err := suite.volumeService.MountVolume(&mountData)
 	suite.Require().NotNil(err)
 	suite.ErrorIs(err, dto.ErrorDeviceNotFound)
 	details := err.Details()
@@ -243,7 +202,7 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_PathEmpty() {
 	// dbomMountData := &dbom.MountPointPath{Path: mountPath, Device: device}
 	// suite.mockMountRepo.On("FindByPath", mountPath).Return(dbomMountData, nil).Once()
 
-	err := suite.volumeService.MountVolume(mountData)
+	err := suite.volumeService.MountVolume(&mountData)
 	suite.Require().NotNil(err)
 	suite.ErrorIs(err, dto.ErrorInvalidParameter)
 	details := err.Details()

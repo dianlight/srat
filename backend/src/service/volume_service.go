@@ -31,7 +31,7 @@ import (
 )
 
 type VolumeServiceInterface interface {
-	MountVolume(md dto.MountPointData) errors.E
+	MountVolume(md *dto.MountPointData) errors.E
 	UnmountVolume(id string, force bool, lazy bool) errors.E
 	GetVolumesData() (*[]dto.Disk, error)
 	PathHashToPath(pathhash string) (string, errors.E)
@@ -86,7 +86,7 @@ func NewVolumeService(
 	return p
 }
 
-func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
+func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 
 	if md.Path == "" {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
@@ -114,7 +114,7 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 	}
 
 	var conv converter.DtoToDbomConverterImpl
-	err = conv.MountPointDataToMountPointPath(md, dbom_mount_data)
+	err = conv.MountPointDataToMountPointPath(*md, dbom_mount_data)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -220,16 +220,6 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 		)
 	}
 
-	/*
-		// Handle potential mount point conflicts if OS says it's mounted but DB doesn't
-		if ok && !dbom_mount_data.IsMounted {
-			slog.Warn("Mount point path is already in use by another mount, but not tracked in DB for this record.", "path", dbom_mount_data.Path)
-			// Option 1: Fail
-			// return errors.WithDetails(dto.ErrorMountFail, "Path", dbom_mount_data.Path, "Message", "Mount point path already in use")
-			// Option 2: Try renaming (as below) - Keep existing logic
-		}
-	*/
-
 	// Rename logic if path is already mounted (even if DB state was inconsistent)
 	orgPath := dbom_mount_data.Path
 	if ok { // Only rename if osutil.IsMounted returned true
@@ -256,9 +246,9 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 		}
 	}
 
-	conv.MountPointPathToMountPointData(*dbom_mount_data, &md)
+	conv.MountPointPathToMountPointData(*dbom_mount_data, md)
 
-	flags, data, err := ms.fs_service.MountFlagsToSyscallFlagAndData(md.Flags)
+	flags, data, err := ms.fs_service.MountFlagsToSyscallFlagAndData(*md.Flags)
 	if err != nil {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
 			"Device", real_device,
@@ -294,7 +284,7 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 			"Error", err,
 		)
 	} else {
-		slog.Info("Successfully mounted volume", "device", real_device, "path", dbom_mount_data.Path, "fstype", dbom_mount_data.FSType)
+		slog.Info("Successfully mounted volume", "device", real_device, "path", dbom_mount_data.Path, "fstype", dbom_mount_data.FSType, "flags", mp.Flags, "data", mp.Data)
 		var convm converter.MountToDbomImpl
 		// Update dbom_mount_data with details from the actual mount point if available
 		err = convm.MountToMountPointPath(mp, dbom_mount_data)
@@ -308,7 +298,7 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 		if errE != nil {
 			slog.Warn("Failed to convert mount flags back to DTO", "err", errE)
 		} else {
-			dbom_mount_data.Flags = conv.MountFlagsToMountDataFlags(mflags)
+			*dbom_mount_data.Flags = conv.MountFlagsToMountDataFlags(mflags)
 		}
 		// Use the validated real_device path in the DB record
 		dbom_mount_data.Device = real_device // Store the original name, not the /dev/ path potentially
@@ -331,6 +321,7 @@ func (ms *VolumeService) MountVolume(md dto.MountPointData) errors.E {
 				"Device", real_device, "Path", dbom_mount_data.Path, "Error", err)
 		}
 		go ms.notifyClient()
+		conv.MountPointPathToMountPointData(*dbom_mount_data, md)
 	}
 	return nil
 }
@@ -479,7 +470,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 					MountPointData: &[]dto.MountPointData{
 						{
 							Path:      "/mnt/bogus",
-							FSType:    "ext4",
+							FSType:    pointer.String("ext4"),
 							IsMounted: false,
 						},
 					},
@@ -657,20 +648,21 @@ func (self *VolumeService) notifyClient() {
 func (self *VolumeService) createBlockDevice(device string) error {
 	// Controlla se il dispositivo esiste già
 	if _, err := os.Stat(device); !os.IsNotExist(err) {
-		return fmt.Errorf("il dispositivo %s esiste già", device)
+		slog.Warn("Loop device already exists", "device", device)
+		return nil
 	}
 
 	// Estrai i numeri major e minor dal nome del dispositivo
 	major, minor, err := extractMajorMinor(device)
 	if err != nil {
-		return fmt.Errorf("errore durante l'estrazione dei numeri major e minor: %v", err)
+		return errors.Errorf("errore durante l'estrazione dei numeri major e minor: %v", err)
 	}
 
 	// Crea il dispositivo di blocco usando la syscall mknod
 	dev := (major << 8) | minor
 	err = syscall.Mknod(device, syscall.S_IFBLK|0660, dev)
 	if err != nil {
-		return fmt.Errorf("errore durante la creazione del dispositivo di blocco: %v", err)
+		return errors.Errorf("errore durante la creazione del dispositivo di blocco: %v", err)
 	}
 
 	return nil

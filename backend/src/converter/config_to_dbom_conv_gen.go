@@ -7,7 +7,6 @@ import (
 	config "github.com/dianlight/srat/config"
 	dbom "github.com/dianlight/srat/dbom"
 	dto "github.com/dianlight/srat/dto"
-	osutil "github.com/snapcore/snapd/osutil"
 )
 
 type ConfigToDbomConverterImpl struct{}
@@ -113,13 +112,6 @@ func (c *ConfigToDbomConverterImpl) ShareToMountPointPath(source config.Share, t
 	}
 	if source.FS != "" {
 		target.FSType = source.FS
-	}
-	if source.Path != "" {
-		xbool, err := osutil.IsMounted(source.Path)
-		if err != nil {
-			return err
-		}
-		target.IsToMountAtStartup = xbool
 	}
 	return nil
 }

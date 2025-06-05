@@ -15,6 +15,9 @@ type MounDataFlag struct {
 type MounDataFlags []MounDataFlag
 
 func (self *MounDataFlags) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
 	svalue, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("invalid value type for MounDataFlags: %T", value)
@@ -45,6 +48,10 @@ func (self *MounDataFlags) Add(value MounDataFlag) error {
 	return nil
 }
 
+// Value implements the driver.Valuer interface.
+// It converts the MounDataFlags to a comma-separated string of flags.
+// If a flag needs a value, it will be formatted as "name=value".
+// Otherwise, it will be just the name of the flag.
 func (self MounDataFlags) Value() (driver.Value, error) {
 	flags := make([]string, len(self))
 	for ix, flag := range self {

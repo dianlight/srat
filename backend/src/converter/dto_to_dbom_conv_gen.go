@@ -61,12 +61,12 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 	if source.Device != "" {
 		target.Device = source.Device
 	}
-	if source.FSType != "" {
-		target.FSType = source.FSType
+	if source.FSType != nil {
+		target.FSType = *source.FSType
 	}
-	target.Flags = c.dtoMountFlagsToDbomMounDataFlags(source.Flags)
-	target.Data = c.dtoMountFlagsToDbomMounDataFlags(source.CustomFlags)
-	if source.IsToMountAtStartup != false {
+	target.Flags = c.pDtoMountFlagsToPDbomMounDataFlags(source.Flags)
+	target.Data = c.pDtoMountFlagsToPDbomMounDataFlags(source.CustomFlags)
+	if source.IsToMountAtStartup != nil {
 		target.IsToMountAtStartup = source.IsToMountAtStartup
 	}
 	if source.Shares != nil {
@@ -92,18 +92,19 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 		target.Type = source.Type
 	}
 	if source.FSType != "" {
-		target.FSType = source.FSType
+		pString := source.FSType
+		target.FSType = &pString
 	}
-	dtoMountFlags, err := c.dbomMounDataFlagsToDtoMountFlags(source.Flags)
+	pDtoMountFlags, err := c.pDbomMounDataFlagsToPDtoMountFlags(source.Flags)
 	if err != nil {
 		return err
 	}
-	target.Flags = dtoMountFlags
-	dtoMountFlags2, err := c.dbomMounDataFlagsToDtoMountFlags(source.Data)
+	target.Flags = pDtoMountFlags
+	pDtoMountFlags2, err := c.pDbomMounDataFlagsToPDtoMountFlags(source.Data)
 	if err != nil {
 		return err
 	}
-	target.CustomFlags = dtoMountFlags2
+	target.CustomFlags = pDtoMountFlags2
 	if source.Device != "" {
 		target.Device = source.Device
 	}
@@ -121,7 +122,7 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 		}
 		target.IsInvalid = xbool2
 	}
-	if source.IsToMountAtStartup != false {
+	if source.IsToMountAtStartup != nil {
 		target.IsToMountAtStartup = source.IsToMountAtStartup
 	}
 	if source.Shares != nil {
@@ -296,9 +297,11 @@ func (c *DtoToDbomConverterImpl) mountPointDataToMountPointPath(source dto.Mount
 	dbomMountPointPath.Path = source.Path
 	dbomMountPointPath.Type = source.Type
 	dbomMountPointPath.Device = source.Device
-	dbomMountPointPath.FSType = source.FSType
-	dbomMountPointPath.Flags = c.dtoMountFlagsToDbomMounDataFlags(source.Flags)
-	dbomMountPointPath.Data = c.dtoMountFlagsToDbomMounDataFlags(source.CustomFlags)
+	if source.FSType != nil {
+		dbomMountPointPath.FSType = *source.FSType
+	}
+	dbomMountPointPath.Flags = c.pDtoMountFlagsToPDbomMounDataFlags(source.Flags)
+	dbomMountPointPath.Data = c.pDtoMountFlagsToPDbomMounDataFlags(source.CustomFlags)
 	dbomMountPointPath.IsToMountAtStartup = source.IsToMountAtStartup
 	if source.Shares != nil {
 		dbomMountPointPath.Shares = make([]dbom.ExportedShare, len(source.Shares))
@@ -317,17 +320,18 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 	dtoMountPointData.Path = source.Path
 	dtoMountPointData.PathHash = xhashes.MD5(source.Path)
 	dtoMountPointData.Type = source.Type
-	dtoMountPointData.FSType = source.FSType
-	dtoMountFlags, err := c.dbomMounDataFlagsToDtoMountFlags(source.Flags)
+	pString := source.FSType
+	dtoMountPointData.FSType = &pString
+	pDtoMountFlags, err := c.pDbomMounDataFlagsToPDtoMountFlags(source.Flags)
 	if err != nil {
 		return dtoMountPointData, err
 	}
-	dtoMountPointData.Flags = dtoMountFlags
-	dtoMountFlags2, err := c.dbomMounDataFlagsToDtoMountFlags(source.Data)
+	dtoMountPointData.Flags = pDtoMountFlags
+	pDtoMountFlags2, err := c.pDbomMounDataFlagsToPDtoMountFlags(source.Data)
 	if err != nil {
 		return dtoMountPointData, err
 	}
-	dtoMountPointData.CustomFlags = dtoMountFlags2
+	dtoMountPointData.CustomFlags = pDtoMountFlags2
 	dtoMountPointData.Device = source.Device
 	xbool, err := osutil.IsMounted(source.Path)
 	if err != nil {
@@ -351,6 +355,25 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 		}
 	}
 	return dtoMountPointData, nil
+}
+func (c *DtoToDbomConverterImpl) pDbomMounDataFlagsToPDtoMountFlags(source *dbom.MounDataFlags) (*dto.MountFlags, error) {
+	var pDtoMountFlags *dto.MountFlags
+	if source != nil {
+		dtoMountFlags, err := c.dbomMounDataFlagsToDtoMountFlags((*source))
+		if err != nil {
+			return nil, err
+		}
+		pDtoMountFlags = &dtoMountFlags
+	}
+	return pDtoMountFlags, nil
+}
+func (c *DtoToDbomConverterImpl) pDtoMountFlagsToPDbomMounDataFlags(source *dto.MountFlags) *dbom.MounDataFlags {
+	var pDbomMounDataFlags *dbom.MounDataFlags
+	if source != nil {
+		dbomMounDataFlags := c.dtoMountFlagsToDbomMounDataFlags((*source))
+		pDbomMounDataFlags = &dbomMounDataFlags
+	}
+	return pDbomMounDataFlags
 }
 func (c *DtoToDbomConverterImpl) pDtoMountPointDataToDbomMountPointPath(source *dto.MountPointData) (dbom.MountPointPath, error) {
 	var dbomMountPointPath dbom.MountPointPath

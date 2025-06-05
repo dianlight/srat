@@ -49,9 +49,9 @@ func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointD
 		mountPointDatas = append(mountPointDatas, dto.MountPointData{
 			Path:        s,
 			Device:      *source.Device,
-			FSType:      fstype,
-			Flags:       []dto.MountFlag{},
-			CustomFlags: []dto.MountFlag{},
+			FSType:      &fstype,
+			Flags:       nil,
+			CustomFlags: nil,
 			IsMounted:   true,
 			Type:        "HOST",
 		})

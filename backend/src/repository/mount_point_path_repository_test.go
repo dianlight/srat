@@ -74,12 +74,12 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 		Path:   "/mnt/test",
 		Device: "test_drive",
 		FSType: "ext4",
-		Flags: dbom.MounDataFlags{
+		Flags: &dbom.MounDataFlags{
 			dbom.MounDataFlag{Name: "noatime", NeedsValue: false},
 			dbom.MounDataFlag{Name: "ro", NeedsValue: false},
 		},
 		Type: "ADDON",
-		Data: dbom.MounDataFlags{
+		Data: &dbom.MounDataFlags{
 			dbom.MounDataFlag{Name: "umask", NeedsValue: true, FlagValue: "1000"},
 			dbom.MounDataFlag{Name: "force", NeedsValue: false},
 		},
@@ -89,6 +89,118 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 	err := suite.mount_repo.Save(&testMountPoint)
 
 	suite.Require().NoError(err)
+
+	suite.Contains(*testMountPoint.Flags, dbom.MounDataFlag{Name: "noatime", NeedsValue: false})
+	suite.Contains(*testMountPoint.Flags, dbom.MounDataFlag{Name: "ro", NeedsValue: false})
+
+	suite.Contains(*testMountPoint.Data, dbom.MounDataFlag{Name: "umask", NeedsValue: true, FlagValue: "1000"})
+	suite.Contains(*testMountPoint.Data, dbom.MounDataFlag{Name: "force", NeedsValue: false})
+
+	// double check from DB
+	foundMountPoint, err := suite.mount_repo.FindByPath("/mnt/test")
+
+	suite.Require().NoError(err)
+	suite.Require().NotNil(foundMountPoint)
+	suite.Equal(testMountPoint.Path, foundMountPoint.Path)
+	suite.Equal(testMountPoint.Device, foundMountPoint.Device)
+	suite.Equal(testMountPoint.FSType, foundMountPoint.FSType)
+
+	suite.Len(*foundMountPoint.Flags, 2)
+	suite.Len(*foundMountPoint.Data, 2)
+
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+}
+
+func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveNilFlags() {
+
+	testMountPoint := dbom.MountPointPath{
+		Path:   "/mnt/test",
+		Device: "test_drive",
+		FSType: "ext4",
+		Flags:  &dbom.MounDataFlags{},
+		Type:   "ADDON",
+		Data:   &dbom.MounDataFlags{},
+	}
+
+	err := suite.mount_repo.Save(&testMountPoint)
+
+	suite.Require().NoError(err)
+
+	suite.Empty(testMountPoint.Flags)
+	suite.Empty(testMountPoint.Data)
+
+	// double check from DB
+	foundMountPoint, err := suite.mount_repo.FindByPath("/mnt/test")
+
+	suite.Require().NoError(err)
+	suite.Require().NotNil(foundMountPoint)
+	suite.Equal(testMountPoint.Path, foundMountPoint.Path)
+	suite.Equal(testMountPoint.Device, foundMountPoint.Device)
+	suite.Equal(testMountPoint.FSType, foundMountPoint.FSType)
+
+	suite.Empty(testMountPoint.Flags)
+	suite.Empty(testMountPoint.Data)
+
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+}
+
+func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveAndUpdateFlagsToNil() {
+
+	testMountPoint := dbom.MountPointPath{
+		Path:   "/mnt/test",
+		Device: "test_drive",
+		FSType: "ext4",
+		Flags: &dbom.MounDataFlags{
+			dbom.MounDataFlag{Name: "noatime", NeedsValue: false},
+			dbom.MounDataFlag{Name: "ro", NeedsValue: false},
+		},
+		Type: "ADDON",
+		Data: &dbom.MounDataFlags{
+			dbom.MounDataFlag{Name: "umask", NeedsValue: true, FlagValue: "1000"},
+			dbom.MounDataFlag{Name: "force", NeedsValue: false},
+		},
+		//DeviceId: 12344,
+	}
+
+	err := suite.mount_repo.Save(&testMountPoint)
+
+	suite.Require().NoError(err)
+
+	suite.Contains(*testMountPoint.Flags, dbom.MounDataFlag{Name: "noatime", NeedsValue: false})
+	suite.Contains(*testMountPoint.Flags, dbom.MounDataFlag{Name: "ro", NeedsValue: false})
+
+	suite.Contains(*testMountPoint.Data, dbom.MounDataFlag{Name: "umask", NeedsValue: true, FlagValue: "1000"})
+	suite.Contains(*testMountPoint.Data, dbom.MounDataFlag{Name: "force", NeedsValue: false})
+
+	// set flags and data to nil
+	testMountPoint.Flags = nil
+	testMountPoint.Data = nil
+
+	err = suite.mount_repo.Save(&testMountPoint)
+
+	suite.Require().NoError(err)
+
+	suite.Require().NotNil(testMountPoint.Flags)
+	suite.Require().NotNil(testMountPoint.Data)
+
+	suite.Contains(*testMountPoint.Flags, dbom.MounDataFlag{Name: "noatime", NeedsValue: false})
+	suite.Contains(*testMountPoint.Flags, dbom.MounDataFlag{Name: "ro", NeedsValue: false})
+
+	suite.Contains(*testMountPoint.Data, dbom.MounDataFlag{Name: "umask", NeedsValue: true, FlagValue: "1000"})
+	suite.Contains(*testMountPoint.Data, dbom.MounDataFlag{Name: "force", NeedsValue: false})
+
+	// double check from DB
+	foundMountPoint, err := suite.mount_repo.FindByPath("/mnt/test")
+
+	suite.Require().NoError(err)
+	suite.Require().NotNil(foundMountPoint)
+	suite.Equal(testMountPoint.Path, foundMountPoint.Path)
+	suite.Equal(testMountPoint.Device, foundMountPoint.Device)
+	suite.Equal(testMountPoint.FSType, foundMountPoint.FSType)
+
+	suite.Len(*foundMountPoint.Flags, 2)
+	suite.Len(*foundMountPoint.Data, 2)
+
 	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
 
@@ -100,7 +212,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 			//Label:  "Test 1",
 			Device: "test1",
 			FSType: "ext4",
-			Flags: dbom.MounDataFlags{
+			Flags: &dbom.MounDataFlags{
 				dbom.MounDataFlag{Name: "noatime", NeedsValue: false},
 				dbom.MounDataFlag{Name: "rw", NeedsValue: false},
 			},
@@ -113,7 +225,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 			//Label:  "Test 2",
 			Device: "test2",
 			FSType: "ntfs",
-			Flags: dbom.MounDataFlags{
+			Flags: &dbom.MounDataFlags{
 				dbom.MounDataFlag{Name: "noexec", NeedsValue: false},
 				dbom.MounDataFlag{Name: "ro", NeedsValue: false},
 			},

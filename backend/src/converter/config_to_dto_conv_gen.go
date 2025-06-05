@@ -137,7 +137,8 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, ta
 		target.Type = pathToType(source.Path)
 	}
 	if source.FS != "" {
-		target.FSType = source.FS
+		pString := source.FS
+		target.FSType = &pString
 	}
 	if source.Path != "" {
 		target.Device = PathToSource(source.Path)
@@ -148,13 +149,6 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, ta
 			return err
 		}
 		target.IsMounted = xbool
-	}
-	if source.Path != "" {
-		xbool2, err := osutil.IsMounted(source.Path)
-		if err != nil {
-			return err
-		}
-		target.IsToMountAtStartup = xbool2
 	}
 	return nil
 }
@@ -208,7 +202,7 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 	}
 	var pString2 *string
 	if source.MountPointData != nil {
-		pString2 = &source.MountPointData.FSType
+		pString2 = source.MountPointData.FSType
 	}
 	if pString2 != nil {
 		target.FS = *pString2

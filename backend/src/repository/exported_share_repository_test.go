@@ -83,6 +83,12 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Save() {
 			Device: "test_source",
 			FSType: "ext4",
 			Type:   "ADDON",
+			Data: &dbom.MounDataFlags{
+				{Name: "noatime", NeedsValue: false},
+			},
+			Flags: &dbom.MounDataFlags{
+				{Name: "opt", NeedsValue: true, FlagValue: "test1"},
+			},
 		},
 	}
 
@@ -125,6 +131,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_SaveAll(
 
 	// Assert
 	suite.Require().NoError(err)
+
 	// Cleanup
 	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
 	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})

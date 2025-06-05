@@ -14,6 +14,7 @@ import (
 	"github.com/m1/go-generate-password/generator"
 	"github.com/mattn/go-isatty"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
+	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 
 	"github.com/dianlight/srat/config"
@@ -334,12 +335,12 @@ func main() {
 					log.Fatalf("Cant load mounts - %#+v", err)
 				}
 				for _, mnt := range all {
-					if mnt.Type == "ADDON" && mnt.IsToMountAtStartup {
+					if mnt.Type == "ADDON" && *mnt.IsToMountAtStartup {
 						slog.Info("Automounting share", "path", mnt.Path)
 						conv := converter.DtoToDbomConverterImpl{}
 						mpd := dto.MountPointData{}
 						conv.MountPointPathToMountPointData(mnt, &mpd)
-						err := volume_service.MountVolume(mpd)
+						err := volume_service.MountVolume(&mpd)
 						if err != nil {
 							if errors.Is(err, dto.ErrorAlreadyMounted) {
 								slog.Info("Share already mounted", "path", mnt.Path)
@@ -418,7 +419,7 @@ func firstTimeJSONImporter(config config.Config,
 		return errors.WithStack(err)
 	}
 	for i, share := range *shares {
-		share.MountPointData.IsToMountAtStartup = false
+		share.MountPointData.IsToMountAtStartup = pointer.Bool(false)
 		err = mount_repository.Save(&share.MountPointData)
 		if err != nil {
 			return errors.WithStack(err)

@@ -1,14 +1,13 @@
 package repository
 
 import (
-	"log/slog"
 	"strings"
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
-	"github.com/jinzhu/copier"
 	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type MountPointPathRepository struct {
@@ -34,47 +33,35 @@ func NewMountPointPathRepository(db *gorm.DB) MountPointPathRepositoryInterface 
 func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	tx := r.db.Begin()
-	defer tx.Rollback()
-	//slog.Debug("Save checkpoint", "mp", mp)
 
-	existingRecord := dbom.MountPointPath{}
-	res := tx.Take(&existingRecord, "path = ?", mp.Path)
+	// Normalize device path: ensure it's stored without /dev/ prefix
+	// This is consistent with FindByDevice logic.
+	// Ideally, this normalization should be in dbom.MountPointPath.BeforeSave hook.
+	if strings.HasPrefix(mp.Device, "/dev/") {
+		mp.Device = strings.TrimPrefix(mp.Device, "/dev/")
+	}
 
-	//slog.Warn("Return", "res", res, "ext", existingRecord)
-	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		// Errore Generico
-		return errors.WithStack(res.Error)
-	} else if res.Error == nil {
-		// Record Found
-		if mp.DeviceId != 0 && existingRecord.DeviceId != 0 && existingRecord.DeviceId != mp.DeviceId {
-			return errors.Errorf("DeviceId mismatch for %s | mp:%d db:%d", mp.Path, mp.DeviceId, existingRecord.DeviceId)
-		}
-		//slog.Warn("Save checkpoint", "mp", mp, "exists", existingRecord)
-		err := copier.CopyWithOption(&existingRecord, mp, copier.Option{IgnoreEmpty: true})
-		if err != nil {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Check if record exists to decide between Create and Update
+		var count int64
+		// mp.Path is the primary key. BeforeSave hook in MountPointPath ensures it's not empty.
+		if err := tx.Model(&dbom.MountPointPath{}).Where("path = ?", mp.Path).Count(&count).Error; err != nil {
 			return errors.WithStack(err)
 		}
-		*mp = existingRecord
-		//slog.Warn("Save checkpoint", "mp", mp, "exists", existingRecord)
-	} else {
-		// Record Not Found
-		slog.Debug("New MountPoint", "mp", mp)
-	}
 
-	if strings.HasPrefix(mp.Device, "/dev") {
-		mp.Device = strings.TrimPrefix(mp.Device, "/dev/")
-		//panic(errors.Errorf("Invalid Source with /dev prefix %v", mp))
-	}
-	// slog.Debug("Save checkpoint", "mp", mp)
-	err := tx.Save(mp).Error
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	tx.First(mp, "path = ?", mp.Path)
-	tx.Commit()
-	return nil
-
+		var opErr error
+		if count > 0 { // Record exists, so update
+			// Updates(struct) only updates non-zero fields. For pointers, nil is the zero-value.
+			// This means if a pointer field in 'mp' (e.g., mp.Flags) is nil,
+			// that field will NOT be included in the UPDATE statement, effectively ignoring it.
+			// clause.Returning{} will repopulate 'mp' with the current DB state after the update.
+			opErr = tx. /*Debug().*/ /*.Model(&dbom.MountPointPath{Path: mp.Path})*/ Clauses(clause.Returning{}).Updates(mp).Error
+		} else {
+			// Record does not exist, so create
+			opErr = tx.Clauses(clause.Returning{}).Create(mp).Error
+		}
+		return errors.WithStack(opErr) // opErr will be nil on success, errors.WithStack(nil) is nil
+	})
 }
 
 func (r *MountPointPathRepository) FindByPath(path string) (*dbom.MountPointPath, error) {

@@ -26,9 +26,8 @@ type ConfigToDtoConverter interface {
 	ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
 
 	// goverter:update target
-	// goverter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Shares
+	// goverter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Shares IsToMountAtStartup
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
-	// goverter:map Path IsToMountAtStartup | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Path Device | PathToSource
 	// goverter:map Path Type | pathToType
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:MD5

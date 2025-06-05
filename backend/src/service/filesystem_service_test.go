@@ -24,6 +24,168 @@ func TestFilesystemServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(FilesystemServiceTestSuite))
 }
 
+func (suite *FilesystemServiceTestSuite) TestSyscallDataToMountFlag() {
+	testCases := []struct {
+		name          string
+		data          string
+		expectedFlags []dto.MountFlag
+	}{
+		{
+			name:          "Empty data string",
+			data:          "",
+			expectedFlags: []dto.MountFlag{},
+		},
+		{
+			name: "Single option with value",
+			data: "uid=1000",
+			expectedFlags: []dto.MountFlag{
+				{Name: "uid", FlagValue: "1000", NeedsValue: true, Description: "Set owner of all files to user ID", ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			},
+		},
+		{
+			name: "Multiple options with values",
+			data: "uid=1000,gid=1000",
+			expectedFlags: []dto.MountFlag{
+				{Name: "uid", FlagValue: "1000", NeedsValue: true, Description: "Set owner of all files to user ID", ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+				{Name: "gid", FlagValue: "1000", NeedsValue: true, Description: "Set group of all files to group ID", ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			},
+		},
+		{
+			name: "Option without value",
+			data: "acl",
+			expectedFlags: []dto.MountFlag{
+				{Name: "acl", NeedsValue: false, Description: "Enable POSIX Access Control Lists support"},
+			},
+		},
+		{
+			name: "Mixed options with and without values",
+			data: "uid=1000,acl",
+			expectedFlags: []dto.MountFlag{
+				{Name: "uid", FlagValue: "1000", NeedsValue: true, Description: "Set owner of all files to user ID", ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+				{Name: "acl", NeedsValue: false, Description: "Enable POSIX Access Control Lists support"},
+			},
+		},
+		{
+			name: "Empty options are skipped",
+			data: "uid=1000,,gid=1000",
+			expectedFlags: []dto.MountFlag{
+				{Name: "uid", FlagValue: "1000", NeedsValue: true, Description: "Set owner of all files to user ID", ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+				{Name: "gid", FlagValue: "1000", NeedsValue: true, Description: "Set group of all files to group ID", ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+			},
+		},
+		{
+			name: "Unknown option",
+			data: "unknown=value",
+			expectedFlags: []dto.MountFlag{
+				{Name: "unknown", FlagValue: "value", NeedsValue: true},
+			},
+		},
+		{
+			name: "Known and unknown options mixed",
+			data: "uid=1000,unknown=value",
+			expectedFlags: []dto.MountFlag{
+				{Name: "uid", FlagValue: "1000", NeedsValue: true, Description: "Set owner of all files to user ID", ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+				{Name: "unknown", FlagValue: "value", NeedsValue: true},
+			},
+		},
+		{
+			name: "Option with spaces around",
+			data: "  uid = 1000  ,  acl  ",
+			expectedFlags: []dto.MountFlag{
+				{Name: "uid", FlagValue: "1000", NeedsValue: true, Description: "Set owner of all files to user ID", ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
+				{Name: "acl", NeedsValue: false, Description: "Enable POSIX Access Control Lists support"},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.T().Run(tc.name, func(t *testing.T) {
+			flags, err := suite.fsService.SyscallDataToMountFlag(tc.data)
+			require.NoError(t, err)
+			assert.Len(t, flags, len(tc.expectedFlags), "Number of flags should match")
+
+			for i, expectedFlag := range tc.expectedFlags {
+				t.Logf("Checking case %s flag %s", tc.name, expectedFlag.Name)
+				assert.Equal(t, expectedFlag.Name, flags[i].Name, "Flag name mismatch")
+				assert.Equal(t, expectedFlag.FlagValue, flags[i].FlagValue, "Flag value mismatch")
+				assert.Equal(t, expectedFlag.NeedsValue, flags[i].NeedsValue, "NeedsValue mismatch")
+				if expectedFlag.Description != "" {
+					assert.Equal(t, expectedFlag.Description, flags[i].Description, "Description mismatch")
+					assert.Equal(t, expectedFlag.ValueDescription, flags[i].ValueDescription, "ValueDescription mismatch")
+					assert.Equal(t, expectedFlag.ValueValidationRegex, flags[i].ValueValidationRegex, "ValueValidationRegex mismatch")
+				}
+			}
+		})
+	}
+}
+
+func (suite *FilesystemServiceTestSuite) TestSyscallFlagToMountFlag() {
+	testCases := []struct {
+		name            string
+		syscallFlag     uintptr
+		expectedFlags   []string // List of expected flag names
+		unexpectedFlags []string // List of flags that should NOT be present
+	}{
+		{
+			name:            "No flags set",
+			syscallFlag:     0,
+			expectedFlags:   []string{},
+			unexpectedFlags: []string{"ro", "nosuid", "nodev"},
+		},
+		{
+			name:            "MS_RDONLY set",
+			syscallFlag:     syscall.MS_RDONLY,
+			expectedFlags:   []string{"ro"},
+			unexpectedFlags: []string{"nosuid", "nodev"},
+		},
+		{
+			name:            "MS_NOSUID and MS_NOEXEC set",
+			syscallFlag:     syscall.MS_NOSUID | syscall.MS_NOEXEC,
+			expectedFlags:   []string{"nosuid", "noexec"},
+			unexpectedFlags: []string{"ro", "nodev"},
+		},
+		{
+			name:          "All supported flags set",
+			syscallFlag:   syscall.MS_RDONLY | syscall.MS_NOSUID | syscall.MS_NOEXEC | syscall.MS_NODEV | syscall.MS_SYNCHRONOUS | syscall.MS_REMOUNT | syscall.MS_MANDLOCK | syscall.MS_DIRSYNC | syscall.MS_NOATIME | syscall.MS_NODIRATIME | syscall.MS_BIND | syscall.MS_REC | syscall.MS_SILENT | syscall.MS_POSIXACL | syscall.MS_UNBINDABLE | syscall.MS_PRIVATE | syscall.MS_SLAVE | syscall.MS_SHARED | syscall.MS_RELATIME | syscall.MS_STRICTATIME,
+			expectedFlags: []string{"ro", "nosuid", "noexec", "nodev", "sync", "remount", "mand", "dirsync", "noatime", "nodiratime", "bind", "rec", "silent", "acl", "unbindable", "private", "slave", "shared", "relatime", "strictatime"},
+		},
+		/*
+			{
+				name:            "MS_POSIXACL alias acl",
+				syscallFlag:     syscall.MS_POSIXACL,
+				expectedFlags:   []string{"acl"}, // Expecting the alias
+				unexpectedFlags: []string{"posixacl"},
+			},
+		*/
+	}
+
+	for _, tc := range testCases {
+		suite.T().Run(tc.name, func(t *testing.T) {
+			flags, err := suite.fsService.SyscallFlagToMountFlag(tc.syscallFlag)
+			require.NoError(t, err, "Unexpected error")
+
+			// Check for expected flags
+			for _, expectedFlagName := range tc.expectedFlags {
+				found := false
+				for _, flag := range flags {
+					if flag.Name == expectedFlagName {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "Expected flag '%s' not found", expectedFlagName)
+			}
+
+			// Check for unexpected flags
+			for _, unexpectedFlagName := range tc.unexpectedFlags {
+				for _, flag := range flags {
+					assert.NotEqual(t, unexpectedFlagName, flag.Name, "Unexpected flag '%s' found", unexpectedFlagName)
+				}
+			}
+		})
+	}
+}
+
 func (suite *FilesystemServiceTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.fsService = service.NewFilesystemService(suite.ctx)

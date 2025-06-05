@@ -23,7 +23,8 @@ func (c *LsblkToDtoConverterImpl) LsblkInfoToMountPointData(source *lsblk.LSBKIn
 			target.Type = pathToType(source.Mountpoint)
 		}
 		if source.Fstype != "" {
-			target.FSType = source.Fstype
+			pString := source.Fstype
+			target.FSType = &pString
 		}
 		if source.Name != "" {
 			target.Device = source.Name

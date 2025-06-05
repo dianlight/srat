@@ -24,11 +24,9 @@ type ConfigToDbomConverter interface {
 
 	// goverter:update target
 	// goverter:ignore Flags DeviceId
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt IsToMountAtStartup
 	// goverter:ignore Data Shares
 	// goverter:map FS FSType
-	// g.overter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
-	// goverter:map Path IsToMountAtStartup | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Path Device | PathToSource
 	// goverter:map Path Type | pathToType
 	ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error

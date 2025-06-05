@@ -23,10 +23,10 @@ type MountToDbom interface {
 	MountToMountPointPath(source *mount.MountPoint, target *dbom.MountPointPath) error
 }
 
-func stringToMounFlags(source string) (dbom.MounDataFlags, error) {
+func stringToMounFlags(source string) (*dbom.MounDataFlags, error) {
 	var ret dbom.MounDataFlags
 	err := ret.Scan(source)
-	return ret, err
+	return &ret, err
 }
 
 func removeDevPrefix(source string) (string, error) {

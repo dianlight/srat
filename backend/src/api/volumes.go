@@ -52,6 +52,8 @@ func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 	huma.Get(api, "/volumes", self.ListVolumes, huma.OperationTags("volume"))
 	huma.Post(api, "/volume/{mount_path_hash}/mount", self.MountVolume, huma.OperationTags("volume"))
 	huma.Delete(api, "/volume/{mount_path_hash}/mount", self.UmountVolume, huma.OperationTags("volume"))
+	huma.Put(api, "/volume/{mount_path_hash}/settings", self.UpdateVolumeSettings, huma.OperationTags("volume"))
+	huma.Patch(api, "/volume/{mount_path_hash}/settings", self.PatchVolumeSettings, huma.OperationTags("volume"))
 	huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
 }
 
@@ -109,7 +111,7 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 		return nil, huma.Error409Conflict("Inconsistent MountPath provided in the request")
 	}
 
-	errE := self.vservice.MountVolume(mount_data)
+	errE := self.vservice.MountVolume(&mount_data)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorMountFail) {
 			return nil, huma.Error422UnprocessableEntity(errE.Details()["Message"].(string), errE)
@@ -121,23 +123,29 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 			return nil, huma.Error500InternalServerError("Unknown Error", errE)
 		}
 	}
-
-	dbom_mount_data, err := self.mount_repo.FindByPath(mount_data.Path)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, huma.Error404NotFound("Internal:Device Not Found", err)
+	/*
+		dbom_mount_data, err := self.mount_repo.FindByPath(mount_data.Path)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, huma.Error404NotFound("Internal:Device Not Found", err)
+			}
+			return nil, err
 		}
-		return nil, err
-	}
-	var conv converter.DtoToDbomConverterImpl
-	mounted_data := dto.MountPointData{}
-	err = conv.MountPointPathToMountPointData(*dbom_mount_data, &mounted_data)
-	if err != nil {
-		return nil, err
-	}
+		var conv converter.DtoToDbomConverterImpl
+		mounted_data := dto.MountPointData{}
+		err = conv.MountPointPathToMountPointData(*dbom_mount_data, &mounted_data)
+		if err != nil {
+			return nil, err
+		}
+
+		err = self.mount_repo.Save(dbom_mount_data)
+		if err != nil {
+			slog.Warn("Unamble to save mount point data","err",err,"mount_path",mount_data.Path)
+		}
+	*/
 	self.dirtyservice.SetDirtyVolumes()
 
-	return &struct{ Body dto.MountPointData }{Body: mounted_data}, nil
+	return &struct{ Body dto.MountPointData }{Body: mount_data}, nil
 }
 
 func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
@@ -153,10 +161,7 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 
 	// Disable all share services for this mount point
 	_, errE := self.shareService.DisableShareFromPath(mountPath)
-	if errE != nil {
-		if errors.Is(errE, dto.ErrorShareNotFound) {
-			return nil, huma.Error404NotFound("No share found for the provided mount path", errE)
-		}
+	if errE != nil && !errors.Is(errE, dto.ErrorShareNotFound) {
 		return nil, huma.Error500InternalServerError("Failed to disable share for mount point", err)
 	}
 
@@ -192,4 +197,100 @@ func (self *VolumeHandler) EjectDiskHandler(ctx context.Context, input *struct {
 
 	// Return 204 No Content on success
 	return &struct{ Status int }{Status: http.StatusNoContent}, nil
+}
+
+// UpdateVolumeSettings handles PUT requests to update the configuration of an existing mount point.
+func (self *VolumeHandler) UpdateVolumeSettings(ctx context.Context, input *struct {
+	MountPathHash string             `path:"mount_path_hash"`
+	Body          dto.MountPointData `required:"true"`
+}) (*struct{ Body dto.MountPointData }, error) {
+	if self.apiContext.ReadOnlyMode {
+		return nil, huma.Error403Forbidden("Cannot update volume settings in read-only mode")
+	}
+
+	mountPath, errE := self.vservice.PathHashToPath(input.MountPathHash)
+	if errE != nil {
+		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
+	}
+
+	dbMountData, err := self.mount_repo.FindByPath(mountPath)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, huma.Error404NotFound(fmt.Sprintf("Mount configuration with hash %s not found", input.MountPathHash))
+		}
+		slog.Error("Error fetching mount configuration by hash for PUT", "hash", input.MountPathHash, "error", err)
+		return nil, huma.Error500InternalServerError("Failed to retrieve mount configuration")
+	}
+
+	// Apply updates from input.Body
+	if input.Body.FSType != nil {
+		dbMountData.FSType = *input.Body.FSType
+	}
+	var conv converter.DtoToDbomConverterImpl
+
+	if input.Body.Flags != nil {
+		*dbMountData.Flags = conv.MountFlagsToMountDataFlags(*input.Body.Flags)
+	}
+	if input.Body.CustomFlags != nil {
+		*dbMountData.Data = conv.MountFlagsToMountDataFlags(*input.Body.CustomFlags)
+	}
+	if input.Body.IsToMountAtStartup != nil {
+		dbMountData.IsToMountAtStartup = input.Body.IsToMountAtStartup
+	}
+
+	if err := self.mount_repo.Save(dbMountData); err != nil {
+		slog.Error("Error saving updated mount configuration", "hash", input.MountPathHash, "error", err)
+		return nil, huma.Error500InternalServerError("Failed to save mount configuration")
+	}
+
+	updatedDto := dto.MountPointData{}
+	if err := conv.MountPointPathToMountPointData(*dbMountData, &updatedDto); err != nil {
+		slog.Error("Error converting updated mount configuration to DTO", "hash", input.MountPathHash, "error", err)
+		return nil, huma.Error500InternalServerError("Failed to process updated mount configuration")
+	}
+
+	self.dirtyservice.SetDirtyVolumes()
+	return &struct{ Body dto.MountPointData }{Body: updatedDto}, nil
+}
+
+// PatchVolumeSettings handles PATCH requests to partially update the configuration of an existing mount point.
+func (self *VolumeHandler) PatchVolumeSettings(ctx context.Context, input *struct {
+	MountPathHash string             `path:"mount_path_hash"`
+	Body          dto.MountPointData `required:"true"`
+}) (*struct{ Body dto.MountPointData }, error) {
+	if self.apiContext.ReadOnlyMode {
+		return nil, huma.Error403Forbidden("Cannot update volume settings in read-only mode")
+	}
+
+	mountPath, errE := self.vservice.PathHashToPath(input.MountPathHash)
+	if errE != nil {
+		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
+	}
+
+	dbMountData, err := self.mount_repo.FindByPath(mountPath)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, huma.Error404NotFound(fmt.Sprintf("Mount configuration with hash %s not found", input.MountPathHash))
+		}
+		slog.Error("Error fetching mount configuration by hash for PATCH", "hash", input.MountPathHash, "error", err)
+		return nil, huma.Error500InternalServerError("Failed to retrieve mount configuration")
+	}
+
+	// Apply partial updates
+	if input.Body.IsToMountAtStartup != nil {
+		dbMountData.IsToMountAtStartup = input.Body.IsToMountAtStartup
+	}
+	// Add other patchable fields here if MountPointSettingsUpdate is extended
+
+	if err := self.mount_repo.Save(dbMountData); err != nil {
+		slog.Error("Error saving patched mount configuration", "hash", input.MountPathHash, "error", err)
+		return nil, huma.Error500InternalServerError("Failed to save mount configuration")
+	}
+
+	var conv converter.DtoToDbomConverterImpl
+	updatedDto := dto.MountPointData{}
+	conv.MountPointPathToMountPointData(*dbMountData, &updatedDto) // Error handling for conversion can be added if complex
+
+	self.dirtyservice.SetDirtyVolumes()
+	return &struct{ Body dto.MountPointData }{Body: updatedDto}, nil
 }

@@ -15,12 +15,12 @@ type MountPointPath struct {
 	DeviceId           uint64
 	Device             string
 	FSType             string
-	Flags              MounDataFlags
-	Data               MounDataFlags
+	Flags              *MounDataFlags `gorm:"not null;default:''"`
+	Data               *MounDataFlags `gorm:"not null;default:''"`
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	DeletedAt          gorm.DeletedAt  `gorm:"index"`
-	IsToMountAtStartup bool            `gorm:"default:false"` // If true, mount point should be mounted at startup.
+	IsToMountAtStartup *bool           `gorm:"not null;default:false"` // If true, mount point should be mounted at startup.
 	Shares             []ExportedShare `gorm:"foreignKey:MountPointDataPath;references:Path;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
 }
 

@@ -241,17 +241,13 @@ components:
         custom_flags:
           items:
             $ref: "#/components/schemas/MountFlag"
-          type:
-            - array
-            - "null"
+          type: array
         device:
           type: string
         flags:
           items:
             $ref: "#/components/schemas/MountFlag"
-          type:
-            - array
-            - "null"
+          type: array
         fstype:
           type: string
         invalid:
@@ -1198,28 +1194,6 @@ paths:
                   oneOf:
                     - properties:
                         data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: share
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event share
-                      type: object
-                    - properties:
-                        data:
                           $ref: "#/components/schemas/Welcome"
                         event:
                           const: hello
@@ -1311,6 +1285,28 @@ paths:
                         - data
                         - event
                       title: Event heartbeat
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
                       type: object
                 title: Server Sent Events
                 type: array
@@ -1568,6 +1564,67 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       summary: Post volume by mount path hash mount
+      tags:
+        - volume
+  /volume/{mount_path_hash}/settings:
+    patch:
+      operationId: patch-volume-by-mount-path-hash-settings
+      parameters:
+        - in: path
+          name: mount_path_hash
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MountPointData"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MountPointData"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Patch volume by mount path hash settings
+      tags:
+        - volume
+    put:
+      operationId: put-volume-by-mount-path-hash-settings
+      parameters:
+        - in: path
+          name: mount_path_hash
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MountPointData"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MountPointData"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Put volume by mount path hash settings
       tags:
         - volume
   /volumes:
