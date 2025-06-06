@@ -14,8 +14,8 @@ type ExportedShare struct {
 	UpdatedAt          time.Time
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
 	Disabled           bool
-	Users              []SambaUser `gorm:"many2many:user_rw_share;constraint:OnUpdate:CASCADE"`
-	RoUsers            []SambaUser `gorm:"many2many:user_ro_share;constraint:OnUpdate:CASCADE"`
+	Users              []SambaUser `gorm:"many2many:user_rw_share"`
+	RoUsers            []SambaUser `gorm:"many2many:user_ro_share"`
 	TimeMachine        bool
 	Usage              dto.HAMountUsage
 	MountPointDataPath string
@@ -26,17 +26,19 @@ func (u *ExportedShare) BeforeSave(tx *gorm.DB) error {
 	if u.Name == "" {
 		return errors.Errorf("Invalid name for exported share")
 	}
-	if errors.Is(tx.First(&ExportedShare{}, "name = ?", u.Name).Error, gorm.ErrRecordNotFound) {
-		// Create without users
-		saveuses := u.Users
-		u.Users = nil
-		saveuses_r := u.RoUsers
-		u.RoUsers = nil
-		if err := tx.Session(&gorm.Session{SkipHooks: true}).Create(u).Error; err != nil {
-			return errors.WithStack(err)
+	/*
+		if errors.Is(tx.First(&ExportedShare{}, "name = ?", u.Name).Error, gorm.ErrRecordNotFound) {
+			// Create without users
+			saveuses := u.Users
+			u.Users = nil
+			saveuses_r := u.RoUsers
+			u.RoUsers = nil
+			if err := tx.Session(&gorm.Session{SkipHooks: true}).Create(u).Error; err != nil {
+				return errors.WithStack(err)
+			}
+			u.Users = saveuses
+			u.RoUsers = saveuses_r
 		}
-		u.Users = saveuses
-		u.RoUsers = saveuses_r
-	}
+	*/
 	return nil
 }

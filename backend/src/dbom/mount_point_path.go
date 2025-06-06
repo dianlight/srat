@@ -21,7 +21,7 @@ type MountPointPath struct {
 	UpdatedAt          time.Time
 	DeletedAt          gorm.DeletedAt  `gorm:"index"`
 	IsToMountAtStartup *bool           `gorm:"not null;default:false"` // If true, mount point should be mounted at startup.
-	Shares             []ExportedShare `gorm:"foreignKey:MountPointDataPath;references:Path;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
+	Shares             []ExportedShare `gorm:"foreignKey:MountPointDataPath;references:Path;"`
 }
 
 // invalidPathCharsRegex defines characters that are NOT allowed in a path.

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -45,7 +46,7 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 		// Check if record exists to decide between Create and Update
 		var count int64
 		// mp.Path is the primary key. BeforeSave hook in MountPointPath ensures it's not empty.
-		if err := tx.Model(&dbom.MountPointPath{}).Where("path = ?", mp.Path).Count(&count).Error; err != nil {
+		if err := tx.Unscoped().Model(&dbom.MountPointPath{}).Where("path = ?", mp.Path).Count(&count).Error; err != nil {
 			return errors.WithStack(err)
 		}
 
@@ -55,6 +56,10 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 			// This means if a pointer field in 'mp' (e.g., mp.Flags) is nil,
 			// that field will NOT be included in the UPDATE statement, effectively ignoring it.
 			// clause.Returning{} will repopulate 'mp' with the current DB state after the update.
+			if err := tx.Model(&dbom.MountPointPath{}).Unscoped().Where("path = ?", mp.Path).UpdateColumn("deleted_at", gorm.Expr("NULL")).Error; err != nil {
+				slog.Error("Failed to explicitly undelete exported_share before update", "path", mp.Path, "error", err)
+				return errors.WithDetails(err, "path", mp.Path, "details", mp)
+			}
 			opErr = tx. /*Debug().*/ /*.Model(&dbom.MountPointPath{Path: mp.Path})*/ Clauses(clause.Returning{}).Updates(mp).Error
 		} else {
 			// Record does not exist, so create
