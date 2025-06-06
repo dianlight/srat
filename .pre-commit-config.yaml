@@ -6,9 +6,10 @@ repos:
       hooks:
         - id: remove-go-mod-replace
           name: Remove go.mod replace lines
+          stages: [pre-commit]
           entry: ./scripts/remove-go-mod-replace.sh
           language: system
-          files: ^go\.mod$ # Only run if go.mod is among the changed files
+          files: ^backend/src/go\.mod$ # Only run if go.mod is among the changed files
           pass_filenames: true # The script handles the go.mod file directly
 
         - id: restore-go-mod-replace
@@ -16,7 +17,7 @@ repos:
           entry: ./scripts/restore-go-mod-replace.sh
           language: system
           always_run: true # This hook should always run after commit attempts
-          stage: post-commit # This ensures it runs after the commit
+          stages: [post-commit] # This ensures it runs after the commit
           pass_filenames: true
 #          - id: gohack-disable
 #            name: disable gohack

@@ -1,5 +1,4 @@
 //go:build !embedallowed
-// +build !embedallowed
 
 package internal
 

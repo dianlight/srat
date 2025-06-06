@@ -5,7 +5,7 @@
 # if it was modified by the pre-commit hook.
 
 GO_MOD_FILE="backend/src/go.mod"
-TEMP_GO_MOD_ORIGINAL_PREFIX="/tmp/go.mod.original."
+TEMP_GO_MOD_ORIGINAL_PREFIX="go.mod.original."
 
 echo "Running post-commit hook to restore $GO_MOD_FILE..."
 
