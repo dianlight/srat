@@ -10,6 +10,7 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
 
@@ -25,6 +26,7 @@ type ShareServiceInterface interface {
 	EnableShare(name string) (*dto.SharedResource, error)
 	DisableShareFromPath(path string) (*dto.SharedResource, error)
 	EnableShareFromPath(path string) (*dto.SharedResource, error)
+	SetVolumeService(volume VolumeServiceInterface)
 }
 
 type shareService struct {
@@ -35,25 +37,35 @@ type shareService struct {
 	dirty       DirtyDataServiceInterface
 	broadcaster BroadcasterServiceInterface
 	notifyMu    sync.RWMutex
+	volume      VolumeServiceInterface
+}
+
+type ShareServiceParams struct {
+	fx.In
+	ShareRepo   repository.ExportedShareRepositoryInterface
+	UserRepo    repository.SambaUserRepositoryInterface
+	Supervisor  SupervisorServiceInterface
+	Dirty       DirtyDataServiceInterface
+	Broadcaster BroadcasterServiceInterface
+	//Volume      VolumeServiceInterface `optional:"true"`
 }
 
 // NewShareService creates a new instance of ShareServiceInterface.
-func NewShareService(
-	shareRepo repository.ExportedShareRepositoryInterface,
-	userRepo repository.SambaUserRepositoryInterface,
-	supervisor SupervisorServiceInterface,
-	dirty DirtyDataServiceInterface,
-	broadcaster BroadcasterServiceInterface,
-) ShareServiceInterface {
+func NewShareService(in ShareServiceParams) ShareServiceInterface {
 	return &shareService{
-		shareRepo:   shareRepo,
-		userRepo:    userRepo,
-		supervisor:  supervisor,
+		shareRepo:   in.ShareRepo,
+		userRepo:    in.UserRepo,
+		supervisor:  in.Supervisor,
 		converter:   &converter.DtoToDbomConverterImpl{},
-		dirty:       dirty,
-		broadcaster: broadcaster,
-		notifyMu:    sync.RWMutex{},
+		dirty:       in.Dirty,
+		broadcaster: in.Broadcaster,
+		//volume:      in.Volume,
+		notifyMu: sync.RWMutex{},
 	}
+}
+
+func (s *shareService) SetVolumeService(volume VolumeServiceInterface) {
+	s.volume = volume
 }
 
 func (s *shareService) notifyClient() {
@@ -206,6 +218,15 @@ func (s *shareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		return nil, errors.Wrapf(err, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
 	}
 	go s.notifyClient()
+
+	// Impose Volume Automount
+	_, err = s.volume.PatchMountPointSettings(dbShare.MountPointDataPath, dto.MountPointData{
+		IsToMountAtStartup: pointer.Bool(true),
+	})
+	if err != nil {
+		slog.Warn("Unable to set outomount flags for volume", "path", dbShare.MountPointDataPath, "err", err)
+	}
+
 	return &createdDtoShare, nil
 }
 
@@ -250,13 +271,22 @@ func (s *shareService) UpdateShare(currentName string, shareUpdate dto.SharedRes
 
 // DeleteShare deletes a shared resource by its name.
 func (s *shareService) DeleteShare(name string) error {
-	if _, err := s.GetShare(name); err != nil { // Leverage GetShare for not-found check
+	var ashare *dto.SharedResource
+	ashare, err := s.GetShare(name)
+	if err != nil { // Leverage GetShare for not-found check
 		return err
 	}
 	if err := s.shareRepo.Delete(name); err != nil {
 		return errors.Wrapf(err, "failed to delete share '%s' from repository", name)
 	}
 	go s.notifyClient()
+	// Impose Volume No Automount
+	_, err = s.volume.PatchMountPointSettings(ashare.MountPointData.Path, dto.MountPointData{
+		IsToMountAtStartup: pointer.Bool(false),
+	})
+	if err != nil {
+		slog.Warn("Unable to set outomount flags for volume", "path", ashare.MountPointData.Path, "err", err)
+	}
 	return nil
 }
 

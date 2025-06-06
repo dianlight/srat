@@ -252,6 +252,9 @@ func prog(state overseer.State) {
 				return mountClient
 			},
 		),
+		fx.Invoke(func(s service.ShareServiceInterface, v service.VolumeServiceInterface) {
+			s.SetVolumeService(v) // Bypass block for cyclic dep in FX
+		}),
 		fx.Invoke(
 			fx.Annotate(
 				func(

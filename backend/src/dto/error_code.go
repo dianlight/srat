@@ -2,6 +2,7 @@ package dto
 
 import "gitlab.com/tozd/go/errors"
 
+var ErrorNotFound = errors.Base("Not Found")
 var ErrorMountFail = errors.Base("Mount Fail")
 var ErrorUnmountFail = errors.Base("Umount Fail")
 var ErrorDeviceNotFound = errors.Base("Device not found")

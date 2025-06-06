@@ -91,7 +91,7 @@ func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) error {
 			slog.Debug("Record not found, creating new ExportedShare", "name", share.Name)
 			// The BeforeSave hook will execute its logic for new records.
 			// GORM's Create with FullSaveAssociations will handle associations.
-			createErr := tx.Debug(). /*.Session(&gorm.Session{FullSaveAssociations: true})*/ Create(share).Error
+			createErr := tx. /*.Debug()*/ /*.Session(&gorm.Session{FullSaveAssociations: true})*/ Create(share).Error
 			if createErr != nil {
 				slog.Error("Failed to create share", "share_name", share.Name, "error", createErr)
 				return errors.WithDetails(createErr, "share_name", share.Name, "details", share)
@@ -120,7 +120,7 @@ func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) error {
 
 			// The BeforeSave hook will see the record exists and skip its specific creation logic.
 			// Note: tx.Updates(share_struct) only updates non-zero fields by default.
-			updateErr := tx.Debug(). /*.Session(&gorm.Session{FullSaveAssociations: true})*/ Updates(share).Error
+			updateErr := tx. /*Debug().*/ /*.Session(&gorm.Session{FullSaveAssociations: true})*/ Updates(share).Error
 			if updateErr != nil {
 				slog.Error("Failed to update share", "share_name", share.Name, "error", updateErr)
 				return errors.WithDetails(updateErr, "share_name", share.Name, "details", share)

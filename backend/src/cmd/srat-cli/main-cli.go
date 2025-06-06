@@ -234,6 +234,9 @@ func main() {
 				return mountClient
 			},
 		),
+		fx.Invoke(func(s service.ShareServiceInterface, v service.VolumeServiceInterface) {
+			s.SetVolumeService(v) // Bypass block for cyclic dep in FX
+		}),
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
 			props_repo repository.PropertyRepositoryInterface,

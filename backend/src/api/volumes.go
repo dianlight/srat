@@ -4,17 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"regexp"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/shomali11/util/xhashes"
-	"gorm.io/gorm"
 )
 
 var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
@@ -26,15 +22,13 @@ type VolumeHandler struct {
 	apiContext   *dto.ContextState
 	vservice     service.VolumeServiceInterface
 	shareService service.ShareServiceInterface
-	mount_repo   repository.MountPointPathRepositoryInterface
 	dirtyservice service.DirtyDataServiceInterface
 }
 
-func NewVolumeHandler(vservice service.VolumeServiceInterface, shareService service.ShareServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface) *VolumeHandler {
+func NewVolumeHandler(vservice service.VolumeServiceInterface, shareService service.ShareServiceInterface, apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface) *VolumeHandler {
 	p := new(VolumeHandler)
 	p.vservice = vservice
 	p.shareService = shareService
-	p.mount_repo = mount_repo
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyservice
 	return p
@@ -69,18 +63,6 @@ func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*s
 				continue
 			}
 			for k, mountPoint := range *volume.MountPointData {
-				// Load additional data fro mountada from DB
-				dbom_mount_data, err := self.mount_repo.FindByDevice(mountPoint.Device)
-				if err != nil {
-					if !errors.Is(err, gorm.ErrRecordNotFound) {
-						return nil, err
-					}
-				} else {
-					var conv converter.DtoToDbomConverterImpl
-					conv.MountPointPathToMountPointData(*dbom_mount_data, &mountPoint)
-					(*volume.MountPointData)[k] = mountPoint
-				}
-
 				// Get Shares
 				shared, err := self.shareService.GetShareFromPath(mountPoint.Path)
 				if err != nil {
@@ -123,26 +105,6 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 			return nil, huma.Error500InternalServerError("Unknown Error", errE)
 		}
 	}
-	/*
-		dbom_mount_data, err := self.mount_repo.FindByPath(mount_data.Path)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, huma.Error404NotFound("Internal:Device Not Found", err)
-			}
-			return nil, err
-		}
-		var conv converter.DtoToDbomConverterImpl
-		mounted_data := dto.MountPointData{}
-		err = conv.MountPointPathToMountPointData(*dbom_mount_data, &mounted_data)
-		if err != nil {
-			return nil, err
-		}
-
-		err = self.mount_repo.Save(dbom_mount_data)
-		if err != nil {
-			slog.Warn("Unamble to save mount point data","err",err,"mount_path",mount_data.Path)
-		}
-	*/
 	self.dirtyservice.SetDirtyVolumes()
 
 	return &struct{ Body dto.MountPointData }{Body: mount_data}, nil
@@ -189,8 +151,7 @@ func (self *VolumeHandler) EjectDiskHandler(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorInvalidParameter) {
 			return nil, huma.Error400BadRequest(fmt.Sprintf("Invalid parameter for ejecting disk '%s'", input.DiskID), err)
 		}
-		// Log the full error for server-side debugging
-		slog.Error("Failed to eject disk", "disk_id", input.DiskID, "error", fmt.Sprintf("%+v", err)) // Log with stack trace if available
+		// Error is already logged by the service layer
 		// Return a more generic error to the client
 		return nil, huma.Error500InternalServerError(fmt.Sprintf("Failed to eject disk '%s': %s", input.DiskID, err.Error()), err)
 	}
@@ -213,44 +174,17 @@ func (self *VolumeHandler) UpdateVolumeSettings(ctx context.Context, input *stru
 		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
 	}
 
-	dbMountData, err := self.mount_repo.FindByPath(mountPath)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, huma.Error404NotFound(fmt.Sprintf("Mount configuration with hash %s not found", input.MountPathHash))
+	updatedDto, serviceErr := self.vservice.UpdateMountPointSettings(mountPath, input.Body)
+	if serviceErr != nil {
+		if errors.Is(serviceErr, dto.ErrorNotFound) {
+			return nil, huma.Error404NotFound(serviceErr.Error())
 		}
-		slog.Error("Error fetching mount configuration by hash for PUT", "hash", input.MountPathHash, "error", err)
-		return nil, huma.Error500InternalServerError("Failed to retrieve mount configuration")
-	}
-
-	// Apply updates from input.Body
-	if input.Body.FSType != nil {
-		dbMountData.FSType = *input.Body.FSType
-	}
-	var conv converter.DtoToDbomConverterImpl
-
-	if input.Body.Flags != nil {
-		*dbMountData.Flags = conv.MountFlagsToMountDataFlags(*input.Body.Flags)
-	}
-	if input.Body.CustomFlags != nil {
-		*dbMountData.Data = conv.MountFlagsToMountDataFlags(*input.Body.CustomFlags)
-	}
-	if input.Body.IsToMountAtStartup != nil {
-		dbMountData.IsToMountAtStartup = input.Body.IsToMountAtStartup
-	}
-
-	if err := self.mount_repo.Save(dbMountData); err != nil {
-		slog.Error("Error saving updated mount configuration", "hash", input.MountPathHash, "error", err)
-		return nil, huma.Error500InternalServerError("Failed to save mount configuration")
-	}
-
-	updatedDto := dto.MountPointData{}
-	if err := conv.MountPointPathToMountPointData(*dbMountData, &updatedDto); err != nil {
-		slog.Error("Error converting updated mount configuration to DTO", "hash", input.MountPathHash, "error", err)
-		return nil, huma.Error500InternalServerError("Failed to process updated mount configuration")
+		// Error is already logged by the service layer
+		return nil, huma.Error500InternalServerError("Failed to update mount configuration", serviceErr)
 	}
 
 	self.dirtyservice.SetDirtyVolumes()
-	return &struct{ Body dto.MountPointData }{Body: updatedDto}, nil
+	return &struct{ Body dto.MountPointData }{Body: *updatedDto}, nil
 }
 
 // PatchVolumeSettings handles PATCH requests to partially update the configuration of an existing mount point.
@@ -267,30 +201,15 @@ func (self *VolumeHandler) PatchVolumeSettings(ctx context.Context, input *struc
 		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
 	}
 
-	dbMountData, err := self.mount_repo.FindByPath(mountPath)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, huma.Error404NotFound(fmt.Sprintf("Mount configuration with hash %s not found", input.MountPathHash))
+	updatedDto, serviceErr := self.vservice.PatchMountPointSettings(mountPath, input.Body)
+	if serviceErr != nil {
+		if errors.Is(serviceErr, dto.ErrorNotFound) {
+			return nil, huma.Error404NotFound(serviceErr.Error())
 		}
-		slog.Error("Error fetching mount configuration by hash for PATCH", "hash", input.MountPathHash, "error", err)
-		return nil, huma.Error500InternalServerError("Failed to retrieve mount configuration")
+		// Error is already logged by the service layer
+		return nil, huma.Error500InternalServerError("Failed to patch mount configuration", serviceErr)
 	}
-
-	// Apply partial updates
-	if input.Body.IsToMountAtStartup != nil {
-		dbMountData.IsToMountAtStartup = input.Body.IsToMountAtStartup
-	}
-	// Add other patchable fields here if MountPointSettingsUpdate is extended
-
-	if err := self.mount_repo.Save(dbMountData); err != nil {
-		slog.Error("Error saving patched mount configuration", "hash", input.MountPathHash, "error", err)
-		return nil, huma.Error500InternalServerError("Failed to save mount configuration")
-	}
-
-	var conv converter.DtoToDbomConverterImpl
-	updatedDto := dto.MountPointData{}
-	conv.MountPointPathToMountPointData(*dbMountData, &updatedDto) // Error handling for conversion can be added if complex
 
 	self.dirtyservice.SetDirtyVolumes()
-	return &struct{ Body dto.MountPointData }{Body: updatedDto}, nil
+	return &struct{ Body dto.MountPointData }{Body: *updatedDto}, nil
 }

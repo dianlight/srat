@@ -121,6 +121,9 @@ func main() {
 			), //server.NewHTTPServer,
 			server.NewHumaAPI,
 		),
+		fx.Invoke(func(s service.ShareServiceInterface, v service.VolumeServiceInterface) {
+			s.SetVolumeService(v) // Bypass block for cyclic dep in FX
+		}),
 		fx.Invoke(
 			func(
 				api huma.API,

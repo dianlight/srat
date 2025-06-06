@@ -295,6 +295,7 @@ export function Shares() {
                 setInitialNewShareData(undefined); // Clear prefill data after dialog closes
             }
             }
+            onDeleteSubmit={onSubmitDeleteShare}
         />
         {read_only || <Fab color="primary" aria-label="add" sx={{
             float: 'right',
@@ -493,7 +494,13 @@ export function Shares() {
     </InView>
 }
 
-function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps) => void, objectToEdit?: ShareEditProps }) {
+interface ShareEditDialogProps {
+    open: boolean;
+    onClose: (data?: ShareEditProps) => void;
+    objectToEdit?: ShareEditProps;
+    onDeleteSubmit?: (shareName: string, shareData: SharedResource) => void; // Added for delete action
+}
+function ShareEditDialog(props: ShareEditDialogProps) {
     const { data: users, isLoading: usLoading, error: usError } = useGetUsersQuery()
     const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume()
     const shares = useShare()
@@ -811,8 +818,23 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                     </Stack>
                 </DialogContent>
                 <DialogActions>
+                    {props.objectToEdit?.org_name && props.onDeleteSubmit && (
+                        <Button
+                            onClick={() => {
+                                // Ensure objectToEdit and org_name are valid before calling onDeleteSubmit
+                                if (props.objectToEdit && props.objectToEdit.org_name && props.onDeleteSubmit) {
+                                    props.onDeleteSubmit(props.objectToEdit.org_name, props.objectToEdit);
+                                }
+                                handleCloseSubmit(); // Close the dialog
+                            }}
+                            color="error"
+                            variant="outlined"
+                        >
+                            Delete
+                        </Button>
+                    )}
                     <Button onClick={() => handleCloseSubmit()}>Cancel</Button>
-                    <Button type="submit" form="editshareform">{(props.objectToEdit?.org_name === "") ? "Create" : "Apply"}</Button>
+                    <Button type="submit" form="editshareform" variant="contained">{(props.objectToEdit?.org_name === "") ? "Create" : "Apply"}</Button>
                 </DialogActions>
             </Dialog>
         </Fragment>

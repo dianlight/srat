@@ -36,6 +36,8 @@ type VolumeServiceInterface interface {
 	GetVolumesData() (*[]dto.Disk, error)
 	PathHashToPath(pathhash string) (string, errors.E)
 	EjectDisk(diskID string) error
+	UpdateMountPointSettings(path string, settingsUpdate dto.MountPointData) (*dto.MountPointData, errors.E)
+	PatchMountPointSettings(path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
 }
 
 type VolumeService struct {
@@ -454,6 +456,9 @@ func (self *VolumeService) udevEventHandler() {
 
 func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 	slog.Debug("Getting volumes data...") // Added log
+	self.volumesQueueMutex.Lock()
+	defer self.volumesQueueMutex.Unlock()
+
 	ret := []dto.Disk{}
 	conv := converter.HaHardwareToDtoImpl{}
 	dbconv := converter.DtoToDbomConverterImpl{}
@@ -626,8 +631,6 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 
 func (self *VolumeService) notifyClient() {
 	slog.Debug("Notifying client about volume changes...")
-	self.volumesQueueMutex.Lock()
-	defer self.volumesQueueMutex.Unlock()
 
 	var data, err = self.GetVolumesData()
 	if err != nil {
@@ -746,4 +749,104 @@ func (self *VolumeService) EjectDisk(diskID string) error {
 	slog.Info("Disk ejected successfully", "disk_id", diskID, "device_path", devicePath)
 	go self.notifyClient() // Notify clients of the change
 	return nil
+}
+
+func (ms *VolumeService) UpdateMountPointSettings(path string, updates dto.MountPointData) (*dto.MountPointData, errors.E) {
+	dbMountData, err := ms.mount_repo.FindByPath(path)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
+		}
+		return nil, errors.WithStack(err)
+	}
+
+	var conv converter.DtoToDbomConverterImpl
+
+	// Apply updates
+	if updates.FSType != nil {
+		dbMountData.FSType = *updates.FSType
+	}
+	if updates.Flags != nil {
+		if dbMountData.Flags == nil {
+			dbMountData.Flags = &dbom.MounDataFlags{}
+		}
+		*dbMountData.Flags = conv.MountFlagsToMountDataFlags(*updates.Flags)
+	}
+	if updates.CustomFlags != nil {
+		if dbMountData.Data == nil {
+			dbMountData.Data = &dbom.MounDataFlags{}
+		}
+		*dbMountData.Data = conv.MountFlagsToMountDataFlags(*updates.CustomFlags)
+	}
+	if updates.IsToMountAtStartup != nil {
+		dbMountData.IsToMountAtStartup = updates.IsToMountAtStartup
+	}
+
+	if err := ms.mount_repo.Save(dbMountData); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	updatedDto := dto.MountPointData{}
+	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &updatedDto); convErr != nil {
+		return nil, errors.WithStack(convErr)
+	}
+	// Consider if a notification is needed after settings change
+	// go ms.notifyClient()
+	return &updatedDto, nil
+}
+
+func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.MountPointData) (*dto.MountPointData, errors.E) {
+	dbMountData, err := ms.mount_repo.FindByPath(path)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
+		}
+		return nil, errors.WithStack(err)
+	}
+
+	var conv converter.DtoToDbomConverterImpl
+	changed := false
+
+	if patchData.FSType != nil {
+		if dbMountData.FSType != *patchData.FSType {
+			dbMountData.FSType = *patchData.FSType
+			changed = true
+		}
+	}
+
+	if patchData.Flags != nil {
+		if dbMountData.Flags == nil {
+			dbMountData.Flags = &dbom.MounDataFlags{}
+		}
+		*dbMountData.Flags = conv.MountFlagsToMountDataFlags(*patchData.Flags)
+		changed = true
+	}
+
+	if patchData.CustomFlags != nil {
+		if dbMountData.Data == nil {
+			dbMountData.Data = &dbom.MounDataFlags{}
+		}
+		*dbMountData.Data = conv.MountFlagsToMountDataFlags(*patchData.CustomFlags)
+		changed = true
+	}
+
+	if patchData.IsToMountAtStartup != nil {
+		if dbMountData.IsToMountAtStartup == nil || *dbMountData.IsToMountAtStartup != *patchData.IsToMountAtStartup {
+			dbMountData.IsToMountAtStartup = patchData.IsToMountAtStartup
+			changed = true
+		}
+	}
+
+	if changed {
+		if err := ms.mount_repo.Save(dbMountData); err != nil {
+			return nil, errors.WithStack(err)
+		}
+	}
+	go ms.notifyClient() // Consider if settings changes should trigger a volume data broadcast
+
+	currentDto := dto.MountPointData{}
+	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &currentDto); convErr != nil {
+		return nil, errors.WithStack(convErr)
+	}
+	return &currentDto, nil
 }
