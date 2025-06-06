@@ -4,24 +4,38 @@ default_install_hook_types: [pre-commit, post-commit, commit-msg]
 repos:
     - repo: local
       hooks:
-          - id: gohack-disable
-            name: disable gohack
-            stages: [pre-commit]
-            description: Disable gohack before commit
-            entry: sh -c 'cd backend/src && go tool gohack undo && git add go.mod'
-            language: system
-            #        files: ^backend/src/
-            types: [text]
+        - id: remove-go-mod-replace
+          name: Remove go.mod replace lines
+          entry: ./scripts/remove-go-mod-replace.sh
+          language: system
+          files: ^go\.mod$ # Only run if go.mod is among the changed files
+          pass_filenames: true # The script handles the go.mod file directly
 
-          - id: gohack-enable
-            name: enable gohack
-            stages: [post-commit]
-            description: Enable gohack after commit
-            entry: make -C backend patch
-            always_run: true
-            language: system
-            #        files: ^backend/src/
-            types: [text]
+        - id: restore-go-mod-replace
+          name: Restore go.mod replace lines
+          entry: ./scripts/restore-go-mod-replace.sh
+          language: system
+          always_run: true # This hook should always run after commit attempts
+          stage: post-commit # This ensures it runs after the commit
+          pass_filenames: true
+#          - id: gohack-disable
+#            name: disable gohack
+#            stages: [pre-commit]
+#            description: Disable gohack before commit
+#            entry: sh -c 'cd backend/src && go tool gohack undo && git add go.mod'
+#            language: system
+#            #        files: ^backend/src/
+#            types: [text]
+
+#          - id: gohack-enable
+#            name: enable gohack
+#            stages: [post-commit]
+#            description: Enable gohack after commit
+#            entry: make -C backend patch
+#            always_run: true
+#            language: system
+#            #        files: ^backend/src/
+#            types: [text]
 
     - repo: https://github.com/pre-commit/pre-commit-hooks
       rev: v5.0.0

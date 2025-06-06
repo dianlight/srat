@@ -14,6 +14,7 @@ ALL:
 .PHONY: prepare
 prepare:
 	pre-commit install
+	pre-commit install --hook-type post-commit
 	$(MAKE) -C $(BACKEND_DIRS) PREREQUISITE
 	cd $(FRONTEND_DIRS); bun install
 

@@ -157,3 +157,7 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
+
+replace github.com/samber/slog-http => /root/gohack/github.com/samber/slog-http
+
+replace github.com/jpillora/overseer => /root/gohack/github.com/jpillora/overseer
