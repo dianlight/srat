@@ -1,6 +1,6 @@
 import { Fragment, useState, useEffect, useRef } from "react";
 import { InView } from "react-intersection-observer";
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { PreviewDialog } from "../components/PreviewDialog";
 import List from "@mui/material/List"; // Import Collapse and Chip
 import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Collapse, Chip, Switch, FormControlLabel, Autocomplete, TextField } from "@mui/material"; // Import Collapse and Chip, Switch, FormControlLabel
@@ -50,6 +50,7 @@ export function Volumes() {
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showMount, setShowMount] = useState<boolean>(false);
     const [showMountSettings, setShowMountSettings] = useState<boolean>(false); // For viewing mount settings
+    const location = useLocation();
 
     const navigate = useNavigate();
     const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(true); // Default to hide system partitions
@@ -103,6 +104,39 @@ export function Volumes() {
         initialAutoOpenDone.current = true; // Mark initial auto-open as done
     }, [disks, isLoading, hideSystemPartitions]); // hideSystemPartitions is included as its initial state affects the first visible disk
 
+
+    // Effect to handle navigation state for opening mount settings for a specific volume
+    useEffect(() => {
+        const state = location.state as LocationState | undefined;
+        const mountPathHashFromState = state?.mountPathHashToView;
+        const shouldOpenMountSettings = state?.openMountSettings;
+
+        if (mountPathHashFromState && shouldOpenMountSettings && Array.isArray(disks) && disks.length > 0) {
+            let foundPartition: Partition | undefined = undefined;
+            for (const disk of disks) {
+                if (disk.partitions) {
+                    for (const partition of disk.partitions) {
+                        if (partition.mount_point_data?.some(mpd => mpd.path_hash === mountPathHashFromState)) {
+                            foundPartition = partition;
+                            break;
+                        }
+                    }
+                }
+                if (foundPartition) break;
+            }
+
+            if (foundPartition) {
+                setSelected(foundPartition);
+                setShowMountSettings(true);
+                // Clear the state from history to prevent reopening on refresh/re-render
+                navigate(location.pathname, { replace: true, state: {} });
+            } else {
+                console.warn(`Volume with mountPathHash ${mountPathHashFromState} not found.`);
+                // Clear the state even if not found to prevent re-triggering
+                navigate(location.pathname, { replace: true, state: {} });
+            }
+        }
+    }, [disks, location.state, navigate]);
 
     // Toggle collapse state for a group (disk)
     const handleToggleGroup = (diskIdentifier: string) => {

@@ -321,6 +321,24 @@ export function Shares() {
                                 <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
                                     <SettingsIcon />
                                 </IconButton>
+                                {(!props.mount_point_data?.invalid && props.usage !== Usage.Internal && props.mount_point_data?.path_hash) && (
+                                    <Tooltip title="View Volume Mount Settings">
+                                        <IconButton
+                                            onClick={() => {
+                                                if (props.mount_point_data?.path_hash) {
+                                                    navigate('/', {
+                                                        state: {
+                                                            tabId: TabIDs.VOLUMES,
+                                                            mountPathHashToView: props.mount_point_data.path_hash,
+                                                            openMountSettings: true
+                                                        } as LocationState
+                                                    });
+                                                }
+                                            }} edge="end" aria-label="view volume settings">
+                                            <DriveFileMove />
+                                        </IconButton>
+                                    </Tooltip>
+                                )}
                                 {props.usage !== Usage.Internal &&
                                     <IconButton onClick={() => onSubmitDeleteShare(share, props)} edge="end" aria-label="delete">
                                         <Tooltip title="Delete share">
