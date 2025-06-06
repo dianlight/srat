@@ -21,6 +21,7 @@ import { useDeleteVolumeByMountPathHashMountMutation, useGetFilesystemsQuery, us
 // Add EjectIcon to your imports
 import EjectIcon from '@mui/icons-material/Eject';
 import UsbIcon from '@mui/icons-material/Usb';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import SdStorageIcon from '@mui/icons-material/SdStorage';
 // ... other icon imports ...
 import ComputerIcon from '@mui/icons-material/Computer';
@@ -46,6 +47,7 @@ export function Volumes() {
     const read_only = useReadOnly();
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showMount, setShowMount] = useState<boolean>(false);
+    const [showMountSettings, setShowMountSettings] = useState<boolean>(false); // For viewing mount settings
 
     const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(true); // Default to hide system partitions
     // Assuming useVolume returns an array of disk objects, where each disk has a 'partitions' array
@@ -312,12 +314,18 @@ export function Volumes() {
             <VolumeMountDialog
                 // Type guard to ensure we only pass Partitions to the mount dialog
                 objectToEdit={selected && !(selected as Disk).partitions && (selected as Partition).name ? selected as Partition : undefined}
-                open={showMount}
+                open={showMount || showMountSettings}
+                readOnlyView={showMountSettings}
                 onClose={(data) => {
-                    if (data) {
-                        onSubmitMountVolume(data);
-                    } else {
+                    if (showMountSettings) { // If it was open for viewing settings
                         setSelected(undefined);
+                        setShowMountSettings(false);
+                    } else if (showMount) { // If it was open for mounting
+                        if (data) {
+                            onSubmitMountVolume(data);
+                        } else { // Cancelled mount dialog or no data returned
+                            setSelected(undefined);
+                        }
                         setShowMount(false);
                     }
                 }} />
@@ -485,6 +493,11 @@ export function Volumes() {
                                                                     )}
                                                                     {isMounted && (
                                                                         <>
+                                                                            <Tooltip title="View Mount Settings">
+                                                                                <IconButton onClick={(e) => { e.stopPropagation(); setSelected(partition); setShowMountSettings(true); }} edge="end" aria-label="view mount settings" size="small">
+                                                                                    <VisibilityIcon fontSize="small" />
+                                                                                </IconButton>
+                                                                            </Tooltip>
                                                                             {!hasShares && (
                                                                                 <Tooltip title="Unmount Partition">
                                                                                     <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, false); }} edge="end" aria-label="unmount" size="small">
@@ -571,11 +584,17 @@ interface xMountPointData extends MountPointData {
     custom_flags_values: MountFlag[]; // Array of custom flags (enum) for the TextField
 }
 
+interface VolumeMountDialogProps {
+    open: boolean;
+    onClose: (data?: MountPointData) => void;
+    objectToEdit?: Partition;
+    readOnlyView?: boolean;
+}
 
 
-function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointData) => void, objectToEdit?: Partition }) {
+function VolumeMountDialog(props: VolumeMountDialogProps) {
     const { control, handleSubmit, watch, reset, formState: { errors, isDirty }, register, setValue } = useForm<xMountPointData>({
-        defaultValues: { path: '', fstype: ''/*, flagsNames: [], customFlagsNames: []*/ }, // Default values for the form
+        defaultValues: { path: '', fstype: '', flags: [], custom_flags: [], custom_flags_values: [], is_to_mount_at_startup: false }, // Default values for the form
     });
     const { fields, append, prepend, remove, swap, move, insert, replace } = useFieldArray({
         control, // control props comes from useForm (optional: if you are using FormProvider)
@@ -596,17 +615,24 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                 fstype: existingMountData?.fstype || undefined, // Use existing or let backend detect
                 flags: existingMountData?.flags || [], // Keep numeric flags if needed internally
                 custom_flags: existingMountData?.custom_flags || [], // Keep numeric flags if needed internally
+                custom_flags_values: [], // Will be populated by `replace` below
                 is_to_mount_at_startup: existingMountData?.is_to_mount_at_startup || false, // Initialize the switch state
             });
 
+            setMounting(false)
+
             const valueFlags = ([] as MountFlag[]).concat(existingMountData?.custom_flags || [], existingMountData?.flags || [])
-            replace(valueFlags.filter(v => v.needsValue))
+            replace(valueFlags.filter(v => v.needsValue).map(flag => ({ ...flag }))) // Ensure we pass new objects to replace
         } else if (!props.open) {
-            reset(); // Reset to default values when closing
+            reset({ path: '', fstype: '', flags: [], custom_flags: [], custom_flags_values: [], is_to_mount_at_startup: false }); // Reset to default values when closing
         }
     }, [props.open, props.objectToEdit, reset]);
 
     function handleCloseSubmit(formData: xMountPointData) {
+        if (props.readOnlyView) {
+            props.onClose();
+            return;
+        }
         if (!props.objectToEdit) {
             console.error("Mount dialog submitted without an objectToEdit.");
             props.onClose();
@@ -652,7 +678,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
         <Fragment>
             <Dialog open={props.open} onClose={handleCancel} maxWidth="sm" fullWidth>
                 <DialogTitle>
-                    Mount Volume: {partitionNameDecoded} ({partitionId})
+                    {props.readOnlyView ? "View Mount Settings: " : "Mount Volume: "} {partitionNameDecoded} ({partitionId})
                 </DialogTitle>
                 <form id="mountvolumeform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                     <DialogContent>
@@ -669,6 +695,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         control={control}
                                         required
                                         fullWidth
+                                        disabled={props.readOnlyView}
                                         slotProps={{ inputLabel: { shrink: true } }} // Ensure label is always shrunk
                                         helperText="Path must start with /mnt/"
                                     />
@@ -681,14 +708,17 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         options={fsLoading ? [] : (filesystems as FilesystemType[] || []).map(fs => fs.name)}
                                         autocompleteProps={{
                                             freeSolo: true,
+                                            disabled: props.readOnlyView,
                                             size: "small",
                                             onChange: (event, value) => {
+                                                if (props.readOnlyView) return;
                                                 console.log("FS Type changed:", value);
                                                 setValue('custom_flags', []); // Clear custom flags when FS type changes
                                                 setValue('custom_flags_values', []); // Clear custom flags values when FS type changes
                                             }
                                         }}
                                         textFieldProps={{
+                                            disabled: props.readOnlyView,
                                             helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
                                             error: !!fsError,
                                             InputLabelProps: { shrink: true }
@@ -706,6 +736,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                             options={fsLoading ? [] : (filesystems as FilesystemType[])[0]?.mountFlags || []} // Use string keys for options
                                             control={control}
                                             autocompleteProps={{
+                                                disabled: props.readOnlyView,
                                                 size: "small",
                                                 limitTags: 5,
                                                 getOptionKey: (option) => (option as MountFlag).name,
@@ -722,6 +753,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                                 },
                                             }}
                                             textFieldProps={{
+                                                disabled: props.readOnlyView,
                                                 //helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
                                                 //error: !!fsError,
                                                 InputLabelProps: { shrink: true }
@@ -739,6 +771,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                             options={fsLoading ? [] : (filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags/*?.filter(mf => !mf.needsValue)*/ || []} // Use string keys for options
                                             control={control}
                                             autocompleteProps={{
+                                                disabled: props.readOnlyView,
                                                 size: "small",
                                                 limitTags: 5,
                                                 getOptionKey: (option) => (option as MountFlag).name,
@@ -768,24 +801,28 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                                             />
                                                         );
                                                     }),
-                                                onChange: (event, value) => {
+                                                onChange: props.readOnlyView ? undefined : (event, value) => {
                                                     console.log(event, value)
                                                     replace((value as MountFlag[]).filter(v => v.needsValue)); // Only keep flags that need values
                                                 },
+                                            }}
+                                            textFieldProps={{
+                                                disabled: props.readOnlyView,
+                                                InputLabelProps: { shrink: true }
                                             }}
                                         />
                                     }
                                 </Grid>
                                 {fields.map((field, index) => (
-                                    <Grid size={6}> {/* FS CustomFlags Values */}
+                                    <Grid size={6} key={field.id}> {/* FS CustomFlags Values */}
                                         <TextFieldElement
-                                            key={field.id}
                                             size="small"
                                             name={`custom_flags_values.${index}.value`}
                                             label={field.name}
                                             control={control}
                                             required
                                             fullWidth
+                                            disabled={props.readOnlyView}
                                             variant="outlined"
                                             rules={{
                                                 required: true,
@@ -804,6 +841,7 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                                         name="is_to_mount_at_startup"
                                         label="Mount at startup"
                                         control={control}
+                                        disabled={props.readOnlyView}
                                         size="small"
                                     />
                                 </Grid>
@@ -811,8 +849,14 @@ function VolumeMountDialog(props: { open: boolean, onClose: (data?: MountPointDa
                         </Stack>
                     </DialogContent>
                     <DialogActions>
-                        <Button onClick={handleCancel} color="secondary">Cancel</Button>
-                        <Button type="submit" loading={mounting} variant="contained">Mount</Button> {/* Disable if form not changed */}
+                        {props.readOnlyView ? (
+                            <Button onClick={handleCancel} color="primary" variant="contained">Close</Button>
+                        ) : (
+                            <>
+                                <Button onClick={handleCancel} color="secondary">Cancel</Button>
+                                <Button type="submit" form="mountvolumeform" loading={mounting} variant="contained">Mount</Button>
+                            </>
+                        )}
                     </DialogActions>
                 </form>
             </Dialog>

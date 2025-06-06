@@ -1,8 +1,6 @@
 package converter
 
 import (
-	"log/slog"
-
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/u-root/u-root/pkg/mount"
@@ -40,10 +38,11 @@ type HaHardwareToDto interface {
 func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointData {
 	var mountPointDatas []dto.MountPointData
 
-	fstype, _, err := mount.FSFromBlock(*source.Device) // FIXME: this is not a good way to get the filesystem type
-	if err != nil {
-		slog.Warn("Failed to get filesystem type and flags", "device", source.Device, "error", err)
+	if source.MountPoints == nil || len(*source.MountPoints) == 0 {
+		return &mountPointDatas
 	}
+
+	fstype, _, _ := mount.FSFromBlock(*source.Device)
 
 	for _, s := range *source.MountPoints {
 		mountPointDatas = append(mountPointDatas, dto.MountPointData{
