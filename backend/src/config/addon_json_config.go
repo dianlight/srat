@@ -241,77 +241,11 @@ func (self *Config) LoadConfig(file string) error {
 	return nil
 }
 
-/*
-func (self *Config) FromContext(ctx context.Context) error {
-	*self = *ctx.Value("samba_json_config").(*Config)
+func (self *Config) LoadConfigBuffer(buffer []byte) error {
+	err := self.ReadConfigBuffer(buffer)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	self.MigrateConfig()
 	return nil
 }
-*/
-
-/*
-func (self *Config) ToContext(ctx context.Context) context.Context {
-	return context.WithValue(ctx, "samba_json_config", self)
-}
-*/
-
-// Mapping Functions
-/*
-func (self Config) To(ctx context.Context, dst any) (bool, error) {
-	switch dst.(type) {
-	case *[]dto.User:
-		*dst.(*[]dto.User) = append((*dst.(*[]dto.User)), dto.User{
-			Username: pointer.String(self.Username),
-			Password: pointer.String(self.Password),
-			IsAdmin:  pointer.Bool(true),
-		})
-		for _, user := range self.OtherUsers {
-			*dst.(*[]dto.User) = append((*dst.(*[]dto.User)), dto.User{
-				Username: pointer.String(user.Username),
-				Password: pointer.String(user.Password),
-			})
-		}
-		return true, nil
-	case *[]dto.SharedResource:
-		for _, share := range self.Shares {
-			var sr dto.SharedResource
-			err := mapper.Map(context.Background(), &sr, share)
-			if err != nil {
-				return false, err
-			}
-			*dst.(*[]dto.SharedResource) = append((*dst.(*[]dto.SharedResource)), sr)
-		}
-		return true, nil
-	default:
-		return false, nil
-	}
-}
-*/
-
-/*
-func (m Shares) To(dst any) (bool, error) {
-	switch v := dst.(type) {
-	case *[]dto.SharedResource:
-		var shr dto.SharedResource
-		err := mapper.Map(&shr, m)
-		if err != nil {
-			return false, err
-		}
-		*v = append(*v, shr)
-		return true, nil
-	default:
-		return false, nil
-	}
-}
-*/
-
-/*
-func (m *Shares) From(src any) (bool, error) {
-	switch v := src.(type) {
-	case [string]:
-		m.Username = v
-		return true, nil
-	default:
-		return false, nil
-	}
-}
-*/

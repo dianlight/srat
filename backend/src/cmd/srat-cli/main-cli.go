@@ -28,6 +28,7 @@ import (
 	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/templates"
 	"github.com/dianlight/srat/unixsamba"
 
 	"github.com/lmittmann/tint"
@@ -63,7 +64,7 @@ func main() {
 	// set global logger with custom options
 	startCmd := flag.NewFlagSet("start", flag.ExitOnError)
 	/*optionsFile = */ startCmd.String("opt", "/data/options.json", "Addon Options json file (Unused for now)")
-	configFile = startCmd.String("conf", "/config/bootconfig.json", "Addon Config json file")
+	configFile = startCmd.String("conf", "", "Addon SambaNas bootconfig json file to migrate from")
 	smbConfigFile = startCmd.String("out", "", "Output samba conf file")
 	dockerInterface = startCmd.String("docker-interface", "", "Docker interface")
 	dockerNetwork = startCmd.String("docker-network", "", "Docker network")
@@ -246,12 +247,18 @@ func main() {
 			if err != nil || versionInDB == nil {
 				// Migrate from JSON to DB
 				var config config.Config
-				err := config.LoadConfig(*configFile)
-				// Setting/Properties
-				if err != nil {
-					log.Fatalf("Cant load config file %#+v", err)
+				if *configFile != "" {
+					err := config.LoadConfig(*configFile)
+					if err != nil {
+						log.Fatalf("Cant load config file %#+v", err)
+					}
+				} else {
+					buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+					if err != nil {
+						log.Fatalf("Cant read default config file %#+v", err)
+					}
+					config.LoadConfigBuffer(buffer)
 				}
-
 				pwdgen, err := generator.NewWithDefault()
 				if err != nil {
 					log.Fatalf("Cant generate password %#+v", err)
