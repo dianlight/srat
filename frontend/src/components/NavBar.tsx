@@ -217,7 +217,6 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                             onMouseEnter={() => setIsLogoHovered(true)}
                             onMouseLeave={() => setIsLogoHovered(false)} />
                     }
-                    <p>{value}</p>
                     <Tabs
                         sx={{ flexGrow: 1, display: { xs: 'flex', md: 'flex' } }}
                         value={value}

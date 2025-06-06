@@ -22,11 +22,16 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
 import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement } from 'react-hook-form-mui'
-import { Box, Fab, Stack, Tooltip } from "@mui/material";
+import { Box, Fab, Stack, Tooltip, InputAdornment, type SvgIconTypeMap } from "@mui/material";
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import AddIcon from '@mui/icons-material/Add';
 import { Eject, DriveFileMove } from '@mui/icons-material';
 import { Chip, Typography } from '@mui/material';
+import KeyboardCapslockIcon from '@mui/icons-material/KeyboardCapslock'; // For UPPERCASE
+import TextDecreaseIcon from '@mui/icons-material/TextDecrease';     // For lowercase
+import DataObjectIcon from '@mui/icons-material/DataObject';         // For camelCase
+import RemoveIcon from '@mui/icons-material/Remove';                 // For kebab-case
+import { type OverridableComponent } from "@mui/material/OverridableComponent";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
@@ -47,6 +52,78 @@ interface ShareEditProps extends SharedResource {
     org_name: string,
     trashbin?: boolean, // TODO: Implement TrashBin support
 }
+
+// Helper function to extract basename from a path
+function getPathBaseName(path: string): string {
+    if (!path) return "";
+    // Remove trailing slashes to correctly get the last segment
+    const p = path.replace(/\/+$/, '');
+    const lastSegment = p.substring(p.lastIndexOf('/') + 1);
+    // Return empty string if lastSegment is empty (e.g. path was just "/")
+    return lastSegment === "" && p === "/" ? "" : lastSegment;
+}
+
+// Helper function to sanitize a string for use as a Windows share name and convert to uppercase
+function sanitizeAndUppercaseShareName(name: string): string {
+    if (!name) return "";
+    // Replace invalid characters (/\:*?"<>|) and whitespace with an underscore, then convert to uppercase
+    return name.replace(/[\\/:"*?<>|\s]+/g, '_').toUpperCase();
+}
+
+// --- Casing Styles and Helpers ---
+enum CasingStyle {
+    UPPERCASE = 'UPPERCASE',
+    LOWERCASE = 'lowercase',
+    CAMELCASE = 'camelCase',
+    KEBABCASE = 'kebab-case',
+}
+
+const casingCycleOrder: CasingStyle[] = [
+    CasingStyle.UPPERCASE,
+    CasingStyle.LOWERCASE,
+    CasingStyle.CAMELCASE,
+    CasingStyle.KEBABCASE,
+];
+
+// Helper to split words based on common separators and camelCase transitions
+const splitWords = (str: string): string[] => {
+    if (!str) return [];
+    const s1 = str.replace(/([a-z0-9])([A-Z])/g, '$1 $2'); // myWord -> my Word
+    const s2 = s1.replace(/([A-Z])([A-Z][a-z])/g, '$1 $2'); // ABBRWord -> ABBR Word
+    const s3 = s2.replace(/[_-]+/g, ' '); // Replace _ and - with space
+    return s3.split(/\s+/).filter(Boolean); // Split by space and remove empty parts
+};
+
+const toCamelCase = (str: string): string => {
+    const words = splitWords(str);
+    if (words.length === 0) return "";
+    return words
+        .map((word, index) =>
+            index === 0
+                ? word.toLowerCase()
+                : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join('');
+};
+
+const toKebabCase = (str: string): string => {
+    const words = splitWords(str);
+    if (words.length === 0) return "";
+    return words.map(word => word.toLowerCase()).join('-');
+};
+
+const casingStyleToIconMap: Record<CasingStyle, OverridableComponent<SvgIconTypeMap<{}, "svg">>> = {
+    [CasingStyle.UPPERCASE]: KeyboardCapslockIcon,
+    [CasingStyle.LOWERCASE]: TextDecreaseIcon,
+    [CasingStyle.CAMELCASE]: DataObjectIcon,
+    [CasingStyle.KEBABCASE]: RemoveIcon,
+};
+
+const getCasingIcon = (style: CasingStyle): OverridableComponent<SvgIconTypeMap<{}, "svg">> => {
+    return casingStyleToIconMap[style] || KeyboardCapslockIcon; // Default to UPPERCASE icon if not found
+};
+
+
 
 
 export function Shares() {
@@ -86,10 +163,17 @@ export function Shares() {
                 navigate(location.pathname, { replace: true, state: {} });
             }
         } else if (newShareDataFromState) {
+            let suggestedName = "";
+            if (newShareDataFromState.path) {
+                const baseName = getPathBaseName(newShareDataFromState.path);
+                if (baseName) { // Only proceed if basename is not empty
+                    suggestedName = sanitizeAndUppercaseShareName(baseName);
+                }
+            }
             // Logic for opening a new share dialog with preselection
             const prefilledData: ShareEditProps = {
                 org_name: "", // Signals a new share
-                name: "",     // User will fill this
+                name: suggestedName, // Generated from path basename and normalized
                 mount_point_data: newShareDataFromState,
                 // Default values for users, ro_users, timemachine, usage will be set by ShareEditDialog's reset
             };
@@ -396,35 +480,46 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
     const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume()
     const shares = useShare()
     const [editName, setEditName] = useState(false);
-    const { control, handleSubmit, watch, formState: { errors }, reset } = useForm<ShareEditProps>(
+    const [activeCasingIndex, setActiveCasingIndex] = useState(0);
+    const { control, handleSubmit, watch, formState: { errors }, reset, setValue } = useForm<ShareEditProps>(
         // Removed initial values from here, will be handled by useEffect + reset
     );
 
     useEffect(() => {
         if (props.open) {
+            // Find admin user from the fetched users list
+            const adminUser = Array.isArray(users) ? users.find(u => u.is_admin) : undefined;
+
             if (props.objectToEdit) { // Covers editing existing share OR new share with prefill
+                const isNewShareCreation = props.objectToEdit.org_name === "";
                 reset({
                     org_name: props.objectToEdit.org_name ?? "", // Key to determine if new/edit
                     name: props.objectToEdit.name || "",
                     mount_point_data: props.objectToEdit.mount_point_data, // This is the preselection
-                    users: props.objectToEdit.users || [],
+                    // If it's a new share creation and no users are pre-filled, default to admin.
+                    // Otherwise, use the users from objectToEdit (could be empty for new, or populated for existing).
+                    users: (isNewShareCreation && (!props.objectToEdit.users || props.objectToEdit.users.length === 0) && adminUser)
+                        ? [adminUser]
+                        : (props.objectToEdit.users || []),
                     ro_users: props.objectToEdit.ro_users || [],
                     timemachine: props.objectToEdit.timemachine || false,
                     usage: props.objectToEdit.usage || Usage.None,
                     // any other fields from ShareEditProps that might be in objectToEdit
                 });
-                setEditName(props.objectToEdit.org_name === ""); // Enable name edit for new shares
+                setEditName(isNewShareCreation); // Enable name edit for new shares
+                setActiveCasingIndex(0); // Reset casing cycle state
             } else { // Completely new share, no prefill (e.g., user clicked "+" button directly)
                 reset({
                     org_name: "",
                     name: "",
-                    users: [],
+                    users: adminUser ? [adminUser] : [], // Default to admin user if available
                     ro_users: [],
                     timemachine: false,
                     usage: Usage.None,
                     // mount_point_data will be undefined, user must select
                 });
                 setEditName(true);
+                setActiveCasingIndex(0); // Reset casing cycle state
             }
         } else {
             reset({ // Reset to a clean state when dialog is not open
@@ -436,7 +531,7 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                 usage: Usage.None,
             }); // Reset to default values when closing or not open
         }
-    }, [props.open, props.objectToEdit, reset]);
+    }, [props.open, props.objectToEdit, reset, users]);
 
     function handleCloseSubmit(data?: ShareEditProps) {
         setEditName(false)
@@ -447,6 +542,36 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
         console.log(data)
         props.onClose(data)
     }
+
+    const handleCycleCasing = () => {
+        const currentName = watch('name');
+        if (typeof currentName !== 'string') return;
+
+        const styleToApply = casingCycleOrder[activeCasingIndex];
+        let transformedName = currentName;
+
+        switch (styleToApply) {
+            case CasingStyle.UPPERCASE:
+                transformedName = currentName.toUpperCase();
+                break;
+            case CasingStyle.LOWERCASE:
+                transformedName = currentName.toLowerCase();
+                break;
+            case CasingStyle.CAMELCASE:
+                transformedName = toCamelCase(currentName);
+                break;
+            case CasingStyle.KEBABCASE:
+                transformedName = toKebabCase(currentName);
+                break;
+        }
+        setValue('name', transformedName, { shouldValidate: true, shouldDirty: true });
+        setActiveCasingIndex((prevIndex) => (prevIndex + 1) % casingCycleOrder.length);
+    };
+
+    const nextCasingStyleName = casingCycleOrder[activeCasingIndex];
+    const cycleCasingTooltipTitle = `Cycle casing (Next: ${nextCasingStyleName.charAt(0).toUpperCase() + nextCasingStyleName.slice(1)})`;
+    const CasingIconToDisplay = getCasingIcon(nextCasingStyleName);
+
 
     return (
         <Fragment>
@@ -462,7 +587,41 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                         {props.objectToEdit?.name}
                     </>
                     }
-                    {(editName || props.objectToEdit?.org_name === "") && <TextFieldElement sx={{ display: "flex" }} name="name" label="Share Name" required size="small" control={control} />
+                    {(editName || props.objectToEdit?.org_name === "") &&
+                        <TextFieldElement
+                            sx={{ display: "flex" }}
+                            name="name"
+                            label="Share Name"
+                            required
+                            size="small"
+                            rules={{
+                                required: 'Share name is required',
+                                pattern: {
+                                    // Allows letters, numbers, and underscores
+                                    value: /^[a-zA-Z0-9_]+$/,
+                                    message: 'Share name can only contain letters, numbers, and underscores (_)',
+                                },
+                                maxLength: {
+                                    value: 80, // A common practical limit, adjust if your backend has a different rule
+                                    message: 'Share name cannot exceed 80 characters',
+                                },
+                            }}
+                            control={control}
+                            InputProps={{
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <Tooltip title={cycleCasingTooltipTitle}>
+                                            <IconButton
+                                                aria-label="cycle share name casing"
+                                                onClick={handleCycleCasing}
+                                                edge="end"
+                                            >
+                                                <CasingIconToDisplay />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </InputAdornment>
+                                ),
+                            }} />
                     }
                 </DialogTitle>
                 <DialogContent>
@@ -472,11 +631,6 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                         </DialogContentText>
                         <form id="editshareform" onSubmit={handleSubmit(handleCloseSubmit)} noValidate>
                             <Grid container spacing={2}>
-                                {/*
-                                <Grid size={6}>
-                                    <TextFieldElement name="name" label="Share Name" required control={control} />
-                                </Grid>
-                                */}
                                 {props.objectToEdit?.usage !== Usage.Internal &&
                                     <Grid size={6}>
                                         <SelectElement
@@ -521,10 +675,10 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
                                             />
                                         </Grid>
                                         <Grid size={6}>
-                                            <CheckboxElement label="Support Timemachine Backups" name="timemachine" control={control} />
+                                            <CheckboxElement size="small" label="Support Timemachine Backups" name="timemachine" control={control} />
                                         </Grid>
                                         <Grid size={6}>
-                                            <CheckboxElement disabled label="Support TrashBin" name="trashbin" control={control} />
+                                            <CheckboxElement size="small" disabled label="Support TrashBin" name="trashbin" control={control} />
                                         </Grid>
                                     </>
                                 }
