@@ -142,11 +142,17 @@ export function Volumes() {
     }
 
     function handleCreateShare(partition: Partition) {
-        // TODO: Implement navigation or action to create a share
-        // const mountPath = partition.mount_point_data?.[0]?.path;
-        // if (mountPath) navigate(`/shares/create?path=${mountPath}`);
-        console.log("Create share for:", partition);
-        toast.info("Create share functionality not yet implemented.");
+        const firstMountPointData = partition.mount_point_data?.[0];
+        if (firstMountPointData && firstMountPointData.path) { // Ensure path exists for preselection
+            navigate('/', {
+                state: {
+                    tabId: TabIDs.SHARES,
+                    newShareData: firstMountPointData
+                } as LocationState
+            });
+        } else {
+            toast.warn("Cannot create share: Partition is not mounted or has no mount path.");
+        }
     }
 
     function handleGoToShare(partition: Partition) {
@@ -156,7 +162,7 @@ export function Volumes() {
 
         if (share && share.name) {
             // Navigate to the shares page and pass the share name as state
-            navigate('/', { state: { tabId: TabIDs.SHARES, shareName: share.name } as LocationState });
+            navigate('/', { state: { tabId: TabIDs.SHARES, shareName: share.name } as LocationState }); // Navigate to root, NavBar handles tab
         }
     }
 

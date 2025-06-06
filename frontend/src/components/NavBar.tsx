@@ -170,15 +170,12 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     }
 
     useEffect(() => {
-        console.log("Navbar Respont to Navigate!", location.state)
         const state = location.state as LocationState | undefined;
-
-        // Check if we have a share name from state and shares data is loaded
         if (state?.tabId !== undefined) {
             setValue(state.tabId);
         }
-        // Dependencies: shares data and location.state (specifically shareName)
-    }, [location.state, navigate]);
+        // Dependency: only location.state. navigate is not used here.
+    }, [location.state]);
 
 
     useEffect(() => {

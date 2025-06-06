@@ -1,4 +1,4 @@
-import type { Volumes } from "../pages/Volumes"
+import type { MountPointData } from "./sratApi"
 
 export enum TabIDs {
     SHARES = 0,
@@ -13,4 +13,5 @@ export enum TabIDs {
 export interface LocationState {
     tabId?: TabIDs
     shareName?: string
+    newShareData?: MountPointData
 }

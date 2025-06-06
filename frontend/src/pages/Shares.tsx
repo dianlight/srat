@@ -41,7 +41,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { addMessage } from "../store/errorSlice";
 import { useVolume } from "../hooks/volumeHook";
 import { toast } from "react-toastify";
-import type { LocationState } from "../store/locationState";
+import { TabIDs, type LocationState } from "../store/locationState";
 
 interface ShareEditProps extends SharedResource {
     org_name: string,
@@ -60,6 +60,7 @@ export function Shares() {
     const [showEdit, setShowEdit] = useState<boolean>(false);
     const [showUserEdit, setShowUserEdit] = useState<boolean>(false);
     //const formRef = useRef<HTMLFormElement>(null);
+    const [initialNewShareData, setInitialNewShareData] = useState<ShareEditProps | undefined>(undefined);
     const confirm = useConfirm();
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
     const [deleteShare, updateDeleteShareResult] = useDeleteShareByShareNameMutation();
@@ -67,24 +68,38 @@ export function Shares() {
 
     // Effect to handle navigation state for opening a specific share dialog
     useEffect(() => {
-        console.log("Share Respont to Navigate!")
         const state = location.state as LocationState | undefined;
         const shareNameFromState = state?.shareName;
+        const newShareDataFromState = state?.newShareData;
 
         // Check if we have a share name from state and shares data is loaded
         if (shareNameFromState && shares) {
+            // Logic for opening an existing share for editing
             const shareEntry = Object.entries(shares).find(([key, value]) => value.name === shareNameFromState);
 
             if (shareEntry) {
                 // Found the share, set selected and show edit dialog
                 setSelected(shareEntry);
+                setInitialNewShareData(undefined); // Ensure no new share prefill
                 setShowEdit(true);
-
                 // Clear the state from history to prevent reopening on refresh/re-render
-                navigate(location.pathname, { replace: true });
+                navigate(location.pathname, { replace: true, state: {} });
             }
+        } else if (newShareDataFromState) {
+            // Logic for opening a new share dialog with preselection
+            const prefilledData: ShareEditProps = {
+                org_name: "", // Signals a new share
+                name: "",     // User will fill this
+                mount_point_data: newShareDataFromState,
+                // Default values for users, ro_users, timemachine, usage will be set by ShareEditDialog's reset
+            };
+            setInitialNewShareData(prefilledData);
+            setSelected(null); // No existing share selected
+            setShowEdit(true);
+            // Clear the state from history
+            navigate(location.pathname, { replace: true, state: {} });
         }
-        // Dependencies: shares data and location.state (specifically shareName)
+        // Dependencies: shares data and location.state
     }, [shares, location.state, navigate]);
 
     function onSubmitDisableShare(cdata?: string, props?: SharedResource) {
@@ -155,7 +170,7 @@ export function Shares() {
 
         // Save Data
         console.log(data);
-        if (data.org_name !== "") {
+        if (data.org_name !== "") { // Existing share being updated
             updateShare({ shareName: data.org_name, sharedResource: data }).unwrap()
                 .then((res) => {
                     toast.info(`Share ${(res as SharedResource).name} modified successfully.`);
@@ -165,7 +180,7 @@ export function Shares() {
                 .catch(err => {
                     dispatch(addMessage(JSON.stringify(err)));
                 });
-        } else {
+        } else { // New share being created
             createShare({ sharedResource: data }).unwrap()
                 .then((res) => {
                     toast.info(`Share ${(res as SharedResource).name || data.name} created successfully.`);
@@ -182,7 +197,21 @@ export function Shares() {
 
     return <InView>
         <PreviewDialog title={selected?.[1].name || ""} objectToDisplay={selected?.[1]} open={showPreview} onClose={() => { setSelected(null); setShowPreview(false) }} />
-        <ShareEditDialog objectToEdit={{ ...selected?.[1], org_name: selected?.[1].name || "" }} open={showEdit} onClose={(data) => { onSubmitEditShare(data); setSelected(null); setShowEdit(false) }} />
+        <ShareEditDialog
+            objectToEdit={
+                selected
+                    ? { ...selected[1], org_name: selected[1].name || "" } // For editing existing share
+                    : initialNewShareData // For new share, potentially with prefilled data from Volumes
+            }
+            open={showEdit}
+            onClose={(data) => {
+                onSubmitEditShare(data);
+                setSelected(null);
+                setShowEdit(false);
+                setInitialNewShareData(undefined); // Clear prefill data after dialog closes
+            }
+            }
+        />
         {read_only || <Fab color="primary" aria-label="add" sx={{
             float: 'right',
             top: '-20px',
@@ -367,21 +396,47 @@ function ShareEditDialog(props: { open: boolean, onClose: (data?: ShareEditProps
     const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume()
     const shares = useShare()
     const [editName, setEditName] = useState(false);
-    const { control, handleSubmit, watch, formState: { errors } } = useForm<ShareEditProps>(
-        {
-            values: !props.objectToEdit ? {
+    const { control, handleSubmit, watch, formState: { errors }, reset } = useForm<ShareEditProps>(
+        // Removed initial values from here, will be handled by useEffect + reset
+    );
+
+    useEffect(() => {
+        if (props.open) {
+            if (props.objectToEdit) { // Covers editing existing share OR new share with prefill
+                reset({
+                    org_name: props.objectToEdit.org_name ?? "", // Key to determine if new/edit
+                    name: props.objectToEdit.name || "",
+                    mount_point_data: props.objectToEdit.mount_point_data, // This is the preselection
+                    users: props.objectToEdit.users || [],
+                    ro_users: props.objectToEdit.ro_users || [],
+                    timemachine: props.objectToEdit.timemachine || false,
+                    usage: props.objectToEdit.usage || Usage.None,
+                    // any other fields from ShareEditProps that might be in objectToEdit
+                });
+                setEditName(props.objectToEdit.org_name === ""); // Enable name edit for new shares
+            } else { // Completely new share, no prefill (e.g., user clicked "+" button directly)
+                reset({
+                    org_name: "",
+                    name: "",
+                    users: [],
+                    ro_users: [],
+                    timemachine: false,
+                    usage: Usage.None,
+                    // mount_point_data will be undefined, user must select
+                });
+                setEditName(true);
+            }
+        } else {
+            reset({ // Reset to a clean state when dialog is not open
                 org_name: "",
                 name: "",
                 users: [],
                 ro_users: [],
                 timemachine: false,
                 usage: Usage.None,
-            } : {
-                ...props.objectToEdit,
-            }
-        },
-    );
-
+            }); // Reset to default values when closing or not open
+        }
+    }, [props.open, props.objectToEdit, reset]);
 
     function handleCloseSubmit(data?: ShareEditProps) {
         setEditName(false)
