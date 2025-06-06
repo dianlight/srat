@@ -41,6 +41,9 @@ import { useAppSelector } from "../store/store";
 import { useReadOnly } from "../hooks/readonlyHook";
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import LockIcon from '@mui/icons-material/Lock';
+import { useLocation, useNavigate } from 'react-router';
+import { TabIDs, type LocationState } from "../store/locationState"
+
 
 function a11yProps(index: number) {
     return {
@@ -106,9 +109,8 @@ function TabPanel(props: TabPanelProps) {
 export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivElement | null> }) {
     const read_only = useReadOnly();
     const health = useHealth();
-    //  const [sse, sseStatus] = useContext(SSEContext);
-
-    //  const [updateAssetStatus, setUpdateAssetStatus] = useState<DtoReleaseAsset>({});
+    const location = useLocation();
+    const navigate = useNavigate();
 
     const updateAssetStatus = useSSE(Supported_events.Update, {} as UpdateProgress, {
         parser(input: any): ReleaseAsset {
@@ -127,7 +129,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         return Number.parseInt(localStorage.getItem("srat_tab") || "0");
     });
     const confirm = useConfirm();
-    const [tabId, setTabId] = useState<string>(() => uuidv4())
+    //const [tabId, setTabId] = useState<string>(() => uuidv4())
     const theme = useTheme();
     const [isLogoHovered, setIsLogoHovered] = useState(false);
     const matches = useMediaQuery(theme.breakpoints.up('sm'));
@@ -168,6 +170,18 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     }
 
     useEffect(() => {
+        console.log("Navbar Respont to Navigate!", location.state)
+        const state = location.state as LocationState | undefined;
+
+        // Check if we have a share name from state and shares data is loaded
+        if (state?.tabId !== undefined) {
+            setValue(state.tabId);
+        }
+        // Dependencies: shares data and location.state (specifically shareName)
+    }, [location.state, navigate]);
+
+
+    useEffect(() => {
         const current = pkg.version;
 
         // Normalize Version Strings
@@ -206,6 +220,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                             onMouseEnter={() => setIsLogoHovered(true)}
                             onMouseLeave={() => setIsLogoHovered(false)} />
                     }
+                    <p>{value}</p>
                     <Tabs
                         sx={{ flexGrow: 1, display: { xs: 'flex', md: 'flex' } }}
                         value={value}
@@ -217,12 +232,12 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                         allowScrollButtonsMobile
                         scrollButtons
                     >
-                        <Tab label="Shares" {...a11yProps(0)} icon={health.health?.dirty_tracking?.shares ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab label="Volumes" {...a11yProps(1)} icon={health.health?.dirty_tracking?.volumes ? <Tooltip title="Changes not yet applied"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab label="Users" {...a11yProps(2)} icon={health.health?.dirty_tracking?.users ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab label="Settings" {...a11yProps(3)} icon={health.health?.dirty_tracking?.settings ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab label="smb.conf" {...a11yProps(4)} />
-                        <Tab label="API Docs" {...a11yProps(4)} />
+                        <Tab label="Shares" {...a11yProps(TabIDs.SHARES)} icon={health.health?.dirty_tracking?.shares ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab label="Volumes" {...a11yProps(TabIDs.VOLUMES)} icon={health.health?.dirty_tracking?.volumes ? <Tooltip title="Changes not yet applied"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab label="Users" {...a11yProps(TabIDs.USERS)} icon={health.health?.dirty_tracking?.users ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab label="Settings" {...a11yProps(TabIDs.SETTINGS)} icon={health.health?.dirty_tracking?.settings ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
+                        <Tab label="smb.conf" {...a11yProps(TabIDs.SMB_FILE_CONFIG)} />
+                        <Tab label="API Docs" {...a11yProps(TabIDs.API_OPENDOC)} />
                     </Tabs>
                     <Box sx={{ flexGrow: 0 }}>
 
@@ -284,22 +299,22 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         </AppBar>
         {props.bodyRef.current && createPortal(
             <>
-                <TabPanel key={tabId + "0"} value={value} index={0}>
+                <TabPanel key={"0"} value={value} index={0}>
                     <Shares />
                 </TabPanel>
-                <TabPanel key={tabId + "1"} value={value} index={1}>
+                <TabPanel key={"1"} value={value} index={1}>
                     <Volumes />
                 </TabPanel>
-                <TabPanel key={tabId + "2"} value={value} index={2}>
+                <TabPanel key={"2"} value={value} index={2}>
                     <Users />
                 </TabPanel>
-                <TabPanel key={tabId + "3"} value={value} index={3}>
+                <TabPanel key={"3"} value={value} index={3}>
                     <Settings />
                 </TabPanel>
-                <TabPanel key={tabId + "4"} value={value} index={4}>
+                <TabPanel key={"4"} value={value} index={4}>
                     <SmbConf />
                 </TabPanel>
-                <TabPanel key={tabId + "5"} value={value} index={5}>
+                <TabPanel key={"5"} value={value} index={5}>
                     <Swagger />
                 </TabPanel>
             </>,

@@ -19,6 +19,7 @@ import { store } from './store/store.ts'
 import { Provider } from 'react-redux'
 import { Supported_events } from './store/sratApi.ts';
 import { apiUrl } from './store/emptyApi.ts';
+import { BrowserRouter } from 'react-router';
 
 const theme = createTheme({
     cssVariables: {
@@ -93,7 +94,9 @@ root.render(
                 <ConfirmProvider>
                     <StrictMode>
                         <SSEProvider source={() => new SSESource(apiUrl + "sse")}>
-                            <App />
+                            <BrowserRouter>
+                                <App />
+                            </BrowserRouter>
                         </SSEProvider>
                     </StrictMode>
                 </ConfirmProvider>

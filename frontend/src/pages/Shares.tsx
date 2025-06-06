@@ -1,5 +1,5 @@
-import { Fragment, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { useForm, useFormState } from "react-hook-form";
 import { InView } from "react-intersection-observer";
 import Grid from "@mui/material/Grid";
 import List from "@mui/material/List";
@@ -33,13 +33,15 @@ import BlockIcon from '@mui/icons-material/Block';
 import BackupIcon from '@mui/icons-material/Backup';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { useAppDispatch, useAppSelector } from "../store/store";
+import { useAppDispatch } from "../store/store";
 import { Usage, useDeleteShareByShareNameMutation, useGetUsersQuery, usePostShareMutation, usePutShareByShareNameMutation, type MountPointData, type SharedResource, type User } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
+import { useLocation, useNavigate } from 'react-router';
 import { addMessage } from "../store/errorSlice";
 import { useVolume } from "../hooks/volumeHook";
 import { toast } from "react-toastify";
+import type { LocationState } from "../store/locationState";
 
 interface ShareEditProps extends SharedResource {
     org_name: string,
@@ -50,7 +52,8 @@ interface ShareEditProps extends SharedResource {
 export function Shares() {
     const read_only = useReadOnly();
     const dispatch = useAppDispatch();
-    const errors = useAppSelector((state) => state.errors.messages);
+    const location = useLocation();
+    const navigate = useNavigate();
     const { shares, isLoading, error } = useShare();
     const [selected, setSelected] = useState<[string, SharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
@@ -61,6 +64,28 @@ export function Shares() {
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
     const [deleteShare, updateDeleteShareResult] = useDeleteShareByShareNameMutation();
     const [createShare, createShareResult] = usePostShareMutation();
+
+    // Effect to handle navigation state for opening a specific share dialog
+    useEffect(() => {
+        console.log("Share Respont to Navigate!")
+        const state = location.state as LocationState | undefined;
+        const shareNameFromState = state?.shareName;
+
+        // Check if we have a share name from state and shares data is loaded
+        if (shareNameFromState && shares) {
+            const shareEntry = Object.entries(shares).find(([key, value]) => value.name === shareNameFromState);
+
+            if (shareEntry) {
+                // Found the share, set selected and show edit dialog
+                setSelected(shareEntry);
+                setShowEdit(true);
+
+                // Clear the state from history to prevent reopening on refresh/re-render
+                navigate(location.pathname, { replace: true });
+            }
+        }
+        // Dependencies: shares data and location.state (specifically shareName)
+    }, [shares, location.state, navigate]);
 
     function onSubmitDisableShare(cdata?: string, props?: SharedResource) {
         console.log("Disable", cdata, props);

@@ -1,5 +1,6 @@
 import { Fragment, useState, useEffect, useRef } from "react";
 import { InView } from "react-intersection-observer";
+import { useNavigate } from 'react-router';
 import { PreviewDialog } from "../components/PreviewDialog";
 import List from "@mui/material/List"; // Import Collapse and Chip
 import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Collapse, Chip, Switch, FormControlLabel, Autocomplete, TextField } from "@mui/material"; // Import Collapse and Chip, Switch, FormControlLabel
@@ -30,6 +31,7 @@ import UpdateIcon from '@mui/icons-material/Update';
 import UpdateDisabledIcon from '@mui/icons-material/UpdateDisabled';
 import MD5 from "crypto-js/md5";
 import { useFormState } from "react-dom";
+import { TabIDs, type LocationState } from "../store/locationState";
 
 // --- Helper functions (decodeEscapeSequence, onSubmitMountVolume, etc.) remain the same ---
 function decodeEscapeSequence(source: string) {
@@ -49,6 +51,7 @@ export function Volumes() {
     const [showMount, setShowMount] = useState<boolean>(false);
     const [showMountSettings, setShowMountSettings] = useState<boolean>(false); // For viewing mount settings
 
+    const navigate = useNavigate();
     const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(true); // Default to hide system partitions
     // Assuming useVolume returns an array of disk objects, where each disk has a 'partitions' array
     // If the structure is different (e.g., a flat list of partitions with parent info), the grouping logic needs adjustment
@@ -147,11 +150,14 @@ export function Volumes() {
     }
 
     function handleGoToShare(partition: Partition) {
-        // TODO: Implement navigation or action to go to an existing share
-        // const mountPath = partition.mount_point_data?.[0]?.path;
-        // if (mountPath) navigate(`/shares?path=${mountPath}`); // Example navigation
         console.log("Go to share for:", partition);
-        toast.info("Go to share functionality not yet implemented.");
+        const mountData = partition.mount_point_data?.[0];
+        const share = mountData?.shares?.[0]; // Get the first share associated with this mount point
+
+        if (share && share.name) {
+            // Navigate to the shares page and pass the share name as state
+            navigate('/', { state: { tabId: TabIDs.SHARES, shareName: share.name } as LocationState });
+        }
     }
 
     function onSubmitUmountVolume(partition: Partition, force = false) {
