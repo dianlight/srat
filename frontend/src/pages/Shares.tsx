@@ -503,7 +503,6 @@ interface ShareEditDialogProps {
 function ShareEditDialog(props: ShareEditDialogProps) {
     const { data: users, isLoading: usLoading, error: usError } = useGetUsersQuery()
     const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume()
-    const shares = useShare()
     const [editName, setEditName] = useState(false);
     const [activeCasingIndex, setActiveCasingIndex] = useState(0);
     const { control, handleSubmit, watch, formState: { errors }, reset, setValue } = useForm<ShareEditProps>(
@@ -512,6 +511,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 
     useEffect(() => {
         if (props.open) {
+            //console.log("Opening share edit dialog")
             // Find admin user from the fetched users list
             const adminUser = Array.isArray(users) ? users.find(u => u.is_admin) : undefined;
 
@@ -556,7 +556,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
                 usage: Usage.None,
             }); // Reset to default values when closing or not open
         }
-    }, [props.open, props.objectToEdit, reset, users]);
+    }, [props.open, reset, users]);
 
     function handleCloseSubmit(data?: ShareEditProps) {
         setEditName(false)
@@ -602,7 +602,12 @@ function ShareEditDialog(props: ShareEditDialogProps) {
         <Fragment>
             <Dialog
                 open={props.open}
-                onClose={() => handleCloseSubmit()}
+                onClose={(event, reason) => {
+                    if (reason && reason === 'backdropClick') {
+                        return; // Prevent dialog from closing on backdrop click
+                    }
+                    handleCloseSubmit(); // Proceed with closing for other reasons (e.g., explicit button calls)
+                }}
             >
                 <DialogTitle>
                     {!(editName || props.objectToEdit?.org_name === "") && <>
