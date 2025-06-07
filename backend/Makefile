@@ -11,7 +11,7 @@ ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go)
 TEST_SRCS := $(filter %_test.go, $(ALL_SRCS))
 SRCS := $(filter-out %_test.go, $(ALL_SRCS))
 
-VERSION?="$(shell git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2> /dev/null | sed 's/^.//')"
+VERSION?="$(shell git describe --tags --always --abbrev=0 --match='[0-9]*.[0-9]*.[0-9]*' 2> /dev/null)"
 COMMIT_HASH="$(shell git rev-parse --short HEAD)"
 BUILD_TIMESTAMP="$(shell date '+%Y-%m-%dT%H:%M:%S')"
 ARCH ?= $(shell arch)
