@@ -56,29 +56,6 @@ func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*s
 	if err != nil {
 		return nil, err
 	}
-	// Integrate Disk with share status
-	for i, disk := range *volumes {
-		for j, volume := range *disk.Partitions {
-			if volume.MountPointData == nil {
-				continue
-			}
-			for k, mountPoint := range *volume.MountPointData {
-				// Get Shares
-				shared, err := self.shareService.GetShareFromPath(mountPoint.Path)
-				if err != nil {
-					if errors.Is(err, dto.ErrorShareNotFound) {
-						continue
-					} else {
-						// Some other error occurred, return it
-						return nil, err
-					}
-				}
-				shares := (*(*(*volumes)[i].Partitions)[j].MountPointData)[k].Shares
-				shares = append(shares, *shared)
-				(*(*(*volumes)[i].Partitions)[j].MountPointData)[k].Shares = shares
-			}
-		}
-	}
 	return &struct{ Body *[]dto.Disk }{Body: volumes}, nil
 }
 
@@ -86,6 +63,9 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 	MountPathHash string             `path:"mount_path_hash"`
 	Body          dto.MountPointData `required:"true"`
 }) (*struct{ Body dto.MountPointData }, error) {
+	defer func() {
+		go self.vservice.NotifyClient()
+	}()
 
 	mount_data := input.Body
 

@@ -190,7 +190,7 @@ export function Volumes() {
     }
 
     function handleGoToShare(partition: Partition) {
-        console.log("Go to share for:", partition);
+        //console.log("Go to share for:", partition);
         const mountData = partition.mount_point_data?.[0];
         const share = mountData?.shares?.[0]; // Get the first share associated with this mount point
 
@@ -516,7 +516,7 @@ export function Volumes() {
                                                             secondaryAction={!read_only && !partition.system && ( // Only show actions if not read-only and not system partition
                                                                 (<Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}> {/* Reduced spacing */}
                                                                     {/* Automount Toggle Button */}
-                                                                    {!hasShares && (partition.mount_point_data?.[0]?.is_to_mount_at_startup ? (
+                                                                    {!hasShares && partition.mount_point_data?.[0] && (partition.mount_point_data?.[0]?.is_to_mount_at_startup ? (
                                                                         <Tooltip title="Disable mount at startup">
                                                                             <IconButton onClick={(e) => { e.stopPropagation(); handleToggleAutomount(partition); }} edge="end" aria-label="disable automount" size="small">
                                                                                 <UpdateDisabledIcon />

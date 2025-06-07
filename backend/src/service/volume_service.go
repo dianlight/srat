@@ -27,6 +27,7 @@ import (
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
 
@@ -38,6 +39,7 @@ type VolumeServiceInterface interface {
 	EjectDisk(diskID string) error
 	UpdateMountPointSettings(path string, settingsUpdate dto.MountPointData) (*dto.MountPointData, errors.E)
 	PatchMountPointSettings(path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
+	NotifyClient()
 }
 
 type VolumeService struct {
@@ -50,6 +52,7 @@ type VolumeService struct {
 	fs_service        FilesystemServiceInterface
 	shareService      ShareServiceInterface // Added for disabling shares
 	staticConfig      *dto.ContextState
+	sfGroup           singleflight.Group
 }
 
 type VolumeServiceProps struct {
@@ -322,7 +325,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			return errors.WithDetails(dto.ErrorDatabaseError, "Detail", "Failed to save mount state after successful mount. Volume has been unmounted.",
 				"Device", real_device, "Path", dbom_mount_data.Path, "Error", err)
 		}
-		go ms.notifyClient()
+		go ms.NotifyClient()
 		conv.MountPointPathToMountPointData(*dbom_mount_data, md)
 	}
 	return nil
@@ -399,7 +402,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 			// However, the DB is now potentially out of sync.
 		}
 	}
-	go ms.notifyClient()
+	go ms.NotifyClient()
 	return nil
 
 }
@@ -438,7 +441,7 @@ func (self *VolumeService) udevEventHandler() {
 				// Trigger notification on add/remove/change events for block devices
 				if action == "add" || action == "remove" || action == "change" {
 					slog.Info("Relevant Udev event detected, triggering client notification.", "action", action, "devname", devName)
-					go self.notifyClient()
+					go self.NotifyClient()
 				}
 			}
 			// Optional: Log other events at debug level if needed
@@ -455,181 +458,195 @@ func (self *VolumeService) udevEventHandler() {
 }
 
 func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
-	slog.Debug("Getting volumes data...") // Added log
-	self.volumesQueueMutex.Lock()
-	defer self.volumesQueueMutex.Unlock()
+	slog.Debug("Requesting GetVolumesData via singleflight...")
 
-	ret := []dto.Disk{}
-	conv := converter.HaHardwareToDtoImpl{}
-	dbconv := converter.DtoToDbomConverterImpl{}
-	lsblkconv := converter.LsblkToDtoConverterImpl{}
+	const sfKey = "GetVolumesData"
 
-	if self.staticConfig.SupervisorURL == "demo" {
-		ret = append(ret, dto.Disk{
-			Id: pointer.String("DemoDisk"),
-			Partitions: &[]dto.Partition{
-				{
-					Id:     pointer.String("DemoPartition"),
-					Device: pointer.String("/dev/bogus"),
-					System: pointer.Bool(false),
-					MountPointData: &[]dto.MountPointData{
-						{
-							Path:      "/mnt/bogus",
-							FSType:    pointer.String("ext4"),
-							IsMounted: false,
+	v, err, shared := self.sfGroup.Do(sfKey, func() (interface{}, error) {
+		self.volumesQueueMutex.Lock()
+		defer self.volumesQueueMutex.Unlock()
+
+		slog.Debug("Executing GetVolumesData core logic (singleflight)...")
+
+		ret := []dto.Disk{}
+		conv := converter.HaHardwareToDtoImpl{}
+		dbconv := converter.DtoToDbomConverterImpl{}
+		lsblkconv := converter.LsblkToDtoConverterImpl{}
+
+		if self.staticConfig.SupervisorURL == "demo" {
+			ret = append(ret, dto.Disk{
+				Id: pointer.String("DemoDisk"),
+				Partitions: &[]dto.Partition{
+					{
+						Id:     pointer.String("DemoPartition"),
+						Device: pointer.String("/dev/bogus"),
+						System: pointer.Bool(false),
+						MountPointData: &[]dto.MountPointData{
+							{
+								Path:      "/mnt/bogus",
+								FSType:    pointer.String("ext4"),
+								IsMounted: false,
+							},
 						},
 					},
 				},
-			},
-		})
-		return &ret, nil
-	}
-
-	hwser, err := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx)
-	if err != nil {
-		// Log clearly that we are falling back or failing
-		slog.Error("Failed to get hardware info from Home Assistant Supervisor", "err", err)
-		// Decide on fallback: return error, return empty, or try alternative method?
-		// For now, return the error as the primary source failed.
-		return nil, errors.Wrap(err, "failed to get hardware info from HA Supervisor")
-		// --- Fallback logic removed as per original code structure ---
-	}
-
-	// Check response status and result field
-	if hwser.StatusCode() != 200 || hwser.JSON200 == nil || hwser.JSON200.Data == nil || hwser.JSON200.Data.Drives == nil {
-		errMsg := "Received invalid hardware info response from HA Supervisor"
-		slog.Error(errMsg, "status_code", hwser.StatusCode(), "response_body", string(hwser.Body))
-		// Attempt to parse potential error message if available (e.g., JSON400, JSON500)
-		// For now, return a generic error
-		return nil, errors.New(errMsg)
-	}
-
-	slog.Debug("Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
-	for i, drive := range *hwser.JSON200.Data.Drives {
-		if drive.Filesystems == nil || len(*drive.Filesystems) == 0 {
-			slog.Debug("Skipping drive with no filesystems", "drive_index", i, "drive_id", drive.Id)
-			continue
-		}
-		var diskDto dto.Disk
-		err = conv.DriveToDisk(drive, &diskDto)
-		if err != nil {
-			slog.Warn("Error converting drive to disk DTO", "drive_index", i, "drive_id", drive.Id, "err", err)
-			continue // Skip this drive
-		}
-		if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 {
-			slog.Debug("Skipping drive DTO with no partitions after conversion", "drive_index", i, "drive_id", drive.Id)
-			continue // Skip if conversion resulted in no partitions
+			})
+			return &ret, nil
 		}
 
-		ret = append(ret, diskDto)
-	}
-
-	slog.Debug("Syncing mount point data with database", "disk_count", len(ret))
-	// Iterate through the DTOs and sync with DB
-	for diskIdx := range ret { // Use index to modify slice elements
-		disk := &ret[diskIdx] // Get pointer to modify
-		if disk.Partitions == nil {
-			continue
+		hwser, errHw := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx)
+		if errHw != nil {
+			slog.Error("Failed to get hardware info from Home Assistant Supervisor", "err", errHw)
+			return nil, errors.Wrap(errHw, "failed to get hardware info from HA Supervisor")
 		}
-		for partIdx := range *disk.Partitions {
-			partition := &(*disk.Partitions)[partIdx] // Get pointer
-			if partition.MountPointData == nil || len(*partition.MountPointData) == 0 {
-				info, err := self.lsblk.GetInfoFromDevice(*partition.Device)
-				if err != nil {
-					slog.Warn("Error getting info from device", "device", *partition.Device, "err", err)
-					continue
-				}
-				mountPointDto := &dto.MountPointData{}
-				err = lsblkconv.LsblkInfoToMountPointData(info, mountPointDto)
-				if err != nil {
-					slog.Warn("Error converting Lsblk info to MountPointData", "device", *partition.Device, "err", err)
-					continue
-				}
-				partition.MountPointData = &[]dto.MountPointData{*mountPointDto} // Wrap in slice
+
+		if hwser.StatusCode() != 200 || hwser.JSON200 == nil || hwser.JSON200.Data == nil || hwser.JSON200.Data.Drives == nil {
+			errMsg := "Received invalid hardware info response from HA Supervisor"
+			slog.Error(errMsg, "status_code", hwser.StatusCode(), "response_body", string(hwser.Body))
+			return nil, errors.New(errMsg)
+		}
+
+		slog.Debug("Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
+		for i, drive := range *hwser.JSON200.Data.Drives {
+			if drive.Filesystems == nil || len(*drive.Filesystems) == 0 {
+				slog.Debug("Skipping drive with no filesystems", "drive_index", i, "drive_id", drive.Id)
+				continue
+			}
+			var diskDto dto.Disk
+			errConvDrive := conv.DriveToDisk(drive, &diskDto)
+			if errConvDrive != nil {
+				slog.Warn("Error converting drive to disk DTO", "drive_index", i, "drive_id", drive.Id, "err", errConvDrive)
+				continue
+			}
+			if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 {
+				slog.Debug("Skipping drive DTO with no partitions after conversion", "drive_index", i, "drive_id", drive.Id)
+				continue
 			}
 
-			for mpIdx := range *partition.MountPointData {
-				mountPointDto := &(*partition.MountPointData)[mpIdx] // Get pointer
+			ret = append(ret, diskDto)
+		}
 
-				// Find existing DB record by path
-				mountPointPathDB, err := self.mount_repo.FindByPath(mountPointDto.Path)
-				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-					slog.Warn("Error searching for mount point in DB", "path", mountPointDto.Path, "err", err)
-					mountPointDto.IsInvalid = true // Mark DTO as invalid due to DB error
-					invalidError := errors.Wrap(err, "DB find error").Error()
-					mountPointDto.InvalidError = &invalidError
-					continue // Skip this mount point
-				}
-
-				isNewRecord := errors.Is(err, gorm.ErrRecordNotFound)
-				if isNewRecord {
-					mountPointPathDB = &dbom.MountPointPath{} // Create new DB object
-					slog.Debug("Mount point not found in DB, will create new record", "path", mountPointDto.Path)
-				} else {
-					slog.Debug("Found existing mount point in DB", "path", mountPointDto.Path)
-				}
-
-				// Convert DTO data (from HA Supervisor) to DB object
-				// This updates mountPointPathDB with latest info from DTO
-				err = dbconv.MountPointDataToMountPointPath(*mountPointDto, mountPointPathDB)
-				if err != nil {
-					slog.Warn("Error converting DTO mount point data to DBOM", "path", mountPointDto.Path, "err", err)
-					mountPointDto.IsInvalid = true                                           // Mark DTO as invalid due to conversion error
-					invalidError := errors.Wrap(err, "DTO to DBOM conversion error").Error() // Updated to use Error() method
-					mountPointDto.InvalidError = &invalidError
-					continue // Skip this mount point
-				}
-
-				if mountPointPathDB.Type == "ADDON" {
-					// Check OS mount status *before* saving, update IsMounted in DB object
-					/*
-						isMountedOS, osCheckErr := osutil.IsMounted(mountPointPathDB.Path)
-						if osCheckErr != nil {
-							// Log error but proceed, maybe path doesn't exist yet for new mounts
-							slog.Warn("Error checking OS mount status", "path", mountPointPathDB.Path, "err", osCheckErr)
-							// Keep IsMounted as potentially set by DTO conversion unless OS definitively says not mounted
-						} else {
-							// Trust the OS check
-							slog.Debug("OS mount status check", "path", mountPointPathDB.Path, "is_mounted", isMountedOS)
-						}
-					*/
-
-					// Save the updated DB object (Create or Update)
-					err = self.mount_repo.Save(mountPointPathDB)
-					if err != nil {
-						slog.Warn("Error saving mount point data to DB", "path", mountPointPathDB.Path, "data", mountPointPathDB, "err", err)
-						mountPointDto.IsInvalid = true                            // Mark DTO as invalid due to DB save error
-						invalidError := errors.Wrap(err, "DB save error").Error() // Updated to use Error() method
-						mountPointDto.InvalidError = &invalidError
-						continue // Skip this mount point
+		slog.Debug("Syncing mount point data with database", "disk_count", len(ret))
+		for diskIdx := range ret {
+			disk := &ret[diskIdx]
+			if disk.Partitions == nil {
+				continue
+			}
+			for partIdx := range *disk.Partitions {
+				partition := &(*disk.Partitions)[partIdx]
+				if partition.MountPointData == nil || len(*partition.MountPointData) == 0 {
+					info, errLsblk := self.lsblk.GetInfoFromDevice(*partition.Device)
+					if errLsblk != nil {
+						slog.Warn("Error getting info from device", "device", *partition.Device, "err", errLsblk)
+						continue
 					}
+					mountPointDto := &dto.MountPointData{}
+					errConvLsblk := lsblkconv.LsblkInfoToMountPointData(info, mountPointDto)
+					if errConvLsblk != nil {
+						slog.Warn("Error converting Lsblk info to MountPointData", "device", *partition.Device, "err", errConvLsblk)
+						continue
+					}
+					partition.MountPointData = &[]dto.MountPointData{*mountPointDto}
 				}
 
-				// Convert the final DB state (after save and OS check) back to the DTO
-				// This ensures the DTO reflects the actual saved state including IsMounted
-				err = dbconv.MountPointPathToMountPointData(*mountPointPathDB, mountPointDto)
-				if err != nil {
-					// This conversion should ideally not fail if the reverse worked
-					slog.Error("Error converting DBOM mount point data back to DTO", "path", mountPointPathDB.Path, "err", err)
-					mountPointDto.IsInvalid = true                                           // Mark DTO as invalid
-					invalidError := errors.Wrap(err, "DBOM to DTO conversion error").Error() // Updated to use Error() method
-					mountPointDto.InvalidError = &invalidError                               // Set the invalid error
-					// Continue, but DTO might be slightly inconsistent
+				for mpIdx := range *partition.MountPointData {
+					mountPointDto := &(*partition.MountPointData)[mpIdx]
+
+					mountPointPathDB, errRepoFind := self.mount_repo.FindByPath(mountPointDto.Path)
+					if errRepoFind != nil && !errors.Is(errRepoFind, gorm.ErrRecordNotFound) {
+						slog.Warn("Error searching for mount point in DB", "path", mountPointDto.Path, "err", errRepoFind)
+						mountPointDto.IsInvalid = true
+						invalidError := errors.Wrap(errRepoFind, "DB find error").Error()
+						mountPointDto.InvalidError = &invalidError
+						continue
+					}
+
+					isNewRecord := errors.Is(errRepoFind, gorm.ErrRecordNotFound)
+					if isNewRecord {
+						mountPointPathDB = &dbom.MountPointPath{}
+						slog.Debug("Mount point not found in DB, will create new record", "path", mountPointDto.Path)
+					} else {
+						slog.Debug("Found existing mount point in DB", "path", mountPointDto.Path)
+					}
+
+					errConvDtoToDbom := dbconv.MountPointDataToMountPointPath(*mountPointDto, mountPointPathDB)
+					if errConvDtoToDbom != nil {
+						slog.Warn("Error converting DTO mount point data to DBOM", "path", mountPointDto.Path, "err", errConvDtoToDbom)
+						mountPointDto.IsInvalid = true
+						invalidError := errors.Wrap(errConvDtoToDbom, "DTO to DBOM conversion error").Error()
+						mountPointDto.InvalidError = &invalidError
+						continue
+					}
+
+					if mountPointPathDB.Type == "ADDON" {
+						errRepoSave := self.mount_repo.Save(mountPointPathDB)
+						if errRepoSave != nil {
+							slog.Warn("Error saving mount point data to DB", "path", mountPointPathDB.Path, "data", mountPointPathDB, "err", errRepoSave)
+							mountPointDto.IsInvalid = true
+							invalidError := errors.Wrap(errRepoSave, "DB save error").Error()
+							mountPointDto.InvalidError = &invalidError
+							continue
+						}
+					}
+
+					errConvDbomToDto := dbconv.MountPointPathToMountPointData(*mountPointPathDB, mountPointDto)
+					if errConvDbomToDto != nil {
+						slog.Error("Error converting DBOM mount point data back to DTO", "path", mountPointPathDB.Path, "err", errConvDbomToDto)
+						mountPointDto.IsInvalid = true
+						invalidError := errors.Wrap(errConvDbomToDto, "DBOM to DTO conversion error").Error()
+						mountPointDto.InvalidError = &invalidError
+						continue
+					}
+					slog.Debug("Successfully synced mount point with DB", "path", mountPointDto.Path, "is_mounted", mountPointDto.IsMounted)
+
+					(*partition.MountPointData)[mpIdx] = *mountPointDto
+				}
+
+			}
+		}
+
+		for i, disk := range ret {
+			for j, volume := range *disk.Partitions {
+				if volume.MountPointData == nil {
 					continue
 				}
-				slog.Debug("Successfully synced mount point with DB", "path", mountPointDto.Path, "is_mounted", mountPointDto.IsMounted)
-
-				(*partition.MountPointData)[mpIdx] = *mountPointDto // Update the DTO in place
+				for k, mountPoint := range *volume.MountPointData {
+					sharedData, errShare := self.shareService.GetShareFromPath(mountPoint.Path)
+					if errShare != nil {
+						if errors.Is(errShare, dto.ErrorShareNotFound) {
+							continue
+						} else {
+							return nil, errShare
+						}
+					}
+					shares := (*(*(ret)[i].Partitions)[j].MountPointData)[k].Shares
+					shares = append(shares, *sharedData)
+					(*(*(ret)[i].Partitions)[j].MountPointData)[k].Shares = shares
+				}
 			}
-
 		}
+
+		slog.Debug("Finished getting and syncing volumes data (core logic).")
+		return &ret, nil
+	})
+
+	if err != nil {
+		slog.Error("Singleflight execution of GetVolumesData failed", "err", err, "shared", shared)
+		return nil, err
 	}
 
-	slog.Debug("Finished getting and syncing volumes data.")
-	return &ret, nil // Return nil error on success
+	slog.Debug("Singleflight execution of GetVolumesData successful", "shared", shared)
+
+	result, ok := v.(*[]dto.Disk)
+	if !ok {
+		slog.Error("Singleflight returned unexpected type for GetVolumesData", "type", fmt.Sprintf("%T", v))
+		return nil, errors.New("internal error: singleflight returned unexpected type")
+	}
+
+	return result, nil
 }
 
-func (self *VolumeService) notifyClient() {
+func (self *VolumeService) NotifyClient() {
 	slog.Debug("Notifying client about volume changes...")
 
 	var data, err = self.GetVolumesData()
@@ -747,7 +764,7 @@ func (self *VolumeService) EjectDisk(diskID string) error {
 	}
 
 	slog.Info("Disk ejected successfully", "disk_id", diskID, "device_path", devicePath)
-	go self.notifyClient() // Notify clients of the change
+	go self.NotifyClient() // Notify clients of the change
 	return nil
 }
 
@@ -842,7 +859,7 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 			return nil, errors.WithStack(err)
 		}
 	}
-	go ms.notifyClient() // Consider if settings changes should trigger a volume data broadcast
+	go ms.NotifyClient() // Consider if settings changes should trigger a volume data broadcast
 
 	currentDto := dto.MountPointData{}
 	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &currentDto); convErr != nil {

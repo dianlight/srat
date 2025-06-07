@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -64,5 +65,6 @@ func (self *BrokerHandler) RegisterSse(api huma.API) {
 		dto.EventTypes.EVENTSHARE.Name:     []dto.SharedResource{},
 	}, func(ctx context.Context, input *struct{}, send sse.Sender) {
 		self.broadcaster.ProcessHttpChannel(send)
+		slog.Debug("SSE Channel closed")
 	})
 }

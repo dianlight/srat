@@ -15,9 +15,6 @@ import (
 )
 
 type UserHandler struct {
-	//ctx               context.Context
-	//broascasting      service.BroadcasterServiceInterface
-	//volumesQueueMutex sync.RWMutex
 	apiContext   *dto.ContextState
 	dirtyservice service.DirtyDataServiceInterface
 	user_repo    repository.SambaUserRepositoryInterface

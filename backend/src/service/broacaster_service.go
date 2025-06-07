@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"log/slog"
+	"strings"
+
+	"github.com/dianlight/srat/dto"
 
 	"github.com/danielgtaylor/huma/v2/sse"
 )
@@ -36,9 +39,11 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) (any, error) {
 	select {
 	case broker.notifier <- msg:
 		broker.SentCounter++
-		//slog.Debug("Queued Message", "msg", msg)
+		if _, ok := msg.(dto.HealthPing); !ok {
+			slog.Debug("Queued Message", "msg", msg)
+		}
 	default:
-		//slog.Debug("Dropped Message", "msg", msg)
+		slog.Debug("Dropped Message", "msg", msg)
 		broker.DropCounter++
 	}
 	return msg, nil
@@ -51,7 +56,13 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 			slog.Info("Run process closed", "err", broker.ctx.Err())
 			return
 		case event := <-broker.notifier:
-			send.Data(event)
+			err := send.Data(event)
+			if err != nil {
+				if !strings.Contains(err.Error(), "write: broken pipe") {
+					slog.Warn("Error sending event to client", "event", event, "err", err)
+				}
+				return
+			}
 		}
 	}
 }
