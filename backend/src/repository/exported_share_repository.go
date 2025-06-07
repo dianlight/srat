@@ -118,6 +118,20 @@ func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) error {
 				slog.Debug("Explicitly set DeletedAt to NULL for existing share", "name", share.Name)
 			}
 
+			if share.RoUsers == nil || len(share.RoUsers) == 0 {
+				err := tx.Model(&share).Association("RoUsers").Clear()
+				if err != nil {
+					slog.Error("Failed to clear RoUsers association", "share_name", share.Name, "error", err)
+				}
+			}
+
+			if share.Users == nil || len(share.Users) == 0 {
+				err := tx.Model(&share).Association("Users").Clear()
+				if err != nil {
+					slog.Error("Failed to clear Users association", "share_name", share.Name, "error", err)
+				}
+			}
+
 			// The BeforeSave hook will see the record exists and skip its specific creation logic.
 			// Note: tx.Updates(share_struct) only updates non-zero fields by default.
 			updateErr := tx. /*Debug().*/ /*.Session(&gorm.Session{FullSaveAssociations: true})*/ Updates(share).Error
