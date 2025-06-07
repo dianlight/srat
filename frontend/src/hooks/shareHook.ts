@@ -1,29 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Supported_events, useGetSharesQuery, type SharedResource } from "../store/sratApi";
 import { useSSE } from "react-hooks-sse";
+import { useAppDispatch, useAppSelector } from "../store/store";
+import { setShares } from "../store/sseSlice";
+
+let shareHook_lastReadTimestamp = 0;
 
 export function useShare() {
+    const dispatch = useAppDispatch();
+    const shares = useAppSelector((state) => state.sse.shares);
 
-    const [shares, setShares] = useState<SharedResource[]>([]);
-    const { data, error, isLoading } = useGetSharesQuery();
+    const { data, error, isLoading, fulfilledTimeStamp } = useGetSharesQuery();
 
-    const statusSSE = useSSE(Supported_events.Share, {} as SharedResource, {
-        parser(input: any): SharedResource {
+    // statusSSE variable is not directly used, but useSSE hook initializes the SSE connection
+    // and its parser handles data dispatching.
+    useSSE(Supported_events.Share, [] as SharedResource[], {
+        parser(input: any): SharedResource[] {
             const c = JSON.parse(input);
-            console.log("Got shares", c)
-            setShares(c)
+            // Assuming 'c' is SharedResource[] as per API spec for 'share' event
+            console.log("Got shares from SSE", c);
+            dispatch(setShares(c as SharedResource[]));
+            shareHook_lastReadTimestamp = Date.now();
             return c;
         },
     });
 
     useEffect(() => {
-        if (data) {
-            setShares(data as SharedResource[]);
+        if (data && fulfilledTimeStamp && shareHook_lastReadTimestamp < fulfilledTimeStamp) {
+            console.log("Update Shares from REST service", data, fulfilledTimeStamp, shareHook_lastReadTimestamp);
+            // Data from GetSharesApiResponse is SharedResource[] | null
+            dispatch(setShares(data as SharedResource[]));
+            shareHook_lastReadTimestamp = fulfilledTimeStamp;
         }
         if (error) {
             console.error("Error fetching shares:", error);
         }
-    }, [data]);
+    }, [data, fulfilledTimeStamp, dispatch]);
 
     return { shares, isLoading, error };
 }
