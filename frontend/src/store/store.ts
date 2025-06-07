@@ -3,16 +3,19 @@ import { errorSlice } from './errorSlice'
 import { sratApi } from './sratApi'
 import { setupListeners } from '@reduxjs/toolkit/query'
 import { useDispatch, useSelector, useStore } from 'react-redux'
-import { dirtySlice } from './dirtySlice'
+import { sseSlice } from './sseSlice'
+//import { dirtySlice } from './dirtySlice'
 
 export const store = configureStore({
     reducer: {
         //        dirty: dirtySlice.reducer,
+        sse: sseSlice.reducer,
         errors: errorSlice.reducer,
         [sratApi.reducerPath]: sratApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware().concat(sratApi.middleware),
+    devTools: process.env.NODE_ENV !== 'production',
 })
 
 setupListeners(store.dispatch)
