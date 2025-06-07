@@ -42,6 +42,7 @@ import { useReadOnly } from "../hooks/readonlyHook";
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import LockIcon from '@mui/icons-material/Lock';
 import { useLocation, useNavigate } from 'react-router';
+import BugReportIcon from '@mui/icons-material/BugReport'; // Import the BugReportIcon
 import { TabIDs, type LocationState } from "../store/locationState"
 
 
@@ -252,6 +253,13 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                 </IconButton>
                             </Tooltip>
                         }
+                        {process.env.NODE_ENV !== 'production' && (
+                            <IconButton>
+                                <Tooltip title="Development Environment" arrow>
+                                    <BugReportIcon sx={{ color: 'orange' }} />
+                                </Tooltip>
+                            </IconButton>
+                        )}
                         <IconButton>
                             <Tooltip title={health.health.secure_mode ? "Secure Mode Enabled" : "Secure Mode Disabled"} arrow>
                                 {health.health.secure_mode ?
