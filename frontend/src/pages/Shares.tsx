@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState, useMemo } from "react";
 import { useForm, useFormState } from "react-hook-form";
 import { InView } from "react-intersection-observer";
+import { Collapse } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
@@ -30,6 +31,8 @@ import { Chip, Typography } from '@mui/material';
 import KeyboardCapslockIcon from '@mui/icons-material/KeyboardCapslock'; // For UPPERCASE
 import TextDecreaseIcon from '@mui/icons-material/TextDecrease';     // For lowercase
 import DataObjectIcon from '@mui/icons-material/DataObject';         // For camelCase
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
 import RemoveIcon from '@mui/icons-material/Remove';                 // For kebab-case
 import { type OverridableComponent } from "@mui/material/OverridableComponent";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -216,6 +219,70 @@ export function Shares() {
         // Dependencies: shares data and location.state
     }, [shares, location.state, navigate]);
 
+    const groupedAndSortedShares = useMemo(() => {
+        if (!shares) {
+            return [];
+        }
+
+        const groups: Record<string, Array<[string, SharedResource]>> = {};
+
+        Object.entries(shares).forEach(([shareKey, shareProps]) => {
+            const usageGroup = shareProps.usage || Usage.None; // Default to 'none' if usage is undefined
+            if (!groups[usageGroup]) {
+                groups[usageGroup] = [];
+            }
+            groups[usageGroup].push([shareKey, shareProps]);
+        });
+
+        // Sort shares within each group by name
+        for (const usageGroup in groups) {
+            groups[usageGroup].sort((a, b) => (a[1].name || "").localeCompare(b[1].name || ""));
+        }
+
+        // Sort the groups by usage type (key)
+        return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+
+    }, [shares]);
+
+    // State to manage open/closed state of usage groups
+    const [openUsageGroups, setOpenUsageGroups] = useState<Record<string, boolean>>({});
+    const initialUsageGroupAutoOpenDone = useRef(false);
+    // Store previous groupedAndSortedShares to detect changes for resetting auto-open
+    const prevGroupedSharesRef = useRef<typeof groupedAndSortedShares | undefined>(undefined);
+
+    useEffect(() => {
+        // If the primary data source (groupedAndSortedShares) changes,
+        // reset the initialAutoOpenDone flag to allow re-evaluation.
+        if (prevGroupedSharesRef.current !== groupedAndSortedShares) {
+            initialUsageGroupAutoOpenDone.current = false;
+            prevGroupedSharesRef.current = groupedAndSortedShares;
+        }
+
+        // Conditions to skip auto-opening:
+        // 1. No groups available.
+        // 2. Auto-open has already been performed for the current set of groups.
+        if (!groupedAndSortedShares || groupedAndSortedShares.length === 0 || initialUsageGroupAutoOpenDone.current) {
+            if ((!groupedAndSortedShares || groupedAndSortedShares.length === 0) && Object.keys(openUsageGroups).length > 0) {
+                setOpenUsageGroups({}); // Avoid unnecessary update if already empty
+            }
+            return;
+        }
+
+        const firstGroupName = groupedAndSortedShares[0][0];
+        if (firstGroupName) {
+            setOpenUsageGroups({ [firstGroupName]: true });
+        } else {
+            if (Object.keys(openUsageGroups).length > 0) { // Avoid unnecessary update
+                setOpenUsageGroups({});
+            }
+        }
+        initialUsageGroupAutoOpenDone.current = true;
+    }, [groupedAndSortedShares, openUsageGroups]);
+
+    const handleToggleUsageGroup = (usageGroupKey: string) => {
+        setOpenUsageGroups(prev => ({ ...prev, [usageGroupKey]: !prev[usageGroupKey] }));
+    };
+
     function onSubmitDisableShare(cdata?: string, props?: SharedResource) {
         console.log("Disable", cdata, props);
         if (!cdata || !props) return
@@ -357,180 +424,202 @@ export function Shares() {
         </Tooltip>
         <br />
         <List dense={true}>
-            {shares ? Object.entries(shares).sort((a, b) => a[1].name!.localeCompare(b[1].name || "")).map(([share, props]) =>
-                <Fragment key={share}>
-                    <ListItemButton sx={{
-                        opacity: props.disabled ? 0.5 : 1,
-                        '&:hover': {
-                            opacity: 1,
-                        },
-                    }}>
-                        <ListItem
-                            secondaryAction={!read_only && <>
-                                <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
-                                    <SettingsIcon />
-                                </IconButton>
-                                {(!props.mount_point_data?.invalid && props.usage !== Usage.Internal && props.mount_point_data?.path_hash) && (
-                                    <Tooltip title="View Volume Mount Settings">
-                                        <IconButton
-                                            onClick={() => {
-                                                if (props.mount_point_data?.path_hash) {
-                                                    navigate('/', {
-                                                        state: {
-                                                            tabId: TabIDs.VOLUMES,
-                                                            mountPathHashToView: props.mount_point_data.path_hash,
-                                                            openMountSettings: true
-                                                        } as LocationState
-                                                    });
-                                                }
-                                            }} edge="end" aria-label="view volume settings">
-                                            <DriveFileMove />
-                                        </IconButton>
-                                    </Tooltip>
-                                )}
-                                {props.usage !== Usage.Internal &&
-                                    <IconButton onClick={() => onSubmitDeleteShare(share, props)} edge="end" aria-label="delete">
-                                        <Tooltip title="Delete share">
-                                            <DeleteIcon color="error" />
-                                        </Tooltip>
-                                    </IconButton>
-                                }
-                                {props.disabled ? (
-                                    <Tooltip title="Enable share">
-                                        <span>
-                                            <IconButton
-                                                onClick={() => onSubmitEnableShare(share, props)}
-                                                edge="end"
-                                                aria-label="disable"
-                                            >
-                                                <CheckCircleIcon />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                ) : (
-                                    <Tooltip title="Disable share">
-                                        <span>
-                                            <IconButton
-                                                onClick={() => onSubmitDisableShare(share, props)}
-                                                edge="end"
-                                                aria-label="disable"
-                                            >
-                                                <BlockIcon />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                )}
-
-                            </>
+            {groupedAndSortedShares.map(([usageGroup, sharesInGroup], groupIndex) => (
+                <Fragment key={usageGroup}>
+                    <ListItemButton
+                        onClick={() => handleToggleUsageGroup(usageGroup)}
+                        sx={{ pl: 1, pt: groupIndex > 0 ? 2 : 0, mt: groupIndex > 0 ? 1 : 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                    >
+                        <ListItemText
+                            primary={
+                                <Typography variant="overline" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
+                                    {usageGroup} Shares
+                                </Typography>
                             }
-                        >
-                            <ListItemAvatar>
-                                <Avatar>
-                                    {props.mount_point_data?.invalid && <Tooltip title={props.mount_point_data?.invalid_error} arrow>
-                                        <FolderSharedIcon color="error" />
-                                    </Tooltip> || <Tooltip title={props.mount_point_data?.warnings} arrow>
-                                            <FolderSharedIcon />
-                                        </Tooltip>
-                                    }
-                                </Avatar>
-                            </ListItemAvatar>
-                            <ListItemText
-                                primary={
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        {props.name}
-                                    </Box>
-                                }
-                                onClick={() => { setSelected([share, props]); setShowPreview(true) }}
-                                secondary={
-                                    <Typography variant="body2" component="div">
-                                        {props.mount_point_data?.path && (
-                                            <Box component="span" sx={{ display: 'block' }}>
-                                                Path: {props.mount_point_data.path}
-                                            </Box>
-                                        )}
-                                        {props.mount_point_data?.warnings && props.usage !== Usage.Internal && (
-                                            <Box component="span" sx={{ display: 'block', color: 'orange' }}>
-                                                Warning: {props.mount_point_data.warnings}
-                                            </Box>
-                                        )}
-                                        <Box component="div" sx={{ mt: 1, display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 1 }}>
-                                            {props.users && props.users.length > 0 && (
-                                                <Tooltip title="Users with write access">
-                                                    <Chip
-                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
-                                                        size="small"
-                                                        icon={<EditIcon />}
-                                                        variant="outlined"
-                                                        label={
-                                                            <Typography variant="body2" component="span">
-                                                                Users: {props.users.map(u => (
-                                                                    <Typography variant="body2" component="span" key={u.username} color={u.is_admin ? 'warning' : 'inherit'}>
-                                                                        {u.username}
-                                                                        {u !== props.users![props.users!.length - 1] && ', '}
-                                                                    </Typography>
-                                                                ))}
-                                                            </Typography>
-                                                        }
-                                                        sx={{ my: 0.5 }}
-                                                    />
-                                                </Tooltip>
-                                            )}
-                                            {props.ro_users && props.ro_users.length > 0 && (
-                                                <Tooltip title="Users with read-only access">
-                                                    <Chip
-                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
-                                                        size="small"
-                                                        icon={<VisibilityIcon />}
-                                                        variant="outlined"
-                                                        label={
-                                                            <span>
-                                                                Read-only Users: {props.ro_users.map(u => (
-                                                                    <span key={u.username} style={{ color: u.is_admin ? 'warning' : 'inherit' }}>
-                                                                        {u.username}
-                                                                        {u !== props.ro_users![props.ro_users!.length - 1] && ', '}
-                                                                    </span>
-                                                                ))}
-                                                            </span>
-                                                        }
-                                                        sx={{ my: 0.5 }}
-                                                    />
-                                                </Tooltip>
-                                            )}
-                                            {(props.usage && props.usage !== Usage.Internal) && (
-                                                <Tooltip title={`Share Usage: ${props.is_ha_mounted ? 'HA Mounted' : 'Not HA Mounted'}`}>
-                                                    <Chip
-                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
-                                                        size="small"
-                                                        variant="outlined"
-                                                        icon={<FolderSpecialIcon />}
-                                                        disabled={!props.is_ha_mounted}
-                                                        label={`Usage: ${props.usage}`}
-                                                        sx={{ my: 0.5 }}
-                                                    />
-                                                </Tooltip>
-                                            )}
-                                            {props.timemachine && (
-                                                <Tooltip title="TimeMachine Enabled">
-                                                    <Chip
-                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
-                                                        size="small"
-                                                        variant="outlined"
-                                                        icon={<BackupIcon />}
-                                                        label="TimeMachine"
-                                                        color="secondary"
-                                                        sx={{ my: 0.5 }}
-                                                    />
-                                                </Tooltip>
-                                            )}
-                                        </Box>
-                                    </Typography>
-                                }
-                            />
-                        </ListItem>
+                        />
+                        {openUsageGroups[usageGroup] ? <ExpandLess /> : <ExpandMore />}
                     </ListItemButton>
-                    <Divider component="li" />
+                    <Collapse in={!!openUsageGroups[usageGroup]} timeout="auto" unmountOnExit>
+                        <List component="div" disablePadding dense={true}>
+                            {sharesInGroup.map(([share, props]) => (
+                                <Fragment key={share}>
+                                    <ListItemButton sx={{
+                                        opacity: props.disabled ? 0.5 : 1,
+                                        '&:hover': {
+                                            opacity: 1,
+                                        },
+                                    }}>
+                                        <ListItem
+                                            secondaryAction={!read_only && <>
+                                                <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
+                                                    <SettingsIcon />
+                                                </IconButton>
+                                                {(!props.mount_point_data?.invalid && props.usage !== Usage.Internal && props.mount_point_data?.path_hash) && (
+                                                    <Tooltip title="View Volume Mount Settings">
+                                                        <IconButton
+                                                            onClick={() => {
+                                                                if (props.mount_point_data?.path_hash) {
+                                                                    navigate('/', {
+                                                                        state: {
+                                                                            tabId: TabIDs.VOLUMES,
+                                                                            mountPathHashToView: props.mount_point_data.path_hash,
+                                                                            openMountSettings: true
+                                                                        } as LocationState
+                                                                    });
+                                                                }
+                                                            }} edge="end" aria-label="view volume settings">
+                                                            <DriveFileMove />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
+                                                {props.usage !== Usage.Internal &&
+                                                    <IconButton onClick={() => onSubmitDeleteShare(share, props)} edge="end" aria-label="delete">
+                                                        <Tooltip title="Delete share">
+                                                            <DeleteIcon color="error" />
+                                                        </Tooltip>
+                                                    </IconButton>
+                                                }
+                                                {props.disabled ? (
+                                                    <Tooltip title="Enable share">
+                                                        <span>
+                                                            <IconButton
+                                                                onClick={() => onSubmitEnableShare(share, props)}
+                                                                edge="end"
+                                                                aria-label="disable"
+                                                            >
+                                                                <CheckCircleIcon />
+                                                            </IconButton>
+                                                        </span>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Tooltip title="Disable share">
+                                                        <span>
+                                                            <IconButton
+                                                                onClick={() => onSubmitDisableShare(share, props)}
+                                                                edge="end"
+                                                                aria-label="disable"
+                                                            >
+                                                                <BlockIcon />
+                                                            </IconButton>
+                                                        </span>
+                                                    </Tooltip>
+                                                )}
+
+                                            </>
+                                            }
+                                        >
+                                            <ListItemAvatar>
+                                                <Avatar>
+                                                    {props.mount_point_data?.invalid && <Tooltip title={props.mount_point_data?.invalid_error} arrow>
+                                                        <FolderSharedIcon color="error" />
+                                                    </Tooltip> || <Tooltip title={props.mount_point_data?.warnings} arrow>
+                                                            <FolderSharedIcon />
+                                                        </Tooltip>
+                                                    }
+                                                </Avatar>
+                                            </ListItemAvatar>
+                                            <ListItemText
+                                                primary={
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        {props.name}
+                                                    </Box>
+                                                }
+                                                onClick={() => { setSelected([share, props]); setShowPreview(true) }}
+                                                secondary={
+                                                    <Typography variant="body2" component="div">
+                                                        {props.mount_point_data?.path && (
+                                                            <Box component="span" sx={{ display: 'block' }}>
+                                                                Path: {props.mount_point_data.path}
+                                                            </Box>
+                                                        )}
+                                                        {props.mount_point_data?.warnings && props.usage !== Usage.Internal && (
+                                                            <Box component="span" sx={{ display: 'block', color: 'orange' }}>
+                                                                Warning: {props.mount_point_data.warnings}
+                                                            </Box>
+                                                        )}
+                                                        <Box component="div" sx={{ mt: 1, display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 1 }}>
+                                                            {props.users && props.users.length > 0 && (
+                                                                <Tooltip title="Users with write access">
+                                                                    <Chip
+                                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
+                                                                        size="small"
+                                                                        icon={<EditIcon />}
+                                                                        variant="outlined"
+                                                                        label={
+                                                                            <Typography variant="body2" component="span">
+                                                                                Users: {props.users.map(u => (
+                                                                                    <Typography variant="body2" component="span" key={u.username} color={u.is_admin ? 'warning' : 'inherit'}>
+                                                                                        {u.username}
+                                                                                        {u !== props.users![props.users!.length - 1] && ', '}
+                                                                                    </Typography>
+                                                                                ))}
+                                                                            </Typography>
+                                                                        }
+                                                                        sx={{ my: 0.5 }}
+                                                                    />
+                                                                </Tooltip>
+                                                            )}
+                                                            {props.ro_users && props.ro_users.length > 0 && (
+                                                                <Tooltip title="Users with read-only access">
+                                                                    <Chip
+                                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
+                                                                        size="small"
+                                                                        icon={<VisibilityIcon />}
+                                                                        variant="outlined"
+                                                                        label={
+                                                                            <span>
+                                                                                Read-only Users: {props.ro_users.map(u => (
+                                                                                    <span key={u.username} style={{ color: u.is_admin ? 'warning' : 'inherit' }}>
+                                                                                        {u.username}
+                                                                                        {u !== props.ro_users![props.ro_users!.length - 1] && ', '}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </span>
+                                                                        }
+                                                                        sx={{ my: 0.5 }}
+                                                                    />
+                                                                </Tooltip>
+                                                            )}
+                                                            {(props.usage && props.usage !== Usage.Internal) && (
+                                                                <Tooltip title={`Share Usage: ${props.is_ha_mounted ? 'HA Mounted' : 'Not HA Mounted'}`}>
+                                                                    <Chip
+                                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
+                                                                        size="small"
+                                                                        variant="outlined"
+                                                                        icon={<FolderSpecialIcon />}
+                                                                        disabled={!props.is_ha_mounted}
+                                                                        label={`Usage: ${props.usage}`}
+                                                                        sx={{ my: 0.5 }}
+                                                                    />
+                                                                </Tooltip>
+                                                            )}
+                                                            {props.timemachine && (
+                                                                <Tooltip title="TimeMachine Enabled">
+                                                                    <Chip
+                                                                        onClick={(e) => { e.stopPropagation(); setSelected([share, props]); setShowEdit(true) }}
+                                                                        size="small"
+                                                                        variant="outlined"
+                                                                        icon={<BackupIcon />}
+                                                                        label="TimeMachine"
+                                                                        color="secondary"
+                                                                        sx={{ my: 0.5 }}
+                                                                    />
+                                                                </Tooltip>
+                                                            )}
+                                                        </Box>
+                                                    </Typography>
+                                                }
+                                            />
+                                        </ListItem>
+                                    </ListItemButton>
+                                    <Divider component="li" />
+                                </Fragment>
+                            ))}
+                        </List>
+                    </Collapse>
+                    {groupIndex < groupedAndSortedShares.length - 1 && <Divider sx={{ mt: 1, mb: openUsageGroups[usageGroup] ? 0 : 1 }} />}
                 </Fragment>
-            ) : null}
+            ))}
         </List>
     </InView>
 }
