@@ -11,7 +11,7 @@
   ],
   "makefile.configureOnOpen": false,
   "better-comments.highlightPlainText": true,
-  "commitSage.commit.commitFormat": "emoji",
+  "commitSage.commit.commitFormat": "emojiKarma",
   "commitSage.commit.onlyStagedChanges": true,
   "commitSage.commit.promptForRefs": true,
   "commitSage.gemini.model": "gemini-2.0-flash-exp",
@@ -30,5 +30,6 @@
   "github.copilot.chat.agent.thinkingTool": true,
   "go.inlayHints.assignVariableTypes": true,
   "go.inlayHints.compositeLiteralFields": true,
-  "go.inlayHints.constantValues": true
+  "go.inlayHints.constantValues": true,
+  "github.copilot.chat.commitMessageGeneration.instructions": []
 }
