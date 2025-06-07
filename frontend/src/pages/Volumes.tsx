@@ -54,8 +54,6 @@ export function Volumes() {
 
     const navigate = useNavigate();
     const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(true); // Default to hide system partitions
-    // Assuming useVolume returns an array of disk objects, where each disk has a 'partitions' array
-    // If the structure is different (e.g., a flat list of partitions with parent info), the grouping logic needs adjustment
     const { disks, isLoading, error } = useVolume();
     const [selected, setSelected] = useState<Partition | Disk | undefined>(undefined); // Can hold a disk or partition
     const confirm = useConfirm();
@@ -65,18 +63,28 @@ export function Volumes() {
     const [patchMountSettings, patchMountSettingsResult] = usePatchVolumeByMountPathHashSettingsMutation();
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({}); // State for collapse, key is disk identifier
     const initialAutoOpenDone = useRef(false);
+    // Store previous values of dependencies that should trigger a reset of initialAutoOpenDone
+    const prevDisksRef = useRef<Disk[] | undefined>(undefined);
+    const prevHideSystemPartitionsRef = useRef<boolean | undefined>(undefined);
 
     useEffect(() => {
-        // This effect runs when disks data is loaded to open the first visible disk "at start".
-        // It should only run once for the initial auto-open.
+        // If primary data sources (disks, hideSystemPartitions) change,
+        // reset the initialAutoOpenDone flag to allow re-evaluation of the first disk to open.
+        if (prevDisksRef.current !== disks || prevHideSystemPartitionsRef.current !== hideSystemPartitions) {
+            initialAutoOpenDone.current = false;
+            prevDisksRef.current = disks;
+            prevHideSystemPartitionsRef.current = hideSystemPartitions;
+        }
+
+        // Conditions to skip auto-opening:
+        // 1. Still loading, or no disks available.
+        // 2. Auto-open has already been performed for the current set of disks/filters,
+        //    and we don't want to override user's manual expand/collapse actions.
         if (isLoading || !Array.isArray(disks) || disks.length === 0 || initialAutoOpenDone.current) {
-            //console.log(isLoading, !Array.isArray(disks), initialAutoOpenDone.current)
             return;
         }
 
-        //console.log("Rendering!", disks.length)
-
-        // At this point, isLoading is false, disks is an array, and initial auto-open hasn't happened.
+        // At this point, isLoading is false, disks is an array, and initialAutoOpenDone.current is false.
         if (disks.length > 0) {
             let firstVisibleDiskIdentifier: string | null = null;
             for (let i = 0; i < disks.length; i++) {
@@ -88,8 +96,6 @@ export function Volumes() {
                 const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
                 const allPartitionsAreHiddenByToggle = hasActualPartitions && filteredPartitions.length === 0 && hideSystemPartitions;
 
-                //console.log(filteredPartitions.length, hideSystemPartitions, allPartitionsAreHiddenByToggle, diskIdentifier)
-
                 if (!allPartitionsAreHiddenByToggle) {
                     firstVisibleDiskIdentifier = diskIdentifier;
                     break; // Found the first disk that will be rendered
@@ -97,12 +103,19 @@ export function Volumes() {
             }
 
             if (firstVisibleDiskIdentifier) {
-                console.log("Opening first visible disk:", firstVisibleDiskIdentifier);
+                // console.log("Auto-opening first visible disk:", firstVisibleDiskIdentifier);
                 setOpenGroups({ [firstVisibleDiskIdentifier]: true });
+            } else {
+                // No visible disk, ensure openGroups is empty
+                if (Object.keys(openGroups).length > 0) { // Avoid unnecessary update
+                    setOpenGroups({});
+                }
             }
         }
-        initialAutoOpenDone.current = true; // Mark initial auto-open as done
-    }, [disks, isLoading, hideSystemPartitions]); // hideSystemPartitions is included as its initial state affects the first visible disk
+        // Mark that auto-open has been attempted for the current configuration of disks/filters.
+        // This prevents re-running the auto-open if the effect is triggered by openGroups changing.
+        initialAutoOpenDone.current = true;
+    }, [disks, isLoading, hideSystemPartitions, openGroups]);
 
 
     // Effect to handle navigation state for opening mount settings for a specific volume
@@ -322,9 +335,6 @@ export function Volumes() {
         return <Typography color="error">Error loading volume information. Please try again later.</Typography>;
     }
 
-    // Ensure disks is an array before mapping
-    const validDisks = Array.isArray(disks) ? disks : [];
-
     // Helper function to render disk icon
     const renderDiskIcon = (disk: Disk) => {
         switch (disk.connection_bus?.toLowerCase()) {
@@ -355,7 +365,7 @@ export function Volumes() {
 
 
     return (
-        <InView>
+        <>
             {/* Pass selected (could be disk or partition) to mount dialog */}
             <VolumeMountDialog
                 // Type guard to ensure we only pass Partitions to the mount dialog
@@ -408,7 +418,7 @@ export function Volumes() {
             <List dense={true}>
                 <Divider />
                 {/* Iterate over disks */}
-                {validDisks.map((disk, diskIdx) => {
+                {disks.map((disk, diskIdx) => {
                     const diskIdentifier = disk.id || `disk-${diskIdx}`;
                     const isGroupOpen = !!openGroups[diskIdentifier];
 
@@ -622,7 +632,7 @@ export function Volumes() {
                     );
                 })}
             </List>
-        </InView >
+        </>
     );
 }
 
