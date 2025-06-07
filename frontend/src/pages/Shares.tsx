@@ -539,7 +539,7 @@ interface ShareEditDialogProps {
     open: boolean;
     onClose: (data?: ShareEditProps) => void;
     objectToEdit?: ShareEditProps;
-    shares?: Record<string, SharedResource>; // Added to receive shares data
+    shares?: SharedResource[]; // Added to receive shares data
     onDeleteSubmit?: (shareName: string, shareData: SharedResource) => void; // Added for delete action
 }
 function ShareEditDialog(props: ShareEditDialogProps) {
