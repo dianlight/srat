@@ -17,7 +17,7 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import { useColorScheme } from "@mui/material/styles"
 import AutoModeIcon from '@mui/icons-material/AutoMode';
-import semver from "semver"
+import semver from "semver";
 import { CircularProgress, Tab, Tabs, useMediaQuery, useTheme, type CircularProgressProps } from "@mui/material"
 import { createPortal } from "react-dom"
 import { Shares } from "../pages/Shares"
@@ -29,7 +29,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import UndoIcon from '@mui/icons-material/Undo';
 import { useConfirm } from "material-ui-confirm"
-import CancelIcon from '@mui/icons-material/Cancel';
+import { useMemo } from "react"; // Added useMemo
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
@@ -45,6 +45,39 @@ import { useLocation, useNavigate } from 'react-router';
 import BugReportIcon from '@mui/icons-material/BugReport'; // Import the BugReportIcon
 import { TabIDs, type LocationState } from "../store/locationState"
 
+// Define tab configurations
+interface TabConfig {
+    id: TabIDs;
+    label: string;
+    component: React.ReactNode;
+    isDevelopmentOnly?: boolean;
+    actualIndex?: number; // Will be populated after filtering
+}
+
+const ALL_TAB_CONFIGS: TabConfig[] = [
+    { id: TabIDs.SHARES, label: "Shares", component: <Shares /> },
+    { id: TabIDs.VOLUMES, label: "Volumes", component: <Volumes /> },
+    { id: TabIDs.USERS, label: "Users", component: <Users /> },
+    { id: TabIDs.SETTINGS, label: "Settings", component: <Settings /> },
+    { id: TabIDs.SMB_FILE_CONFIG, label: "smb.conf", component: <SmbConf />, isDevelopmentOnly: true },
+    { id: TabIDs.API_OPENDOC, label: "API Docs", component: <Swagger />, isDevelopmentOnly: true },
+];
+
+// Helper to get icon based on TabID and health
+const getTabIcon = (tabId: TabIDs, healthData: HealthPing | undefined) => {
+    if (!healthData?.dirty_tracking) return undefined;
+    const dirtyMap: Partial<Record<TabIDs, keyof HealthPing['dirty_tracking']>> = {
+        [TabIDs.SHARES]: 'shares',
+        [TabIDs.VOLUMES]: 'volumes',
+        [TabIDs.USERS]: 'users',
+        [TabIDs.SETTINGS]: 'settings',
+    };
+    const dirtyKey = dirtyMap[tabId];
+    if (dirtyKey && healthData.dirty_tracking[dirtyKey]) {
+        return <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip>;
+    }
+    return undefined;
+};
 
 function a11yProps(index: number) {
     return {
@@ -113,6 +146,15 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     const location = useLocation();
     const navigate = useNavigate();
 
+    const visibleTabs = useMemo(() => {
+        return ALL_TAB_CONFIGS
+            .filter(tab => !(tab.isDevelopmentOnly && process.env.NODE_ENV === 'production'))
+            .map((tab, index) => ({
+                ...tab,
+                actualIndex: index,
+            }));
+    }, []); // process.env.NODE_ENV is a build-time constant
+
     const updateAssetStatus = useSSE(Supported_events.Update, {} as UpdateProgress, {
         parser(input: any): ReleaseAsset {
             console.log("Got version", input)
@@ -126,9 +168,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
     const { mode, setMode } = useColorScheme();
     const [update, setUpdate] = useState<string | undefined>()
-    const [value, setValue] = useState(() => {
-        return Number.parseInt(localStorage.getItem("srat_tab") || "0");
-    });
+    const [value, setValue] = useState<number>(0); // Active tab index, default to 0
     const confirm = useConfirm();
     //const [tabId, setTabId] = useState<string>(() => uuidv4())
     const theme = useTheme();
@@ -140,9 +180,48 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         return null;
     }
 
-    function handleChange(event: React.SyntheticEvent, newValue: number) {
+    useEffect(() => {
+        // Determine the target tab index based on priority: location.state > localStorage > default (0)
+        let targetIndex = 0;
+        const state = location.state as LocationState | undefined;
+
+        if (visibleTabs.length === 0) {
+            if (value !== 0) setValue(0);
+            localStorage.setItem("srat_tab", "0");
+            return;
+        }
+
+        if (state?.tabId !== undefined) {
+            const indexFromState = visibleTabs.findIndex(tab => tab.id === state.tabId);
+            if (indexFromState !== -1) {
+                targetIndex = indexFromState;
+            } else {
+                // Tab from state not found, try localStorage
+                const storedIndex = parseInt(localStorage.getItem("srat_tab") || "0", 10);
+                if (storedIndex >= 0 && storedIndex < visibleTabs.length) {
+                    targetIndex = storedIndex;
+                } else {
+                    targetIndex = 0; // Default to first visible tab
+                }
+            }
+        } else {
+            const storedIndex = parseInt(localStorage.getItem("srat_tab") || "0", 10);
+            if (storedIndex >= 0 && storedIndex < visibleTabs.length) {
+                targetIndex = storedIndex;
+            } else {
+                targetIndex = 0; // Default to first visible tab
+            }
+        }
+
+        if (value !== targetIndex) {
+            setValue(targetIndex);
+        }
+        localStorage.setItem("srat_tab", targetIndex.toString());
+    }, [location.state, visibleTabs, navigate]); // `value` is intentionally omitted to avoid loops on its own change
+
+    const handleChange = (event: React.SyntheticEvent, newValue: number) => {
         setValue(newValue);
-        localStorage.setItem("srat_tab", "" + newValue)
+        localStorage.setItem("srat_tab", newValue.toString());
     };
 
     function handleDoUpdate() {
@@ -169,15 +248,6 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         console.log("Doing restart")
         restartSamba()
     }
-
-    useEffect(() => {
-        const state = location.state as LocationState | undefined;
-        if (state?.tabId !== undefined) {
-            setValue(state.tabId);
-        }
-        // Dependency: only location.state. navigate is not used here.
-    }, [location.state]);
-
 
     useEffect(() => {
         const current = pkg.version;
@@ -229,13 +299,17 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                         allowScrollButtonsMobile
                         scrollButtons
                     >
-                        <Tab label="Shares" {...a11yProps(TabIDs.SHARES)} icon={health.health?.dirty_tracking?.shares ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab label="Volumes" {...a11yProps(TabIDs.VOLUMES)} icon={health.health?.dirty_tracking?.volumes ? <Tooltip title="Changes not yet applied"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab label="Users" {...a11yProps(TabIDs.USERS)} icon={health.health?.dirty_tracking?.users ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab label="Settings" {...a11yProps(TabIDs.SETTINGS)} icon={health.health?.dirty_tracking?.settings ? <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip> : undefined} iconPosition="end" />
-                        <Tab label="smb.conf" {...a11yProps(TabIDs.SMB_FILE_CONFIG)} />
-                        <Tab label="API Docs" {...a11yProps(TabIDs.API_OPENDOC)} />
+                        {visibleTabs.map((tab) => (
+                            <Tab
+                                key={tab.id}
+                                label={tab.label}
+                                {...a11yProps(tab.actualIndex as number)}
+                                icon={getTabIcon(tab.id, health.health)}
+                                iconPosition="end"
+                            />
+                        ))}
                     </Tabs>
+
                     <Box sx={{ flexGrow: 0 }}>
 
                         {Object.values(health.health.dirty_tracking || {}).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
@@ -303,24 +377,11 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         </AppBar>
         {props.bodyRef.current && createPortal(
             <>
-                <TabPanel key={"0"} value={value} index={0}>
-                    <Shares />
-                </TabPanel>
-                <TabPanel key={"1"} value={value} index={1}>
-                    <Volumes />
-                </TabPanel>
-                <TabPanel key={"2"} value={value} index={2}>
-                    <Users />
-                </TabPanel>
-                <TabPanel key={"3"} value={value} index={3}>
-                    <Settings />
-                </TabPanel>
-                <TabPanel key={"4"} value={value} index={4}>
-                    <SmbConf />
-                </TabPanel>
-                <TabPanel key={"5"} value={value} index={5}>
-                    <Swagger />
-                </TabPanel>
+                {visibleTabs.map((tab) => (
+                    <TabPanel key={tab.id} value={value} index={tab.actualIndex as number}>
+                        {tab.component}
+                    </TabPanel>
+                ))}
             </>,
             props.bodyRef.current /*document.getElementById('mainarea')!*/
         )}
