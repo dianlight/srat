@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, useMemo } from "react";
 import { useForm, useFormState } from "react-hook-form";
 import { InView } from "react-intersection-observer";
 import Grid from "@mui/material/Grid";
@@ -132,6 +132,7 @@ export function Shares() {
     const location = useLocation();
     const navigate = useNavigate();
     const { shares, isLoading, error } = useShare();
+    const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume()
     const [selected, setSelected] = useState<[string, SharedResource] | null>(null);
     const [showPreview, setShowPreview] = useState<boolean>(false);
     const [showEdit, setShowEdit] = useState<boolean>(false);
@@ -142,6 +143,35 @@ export function Shares() {
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
     const [deleteShare, updateDeleteShareResult] = useDeleteShareByShareNameMutation();
     const [createShare, createShareResult] = usePostShareMutation();
+
+    // Calculate if a new share can be created
+    const canCreateNewShare = useMemo(() => {
+        if (vlLoading || isLoading || !volumes || !shares) {
+            return false; // Disable if data is loading or not available
+        }
+
+        const usedPathHashes = new Set(
+            Object.values(shares)
+                .map(share => share.mount_point_data?.path_hash)
+                .filter((hash): hash is string => typeof hash === 'string' && hash !== '')
+        );
+
+        for (const disk of volumes) {
+            if (disk.partitions) {
+                for (const partition of disk.partitions) {
+                    if (partition.system) continue; // Skip system partitions
+                    if (partition.mount_point_data) {
+                        for (const mpd of partition.mount_point_data) {
+                            if (mpd && mpd.is_mounted && mpd.path && mpd.path_hash && !usedPathHashes.has(mpd.path_hash)) {
+                                return true; // Found an available, unshared, mounted mount point
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false; // No suitable mount points found
+    }, [volumes, shares, vlLoading, isLoading]);
 
     // Effect to handle navigation state for opening a specific share dialog
     useEffect(() => {
@@ -288,6 +318,7 @@ export function Shares() {
                     : initialNewShareData // For new share, potentially with prefilled data from Volumes
             }
             open={showEdit}
+            shares={shares} // Pass the shares data to the dialog
             onClose={(data) => {
                 onSubmitEditShare(data);
                 setSelected(null);
@@ -297,16 +328,33 @@ export function Shares() {
             }
             onDeleteSubmit={onSubmitDeleteShare}
         />
-        {read_only || <Fab color="primary" aria-label="add" sx={{
-            float: 'right',
-            top: '-20px',
-            margin: '-8px'
-
-        }} size="small"
-            onClick={() => { setSelected(null); setShowEdit(true) }}
-        >
-            <AddIcon />
-        </Fab>}
+        <Tooltip title={
+            read_only ? "Cannot create share in read-only mode" :
+                !canCreateNewShare ? "No unshared mount points available to create a new share." :
+                    "Create new share"
+        }>
+            <span> {/* Wrapper for Tooltip when Fab might be disabled */}
+                <Fab
+                    id="create_new_share"
+                    color="primary"
+                    aria-label={
+                        read_only ? "Cannot create share in read-only mode" :
+                            !canCreateNewShare ? "No unshared mount points available to create a new share." :
+                                "Create new share"
+                    }
+                    sx={{
+                        float: 'right',
+                        top: '-20px',
+                        margin: '-8px'
+                    }}
+                    size="small"
+                    onClick={() => { if (!read_only && canCreateNewShare) { setSelected(null); setShowEdit(true); } }}
+                    disabled={read_only || !canCreateNewShare}
+                >
+                    <AddIcon />
+                </Fab>
+            </span>
+        </Tooltip>
         <br />
         <List dense={true}>
             {shares ? Object.entries(shares).sort((a, b) => a[1].name!.localeCompare(b[1].name || "")).map(([share, props]) =>
@@ -347,13 +395,6 @@ export function Shares() {
                                         </Tooltip>
                                     </IconButton>
                                 }
-                                {/* 
-                                <IconButton onClick={() => { setSelected([share, props]); setShowUserEdit(true) }} edge="end" aria-label="users">
-                                    <Tooltip title="Manage Users">
-                                        <GroupIcon />
-                                    </Tooltip>
-                                </IconButton>
-                                */}
                                 {props.disabled ? (
                                     <Tooltip title="Enable share">
                                         <span>
@@ -498,12 +539,14 @@ interface ShareEditDialogProps {
     open: boolean;
     onClose: (data?: ShareEditProps) => void;
     objectToEdit?: ShareEditProps;
+    shares?: Record<string, SharedResource>; // Added to receive shares data
     onDeleteSubmit?: (shareName: string, shareData: SharedResource) => void; // Added for delete action
 }
 function ShareEditDialog(props: ShareEditDialogProps) {
     const { data: users, isLoading: usLoading, error: usError } = useGetUsersQuery()
     const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume()
     const [editName, setEditName] = useState(false);
+    // Casing cycle state should be managed here if it's reset by volume selection
     const [activeCasingIndex, setActiveCasingIndex] = useState(0);
     const { control, handleSubmit, watch, formState: { errors }, reset, setValue } = useForm<ShareEditProps>(
         // Removed initial values from here, will be handled by useEffect + reset
@@ -557,6 +600,25 @@ function ShareEditDialog(props: ShareEditDialogProps) {
             }); // Reset to default values when closing or not open
         }
     }, [props.open, reset, users]);
+
+    // Effect to auto-populate share name if empty when a volume is selected
+    const selectedMountPointData = watch('mount_point_data');
+    const currentShareName = watch('name');
+
+    useEffect(() => {
+        if (props.open && (!currentShareName || currentShareName.trim() === "") && selectedMountPointData && selectedMountPointData.path) {
+            const baseName = getPathBaseName(selectedMountPointData.path);
+            if (baseName) {
+                const suggestedName = sanitizeAndUppercaseShareName(baseName);
+                // Only update if the name is truly empty or different from the suggestion
+                // to avoid unnecessary re-renders or dirtying the form.
+                if (currentShareName !== suggestedName) {
+                    setValue('name', suggestedName, { shouldValidate: true, shouldDirty: true });
+                    setActiveCasingIndex(0); // Reset casing cycle when name is auto-populated
+                }
+            }
+        }
+    }, [props.open, selectedMountPointData, currentShareName, setValue, setActiveCasingIndex /* getPathBaseName and sanitizeAndUppercaseShareName are stable */]);
 
     function handleCloseSubmit(data?: ShareEditProps) {
         setEditName(false)
@@ -700,6 +762,25 @@ function ShareEditDialog(props: ShareEditDialogProps) {
                                                         //console.log("Comparing", option, value);
                                                         if (!value || !option) return false;
                                                         return option.path_hash === value?.path_hash;
+                                                    },
+                                                    getOptionDisabled: (option) => {
+                                                        if (!props.shares || !option.path_hash) {
+                                                            return false; // Cannot determine, so don't disable
+                                                        }
+
+                                                        const currentEditingShareName = props.objectToEdit?.org_name;
+
+                                                        for (const existingShare of Object.values(props.shares)) {
+                                                            if (existingShare.mount_point_data?.path_hash === option.path_hash) {
+                                                                // This mount point is used by 'existingShare'.
+                                                                // If we are editing 'existingShare' itself, then this option should NOT be disabled.
+                                                                if (currentEditingShareName && existingShare.name === currentEditingShareName) {
+                                                                    return false; // It's the current share's mount point, allow selection
+                                                                }
+                                                                return true; // Disable it, as it's used by another share or we are creating a new share
+                                                            }
+                                                        }
+                                                        return false; // Not used by any other share
                                                     },
                                                 }}
                                             />
