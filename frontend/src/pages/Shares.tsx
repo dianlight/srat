@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, useMemo } from "react";
 import { useForm, useFormState } from "react-hook-form";
 import { InView } from "react-intersection-observer";
-import { Collapse } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Collapse } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
@@ -244,43 +244,88 @@ export function Shares() {
 
     }, [shares]);
 
+    // localStorage key for expanded accordion
+    const localStorageKey = 'srat_shares_expanded_accordion';
+
     // State to manage open/closed state of usage groups
-    const [openUsageGroups, setOpenUsageGroups] = useState<Record<string, boolean>>({});
-    const initialUsageGroupAutoOpenDone = useRef(false);
-    // Store previous groupedAndSortedShares to detect changes for resetting auto-open
+    const [expandedAccordion, setExpandedAccordion] = useState<string | false>(() => {
+        // Initialize from localStorage directly if possible, only on first render.
+        // Validation against actual groups will happen in the useEffect.
+        const savedAccordionId = localStorage.getItem(localStorageKey);
+        return savedAccordionId || false;
+    });
+    const initialSetupDone = useRef(false); // Tracks if initial setup (load/auto-open) is done
+
+    // Store previous groupedAndSortedShares to detect changes for resetting setup
     const prevGroupedSharesRef = useRef<typeof groupedAndSortedShares | undefined>(undefined);
 
     useEffect(() => {
-        // If the primary data source (groupedAndSortedShares) changes,
-        // reset the initialAutoOpenDone flag to allow re-evaluation.
         if (prevGroupedSharesRef.current !== groupedAndSortedShares) {
-            initialUsageGroupAutoOpenDone.current = false;
+            // Groups data has changed (e.g., loaded, added/removed), reset the setup flag
+            // to allow re-validation and defaulting for the new set of groups.
+            initialSetupDone.current = false;
             prevGroupedSharesRef.current = groupedAndSortedShares;
         }
 
-        // Conditions to skip auto-opening:
-        // 1. No groups available.
-        // 2. Auto-open has already been performed for the current set of groups.
-        if (!groupedAndSortedShares || groupedAndSortedShares.length === 0 || initialUsageGroupAutoOpenDone.current) {
-            if ((!groupedAndSortedShares || groupedAndSortedShares.length === 0) && Object.keys(openUsageGroups).length > 0) {
-                setOpenUsageGroups({}); // Avoid unnecessary update if already empty
+        // If initial setup for the current set of groups is already done, nothing more to do here.
+        if (initialSetupDone.current) {
+            // However, if groups became empty *after* setup was done, ensure accordion is closed.
+            if ((!groupedAndSortedShares || groupedAndSortedShares.length === 0) && expandedAccordion !== false) {
+                setExpandedAccordion(false);
             }
             return;
         }
 
-        const firstGroupName = groupedAndSortedShares[0][0];
-        if (firstGroupName) {
-            setOpenUsageGroups({ [firstGroupName]: true });
-        } else {
-            if (Object.keys(openUsageGroups).length > 0) { // Avoid unnecessary update
-                setOpenUsageGroups({});
-            }
-        }
-        initialUsageGroupAutoOpenDone.current = true;
-    }, [groupedAndSortedShares, openUsageGroups]);
+        // At this point, initialSetupDone.current is false.
 
-    const handleToggleUsageGroup = (usageGroupKey: string) => {
-        setOpenUsageGroups(prev => ({ ...prev, [usageGroupKey]: !prev[usageGroupKey] }));
+        // If groups are not yet loaded or are empty, wait.
+        // Do not modify expandedAccordion, as it holds the optimistic value from localStorage.
+        if (!groupedAndSortedShares || groupedAndSortedShares.length === 0) {
+            return;
+        }
+
+        // Groups are NOW loaded, and initialSetupDone.current is false.
+        // This is the first opportunity to validate expandedAccordion (from localStorage)
+        // against the *actual* loaded groups.
+        const isValidCurrentExpanded = typeof expandedAccordion === 'string' &&
+            groupedAndSortedShares.some(([groupName]) => groupName === expandedAccordion);
+
+        if (!isValidCurrentExpanded) {
+            // The value in expandedAccordion (from localStorage or default 'false') is not valid for the current groups.
+            // Default to the first available group.
+            const firstGroupName = groupedAndSortedShares[0]?.[0];
+            setExpandedAccordion(firstGroupName || false);
+        }
+        // If isValidCurrentExpanded is true, the value from localStorage was valid, so expandedAccordion remains as is.
+
+        initialSetupDone.current = true;
+    }, [groupedAndSortedShares, expandedAccordion]); // expandedAccordion is included because its current value is read and might trigger a set if invalid.
+    // initialSetupDone.current prevents re-defaulting after user interaction.
+
+    // Effect to save expanded accordion to localStorage
+    useEffect(() => {
+        if (expandedAccordion === false) {
+            localStorage.removeItem(localStorageKey);
+        } else if (typeof expandedAccordion === 'string') {
+            // Only save to localStorage if the initial setup/validation is done and groups are present.
+            // This prevents saving an unvalidated localStorage value back to itself or clearing it prematurely.
+            if (initialSetupDone.current && groupedAndSortedShares && groupedAndSortedShares.length > 0) {
+                if (groupedAndSortedShares.some(([groupName]) => groupName === expandedAccordion)) {
+                    localStorage.setItem(localStorageKey, expandedAccordion);
+                } else {
+                    // expandedAccordion is a string, but not in the current valid groups (e.g., group was deleted).
+                    localStorage.removeItem(localStorageKey);
+                }
+            } else if (initialSetupDone.current && groupedAndSortedShares && groupedAndSortedShares.length === 0) {
+                // Groups are confirmed empty after setup, so any string ID is invalid.
+                localStorage.removeItem(localStorageKey);
+            }
+            // If initialSetupDone.current is false, groups are still loading/validating; don't touch localStorage for a string value yet.
+        }
+    }, [expandedAccordion, groupedAndSortedShares, initialSetupDone.current]); // initialSetupDone.current ensures we save based on a validated state.
+
+    const handleAccordionChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+        setExpandedAccordion(isExpanded ? panel : false);
     };
 
     function onSubmitDisableShare(cdata?: string, props?: SharedResource) {
@@ -425,21 +470,32 @@ export function Shares() {
         <br />
         <List dense={true}>
             {groupedAndSortedShares.map(([usageGroup, sharesInGroup], groupIndex) => (
-                <Fragment key={usageGroup}>
-                    <ListItemButton
-                        onClick={() => handleToggleUsageGroup(usageGroup)}
-                        sx={{ pl: 1, pt: groupIndex > 0 ? 2 : 0, mt: groupIndex > 0 ? 1 : 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                <Accordion
+                    key={usageGroup}
+                    expanded={expandedAccordion === usageGroup}
+                    onChange={handleAccordionChange(usageGroup)}
+                    sx={{
+                        boxShadow: 'none', // Remove default shadow for a flatter look if desired
+                        '&:before': { display: 'none' }, // Remove the top border line of the accordion
+                        '&.Mui-expanded': { margin: 'auto 0' } // Control margin when expanded
+                    }}
+                    disableGutters // Removes left/right padding from Accordion itself
+                >
+                    <AccordionSummary
+                        expandIcon={<ExpandMore />}
+                        aria-controls={`${usageGroup}-content`}
+                        id={`${usageGroup}-header`}
+                        sx={{
+                            minHeight: 48, // Adjust as needed
+                            '&.Mui-expanded': { minHeight: 48 }, // Ensure consistent height
+                            '& .MuiAccordionSummary-content': { margin: '12px 0' } // Adjust content margin
+                        }}
                     >
-                        <ListItemText
-                            primary={
-                                <Typography variant="overline" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-                                    {usageGroup} Shares
-                                </Typography>
-                            }
-                        />
-                        {openUsageGroups[usageGroup] ? <ExpandLess /> : <ExpandMore />}
-                    </ListItemButton>
-                    <Collapse in={!!openUsageGroups[usageGroup]} timeout="auto" unmountOnExit>
+                        <Typography variant="overline" color="text.secondary" sx={{ textTransform: 'capitalize', pl: 1 }}>
+                            {usageGroup} Shares ({sharesInGroup.length})
+                        </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ p: 0 }}> {/* Remove padding from details to allow List to control it */}
                         <List component="div" disablePadding dense={true}>
                             {sharesInGroup.map(([share, props]) => (
                                 <Fragment key={share}>
@@ -616,9 +672,9 @@ export function Shares() {
                                 </Fragment>
                             ))}
                         </List>
-                    </Collapse>
-                    {groupIndex < groupedAndSortedShares.length - 1 && <Divider sx={{ mt: 1, mb: openUsageGroups[usageGroup] ? 0 : 1 }} />}
-                </Fragment>
+                    </AccordionDetails>
+                    {/* Divider is implicitly handled by Accordion borders, or can be added if a stronger visual separation is needed */}
+                </Accordion>
             ))}
         </List>
     </InView>
