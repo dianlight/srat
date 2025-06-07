@@ -19,6 +19,15 @@ repos:
           always_run: true # This hook should always run after commit attempts
           stages: [post-commit] # This ensures it runs after the commit
           pass_filenames: true
+
+        - id: update-frontend-package-version
+          name: Update frontend package.json version from git tag
+          stages: [pre-commit]
+          entry: ./scripts/update-frontend-version.sh
+          language: system
+          files: ^frontend/package\.json$ # Only run if frontend/package.json is changed
+          pass_filenames: false # Script knows the file path and handles it
+
 #          - id: gohack-disable
 #            name: disable gohack
 #            stages: [pre-commit]
