@@ -10,8 +10,6 @@ import (
 func Banner(module string) {
 	fmt.Println(banner.Inline(module))
 	fmt.Printf("SambaNAS2 Rest Administration Interface\n")
-	fmt.Printf("Version: %s\n", config.Version)
-	fmt.Printf("Commit Hash: %s\n", config.CommitHash)
-	fmt.Printf("Build Timestamp: %s\n", config.BuildTimestamp)
+	fmt.Printf("Version: %s (%s) - %s\n", config.Version, config.CommitHash, config.BuildTimestamp)
 	fmt.Printf("Documentation: https://github.com/dianlight/SRAT\n\n")
 }

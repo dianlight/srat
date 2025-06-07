@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
+	"sync/atomic"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/teivah/broadcast"
 
 	"github.com/danielgtaylor/huma/v2/sse"
 )
@@ -16,46 +19,45 @@ type BroadcasterServiceInterface interface {
 }
 
 type BroadcasterService struct {
-	ctx         context.Context
-	notifier    chan any
-	SentCounter int64
-	DropCounter int64
+	ctx              context.Context
+	SentCounter      atomic.Uint64
+	ConnectedClients atomic.Int32
+	relay            *broadcast.Relay[any]
 }
 
 func NewBroadcasterService(ctx context.Context) (broker BroadcasterServiceInterface) {
 	// Instantiate a broker
-	rbroker := &BroadcasterService{
-		ctx:         ctx,
-		notifier:    make(chan any, 10),
-		SentCounter: 0,
-		DropCounter: 0,
+	return &BroadcasterService{
+		ctx:   ctx,
+		relay: broadcast.NewRelay[any](),
 	}
-
-	broker = rbroker
-	return
 }
 
 func (broker *BroadcasterService) BroadcastMessage(msg any) (any, error) {
-	select {
-	case broker.notifier <- msg:
-		broker.SentCounter++
-		if _, ok := msg.(dto.HealthPing); !ok {
-			slog.Debug("Queued Message", "msg", msg)
-		}
-	default:
-		slog.Debug("Dropped Message", "msg", msg)
-		broker.DropCounter++
+	if _, ok := msg.(dto.HealthPing); !ok {
+		slog.Debug("Queued Message", "type", fmt.Sprintf("%T", msg), "msg", msg)
 	}
+	defer broker.SentCounter.Add(1)
+	broker.relay.Broadcast(msg)
+
 	return msg, nil
 }
 
 func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
+	broker.ConnectedClients.Add(1)
+	defer broker.ConnectedClients.Add(-1)
+
+	listener := broker.relay.Listener(5)
+	defer listener.Close() // Close the listener when done
+
+	slog.Debug("SSE Connected client", "actual clients", broker.ConnectedClients.Load())
+
 	for {
 		select {
 		case <-broker.ctx.Done():
-			slog.Info("Run process closed", "err", broker.ctx.Err())
+			slog.Info("SSE Progess Closed", "err", broker.ctx.Err())
 			return
-		case event := <-broker.notifier:
+		case event := <-listener.Ch():
 			err := send.Data(event)
 			if err != nil {
 				if !strings.Contains(err.Error(), "write: broken pipe") {
