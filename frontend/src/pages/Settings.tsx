@@ -51,6 +51,18 @@ function isValidIpAddressOrCidr(ip: string): boolean {
     return IPV4_OR_CIDR_REGEX.test(ip) || IPV6_OR_CIDR_REGEX.test(ip);
 }
 
+// --- Veto File Entry Validation Helper ---
+// Matches a valid Samba veto file entry:
+// - Not empty
+// - Does not contain '/' (as it's a separator for the list in smb.conf)
+// - Does not contain null byte '\0'
+const VETO_FILE_ENTRY_REGEX = /^[^/\0]+$/;
+
+function isValidVetoFileEntry(entry: string): boolean {
+    if (typeof entry !== 'string') return false;
+    return VETO_FILE_ENTRY_REGEX.test(entry);
+}
+
 export function Settings() {
     const read_only = useReadOnly();
     const { data: globalConfig, isLoading, error, refetch } = useGetSettingsQuery();
@@ -217,19 +229,32 @@ export function Settings() {
                                 control={control}
                                 defaultValue={[]}
                                 disabled={read_only}
-                                render={({ field }) => (
+                                rules={{
+                                    validate: (chips: string[] | undefined) => {
+                                        if (!chips || chips.length === 0) return true; // Allow empty list
+                                        for (const chip of chips) {
+                                            if (!isValidVetoFileEntry(chip)) {
+                                                return `Invalid entry: "${chip}". Veto file entries cannot be empty, contain '/' or null characters.`;
+                                            }
+                                        }
+                                        return true;
+                                    },
+                                }}
+                                render={({ field, fieldState: { error } }) => (
                                     <MuiChipsInput
+                                        {...field}
                                         size="small"
                                         hideClearAll
                                         label="Veto Files"
-                                        {...field}
+                                        validate={(chipValue) => typeof chipValue === 'string' && isValidVetoFileEntry(chipValue)}
+                                        error={!!error}
+                                        helperText={error ? error.message : "List of files/patterns to hide (e.g., ._* Thumbs.db). Entries cannot contain '/'."}
                                         renderChip={(Component, key, props) => {
                                             const isDefault = default_json.veto_files?.includes(props.label as string);
                                             return (
                                                 <Component {...props} sx={{ color: isDefault ? 'text.secondary' : 'text.primary' }} size="small" key={key} />
                                             );
                                         }}
-                                        {...field}
                                         slotProps={{
                                             input: {
                                                 endAdornment: (
