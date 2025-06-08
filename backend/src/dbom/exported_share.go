@@ -13,7 +13,7 @@ type ExportedShare struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
-	Disabled           bool
+	Disabled           *bool
 	Users              []SambaUser `gorm:"many2many:user_rw_share"`
 	RoUsers            []SambaUser `gorm:"many2many:user_ro_share"`
 	TimeMachine        bool

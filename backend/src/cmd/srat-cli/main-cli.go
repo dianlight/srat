@@ -379,7 +379,7 @@ func main() {
 				}
 
 				for _, share := range *shares {
-					if share.Disabled {
+					if *share.Disabled {
 						continue
 					}
 					switch share.Usage {

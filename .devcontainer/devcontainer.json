@@ -71,7 +71,8 @@
 				"google.geminicodeassist",
 				"zoellner.openapi-preview",
 				"golang.go",
-				"oorzc.mind-map"
+				"oorzc.mind-map",
+				"eamodio.gitlens"
 			]
 		}
 	},

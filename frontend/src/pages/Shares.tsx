@@ -42,7 +42,7 @@ import BackupIcon from '@mui/icons-material/Backup';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAppDispatch } from "../store/store";
-import { Usage, useDeleteShareByShareNameMutation, useGetUsersQuery, usePostShareMutation, usePutShareByShareNameMutation, type MountPointData, type SharedResource, type User } from "../store/sratApi";
+import { Usage, useDeleteShareByShareNameMutation, useGetUsersQuery, usePostShareMutation, usePutShareByShareNameDisableMutation, usePutShareByShareNameEnableMutation, usePutShareByShareNameMutation, type MountPointData, type SharedResource, type User } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { useLocation, useNavigate } from 'react-router';
@@ -146,6 +146,8 @@ export function Shares() {
     const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
     const [deleteShare, updateDeleteShareResult] = useDeleteShareByShareNameMutation();
     const [createShare, createShareResult] = usePostShareMutation();
+    const [enableShare, enableShareResult] = usePutShareByShareNameEnableMutation();
+    const [disableShare, disableShareResult] = usePutShareByShareNameDisableMutation();
 
     // Calculate if a new share can be created
     const canCreateNewShare = useMemo(() => {
@@ -338,7 +340,7 @@ export function Shares() {
         })
             .then(({ confirmed, reason }) => {
                 if (confirmed) {
-                    updateShare({ shareName: props?.name || "", sharedResource: { ...props, disabled: true } }).unwrap()
+                    disableShare({ shareName: props?.name || "" }).unwrap()
                         .then(() => {
                             //                        setErrorInfo('');
                         })
@@ -354,7 +356,7 @@ export function Shares() {
     function onSubmitEnableShare(cdata?: string, props?: SharedResource) {
         console.log("Enable", cdata, props);
         if (!cdata || !props) return
-        updateShare({ shareName: props?.name || "", sharedResource: { ...props, disabled: false } }).unwrap()
+        enableShare({ shareName: props?.name || "" }).unwrap()
             .then(() => {
                 //            setErrorInfo('');
             })

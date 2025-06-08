@@ -16,9 +16,8 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 	if source.Name != "" {
 		target.Name = source.Name
 	}
-	if source.Disabled != false {
-		pBool := source.Disabled
-		target.Disabled = &pBool
+	if source.Disabled != nil {
+		target.Disabled = source.Disabled
 	}
 	if source.Users != nil {
 		target.Users = make([]dto.User, len(source.Users))
@@ -33,8 +32,8 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 		}
 	}
 	if source.TimeMachine != false {
-		pBool2 := source.TimeMachine
-		target.TimeMachine = &pBool2
+		pBool := source.TimeMachine
+		target.TimeMachine = &pBool
 	}
 	if source.Usage != "" {
 		target.Usage = source.Usage
@@ -160,7 +159,7 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 		target.Name = source.Name
 	}
 	if source.Disabled != nil {
-		target.Disabled = *source.Disabled
+		target.Disabled = source.Disabled
 	}
 	if source.TimeMachine != nil {
 		target.TimeMachine = *source.TimeMachine
@@ -261,8 +260,7 @@ func (c *DtoToDbomConverterImpl) dtoMountFlagsToDbomMounDataFlags(source dto.Mou
 func (c *DtoToDbomConverterImpl) exportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error) {
 	var dtoSharedResource dto.SharedResource
 	dtoSharedResource.Name = source.Name
-	pBool := source.Disabled
-	dtoSharedResource.Disabled = &pBool
+	dtoSharedResource.Disabled = source.Disabled
 	if source.Users != nil {
 		dtoSharedResource.Users = make([]dto.User, len(source.Users))
 		for i := 0; i < len(source.Users); i++ {
@@ -275,8 +273,8 @@ func (c *DtoToDbomConverterImpl) exportedShareToSharedResource(source dbom.Expor
 			dtoSharedResource.RoUsers[j] = c.dbomSambaUserToDtoUser(source.RoUsers[j])
 		}
 	}
-	pBool2 := source.TimeMachine
-	dtoSharedResource.TimeMachine = &pBool2
+	pBool := source.TimeMachine
+	dtoSharedResource.TimeMachine = &pBool
 	dtoSharedResource.Usage = source.Usage
 	pDtoMountPointData, err := c.dbomMountPointPathToPDtoMountPointData(source.MountPointData)
 	if err != nil {
@@ -389,9 +387,7 @@ func (c *DtoToDbomConverterImpl) pDtoMountPointDataToDbomMountPointPath(source *
 func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.SharedResource) (dbom.ExportedShare, error) {
 	var dbomExportedShare dbom.ExportedShare
 	dbomExportedShare.Name = source.Name
-	if source.Disabled != nil {
-		dbomExportedShare.Disabled = *source.Disabled
-	}
+	dbomExportedShare.Disabled = source.Disabled
 	if source.Users != nil {
 		dbomExportedShare.Users = make([]dbom.SambaUser, len(source.Users))
 		for i := 0; i < len(source.Users); i++ {

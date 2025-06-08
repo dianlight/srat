@@ -299,7 +299,7 @@ func (s *shareService) setShareDisabledStatus(name string, disabled bool) (*dto.
 		return nil, errors.Wrapf(err, "failed to find share '%s'", name)
 	}
 
-	dbShare.Disabled = disabled
+	dbShare.Disabled = &disabled
 	if err := s.shareRepo.Save(dbShare); err != nil {
 		return nil, errors.Wrapf(err, "failed to save share '%s' with disabled status %t", name, disabled)
 	}
