@@ -13,9 +13,7 @@ import (
 type ConfigToDtoConverterImpl struct{}
 
 func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target *dto.Settings) error {
-	if source.Workgroup != "" {
-		target.Workgroup = source.Workgroup
-	}
+	target.Workgroup = source.Workgroup
 	if source.Mountoptions != nil {
 		target.Mountoptions = make([]string, len(source.Mountoptions))
 		for i := 0; i < len(source.Mountoptions); i++ {
@@ -34,30 +32,19 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 			target.VetoFiles[k] = source.VetoFiles[k]
 		}
 	}
-	if source.CompatibilityMode != false {
-		target.CompatibilityMode = source.CompatibilityMode
-	}
-	if source.EnableRecycleBin != false {
-		target.EnableRecycleBin = source.EnableRecycleBin
-	}
+	target.CompatibilityMode = source.CompatibilityMode
+	target.EnableRecycleBin = source.EnableRecycleBin
 	if source.Interfaces != nil {
 		target.Interfaces = make([]string, len(source.Interfaces))
 		for l := 0; l < len(source.Interfaces); l++ {
 			target.Interfaces[l] = source.Interfaces[l]
 		}
 	}
-	if source.BindAllInterfaces != false {
-		target.BindAllInterfaces = source.BindAllInterfaces
-	}
-	if source.LogLevel != "" {
-		target.LogLevel = source.LogLevel
-	}
-	if source.MultiChannel != false {
-		target.MultiChannel = source.MultiChannel
-	}
-	if source.UpdateChannel != "" {
-		target.UpdateChannel = dto.UpdateChannel(source.UpdateChannel)
-	}
+	target.BindAllInterfaces = source.BindAllInterfaces
+	target.LogLevel = source.LogLevel
+	target.MultiChannel = source.MultiChannel
+	target.UpdateChannel = dto.UpdateChannel(source.UpdateChannel)
+	target.WSDD = wsddMapper(source)
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ConfigToUser(source config.Config, target *dto.User) error {
@@ -75,54 +62,6 @@ func (c *ConfigToDtoConverterImpl) OtherUserToUser(source config.User, target *d
 	}
 	if source.Password != "" {
 		target.Password = source.Password
-	}
-	return nil
-}
-func (c *ConfigToDtoConverterImpl) SettingsToConfig(source dto.Settings, target *config.Config, context ConfigToDtoConverter) error {
-	if source.Workgroup != "" {
-		target.Workgroup = source.Workgroup
-	}
-	if source.Mountoptions != nil {
-		target.Mountoptions = make([]string, len(source.Mountoptions))
-		for i := 0; i < len(source.Mountoptions); i++ {
-			target.Mountoptions[i] = source.Mountoptions[i]
-		}
-	}
-	if source.AllowHost != nil {
-		target.AllowHost = make([]string, len(source.AllowHost))
-		for j := 0; j < len(source.AllowHost); j++ {
-			target.AllowHost[j] = source.AllowHost[j]
-		}
-	}
-	if source.VetoFiles != nil {
-		target.VetoFiles = make([]string, len(source.VetoFiles))
-		for k := 0; k < len(source.VetoFiles); k++ {
-			target.VetoFiles[k] = source.VetoFiles[k]
-		}
-	}
-	if source.CompatibilityMode != false {
-		target.CompatibilityMode = source.CompatibilityMode
-	}
-	if source.EnableRecycleBin != false {
-		target.EnableRecycleBin = source.EnableRecycleBin
-	}
-	if source.Interfaces != nil {
-		target.Interfaces = make([]string, len(source.Interfaces))
-		for l := 0; l < len(source.Interfaces); l++ {
-			target.Interfaces[l] = source.Interfaces[l]
-		}
-	}
-	if source.BindAllInterfaces != false {
-		target.BindAllInterfaces = source.BindAllInterfaces
-	}
-	if source.LogLevel != "" {
-		target.LogLevel = source.LogLevel
-	}
-	if source.MultiChannel != false {
-		target.MultiChannel = source.MultiChannel
-	}
-	if source.UpdateChannel != "" {
-		target.UpdateChannel = string(source.UpdateChannel)
 	}
 	return nil
 }

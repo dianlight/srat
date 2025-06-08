@@ -1,0 +1,46 @@
+{
+  "workgroup": "WORKGROUP",
+  "username": "homeassistant",
+  "password": "changeme!",
+  "allow_hosts": [
+    "10.0.0.0/8",
+    "100.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "169.254.0.0/16",
+    "fe80::/10",
+    "fc00::/7"
+  ],
+  "automount": true,
+  "mountoptions": [
+    "nosuid",
+    "relatime",
+    "noexec"
+  ],
+  "available_disks_log": true,
+  "medialibrary": {
+    "enable": true
+  },
+  "veto_files": [
+    "._*",
+    ".DS_Store",
+    "Thumbs.db",
+    "icon?",
+    ".Trashes"
+  ],
+  "compatibility_mode": false,
+  "recyle_bin_enabled": false,
+  "wsdd": false,
+  "wsdd2": false,
+  "mqtt_enable": false,
+  "mqtt_nexgen_entities": true,
+  "hdd_idle_seconds": 10,
+  "autodiscovery": {},
+  "other_users": [],
+  "acl": [],
+  "interfaces": [],
+  "bind_all_interfaces": true,
+  "shares": {},
+  "docker_interface": "hassio",
+  "docker_net": "172.30.32.0/23"
+}

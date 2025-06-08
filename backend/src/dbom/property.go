@@ -44,21 +44,3 @@ func (self *Properties) AddInternalValue(key string, value any) error {
 	(*self)[key] = *prop
 	return nil
 }
-
-/*
-func (self *Properties) SetValue(key string, value any) error {
-	prop, err := self.Get(key)
-	if err != nil {
-		return err
-	}
-
-	prop.Value = value
-	err = db.Save(&prop).Error
-	if err != nil {
-		return err
-	}
-
-	(*self)[key] = *prop
-	return nil
-}
-*/

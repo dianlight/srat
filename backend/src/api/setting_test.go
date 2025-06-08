@@ -115,6 +115,10 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			Key:   "UpdateChannel",
 			Value: suite.config.UpdateChannel,
 		},
+		"WSDD": dbom.Property{
+			Key:   "WSDD",
+			Value: "none",
+		},
 	}, nil)
 
 }

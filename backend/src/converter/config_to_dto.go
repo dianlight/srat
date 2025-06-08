@@ -48,16 +48,18 @@ type ConfigToDtoConverter interface {
 	UserToOtherUser(source dto.User, target *config.User) error
 
 	// goverter:update target
+	// goverter:map . WSDD | wsddMapper
+	// goverter:update:ignoreZeroValueField no
 	ConfigToSettings(source config.Config, target *dto.Settings) error
 
-	// goverter:update target
-	// goverter:ignore CurrentFile
-	// goverter:ignore ConfigSpecVersion
-	// goverter:ignore Shares
-	// goverter:ignore DockerInterface DockerNet
-	// goverter:ignoreMissing
-	// goverter:context conv
-	SettingsToConfig(source dto.Settings, target *config.Config, conv ConfigToDtoConverter) error
+	// g.overter:update target
+	// g.overter:ignore CurrentFile
+	// g.overter:ignore ConfigSpecVersion
+	// g.overter:ignore Shares
+	// g.overter:ignore DockerInterface DockerNet
+	// g.overter:ignoreMissing
+	// g.overter:context conv
+	//SettingsToConfig(source dto.Settings, target *config.Config, conv ConfigToDtoConverter) error
 
 	// goverter:update target
 	// goverter:ignore IsAdmin _  RwShares RoShares
@@ -102,4 +104,14 @@ func PathToSource(path string) string {
 
 func pathToType(_ string) string {
 	return "ADDON"
+}
+
+func wsddMapper(source config.Config) dto.WSDDSettings {
+	if source.WSDD == true {
+		return dto.WSDD
+	} else if source.WSDD2 == true {
+		return dto.WSDD2
+	} else {
+		return dto.NoWSDD
+	}
 }

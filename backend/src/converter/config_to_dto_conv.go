@@ -40,35 +40,36 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 	return nil
 }
 
-func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, users []dto.User, shares []dto.SharedResource, target *config.Config) error {
-	err := c.SettingsToConfig(settings, target, c)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	for _, user := range users {
-		var tuser config.User
-		if user.IsAdmin {
-			target.Username = user.Username
-			target.Password = user.Password
-		} else {
-			err := c.UserToOtherUser(user, &tuser)
-			if err != nil {
-				return errors.WithStack(err)
-			}
-			target.OtherUsers = append(target.OtherUsers, tuser)
-		}
-	}
-	for _, share := range shares {
-		var tshare config.Share
-		err := c.SharedResourceToShare(share, &tshare)
+/*
+	func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, users []dto.User, shares []dto.SharedResource, target *config.Config) error {
+		err := c.SettingsToConfig(settings, target, c)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		target.Shares[share.Name] = tshare
+		for _, user := range users {
+			var tuser config.User
+			if user.IsAdmin {
+				target.Username = user.Username
+				target.Password = user.Password
+			} else {
+				err := c.UserToOtherUser(user, &tuser)
+				if err != nil {
+					return errors.WithStack(err)
+				}
+				target.OtherUsers = append(target.OtherUsers, tuser)
+			}
+		}
+		for _, share := range shares {
+			var tshare config.Share
+			err := c.SharedResourceToShare(share, &tshare)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			target.Shares[share.Name] = tshare
+		}
+		return nil
 	}
-	return nil
-}
-
+*/
 func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, target *dto.SharedResource, context []dto.User) error {
 	err := c.ShareToSharedResourceNoMountPointData(source, target, context)
 	if err != nil {
