@@ -846,21 +846,24 @@ function ShareEditDialog(props: ShareEditDialogProps) {
                                 },
                             }}
                             control={control}
-                            InputProps={{
-                                endAdornment: (
-                                    <InputAdornment position="end">
-                                        <Tooltip title={cycleCasingTooltipTitle}>
-                                            <IconButton
-                                                aria-label="cycle share name casing"
-                                                onClick={handleCycleCasing}
-                                                edge="end"
-                                            >
-                                                <CasingIconToDisplay />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </InputAdornment>
-                                ),
-                            }} />
+                            slotProps={{
+                                input: {
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <Tooltip title={cycleCasingTooltipTitle}>
+                                                <IconButton
+                                                    aria-label="cycle share name casing"
+                                                    onClick={handleCycleCasing}
+                                                    edge="end"
+                                                >
+                                                    <CasingIconToDisplay />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </InputAdornment>
+                                    ),
+                                }
+                            }}
+                        />
                     }
                 </DialogTitle>
                 <DialogContent>

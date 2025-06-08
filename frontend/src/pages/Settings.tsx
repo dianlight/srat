@@ -1,6 +1,6 @@
 import { DevTool } from "@hookform/devtools";
 import { useContext, useEffect, useRef, useCallback } from "react";
-import { InView } from "react-intersection-observer";
+import { InView, useInView } from "react-intersection-observer";
 import Grid from "@mui/material/Grid";
 import Button from "@mui/material/Button";
 import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement, useForm, Controller } from "react-hook-form-mui";
@@ -11,13 +11,18 @@ import { useGetNicsQuery, useGetSettingsQuery, usePutSettingsMutation, type Netw
 import { useReadOnly } from "../hooks/readonlyHook";
 import debounce from 'lodash.debounce';
 import { NIL } from "uuid";
+import InputAdornment from "@mui/material/InputAdornment";
+import Tooltip from "@mui/material/Tooltip";
+import { Chip, IconButton, Typography } from "@mui/material";
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd'; // Import an icon for the button
+import default_json from "../json/default_config.json"
 
 export function Settings() {
     const read_only = useReadOnly();
     const { data: globalConfig, isLoading, error, refetch } = useGetSettingsQuery();
     const { data: nic, isLoading: inLoadinf } = useGetNicsQuery();
 
-    const { control, handleSubmit, reset, watch, formState, subscribe } = useForm({
+    const { control, handleSubmit, reset, watch, setValue, getValues, formState, subscribe } = useForm({
         mode: "onBlur",
         values: globalConfig as Settings,
         disabled: read_only,
@@ -107,7 +112,47 @@ export function Settings() {
                                 control={control}
                                 defaultValue={[]}
                                 disabled={read_only}
-                                render={({ field }) => <MuiChipsInput size="small" label="Allow Hosts" {...field} />}
+                                render={({ field }) => (
+                                    <MuiChipsInput
+                                        size="small"
+                                        label="Allow Hosts"
+                                        required
+                                        hideClearAll
+                                        slotProps={{
+                                            input: {
+                                                endAdornment: (
+                                                    <InputAdornment position="end" sx={{ pr: 1 }}>
+                                                        {!read_only && (
+                                                            <Tooltip title="Add suggested default Allow Hosts">
+                                                                <IconButton
+                                                                    aria-label="add suggested default allow hosts"
+                                                                    onClick={() => {
+                                                                        const currentAllowHosts: string[] = getValues("allow_hosts") || [];
+                                                                        const defaultAllowHosts: string[] = default_json.allow_hosts || [];
+                                                                        const newAllowHostsToAdd = defaultAllowHosts.filter(
+                                                                            (defaultHost) => !currentAllowHosts.includes(defaultHost)
+                                                                        );
+                                                                        setValue("allow_hosts", [...currentAllowHosts, ...newAllowHostsToAdd], { shouldDirty: true, shouldValidate: true });
+                                                                    }}
+                                                                    edge="end"
+                                                                >
+                                                                    <PlaylistAddIcon />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        )}
+                                                    </InputAdornment>
+                                                ),
+                                            }
+                                        }}
+                                        {...field}
+                                        renderChip={(Component, key, props) => {
+                                            const isDefault = default_json.allow_hosts?.includes(props.label as string);
+                                            return (
+                                                <Component {...props} sx={{ color: isDefault ? 'text.secondary' : 'text.primary' }} size="small" key={key} />
+                                            );
+                                        }}
+
+                                    />)}
                             />
                         </Grid>
                         <Grid size={4}>
@@ -121,7 +166,47 @@ export function Settings() {
                                 control={control}
                                 defaultValue={[]}
                                 disabled={read_only}
-                                render={({ field }) => <MuiChipsInput size="small" label="Veto Files" {...field} />}
+                                render={({ field }) => (
+                                    <MuiChipsInput
+                                        size="small"
+                                        hideClearAll
+                                        label="Veto Files"
+                                        {...field}
+                                        renderChip={(Component, key, props) => {
+                                            const isDefault = default_json.veto_files?.includes(props.label as string);
+                                            return (
+                                                <Component {...props} sx={{ color: isDefault ? 'text.secondary' : 'text.primary' }} size="small" key={key} />
+                                            );
+                                        }}
+                                        {...field}
+                                        slotProps={{
+                                            input: {
+                                                endAdornment: (
+                                                    <InputAdornment position="end" sx={{ pr: 1 }}>
+                                                        {!read_only && (
+                                                            <Tooltip title="Add suggested default Veto files">
+                                                                <IconButton
+                                                                    aria-label="add suggested default veto files"
+                                                                    onClick={() => {
+                                                                        const currentVetoFiles: string[] = getValues("veto_files") || [];
+                                                                        const defaultVetoFiles: string[] = default_json.veto_files || [];
+                                                                        const newVetoFilesToAdd = defaultVetoFiles.filter(
+                                                                            (defaultFile) => !currentVetoFiles.includes(defaultFile)
+                                                                        );
+                                                                        setValue("veto_files", [...currentVetoFiles, ...newVetoFilesToAdd], { shouldDirty: true, shouldValidate: true });
+                                                                    }}
+                                                                    edge="end"
+                                                                >
+                                                                    <PlaylistAddIcon />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        )}
+                                                    </InputAdornment>
+                                                ),
+                                            }
+                                        }}
+
+                                    />)}
                             />
                         </Grid>
                         <Grid size={4}>
