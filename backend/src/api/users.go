@@ -3,35 +3,22 @@ package api
 import (
 	"context"
 	"errors"
-	"log/slog"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"gorm.io/gorm"
+	t_errors "gitlab.com/tozd/go/errors"
 )
 
 type UserHandler struct {
-	apiContext   *dto.ContextState
-	dirtyservice service.DirtyDataServiceInterface
-	user_repo    repository.SambaUserRepositoryInterface
-	sharesevice  service.ShareServiceInterface
+	userService service.UserServiceInterface
 }
 
 func NewUserHandler(
-	apiContext *dto.ContextState,
-	dirtyservice service.DirtyDataServiceInterface,
-	user_repo repository.SambaUserRepositoryInterface,
-	sharesevice service.ShareServiceInterface,
+	userService service.UserServiceInterface,
 ) *UserHandler {
 	p := new(UserHandler)
-	p.apiContext = apiContext
-	p.dirtyservice = dirtyservice
-	p.user_repo = user_repo
-	p.sharesevice = sharesevice
+	p.userService = userService
 	return p
 }
 
@@ -56,19 +43,9 @@ func (self *UserHandler) RegisterUserHandler(api huma.API) {
 //   - A struct containing a slice of dto.User in the Body field.
 //   - An error if any issue occurs during loading or conversion of users.
 func (handler *UserHandler) ListUsers(ctx context.Context, input *struct{}) (*struct{ Body []dto.User }, error) {
-	dbusers, err := handler.user_repo.All()
+	users, err := handler.userService.ListUsers()
 	if err != nil {
-		return nil, err
-	}
-	var users []dto.User
-	var conv converter.DtoToDbomConverterImpl
-	for _, dbuser := range dbusers {
-		var user dto.User
-		err = conv.SambaUserToUser(dbuser, &user)
-		if err != nil {
-			return nil, err
-		}
-		users = append(users, user)
+		return nil, t_errors.Wrap(err, "failed to list users")
 	}
 	return &struct{ Body []dto.User }{Body: users}, nil
 }
@@ -94,35 +71,18 @@ func (handler *UserHandler) CreateUser(ctx context.Context, input *struct {
 	Status int
 	Body   dto.User
 }, error) {
-
-	var dbUser dbom.SambaUser
-	var conv converter.DtoToDbomConverterImpl
-	err := conv.UserToSambaUser(input.Body, &dbUser)
+	createdUser, err := handler.userService.CreateUser(input.Body)
 	if err != nil {
-		return nil, err
-	}
-	slog.Debug("User", "in", input.Body, "db", dbUser)
-	err = handler.user_repo.Create(&dbUser)
-	if err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, huma.Error409Conflict("User already exists")
+		if errors.Is(err, dto.ErrorUserAlreadyExists) {
+			return nil, huma.Error409Conflict(err.Error())
 		}
-		slog.Error("error", "err", err)
-		return nil, err
-	}
-
-	var user dto.User
-	handler.dirtyservice.SetDirtyUsers()
-	err = conv.SambaUserToUser(dbUser, &user)
-	if err != nil {
-		return nil, err
+		return nil, t_errors.Wrapf(err, "failed to create user %s", input.Body.Username)
 	}
 
 	return &struct {
 		Status int
 		Body   dto.User
-	}{Status: 201, Body: user}, nil
-
+	}{Status: 201, Body: *createdUser}, nil
 }
 
 // UpdateUser updates an existing user in the database.
@@ -142,34 +102,17 @@ func (handler *UserHandler) UpdateUser(ctx context.Context, input *struct {
 	UserName string   `path:"username" maxLength:"30" example:"world" doc:"Username"`
 	Body     dto.User `required:"true"`
 }) (*struct{ Body dto.User }, error) {
-
-	dbUser, err := handler.user_repo.GetUserByName(input.UserName)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, huma.Error404NotFound("User not found")
-	} else if err != nil {
-		return nil, err
-	}
-	var conv converter.DtoToDbomConverterImpl
-	err = conv.UserToSambaUser(input.Body, dbUser)
+	updatedUser, err := handler.userService.UpdateUser(input.UserName, input.Body)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, dto.ErrorUserNotFound) {
+			return nil, huma.Error404NotFound(err.Error())
+		}
+		if errors.Is(err, dto.ErrorUserAlreadyExists) {
+			return nil, huma.Error409Conflict(err.Error())
+		}
+		return nil, t_errors.Wrapf(err, "failed to update user %s", input.UserName)
 	}
-
-	err = handler.user_repo.Save(dbUser)
-	if err != nil {
-		return nil, err
-	}
-	var user dto.User
-	err = conv.SambaUserToUser(*dbUser, &user)
-	if err != nil {
-		return nil, err
-	}
-
-	go handler.sharesevice.NotifyClient()
-
-	handler.dirtyservice.SetDirtyUsers()
-
-	return &struct{ Body dto.User }{Body: user}, nil
+	return &struct{ Body dto.User }{Body: *updatedUser}, nil
 }
 
 // UpdateAdminUser updates the details of an admin user in the system.
@@ -187,51 +130,28 @@ func (handler *UserHandler) UpdateUser(ctx context.Context, input *struct {
 func (handler *UserHandler) UpdateAdminUser(ctx context.Context, input *struct {
 	Body dto.User `required:"true"`
 }) (*struct{ Body dto.User }, error) {
-
-	dbUser, err := handler.user_repo.GetAdmin()
+	updatedAdmin, err := handler.userService.UpdateAdminUser(input.Body)
 	if err != nil {
-		return nil, err
-	}
-
-	if dbUser.Username != input.Body.Username {
-		err = handler.user_repo.Rename(dbUser.Username, input.Body.Username)
-		if err != nil {
-			return nil, err
+		if errors.Is(err, dto.ErrorUserNotFound) {
+			return nil, huma.Error404NotFound(err.Error())
 		}
+		if errors.Is(err, dto.ErrorUserAlreadyExists) {
+			return nil, huma.Error409Conflict(err.Error())
+		}
+		return nil, t_errors.Wrap(err, "failed to update admin user")
 	}
-
-	var conv converter.DtoToDbomConverterImpl
-	err = conv.UserToSambaUser(input.Body, &dbUser)
-	if err != nil {
-		return nil, err
-	}
-	err = handler.user_repo.Save(&dbUser)
-	if err != nil {
-		return nil, err
-	}
-	var user dto.User
-	err = conv.SambaUserToUser(dbUser, &user)
-	if err != nil {
-		return nil, err
-	}
-
-	handler.dirtyservice.SetDirtyUsers()
-
-	return &struct{ Body dto.User }{Body: user}, nil
+	return &struct{ Body dto.User }{Body: *updatedAdmin}, nil
 }
 
 func (handler *UserHandler) DeleteUser(ctx context.Context, input *struct {
 	UserName string `path:"username" minimum:"1" maxLength:"30" example:"world" doc:"Username"`
 }) (*struct{}, error) {
-
-	err := handler.user_repo.Delete(input.UserName)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, huma.Error404NotFound("User not found")
-	} else if err != nil {
-		return nil, err
+	err := handler.userService.DeleteUser(input.UserName)
+	if err != nil {
+		if errors.Is(err, dto.ErrorUserNotFound) {
+			return nil, huma.Error404NotFound(err.Error())
+		}
+		return nil, t_errors.Wrapf(err, "failed to delete user %s", input.UserName)
 	}
-
-	handler.dirtyservice.SetDirtyUsers()
-
 	return &struct{}{}, nil
 }

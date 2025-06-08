@@ -102,6 +102,7 @@ func main() {
 			service.NewSupervisorService,
 			service.NewFilesystemService,
 			service.NewShareService,
+			service.NewUserService,
 			repository.NewMountPointPathRepository,
 			repository.NewExportedShareRepository,
 			repository.NewPropertyRepositoryRepository,
