@@ -495,7 +495,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 		}
 
 		hwser, errHw := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx)
-		if errHw != nil {
+		if errHw != nil || hwser == nil {
 			slog.Error("Failed to get hardware info from Home Assistant Supervisor", "err", errHw)
 			return nil, errors.Wrap(errHw, "failed to get hardware info from HA Supervisor")
 		}
@@ -619,9 +619,14 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 							return nil, errShare
 						}
 					}
-					shares := (*(*(ret)[i].Partitions)[j].MountPointData)[k].Shares
-					shares = append(shares, *sharedData)
-					(*(*(ret)[i].Partitions)[j].MountPointData)[k].Shares = shares
+					if sharedData != nil {
+						shares := (*(*(ret)[i].Partitions)[j].MountPointData)[k].Shares
+						if shares == nil {
+							shares = make([]dto.SharedResource, 0)
+						}
+						shares = append(shares, *sharedData)
+						(*(*(ret)[i].Partitions)[j].MountPointData)[k].Shares = shares
+					}
 				}
 			}
 		}
