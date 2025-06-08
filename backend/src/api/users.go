@@ -2,12 +2,11 @@ package api
 
 import (
 	"context"
-	"errors"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	t_errors "gitlab.com/tozd/go/errors"
+	"gitlab.com/tozd/go/errors"
 )
 
 type UserHandler struct {
@@ -45,7 +44,7 @@ func (self *UserHandler) RegisterUserHandler(api huma.API) {
 func (handler *UserHandler) ListUsers(ctx context.Context, input *struct{}) (*struct{ Body []dto.User }, error) {
 	users, err := handler.userService.ListUsers()
 	if err != nil {
-		return nil, t_errors.Wrap(err, "failed to list users")
+		return nil, errors.Wrap(err, "failed to list users")
 	}
 	return &struct{ Body []dto.User }{Body: users}, nil
 }
@@ -76,7 +75,7 @@ func (handler *UserHandler) CreateUser(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorUserAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
-		return nil, t_errors.Wrapf(err, "failed to create user %s", input.Body.Username)
+		return nil, errors.Wrapf(err, "failed to create user %s", input.Body.Username)
 	}
 
 	return &struct {
@@ -110,7 +109,7 @@ func (handler *UserHandler) UpdateUser(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorUserAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
-		return nil, t_errors.Wrapf(err, "failed to update user %s", input.UserName)
+		return nil, errors.Wrapf(err, "failed to update user %s", input.UserName)
 	}
 	return &struct{ Body dto.User }{Body: *updatedUser}, nil
 }
@@ -138,7 +137,7 @@ func (handler *UserHandler) UpdateAdminUser(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorUserAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
-		return nil, t_errors.Wrap(err, "failed to update admin user")
+		return nil, errors.Wrap(err, "failed to update admin user")
 	}
 	return &struct{ Body dto.User }{Body: *updatedAdmin}, nil
 }
@@ -151,7 +150,7 @@ func (handler *UserHandler) DeleteUser(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorUserNotFound) {
 			return nil, huma.Error404NotFound(err.Error())
 		}
-		return nil, t_errors.Wrapf(err, "failed to delete user %s", input.UserName)
+		return nil, errors.Wrapf(err, "failed to delete user %s", input.UserName)
 	}
 	return &struct{}{}, nil
 }

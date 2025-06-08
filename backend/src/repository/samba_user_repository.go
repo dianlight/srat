@@ -87,7 +87,7 @@ func (self *SambaUserRepository) GetUserByName(name string) (*dbom.SambaUser, er
 }
 
 func (self *SambaUserRepository) Delete(name string) error {
-	return self.db.Unscoped().Model(&dbom.SambaUser{}).Where("username = ? and is_admin = false", name).Delete(&dbom.SambaUser{Username: name}).Error
+	return self.db.Model(&dbom.SambaUser{}).Where("username = ? and is_admin = false", name).Delete(&dbom.SambaUser{Username: name}).Error
 }
 
 func (self *SambaUserRepository) SaveAll(users *dbom.SambaUsers) error {

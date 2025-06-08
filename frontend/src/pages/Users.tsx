@@ -12,7 +12,6 @@ import { PasswordElement, PasswordRepeatElement, TextFieldElement } from "react-
 import { useDeleteUserByUsernameMutation, useGetUsersQuery, usePostUserMutation, usePutUseradminMutation, usePutUserByUsernameMutation, type User } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
 import { toast } from "react-toastify";
-import { useShare } from "../hooks/shareHook";
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
@@ -26,7 +25,6 @@ interface UsersProps extends User {
 export function Users() {
     const read_only = useReadOnly();
     const users = useGetUsersQuery();
-    const { shares } = useShare();
     //const admin = useGetUseradminQuery();
     const [errorInfo, setErrorInfo] = useState<string>('')
     const [selected, setSelected] = useState<UsersProps>({ username: "", password: "" });
@@ -89,7 +87,9 @@ export function Users() {
 
         confirm({
             title: `Delete ${data.username}?`,
-            description: "Do you really would delete this user?"
+            description: "Do you really would delete this user?",
+            acknowledgement: "I understand that deleting the share will remove it permanently.",
+
         })
             .then(({ confirmed, reason }) => {
                 if (confirmed) {
@@ -129,8 +129,8 @@ export function Users() {
                     if (!a.is_admin && b.is_admin) return 1;
                     return (a.username || "").localeCompare(b.username || "");
                 }).map((user) => {
-                    const userRwShares = shares ? Object.values(shares).filter(share => share.users?.some(u => u.username === user.username)) : [];
-                    const userRoShares = shares ? Object.values(shares).filter(share => share.ro_users?.some(u => u.username === user.username)) : [];
+                    const userRwShares = user.rw_shares || [];
+                    const userRoShares = user.ro_shares || [];
 
                     return <Fragment key={user.username || "admin"}>
                         <ListItemButton sx={{ alignItems: 'flex-start' }}>
@@ -160,8 +160,8 @@ export function Users() {
                                                         <Box component="span" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
                                                             Shares:
                                                             {userRwShares.map((share, index) => (
-                                                                <Typography component="span" variant="caption" key={share.name}>
-                                                                    {share.name}{index < userRwShares.length - 1 ? ',' : ''}
+                                                                <Typography component="span" variant="caption" key={share}>
+                                                                    {share}{index < userRwShares.length - 1 ? ',' : ''}
                                                                 </Typography>
                                                             ))}
                                                         </Box>
@@ -180,8 +180,8 @@ export function Users() {
                                                         <Box component="span" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
                                                             Shares:
                                                             {userRoShares.map((share, index) => (
-                                                                <Typography component="span" variant="caption" key={share.name}>
-                                                                    {share.name}{index < userRoShares.length - 1 ? ',' : ''}
+                                                                <Typography component="span" variant="caption" key={share}>
+                                                                    {share}{index < userRoShares.length - 1 ? ',' : ''}
                                                                 </Typography>
                                                             ))}
                                                         </Box>
