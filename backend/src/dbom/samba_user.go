@@ -33,6 +33,16 @@ func (u *SambaUser) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+func (u *SambaUser) AfterUpdate(tx *gorm.DB) error {
+	if u.Password != "" {
+		err := unixsamba.ChangePassword(u.Username, u.Password, false)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	return nil
+}
+
 func (u *SambaUser) AfterDelete(tx *gorm.DB) (err error) {
 	// Cancellazione Utende da Samba
 	err = unixsamba.DeleteSambaUser(u.Username, true, true)

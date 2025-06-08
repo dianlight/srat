@@ -27,6 +27,7 @@ type ShareServiceInterface interface {
 	DisableShareFromPath(path string) (*dto.SharedResource, error)
 	EnableShareFromPath(path string) (*dto.SharedResource, error)
 	SetVolumeService(volume VolumeServiceInterface)
+	NotifyClient()
 }
 
 type shareService struct {
@@ -68,7 +69,7 @@ func (s *shareService) SetVolumeService(volume VolumeServiceInterface) {
 	s.volume = volume
 }
 
-func (s *shareService) notifyClient() {
+func (s *shareService) NotifyClient() {
 	slog.Debug("Notifying client about share changes...")
 	// Lock to prevent concurrent modifications to the data being broadcasted,
 	// though ListShares should ideally be concurrent-safe.
@@ -217,7 +218,7 @@ func (s *shareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 	if err := s.converter.ExportedShareToSharedResource(*dbShare, &createdDtoShare); err != nil {
 		return nil, errors.Wrapf(err, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
 	}
-	go s.notifyClient()
+	go s.NotifyClient()
 
 	// Impose Volume Automount
 	_, err = s.volume.PatchMountPointSettings(dbShare.MountPointDataPath, dto.MountPointData{
@@ -265,7 +266,7 @@ func (s *shareService) UpdateShare(currentName string, shareUpdate dto.SharedRes
 	if err := s.converter.ExportedShareToSharedResource(*dbShare, &updatedDtoShare); err != nil {
 		return nil, errors.Wrapf(err, "failed to convert updated dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
 	}
-	go s.notifyClient()
+	go s.NotifyClient()
 	return &updatedDtoShare, nil
 }
 
@@ -279,7 +280,7 @@ func (s *shareService) DeleteShare(name string) error {
 	if err := s.shareRepo.Delete(name); err != nil {
 		return errors.Wrapf(err, "failed to delete share '%s' from repository", name)
 	}
-	go s.notifyClient()
+	go s.NotifyClient()
 	// Impose Volume No Automount
 	_, err = s.volume.PatchMountPointSettings(ashare.MountPointData.Path, dto.MountPointData{
 		IsToMountAtStartup: pointer.Bool(false),
@@ -309,7 +310,7 @@ func (s *shareService) setShareDisabledStatus(name string, disabled bool) (*dto.
 		return nil, errors.Wrapf(err, "failed to convert dbom.ExportedShare to dto.SharedResource for share '%s'", dbShare.Name)
 	}
 	s.dirty.SetDirtyShares()
-	go s.notifyClient()
+	go s.NotifyClient()
 	return &dtoShare, nil
 }
 

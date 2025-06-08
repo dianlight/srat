@@ -3,6 +3,7 @@ package unixsamba
 import (
 	"bufio"
 	"bytes"
+	"log/slog"
 	"os/exec"
 	"os/user"
 	"strconv"
@@ -368,8 +369,7 @@ func RenameUsername(oldUsername string, newUsername string, renameHomeDir bool, 
 
 	_, delErr := cmdExec.RunCommand("smbpasswd", "-x", oldUsername)
 	if delErr != nil {
-		// Log or handle, but proceed to add new user
-		// errors.Wrapf(delErr, "failed to delete old Samba user '%s'", oldUsername)
+		slog.Error("Unable to delete old Samba user", "error", delErr, "username", oldUsername)
 	}
 
 	if newPasswordForSamba == "" {

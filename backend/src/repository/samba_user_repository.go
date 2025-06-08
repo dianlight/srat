@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/unixsamba"
 	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -100,7 +101,25 @@ func (self *SambaUserRepository) SaveAll(users *dbom.SambaUsers) error {
 }
 
 func (self *SambaUserRepository) Rename(oldname string, newname string) error {
-	return self.db.Unscoped().Model(&dbom.SambaUser{}).Where("username = ?", oldname).Update("username", newname).Error
+	return self.db.Transaction(func(tx *gorm.DB) error {
+		var smbuser dbom.SambaUser
+		// First, retrieve the user to get the password *before* updating the name.
+		// We need the original password for the unixsamba.RenameUsername call.
+		if err := tx.Where("username = ?", oldname).First(&smbuser).Error; err != nil {
+			return errors.Wrapf(err, "failed to find user %s before renaming", oldname)
+		}
+
+		// Attempt to rename the user in the underlying system (Samba/Unix) first
+		if err := unixsamba.RenameUsername(oldname, newname, false, smbuser.Password); err != nil {
+			return errors.Wrapf(err, "failed to rename user in unix/samba from %s to %s", oldname, newname)
+		}
+
+		// Update the username in the database
+		if err := tx.Model(&dbom.SambaUser{}).Where("username = ?", oldname).Update("username", newname).Error; err != nil {
+			return errors.Wrapf(err, "failed to update username in database from %s to %s", oldname, newname)
+		}
+		return nil
+	})
 }
 
 //func (self *SambaUserRepository)

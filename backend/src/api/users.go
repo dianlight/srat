@@ -18,13 +18,20 @@ type UserHandler struct {
 	apiContext   *dto.ContextState
 	dirtyservice service.DirtyDataServiceInterface
 	user_repo    repository.SambaUserRepositoryInterface
+	sharesevice  service.ShareServiceInterface
 }
 
-func NewUserHandler(apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface, user_repo repository.SambaUserRepositoryInterface) *UserHandler {
+func NewUserHandler(
+	apiContext *dto.ContextState,
+	dirtyservice service.DirtyDataServiceInterface,
+	user_repo repository.SambaUserRepositoryInterface,
+	sharesevice service.ShareServiceInterface,
+) *UserHandler {
 	p := new(UserHandler)
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyservice
 	p.user_repo = user_repo
+	p.sharesevice = sharesevice
 	return p
 }
 
@@ -157,6 +164,8 @@ func (handler *UserHandler) UpdateUser(ctx context.Context, input *struct {
 	if err != nil {
 		return nil, err
 	}
+
+	go handler.sharesevice.NotifyClient()
 
 	handler.dirtyservice.SetDirtyUsers()
 
