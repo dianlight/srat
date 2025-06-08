@@ -17,6 +17,40 @@ import { Chip, IconButton, Typography } from "@mui/material";
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd'; // Import an icon for the button
 import default_json from "../json/default_config.json"
 
+// --- IP Address and CIDR Validation Helpers ---
+// Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
+// Mask range /0 to /32
+const IPV4_OR_CIDR_REGEX = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\/(?:[0-9]|[12][0-9]|3[0-2]))?$/;
+
+// Comprehensive IPv6 regex (source: https://stackoverflow.com/a/17871737/796832), modified to also accept CIDR notation.
+// Covers various forms like ::1, fe80::%scope, IPv4-mapped, and their CIDR versions (e.g., 2001:db8::/32).
+// Mask range /0 to /128
+const IPV6_OR_CIDR_REGEX = new RegExp(
+    '^(' +
+    '([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|' + // 1:2:3:4:5:6:7:8
+    '([0-9a-fA-F]{1,4}:){1,7}:|' +              // 1::                                 1:2:3:4:5:6:7::
+    '([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|' + // 1::8               1:2:3:4:5:6::8   1:2:3:4:5:6::8
+    '([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|' + // 1::7:8             1:2:3:4:5::7:8   1:2:3:4:5::8
+    '([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|' + // 1::6:7:8           1:2:3:4::6:7:8   1:2:3:4::8
+    '([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|' + // 1::5:6:7:8         1:2:3::5:6:7:8   1:2:3::8
+    '([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|' + // 1::4:5:6:7:8       1:2::4:5:6:7:8   1:2::8
+    '[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|' +      // 1::3:4:5:6:7:8     1::3:4:5:6:7:8   1::8
+    ':((:[0-9a-fA-F]{1,4}){1,7}|:)|' +                   // ::2:3:4:5:6:7:8    ::2:3:4:5:6:7:8  ::8       ::
+    'fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|' +    // fe80::7:8%eth0     fe80::7:8%1  (link-local IPv6 addresses with zone index)
+    '::(ffff(:0{1,4}){0,1}:){0,1}' +
+    '((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}' +
+    '(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|' +         // ::255.255.255.255  ::ffff:255.255.255.255  ::ffff:0:255.255.255.255 (IPv4-mapped IPv6 addresses and IPv4-translated addresses)
+    '([0-9a-fA-F]{1,4}:){1,4}:' +
+    '((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}' + // 2001:db8:3:4::192.0.2.33  64:ff9b::192.0.2.33 (IPv4-Embedded IPv6 Address)
+    '(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])' +
+    ')(\/(?:[0-9]|[1-9][0-9]|1[01][0-9]|12[0-8]))?$' // Optional CIDR mask /0 to /128
+);
+
+function isValidIpAddressOrCidr(ip: string): boolean {
+    if (typeof ip !== 'string') return false;
+    return IPV4_OR_CIDR_REGEX.test(ip) || IPV6_OR_CIDR_REGEX.test(ip);
+}
+
 export function Settings() {
     const read_only = useReadOnly();
     const { data: globalConfig, isLoading, error, refetch } = useGetSettingsQuery();
@@ -112,12 +146,29 @@ export function Settings() {
                                 control={control}
                                 defaultValue={[]}
                                 disabled={read_only}
-                                render={({ field }) => (
+                                rules={{
+                                    required: 'Allow Hosts cannot be empty.',
+                                    validate: (chips: string[] | undefined) => {
+                                        if (!chips || chips.length === 0) return true; // Handled by 'required'
+
+                                        for (const chip of chips) { // Ensure chip is a string before validation
+                                            if (typeof chip !== 'string' || !isValidIpAddressOrCidr(chip)) {
+                                                return `Invalid entry: "${chip}". Only IPv4/IPv6 addresses or CIDR notation allowed.`;
+                                            }
+                                        }
+                                        return true;
+                                    },
+                                }}
+                                render={({ field, fieldState: { error } }) => (
                                     <MuiChipsInput
+                                        {...field}
                                         size="small"
                                         label="Allow Hosts"
                                         required
                                         hideClearAll
+                                        validate={(chipValue) => typeof chipValue === 'string' && isValidIpAddressOrCidr(chipValue)}
+                                        error={!!error}
+                                        helperText={error ? error.message : undefined}
                                         slotProps={{
                                             input: {
                                                 endAdornment: (
@@ -129,7 +180,9 @@ export function Settings() {
                                                                     onClick={() => {
                                                                         const currentAllowHosts: string[] = getValues("allow_hosts") || [];
                                                                         const defaultAllowHosts: string[] = default_json.allow_hosts || [];
-                                                                        const newAllowHostsToAdd = defaultAllowHosts.filter(
+                                                                        // Only add default hosts that are valid IP addresses or CIDR
+                                                                        const validDefaultHosts = defaultAllowHosts.filter(host => isValidIpAddressOrCidr(host));
+                                                                        const newAllowHostsToAdd = validDefaultHosts.filter(
                                                                             (defaultHost) => !currentAllowHosts.includes(defaultHost)
                                                                         );
                                                                         setValue("allow_hosts", [...currentAllowHosts, ...newAllowHostsToAdd], { shouldDirty: true, shouldValidate: true });
@@ -144,14 +197,12 @@ export function Settings() {
                                                 ),
                                             }
                                         }}
-                                        {...field}
                                         renderChip={(Component, key, props) => {
                                             const isDefault = default_json.allow_hosts?.includes(props.label as string);
                                             return (
                                                 <Component {...props} sx={{ color: isDefault ? 'text.secondary' : 'text.primary' }} size="small" key={key} />
                                             );
                                         }}
-
                                     />)}
                             />
                         </Grid>
