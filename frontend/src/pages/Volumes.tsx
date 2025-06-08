@@ -92,7 +92,7 @@ export function Volumes() {
                 const diskIdentifier = disk.id || `disk-${i}`; // Must match identifier logic in render
 
                 // Determine if this disk would be visible based on current hideSystemPartitions state
-                const filteredPartitions = disk.partitions?.filter(p => !(hideSystemPartitions && p.system)) || [];
+                const filteredPartitions = disk.partitions?.filter(p => !(hideSystemPartitions && (p.system || p.name?.startsWith('hassos-')))) || [];
                 const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
                 const allPartitionsAreHiddenByToggle = hasActualPartitions && filteredPartitions.length === 0 && hideSystemPartitions;
 
@@ -357,7 +357,7 @@ export function Volumes() {
         if (partition.name === 'hassos-data') {
             return <CreditScoreIcon fontSize="small" {...iconColorProp} />;
         }
-        if (partition.system) {
+        if (partition.system || partition.name?.startsWith('hassos-')) {
             return <SettingsSuggestIcon fontSize="small" {...iconColorProp} />;
         }
         return <StorageIcon fontSize="small" {...iconColorProp} />;
@@ -422,7 +422,7 @@ export function Volumes() {
                     const diskIdentifier = disk.id || `disk-${diskIdx}`;
                     const isGroupOpen = !!openGroups[diskIdentifier];
 
-                    const filteredPartitions = disk.partitions?.filter(partition => !(hideSystemPartitions && partition.system)) || [];
+                    const filteredPartitions = disk.partitions?.filter(partition => !(hideSystemPartitions && (partition.system || partition.name?.startsWith('hassos-')))) || [];
 
                     // Determine if the disk itself should be hidden
                     // A disk is hidden if:
@@ -523,7 +523,7 @@ export function Volumes() {
                                                     >
                                                         <ListItem
                                                             disablePadding
-                                                            secondaryAction={!read_only && !partition.system && ( // Only show actions if not read-only and not system partition
+                                                            secondaryAction={!read_only && (!partition.system && !partition.name?.startsWith('hassos-')) && ( // Only show actions if not read-only and not system partition
                                                                 (<Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}> {/* Reduced spacing */}
                                                                     {/* Automount Toggle Button */}
                                                                     {!hasShares && partition.mount_point_data?.[0] && (partition.mount_point_data?.[0]?.is_to_mount_at_startup ? (

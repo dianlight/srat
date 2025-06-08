@@ -6,14 +6,16 @@
 - [ ] Manage `recycle bin`option for share
 
 ###  🐛 Bug Fixes
-###### __🚧 Work in progess__
 - [X] `enable`/`disable` share functionality is not working as expected.
-- [ ] Renaming the admin user does not correctly create the new user or rename the existing one; issues persist until a full addon reboot.
+- [X] Renaming the admin user does not correctly create the new user or rename the existing one; issues persist until a full addon reboot.
+###### __🚧 Work in progess__
 
  
 ### 🏗 Chore
 ###### __🚧 Work in progess__
 - [ ] Create the base documentation
+- [ ] Implemet wachdog
+- [ ] Manage WSDD/WSDD2 service
 
 
 
