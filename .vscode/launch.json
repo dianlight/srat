@@ -11,10 +11,10 @@
             "mode": "debug",
             "program": "${workspaceFolder}/backend/src",
             "args": [
-                "-opt",
-                "${workspaceFolder}/backend/test/data/options.json",
-                "-conf",
-                "${workspaceFolder}/backend/test/data/config.json",
+                //"-opt",
+                //"${workspaceFolder}/backend/test/data/options.json",
+                //"-conf",
+                //"${workspaceFolder}/backend/test/data/config.json",
                 // "-db",
                 // "${workspaceFolder}/backend/tmp/testdb.db",
                 "-port",
@@ -23,7 +23,11 @@
                 "${workspaceFolder}/backend/tmp/samba.conf",
                 "-loglevel",
                 "debug",
-                "-single-instance"
+                "-single-instance",
+                "-db",
+                "${workspaceFolder}/backend/tmp/testdb.db",
+                "-ha-url",
+                "http://192.168.0.68/",
             ],
         },
         {
