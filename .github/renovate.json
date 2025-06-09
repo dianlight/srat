@@ -9,6 +9,7 @@
         "dependencies",
         "no-stale"
     ],
+    "semanticCommits":"enabled",
     "commitMessagePrefix": "⬆️",
     "commitMessageTopic": "{{depName}}",
     "configMigration": true,
@@ -18,20 +19,12 @@
     "major": {
         "dependencyDashboardApproval": true
     },
+    "postUpdateOptions": [
+         "gomodTidy",
+         "gomodUpdateImportPaths"
+    ],
     "dependencyDashboardAutoclose": true,
     "customManagers": [
-        {
-            "customType": "regex",
-            "managerFilePatterns": [
-                "/\\.github/workflows/.+\\.ya?ml$/",
-                "/\\.devcontainer/.+\\.sh$/"
-            ],
-            "matchStrings": [
-                "go\\s+install\\s+(?<depName>.+)@(?<currentValue>[^\\s]+)"
-            ],
-            "autoReplaceStringTemplate": "go install {{{depName}}}@{{{newValue}}}",
-            "datasourceTemplate": "go"
-        },
         {
             "customType": "regex",
             "managerFilePatterns": [
@@ -41,17 +34,6 @@
                 "\"packageManager\":\\s+\"(?<depName>.+)@(?<currentValue>[^\\s]+)\""
             ],
             "autoReplaceStringTemplate": "\"packageManager\": \"{{{depName}}}@{{{newValue}}}\"",
-            "datasourceTemplate": "npm"
-        },
-        {
-            "customType": "regex",
-            "managerFilePatterns": [
-                "/\\.devcontainer/.+\\.sh$/"
-            ],
-            "matchStrings": [
-                "bash\\s+-s\\s+\"(?<depName>.+)-v(?<currentValue>[^\\s]+)\""
-            ],
-            "autoReplaceStringTemplate": "bash -s \"{{{depName}}}-v{{{newValue}}}\"",
             "datasourceTemplate": "npm"
         },
         {
@@ -69,18 +51,21 @@
     ],
     "packageRules": [
         {
+            "commitMessageTopic": "{{groupName}} {{depName}}",
             "groupName": "BackEnd",
             "matchFileNames": [
                 "backend/**"
             ]
         },
         {
+            "commitMessageTopic": "{{groupName}} {{depName}}",
             "groupName": "FrontEnd",
             "matchFileNames": [
                 "frontend/**"
             ]
         },
         {
+            "commitMessageTopic": "{{groupName}} {{depName}}",
             "groupName": "CI/CD",
             "matchFileNames": [
                 ".guthub/workflows/**"
