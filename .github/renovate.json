@@ -74,5 +74,10 @@
             ],
             "automerge": true
         }
-    ]
+    ],
+    "go": {
+        "postUpgradeTasks": [
+            "go mod tidy"
+        ]
+    }
 }
