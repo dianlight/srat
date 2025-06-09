@@ -494,7 +494,7 @@ export function Shares() {
                             backgroundColor: 'transparent', // Remove accordion background
                         }}
                     >
-                        <Typography variant="h6" color="text.secondary" sx={{ textTransform: 'capitalize', pl: 1 }}>
+                        <Typography variant="subtitle2" color="text.primary" sx={{ textTransform: 'capitalize', pl: 1 }}>
                             {usageGroup} Shares ({sharesInGroup.length})
                         </Typography>
                     </AccordionSummary>
