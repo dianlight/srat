@@ -5,6 +5,7 @@ package converter
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
@@ -78,6 +79,17 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 					for _, value := range prop.Value.([]interface{}) {
 						newElem.Set(reflect.ValueOf(value).Convert(newElem.Type()))
 						newvalue.Set(reflect.Append(newvalue, newElem))
+					}
+				} else if newvalue.Kind() == reflect.Bool && reflect.TypeOf(prop.Value).Kind() == reflect.String {
+					if strings.ToLower(prop.Value.(string)) == "true" || strings.ToLower(prop.Value.(string)) == "t" ||
+						strings.ToLower(prop.Value.(string)) == "yes" || strings.ToLower(prop.Value.(string)) == "y" ||
+						strings.ToLower(prop.Value.(string)) == "on" ||
+						strings.ToLower(prop.Value.(string)) == "enabled" ||
+						strings.ToLower(prop.Value.(string)) == "1" ||
+						strings.ToLower(prop.Value.(string)) == strings.ToLower(prop.Key) {
+						newvalue.SetBool(true)
+					} else {
+						newvalue.SetBool(false)
 					}
 				} else {
 					return fmt.Errorf("Type mismatch for field: %s %T->%T", prop.Key, prop.Value, newvalue.Interface())

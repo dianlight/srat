@@ -181,7 +181,7 @@ func (self *SambaService) RestartSambaService() error {
 		}
 
 		for _, share := range *shares {
-			if *share.Disabled {
+			if share.Disabled != nil && *share.Disabled {
 				continue
 			}
 			switch share.Usage {

@@ -34,7 +34,7 @@ func (u *SambaUser) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (u *SambaUser) AfterUpdate(tx *gorm.DB) error {
-	if u.Password != "" {
+	if u.Password != "" && tx.RowsAffected > 0 {
 		err := unixsamba.ChangePassword(u.Username, u.Password, false)
 		if err != nil {
 			return errors.WithStack(err)

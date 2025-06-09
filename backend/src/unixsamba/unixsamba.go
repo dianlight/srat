@@ -199,13 +199,13 @@ func GetByUsername(username string) (*UserInfo, error) {
 func CreateSambaUser(username string, password string, options UserOptions) error {
 	useraddArgs := []string{}
 	if !options.CreateHome {
-		useraddArgs = append(useraddArgs, "-H")
+		useraddArgs = append(useraddArgs, "-M")
 	}
 	if options.SystemAccount {
-		useraddArgs = append(useraddArgs, "-S")
+		useraddArgs = append(useraddArgs, "-r")
 	}
 	if options.HomeDir != "" {
-		useraddArgs = append(useraddArgs, "-h", options.HomeDir)
+		useraddArgs = append(useraddArgs, "-d", options.HomeDir)
 	}
 	if options.Shell != "" {
 		useraddArgs = append(useraddArgs, "-s", options.Shell)
@@ -219,17 +219,17 @@ func CreateSambaUser(username string, password string, options UserOptions) erro
 	if options.UID != "" {
 		useraddArgs = append(useraddArgs, "-u", options.UID)
 	}
-	useraddArgs = append(useraddArgs, "-D") //  Don't assign a password
+	useraddArgs = append(useraddArgs, "--badname") //  do not check for bad names
 	useraddArgs = append(useraddArgs, username)
 
-	_, err := cmdExec.RunCommand("adduser", useraddArgs...)
+	_, err := cmdExec.RunCommand("useradd", useraddArgs...)
 	if err != nil {
 		// Check if the error is because the user already exists
 		var e errors.E
 		userExists := false
 		if errors.As(err, &e) {
 			details := e.Details()
-			if stderr, ok := details["stderr"].(string); ok && strings.Contains(strings.ToLower(stderr), "useradd: user '"+strings.ToLower(username)+"' already exists") {
+			if stderr, ok := details["stderr"].(string); ok && strings.Contains(strings.ToLower(stderr), "useradd: user "+strings.ToLower(username)+" already exists") {
 				userExists = true
 			}
 		}
@@ -241,7 +241,7 @@ func CreateSambaUser(username string, password string, options UserOptions) erro
 		}
 
 		if !userExists {
-			return errors.Wrapf(err, "failed to create system user '%s'", username)
+			return errors.WithMessagef(err, "failed to create system user '%s'", username)
 		}
 		// If user exists, we can proceed to add to Samba (log this if logger available)
 	}

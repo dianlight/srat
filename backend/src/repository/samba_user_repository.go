@@ -63,7 +63,7 @@ func (self *SambaUserRepository) All() (dbom.SambaUsers, error) {
 
 func (self *SambaUserRepository) Save(user *dbom.SambaUser) error {
 	self.db.Unscoped().Model(&dbom.SambaUser{}).Where("username = ?", user.Username).Update("deleted_at", nil)
-	return self.db.Save(user).Error
+	return self.db.Debug().Save(user).Error
 }
 
 func (self *SambaUserRepository) Create(user *dbom.SambaUser) error {
@@ -92,7 +92,7 @@ func (self *SambaUserRepository) Delete(name string) error {
 
 func (self *SambaUserRepository) SaveAll(users *dbom.SambaUsers) error {
 	for _, user := range *users {
-		err := self.db.Save(&user).Error
+		err := self.db.Debug().Save(&user).Error
 		if err != nil {
 			return errors.WithStack(err)
 		}
