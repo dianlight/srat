@@ -75,7 +75,7 @@
             "automerge": true
         },
         {
-           "matchManagers": ["go"],
+           "matchManagers": ["gomod"],
            "managerConfig": {
                "gomodTidy": true,
                "gomodUpdateImportPaths":true
