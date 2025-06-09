@@ -19,10 +19,10 @@
     "major": {
         "dependencyDashboardApproval": true
     },
-    "postUpdateOptions": {
-         "gomodTidy": true,
-         "gomodUpdateImportPaths": true
-    },
+    "postUpdateOptions": [
+         "gomodTidy",
+         "gomodUpdateImportPaths"
+    ],
     "dependencyDashboardAutoclose": true,
     "customManagers": [
         {
