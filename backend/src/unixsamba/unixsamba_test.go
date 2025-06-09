@@ -133,7 +133,7 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_Success_NewUser() {
 	password := "password123"
 	options := unixsamba.UserOptions{CreateHome: true, Shell: "/bin/bash"}
 
-	mock.When(s.mockCmdExec.RunCommand("adduser", "-s", "/bin/bash", "-D", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("useradd", "-s", "/bin/bash", "--badname", username)).ThenReturn("", nil).Verify(matchers.Times(1))
 	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
 
 	err := unixsamba.CreateSambaUser(username, password, options)
@@ -148,7 +148,7 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_Success_SystemUserExists() {
 	useraddErr := errors.WithDetails(errors.New("useradd failed"), "desc", "command execution failed",
 		"stderr", "useradd: user 'existinguser' already exists",
 	)
-	mock.When(s.mockCmdExec.RunCommand("adduser", "-H", "-D", username)).ThenReturn("", useraddErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("useradd", "-M", "--badname", username)).ThenReturn("", useraddErr).Verify(matchers.Times(1))
 
 	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
 
@@ -163,7 +163,7 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_UseraddFails_UserNotExists() {
 	useraddActualErr := errors.New("some useradd error")
 	useraddCmdErr := errors.WithDetails(useraddActualErr, "desc", "command execution failed", "stderr", "some useradd error")
 
-	mock.When(s.mockCmdExec.RunCommand("adduser", "-H", "-D", username)).ThenReturn("", useraddCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("useradd", "-M", "--badname", username)).ThenReturn("", useraddCmdErr).Verify(matchers.Times(1))
 	mock.When(s.mockOSUser.Lookup(username)).ThenReturn(nil, errors.New("user not found")).Verify(matchers.Times(1))
 
 	err := unixsamba.CreateSambaUser(username, password, options)
@@ -179,7 +179,7 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_SmbPasswdFails() {
 	smbPasswdActualErr := errors.New("smbpasswd error")
 	smbPasswdCmdErr := errors.WithDetails(smbPasswdActualErr, "desc", "command execution with input failed", "stderr", "smb error")
 
-	mock.When(s.mockCmdExec.RunCommand("adduser", "-H", "-D", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand("useradd", "-M", "--badname", username)).ThenReturn("", nil).Verify(matchers.Times(1))
 	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", smbPasswdCmdErr).Verify(matchers.Times(1))
 
 	err := unixsamba.CreateSambaUser(username, password, options)
@@ -202,17 +202,17 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_WithOptions() {
 	}
 
 	expectedUseraddArgs := []string{
-		"-H", "-S", // CreateHome, SystemAccount
-		"-h", "/var/customhome",
+		"-M", "-r", // CreateHome, SystemAccount
+		"-d", "/var/customhome",
 		"-s", "/sbin/nologin",
 		"-G", "customgroup",
 		"-g", "group1,group2",
 		"-u", "2001",
-		"-D",
+		"--badname",
 		username,
 	}
 
-	mock.When(s.mockCmdExec.RunCommand("adduser",
+	mock.When(s.mockCmdExec.RunCommand("useradd",
 		expectedUseraddArgs[0],
 		expectedUseraddArgs[1], expectedUseraddArgs[2],
 		expectedUseraddArgs[3], expectedUseraddArgs[4],
