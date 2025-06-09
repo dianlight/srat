@@ -64,21 +64,27 @@ const ALL_TAB_CONFIGS: TabConfig[] = [
 ];
 
 // Helper to get icon based on TabID and health
-const getTabIcon = (tabId: TabIDs, healthData: HealthPing | undefined) => {
-    if (!healthData?.dirty_tracking) return undefined;
-    const dirtyMap: Partial<Record<TabIDs, keyof HealthPing['dirty_tracking']>> = {
-        [TabIDs.SHARES]: 'shares',
-        [TabIDs.VOLUMES]: 'volumes',
-        [TabIDs.USERS]: 'users',
-        [TabIDs.SETTINGS]: 'settings',
-    };
-    const dirtyKey = dirtyMap[tabId];
-    if (dirtyKey && healthData.dirty_tracking[dirtyKey]) {
-        return <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip>;
+const getTabIcon = (tab: TabConfig, healthData: HealthPing | undefined) => {
+    // Priority 1: Dirty state
+    if (healthData?.dirty_tracking) {
+        const dirtyMap: Partial<Record<TabIDs, keyof HealthPing['dirty_tracking']>> = {
+            [TabIDs.SHARES]: 'shares',
+            [TabIDs.VOLUMES]: 'volumes',
+            [TabIDs.USERS]: 'users',
+            [TabIDs.SETTINGS]: 'settings',
+        };
+        const dirtyKey = dirtyMap[tab.id];
+        if (dirtyKey && healthData.dirty_tracking[dirtyKey]) {
+            return <Tooltip title="Changes not yet applied!"><ReportProblemIcon sx={{ color: 'white' }} /></Tooltip>;
+        }
+    }
+
+    // Priority 2: Development only tab
+    if (tab.isDevelopmentOnly) {
+        return <Tooltip title="Development Only Tab"><BugReportIcon sx={{ color: 'orange' }} /></Tooltip>;
     }
     return undefined;
 };
-
 function a11yProps(index: number) {
     return {
         id: `full-width-tab-${index}`,
@@ -148,7 +154,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
     const visibleTabs = useMemo(() => {
         return ALL_TAB_CONFIGS
-            .filter(tab => !(tab.isDevelopmentOnly && process.env.NODE_ENV === 'production'))
+            .filter(tab => !(tab.isDevelopmentOnly && (process.env.NODE_ENV === 'production') && !pkg.version.match(/dev/)))
             .map((tab, index) => ({
                 ...tab,
                 actualIndex: index,
@@ -304,7 +310,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                 key={tab.id}
                                 label={tab.label}
                                 {...a11yProps(tab.actualIndex as number)}
-                                icon={getTabIcon(tab.id, health.health)}
+                                icon={getTabIcon(tab, health.health)}
                                 iconPosition="end"
                             />
                         ))}
