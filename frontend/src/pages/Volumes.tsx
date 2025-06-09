@@ -1,9 +1,9 @@
-import { Fragment, useState, useEffect, useRef } from "react";
+import { Fragment, useState, useEffect, useRef, useCallback } from "react";
 import { InView } from "react-intersection-observer";
 import { useLocation, useNavigate } from 'react-router';
 import { PreviewDialog } from "../components/PreviewDialog";
 import List from "@mui/material/List"; // Import Collapse and Chip
-import { ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Collapse, Chip, Switch, FormControlLabel, Autocomplete, TextField } from "@mui/material"; // Import Collapse and Chip, Switch, FormControlLabel
+import { Accordion, AccordionDetails, AccordionSummary, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Collapse, Chip, Switch, FormControlLabel, Autocomplete, TextField } from "@mui/material"; // Import Collapse and Chip, Switch, FormControlLabel
 import ShareIcon from '@mui/icons-material/Share';
 import AddIcon from '@mui/icons-material/Add';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -60,63 +60,99 @@ export function Volumes() {
     const [mountVolume, mountVolumeResult] = usePostVolumeByMountPathHashMountMutation();
     const [umountVolume, umountVolumeResult] = useDeleteVolumeByMountPathHashMountMutation();
     const [ejectDiskMutation, ejectDiskResult] = usePostVolumeDiskByDiskIdEjectMutation();
-    const [patchMountSettings, patchMountSettingsResult] = usePatchVolumeByMountPathHashSettingsMutation();
-    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({}); // State for collapse, key is disk identifier
+    const [patchMountSettings] = usePatchVolumeByMountPathHashSettingsMutation();
+
+    const localStorageKey = 'srat_volumes_expanded_accordion';
+
+    const [expandedAccordion, setExpandedAccordion] = useState<string | false>(() => {
+        const savedAccordionId = localStorage.getItem(localStorageKey);
+        return savedAccordionId || false;
+    });
     const initialAutoOpenDone = useRef(false);
-    // Store previous values of dependencies that should trigger a reset of initialAutoOpenDone
     const prevDisksRef = useRef<Disk[] | undefined>(undefined);
     const prevHideSystemPartitionsRef = useRef<boolean | undefined>(undefined);
 
+    // Helper to determine if a disk would be rendered based on current filters
+    const isDiskRendered = useCallback((disk: Disk, hideSystem: boolean): boolean => {
+        const filteredPartitions = disk.partitions?.filter(p => !(hideSystem && (p.system || p.name?.startsWith('hassos-')))) || [];
+        const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
+        const allPartitionsAreHiddenByToggle = hasActualPartitions && filteredPartitions.length === 0 && hideSystem;
+        return !allPartitionsAreHiddenByToggle;
+    }, []);
+
     useEffect(() => {
-        // If primary data sources (disks, hideSystemPartitions) change,
-        // reset the initialAutoOpenDone flag to allow re-evaluation of the first disk to open.
         if (prevDisksRef.current !== disks || prevHideSystemPartitionsRef.current !== hideSystemPartitions) {
             initialAutoOpenDone.current = false;
             prevDisksRef.current = disks;
             prevHideSystemPartitionsRef.current = hideSystemPartitions;
         }
 
-        // Conditions to skip auto-opening:
-        // 1. Still loading, or no disks available.
-        // 2. Auto-open has already been performed for the current set of disks/filters,
-        //    and we don't want to override user's manual expand/collapse actions.
-        if (isLoading || !Array.isArray(disks) || disks.length === 0 || initialAutoOpenDone.current) {
+        if (initialAutoOpenDone.current) {
+            if (!disks || disks.length === 0) {
+                if (expandedAccordion !== false) setExpandedAccordion(false);
+            } else if (typeof expandedAccordion === 'string') {
+                const diskIndex = disks.findIndex((d, idx) => (d.id || `disk-${idx}`) === expandedAccordion);
+                if (diskIndex === -1 || !isDiskRendered(disks[diskIndex], hideSystemPartitions)) {
+                    setExpandedAccordion(false);
+                }
+            }
             return;
         }
 
-        // At this point, isLoading is false, disks is an array, and initialAutoOpenDone.current is false.
-        if (disks.length > 0) {
-            let firstVisibleDiskIdentifier: string | null = null;
-            for (let i = 0; i < disks.length; i++) {
-                const disk = disks[i];
-                const diskIdentifier = disk.id || `disk-${i}`; // Must match identifier logic in render
+        if (isLoading || !Array.isArray(disks)) {
+            return;
+        }
 
-                // Determine if this disk would be visible based on current hideSystemPartitions state
-                const filteredPartitions = disk.partitions?.filter(p => !(hideSystemPartitions && (p.system || p.name?.startsWith('hassos-')))) || [];
-                const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
-                const allPartitionsAreHiddenByToggle = hasActualPartitions && filteredPartitions.length === 0 && hideSystemPartitions;
+        if (disks.length === 0) {
+            if (expandedAccordion !== false) setExpandedAccordion(false);
+            initialAutoOpenDone.current = true;
+            return;
+        }
 
-                if (!allPartitionsAreHiddenByToggle) {
-                    firstVisibleDiskIdentifier = diskIdentifier;
-                    break; // Found the first disk that will be rendered
-                }
-            }
-
-            if (firstVisibleDiskIdentifier) {
-                // console.log("Auto-opening first visible disk:", firstVisibleDiskIdentifier);
-                setOpenGroups({ [firstVisibleDiskIdentifier]: true });
-            } else {
-                // No visible disk, ensure openGroups is empty
-                if (Object.keys(openGroups).length > 0) { // Avoid unnecessary update
-                    setOpenGroups({});
-                }
+        let isValidLocalStorageValue = false;
+        if (typeof expandedAccordion === 'string') {
+            const diskIndex = disks.findIndex((d, idx) => (d.id || `disk-${idx}`) === expandedAccordion);
+            if (diskIndex !== -1) {
+                isValidLocalStorageValue = isDiskRendered(disks[diskIndex], hideSystemPartitions);
             }
         }
-        // Mark that auto-open has been attempted for the current configuration of disks/filters.
-        // This prevents re-running the auto-open if the effect is triggered by openGroups changing.
-        initialAutoOpenDone.current = true;
-    }, [disks, isLoading, hideSystemPartitions, openGroups]);
 
+        if (!isValidLocalStorageValue) {
+            let firstRenderedDiskIdentifier: string | null = null;
+            for (let i = 0; i < disks.length; i++) {
+                if (isDiskRendered(disks[i], hideSystemPartitions)) {
+                    firstRenderedDiskIdentifier = disks[i].id || `disk-${i}`;
+                    break;
+                }
+            }
+            setExpandedAccordion(firstRenderedDiskIdentifier || false);
+        }
+        initialAutoOpenDone.current = true;
+    }, [disks, isLoading, hideSystemPartitions, expandedAccordion, isDiskRendered, localStorageKey]);
+
+    useEffect(() => {
+        if (!initialAutoOpenDone.current) {
+            return;
+        }
+
+        if (expandedAccordion === false) {
+            localStorage.removeItem(localStorageKey);
+        } else if (typeof expandedAccordion === 'string') {
+            let isValidToSave = false;
+            if (Array.isArray(disks)) {
+                const diskIndex = disks.findIndex((d, idx) => (d.id || `disk-${idx}`) === expandedAccordion);
+                if (diskIndex !== -1) {
+                    isValidToSave = isDiskRendered(disks[diskIndex], hideSystemPartitions);
+                }
+            }
+
+            if (isValidToSave) {
+                localStorage.setItem(localStorageKey, expandedAccordion);
+            } else {
+                localStorage.removeItem(localStorageKey);
+            }
+        }
+    }, [expandedAccordion, disks, hideSystemPartitions, initialAutoOpenDone.current, isDiskRendered, localStorageKey]);
 
     // Effect to handle navigation state for opening mount settings for a specific volume
     useEffect(() => {
@@ -126,9 +162,12 @@ export function Volumes() {
 
         if (mountPathHashFromState && shouldOpenMountSettings && Array.isArray(disks) && disks.length > 0) {
             let foundPartition: Partition | undefined = undefined;
+            let foundDiskIdentifier: string | undefined = undefined;
+
             for (const disk of disks) {
                 if (disk.partitions) {
                     for (const partition of disk.partitions) {
+                        const diskIdx = disks.indexOf(disk);
                         if (partition.mount_point_data?.some(mpd => mpd.path_hash === mountPathHashFromState)) {
                             foundPartition = partition;
                             break;
@@ -138,22 +177,27 @@ export function Volumes() {
                 if (foundPartition) break;
             }
 
-            if (foundPartition) {
+            if (foundPartition && foundDiskIdentifier) {
                 setSelected(foundPartition);
                 setShowMountSettings(true);
-                // Clear the state from history to prevent reopening on refresh/re-render
+                const targetDisk = disks.find((d, idx) => (d.id || `disk-${idx}`) === foundDiskIdentifier);
+                if (targetDisk && isDiskRendered(targetDisk, hideSystemPartitions)) {
+                    setExpandedAccordion(foundDiskIdentifier);
+                }
                 navigate(location.pathname, { replace: true, state: {} });
             } else {
                 console.warn(`Volume with mountPathHash ${mountPathHashFromState} not found.`);
-                // Clear the state even if not found to prevent re-triggering
                 navigate(location.pathname, { replace: true, state: {} });
             }
         }
-    }, [disks, location.state, navigate]);
+    }, [disks, location.state, navigate, hideSystemPartitions, isDiskRendered]);
 
-    // Toggle collapse state for a group (disk)
-    const handleToggleGroup = (diskIdentifier: string) => {
-        setOpenGroups(prev => ({ ...prev, [diskIdentifier]: !prev[diskIdentifier] }));
+
+    const handleAccordionChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+        setExpandedAccordion(isExpanded ? panel : false);
+        if (!initialAutoOpenDone.current) {
+            initialAutoOpenDone.current = true;
+        }
     };
 
 
@@ -420,7 +464,6 @@ export function Volumes() {
                 {/* Iterate over disks */}
                 {disks.map((disk, diskIdx) => {
                     const diskIdentifier = disk.id || `disk-${diskIdx}`;
-                    const isGroupOpen = !!openGroups[diskIdentifier];
 
                     const filteredPartitions = disk.partitions?.filter(partition => !(hideSystemPartitions && (partition.system || partition.name?.startsWith('hassos-')))) || [];
 
@@ -428,206 +471,209 @@ export function Volumes() {
                     // A disk is hidden if:
                     // 1. The "hideSystemPartitions" toggle is on.
                     // 2. The disk actually has partitions.
-                    // 3. All of its partitions are system partitions (meaning filteredPartitions would be empty).
-                    const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
-                    const allPartitionsAreHiddenByToggle = hasActualPartitions && filteredPartitions.length === 0 && hideSystemPartitions;
-
-                    if (allPartitionsAreHiddenByToggle) {
+                    // 3. All of its partitions are system partitions (or hassos-) (meaning filteredPartitions would be empty).
+                    if (!isDiskRendered(disk, hideSystemPartitions)) {
                         return null; // Don't render this disk if all its partitions are hidden by the toggle
                     }
 
                     return (
                         <Fragment key={diskIdentifier}>
-                            {/* Header Row for the Physical Disk */}
-                            <ListItemButton
-                                onClick={() => { setSelected(disk); setShowPreview(true); }}
-                                sx={{ pl: 0, alignItems: 'flex-start' }} // Align items top for multi-line secondary
+                            <Accordion
+                                expanded={expandedAccordion === diskIdentifier}
+                                onChange={handleAccordionChange(diskIdentifier)}
+                                sx={{
+                                    boxShadow: 'none',
+                                    '&:before': { display: 'none' },
+                                    '&.Mui-expanded': { margin: '0' },
+                                    backgroundColor: 'transparent',
+                                }}
+                                disableGutters
                             >
-                                <ListItemAvatar sx={{ pt: 1 }}> {/* Add padding top to align avatar with first line */}
-                                    <Avatar>
-                                        {renderDiskIcon(disk)}
-                                    </Avatar>
-                                </ListItemAvatar>
-                                <ListItemText
-                                    primary={`Disk: ${disk.model?.toUpperCase() || `Disk ${diskIdx + 1}`}`}
-                                    disableTypography
-                                    secondary={
-                                        <Stack spacing={0.5} sx={{ pt: 0.5 }}> {/* Stack for secondary info */}
-                                            <Typography variant="caption" component="div"> {/* Wrap partition count */}
-                                                {`${disk.partitions?.length || 0} partition(s)`}
-                                            </Typography>
-                                            {/* Conditionally display other disk details */}
-                                            <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
-                                                {disk.size != null && <Chip label={`Size: ${filesize(disk.size, { round: 1 })}`} size="small" variant="outlined" />}
-                                                {disk.vendor && <Chip label={`Vendor: ${disk.vendor}`} size="small" variant="outlined" />}
-                                                {disk.serial && <Chip label={`Serial: ${disk.serial}`} size="small" variant="outlined" />}
-                                                {disk.connection_bus && <Chip label={`Bus: ${disk.connection_bus}`} size="small" variant="outlined" />}
-                                                {disk.revision && <Chip label={`Rev: ${disk.revision}`} size="small" variant="outlined" />}
-                                            </Stack>
-                                        </Stack>
-                                    }
-                                />
-                                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ ml: 1, mt: 0.5 }}>
-                                    {!read_only && disk.removable && (
-                                        <Tooltip title={`Eject disk ${disk.model || disk.id}`}>
-                                            <IconButton
-                                                size="small"
-                                                onClick={(e) => { e.stopPropagation(); onSubmitEjectDisk(disk); }}
-                                                aria-label="Eject disk"
-                                            >
-                                                <EjectIcon />
-                                            </IconButton>
-                                        </Tooltip>
-                                    )}
-                                    {/* Conditionally render Expand/Collapse IconButton only if there are partitions */}
-                                    {disk.partitions && disk.partitions.length > 0 && (
-                                        <Tooltip title={isGroupOpen ? 'Collapse partitions' : 'Expand partitions'}>
-                                            <IconButton
-                                                size="small"
-                                                onClick={(e) => { e.stopPropagation(); handleToggleGroup(diskIdentifier); }}
-                                                aria-label={isGroupOpen ? 'Collapse partitions' : 'Expand partitions'}
-                                                aria-expanded={isGroupOpen}
-                                            >
-                                                {isGroupOpen ? <ExpandLess /> : <ExpandMore />}
-                                            </IconButton>
-                                        </Tooltip>
-                                    )}
-                                </Stack>
-                            </ListItemButton>
-                            {/* Collapsible Section for Partitions */}
-                            {disk.partitions && disk.partitions.length > 0 && (
-                                <Collapse in={isGroupOpen} timeout="auto" unmountOnExit>
-                                    <List component="div" disablePadding dense={true} sx={{ pl: 4 }} >
-                                        {filteredPartitions.map((partition, partIdx) => {
-                                            const partitionIdentifier = partition.id || `${diskIdentifier}-part-${partIdx}`;
-                                            const isMounted = partition.mount_point_data
-                                                && partition.mount_point_data.length > 0
-                                                && partition.mount_point_data.some(mpd => mpd.is_mounted);
-                                            const hasShares = partition.mount_point_data
-                                                && partition.mount_point_data.length > 0
-                                                && partition.mount_point_data.some(mpd => {
-                                                    return mpd.shares &&
-                                                        mpd.shares.length > 0 &&
-                                                        mpd.shares.some(share => !share.disabled)
-                                                });
-
-                                            const firstMountPath = partition.mount_point_data?.[0]?.path;
-                                            const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
-                                            const partitionNameDecoded = decodeEscapeSequence(partition.name || "Unknown Partition");
-
-                                            return (
-                                                <Fragment key={partitionIdentifier}>
-                                                    <ListItemButton
-                                                        sx={{ pl: 1, alignItems: 'flex-start' }} // Align items top
-                                                        onClick={() => { setSelected(partition); setShowPreview(true); }}
+                                <AccordionSummary
+                                    expandIcon={<ExpandMore />}
+                                    aria-controls={`${diskIdentifier}-content`}
+                                    id={`${diskIdentifier}-header`}
+                                    sx={{
+                                        '& .MuiAccordionSummary-content': { alignItems: 'flex-start', width: 'calc(100% - 32px)' }, // Adjust width for expand icon
+                                        py: 0, // Remove padding if ListItem handles it
+                                    }}
+                                >
+                                    <ListItem sx={{ pl: 0, py: 1, width: '100%' }} disablePadding component="div">
+                                        <ListItemAvatar sx={{ pt: 1, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setSelected(disk); setShowPreview(true); }}>
+                                            <Avatar>
+                                                {renderDiskIcon(disk)}
+                                            </Avatar>
+                                        </ListItemAvatar>
+                                        <ListItemText
+                                            sx={{ cursor: 'pointer', overflowWrap: 'break-word' }}
+                                            onClick={(e) => { e.stopPropagation(); setSelected(disk); setShowPreview(true); }}
+                                            primary={`Disk: ${disk.model?.toUpperCase() || `Disk ${diskIdx + 1}`}`}
+                                            disableTypography
+                                            secondary={
+                                                <Stack spacing={0.5} sx={{ pt: 0.5 }}>
+                                                    <Typography variant="caption" component="div">
+                                                        {`${disk.partitions?.length || 0} partition(s)`}
+                                                    </Typography>
+                                                    <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+                                                        {disk.size != null && <Chip label={`Size: ${filesize(disk.size, { round: 1 })}`} size="small" variant="outlined" />}
+                                                        {disk.vendor && <Chip label={`Vendor: ${disk.vendor}`} size="small" variant="outlined" />}
+                                                        {disk.serial && <Chip label={`Serial: ${disk.serial}`} size="small" variant="outlined" />}
+                                                        {disk.connection_bus && <Chip label={`Bus: ${disk.connection_bus}`} size="small" variant="outlined" />}
+                                                        {disk.revision && <Chip label={`Rev: ${disk.revision}`} size="small" variant="outlined" />}
+                                                    </Stack>
+                                                </Stack>
+                                            }
+                                        />
+                                        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ ml: 1, mt: 0.5, alignSelf: 'center' }}>
+                                            {!read_only && disk.removable && (
+                                                <Tooltip title={`Eject disk ${disk.model || disk.id}`}>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={(e) => { e.stopPropagation(); onSubmitEjectDisk(disk); }}
+                                                        aria-label="Eject disk"
                                                     >
-                                                        <ListItem
-                                                            disablePadding
-                                                            secondaryAction={!read_only && (!partition.system && !partition.name?.startsWith('hassos-')) && ( // Only show actions if not read-only and not system partition
-                                                                (<Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}> {/* Reduced spacing */}
-                                                                    {/* Automount Toggle Button */}
-                                                                    {!hasShares && partition.mount_point_data?.[0] && (partition.mount_point_data?.[0]?.is_to_mount_at_startup ? (
-                                                                        <Tooltip title="Disable mount at startup">
-                                                                            <IconButton onClick={(e) => { e.stopPropagation(); handleToggleAutomount(partition); }} edge="end" aria-label="disable automount" size="small">
-                                                                                <UpdateDisabledIcon />
-                                                                            </IconButton>
-                                                                        </Tooltip>
-                                                                    ) : (
-                                                                        <Tooltip title="Enable mount at startup">
-                                                                            <IconButton onClick={(e) => { e.stopPropagation(); handleToggleAutomount(partition); }} edge="end" aria-label="enable automount" size="small">
-                                                                                <UpdateIcon />
-                                                                            </IconButton>
-                                                                        </Tooltip>
-                                                                    )
-                                                                    )
-                                                                    }
-                                                                    {!isMounted && (
-                                                                        <Tooltip title="Mount Partition">
-                                                                            <IconButton onClick={(e) => { e.stopPropagation(); setSelected(partition); setShowMount(true); }} edge="end" aria-label="mount" size="small">
-                                                                                <FontAwesomeSvgIcon icon={faPlug} />
-                                                                            </IconButton>
-                                                                        </Tooltip>
-                                                                    )}
-                                                                    {isMounted && (
-                                                                        <>
-                                                                            <Tooltip title="View Mount Settings">
-                                                                                <IconButton onClick={(e) => { e.stopPropagation(); setSelected(partition); setShowMountSettings(true); }} edge="end" aria-label="view mount settings" size="small">
-                                                                                    <VisibilityIcon fontSize="small" />
-                                                                                </IconButton>
-                                                                            </Tooltip>
-                                                                            {!hasShares && (
-                                                                                <Tooltip title="Unmount Partition">
-                                                                                    <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, false); }} edge="end" aria-label="unmount" size="small">
-                                                                                        <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
-                                                                                    </IconButton>
-                                                                                </Tooltip>
-                                                                            )
-                                                                            }
-                                                                            <Tooltip title="Force Unmount Partition">
-                                                                                <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, true); }} edge="end" aria-label="force unmount" size="small">
-                                                                                    <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
-                                                                                </IconButton>
-                                                                            </Tooltip>
-                                                                            {(showShareActions && !hasShares) ? (
-                                                                                <Tooltip title="Create Share">
-                                                                                    <IconButton onClick={(e) => { e.stopPropagation(); handleCreateShare(partition); }} edge="end" aria-label="create share" size="small">
-                                                                                        <AddIcon fontSize="small" />
-                                                                                    </IconButton>
-                                                                                </Tooltip>
-                                                                            ) : showShareActions && (
-                                                                                <Tooltip title="Go to Share">
-                                                                                    <IconButton onClick={(e) => { e.stopPropagation(); handleGoToShare(partition); }} edge="end" aria-label="go to share" size="small">
-                                                                                        <ShareIcon fontSize="small" />
-                                                                                    </IconButton>
-                                                                                </Tooltip>
-                                                                            )}
-                                                                        </>
-                                                                    )}
-                                                                </Stack>)
-                                                            )}
-                                                        >
-                                                            <ListItemAvatar sx={{ minWidth: 'auto', pr: 1.5, pt: 0.5 }}> {/* Align avatar */}
-                                                                <Avatar sx={{ width: 32, height: 32 }}>
-                                                                    {renderPartitionIcon(partition)}
-                                                                </Avatar>
-                                                            </ListItemAvatar>
-                                                            <ListItemText
-                                                                primary={partitionNameDecoded}
-                                                                disableTypography
-                                                                secondary={
-                                                                    <Stack spacing={1} direction="row" flexWrap="wrap" alignItems="center" sx={{ pt: 0.5 }}>
-                                                                        {partition.size != null && <Chip label={`Size: ${filesize(partition.size, { round: 0 })}`} size="small" variant="outlined" />}
-                                                                        {partition.mount_point_data?.[0]?.fstype && <Chip label={`Type: ${partition.mount_point_data[0].fstype}`} size="small" variant="outlined" />}
-                                                                        {isMounted && <Chip label={`Mount: ${partition.mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
-                                                                        {partition.host_mount_point_data && <Chip label={`Mount: ${partition.host_mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
-                                                                        {partition.id && <Chip label={`UUID: ${partition.id}`} size="small" variant="outlined" />}
-                                                                        {partition.device && <Chip label={`Dev: ${partition.device}`} size="small" variant="outlined" />}
-                                                                    </Stack>
-                                                                }
-                                                            />
-                                                        </ListItem>
-                                                    </ListItemButton>
-                                                    {partIdx < filteredPartitions.length - 1 && (
-                                                        <Divider variant="inset" component="li" sx={{ ml: 4 }} />
-                                                    )}
-                                                </Fragment>
-                                            );
-                                        })}
-                                        {isGroupOpen && disk.partitions && disk.partitions.length > 0 && filteredPartitions.length === 0 && hideSystemPartitions && (
-                                            <ListItem dense sx={{ pl: 1 }}>
-                                                <ListItemText
-                                                    secondary="System partitions are hidden."
-                                                    slotProps={{
-                                                        secondary: { variant: 'caption', fontStyle: 'italic' }
-                                                    }}
-                                                />
-                                            </ListItem>
-                                        )}
-                                    </List>
+                                                        <EjectIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            {/* Expand/Collapse icon is handled by AccordionSummary */}
+                                        </Stack>
+                                    </ListItem>
+                                </AccordionSummary>
+                                <AccordionDetails sx={{ p: 0 }}>
+                                    {/* Collapsible Section for Partitions */}
+                                    {disk.partitions && disk.partitions.length > 0 && (
+                                        <List component="div" disablePadding dense={true} sx={{ pl: 4 }} >
+                                            {filteredPartitions.map((partition, partIdx) => {
+                                                const partitionIdentifier = partition.id || `${diskIdentifier}-part-${partIdx}`;
+                                                const isMounted = partition.mount_point_data
+                                                    && partition.mount_point_data.length > 0
+                                                    && partition.mount_point_data.some(mpd => mpd.is_mounted);
+                                                const hasShares = partition.mount_point_data
+                                                    && partition.mount_point_data.length > 0
+                                                    && partition.mount_point_data.some(mpd => {
+                                                        return mpd.shares &&
+                                                            mpd.shares.length > 0 &&
+                                                            mpd.shares.some(share => !share.disabled)
+                                                    });
 
-                                </Collapse>
-                            )}
-                            <Divider />
+                                                const firstMountPath = partition.mount_point_data?.[0]?.path;
+                                                const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
+                                                const partitionNameDecoded = decodeEscapeSequence(partition.name || "Unknown Partition");
+
+                                                return (
+                                                    <Fragment key={partitionIdentifier}>
+                                                        <ListItemButton
+                                                            sx={{ pl: 1, alignItems: 'flex-start' }} // Align items top
+                                                            onClick={() => { setSelected(partition); setShowPreview(true); }}
+                                                        >
+                                                            <ListItem
+                                                                disablePadding
+                                                                secondaryAction={!read_only && (!partition.system && !partition.name?.startsWith('hassos-')) && ( // Only show actions if not read-only and not system partition
+                                                                    (<Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}> {/* Reduced spacing */}
+                                                                        {/* Automount Toggle Button */}
+                                                                        {!hasShares && partition.mount_point_data?.[0] && (partition.mount_point_data?.[0]?.is_to_mount_at_startup ? (
+                                                                            <Tooltip title="Disable mount at startup">
+                                                                                <IconButton onClick={(e) => { e.stopPropagation(); handleToggleAutomount(partition); }} edge="end" aria-label="disable automount" size="small">
+                                                                                    <UpdateDisabledIcon />
+                                                                                </IconButton>
+                                                                            </Tooltip>
+                                                                        ) : (
+                                                                            <Tooltip title="Enable mount at startup">
+                                                                                <IconButton onClick={(e) => { e.stopPropagation(); handleToggleAutomount(partition); }} edge="end" aria-label="enable automount" size="small">
+                                                                                    <UpdateIcon />
+                                                                                </IconButton>
+                                                                            </Tooltip>
+                                                                        )
+                                                                        )
+                                                                        }
+                                                                        {!isMounted && (
+                                                                            <Tooltip title="Mount Partition">
+                                                                                <IconButton onClick={(e) => { e.stopPropagation(); setSelected(partition); setShowMount(true); }} edge="end" aria-label="mount" size="small">
+                                                                                    <FontAwesomeSvgIcon icon={faPlug} />
+                                                                                </IconButton>
+                                                                            </Tooltip>
+                                                                        )}
+                                                                        {isMounted && (
+                                                                            <>
+                                                                                <Tooltip title="View Mount Settings">
+                                                                                    <IconButton onClick={(e) => { e.stopPropagation(); setSelected(partition); setShowMountSettings(true); }} edge="end" aria-label="view mount settings" size="small">
+                                                                                        <VisibilityIcon fontSize="small" />
+                                                                                    </IconButton>
+                                                                                </Tooltip>
+                                                                                {!hasShares && (
+                                                                                    <Tooltip title="Unmount Partition">
+                                                                                        <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, false); }} edge="end" aria-label="unmount" size="small">
+                                                                                            <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
+                                                                                        </IconButton>
+                                                                                    </Tooltip>
+                                                                                )
+                                                                                }
+                                                                                <Tooltip title="Force Unmount Partition">
+                                                                                    <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, true); }} edge="end" aria-label="force unmount" size="small">
+                                                                                        <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
+                                                                                    </IconButton>
+                                                                                </Tooltip>
+                                                                                {(showShareActions && !hasShares) ? (
+                                                                                    <Tooltip title="Create Share">
+                                                                                        <IconButton onClick={(e) => { e.stopPropagation(); handleCreateShare(partition); }} edge="end" aria-label="create share" size="small">
+                                                                                            <AddIcon fontSize="small" />
+                                                                                        </IconButton>
+                                                                                    </Tooltip>
+                                                                                ) : showShareActions && (
+                                                                                    <Tooltip title="Go to Share">
+                                                                                        <IconButton onClick={(e) => { e.stopPropagation(); handleGoToShare(partition); }} edge="end" aria-label="go to share" size="small">
+                                                                                            <ShareIcon fontSize="small" />
+                                                                                        </IconButton>
+                                                                                    </Tooltip>
+                                                                                )}
+                                                                            </>
+                                                                        )}
+                                                                    </Stack>)
+                                                                )}
+                                                            >
+                                                                <ListItemAvatar sx={{ minWidth: 'auto', pr: 1.5, pt: 0.5 }}> {/* Align avatar */}
+                                                                    <Avatar sx={{ width: 32, height: 32 }}>
+                                                                        {renderPartitionIcon(partition)}
+                                                                    </Avatar>
+                                                                </ListItemAvatar>
+                                                                <ListItemText
+                                                                    primary={partitionNameDecoded}
+                                                                    disableTypography
+                                                                    secondary={
+                                                                        <Stack spacing={1} direction="row" flexWrap="wrap" alignItems="center" sx={{ pt: 0.5 }}>
+                                                                            {partition.size != null && <Chip label={`Size: ${filesize(partition.size, { round: 0 })}`} size="small" variant="outlined" />}
+                                                                            {partition.mount_point_data?.[0]?.fstype && <Chip label={`Type: ${partition.mount_point_data[0].fstype}`} size="small" variant="outlined" />}
+                                                                            {isMounted && <Chip label={`Mount: ${partition.mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
+                                                                            {partition.host_mount_point_data && <Chip label={`Mount: ${partition.host_mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
+                                                                            {partition.id && <Chip label={`UUID: ${partition.id}`} size="small" variant="outlined" />}
+                                                                            {partition.device && <Chip label={`Dev: ${partition.device}`} size="small" variant="outlined" />}
+                                                                        </Stack>
+                                                                    }
+                                                                />
+                                                            </ListItem>
+                                                        </ListItemButton>
+                                                        {partIdx < filteredPartitions.length - 1 && (
+                                                            <Divider variant="inset" component="li" sx={{ ml: 4 }} />
+                                                        )}
+                                                    </Fragment>
+                                                );
+                                            })}
+                                            {expandedAccordion === diskIdentifier && disk.partitions && disk.partitions.length > 0 && filteredPartitions.length === 0 && hideSystemPartitions && (
+                                                <ListItem dense sx={{ pl: 1 }}>
+                                                    <ListItemText
+                                                        secondary="System partitions are hidden."
+                                                        slotProps={{
+                                                            secondary: { variant: 'caption', fontStyle: 'italic' }
+                                                        }}
+                                                    />
+                                                </ListItem>
+                                            )}
+                                        </List>
+                                    )}
+                                </AccordionDetails>
+                            </Accordion>
+                            <Divider /> {/* This Divider separates the Accordions */}
                         </Fragment>
                     );
                 })}
@@ -683,7 +729,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
         } else if (!props.open) {
             reset({ path: '', fstype: '', flags: [], custom_flags: [], custom_flags_values: [], is_to_mount_at_startup: false }); // Reset to default values when closing
         }
-    }, [props.open, props.objectToEdit, reset]);
+    }, [props.open, props.objectToEdit, reset, replace]); // Added `replace` to dependencies
 
     function handleCloseSubmit(formData: xMountPointData) {
         if (props.readOnlyView) {
@@ -744,7 +790,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
                                 Configure mount options for the volume. The suggested path is based on the volume name.
                             </DialogContentText>
                             <Grid container spacing={2}>
-                                <Grid size={6}> {/* Corrected Grid usage */}
+                                <Grid size={{ xs: 12, sm: 6 }}> {/* Corrected Grid usage & responsiveness */}
                                     <TextFieldElement
                                         size="small"
                                         name="path"
@@ -757,7 +803,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
                                         helperText="Path must start with /mnt/"
                                     />
                                 </Grid>
-                                <Grid size={6}> {/* FS Type */}
+                                <Grid size={{ xs: 12, sm: 6 }}> {/* FS Type & responsiveness */}
                                     <AutocompleteElement
                                         name="fstype"
                                         label="File System Type"
@@ -772,6 +818,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
                                                 console.log("FS Type changed:", value);
                                                 setValue('custom_flags', []); // Clear custom flags when FS type changes
                                                 setValue('custom_flags_values', []); // Clear custom flags values when FS type changes
+                                                replace([]); // Clear field array for custom flag values
                                             }
                                         }}
                                         textFieldProps={{
@@ -783,7 +830,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 
                                     />
                                 </Grid>
-                                <Grid size={6}> {/* FS Flags */}
+                                <Grid size={{ xs: 12, sm: 6 }}> {/* FS Flags & responsiveness */}
                                     {
                                         !fsLoading && ((filesystems as FilesystemType[])[0]?.mountFlags || []).length > 0 &&
                                         <AutocompleteElement
@@ -811,28 +858,26 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
                                             }}
                                             textFieldProps={{
                                                 disabled: props.readOnlyView,
-                                                //helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
-                                                //error: !!fsError,
                                                 InputLabelProps: { shrink: true }
                                             }}
                                         />
                                     }
                                 </Grid>
-                                <Grid size={6}> {/* FS CustomFlags */}
+                                <Grid size={{ xs: 12, sm: 6 }}> {/* FS CustomFlags & responsiveness */}
                                     {
                                         !fsLoading && ((filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags || []).length > 0 &&
                                         <AutocompleteElement
                                             multiple
                                             name="custom_flags"
                                             label="FileSystem specific Mount Flags"
-                                            options={fsLoading ? [] : (filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags/*?.filter(mf => !mf.needsValue)*/ || []} // Use string keys for options
+                                            options={fsLoading ? [] : (filesystems as FilesystemType[]).find(fs => fs.name === watch('fstype'))?.customMountFlags || []}
                                             control={control}
                                             autocompleteProps={{
                                                 disabled: props.readOnlyView,
                                                 size: "small",
                                                 limitTags: 5,
                                                 getOptionKey: (option) => (option as MountFlag).name,
-                                                // getOptionLabel: (option) => option.name,
+                                                getOptionLabel: (option) => (option as MountFlag).name, // Ensure label is just the name
                                                 renderOption: (props, option) => (
                                                     <li {...props} >
                                                         <Tooltip title={option.description || ""}>
@@ -846,21 +891,34 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
                                                 renderValue: (values, getItemProps) =>
                                                     values.map((option, index) => {
                                                         const { key, ...itemProps } = getItemProps({ index });
-                                                        //console.log(values, option)
                                                         return (
                                                             <Chip
                                                                 color={(option as MountFlag).needsValue ? "warning" : "default"}
                                                                 key={key}
-                                                                variant="filled"
-                                                                label={(option as MountFlag)?.name || "bobo"}
+                                                                variant="filled" // "outlined" or "filled"
+                                                                label={(option as MountFlag)?.name || "error"}
                                                                 size="small"
                                                                 {...itemProps}
                                                             />
                                                         );
                                                     }),
                                                 onChange: props.readOnlyView ? undefined : (event, value) => {
-                                                    console.log(event, value)
-                                                    replace((value as MountFlag[]).filter(v => v.needsValue)); // Only keep flags that need values
+                                                    const flagsWithValue = (value as MountFlag[]).filter(v => v.needsValue);
+                                                    const currentFieldValues = watch('custom_flags_values') || [];
+
+                                                    // Filter out existing values for flags that are no longer selected
+                                                    const newFieldValues = currentFieldValues.filter(fv =>
+                                                        flagsWithValue.some(selectedFlag => selectedFlag.name === fv.name)
+                                                    );
+
+                                                    // Add new placeholders for newly selected flags that need values
+                                                    flagsWithValue.forEach(selectedFlag => {
+                                                        if (!newFieldValues.some(fv => fv.name === selectedFlag.name)) {
+                                                            newFieldValues.push({ ...selectedFlag, value: selectedFlag.value || '' }); // Use existing value or empty
+                                                        }
+                                                    });
+                                                    replace(newFieldValues);
+                                                    setValue('custom_flags', value as MountFlag[], { shouldDirty: true }); // also update the custom_flags themselves
                                                 },
                                             }}
                                             textFieldProps={{
@@ -871,24 +929,24 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
                                     }
                                 </Grid>
                                 {fields.map((field, index) => (
-                                    <Grid size={6} key={field.id}> {/* FS CustomFlags Values */}
+                                    <Grid size={{ xs: 12, sm: 6 }} key={field.id}> {/* FS CustomFlags Values & responsiveness */}
                                         <TextFieldElement
                                             size="small"
                                             name={`custom_flags_values.${index}.value`}
-                                            label={field.name}
+                                            label={field.name} // This is MountFlag, so field.name is the flag name
                                             control={control}
                                             required
                                             fullWidth
                                             disabled={props.readOnlyView}
                                             variant="outlined"
                                             rules={{
-                                                required: true,
+                                                required: `Value for ${field.name} is required.`,
                                                 pattern: {
                                                     value: RegExp(field.value_validation_regex || ".*"),
                                                     message: `Invalid value for ${field.name}. ${field.value_description}`,
                                                 },
                                             }}
-                                            slotProps={{ inputLabel: { shrink: true } }} // Ensure label is always shrunk
+                                            slotProps={{ inputLabel: { shrink: true } }}
                                             helperText={field.value_description}
                                         />
                                     </Grid>
@@ -911,7 +969,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
                         ) : (
                             <>
                                 <Button onClick={handleCancel} color="secondary">Cancel</Button>
-                                <Button type="submit" form="mountvolumeform" loading={mounting} variant="contained">Mount</Button>
+                                <Button type="submit" form="mountvolumeform" disabled={mounting} variant="contained">Mount</Button> {/* Corrected disabled prop */}
                             </>
                         )}
                     </DialogActions>

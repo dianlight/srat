@@ -118,7 +118,9 @@ export function Settings() {
 
     return (
         <InView>
-            <Stack spacing={2}>
+            <br />
+            <Stack spacing={2} sx={{ p: 2 }}>
+                <Divider />
                 <form id="settingsform" onSubmit={handleSubmit(handleCommit)} noValidate>
                     <Grid container spacing={2}>
                         <Grid size={4}>

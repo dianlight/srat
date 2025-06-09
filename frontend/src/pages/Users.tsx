@@ -113,16 +113,20 @@ export function Users() {
     return (
         <InView>
             <UserEditDialog objectToEdit={selected} open={showEdit} onClose={(data) => { setSelected({ username: "", password: "", doCreate: false }); onSubmitEditUser(data); setShowEdit(false) }} />
-            {read_only || <Fab color="primary" aria-label="add" sx={{
-                float: 'right',
-                top: '-20px',
-                margin: '-8px'
-            }} size="small"
-                onClick={() => { setSelected({ username: "", password: "", doCreate: true }); setShowEdit(true) }}
-            >
-                <PersonAddIcon />
-            </Fab>}
-            <List dense={true} sx={{ pt: 2 }} component="span">
+            <br />
+            <Stack direction="row" justifyContent="flex-end" sx={{ px: 2, mb: 1, alignItems: 'center' }}>
+                {read_only || <Fab
+                    color="primary"
+                    aria-label="add"
+                    // sx removed: float, top, margin - FAB is now in normal flow within Stack
+                    size="small"
+                    onClick={() => { setSelected({ username: "", password: "", doCreate: true }); setShowEdit(true) }}
+                >
+                    <PersonAddIcon />
+                </Fab>}
+            </Stack>
+            <List dense={true} component="span">
+                <Divider />
                 {users.isSuccess && Array.isArray(users.data) && users.data.slice().sort((a, b) => {
                     // Sort admin users to the top, then alphabetically by username
                     if (a.is_admin && !b.is_admin) return -1;

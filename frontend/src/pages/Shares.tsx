@@ -442,35 +442,34 @@ export function Shares() {
             }
             onDeleteSubmit={onSubmitDeleteShare}
         />
-        <Tooltip title={
-            read_only ? "Cannot create share in read-only mode" :
-                !canCreateNewShare ? "No unshared mount points available to create a new share." :
-                    "Create new share"
-        }>
-            <span> {/* Wrapper for Tooltip when Fab might be disabled */}
-                <Fab
-                    id="create_new_share"
-                    color="primary"
-                    aria-label={
-                        read_only ? "Cannot create share in read-only mode" :
-                            !canCreateNewShare ? "No unshared mount points available to create a new share." :
-                                "Create new share"
-                    }
-                    sx={{
-                        float: 'right',
-                        top: '-20px',
-                        margin: '-8px'
-                    }}
-                    size="small"
-                    onClick={() => { if (!read_only && canCreateNewShare) { setSelected(null); setShowEdit(true); } }}
-                    disabled={read_only || !canCreateNewShare}
-                >
-                    <AddIcon />
-                </Fab>
-            </span>
-        </Tooltip>
         <br />
+        <Stack direction="row" justifyContent="flex-end" sx={{ px: 2, mb: 1, alignItems: 'center' }}>
+            <Tooltip title={
+                read_only ? "Cannot create share in read-only mode" :
+                    !canCreateNewShare ? "No unshared mount points available to create a new share." :
+                        "Create new share"
+            }>
+                <span> {/* Wrapper for Tooltip when Fab might be disabled */}
+                    <Fab
+                        id="create_new_share"
+                        color="primary"
+                        aria-label={
+                            read_only ? "Cannot create share in read-only mode" :
+                                !canCreateNewShare ? "No unshared mount points available to create a new share." :
+                                    "Create new share"
+                        }
+                        // sx removed: float, top, margin - FAB is now in normal flow within Stack
+                        size="small"
+                        onClick={() => { if (!read_only && canCreateNewShare) { setSelected(null); setShowEdit(true); } }}
+                        disabled={read_only || !canCreateNewShare}
+                    >
+                        <AddIcon />
+                    </Fab>
+                </span>
+            </Tooltip>
+        </Stack>
         <List dense={true}>
+            <Divider />
             {groupedAndSortedShares.map(([usageGroup, sharesInGroup], groupIndex) => (
                 <Accordion
                     key={usageGroup}
@@ -479,7 +478,8 @@ export function Shares() {
                     sx={{
                         boxShadow: 'none', // Remove default shadow for a flatter look if desired
                         '&:before': { display: 'none' }, // Remove the top border line of the accordion
-                        '&.Mui-expanded': { margin: 'auto 0' } // Control margin when expanded
+                        '&.Mui-expanded': { margin: 'auto 0' }, // Control margin when expanded
+                        backgroundColor: 'transparent', // Remove accordion background
                     }}
                     disableGutters // Removes left/right padding from Accordion itself
                 >
@@ -490,10 +490,11 @@ export function Shares() {
                         sx={{
                             minHeight: 48, // Adjust as needed
                             '&.Mui-expanded': { minHeight: 48 }, // Ensure consistent height
-                            '& .MuiAccordionSummary-content': { margin: '12px 0' } // Adjust content margin
+                            '& .MuiAccordionSummary-content': { margin: '12px 0' }, // Adjust content margin
+                            backgroundColor: 'transparent', // Remove accordion background
                         }}
                     >
-                        <Typography variant="overline" color="text.secondary" sx={{ textTransform: 'capitalize', pl: 1 }}>
+                        <Typography variant="h6" color="text.secondary" sx={{ textTransform: 'capitalize', pl: 1 }}>
                             {usageGroup} Shares ({sharesInGroup.length})
                         </Typography>
                     </AccordionSummary>
