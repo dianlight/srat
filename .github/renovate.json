@@ -19,6 +19,10 @@
     "major": {
         "dependencyDashboardApproval": true
     },
+    "postUpdateOptions": {
+         "gomodTidy": true,
+         "gomodUpdateImportPaths": true
+    },
     "dependencyDashboardAutoclose": true,
     "customManagers": [
         {
@@ -73,13 +77,6 @@
                 "patch"
             ],
             "automerge": true
-        },
-        {
-           "matchManagers": ["gomod"],
-           "managerConfig": {
-               "gomodTidy": true,
-               "gomodUpdateImportPaths":true
-            }
         }
     ]
 }
