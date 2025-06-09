@@ -47,21 +47,21 @@
     ],
     "packageRules": [
         {
-            "commitMessageTopic": "{{groupName}} {{depName}}"
+            "commitMessageTopic": "{{groupName}} {{depName}}",
             "groupName": "BackEnd",
             "matchFileNames": [
                 "backend/**"
             ]
         },
         {
-            "commitMessageTopic": "{{groupName}} {{depName}}"
+            "commitMessageTopic": "{{groupName}} {{depName}}",
             "groupName": "FrontEnd",
             "matchFileNames": [
                 "frontend/**"
             ]
         },
         {
-            "commitMessageTopic": "{{groupName}} {{depName}}"
+            "commitMessageTopic": "{{groupName}} {{depName}}",
             "groupName": "CI/CD",
             "matchFileNames": [
                 ".guthub/workflows/**"
