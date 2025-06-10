@@ -123,6 +123,10 @@ func (c *ConfigToDtoConverterImpl) ShareToSharedResourceNoMountPointData(source 
 		pBool2 := source.TimeMachine
 		target.TimeMachine = &pBool2
 	}
+	if source.RecycleBin != false {
+		pBool3 := source.RecycleBin
+		target.RecycleBin = &pBool3
+	}
 	if source.Usage != "" {
 		target.Usage = dto.HAMountUsage(source.Usage)
 	}
@@ -163,6 +167,9 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 	}
 	if source.TimeMachine != nil {
 		target.TimeMachine = *source.TimeMachine
+	}
+	if source.RecycleBin != nil {
+		target.RecycleBin = *source.RecycleBin
 	}
 	if source.Usage != "" {
 		target.Usage = string(source.Usage)

@@ -347,6 +347,24 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
+          data: SharedResource[] | null;
+          /** The event name. */
+          event: "share";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: Welcome;
+          /** The event name. */
+          event: "hello";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: ReleaseAsset;
           /** The event name. */
           event: "update";
@@ -377,24 +395,6 @@ export type SseApiResponse = /** status 200 OK */
           data: HealthPing;
           /** The event name. */
           event: "heartbeat";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: SharedResource[] | null;
-          /** The event name. */
-          event: "share";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: Welcome;
-          /** The event name. */
-          event: "hello";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -632,11 +632,16 @@ export type SharedResource = {
   is_ha_mounted?: boolean;
   mount_point_data?: MountPointData;
   name?: string;
+  recycle_bin_enabled?: boolean;
   ro_users?: User[] | null;
   timemachine?: boolean;
   usage?: Usage;
   users?: User[] | null;
   [key: string]: any;
+};
+export type Welcome = {
+  message: string;
+  supported_events: Supported_events;
 };
 export type UpdateProgress = {
   /** A URL to the JSON Schema for this object. */
@@ -666,10 +671,6 @@ export type Disk = {
   serial?: string;
   size?: number;
   vendor?: string;
-};
-export type Welcome = {
-  message: string;
-  supported_events: Supported_events;
 };
 export enum Update_channel {
   Stable = "stable",

@@ -17,6 +17,7 @@ type ExportedShare struct {
 	Users              []SambaUser `gorm:"many2many:user_rw_share"`
 	RoUsers            []SambaUser `gorm:"many2many:user_ro_share"`
 	TimeMachine        bool
+	RecycleBin         bool `gorm:"default:false"`
 	Usage              dto.HAMountUsage
 	MountPointDataPath string
 	MountPointData     MountPointPath `gorm:"foreignKey:MountPointDataPath;references:Path;"`

@@ -35,6 +35,10 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 		pBool := source.TimeMachine
 		target.TimeMachine = &pBool
 	}
+	if source.RecycleBin != false {
+		pBool2 := source.RecycleBin
+		target.RecycleBin = &pBool2
+	}
 	if source.Usage != "" {
 		target.Usage = source.Usage
 	}
@@ -164,6 +168,9 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 	if source.TimeMachine != nil {
 		target.TimeMachine = *source.TimeMachine
 	}
+	if source.RecycleBin != nil {
+		target.RecycleBin = *source.RecycleBin
+	}
 	if source.Usage != "" {
 		target.Usage = source.Usage
 	}
@@ -275,6 +282,8 @@ func (c *DtoToDbomConverterImpl) exportedShareToSharedResource(source dbom.Expor
 	}
 	pBool := source.TimeMachine
 	dtoSharedResource.TimeMachine = &pBool
+	pBool2 := source.RecycleBin
+	dtoSharedResource.RecycleBin = &pBool2
 	dtoSharedResource.Usage = source.Usage
 	pDtoMountPointData, err := c.dbomMountPointPathToPDtoMountPointData(source.MountPointData)
 	if err != nil {
@@ -410,6 +419,9 @@ func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.Shared
 	}
 	if source.TimeMachine != nil {
 		dbomExportedShare.TimeMachine = *source.TimeMachine
+	}
+	if source.RecycleBin != nil {
+		dbomExportedShare.RecycleBin = *source.RecycleBin
 	}
 	dbomExportedShare.Usage = source.Usage
 	var pString *string

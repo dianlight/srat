@@ -7,6 +7,7 @@ type SharedResource struct {
 	Users       []User       `json:"users,omitempty"`
 	RoUsers     []User       `json:"ro_users,omitempty"`
 	TimeMachine *bool        `json:"timemachine,omitempty"`
+	RecycleBin  *bool        `json:"recycle_bin_enabled,omitempty"`
 	Usage       HAMountUsage `json:"usage,omitempty" enum:"none,backup,media,share,internal"`
 	IsHAMounted *bool        `json:"is_ha_mounted,omitempty"`
 	HaStatus    *string      `json:"ha_status,omitempty"`

@@ -53,7 +53,6 @@ import { TabIDs, type LocationState } from "../store/locationState";
 
 interface ShareEditProps extends SharedResource {
     org_name: string,
-    trashbin?: boolean, // TODO: Implement TrashBin support
 }
 
 // Helper function to extract basename from a path
@@ -940,7 +939,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
                                             <CheckboxElement size="small" label="Support Timemachine Backups" name="timemachine" control={control} />
                                         </Grid>
                                         <Grid size={6}>
-                                            <CheckboxElement size="small" disabled label="Support TrashBin" name="trashbin" control={control} />
+                                            <CheckboxElement size="small" label="Support Recycle Bin" name="recycle_bin_enabled" control={control} />
                                         </Grid>
                                     </>
                                 }

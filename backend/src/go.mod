@@ -46,6 +46,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20250319124200-ccd6737f222a // indirect
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/rogpeppe/gohack v1.0.2 // indirect
+	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect
 	github.com/zarldev/goenums v0.4.0 // indirect
@@ -157,3 +158,5 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
+
+

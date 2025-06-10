@@ -48,6 +48,9 @@ func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedSha
 	if source.TimeMachine != false {
 		target.TimeMachine = source.TimeMachine
 	}
+	if source.RecycleBin != false {
+		target.RecycleBin = source.RecycleBin
+	}
 	if source.Usage != "" {
 		target.Usage = string(source.Usage)
 	}
@@ -92,6 +95,9 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 	}
 	if source.TimeMachine != false {
 		target.TimeMachine = source.TimeMachine
+	}
+	if source.RecycleBin != false {
+		target.RecycleBin = source.RecycleBin
 	}
 	if source.Usage != "" {
 		target.Usage = dto.HAMountUsage(source.Usage)

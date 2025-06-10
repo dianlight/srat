@@ -466,6 +466,8 @@ components:
           $ref: "#/components/schemas/MountPointData"
         name:
           type: string
+        recycle_bin_enabled:
+          type: boolean
         ro_users:
           items:
             $ref: "#/components/schemas/User"
@@ -1011,6 +1013,8 @@ paths:
                 mount_point_data: {}
                 name:
                   type: string
+                recycle_bin_enabled:
+                  type: boolean
                 ro_users:
                   items: {}
                   type: array
@@ -1050,6 +1054,8 @@ paths:
                 mount_point_data: {}
                 name:
                   type: string
+                recycle_bin_enabled:
+                  type: boolean
                 ro_users:
                   items: {}
                   type: array
@@ -1212,6 +1218,46 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/Welcome"
+                        event:
+                          const: hello
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event hello
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/ReleaseAsset"
                         event:
                           const: update
@@ -1285,46 +1331,6 @@ paths:
                         - data
                         - event
                       title: Event heartbeat
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: share
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event share
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/Welcome"
-                        event:
-                          const: hello
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event hello
                       type: object
                 title: Server Sent Events
                 type: array

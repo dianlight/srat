@@ -1,7 +1,9 @@
 package service_test
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -15,6 +17,7 @@ import (
 	service "github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
+	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -84,11 +87,15 @@ func (suite *SambaServiceSuite) TearDownTest() {
 }
 
 func (suite *SambaServiceSuite) TestCreateConfigStream() {
-
+	dmp := diffmatchpatch.New()
 	mock.When(suite.samba_user_repo.All()).ThenReturn(dbom.SambaUsers{
 		{
 			Username: "dianlight",
 			IsAdmin:  true,
+		},
+		{
+			Username: "testuser",
+			IsAdmin:  false,
 		},
 	}, nil).Verify(matchers.Times(1))
 	mock.When(suite.samba_user_repo.GetAdmin()).ThenReturn(dbom.SambaUser{}, nil).Verify(matchers.Times(0))
@@ -212,6 +219,12 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			},
 			Users: []dbom.SambaUser{
 				{
+					Username: "testuser",
+					IsAdmin:  false,
+				},
+			},
+			RoUsers: []dbom.SambaUser{
+				{
 					Username: "dianlight",
 					IsAdmin:  true,
 				},
@@ -229,6 +242,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 					IsAdmin:  true,
 				},
 			},
+			TimeMachine: true,
 		},
 		{
 			Name:               "UPDATER",
@@ -242,6 +256,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 					IsAdmin:  true,
 				},
 			},
+			RecycleBin: true,
 		},
 	}, nil)
 
@@ -270,36 +285,82 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 		keys = append(keys, k)
 	}
 	suite.Len(keys, len(expected), "%+v", result)
-	m1 := regexp.MustCompile(`/\*(.*)\*/`)
+	//m1 := regexp.MustCompile(`/\*(.*)\*/`)
 
 	for k, v := range result {
-		//assert.EqualValues(t, expected[k], v)
-		var elines = strings.Split(expected[k], "\n")
-		var lines = strings.Split(v, "\n")
-
-		for i, line := range lines {
-			if strings.HasPrefix(strings.TrimSpace(line), "# ") && strings.HasPrefix(strings.TrimSpace(elines[i]), "# ") {
-				continue
-			}
-			low := i - 5
-			if low < 5 {
-				low = 5
-			}
-			hight := low + 10
-			if hight > len(lines) {
-				hight = len(lines)
-			}
-
-			suite.Require().Greater(len(lines), i, "Premature End of file reached")
-			if logv := m1.FindStringSubmatch(line); len(logv) > 1 {
-				suite.T().Logf("%d: %s", i, logv[1])
-				line = m1.ReplaceAllString(line, "")
-			}
-
-			suite.Require().Equal(strings.TrimSpace(elines[i]), strings.TrimSpace(line), "On Section [%s] Line:%d\n%d:\n%s\n%d:", k, i, low, strings.Join(lines[low:hight], "\n"), hight)
+		expectedSection, ok := expected[k]
+		suite.True(ok, "Section %s missing from expected config", k)
+		if !ok {
+			continue
 		}
 
+		var elines = strings.Split(strings.TrimSpace(expectedSection), "\n")
+		var lines = strings.Split(strings.TrimSpace(v), "\n")
+
+		filterComments := func(inputLines []string) []string {
+			var filtered []string
+			for _, line := range inputLines {
+				trimmedLine := strings.TrimSpace(line)
+				if trimmedLine != "" && !strings.HasPrefix(trimmedLine, "#") {
+					filtered = append(filtered, trimmedLine) // Keep original line for diff context
+				}
+			}
+			return filtered
+		}
+
+		filteredExpectedLines := filterComments(elines)
+		filteredActualLines := filterComments(lines)
+
+		filteredExpectedString := strings.Join(filteredExpectedLines, "\n")
+		filteredActualString := strings.Join(filteredActualLines, "\n")
+
+		// Calculate the initial diffs using DiffMain
+		rawDiffs := dmp.DiffMain(filteredExpectedString, filteredActualString, false)
+
+		// Determine if there are actual differences (Insert or Delete operations)
+		// An empty rawDiffs slice means both strings were empty (equal).
+		// A single DiffEqual operation means the strings were identical.
+		var foundDifference bool
+		if len(rawDiffs) > 0 { // Only check further if rawDiffs is not empty
+			for _, d := range rawDiffs {
+				if d.Type == diffmatchpatch.DiffInsert || d.Type == diffmatchpatch.DiffDelete {
+					foundDifference = true
+					break
+				}
+			}
+		}
+
+		if foundDifference {
+			// If differences were found, apply semantic cleanup for better readability and report.
+			semanticDiffs := dmp.DiffCleanupSemantic(rawDiffs)
+			var diffEvidenceBuilder strings.Builder
+			expectedLineNum := 1
+			actualLineNum := 1
+
+			for _, d := range semanticDiffs {
+				scanner := bufio.NewScanner(strings.NewReader(d.Text))
+				for scanner.Scan() {
+					line := scanner.Text() // scanner.Text() does not include the newline character
+					switch d.Type {
+					case diffmatchpatch.DiffDelete:
+						diffEvidenceBuilder.WriteString(fmt.Sprintf("- %s\n", line))
+						expectedLineNum++
+					case diffmatchpatch.DiffInsert:
+						diffEvidenceBuilder.WriteString(fmt.Sprintf("+ %s\n", line))
+						actualLineNum++
+					case diffmatchpatch.DiffEqual:
+						// For equal lines, we can show the line number from the expected side,
+						// as they are synchronized at this point.
+						diffEvidenceBuilder.WriteString(fmt.Sprintf("  %s\n", line))
+						expectedLineNum++
+						actualLineNum++
+					}
+				}
+			}
+			suite.T().Errorf("Config mismatch for section [%s]:\n%s", k, diffEvidenceBuilder.String())
+		}
 	}
+	suite.Equal(len(expected), len(result), "Number of sections in generated config does not match expected")
 }
 
 /*
