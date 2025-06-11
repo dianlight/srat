@@ -19,17 +19,89 @@ jobs:
   setversion:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ steps.calculate_version.outputs.version }}
     name: Set version
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
-      - name: Get version
-        id: version
-        uses: home-assistant/actions/helpers/version@master
-      - run: echo ${{ steps.version.outputs.version }}
+      - name: Calculate version
+        id: calculate_version
+        run: |
+          #!/bin/bash
+          set -euo pipefail # Strict mode: exit on error, unset var, pipefail
+
+          # Get current UTC year and month (two digits for month)
+          CURRENT_YEAR=$(date -u +'%Y')
+          CURRENT_MONTH=$(date -u +'%m') # %m gives 01-12
+
+          FINAL_VERSION=""
+
+          # Debugging information
+          echo "GitHub Event Name: ${{ github.event_name }}"
+          echo "GitHub Event Action: ${{ github.event.action || 'N/A' }}" # github.event.action might not exist for all events
+          echo "GitHub Ref Type: ${{ github.ref_type }}"
+          echo "GitHub Ref Name: ${{ github.ref_name }}"
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "GitHub Release Tag Name: ${{ github.event.release.tag_name }}"
+          fi
+
+          # Check if this is a "published release" event
+          if [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then
+            echo "Detected published release event."
+            # For a published release, the version is the tag name from the event
+            FINAL_VERSION="${{ github.event.release.tag_name }}"
+            if [[ -z "$FINAL_VERSION" ]]; then
+              echo "Error: github.event.release.tag_name is empty for a published release event."
+              exit 1
+            fi
+          else
+            echo "Detected development build (push, PR, or non-published release)."
+            # This is a dev build (e.g., push to main, PR)
+
+            # Find the latest tag matching the pattern YYYY.MM.INC for the *current* year and month
+            # --sort=version:refname handles versions like 1.2.9 vs 1.2.10 correctly
+            LATEST_TAG_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_YEAR}.${CURRENT_MONTH}.*" --sort=version:refname | tail -n 1)
+            echo "Latest tag for $CURRENT_YEAR.$CURRENT_MONTH.*: '$LATEST_TAG_FOR_CURRENT_PERIOD'"
+
+            NEW_INCREMENTAL=0
+            if [[ -n "$LATEST_TAG_FOR_CURRENT_PERIOD" ]]; then
+              # Extract incremental part from YYYY.MM.INC (e.g., 2024.01.1 -> 1)
+              LAST_INCREMENTAL_STR=$(echo "$LATEST_TAG_FOR_CURRENT_PERIOD" | cut -d. -f3)
+              if [[ "$LAST_INCREMENTAL_STR" =~ ^[0-9]+$ ]]; then
+                NEW_INCREMENTAL=$((LAST_INCREMENTAL_STR + 1))
+              else
+                echo "Warning: Malformed or non-numeric incremental part ('$LAST_INCREMENTAL_STR') in tag '$LATEST_TAG_FOR_CURRENT_PERIOD'. Resetting incremental to 0 for $CURRENT_YEAR.$CURRENT_MONTH."
+                NEW_INCREMENTAL=0 # Fallback for current period
+              fi
+            fi
+            echo "New incremental for $CURRENT_YEAR.$CURRENT_MONTH: $NEW_INCREMENTAL"
+
+            VERSION_BASE="${CURRENT_YEAR}.${CURRENT_MONTH}.${NEW_INCREMENTAL}"
+            echo "Version base: $VERSION_BASE"
+
+            # Determine N for .devN: number of commits since the last actual tag.
+            # If no tags, N is the total number of commits on the branch from the initial commit.
+            N_COMMITS=0
+            LATEST_ANY_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+
+            if [[ -z "$LATEST_ANY_TAG" ]]; then
+              echo "No tags found in the repository. Counting all commits for N."
+              N_COMMITS=$(git rev-list --count HEAD)
+            else
+              echo "Latest tag found: $LATEST_ANY_TAG. Counting commits since this tag for N."
+              N_COMMITS=$(git rev-list --count "${LATEST_ANY_TAG}"..HEAD)
+            fi
+            echo "Number of commits for .devN suffix: $N_COMMITS"
+            
+            FINAL_VERSION="${VERSION_BASE}.dev${N_COMMITS}"
+          fi
+
+          echo "Final calculated version: $FINAL_VERSION"
+          echo "version=$FINAL_VERSION" >> "$GITHUB_OUTPUT"
+      - name: Echo version for debug
+        run: echo "Output version is ${{ steps.calculate_version.outputs.version }}"
 
   build:
     name: Test & Build
