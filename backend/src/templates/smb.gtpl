@@ -5,6 +5,7 @@
    {{ else }}
    server min protocol = SMB2_10
    client min protocol = SMB2_10
+   disable netbios = yes
    {{ end }}
 
    {{if .multi_channel }}
@@ -41,8 +42,8 @@
 
    netbios name = {{ env "HOSTNAME" }}
    workgroup = {{ .workgroup | default "NOWORKGROUP" }}
-   server string = Samba NAS HomeAssistant config
-   multicast dns register = {{ if or .wsdd .wsdd2 }}no{{ else }}yes{{ end }}
+   server string = Samba NAS2 HomeAssistant config
+   multicast dns register = {{ if or .wsdd .wsdd2 }}no{{ else }}yes{{ end }} |||||||| Avahi daemon.
 
    security = user
    ntlm auth = yes
@@ -113,8 +114,9 @@
    fruit:time machine = yes
    #fruit:time machine max size = SIZE [K|M|G|T|P]
    fruit:metadata = stream
-{{ end }}
+{{ else }}   
    vfs objects = catia{{ if .data.recycle_bin_enabled }} recycle{{ end }}{{/*- printf "/*%#v* /" . -*/}}
+{{ end }}
 
 {{ end }}
 
