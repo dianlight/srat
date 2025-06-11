@@ -1,9 +1,9 @@
-## 2025.06.1 [ 🚧 Unreleased ]
+## 2025.06.4 [ 🚧 Unreleased ]
 
 ###  ✨ Features
+- [X] Manage `recycle bin`option for share
 ###### __🚧 Work in progess__
 - [ ] Manage `local master`option
-- [ ] Manage `recycle bin`option for share
 
 ###  🐛 Bug Fixes
 - [X] `enable`/`disable` share functionality is not working as expected.
