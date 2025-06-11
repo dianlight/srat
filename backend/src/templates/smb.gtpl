@@ -43,7 +43,7 @@
    netbios name = {{ env "HOSTNAME" }}
    workgroup = {{ .workgroup | default "NOWORKGROUP" }}
    server string = Samba NAS2 HomeAssistant config
-   multicast dns register = {{ if or .wsdd .wsdd2 }}no{{ else }}yes{{ end }} |||||||| Avahi daemon.
+   multicast dns register = yes
 
    security = user
    ntlm auth = yes

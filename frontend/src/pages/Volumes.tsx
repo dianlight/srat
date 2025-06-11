@@ -74,7 +74,7 @@ export function Volumes() {
 
     // Helper to determine if a disk would be rendered based on current filters
     const isDiskRendered = useCallback((disk: Disk, hideSystem: boolean): boolean => {
-        const filteredPartitions = disk.partitions?.filter(p => !(hideSystem && (p.system || p.name?.startsWith('hassos-')))) || [];
+        const filteredPartitions = disk.partitions?.filter(p => !(hideSystem && (p.system || p.name?.startsWith('hassos-') || (p.host_mount_point_data && p.host_mount_point_data.length > 0)))) || [];
         const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
         const allPartitionsAreHiddenByToggle = hasActualPartitions && filteredPartitions.length === 0 && hideSystem;
         return !allPartitionsAreHiddenByToggle;
@@ -401,7 +401,7 @@ export function Volumes() {
         if (partition.name === 'hassos-data') {
             return <CreditScoreIcon fontSize="small" {...iconColorProp} />;
         }
-        if (partition.system || partition.name?.startsWith('hassos-')) {
+        if (partition.system || partition.name?.startsWith('hassos-') || (partition.host_mount_point_data && partition.host_mount_point_data.length > 0)) {
             return <SettingsSuggestIcon fontSize="small" {...iconColorProp} />;
         }
         return <StorageIcon fontSize="small" {...iconColorProp} />;
@@ -465,7 +465,7 @@ export function Volumes() {
                 {disks.map((disk, diskIdx) => {
                     const diskIdentifier = disk.id || `disk-${diskIdx}`;
 
-                    const filteredPartitions = disk.partitions?.filter(partition => !(hideSystemPartitions && (partition.system || partition.name?.startsWith('hassos-')))) || [];
+                    const filteredPartitions = disk.partitions?.filter(partition => !(hideSystemPartitions && (partition.system || partition.name?.startsWith('hassos-') || (partition.host_mount_point_data && partition.host_mount_point_data.length > 0)))) || [];
 
                     // Determine if the disk itself should be hidden
                     // A disk is hidden if:
@@ -569,7 +569,7 @@ export function Volumes() {
                                                         >
                                                             <ListItem
                                                                 disablePadding
-                                                                secondaryAction={!read_only && (!partition.system && !partition.name?.startsWith('hassos-')) && ( // Only show actions if not read-only and not system partition
+                                                                secondaryAction={!read_only && (!partition.system && !partition.name?.startsWith('hassos-') && !(partition.host_mount_point_data && partition.host_mount_point_data.length > 0)) && ( // Only show actions if not read-only and not system partition
                                                                     (<Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}> {/* Reduced spacing */}
                                                                         {/* Automount Toggle Button */}
                                                                         {!hasShares && partition.mount_point_data?.[0] && (partition.mount_point_data?.[0]?.is_to_mount_at_startup ? (
@@ -645,7 +645,7 @@ export function Volumes() {
                                                                             {partition.size != null && <Chip label={`Size: ${filesize(partition.size, { round: 0 })}`} size="small" variant="outlined" />}
                                                                             {partition.mount_point_data?.[0]?.fstype && <Chip label={`Type: ${partition.mount_point_data[0].fstype}`} size="small" variant="outlined" />}
                                                                             {isMounted && <Chip label={`Mount: ${partition.mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
-                                                                            {partition.host_mount_point_data && <Chip label={`Mount: ${partition.host_mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
+                                                                            {partition.host_mount_point_data && partition.host_mount_point_data.length > 0 && <Chip label={`Mount: ${partition.host_mount_point_data.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
                                                                             {partition.id && <Chip label={`UUID: ${partition.id}`} size="small" variant="outlined" />}
                                                                             {partition.device && <Chip label={`Dev: ${partition.device}`} size="small" variant="outlined" />}
                                                                         </Stack>
