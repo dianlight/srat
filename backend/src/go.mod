@@ -21,6 +21,7 @@ require (
 require (
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/m1/go-generate-password v0.2.0
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
@@ -42,7 +43,6 @@ require (
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/ovechkin-dm/go-dyno v0.5.2 // indirect
-	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/petermattis/goid v0.0.0-20250319124200-ccd6737f222a // indirect
@@ -138,7 +138,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.1
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250611134825-f663128fc60d
+	github.com/snapcore/snapd v0.0.0-20250612125923-d4bfa73f505b
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
@@ -159,5 +159,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
