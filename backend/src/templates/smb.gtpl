@@ -7,7 +7,7 @@
    client min protocol = SMB2_10
    {{- end }}
 
-   {{if .multi_channel -}}
+   {{if not .multi_channel -}}
    server multi channel support = no
    {{- else -}}
    server multi channel support = yes
@@ -89,8 +89,13 @@
    {{- end }}
    force user = root
    force group = root
+  
+   {{ if and .veto_files (gt (len .veto_files) 0) -}}
    veto files = /{{ .veto_files | join "/" }}/
    delete veto files = yes
+   {{- end }}
+ 
+
 
 # DEBUG: {{ toJson .data  }}|$name={{ $name }}|.shares={{ .shares }}|
 

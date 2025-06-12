@@ -70,8 +70,10 @@ func (c *ConfigToDbomConverterImpl) ConfigToProperties(source config.Config, tar
 func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, target *config.Config) error {
 	for _, prop := range source {
 		newvalue := reflect.ValueOf(target).Elem().FieldByName(prop.Key)
-		if newvalue.IsValid() && !newvalue.IsZero() {
-			if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
+		if newvalue.IsValid() {
+			if prop.Value == nil {
+				newvalue.Set(reflect.Zero(newvalue.Type()))
+			} else if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
 				newvalue.Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type()))
 			} else {
 				if newvalue.Kind() == reflect.Slice {

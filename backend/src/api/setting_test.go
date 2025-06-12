@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/danielgtaylor/huma/v2/autopatch"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
@@ -162,12 +163,13 @@ func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	_, api := humatest.New(suite.T())
 	suite.api.RegisterSettings(api)
+	autopatch.AutoPatch(api)
 
 	glc := dto.Settings{
 		Workgroup: "pluto&admin",
 	}
 
-	rr := api.Put("/settings", glc)
+	rr := api.Patch("/settings", glc)
 	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	var res dto.Settings

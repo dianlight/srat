@@ -122,7 +122,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 		},
 		"BindAllInterfaces": {
 			Key:   "BindAllInterfaces",
-			Value: true,
+			Value: false,
 		},
 		"CompatibilityMode": {
 			Key:   "CompatibilityMode",
