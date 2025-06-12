@@ -24,7 +24,7 @@
                                 "x": 28,
                                 "y": -44
                             },
-                            "progress": null
+                            "progress": 9
                         },
                         "children": []
                     },
@@ -34,7 +34,7 @@
                             "created": 1747987808586,
                             "text": "Volumes Remount ( rehydrated )",
                             "priority": 1,
-                            "progress": 7
+                            "progress": 9
                         },
                         "children": []
                     }
@@ -57,7 +57,7 @@
                             "created": 1747987899754,
                             "text": "Mount / Umount",
                             "priority": 1,
-                            "progress": 4
+                            "progress": 9
                         },
                         "children": []
                     },
@@ -66,7 +66,8 @@
                             "id": "da3e048r8ts0",
                             "created": 1747987918995,
                             "text": "Volume To Share",
-                            "priority": 1
+                            "priority": 1,
+                            "progress": 9
                         },
                         "children": []
                     },
@@ -75,7 +76,8 @@
                             "id": "da3e09j0sq80",
                             "created": 1747987930500,
                             "text": "Share To volume",
-                            "priority": 1
+                            "priority": 1,
+                            "progress": 9
                         },
                         "children": []
                     },
@@ -85,7 +87,7 @@
                             "created": 1747987945098,
                             "text": "Saving and Restart",
                             "priority": 2,
-                            "progress": 4
+                            "progress": 9
                         },
                         "children": []
                     }
@@ -96,6 +98,14 @@
                     "id": "da3dxxa1qbs0",
                     "created": 1747987747107,
                     "text": "Backend"
+                },
+                "children": []
+            },
+            {
+                "data": {
+                    "id": "dakdos3q9yg0",
+                    "created": 1749713549827,
+                    "text": "Version"
                 },
                 "children": []
             }
