@@ -1,0 +1,258 @@
+openapi: 3.0.0
+info:
+  title: Home Assistant Supervisor Host API
+  version: "1.0.0"
+  description: API for managing the host system via Home Assistant Supervisor, based on documentation at https://developers.home-assistant.io/docs/api/supervisor/endpoints#host
+  contact:
+    name: Home Assistant Developers
+    url: https://developers.home-assistant.io/docs/api/supervisor/
+servers:
+  - url: http://{supervisor_address}/
+    description: Base URL for the Home Assistant Supervisor API.
+    variables:
+      supervisor_address:
+        default: supervisor
+        description: "Hostname or IP address of the Supervisor. Examples: 'supervisor' (for internal Docker calls like from an add-on), '172.30.32.2' (Supervisor's default Docker IP), or '<YOUR_HA_IP_ADDRESS>:8123/api/hassio' (if accessing via Home Assistant Ingress - note that if using Ingress, the paths defined in this spec are relative to this Ingress base path)."
+
+components:
+  schemas:
+    HostInfoData:
+      type: object
+      properties:
+        chassis:
+          type: string
+          description: The chassis type of the host system.
+          example: "vm"
+        cpe:
+          type: string
+          description: Common Platform Enumeration string for the OS.
+          example: "cpe:2.3:o:home-assistant:haos:7.5:*:*:*:*:*:*:*"
+        deployment:
+          type: string
+          description: The deployment type.
+          example: "production"
+        disk_free:
+          type: number
+          format: float
+          description: Free disk space in GB.
+          example: 57.2
+        disk_total:
+          type: number
+          format: float
+          description: Total disk space in GB.
+          example: 76.3
+        disk_used:
+          type: number
+          format: float
+          description: Used disk space in GB.
+          example: 16.2
+        features:
+          type: array
+          items:
+            type: string
+          description: List of supported host features.
+          example: ["reboot", "shutdown", "services", "hostname", "hassos"]
+        hostname:
+          type: string
+          description: The hostname of the host system.
+          example: "homeassistant"
+        kernel:
+          type: string
+          description: The kernel version.
+          example: "5.10.103-v8"
+        operating_system:
+          type: string
+          description: The name and version of the operating system.
+          example: "Home Assistant OS 7.5"
+        timezone:
+          type: string
+          description: The current timezone of the host system.
+          example: "Etc/UTC"
+
+    HostInfoResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+        data:
+          $ref: '#/components/schemas/HostInfoData'
+      required:
+        - result
+        - data
+
+    ActionResult:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+          description: Indicates the outcome of the action.
+        data:
+          type: object
+          description: Additional data, usually an empty object for these actions.
+          example: {}
+      required:
+        - result
+      # 'data' is often present as {} but not strictly required by all endpoints returning "ok"
+
+    HostOptionsRequest:
+      type: object
+      properties:
+        hostname:
+          type: string
+          description: The new hostname for the host system.
+          example: "new-hostname"
+      required:
+        - hostname
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /host/info:
+    get:
+      summary: Get Host Information
+      description: Returns general host information about the system Supervisor is running on.
+      operationId: getHostInfo
+      tags:
+        - Host
+      responses:
+        '200':
+          description: Successful response with host information.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostInfoResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                example:
+                  message: "Unauthorized"
+
+  /host/reboot:
+    post:
+      summary: Reboot Host
+      description: Reboots the host system.
+      operationId: rebootHost
+      tags:
+        - Host
+      responses:
+        '200':
+          description: Host is rebooting. The result 'ok' indicates the command was accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                example:
+                  message: "Unauthorized"
+
+  /host/shutdown:
+    post:
+      summary: Shutdown Host
+      description: Shuts down the host system.
+      operationId: shutdownHost
+      tags:
+        - Host
+      responses:
+        '200':
+          description: Host is shutting down. The result 'ok' indicates the command was accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                example:
+                  message: "Unauthorized"
+
+  /host/reload:
+    post:
+      summary: Reload Host Supervisor Parts
+      description: Reloads parts of the Supervisor that are related to host management.
+      operationId: reloadHostSupervisorParts
+      tags:
+        - Host
+      responses:
+        '200':
+          description: Supervisor host-related parts reloaded. The result 'ok' indicates the command was accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                example:
+                  message: "Unauthorized"
+
+  /host/options:
+    post:
+      summary: Set Host Options
+      description: Allows setting host options. Currently, supports setting the hostname.
+      operationId: setHostOptions
+      tags:
+        - Host
+      requestBody:
+        description: Host options to set.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HostOptionsRequest'
+            example:
+              hostname: "new-home-assistant"
+      responses:
+        '200':
+          description: Host options updated successfully. The result 'ok' indicates the command was accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad Request (e.g., invalid option or value provided).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                example:
+                  message: "Invalid hostname"
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                example:
+                  message: "Unauthorized"
+

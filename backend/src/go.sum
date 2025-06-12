@@ -284,6 +284,8 @@ github.com/ovechkin-dm/go-dyno v0.5.2 h1:E0YtEtMjW7kE0JgZINQ3Nb2Zr9Iuoi48/c97/A8
 github.com/ovechkin-dm/go-dyno v0.5.2/go.mod h1:CcJNuo7AbePMoRNpM3i1jC1Rp9kHEMyWozNdWzR+0ys=
 github.com/ovechkin-dm/mockio/v2 v2.0.1 h1:zOkvX6m+pZ3Yt0d4eAhKnK3gPDczYKhu6jVewCAIbkE=
 github.com/ovechkin-dm/mockio/v2 v2.0.1/go.mod h1:vaAxP0kNfgbyo8c/dLcx9SQn8scNPcljYZ3P1goPpz4=
+github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
+github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 h1:onHthvaw9LFnH4t2DcNVpwGmV9E1BkGknEliJkfwQj0=
 github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58/go.mod h1:DXv8WO4yhMYhSNPKjeNKa5WY9YCIEBRbNzFFPJbWO6Y=
 github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
