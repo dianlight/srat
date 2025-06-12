@@ -56,6 +56,7 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	w := os.Stderr
 
+	silentMode := flag.Bool("silent", false, "Silent Mode. Remove unecessary banner")
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
 	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
@@ -75,12 +76,9 @@ func main() {
 
 	stopCmd := flag.NewFlagSet("stop", flag.ExitOnError)
 
-	//	flag.DurationVar(&wait, "graceful-timeout", time.Second*15, "the duration for which the server gracefully wait for existing connections to finish - e.g. 15s or 1m")
+	versionCmd := flag.NewFlagSet("version", flag.ExitOnError)
+	shortVersion := versionCmd.Bool("short", false, "Short version")
 
-	// Headless CLI mode (execute a command and exit)
-	//show_volumes := flag.Bool("show-volumes", false, "Show volumes in headless CLI mode and exit")
-
-	internal.Banner("srat-cli")
 	flag.Usage = func() {
 		fmt.Printf("Usage %s <config_options...> <command> <command_options...>\n", os.Args[0])
 		fmt.Println("Config Options:")
@@ -89,6 +87,8 @@ func main() {
 		startCmd.PrintDefaults()
 		fmt.Println("Command stop:")
 		stopCmd.PrintDefaults()
+		fmt.Println("Command version:")
+		versionCmd.PrintDefaults()
 	}
 	startCmd.Usage = func() {
 		fmt.Println("Usage:")
@@ -98,11 +98,18 @@ func main() {
 		fmt.Println("Usage:")
 		stopCmd.PrintDefaults()
 	}
-
+	versionCmd.Usage = func() {
+		fmt.Println("Usage:")
+		versionCmd.PrintDefaults()
+	}
 	flag.Parse()
 
+	if !*silentMode {
+		internal.Banner("srat-cli")
+	}
+
 	if len(flag.Args()) < 1 {
-		slog.Error("Expected 'start' or 'stop' subcommands")
+		slog.Error("Expected 'start','stop' or 'version' subcommands")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -113,6 +120,14 @@ func main() {
 		startCmd.Parse(flag.Args()[1:])
 	case "stop":
 		stopCmd.Parse(flag.Args()[1:])
+	case "version":
+		versionCmd.Parse(flag.Args()[1:])
+		if *shortVersion {
+			fmt.Printf("%s\n", config.Version)
+		} else {
+			fmt.Printf("Version: %s (%s) - %s\n", config.Version, config.CommitHash, config.BuildTimestamp)
+		}
+		os.Exit(0)
 	default:
 		slog.Error("Unknwon command", "command", command)
 		flag.Usage()
