@@ -63,7 +63,7 @@ jobs:
             # Find the latest tag matching the pattern YYYY.MM.INC for the *current* year and month
             # --sort=version:refname handles versions like 1.2.9 vs 1.2.10 correctly
             # We filter for release tags (e.g., 2024.01.0) and exclude pre-releases (e.g., 2024.01.0.devN or 2024.01.0-rc1)
-            LATEST_TAG_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_YEAR}.${CURRENT_MONTH}.*" --sort=version:refname | grep -E "^${CURRENT_YEAR}\.${CURRENT_MONTH}\.[0-9]+$" | head -n 1 || true)
+            LATEST_TAG_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_YEAR}.${CURRENT_MONTH}.*" --sort=taggerdate | grep -E "^${CURRENT_YEAR}\.${CURRENT_MONTH}\.[0-9]+$" | tail -n 1 || true)
             echo "Latest tag for $CURRENT_YEAR.$CURRENT_MONTH.*: '$LATEST_TAG_FOR_CURRENT_PERIOD'"
 
             NEW_INCREMENTAL=0
@@ -77,9 +77,10 @@ jobs:
                 NEW_INCREMENTAL=0 # Fallback for current period
               fi
             fi
-            echo "New incremental for $CURRENT_YEAR.$CURRENT_MONTH: $NEW_INCREMENTAL"
+            FORMATTED_NEW_INCREMENTAL=$(printf "%02d" "$NEW_INCREMENTAL")
+            echo "New incremental for $CURRENT_YEAR.$CURRENT_MONTH: $NEW_INCREMENTAL (formatted as: $FORMATTED_NEW_INCREMENTAL)"
 
-            VERSION_BASE="${CURRENT_YEAR}.${CURRENT_MONTH}.${NEW_INCREMENTAL}"
+            VERSION_BASE="${CURRENT_YEAR}.${CURRENT_MONTH}.${FORMATTED_NEW_INCREMENTAL}"
             echo "Version base: $VERSION_BASE"
 
             # Determine N for .devN: number of commits since the last actual tag.
