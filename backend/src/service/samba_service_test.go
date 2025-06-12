@@ -42,7 +42,7 @@ func TestSambaServiceSuite(t *testing.T) {
 
 func (suite *SambaServiceSuite) SetupTest() {
 
-	os.Setenv("HOSTNAME", "test-host")
+	//os.Setenv("HOSTNAME", "test-host")
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
@@ -104,6 +104,10 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 	}, nil).Verify(matchers.Times(0))
 
 	mock.When(suite.property_repo.All(mock.Any[bool]())).ThenReturn(dbom.Properties{
+		"Hostname": {
+			Key:   "Hostname",
+			Value: "test-host",
+		},
 		"Workgroup": {
 			Key:   "Workgroup",
 			Value: "WORKGROUP",

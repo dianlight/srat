@@ -5,9 +5,9 @@ import Grid from "@mui/material/Grid";
 import Button from "@mui/material/Button";
 import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement, useForm, Controller } from "react-hook-form-mui";
 import { MuiChipsInput } from 'mui-chips-input'
-import Stack from "@mui/material/Stack";
+import { Stack, CircularProgress } from "@mui/material";
 import Divider from "@mui/material/Divider";
-import { useGetNicsQuery, useGetSettingsQuery, usePutSettingsMutation, type NetworkInfo, type Settings } from "../store/sratApi";
+import { useGetNicsQuery, useGetSettingsQuery, usePutSettingsMutation, type NetworkInfo, type Settings, useGetHostnameQuery } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
 import debounce from 'lodash.debounce';
 import { NIL } from "uuid";
@@ -15,6 +15,7 @@ import InputAdornment from "@mui/material/InputAdornment";
 import Tooltip from "@mui/material/Tooltip";
 import { Chip, IconButton, Typography } from "@mui/material";
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd'; // Import an icon for the button
+import AutorenewIcon from '@mui/icons-material/Autorenew'; // Icon for fetching hostname
 import default_json from "../json/default_config.json"
 
 // --- IP Address and CIDR Validation Helpers ---
@@ -63,6 +64,14 @@ function isValidVetoFileEntry(entry: string): boolean {
     return VETO_FILE_ENTRY_REGEX.test(entry);
 }
 
+// --- Hostname Validation Helper ---
+// Allows alphanumeric characters and hyphens. Cannot start or end with a hyphen. Length 1-63.
+const HOSTNAME_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
+
+// --- Workgroup Validation Helper ---
+// Allows alphanumeric characters and hyphens. Cannot start or end with a hyphen. Length 1-15.
+const WORKGROUP_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,13}[a-zA-Z0-9])?$/;
+
 export function Settings() {
     const read_only = useReadOnly();
     const { data: globalConfig, isLoading, error, refetch } = useGetSettingsQuery();
@@ -74,6 +83,7 @@ export function Settings() {
         disabled: read_only,
     });
     const [update, updateResponse] = usePutSettingsMutation();
+    const { data: hostname, isLoading: isHostnameFetching , error:host_error, refetch:triggerGetSystemHostname} = useGetHostnameQuery();
 
     const bindAllWatch = watch("bind_all_interfaces")
 
@@ -93,6 +103,16 @@ export function Settings() {
             console.error(err)
             reset()
         })
+    }
+
+    const handleFetchHostname = async () => {
+        if (read_only || isHostnameFetching) return;
+        try {
+            await triggerGetSystemHostname().unwrap();
+                setValue("hostname", hostname?.toString(), { shouldDirty: true, shouldValidate: true });
+        } catch (error) {
+            console.error("Failed to fetch hostname:", error);
+        }
     }
 
     /*
@@ -144,17 +164,70 @@ export function Settings() {
                         <Grid size={12}>
                             <Divider />
                         </Grid>
-                        <Grid size={4}>
+                        <Grid size={3}>
                             <TextFieldElement
+                                size="small"
+                                sx={{ display: "flex" }}
+                                name="hostname"
+                                label="Hostname"
+                                required
+                                control={control}
+                                rules={{
+                                    required: 'Hostname is required.',
+                                    pattern: {
+                                        value: HOSTNAME_REGEX,
+                                        message: 'Invalid hostname. Use alphanumeric characters and hyphens (not at start/end). Max 63 chars.'
+                                    },
+                                    maxLength: {
+                                        value: 63,
+                                        message: 'Hostname cannot exceed 63 characters.'
+                                    }
+                                }}
+                                disabled={read_only}
+                                slotProps={{
+                                    input: { 
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <Tooltip title="Fetch current system hostname">
+                                                    {/* Span needed for tooltip when IconButton is disabled */}
+                                                    <span>
+                                                        <IconButton
+                                                            aria-label="fetch system hostname"
+                                                            onClick={handleFetchHostname}
+                                                            edge="end"
+                                                            disabled={read_only || isHostnameFetching}
+                                                        >
+                                                            {isHostnameFetching ? <CircularProgress size={20} /> : <AutorenewIcon />}
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            </InputAdornment>
+                                        )
+                                }
+                                }} />
+                        </Grid>
+                        <Grid size={3}>
+                             <TextFieldElement
                                 size="small"
                                 sx={{ display: "flex" }}
                                 name="workgroup"
                                 label="Workgroup"
                                 required
                                 control={control}
-                                disabled={read_only} />
+                                rules={{
+                                    required: 'Workgroup is required.',
+                                    pattern: {
+                                        value: WORKGROUP_REGEX,
+                                        message: 'Invalid workgroup name. Use alphanumeric characters and hyphens (not at start/end). Max 15 chars.'
+                                    },
+                                    maxLength: {
+                                        value: 15,
+                                        message: 'Workgroup name cannot exceed 15 characters.'
+                                    }
+                                }}
+                                disabled={read_only} />   
                         </Grid>
-                        <Grid size={8}>
+                        <Grid size={6}>
                             <Controller
                                 name="allow_hosts"
                                 control={control}

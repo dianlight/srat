@@ -23,6 +23,10 @@ const injectedRtkApi = api
         query: () => ({ url: `/health` }),
         providesTags: ["system"],
       }),
+      getHostname: build.query<GetHostnameApiResponse, GetHostnameApiArg>({
+        query: () => ({ url: `/hostname` }),
+        providesTags: ["system"],
+      }),
       getNics: build.query<GetNicsApiResponse, GetNicsApiArg>({
         query: () => ({ url: `/nics` }),
         providesTags: ["system"],
@@ -263,6 +267,10 @@ export type GetHealthApiResponse = /** status 200 OK */
   | HealthPing
   | /** status default Error */ ErrorModel;
 export type GetHealthApiArg = void;
+export type GetHostnameApiResponse = /** status 200 OK */
+  | string
+  | /** status default Error */ ErrorModel;
+export type GetHostnameApiArg = void;
 export type GetNicsApiResponse = /** status 200 OK */
   | NetworkInfo
   | /** status default Error */ ErrorModel;
@@ -347,6 +355,24 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
+          data: Disk[] | null;
+          /** The event name. */
+          event: "volumes";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: HealthPing;
+          /** The event name. */
+          event: "heartbeat";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: SharedResource[] | null;
           /** The event name. */
           event: "share";
@@ -377,24 +403,6 @@ export type SseApiResponse = /** status 200 OK */
           data: UpdateProgress;
           /** The event name. */
           event: "updating";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: Disk[] | null;
-          /** The event name. */
-          event: "volumes";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: HealthPing;
-          /** The event name. */
-          event: "heartbeat";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -576,6 +584,7 @@ export type Settings = {
   allow_hosts?: string[];
   bind_all_interfaces?: boolean;
   compatibility_mode?: boolean;
+  hostname?: string;
   interfaces?: string[];
   log_level?: string;
   mountoptions?: string[] | null;
@@ -639,17 +648,6 @@ export type SharedResource = {
   users?: User[] | null;
   [key: string]: any;
 };
-export type Welcome = {
-  message: string;
-  supported_events: Supported_events;
-};
-export type UpdateProgress = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  last_release?: string;
-  update_error?: string;
-  update_status: number;
-};
 export type Partition = {
   device?: string;
   host_mount_point_data?: MountPointData[];
@@ -671,6 +669,17 @@ export type Disk = {
   serial?: string;
   size?: number;
   vendor?: string;
+};
+export type Welcome = {
+  message: string;
+  supported_events: Supported_events;
+};
+export type UpdateProgress = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  last_release?: string;
+  update_error?: string;
+  update_status: number;
 };
 export enum Update_channel {
   Stable = "stable",
@@ -713,6 +722,7 @@ export enum Supported_events {
 export const {
   useGetFilesystemsQuery,
   useGetHealthQuery,
+  useGetHostnameQuery,
   useGetNicsQuery,
   usePutRestartMutation,
   usePutSambaApplyMutation,

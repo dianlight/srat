@@ -1,4 +1,5 @@
 {
+  "hostname": "homeassistant",
   "workgroup": "WORKGROUP",
   "username": "homeassistant",
   "password": "changeme!",

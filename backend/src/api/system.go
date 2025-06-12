@@ -17,18 +17,21 @@ import (
 )
 
 type SystemHanler struct {
-	fs_service service.FilesystemServiceInterface
+	fs_service   service.FilesystemServiceInterface
+	host_service service.HostServiceInterface
 }
 
-func NewSystemHanler(fs_service service.FilesystemServiceInterface) *SystemHanler {
+func NewSystemHanler(fs_service service.FilesystemServiceInterface, host_service service.HostServiceInterface) *SystemHanler {
 	p := new(SystemHanler)
 	p.fs_service = fs_service
+	p.host_service = host_service
 	return p
 }
 
 func (self *SystemHanler) RegisterSystemHanler(api huma.API) {
 	huma.Put(api, "/restart", self.RestartHandler, huma.OperationTags("system"))
 	huma.Get(api, "/nics", self.GetNICsHandler, huma.OperationTags("system"))
+	huma.Get(api, "/hostname", self.GetHostnameHandler, huma.OperationTags("system"))
 	huma.Get(api, "/filesystems", self.GetFSHandler, huma.OperationTags("system"))
 }
 
@@ -159,4 +162,22 @@ func (handler *SystemHanler) GetFSHandler(ctx context.Context, input *struct{}) 
 		}
 	}
 	return &struct{ Body dto.FilesystemTypes }{Body: xfs}, nil
+}
+
+// GetHostnameHandler handles the request to retrieve the system's hostname.
+// It uses the HostService to get the hostname and returns it in a DTO.
+//
+// Parameters:
+//   - ctx: The context for the request.
+//   - input: An empty struct as input.
+//
+// Returns:
+//   - A struct containing the hostname in the Body field.
+//   - An error if there is any issue retrieving the hostname.
+func (handler *SystemHanler) GetHostnameHandler(ctx context.Context, input *struct{}) (*struct{ Body string }, error) {
+	hostname, err := handler.host_service.GetHostName()
+	if err != nil {
+		return nil, err // Error is already descriptive from the service
+	}
+	return &struct{ Body string }{Body: hostname}, nil
 }

@@ -87,6 +87,10 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 	suite.app.RequireStart()
 
 	mock.When(suite.mockPropertyRepository.All(mock.Any[bool]())).ThenReturn(dbom.Properties{
+		"Hostname": dbom.Property{
+			Key:   "Hostname",
+			Value: suite.config.Hostname,
+		},
 		"Workgroup": dbom.Property{
 			Key:   "Workgroup",
 			Value: suite.config.Workgroup,

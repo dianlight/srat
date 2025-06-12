@@ -205,6 +205,7 @@ func prog(state overseer.State) {
 			service.NewFilesystemService,
 			service.NewShareService,
 			service.NewUserService,
+			service.NewHostService,
 			repository.NewMountPointPathRepository,
 			repository.NewExportedShareRepository,
 			repository.NewPropertyRepositoryRepository,

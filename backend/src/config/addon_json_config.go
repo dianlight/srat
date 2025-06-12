@@ -31,6 +31,8 @@ const CURRENT_CONFIG_VERSION = 3
 type Config struct {
 	CurrentFile       string
 	ConfigSpecVersion int `json:"version,omitempty,default=0"`
+	// New
+	Hostname string `json:"hostname,omitempty,default='homeassistant'"`
 	// Options
 	Workgroup        string   `json:"workgroup"`
 	Username         string   `json:"username"`
@@ -173,6 +175,10 @@ func (in *Config) MigrateConfig() error {
 			if !ok {
 				in.Shares[share] = Share{Name: share, Path: "/" + share, FS: "native", Disabled: false, Usage: "internal", Users: []string{in.Username}}
 			}
+		}
+		in.Hostname = os.Getenv("HOSTNAME")
+		if in.Hostname == "" {
+			in.Hostname = "homeassistant"
 		}
 	}
 	// From version 1 to version 2 - ACL in Share object

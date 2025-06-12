@@ -409,6 +409,8 @@ components:
           type: boolean
         compatibility_mode:
           type: boolean
+        hostname:
+          type: string
         interfaces:
           items:
             type: string
@@ -641,6 +643,25 @@ paths:
       summary: Get health
       tags:
         - system
+  /hostname:
+    get:
+      operationId: get-hostname
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get hostname
+      tags:
+        - system
   /nics:
     get:
       operationId: get-nics
@@ -759,6 +780,8 @@ paths:
                   type: boolean
                 compatibility_mode:
                   type: boolean
+                hostname:
+                  type: string
                 interfaces:
                   items:
                     type: string
@@ -811,6 +834,8 @@ paths:
                   type: boolean
                 compatibility_mode:
                   type: boolean
+                hostname:
+                  type: string
                 interfaces:
                   items:
                     type: string
@@ -1219,6 +1244,46 @@ paths:
                     - properties:
                         data:
                           items:
+                            $ref: "#/components/schemas/Disk"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: volumes
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event volumes
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/HealthPing"
+                        event:
+                          const: heartbeat
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event heartbeat
+                      type: object
+                    - properties:
+                        data:
+                          items:
                             $ref: "#/components/schemas/SharedResource"
                           type:
                             - array
@@ -1291,46 +1356,6 @@ paths:
                         - data
                         - event
                       title: Event updating
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/Disk"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: volumes
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event volumes
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/HealthPing"
-                        event:
-                          const: heartbeat
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event heartbeat
                       type: object
                 title: Server Sent Events
                 type: array

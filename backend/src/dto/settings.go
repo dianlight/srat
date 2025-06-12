@@ -1,6 +1,7 @@
 package dto
 
 type Settings struct {
+	Hostname          string        `json:"hostname,omitempty"`
 	Workgroup         string        `json:"workgroup,omitempty"`
 	Mountoptions      []string      `json:"mountoptions,omitempty"`
 	AllowHost         []string      `json:"allow_hosts,omitempty" nullable:"false"`

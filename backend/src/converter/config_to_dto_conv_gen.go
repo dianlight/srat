@@ -13,6 +13,7 @@ import (
 type ConfigToDtoConverterImpl struct{}
 
 func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target *dto.Settings) error {
+	target.Hostname = source.Hostname
 	target.Workgroup = source.Workgroup
 	if source.Mountoptions != nil {
 		target.Mountoptions = make([]string, len(source.Mountoptions))

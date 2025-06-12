@@ -40,9 +40,9 @@
    aio write size = 1  
    # End PR#167
 
-   netbios name = {{ env "HOSTNAME" }}
+   netbios name = {{ .hostname | default (env "HOSTNAME") }}
    workgroup = {{ .workgroup | default "NOWORKGROUP" }}
-   server string = Samba NAS2 HomeAssistant config
+   server string = Samba NAS2 HomeAssistant
    multicast dns register = yes
 
    security = user
