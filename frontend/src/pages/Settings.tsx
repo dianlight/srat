@@ -83,7 +83,7 @@ export function Settings() {
         disabled: read_only,
     });
     const [update, updateResponse] = usePutSettingsMutation();
-    const { data: hostname, isLoading: isHostnameFetching , error:host_error, refetch:triggerGetSystemHostname} = useGetHostnameQuery();
+    const { data: hostname, isLoading: isHostnameFetching, error: host_error, refetch: triggerGetSystemHostname } = useGetHostnameQuery();
 
     const bindAllWatch = watch("bind_all_interfaces")
 
@@ -109,7 +109,7 @@ export function Settings() {
         if (read_only || isHostnameFetching) return;
         try {
             await triggerGetSystemHostname().unwrap();
-                setValue("hostname", hostname?.toString(), { shouldDirty: true, shouldValidate: true });
+            setValue("hostname", hostname?.toString(), { shouldDirty: true, shouldValidate: true });
         } catch (error) {
             console.error("Failed to fetch hostname:", error);
         }
@@ -164,7 +164,7 @@ export function Settings() {
                         <Grid size={12}>
                             <Divider />
                         </Grid>
-                        <Grid size={3}>
+                        <Grid size={4}>
                             <TextFieldElement
                                 size="small"
                                 sx={{ display: "flex" }}
@@ -185,7 +185,7 @@ export function Settings() {
                                 }}
                                 disabled={read_only}
                                 slotProps={{
-                                    input: { 
+                                    input: {
                                         endAdornment: (
                                             <InputAdornment position="end">
                                                 <Tooltip title="Fetch current system hostname">
@@ -203,11 +203,9 @@ export function Settings() {
                                                 </Tooltip>
                                             </InputAdornment>
                                         )
-                                }
+                                    }
                                 }} />
-                        </Grid>
-                        <Grid size={3}>
-                             <TextFieldElement
+                            <TextFieldElement
                                 size="small"
                                 sx={{ display: "flex" }}
                                 name="workgroup"
@@ -225,9 +223,9 @@ export function Settings() {
                                         message: 'Workgroup name cannot exceed 15 characters.'
                                     }
                                 }}
-                                disabled={read_only} />   
+                                disabled={read_only} />
                         </Grid>
-                        <Grid size={6}>
+                        <Grid size={8}>
                             <Controller
                                 name="allow_hosts"
                                 control={control}
@@ -296,7 +294,6 @@ export function Settings() {
                         <Grid size={4}>
                             <CheckboxElement size="small" id="compatibility_mode" label="Compatibility Mode" name="compatibility_mode" control={control} disabled={read_only} />
                             <CheckboxElement size="small" id="multi_channel" label="Multi Channel Mode" name="multi_channel" control={control} disabled={read_only} />
-                            <CheckboxElement size="small" id="recyle_bin_enabled" label="RecycleBin" name="recyle_bin_enabled" control={control} disabled={read_only} />
                         </Grid>
                         <Grid size={8}>
                             <Controller

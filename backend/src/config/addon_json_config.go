@@ -48,19 +48,19 @@ type Config struct {
 	AllowHost         []string `json:"allow_hosts"`
 	VetoFiles         []string `json:"veto_files"`
 	CompatibilityMode bool     `json:"compatibility_mode"`
-	EnableRecycleBin  bool     `json:"recyle_bin_enabled"`
-	WSDD              bool     `json:"wsdd"`
-	WSDD2             bool     `json:"wsdd2"`
-	HDDIdle           int      `json:"hdd_idle_seconds"`
-	Smart             bool     `json:"enable_smart"`
-	MQTTNextGen       bool     `json:"mqtt_nexgen_entities"`
-	MQTTEnable        bool     `json:"mqtt_enable"`
-	MQTTHost          string   `json:"mqtt_host"`
-	MQTTUsername      string   `json:"mqtt_username"`
-	MQTTPassword      string   `json:"mqtt_password"`
-	MQTTPort          string   `json:"mqtt_port"`
-	MQTTTopic         string   `json:"mqtt_topic"`
-	Autodiscovery     struct {
+	//EnableRecycleBin  bool     `json:"recyle_bin_enabled"`
+	WSDD          bool   `json:"wsdd"`
+	WSDD2         bool   `json:"wsdd2"`
+	HDDIdle       int    `json:"hdd_idle_seconds"`
+	Smart         bool   `json:"enable_smart"`
+	MQTTNextGen   bool   `json:"mqtt_nexgen_entities"`
+	MQTTEnable    bool   `json:"mqtt_enable"`
+	MQTTHost      string `json:"mqtt_host"`
+	MQTTUsername  string `json:"mqtt_username"`
+	MQTTPassword  string `json:"mqtt_password"`
+	MQTTPort      string `json:"mqtt_port"`
+	MQTTTopic     string `json:"mqtt_topic"`
+	Autodiscovery struct {
 		DisableDiscovery  bool `json:"disable_discovery"`
 		DisablePersistent bool `json:"disable_persistent"`
 		DisableAutoremove bool `json:"disable_autoremove"`

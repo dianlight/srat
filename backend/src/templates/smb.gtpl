@@ -90,7 +90,7 @@
    force user = root
    force group = root
    veto files = /{{ .veto_files | join "/" }}/
-   delete veto files = {{ eq (len .veto_files) 0 | ternary "no" "yes" }}
+   delete veto files = yes
 
 # DEBUG: {{ toJson .data  }}|$name={{ $name }}|.shares={{ .shares }}|
 

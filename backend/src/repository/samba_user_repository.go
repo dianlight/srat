@@ -92,7 +92,7 @@ func (self *SambaUserRepository) Delete(name string) error {
 
 func (self *SambaUserRepository) SaveAll(users *dbom.SambaUsers) error {
 	for _, user := range *users {
-		err := self.db.Debug().Save(&user).Error
+		err := self.db.Save(&user).Error
 		if err != nil {
 			return errors.WithStack(err)
 		}

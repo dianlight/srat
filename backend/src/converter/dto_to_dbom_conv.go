@@ -24,9 +24,9 @@ func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, targe
 	keys := funk.Keys(source)
 	for _, key := range keys.([]string) {
 		newvalue := reflect.ValueOf(source).FieldByName(key)
-		if newvalue.IsZero() {
-			continue
-		}
+		//if newvalue.IsZero() {
+		//	continue
+		//}
 		prop := (*target)[key]
 		if prop == (dbom.Property{}) {
 			prop = dbom.Property{Key: key, Value: newvalue.Interface()}
@@ -42,7 +42,9 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 	for _, prop := range source {
 		newvalue := reflect.ValueOf(target).Elem().FieldByName(prop.Key)
 		if newvalue.IsValid() {
-			if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
+			if prop.Value == nil {
+				newvalue.Set(reflect.Zero(newvalue.Type()))
+			} else if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
 				newvalue.Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type()))
 			} else {
 				if newvalue.Kind() == reflect.Slice {

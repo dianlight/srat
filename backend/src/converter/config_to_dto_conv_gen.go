@@ -34,7 +34,6 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 		}
 	}
 	target.CompatibilityMode = source.CompatibilityMode
-	target.EnableRecycleBin = source.EnableRecycleBin
 	if source.Interfaces != nil {
 		target.Interfaces = make([]string, len(source.Interfaces))
 		for l := 0; l < len(source.Interfaces); l++ {
