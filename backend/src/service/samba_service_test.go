@@ -364,7 +364,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			suite.T().Errorf("Config mismatch for section [%s]:\n%s", k, diffEvidenceBuilder.String())
 		}
 	}
-	suite.Equal(len(expected), len(result), "Number of sections in generated config does not match expected")
+	suite.Len(result, len(expected), "Number of sections in generated config does not match expected")
 }
 
 /*

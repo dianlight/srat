@@ -1,22 +1,21 @@
 [global]
-   {{ if .compatibility_mode }}
+   {{ if .compatibility_mode -}}
    client min protocol = NT1
    server min protocol = NT1
-   {{ else }}
+   {{- else -}}
    server min protocol = SMB2_10
    client min protocol = SMB2_10
-   disable netbios = yes
-   {{ end }}
+   {{- end }}
 
-   {{if .multi_channel }}
+   {{if .multi_channel -}}
+   server multi channel support = no
+   {{- else -}}
    server multi channel support = yes
-   aio read size = 1
-   aio write size = 1
-   {{ end }}  
+   {{- end }}  
 
-   dns proxy = yes 
+   #dns proxy = yes #already default
 
-   ea support = yes
+   #ea support = yes #already default
    vfs objects = catia fruit streams_xattr recycle
    fruit:aapl = yes
    fruit:model = MacSamba
@@ -42,8 +41,8 @@
 
    netbios name = {{ .hostname | default (env "HOSTNAME") }}
    workgroup = {{ .workgroup | default "NOWORKGROUP" }}
-   server string = Samba NAS2 HomeAssistant
-   multicast dns register = yes
+   server string = Samba NAS2 HomeAssistant %v
+   #multicast dns register = yes #already default
 
    security = user
    ntlm auth = yes
@@ -59,7 +58,9 @@
    log level = {{ .log_level | default "fatal" | get $log_level }}
 
    bind interfaces only = {{ .bind_all_interfaces | default false | ternary "no" "yes" }}
+   {{ if not .bind_all_interfaces -}}
    interfaces = 127.0.0.1 {{ .interfaces | join " " }} {{ .docker_interface | default " "}}
+   {{- end }}
    hosts allow = 127.0.0.1 {{ .allow_hosts | join " " }} {{ .docker_net | default " " }}
 
    mangled names = no
@@ -74,7 +75,7 @@
    browseable = yes
    writeable = {{ has .data.fs $rosupported | ternary "no" "yes" }}
 
-   # cherry pick from PR#167 to Test
+   # cherry pick from PR#167
    create mask = 0664
    force create mode = 0664
    directory mask = 0775

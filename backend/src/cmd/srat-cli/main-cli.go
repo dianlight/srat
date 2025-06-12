@@ -22,6 +22,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
+	"github.com/dianlight/srat/homeassistant/host"
 	"github.com/dianlight/srat/homeassistant/ingress"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal"
@@ -228,7 +229,7 @@ func main() {
 				return sp
 			},
 
-			func(bearerAuth *securityprovider.SecurityProviderBearerToken) *ingress.ClientWithResponses {
+			func(bearerAuth *securityprovider.SecurityProviderBearerToken) ingress.ClientWithResponsesInterface {
 				ingressClient, err := ingress.NewClientWithResponses(*supervisorURL, ingress.WithRequestEditorFn(bearerAuth.Intercept))
 				if err != nil {
 					log.Fatal(err)
@@ -248,6 +249,13 @@ func main() {
 					log.Fatal(err)
 				}
 				return mountClient
+			},
+			func(bearerAuth *securityprovider.SecurityProviderBearerToken) host.ClientWithResponsesInterface {
+				hostClient, err := host.NewClientWithResponses(*supervisorURL, host.WithRequestEditorFn(bearerAuth.Intercept))
+				if err != nil {
+					log.Fatal(err)
+				}
+				return hostClient
 			},
 		),
 		fx.Invoke(func(s service.ShareServiceInterface, v service.VolumeServiceInterface) {
@@ -395,7 +403,7 @@ func main() {
 				}
 
 				for _, share := range *shares {
-					if *share.Disabled {
+					if share.Disabled != nil && *share.Disabled {
 						continue
 					}
 					switch share.Usage {

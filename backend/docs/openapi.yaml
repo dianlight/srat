@@ -1243,6 +1243,42 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          $ref: "#/components/schemas/ReleaseAsset"
+                        event:
+                          const: update
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event update
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/UpdateProgress"
+                        event:
+                          const: updating
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event updating
+                      type: object
+                    - properties:
+                        data:
                           items:
                             $ref: "#/components/schemas/Disk"
                           type:
@@ -1320,42 +1356,6 @@ paths:
                         - data
                         - event
                       title: Event hello
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/ReleaseAsset"
-                        event:
-                          const: update
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event update
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/UpdateProgress"
-                        event:
-                          const: updating
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event updating
                       type: object
                 title: Server Sent Events
                 type: array
