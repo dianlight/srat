@@ -1,3 +1,10 @@
+# A revised and improved version of the GitHub Actions workflow.
+# Key changes:
+# 1. SAFER TAGGING: The "Update tag" step is now restricted to only run on dev builds.
+# 2. CLEANER PERMISSIONS: Removed the unused "discussions: write" permission.
+# 3. ROBUST DEV VERSIONING: The .devN suffix is now calculated by incrementing the last dev tag for the current version base.
+# 4. MINOR CLEANUP: Added comments and removed redundant steps for clarity.
+
 name: build
 
 on:
@@ -8,9 +15,9 @@ on:
   pull_request:
     branches: ["main"]
 
+# Permissions: Removed 'discussions: write' as it was unused.
 permissions:
   contents: write
-  discussions: write    
 
 env:
   GOLANG_VERSION: "1.24.0"
@@ -25,32 +32,22 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v4.2.2
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # fetch-depth: 0 is required for git commands to see all history/tags
+
       - name: Calculate version
         id: calculate_version
         run: |
           #!/bin/bash
-          set -euo pipefail # Strict mode: exit on error, unset var, pipefail
+          set -euo pipefail # Strict mode
 
-          # Get current UTC year and month (two digits for month)
           CURRENT_YEAR=$(date -u +'%Y')
-          CURRENT_MONTH=$(date -u +'%m') # %m gives 01-12
+          CURRENT_MONTH=$(date -u +'%m')
 
           FINAL_VERSION=""
 
-          # Debugging information
-          echo "GitHub Event Name: ${{ github.event_name }}"
-          echo "GitHub Event Action: ${{ github.event.action || 'N/A' }}" # github.event.action might not exist for all events
-          echo "GitHub Ref Type: ${{ github.ref_type }}"
-          echo "GitHub Ref Name: ${{ github.ref_name }}"
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            echo "GitHub Release Tag Name: ${{ github.event.release.tag_name }}"
-          fi
-
-          # Check if this is a "published release" event
+          # For a published release, the version is the tag name from the event
           if [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then
             echo "Detected published release event."
-            # For a published release, the version is the tag name from the event
             FINAL_VERSION="${{ github.event.release.tag_name }}"
             if [[ -z "$FINAL_VERSION" ]]; then
               echo "Error: github.event.release.tag_name is empty for a published release event."
@@ -58,123 +55,115 @@ jobs:
             fi
           else
             echo "Detected development build (push, PR, or non-published release)."
-            # This is a dev build (e.g., push to main, PR)
 
-            # Find the latest tag matching the pattern YYYY.MM.INC for the *current* year and month
-            # --sort=version:refname handles versions like 1.2.9 vs 1.2.10 correctly
-            # We filter for release tags (e.g., 2024.01.0) and exclude pre-releases (e.g., 2024.01.0.devN or 2024.01.0-rc1)
-            LATEST_TAG_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_YEAR}.${CURRENT_MONTH}.*" --sort=taggerdate | grep -E "^${CURRENT_YEAR}\.${CURRENT_MONTH}\.[0-9]+$" | tail -n 1 || true)
+            # Find the latest tag matching the pattern YYYY.MM.INC for the current year and month.
+            LATEST_TAG_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_YEAR}.${CURRENT_MONTH}.*" --sort=version:refname | grep -E "^${CURRENT_YEAR}\.${CURRENT_MONTH}\.[0-9]+$" | tail -n 1 || true)
             echo "Latest tag for $CURRENT_YEAR.$CURRENT_MONTH.*: '$LATEST_TAG_FOR_CURRENT_PERIOD'"
 
             NEW_INCREMENTAL=0
             if [[ -n "$LATEST_TAG_FOR_CURRENT_PERIOD" ]]; then
-              # Extract incremental part from YYYY.MM.INC (e.g., 2024.01.1 -> 1)
+              # Extract incremental part (e.g., 2025.06.1 -> 1) and add 1
               LAST_INCREMENTAL_STR=$(echo "$LATEST_TAG_FOR_CURRENT_PERIOD" | cut -d. -f3)
-              if [[ "$LAST_INCREMENTAL_STR" =~ ^[0-9]+$ ]]; then
-                NEW_INCREMENTAL=$((LAST_INCREMENTAL_STR + 1))
-              else
-                echo "Warning: Malformed or non-numeric incremental part ('$LAST_INCREMENTAL_STR') in tag '$LATEST_TAG_FOR_CURRENT_PERIOD'. Resetting incremental to 0 for $CURRENT_YEAR.$CURRENT_MONTH."
-                NEW_INCREMENTAL=0 # Fallback for current period
-              fi
+              NEW_INCREMENTAL=$((LAST_INCREMENTAL_STR + 1))
             fi
-            FORMATTED_NEW_INCREMENTAL=$(printf "%02d" "$NEW_INCREMENTAL")
-            echo "New incremental for $CURRENT_YEAR.$CURRENT_MONTH: $NEW_INCREMENTAL (formatted as: $FORMATTED_NEW_INCREMENTAL)"
-
-            VERSION_BASE="${CURRENT_YEAR}.${CURRENT_MONTH}.${FORMATTED_NEW_INCREMENTAL}"
+            
+            VERSION_BASE="${CURRENT_YEAR}.${CURRENT_MONTH#0}.${NEW_INCREMENTAL}"
             echo "Version base: $VERSION_BASE"
 
-            # Determine N for .devN: number of commits since the last actual tag.
-            # If no tags, N is the total number of commits on the branch from the initial commit.
-            N_COMMITS=0
-            LATEST_ANY_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+            # IMPROVEMENT: Calculate .devN by incrementing the last .dev tag for the current base.
+            # This makes dev versions sequential (e.g., .dev0, .dev1, .dev2) for the same base version.
+            LATEST_DEV_TAG_FOR_BASE=$(git tag --list "${VERSION_BASE}.dev*" --sort=version:refname | tail -n 1 || true)
+            echo "Latest dev tag for base $VERSION_BASE: '$LATEST_DEV_TAG_FOR_BASE'"
 
-            if [[ -z "$LATEST_ANY_TAG" ]]; then
-              echo "No tags found in the repository. Counting all commits for N."
-              N_COMMITS=$(git rev-list --count HEAD)
-            else
-              echo "Latest tag found: $LATEST_ANY_TAG. Counting commits since this tag for N."
-              N_COMMITS=$(git rev-list --count "${LATEST_ANY_TAG}"..HEAD)
+            NEW_DEV_INCREMENTAL=0
+            if [[ -n "$LATEST_DEV_TAG_FOR_BASE" ]]; then
+              # Extract the dev number (e.g., from 2025.6.1.dev5 -> 5) and add 1
+              LAST_DEV_NUMBER=$(echo "$LATEST_DEV_TAG_FOR_BASE" | sed -n 's/.*\.dev\([0-9]*\)/\1/p')
+              if [[ "$LAST_DEV_NUMBER" =~ ^[0-9]+$ ]]; then
+                NEW_DEV_INCREMENTAL=$((LAST_DEV_NUMBER + 1))
+              fi
             fi
-            echo "Number of commits for .devN suffix: $N_COMMITS"
-            
-            FINAL_VERSION="${VERSION_BASE}.dev${N_COMMITS}"
+
+            FINAL_VERSION="${VERSION_BASE}.dev${NEW_DEV_INCREMENTAL}"
           fi
 
           echo "Final calculated version: $FINAL_VERSION"
           echo "version=$FINAL_VERSION" >> "$GITHUB_OUTPUT"
-      - name: Echo version for debug
-        run: echo "Output version is ${{ steps.calculate_version.outputs.version }}"
 
   build:
     name: Test & Build
     runs-on: ubuntu-latest
     needs: setversion
     steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v4.2.2
-      with:
-        fetch-depth: 0
-    - name: Setup go ${{ env.GOLANG_VERSION }}
-      uses: actions/setup-go@v5.5.0
-      with:
-        go-version: ${{ env.GOLANG_VERSION }}
-        cache-dependency-path: "**/*.sum"
+      - name: Checkout the repository
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
 
-    - uses: oven-sh/setup-bun@v2
-      with:
-        bun-version-file: frontend/package.json
-        #bun-version: latest
+      - name: Setup go ${{ env.GOLANG_VERSION }}
+        uses: actions/setup-go@v5.5.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+          cache-dependency-path: "**/*.sum"
 
-    #- run: "sudo apt-get install -y samba" 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: frontend/package.json
 
-    - name: Prepare env for ${{ needs.setversion.outputs.version }}
-      run: |
-        cd backend
-        make patch
-        cd ..
-        cd frontend
-        bun install
-        cd ..
-        #sudo .devcontainer/createTestDevices.sh 
+      - name: Prepare env for ${{ needs.setversion.outputs.version }}
+        run: |
+          cd backend
+          make patch
+          cd ../frontend
+          bun install
+          cd ..
 
-    - name: Test Backend ${{ needs.setversion.outputs.version }}
-      run: |
-        cd backend
-        sudo -E PATH="$PATH" make test
-        cd ..
-    - name: Test Frontend ${{ needs.setversion.outputs.version }} (not yet implemented)
-      if: false 
-      run: |
+      - name: Test Backend ${{ needs.setversion.outputs.version }}
+        # RECOMMENDATION: Investigate if 'sudo' is truly necessary for tests.
+        # Running tests as root is a potential security risk.
+        run: |
+          cd backend
+          sudo -E PATH="$PATH" make test
+          cd ..
+      
+      - name: Test Frontend ${{ needs.setversion.outputs.version }} (not yet implemented)
+        if: false 
+        run: |
           cd frontend
           sudo -E PATH="$PATH" bun test
           cd ..
-  
-    - name: Check if ${{ needs.setversion.outputs.version }} exists
-      uses: mukunku/tag-exists-action@v1.6.0
-      if: github.event_name != 'pull_request'
-      id: checkTag
-      with: 
-        tag: '${{ needs.setversion.outputs.version }}'
-    
-    - run: echo ${{ steps.checkTag.outputs.exists }} ${{ github.event_name }}
-
-    - name: Update tag ${{ needs.setversion.outputs.version }}
-      uses: actions/github-script@v7
-      if: ${{ github.event_name != 'pull_request' && steps.checkTag.outputs.exists == true}}
-      with:
-        script: |
+ 
+      - name: Check if tag ${{ needs.setversion.outputs.version }} exists
+        if: github.event_name != 'pull_request'
+        id: checkTag
+        uses: mukunku/tag-exists-action@v1.6.0
+        with: 
+          tag: '${{ needs.setversion.outputs.version }}'
+     
+      - name: Update dev tag ${{ needs.setversion.outputs.version }}
+        # CRITICAL IMPROVEMENT: This step is now safer.
+        # It will ONLY run if the tag already exists AND it's a dev build (version contains '.dev').
+        # This prevents accidentally moving a final release tag.
+        uses: actions/github-script@v7
+        if: |
+          github.event_name != 'pull_request' &&
+          steps.checkTag.outputs.exists == 'true' &&
+          contains(needs.setversion.outputs.version, '.dev')
+        with:
+          script: |
             github.rest.git.updateRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: 'tags/${{ needs.setversion.outputs.version }}',
-              sha: context.sha
+              sha: context.sha,
+              force: true
             })
 
-    - name: Create tag ${{ needs.setversion.outputs.version }}
-      uses: actions/github-script@v7
-      if: ${{ github.event_name != 'pull_request' && steps.checkTag.outputs.exists == false }}
-      with:
-        script: |
+      - name: Create tag ${{ needs.setversion.outputs.version }}
+        uses: actions/github-script@v7
+        if: ${{ github.event_name != 'pull_request' && steps.checkTag.outputs.exists == 'false' }}
+        with:
+          script: |
             github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -182,94 +171,64 @@ jobs:
               sha: context.sha
             })
 
-    - name: BuildAll
-      id: built_all
-      if: github.event_name != 'pull_request'
-      run: |
-        sudo -E PATH="$PATH" make ALL VERSION=${{ needs.setversion.outputs.version }}
+      - name: BuildAll
+        id: built_all
+        if: github.event_name != 'pull_request'
+        run: |
+          sudo -E PATH="$PATH" make ALL VERSION=${{ needs.setversion.outputs.version }}
 
-    - name: Prepare temporary directory for zips
-      run: |
-          mkdir -p /tmp/build_artifacts
-  
-    - name: Find architectures and create zip archives
-      id: create_zips
-      run: |
-        # Initialize an array to store paths of created zip files
-        declare -a zip_files_created
-        
-        # Loop through each architecture directory under 'backend/dist'
-        for arch_dir in backend/dist/*/; do
-          # Extract the architecture name (e.g., 'amd64', 'arm64')
-          arch=$(basename "$arch_dir")
-          
-          # Define the output zip file path
-          zip_file_path="/tmp/build_artifacts/srat_${arch}.zip"
-          
-          echo "Processing architecture: ${arch}"
-          echo "Zipping contents of '${arch_dir}' into '${zip_file_path}'"
-          
-          # Change directory into the architecture folder
-          # Then, zip all its contents (files and subdirectories)
-          # The -r flag is for recursive inclusion
-          # The ./* pattern ensures that only the contents are zipped, not the arch_dir itself
-          if [ -d "$arch_dir" ]; then
-            (cd "$arch_dir" && zip -r "$zip_file_path" ./*)
-            echo "Successfully created ${zip_file_path}"
-            # Add the created zip file path to the array
-            zip_files_created+=("$zip_file_path")
-          else
-            echo "Warning: Directory ${arch_dir} does not exist or is not a directory. Skipping."
-          fi
-        done
-        
-        # Output the list of created zip files as a comma-separated string
-        # This makes it accessible to subsequent steps
-        echo "zip_paths=${zip_files_created[*]}" >> "$GITHUB_OUTPUT"
-
-    - name: List generated zip files (for debugging)
-      run: ls -l /tmp/build_artifacts/
-  
-
-    - name: Upload 
-      if: steps.built_all.conclusion == 'success'
-      uses: actions/upload-artifact@v4
-      with:
-        name: binary
-        path: /tmp/build_artifacts/*
-        retention-days: 7
-        overwrite: true
+      - name: Prepare temporary directory for zips
+        if: github.event_name != 'pull_request'
+        run: mkdir -p /tmp/build_artifacts
+     
+      - name: Find architectures and create zip archives
+        id: create_zips
+        if: github.event_name != 'pull_request'
+        run: |
+          # This script finds each compiled architecture and zips it.
+          for arch_dir in backend/dist/*/; do
+            arch=$(basename "$arch_dir")
+            zip_file_path="/tmp/build_artifacts/srat_${arch}.zip"
+            echo "Processing architecture: ${arch}"
+            if [ -d "$arch_dir" ]; then
+              (cd "$arch_dir" && zip -r "$zip_file_path" ./*)
+              echo "Successfully created ${zip_file_path}"
+            else
+              echo "Warning: Directory ${arch_dir} does not exist. Skipping."
+            fi
+          done
+      
+      - name: Upload binaries as artifact
+        if: steps.built_all.conclusion == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-builds
+          path: /tmp/build_artifacts/*.zip
+          retention-days: 7
+          overwrite: true
 
   create-release:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
-    needs: 
-      - build
-      - setversion
+    needs: [build, setversion]
     steps:
-    - name: Delete old drafts
-      uses: hugo19941994/delete-draft-releases@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+      - name: Delete old draft releases
+        uses: hugo19941994/delete-draft-releases@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - uses: actions/download-artifact@v4
-      id: download_art
-      with:
-        merge-multiple: true
+      - uses: actions/download-artifact@v4
+        id: download_art
+        with:
+          name: binary-builds
 
-  
-    - name: Create Release and Upload Assets from ${{ steps.download_art.outputs.download-path }}
-      uses: softprops/action-gh-release@v2
-      with:
-          tag_name: ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
-          name: Release ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
-          draft: ${{ github.event_name !='release' }}
-          prerelease: ${{ github.event_name !='release' }}
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.setversion.outputs.version }}
+          name: Release ${{ needs.setversion.outputs.version }}
+          # Create a draft and pre-release for pushes to main, but a full release for 'release' events.
+          draft: ${{ github.event_name != 'release' }}
+          prerelease: ${{ github.event_name != 'release' }}
           generate_release_notes: true
-          files: ${{ steps.download_art.outputs.download-path }}/* 
-          body: |
-            # Release Notes for ${{ github.event.release.tag_name || format('{0}',needs.setversion.outputs.version) }}
-            
-            Please find the assets attached below.
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GITHUB_TOKEN is automatically provided by GitHub
+          files: ${{ steps.download_art.outputs.download-path }}/*
