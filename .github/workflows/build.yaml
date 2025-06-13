@@ -42,10 +42,9 @@ jobs:
 
           CURRENT_YEAR=$(date -u +'%Y')
           CURRENT_MONTH=$(date -u +'%m')
-
+          
           FINAL_VERSION=""
 
-          # For a published release, the version is the tag name from the event
           if [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then
             echo "Detected published release event."
             FINAL_VERSION="${{ github.event.release.tag_name }}"
@@ -56,31 +55,34 @@ jobs:
           else
             echo "Detected development build (push, PR, or non-published release)."
 
-            # Find the latest tag matching the pattern YYYY.MM.INC for the current year and month.
-            LATEST_TAG_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_YEAR}.${CURRENT_MONTH}.*" --sort=version:refname | grep -E "^${CURRENT_YEAR}\.${CURRENT_MONTH}\.[0-9]+$" | tail -n 1 || true)
-            echo "Latest tag for $CURRENT_YEAR.$CURRENT_MONTH.*: '$LATEST_TAG_FOR_CURRENT_PERIOD'"
+            # IMPROVED: Find the latest tag that looks like a version (e.g., 2025.06.07 or 2025.06.07.dev15)
+            # We'll use this to determine the base for the next dev version.
+            LATEST_TAG=$(git tag --list "${CURRENT_YEAR}.${CURRENT_MONTH}.*" --sort=version:refname | tail -n 1 || true)
+            echo "Latest tag found for current month: '$LATEST_TAG'"
 
-            NEW_INCREMENTAL=0
-            if [[ -n "$LATEST_TAG_FOR_CURRENT_PERIOD" ]]; then
-              # Extract incremental part (e.g., 2025.06.1 -> 1) and add 1
-              LAST_INCREMENTAL_STR=$(echo "$LATEST_TAG_FOR_CURRENT_PERIOD" | cut -d. -f3)
-              NEW_INCREMENTAL=$((LAST_INCREMENTAL_STR + 1))
-            fi
-            
-            VERSION_BASE="${CURRENT_YEAR}.${CURRENT_MONTH#0}.${NEW_INCREMENTAL}"
-            echo "Version base: $VERSION_BASE"
-
-            # IMPROVEMENT: Calculate .devN by incrementing the last .dev tag for the current base.
-            # This makes dev versions sequential (e.g., .dev0, .dev1, .dev2) for the same base version.
-            LATEST_DEV_TAG_FOR_BASE=$(git tag --list "${VERSION_BASE}.dev*" --sort=version:refname | tail -n 1 || true)
-            echo "Latest dev tag for base $VERSION_BASE: '$LATEST_DEV_TAG_FOR_BASE'"
-
+            VERSION_BASE="${CURRENT_YEAR}.${CURRENT_MONTH}.0" # Default base
             NEW_DEV_INCREMENTAL=0
-            if [[ -n "$LATEST_DEV_TAG_FOR_BASE" ]]; then
-              # Extract the dev number (e.g., from 2025.6.1.dev5 -> 5) and add 1
-              LAST_DEV_NUMBER=$(echo "$LATEST_DEV_TAG_FOR_BASE" | sed -n 's/.*\.dev\([0-9]*\)/\1/p')
-              if [[ "$LAST_DEV_NUMBER" =~ ^[0-9]+$ ]]; then
-                NEW_DEV_INCREMENTAL=$((LAST_DEV_NUMBER + 1))
+
+            if [[ -n "$LATEST_TAG" ]]; then
+              # Attempt to extract the base (e.g., 2025.06.07 from 2025.06.07.dev15)
+              # and the dev number.
+
+              # Regex to capture the base (YEAR.MONTH.DAY) and optional .devN
+              if [[ "$LATEST_TAG" =~ ^([0-9]{4})\.([0-9]{2})\.([0-9]+)(\.dev([0-9]+))?$ ]]; then
+                YEAR_PART="${BASH_REMATCH[1]}"
+                MONTH_PART="${BASH_REMATCH[2]}"
+                DAY_PART="${BASH_REMATCH[3]}"
+                LAST_DEV_NUMBER="${BASH_REMATCH[5]}" # This will be empty if no .dev suffix
+
+                # Ensure we are working with the current year and month
+                if [[ "$YEAR_PART" == "$CURRENT_YEAR" && "$MONTH_PART" == "$CURRENT_MONTH" ]]; then
+                  VERSION_BASE="${YEAR_PART}.${MONTH_PART}.${DAY_PART}"
+                  if [[ -n "$LAST_DEV_NUMBER" ]]; then
+                    NEW_DEV_INCREMENTAL=$((LAST_DEV_NUMBER + 1))
+                  fi
+                fi
+              else
+                echo "Warning: Latest tag '$LATEST_TAG' does not match expected version format (YYYY.MM.DD or YYYY.MM.DD.devN). Starting dev count from 0."
               fi
             fi
 
