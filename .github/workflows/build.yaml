@@ -45,6 +45,7 @@ jobs:
           
           FINAL_VERSION=""
 
+          # For a published release, the version is the tag name from the event
           if [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then
             echo "Detected published release event."
             FINAL_VERSION="${{ github.event.release.tag_name }}"
@@ -55,35 +56,58 @@ jobs:
           else
             echo "Detected development build (push, PR, or non-published release)."
 
-            # IMPROVED: Find the latest tag that looks like a version (e.g., 2025.06.07 or 2025.06.07.dev15)
-            # We'll use this to determine the base for the next dev version.
-            LATEST_TAG=$(git tag --list "${CURRENT_YEAR}.${CURRENT_MONTH}.*" --sort=version:refname | tail -n 1 || true)
-            echo "Latest tag found for current month: '$LATEST_TAG'"
+            # Initialize variables to keep track of the highest version found
+            # MAX_VERSION_BASE will store the YYYY.MM.DD part (e.g., 2025.06.07)
+            # MAX_DEV_INCREMENTAL will store the highest dev number for that base
+            MAX_VERSION_BASE=""
+            MAX_DEV_INCREMENTAL=-1
 
-            VERSION_BASE="${CURRENT_YEAR}.${CURRENT_MONTH}.0" # Default base
-            NEW_DEV_INCREMENTAL=0
+            # Get all tags for the current year and month that match the pattern
+            # We'll parse them manually to ensure correct ordering (YYYY.MM.DD then .devN)
+            # Using 'grep -E' to ensure only tags matching our format are considered.
+            TAGS_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_YEAR}.${CURRENT_MONTH}.*" | grep -E "^${CURRENT_YEAR}\.${CURRENT_MONTH}\.[0-9]+\.?(dev[0-9]+)?$" || true)
+            echo "Relevant tags for current period: '$TAGS_FOR_CURRENT_PERIOD'"
 
-            if [[ -n "$LATEST_TAG" ]]; then
-              # Attempt to extract the base (e.g., 2025.06.07 from 2025.06.07.dev15)
-              # and the dev number.
+            for TAG in $TAGS_FOR_CURRENT_PERIOD; do
+              # Regex to capture the base (YYYY.MM.DD) and optional .devN
+              if [[ "$TAG" =~ ^([0-9]{4})\.([0-9]{2})\.([0-9]+)(\.dev([0-9]+))?$ ]]; then
+                TAG_YEAR="${BASH_REMATCH[1]}"
+                TAG_MONTH="${BASH_REMATCH[2]}"
+                TAG_DAY="${BASH_REMATCH[3]}"
+                TAG_DEV_NUMBER="${BASH_REMATCH[5]}" # This will be empty if no .dev suffix
 
-              # Regex to capture the base (YEAR.MONTH.DAY) and optional .devN
-              if [[ "$LATEST_TAG" =~ ^([0-9]{4})\.([0-9]{2})\.([0-9]+)(\.dev([0-9]+))?$ ]]; then
-                YEAR_PART="${BASH_REMATCH[1]}"
-                MONTH_PART="${BASH_REMATCH[2]}"
-                DAY_PART="${BASH_REMATCH[3]}"
-                LAST_DEV_NUMBER="${BASH_REMATCH[5]}" # This will be empty if no .dev suffix
+                CURRENT_TAG_BASE="${TAG_YEAR}.${TAG_MONTH}.${TAG_DAY}"
+                CURRENT_TAG_DEV_NUM=${TAG_DEV_NUMBER:-0} # Default to 0 if .devN not present
 
-                # Ensure we are working with the current year and month
-                if [[ "$YEAR_PART" == "$CURRENT_YEAR" && "$MONTH_PART" == "$CURRENT_MONTH" ]]; then
-                  VERSION_BASE="${YEAR_PART}.${MONTH_PART}.${DAY_PART}"
-                  if [[ -n "$LAST_DEV_NUMBER" ]]; then
-                    NEW_DEV_INCREMENTAL=$((LAST_DEV_NUMBER + 1))
+                echo "  Processing tag: $TAG, Base: $CURRENT_TAG_BASE, DevNum: $CURRENT_TAG_DEV_NUM"
+
+                # Compare current tag base with the maximum base found so far
+                if [[ -z "$MAX_VERSION_BASE" || "$CURRENT_TAG_BASE" > "$MAX_VERSION_BASE" ]]; then
+                  # This tag has a newer YYYY.MM.DD base. Update both base and dev incremental.
+                  MAX_VERSION_BASE="$CURRENT_TAG_BASE"
+                  MAX_DEV_INCREMENTAL="$CURRENT_TAG_DEV_NUM"
+                  echo "    New max base found: $MAX_VERSION_BASE, highest dev for this base: $MAX_DEV_INCREMENTAL"
+                elif [[ "$CURRENT_TAG_BASE" == "$MAX_VERSION_BASE" ]]; then
+                  # Same YYYY.MM.DD base, now check if the dev number is higher
+                  if (( CURRENT_TAG_DEV_NUM > MAX_DEV_INCREMENTAL )); then
+                    MAX_DEV_INCREMENTAL="$CURRENT_TAG_DEV_NUM"
+                    echo "    Same max base ($MAX_VERSION_BASE), but found higher dev number: $MAX_DEV_INCREMENTAL"
                   fi
                 fi
-              else
-                echo "Warning: Latest tag '$LATEST_TAG' does not match expected version format (YYYY.MM.DD or YYYY.MM.DD.devN). Starting dev count from 0."
               fi
+            done
+
+            # Determine the final VERSION_BASE and calculate the next NEW_DEV_INCREMENTAL
+            if [[ -z "$MAX_VERSION_BASE" ]]; then
+              # No matching tags found for the current month/year, start fresh with .0
+              VERSION_BASE="${CURRENT_YEAR}.${CURRENT_MONTH}.0"
+              NEW_DEV_INCREMENTAL=0
+              echo "No matching tags found for current month. Setting default base: $VERSION_BASE.dev$NEW_DEV_INCREMENTAL"
+            else
+              # Found a max base, increment the dev number for that base
+              VERSION_BASE="$MAX_VERSION_BASE"
+              NEW_DEV_INCREMENTAL=$((MAX_DEV_INCREMENTAL + 1))
+              echo "Max base found: $VERSION_BASE. Next dev increment: $NEW_DEV_INCREMENTAL"
             fi
 
             FINAL_VERSION="${VERSION_BASE}.dev${NEW_DEV_INCREMENTAL}"
@@ -91,6 +115,7 @@ jobs:
 
           echo "Final calculated version: $FINAL_VERSION"
           echo "version=$FINAL_VERSION" >> "$GITHUB_OUTPUT"
+
 
   build:
     name: Test & Build
