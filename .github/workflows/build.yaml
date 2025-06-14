@@ -71,18 +71,25 @@ jobs:
             TAGS_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_PERIOD_PREFIX}.*" || true) # List all tags starting with the period prefix
             echo "Relevant tags for period $CURRENT_PERIOD_PREFIX: '$TAGS_FOR_CURRENT_PERIOD'"
 
-            for TAG in $TAGS_FOR_CURRENT_PERIOD; do
+            # Define REGEX_PATTERN once outside the loop for clarity and minor efficiency
+            REGEX_PATTERN="^${ESCAPED_PERIOD_PREFIX}\\.([0-9]+)(?:-dev\\.([0-9]+))?$"
+            echo "Using REGEX_PATTERN: '${REGEX_PATTERN}'"
+
+            for RAW_TAG_FROM_LIST in $TAGS_FOR_CURRENT_PERIOD; do
+              # Sanitize tag: remove potential trailing carriage return if present.
+              # This adds robustness against unexpected line ending issues.
+              TAG="${RAW_TAG_FROM_LIST%$'\r'}"
+
               # Regex to capture INC and optional N from -dev.N for the current YYYY.M prefix
-              # BASH_REMATCH[1] captures INC (e.g., "0", "1", "12")
-              # BASH_REMATCH[2] captures N from -dev.N (e.g., "0", "5"), or is empty if no -dev suffix
-              if [[ "$TAG" =~ ^${ESCAPED_PERIOD_PREFIX}\\.([0-9]+)(?:-dev\.([0-9]+))?$ ]]; then
+              echo "  Processing sanitized TAG: '${TAG}' (Raw from list: '${RAW_TAG_FROM_LIST}')"
+              if [[ "$TAG" =~ $REGEX_PATTERN ]]; then
                 TAG_INC_STR="${BASH_REMATCH[1]}"
                 TAG_DEV_STR="${BASH_REMATCH[2]}" # N from -dev.N, or empty
 
                 CURRENT_TAG_INC_NUM=$((TAG_INC_STR)) # Convert to number
                 CURRENT_TAG_DEV_NUM=${TAG_DEV_STR:-0} # Default to 0 if -dev.N not present (e.g., for a release tag YYYY.M.INC)
 
-                echo "  Processing tag: $TAG, INC: $CURRENT_TAG_INC_NUM, DevNum: $CURRENT_TAG_DEV_NUM"
+                echo "    MATCHED! Parsed INC: $CURRENT_TAG_INC_NUM, DevNum: $CURRENT_TAG_DEV_NUM"
 
                 if (( CURRENT_TAG_INC_NUM > MAX_INC_VALUE )); then
                   # This tag has a newer INC value for the current YYYY.M period.
@@ -96,6 +103,8 @@ jobs:
                     echo "    Same max INC ($MAX_INC_VALUE) for $CURRENT_PERIOD_PREFIX, but found higher dev number: $MAX_DEV_FOR_MAX_INC"
                   fi
                 fi
+              else
+                echo "    NO MATCH for sanitized TAG: '${TAG}'"
               fi
             done
 
