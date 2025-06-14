@@ -298,7 +298,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                             onMouseLeave={() => setIsLogoHovered(false)} />
                     }
                     <Tabs
-                        sx={{ flexGrow: 1, display: { xs: 'flex', md: 'flex' } }}
+                        sx={{ flexGrow: 1 }} // display: flex is default for Tabs root, flexGrow is key
                         value={value}
                         onChange={handleChange}
                         indicatorColor="secondary"
@@ -319,11 +319,11 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                         ))}
                     </Tabs>
 
-                    <Box sx={{ flexGrow: 0 }}>
+                    <Box sx={{ flexGrow: 0, display: 'flex', alignItems: 'center' }}>
 
                         {Object.values(health.health.dirty_tracking || {}).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0 &&
                             <Tooltip title="Restart Samba demon now!" arrow>
-                                <IconButton onClick={handleRestartNow}>
+                                <IconButton onClick={handleRestartNow} size="small">
                                     <RestartAltIcon sx={{ color: 'white' }} />
                                     <CircularProgress
                                         size={32}
@@ -337,13 +337,13 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                             </Tooltip>
                         }
                         {process.env.NODE_ENV !== 'production' && (
-                            <IconButton>
+                            <IconButton size="small">
                                 <Tooltip title="Development Environment" arrow>
                                     <BugReportIcon sx={{ color: 'orange' }} />
                                 </Tooltip>
                             </IconButton>
                         )}
-                        <IconButton>
+                        <IconButton size="small">
                             <Tooltip title={health.health.secure_mode ? "Secure Mode Enabled" : "Secure Mode Disabled"} arrow>
                                 {health.health.secure_mode ?
                                     <LockIcon sx={{ color: 'white' }} /> :
@@ -351,14 +351,14 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                             </Tooltip>
                         </IconButton>
                         {read_only &&
-                            <IconButton>
+                            <IconButton size="small">
                                 <Tooltip title="ReadOnly Mode" arrow>
                                     <PreviewIcon sx={{ color: 'white' }} />
                                 </Tooltip>
                             </IconButton>
                         }
                         {(updateStatus.last_release != undefined) && (
-                            <IconButton onClick={handleDoUpdate}>
+                            <IconButton onClick={handleDoUpdate} size="small">
                                 <Tooltip title={`Update ${updateStatus.last_release} available`} arrow>
                                     {((update_status) => {
                                         switch (update_status.update_process_state) {
@@ -383,12 +383,12 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                             :
                             <></>
                         }
-                        <IconButton onClick={() => { mode == 'light' ? setMode('dark') : (mode == 'dark' ? setMode('system') : setMode('light')) }} >
+                        <IconButton size="small" onClick={() => { mode == 'light' ? setMode('dark') : (mode == 'dark' ? setMode('system') : setMode('light')) }} >
                             <Tooltip title={`Switch Mode ${mode}`} arrow>
                                 {mode === 'light' ? <LightModeIcon sx={{ color: 'white' }} /> : mode === 'dark' ? <DarkModeIcon sx={{ color: 'white' }} /> : <AutoModeIcon sx={{ color: 'white' }} />}
                             </Tooltip>
                         </IconButton>
-                        <IconButton onClick={() => { window.open(pkg.repository.url) }} >
+                        <IconButton sx={{ display: { xs: 'none', sm: 'inline-flex' } }} size="small" onClick={() => { window.open(pkg.repository.url) }} >
                             <Tooltip title="Support project!" arrow>
                                 <img src={github} style={{ height: "20px" }} />
                             </Tooltip>
