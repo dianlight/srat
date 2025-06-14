@@ -68,7 +68,7 @@ jobs:
 
             # Get all tags for the current YYYY.M period that match YYYY.M.INC or YYYY.M.INC-dev.N
             # Example: For 2024.7, list "2024.7.*" and grep for "^2024\.7\.([0-9]+)(-dev\.([0-9]+))?$"
-            TAGS_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_PERIOD_PREFIX}.*" | grep -E "^${ESCAPED_PERIOD_PREFIX}\\.([0-9]+)(-dev\\.([0-9]+))?$" || true)
+            TAGS_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_PERIOD_PREFIX}.*" || true) # List all tags starting with the period prefix
             echo "Relevant tags for period $CURRENT_PERIOD_PREFIX: '$TAGS_FOR_CURRENT_PERIOD'"
 
             for TAG in $TAGS_FOR_CURRENT_PERIOD; do
