@@ -37,103 +37,52 @@ jobs:
       - name: Calculate version
         id: calculate_version
         run: |
-          #!/bin/bash
-          set -euo pipefail # Strict mode
-          echo "Bash version: $BASH_VERSION"
-
+          set -euo pipefail
           CURRENT_YEAR=$(date -u +'%Y')
-          CURRENT_MONTH=$(date -u +'%-m') # GNU date: %-m for no padding. %_m for space padding (some BSDs), but %-m is common on Linux.
-                                         # GitHub runners use Linux, so %-m is appropriate.
+          CURRENT_MONTH=$(date -u +'%-m')
           CURRENT_PERIOD_PREFIX="${CURRENT_YEAR}.${CURRENT_MONTH}"
-          FINAL_VERSION=""
-
-          # For a published release, the version is the tag name from the event
+      
+          TAGS=$(git tag --list "${CURRENT_PERIOD_PREFIX}.*" | sort -V)
+          MAX_INC=-1
+          MAX_DEV=-1
+          for TAG in $TAGS; do
+            if [[ "$TAG" =~ ^${CURRENT_PERIOD_PREFIX}\.([0-9]+)$ ]]; then
+              INC=${BASH_REMATCH[1]}
+              if (( INC > MAX_INC )); then
+                MAX_INC=$INC
+                MAX_DEV=-1
+              fi
+            elif [[ "$TAG" =~ ^${CURRENT_PERIOD_PREFIX}\.([0-9]+)-dev\.([0-9]+)$ ]]; then
+              INC=${BASH_REMATCH[1]}
+              DEV=${BASH_REMATCH[2]}
+              if (( INC > MAX_INC )); then
+                MAX_INC=$INC
+                MAX_DEV=$DEV
+              elif (( INC == MAX_INC && DEV > MAX_DEV )); then
+                MAX_DEV=$DEV
+              fi
+            fi
+          done
+      
           if [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then
-            echo "Detected published release event."
-            FINAL_VERSION="${{ github.event.release.tag_name }}"
-            if [[ -z "$FINAL_VERSION" ]]; then
-              echo "Error: github.event.release.tag_name is empty for a published release event."
-              exit 1
+            if (( MAX_INC == -1 )); then
+              VERSION="${CURRENT_PERIOD_PREFIX}.0"
+            else
+              VERSION="${CURRENT_PERIOD_PREFIX}.$((MAX_INC+1))"
             fi
           else
-            echo "Detected development build (push, PR, or non-published release)."
-            echo "Current period prefix for dev versioning: $CURRENT_PERIOD_PREFIX"
-
-            # MAX_INC_VALUE stores the highest INC found for the CURRENT_PERIOD_PREFIX (e.g., for 2024.7)
-            # MAX_DEV_FOR_MAX_INC stores the highest dev number for that specific MAX_INC_VALUE
-            MAX_INC_VALUE=-1
-            MAX_DEV_FOR_MAX_INC=-1
-
-            # Escape dots in prefix for regex matching
-            ESCAPED_PERIOD_PREFIX="${CURRENT_PERIOD_PREFIX//./\\.}"
-
-            # Get all tags for the current YYYY.M period that match YYYY.M.INC or YYYY.M.INC-dev.N
-            # Example: For 2024.7, list "2024.7.*" and grep for "^2024\.7\.([0-9]+)(-dev\.([0-9]+))?$"
-            TAGS_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_PERIOD_PREFIX}.*" || true) # List all tags starting with the period prefix
-            echo "Relevant tags for period $CURRENT_PERIOD_PREFIX: '$TAGS_FOR_CURRENT_PERIOD'"
-
-            # Define REGEX_PATTERN once outside the loop for clarity and minor efficiency
-            REGEX_PATTERN="^${ESCAPED_PERIOD_PREFIX}\\.([0-9]+)(?:-dev\\.([0-9]+))?$"
-            echo "Using REGEX_PATTERN: '${REGEX_PATTERN}'"
-
-            # Process tags line by line using a while read loop for robustness
-            echo "$TAGS_FOR_CURRENT_PERIOD" | while IFS= read -r RAW_TAG_FROM_LIST || [[ -n "$RAW_TAG_FROM_LIST" ]]; do
-              # Skip empty lines, if any (though git tag --list shouldn't produce them)
-              if [[ -z "$RAW_TAG_FROM_LIST" ]]; then
-                continue
-              fi
-
-              # Sanitize tag: remove potential trailing carriage return if present.
-              # This adds robustness against unexpected line ending issues.
-              TAG="${RAW_TAG_FROM_LIST%$'\r'}"
-
-              # Regex to capture INC and optional N from -dev.N for the current YYYY.M prefix
-              echo "  Processing sanitized TAG: '${TAG}' (Raw from list: '${RAW_TAG_FROM_LIST}')"
-              if [[ "$TAG" =~ $REGEX_PATTERN ]]; then # Using the variable $REGEX_PATTERN
-                TAG_INC_STR="${BASH_REMATCH[1]}"
-                TAG_DEV_STR="${BASH_REMATCH[2]}" # This is the N from -dev.N, or empty if no -dev suffix
-
-                CURRENT_TAG_INC_NUM=$((TAG_INC_STR)) # Convert to number
-                CURRENT_TAG_DEV_NUM=${TAG_DEV_STR:-0} # Default to 0 if -dev.N not present (e.g., for a release tag YYYY.M.INC)
-
-                echo "    MATCHED! Parsed INC: $CURRENT_TAG_INC_NUM, DevNum: $CURRENT_TAG_DEV_NUM"
-
-                if (( CURRENT_TAG_INC_NUM > MAX_INC_VALUE )); then
-                  # This tag has a newer INC value for the current YYYY.M period.
-                  MAX_INC_VALUE="$CURRENT_TAG_INC_NUM"
-                  MAX_DEV_FOR_MAX_INC="$CURRENT_TAG_DEV_NUM" # Reset dev count for this new highest INC
-                  echo "    New max INC for $CURRENT_PERIOD_PREFIX found: $MAX_INC_VALUE, its dev num: $MAX_DEV_FOR_MAX_INC"
-                elif (( CURRENT_TAG_INC_NUM == MAX_INC_VALUE )); then
-                  # Same INC value, check if this tag has a higher dev number.
-                  if (( CURRENT_TAG_DEV_NUM > MAX_DEV_FOR_MAX_INC )); then
-                    MAX_DEV_FOR_MAX_INC="$CURRENT_TAG_DEV_NUM"
-                    echo "    Same max INC ($MAX_INC_VALUE) for $CURRENT_PERIOD_PREFIX, but found higher dev number: $MAX_DEV_FOR_MAX_INC"
-                  fi
-                fi
-              else
-                echo "    NO MATCH for sanitized TAG: '${TAG}'"
-              fi
-            done
-
-            VERSION_INC_PART=""
-            NEW_DEV_INCREMENTAL=""
-
-            if (( MAX_INC_VALUE == -1 )); then
-              # No tags like YYYY.M.INC found for the current period, so start INC at 0.
-              VERSION_INC_PART="0"
-              NEW_DEV_INCREMENTAL=0
-              echo "No matching tags found for $CURRENT_PERIOD_PREFIX. Initializing INC to 0, dev to 0."
+            if (( MAX_INC == -1 )); then
+              VERSION="${CURRENT_PERIOD_PREFIX}.0-dev.0"
             else
-              # Found existing INC(s) for YYYY.M. The new dev tag will be based on YYYY.M.MAX_INC_VALUE.
-              VERSION_INC_PART="$MAX_INC_VALUE"
-              NEW_DEV_INCREMENTAL=$((MAX_DEV_FOR_MAX_INC + 1))
-              echo "Max INC for $CURRENT_PERIOD_PREFIX is $VERSION_INC_PART. Next dev increment for this base: $NEW_DEV_INCREMENTAL"
+              if git tag --list "${CURRENT_PERIOD_PREFIX}.$MAX_INC" | grep -q .; then
+                VERSION="${CURRENT_PERIOD_PREFIX}.$((MAX_INC+1))-dev.0"
+              else
+                VERSION="${CURRENT_PERIOD_PREFIX}.$MAX_INC-dev.$((MAX_DEV+1))"
+              fi
             fi
-            FINAL_VERSION="${CURRENT_PERIOD_PREFIX}.${VERSION_INC_PART}-dev.${NEW_DEV_INCREMENTAL}"
           fi
-
-          echo "Final calculated version: $FINAL_VERSION"
-          echo "version=$FINAL_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Calculated version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
 
   build:
