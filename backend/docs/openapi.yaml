@@ -8,10 +8,13 @@ components:
         id:
           format: int64
           type: integer
+        name:
+          type: string
         size:
           format: int64
           type: integer
       required:
+        - name
         - size
         - id
       type: object
@@ -344,6 +347,13 @@ components:
     ReleaseAsset:
       additionalProperties: false
       properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ReleaseAsset.json
+          format: uri
+          readOnly: true
+          type: string
         arch_asset:
           $ref: "#/components/schemas/BinaryAsset"
         last_release:
@@ -427,9 +437,10 @@ components:
           type: boolean
         update_channel:
           enum:
-            - stable
-            - prerelease
-            - none
+            - None
+            - Develop
+            - Release
+            - Prerelease
           type: string
         veto_files:
           items:
@@ -516,15 +527,27 @@ components:
           format: uri
           readOnly: true
           type: string
+        error_message:
+          type: string
         last_release:
           type: string
-        update_error:
-          type: string
-        update_status:
-          format: int32
+        progress:
+          format: int64
           type: integer
-      required:
-        - update_status
+        update_process_state:
+          enum:
+            - Idle
+            - Checking
+            - NoUpgrde
+            - UpgradeAvailable
+            - Downloading
+            - DownloadComplete
+            - Extracting
+            - ExtractComplete
+            - Installing
+            - NeedRestart
+            - Error
+          type: string
       type: object
     User:
       additionalProperties: true
@@ -568,16 +591,23 @@ components:
         supported_events:
           enum:
             - hello
-            - update
             - updating
             - volumes
             - heartbeat
             - share
             - dirty
           type: string
+        update_channel:
+          enum:
+            - None
+            - Develop
+            - Release
+            - Prerelease
+          type: string
       required:
         - message
         - supported_events
+        - update_channel
       type: object
   securitySchemes:
     ApiKeyAuth:
@@ -794,9 +824,10 @@ paths:
                   type: boolean
                 update_channel:
                   enum:
-                    - stable
-                    - prerelease
-                    - none
+                    - None
+                    - Develop
+                    - Release
+                    - Prerelease
                   type: string
                 veto_files:
                   items:
@@ -846,9 +877,10 @@ paths:
                   type: boolean
                 update_channel:
                   enum:
-                    - stable
-                    - prerelease
-                    - none
+                    - None
+                    - Develop
+                    - Release
+                    - Prerelease
                   type: string
                 veto_files:
                   items:
@@ -1237,46 +1269,6 @@ paths:
                   oneOf:
                     - properties:
                         data:
-                          $ref: "#/components/schemas/HealthPing"
-                        event:
-                          const: heartbeat
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event heartbeat
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: share
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event share
-                      type: object
-                    - properties:
-                        data:
                           $ref: "#/components/schemas/Welcome"
                         event:
                           const: hello
@@ -1292,24 +1284,6 @@ paths:
                         - data
                         - event
                       title: Event hello
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/ReleaseAsset"
-                        event:
-                          const: update
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event update
                       type: object
                     - properties:
                         data:
@@ -1351,6 +1325,46 @@ paths:
                         - event
                       title: Event volumes
                       type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/HealthPing"
+                        event:
+                          const: heartbeat
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event heartbeat
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
+                      type: object
                 title: Server Sent Events
                 type: array
           description: OK
@@ -1364,6 +1378,24 @@ paths:
       tags:
         - system
   /update:
+    get:
+      operationId: get-update
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseAsset"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get update
+      tags:
+        - system
     put:
       operationId: put-update
       responses:
@@ -1380,6 +1412,29 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       summary: Put update
+      tags:
+        - system
+  /update_channels:
+    get:
+      operationId: list-update-channels
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: List update channels
       tags:
         - system
   /user:

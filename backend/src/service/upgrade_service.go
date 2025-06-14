@@ -1,49 +1,89 @@
 package service
 
 import (
+	"archive/zip"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
+	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
+	"sync"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
-	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v72/github"
+	"github.com/inconshreveable/go-update"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 	"golang.org/x/time/rate"
 )
 
+type UpdatePackage struct {
+	CurrentExecutablePath *string
+	OtherFilesPaths       []string
+	TempDirPath           string
+}
+
 type UpgradeServiceInterface interface {
-	checkSoftwareVersion() error
-	GetLastReleaseData() *dto.ReleaseAsset
+	GetUpgradeReleaseAsset(updateChannel *dto.UpdateChannel) (ass *dto.ReleaseAsset, err errors.E)
+	DownloadAndExtractBinaryAsset(asset dto.BinaryAsset) (*UpdatePackage, errors.E)
+	InstallUpdatePackage(updatePkg *UpdatePackage) errors.E
+	InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E
 }
 
 type UpgradeService struct {
-	ctx             context.Context
-	gh              *github.Client
-	broadcaster     BroadcasterServiceInterface
-	lastReleaseData dto.ReleaseAsset
-	updateLimiter   rate.Sometimes
-	props_repo      repository.PropertyRepositoryInterface
-	//updateQueue      map[string](chan *dto.ReleaseAsset)
-	//updateQueueMutex sync.RWMutex
+	ctx           context.Context
+	gh            *github.Client
+	broadcaster   BroadcasterServiceInterface
+	updateLimiter rate.Sometimes
+	props_repo    repository.PropertyRepositoryInterface
+	updateChannel *dto.UpdateChannel
 }
 
-func NewUpgradeService(ctx context.Context, broadcaster BroadcasterServiceInterface, props_repo repository.PropertyRepositoryInterface) UpgradeServiceInterface {
+type UpgradeServiceProps struct {
+	fx.In
+	PropsRepo   repository.PropertyRepositoryInterface
+	Broadcaster BroadcasterServiceInterface
+	Ctx         context.Context
+	Gh          *github.Client
+}
+
+func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) UpgradeServiceInterface {
 	p := new(UpgradeService)
 	p.updateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
-	p.ctx = ctx
-	//p.updateQueue = make(map[string](chan *dto.ReleaseAsset))
-	//p.updateQueueMutex = sync.RWMutex{}
-	p.lastReleaseData = dto.ReleaseAsset{}
-	p.broadcaster = broadcaster
-	p.props_repo = props_repo
-	rateLimiter := github_ratelimit.NewClient(nil)
-	p.gh = github.NewClient(rateLimiter)
-	go p.run()
+	p.ctx = in.Ctx
+	p.broadcaster = in.Broadcaster
+	p.props_repo = in.PropsRepo
+	p.gh = in.Gh
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			value, err := p.props_repo.Value("UpdateChannel", false)
+			if err != nil || value == nil {
+				p.updateChannel = &dto.UpdateChannels.NONE
+			} else {
+				var ok bool
+				if p.updateChannel, ok = value.(*dto.UpdateChannel); !ok {
+					slog.Error("Unable to convert config value", "value", value, "err", err)
+					p.updateChannel = &dto.UpdateChannels.NONE
+				}
+			}
+			p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
+			go func() {
+				defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+				p.run()
+			}()
+			return nil
+		},
+	})
+
 	return p
 }
 
@@ -56,11 +96,26 @@ func (self *UpgradeService) run() error {
 		default:
 			self.updateLimiter.Do(func() {
 				slog.Debug("Version Checking...")
-				err := self.checkSoftwareVersion()
+				err := self.notifyClient(dto.UpdateProgress{
+					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING,
+				})
 				if err != nil {
+					slog.Error("Error emitting start check message", "err", err)
+				}
+				ass, err := self.GetUpgradeReleaseAsset(nil)
+				if err != nil && !errors.Is(err, dto.ErrorNoUpdateAvailable) {
 					slog.Error("Error checking for updates", "err", err)
 				}
-				err = self.EventEmitter(self.ctx, self.lastReleaseData)
+				if ass != nil {
+					err = self.notifyClient(dto.UpdateProgress{
+						ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
+						LastRelease:    ass.LastRelease,
+					})
+				} else {
+					err = self.notifyClient(dto.UpdateProgress{
+						ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE,
+					})
+				}
 				if err != nil {
 					slog.Error("Error emitting vrsion message", "err", err)
 				}
@@ -70,15 +125,19 @@ func (self *UpgradeService) run() error {
 	}
 }
 
-func (self *UpgradeService) checkSoftwareVersion() error {
-	value, err := self.props_repo.Value("UpdateChannel", false)
-	if err != nil {
-		value = "stable"
+func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChannel) (ass *dto.ReleaseAsset, err errors.E) {
+	if updateChannel == nil {
+		updateChannel = self.updateChannel
 	}
-	updateChannel := dto.UpdateChannel(value.(string))
 
-	if updateChannel != dto.None {
-		slog.Debug("Checking for updates...", "channel", updateChannel)
+	if updateChannel != &dto.UpdateChannels.NONE && updateChannel != &dto.UpdateChannels.DEVELOP {
+		myversion, err := semver.NewVersion(config.Version)
+		if err != nil {
+			slog.Error("Error parsing version", "current", config.Version, "err", err)
+			return nil, errors.WithStack(err)
+		}
+
+		slog.Debug("Checking for updates...", "channel", updateChannel.String())
 		releases, _, err := self.gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
 			Page:    1,
 			PerPage: 5,
@@ -88,18 +147,26 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 				slog.Warn("Github API hit rate limit")
 			}
 			slog.Warn("Error getting releases", "err", err)
+			return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases found")
 		} else if len(releases) > 0 {
-			conv := converter.GitHubToDtoImpl{}
 			for _, release := range releases {
 				//log.Println(pretty.Sprintf("%v\n", release))
-				if *release.Prerelease && updateChannel == dto.Stable {
-					//log.Printf("Skip Prerelease %s", *release.TagName)
-					continue
-				} else if !*release.Prerelease && updateChannel == dto.Prerelease {
+				if *release.Prerelease && updateChannel != &dto.UpdateChannels.PRERELEASE {
 					//log.Printf("Skip Release %s", *release.TagName)
 					continue
 				}
-				self.lastReleaseData.LastRelease = *release.TagName
+
+				assertVersion, err := semver.NewVersion(*release.TagName)
+				if err != nil {
+					slog.Warn("Error parsing version", "version", *release.TagName, "err", err)
+					continue
+				}
+				slog.Debug("Checkong version", "current", config.Version, "release", *release.TagName)
+
+				if myversion.GreaterThanEqual(assertVersion) {
+					continue
+				}
+
 				// Serch for the asset corrisponfing the correct architecture
 				for _, asset := range release.Assets {
 					arch := runtime.GOARCH
@@ -109,27 +176,35 @@ func (self *UpgradeService) checkSoftwareVersion() error {
 						arch = "x86_64"
 					}
 					if asset.GetName() == fmt.Sprintf("srat_%s.zip", arch) {
-						err = conv.ReleaseAssetToBinaryAsset(asset, &self.lastReleaseData.ArchAsset)
+						var archAsset dto.BinaryAsset
+						conv := converter.GitHubToDtoImpl{}
+						err = conv.ReleaseAssetToBinaryAsset(asset, &archAsset)
 						if err != nil {
-							return errors.WithStack(err)
+							return nil, errors.WithStack(err)
 						}
-						break
+						ass = &dto.ReleaseAsset{
+							LastRelease: *release.TagName,
+							ArchAsset:   archAsset,
+						}
+						myversion = assertVersion
 					}
 				}
-				break
 			}
-			slog.Info("Latest release found", "channel", updateChannel, "version", self.lastReleaseData.LastRelease, "asset", self.lastReleaseData.ArchAsset)
+			if ass != nil {
+				return ass, nil
+			} else {
+				return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases found")
+			}
 		} else {
 			slog.Debug("No Releases found")
-			self.lastReleaseData = dto.ReleaseAsset{}
+			return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases found")
 		}
 	} else {
-		self.lastReleaseData = dto.ReleaseAsset{}
+		return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases check")
 	}
-	return nil
 }
 
-func (self *UpgradeService) EventEmitter(ctx context.Context, data dto.ReleaseAsset) error {
+func (self *UpgradeService) notifyClient(data dto.UpdateProgress) error {
 	_, err := self.broadcaster.BroadcastMessage(data)
 	if err != nil {
 		slog.Error("Error broadcasting update message: %w", "err", err)
@@ -138,6 +213,294 @@ func (self *UpgradeService) EventEmitter(ctx context.Context, data dto.ReleaseAs
 	return nil
 }
 
-func (self *UpgradeService) GetLastReleaseData() *dto.ReleaseAsset {
-	return &self.lastReleaseData
+const progressReportThresholdPercentage = 5
+
+type progressReader struct {
+	reader                 io.Reader
+	totalSize              int64
+	readSoFar              int64
+	onProgress             func(percentage int)
+	lastReportedPercentage int
+}
+
+func (pr *progressReader) Read(p []byte) (n int, err error) {
+	n, err = pr.reader.Read(p)
+	pr.readSoFar += int64(n)
+	if pr.totalSize > 0 {
+		percentage := int((float64(pr.readSoFar) / float64(pr.totalSize)) * 100)
+		if percentage >= pr.lastReportedPercentage+progressReportThresholdPercentage || (percentage == 100 && pr.lastReportedPercentage != 100) {
+			if pr.onProgress != nil {
+				pr.onProgress(percentage)
+			}
+			pr.lastReportedPercentage = percentage
+		}
+	}
+	return
+}
+
+func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset) (*UpdatePackage, errors.E) {
+	currentExe, err := os.Executable()
+	if err != nil {
+		errWrapped := errors.Wrap(err, "failed to get current executable path")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+	currentExecutableName := filepath.Base(currentExe)
+
+	var success bool = false
+	tmpDir, err := os.MkdirTemp("", "srat_update_*")
+	if err != nil {
+		errWrapped := errors.Wrap(err, "failed to create temporary directory")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+	defer func() {
+		if !success {
+			os.RemoveAll(tmpDir)
+		}
+	}()
+
+	slog.Info("Starting download and extraction", "asset_name", asset.Name, "download_url", asset.BrowserDownloadURL, "temp_dir", tmpDir)
+
+	// --- Download Phase ---
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: 0})
+
+	req, err := http.NewRequestWithContext(self.ctx, http.MethodGet, asset.BrowserDownloadURL, nil)
+	if err != nil {
+		errWrapped := errors.Wrapf(err, "failed to create request for %s", asset.BrowserDownloadURL)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		errWrapped := errors.Wrapf(err, "failed to download asset from %s", asset.BrowserDownloadURL)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errWrapped := errors.Errorf("failed to download asset: received status code %d from %s", resp.StatusCode, asset.BrowserDownloadURL)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+
+	downloadedFilePath := filepath.Join(tmpDir, asset.Name)
+	downloadedFile, err := os.Create(downloadedFilePath)
+	if err != nil {
+		errWrapped := errors.Wrapf(err, "failed to create file for downloaded asset %s", downloadedFilePath)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+	defer downloadedFile.Close()
+
+	pr := &progressReader{
+		reader:    resp.Body,
+		totalSize: resp.ContentLength,
+		onProgress: func(percentage int) {
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: percentage})
+		},
+		lastReportedPercentage: 0,
+	}
+
+	slog.Debug("Downloading asset", "url", asset.BrowserDownloadURL, "destination", downloadedFilePath, "size", resp.ContentLength)
+	_, err = io.Copy(downloadedFile, pr)
+	if err != nil {
+		errWrapped := errors.Wrapf(err, "failed to write downloaded asset to file %s", downloadedFilePath)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+	// Ensure 100% is reported
+	if pr.lastReportedPercentage != 100 && resp.ContentLength > 0 { // only if total size was known
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: 100})
+	}
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE, Progress: 100})
+	slog.Info("Asset downloaded successfully", "path", downloadedFilePath)
+
+	// --- Extraction Phase ---
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSEXTRACTING, Progress: 0})
+
+	zipReader, err := zip.OpenReader(downloadedFilePath)
+	if err != nil {
+		errWrapped := errors.Wrapf(err, "failed to open downloaded zip asset %s", downloadedFilePath)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+	defer zipReader.Close()
+
+	totalFiles := len(zipReader.File)
+	var extractedFilesCount int
+	var executablePath *string
+	var foundPaths []string
+
+	slog.Debug("Extracting asset", "source_zip", downloadedFilePath, "total_files", totalFiles)
+	for _, f := range zipReader.File {
+		targetPath := filepath.Join(tmpDir, f.Name)
+
+		// Path traversal mitigation: Ensure the path is within the temp directory
+		if !strings.HasPrefix(targetPath, filepath.Clean(tmpDir)+string(os.PathSeparator)) {
+			errWrapped := errors.Errorf("invalid file path in zip: '%s' attempts to escape temporary directory", f.Name)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return nil, errWrapped
+		}
+
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(targetPath, f.Mode()); err != nil {
+				errWrapped := errors.Wrapf(err, "failed to create directory %s during extraction", targetPath)
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+				return nil, errWrapped
+			}
+		} else {
+			if err := os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
+				errWrapped := errors.Wrapf(err, "failed to create parent directory for %s during extraction", targetPath)
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+				return nil, errWrapped
+			}
+
+			srcFile, errOpen := f.Open()
+			if errOpen != nil {
+				errWrapped := errors.Wrapf(errOpen, "failed to open file %s from zip archive", f.Name)
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+				return nil, errWrapped
+			}
+
+			destFile, errCreate := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if errCreate != nil {
+				srcFile.Close()
+				errWrapped := errors.Wrapf(errCreate, "failed to create destination file %s during extraction", targetPath)
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+				return nil, errWrapped
+			}
+
+			if _, errCopy := io.Copy(destFile, srcFile); errCopy != nil {
+				srcFile.Close()
+				destFile.Close()
+				errWrapped := errors.Wrapf(errCopy, "failed to copy content to %s during extraction", targetPath)
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+				return nil, errWrapped
+			}
+			srcFile.Close()
+			destFile.Close()
+
+			if filepath.Base(targetPath) == currentExecutableName {
+				slog.Info("Found matching executable in archive", "path", targetPath, "current_exe_name", currentExecutableName)
+				executablePath = &targetPath
+			} else {
+				foundPaths = append(foundPaths, targetPath)
+			}
+		}
+		extractedFilesCount++
+		extractPercentage := 0
+		if totalFiles > 0 {
+			extractPercentage = (extractedFilesCount * 100) / totalFiles
+		}
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSEXTRACTING, Progress: extractPercentage})
+	}
+
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE, Progress: 100})
+	slog.Info("Asset extracted successfully", "temp_dir", tmpDir)
+
+	success = true // Mark as successful so defer doesn't clean up tmpDir
+	return &UpdatePackage{
+		CurrentExecutablePath: executablePath,
+		OtherFilesPaths:       foundPaths,
+		TempDirPath:           tmpDir,
+	}, nil
+}
+
+func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinationFile string) errors.E {
+	if newExecutablePath == "" {
+		return errors.New("invalid new executable path")
+	}
+	if destinationFile == "" {
+		return errors.New("invalid destination file path")
+	}
+	slog.Info("Starting in-place update installation", "new_executable", newExecutablePath)
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLING, Progress: 0})
+
+	newExeFile, err := os.Open(newExecutablePath)
+	if err != nil {
+		errWrapped := errors.Wrapf(err, "failed to open new executable file: %s", newExecutablePath)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return errWrapped
+	}
+	defer newExeFile.Close()
+
+	// Perform the update
+
+	slog.Info("Applying update...", "target_executable", destinationFile, "source_new_executable", newExecutablePath)
+	err = update.Apply(newExeFile, update.Options{
+		TargetPath:  destinationFile,
+		TargetMode:  0755,
+		OldSavePath: destinationFile + ".old",
+	})
+	if err != nil {
+		// If err is update.ErrNotSupported, it means the OS doesn't support in-place updates of the running binary.
+		// Or it could be a permission error, etc.
+		errWrapped := errors.Wrapf(err, "failed to apply in-place update to %s from %s", destinationFile, newExecutablePath)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return errWrapped
+	}
+
+	slog.Info("In-place update applied successfully. Application will need to be restarted.", "updated_executable", destinationFile)
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE, Progress: 100})
+	return nil
+}
+
+func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) errors.E {
+	if updatePkg == nil || updatePkg.CurrentExecutablePath == nil || *updatePkg.CurrentExecutablePath == "" {
+		err := errors.New("invalid update package or missing executable path for overseer update")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+		return err
+	}
+
+	basePath, err := self.getCurrentExecutablePath()
+	if err != nil {
+		return err
+	}
+
+	for i := range updatePkg.OtherFilesPaths {
+		err := self.installBinaryTo(updatePkg.OtherFilesPaths[i], *basePath+"/"+filepath.Base(updatePkg.OtherFilesPaths[i]))
+		if err != nil {
+			return err
+		}
+	}
+	return self.installBinaryTo(*updatePkg.CurrentExecutablePath, *basePath+"/"+filepath.Base(*updatePkg.CurrentExecutablePath))
+}
+
+func (self *UpgradeService) getCurrentExecutablePath() (*string, errors.E) {
+	currentExe, err := os.Executable()
+	if err != nil {
+		errWrapped := errors.Wrap(err, "failed to get current executable path for in-place update")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+	destinationFile := filepath.Dir(currentExe)
+	return &destinationFile, nil
+}
+
+func (self *UpgradeService) InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E {
+	if updatePkg == nil || updatePkg.CurrentExecutablePath == nil || *updatePkg.CurrentExecutablePath == "" {
+		err := errors.New("invalid update package or missing executable path for overseer update")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+		return err
+	}
+	if overseerUpdatePath == "" {
+		err := errors.New("overseer update path cannot be empty")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+		return err
+	}
+	basePath, err := self.getCurrentExecutablePath()
+	if err != nil {
+		return err
+	}
+
+	for i := range updatePkg.OtherFilesPaths {
+		err := self.installBinaryTo(updatePkg.OtherFilesPaths[i], *basePath+"/"+filepath.Base(updatePkg.OtherFilesPaths[i]))
+		if err != nil {
+			return err
+		}
+	}
+	return self.installBinaryTo(*updatePkg.CurrentExecutablePath, overseerUpdatePath)
 }

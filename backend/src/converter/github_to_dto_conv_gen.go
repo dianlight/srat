@@ -12,6 +12,9 @@ type GitHubToDtoImpl struct{}
 
 func (c *GitHubToDtoImpl) ReleaseAssetToBinaryAsset(source *github.ReleaseAsset, target *dto.BinaryAsset) error {
 	if source != nil {
+		if source.Name != nil {
+			target.Name = *source.Name
+		}
 		if source.Size != nil {
 			target.Size = *source.Size
 		}

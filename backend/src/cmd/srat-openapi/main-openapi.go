@@ -7,28 +7,20 @@ import (
 	"log/slog"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/mattn/go-isatty"
 	"github.com/xorcare/pointer"
 
 	"github.com/dianlight/srat/api"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal"
-	"github.com/dianlight/srat/lsblk"
-	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/internal/appsetup"
 	"github.com/dianlight/srat/server"
-	"github.com/dianlight/srat/service"
 
-	"github.com/lmittmann/tint"
 	"go.uber.org/fx"
-	"go.uber.org/fx/fxevent"
 )
 
 var output *string
-var logLevel slog.Level
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -44,70 +36,29 @@ func main() {
 
 	flag.Parse()
 
-	switch *logLevelString {
-	case "trace", "debug":
-		logLevel = slog.LevelDebug
-	case "info", "notice":
-		logLevel = slog.LevelInfo
-	case "warn", "warning":
-		logLevel = slog.LevelWarn
-	case "error", "fatal":
-		logLevel = slog.LevelError
-	default:
+	_, err := appsetup.ConfigureGlobalLogger(*logLevelString, w)
+	if err != nil {
 		log.Fatalf("Invalid log level: %s", *logLevelString)
 	}
 
-	slog.SetDefault(slog.New(
-		tint.NewHandler(w, &tint.Options{
-			Level:      logLevel,
-			TimeFormat: time.RFC3339,
-			NoColor:    !isatty.IsTerminal(w.Fd()),
-			AddSource:  true,
-		}),
-	))
-
-	var apiContext, apiContextCancel = context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+	defer apiCancel() // Ensure context is cancelled on exit
 	staticConfig := dto.ContextState{}
+
+	appParams := appsetup.BaseAppParams{
+		Ctx:          apiCtx,
+		CancelFn:     apiCancel,
+		StaticConfig: &staticConfig,
+		HAMode:       true, // openapi generation assumes HA mode for certain pathing/defaults
+		DBPath:       *pointer.String("file::memory:?cache=shared&_pragma=foreign_keys(1)"),
+	}
 
 	// New FX
 	app := fx.New(
-		fx.WithLogger(func(log *slog.Logger) fxevent.Logger {
-			log.Debug("Starting FX")
-			fxlog := &fxevent.SlogLogger{
-				Logger: log,
-			}
-			fxlog.UseLogLevel(slog.LevelDebug)
-			fxlog.UseErrorLevel(slog.LevelError)
-			return fxlog
-		}),
+		appsetup.NewFXLoggerOption(),
+		appsetup.ProvideCoreDependencies(appParams),
+		appsetup.ProvideCyclicDependencyWorkaroundOption(),
 		fx.Provide(
-			dbom.NewDB,
-			func() *slog.Logger { return slog.Default() },
-			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
-			func() *dto.ContextState { return &staticConfig },
-			fx.Annotate(
-				func() bool { return true },
-				fx.ResultTags(`name:"ha_mode"`),
-			),
-			fx.Annotate(
-				func() string { return *pointer.String("file::memory:?cache=shared&_pragma=foreign_keys(1)") },
-				fx.ResultTags(`name:"db_path"`),
-			),
-			lsblk.NewLSBKInterpreter,
-			service.NewBroadcasterService,
-			service.NewVolumeService,
-			service.NewSambaService,
-			service.NewUpgradeService,
-			service.NewDirtyDataService,
-			service.NewSupervisorService,
-			service.NewFilesystemService,
-			service.NewShareService,
-			service.NewUserService,
-			service.NewHostService,
-			repository.NewMountPointPathRepository,
-			repository.NewExportedShareRepository,
-			repository.NewPropertyRepositoryRepository,
-			repository.NewSambaUserRepository,
 			server.AsHumaRoute(api.NewSSEBroker),
 			server.AsHumaRoute(api.NewHealthHandler),
 			server.AsHumaRoute(api.NewShareHandler),
@@ -120,12 +71,9 @@ func main() {
 			fx.Annotate(
 				server.NewMuxRouter,
 				fx.ParamTags(`name:"ha_mode"`),
-			), //server.NewHTTPServer,
+			),
 			server.NewHumaAPI,
 		),
-		fx.Invoke(func(s service.ShareServiceInterface, v service.VolumeServiceInterface) {
-			s.SetVolumeService(v) // Bypass block for cyclic dep in FX
-		}),
 		fx.Invoke(
 			func(
 				api huma.API,
@@ -133,26 +81,26 @@ func main() {
 			) {
 				yaml, err := api.OpenAPI().YAML()
 				if err != nil {
-					slog.Error("Unable to generate YAML", "err", err)
+					slog.Error("Unable to generate YAML", "error", err)
 				}
 				err = os.WriteFile(*output+"/openapi.yaml", yaml, 0644)
 				if err != nil {
-					slog.Error("Unable to write YAML", "err", err)
+					slog.Error("Unable to write YAML", "error", err)
 				}
 				json, err := api.OpenAPI().MarshalJSON()
 				if err != nil {
-					slog.Error("Unable to generate JSON", "err", err)
+					slog.Error("Unable to generate JSON", "error", err)
 				}
 				err = os.WriteFile(*output+"/openapi.json", json, 0644)
 				if err != nil {
-					slog.Error("Unable to write JSON", "err", err)
+					slog.Error("Unable to write JSON", "error", err)
 				}
 			},
 		),
 	)
 
 	app.Start(context.Background())
-	apiContextCancel()
+	// apiCancel is deferred
 	app.Stop(context.Background())
 
 	os.Exit(0)

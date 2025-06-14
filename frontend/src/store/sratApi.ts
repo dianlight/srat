@@ -147,9 +147,20 @@ const injectedRtkApi = api
         query: () => ({ url: `/sse` }),
         providesTags: ["system"],
       }),
+      getUpdate: build.query<GetUpdateApiResponse, GetUpdateApiArg>({
+        query: () => ({ url: `/update` }),
+        providesTags: ["system"],
+      }),
       putUpdate: build.mutation<PutUpdateApiResponse, PutUpdateApiArg>({
         query: () => ({ url: `/update`, method: "PUT" }),
         invalidatesTags: ["system"],
+      }),
+      getUpdateChannels: build.query<
+        GetUpdateChannelsApiResponse,
+        GetUpdateChannelsApiArg
+      >({
+        query: () => ({ url: `/update_channels` }),
+        providesTags: ["system"],
       }),
       postUser: build.mutation<PostUserApiResponse, PostUserApiArg>({
         query: (queryArg) => ({
@@ -355,6 +366,24 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
+          data: Welcome;
+          /** The event name. */
+          event: "hello";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: UpdateProgress;
+          /** The event name. */
+          event: "updating";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: Disk[] | null;
           /** The event name. */
           event: "volumes";
@@ -381,40 +410,21 @@ export type SseApiResponse = /** status 200 OK */
           /** The retry time in milliseconds. */
           retry?: number;
         }
-      | {
-          data: Welcome;
-          /** The event name. */
-          event: "hello";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: ReleaseAsset;
-          /** The event name. */
-          event: "update";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: UpdateProgress;
-          /** The event name. */
-          event: "updating";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
     )[]
   | /** status default Error */ ErrorModel;
 export type SseApiArg = void;
+export type GetUpdateApiResponse = /** status 200 OK */
+  | ReleaseAsset
+  | /** status default Error */ ErrorModel;
+export type GetUpdateApiArg = void;
 export type PutUpdateApiResponse = /** status 200 OK */
   | UpdateProgress
   | /** status default Error */ ErrorModel;
 export type PutUpdateApiArg = void;
+export type GetUpdateChannelsApiResponse =
+  | /** status 200 OK */ (string[] | null)
+  | /** status default Error */ ErrorModel;
+export type GetUpdateChannelsApiArg = void;
 export type PostUserApiResponse = /** status 200 OK */
   | User
   | /** status default Error */ ErrorModel;
@@ -531,9 +541,12 @@ export type DataDirtyTracker = {
 export type BinaryAsset = {
   browser_download_url?: string;
   id: number;
+  name: string;
   size: number;
 };
 export type ReleaseAsset = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
   arch_asset?: BinaryAsset;
   last_release?: string;
 };
@@ -589,7 +602,6 @@ export type Settings = {
   log_level?: string;
   mountoptions?: string[] | null;
   multi_channel?: boolean;
-  recyle_bin_enabled?: boolean;
   update_channel?: Update_channel;
   veto_files?: string[];
   workgroup?: string;
@@ -648,6 +660,19 @@ export type SharedResource = {
   users?: User[] | null;
   [key: string]: any;
 };
+export type Welcome = {
+  message: string;
+  supported_events: Supported_events;
+  update_channel: Update_channel;
+};
+export type UpdateProgress = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  error_message?: string;
+  last_release?: string;
+  progress?: number;
+  update_process_state?: Update_process_state;
+};
 export type Partition = {
   device?: string;
   host_mount_point_data?: MountPointData[];
@@ -670,21 +695,11 @@ export type Disk = {
   size?: number;
   vendor?: string;
 };
-export type Welcome = {
-  message: string;
-  supported_events: Supported_events;
-};
-export type UpdateProgress = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  last_release?: string;
-  update_error?: string;
-  update_status: number;
-};
 export enum Update_channel {
-  Stable = "stable",
-  Prerelease = "prerelease",
-  None = "none",
+  None = "None",
+  Develop = "Develop",
+  Release = "Release",
+  Prerelease = "Prerelease",
 }
 export enum Wsdd {
   None = "none",
@@ -712,12 +727,24 @@ export enum Usage {
 }
 export enum Supported_events {
   Hello = "hello",
-  Update = "update",
   Updating = "updating",
   Volumes = "volumes",
   Heartbeat = "heartbeat",
   Share = "share",
   Dirty = "dirty",
+}
+export enum Update_process_state {
+  Idle = "Idle",
+  Checking = "Checking",
+  NoUpgrde = "NoUpgrde",
+  UpgradeAvailable = "UpgradeAvailable",
+  Downloading = "Downloading",
+  DownloadComplete = "DownloadComplete",
+  Extracting = "Extracting",
+  ExtractComplete = "ExtractComplete",
+  Installing = "Installing",
+  NeedRestart = "NeedRestart",
+  Error = "Error",
 }
 export const {
   useGetFilesystemsQuery,
@@ -739,7 +766,9 @@ export const {
   usePutShareByShareNameEnableMutation,
   useGetSharesQuery,
   useSseQuery,
+  useGetUpdateQuery,
   usePutUpdateMutation,
+  useGetUpdateChannelsQuery,
   usePostUserMutation,
   useDeleteUserByUsernameMutation,
   usePutUserByUsernameMutation,

@@ -50,6 +50,7 @@ type ConfigToDtoConverter interface {
 	// goverter:update target
 	// goverter:map . WSDD | wsddMapper
 	// goverter:update:ignoreZeroValueField no
+	// goverter:map UpdateChannel UpdateChannel | github.com/dianlight/srat/dto:ParseUpdateChannel
 	ConfigToSettings(source config.Config, target *dto.Settings) error
 
 	// g.overter:update target

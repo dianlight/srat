@@ -1,9 +1,11 @@
 package dto
 
-type UpdateChannel string
+//go:generate go tool goenums -l -i update_channel.go
+type updateChannel int8
 
 const (
-	Stable     UpdateChannel = "stable"
-	Prerelease UpdateChannel = "prerelease"
-	None       UpdateChannel = "none"
+	None       updateChannel = iota // "Release"
+	Develop                         // "Develop"
+	Release                         // "None"
+	Prerelease                      // "Prerelease"
 )

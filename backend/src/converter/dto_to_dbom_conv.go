@@ -3,7 +3,10 @@
 package converter
 
 import (
+	"database/sql"
+	"database/sql/driver" // Added for driver.Valuer
 	"fmt"
+	"log/slog" // Added for logging
 	"reflect"
 
 	"github.com/dianlight/srat/dbom"
@@ -23,15 +26,51 @@ type DtoToDbomConverterInterface interface {
 func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, target *dbom.Properties) error {
 	keys := funk.Keys(source)
 	for _, key := range keys.([]string) {
-		newvalue := reflect.ValueOf(source).FieldByName(key)
-		//if newvalue.IsZero() {
-		//	continue
-		//}
+		newvalueReflected := reflect.ValueOf(source).FieldByName(key)
+
+		// Ensure the field is valid and its value can be accessed.
+		// This handles unexported fields or if funk.Keys returned a non-existent field name.
+		if !newvalueReflected.IsValid() || !newvalueReflected.CanInterface() {
+			slog.Warn("Skipping invalid or un-interfaceable field in SettingsToProperties", "key", key)
+			continue
+		}
+
+		// Default value to set is the direct interface of the field's value
+		valToSet := newvalueReflected.Interface()
+
+		// Get the actual Go value from reflect.Value
+		iface := newvalueReflected.Interface()
+
+		// Check if the Go value implements driver.Valuer
+		if valuer, ok := iface.(driver.Valuer); ok {
+			var dv driver.Value
+			var errValue error
+
+			// Check if 'iface' (which is the valuer) is a nil pointer.
+			// If it is, Value() would panic if called on a nil pointer receiver.
+			// database/sql's internal callValuerValue handles this by returning (nil, nil).
+			rvIface := reflect.ValueOf(iface)
+			if rvIface.Kind() == reflect.Pointer && rvIface.IsNil() {
+				dv = nil // Treat as SQL NULL
+				errValue = nil
+			} else {
+				// If 'iface' is not a nil pointer (or not a pointer at all),
+				// it's safe to call Value().
+				dv, errValue = valuer.Value()
+			}
+
+			if errValue != nil {
+				slog.Error("driver.Valuer Value() method returned error", "key", key, "error", errValue)
+				return errors.Wrapf(errValue, "failed to get value from driver.Valuer for key %s", key)
+			}
+			valToSet = dv // Use the value from Value() method
+		}
+
 		prop := (*target)[key]
-		if prop == (dbom.Property{}) {
-			prop = dbom.Property{Key: key, Value: newvalue.Interface()}
+		if prop == (dbom.Property{}) { // Check if property exists or is zero-value
+			prop = dbom.Property{Key: key, Value: valToSet}
 		} else {
-			prop.Value = newvalue.Interface()
+			prop.Value = valToSet
 		}
 		(*target)[key] = prop
 	}
@@ -39,6 +78,8 @@ func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, targe
 }
 
 func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, target *dto.Settings) error {
+	var scannerType = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+
 	for _, prop := range source {
 		newvalue := reflect.ValueOf(target).Elem().FieldByName(prop.Key)
 		if newvalue.IsValid() {
@@ -46,6 +87,13 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 				newvalue.Set(reflect.Zero(newvalue.Type()))
 			} else if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
 				newvalue.Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type()))
+			} else if newvalue.CanAddr() && newvalue.Addr().Type().Implements(scannerType) {
+				// If the field implements sql.Scanner, use its Scan method.
+				scanner := newvalue.Addr().Interface().(sql.Scanner)
+				err := scanner.Scan(prop.Value)
+				if err != nil {
+					return fmt.Errorf("error scanning field %s: %w", prop.Key, err)
+				}
 			} else {
 				if newvalue.Kind() == reflect.Slice {
 					newElem := reflect.New(newvalue.Type().Elem()).Elem()

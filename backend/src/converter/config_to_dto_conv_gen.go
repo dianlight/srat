@@ -43,7 +43,11 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 	target.BindAllInterfaces = source.BindAllInterfaces
 	target.LogLevel = source.LogLevel
 	target.MultiChannel = source.MultiChannel
-	target.UpdateChannel = dto.UpdateChannel(source.UpdateChannel)
+	dtoUpdateChannel, err := dto.ParseUpdateChannel(source.UpdateChannel)
+	if err != nil {
+		return err
+	}
+	target.UpdateChannel = dtoUpdateChannel
 	target.WSDD = wsddMapper(source)
 	return nil
 }

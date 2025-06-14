@@ -144,7 +144,7 @@ func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
 	suite.api.RegisterSettings(api)
 
 	resp := api.Get("/settings")
-	suite.Equal(http.StatusOK, resp.Code)
+	suite.Require().Equal(http.StatusOK, resp.Code)
 
 	var expected dto.Settings
 	var conv converter.ConfigToDtoConverterImpl
@@ -166,11 +166,12 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	autopatch.AutoPatch(api)
 
 	glc := dto.Settings{
-		Workgroup: "pluto&admin",
+		Workgroup:     "pluto&admin",
+		UpdateChannel: dto.UpdateChannels.RELEASE,
 	}
 
 	rr := api.Patch("/settings", glc)
-	suite.Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	var res dto.Settings
 	err := json.Unmarshal(rr.Body.Bytes(), &res)
@@ -179,6 +180,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	suite.Equal(glc.Workgroup, res.Workgroup)
 	suite.Equal([]string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"}, res.AllowHost)
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Settings)
+	suite.Equal(dto.UpdateChannels.RELEASE, res.UpdateChannel)
 
 	// Restore original state
 	_, err = suite.mockPropertyRepository.All(false)

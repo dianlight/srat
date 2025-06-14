@@ -35,7 +35,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Swagger } from "../pages/Swagger"
 import { NotificationCenter } from "./NotificationCenter"
 import { useSSE } from "react-hooks-sse"
-import { Supported_events, usePutSambaApplyMutation, usePutUpdateMutation, type HealthPing, type ReleaseAsset, type UpdateProgress } from "../store/sratApi"
+import { Supported_events, Update_process_state, usePutSambaApplyMutation, usePutUpdateMutation, type HealthPing, type ReleaseAsset, type UpdateProgress } from "../store/sratApi"
 import { useHealth } from "../hooks/healthHook";
 import { useAppSelector } from "../store/store";
 import { useReadOnly } from "../hooks/readonlyHook";
@@ -44,6 +44,8 @@ import LockIcon from '@mui/icons-material/Lock';
 import { useLocation, useNavigate } from 'react-router';
 import BugReportIcon from '@mui/icons-material/BugReport'; // Import the BugReportIcon
 import { TabIDs, type LocationState } from "../store/locationState"
+import { toast } from "react-toastify";
+import { Download } from "@mui/icons-material"
 
 // Define tab configurations
 interface TabConfig {
@@ -161,9 +163,9 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             }));
     }, []); // process.env.NODE_ENV is a build-time constant
 
-    const updateAssetStatus = useSSE(Supported_events.Update, {} as UpdateProgress, {
-        parser(input: any): ReleaseAsset {
-            console.log("Got version", input)
+    const updateStatus = useSSE(Supported_events.Updating, {} as UpdateProgress, {
+        parser(input: any): UpdateProgress {
+            console.log("Got Update Progress Event", input)
             return JSON.parse(input);
         },
     });
@@ -173,7 +175,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
 
 
     const { mode, setMode } = useColorScheme();
-    const [update, setUpdate] = useState<string | undefined>()
+    //const [update, setUpdate] = useState<string | undefined>()
     const [value, setValue] = useState<number>(0); // Active tab index, default to 0
     const confirm = useConfirm();
     //const [tabId, setTabId] = useState<string>(() => uuidv4())
@@ -233,13 +235,13 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     function handleDoUpdate() {
         console.log("Doing update")
         confirm({
-            title: `Update to ${update}?`,
+            title: `Update to ${updateStatus.last_release}?`,
             description: "If you proceed the new version is downloaded and installed."
         })
             .then(({ confirmed, reason }) => {
                 if (confirmed) {
                     doUpdate().unwrap().then((res) => {
-                        updateAssetStatus.update_status = (res as UpdateProgress).update_status;
+                        //updateStatus.update_status = (res as UpdateProgress).update_status;
                         //users.mutate();
                     }).catch(err => {
                         console.error(err);
@@ -255,6 +257,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         restartSamba()
     }
 
+    /*
     useEffect(() => {
         const current = pkg.version;
 
@@ -268,7 +271,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             setUpdate(undefined)
         }
     }, [health])
-
+*/
     /*
     useEventSourceListener(
         sse,
@@ -354,18 +357,32 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                 </Tooltip>
                             </IconButton>
                         }
-                        {(update && updateAssetStatus.update_status == undefined) ? (
+                        {(updateStatus.last_release != undefined) && (
                             <IconButton onClick={handleDoUpdate}>
-                                <Tooltip title={`Update ${update} available`} arrow>
-                                    <SystemSecurityUpdateIcon sx={{ color: 'white' }} />
+                                <Tooltip title={`Update ${updateStatus.last_release} available`} arrow>
+                                    {((update_status) => {
+                                        switch (update_status.update_process_state) {
+                                            case Update_process_state.Checking:
+                                                return <UndoIcon sx={{ color: 'white' }} />;
+                                            case Update_process_state.Downloading:
+                                                return <SaveIcon sx={{ color: 'white' }} />;
+                                            case Update_process_state.Installing:
+                                                return <SystemSecurityUpdateIcon sx={{ color: 'white' }} />
+                                            case Update_process_state.Error:
+                                                toast.error("Error during update", { data: { error: updateStatus.error_message } });
+                                                return <BugReportIcon sx={{ color: 'red' }} />;
+                                            default:
+                                                return <Download sx={{ color: 'white' }} />;
+                                        }
+                                    })(updateStatus)}
                                 </Tooltip>
                             </IconButton>
-                        ) : (
-                            updateAssetStatus.update_status != undefined ?
-                                <CircularProgressWithLabel value={updateAssetStatus.update_status} color="success" />
-                                :
-                                <></>
                         )}
+                        {(updateStatus.progress != undefined) ?
+                            <CircularProgressWithLabel value={updateStatus.progress} color="success" />
+                            :
+                            <></>
+                        }
                         <IconButton onClick={() => { mode == 'light' ? setMode('dark') : (mode == 'dark' ? setMode('system') : setMode('light')) }} >
                             <Tooltip title={`Switch Mode ${mode}`} arrow>
                                 {mode === 'light' ? <LightModeIcon sx={{ color: 'white' }} /> : mode === 'dark' ? <DarkModeIcon sx={{ color: 'white' }} /> : <AutoModeIcon sx={{ color: 'white' }} />}

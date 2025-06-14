@@ -7,7 +7,7 @@ import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement, 
 import { MuiChipsInput } from 'mui-chips-input'
 import { Stack, CircularProgress } from "@mui/material";
 import Divider from "@mui/material/Divider";
-import { useGetNicsQuery, useGetSettingsQuery, usePutSettingsMutation, type NetworkInfo, type Settings, useGetHostnameQuery } from "../store/sratApi";
+import { useGetNicsQuery, useGetSettingsQuery, usePutSettingsMutation, type NetworkInfo, type Settings, useGetHostnameQuery, useGetUpdateChannelsQuery, type GetUpdateChannelsApiResponse } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
 import debounce from 'lodash.debounce';
 import { NIL } from "uuid";
@@ -17,6 +17,8 @@ import { Chip, IconButton, Typography } from "@mui/material";
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd'; // Import an icon for the button
 import AutorenewIcon from '@mui/icons-material/Autorenew'; // Icon for fetching hostname
 import default_json from "../json/default_config.json"
+import language from "react-syntax-highlighter/dist/esm/languages/hljs/1c";
+import { Label } from "@mui/icons-material";
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
@@ -76,6 +78,8 @@ export function Settings() {
     const read_only = useReadOnly();
     const { data: globalConfig, isLoading, error, refetch } = useGetSettingsQuery();
     const { data: nic, isLoading: inLoadinf } = useGetNicsQuery();
+    const { data: updateChannels, isLoading: isChLoading } = useGetUpdateChannelsQuery();
+
 
     const { control, handleSubmit, reset, watch, setValue, getValues, formState, subscribe } = useForm({
         mode: "onBlur",
@@ -144,22 +148,16 @@ export function Settings() {
                 <form id="settingsform" onSubmit={handleSubmit(handleCommit)} noValidate>
                     <Grid container spacing={2}>
                         <Grid size={4}>
-                            <SelectElement label="Update Channel" name="update_channel"
-                                size="small"
-                                options={[
-                                    {
-                                        id: 'none',
-                                        label: 'No Update',
-                                    },
-                                    {
-                                        id: 'stable',
-                                        label: 'Stable Release',
-                                    },
-                                    {
-                                        id: 'prerelease',
-                                        label: 'Beta Release',
-                                    }
-                                ]} sx={{ display: "flex" }} control={control} disabled={read_only} />
+                            <AutocompleteElement
+                                label="Update Channel" name="update_channel"
+                                loading={isChLoading}
+                                autocompleteProps={{
+                                    size: "small",
+                                    disabled: read_only,
+                                }}
+                                options={((updateChannels as string[]) || [])}
+                                control={control}
+                            />
                         </Grid>
                         <Grid size={12}>
                             <Divider />
@@ -205,6 +203,8 @@ export function Settings() {
                                         )
                                     }
                                 }} />
+                        </Grid>
+                        <Grid size={4}>
                             <TextFieldElement
                                 size="small"
                                 sx={{ display: "flex" }}

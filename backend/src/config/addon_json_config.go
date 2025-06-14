@@ -166,7 +166,7 @@ func (in *Config) MigrateConfig() error {
 	if in.ConfigSpecVersion == 0 {
 		slog.Debug("Migrating config from version 0 to version 1")
 		in.ConfigSpecVersion = 1
-		in.UpdateChannel = "stable"
+		in.UpdateChannel = "none"
 		if in.Shares == nil {
 			in.Shares = make(Shares)
 		}

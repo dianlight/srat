@@ -16,30 +16,21 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/dianlight/srat/internal/appsetup"
 	"github.com/gorilla/mux"
-	"github.com/jpillora/overseer"
-	"github.com/mattn/go-isatty"
-	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"gitlab.com/tozd/go/errors"
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/homeassistant/hardware"
-	"github.com/dianlight/srat/homeassistant/host"
-	"github.com/dianlight/srat/homeassistant/ingress"
-	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal"
-	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/srat/service"
 
+	"github.com/jpillora/overseer"
 	"github.com/jpillora/overseer/fetcher"
-	"github.com/lmittmann/tint"
 	"go.uber.org/fx"
-	"go.uber.org/fx/fxevent"
 )
 
 var smbConfigFile *string
@@ -53,7 +44,6 @@ var updateFilePath *string
 var dbfile *string
 var supervisorURL *string
 var supervisorToken *string
-var logLevel slog.Level
 var addonIpAddress *string
 var logLevelString *string
 
@@ -87,27 +77,10 @@ func main() {
 
 	flag.Parse()
 
-	switch *logLevelString {
-	case "trace", "debug":
-		logLevel = slog.LevelDebug
-	case "info", "notice":
-		logLevel = slog.LevelInfo
-	case "warn", "warning":
-		logLevel = slog.LevelWarn
-	case "error", "fatal":
-		logLevel = slog.LevelError
-	default:
+	_, err := appsetup.ConfigureGlobalLogger(*logLevelString, w)
+	if err != nil {
 		log.Fatalf("Invalid log level: %s", *logLevelString)
 	}
-
-	slog.SetDefault(slog.New(
-		tint.NewHandler(w, &tint.Options{
-			Level:      logLevel,
-			TimeFormat: time.RFC3339,
-			NoColor:    !isatty.IsTerminal(w.Fd()),
-			AddSource:  true,
-		}),
-	))
 
 	if *singleInstance {
 		slog.Debug("Single instance mode")
@@ -159,58 +132,38 @@ func prog(state overseer.State) {
 		*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
 	}
 
-	var apiContext, apiContextCancel = context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+	// apiCancel is called at the end of Run() by FX lifecycle or explicitly if Run errors
+
 	staticConfig := dto.ContextState{}
 	staticConfig.AddonIpAddress = *addonIpAddress
 	staticConfig.SupervisorURL = *supervisorURL
 	staticConfig.UpdateFilePath = *updateFilePath
 	staticConfig.ReadOnlyMode = *roMode
 	staticConfig.SambaConfigFile = *smbConfigFile
-	staticConfig.Template = internal.GetTemplateData()
+	staticConfig.Template = internal.GetTemplateData() // This might be better provided via FX if GetTemplateData has side effects or is costly
 	staticConfig.DockerInterface = *dockerInterface
 	staticConfig.DockerNet = *dockerNetwork
 
+	appParams := appsetup.BaseAppParams{
+		Ctx:             apiCtx,
+		CancelFn:        apiCancel,
+		StaticConfig:    &staticConfig,
+		HAMode:          *hamode,
+		DBPath:          *dbfile,
+		SupervisorURL:   *supervisorURL,
+		SupervisorToken: *supervisorToken,
+	}
+
 	// New FX
-	fx.New(
-		fx.WithLogger(func(log *slog.Logger) fxevent.Logger {
-			log.Debug("Starting FX")
-			fxlog := &fxevent.SlogLogger{
-				Logger: log,
-			}
-			fxlog.UseLogLevel(slog.LevelDebug)
-			fxlog.UseErrorLevel(slog.LevelError)
-			return fxlog
-		}),
+	app := fx.New(
+		appsetup.NewFXLoggerOption(),
+		appsetup.ProvideCoreDependencies(appParams),
+		appsetup.ProvideHAClientDependencies(appParams),
+		appsetup.ProvideFrontendOption(),
+		appsetup.ProvideCyclicDependencyWorkaroundOption(),
 		fx.Provide(
-			dbom.NewDB,
-			func() *slog.Logger { return slog.Default() },
-			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
-			func() *dto.ContextState { return &staticConfig },
 			func() *overseer.State { return &state },
-			internal.GetFrontend,
-			fx.Annotate(
-				func() bool { return *hamode },
-				fx.ResultTags(`name:"ha_mode"`),
-			),
-			fx.Annotate(
-				func() string { return *dbfile },
-				fx.ResultTags(`name:"db_path"`),
-			),
-			lsblk.NewLSBKInterpreter,
-			service.NewBroadcasterService,
-			service.NewVolumeService,
-			service.NewSambaService,
-			service.NewUpgradeService,
-			service.NewDirtyDataService,
-			service.NewSupervisorService,
-			service.NewFilesystemService,
-			service.NewShareService,
-			service.NewUserService,
-			service.NewHostService,
-			repository.NewMountPointPathRepository,
-			repository.NewExportedShareRepository,
-			repository.NewPropertyRepositoryRepository,
-			repository.NewSambaUserRepository,
 			server.AsHumaRoute(api.NewSSEBroker),
 			server.AsHumaRoute(api.NewHealthHandler),
 			server.AsHumaRoute(api.NewShareHandler),
@@ -226,45 +179,7 @@ func prog(state overseer.State) {
 			),
 			server.NewHTTPServer,
 			server.NewHumaAPI,
-			func() *securityprovider.SecurityProviderBearerToken {
-				sp, err := securityprovider.NewSecurityProviderBearerToken(*supervisorToken)
-				if err != nil {
-					log.Fatalf("Failed to create security provider: %s", err)
-				}
-				return sp
-			},
-			func(bearerAuth *securityprovider.SecurityProviderBearerToken) *ingress.ClientWithResponses {
-				ingressClient, err := ingress.NewClientWithResponses(*supervisorURL, ingress.WithRequestEditorFn(bearerAuth.Intercept))
-				if err != nil {
-					log.Fatal(err)
-				}
-				return ingressClient
-			},
-			func(bearerAuth *securityprovider.SecurityProviderBearerToken) hardware.ClientWithResponsesInterface {
-				hardwareClient, err := hardware.NewClientWithResponses(*supervisorURL, hardware.WithRequestEditorFn(bearerAuth.Intercept))
-				if err != nil {
-					log.Fatal(err)
-				}
-				return hardwareClient
-			},
-			func(bearerAuth *securityprovider.SecurityProviderBearerToken) mount.ClientWithResponsesInterface {
-				mountClient, err := mount.NewClientWithResponses(*supervisorURL, mount.WithRequestEditorFn(bearerAuth.Intercept))
-				if err != nil {
-					log.Fatal(err)
-				}
-				return mountClient
-			},
-			func(bearerAuth *securityprovider.SecurityProviderBearerToken) host.ClientWithResponsesInterface {
-				hostClient, err := host.NewClientWithResponses(*supervisorURL, host.WithRequestEditorFn(bearerAuth.Intercept))
-				if err != nil {
-					log.Fatal(err)
-				}
-				return hostClient
-			},
 		),
-		fx.Invoke(func(s service.ShareServiceInterface, v service.VolumeServiceInterface) {
-			s.SetVolumeService(v) // Bypass block for cyclic dep in FX
-		}),
 		fx.Invoke(
 			fx.Annotate(
 				func(
@@ -327,12 +242,16 @@ func prog(state overseer.State) {
 			}
 			slog.Info("******* Samba config applied! ********")
 		}),
-	).Run()
+	)
+
+	if err := app.Err(); err != nil { // Check for errors from Provide functions
+		log.Fatalf("Error during FX setup: %v", err)
+	}
+
+	app.Run() // This blocks until the application stops
 
 	slog.Info("Stopping SRAT", "pid", state.ID)
-	//dbom.CloseDB()
-	apiContext.Value("wg").(*sync.WaitGroup).Wait()
+	apiCtx.Value("wg").(*sync.WaitGroup).Wait() // Ensure background tasks complete
+	apiCancel()                                 // Explicitly cancel context
 	slog.Info("SRAT stopped", "pid", state.ID)
-
-	os.Exit(0)
 }

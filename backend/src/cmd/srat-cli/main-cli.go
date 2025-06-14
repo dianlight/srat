@@ -7,34 +7,27 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/m1/go-generate-password/generator"
-	"github.com/mattn/go-isatty"
-	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dbom" // Keep for firstTimeJSONImporter
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
-	"github.com/dianlight/srat/homeassistant/host"
-	"github.com/dianlight/srat/homeassistant/ingress"
-	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal"
-	"github.com/dianlight/srat/lsblk"
+	"github.com/dianlight/srat/internal/appsetup"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/templates"
 	"github.com/dianlight/srat/unixsamba"
 
-	"github.com/lmittmann/tint"
 	"go.uber.org/fx"
-	"go.uber.org/fx/fxevent"
 )
 
 // var options *config.Options
@@ -50,7 +43,6 @@ var configFile *string
 var dbfile *string
 var supervisorURL *string
 var supervisorToken *string
-var logLevel slog.Level
 var logLevelString *string
 
 func main() {
@@ -80,6 +72,10 @@ func main() {
 	versionCmd := flag.NewFlagSet("version", flag.ExitOnError)
 	shortVersion := versionCmd.Bool("short", false, "Short version")
 
+	upgradeCmd := flag.NewFlagSet("upgrade", flag.ExitOnError)
+	upgradeChannel := upgradeCmd.String("channel", "release", "Upgrade channel (release, prerelease, develop)")
+	updateFilePath := flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
+
 	flag.Usage = func() {
 		fmt.Printf("Usage %s <config_options...> <command> <command_options...>\n", os.Args[0])
 		fmt.Println("Config Options:")
@@ -90,6 +86,8 @@ func main() {
 		stopCmd.PrintDefaults()
 		fmt.Println("Command version:")
 		versionCmd.PrintDefaults()
+		fmt.Println("Command upgrade:")
+		upgradeCmd.PrintDefaults()
 	}
 	startCmd.Usage = func() {
 		fmt.Println("Usage:")
@@ -103,6 +101,11 @@ func main() {
 		fmt.Println("Usage:")
 		versionCmd.PrintDefaults()
 	}
+	upgradeCmd.Usage = func() {
+		fmt.Println("Usage:")
+		upgradeCmd.PrintDefaults()
+	}
+
 	flag.Parse()
 
 	if !*silentMode {
@@ -121,6 +124,13 @@ func main() {
 		startCmd.Parse(flag.Args()[1:])
 	case "stop":
 		stopCmd.Parse(flag.Args()[1:])
+	case "upgrade":
+		upgradeCmd.Parse(flag.Args()[1:])
+		if *upgradeChannel != "release" && *upgradeChannel != "prerelease" && *upgradeChannel != "develop" {
+			slog.Error("Invalid upgrade channel", "channel", *upgradeChannel)
+			upgradeCmd.PrintDefaults()
+			os.Exit(1)
+		}
 	case "version":
 		versionCmd.Parse(flag.Args()[1:])
 		if *shortVersion {
@@ -135,27 +145,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	switch *logLevelString {
-	case "trace", "debug":
-		logLevel = slog.LevelDebug
-	case "info", "notice":
-		logLevel = slog.LevelInfo
-	case "warn", "warning":
-		logLevel = slog.LevelWarn
-	case "error", "fatal":
-		logLevel = slog.LevelError
-	default:
+	_, err := appsetup.ConfigureGlobalLogger(*logLevelString, w)
+	if err != nil {
 		log.Fatalf("Invalid log level: %s", *logLevelString)
 	}
-
-	slog.SetDefault(slog.New(
-		tint.NewHandler(w, &tint.Options{
-			Level:      logLevel,
-			TimeFormat: time.RFC3339,
-			NoColor:    !isatty.IsTerminal(w.Fd()),
-			AddSource:  true,
-		}),
-	))
 
 	slog.Debug("Startup Options", "Flags", os.Args)
 	//	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
@@ -168,99 +161,34 @@ func main() {
 		*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
 	}
 
-	//dbom.InitDB(*dbfile)
+	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+	defer apiCancel() // Ensure context is cancelled on exit
 
-	// Get options
-	//options = config.ReadOptionsFile(*optionsFile)
-
-	var apiContext, apiContextCancel = context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	staticConfig := dto.ContextState{}
 	staticConfig.SupervisorURL = *supervisorURL
 	staticConfig.SambaConfigFile = *smbConfigFile
 	staticConfig.Template = internal.GetTemplateData()
 	staticConfig.DockerInterface = *dockerInterface
 	staticConfig.DockerNet = *dockerNetwork
+	staticConfig.UpdateFilePath = *updateFilePath
+
+	appParams := appsetup.BaseAppParams{
+		Ctx:             apiCtx,
+		CancelFn:        apiCancel,
+		StaticConfig:    &staticConfig,
+		HAMode:          true, // CLI often interacts with HA addon-like features
+		DBPath:          *dbfile,
+		SupervisorURL:   *supervisorURL,
+		SupervisorToken: *supervisorToken,
+	}
 
 	// New FX
 	app := fx.New(
-		fx.WithLogger(func(log *slog.Logger) fxevent.Logger {
-			log.Debug("Starting FX")
-			fxlog := &fxevent.SlogLogger{
-				Logger: log,
-			}
-			fxlog.UseLogLevel(slog.LevelDebug)
-			fxlog.UseErrorLevel(slog.LevelError)
-			return fxlog
-		}),
-		fx.Provide(
-			dbom.NewDB,
-			func() *slog.Logger { return slog.Default() },
-			func() (context.Context, context.CancelFunc) { return apiContext, apiContextCancel },
-			func() *dto.ContextState { return &staticConfig },
-			//			func() *overseer.State { return &state },
-			internal.GetFrontend,
-			fx.Annotate(
-				func() bool { return true },
-				fx.ResultTags(`name:"ha_mode"`),
-			),
-			fx.Annotate(
-				func() string { return *dbfile },
-				fx.ResultTags(`name:"db_path"`),
-			),
-			lsblk.NewLSBKInterpreter,
-			service.NewBroadcasterService,
-			service.NewVolumeService,
-			service.NewSambaService,
-			service.NewUpgradeService,
-			service.NewDirtyDataService,
-			service.NewSupervisorService,
-			service.NewFilesystemService,
-			service.NewShareService,
-			service.NewHostService,
-			repository.NewMountPointPathRepository,
-			repository.NewExportedShareRepository,
-			repository.NewPropertyRepositoryRepository,
-			repository.NewSambaUserRepository,
-			func() *securityprovider.SecurityProviderBearerToken {
-				sp, err := securityprovider.NewSecurityProviderBearerToken(*supervisorToken)
-				if err != nil {
-					log.Fatalf("Failed to create security provider: %s", err)
-				}
-				return sp
-			},
-
-			func(bearerAuth *securityprovider.SecurityProviderBearerToken) ingress.ClientWithResponsesInterface {
-				ingressClient, err := ingress.NewClientWithResponses(*supervisorURL, ingress.WithRequestEditorFn(bearerAuth.Intercept))
-				if err != nil {
-					log.Fatal(err)
-				}
-				return ingressClient
-			},
-			func(bearerAuth *securityprovider.SecurityProviderBearerToken) hardware.ClientWithResponsesInterface {
-				hardwareClient, err := hardware.NewClientWithResponses(*supervisorURL, hardware.WithRequestEditorFn(bearerAuth.Intercept))
-				if err != nil {
-					log.Fatal(err)
-				}
-				return hardwareClient
-			},
-			func(bearerAuth *securityprovider.SecurityProviderBearerToken) mount.ClientWithResponsesInterface {
-				mountClient, err := mount.NewClientWithResponses(*supervisorURL, mount.WithRequestEditorFn(bearerAuth.Intercept))
-				if err != nil {
-					log.Fatal(err)
-				}
-				return mountClient
-			},
-			func(bearerAuth *securityprovider.SecurityProviderBearerToken) host.ClientWithResponsesInterface {
-				hostClient, err := host.NewClientWithResponses(*supervisorURL, host.WithRequestEditorFn(bearerAuth.Intercept))
-				if err != nil {
-					log.Fatal(err)
-				}
-				return hostClient
-			},
-		),
-		fx.Invoke(func(s service.ShareServiceInterface, v service.VolumeServiceInterface) {
-			s.SetVolumeService(v) // Bypass block for cyclic dep in FX
-		}),
+		appsetup.NewFXLoggerOption(),
+		appsetup.ProvideCoreDependencies(appParams),
+		appsetup.ProvideHAClientDependencies(appParams), // CLI needs HA clients
+		appsetup.ProvideFrontendOption(),                // For template data, etc.
+		appsetup.ProvideCyclicDependencyWorkaroundOption(),
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
 			props_repo repository.PropertyRepositoryInterface,
@@ -271,11 +199,11 @@ func main() {
 			fs_service service.FilesystemServiceInterface,
 		) {
 			versionInDB, err := props_repo.Value("ConfigSpecVersion", true)
-			if err != nil || versionInDB == nil {
+			if err != nil || versionInDB == nil { // Assuming error means not found or actual DB error
 				// Migrate from JSON to DB
 				var config config.Config
 				if *configFile != "" {
-					err := config.LoadConfig(*configFile)
+					err = config.LoadConfig(*configFile) // Assign to existing err
 					if err != nil {
 						log.Fatalf("Cant load config file %#+v", err)
 					}
@@ -284,7 +212,10 @@ func main() {
 					if err != nil {
 						log.Fatalf("Cant read default config file %#+v", err)
 					}
-					config.LoadConfigBuffer(buffer)
+					err = config.LoadConfigBuffer(buffer) // Assign to existing err
+					if err != nil {
+						log.Fatalf("Cant load default config from buffer %#+v", err)
+					}
 				}
 				pwdgen, err := generator.NewWithDefault()
 				if err != nil {
@@ -306,7 +237,7 @@ func main() {
 
 				err = firstTimeJSONImporter(config, mount_repo, props_repo, exported_share_repo, samba_user_repo, *_ha_mount_user_password_)
 				if err != nil {
-					log.Fatalf("Cant import json settings - %#+v", err)
+					log.Fatalf("Cant import json settings - %#+v", errors.WithStack(err))
 				}
 
 			}
@@ -321,9 +252,10 @@ func main() {
 			fs_service service.FilesystemServiceInterface,
 			samba_service service.SambaServiceInterface,
 			supervisor_service service.SupervisorServiceInterface,
+			upgrade_service service.UpgradeServiceInterface,
 		) {
 			// Setting the actual LogLevel
-			err := props_repo.SetValue("LogLevel", *logLevelString)
+			err := props_repo.SetValue("LogLevel", *logLevelString) // Use existing err
 			if err != nil {
 				log.Fatalf("Cant set log level - %#+v", err)
 			}
@@ -415,14 +347,66 @@ func main() {
 					}
 				}
 				slog.Info("******* Unmounted all shares from Homeassistant ********")
+			} else if command == "upgrade" {
+				slog.Info("Starting upgrade process", "channel", *upgradeChannel)
+				updch, ett := dto.ParseUpdateChannel(*upgradeChannel)
+				if ett != nil {
+					slog.Error("Error parsing upgrade channel", "err", ett)
+					return
+				}
+				err = props_repo.SetValue("UpdateChannel", updch)
+				if err != nil {
+					slog.Error("Error setting upgrade channel", "err", err)
+					return
+				}
+
+				asset, err := upgrade_service.GetUpgradeReleaseAsset(&updch)
+				if err != nil {
+					if errors.Is(err, dto.ErrorNoUpdateAvailable) {
+						slog.Info("No update available for the requested channel.")
+					} else {
+						slog.Error("Error checking for updates", "err", err)
+					}
+				} else if asset != nil {
+					slog.Info("Update available", "version", asset.LastRelease, "asset_name", asset.ArchAsset.Name)
+					updatePkg, errDownload := upgrade_service.DownloadAndExtractBinaryAsset(asset.ArchAsset)
+					if errDownload != nil {
+						slog.Error("Error downloading or extracting update", "err", errDownload)
+						// os.RemoveAll(updatePkg.TempDirPath) // Ensure cleanup on error if updatePkg is not nil
+					} else {
+						slog.Info("Update downloaded and extracted successfully", "temp_dir", updatePkg.TempDirPath)
+						if updatePkg.CurrentExecutablePath != nil {
+							slog.Info("Matching executable found", "path", *updatePkg.CurrentExecutablePath)
+							errInstall := upgrade_service.InstallUpdatePackage(updatePkg)
+							if errInstall != nil {
+								slog.Error("Error installing update for overseer", "err", errInstall)
+							}
+						} else {
+							slog.Warn("Update downloaded, but no directly matching executable found by name. Check extracted files.", "paths", updatePkg.OtherFilesPaths)
+						}
+						// Clean up the temporary directory after attempting installation or if no matching executable was found.
+						// The InstallOverseerUpdate copies the file, so the temp dir can be removed.
+						// If InstallUpdatePackage were used, it might be best to clean up *after* a successful restart.
+						slog.Debug("Cleaning up temporary update directory", "path", updatePkg.TempDirPath)
+						if err := os.RemoveAll(updatePkg.TempDirPath); err != nil {
+							slog.Warn("Failed to remove temporary update directory", "path", updatePkg.TempDirPath, "err", err)
+						}
+					}
+				} else {
+					slog.Info("No update available (asset was nil).")
+				}
 			}
 		}),
 	)
-	app.Start(context.Background())
-	apiContextCancel()
-	app.Stop(context.Background())
 
-	os.Exit(0)
+	if err := app.Err(); err != nil { // Check for errors from Provide functions
+		log.Fatalf("Error during FX setup: %v", err)
+	}
+
+	app.Start(context.Background())
+	// apiCancel is deferred
+	app.Stop(context.Background())
+	// os.Exit(0) is implicit if main returns
 }
 
 func firstTimeJSONImporter(config config.Config,

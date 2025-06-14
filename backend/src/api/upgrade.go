@@ -3,19 +3,15 @@ package api
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"log/slog"
-	"net/http"
-	"os"
-	"runtime"
-	"time"
+	"sync"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/utility"
-	"github.com/google/go-github/v72/github"
+	"gitlab.com/tozd/go/errors"
 )
 
 type UpgradeHanler struct {
@@ -39,96 +35,86 @@ func NewUpgradeHanler(ctx context.Context, apictx *dto.ContextState, upgader ser
 
 func (self *UpgradeHanler) RegisterUpgradeHanler(api huma.API) {
 	huma.Put(api, "/update", self.UpdateHandler, huma.OperationTags("system"))
+	huma.Get(api, "/update", self.GetUpdateInfoHandler, huma.OperationTags("system"))
+	huma.Get(api, "/update_channels", self.GetUpdateChannelsHandler, huma.OperationTags("system"))
 }
 
-// UpdateHandler handles the update process for the application.
-// It retrieves the latest release data, downloads the release asset,
-// and writes it to a temporary file while tracking the progress.
+// GetUpdateInfoHandler checks for available updates and returns information about the release asset.
 //
-// Parameters:
-//   - ctx: The context for the request.
-//   - input: A pointer to an input struct (currently unused).
-//
-// Returns:
-//   - A pointer to a struct containing the update progress body.
-//   - An error if any occurs during the update process.
-//
-// The function performs the following steps:
-//  1. Retrieves the latest release data.
-//  2. Logs the version being updated to.
-//  3. Checks if the release asset size is zero and returns a 404 error if true.
-//  4. Downloads the release asset from GitHub.
-//  5. Opens a temporary file for writing the update.
-//  6. Initializes a progress writer to track the update progress.
-//  7. Starts a goroutine to copy the downloaded asset to the temporary file and update the progress.
-//  8. Starts a goroutine to periodically sleep (purpose unclear).
+//	@Summary		Check for available updates
+//	@Description	Retrieves information about the latest available release asset based on the current update channel.
+//	@Tags			system
+//	@Produce		json
+//	@Success		200	{object}	struct{Body dto.ReleaseAsset}	"Information about the available update."
+//	@Failure		404	{object}	huma.ErrorModel					"No update available or error finding assets."
+//	@Failure		500	{object}	huma.ErrorModel					"Internal server error."
+//	@Router			/update [get]
+func (handler *UpgradeHanler) GetUpdateInfoHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.ReleaseAsset }, error) {
+	slog.Debug("Handling GET /update request")
+	asset, err := handler.upgader.GetUpgradeReleaseAsset(nil)
+	if err != nil {
+		if errors.Is(err, dto.ErrorNoUpdateAvailable) {
+			slog.Info("No update available", "error", err)
+			return nil, huma.Error404NotFound(err.Error())
+		}
+		slog.Error("Error getting upgrade release asset", "error", err)
+		return nil, errors.Wrap(err, "failed to get upgrade release asset")
+	}
+
+	if asset == nil { // Should ideally be covered by ErrorNoUpdateAvailable
+		slog.Info("No update asset found, though no explicit error was returned.")
+		return nil, huma.Error404NotFound("No update asset found.")
+	}
+
+	slog.Debug("Update asset found", "release", asset.LastRelease, "asset_name", asset.ArchAsset.Name)
+	return &struct{ Body dto.ReleaseAsset }{Body: *asset}, nil
+}
+
 func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.UpdateProgress }, error) {
-
-	lastReleaseData := handler.upgader.GetLastReleaseData()
-	log.Printf("Updating to version %s", lastReleaseData.LastRelease)
-
-	var gh = github.NewClient(nil)
-	if lastReleaseData.ArchAsset.Size == 0 {
-		return nil, huma.Error404NotFound(fmt.Sprintf("No asset found for architecture %s", runtime.GOARCH))
-	}
-
-	rc, _, err := gh.Repositories.DownloadReleaseAsset(context.Background(), "dianlight", "srat", lastReleaseData.ArchAsset.ID, http.DefaultClient)
+	assets, err := handler.upgader.GetUpgradeReleaseAsset(nil)
 	if err != nil {
-		return nil, err
+		return nil, huma.Error404NotFound(fmt.Sprintf("Unable to find update assets %#v", err.Error()))
 	}
-	//defer rc.Close()
-	tmpFile, err := os.OpenFile(handler.apictx.UpdateFilePath, os.O_RDWR|os.O_CREATE, 0777)
-	if err != nil {
-		return nil, err
-	}
-	//defer tmpFile.Close()
-	handler.pw = utility.NewProgressWriter(tmpFile, lastReleaseData.ArchAsset.Size)
+
+	log.Printf("Updating to version %s", assets.LastRelease)
+
+	handler.ctx.Value("wg").(*sync.WaitGroup).Add(1)
 	go func() {
-		defer tmpFile.Close()
-		defer rc.Close()
-		handler.progress = dto.UpdateProgress{
-			ProgressStatus: 0,
-			LastRelease:    lastReleaseData.LastRelease,
-		}
-		go handler.notifyClient()
-		var by, err = io.Copy(tmpFile, rc)
+		defer handler.ctx.Value("wg").(*sync.WaitGroup).Done()
+
+		updatePkg, err := handler.upgader.DownloadAndExtractBinaryAsset(assets.ArchAsset)
 		if err != nil {
-			slog.Error(fmt.Sprintf("Error copying file %s", err))
-			handler.progress.UpdateError = err.Error()
+			slog.Error("Error downloading and extracting binary asset", "err", err)
+			return
 		}
-		slog.Debug(fmt.Sprintf("Update process completed %d vs %d\n", by, lastReleaseData.ArchAsset.Size))
-	}()
-
-	go func() {
-		for {
-			time.Sleep(500 * time.Millisecond)
+		err = handler.upgader.InstallUpdatePackage(updatePkg)
+		if err != nil {
+			slog.Error("Error installing update package", "err", err)
+			return
 		}
 	}()
 
-	return nil, nil
+	return &struct{ Body dto.UpdateProgress }{Body: dto.UpdateProgress{
+		ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING,
+		Progress:       0,
+		ErrorMessage:   "",
+		LastRelease:    assets.LastRelease,
+	}}, nil
 }
 
-// notifyClient listens for progress updates and notifies the client accordingly.
-// It runs an infinite loop that waits for either the context to be done or for progress updates.
-// When the context is done, it logs an error message and returns.
-// When a progress update is received, it logs the progress, updates the progress status,
-// broadcasts the progress to the client, and checks if the update process is complete.
-// If the update process is complete, it logs a success message and returns.
-func (handler *UpgradeHanler) notifyClient() {
-	for {
-		select {
-		case <-handler.ctx.Done():
-			slog.Error("Upgrade process closed", "err", handler.ctx.Err())
-			return
-		case n := <-handler.pw.P:
-			slog.Debug(fmt.Sprintf("Notified client of progress update, bytes written: %d", n))
-			handler.progress.ProgressStatus = handler.pw.Percent()
-			slog.Debug(fmt.Sprintf("Copied %d bytes progress %d%%\n", handler.pw.Written(), handler.progress.ProgressStatus))
-			handler.broadcaster.BroadcastMessage(handler.progress)
-			if handler.progress.ProgressStatus >= 100 {
-				slog.Info("Update process completed successfully")
-				return
-			}
-		}
-	}
+// GetUpdateChannelsHandler returns a list of available update channels.
+//
+//	@Summary		List available update channels
+//	@Description	Retrieves a list of all defined update channels in the system.
+//	@Tags			system
+//	@Produce		json
+//	@Success		200	{object}	struct{Body []dto.UpdateChannel}	"A list of available update channels."
+//	@Failure		500	{object}	huma.ErrorModel					"Internal server error."
+//	@Router			/update_channels [get]
+func (handler *UpgradeHanler) GetUpdateChannelsHandler(ctx context.Context, input *struct{}) (*struct{ Body []dto.UpdateChannel }, error) {
+	slog.Debug("Handling GET /update_channels request")
+
+	channels := dto.UpdateChannels.All()
+
+	return &struct{ Body []dto.UpdateChannel }{Body: channels}, nil
 }

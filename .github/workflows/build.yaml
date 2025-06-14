@@ -41,8 +41,9 @@ jobs:
           set -euo pipefail # Strict mode
 
           CURRENT_YEAR=$(date -u +'%Y')
-          CURRENT_MONTH=$(date -u +'%m')
-          
+          CURRENT_MONTH=$(date -u +'%_m') # GNU date: %-m for no padding. %_m for space padding (some BSDs), but %-m is common on Linux.
+                                         # GitHub runners use Linux, so %-m is appropriate.
+          CURRENT_PERIOD_PREFIX="${CURRENT_YEAR}.${CURRENT_MONTH}"
           FINAL_VERSION=""
 
           # For a published release, the version is the tag name from the event
@@ -55,62 +56,64 @@ jobs:
             fi
           else
             echo "Detected development build (push, PR, or non-published release)."
+            echo "Current period prefix for dev versioning: $CURRENT_PERIOD_PREFIX"
 
-            # Initialize variables to keep track of the highest version found
-            # MAX_VERSION_BASE will store the YYYY.MM.DD part (e.g., 2025.06.07)
-            # MAX_DEV_INCREMENTAL will store the highest dev number for that base
-            MAX_VERSION_BASE=""
-            MAX_DEV_INCREMENTAL=-1
+            # MAX_INC_VALUE stores the highest INC found for the CURRENT_PERIOD_PREFIX (e.g., for 2024.7)
+            # MAX_DEV_FOR_MAX_INC stores the highest dev number for that specific MAX_INC_VALUE
+            MAX_INC_VALUE=-1
+            MAX_DEV_FOR_MAX_INC=-1
 
-            # Get all tags for the current year and month that match the pattern
-            # We'll parse them manually to ensure correct ordering (YYYY.MM.DD then .devN)
-            # Using 'grep -E' to ensure only tags matching our format are considered.
-            TAGS_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_YEAR}.${CURRENT_MONTH}.*" | grep -E "^${CURRENT_YEAR}\.${CURRENT_MONTH}\.[0-9]+\.?(dev[0-9]+)?$" || true)
-            echo "Relevant tags for current period: '$TAGS_FOR_CURRENT_PERIOD'"
+            # Escape dots in prefix for regex matching
+            ESCAPED_PERIOD_PREFIX="${CURRENT_PERIOD_PREFIX//./\\.}"
+
+            # Get all tags for the current YYYY.M period that match YYYY.M.INC or YYYY.M.INC-dev.N
+            # Example: For 2024.7, list "2024.7.*" and grep for "^2024\.7\.([0-9]+)(-dev\.([0-9]+))?$"
+            TAGS_FOR_CURRENT_PERIOD=$(git tag --list "${CURRENT_PERIOD_PREFIX}.*" | grep -E "^${ESCAPED_PERIOD_PREFIX}\\.([0-9]+)(-dev\\.([0-9]+))?$" || true)
+            echo "Relevant tags for period $CURRENT_PERIOD_PREFIX: '$TAGS_FOR_CURRENT_PERIOD'"
 
             for TAG in $TAGS_FOR_CURRENT_PERIOD; do
-              # Regex to capture the base (YYYY.MM.DD) and optional .devN
-              if [[ "$TAG" =~ ^([0-9]{4})\.([0-9]{2})\.([0-9]+)(\.dev([0-9]+))?$ ]]; then
-                TAG_YEAR="${BASH_REMATCH[1]}"
-                TAG_MONTH="${BASH_REMATCH[2]}"
-                TAG_DAY="${BASH_REMATCH[3]}"
-                TAG_DEV_NUMBER="${BASH_REMATCH[5]}" # This will be empty if no .dev suffix
+              # Regex to capture INC and optional N from -dev.N for the current YYYY.M prefix
+              # BASH_REMATCH[1] captures INC (e.g., "0", "1", "12")
+              # BASH_REMATCH[2] captures N from -dev.N (e.g., "0", "5"), or is empty if no -dev suffix
+              if [[ "$TAG" =~ ^${ESCAPED_PERIOD_PREFIX}\\.([0-9]+)(?:-dev\.([0-9]+))?$ ]]; then
+                TAG_INC_STR="${BASH_REMATCH[1]}"
+                TAG_DEV_STR="${BASH_REMATCH[2]}" # N from -dev.N, or empty
 
-                CURRENT_TAG_BASE="${TAG_YEAR}.${TAG_MONTH}.${TAG_DAY}"
-                CURRENT_TAG_DEV_NUM=${TAG_DEV_NUMBER:-0} # Default to 0 if .devN not present
+                CURRENT_TAG_INC_NUM=$((TAG_INC_STR)) # Convert to number
+                CURRENT_TAG_DEV_NUM=${TAG_DEV_STR:-0} # Default to 0 if -dev.N not present (e.g., for a release tag YYYY.M.INC)
 
-                echo "  Processing tag: $TAG, Base: $CURRENT_TAG_BASE, DevNum: $CURRENT_TAG_DEV_NUM"
+                echo "  Processing tag: $TAG, INC: $CURRENT_TAG_INC_NUM, DevNum: $CURRENT_TAG_DEV_NUM"
 
-                # Compare current tag base with the maximum base found so far
-                if [[ -z "$MAX_VERSION_BASE" || "$CURRENT_TAG_BASE" > "$MAX_VERSION_BASE" ]]; then
-                  # This tag has a newer YYYY.MM.DD base. Update both base and dev incremental.
-                  MAX_VERSION_BASE="$CURRENT_TAG_BASE"
-                  MAX_DEV_INCREMENTAL="$CURRENT_TAG_DEV_NUM"
-                  echo "    New max base found: $MAX_VERSION_BASE, highest dev for this base: $MAX_DEV_INCREMENTAL"
-                elif [[ "$CURRENT_TAG_BASE" == "$MAX_VERSION_BASE" ]]; then
-                  # Same YYYY.MM.DD base, now check if the dev number is higher
-                  if (( CURRENT_TAG_DEV_NUM > MAX_DEV_INCREMENTAL )); then
-                    MAX_DEV_INCREMENTAL="$CURRENT_TAG_DEV_NUM"
-                    echo "    Same max base ($MAX_VERSION_BASE), but found higher dev number: $MAX_DEV_INCREMENTAL"
+                if (( CURRENT_TAG_INC_NUM > MAX_INC_VALUE )); then
+                  # This tag has a newer INC value for the current YYYY.M period.
+                  MAX_INC_VALUE="$CURRENT_TAG_INC_NUM"
+                  MAX_DEV_FOR_MAX_INC="$CURRENT_TAG_DEV_NUM" # Reset dev count for this new highest INC
+                  echo "    New max INC for $CURRENT_PERIOD_PREFIX found: $MAX_INC_VALUE, its dev num: $MAX_DEV_FOR_MAX_INC"
+                elif (( CURRENT_TAG_INC_NUM == MAX_INC_VALUE )); then
+                  # Same INC value, check if this tag has a higher dev number.
+                  if (( CURRENT_TAG_DEV_NUM > MAX_DEV_FOR_MAX_INC )); then
+                    MAX_DEV_FOR_MAX_INC="$CURRENT_TAG_DEV_NUM"
+                    echo "    Same max INC ($MAX_INC_VALUE) for $CURRENT_PERIOD_PREFIX, but found higher dev number: $MAX_DEV_FOR_MAX_INC"
                   fi
                 fi
               fi
             done
 
-            # Determine the final VERSION_BASE and calculate the next NEW_DEV_INCREMENTAL
-            if [[ -z "$MAX_VERSION_BASE" ]]; then
-              # No matching tags found for the current month/year, start fresh with .0
-              VERSION_BASE="${CURRENT_YEAR}.${CURRENT_MONTH}.0"
-              NEW_DEV_INCREMENTAL=0
-              echo "No matching tags found for current month. Setting default base: $VERSION_BASE.dev$NEW_DEV_INCREMENTAL"
-            else
-              # Found a max base, increment the dev number for that base
-              VERSION_BASE="$MAX_VERSION_BASE"
-              NEW_DEV_INCREMENTAL=$((MAX_DEV_INCREMENTAL + 1))
-              echo "Max base found: $VERSION_BASE. Next dev increment: $NEW_DEV_INCREMENTAL"
-            fi
+            VERSION_INC_PART=""
+            NEW_DEV_INCREMENTAL=""
 
-            FINAL_VERSION="${VERSION_BASE}.dev${NEW_DEV_INCREMENTAL}"
+            if (( MAX_INC_VALUE == -1 )); then
+              # No tags like YYYY.M.INC found for the current period, so start INC at 0.
+              VERSION_INC_PART="0"
+              NEW_DEV_INCREMENTAL=0
+              echo "No matching tags found for $CURRENT_PERIOD_PREFIX. Initializing INC to 0, dev to 0."
+            else
+              # Found existing INC(s) for YYYY.M. The new dev tag will be based on YYYY.M.MAX_INC_VALUE.
+              VERSION_INC_PART="$MAX_INC_VALUE"
+              NEW_DEV_INCREMENTAL=$((MAX_DEV_FOR_MAX_INC + 1))
+              echo "Max INC for $CURRENT_PERIOD_PREFIX is $VERSION_INC_PART. Next dev increment for this base: $NEW_DEV_INCREMENTAL"
+            fi
+            FINAL_VERSION="${CURRENT_PERIOD_PREFIX}.${VERSION_INC_PART}-dev.${NEW_DEV_INCREMENTAL}"
           fi
 
           echo "Final calculated version: $FINAL_VERSION"

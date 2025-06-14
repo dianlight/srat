@@ -40,7 +40,6 @@ func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker Broke
 //
 // Event Types:
 //   - EVENTHELLO:     dto.Welcome
-//   - EVENTUPDATE:    dto.ReleaseAsset
 //   - EVENTUPDATING:  dto.UpdateProgress
 //   - EVENTVOLUMES:   dto.BlockInfo
 //   - EVENTHEARTBEAT: dto.HealthPing
@@ -57,12 +56,11 @@ func (self *BrokerHandler) RegisterSse(api huma.API) {
 		BodyReadTimeout: -1,
 		Tags:            []string{"system"},
 	}, map[string]any{
-		dto.EventTypes.EVENTHELLO.Name:     dto.Welcome{},
-		dto.EventTypes.EVENTUPDATE.Name:    dto.ReleaseAsset{},
-		dto.EventTypes.EVENTUPDATING.Name:  dto.UpdateProgress{},
-		dto.EventTypes.EVENTVOLUMES.Name:   []dto.Disk{},
-		dto.EventTypes.EVENTHEARTBEAT.Name: dto.HealthPing{},
-		dto.EventTypes.EVENTSHARE.Name:     []dto.SharedResource{},
+		dto.EventTypes.EVENTHELLO.String():     dto.Welcome{},
+		dto.EventTypes.EVENTUPDATING.String():  dto.UpdateProgress{},
+		dto.EventTypes.EVENTVOLUMES.String():   []dto.Disk{},
+		dto.EventTypes.EVENTHEARTBEAT.String(): dto.HealthPing{},
+		dto.EventTypes.EVENTSHARE.String():     []dto.SharedResource{},
 	}, func(ctx context.Context, input *struct{}, send sse.Sender) {
 		self.broadcaster.ProcessHttpChannel(send)
 		slog.Debug("SSE Channel closed")
