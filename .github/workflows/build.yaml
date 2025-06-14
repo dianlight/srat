@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail # Strict mode
 
           CURRENT_YEAR=$(date -u +'%Y')
-          CURRENT_MONTH=$(date -u +'%_m') # GNU date: %-m for no padding. %_m for space padding (some BSDs), but %-m is common on Linux.
+          CURRENT_MONTH=$(date -u +'%-m') # GNU date: %-m for no padding. %_m for space padding (some BSDs), but %-m is common on Linux.
                                          # GitHub runners use Linux, so %-m is appropriate.
           CURRENT_PERIOD_PREFIX="${CURRENT_YEAR}.${CURRENT_MONTH}"
           FINAL_VERSION=""
