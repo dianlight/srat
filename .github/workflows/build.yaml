@@ -39,6 +39,7 @@ jobs:
         run: |
           #!/bin/bash
           set -euo pipefail # Strict mode
+          echo "Bash version: $BASH_VERSION"
 
           CURRENT_YEAR=$(date -u +'%Y')
           CURRENT_MONTH=$(date -u +'%-m') # GNU date: %-m for no padding. %_m for space padding (some BSDs), but %-m is common on Linux.
@@ -75,16 +76,22 @@ jobs:
             REGEX_PATTERN="^${ESCAPED_PERIOD_PREFIX}\\.([0-9]+)(?:-dev\\.([0-9]+))?$"
             echo "Using REGEX_PATTERN: '${REGEX_PATTERN}'"
 
-            for RAW_TAG_FROM_LIST in $TAGS_FOR_CURRENT_PERIOD; do
+            # Process tags line by line using a while read loop for robustness
+            echo "$TAGS_FOR_CURRENT_PERIOD" | while IFS= read -r RAW_TAG_FROM_LIST || [[ -n "$RAW_TAG_FROM_LIST" ]]; do
+              # Skip empty lines, if any (though git tag --list shouldn't produce them)
+              if [[ -z "$RAW_TAG_FROM_LIST" ]]; then
+                continue
+              fi
+
               # Sanitize tag: remove potential trailing carriage return if present.
               # This adds robustness against unexpected line ending issues.
               TAG="${RAW_TAG_FROM_LIST%$'\r'}"
 
               # Regex to capture INC and optional N from -dev.N for the current YYYY.M prefix
               echo "  Processing sanitized TAG: '${TAG}' (Raw from list: '${RAW_TAG_FROM_LIST}')"
-              if [[ "$TAG" =~ $REGEX_PATTERN ]]; then
+              if [[ "$TAG" =~ $REGEX_PATTERN ]]; then # Using the variable $REGEX_PATTERN
                 TAG_INC_STR="${BASH_REMATCH[1]}"
-                TAG_DEV_STR="${BASH_REMATCH[2]}" # N from -dev.N, or empty
+                TAG_DEV_STR="${BASH_REMATCH[2]}" # This is the N from -dev.N, or empty if no -dev suffix
 
                 CURRENT_TAG_INC_NUM=$((TAG_INC_STR)) # Convert to number
                 CURRENT_TAG_DEV_NUM=${TAG_DEV_STR:-0} # Default to 0 if -dev.N not present (e.g., for a release tag YYYY.M.INC)
