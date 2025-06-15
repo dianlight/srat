@@ -543,6 +543,7 @@ func (self *UpgradeService) findLatestLocalBinary(searchDir string, basePattern 
 	foundCandidate := false
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasPrefix(entry.Name(), basePattern) {
+			slog.Debug("Skipping candidate local update binary", "path", entry.Name())
 			continue
 		}
 
@@ -555,12 +556,13 @@ func (self *UpgradeService) findLatestLocalBinary(searchDir string, basePattern 
 
 		if info.Mode().IsRegular() && info.ModTime().After(currentExeModTime) {
 			slog.Debug("Found potential local update binary", "path", fullPath, "modTime", info.ModTime())
-			if !foundCandidate || info.ModTime().After(latestModTime) {
-				latestFilePath = fullPath
-				latestModTime = info.ModTime()
-				foundCandidate = true
-				slog.Debug("New latest local update binary candidate", "path", latestFilePath, "modTime", latestModTime)
-			}
+			latestFilePath = fullPath
+			latestModTime = info.ModTime()
+			foundCandidate = true
+			slog.Debug("New latest local update binary candidate", "path", latestFilePath, "modTime", latestModTime)
+			break
+		} else {
+			slog.Debug("Ignore file", "path", fullPath, "info", info)
 		}
 	}
 
@@ -591,7 +593,7 @@ func (self *UpgradeService) InstallUpdateLocal(updateChannel *dto.UpdateChannel)
 	if errFind != nil {
 		errMsg := fmt.Sprintf("Local update: %s", errFind.Error())
 		if errors.Is(errFind, dto.ErrorNoUpdateAvailable) {
-			slog.Info("No local update found or directory missing.", "error", errFind)
+			slog.Info("No local update found or directory missing.")
 			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE, ErrorMessage: errMsg})
 		} else {
 			slog.Error("Error finding local update binary.", "error", errFind)

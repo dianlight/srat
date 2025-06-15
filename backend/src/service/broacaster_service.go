@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/tlog"
 	"github.com/teivah/broadcast"
 
 	"github.com/danielgtaylor/huma/v2/sse"
@@ -35,7 +36,7 @@ func NewBroadcasterService(ctx context.Context) (broker BroadcasterServiceInterf
 
 func (broker *BroadcasterService) BroadcastMessage(msg any) (any, error) {
 	if _, ok := msg.(dto.HealthPing); !ok {
-		slog.Debug("Queued Message", "type", fmt.Sprintf("%T", msg), "msg", msg)
+		tlog.Trace("Queued Message", "type", fmt.Sprintf("%T", msg), "msg", msg)
 	}
 	defer broker.SentCounter.Add(1)
 	broker.relay.Broadcast(msg)

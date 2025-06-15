@@ -215,7 +215,7 @@ func prog(state overseer.State) {
 						if err != nil {
 							return errors.WithMessage(err)
 						}
-						slog.Debug("Route:", "template", template)
+						tlog.Trace("Route:", "template", template)
 						return nil
 					})
 				},
