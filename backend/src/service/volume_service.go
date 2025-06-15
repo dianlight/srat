@@ -68,8 +68,8 @@ type VolumeServiceProps struct {
 }
 
 func NewVolumeService(
+	lc fx.Lifecycle,
 	in VolumeServiceProps,
-	//ctx context.Context, broascasting BroadcasterServiceInterface, mount_repo repository.MountPointPathRepositoryInterface, hardwareClient hardware.ClientWithResponsesInterface, lsblk lsblk.LSBLKInterpreterInterface, fs_service FilesystemServiceInterface, staticConfig *dto.ContextState
 ) VolumeServiceInterface {
 	p := &VolumeService{
 		ctx:               in.Ctx,
@@ -82,12 +82,17 @@ func NewVolumeService(
 		staticConfig:      in.StaticConfig,
 		shareService:      in.ShareService, // Added
 	}
-	//p.GetVolumesData()
-	in.Ctx.Value("wg").(*sync.WaitGroup).Add(1)
-	go func() {
-		defer in.Ctx.Value("wg").(*sync.WaitGroup).Done()
-		p.udevEventHandler()
-	}()
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
+			go func() {
+				defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+				p.udevEventHandler()
+			}()
+			return nil
+		},
+	})
+
 	return p
 }
 
