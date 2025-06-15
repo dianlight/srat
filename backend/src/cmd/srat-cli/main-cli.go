@@ -362,7 +362,7 @@ func main() {
 
 				if updch == dto.UpdateChannels.DEVELOP {
 					slog.Info("Attempting local update for DEVELOP channel.")
-					err = upgrade_service.InstallUpdateLocal()
+					err = upgrade_service.InstallUpdateLocal(&updch)
 					if err != nil {
 						if errors.Is(err, dto.ErrorNoUpdateAvailable) {
 							slog.Info("No local update found or directory missing.", "error", err)

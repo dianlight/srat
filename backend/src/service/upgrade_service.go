@@ -37,8 +37,8 @@ type UpgradeServiceInterface interface {
 	DownloadAndExtractBinaryAsset(asset dto.BinaryAsset) (*UpdatePackage, errors.E)
 	InstallUpdatePackage(updatePkg *UpdatePackage) errors.E
 	InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E
-	InstallUpdateLocal() errors.E
-	InstallOverseerLocal(overseerUpdatePath string) errors.E
+	InstallUpdateLocal(updateChannel *dto.UpdateChannel) errors.E
+	//InstallOverseerLocal(overseerUpdatePath string) errors.E
 }
 
 type UpgradeService struct {
@@ -573,12 +573,17 @@ func (self *UpgradeService) findLatestLocalBinary(searchDir string, basePattern 
 	return latestFilePath, latestModTime, nil
 }
 
-func (self *UpgradeService) InstallUpdateLocal() errors.E {
-	if self.updateChannel == nil || *self.updateChannel != dto.UpdateChannels.DEVELOP {
-		err := errors.New("local updates are only allowed on the DEVELOP update channel")
+func (self *UpgradeService) InstallUpdateLocal(updateChannel *dto.UpdateChannel) errors.E {
+	if updateChannel == nil {
+		updateChannel = self.updateChannel
+	}
+
+	if updateChannel == nil || *updateChannel != dto.UpdateChannels.DEVELOP {
+		err := errors.Errorf("local updates are only allowed on the DEVELOP update channel not %s", updateChannel.String())
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
 		return err
 	}
+
 	slog.Info("Starting local update process.")
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING})
 
@@ -601,6 +606,7 @@ func (self *UpgradeService) InstallUpdateLocal() errors.E {
 	return self.InstallUpdatePackage(updatePkg)
 }
 
+/*
 func (self *UpgradeService) InstallOverseerLocal(overseerUpdatePath string) errors.E {
 	if self.updateChannel == nil || *self.updateChannel != dto.UpdateChannels.DEVELOP {
 		err := errors.New("local overseer updates are only allowed on the DEVELOP update channel")
@@ -631,3 +637,4 @@ func (self *UpgradeService) InstallOverseerLocal(overseerUpdatePath string) erro
 	slog.Info("Prepared local overseer update package", "executable", *updatePkg.CurrentExecutablePath)
 	return self.InstallOverseerUpdate(updatePkg, overseerUpdatePath)
 }
+*/
