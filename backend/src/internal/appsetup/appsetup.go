@@ -2,12 +2,8 @@ package appsetup
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -19,58 +15,23 @@ import (
 	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v72/github"
-	"github.com/lmittmann/tint"
-	"github.com/mattn/go-isatty"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 )
-
-// ConfigureGlobalLogger sets up the global slog logger.
-// It takes the desired logLevel string and an io.Writer for output.
-// It returns the parsed slog.Level or an error if the level string is invalid.
-func ConfigureGlobalLogger(logLevelString string, w io.Writer) (slog.Level, error) {
-	var level slog.Level
-	switch logLevelString {
-	case "trace", "debug":
-		level = slog.LevelDebug
-	case "info", "notice":
-		level = slog.LevelInfo
-	case "warn", "warning":
-		level = slog.LevelWarn
-	case "error", "fatal":
-		level = slog.LevelError
-	default:
-		return level, fmt.Errorf("invalid log level: %s", logLevelString)
-	}
-
-	isTerminal := false
-	if f, ok := w.(*os.File); ok {
-		isTerminal = isatty.IsTerminal(f.Fd())
-	}
-
-	slog.SetDefault(slog.New(
-		tint.NewHandler(w, &tint.Options{
-			Level:      level,
-			TimeFormat: time.RFC3339,
-			NoColor:    !isTerminal,
-			AddSource:  true,
-		}),
-	))
-	return level, nil
-}
 
 // NewFXLoggerOption provides the FX logger configuration.
 func NewFXLoggerOption() fx.Option {
 	return fx.WithLogger(func(l *slog.Logger) fxevent.Logger { // l is provided by FX
 		l.Debug("Starting FX") // Use the logger FX provides for this initial message
 		fxlog := &fxevent.SlogLogger{
-			Logger: l, // Use the logger FX provides to this function for FX events
+			Logger: l.WithGroup("fx"), // Use the logger FX provides to this function for FX events
 		}
-		fxlog.UseLogLevel(slog.LevelDebug)   // FX events at Debug
-		fxlog.UseErrorLevel(slog.LevelError) // FX errors at Error
+		fxlog.UseLogLevel(tlog.LevelTrace)   // FX events at Trace
+		fxlog.UseErrorLevel(tlog.LevelError) // FX errors at Error
 		return fxlog
 	})
 }

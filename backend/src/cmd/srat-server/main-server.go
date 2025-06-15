@@ -17,6 +17,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/internal/appsetup"
+	"github.com/dianlight/srat/tlog"
 	"github.com/gorilla/mux"
 	"gitlab.com/tozd/go/errors"
 
@@ -48,9 +49,6 @@ var addonIpAddress *string
 var logLevelString *string
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	w := os.Stderr
-	// set global logger with custom options
 
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
 	smbConfigFile = flag.String("out", "", "Output samba conf file")
@@ -77,7 +75,7 @@ func main() {
 
 	flag.Parse()
 
-	_, err := appsetup.ConfigureGlobalLogger(*logLevelString, w)
+	err := tlog.SetLevelFromString(*logLevelString)
 	if err != nil {
 		log.Fatalf("Invalid log level: %s", *logLevelString)
 	}

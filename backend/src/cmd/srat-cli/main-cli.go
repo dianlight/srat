@@ -25,6 +25,7 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/templates"
+	"github.com/dianlight/srat/tlog"
 	"github.com/dianlight/srat/unixsamba"
 
 	"go.uber.org/fx"
@@ -46,9 +47,6 @@ var supervisorToken *string
 var logLevelString *string
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	w := os.Stderr
-
 	silentMode := flag.Bool("silent", false, "Silent Mode. Remove unecessary banner")
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
@@ -145,7 +143,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err := appsetup.ConfigureGlobalLogger(*logLevelString, w)
+	err := tlog.SetLevelFromString(*logLevelString)
 	if err != nil {
 		log.Fatalf("Invalid log level: %s", *logLevelString)
 	}

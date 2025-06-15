@@ -16,6 +16,7 @@ import (
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/internal/appsetup"
 	"github.com/dianlight/srat/server"
+	"github.com/dianlight/srat/tlog"
 
 	"go.uber.org/fx"
 )
@@ -23,8 +24,6 @@ import (
 var output *string
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	w := os.Stderr
 	// set global logger with custom options
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	output = flag.String("out", "./docs/", "Output directory where create openapi.* files")
@@ -36,7 +35,7 @@ func main() {
 
 	flag.Parse()
 
-	_, err := appsetup.ConfigureGlobalLogger(*logLevelString, w)
+	err := tlog.SetLevelFromString(*logLevelString)
 	if err != nil {
 		log.Fatalf("Invalid log level: %s", *logLevelString)
 	}
