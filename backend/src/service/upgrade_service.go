@@ -76,9 +76,10 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) UpgradeServiceIn
 			if err != nil || value == nil {
 				p.updateChannel = &dto.UpdateChannels.NONE
 			} else {
-				var ok bool
-				if p.updateChannel, ok = value.(*dto.UpdateChannel); !ok {
-					slog.Error("Unable to convert config value", "value", value, "err", err)
+				p.updateChannel = &dto.UpdateChannel{}
+				err = p.updateChannel.Scan(value)
+				if err != nil {
+					slog.Error("Unable to convert config value", "value", value, "type", fmt.Sprintf("%T", value), "err", err)
 					p.updateChannel = &dto.UpdateChannels.NONE
 				}
 			}
@@ -168,7 +169,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 					slog.Warn("Error parsing version", "version", *release.TagName, "err", err)
 					continue
 				}
-				slog.Debug("Checkong version", "current", config.Version, "release", *release.TagName)
+				slog.Debug("Checking version", "current", config.Version, "release", *release.TagName)
 
 				if myversion.GreaterThanEqual(assertVersion) {
 					continue

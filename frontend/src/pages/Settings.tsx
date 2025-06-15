@@ -153,7 +153,7 @@ export function Settings() {
                                 loading={isChLoading}
                                 autocompleteProps={{
                                     size: "small",
-                                    disabled: read_only,
+                                    disabled: read_only || process.env.NODE_ENV === 'production',
                                 }}
                                 options={((updateChannels as string[]) || [])}
                                 control={control}

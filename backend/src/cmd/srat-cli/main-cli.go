@@ -354,6 +354,11 @@ func main() {
 					slog.Error("Error parsing upgrade channel", "err", ett)
 					return
 				}
+				ett = props_repo.SetValue("UpdateChannel", updch)
+				if ett != nil {
+					slog.Error("Error setting upgrade channel", "err", ett)
+					return
+				}
 
 				if updch == dto.UpdateChannels.DEVELOP {
 					slog.Info("Attempting local update for DEVELOP channel.")
