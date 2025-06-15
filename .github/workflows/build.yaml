@@ -33,7 +33,6 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0 # fetch-depth: 0 is required for git commands to see all history/tags
-
       - name: Calculate version
         id: calculate_version
         run: |

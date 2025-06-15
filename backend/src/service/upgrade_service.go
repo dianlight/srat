@@ -37,6 +37,8 @@ type UpgradeServiceInterface interface {
 	DownloadAndExtractBinaryAsset(asset dto.BinaryAsset) (*UpdatePackage, errors.E)
 	InstallUpdatePackage(updatePkg *UpdatePackage) errors.E
 	InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E
+	InstallUpdateLocal() errors.E
+	InstallOverseerLocal(overseerUpdatePath string) errors.E
 }
 
 type UpgradeService struct {
@@ -47,6 +49,11 @@ type UpgradeService struct {
 	props_repo    repository.PropertyRepositoryInterface
 	updateChannel *dto.UpdateChannel
 }
+
+const (
+	localUpdateDir     = "/config"
+	localUpdatePattern = "srat-"
+)
 
 type UpgradeServiceProps struct {
 	fx.In
@@ -503,4 +510,123 @@ func (self *UpgradeService) InstallOverseerUpdate(updatePkg *UpdatePackage, over
 		}
 	}
 	return self.installBinaryTo(*updatePkg.CurrentExecutablePath, overseerUpdatePath)
+}
+
+// findLatestLocalBinary searches for the newest binary matching the pattern in the search directory
+// that is newer than the current executable.
+func (self *UpgradeService) findLatestLocalBinary(searchDir string, basePattern string) (filePath string, modTime time.Time, errRet errors.E) {
+	currentExePath, err := os.Executable()
+	if err != nil {
+		return "", time.Time{}, errors.Wrap(err, "failed to get current executable path")
+	}
+	currentExeStat, err := os.Stat(currentExePath)
+	if err != nil {
+		return "", time.Time{}, errors.Wrap(err, "failed to stat current executable")
+	}
+	currentExeModTime := currentExeStat.ModTime()
+
+	slog.Debug("Searching for local update binary", "searchDir", searchDir, "pattern", basePattern+"*", "currentExeModTime", currentExeModTime)
+
+	var latestFilePath string
+	var latestModTime time.Time
+
+	entries, err := os.ReadDir(searchDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			slog.Warn("Local update directory does not exist", "dir", searchDir)
+			return "", time.Time{}, errors.WithMessagef(dto.ErrorNoUpdateAvailable, "local update directory %s not found", searchDir)
+		}
+		return "", time.Time{}, errors.Wrapf(err, "failed to read local update directory %s", searchDir)
+	}
+
+	foundCandidate := false
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), basePattern) {
+			continue
+		}
+
+		fullPath := filepath.Join(searchDir, entry.Name())
+		info, errStat := entry.Info()
+		if errStat != nil {
+			slog.Warn("Failed to stat candidate local update file", "path", fullPath, "error", errStat)
+			continue
+		}
+
+		if info.Mode().IsRegular() && info.ModTime().After(currentExeModTime) {
+			slog.Debug("Found potential local update binary", "path", fullPath, "modTime", info.ModTime())
+			if !foundCandidate || info.ModTime().After(latestModTime) {
+				latestFilePath = fullPath
+				latestModTime = info.ModTime()
+				foundCandidate = true
+				slog.Debug("New latest local update binary candidate", "path", latestFilePath, "modTime", latestModTime)
+			}
+		}
+	}
+
+	if !foundCandidate {
+		slog.Info("No new local update binary found", "searchDir", searchDir, "pattern", basePattern+"*")
+		return "", time.Time{}, errors.WithMessage(dto.ErrorNoUpdateAvailable, "no new local update binary found")
+	}
+
+	slog.Info("Latest local update binary selected", "path", latestFilePath, "modTime", latestModTime)
+	return latestFilePath, latestModTime, nil
+}
+
+func (self *UpgradeService) InstallUpdateLocal() errors.E {
+	if self.updateChannel == nil || *self.updateChannel != dto.UpdateChannels.DEVELOP {
+		err := errors.New("local updates are only allowed on the DEVELOP update channel")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+		return err
+	}
+	slog.Info("Starting local update process.")
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING})
+
+	foundFilePath, _, errFind := self.findLatestLocalBinary(localUpdateDir, localUpdatePattern)
+	if errFind != nil {
+		errMsg := fmt.Sprintf("Local update: %s", errFind.Error())
+		if errors.Is(errFind, dto.ErrorNoUpdateAvailable) {
+			slog.Info("No local update found or directory missing.", "error", errFind)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE, ErrorMessage: errMsg})
+		} else {
+			slog.Error("Error finding local update binary.", "error", errFind)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errMsg})
+		}
+		return errFind
+	}
+
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, LastRelease: filepath.Base(foundFilePath)})
+	updatePkg := &UpdatePackage{CurrentExecutablePath: &foundFilePath, OtherFilesPaths: []string{}, TempDirPath: filepath.Dir(foundFilePath)}
+	slog.Info("Prepared local update package", "executable", *updatePkg.CurrentExecutablePath)
+	return self.InstallUpdatePackage(updatePkg)
+}
+
+func (self *UpgradeService) InstallOverseerLocal(overseerUpdatePath string) errors.E {
+	if self.updateChannel == nil || *self.updateChannel != dto.UpdateChannels.DEVELOP {
+		err := errors.New("local overseer updates are only allowed on the DEVELOP update channel")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+		return err
+	}
+	if overseerUpdatePath == "" {
+		err := errors.New("overseer update path cannot be empty for local overseer update")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+		return err
+	}
+	slog.Info("Starting local overseer update process.", "overseerPath", overseerUpdatePath)
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING})
+
+	foundFilePath, _, errFind := self.findLatestLocalBinary(localUpdateDir, localUpdatePattern)
+	if errFind != nil { // Error handling similar to InstallUpdateLocal
+		errMsg := fmt.Sprintf("Local overseer update: %s", errFind.Error())
+		status := dto.UpdateProcessStates.UPDATESTATUSERROR
+		if errors.Is(errFind, dto.ErrorNoUpdateAvailable) {
+			status = dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE
+		}
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: status, ErrorMessage: errMsg})
+		return errFind
+	}
+
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, LastRelease: filepath.Base(foundFilePath)})
+	updatePkg := &UpdatePackage{CurrentExecutablePath: &foundFilePath, OtherFilesPaths: []string{}, TempDirPath: filepath.Dir(foundFilePath)}
+	slog.Info("Prepared local overseer update package", "executable", *updatePkg.CurrentExecutablePath)
+	return self.InstallOverseerUpdate(updatePkg, overseerUpdatePath)
 }

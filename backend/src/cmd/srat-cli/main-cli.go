@@ -354,46 +354,58 @@ func main() {
 					slog.Error("Error parsing upgrade channel", "err", ett)
 					return
 				}
-				err = props_repo.SetValue("UpdateChannel", updch)
-				if err != nil {
-					slog.Error("Error setting upgrade channel", "err", err)
-					return
-				}
 
-				asset, err := upgrade_service.GetUpgradeReleaseAsset(&updch)
-				if err != nil {
-					if errors.Is(err, dto.ErrorNoUpdateAvailable) {
-						slog.Info("No update available for the requested channel.")
-					} else {
-						slog.Error("Error checking for updates", "err", err)
-					}
-				} else if asset != nil {
-					slog.Info("Update available", "version", asset.LastRelease, "asset_name", asset.ArchAsset.Name)
-					updatePkg, errDownload := upgrade_service.DownloadAndExtractBinaryAsset(asset.ArchAsset)
-					if errDownload != nil {
-						slog.Error("Error downloading or extracting update", "err", errDownload)
-						// os.RemoveAll(updatePkg.TempDirPath) // Ensure cleanup on error if updatePkg is not nil
-					} else {
-						slog.Info("Update downloaded and extracted successfully", "temp_dir", updatePkg.TempDirPath)
-						if updatePkg.CurrentExecutablePath != nil {
-							slog.Info("Matching executable found", "path", *updatePkg.CurrentExecutablePath)
-							errInstall := upgrade_service.InstallUpdatePackage(updatePkg)
-							if errInstall != nil {
-								slog.Error("Error installing update for overseer", "err", errInstall)
-							}
+				if updch == dto.UpdateChannels.DEVELOP {
+					slog.Info("Attempting local update for DEVELOP channel.")
+					err = upgrade_service.InstallUpdateLocal()
+					if err != nil {
+						if errors.Is(err, dto.ErrorNoUpdateAvailable) {
+							slog.Info("No local update found or directory missing.", "error", err)
 						} else {
-							slog.Warn("Update downloaded, but no directly matching executable found by name. Check extracted files.", "paths", updatePkg.OtherFilesPaths)
+							slog.Error("Error during local update process", "err", err)
 						}
-						// Clean up the temporary directory after attempting installation or if no matching executable was found.
-						// The InstallOverseerUpdate copies the file, so the temp dir can be removed.
-						// If InstallUpdatePackage were used, it might be best to clean up *after* a successful restart.
-						slog.Debug("Cleaning up temporary update directory", "path", updatePkg.TempDirPath)
-						if err := os.RemoveAll(updatePkg.TempDirPath); err != nil {
-							slog.Warn("Failed to remove temporary update directory", "path", updatePkg.TempDirPath, "err", err)
-						}
+					} else {
+						slog.Info("Local update installed successfully. Please restart the application.")
 					}
 				} else {
-					slog.Info("No update available (asset was nil).")
+					err = props_repo.SetValue("UpdateChannel", updch)
+					if err != nil {
+						slog.Error("Error setting upgrade channel", "err", err)
+						return
+					}
+
+					asset, err := upgrade_service.GetUpgradeReleaseAsset(&updch)
+					if err != nil {
+						if errors.Is(err, dto.ErrorNoUpdateAvailable) {
+							slog.Info("No update available for the requested channel.")
+						} else {
+							slog.Error("Error checking for updates", "err", err)
+						}
+					} else if asset != nil {
+						slog.Info("Update available", "version", asset.LastRelease, "asset_name", asset.ArchAsset.Name)
+						updatePkg, errDownload := upgrade_service.DownloadAndExtractBinaryAsset(asset.ArchAsset)
+						if errDownload != nil {
+							slog.Error("Error downloading or extracting update", "err", errDownload)
+							// os.RemoveAll(updatePkg.TempDirPath) // Ensure cleanup on error if updatePkg is not nil
+						} else {
+							slog.Info("Update downloaded and extracted successfully", "temp_dir", updatePkg.TempDirPath)
+							if updatePkg.CurrentExecutablePath != nil {
+								slog.Info("Matching executable found", "path", *updatePkg.CurrentExecutablePath)
+								errInstall := upgrade_service.InstallUpdatePackage(updatePkg)
+								if errInstall != nil {
+									slog.Error("Error installing update for overseer", "err", errInstall)
+								}
+							} else {
+								slog.Warn("Update downloaded, but no directly matching executable found by name. Check extracted files.", "paths", updatePkg.OtherFilesPaths)
+							}
+							slog.Debug("Cleaning up temporary update directory", "path", updatePkg.TempDirPath)
+							if err := os.RemoveAll(updatePkg.TempDirPath); err != nil {
+								slog.Warn("Failed to remove temporary update directory", "path", updatePkg.TempDirPath, "err", err)
+							}
+						}
+					} else {
+						slog.Info("No update available (asset was nil).")
+					}
 				}
 			}
 		}),

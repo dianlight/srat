@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/utility"
@@ -105,16 +107,51 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 // GetUpdateChannelsHandler returns a list of available update channels.
 //
 //	@Summary		List available update channels
-//	@Description	Retrieves a list of all defined update channels in the system.
+//	@Description	Retrieves a list of all defined update channels in the system. The DEVELOP channel is excluded if the current application version is not a pre-release (e.g., "v1.2.3") or if the version string is not a valid semantic version.
 //	@Tags			system
 //	@Produce		json
 //	@Success		200	{object}	struct{Body []dto.UpdateChannel}	"A list of available update channels."
-//	@Failure		500	{object}	huma.ErrorModel					"Internal server error."
+//	@Failure		500	{object}	huma.ErrorModel						"Internal server error."
 //	@Router			/update_channels [get]
 func (handler *UpgradeHanler) GetUpdateChannelsHandler(ctx context.Context, input *struct{}) (*struct{ Body []dto.UpdateChannel }, error) {
 	slog.Debug("Handling GET /update_channels request")
 
-	channels := dto.UpdateChannels.All()
+	currentVersionStr := config.BuildVersion()
+	slog.Debug("Current application version", "version", currentVersionStr)
 
-	return &struct{ Body []dto.UpdateChannel }{Body: channels}, nil
+	shouldFilterDevelop := false
+	version, err := semver.NewVersion(currentVersionStr)
+	if err != nil {
+		// Version is invalid semver
+		slog.Warn("Current version is not a valid semver, filtering DEVELOP channel", "version", currentVersionStr, "error", err)
+		shouldFilterDevelop = true
+	} else {
+		// Version is valid semver, check if it's a pre-release
+		if version.Prerelease() == "" {
+			// Not a pre-release (e.g., "1.0.0", "v2.3.4")
+			slog.Info("Current version is not a pre-release, filtering DEVELOP channel", "version", currentVersionStr)
+			shouldFilterDevelop = true
+		} else {
+			// Is a pre-release (e.g., "1.0.0-alpha", "v2.3.4-rc.1")
+			slog.Debug("Current version is a pre-release, DEVELOP channel will be included", "version", currentVersionStr)
+		}
+	}
+
+	allChannels := dto.UpdateChannels.All()
+	var resultingChannels []dto.UpdateChannel
+
+	if shouldFilterDevelop {
+		resultingChannels = make([]dto.UpdateChannel, 0, len(allChannels)-1)
+		for _, ch := range allChannels {
+			if ch != dto.UpdateChannels.DEVELOP {
+				resultingChannels = append(resultingChannels, ch)
+			}
+		}
+		slog.Debug("Filtered DEVELOP channel", "resulting_channels_count", len(resultingChannels))
+	} else {
+		resultingChannels = allChannels
+		slog.Debug("DEVELOP channel not filtered", "resulting_channels_count", len(resultingChannels))
+	}
+
+	return &struct{ Body []dto.UpdateChannel }{Body: resultingChannels}, nil
 }
