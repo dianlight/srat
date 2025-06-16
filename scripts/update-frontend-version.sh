@@ -25,7 +25,7 @@ fi
 # Parse the output (e.g., 1.2.3-5-gabcdef, 1.2.3-dev.1-0-gabcdef)
 # Expected format: TAG-COMMITS_SINCE_TAG-gHASH
 if [[ "$DESCRIBE_OUTPUT" =~ ^(.*)-([0-9]+)-g[0-9a-f]+$ ]]; then
-    BASE_TAG=${BASH_REMATCH[1]}
+    TAG_FROM_DESCRIBE=${BASH_REMATCH[1]} # This can be '1.2.3' or '1.2.3-dev.1'
     COMMIT_COUNT=${BASH_REMATCH[2]}
 else
     echo "Error: Failed to parse git describe output: $DESCRIBE_OUTPUT"
@@ -33,17 +33,30 @@ else
     exit 1
 fi
 
-# Validate parsed BASE_TAG format
-if ! [[ "$BASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-dev\.[0-9]+)?$ ]]; then
-    echo "Error: Parsed base tag '$BASE_TAG' from '$DESCRIBE_OUTPUT' is not in the expected format X.Y.Z or X.Y.Z-dev.N."
+# Validate the format of the tag part obtained from git describe
+if ! [[ "$TAG_FROM_DESCRIBE" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-dev\.[0-9]+)?$ ]]; then
+    echo "Error: Parsed tag part '$TAG_FROM_DESCRIBE' from git describe output '$DESCRIBE_OUTPUT' is not in the expected format X.Y.Z or X.Y.Z-dev.N."
     exit 1
 fi
 # COMMIT_COUNT is validated by the regex ([0-9]+) to be a number during parsing.
 
 # 2. Determine the new version string
-NEW_VERSION="$BASE_TAG"
-if [ "$COMMIT_COUNT" -gt 0 ]; then
-    NEW_VERSION="${BASE_TAG}-dev.${COMMIT_COUNT}"
+if [ "$COMMIT_COUNT" -eq 0 ]; then
+    # If on the tag directly, use the tag as is (e.g., '1.2.3' or '1.2.3-dev.1')
+    NEW_VERSION="$TAG_FROM_DESCRIBE"
+else
+    # If there are commits since the tag, the version should be X.Y.Z-dev.COMMIT_COUNT.
+    # Strip any existing -dev.N from TAG_FROM_DESCRIBE to get the core X.Y.Z part.
+    CORE_VERSION="$TAG_FROM_DESCRIBE"
+    if [[ "$TAG_FROM_DESCRIBE" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-dev\.[0-9]+$ ]]; then
+        CORE_VERSION=${BASH_REMATCH[1]}
+    fi
+    # CORE_VERSION should now be strictly X.Y.Z. This also serves as a final validation.
+    if ! [[ "$CORE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Error: Derived core version '$CORE_VERSION' (from tag '$TAG_FROM_DESCRIBE') is not in X.Y.Z format."
+        exit 1
+    fi
+    NEW_VERSION="${CORE_VERSION}-dev.${COMMIT_COUNT}"
 fi
 
 echo "Determined version for $PACKAGE_JSON_PATH: $NEW_VERSION"
