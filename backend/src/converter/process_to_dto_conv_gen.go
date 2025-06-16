@@ -10,7 +10,7 @@ import (
 
 type ProcessToDtoImpl struct{}
 
-func (c *ProcessToDtoImpl) ProcessToSambaProcessStatus(source *process.Process, target *dto.SambaProcessStatus) error {
+func (c *ProcessToDtoImpl) ProcessToProcessStatus(source *process.Process, target *dto.ProcessStatus) error {
 	if source != nil {
 		if source.Pid != 0 {
 			target.Pid = source.Pid

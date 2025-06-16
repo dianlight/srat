@@ -11,9 +11,9 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/tlog"
 )
 
 var _healthHanlerIntance *HealthHanler
@@ -51,7 +51,6 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	p.Alive = true
 	p.AliveTime = time.Now().UnixMilli()
 	p.ReadOnly = param.Apictx.ReadOnlyMode
-	p.SambaProcessStatus.Pid = -1
 	p.LastError = ""
 	p.ctx = param.Ctx
 	p.apictx = param.Apictx
@@ -121,12 +120,10 @@ func (self *HealthHanler) EventEmitter(data dto.HealthPing) error {
 // HealthPing.SambaProcessStatus.Pid to -1.
 func (self *HealthHanler) checkSamba() {
 	sambaProcess, err := self.sambaService.GetSambaProcess()
-	if err == nil && sambaProcess != nil {
-		var conv converter.ProcessToDtoImpl
-		conv.ProcessToSambaProcessStatus(sambaProcess, &self.HealthPing.SambaProcessStatus)
-	} else {
-		self.HealthPing.SambaProcessStatus.Pid = -1
+	if err != nil {
+		tlog.Error("Error reading processes", "err", err)
 	}
+	self.HealthPing.SambaProcessStatus = *sambaProcess
 }
 
 // run is a method of HealthHandler that continuously monitors the health status

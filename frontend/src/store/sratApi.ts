@@ -550,7 +550,7 @@ export type ReleaseAsset = {
   arch_asset?: BinaryAsset;
   last_release?: string;
 };
-export type SambaProcessStatus = {
+export type ProcessStatus = {
   connections: number;
   cpu_percent: number;
   create_time: string;
@@ -560,6 +560,12 @@ export type SambaProcessStatus = {
   open_files: number;
   pid: number;
   status: string[] | null;
+};
+export type SambaProcessStatus = {
+  avahi: ProcessStatus;
+  nmbd: ProcessStatus;
+  smbd: ProcessStatus;
+  wsdd2: ProcessStatus;
 };
 export type HealthPing = {
   /** A URL to the JSON Schema for this object. */
@@ -605,7 +611,6 @@ export type Settings = {
   update_channel?: Update_channel;
   veto_files?: string[];
   workgroup?: string;
-  wsdd?: Wsdd;
 };
 export type JsonPatchOp = {
   /** JSON Pointer for the source of a move or copy */
@@ -700,11 +705,6 @@ export enum Update_channel {
   Develop = "Develop",
   Release = "Release",
   Prerelease = "Prerelease",
-}
-export enum Wsdd {
-  None = "none",
-  Wsdd = "wsdd",
-  Wsdd2 = "wsdd2",
 }
 export enum Op {
   Add = "add",

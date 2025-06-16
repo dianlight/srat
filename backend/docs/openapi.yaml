@@ -344,22 +344,7 @@ components:
         system:
           type: boolean
       type: object
-    ReleaseAsset:
-      additionalProperties: false
-      properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/ReleaseAsset.json
-          format: uri
-          readOnly: true
-          type: string
-        arch_asset:
-          $ref: "#/components/schemas/BinaryAsset"
-        last_release:
-          type: string
-      type: object
-    SambaProcessStatus:
+    ProcessStatus:
       additionalProperties: false
       properties:
         connections:
@@ -400,6 +385,38 @@ components:
         - connections
         - status
         - is_running
+      type: object
+    ReleaseAsset:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ReleaseAsset.json
+          format: uri
+          readOnly: true
+          type: string
+        arch_asset:
+          $ref: "#/components/schemas/BinaryAsset"
+        last_release:
+          type: string
+      type: object
+    SambaProcessStatus:
+      additionalProperties: false
+      properties:
+        avahi:
+          $ref: "#/components/schemas/ProcessStatus"
+        nmbd:
+          $ref: "#/components/schemas/ProcessStatus"
+        smbd:
+          $ref: "#/components/schemas/ProcessStatus"
+        wsdd2:
+          $ref: "#/components/schemas/ProcessStatus"
+      required:
+        - smbd
+        - nmbd
+        - wsdd2
+        - avahi
       type: object
     Settings:
       additionalProperties: false
@@ -1251,6 +1268,42 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          $ref: "#/components/schemas/Welcome"
+                        event:
+                          const: hello
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event hello
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/UpdateProgress"
+                        event:
+                          const: updating
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event updating
+                      type: object
+                    - properties:
+                        data:
                           items:
                             $ref: "#/components/schemas/Disk"
                           type:
@@ -1310,42 +1363,6 @@ paths:
                         - data
                         - event
                       title: Event share
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/Welcome"
-                        event:
-                          const: hello
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event hello
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/UpdateProgress"
-                        event:
-                          const: updating
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event updating
                       type: object
                 title: Server Sent Events
                 type: array

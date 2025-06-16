@@ -8,6 +8,7 @@ import Stack from "@mui/material/Stack";
 import { AppBar, Link, Toolbar, Tooltip } from "@mui/material";
 import { useContext } from "react";
 import { usePutRestartMutation, type HealthPing } from "../store/sratApi.ts";
+import JsonTable from "ts-react-json-table";
 //import { apiContext } from "../Contexts.ts";
 
 
@@ -56,16 +57,22 @@ export function Footer(props: { healthData: HealthPing }) {
                         © 2024-2025 Copyright {pkg.author.name}
                     </Typography>
 
-                    <Tooltip title={JSON.stringify(props.healthData.samba_process_status, null, 2)} arrow>
+                    <Tooltip
+                        title={<JsonTable rows={Object.values(props.healthData.samba_process_status)} />}
+                        arrow
+                    >
                         <Typography variant="caption">
-                            smbd pid {props.healthData.samba_process_status?.pid || "unknown"}
+                            smbd {props.healthData.samba_process_status?.smbd?.pid || "unknown"} |
+                            nmdb {props.healthData.samba_process_status?.nmbd?.pid || "unknown"} |
+                            wsdd2 {props.healthData.samba_process_status?.wsdd2?.pid || "unknown"} |
+                            avahi {props.healthData.samba_process_status?.avahi?.pid || "unknown"} |
                         </Typography>
                     </Tooltip>
-
+                    {/*
                     <Tooltip title="Restart the server" arrow>
                         <Typography onClick={() => handleRestart()} variant="caption">[R]</Typography>
                     </Tooltip>
-
+                    */}
                 </Stack>
             </Container>
         </Paper>

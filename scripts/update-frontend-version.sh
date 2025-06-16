@@ -12,31 +12,38 @@ cd "$GIT_ROOT" || exit 1
 
 # 1. Get describe output to find the base tag and commit count
 # The pattern '[0-9]*.[0-9]*.[0-9]*' matches tags like '1.2.3', '0.1.0', etc.
+# We also want to match tags like '1.2.3-dev.1'.
 # --long format: TAG-COMMITS_SINCE_TAG-gHASH
-DESCRIBE_OUTPUT=$(git describe --tags --match='[0-9]*.[0-9]*.[0-9]*' --long 2>/dev/null)
+DESCRIBE_OUTPUT=$(git describe --tags --match='[0-9]*.[0-9]*.[0-9]*-dev.[0-9]*' --match='[0-9]*.[0-9]*.[0-9]*' --long 2>/dev/null)
 
 if [ -z "$DESCRIBE_OUTPUT" ]; then
-    echo "No matching tag found (pattern: '[0-9]*.[0-9]*.[0-9]*'). Cannot determine version."
-    echo "Please ensure you have a relevant tag like '1.0.0' in your project history."
+    echo "No matching tag found (patterns: 'X.Y.Z-dev.N', 'X.Y.Z'). Cannot determine version."
+    echo "Please ensure you have a relevant tag like '1.0.0' or '1.0.0-dev.1' in your project history."
     exit 1
 fi
 
-# Parse the output (e.g., 1.2.3-5-gabcdef or 1.2.3-0-gabcdef)
-# $1 = TAG, $2 = COMMITS_SINCE_TAG
-BASE_TAG=$(echo "$DESCRIBE_OUTPUT" | awk -F- '{print $1}')
-COMMIT_COUNT=$(echo "$DESCRIBE_OUTPUT" | awk -F- '{print $2}')
-
-# Validate parsing
-if ! [[ "$BASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || ! [[ "$COMMIT_COUNT" =~ ^[0-9]+$ ]]; then
+# Parse the output (e.g., 1.2.3-5-gabcdef, 1.2.3-dev.1-0-gabcdef)
+# Expected format: TAG-COMMITS_SINCE_TAG-gHASH
+if [[ "$DESCRIBE_OUTPUT" =~ ^(.*)-([0-9]+)-g[0-9a-f]+$ ]]; then
+    BASE_TAG=${BASH_REMATCH[1]}
+    COMMIT_COUNT=${BASH_REMATCH[2]}
+else
     echo "Error: Failed to parse git describe output: $DESCRIBE_OUTPUT"
-    echo "Expected format: TAG-COUNT-gHASH (e.g., 1.2.3-0-gabcdef0)"
+    echo "Expected format like 'TAG-COMMITS-gHASH' (e.g., 1.2.3-0-gabcdef0 or 1.2.3-dev.1-0-gabcdef0)"
     exit 1
 fi
+
+# Validate parsed BASE_TAG format
+if ! [[ "$BASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-dev\.[0-9]+)?$ ]]; then
+    echo "Error: Parsed base tag '$BASE_TAG' from '$DESCRIBE_OUTPUT' is not in the expected format X.Y.Z or X.Y.Z-dev.N."
+    exit 1
+fi
+# COMMIT_COUNT is validated by the regex ([0-9]+) to be a number during parsing.
 
 # 2. Determine the new version string
 NEW_VERSION="$BASE_TAG"
 if [ "$COMMIT_COUNT" -gt 0 ]; then
-    NEW_VERSION="${BASE_TAG}.dev${COMMIT_COUNT}"
+    NEW_VERSION="${BASE_TAG}-dev.${COMMIT_COUNT}"
 fi
 
 echo "Determined version for $PACKAGE_JSON_PATH: $NEW_VERSION"

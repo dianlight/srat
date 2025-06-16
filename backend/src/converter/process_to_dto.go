@@ -20,7 +20,7 @@ type ProcessToDto interface {
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:map OpenFiles OpenFiles | sliceToLen
 	// goverter:map Connections Connections | sliceToLen
-	ProcessToSambaProcessStatus(source *process.Process, target *dto.SambaProcessStatus) error
+	ProcessToProcessStatus(source *process.Process, target *dto.ProcessStatus) error
 }
 
 func int64ToTime(source int64) (time.Time, error) {

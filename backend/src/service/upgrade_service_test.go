@@ -158,7 +158,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_ErrorParsingCur
 	suite.Nil(asset)
 	suite.Require().Error(err)
 	suite.ErrorIs(err, semver.ErrInvalidSemVer)
-	suite.True(strings.Contains(err.Error(), "Invalid Semantic Version"), "Error should be a semantic version parsing error")
+	suite.Contains(err.Error(), "Invalid Semantic Version", "Error should be a semantic version parsing error")
 }
 
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_GitHubAPIFailure() {

@@ -19,7 +19,7 @@ import (
 
 type SambaServiceInterface interface {
 	CreateConfigStream() (data *[]byte, err error)
-	GetSambaProcess() (*process.Process, error)
+	GetSambaProcess() (*dto.SambaProcessStatus, error)
 	//StreamToFile(stream *[]byte, path string) error
 	//StartSambaService(id uint) error
 	//StopSambaService(id uint) error
@@ -119,11 +119,26 @@ func (self *SambaService) _JSONFromDatabase() (tconfig config.Config, err error)
 // Returns:
 //   - *process.Process: A pointer to the Samba process if found, or nil if not found.
 //   - error: An error if one occurred during the process search, or nil if successful.
-func (self *SambaService) GetSambaProcess() (*process.Process, error) {
+func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, error) {
+	spc := dto.SambaProcessStatus{
+		Smbd: dto.ProcessStatus{
+			Pid: -1,
+		},
+		Nmbd: dto.ProcessStatus{
+			Pid: -1,
+		},
+		Wsdd2: dto.ProcessStatus{
+			Pid: -1,
+		},
+		Avahi: dto.ProcessStatus{
+			Pid: -1,
+		},
+	}
+	var conv converter.ProcessToDtoImpl
 	var allProcess, err = process.Processes()
 	if err != nil {
 		log.Fatal(err)
-		return nil, errors.WithStack(err)
+		return &spc, errors.WithStack(err)
 	}
 	for _, p := range allProcess {
 		var name, err = p.Name()
@@ -131,10 +146,16 @@ func (self *SambaService) GetSambaProcess() (*process.Process, error) {
 			continue
 		}
 		if name == "smbd" {
-			return p, nil
+			conv.ProcessToProcessStatus(p, &spc.Smbd)
+		} else if name == "nmbd" {
+			conv.ProcessToProcessStatus(p, &spc.Nmbd)
+		} else if name == "wsdd2" {
+			conv.ProcessToProcessStatus(p, &spc.Wsdd2)
+		} else if name == "avahi-publish-service" {
+			conv.ProcessToProcessStatus(p, &spc.Avahi)
 		}
 	}
-	return nil, nil
+	return &spc, nil
 }
 
 func (self *SambaService) WriteSambaConfig() error {

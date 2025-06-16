@@ -374,25 +374,6 @@ export function Settings() {
                                 }}
                             />
                         </Grid>
-                        <Grid size={4}>
-                            <SelectElement label="WSDD Service" name="wsdd"
-                                size="small"
-                                required
-                                options={[
-                                    {
-                                        id: 'none',
-                                        label: 'None',
-                                    },
-                                    {
-                                        id: 'wsdd',
-                                        label: 'Wsdd (Alpine apk)',
-                                    },
-                                    {
-                                        id: 'wsdd2',
-                                        label: 'Netgear wsdd2',
-                                    },
-                                ]} sx={{ display: "flex" }} control={control} disabled={read_only} />
-                        </Grid>
                     </Grid>
                 </form>
                 <Divider />
