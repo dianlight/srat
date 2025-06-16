@@ -48,7 +48,6 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 		return err
 	}
 	target.UpdateChannel = dtoUpdateChannel
-	target.WSDD = wsddMapper(source)
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ConfigToUser(source config.Config, target *dto.User) error {

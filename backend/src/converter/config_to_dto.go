@@ -48,7 +48,6 @@ type ConfigToDtoConverter interface {
 	UserToOtherUser(source dto.User, target *config.User) error
 
 	// goverter:update target
-	// goverter:map . WSDD | wsddMapper
 	// goverter:update:ignoreZeroValueField no
 	// goverter:map UpdateChannel UpdateChannel | github.com/dianlight/srat/dto:ParseUpdateChannel
 	ConfigToSettings(source config.Config, target *dto.Settings) error
@@ -105,14 +104,4 @@ func PathToSource(path string) string {
 
 func pathToType(_ string) string {
 	return "ADDON"
-}
-
-func wsddMapper(source config.Config) dto.WSDDSettings {
-	if source.WSDD == true {
-		return dto.WSDD
-	} else if source.WSDD2 == true {
-		return dto.WSDD2
-	} else {
-		return dto.NoWSDD
-	}
 }

@@ -210,7 +210,7 @@ func (self *SambaService) RestartSambaService() error {
 	}
 
 	// Restart wsdd2 service using s6
-	wsdd2ServicePath := "/run/s6/services/wsdd2"
+	wsdd2ServicePath := "/run/s6-rc/servicedirs/wsdd2"
 	if _, statErr := os.Stat(wsdd2ServicePath); statErr == nil {
 		slog.Info("Restarting wsdd2 service...")
 		cmdWsdd2Restart := exec.Command("s6-svc", "-r", wsdd2ServicePath)
@@ -225,7 +225,7 @@ func (self *SambaService) RestartSambaService() error {
 	}
 
 	// Restart avahi service using s6
-	avahiServicePath := "/run/s6/services/avahi"
+	avahiServicePath := "/run/s6-rc/servicedirs/avahi"
 	if _, statErr := os.Stat(avahiServicePath); statErr == nil {
 		slog.Info("Restarting avahi service...")
 		cmdAvahiRestart := exec.Command("s6-svc", "-r", avahiServicePath)

@@ -12,13 +12,4 @@ type Settings struct {
 	LogLevel          string        `json:"log_level,omitempty"`
 	MultiChannel      bool          `json:"multi_channel,omitempty"`
 	UpdateChannel     UpdateChannel `json:"update_channel,omitempty" enum:"None,Develop,Release,Prerelease"`
-	WSDD              WSDDSettings  `json:"wsdd,omitempty" enum:"none,wsdd,wsdd2"`
 }
-
-type WSDDSettings string
-
-const (
-	NoWSDD WSDDSettings = "none"
-	WSDD   WSDDSettings = "wsdd"
-	WSDD2  WSDDSettings = "wsdd2"
-)
