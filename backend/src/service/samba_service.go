@@ -169,12 +169,25 @@ func (self *SambaService) RestartSambaService() error {
 
 	// Exec smbcontrol smbd reload-config
 	if process != nil {
-		cmdr := exec.Command("smbcontrol", "smbd", "reload-config")
-		out, err := cmdr.CombinedOutput()
+		slog.Info("Reloading smbd configuration...")
+		cmdSmbdReload := exec.Command("smbcontrol", "smbd", "reload-config")
+		outSmbd, err := cmdSmbdReload.CombinedOutput()
 		if err != nil {
-			return errors.Errorf("Error executing smbcontrol: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
+			slog.Error("Error reloading smbd config", "error", err, "output", string(outSmbd))
+			// Decide if this is a fatal error or if we should continue
 		}
-		// remount network share on ha_core
+
+		slog.Info("Reloading nmbd configuration...")
+		cmdNmbdReload := exec.Command("smbcontrol", "nmbd", "reload-config")
+		outNmbd, err := cmdNmbdReload.CombinedOutput()
+		if err != nil {
+			slog.Error("Error reloading nmbd config", "error", err, "output", string(outNmbd))
+			// Decide if this is a fatal error or if we should continue
+		}
+
+		// Remount network shares on ha_core
+		// This logic might be better placed after confirming all local services are stable
+		// or if it's specifically tied to smbd/nmbd reloads.
 		shares, err := self.exported_share_repo.All()
 		if err != nil {
 			return errors.WithStack(err)
@@ -192,6 +205,24 @@ func (self *SambaService) RestartSambaService() error {
 				}
 			}
 		}
+	} else {
+		slog.Warn("Samba process (smbd) not found, skipping reload commands.")
+	}
+
+	// Restart wsdd2 service using s6
+	slog.Info("Restarting wsdd2 service...")
+	cmdWsdd2Restart := exec.Command("s6-svc", "-r", "/run/s6/services/wsdd2")
+	outWsdd2, err := cmdWsdd2Restart.CombinedOutput()
+	if err != nil {
+		return errors.Errorf("Error restarting wsdd2 service: %w \n %#v", err, map[string]any{"error": err, "output": string(outWsdd2)})
+	}
+
+	// Restart anahi service using s6
+	slog.Info("Restarting avahi service...")
+	cmdAvahiRestart := exec.Command("s6-svc", "-r", "/run/s6/services/avahi")
+	outAvahi, err := cmdAvahiRestart.CombinedOutput()
+	if err != nil {
+		return errors.Errorf("Error restarting havahi service: %w \n %#v", err, map[string]any{"error": err, "output": string(outAvahi)})
 	}
 
 	return nil

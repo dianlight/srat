@@ -12,7 +12,6 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/utility"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -22,7 +21,7 @@ type UpgradeHanler struct {
 	upgader     service.UpgradeServiceInterface
 	broadcaster service.BroadcasterServiceInterface
 	progress    dto.UpdateProgress
-	pw          *utility.ProgressWriter
+	//pw          *utility.ProgressWriter
 }
 
 func NewUpgradeHanler(ctx context.Context, apictx *dto.ContextState, upgader service.UpgradeServiceInterface, broadcaster service.BroadcasterServiceInterface) *UpgradeHanler {

@@ -1,7 +1,9 @@
-## 2025.06.4 [ 🚧 Unreleased ]
+## 2025.06.9 [ 🚧 Unreleased ]
 
 ###  ✨ Features
 - [X] Manage `recycle bin`option for share
+- [X] Manage WSDD2 service
+- [X] Manage Avahi service
 ###### __🚧 Work in progess__
 - [ ] Manage `local master`option
 
@@ -12,12 +14,9 @@
 
  
 ### 🏗 Chore
+- [X] Implemet wachdog
 ###### __🚧 Work in progess__
 - [ ] Create the base documentation
-- [ ] Implemet wachdog
-- [ ] Manage WSDD/WSDD2 service
-
-
 
 ## 2025.06.1.dev0801 [ 🧪 Pre-release ]
 
