@@ -210,21 +210,34 @@ func (self *SambaService) RestartSambaService() error {
 	}
 
 	// Restart wsdd2 service using s6
-	slog.Info("Restarting wsdd2 service...")
-	cmdWsdd2Restart := exec.Command("s6-svc", "-r", "/run/s6/services/wsdd2")
-	outWsdd2, err := cmdWsdd2Restart.CombinedOutput()
-	if err != nil {
-		return errors.Errorf("Error restarting wsdd2 service: %w \n %#v", err, map[string]any{"error": err, "output": string(outWsdd2)})
+	wsdd2ServicePath := "/run/s6/services/wsdd2"
+	if _, statErr := os.Stat(wsdd2ServicePath); statErr == nil {
+		slog.Info("Restarting wsdd2 service...")
+		cmdWsdd2Restart := exec.Command("s6-svc", "-r", wsdd2ServicePath)
+		outWsdd2, cmdErr := cmdWsdd2Restart.CombinedOutput()
+		if cmdErr != nil {
+			return errors.Errorf("Error restarting wsdd2 service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outWsdd2)})
+		}
+	} else if os.IsNotExist(statErr) {
+		slog.Warn("wsdd2 service path not found, skipping restart.", "path", wsdd2ServicePath)
+	} else {
+		slog.Error("Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
 	}
 
-	// Restart anahi service using s6
-	slog.Info("Restarting avahi service...")
-	cmdAvahiRestart := exec.Command("s6-svc", "-r", "/run/s6/services/avahi")
-	outAvahi, err := cmdAvahiRestart.CombinedOutput()
-	if err != nil {
-		return errors.Errorf("Error restarting havahi service: %w \n %#v", err, map[string]any{"error": err, "output": string(outAvahi)})
+	// Restart avahi service using s6
+	avahiServicePath := "/run/s6/services/avahi"
+	if _, statErr := os.Stat(avahiServicePath); statErr == nil {
+		slog.Info("Restarting avahi service...")
+		cmdAvahiRestart := exec.Command("s6-svc", "-r", avahiServicePath)
+		outAvahi, cmdErr := cmdAvahiRestart.CombinedOutput()
+		if cmdErr != nil {
+			return errors.Errorf("Error restarting avahi service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outAvahi)})
+		}
+	} else if os.IsNotExist(statErr) {
+		slog.Warn("avahi service path not found, skipping restart.", "path", avahiServicePath)
+	} else {
+		slog.Error("Error checking avahi service path, skipping restart.", "path", avahiServicePath, "error", statErr)
 	}
-
 	return nil
 }
 
