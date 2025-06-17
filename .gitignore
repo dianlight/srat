@@ -5,3 +5,22 @@ backend/src/web/static/*
 !backend/src/web/static/.keep
 .DS_Store
 backend/tmp/
+
+# artifacts
+__pycache__
+.pytest*
+*.egg-info
+*/build/*
+*/dist/*
+
+
+# misc
+.coverage
+.vscode
+coverage.xml
+.ruff_cache
+
+
+# Home Assistant configuration
+config/*
+!config/configuration.yaml

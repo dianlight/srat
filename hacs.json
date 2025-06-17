@@ -1,0 +1,5 @@
+{
+    "name": "SRAT Companion",
+    "homeassistant": "2025.6.0",
+    "hacs": "2.0.1"
+}

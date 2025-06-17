@@ -1,6 +1,7 @@
 {
 	"name": "SRAT",
-	"image": "ghcr.io/hassio-addons/base:17.2.5",
+	//	"image": "ghcr.io/hassio-addons/base:17.2.5",
+	"image": "ghcr.io/home-assistant/aarch64-base-python:3.13-alpine3.22",
 	"runArgs": [
 		"--cap-add=SYS_PTRACE",
 		"--security-opt",
@@ -10,6 +11,9 @@
 	"updateContentCommand": {
 		"mainScrip": "./.devcontainer/updateContentCommand.sh"
 	},
+	"forwardPorts": [
+		8123
+	],
 	"portsAttributes": {
 		"8080": {
 			"label": "Backend",
@@ -33,6 +37,10 @@
 			"protocol": "http",
 			"hostPort": 8090,
 			"containerPort": 8090
+		},
+		"8123": {
+			"label": "Home Assistant",
+			"onAutoForward": "notify"
 		}
 	},
 	"remoteEnv": {
@@ -55,7 +63,19 @@
 				"go.lintTool": "golangci-lint",
 				"go.lintFlags": [
 					"--fast"
-				]
+				],
+				"files.eol": "\n",
+				"editor.tabSize": 4,
+				"editor.formatOnPaste": true,
+				"editor.formatOnSave": true,
+				"editor.formatOnType": false,
+				"files.trimTrailingWhitespace": true,
+				"python.analysis.typeCheckingMode": "basic",
+				"python.analysis.autoImportCompletions": true,
+				"python.defaultInterpreterPath": "/usr/bin/python",
+				"[python]": {
+					"editor.defaultFormatter": "charliermarsh.ruff"
+				}
 			},
 			"extensions": [
 				"vivaxy.vscode-conventional-commits",
@@ -72,7 +92,12 @@
 				"zoellner.openapi-preview",
 				"golang.go",
 				"oorzc.mind-map",
-				"eamodio.gitlens"
+				"eamodio.gitlens",
+				"charliermarsh.ruff",
+				"github.vscode-pull-request-github",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ryanluker.vscode-coverage-gutters"
 			]
 		}
 	},
@@ -81,7 +106,15 @@
 			"installDockerCompose": true
 		},
 		"ghcr.io/cirolosapio/devcontainers-features/alpine-gh-cli:0": {},
-		"ghcr.io/cirolosapio/devcontainers-features/alpine-jq:0": {}
+		"ghcr.io/cirolosapio/devcontainers-features/alpine-jq:0": {},
+		"ghcr.io/devcontainers-extra/features/apt-packages:1": {
+			"packages": [
+				"ffmpeg",
+				"libturbojpeg",
+				"libpcap-dev",
+				"go2rtc"
+			]
+		}
 	},
 	"mounts": [
 		"type=bind,source=${localEnv:HOME}/.ssh,target=/root/.ssh,readonly"
