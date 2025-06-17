@@ -1,4 +1,4 @@
-## 2025.06.9 [ 🚧 Unreleased ]
+## 2025.06.* [ 🚧 Unreleased ]
 
 ###  ✨ Features
 - [X] Manage `recycle bin`option for share
