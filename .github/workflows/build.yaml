@@ -283,6 +283,7 @@ jobs:
           name: binary-builds
 
       - name: Create Release and Upload Assets
+        if: github.event_name != 'release' || github.event.action != 'published' || !github.event.release.prerelease
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.setversion.outputs.version }}
