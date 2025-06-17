@@ -22,6 +22,9 @@
 	"remoteUser": "root",
 	"postCreateCommand": ".devcontainer/postCreateCommand.sh",
 	"postStartCommand": "chmod +x .devcontainer/postStartCommand.sh && CONTAINER_WORKSPACE_FOLDER=${containerWorkspaceFolder} ./.devcontainer/postStartCommand.sh",
+	"forwardPorts": [
+		8123
+	],
 	"portsAttributes": {
 		"8080": {
 			"label": "Backend",
@@ -133,7 +136,15 @@
 			"installDockerCompose": true
 		},
 		"ghcr.io/cirolosapio/devcontainers-features/alpine-gh-cli:0": {},
-		"ghcr.io/cirolosapio/devcontainers-features/alpine-jq:0": {}
+		"ghcr.io/cirolosapio/devcontainers-features/alpine-jq:0": {},
+		"ghcr.io/devcontainers-extra/features/apt-packages:1": {
+			"packages": [
+				"ffmpeg",
+				"libturbojpeg",
+				"libpcap-dev",
+				"go2rtc"
+			]
+		}
 	},
 	"mounts": [
 		"type=bind,source=${localEnv:HOME}/.ssh,target=/root/.ssh,readonly"

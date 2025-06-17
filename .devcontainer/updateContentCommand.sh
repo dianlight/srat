@@ -24,3 +24,7 @@ sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/gemini)" ||:
 bun add -g biome ||:
 bun pm -g trust --all ||:
 sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/biome)" ||:
+
+cd "$(dirname "$0")/.."
+apk add --no-cache py3-pip
+python3 -m pip install --requirement requirements.txt
