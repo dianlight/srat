@@ -115,7 +115,7 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 func (handler *UpgradeHanler) GetUpdateChannelsHandler(ctx context.Context, input *struct{}) (*struct{ Body []dto.UpdateChannel }, error) {
 	slog.Debug("Handling GET /update_channels request")
 
-	currentVersionStr := config.BuildVersion()
+	currentVersionStr := config.Version
 	slog.Debug("Current application version", "version", currentVersionStr)
 
 	shouldFilterDevelop := false
