@@ -289,6 +289,6 @@ jobs:
           name: Release ${{ needs.setversion.outputs.version }}
           # Create a draft and pre-release for pushes to main, but a full release for 'release' events.
           draft: ${{ github.event_name != 'release' }}
-          prerelease: ${{ github.event_name != 'release' }}
+          prerelease: ${{ github.event_name != 'release' || github.event.release.prerelease }}
           generate_release_notes: true
           files: ${{ steps.download_art.outputs.download-path }}/*
