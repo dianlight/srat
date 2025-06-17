@@ -6,9 +6,9 @@
 - [X] Manage Avahi service
 ###### __🚧 Work in progess__
 - [ ] Manage `local master`option (?)
-- [ ] Veto files for share not global
-- [ ] Monitor tab
-- [ ] Help screen or overlay help/tour
+- [ ] Veto files for share not global [#79](https://github.com/dianlight/srat/issues/79)
+- [ ] Monitor tab (?)
+- [ ] Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
 
 ###  🐛 Bug Fixes
 - [X] `enable`/`disable` share functionality is not working as expected.
@@ -19,10 +19,9 @@
 ### 🏗 Chore
 - [X] Implemet wachdog
 ###### __🚧 Work in progess__
-- [ ] Create the base documentation
+- [ ] Create the base documentation [#80](https://github.com/dianlight/srat/issues/80)
 - [ ] Display version from ADDON
-- [ ] Align UI elements to HA
-    - [ ] Navbar h
+- [ ] Align UI elements to HA [#81](https://github.com/dianlight/srat/issues/81)
 
 ## 2025.06.1-dev.801 [ 🧪 Pre-release ]
 
