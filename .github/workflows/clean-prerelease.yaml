@@ -24,7 +24,7 @@ jobs:
         # gh CLI uses node under the hood, this ensures its dependencies are met.
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Find and Delete Old Pre-releases
         env:
