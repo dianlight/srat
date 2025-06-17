@@ -6,6 +6,8 @@
 - [X] Manage Avahi service
 ###### __🚧 Work in progess__
 - [ ] Manage `local master`option
+- [ ] Veto files for share not global
+- [ ] Monitor tab
 
 ###  🐛 Bug Fixes
 - [X] `enable`/`disable` share functionality is not working as expected.
@@ -18,7 +20,7 @@
 ###### __🚧 Work in progess__
 - [ ] Create the base documentation
 
-## 2025.06.1.dev0801 [ 🧪 Pre-release ]
+## 2025.06.1-dev.801 [ 🧪 Pre-release ]
 
 ###  ✨ Features
 - First Fully functional version ready for first merge!
