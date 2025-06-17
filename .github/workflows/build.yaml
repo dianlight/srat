@@ -283,12 +283,13 @@ jobs:
           name: binary-builds
 
       - name: Create Release and Upload Assets
+        if: github.event_name != 'release' || github.event.action != 'published' || !github.event.release.prerelease
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.setversion.outputs.version }}
           name: Release ${{ needs.setversion.outputs.version }}
           # Create a draft and pre-release for pushes to main, but a full release for 'release' events.
           draft: ${{ github.event_name != 'release' }}
-          prerelease: ${{ github.event_name != 'release' }}
+          prerelease: ${{ github.event_name != 'release' || github.event.release.prerelease }}
           generate_release_notes: true
           files: ${{ steps.download_art.outputs.download-path }}/*

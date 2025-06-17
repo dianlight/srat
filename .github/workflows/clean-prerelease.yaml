@@ -1,0 +1,94 @@
+name: Cleanup Old Pre-releases
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    # Allows manual triggering of the workflow
+
+permissions:
+  contents: read
+  # Required to list releases
+  releases: write # Required to delete releases
+
+jobs:
+  delete-old-prereleases:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (for jq if not pre-installed and for general scripting)
+        # gh CLI uses node under the hood, this ensures its dependencies are met.
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Find and Delete Old Pre-releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Automatically provided by GitHub Actions
+          REPO: ${{ github.repository }}       # Repository owner/name (e.g., octocat/hello-world)
+          KEEP_COUNT: 3                       # Number of pre-releases to keep after the latest stable release
+        run: |
+          echo "Starting pre-release cleanup for $REPO..."
+
+          # Fetch all releases, ordered by creation date descending.
+          # We need `prerelease` flag and `createdAt` for filtering.
+          # The `--limit 100` is a precaution; adjust if you have many more releases.
+          echo "Fetching all releases..."
+          releases_json=$(gh release list --limit 100 --json tagName,prerelease,createdAt --repo "$REPO")
+
+          # Check if any releases were fetched
+          if [ -z "$releases_json" ] || [ "$(echo "$releases_json" | jq length)" -eq 0 ]; then
+            echo "No releases found. Exiting."
+            exit 0
+          fi
+
+          echo "Successfully fetched releases."
+
+          # Find the creation timestamp of the latest non-prerelease (stable) release.
+          # If no stable release exists, all pre-releases will be considered.
+          latest_stable_release_date=$(echo "$releases_json" | jq -r '
+            map(select(.prerelease == false)) |
+            sort_by(.createdAt) |
+            .reverse |
+            .[0].createdAt // "1970-01-01T00:00:00Z" # Default to epoch if no stable release
+          ')
+
+          echo "Latest stable release created at: $latest_stable_release_date"
+
+          # Filter pre-releases that were created *after* the latest stable release.
+          # Sort them by creation date in descending order.
+          prereleases_to_consider=$(echo "$releases_json" | jq -r --argjson latest_stable_date "$latest_stable_release_date" '
+            map(select(.prerelease == true and (.createdAt > $latest_stable_date))) |
+            sort_by(.createdAt) |
+            reverse |
+            .[] |
+            .tagName
+          ')
+
+          # Convert to an array for easier counting and slicing
+          IFS=$'\n' read -r -d '' -A prerelease_tags <<< "$prereleases_to_consider"
+
+          num_prereleases=$((${#prerelease_tags[@]}))
+          echo "Found $num_prereleases pre-releases to consider after the latest stable release."
+
+          # Determine which pre-releases to delete
+          if [ "$num_prereleases" -gt "$KEEP_COUNT" ]; then
+            releases_to_delete="${prerelease_tags[@]:KEEP_COUNT}"
+            echo "Identified the following pre-releases for deletion (keeping latest $KEEP_COUNT):"
+            echo "$releases_to_delete"
+            echo ""
+
+            for tag in $releases_to_delete; do
+              echo "Deleting pre-release: $tag"
+              gh release delete "$tag" --repo "$REPO" --yes || {
+                echo "Warning: Failed to delete release $tag. It might not exist or there was a permission issue."
+              }
+            done
+            echo "Cleanup complete."
+          else
+            echo "No old pre-releases to delete (found $num_prereleases, keeping $KEEP_COUNT)."
+          fi
