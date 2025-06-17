@@ -9,6 +9,7 @@
 - [ ] Veto files for share not global [#79](https://github.com/dianlight/srat/issues/79)
 - [ ] Monitor tab (?)
 - [ ] Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
+- [ ] Custom component [#83](https://github.com/dianlight/srat/issues/83)
 
 ###  🐛 Bug Fixes
 - [X] `enable`/`disable` share functionality is not working as expected.
