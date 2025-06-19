@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
 import logging
 from datetime import timedelta
@@ -114,12 +115,66 @@ async def _start_sse_listener(hass: HomeAssistant, addon_slug: str, sse_ingress_
                     addon_slug, resp.status
                 )
                 async for line_bytes in resp.content:
+                    # SSE messages are expected to be UTF-8
                     line = line_bytes.decode('utf-8').strip()
-                    if not line:  # Skip empty lines (keep-alive)
+
+                    if not line:  # An empty line signifies the end of an event block
+                        if current_event_name and data_buffer:
+                            full_data_str = "".join(data_buffer)
+                            try:
+                                parsed_data = json.loads(full_data_str)
+                                _LOGGER.info(
+                                    "SSE Event from %s - Type: '%s', Data: %s",
+                                    addon_slug, current_event_name, parsed_data
+                                )
+                                # TODO: Implement specific logic based on event_name and parsed_data
+                                # For example:
+                                # if current_event_name == "hello":
+                                #     _LOGGER.debug("Welcome message received: %s", parsed_data)
+                                # elif current_event_name == "heartbeat":
+                                #     _LOGGER.debug("Heartbeat received: %s", parsed_data)
+                                # elif current_event_name == "volumes":
+                                #     _LOGGER.debug("Volumes update: %s", parsed_data)
+                                # elif current_event_name == "updating":
+                                #     _LOGGER.debug("Update progress: %s", parsed_data)
+                                # elif current_event_name == "share":
+                                #     _LOGGER.debug("Share update: %s", parsed_data)
+
+                            except json.JSONDecodeError:
+                                _LOGGER.error(
+                                    "SSE JSONDecodeError for event '%s' from %s. Raw data: '%s'",
+                                    current_event_name, addon_slug, full_data_str
+                                )
+                            except Exception as e_dispatch:
+                                _LOGGER.error(
+                                    "Exception while dispatching SSE event '%s' from %s: %s",
+                                    current_event_name, addon_slug, e_dispatch
+                                )
+                        # Reset for the next event
+                        current_event_name = None # Default event type if not specified
+                        data_buffer = []
                         continue
-                    _LOGGER.debug("SSE data from %s: %s", addon_slug, line)
-                    # More detailed SSE event parsing can be added here
-                    # Example: if line.startswith("event:"): ... elif line.startswith("data:"): ...
+
+                    if line.startswith(':'):  # Comment line, typically for keep-alive
+                        _LOGGER.debug("SSE keep-alive/comment from %s: %s", addon_slug, line)
+                        continue
+
+                    # Try to split the line into field and value
+                    # SSE lines are typically "field: value"
+                    parts = line.split(":", 1)
+                    field = parts[0].strip()
+                    value = parts[1].strip() if len(parts) > 1 else ""
+
+                    if field == "event":
+                        current_event_name = value
+                    elif field == "data":
+                        data_buffer.append(value) # Data can be split across multiple lines, join later
+                    elif field == "id":
+                        _LOGGER.debug("SSE event ID from %s: %s", addon_slug, value)
+                    elif field == "retry":
+                        _LOGGER.debug("SSE retry value from %s: %s ms", addon_slug, value)
+                    else:
+                        _LOGGER.debug("SSE unknown line from %s: %s", addon_slug, line)
             else:
                 _LOGGER.error(
                     "Failed to connect to SSE for %s. Status: %s, Response: %s",
@@ -127,6 +182,27 @@ async def _start_sse_listener(hass: HomeAssistant, addon_slug: str, sse_ingress_
                     resp.status,
                     await resp.text()
                 )
+
+        # After the loop, process any lingering event data if the stream ended abruptly
+        if current_event_name and data_buffer:
+            full_data_str = "".join(data_buffer)
+            try:
+                parsed_data = json.loads(full_data_str)
+                _LOGGER.info(
+                    "SSE Event (EOF) from %s - Type: '%s', Data: %s",
+                    addon_slug, current_event_name, parsed_data
+                )
+            except json.JSONDecodeError:
+                _LOGGER.error(
+                    "SSE JSONDecodeError (EOF) for event '%s' from %s. Raw data: '%s'",
+                    current_event_name, addon_slug, full_data_str
+                )
+            except Exception as e_dispatch:
+                _LOGGER.error(
+                    "Exception while dispatching SSE event (EOF) '%s' from %s: %s",
+                    current_event_name, addon_slug, e_dispatch
+                )
+
     except aiohttp.ClientConnectorError as e:
         _LOGGER.error("SSE connection error for %s (%s): %s", addon_slug, full_sse_url, e)
     except asyncio.TimeoutError:
