@@ -1,4 +1,4 @@
-"""L'integrazione SRAT Companion."""
+"""The SRAT Companion integration."""
 from __future__ import annotations
 
 import asyncio
@@ -21,49 +21,49 @@ from homeassistant.util import utcnow
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "srat_companion"
-PLATFORMS: list[str] = [] # Questo componente non crea entità, solo rilevamento e riparazione.
+PLATFORMS: list[str] = [] # This component does not create entities, only discovery and repair.
 
-# --- CONFIGURA QUESTO SUFFISSO PER GLI SLUG DEGLI ADD-ON CHE VUOI MONITORARE ---
+# --- CONFIGURE THIS SUFFIX FOR THE SLUGS OF THE ADD-ONS YOU WANT TO MONITOR ---
 ADDON_SLUG_SUFFIX = "_sambanas2"
 # -----------------------------------------------------------------------
 
-# Il nome dell'evento per le risposte delle informazioni degli add-on del Supervisor
+# The event name for Supervisor add-on information responses
 EVENT_SUPERVISOR_ADDON_INFO = "hassio_addon_info"
 
-SCAN_INTERVAL = timedelta(minutes=1) # Ogni quanto controllare lo stato degli add-on
+SCAN_INTERVAL = timedelta(minutes=1) # How often to check the status of add-ons
 
-# Questo set memorizzerà tutti gli slug degli add-on che corrispondono al pattern e che sono stati "rilevati"
-# per evitare di attivare più volte il flusso di scoperta.
+# This set will store all add-on slugs that match the pattern and have been "discovered"
+# to avoid triggering the discovery flow multiple times.
 _DISCOVERED_ADDONS: set[str] = set()
 
-# Questo dizionario traccia i timestamp per gli add-on che non sono in stato "started"
-# Chiave: addon_slug, Valore: datetime del momento in cui è stato notato per la prima volta come non avviato
+# This dictionary tracks timestamps for add-ons that are not in the "started" state
+# Key: addon_slug, Value: datetime of when it was first noticed as not started
 _NOT_STARTED_TIMESTAMPS: dict[str, Any] = {}
 
-# Questo dizionario traccerà le task attive dell'ascoltatore SSE per ogni add-on
+# This dictionary will track active SSE listener tasks for each add-on
 _SSE_CONNECTIONS: dict[str, asyncio.Task[None]] = {}
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Imposta SRAT Companion da configuration.yaml (o per il rilevamento automatico iniziale)."""
+    """Set up SRAT Companion from configuration.yaml (or for initial auto-discovery)."""
     hass.data.setdefault(DOMAIN, {})
 
-    # Controlla se un ingresso di configurazione per l'integrazione principale è già impostato.
+    # Check if a config entry for the main integration is already set up.
     existing_entries = hass.config_entries.async_entries(DOMAIN)
     is_already_configured = any(entry.unique_id == DOMAIN for entry in existing_entries)
 
     if not is_already_configured:
-        _LOGGER.debug("Controllo per il rilevamento automatico iniziale degli add-on con suffisso: %s", ADDON_SLUG_SUFFIX)
+        _LOGGER.debug("Checking for initial auto-discovery of add-ons with suffix: %s", ADDON_SLUG_SUFFIX)
         try:
             hassio_integration: Integration | None = hass.data.get("hassio")
             if not hassio_integration:
                 _LOGGER.warning(
-                    "L'integrazione Home Assistant Supervisor (hassio) non è stata caricata durante l'avvio. "
-                    "Il rilevamento automatico potrebbe essere ritardato o fallire."
+                    "Home Assistant Supervisor (hassio) integration was not loaded during startup. "
+                    "Auto-discovery might be delayed or fail."
                 )
                 return True
 
-            # Chiama il servizio hassio per ottenere le informazioni su TUTTI gli add-on
+            # Call the hassio service to get information about ALL add-ons
             response: dict[str, Any] = await hass.services.async_call(
                 "hassio", "addons_info", blocking=True, return_response=True
             )
@@ -74,7 +74,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 if addon_slug.endswith(ADDON_SLUG_SUFFIX):
                     if addon_data.get("installed", False) and addon_slug not in _DISCOVERED_ADDONS:
                         _LOGGER.info(
-                            "Add-on '%s' (che termina con '%s') trovato installato all'avvio. Attivazione del rilevamento automatico.",
+                            "Add-on '%s' (ending with '%s') found installed at startup. Triggering auto-discovery.",
                             addon_slug, ADDON_SLUG_SUFFIX
                         )
                         hass.async_create_task(
@@ -87,94 +87,94 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                         _DISCOVERED_ADDONS.add(addon_slug)
         except Exception as err:
             _LOGGER.error(
-                "Errore durante il rilevamento automatico iniziale per add-on con suffisso '%s': %s",
+                "Error during initial auto-discovery for add-ons with suffix '%s': %s",
                 ADDON_SLUG_SUFFIX, err
             )
     else:
-        _LOGGER.debug("SRAT Companion è già configurato.")
+        _LOGGER.debug("SRAT Companion is already configured.")
 
     return True
 
 
 async def _start_sse_listener(hass: HomeAssistant, addon_slug: str, sse_ingress_path: str):
-    """Avvia un ascoltatore SSE per l'endpoint ingress di un add-on."""
+    """Starts an SSE listener for an add-on's ingress endpoint."""
     full_sse_url = f"{sse_ingress_path}/sse"
     _LOGGER.info(
-        "Tentativo di connessione all'endpoint SSE per %s su %s",
+        "Attempting to connect to SSE endpoint for %s at %s",
         addon_slug, full_sse_url
     )
     session = async_get_clientsession(hass)
 
     try:
-        # Utilizza il percorso ingress direttamente; il client session di HA gestirà l'URL base corretto.
+        # Use the ingress path directly; HA's client session will handle the correct base URL.
         async with session.get(full_sse_url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
             if resp.status == 200:
                 _LOGGER.info(
-                    "Connesso con successo a SSE per %s. Stato: %s",
+                    "Successfully connected to SSE for %s. Status: %s",
                     addon_slug, resp.status
                 )
                 async for line_bytes in resp.content:
                     line = line_bytes.decode('utf-8').strip()
-                    if not line:  # Salta le righe vuote (keep-alive)
+                    if not line:  # Skip empty lines (keep-alive)
                         continue
-                    _LOGGER.debug("Dati SSE da %s: %s", addon_slug, line)
-                    # Qui è possibile aggiungere un parsing più dettagliato degli eventi SSE
-                    # Esempio: if line.startswith("event:"): ... elif line.startswith("data:"): ...
+                    _LOGGER.debug("SSE data from %s: %s", addon_slug, line)
+                    # More detailed SSE event parsing can be added here
+                    # Example: if line.startswith("event:"): ... elif line.startswith("data:"): ...
             else:
                 _LOGGER.error(
-                    "Impossibile connettersi a SSE per %s. Stato: %s, Risposta: %s",
+                    "Failed to connect to SSE for %s. Status: %s, Response: %s",
                     addon_slug,
                     resp.status,
                     await resp.text()
                 )
     except aiohttp.ClientConnectorError as e:
-        _LOGGER.error("Errore di connessione SSE per %s (%s): %s", addon_slug, full_sse_url, e)
+        _LOGGER.error("SSE connection error for %s (%s): %s", addon_slug, full_sse_url, e)
     except asyncio.TimeoutError:
-        _LOGGER.error("Timeout connessione SSE per %s (%s)", addon_slug, full_sse_url)
+        _LOGGER.error("SSE connection timeout for %s (%s)", addon_slug, full_sse_url)
     except Exception as e:
-        _LOGGER.error("Eccezione durante la gestione SSE per %s (%s): %s", addon_slug, full_sse_url, e)
+        _LOGGER.error("Exception during SSE handling for %s (%s): %s", addon_slug, full_sse_url, e)
     finally:
-        _LOGGER.info("Ascoltatore SSE per %s terminato.", addon_slug)
-        _SSE_CONNECTIONS.pop(addon_slug, None) # Rimuovi la task se termina da sola
+        _LOGGER.info("SSE listener for %s terminated.", addon_slug)
+        _SSE_CONNECTIONS.pop(addon_slug, None) # Remove the task if it finishes on its own
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Imposta SRAT Companion da un ingresso di configurazione."""
-    _LOGGER.debug("Impostazione dell'ingresso di configurazione per SRAT Companion: %s", entry.unique_id)
+    """Set up SRAT Companion from a config entry."""
+    _LOGGER.debug("Setting up config entry for SRAT Companion: %s", entry.unique_id)
 
     hassio_integration: Integration | None = hass.data.get("hassio")
     if not hassio_integration:
         _LOGGER.error(
-            "L'integrazione Home Assistant Supervisor (hassio) non è stata caricata. "
-            "SRAT Companion richiede hassio."
+            "Home Assistant Supervisor (hassio) integration was not loaded. "
+            "SRAT Companion requires hassio."
         )
         raise ConfigEntryNotReady("L'integrazione Hass.io non è pronta.")
 
-    # Il coordinatore aggiornerà le informazioni su TUTTI gli add-on
+    # The coordinator will update information for ALL add-ons
     async def async_update_data():
-        """Recupera i dati dal Supervisor per tutti gli add-on."""
-        _LOGGER.debug("Controllo stato per tutti gli add-on Supervisor.")
+        """Fetch data from the Supervisor for all add-ons."""
+        _LOGGER.debug("Checking status for all Supervisor add-ons.")
         try:
-            # Chiama il servizio hassio per ottenere le informazioni su TUTTI gli add-on
+            # Call the hassio service to get information about ALL add-ons
             await hass.services.async_call(
                 "hassio", "addons_info", blocking=False
             )
             return True
         except Exception as err:
-            _LOGGER.error("Errore nella chiamata hassio.addons_info: %s", err)
+            _LOGGER.error("Error calling hassio.addons_info: %s", err)
             raise UpdateFailed(f"Errore nella chiamata hassio.addons_info: {err}") from err
 
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
-        name="Stato Add-on Supervisor",
+        name="Supervisor Add-on Status",
         update_method=async_update_data,
         update_interval=SCAN_INTERVAL,
     )
-    hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator} # Memorizza il coordinatore
+    hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator} # Store the coordinator
 
     @callback
     def _async_hassio_addons_info_listener(event):
-        """Ascolta gli eventi hassio_addon_info (che include le info per tutti gli add-on)."""
+        """Listen for hassio_addon_info events (which include info for all add-ons)."""
         all_addons_info: dict[str, Any] = event.data.get("info", {})
         issue_registry: IssueRegistry = async_get_issue_registry(hass)
 
@@ -183,11 +183,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 current_state = addon_info.get("state")
                 is_installed = addon_info.get("installed", False)
                 ingress_url_path = addon_info.get("ingress_url") # Es. /api/hassio_ingress/XXXXX
+                # E.g. /api/hassio_ingress/XXXXX
 
-                # --- Logica di rilevamento ---
+                # --- Discovery Logic ---
                 if is_installed and addon_slug not in _DISCOVERED_ADDONS:
                     _LOGGER.info(
-                        "Add-on '%s' (che termina con '%s') è installato. Attivazione del rilevamento.",
+                        "Add-on '%s' (ending with '%s') is installed. Triggering discovery.",
                         addon_slug, ADDON_SLUG_SUFFIX
                     )
                     hass.async_create_task(
@@ -199,72 +200,72 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     )
                     _DISCOVERED_ADDONS.add(addon_slug)
 
-                # --- Logica di connessione SSE ---
+                # --- SSE Connection Logic ---
                 if is_installed and current_state == "started" and ingress_url_path:
                     if addon_slug not in _SSE_CONNECTIONS:
                         _LOGGER.info(
-                            "Add-on '%s' è in esecuzione e supporta ingress. Avvio ascoltatore SSE.",
+                            "Add-on '%s' is running and supports ingress. Starting SSE listener.",
                             addon_slug
                         )
                         sse_task = hass.async_create_task(
                             _start_sse_listener(hass, addon_slug, ingress_url_path)
                         )
                         _SSE_CONNECTIONS[addon_slug] = sse_task
-                elif addon_slug in _SSE_CONNECTIONS: # Se non è avviato/installato o non ha ingress
+                elif addon_slug in _SSE_CONNECTIONS: # If not started/installed or no ingress
                     _LOGGER.info(
-                        "Add-on '%s' non è in esecuzione, disinstallato o non ha più ingress. Arresto ascoltatore SSE.",
+                        "Add-on '%s' is not running, uninstalled, or no longer has ingress. Stopping SSE listener.",
                         addon_slug
                     )
                     task_to_cancel = _SSE_CONNECTIONS.pop(addon_slug)
                     if task_to_cancel and not task_to_cancel.done():
                         task_to_cancel.cancel()
 
-                # --- Logica di Riparazione ---
-                # ID dell'issue di riparazione specifico per questo addon
+                # --- Repair Logic ---
+                # Repair issue ID specific to this addon
                 repair_issue_id = f"{DOMAIN}_not_started_{addon_slug}"
 
                 if is_installed and current_state != "started":
                     if addon_slug not in _NOT_STARTED_TIMESTAMPS:
-                        # Prima volta che lo vediamo non avviato, registra il timestamp
+                        # First time we see it not started, record the timestamp
                         _NOT_STARTED_TIMESTAMPS[addon_slug] = utcnow()
                         _LOGGER.debug(
-                            "Add-on '%s' è installato ma non avviato. Tracciamento del tempo.",
+                            "Add-on '%s' is installed but not started. Tracking time.",
                             addon_slug
                         )
                     elif (utcnow() - _NOT_STARTED_TIMESTAMPS[addon_slug]) > timedelta(minutes=5):
-                        # Più di 5 minuti, crea/aggiorna l'issue di riparazione
+                        # More than 5 minutes, create/update the repair issue
                         _LOGGER.warning(
-                            "Add-on '%s' è installato ma non avviato da più di 5 minuti. Creazione issue di riparazione.",
+                            "Add-on '%s' has been installed but not started for more than 5 minutes. Creating repair issue.",
                             addon_slug
                         )
                         create_issue(
                             hass,
                             DOMAIN,
-                            repair_issue_id, # ID dell'issue dinamico
+                            repair_issue_id, # Dynamic issue ID
                             issue_domain=DOMAIN,
                             is_fixable=True,
                             is_persistent=True,
-                            learn_more_url="https://www.home-assistant.io/integrations/hassio/", # Esempio di URL
+                            learn_more_url="https://www.home-assistant.io/integrations/hassio/", # Example URL
                             severity=IssueSeverity.WARNING,
                             translation_key="addon_not_started",
                             translation_placeholders={
                                 "addon_slug": addon_slug,
-                                "time_threshold": "5 minuti"
+                                "time_threshold": "5 minutes"
                             },
-                            fix_flow=f"{DOMAIN}_start_addon_fix", # Riferisce al nome del flusso di riparazione in config_flow.py
-                            context={"addon_slug": addon_slug} # Passa lo slug al contesto del fix_flow
+                            fix_flow=f"{DOMAIN}_start_addon_fix", # Refers to the repair flow name in config_flow.py
+                            context={"addon_slug": addon_slug} # Pass the slug to the fix_flow context
                         )
                 elif current_state == "started":
-                    # L'add-on è avviato, pulisci il timestamp e elimina l'issue di riparazione se esiste
+                    # The add-on is started, clear the timestamp and delete the repair issue if it exists
                     if addon_slug in _NOT_STARTED_TIMESTAMPS:
                         del _NOT_STARTED_TIMESTAMPS[addon_slug]
                         _LOGGER.debug(
-                            "Add-on '%s' è ora avviato. Pulizia timestamp not_started_since.",
+                            "Add-on '%s' is now started. Clearing not_started_since timestamp.",
                             addon_slug
                         )
                     if issue_registry.get_issue(DOMAIN, repair_issue_id):
                         _LOGGER.info(
-                            "Add-on '%s' è ora avviato. Eliminazione issue di riparazione.",
+                            "Add-on '%s' is now started. Deleting repair issue.",
                             addon_slug
                         )
                         delete_issue(hass, DOMAIN, repair_issue_id)
@@ -272,69 +273,69 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 elif not is_installed:
                     if addon_slug in _DISCOVERED_ADDONS:
                         _DISCOVERED_ADDONS.remove(addon_slug)
-                        _LOGGER.debug("Add-on '%s' non è più installato. Rimosso dalla cache di rilevamento.", addon_slug)
+                        _LOGGER.debug("Add-on '%s' is no longer installed. Removed from discovery cache.", addon_slug)
                     if addon_slug in _NOT_STARTED_TIMESTAMPS:
                         del _NOT_STARTED_TIMESTAMPS[addon_slug]
-                        _LOGGER.debug("Add-on '%s' non è più installato. Rimosso dal tracciamento dei timestamp.", addon_slug)
+                        _LOGGER.debug("Add-on '%s' is no longer installed. Removed from timestamp tracking.", addon_slug)
                     if issue_registry.get_issue(DOMAIN, repair_issue_id):
                         delete_issue(hass, DOMAIN, repair_issue_id)
-                        _LOGGER.info("Add-on '%s' non è più installato. Eliminazione issue di riparazione.", addon_slug)
-                    # Assicurati che anche l'ascoltatore SSE sia fermato se l'add-on non è installato
+                        _LOGGER.info("Add-on '%s' is no longer installed. Deleting repair issue.", addon_slug)
+                    # Also ensure the SSE listener is stopped if the add-on is not installed
                     if addon_slug in _SSE_CONNECTIONS:
-                        _LOGGER.info("Add-on '%s' non è più installato. Arresto ascoltatore SSE.", addon_slug)
+                        _LOGGER.info("Add-on '%s' is no longer installed. Stopping SSE listener.", addon_slug)
                         task_to_cancel = _SSE_CONNECTIONS.pop(addon_slug)
                         if task_to_cancel and not task_to_cancel.done():
                             task_to_cancel.cancel()
                         delete_issue(hass, DOMAIN, repair_issue_id)
-                        _LOGGER.info("Add-on '%s' non è più installato. Eliminazione issue di riparazione.", addon_slug)
+                        _LOGGER.info("Add-on '%s' is no longer installed. Deleting repair issue.", addon_slug) # This seems redundant
 
 
-    # Ascolta l'evento hassio_addon_info
-    # Nota: il servizio hassio.addons_info pubblica un evento hassio_addon_info
-    # contenente le informazioni per TUTTI gli add-on.
+    # Listen for the hassio_addon_info event
+    # Note: the hassio.addons_info service publishes a hassio_addon_info event
+    # containing information for ALL add-ons.
     entry.async_on_unload(
         hass.bus.async_listen(EVENT_SUPERVISOR_ADDON_INFO, _async_hassio_addons_info_listener)
     )
 
-    # Attiva immediatamente il primo aggiornamento per ottenere lo stato iniziale di tutti gli add-on
+    # Immediately trigger the first update to get the initial state of all add-ons
     await coordinator.async_config_entry_first_refresh()
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Scarica un ingresso di configurazione."""
-    _LOGGER.debug("Scarico dell'ingresso di configurazione per SRAT Companion: %s", entry.entry_id)
+    """Unload a config entry."""
+    _LOGGER.debug("Unloading config entry for SRAT Companion: %s", entry.entry_id)
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        # Assicurati di rimuovere il coordinatore dalla memoria
+        # Ensure the coordinator is removed from memory
         coordinator = hass.data[DOMAIN][entry.entry_id].pop("coordinator")
         if hasattr(coordinator, "shutdown"):
             coordinator.shutdown()
         
-        # Pulisci completamente i dati del dominio per questa entry
+        # Completely clear domain data for this entry
         del hass.data[DOMAIN][entry.entry_id]
 
-        # Arresta e pulisci tutti gli ascoltatori SSE attivi
-        for addon_slug, task in list(_SSE_CONNECTIONS.items()): # Itera su una copia
-            _LOGGER.info("Arresto ascoltatore SSE per %s durante lo scaricamento dell'integrazione.", addon_slug)
+        # Stop and clear all active SSE listeners
+        for addon_slug, task in list(_SSE_CONNECTIONS.items()): # Iterate over a copy
+            _LOGGER.info("Stopping SSE listener for %s during integration unload.", addon_slug)
             if not task.done():
                 task.cancel()
-            # Opzionalmente attendi la cancellazione della task con un timeout
+            # Optionally wait for task cancellation with a timeout
             # try:
             #     await asyncio.wait_for(task, timeout=5.0)
             # except (asyncio.TimeoutError, asyncio.CancelledError):
-            #     _LOGGER.debug("Timeout o cancellazione durante l'attesa della task SSE per %s.", addon_slug)
+            #     _LOGGER.debug("Timeout or cancellation while waiting for SSE task for %s.", addon_slug)
         _SSE_CONNECTIONS.clear()
 
-        # Pulisci la cache globale e le issue di riparazione per tutti gli add-on monitorati
+        # Clear the global cache and repair issues for all monitored add-ons
         issue_registry: IssueRegistry = async_get_issue_registry(hass)
-        for addon_slug in list(_DISCOVERED_ADDONS): # Iterare su una copia per permettere la modifica
+        for addon_slug in list(_DISCOVERED_ADDONS): # Iterate over a copy to allow modification
             _DISCOVERED_ADDONS.remove(addon_slug)
             repair_issue_id = f"{DOMAIN}_not_started_{addon_slug}"
             if issue_registry.get_issue(DOMAIN, repair_issue_id):
                 delete_issue(hass, DOMAIN, repair_issue_id)
-                _LOGGER.info("Eliminazione issue di riparazione '%s' durante lo scarico dell'integrazione.", repair_issue_id)
+                _LOGGER.info("Deleting repair issue '%s' during integration unload.", repair_issue_id)
         
-        _NOT_STARTED_TIMESTAMPS.clear() # Pulisci tutti i timestamp
+        _NOT_STARTED_TIMESTAMPS.clear() # Clear all timestamps
 
     return unload_ok
