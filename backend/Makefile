@@ -32,8 +32,8 @@ test_build: $(SRC_DIRS) $(STATIC_DIRS)
 	CGO_ENABLED=0 GOARCH=amd64 go build  -C $(SRC_DIRS) -tags=embedallowed -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/x86_64/ ./...
 	[ -f /mnt/remote/bootconfig.json ] && find ./tmp/x86_64/ -name "srat*" -exec cp -v {} /mnt/remote/ \; || echo "No remote mount found use make mount_remote"
 
-.PHONY: format
-format:
+.PHONY: lint
+lint:
 	go tool -C $(SRC_DIRS)  gohack undo
 	go mod -C $(SRC_DIRS) tidy	
 	go tool -C $(SRC_DIRS)  testifylint --fix ./...
