@@ -1,12 +1,17 @@
 {
   "domain": "srat_companion",
   "name": "SRAT Companion",
+  "version": "1.0.0",
+  "config_flow": true,
+  "documentation": "https://github.com/dianlight/srat",
+  "requirements": [],
+  "dependencies": ["hassio"],
   "codeowners": [
     "@dianlight"
   ],
-  "config_flow": true,
-  "documentation": "https://github.com/dianlight/srat",
-  "iot_class": "cloud_polling",
+  "iot_class": "local_polling",
   "issue_tracker": "https://github.com/dianlight/srat/issues",
-  "version": "0.1.0"
+  "translation_strings_paths": [
+    "translations"
+  ]
 }
