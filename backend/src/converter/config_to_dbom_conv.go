@@ -88,7 +88,7 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 						strings.ToLower(prop.Value.(string)) == "on" ||
 						strings.ToLower(prop.Value.(string)) == "enabled" ||
 						strings.ToLower(prop.Value.(string)) == "1" ||
-						strings.ToLower(prop.Value.(string)) == strings.ToLower(prop.Key) {
+						strings.EqualFold(prop.Value.(string), prop.Key) {
 						newvalue.SetBool(true)
 					} else {
 						newvalue.SetBool(false)

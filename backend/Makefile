@@ -7,7 +7,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 
 #ALL_SRCS := $(shell find $(SRC_DIRS) -name '*.go')
-ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go)  
+ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go)
 TEST_SRCS := $(filter %_test.go, $(ALL_SRCS))
 SRCS := $(filter-out %_test.go, $(ALL_SRCS))
 
@@ -23,11 +23,11 @@ PREREQUISITE: patch docs static
 build: $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
-	mkdir dist > /dev/null 2>&1 || :   
+	mkdir dist > /dev/null 2>&1 || :
 	CGO_ENABLED=0 $(AARGS) go build -C $(SRC_DIRS) -tags=embedallowed -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../dist/$(ARCH)/ ./...
 
 test_build: $(SRC_DIRS) $(STATIC_DIRS)
-	mkdir -p tmp/x86_64 > /dev/null 2>&1 || :   
+	mkdir -p tmp/x86_64 > /dev/null 2>&1 || :
 	CGO_ENABLED=0 go build -C $(SRC_DIRS) -tags=embedallowed_no -gcflags=all="-N -l" -ldflags="-X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/srat  ./cmd/srat-server
 	CGO_ENABLED=0 GOARCH=amd64 go build  -C $(SRC_DIRS) -tags=embedallowed -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP)" -o ../tmp/x86_64/ ./...
 	[ -f /mnt/remote/bootconfig.json ] && find ./tmp/x86_64/ -name "srat*" -exec cp -v {} /mnt/remote/ \; || echo "No remote mount found use make mount_remote"
@@ -35,7 +35,7 @@ test_build: $(SRC_DIRS) $(STATIC_DIRS)
 .PHONY: format
 format:
 	go tool -C $(SRC_DIRS)  gohack undo
-	go mod -C $(SRC_DIRS) tidy	
+	go mod -C $(SRC_DIRS) tidy
 	go tool -C $(SRC_DIRS)  testifylint --fix ./...
 	go -C $(SRC_DIRS)  fmt
 	make patch
@@ -46,7 +46,7 @@ clean:
 	rm -rf dist
 
 .PHONY: test
-test: $(ALL_SRCS) 
+test: $(ALL_SRCS)
 	cd $(SRC_DIRS);GOMAXPROCS=1 go tool gotest -failfast -coverpkg=./... ./...
 
 .PHONY: test_ci
@@ -54,14 +54,14 @@ test_ci: $(ALL_SRCS)
 	cd $(SRC_DIRS)/homeassistant/;go tool gotest -failfast -coverpkg=./... ./...
 
 .PHONY: docs
-docs: gen 
+docs: gen
 
 gen: $(SRCS)
-	go generate -C $(SRC_DIRS)  ./...
+	go generate -C $(SRC_DIRS)  ./... && \
 	go run -C $(SRC_DIRS) ./cmd/srat-openapi -out ../docs
 
 .PHONY: dev_cli
-.ONESHELL: 
+.ONESHELL:
 dev_cli:
 	mkdir ./tmp > /dev/null 2>&1 || :
 	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug -ha-url $(SUPERVISOR_URL) version && \
@@ -81,7 +81,7 @@ update:
 
 
 $(FRONTEND_DIRS)/node_modules:
-	cd $(FRONTEND_DIRS); bun install	
+	cd $(FRONTEND_DIRS); bun install
 
 static: $(FRONTEND_DIRS)/node_modules
 	rm -rf $(SRC_DIRS)/static
@@ -89,17 +89,17 @@ static: $(FRONTEND_DIRS)/node_modules
 	cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS)
 
-.ONESHELL: 
+.ONESHELL:
 patch:
 	go tool -C $(SRC_DIRS) gohack undo
 	rm -rf ${HOME}/gohack
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/samber/slog-http
 	git -C ${HOME}/gohack/github.com/samber/slog-http apply $(ROOT_DIR)/patches/slog-http.patch
-	go tool -C $(SRC_DIRS) gohack get -vcs github.com/jpillora/overseer	
+	go tool -C $(SRC_DIRS) gohack get -vcs github.com/jpillora/overseer
 	git -C ${HOME}/gohack/github.com/jpillora/overseer apply $(ROOT_DIR)/patches/overseer.patch
 
 gen_patch:
-	mkdir patches > /dev/null 2>&1 || :  
+	mkdir patches > /dev/null 2>&1 || :
 	cd ${HOME}/gohack/github.com/samber/slog-http; git diff > $(ROOT_DIR)/patches/slog-http.patch
 	cd ${HOME}/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
 

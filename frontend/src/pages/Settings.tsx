@@ -54,17 +54,6 @@ function isValidIpAddressOrCidr(ip: string): boolean {
     return IPV4_OR_CIDR_REGEX.test(ip) || IPV6_OR_CIDR_REGEX.test(ip);
 }
 
-// --- Veto File Entry Validation Helper ---
-// Matches a valid Samba veto file entry:
-// - Not empty
-// - Does not contain '/' (as it's a separator for the list in smb.conf)
-// - Does not contain null byte '\0'
-const VETO_FILE_ENTRY_REGEX = /^[^/\0]+$/;
-
-function isValidVetoFileEntry(entry: string): boolean {
-    if (typeof entry !== 'string') return false;
-    return VETO_FILE_ENTRY_REGEX.test(entry);
-}
 
 // --- Hostname Validation Helper ---
 // Allows alphanumeric characters and hyphens. Cannot start or end with a hyphen. Length 1-63.
@@ -294,68 +283,6 @@ export function Settings() {
                         <Grid size={4}>
                             <CheckboxElement size="small" id="compatibility_mode" label="Compatibility Mode" name="compatibility_mode" control={control} disabled={read_only} />
                             <CheckboxElement size="small" id="multi_channel" label="Multi Channel Mode" name="multi_channel" control={control} disabled={read_only} />
-                        </Grid>
-                        <Grid size={8}>
-                            <Controller
-                                name="veto_files"
-                                control={control}
-                                defaultValue={[]}
-                                disabled={read_only}
-                                rules={{
-                                    validate: (chips: string[] | undefined) => {
-                                        if (!chips || chips.length === 0) return true; // Allow empty list
-                                        for (const chip of chips) {
-                                            if (!isValidVetoFileEntry(chip)) {
-                                                return `Invalid entry: "${chip}". Veto file entries cannot be empty, contain '/' or null characters.`;
-                                            }
-                                        }
-                                        return true;
-                                    },
-                                }}
-                                render={({ field, fieldState: { error } }) => (
-                                    <MuiChipsInput
-                                        {...field}
-                                        size="small"
-                                        hideClearAll
-                                        label="Veto Files"
-                                        validate={(chipValue) => typeof chipValue === 'string' && isValidVetoFileEntry(chipValue)}
-                                        error={!!error}
-                                        helperText={error ? error.message : "List of files/patterns to hide (e.g., ._* Thumbs.db). Entries cannot contain '/'."}
-                                        renderChip={(Component, key, props) => {
-                                            const isDefault = default_json.veto_files?.includes(props.label as string);
-                                            return (
-                                                <Component {...props} sx={{ color: isDefault ? 'text.secondary' : 'text.primary' }} size="small" key={key} />
-                                            );
-                                        }}
-                                        slotProps={{
-                                            input: {
-                                                endAdornment: (
-                                                    <InputAdornment position="end" sx={{ pr: 1 }}>
-                                                        {!read_only && (
-                                                            <Tooltip title="Add suggested default Veto files">
-                                                                <IconButton
-                                                                    aria-label="add suggested default veto files"
-                                                                    onClick={() => {
-                                                                        const currentVetoFiles: string[] = getValues("veto_files") || [];
-                                                                        const defaultVetoFiles: string[] = default_json.veto_files || [];
-                                                                        const newVetoFilesToAdd = defaultVetoFiles.filter(
-                                                                            (defaultFile) => !currentVetoFiles.includes(defaultFile)
-                                                                        );
-                                                                        setValue("veto_files", [...currentVetoFiles, ...newVetoFilesToAdd], { shouldDirty: true, shouldValidate: true });
-                                                                    }}
-                                                                    edge="end"
-                                                                >
-                                                                    <PlaylistAddIcon />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        )}
-                                                    </InputAdornment>
-                                                ),
-                                            }
-                                        }}
-
-                                    />)}
-                            />
                         </Grid>
                         <Grid size={4}>
                             <CheckboxElement size="small" id="bind_all_interfaces" label="Bind All Interfaces" name="bind_all_interfaces" control={control} disabled={read_only} />

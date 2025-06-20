@@ -609,7 +609,6 @@ export type Settings = {
   mountoptions?: string[] | null;
   multi_channel?: boolean;
   update_channel?: Update_channel;
-  veto_files?: string[];
   workgroup?: string;
 };
 export type JsonPatchOp = {
@@ -663,6 +662,7 @@ export type SharedResource = {
   timemachine?: boolean;
   usage?: Usage;
   users?: User[] | null;
+  veto_files?: string[];
   [key: string]: any;
 };
 export type Welcome = {
