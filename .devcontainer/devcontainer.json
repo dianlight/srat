@@ -1,8 +1,10 @@
 {
 	"name": "SRAT",
-	//	"image": "ghcr.io/hassio-addons/base:17.2.5",
+	//"image": "ghcr.io/hassio-addons/base:17.2.5",
+	//"image": "ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.22",
 	"image": "ghcr.io/home-assistant/aarch64-base-python:3.13-alpine3.22",
 	"runArgs": [
+		//	"--platform=linux/amd64",
 		"--cap-add=SYS_PTRACE",
 		"--security-opt",
 		"seccomp=unconfined",
