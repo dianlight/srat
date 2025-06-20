@@ -7,6 +7,7 @@ import (
 	config "github.com/dianlight/srat/config"
 	dbom "github.com/dianlight/srat/dbom"
 	dto "github.com/dianlight/srat/dto"
+	datatypes "gorm.io/datatypes"
 )
 
 type ConfigToDbomConverterImpl struct{}
@@ -54,6 +55,7 @@ func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedSha
 	if source.Usage != "" {
 		target.Usage = string(source.Usage)
 	}
+	target.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *config.User) error {
@@ -93,6 +95,7 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 			target.RoUsers[j] = dbomSambaUser2
 		}
 	}
+	target.VetoFiles = c.stringListToDatatypesJSONSlice(source.VetoFiles)
 	if source.TimeMachine != false {
 		target.TimeMachine = source.TimeMachine
 	}
@@ -130,4 +133,24 @@ func (c *ConfigToDbomConverterImpl) UserToUSambaUser(source config.User, target 
 		target.Password = source.Password
 	}
 	return nil
+}
+func (c *ConfigToDbomConverterImpl) datatypesJSONSliceToStringList(source datatypes.JSONSlice[string]) []string {
+	var stringList []string
+	if source != nil {
+		stringList = make([]string, len(source))
+		for i := 0; i < len(source); i++ {
+			stringList[i] = source[i]
+		}
+	}
+	return stringList
+}
+func (c *ConfigToDbomConverterImpl) stringListToDatatypesJSONSlice(source []string) datatypes.JSONSlice[string] {
+	var datatypesJSONSlice datatypes.JSONSlice[string]
+	if source != nil {
+		datatypesJSONSlice = make(datatypes.JSONSlice[string], len(source))
+		for i := 0; i < len(source); i++ {
+			datatypesJSONSlice[i] = source[i]
+		}
+	}
+	return datatypesJSONSlice
 }

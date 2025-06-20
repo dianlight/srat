@@ -132,10 +132,10 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			Key:   "EnableRecycleBin",
 			Value: false,
 		},
-		"VetoFiles": {
-			Key:   "VetoFiles",
-			Value: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
-		},
+		//		"VetoFiles": {
+		//			Key:   "VetoFiles",
+		//			Value: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
+		//		},
 	}, nil)
 
 	mock.When(suite.exported_share_repo.All()).ThenReturn(&[]dbom.ExportedShare{
@@ -150,6 +150,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 					Username: "dianlight",
 				},
 			},
+			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
 			Name:               "MEDIA",
@@ -163,6 +164,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 					IsAdmin:  true,
 				},
 			},
+			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
 			Name:               "BACKUP",
@@ -175,6 +177,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 					Username: "dianlight",
 				},
 			},
+			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
 			Name:               "SHARE",
@@ -188,6 +191,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 					IsAdmin:  true,
 				},
 			},
+			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
 			Name:               "ADDONS",
@@ -201,6 +205,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 					IsAdmin:  true,
 				},
 			},
+			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
 			Name:               "ADDON_CONFIGS",
@@ -214,6 +219,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 					IsAdmin:  true,
 				},
 			},
+			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
 			Name:               "EFI",
@@ -233,6 +239,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 					IsAdmin:  true,
 				},
 			},
+			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
 			Name:               "LIBRARY",
@@ -247,6 +254,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 				},
 			},
 			TimeMachine: true,
+			VetoFiles:   []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
 			Name:               "UPDATER",
@@ -261,6 +269,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 				},
 			},
 			RecycleBin: true,
+			VetoFiles:  []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 	}, nil)
 

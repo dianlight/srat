@@ -27,17 +27,11 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 			target.AllowHost[j] = source.AllowHost[j]
 		}
 	}
-	if source.VetoFiles != nil {
-		target.VetoFiles = make([]string, len(source.VetoFiles))
-		for k := 0; k < len(source.VetoFiles); k++ {
-			target.VetoFiles[k] = source.VetoFiles[k]
-		}
-	}
 	target.CompatibilityMode = source.CompatibilityMode
 	if source.Interfaces != nil {
 		target.Interfaces = make([]string, len(source.Interfaces))
-		for l := 0; l < len(source.Interfaces); l++ {
-			target.Interfaces[l] = source.Interfaces[l]
+		for k := 0; k < len(source.Interfaces); k++ {
+			target.Interfaces[k] = source.Interfaces[k]
 		}
 	}
 	target.BindAllInterfaces = source.BindAllInterfaces
@@ -133,6 +127,12 @@ func (c *ConfigToDtoConverterImpl) ShareToSharedResourceNoMountPointData(source 
 	if source.Usage != "" {
 		target.Usage = dto.HAMountUsage(source.Usage)
 	}
+	if source.VetoFiles != nil {
+		target.VetoFiles = make([]string, len(source.VetoFiles))
+		for k := 0; k < len(source.VetoFiles); k++ {
+			target.VetoFiles[k] = source.VetoFiles[k]
+		}
+	}
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResource, target *config.Share) error {
@@ -176,6 +176,12 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 	}
 	if source.Usage != "" {
 		target.Usage = string(source.Usage)
+	}
+	if source.VetoFiles != nil {
+		target.VetoFiles = make([]string, len(source.VetoFiles))
+		for k := 0; k < len(source.VetoFiles); k++ {
+			target.VetoFiles[k] = source.VetoFiles[k]
+		}
 	}
 	return nil
 }

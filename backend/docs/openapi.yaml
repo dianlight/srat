@@ -459,10 +459,6 @@ components:
             - Release
             - Prerelease
           type: string
-        veto_files:
-          items:
-            type: string
-          type: array
         workgroup:
           type: string
       type: object
@@ -512,6 +508,10 @@ components:
           type:
             - array
             - "null"
+        veto_files:
+          items:
+            type: string
+          type: array
       type: object
     SmbConf:
       additionalProperties: false
@@ -840,10 +840,6 @@ paths:
                     - Release
                     - Prerelease
                   type: string
-                veto_files:
-                  items:
-                    type: string
-                  type: array
                 workgroup:
                   type: string
               type: object
@@ -887,10 +883,6 @@ paths:
                     - Release
                     - Prerelease
                   type: string
-                veto_files:
-                  items:
-                    type: string
-                  type: array
                 workgroup:
                   type: string
               type: object
@@ -1081,6 +1073,10 @@ paths:
                 users:
                   items: {}
                   type: array
+                veto_files:
+                  items:
+                    type: string
+                  type: array
               type: object
           application/merge-patch+shorthand:
             schema:
@@ -1121,6 +1117,10 @@ paths:
                   type: string
                 users:
                   items: {}
+                  type: array
+                veto_files:
+                  items:
+                    type: string
                   type: array
               type: object
         required: true
@@ -1268,24 +1268,6 @@ paths:
                   oneOf:
                     - properties:
                         data:
-                          $ref: "#/components/schemas/Welcome"
-                        event:
-                          const: hello
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event hello
-                      type: object
-                    - properties:
-                        data:
                           $ref: "#/components/schemas/UpdateProgress"
                         event:
                           const: updating
@@ -1363,6 +1345,24 @@ paths:
                         - data
                         - event
                       title: Event share
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/Welcome"
+                        event:
+                          const: hello
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event hello
                       type: object
                 title: Server Sent Events
                 type: array
