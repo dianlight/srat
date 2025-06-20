@@ -151,7 +151,7 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, error) {
 			conv.ProcessToProcessStatus(p, &spc.Nmbd)
 		} else if name == "wsdd2" {
 			conv.ProcessToProcessStatus(p, &spc.Wsdd2)
-		} else if name == "avahi-publish-service" {
+		} else if name == "avahi-daemon" {
 			conv.ProcessToProcessStatus(p, &spc.Avahi)
 		}
 	}
