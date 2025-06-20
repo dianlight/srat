@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState, useMemo } from "react";
-import { useForm, useFormState } from "react-hook-form";
+import { Controller, useForm, useFormState } from "react-hook-form";
 import { InView } from "react-intersection-observer";
 import { Accordion, AccordionDetails, AccordionSummary, Collapse } from "@mui/material";
 import Grid from "@mui/material/Grid";
@@ -33,7 +33,7 @@ import TextDecreaseIcon from '@mui/icons-material/TextDecrease';     // For lowe
 import DataObjectIcon from '@mui/icons-material/DataObject';         // For camelCase
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
-import RemoveIcon from '@mui/icons-material/Remove';                 // For kebab-case
+import RemoveIcon from '@mui/icons-material/Remove'; // Import RemoveIcon for kebab-case
 import { type OverridableComponent } from "@mui/material/OverridableComponent";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditIcon from '@mui/icons-material/Edit';
@@ -41,6 +41,7 @@ import BlockIcon from '@mui/icons-material/Block';
 import BackupIcon from '@mui/icons-material/Backup';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd'; // Import an icon for the button
 import { useAppDispatch } from "../store/store";
 import { Usage, useDeleteShareByShareNameMutation, useGetUsersQuery, usePostShareMutation, usePutShareByShareNameDisableMutation, usePutShareByShareNameEnableMutation, usePutShareByShareNameMutation, type MountPointData, type SharedResource, type User } from "../store/sratApi";
 import { useShare } from "../hooks/shareHook";
@@ -50,6 +51,9 @@ import { addMessage } from "../store/errorSlice";
 import { useVolume } from "../hooks/volumeHook";
 import { toast } from "react-toastify";
 import { TabIDs, type LocationState } from "../store/locationState";
+import { MuiChipsInput } from "mui-chips-input";
+import default_json from "../json/default_config.json"
+
 
 interface ShareEditProps extends SharedResource {
     org_name: string,
@@ -70,6 +74,18 @@ function sanitizeAndUppercaseShareName(name: string): string {
     if (!name) return "";
     // Replace invalid characters (/\:*?"<>|) and whitespace with an underscore, then convert to uppercase
     return name.replace(/[\\/:"*?<>|\s]+/g, '_').toUpperCase();
+}
+
+// --- Veto File Entry Validation Helper ---
+// Matches a valid Samba veto file entry:
+// - Not empty
+// - Does not contain '/' (as it's a separator for the list in smb.conf)
+// - Does not contain null byte '\0'
+const VETO_FILE_ENTRY_REGEX = /^[^/\0]+$/;
+
+function isValidVetoFileEntry(entry: string): boolean {
+    if (typeof entry !== 'string') return false;
+    return VETO_FILE_ENTRY_REGEX.test(entry);
 }
 
 // --- Casing Styles and Helpers ---
@@ -117,7 +133,7 @@ const toKebabCase = (str: string): string => {
 const casingStyleToIconMap: Record<CasingStyle, OverridableComponent<SvgIconTypeMap<{}, "svg">>> = {
     [CasingStyle.UPPERCASE]: KeyboardCapslockIcon,
     [CasingStyle.LOWERCASE]: TextDecreaseIcon,
-    [CasingStyle.CAMELCASE]: DataObjectIcon,
+    [CasingStyle.CAMELCASE]: DataObjectIcon, // Assuming DataObjectIcon is suitable for camelCase
     [CasingStyle.KEBABCASE]: RemoveIcon,
 };
 
@@ -695,7 +711,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
     const [editName, setEditName] = useState(false);
     // Casing cycle state should be managed here if it's reset by volume selection
     const [activeCasingIndex, setActiveCasingIndex] = useState(0);
-    const { control, handleSubmit, watch, formState: { errors }, reset, setValue } = useForm<ShareEditProps>(
+    const { control, handleSubmit, watch, formState: { errors }, reset, setValue, getValues } = useForm<ShareEditProps>(
         // Removed initial values from here, will be handled by useEffect + reset
     );
 
@@ -719,6 +735,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
                     ro_users: props.objectToEdit.ro_users || [],
                     timemachine: props.objectToEdit.timemachine || false,
                     usage: props.objectToEdit.usage || Usage.None,
+                    veto_files: props.objectToEdit.veto_files || [],
                     // any other fields from ShareEditProps that might be in objectToEdit
                 });
                 setEditName(isNewShareCreation); // Enable name edit for new shares
@@ -731,6 +748,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
                     ro_users: [],
                     timemachine: false,
                     usage: Usage.None,
+                    veto_files: [],
                     // mount_point_data will be undefined, user must select
                 });
                 setEditName(true);
@@ -744,6 +762,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
                 ro_users: [],
                 timemachine: false,
                 usage: Usage.None,
+                veto_files: [],
             }); // Reset to default values when closing or not open
         }
     }, [props.open, reset, users]);
@@ -934,6 +953,66 @@ function ShareEditDialog(props: ShareEditDialogProps) {
                                                     },
                                                 }}
                                             />
+                                        </Grid>
+                                        <Grid size={12}>
+                                            <Controller
+                                                name="veto_files"
+                                                control={control}
+                                                defaultValue={[]}
+                                                rules={{
+                                                    validate: (chips: string[] | undefined) => {
+                                                        if (!chips || chips == null || chips.length === 0) return true; // Allow empty list
+                                                        for (const chip of chips) {
+                                                            if (!isValidVetoFileEntry(chip)) {
+                                                                return `Invalid entry: "${chip}". Veto file entries cannot be empty, contain '/' or null characters.`;
+                                                            }
+                                                        }
+                                                        return true;
+                                                    },
+                                                }}
+                                                render={({ field, fieldState: { error } }) => (
+                                                    <MuiChipsInput
+                                                        {...field}
+                                                        size="small"
+                                                        hideClearAll
+                                                        label="Veto Files"
+                                                        validate={(chipValue) => typeof chipValue === 'string' && isValidVetoFileEntry(chipValue)}
+                                                        error={!!error}
+                                                        helperText={error ? error.message : "List of files/patterns to hide (e.g., ._* Thumbs.db). Entries cannot contain '/'."}
+                                                        renderChip={(Component, key, props) => {
+                                                            const isDefault = default_json.veto_files?.includes(props.label as string);
+                                                            return (
+                                                                <Component {...props} sx={{ color: isDefault ? 'text.secondary' : 'text.primary' }} size="small" key={key} />
+                                                            );
+                                                        }}
+                                                        slotProps={{
+                                                            input: {
+                                                                endAdornment: (
+                                                                    <InputAdornment position="end" sx={{ pr: 1 }}>
+                                                                        <Tooltip title="Add suggested default Veto files">
+                                                                            <IconButton
+                                                                                aria-label="add suggested default veto files"
+                                                                                onClick={() => {
+                                                                                    const currentVetoFiles: string[] = getValues("veto_files") || [];
+                                                                                    const defaultVetoFiles: string[] = default_json.veto_files || [];
+                                                                                    const newVetoFilesToAdd = defaultVetoFiles.filter(
+                                                                                        (defaultFile) => !currentVetoFiles.includes(defaultFile)
+                                                                                    );
+                                                                                    setValue("veto_files", [...currentVetoFiles, ...newVetoFilesToAdd], { shouldDirty: true, shouldValidate: true });
+                                                                                }}
+                                                                                edge="end"
+                                                                            >
+                                                                                <PlaylistAddIcon />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    </InputAdornment>
+                                                                ),
+                                                            }
+                                                        }}
+
+                                                    />)}
+                                            />
+
                                         </Grid>
                                         <Grid size={6}>
                                             <CheckboxElement size="small" label="Support Timemachine Backups" name="timemachine" control={control} />

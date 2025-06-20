@@ -22,6 +22,7 @@ type Share struct {
 	TimeMachine bool     `json:"timemachine,omitempty"`
 	RecycleBin  bool     `json:"recycle_bin_enabled,omitempty"`
 	Usage       string   `json:"usage,omitempty"`
+	VetoFiles   []string `json:"veto_files,omitempty"`
 }
 
 type Shares map[string]Share
@@ -30,9 +31,8 @@ const CURRENT_CONFIG_VERSION = 3
 
 type Config struct {
 	CurrentFile       string
-	ConfigSpecVersion int `json:"version,omitempty,default=0"`
-	// New
-	Hostname string `json:"hostname,omitempty,default='homeassistant'"`
+	ConfigSpecVersion int    `json:"version,omitempty"`
+	Hostname          string `json:"hostname,omitempty"`
 	// Options
 	Workgroup        string   `json:"workgroup"`
 	Username         string   `json:"username"`
@@ -203,6 +203,9 @@ func (in *Config) MigrateConfig() error {
 				} else {
 					share.Usage = "share"
 				}
+			}
+			if share.VetoFiles == nil {
+				share.VetoFiles = in.VetoFiles
 			}
 			in.Shares[shareName] = share
 		}

@@ -11,7 +11,7 @@
    server multi channel support = no
    {{- else -}}
    server multi channel support = yes
-   {{- end }}  
+   {{- end }}
 
    #dns proxy = yes #already default
 
@@ -22,7 +22,7 @@
 
    fruit:resource = file
    fruit:veto_appledouble = no
-   fruit:posix_rename = yes 
+   fruit:posix_rename = yes
    fruit:wipe_intentionally_left_blank_rfork = yes
    fruit:zero_file_id = yes
    fruit:delete_empty_adfiles = yes
@@ -36,7 +36,7 @@
    min receivefile size = 16384
    getwd cache = yes
    aio read size = 1
-   aio write size = 1  
+   aio write size = 1
    # End PR#167
 
    netbios name = {{ .hostname | default (env "HOSTNAME") }}
@@ -65,7 +65,7 @@
 
    mangled names = no
    dos charset = CP1253
-   unix charset = UTF-8   
+   unix charset = UTF-8
 
 {{ define "SHT" }}
 {{- $unsupported := list "vfat"	"msdos"	"f2fs"	"fuseblk" "exfat" -}}
@@ -89,12 +89,12 @@
    {{- end }}
    force user = root
    force group = root
-  
-   {{ if and .veto_files (gt (len .veto_files) 0) -}}
-   veto files = /{{ .veto_files | join "/" }}/
+
+   {{ if and .data.veto_files (gt (len .data.veto_files) 0) -}}
+   veto files = /{{ .data.veto_files | join "/" }}/
    delete veto files = yes
    {{- end }}
- 
+
 
 
 # DEBUG: {{ toJson .data  }}|$name={{ $name }}|.shares={{ .shares }}|
@@ -110,7 +110,7 @@
    #recycle:exclude =
    #recycle:exclude_dir =
    #recycle:maxsize = 0
-{{ end }}  
+{{ end }}
 
 # TM:{{ if has .data.fs $unsupported }}unsupported{{else}}{{ .data.timemachine }}{{ end }} US:{{ .data.users|default .username|join "," }} {{ .data.ro_users|join "," }}{{- if .medialibrary.enable }}{{ if .data.usage }} CL:{{ .data.usage }}{{ end }} FS:{{ .data.fs | default "native" }} {{ if .data.recycle_bin_enabled }}RECYCLEBIN{{ end }} {{ end }}
 {{- if and .data.timemachine (has .data.fs $unsupported | not ) }}
@@ -120,7 +120,7 @@
    fruit:time machine = yes
    #fruit:time machine max size = SIZE [K|M|G|T|P]
    fruit:metadata = stream
-{{ else }}   
+{{ else }}
    vfs objects = catia{{ if .data.recycle_bin_enabled }} recycle{{ end }}{{/*- printf "/*%#v* /" . -*/}}
 {{ end }}
 
@@ -132,6 +132,6 @@
                   {{- $root2 := deepCopy $root -}}
                   {{- $_ := set $root2 "data" $dd -}}
                   {{- template "SHT" $root2 -}}
-               {{- end -}}  
+               {{- end -}}
         {{/* - end - */}}
 {{- end -}}

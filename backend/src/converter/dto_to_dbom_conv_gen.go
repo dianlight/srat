@@ -8,6 +8,7 @@ import (
 	dto "github.com/dianlight/srat/dto"
 	xhashes "github.com/shomali11/util/xhashes"
 	osutil "github.com/snapcore/snapd/osutil"
+	datatypes "gorm.io/datatypes"
 )
 
 type DtoToDbomConverterImpl struct{}
@@ -42,6 +43,7 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 	if source.Usage != "" {
 		target.Usage = source.Usage
 	}
+	target.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
 	return nil
 }
 func (c *DtoToDbomConverterImpl) MountFlagsToMountDataFlags(source []dto.MountFlag) dbom.MounDataFlags {
@@ -165,6 +167,7 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 	if source.Disabled != nil {
 		target.Disabled = source.Disabled
 	}
+	target.VetoFiles = c.stringListToDatatypesJSONSlice(source.VetoFiles)
 	if source.TimeMachine != nil {
 		target.TimeMachine = *source.TimeMachine
 	}
@@ -206,6 +209,16 @@ func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.S
 		}
 	}
 	return nil
+}
+func (c *DtoToDbomConverterImpl) datatypesJSONSliceToStringList(source datatypes.JSONSlice[string]) []string {
+	var stringList []string
+	if source != nil {
+		stringList = make([]string, len(source))
+		for i := 0; i < len(source); i++ {
+			stringList[i] = source[i]
+		}
+	}
+	return stringList
 }
 func (c *DtoToDbomConverterImpl) dbomMounDataFlagsToDtoMountFlags(source dbom.MounDataFlags) (dto.MountFlags, error) {
 	var dtoMountFlags dto.MountFlags
@@ -285,6 +298,7 @@ func (c *DtoToDbomConverterImpl) exportedShareToSharedResource(source dbom.Expor
 	pBool2 := source.RecycleBin
 	dtoSharedResource.RecycleBin = &pBool2
 	dtoSharedResource.Usage = source.Usage
+	dtoSharedResource.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
 	pDtoMountPointData, err := c.dbomMountPointPathToPDtoMountPointData(source.MountPointData)
 	if err != nil {
 		return dtoSharedResource, err
@@ -417,6 +431,7 @@ func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.Shared
 			dbomExportedShare.RoUsers[j] = dbomSambaUser2
 		}
 	}
+	dbomExportedShare.VetoFiles = c.stringListToDatatypesJSONSlice(source.VetoFiles)
 	if source.TimeMachine != nil {
 		dbomExportedShare.TimeMachine = *source.TimeMachine
 	}
@@ -437,6 +452,16 @@ func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.Shared
 	}
 	dbomExportedShare.MountPointData = dbomMountPointPath
 	return dbomExportedShare, nil
+}
+func (c *DtoToDbomConverterImpl) stringListToDatatypesJSONSlice(source []string) datatypes.JSONSlice[string] {
+	var datatypesJSONSlice datatypes.JSONSlice[string]
+	if source != nil {
+		datatypesJSONSlice = make(datatypes.JSONSlice[string], len(source))
+		for i := 0; i < len(source); i++ {
+			datatypesJSONSlice[i] = source[i]
+		}
+	}
+	return datatypesJSONSlice
 }
 func (c *DtoToDbomConverterImpl) userToSambaUser(source dto.User) (dbom.SambaUser, error) {
 	var dbomSambaUser dbom.SambaUser

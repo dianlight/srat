@@ -5,6 +5,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"gitlab.com/tozd/go/errors"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -16,6 +17,7 @@ type ExportedShare struct {
 	Disabled           *bool
 	Users              []SambaUser `gorm:"many2many:user_rw_share"`
 	RoUsers            []SambaUser `gorm:"many2many:user_ro_share"`
+	VetoFiles          datatypes.JSONSlice[string]
 	TimeMachine        bool
 	RecycleBin         bool `gorm:"default:false"`
 	Usage              dto.HAMountUsage

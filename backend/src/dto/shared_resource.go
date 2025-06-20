@@ -11,6 +11,7 @@ type SharedResource struct {
 	Usage       HAMountUsage `json:"usage,omitempty" enum:"none,backup,media,share,internal"`
 	IsHAMounted *bool        `json:"is_ha_mounted,omitempty"`
 	HaStatus    *string      `json:"ha_status,omitempty"`
+	VetoFiles   []string     `json:"veto_files,omitempty"  nullable:"false"`
 
 	//DeviceId       *uint64        `json:"device_id,omitempty"`
 	MountPointData *MountPointData `json:"mount_point_data,omitempty"`

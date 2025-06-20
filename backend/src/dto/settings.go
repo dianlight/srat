@@ -5,7 +5,6 @@ type Settings struct {
 	Workgroup         string        `json:"workgroup,omitempty"`
 	Mountoptions      []string      `json:"mountoptions,omitempty"`
 	AllowHost         []string      `json:"allow_hosts,omitempty" nullable:"false"`
-	VetoFiles         []string      `json:"veto_files,omitempty"  nullable:"false"`
 	CompatibilityMode bool          `json:"compatibility_mode,omitempty"`
 	Interfaces        []string      `json:"interfaces,omitempty" nullable:"false"`
 	BindAllInterfaces bool          `json:"bind_all_interfaces,omitempty"`
