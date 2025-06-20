@@ -116,7 +116,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/exp v0.0.0-20250606033433-dcc06ee1d476
+	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sync v0.15.0
@@ -140,7 +140,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.1
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250617091902-191e34cea4e4
+	github.com/snapcore/snapd v0.0.0-20250620115219-ff496e785c72
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
