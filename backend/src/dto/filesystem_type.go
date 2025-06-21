@@ -57,30 +57,30 @@ func MountFlagsMap() map[string]uintptr {
 
 func (self *MountFlags) Scan(value interface{}) error {
 	for nflag, flags := range MountFlagsMap() {
-		switch value.(type) {
+		switch value := value.(type) {
 		case int:
-			if value.(int)&int(flags) != 0 {
+			if value&int(flags) != 0 {
 				self.Add(MountFlag{
 					Name:       nflag,
 					NeedsValue: false,
 				})
 			}
 		case uintptr:
-			if value.(uintptr)&uintptr(flags) != 0 {
+			if value&uintptr(flags) != 0 {
 				self.Add(MountFlag{
 					Name:       nflag,
 					NeedsValue: false,
 				})
 			}
 		case int64:
-			if value.(int64)&int64(flags) != 0 {
+			if value&int64(flags) != 0 {
 				self.Add(MountFlag{
 					Name:       nflag,
 					NeedsValue: false,
 				})
 			}
 		case []string:
-			svalue := value.([]string)
+			svalue := value
 			for _, flag := range svalue {
 				if flag == nflag {
 					self.Add(MountFlag{
@@ -100,7 +100,7 @@ func (self *MountFlags) Scan(value interface{}) error {
 				}
 			}
 		case string:
-			svalue := value.(string)
+			svalue := value
 			for _, flag := range strings.Split(svalue, ",") {
 				if flag == nflag {
 					self.Add(MountFlag{

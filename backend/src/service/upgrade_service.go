@@ -178,9 +178,10 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 				// Serch for the asset corrisponfing the correct architecture
 				for _, asset := range release.Assets {
 					arch := runtime.GOARCH
-					if arch == "arm64" {
+					switch arch {
+					case "arm64":
 						arch = "aarch64"
-					} else if arch == "amd64" {
+					case "amd64":
 						arch = "x86_64"
 					}
 					if asset.GetName() == fmt.Sprintf("srat_%s.zip", arch) {

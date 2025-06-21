@@ -7,10 +7,12 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/homeassistant/addons"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/homeassistant/host"
 	"github.com/dianlight/srat/homeassistant/ingress"
 	"github.com/dianlight/srat/homeassistant/mount"
+	"github.com/dianlight/srat/homeassistant/resolution"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
@@ -103,6 +105,12 @@ func ProvideHAClientDependencies(params BaseAppParams) fx.Option {
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (host.ClientWithResponsesInterface, error) {
 			return host.NewClientWithResponses(params.SupervisorURL, host.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (addons.ClientWithResponsesInterface, error) {
+			return addons.NewClientWithResponses(params.SupervisorURL, addons.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (resolution.ClientWithResponsesInterface, error) {
+			return resolution.NewClientWithResponses(params.SupervisorURL, resolution.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 	)
 }

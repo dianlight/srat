@@ -1,0 +1,480 @@
+openapi: 3.0.0
+info:
+  title: Home Assistant Supervisor Addon API (Self)
+  version: "1.0.0"
+  description: API for managing the current addon (self) via Home Assistant Supervisor, based on documentation at https://developers.home-assistant.io/docs/api/supervisor/endpoints#addons
+  contact:
+    name: Home Assistant Developers
+    url: https://developers.home-assistant.io/docs/api/supervisor/
+servers:
+  - url: http://{supervisor_address}/
+    description: Base URL for the Home Assistant Supervisor API.
+    variables:
+      supervisor_address:
+        default: supervisor
+        description: "Hostname or IP address of the Supervisor. Examples: 'supervisor' (for internal Docker calls like from an add-on), '172.30.32.2' (Supervisor's default Docker IP), or '<YOUR_HA_IP_ADDRESS>:8123/api/hassio' (if accessing via Home Assistant Ingress - note that if using Ingress, the paths defined in this spec are relative to this Ingress base path)."
+
+components:
+  schemas:
+    AddonInfoData:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Example Add-on"
+        slug:
+          type: string
+          example: "self" # For /addons/self/info, this would be the addon's actual slug
+        description:
+          type: string
+          example: "An example add-on."
+        long_description:
+          type: string
+          nullable: true
+          example: "This is a more detailed description of the example add-on."
+        auto_update:
+          type: boolean
+          example: false
+        repository:
+          type: string
+          example: "local"
+        version:
+          type: string
+          example: "1.2.3"
+        version_latest:
+          type: string
+          nullable: true
+          example: "1.2.4"
+        state:
+          type: string
+          enum: [started, stopped, unknown, error]
+          example: "started"
+        boot:
+          type: string
+          enum: [auto, manual]
+          example: "auto"
+        options:
+          type: object
+          additionalProperties: true
+          example: {"setting1": "value1", "setting2": 123}
+        schema:
+          type: object
+          additionalProperties: true
+          nullable: true
+          example: {"setting1": "str", "setting2": "int"}
+        arch:
+          type: array
+          items:
+            type: string
+          example: ["amd64", "armv7"]
+        machine:
+          type: array
+          items:
+            type: string
+          example: ["qemux86-64"]
+        hostname:
+          type: string
+          nullable: true
+          example: "example-addon-container-name"
+        protected:
+          type: boolean
+          example: true
+        rating: # 1-6, 6 is gold
+          type: string
+          example: "6"
+        stage:
+          type: string
+          enum: [stable, experimental, deprecated]
+          example: "stable"
+        startup:
+          type: string
+          enum: [initialize, system, services, application, once]
+          example: "application"
+        watchdog:
+          type: boolean
+          example: true
+        with_stdin:
+          type: boolean
+          example: false
+        ingress:
+          type: boolean
+          example: false
+        ingress_entry:
+          type: string
+          nullable: true
+        ingress_panel:
+          type: boolean
+          example: false
+        ingress_url:
+          type: string
+          nullable: true
+        icon:
+          type: boolean
+          example: true
+        logo:
+          type: boolean
+          example: true
+        url:
+          type: string
+          format: url
+          nullable: true
+        host_network:
+          type: boolean
+          example: false
+        full_access:
+          type: boolean
+          example: false
+        hassio_api:
+          type: boolean
+          example: true
+        homeassistant_api:
+          type: boolean
+          example: false
+        auth_api:
+          type: boolean
+          example: true # Usually true for addons to validate sessions
+        ip_address:
+          type: string
+          format: ipv4 # or general string if could be other things
+          nullable: true
+          description: "IP address of the addon within the Docker network."
+          example: "172.30.33.0"
+
+    AddonInfoResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+        data:
+          $ref: '#/components/schemas/AddonInfoData'
+      required:
+        - result
+        - data
+
+    AddonStatsData:
+      type: object
+      properties:
+        cpu_percent:
+          type: number
+          format: double
+        memory_usage:
+          type: integer
+          description: "Memory usage in bytes."
+        memory_limit:
+          type: integer
+          description: "Memory limit in bytes."
+        memory_percent:
+          type: number
+          format: double
+        network_rx:
+          type: integer
+          description: "Network received bytes."
+        network_tx:
+          type: integer
+          description: "Network transmitted bytes."
+        blk_read:
+          type: integer
+          description: "Block device read bytes."
+        blk_write:
+          type: integer
+          description: "Block device written bytes."
+
+    AddonStatsResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+        data:
+          $ref: '#/components/schemas/AddonStatsData'
+      required:
+        - result
+        - data
+
+    AddonOptionsRequest:
+      type: object
+      additionalProperties: true
+      description: "Add-on configuration options to set. Structure depends on the add-on's schema."
+      example: {"option1": "new_value", "another_option": 42}
+
+    AddonOptionsResponseData:
+      type: object
+      additionalProperties: true
+      description: "Current configuration options for the add-on."
+      example: {"option1": "current_value", "another_option": 42}
+
+    AddonOptionsResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+        data:
+          $ref: '#/components/schemas/AddonOptionsResponseData'
+      required:
+        - result
+        - data
+
+    AddonStdinRequest:
+      type: object
+      properties:
+        input:
+          type: string
+          description: "Data to send to the addon's standard input."
+      required:
+        - input
+
+    UpdateSelfAddonRequest:
+      type: object
+      properties:
+        version:
+          type: string
+          description: "Optional specific version to update/downgrade to. If omitted, updates to the latest available version."
+          example: "1.2.5"
+
+    ActionResult:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+          description: Indicates the outcome of the action.
+        data: # Data can be an empty object or contain specific info for some actions
+          type: object
+          additionalProperties: true # Allows for flexibility if data is returned
+          description: Additional data, often an empty object.
+          example: {}
+      required:
+        - result
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          nullable: true # Supervisor sometimes returns errors without a message field, or with it as null
+        data: # Sometimes error responses also include a data object
+          type: object
+          additionalProperties: true
+          nullable: true
+      # 'message' is not always strictly required by the Supervisor API for all error responses.
+      # Some errors might just be a status code with an empty or non-JSON body.
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT # Supervisor token is an opaque string, JWT is a common placeholder
+
+security:
+  - bearerAuth: []
+
+paths:
+  /addons/self/info:
+    get:
+      summary: Get Self Add-on Information
+      description: Returns detailed information about the current (self) add-on.
+      operationId: getSelfAddonInfo
+      tags:
+        - AddonSelf
+      responses:
+        '200':
+          description: Successful response with add-on information.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddonInfoResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/self/stats:
+    get:
+      summary: Get Self Add-on Stats
+      description: Returns resource usage statistics for the current (self) add-on.
+      operationId: getSelfAddonStats
+      tags:
+        - AddonSelf
+      responses:
+        '200':
+          description: Successful response with add-on statistics.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddonStatsResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/self/options:
+    get:
+      summary: Get Self Add-on Options
+      description: Retrieves the current configuration options for the add-on.
+      operationId: getSelfAddonOptions
+      tags:
+        - AddonSelf
+      responses:
+        '200':
+          description: Add-on options retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddonOptionsResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Set Self Add-on Options
+      description: Updates the configuration options for the add-on. The add-on might restart.
+      operationId: setSelfAddonOptions
+      tags:
+        - AddonSelf
+      requestBody:
+        description: Add-on options to set.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddonOptionsRequest'
+      responses:
+        '200':
+          description: Add-on options updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad Request (e.g., invalid options).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/self/restart:
+    post:
+      summary: Restart Self Add-on
+      description: Restarts the current (self) add-on.
+      operationId: restartSelfAddon
+      tags:
+        - AddonSelf
+      responses:
+        '200':
+          description: Add-on is restarting.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/self/logs:
+    get:
+      summary: Get Self Add-on Logs
+      description: Retrieves logs for the current (self) add-on.
+      operationId: getSelfAddonLogs
+      tags:
+        - AddonSelf
+      responses:
+        '200':
+          description: Add-on logs retrieved successfully.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized.
+          content:
+            application/json: # Supervisor might return JSON error even for text/plain success
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/self/update:
+    post:
+      summary: Update Self Add-on
+      description: Checks for updates for the current (self) add-on and applies the latest or a specified version.
+      operationId: updateSelfAddon
+      tags:
+        - AddonSelf
+      requestBody:
+        description: Optionally specify a version to update/downgrade to.
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSelfAddonRequest'
+      responses:
+        '200':
+          description: Add-on update process initiated or no update available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult' # May contain data about update status
+        '400':
+          description: Bad Request (e.g., invalid version).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/self/stdin:
+    post:
+      summary: Send Data to Self Add-on STDIN
+      description: Sends data to the standard input of the current (self) add-on. The add-on must be configured to accept stdin.
+      operationId: sendSelfAddonStdin
+      tags:
+        - AddonSelf
+      requestBody:
+        description: Data to send.
+        required: true
+        content:
+          application/json: # Assuming JSON wrapper for consistency, though API might take raw text
+            schema:
+              $ref: '#/components/schemas/AddonStdinRequest'
+          # text/plain: # If Supervisor expects raw text for this endpoint
+          #   schema:
+          #     type: string
+      responses:
+        '200':
+          description: Data sent to stdin successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad Request (e.g., add-on not configured for stdin).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
