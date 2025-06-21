@@ -3,6 +3,8 @@ package dto
 type ContextState struct {
 	AddonIpAddress  string
 	ReadOnlyMode    bool
+	ProtectedMode   bool
+	SecureMode      bool
 	UpdateFilePath  string
 	UpdateChannel   UpdateChannel
 	SambaConfigFile string

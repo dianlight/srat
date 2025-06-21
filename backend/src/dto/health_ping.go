@@ -9,5 +9,6 @@ type HealthPing struct {
 	Dirty              DataDirtyTracker   `json:"dirty_tracking"`
 	LastRelease        ReleaseAsset       `json:"last_release"`
 	SecureMode         bool               `json:"secure_mode"`
+	ProtectedMode      bool               `json:"protected_mode"`
 	BuildVersion       string             `json:"build_version"`
 }

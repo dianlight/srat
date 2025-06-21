@@ -96,7 +96,6 @@ func (suite *HealthHandlerSuite) TestNewHealthHandler_Singleton() {
 		Broadcaster:  suite.mockBroadcaster,
 		SambaService: suite.mockSambaService,
 		DirtyService: suite.mockDirtyService,
-		HaMode:       false,
 	}
 
 	// Mock dependencies for the run goroutine

@@ -1,0 +1,372 @@
+openapi: 3.0.0
+info:
+  title: Home Assistant Supervisor Resolution API
+  version: "1.0.0"
+  description: API endpoints for managing system resolution and health checks in Home Assistant Supervisor
+  contact:
+    name: Home Assistant Developers
+    url: https://developers.home-assistant.io/docs/api/supervisor/
+servers:
+  - url: http://{supervisor_address}/
+    description: Base URL for the Home Assistant Supervisor API
+    variables:
+      supervisor_address:
+        default: supervisor
+        description: "Hostname or IP address of the Supervisor. Examples: 'supervisor' (for internal Docker calls like from an add-on), '172.30.32.2' (Supervisor's default Docker IP), or '<YOUR_HA_IP_ADDRESS>:8123/api/hassio' (if accessing via Home Assistant Ingress - note that if using Ingress, the paths defined in this spec are relative to this Ingress base path)."
+
+components:
+  schemas:
+    Issue:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Unique identifier for the issue
+        type:
+          type: string
+          description: Type of issue
+        context:
+          type: string
+          enum: [system, addon, core, supervisor]
+          description: Context in which the issue occurs
+        reference:
+          type: string
+          nullable: true
+          description: Reference to the specific component or resource related to the issue
+
+    Suggestion:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Unique identifier for the suggestion
+        type:
+          type: string
+          description: Type of suggested action
+        context:
+          type: string
+          enum: [system, addon, core, supervisor]
+          description: Context in which the suggestion applies
+        reference:
+          type: string
+          nullable: true
+          description: Reference to the specific component or resource related to the suggestion
+        auto:
+          type: boolean
+          description: Whether this suggestion can be applied automatically
+
+    Check:
+      type: object
+      properties:
+        slug:
+          type: string
+          description: Unique identifier for the check
+        enabled:
+          type: boolean
+          description: Whether this check is currently enabled
+
+    ResolutionInfo:
+      type: object
+      properties:
+        unsupported:
+          type: array
+          items:
+            type: string
+          description: List of unsupported components
+        unhealthy:
+          type: array
+          items:
+            type: string
+          description: List of unhealthy components
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Suggestion'
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Check'
+
+    Service:
+      type: object
+      properties:
+        slug:
+          type: string
+          description: Unique identifier for the service
+        available:
+          type: boolean
+          description: Whether the service is available
+        providers:
+          type: array
+          items:
+            type: string
+          description: List of add-ons providing this service
+
+    ServiceDefinition:
+      type: object
+      properties:
+        addon:
+          type: string
+          description: Add-on providing the service
+        host:
+          type: string
+          format: ipv4
+          description: Host address of the service
+        port:
+          type: string
+          description: Port number of the service
+        ssl:
+          type: boolean
+          description: Whether SSL is enabled
+        username:
+          type: string
+          description: Username for authentication
+        password:
+          type: string
+          description: Password for authentication
+        protocol:
+          type: string
+          description: Protocol version
+
+    ActionResult:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+          description: Result of the action
+        data:
+          type: object
+          additionalProperties: true
+          description: Additional data
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          nullable: true
+        data:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /resolution/info:
+    get:
+      summary: Get system resolution information
+      operationId: getResolutionInfo
+      tags:
+        - Resolution
+      responses:
+        '200':
+          description: System resolution information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionInfo'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /resolution/suggestion/{uuid}:
+    post:
+      summary: Apply a suggested action
+      operationId: applySuggestion
+      tags:
+        - Resolution
+      parameters:
+        - in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Suggestion applied successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Dismiss a suggested action
+      operationId: dismissSuggestion
+      tags:
+        - Resolution
+      parameters:
+        - in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Suggestion dismissed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /resolution/issue/{uuid}/suggestions:
+    get:
+      summary: Get suggestions for fixing an issue
+      operationId: getSuggestionsForIssue
+      tags:
+        - Resolution
+      parameters:
+        - in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Suggestion'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /resolution/issue/{uuid}:
+    delete:
+      summary: Dismiss an issue
+      operationId: dismissIssue
+      tags:
+        - Resolution
+      parameters:
+        - in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Issue dismissed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /resolution/healthcheck:
+    post:
+      summary: Execute a healthcheck
+      operationId: executeHealthcheck
+      tags:
+        - Resolution
+      responses:
+        '200':
+          description: Healthcheck executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /resolution/check/{slug}/options:
+    post:
+      summary: Set options for a check
+      operationId: setCheckOptions
+      tags:
+        - Resolution
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Check options updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /resolution/check/{slug}/run:
+    post:
+      summary: Execute a specific check
+      operationId: runCheck
+      tags:
+        - Resolution
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Check executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
