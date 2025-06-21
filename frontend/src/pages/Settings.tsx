@@ -7,7 +7,7 @@ import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement, 
 import { MuiChipsInput } from 'mui-chips-input'
 import { Stack, CircularProgress } from "@mui/material";
 import Divider from "@mui/material/Divider";
-import { useGetNicsQuery, useGetSettingsQuery, usePutSettingsMutation, type NetworkInfo, type Settings, useGetHostnameQuery, useGetUpdateChannelsQuery, type GetUpdateChannelsApiResponse } from "../store/sratApi";
+import { useGetNicsQuery, useGetSettingsQuery, usePutSettingsMutation, type InterfaceStat, type Settings, useGetHostnameQuery, useGetUpdateChannelsQuery, type GetUpdateChannelsApiResponse } from "../store/sratApi";
 import { useReadOnly } from "../hooks/readonlyHook";
 import debounce from 'lodash.debounce';
 import { NIL } from "uuid";
@@ -292,7 +292,9 @@ export function Settings() {
                                 multiple
                                 label="Interfaces"
                                 name="interfaces"
-                                options={(nic as NetworkInfo)?.nics?.map(nc => nc.name) || []}
+                                options={(nic as InterfaceStat[])?.map(nc => nc.name).filter(
+                                    (name) => name !== "lo" && name !== "hassio"
+                                ) || []}
                                 control={control}
                                 loading={inLoadinf}
                                 autocompleteProps={{
