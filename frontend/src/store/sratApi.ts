@@ -282,8 +282,8 @@ export type GetHostnameApiResponse = /** status 200 OK */
   | string
   | /** status default Error */ ErrorModel;
 export type GetHostnameApiArg = void;
-export type GetNicsApiResponse = /** status 200 OK */
-  | NetworkInfo
+export type GetNicsApiResponse =
+  | /** status 200 OK */ (InterfaceStat[] | null)
   | /** status default Error */ ErrorModel;
 export type GetNicsApiArg = void;
 export type PutRestartApiResponse = /** status default Error */ ErrorModel;
@@ -576,21 +576,21 @@ export type HealthPing = {
   dirty_tracking: DataDirtyTracker;
   last_error: string;
   last_release: ReleaseAsset;
+  protected_mode: boolean;
   read_only: boolean;
   samba_process_status: SambaProcessStatus;
   secure_mode: boolean;
 };
-export type Nic = {
-  duplex: string;
-  is_virtual: boolean;
-  mac_address: string;
-  name: string;
-  speed: string;
+export type InterfaceAddr = {
+  addr: string;
 };
-export type NetworkInfo = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  nics: Nic[] | null;
+export type InterfaceStat = {
+  addrs: InterfaceAddr[] | null;
+  flags: string[] | null;
+  hardwareAddr: string;
+  index: number;
+  mtu: number;
+  name: string;
 };
 export type SmbConf = {
   /** A URL to the JSON Schema for this object. */

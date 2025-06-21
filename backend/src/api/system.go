@@ -9,11 +9,10 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/jaypipes/ghw"
 	"github.com/jpillora/overseer"
+	"github.com/shirou/gopsutil/v4/net"
 )
 
 type SystemHanler struct {
@@ -60,21 +59,19 @@ func (handler *SystemHanler) RestartHandler(ctx context.Context, input *struct{}
 // Returns:
 //   - A struct containing the network information in the Body field.
 //   - An error if there is any issue retrieving or converting the network information.
-func (handler *SystemHanler) GetNICsHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.NetworkInfo }, error) {
+func (handler *SystemHanler) GetNICsHandler(ctx context.Context, input *struct{}) (*struct{ Body net.InterfaceStatList }, error) {
 
-	net, err := ghw.Network()
+	//	net, err := ghw.Network()
+	//	if err != nil {
+	//		return nil, err
+	//	}
+
+	nics, err := net.InterfacesWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var info dto.NetworkInfo
-	var conv converter.NetToDtoImpl
-	err = conv.NetInfoToNetworkInfo(*net, &info)
-	if err != nil {
-		return nil, err
-	}
-
-	return &struct{ Body dto.NetworkInfo }{Body: info}, nil
+	return &struct{ Body net.InterfaceStatList }{Body: nics}, nil
 }
 
 // ReadLinesOffsetN reads contents from file and splits them by new line.
