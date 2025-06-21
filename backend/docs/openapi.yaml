@@ -191,6 +191,47 @@ components:
         - protected_mode
         - build_version
       type: object
+    InterfaceAddr:
+      additionalProperties: false
+      properties:
+        addr:
+          type: string
+      required:
+        - addr
+      type: object
+    InterfaceStat:
+      additionalProperties: false
+      properties:
+        addrs:
+          items:
+            $ref: "#/components/schemas/InterfaceAddr"
+          type:
+            - array
+            - "null"
+        flags:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        hardwareAddr:
+          type: string
+        index:
+          format: int64
+          type: integer
+        mtu:
+          format: int64
+          type: integer
+        name:
+          type: string
+      required:
+        - index
+        - mtu
+        - name
+        - hardwareAddr
+        - flags
+        - addrs
+      type: object
     JsonPatchOp:
       additionalProperties: false
       properties:
@@ -284,45 +325,6 @@ components:
       required:
         - path
         - type
-      type: object
-    NIC:
-      additionalProperties: false
-      properties:
-        duplex:
-          type: string
-        is_virtual:
-          type: boolean
-        mac_address:
-          type: string
-        name:
-          type: string
-        speed:
-          type: string
-      required:
-        - name
-        - mac_address
-        - is_virtual
-        - speed
-        - duplex
-      type: object
-    NetworkInfo:
-      additionalProperties: false
-      properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/NetworkInfo.json
-          format: uri
-          readOnly: true
-          type: string
-        nics:
-          items:
-            $ref: "#/components/schemas/NIC"
-          type:
-            - array
-            - "null"
-      required:
-        - nics
       type: object
     Partition:
       additionalProperties: false
@@ -706,13 +708,17 @@ paths:
         - system
   /nics:
     get:
-      operationId: get-nics
+      operationId: list-nics
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NetworkInfo"
+                items:
+                  $ref: "#/components/schemas/InterfaceStat"
+                type:
+                  - array
+                  - "null"
           description: OK
         default:
           content:
@@ -720,7 +726,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
-      summary: Get nics
+      summary: List nics
       tags:
         - system
   /restart:

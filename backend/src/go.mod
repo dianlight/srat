@@ -87,7 +87,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
-	github.com/jaypipes/pcidb v1.0.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -96,7 +95,6 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20250317134145-8bc96cf8fc35 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
-	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
@@ -128,7 +126,6 @@ require (
 	golang.org/x/tools v0.34.0 // indirect
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	howett.net/plist v1.0.1 // indirect
 	modernc.org/libc v1.65.8 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
@@ -139,7 +136,6 @@ require (
 	github.com/danielgtaylor/huma/v2 v2.32.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/itchyny/gojq v0.12.17
-	github.com/jaypipes/ghw v0.17.0
 	github.com/lmittmann/tint v1.1.2
 	github.com/ovechkin-dm/mockio/v2 v2.0.1
 	github.com/rs/cors v1.11.1
@@ -165,3 +161,5 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
+
+
