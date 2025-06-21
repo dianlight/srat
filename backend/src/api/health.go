@@ -37,7 +37,6 @@ type HealthHandlerParams struct {
 	Broadcaster  service.BroadcasterServiceInterface
 	SambaService service.SambaServiceInterface
 	DirtyService service.DirtyDataServiceInterface
-	HaMode       bool `name:"ha_mode"`
 }
 
 func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
@@ -57,14 +56,15 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	p.broadcaster = param.Broadcaster
 	p.sambaService = param.SambaService
 	p.OutputEventsCount = 0
+	p.SecureMode = param.Apictx.SecureMode
 	p.dirtyService = param.DirtyService
-	p.SecureMode = param.HaMode
 	p.BuildVersion = config.BuildVersion()
 	if param.Apictx.Heartbeat > 0 {
 		p.OutputEventsInterleave = time.Duration(param.Apictx.Heartbeat) * time.Second
 	} else {
 		p.OutputEventsInterleave = 5 * time.Second
 	}
+	p.ProtectedMode = param.Apictx.ProtectedMode
 	param.Ctx.Value("wg").(*sync.WaitGroup).Add(1)
 	go func() {
 		defer param.Ctx.Value("wg").(*sync.WaitGroup).Done()

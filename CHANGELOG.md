@@ -10,6 +10,7 @@
 - [ ] Monitor tab (?)
 - [ ] Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
 - [ ] Custom component [#83](https://github.com/dianlight/srat/issues/83)
+- [ ] Ingress security validation [#89](https://github.com/dianlight/srat/issues/89)
 
 ###  🐛 Bug Fixes
 - [X] `enable`/`disable` share functionality is not working as expected.

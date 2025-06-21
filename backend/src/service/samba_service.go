@@ -145,13 +145,14 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, error) {
 		if err != nil {
 			continue
 		}
-		if name == "smbd" {
+		switch name {
+		case "smbd":
 			conv.ProcessToProcessStatus(p, &spc.Smbd)
-		} else if name == "nmbd" {
+		case "nmbd":
 			conv.ProcessToProcessStatus(p, &spc.Nmbd)
-		} else if name == "wsdd2" {
+		case "wsdd2":
 			conv.ProcessToProcessStatus(p, &spc.Wsdd2)
-		} else if name == "avahi-daemon" {
+		case "avahi-daemon":
 			conv.ProcessToProcessStatus(p, &spc.Avahi)
 		}
 	}
