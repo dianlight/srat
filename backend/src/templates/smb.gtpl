@@ -61,7 +61,7 @@
    {{ if not .bind_all_interfaces -}}
    interfaces = lo {{ .interfaces | join " " }} {{ .docker_interface | default " "}}
    {{- end }}
-   hosts allow = lo {{ .allow_hosts | join " " }} {{ .docker_net | default " " }}
+   hosts allow = 127.0.0.1 {{ .allow_hosts | join " " }} {{ .docker_net | default " " }}
 
    mangled names = no
    dos charset = CP1253
