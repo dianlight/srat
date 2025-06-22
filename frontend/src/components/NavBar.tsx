@@ -287,7 +287,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     return (<>
         <AppBar position="static">
             <Container maxWidth="xl">
-                <Toolbar disableGutters>
+                <Toolbar disableGutters variant="dense">
                     {matches &&
                         <img
                             id="logo-container"
@@ -298,7 +298,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                             onMouseLeave={() => setIsLogoHovered(false)} />
                     }
                     <Tabs
-                        sx={{ flexGrow: 1 }} // display: flex is default for Tabs root, flexGrow is key
+                        sx={{ flexGrow: 1, maxHeight: '48px' }} // display: flex is default for Tabs root, flexGrow is key
                         value={value}
                         onChange={handleChange}
                         indicatorColor="secondary"
@@ -315,6 +315,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                                 {...a11yProps(tab.actualIndex as number)}
                                 icon={getTabIcon(tab, health.health)}
                                 iconPosition="end"
+                                sx={{ maxHeight: '48px', minHeight: '48px' }}
                             />
                         ))}
                     </Tabs>
