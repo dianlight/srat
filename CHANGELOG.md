@@ -11,6 +11,8 @@
 - [ ] Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
 - [ ] Custom component [#83](https://github.com/dianlight/srat/issues/83)
 - [ ] Ingress security validation [#89](https://github.com/dianlight/srat/issues/89)
+- [ ] Smart Control [#100](https://github.com/dianlight/srat/issues/100)
+- [ ] HDD Spin down [#101](https://github.com/dianlight/srat/issues/101)
 
 ###  🐛 Bug Fixes
 - [X] `enable`/`disable` share functionality is not working as expected.
