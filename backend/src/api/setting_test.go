@@ -45,10 +45,6 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 			},
-			fx.Annotate(
-				func() bool { return false },
-				fx.ResultTags(`name:"ha_mode"`),
-			),
 			api.NewSettingsHanler,
 			service.NewDirtyDataService,
 			//			mock.Mock[service.BroadcasterServiceInterface],

@@ -13,4 +13,6 @@ type ContextState struct {
 	DockerNet       string
 	Heartbeat       int
 	SupervisorURL   string
+	SupervisorToken string
+	DatabasePath    string
 }

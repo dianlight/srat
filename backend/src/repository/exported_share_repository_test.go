@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/unixsamba"
@@ -52,10 +53,20 @@ func (suite *ExportedSharesRepositorySuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 			},
-			fx.Annotate(
-				func() string { return "file::memory:?cache=shared&_pragma=foreign_keys(1)" },
-				fx.ResultTags(`name:"db_path"`),
-			),
+			func() *dto.ContextState {
+				sharedResources := dto.ContextState{}
+				sharedResources.ReadOnlyMode = false
+				sharedResources.Heartbeat = 1
+				sharedResources.DockerInterface = "hassio"
+				sharedResources.DockerNet = "172.30.32.0/23"
+				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
+				return &sharedResources
+			},
+
+			//			fx.Annotate(
+			//				func() string { return "file::memory:?cache=shared&_pragma=foreign_keys(1)" },
+			//				fx.ResultTags(`name:"db_path"`),
+			//			),
 			dbom.NewDB,
 			repository.NewExportedShareRepository,
 			service.NewFilesystemService,

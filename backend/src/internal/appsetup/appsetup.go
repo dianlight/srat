@@ -40,13 +40,9 @@ func NewFXLoggerOption() fx.Option {
 
 // BaseAppParams holds common parameters for initializing FX application components.
 type BaseAppParams struct {
-	Ctx             context.Context
-	CancelFn        context.CancelFunc
-	StaticConfig    *dto.ContextState
-	HAMode          bool
-	DBPath          string
-	SupervisorURL   string // Optional: Only for apps needing HA clients
-	SupervisorToken string // Optional: Only for apps needing HA clients
+	Ctx          context.Context
+	CancelFn     context.CancelFunc
+	StaticConfig *dto.ContextState
 }
 
 // ProvideCoreDependencies provides FX options for core services and repositories.
@@ -56,14 +52,6 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		func() *slog.Logger { return slog.Default() },
 		func() (context.Context, context.CancelFunc) { return params.Ctx, params.CancelFn },
 		func() *dto.ContextState { return params.StaticConfig },
-		fx.Annotate(
-			func() bool { return params.HAMode },
-			fx.ResultTags(`name:"ha_mode"`),
-		),
-		fx.Annotate(
-			func() string { return params.DBPath },
-			fx.ResultTags(`name:"db_path"`),
-		),
 		func() *github.Client {
 			rateLimiter := github_ratelimit.New(nil)
 			return github.NewClient(&http.Client{
@@ -92,25 +80,25 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 func ProvideHAClientDependencies(params BaseAppParams) fx.Option {
 	return fx.Provide(
 		func() (*securityprovider.SecurityProviderBearerToken, error) {
-			return securityprovider.NewSecurityProviderBearerToken(params.SupervisorToken)
+			return securityprovider.NewSecurityProviderBearerToken(params.StaticConfig.SupervisorToken)
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (ingress.ClientWithResponsesInterface, error) {
-			return ingress.NewClientWithResponses(params.SupervisorURL, ingress.WithRequestEditorFn(bearerAuth.Intercept))
+			return ingress.NewClientWithResponses(params.StaticConfig.SupervisorURL, ingress.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (hardware.ClientWithResponsesInterface, error) {
-			return hardware.NewClientWithResponses(params.SupervisorURL, hardware.WithRequestEditorFn(bearerAuth.Intercept))
+			return hardware.NewClientWithResponses(params.StaticConfig.SupervisorURL, hardware.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (mount.ClientWithResponsesInterface, error) {
-			return mount.NewClientWithResponses(params.SupervisorURL, mount.WithRequestEditorFn(bearerAuth.Intercept))
+			return mount.NewClientWithResponses(params.StaticConfig.SupervisorURL, mount.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (host.ClientWithResponsesInterface, error) {
-			return host.NewClientWithResponses(params.SupervisorURL, host.WithRequestEditorFn(bearerAuth.Intercept))
+			return host.NewClientWithResponses(params.StaticConfig.SupervisorURL, host.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (addons.ClientWithResponsesInterface, error) {
-			return addons.NewClientWithResponses(params.SupervisorURL, addons.WithRequestEditorFn(bearerAuth.Intercept))
+			return addons.NewClientWithResponses(params.StaticConfig.SupervisorURL, addons.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (resolution.ClientWithResponsesInterface, error) {
-			return resolution.NewClientWithResponses(params.SupervisorURL, resolution.WithRequestEditorFn(bearerAuth.Intercept))
+			return resolution.NewClientWithResponses(params.StaticConfig.SupervisorURL, resolution.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 	)
 }

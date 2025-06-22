@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/glebarez/sqlite"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -15,11 +16,10 @@ import (
 
 func NewDB(lc fx.Lifecycle, v struct {
 	fx.In
-
-	DbPath string `name:"db_path"`
+	ApiCtx *dto.ContextState
 }) *gorm.DB {
 
-	db, err := gorm.Open(sqlite.Open(v.DbPath), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open(v.ApiCtx.DatabasePath), &gorm.Config{
 		//db, err = gorm.Open(gormlite.Open(dbpath), &gorm.Config{
 		TranslateError:         true,
 		SkipDefaultTransaction: true,
@@ -27,16 +27,16 @@ func NewDB(lc fx.Lifecycle, v struct {
 	})
 
 	if err != nil {
-		panic(errors.Errorf("failed to connect database %s", v.DbPath))
+		panic(errors.Errorf("failed to connect database %s", v.ApiCtx.DatabasePath))
 	}
 	// Migrate the schema
 	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{})
 	if err != nil {
-		slog.Error("failed to migrate database", "error", err, "path", v.DbPath)
+		slog.Error("failed to migrate database", "error", err, "path", v.ApiCtx.DatabasePath)
 		slog.Warn("Resetting Database to Default State")
 		sqlDB, _ := db.DB()
 		sqlDB.Close()
-		os.Remove(strings.Split(v.DbPath, "?")[0])
+		os.Remove(strings.Split(v.ApiCtx.DatabasePath, "?")[0])
 		return NewDB(lc, v)
 	}
 
