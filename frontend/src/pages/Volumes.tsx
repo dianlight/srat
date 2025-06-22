@@ -2,8 +2,8 @@ import { Fragment, useState, useEffect, useRef, useCallback } from "react";
 import { InView } from "react-intersection-observer";
 import { useLocation, useNavigate } from 'react-router';
 import { PreviewDialog } from "../components/PreviewDialog";
-import List from "@mui/material/List"; // Import Collapse and Chip
-import { Accordion, AccordionDetails, AccordionSummary, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Collapse, Chip, Switch, FormControlLabel, Autocomplete, TextField } from "@mui/material"; // Import Collapse and Chip, Switch, FormControlLabel
+import List from "@mui/material/List";
+import { Accordion, AccordionDetails, AccordionSummary, ListItemButton, ListItem, IconButton, ListItemAvatar, Avatar, ListItemText, Divider, Stack, Typography, Tooltip, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Collapse, Chip, Switch, FormControlLabel, Autocomplete, TextField, useTheme, useMediaQuery, Menu, MenuItem, ListItemIcon } from "@mui/material";
 import ShareIcon from '@mui/icons-material/Share';
 import AddIcon from '@mui/icons-material/Add';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -29,6 +29,7 @@ import ComputerIcon from '@mui/icons-material/Computer';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import UpdateIcon from '@mui/icons-material/Update';
 import UpdateDisabledIcon from '@mui/icons-material/UpdateDisabled';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import MD5 from "crypto-js/md5";
 import { useFormState } from "react-dom";
 import { TabIDs, type LocationState } from "../store/locationState";
@@ -43,7 +44,109 @@ function decodeEscapeSequence(source: string) {
     });
 };
 
+interface PartitionActionsProps {
+    partition: Partition;
+    read_only: boolean;
+    onToggleAutomount: (partition: Partition) => void;
+    onMount: (partition: Partition) => void;
+    onViewSettings: (partition: Partition) => void;
+    onUnmount: (partition: Partition, force: boolean) => void;
+    onCreateShare: (partition: Partition) => void;
+    onGoToShare: (partition: Partition) => void;
+}
 
+function PartitionActions({
+    partition,
+    read_only,
+    onToggleAutomount,
+    onMount,
+    onViewSettings,
+    onUnmount,
+    onCreateShare,
+    onGoToShare
+}: PartitionActionsProps) {
+    const theme = useTheme();
+    const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+        event.stopPropagation();
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleMenuClose = (e?: React.MouseEvent<HTMLElement> | {}, _reason?: "backdropClick" | "escapeKeyDown") => {
+        (e as React.MouseEvent<HTMLElement>)?.stopPropagation();
+        setAnchorEl(null);
+    };
+
+    const isMounted = partition.mount_point_data
+        && partition.mount_point_data.length > 0
+        && partition.mount_point_data.some(mpd => mpd.is_mounted);
+    const hasShares = partition.mount_point_data
+        && partition.mount_point_data.length > 0
+        && partition.mount_point_data.some(mpd => {
+            return mpd.shares &&
+                mpd.shares.length > 0 &&
+                mpd.shares.some(share => !share.disabled)
+        });
+    const firstMountPath = partition.mount_point_data?.[0]?.path;
+    const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
+
+    if (read_only || partition.system || partition.name?.startsWith('hassos-') || (partition.host_mount_point_data && partition.host_mount_point_data.length > 0)) {
+        return null;
+    }
+
+    const actionItems = [];
+
+    // Automount Toggle Button
+    if (!hasShares && partition.mount_point_data?.[0]) {
+        if (partition.mount_point_data?.[0]?.is_to_mount_at_startup) {
+            actionItems.push({ key: 'disable-automount', title: 'Disable mount at startup', icon: <UpdateDisabledIcon />, onClick: () => onToggleAutomount(partition) });
+        } else {
+            actionItems.push({ key: 'enable-automount', title: 'Enable mount at startup', icon: <UpdateIcon />, onClick: () => onToggleAutomount(partition) });
+        }
+    }
+
+    // Mount
+    if (!isMounted) {
+        actionItems.push({ key: 'mount', title: 'Mount Partition', icon: <FontAwesomeSvgIcon icon={faPlug} />, onClick: () => onMount(partition) });
+    }
+
+    if (isMounted) {
+        actionItems.push({ key: 'view-settings', title: 'View Mount Settings', icon: <VisibilityIcon fontSize="small" />, onClick: () => onViewSettings(partition) });
+        if (!hasShares) {
+            actionItems.push({ key: 'unmount', title: 'Unmount Partition', icon: <FontAwesomeSvgIcon icon={faPlugCircleMinus} />, onClick: () => onUnmount(partition, false) });
+        }
+        actionItems.push({ key: 'force-unmount', title: 'Force Unmount Partition', icon: <FontAwesomeSvgIcon icon={faPlugCircleXmark} />, onClick: () => onUnmount(partition, true) });
+        if (showShareActions) {
+            if (!hasShares) {
+                actionItems.push({ key: 'create-share', title: 'Create Share', icon: <AddIcon fontSize="small" />, onClick: () => onCreateShare(partition) });
+            } else {
+                actionItems.push({ key: 'go-to-share', title: 'Go to Share', icon: <ShareIcon fontSize="small" />, onClick: () => onGoToShare(partition) });
+            }
+        }
+    }
+
+    if (isSmallScreen) {
+        return (
+            <>
+                <IconButton aria-label="more actions" aria-controls="partition-actions-menu" aria-haspopup="true" onClick={handleMenuOpen} edge="end" size="small" >
+                    <MoreVertIcon />
+                </IconButton>
+                <Menu id="partition-actions-menu" anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} onClick={(e) => e.stopPropagation()} >
+                    {actionItems.map(action => (
+                        <MenuItem key={action.key} onClick={(e) => { e.stopPropagation(); action.onClick(); handleMenuClose(); }}>
+                            <ListItemIcon>{action.icon}</ListItemIcon>
+                            <ListItemText>{action.title}</ListItemText>
+                        </MenuItem>
+                    ))}
+                </Menu>
+            </>
+        );
+    }
+
+    return (<Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}>{actionItems.map(action => (<Tooltip title={action.title} key={action.key}><IconButton onClick={(e) => { e.stopPropagation(); action.onClick(); }} edge="end" aria-label={action.title.toLowerCase()} size="small">{action.icon}</IconButton></Tooltip>))}</Stack>);
+}
 
 export function Volumes() {
     const read_only = useReadOnly();
@@ -514,7 +617,7 @@ export function Volumes() {
                                                     <Typography variant="caption" component="div">
                                                         {`${disk.partitions?.length || 0} partition(s)`}
                                                     </Typography>
-                                                    <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+                                                    <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" sx={{ display: { xs: 'none', sm: 'flex' } }}>
                                                         {disk.size != null && <Chip label={`Size: ${filesize(disk.size, { round: 1 })}`} size="small" variant="outlined" />}
                                                         {disk.vendor && <Chip label={`Vendor: ${disk.vendor}`} size="small" variant="outlined" />}
                                                         {disk.serial && <Chip label={`Serial: ${disk.serial}`} size="small" variant="outlined" />}
@@ -524,6 +627,7 @@ export function Volumes() {
                                                 </Stack>
                                             }
                                         />
+                                        {/*
                                         <Stack direction="row" spacing={0.5} alignItems="center" sx={{ ml: 1, mt: 0.5, alignSelf: 'center' }}>
                                             {!read_only && disk.removable && (
                                                 <Tooltip title={`Eject disk ${disk.model || disk.id}`}>
@@ -536,8 +640,8 @@ export function Volumes() {
                                                     </IconButton>
                                                 </Tooltip>
                                             )}
-                                            {/* Expand/Collapse icon is handled by AccordionSummary */}
                                         </Stack>
+                                        */}
                                     </ListItem>
                                 </AccordionSummary>
                                 <AccordionDetails sx={{ p: 0 }}>
@@ -569,68 +673,18 @@ export function Volumes() {
                                                         >
                                                             <ListItem
                                                                 disablePadding
-                                                                secondaryAction={!read_only && (!partition.system && !partition.name?.startsWith('hassos-') && !(partition.host_mount_point_data && partition.host_mount_point_data.length > 0)) && ( // Only show actions if not read-only and not system partition
-                                                                    (<Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}> {/* Reduced spacing */}
-                                                                        {/* Automount Toggle Button */}
-                                                                        {!hasShares && partition.mount_point_data?.[0] && (partition.mount_point_data?.[0]?.is_to_mount_at_startup ? (
-                                                                            <Tooltip title="Disable mount at startup">
-                                                                                <IconButton onClick={(e) => { e.stopPropagation(); handleToggleAutomount(partition); }} edge="end" aria-label="disable automount" size="small">
-                                                                                    <UpdateDisabledIcon />
-                                                                                </IconButton>
-                                                                            </Tooltip>
-                                                                        ) : (
-                                                                            <Tooltip title="Enable mount at startup">
-                                                                                <IconButton onClick={(e) => { e.stopPropagation(); handleToggleAutomount(partition); }} edge="end" aria-label="enable automount" size="small">
-                                                                                    <UpdateIcon />
-                                                                                </IconButton>
-                                                                            </Tooltip>
-                                                                        )
-                                                                        )
-                                                                        }
-                                                                        {!isMounted && (
-                                                                            <Tooltip title="Mount Partition">
-                                                                                <IconButton onClick={(e) => { e.stopPropagation(); setSelected(partition); setShowMount(true); }} edge="end" aria-label="mount" size="small">
-                                                                                    <FontAwesomeSvgIcon icon={faPlug} />
-                                                                                </IconButton>
-                                                                            </Tooltip>
-                                                                        )}
-                                                                        {isMounted && (
-                                                                            <>
-                                                                                <Tooltip title="View Mount Settings">
-                                                                                    <IconButton onClick={(e) => { e.stopPropagation(); setSelected(partition); setShowMountSettings(true); }} edge="end" aria-label="view mount settings" size="small">
-                                                                                        <VisibilityIcon fontSize="small" />
-                                                                                    </IconButton>
-                                                                                </Tooltip>
-                                                                                {!hasShares && (
-                                                                                    <Tooltip title="Unmount Partition">
-                                                                                        <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, false); }} edge="end" aria-label="unmount" size="small">
-                                                                                            <FontAwesomeSvgIcon icon={faPlugCircleMinus} />
-                                                                                        </IconButton>
-                                                                                    </Tooltip>
-                                                                                )
-                                                                                }
-                                                                                <Tooltip title="Force Unmount Partition">
-                                                                                    <IconButton onClick={(e) => { e.stopPropagation(); onSubmitUmountVolume(partition, true); }} edge="end" aria-label="force unmount" size="small">
-                                                                                        <FontAwesomeSvgIcon icon={faPlugCircleXmark} />
-                                                                                    </IconButton>
-                                                                                </Tooltip>
-                                                                                {(showShareActions && !hasShares) ? (
-                                                                                    <Tooltip title="Create Share">
-                                                                                        <IconButton onClick={(e) => { e.stopPropagation(); handleCreateShare(partition); }} edge="end" aria-label="create share" size="small">
-                                                                                            <AddIcon fontSize="small" />
-                                                                                        </IconButton>
-                                                                                    </Tooltip>
-                                                                                ) : showShareActions && (
-                                                                                    <Tooltip title="Go to Share">
-                                                                                        <IconButton onClick={(e) => { e.stopPropagation(); handleGoToShare(partition); }} edge="end" aria-label="go to share" size="small">
-                                                                                            <ShareIcon fontSize="small" />
-                                                                                        </IconButton>
-                                                                                    </Tooltip>
-                                                                                )}
-                                                                            </>
-                                                                        )}
-                                                                    </Stack>)
-                                                                )}
+                                                                secondaryAction={
+                                                                    <PartitionActions
+                                                                        partition={partition}
+                                                                        read_only={read_only}
+                                                                        onToggleAutomount={handleToggleAutomount}
+                                                                        onMount={(p) => { setSelected(p); setShowMount(true); }}
+                                                                        onViewSettings={(p) => { setSelected(p); setShowMountSettings(true); }}
+                                                                        onUnmount={onSubmitUmountVolume}
+                                                                        onCreateShare={handleCreateShare}
+                                                                        onGoToShare={handleGoToShare}
+                                                                    />
+                                                                }
                                                             >
                                                                 <ListItemAvatar sx={{ minWidth: 'auto', pr: 1.5, pt: 0.5 }}> {/* Align avatar */}
                                                                     <Avatar sx={{ width: 32, height: 32 }}>
@@ -641,7 +695,7 @@ export function Volumes() {
                                                                     primary={partitionNameDecoded}
                                                                     disableTypography
                                                                     secondary={
-                                                                        <Stack spacing={1} direction="row" flexWrap="wrap" alignItems="center" sx={{ pt: 0.5 }}>
+                                                                        <Stack spacing={1} direction="row" flexWrap="wrap" alignItems="center" sx={{ pt: 0.5, display: { xs: 'none', sm: 'flex' } }}>
                                                                             {partition.size != null && <Chip label={`Size: ${filesize(partition.size, { round: 0 })}`} size="small" variant="outlined" />}
                                                                             {partition.mount_point_data?.[0]?.fstype && <Chip label={`Type: ${partition.mount_point_data[0].fstype}`} size="small" variant="outlined" />}
                                                                             {isMounted && <Chip label={`Mount: ${partition.mount_point_data?.map((mpd) => mpd.path).join(" ")}`} size="small" variant="outlined" />}
