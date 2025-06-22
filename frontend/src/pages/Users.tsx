@@ -155,7 +155,7 @@ export function Users() {
                                     }
                                 }}
                                 secondary={
-                                    <Box component="span" sx={{ mt: 0.5, _display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                    <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" sx={{ mt: 0.5, display: { xs: 'none', sm: 'flex' } }}>
                                         {userRwShares.length > 0 && (
                                             <Tooltip title={`Shares with read-write access for ${user.username}`}>
                                                 <Chip
@@ -199,7 +199,7 @@ export function Users() {
                                         {(userRwShares.length === 0 && userRoShares.length === 0) && (
                                             <Typography variant="caption" sx={{ fontStyle: 'italic' }}>No shares assigned</Typography>
                                         )}
-                                    </Box>
+                                    </Stack>
                                 }
                             />
                             {!read_only && <Stack direction="column" spacing={0} sx={{ pl: 1 }}>
