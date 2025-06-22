@@ -22,10 +22,10 @@
 
 ### 🏗 Chore
 - Implemet wachdog
+- [x] Align UI elements to HA [#81](https://github.com/dianlight/srat/issues/81)
 #### __🚧 Work in progess__
 - [ ] Create the base documentation [#80](https://github.com/dianlight/srat/issues/80)
 - [ ] Display version from ADDON
-- [ ] Align UI elements to HA [#81](https://github.com/dianlight/srat/issues/81)
 
 ## 2025.06.1-dev.801 [ 🧪 Pre-release ]
 
