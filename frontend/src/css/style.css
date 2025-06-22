@@ -49,5 +49,9 @@ body {
 }
 
 .brand-logo {
-  max-height: 60px;
+  max-height: 48px;
+}
+
+.MuiToolbar-dense {
+  max-height: 48px;
 }
