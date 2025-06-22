@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -37,7 +36,7 @@ import (
 var smbConfigFile *string
 
 var http_port *int
-var hamode *bool
+var secureMode *bool
 var dockerInterface *string
 var dockerNetwork *string
 var roMode *bool
@@ -53,7 +52,7 @@ func main() {
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
 	smbConfigFile = flag.String("out", "", "Output samba conf file")
 	roMode = flag.Bool("ro", false, "Read only mode")
-	hamode = flag.Bool("addon", false, "Run in addon mode")
+	secureMode = flag.Bool("addon", false, "Run in addon mode - this will enable HomeAssistant Supervisor API and ingress support and authenticate via Supervisor Token")
 	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
 	dockerNetwork = flag.String("docker-network", "", "Docker network")
@@ -142,15 +141,15 @@ func prog(state overseer.State) {
 	staticConfig.Template = internal.GetTemplateData() // This might be better provided via FX if GetTemplateData has side effects or is costly
 	staticConfig.DockerInterface = *dockerInterface
 	staticConfig.DockerNet = *dockerNetwork
+	staticConfig.DatabasePath = *dbfile
+	staticConfig.SupervisorToken = *supervisorToken
+	staticConfig.SupervisorURL = *supervisorURL
+	staticConfig.SecureMode = *secureMode // This is used to determine if the addon is running in HA mode or not
 
 	appParams := appsetup.BaseAppParams{
-		Ctx:             apiCtx,
-		CancelFn:        apiCancel,
-		StaticConfig:    &staticConfig,
-		HAMode:          *hamode,
-		DBPath:          *dbfile,
-		SupervisorURL:   *supervisorURL,
-		SupervisorToken: *supervisorToken,
+		Ctx:          apiCtx,
+		CancelFn:     apiCancel,
+		StaticConfig: &staticConfig,
 	}
 
 	// New FX
@@ -171,56 +170,31 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewSambaHanler),
 			server.AsHumaRoute(api.NewUpgradeHanler),
 			server.AsHumaRoute(api.NewSystemHanler),
-			fx.Annotate(
-				server.NewMuxRouter,
-				fx.ParamTags(`name:"ha_mode"`),
-			),
+			server.NewMuxRouter,
 			server.NewHTTPServer,
 			server.NewHumaAPI,
 		),
 		fx.Invoke(
-			fx.Annotate(
-				func(
-					_ *http.Server,
-					api huma.API,
-					router *mux.Router,
-					static http.FileSystem,
-					ha_mode bool,
-					shutdowner fx.Shutdowner,
-				) {
-					// Addon-LocalUpdate deploy
-					if !ha_mode {
-						executablePath, err := os.Executable()
-						if err != nil {
-							slog.Error("Error getting executable path:", "err", err)
-						} else {
-							slog.Debug("Serving executable", "path", executablePath)
-							router.Path("/srat_" + runtime.GOARCH).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-								http.ServeFile(w, r, executablePath)
-							}).Methods(http.MethodGet)
-							if runtime.GOARCH != "amd64" {
-								router.Path("/srat_x86_64").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-									http.ServeFile(w, r, executablePath+"_x86_64")
-								}).Methods(http.MethodGet)
-							}
-						}
-
+			func(
+				_ *http.Server,
+				_ huma.API,
+				router *mux.Router,
+				static http.FileSystem,
+				//apiCtx *dto.ContextState,
+				//shutdowner fx.Shutdowner,
+			) {
+				// Static Routes
+				router.PathPrefix("/").Handler(http.FileServer(static)).Methods(http.MethodGet)
+				//
+				router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+					template, err := route.GetPathTemplate()
+					if err != nil {
+						return errors.WithMessage(err)
 					}
-
-					// Static Routes
-					router.PathPrefix("/").Handler(http.FileServer(static)).Methods(http.MethodGet)
-					//
-					router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-						template, err := route.GetPathTemplate()
-						if err != nil {
-							return errors.WithMessage(err)
-						}
-						tlog.Trace("Route:", "template", template)
-						return nil
-					})
-				},
-				fx.ParamTags("", "", "", "", `name:"ha_mode"`),
-			),
+					tlog.Debug("Route:", "template", template)
+					return nil
+				})
+			},
 		),
 		fx.Invoke(func(
 			props_repo repository.PropertyRepositoryInterface,

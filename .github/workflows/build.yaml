@@ -34,18 +34,18 @@ jobs:
         with:
           fetch-depth: 0 # fetch-depth: 0 is required for git commands to see all history/tags
 
-      - name: Install GitHub CLI
-        shell: bash
-        if: ${{ env.ACT && runner.os == 'Linux' }}
-        run: |
-          (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
-            && sudo mkdir -p -m 755 /etc/apt/keyrings \
-            && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-            && cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-            && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-            && sudo apt update \
-            && sudo apt install gh -y
+#      - name: Install GitHub CLI
+#        shell: bash
+#        if: ${{ env.ACT && runner.os == 'Linux' }}
+#        run: |
+#          (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
+#            && sudo mkdir -p -m 755 /etc/apt/keyrings \
+#            && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+#            && cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+#            && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+#            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+#            && sudo apt update \
+#            && sudo apt install gh -y
 
       - name: Calculate version
         id: calculate_version
@@ -60,12 +60,12 @@ jobs:
             CURRENT_YEAR=$(date -u +'%Y')
             CURRENT_MONTH=$(date -u +'%-m')
             CURRENT_PERIOD_PREFIX="${CURRENT_YEAR}.${CURRENT_MONTH}"
-        
+
             echo "Fetching non-draft release tags for period ${CURRENT_PERIOD_PREFIX}..."
             # Get all tag_names from non-draft (published or pre-release) GitHub releases.
             # The `|| echo ""` ensures the script doesn't fail if gh api returns error or no releases.
             ALL_NON_DRAFT_RELEASE_TAGS_STRING=$(gh api --paginate /repos/${{ github.repository }}/releases -q '.[] | select(.draft == false) | .tag_name' || echo "")
-            
+
             FILTERED_TAGS_LIST=()
             if [[ -n "$ALL_NON_DRAFT_RELEASE_TAGS_STRING" ]]; then
               while IFS= read -r tag; do
@@ -85,7 +85,7 @@ jobs:
             else
               echo "No relevant non-draft release tags found for ${CURRENT_PERIOD_PREFIX} matching the versioning pattern."
             fi
-            
+
             MAX_INC=-1 # Stores the 'INC' part of YYYY.M.INC or YYYY.M.INC-dev.N
             MAX_DEV_FOR_MAX_INC=-1 # Stores the 'DEV' part for the current MAX_INC if it's a dev series
             MAX_INC_IS_FULL_RELEASE=false # Flag to track if MAX_INC corresponds to a full release tag
@@ -127,7 +127,7 @@ jobs:
                 fi
               fi
             done
-        
+
             if (( MAX_INC == -1 )); then
               # No tags found for the current YYYY.MM period (e.g., 2024.7.*). Start with .0-dev.0.
               VERSION="${CURRENT_PERIOD_PREFIX}.0-dev.0"
@@ -148,7 +148,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  
+
 
   build:
     name: Test & Build
@@ -185,21 +185,21 @@ jobs:
           cd backend
           sudo -E PATH="$PATH" make test
           cd ..
-      
+
       - name: Test Frontend ${{ needs.setversion.outputs.version }} (not yet implemented)
-        if: false 
+        if: false
         run: |
           cd frontend
           sudo -E PATH="$PATH" bun test
           cd ..
- 
+
       - name: Check if tag ${{ needs.setversion.outputs.version }} exists
         if: github.event_name != 'pull_request'
         id: checkTag
         uses: mukunku/tag-exists-action@v1.6.0
-        with: 
+        with:
           tag: '${{ needs.setversion.outputs.version }}'
-     
+
       - name: Update dev tag ${{ needs.setversion.outputs.version }}
         # CRITICAL IMPROVEMENT: This step is now safer.
         # It will ONLY run if the tag already exists AND it's a dev build (version contains '.dev').
@@ -240,7 +240,7 @@ jobs:
       - name: Prepare temporary directory for zips
         if: github.event_name != 'pull_request'
         run: mkdir -p /tmp/build_artifacts
-     
+
       - name: Find architectures and create zip archives
         id: create_zips
         if: github.event_name != 'pull_request'
@@ -251,13 +251,14 @@ jobs:
             zip_file_path="/tmp/build_artifacts/srat_${arch}.zip"
             echo "Processing architecture: ${arch}"
             if [ -d "$arch_dir" ]; then
-              (cd "$arch_dir" && zip -r "$zip_file_path" ./*)
+              # zip preserves file modification times for entries by default. Using . is more robust for zipping directory contents.
+              (cd "$arch_dir" && zip -r "$zip_file_path" .)
               echo "Successfully created ${zip_file_path}"
             else
               echo "Warning: Directory ${arch_dir} does not exist. Skipping."
             fi
           done
-      
+
       - name: Upload binaries as artifact
         if: steps.built_all.conclusion == 'success'
         uses: actions/upload-artifact@v4

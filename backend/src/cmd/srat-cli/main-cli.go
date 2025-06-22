@@ -169,15 +169,14 @@ func main() {
 	staticConfig.DockerInterface = *dockerInterface
 	staticConfig.DockerNet = *dockerNetwork
 	staticConfig.UpdateFilePath = *updateFilePath
+	staticConfig.DatabasePath = *dbfile
+	staticConfig.SupervisorURL = *supervisorURL
+	staticConfig.SupervisorToken = *supervisorToken
 
 	appParams := appsetup.BaseAppParams{
-		Ctx:             apiCtx,
-		CancelFn:        apiCancel,
-		StaticConfig:    &staticConfig,
-		HAMode:          true, // CLI often interacts with HA addon-like features
-		DBPath:          *dbfile,
-		SupervisorURL:   *supervisorURL,
-		SupervisorToken: *supervisorToken,
+		Ctx:          apiCtx,
+		CancelFn:     apiCancel,
+		StaticConfig: &staticConfig,
 	}
 
 	// New FX

@@ -43,10 +43,6 @@ func (suite *HealthHandlerSuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 			},
-			fx.Annotate(
-				func() bool { return false },
-				fx.ResultTags(`name:"ha_mode"`),
-			),
 			api.NewHealthHandler,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[service.SambaServiceInterface],
@@ -183,50 +179,3 @@ func (suite *HealthHandlerSuite) TestEventEmitter_Error() {
 	suite.cancel()
 	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
 }
-
-/*
-func (suite *HealthHandlerSuite) TestRun_PeriodicCallsAndCancellation() {
-	// Use a slightly longer heartbeat for this test to avoid race conditions
-	suite.testAPIContext.Heartbeat = 100 // Milliseconds
-	params := api.HealthHandlerParams{
-		Ctx:          suite.ctx,
-		Apictx:       suite.testAPIContext,
-		Broadcaster:  suite.mockBroadcaster,
-		SambaService: suite.mockSambaService,
-		DirtyService: suite.mockDirtyService,
-		HaMode:       false,
-	}
-	interleave := time.Duration(suite.testAPIContext.Heartbeat) * time.Millisecond
-
-	// --- Mocking ---
-	// Allow any number of calls during the run loop
-	mock.When(suite.mockSambaService.GetSambaProcess()).ThenReturn(nil, nil)
-	mock.When(suite.mockDirtyService.GetDirtyDataTracker()).ThenReturn(dto.DataDirtyTracker{Settings: true}) // Return some dirty state
-	mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[dto.HealthPing]())).ThenAnswer(
-		matchers.Answer(func(args []any) []any {
-			// We can inspect the message here if needed
-			// msg := args[0].(dto.HealthPing)
-			// suite.T().Logf("Broadcasting: %+v", msg)
-			return []any{nil, nil}
-		}),
-	)
-
-	// --- Execution ---
-	handler := api.NewHealthHandler(params) // This starts the run() goroutine
-
-	// Let it run for a few cycles
-	runCycles := 3
-	time.Sleep(interleave*time.Duration(runCycles) + interleave/2) // Sleep for slightly more than N cycles
-
-	// --- Verification (before cancellation) ---
-	// Verify mocks were called approximately 'runCycles' times
-	// Use AtLeast because timing can be tricky
-	mock.Verify(suite.mockSambaService, mock.Times(runCycles)).GetSambaProcess()
-	mock.Verify(suite.mockDirtyService, mock.Times(runCycles)).GetDirtyDataTracker()
-	mock.Verify(suite.mockBroadcaster, mock.Times(runCycles)).BroadcastMessage(mock.Any[dto.HealthPing]())
-	suite.GreaterOrEqual(handler.OutputEventsCount, uint64(runCycles), "Should have emitted at least %d events", runCycles)
-
-	// Reset heartbeat for other tests
-	suite.testAPIContext.Heartbeat = 1
-}
-*/
