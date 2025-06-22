@@ -109,9 +109,14 @@ export function App() {
         /*     <ModeContext.Provider value={status}>
                  <DirtyDataContext.Provider value={dirtyData}>*/
         <>
-            <Container maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
+            <Container maxWidth="lg" disableGutters={true} sx={{
+                minHeight: "100vh",
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
                 <NavBar error={errorInfo} bodyRef={mainArea} />
-                <div ref={mainArea} className="fullBody"></div>
+                <div ref={mainArea} className="fullBody" style={{ flexGrow: 1 }}>
+                </div>
                 <Footer healthData={status} />
             </Container>
             <Backdrop

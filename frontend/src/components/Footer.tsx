@@ -44,7 +44,7 @@ export function Footer(props: { healthData: HealthPing }) {
                         justifyContent: "center",
                         display: "flex",
                         alignItems: "center",
-                        my: 1
+                        my: isSmallScreen ? 0.5 : 1
                     }}
                 >
                     <Tooltip title={props.healthData.build_version} arrow placement="top">
