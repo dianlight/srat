@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/xorcare/pointer"
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
@@ -42,14 +41,15 @@ func main() {
 
 	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	defer apiCancel() // Ensure context is cancelled on exit
-	staticConfig := dto.ContextState{}
+	staticConfig := dto.ContextState{
+		ReadOnlyMode: false,
+		DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
+	}
 
 	appParams := appsetup.BaseAppParams{
 		Ctx:          apiCtx,
 		CancelFn:     apiCancel,
 		StaticConfig: &staticConfig,
-		HAMode:       true, // openapi generation assumes HA mode for certain pathing/defaults
-		DBPath:       *pointer.String("file::memory:?cache=shared&_pragma=foreign_keys(1)"),
 	}
 
 	// New FX
@@ -67,10 +67,7 @@ func main() {
 			server.AsHumaRoute(api.NewSambaHanler),
 			server.AsHumaRoute(api.NewUpgradeHanler),
 			server.AsHumaRoute(api.NewSystemHanler),
-			fx.Annotate(
-				server.NewMuxRouter,
-				fx.ParamTags(`name:"ha_mode"`),
-			),
+			server.NewMuxRouter,
 			server.NewHumaAPI,
 		),
 		fx.Invoke(

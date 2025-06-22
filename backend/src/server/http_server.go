@@ -2,13 +2,13 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/rs/cors"
@@ -56,7 +56,7 @@ func NewHTTPServer(
 					if err == http.ErrServerClosed {
 						slog.Info("HTTP server stopped gracefully")
 					} else {
-						log.Fatal(fmt.Sprintf("%#+v", err))
+						log.Fatalf("%#+v", err)
 					}
 				}
 			}()
@@ -81,10 +81,10 @@ func NewHTTPServer(
 	return srv
 }
 
-func NewMuxRouter(hamode bool) *mux.Router {
+func NewMuxRouter(apiCtx *dto.ContextState /*, ingressClient ingress.ClientWithResponsesInterface*/) *mux.Router {
 	router := mux.NewRouter()
-	if hamode {
-		router.Use(HAMiddleware)
+	if apiCtx.SecureMode {
+		router.Use(NewHAMiddleware( /*ingressClient*/ ))
 	}
 
 	return router
