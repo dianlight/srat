@@ -22,8 +22,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
-import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement } from 'react-hook-form-mui'
-import { Box, Fab, Stack, Tooltip, InputAdornment, type SvgIconTypeMap } from "@mui/material";
+import { AutocompleteElement, CheckboxElement, SelectElement, TextFieldElement } from 'react-hook-form-mui';
+import { Box, Fab, Stack, Tooltip, InputAdornment, type SvgIconTypeMap, useTheme, useMediaQuery, Menu, MenuItem, ListItemIcon } from "@mui/material";
 import ModeEditIcon from '@mui/icons-material/ModeEdit';
 import AddIcon from '@mui/icons-material/Add';
 import { Eject, DriveFileMove } from '@mui/icons-material';
@@ -33,6 +33,7 @@ import TextDecreaseIcon from '@mui/icons-material/TextDecrease';     // For lowe
 import DataObjectIcon from '@mui/icons-material/DataObject';         // For camelCase
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import RemoveIcon from '@mui/icons-material/Remove'; // Import RemoveIcon for kebab-case
 import { type OverridableComponent } from "@mui/material/OverridableComponent";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -141,8 +142,72 @@ const getCasingIcon = (style: CasingStyle): OverridableComponent<SvgIconTypeMap<
     return casingStyleToIconMap[style] || KeyboardCapslockIcon; // Default to UPPERCASE icon if not found
 };
 
+interface ShareActionsProps {
+    shareKey: string;
+    shareProps: SharedResource;
+    read_only: boolean;
+    onEdit: (shareKey: string, shareProps: SharedResource) => void;
+    onViewVolumeSettings: (shareProps: SharedResource) => void;
+    onDelete: (shareKey: string, shareProps: SharedResource) => void;
+    onEnable: (shareKey: string, shareProps: SharedResource) => void;
+    onDisable: (shareKey: string, shareProps: SharedResource) => void;
+}
 
+function ShareActions({
+    shareKey,
+    shareProps,
+    read_only,
+    onEdit,
+    onViewVolumeSettings,
+    onDelete,
+    onEnable,
+    onDisable
+}: ShareActionsProps) {
+    const theme = useTheme();
+    const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+        event.stopPropagation();
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleMenuClose = (e?: React.MouseEvent<HTMLElement> | {}, _reason?: "backdropClick" | "escapeKeyDown") => {
+        (e as React.MouseEvent<HTMLElement>)?.stopPropagation();
+        setAnchorEl(null);
+    };
+
+    if (read_only) {
+        return null;
+    }
+
+    const actionItems = [];
+
+    actionItems.push({ key: 'edit', title: 'Settings', icon: <SettingsIcon />, onClick: () => onEdit(shareKey, shareProps) });
+
+    if (!shareProps.mount_point_data?.invalid && shareProps.usage !== Usage.Internal && shareProps.mount_point_data?.path_hash) {
+        actionItems.push({ key: 'view-volume', title: 'View Volume Mount Settings', icon: <DriveFileMove />, onClick: () => onViewVolumeSettings(shareProps) });
+    }
+
+    if (shareProps.usage !== Usage.Internal) {
+        actionItems.push({ key: 'delete', title: 'Delete share', icon: <DeleteIcon color="error" />, onClick: () => onDelete(shareKey, shareProps) });
+    }
+
+    if (shareProps.disabled) {
+        actionItems.push({ key: 'enable', title: 'Enable share', icon: <CheckCircleIcon />, onClick: () => onEnable(shareKey, shareProps) });
+    } else if (shareProps.usage !== Usage.Internal) {
+        actionItems.push({ key: 'disable', title: 'Disable share', icon: <BlockIcon />, onClick: () => onDisable(shareKey, shareProps) });
+    }
+
+    if (isSmallScreen) {
+        return (<>
+            <IconButton aria-label="more actions" aria-controls="share-actions-menu" aria-haspopup="true" onClick={handleMenuOpen} edge="end" size="small" ><MoreVertIcon /></IconButton>
+            <Menu id="share-actions-menu" anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} onClick={(e) => e.stopPropagation()} >{actionItems.map(action => (<MenuItem key={action.key} onClick={(e) => { e.stopPropagation(); action.onClick(); handleMenuClose(); }}><ListItemIcon>{action.icon}</ListItemIcon><ListItemText>{action.title}</ListItemText></MenuItem>))}</Menu>
+        </>);
+    }
+
+    return (<Stack direction="row" spacing={0} alignItems="center">{actionItems.map(action => (<Tooltip title={action.title} key={action.key}><IconButton onClick={(e) => { e.stopPropagation(); action.onClick(); }} edge="end" aria-label={action.title.toLowerCase()} size="small">{action.icon}</IconButton></Tooltip>))}</Stack>);
+}
 
 export function Shares() {
     const read_only = useReadOnly();
@@ -524,62 +589,21 @@ export function Shares() {
                                         },
                                     }}>
                                         <ListItem
-                                            secondaryAction={!read_only && <>
-                                                <IconButton onClick={() => { setSelected([share, props]); setShowEdit(true) }} edge="end" aria-label="settings">
-                                                    <SettingsIcon />
-                                                </IconButton>
-                                                {(!props.mount_point_data?.invalid && props.usage !== Usage.Internal && props.mount_point_data?.path_hash) && (
-                                                    <Tooltip title="View Volume Mount Settings">
-                                                        <IconButton
-                                                            onClick={() => {
-                                                                if (props.mount_point_data?.path_hash) {
-                                                                    navigate('/', {
-                                                                        state: {
-                                                                            tabId: TabIDs.VOLUMES,
-                                                                            mountPathHashToView: props.mount_point_data.path_hash,
-                                                                            openMountSettings: true
-                                                                        } as LocationState
-                                                                    });
-                                                                }
-                                                            }} edge="end" aria-label="view volume settings">
-                                                            <DriveFileMove />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
-                                                {props.usage !== Usage.Internal &&
-                                                    <IconButton onClick={() => onSubmitDeleteShare(share, props)} edge="end" aria-label="delete">
-                                                        <Tooltip title="Delete share">
-                                                            <DeleteIcon color="error" />
-                                                        </Tooltip>
-                                                    </IconButton>
-                                                }
-                                                {props.disabled ? (
-                                                    <Tooltip title="Enable share">
-                                                        <span>
-                                                            <IconButton
-                                                                onClick={() => onSubmitEnableShare(share, props)}
-                                                                edge="end"
-                                                                aria-label="disable"
-                                                            >
-                                                                <CheckCircleIcon />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-                                                ) : (
-                                                    <Tooltip title="Disable share">
-                                                        <span>
-                                                            <IconButton
-                                                                onClick={() => onSubmitDisableShare(share, props)}
-                                                                edge="end"
-                                                                aria-label="disable"
-                                                            >
-                                                                <BlockIcon />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-                                                )}
-
-                                            </>
+                                            secondaryAction={
+                                                <ShareActions
+                                                    shareKey={share}
+                                                    shareProps={props}
+                                                    read_only={read_only}
+                                                    onEdit={(shareKey, shareProps) => { setSelected([shareKey, shareProps]); setShowEdit(true); }}
+                                                    onViewVolumeSettings={(shareProps) => {
+                                                        if (shareProps.mount_point_data?.path_hash) {
+                                                            navigate('/', { state: { tabId: TabIDs.VOLUMES, mountPathHashToView: shareProps.mount_point_data.path_hash, openMountSettings: true } as LocationState });
+                                                        }
+                                                    }}
+                                                    onDelete={onSubmitDeleteShare}
+                                                    onEnable={onSubmitEnableShare}
+                                                    onDisable={onSubmitDisableShare}
+                                                />
                                             }
                                         >
                                             <ListItemAvatar>
@@ -611,7 +635,7 @@ export function Shares() {
                                                                 Warning: {props.mount_point_data.warnings}
                                                             </Box>
                                                         )}
-                                                        <Box component="div" sx={{ mt: 1, display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 1 }}>
+                                                        <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" sx={{ mt: 1, display: { xs: 'none', sm: 'flex' } }}>
                                                             {props.users && props.users.length > 0 && (
                                                                 <Tooltip title="Users with write access">
                                                                     <Chip
@@ -679,8 +703,7 @@ export function Shares() {
                                                                         sx={{ my: 0.5 }}
                                                                     />
                                                                 </Tooltip>
-                                                            )}
-                                                        </Box>
+                                                            )}                                                        </Stack>
                                                     </Typography>
                                                 }
                                             />
