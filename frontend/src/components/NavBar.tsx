@@ -46,6 +46,7 @@ import BugReportIcon from '@mui/icons-material/BugReport'; // Import the BugRepo
 import { TabIDs, type LocationState } from "../store/locationState"
 import { toast } from "react-toastify";
 import { Download } from "@mui/icons-material"
+import { Dashboard } from "../pages/dashboard/Dashboard"
 
 // Define tab configurations
 interface TabConfig {
@@ -57,6 +58,7 @@ interface TabConfig {
 }
 
 const ALL_TAB_CONFIGS: TabConfig[] = [
+    { id: TabIDs.DASHBOARD, label: "Dashboard", component: <Dashboard /> },
     { id: TabIDs.SHARES, label: "Shares", component: <Shares /> },
     { id: TabIDs.VOLUMES, label: "Volumes", component: <Volumes /> },
     { id: TabIDs.USERS, label: "Users", component: <Users /> },
@@ -271,33 +273,6 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
         console.log("Doing restart")
         restartSamba()
     }
-
-    /*
-    useEffect(() => {
-        const current = pkg.version;
-
-        // Normalize Version Strings
-        const currentVersion = semver.clean(current.replace(".dev", "-dev")) || "0.0.0"
-        const latestVersion = semver.clean((health.health.last_release?.last_release || "0.0.0").replace(".dev", "-dev")) || "0.0.0"
-
-        if (update !== latestVersion && semver.compare(latestVersion, currentVersion) == 1) {
-            setUpdate(latestVersion)
-        } else {
-            setUpdate(undefined)
-        }
-    }, [health])
-*/
-    /*
-    useEventSourceListener(
-        sse,
-        [DtoEventType.EventHeartbeat],
-        (evt) => {
-            //console.log("SSE EventHeartbeat", evt);
-            setUpdateAssetStatus(JSON.parse(evt.data));
-        },
-        [setUpdateAssetStatus],
-    );
-    */
 
     return (<>
         <AppBar position="static">
