@@ -17,8 +17,8 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import { useColorScheme } from "@mui/material/styles"
 import AutoModeIcon from '@mui/icons-material/AutoMode';
-import semver from "semver";
-import { CircularProgress, Tab, Tabs, useMediaQuery, useTheme, type CircularProgressProps } from "@mui/material"
+import { CircularProgress, Menu, MenuItem, Tab, Tabs, useMediaQuery, useTheme, type CircularProgressProps } from "@mui/material"
+import MenuIcon from '@mui/icons-material/Menu';
 import { createPortal } from "react-dom"
 import { Shares } from "../pages/Shares"
 import { SmbConf } from "../pages/SmbConf"
@@ -182,11 +182,26 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     const theme = useTheme();
     const [isLogoHovered, setIsLogoHovered] = useState(false);
     const matches = useMediaQuery(theme.breakpoints.up('sm'));
+    const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
 
 
     if (!mode) {
         return null;
     }
+
+    const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorElNav(event.currentTarget);
+    };
+
+    const handleCloseNavMenu = () => {
+        setAnchorElNav(null);
+    };
+
+    const handleMenuItemClick = (index: number) => {
+        setValue(index);
+        localStorage.setItem("srat_tab", index.toString());
+        handleCloseNavMenu();
+    };
 
     useEffect(() => {
         // Determine the target tab index based on priority: location.state > localStorage > default (0)
@@ -287,7 +302,7 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
     return (<>
         <AppBar position="static">
             <Container maxWidth="xl">
-                <Toolbar disableGutters>
+                <Toolbar disableGutters variant="dense">
                     {matches &&
                         <img
                             id="logo-container"
@@ -297,27 +312,53 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
                             onMouseEnter={() => setIsLogoHovered(true)}
                             onMouseLeave={() => setIsLogoHovered(false)} />
                     }
-                    <Tabs
-                        sx={{ flexGrow: 1 }} // display: flex is default for Tabs root, flexGrow is key
-                        value={value}
-                        onChange={handleChange}
-                        indicatorColor="secondary"
-                        textColor="inherit"
-                        variant="scrollable"
-                        aria-label="Section Tabs"
-                        allowScrollButtonsMobile
-                        scrollButtons
-                    >
-                        {visibleTabs.map((tab) => (
-                            <Tab
-                                key={tab.id}
-                                label={tab.label}
-                                {...a11yProps(tab.actualIndex as number)}
-                                icon={getTabIcon(tab, health.health)}
-                                iconPosition="end"
-                            />
-                        ))}
-                    </Tabs>
+                    {matches ? (
+                        <Tabs
+                            sx={{ flexGrow: 1, maxHeight: '48px' }} // display: flex is default for Tabs root, flexGrow is key
+                            value={value}
+                            onChange={handleChange}
+                            indicatorColor="secondary"
+                            textColor="inherit"
+                            variant="scrollable"
+                            aria-label="Section Tabs"
+                            allowScrollButtonsMobile
+                            scrollButtons
+                        >
+                            {visibleTabs.map((tab) => (
+                                <Tab
+                                    key={tab.id}
+                                    label={tab.label}
+                                    {...a11yProps(tab.actualIndex as number)}
+                                    icon={getTabIcon(tab, health.health)}
+                                    iconPosition="end"
+                                    sx={{ maxHeight: '48px', minHeight: '48px' }}
+                                />
+                            ))}
+                        </Tabs>
+                    ) : (
+                        <Box sx={{ flexGrow: 1 }}>
+                            <IconButton
+                                size="large"
+                                aria-label="navigation menu"
+                                aria-controls="menu-appbar"
+                                aria-haspopup="true"
+                                onClick={handleOpenNavMenu}
+                                color="inherit"
+                            >
+                                <MenuIcon />
+                            </IconButton>
+                            <Menu id="menu-appbar" anchorEl={anchorElNav} open={Boolean(anchorElNav)} onClose={handleCloseNavMenu} keepMounted
+                                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                            >
+                                {visibleTabs.map((tab) => (
+                                    <MenuItem key={tab.id} onClick={() => handleMenuItemClick(tab.actualIndex as number)}>
+                                        <Typography textAlign="center">{tab.label}</Typography>
+                                    </MenuItem>
+                                ))}
+                            </Menu>
+                        </Box>
+                    )}
 
                     <Box sx={{ flexGrow: 0, display: 'flex', alignItems: 'center' }}>
 

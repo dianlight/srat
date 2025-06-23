@@ -27,7 +27,20 @@ export function App() {
     const { health: status, isLoading, error: herror } = useHealth();
     //const [sseEventSource, sseStatus] = useEventSource(apiContext.instance.getUri() + "/sse", true)
 
-    var timeoutpid: ReturnType<typeof setTimeout>
+    // This useEffect handles the automatic reset of errors after a delay.
+    // It ensures that a timer is set only when an error occurs, and cleared if the error resolves
+    // or the component unmounts. This prevents multiple timers from being created.
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        if (error || herror) {
+            timer = setTimeout(() => {
+                resetError();
+            }, 5000);
+        }
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
+    }, [error, herror, resetError]);
 
     useEffect(() => {
         /*
@@ -92,18 +105,18 @@ export function App() {
             [sseStatus],
         );
     */
-    if (error || herror) {
-        setTimeout(() => { resetError() }, 5000);
-        return <Typography> Connecting to the server... </Typography>
-    }
-
     return (
         /*     <ModeContext.Provider value={status}>
                  <DirtyDataContext.Provider value={dirtyData}>*/
         <>
-            <Container maxWidth="lg" disableGutters={true} sx={{ minHeight: "100%" }}>
+            <Container maxWidth="lg" disableGutters={true} sx={{
+                minHeight: "100vh",
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
                 <NavBar error={errorInfo} bodyRef={mainArea} />
-                <div ref={mainArea} className="fullBody"></div>
+                <div ref={mainArea} className="fullBody" style={{ flexGrow: 1 }}>
+                </div>
                 <Footer healthData={status} />
             </Container>
             <Backdrop

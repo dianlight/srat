@@ -136,7 +136,7 @@ export function Settings() {
                 <Divider />
                 <form id="settingsform" onSubmit={handleSubmit(handleCommit)} noValidate>
                     <Grid container spacing={2}>
-                        <Grid size={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <AutocompleteElement
                                 label="Update Channel" name="update_channel"
                                 loading={isChLoading}
@@ -151,7 +151,7 @@ export function Settings() {
                         <Grid size={12}>
                             <Divider />
                         </Grid>
-                        <Grid size={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextFieldElement
                                 size="small"
                                 sx={{ display: "flex" }}
@@ -193,7 +193,7 @@ export function Settings() {
                                     }
                                 }} />
                         </Grid>
-                        <Grid size={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextFieldElement
                                 size="small"
                                 sx={{ display: "flex" }}
@@ -214,7 +214,7 @@ export function Settings() {
                                 }}
                                 disabled={read_only} />
                         </Grid>
-                        <Grid size={8}>
+                        <Grid size={{ xs: 12, md: 8 }}>
                             <Controller
                                 name="allow_hosts"
                                 control={control}
@@ -280,14 +280,11 @@ export function Settings() {
                                     />)}
                             />
                         </Grid>
-                        <Grid size={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <CheckboxElement size="small" id="compatibility_mode" label="Compatibility Mode" name="compatibility_mode" control={control} disabled={read_only} />
                             <CheckboxElement size="small" id="multi_channel" label="Multi Channel Mode" name="multi_channel" control={control} disabled={read_only} />
                         </Grid>
-                        <Grid size={4}>
-                            <CheckboxElement size="small" id="bind_all_interfaces" label="Bind All Interfaces" name="bind_all_interfaces" control={control} disabled={read_only} />
-                        </Grid>
-                        <Grid size={8}>
+                        <Grid size={{ xs: 12, md: 8 }}>
                             <AutocompleteElement
                                 multiple
                                 label="Interfaces"
@@ -302,6 +299,9 @@ export function Settings() {
                                     disabled: bindAllWatch || read_only
                                 }}
                             />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <CheckboxElement size="small" id="bind_all_interfaces" label="Bind All Interfaces" name="bind_all_interfaces" control={control} disabled={read_only} />
                         </Grid>
                     </Grid>
                 </form>
