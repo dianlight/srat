@@ -1,7 +1,8 @@
 import type { MountPointData } from "./sratApi"
 
 export enum TabIDs {
-    SHARES = 0,
+    DASHBOARD = 0,
+    SHARES,
     VOLUMES,
     USERS,
     SETTINGS,
