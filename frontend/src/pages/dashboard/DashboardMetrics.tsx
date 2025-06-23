@@ -7,6 +7,8 @@ interface ProcessStatus {
     name: string;
     pid: number | null;
     status: 'Running' | 'Stopped';
+    cpu: number | null;
+    connections: number | null;
 }
 
 export function DashboardMetrics() {
@@ -16,11 +18,17 @@ export function DashboardMetrics() {
         if (!health?.samba_process_status) {
             return [];
         }
-        return Object.entries(health.samba_process_status).map(([name, details]) => ({
-            name,
-            pid: details?.pid || null,
-            status: details?.pid ? 'Running' : 'Stopped',
-        }));
+        // The 'details' object from the health endpoint is expected to have cpu_percent and memory_usage.
+        return Object.entries(health.samba_process_status).map(([name, details]) => {
+            const typedDetails = details as any; // Cast to access properties not yet in the generated type
+            return {
+                name,
+                pid: typedDetails?.pid || null,
+                status: typedDetails?.pid ? 'Running' : 'Stopped',
+                cpu: typedDetails?.cpu_percent ?? null,
+                connections: typedDetails?.connections ?? null,
+            };
+        });
     }, [health]);
 
     const renderContent = () => {
@@ -48,6 +56,8 @@ export function DashboardMetrics() {
                                 <TableCell>Process</TableCell>
                                 <TableCell align="right">Status</TableCell>
                                 <TableCell align="right">PID</TableCell>
+                                <TableCell align="right">CPU (%)</TableCell>
+                                <TableCell align="right">Connections</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -60,6 +70,8 @@ export function DashboardMetrics() {
                                         {process.status}
                                     </TableCell>
                                     <TableCell align="right">{process.pid ?? 'N/A'}</TableCell>
+                                    <TableCell align="right">{process.cpu !== null ? process.cpu.toFixed(2) : 'N/A'}</TableCell>
+                                    <TableCell align="right">{process.connections ?? 'N/A'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
