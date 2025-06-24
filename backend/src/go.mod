@@ -133,14 +133,14 @@ require (
 )
 
 require (
-	github.com/danielgtaylor/huma/v2 v2.32.0
+	github.com/danielgtaylor/huma/v2 v2.33.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/itchyny/gojq v0.12.17
 	github.com/lmittmann/tint v1.1.2
 	github.com/ovechkin-dm/mockio/v2 v2.0.1
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250620162629-99fc19893107
+	github.com/snapcore/snapd v0.0.0-20250624121115-49b1224d2aef
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
