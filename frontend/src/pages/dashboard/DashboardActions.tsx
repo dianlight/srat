@@ -92,7 +92,10 @@ export function DashboardActions() {
     };
 
     return (
-        <Accordion defaultExpanded>
+        <Accordion
+            key={isLoading ? 'loading' : 'loaded'}
+            defaultExpanded={!isLoading && !error && actionablePartitions.length > 0}
+        >
             <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls="actions-content"
