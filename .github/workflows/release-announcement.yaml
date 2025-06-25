@@ -1,0 +1,46 @@
+name: Create Release Announcement
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  # Required to create a discussion
+  discussions: write
+
+jobs:
+  create_discussion:
+    name: Create Announcement Discussion
+    runs-on: ubuntu-latest
+    # This condition ensures we only create announcements for full, stable releases.
+    # Remove this 'if' condition if you want to announce pre-releases as well.
+    if: github.event.release.prerelease == false
+    steps:
+      - name: Create GitHub Discussion
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: |
+          # Construct a nice title for the discussion
+          TITLE="🎉 New Release: ${RELEASE_NAME}"
+
+          # Construct the body of the discussion, linking back to the release page
+          # and including the original release notes.
+          BODY="## ${RELEASE_NAME} has been released!
+
+          You can find the full release notes and download the assets here:
+          >${RELEASE_URL}
+
+          ---
+
+          ${RELEASE_BODY}"
+
+          # Create the discussion.
+          # NOTE: Please ensure you have a discussion category named "Announcements" in your repository.
+          gh discussion create --repo "${GH_REPO}" \
+            --title "${TITLE}" \
+            --body "${BODY}" \
+            --category "Announcements"
