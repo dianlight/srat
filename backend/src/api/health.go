@@ -49,6 +49,7 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	p := new(HealthHanler)
 	p.Alive = true
 	p.AliveTime = time.Now().UnixMilli()
+	p.StartTime = time.Now().UnixMilli()
 	p.ReadOnly = param.Apictx.ReadOnlyMode
 	p.LastError = ""
 	p.ctx = param.Ctx

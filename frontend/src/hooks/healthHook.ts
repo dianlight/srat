@@ -8,6 +8,7 @@ export function useHealth() {
         alive: false,
         read_only: true,
         aliveTime: 0,
+        startTime: 0,
         dirty_tracking: {} as DataDirtyTracker,
         last_error: "",
         last_release: {} as ReleaseAsset,

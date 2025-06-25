@@ -366,9 +366,27 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
+          data: HealthPing;
+          /** The event name. */
+          event: "heartbeat";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: Welcome;
           /** The event name. */
           event: "hello";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: SharedResource[] | null;
+          /** The event name. */
+          event: "share";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -387,24 +405,6 @@ export type SseApiResponse = /** status 200 OK */
           data: Disk[] | null;
           /** The event name. */
           event: "volumes";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: HealthPing;
-          /** The event name. */
-          event: "heartbeat";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: SharedResource[] | null;
-          /** The event name. */
-          event: "share";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -580,6 +580,7 @@ export type HealthPing = {
   read_only: boolean;
   samba_process_status: SambaProcessStatus;
   secure_mode: boolean;
+  startTime: number;
 };
 export type InterfaceAddr = {
   addr: string;

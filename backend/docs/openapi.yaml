@@ -179,9 +179,13 @@ components:
           $ref: "#/components/schemas/SambaProcessStatus"
         secure_mode:
           type: boolean
+        startTime:
+          format: int64
+          type: integer
       required:
         - alive
         - aliveTime
+        - startTime
         - read_only
         - samba_process_status
         - last_error
@@ -1277,6 +1281,24 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          $ref: "#/components/schemas/HealthPing"
+                        event:
+                          const: heartbeat
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event heartbeat
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/Welcome"
                         event:
                           const: hello
@@ -1292,6 +1314,28 @@ paths:
                         - data
                         - event
                       title: Event hello
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
                       type: object
                     - properties:
                         data:
@@ -1332,46 +1376,6 @@ paths:
                         - data
                         - event
                       title: Event volumes
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/HealthPing"
-                        event:
-                          const: heartbeat
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event heartbeat
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: share
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event share
                       type: object
                 title: Server Sent Events
                 type: array
