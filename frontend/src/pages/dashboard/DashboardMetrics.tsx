@@ -246,13 +246,13 @@ export function DashboardMetrics() {
                                         }
                                     }
                                 />
-                                <CardContent sx={{ height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                <CardContent sx={{ width: '100%', height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                     <PieChart
                                         series={[{
                                             data: chartData,
                                             highlightScope: { fade: 'global', highlight: 'item' },
                                             faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
-                                            arcLabel: (item) => `${(item.value / (1024 * 1024 * 1024)).toFixed(1)}G`,
+                                            arcLabel: (item) => humanizeBytes(item.value || 0),
                                             arcLabelMinAngle: 25,
                                             valueFormatter: (item) => humanizeBytes(item.value || 0),
                                             innerRadius: 30,
@@ -260,8 +260,9 @@ export function DashboardMetrics() {
                                             paddingAngle: 5,
                                             cornerRadius: 15,
                                             cx: 150,
-                                            cy: 150,
+                                            cy: 115, // Adjusted to make space for the legend
                                         }]}
+                                        width={300}
                                         height={250} // Set a fixed height for the chart
                                         slotProps={{
                                             legend: {
