@@ -1,13 +1,51 @@
-import { Card, CardContent, CardHeader, Typography, Box, IconButton, Collapse } from "@mui/material";
+import { Card, CardContent, CardHeader, Typography, Box, IconButton, Collapse, CircularProgress, Alert, List, ListItem, ListItemText, Link } from "@mui/material";
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import { type NewsItem } from "../../hooks/githubNewsHook";
 
 interface DashboardIntroProps {
     isCollapsed: boolean;
     onToggleCollapse: () => void;
+    news: NewsItem[];
+    isLoading: boolean;
+    error: Error | null;
 }
 
-export function DashboardIntro({ isCollapsed, onToggleCollapse }: DashboardIntroProps) {
+export function DashboardIntro({ isCollapsed, onToggleCollapse, news, isLoading, error }: DashboardIntroProps) {
+
+    const renderNews = () => {
+        if (isLoading) {
+            return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}><CircularProgress size={24} /></Box>;
+        }
+        if (error) {
+            return <Alert severity="warning" sx={{ mt: 2 }}>Could not load project news.</Alert>;
+        }
+        if (news.length === 0) {
+            return null; // Don't show the news section if there are no recent news
+        }
+
+        return (
+            <Box>
+                <Typography variant="body2" sx={{ mt: 2, mb: 1 }}>
+                    <strong>Latest News:</strong>
+                </Typography>
+                <List dense>
+                    {news.map(item => (
+                        <ListItem key={item.id} disablePadding>
+                            <ListItemText
+                                primary={
+                                    <Link href={item.url} target="_blank" rel="noopener noreferrer" underline="hover">
+                                        {item.title}
+                                    </Link>
+                                }
+                            />
+                        </ListItem>
+                    ))}
+                </List>
+            </Box>
+        );
+    };
+
     return (
         <Card sx={{
             height: '100%', // Auto height when collapsed, 100% when expanded
@@ -70,9 +108,7 @@ export function DashboardIntro({ isCollapsed, onToggleCollapse }: DashboardIntro
                                 This is your storage management dashboard. Here you can get a quick overview of your system's storage health and perform common actions.
                             </Typography>
                             <Box sx={{ flexGrow: 1 }} /> {/* Pushes "Latest News" to the bottom */}
-                            <Typography variant="body2" sx={{ mt: 2 }}>
-                                <strong>Latest News:</strong> Version X.Y.Z has been released with new performance improvements!
-                            </Typography>
+                            {renderNews()}
                         </CardContent>
                     </Collapse>
                 </>
