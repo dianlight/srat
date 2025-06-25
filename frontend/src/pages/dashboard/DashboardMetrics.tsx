@@ -34,6 +34,26 @@ function decodeEscapeSequence(source: string) {
     });
 };
 
+function formatUptime(millis: number): string {
+    let seconds = Math.floor((Date.now() - millis) / 1000);
+    if (seconds <= 0) return '0 seconds';
+
+    const days = Math.floor(seconds / (24 * 3600));
+    seconds %= (24 * 3600);
+    const hours = Math.floor(seconds / 3600);
+    seconds %= 3600;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (remainingSeconds > 0 || parts.length === 0) parts.push(`${remainingSeconds}s`);
+
+    return parts.join(' ');
+}
+
 export function DashboardMetrics() {
     const { health, isLoading, error } = useHealth();
     const { disks, isLoading: isLoadingVolumes, error: errorVolumes } = useVolume();
@@ -202,6 +222,42 @@ export function DashboardMetrics() {
         );
     };
 
+    const renderUptimeMetric = () => {
+        if (isLoading) {
+            return (
+                <Card>
+                    <CardHeader title="System Uptime" />
+                    <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <CircularProgress />
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        if (error || !health?.startTime) {
+            return (
+                <Card>
+                    <CardHeader title="System Uptime" />
+                    <CardContent>
+                        <Alert severity="warning">Uptime data not available.</Alert>
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        return (
+            <Card>
+                <CardHeader title="System Uptime" />
+                <CardContent>
+                    <Typography variant="h4" component="div" align="center">
+                        {/* Calculate uptime duration: current time - startTime (last start timestamp) */}
+                        {formatUptime(health.startTime)}
+                    </Typography>
+                </CardContent>
+            </Card>
+        );
+    };
+
     const renderVolumeMetrics = () => {
         if (isLoadingVolumes) {
             return (
@@ -294,6 +350,11 @@ export function DashboardMetrics() {
                 <Typography variant="h6">System Metrics</Typography>
             </AccordionSummary>
             <AccordionDetails>
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        {renderUptimeMetric()}
+                    </Grid>
+                </Grid>
                 {renderProcessMetrics()}
                 <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
                     Disk Usage
