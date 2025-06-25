@@ -13,6 +13,7 @@ This project appears to be a web application with a Go backend and a JavaScript/
 
 - The backend uses Go modules for dependency management (`go.mod`).
 - The frontend uses `bun` for package management (`bun.lockb`, `package.json`).
+- For the frontend MUI 7.x is used and Grid are used as Grid2
 
 ## Build & Test Commands
 
