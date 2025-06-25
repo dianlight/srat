@@ -19,7 +19,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
-	"github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v73/github"
 	"github.com/inconshreveable/go-update"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
