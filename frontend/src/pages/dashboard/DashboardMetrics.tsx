@@ -1,8 +1,11 @@
-import { Accordion, AccordionDetails, AccordionSummary, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, CircularProgress, Alert, useTheme } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, CircularProgress, Alert, useTheme, Grid, Card, CardHeader, CardContent } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useHealth } from "../../hooks/healthHook";
 import { useEffect, useMemo, useState } from "react";
 import { Sparklines, SparklinesBars, SparklinesLine, SparklinesSpots } from 'react-sparklines';
+import { useVolume } from "../../hooks/volumeHook";
+import { PieChart } from '@mui/x-charts/PieChart';
+import { Directions } from "@mui/icons-material";
 
 interface ProcessStatus {
     name: string;
@@ -10,15 +13,34 @@ interface ProcessStatus {
     status: 'Running' | 'Stopped';
     cpu: number | null;
     connections: number | null;
+    memory: number | null;
 }
+
+function humanizeBytes(bytes: number): string {
+    if (bytes <= 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+};
 
 const MAX_HISTORY_LENGTH = 10;
 
+// A simplified version of what's in Volumes.tsx
+function decodeEscapeSequence(source: string) {
+    if (typeof source !== 'string') return '';
+    return source.replace(/\\x([0-9A-Fa-f]{2})/g, function (_match, group1) {
+        return String.fromCharCode(parseInt(String(group1), 16));
+    });
+};
+
 export function DashboardMetrics() {
     const { health, isLoading, error } = useHealth();
+    const { disks, isLoading: isLoadingVolumes, error: errorVolumes } = useVolume();
     const theme = useTheme();
     const [connectionsHistory, setConnectionsHistory] = useState<Record<string, number[]>>({});
     const [cpuHistory, setCpuHistory] = useState<Record<string, number[]>>({});
+    const [memoryHistory, setMemoryHistory] = useState<Record<string, number[]>>({});
 
     const processData = useMemo((): ProcessStatus[] => {
         if (!health?.samba_process_status) {
@@ -26,13 +48,13 @@ export function DashboardMetrics() {
         }
         // The 'details' object from the health endpoint is expected to have cpu_percent and memory_usage.
         return Object.entries(health.samba_process_status).map(([name, details]) => {
-            const typedDetails = details as any; // Cast to access properties not yet in the generated type
             return {
                 name,
-                pid: typedDetails?.pid || null,
-                status: typedDetails?.pid ? 'Running' : 'Stopped',
-                cpu: typedDetails?.cpu_percent ?? null,
-                connections: typedDetails?.connections ?? null,
+                pid: details?.pid || null,
+                status: details?.pid ? 'Running' : 'Stopped',
+                cpu: details?.cpu_percent ?? null,
+                connections: details?.connections ?? null,
+                memory: details?.memory_percent ?? null,
             };
         });
     }, [health]);
@@ -46,8 +68,7 @@ export function DashboardMetrics() {
         setCpuHistory(prevHistory => {
             const newHistory = { ...prevHistory };
             for (const [name, details] of Object.entries(health.samba_process_status)) {
-                const typedDetails = details as any;
-                const cpu = typedDetails?.cpu_percent ?? 0; // Default to 0 if null
+                const cpu = details?.cpu_percent ?? 0; // Default to 0 if null
                 const history = newHistory[name] ? [...newHistory[name]] : [];
                 history.push(cpu);
                 if (history.length > MAX_HISTORY_LENGTH) {
@@ -61,8 +82,7 @@ export function DashboardMetrics() {
         setConnectionsHistory(prevHistory => {
             const newHistory = { ...prevHistory };
             for (const [name, details] of Object.entries(health.samba_process_status)) {
-                const typedDetails = details as any;
-                const connections = typedDetails?.connections ?? 0; // Default to 0 if null
+                const connections = details?.connections ?? 0; // Default to 0 if null
                 const history = newHistory[name] ? [...newHistory[name]] : [];
                 history.push(connections);
                 if (history.length > MAX_HISTORY_LENGTH) {
@@ -72,9 +92,23 @@ export function DashboardMetrics() {
             }
             return newHistory;
         });
+
+        setMemoryHistory(prevHistory => {
+            const newHistory = { ...prevHistory };
+            for (const [name, details] of Object.entries(health.samba_process_status)) {
+                const memory = details?.memory_percent ?? 0; // Default to 0 if null
+                const history = newHistory[name] ? [...newHistory[name]] : [];
+                history.push(memory);
+                if (history.length > MAX_HISTORY_LENGTH) {
+                    history.shift(); // Remove the oldest entry
+                }
+                newHistory[name] = history;
+            }
+            return newHistory;
+        });
     }, [health, isLoading, error]);
 
-    const renderContent = () => {
+    const renderProcessMetrics = () => {
         if (isLoading) {
             return (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -100,6 +134,7 @@ export function DashboardMetrics() {
                                 <TableCell align="right">Status</TableCell>
                                 <TableCell align="right">PID</TableCell>
                                 <TableCell align="right">CPU (%)</TableCell>
+                                <TableCell align="right">Memory (%)</TableCell>
                                 <TableCell align="right">Connections</TableCell>
                             </TableRow>
                         </TableHead>
@@ -118,7 +153,7 @@ export function DashboardMetrics() {
                                             <Typography variant="body2" sx={{ mr: 1, minWidth: '45px', textAlign: 'right' }}>
                                                 {process.cpu !== null ? `${process.cpu.toFixed(1)}%` : 'N/A'}
                                             </Typography>
-                                            <Box sx={{ width: 60, height: 20 }}>
+                                            <Box sx={{ width: 50, height: 20 }}>
                                                 {(cpuHistory[process.name]?.length || 0) > 1 ? (
                                                     <Sparklines data={cpuHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20}>
                                                         <SparklinesLine color={theme.palette.primary.main} />
@@ -130,10 +165,25 @@ export function DashboardMetrics() {
                                     </TableCell>
                                     <TableCell align="right" sx={{ minWidth: 150 }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                            <Typography variant="body2" sx={{ mr: 1, minWidth: '70px', textAlign: 'right' }}>
+                                                {process.memory !== null ? `${process.memory.toFixed(1)}%` : 'N/A'}
+                                            </Typography>
+                                            <Box sx={{ width: 50, height: 20 }}>
+                                                {(memoryHistory[process.name]?.length || 0) > 1 ? (
+                                                    <Sparklines data={memoryHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20}>
+                                                        <SparklinesLine color={theme.palette.success.main} />
+                                                        <SparklinesSpots />
+                                                    </Sparklines>
+                                                ) : null}
+                                            </Box>
+                                        </Box>
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ minWidth: 150 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                                             <Typography variant="body2" sx={{ mr: 1, minWidth: '45px', textAlign: 'right' }}>
                                                 {process.connections ?? 'N/A'}
                                             </Typography>
-                                            <Box sx={{ width: 60, height: 20 }}>
+                                            <Box sx={{ width: 50, height: 20 }}>
                                                 {(connectionsHistory[process.name]?.length || 0) > 1 ? (
                                                     <Sparklines data={connectionsHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20}>
                                                         <SparklinesBars style={{ fill: "#41c3f9", fillOpacity: ".25" }} />
@@ -148,10 +198,88 @@ export function DashboardMetrics() {
                         </TableBody>
                     </Table>
                 </TableContainer>
-                <Typography variant="body1" sx={{ mt: 3 }}>
-                    More graphs and metrics about volumes and partitions will be displayed here.
-                </Typography>
             </>
+        );
+    };
+
+    const renderVolumeMetrics = () => {
+        if (isLoadingVolumes) {
+            return (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
+                    <CircularProgress />
+                </Box>
+            );
+        }
+
+        if (errorVolumes) {
+            return <Alert severity="error">Could not load disk information.</Alert>;
+        }
+
+        const disksWithPartitions = disks?.filter(d => d.partitions && d.partitions.some(p => p.size && p.size > 0)) || [];
+
+        if (disksWithPartitions.length === 0) {
+            return <Typography>No partitions with size information found to display.</Typography>;
+        }
+
+        return (
+            <Grid container spacing={3}>
+                {disksWithPartitions.map(disk => {
+                    const chartData = (disk.partitions || [])
+                        .filter(p => p.size && p.size > 0)
+                        .map((p) => ({
+                            id: p.id || p.device || 'unknown',
+                            value: p.size || 0,
+                            label: decodeEscapeSequence(p.name || p.device || 'Unknown'),
+                        }));
+
+                    return (
+                        <Grid size={{ xs: 12, md: 6, lg: 4 }} key={disk.id}>
+                            <Card sx={{ height: '100%' }}>
+                                <CardHeader
+                                    title={decodeEscapeSequence(disk.id || disk.model || 'Unknown Disk')}
+                                    slotProps={
+                                        {
+                                            title: {
+                                                variant: 'subtitle2',
+                                                noWrap: true,
+                                            },
+                                        }
+                                    }
+                                />
+                                <CardContent sx={{ height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                    <PieChart
+                                        series={[{
+                                            data: chartData,
+                                            highlightScope: { fade: 'global', highlight: 'item' },
+                                            faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
+                                            arcLabel: (item) => `${(item.value / (1024 * 1024 * 1024)).toFixed(1)}G`,
+                                            arcLabelMinAngle: 25,
+                                            valueFormatter: (item) => humanizeBytes(item.value || 0),
+                                            innerRadius: 30,
+                                            outerRadius: 100,
+                                            paddingAngle: 5,
+                                            cornerRadius: 15,
+                                            cx: 150,
+                                            cy: 150,
+                                        }]}
+                                        height={250} // Set a fixed height for the chart
+                                        slotProps={{
+                                            legend: {
+                                                direction: "horizontal", // Use horizontal legend
+                                                position: { vertical: 'bottom', horizontal: 'center' },
+                                                sx: {
+                                                    fontSize: '0.75rem',
+                                                    gap: 1,
+                                                },
+                                            },
+                                        }}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    );
+                })}
+            </Grid>
         );
     };
 
@@ -165,7 +293,11 @@ export function DashboardMetrics() {
                 <Typography variant="h6">System Metrics</Typography>
             </AccordionSummary>
             <AccordionDetails>
-                {renderContent()}
+                {renderProcessMetrics()}
+                <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
+                    Disk Usage
+                </Typography>
+                {renderVolumeMetrics()}
             </AccordionDetails>
         </Accordion>
     );
