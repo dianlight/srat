@@ -188,9 +188,10 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_NoReleasesFound
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_SkipPrerelease_WhenChannelIsRelease() {
 	config.Version = "1.0.0"
 	arch := runtime.GOARCH
-	if arch == "arm64" {
+	switch arch {
+	case "arm64":
 		arch = "aarch64"
-	} else if arch == "amd64" {
+	case "amd64":
 		arch = "x86_64"
 	}
 	assetName := fmt.Sprintf("srat_%s.zip", arch)
@@ -213,9 +214,10 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_SkipPrerelease_
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_AcceptPrerelease_WhenChannelIsPrerelease() {
 	config.Version = "1.0.0"
 	arch := runtime.GOARCH
-	if arch == "arm64" {
+	switch arch {
+	case "arm64":
 		arch = "aarch64"
-	} else if arch == "amd64" {
+	case "amd64":
 		arch = "x86_64"
 	}
 	assetName := fmt.Sprintf("srat_%s.zip", arch)
@@ -242,9 +244,10 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_AcceptPrereleas
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_CurrentVersionNewer() {
 	config.Version = "1.2.0"
 	arch := runtime.GOARCH
-	if arch == "arm64" {
+	switch arch {
+	case "arm64":
 		arch = "aarch64"
-	} else if arch == "amd64" {
+	case "amd64":
 		arch = "x86_64"
 	}
 	assetName := fmt.Sprintf("srat_%s.zip", arch)
@@ -266,9 +269,10 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_CurrentVersionN
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_Success_PicksLatestValidRelease() {
 	config.Version = "1.0.0"
 	arch := runtime.GOARCH
-	if arch == "arm64" {
+	switch arch {
+	case "arm64":
 		arch = "aarch64"
-	} else if arch == "amd64" {
+	case "amd64":
 		arch = "x86_64"
 	}
 	assetName := fmt.Sprintf("srat_%s.zip", arch)
