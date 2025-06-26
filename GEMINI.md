@@ -14,7 +14,6 @@ This project appears to be a web application with a Go backend and a JavaScript/
 
 - The backend uses Go modules for dependency management (`go.mod`).
 - The frontend uses `bun` for package management (`bun.lockb`, `package.json`).
-- For the frontend MUI 7.x is used and Grid are used as Grid2
 
 ## Build & Test Commands
 
@@ -36,6 +35,9 @@ This project appears to be a web application with a Go backend and a JavaScript/
 - The backend exposes an OpenAPI specification at `backend/docs/openapi.yaml`.
 - The frontend use a generator for generate OpenAPI client
 - Backend e frontend comunication are made by REST services or SSE
+- Only DTO struct are used in REST and SSE comunications
+- In the backend the conversion between non dto struct and dto are made by coverter package that is genereated by goverter
+- In the frontend MUI 7.x is used and Grid are used as Grid2
 
 ## Dependencies
 
