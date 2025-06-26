@@ -27,7 +27,10 @@ export function Dashboard() {
 
     return (
         <Grid container spacing={3} sx={{ p: 2, pt: 3 }}>
-            <Grid size={{ xs: 12, md: isIntroCollapsed ? 1 : 4 }}>
+            <Grid
+                size={{ xs: isIntroCollapsed ? 2 : 12, md: isIntroCollapsed ? 1 : 4 }}
+                sx={{ display: { xs: 'none', md: 'flex' } }}
+            >
                 <DashboardIntro
                     isCollapsed={isIntroCollapsed}
                     onToggleCollapse={handleToggleIntroCollapse}
