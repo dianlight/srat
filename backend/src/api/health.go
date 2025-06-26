@@ -25,18 +25,20 @@ type HealthHanler struct {
 	OutputEventsCount      uint64
 	OutputEventsInterleave time.Duration
 	dto.HealthPing
-	broadcaster  service.BroadcasterServiceInterface
-	sambaService service.SambaServiceInterface
-	dirtyService service.DirtyDataServiceInterface
+	broadcaster   service.BroadcasterServiceInterface
+	sambaService  service.SambaServiceInterface
+	dirtyService  service.DirtyDataServiceInterface
+	addonsService service.AddonsServiceInterface
 }
 
 type HealthHandlerParams struct {
 	fx.In
-	Ctx          context.Context
-	Apictx       *dto.ContextState
-	Broadcaster  service.BroadcasterServiceInterface
-	SambaService service.SambaServiceInterface
-	DirtyService service.DirtyDataServiceInterface
+	Ctx           context.Context
+	Apictx        *dto.ContextState
+	Broadcaster   service.BroadcasterServiceInterface
+	SambaService  service.SambaServiceInterface
+	DirtyService  service.DirtyDataServiceInterface
+	AddonsService service.AddonsServiceInterface
 }
 
 func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
@@ -57,6 +59,7 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	p.broadcaster = param.Broadcaster
 	p.sambaService = param.SambaService
 	p.OutputEventsCount = 0
+	p.addonsService = param.AddonsService
 	p.SecureMode = param.Apictx.SecureMode
 	p.dirtyService = param.DirtyService
 	p.BuildVersion = config.BuildVersion()
@@ -145,16 +148,24 @@ func (self *HealthHanler) run() error {
 		case <-self.ctx.Done():
 			slog.Info("Run process closed", "err", self.ctx.Err())
 			return errors.WithStack(self.ctx.Err())
-		default:
-			//slog.Debug("Richiesto aggiornamento per Healthy")
+		case <-time.After(self.OutputEventsInterleave): // Use a timer to control loop frequency
+			// Get Addon Stats
+			stats, err := self.addonsService.GetStats()
+			if err != nil {
+				slog.Error("Error getting addon stats for health ping", "err", err)
+				self.HealthPing.AddonStats = nil // Clear stats on error
+			} else {
+				self.HealthPing.AddonStats = stats
+			}
 			self.checkSamba()
 			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()
-			err := self.EventEmitter(self.HealthPing)
+			err = self.EventEmitter(self.HealthPing)
 			if err != nil {
 				slog.Error("Error emitting health message: %w", "err", err)
 			}
-			time.Sleep(self.OutputEventsInterleave)
+			// default:
+			// slog.Debug("Richiesto aggiornamento per Healthy")
 		}
 	}
 }
