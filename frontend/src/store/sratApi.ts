@@ -532,11 +532,37 @@ export type ErrorModel = {
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
 };
+export type AddonStatsData = {
+  blk_read?: number;
+  blk_write?: number;
+  cpu_percent?: number;
+  memory_limit?: number;
+  memory_percent?: number;
+  memory_usage?: number;
+  network_rx?: number;
+  network_tx?: number;
+};
 export type DataDirtyTracker = {
   settings: boolean;
   shares: boolean;
   users: boolean;
   volumes: boolean;
+};
+export type GlobalDiskStats = {
+  total_iops: number;
+  total_read_latency_ms: number;
+  total_write_latency_ms: number;
+};
+export type DiskIoStats = {
+  device_name: string;
+  read_iops: number;
+  read_latency_ms: number;
+  write_iops: number;
+  write_latency_ms: number;
+};
+export type DiskHealth = {
+  global: GlobalDiskStats;
+  per_disk_io: DiskIoStats[] | null;
 };
 export type BinaryAsset = {
   browser_download_url?: string;
@@ -570,10 +596,12 @@ export type SambaProcessStatus = {
 export type HealthPing = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  addon_stats: AddonStatsData;
   alive: boolean;
   aliveTime: number;
   build_version: string;
   dirty_tracking: DataDirtyTracker;
+  disk_health: DiskHealth;
   last_error: string;
   last_release: ReleaseAsset;
   protected_mode: boolean;
@@ -690,6 +718,7 @@ export type Partition = {
 };
 export type Disk = {
   connection_bus?: string;
+  device?: string;
   ejectable?: boolean;
   id?: string;
   model?: string;

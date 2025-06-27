@@ -15,4 +15,5 @@ type HealthPing struct {
 	ProtectedMode      bool                   `json:"protected_mode"`
 	BuildVersion       string                 `json:"build_version"`
 	AddonStats         *addons.AddonStatsData `json:"addon_stats"`
+	DiskHealth         DiskHealth             `json:"disk_health"`
 }

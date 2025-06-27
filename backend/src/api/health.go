@@ -25,20 +25,22 @@ type HealthHanler struct {
 	OutputEventsCount      uint64
 	OutputEventsInterleave time.Duration
 	dto.HealthPing
-	broadcaster   service.BroadcasterServiceInterface
-	sambaService  service.SambaServiceInterface
-	dirtyService  service.DirtyDataServiceInterface
-	addonsService service.AddonsServiceInterface
+	broadcaster      service.BroadcasterServiceInterface
+	sambaService     service.SambaServiceInterface
+	dirtyService     service.DirtyDataServiceInterface
+	addonsService    service.AddonsServiceInterface
+	diskStatsService service.DiskStatsService
 }
 
 type HealthHandlerParams struct {
 	fx.In
-	Ctx           context.Context
-	Apictx        *dto.ContextState
-	Broadcaster   service.BroadcasterServiceInterface
-	SambaService  service.SambaServiceInterface
-	DirtyService  service.DirtyDataServiceInterface
-	AddonsService service.AddonsServiceInterface
+	Ctx              context.Context
+	Apictx           *dto.ContextState
+	Broadcaster      service.BroadcasterServiceInterface
+	SambaService     service.SambaServiceInterface
+	DirtyService     service.DirtyDataServiceInterface
+	AddonsService    service.AddonsServiceInterface
+	DiskStatsService service.DiskStatsService
 }
 
 func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
@@ -62,6 +64,7 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	p.addonsService = param.AddonsService
 	p.SecureMode = param.Apictx.SecureMode
 	p.dirtyService = param.DirtyService
+	p.diskStatsService = param.DiskStatsService
 	p.BuildVersion = config.BuildVersion()
 	if param.Apictx.Heartbeat > 0 {
 		p.OutputEventsInterleave = time.Duration(param.Apictx.Heartbeat) * time.Second
@@ -158,6 +161,12 @@ func (self *HealthHanler) run() error {
 				self.HealthPing.AddonStats = stats
 			}
 			self.checkSamba()
+			diskStats, err := self.diskStatsService.GetDiskStats()
+			if err != nil {
+				slog.Error("Error getting disk stats for health ping", "err", err)
+			} else {
+				self.HealthPing.DiskHealth = *diskStats
+			}
 			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()
 			err = self.EventEmitter(self.HealthPing)

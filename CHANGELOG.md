@@ -8,7 +8,7 @@
 - Ingress security validation [#89](https://github.com/dianlight/srat/issues/89)
 #### __🚧 Work in progess__
 - [ ] Manage `local master`option (?)
-- [ ] Monitor tab (?)
+- [W] Dashboard
 - [ ] Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
 - [ ] Custom component [#83](https://github.com/dianlight/srat/issues/83)
 - [ ] Smart Control [#100](https://github.com/dianlight/srat/issues/100)
@@ -18,7 +18,7 @@
 - [X] `enable`/`disable` share functionality is not working as expected.
 - Renaming the admin user does not correctly create the new user or rename the existing one; issues persist until a full addon reboot.
 #### __🚧 Work in progess__
-- [ ]  [#80](https://github.com/dianlight/srat/issues/85)
+- [W]  [#80](https://github.com/dianlight/srat/issues/85)
 
 ### 🏗 Chore
 - Implemet wachdog
