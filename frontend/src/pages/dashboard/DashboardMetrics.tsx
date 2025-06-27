@@ -240,7 +240,7 @@ export function DashboardMetrics() {
                                             </Typography>
                                             <Box sx={{ width: 50, height: 20 }}>
                                                 {(cpuHistory[process.name]?.length || 0) > 1 ? (
-                                                    <Sparklines data={cpuHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20}>
+                                                    <Sparklines data={cpuHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20} min={0} max={100}>
                                                         <SparklinesLine color={theme.palette.primary.main} />
                                                         <SparklinesSpots />
                                                     </Sparklines>
@@ -255,7 +255,7 @@ export function DashboardMetrics() {
                                             </Typography>
                                             <Box sx={{ width: 50, height: 20 }}>
                                                 {(memoryHistory[process.name]?.length || 0) > 1 ? (
-                                                    <Sparklines data={memoryHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20}>
+                                                    <Sparklines data={memoryHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20} min={0} max={100}>
                                                         <SparklinesLine color={theme.palette.success.main} />
                                                         <SparklinesSpots />
                                                     </Sparklines>
@@ -270,7 +270,7 @@ export function DashboardMetrics() {
                                             </Typography>
                                             <Box sx={{ width: 50, height: 20 }}>
                                                 {(connectionsHistory[process.name]?.length || 0) > 1 ? (
-                                                    <Sparklines data={connectionsHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20}>
+                                                    <Sparklines data={connectionsHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20} min={0}>
                                                         <SparklinesBars style={{ fill: "#41c3f9", fillOpacity: ".25" }} />
                                                         <SparklinesLine color={theme.palette.secondary.main} />
                                                     </Sparklines>
@@ -356,7 +356,7 @@ export function DashboardMetrics() {
                         </Typography>
                         <Box sx={{ width: '50%', height: 40 }}>
                             {addonCpuHistory.length > 1 && (
-                                <Sparklines data={addonCpuHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40}>
+                                <Sparklines data={addonCpuHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40} min={0} max={100}>
                                     <SparklinesLine color={theme.palette.primary.main} />
                                     <SparklinesSpots />
                                 </Sparklines>
@@ -403,7 +403,7 @@ export function DashboardMetrics() {
                         </Typography>
                         <Box sx={{ width: '50%', height: 40 }}>
                             {addonMemoryHistory.length > 1 && (
-                                <Sparklines data={addonMemoryHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40}>
+                                <Sparklines data={addonMemoryHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40} min={0} max={100}>
                                     <SparklinesLine color={theme.palette.success.main} />
                                     <SparklinesSpots />
                                 </Sparklines>

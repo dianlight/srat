@@ -549,16 +549,16 @@ export type DataDirtyTracker = {
   volumes: boolean;
 };
 export type GlobalDiskStats = {
-  total_iops?: number;
-  total_read_latency_ms?: number;
-  total_write_latency_ms?: number;
+  total_iops: number;
+  total_read_latency_ms: number;
+  total_write_latency_ms: number;
 };
 export type DiskIoStats = {
   device_name: string;
-  read_iops?: number;
-  read_latency_ms?: number;
-  write_iops?: number;
-  write_latency_ms?: number;
+  read_iops: number;
+  read_latency_ms: number;
+  write_iops: number;
+  write_latency_ms: number;
 };
 export type DiskHealth = {
   global: GlobalDiskStats;

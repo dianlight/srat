@@ -16,5 +16,5 @@ type HealthPing struct {
 	BuildVersion       string                 `json:"build_version"`
 	AddonStats         *addons.AddonStatsData `json:"addon_stats"`
 	DiskHealth         *DiskHealth            `json:"disk_health"`
-	NetworkHealth      *NetworkHealth         `json:"network_health"`
+	NetworkHealth      *NetworkStats          `json:"network_health"`
 }

@@ -1,15 +1,15 @@
-
 package dto
 
-// NetworkHealth represents the network health of the system, including global and per-interface statistics.
-type NetworkHealth struct {
-	PerNicIO []NicIOStats    `json:"perNicIO"`
+// NetworkStats represents the network health of the system, including global and per-interface statistics.
+type NetworkStats struct {
+	PerNicIO []NicIOStats   `json:"perNicIO"`
 	Global   GlobalNicStats `json:"global"`
 }
 
 // NicIOStats represents the I/O statistics for a single network interface.
 type NicIOStats struct {
 	DeviceName      string  `json:"deviceName"`
+	DeviceMaxSpeed  int64   `json:"deviceMaxSpeed"`
 	InboundTraffic  float64 `json:"inboundTraffic"`
 	OutboundTraffic float64 `json:"outboundTraffic"`
 }
