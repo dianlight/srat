@@ -25,22 +25,24 @@ type HealthHanler struct {
 	OutputEventsCount      uint64
 	OutputEventsInterleave time.Duration
 	dto.HealthPing
-	broadcaster      service.BroadcasterServiceInterface
-	sambaService     service.SambaServiceInterface
-	dirtyService     service.DirtyDataServiceInterface
-	addonsService    service.AddonsServiceInterface
-	diskStatsService service.DiskStatsService
+	broadcaster         service.BroadcasterServiceInterface
+	sambaService        service.SambaServiceInterface
+	dirtyService        service.DirtyDataServiceInterface
+	addonsService       service.AddonsServiceInterface
+	diskStatsService    service.DiskStatsService
+	networkStatsService service.NetworkStatsService
 }
 
 type HealthHandlerParams struct {
 	fx.In
-	Ctx              context.Context
-	Apictx           *dto.ContextState
-	Broadcaster      service.BroadcasterServiceInterface
-	SambaService     service.SambaServiceInterface
-	DirtyService     service.DirtyDataServiceInterface
-	AddonsService    service.AddonsServiceInterface
-	DiskStatsService service.DiskStatsService
+	Ctx                context.Context
+	Apictx             *dto.ContextState
+	Broadcaster        service.BroadcasterServiceInterface
+	SambaService       service.SambaServiceInterface
+	DirtyService       service.DirtyDataServiceInterface
+	AddonsService      service.AddonsServiceInterface
+	NetworkStatService service.NetworkStatsService
+	DiskStatsService   service.DiskStatsService
 }
 
 func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
@@ -65,6 +67,7 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	p.SecureMode = param.Apictx.SecureMode
 	p.dirtyService = param.DirtyService
 	p.diskStatsService = param.DiskStatsService
+	p.networkStatsService = param.NetworkStatService
 	p.BuildVersion = config.BuildVersion()
 	if param.Apictx.Heartbeat > 0 {
 		p.OutputEventsInterleave = time.Duration(param.Apictx.Heartbeat) * time.Second
@@ -165,7 +168,13 @@ func (self *HealthHanler) run() error {
 			if err != nil {
 				slog.Error("Error getting disk stats for health ping", "err", err)
 			} else {
-				self.HealthPing.DiskHealth = *diskStats
+				self.HealthPing.DiskHealth = diskStats
+			}
+			netStats, err := self.networkStatsService.GetNetworkStats()
+			if err != nil {
+				slog.Error("Error getting network stats for health ping", "err", err)
+			} else {
+				self.HealthPing.NetworkHealth = netStats
 			}
 			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()

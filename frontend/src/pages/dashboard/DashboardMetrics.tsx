@@ -64,6 +64,7 @@ function formatUptime(millis: number): string {
     return parts.join(' ');
 }
 
+
 export function DashboardMetrics() {
     const { health, isLoading, error } = useHealth();
     const { disks, isLoading: isLoadingVolumes, error: errorVolumes } = useVolume();
@@ -643,6 +644,48 @@ export function DashboardMetrics() {
         );
     };
 
+    const renderNetworkHealthMetrics = () => {
+        if (isLoading) {
+            return (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <CircularProgress />
+                </Box>
+            );
+        }
+
+        if (error || !health?.network_health) {
+            return <Alert severity="error">Could not load network health metrics.</Alert>;
+        }
+
+        return (
+            <>
+                <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
+                    Network I/O Health
+                </Typography>
+                <TableContainer component={Paper}>
+                    <Table aria-label="network health table" size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Device</TableCell>
+                                <TableCell align="right">Inbound Traffic (B/s)</TableCell>
+                                <TableCell align="right">Outbound Traffic (B/s)</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {health.network_health?.perNicIO?.map((nic, i) => (
+                                <TableRow key={nic.deviceName}>
+                                    <TableCell component="th" scope="row">{nic.deviceName}</TableCell>
+                                    <TableCell align="right">{humanizeBytes(nic.inboundTraffic)}/s</TableCell>
+                                    <TableCell align="right">{humanizeBytes(nic.outboundTraffic)}/s</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </>
+        );
+    };
+
     return (
         <Accordion defaultExpanded>
             <AccordionSummary
@@ -672,6 +715,7 @@ export function DashboardMetrics() {
                 </Grid>
                 {renderProcessMetrics()}
                 {renderDiskHealthMetrics()}
+                {renderNetworkHealthMetrics()}
                 <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
                     Disk Usage
                 </Typography>

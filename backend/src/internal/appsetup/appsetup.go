@@ -71,6 +71,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewHostService,
 		service.NewAddonsService,
 		service.NewDiskStatsService,
+		service.NewNetworkStatsService,
 
 		repository.NewMountPointPathRepository,
 		repository.NewExportedShareRepository,

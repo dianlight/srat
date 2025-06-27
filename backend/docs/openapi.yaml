@@ -128,10 +128,6 @@ components:
           type: number
       required:
         - device_name
-        - read_iops
-        - write_iops
-        - read_latency_ms
-        - write_latency_ms
       type: object
     ErrorDetail:
       additionalProperties: false
@@ -229,10 +225,19 @@ components:
         total_write_latency_ms:
           format: double
           type: number
+      type: object
+    GlobalNicStats:
+      additionalProperties: false
+      properties:
+        totalInboundTraffic:
+          format: double
+          type: number
+        totalOutboundTraffic:
+          format: double
+          type: number
       required:
-        - total_iops
-        - total_read_latency_ms
-        - total_write_latency_ms
+        - totalInboundTraffic
+        - totalOutboundTraffic
       type: object
     HealthPing:
       additionalProperties: false
@@ -261,6 +266,8 @@ components:
           type: string
         last_release:
           $ref: "#/components/schemas/ReleaseAsset"
+        network_health:
+          $ref: "#/components/schemas/NetworkHealth"
         protected_mode:
           type: boolean
         read_only:
@@ -286,6 +293,7 @@ components:
         - build_version
         - addon_stats
         - disk_health
+        - network_health
       type: object
     InterfaceAddr:
       additionalProperties: false
@@ -421,6 +429,37 @@ components:
       required:
         - path
         - type
+      type: object
+    NetworkHealth:
+      additionalProperties: false
+      properties:
+        global:
+          $ref: "#/components/schemas/GlobalNicStats"
+        perNicIO:
+          items:
+            $ref: "#/components/schemas/NicIOStats"
+          type:
+            - array
+            - "null"
+      required:
+        - perNicIO
+        - global
+      type: object
+    NicIOStats:
+      additionalProperties: false
+      properties:
+        deviceName:
+          type: string
+        inboundTraffic:
+          format: double
+          type: number
+        outboundTraffic:
+          format: double
+          type: number
+      required:
+        - deviceName
+        - inboundTraffic
+        - outboundTraffic
       type: object
     Partition:
       additionalProperties: false

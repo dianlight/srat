@@ -37,7 +37,9 @@ This project appears to be a web application with a Go backend and a JavaScript/
 - Backend e frontend comunication are made by REST services or SSE
 - Only DTO struct are used in REST and SSE comunications
 - In the backend the conversion between non dto struct and dto are made by coverter package that is genereated by goverter
-- In the frontend MUI 7.x is used and Grid are used as Grid2
+- In the frontend MUI 7.x is used and Grid are used as Grid2.
+- `backend/docs/openapi.yaml` is generated from code by code generation
+- `frontend/src/store/sratApi.ts` is generated from `backend/docs/openapi.yaml` by code generation
 
 ## Dependencies
 

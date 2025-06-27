@@ -38,9 +38,7 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	// Normalize device path: ensure it's stored without /dev/ prefix
 	// This is consistent with FindByDevice logic.
 	// Ideally, this normalization should be in dbom.MountPointPath.BeforeSave hook.
-	if strings.HasPrefix(mp.Device, "/dev/") {
-		mp.Device = strings.TrimPrefix(mp.Device, "/dev/")
-	}
+	mp.Device = strings.TrimPrefix(mp.Device, "/dev/")
 
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// Check if record exists to decide between Create and Update
