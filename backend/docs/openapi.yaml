@@ -128,6 +128,10 @@ components:
           type: number
       required:
         - device_name
+        - read_iops
+        - write_iops
+        - read_latency_ms
+        - write_latency_ms
       type: object
     ErrorDetail:
       additionalProperties: false
@@ -225,6 +229,10 @@ components:
         total_write_latency_ms:
           format: double
           type: number
+      required:
+        - total_iops
+        - total_read_latency_ms
+        - total_write_latency_ms
       type: object
     GlobalNicStats:
       additionalProperties: false
@@ -267,7 +275,7 @@ components:
         last_release:
           $ref: "#/components/schemas/ReleaseAsset"
         network_health:
-          $ref: "#/components/schemas/NetworkHealth"
+          $ref: "#/components/schemas/NetworkStats"
         protected_mode:
           type: boolean
         read_only:
@@ -430,7 +438,7 @@ components:
         - path
         - type
       type: object
-    NetworkHealth:
+    NetworkStats:
       additionalProperties: false
       properties:
         global:
@@ -448,6 +456,9 @@ components:
     NicIOStats:
       additionalProperties: false
       properties:
+        deviceMaxSpeed:
+          format: int64
+          type: integer
         deviceName:
           type: string
         inboundTraffic:
@@ -458,6 +469,7 @@ components:
           type: number
       required:
         - deviceName
+        - deviceMaxSpeed
         - inboundTraffic
         - outboundTraffic
       type: object
