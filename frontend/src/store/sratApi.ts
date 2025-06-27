@@ -549,16 +549,16 @@ export type DataDirtyTracker = {
   volumes: boolean;
 };
 export type GlobalDiskStats = {
-  total_iops: number;
-  total_read_latency_ms: number;
-  total_write_latency_ms: number;
+  total_iops?: number;
+  total_read_latency_ms?: number;
+  total_write_latency_ms?: number;
 };
 export type DiskIoStats = {
   device_name: string;
-  read_iops: number;
-  read_latency_ms: number;
-  write_iops: number;
-  write_latency_ms: number;
+  read_iops?: number;
+  read_latency_ms?: number;
+  write_iops?: number;
+  write_latency_ms?: number;
 };
 export type DiskHealth = {
   global: GlobalDiskStats;
@@ -575,6 +575,19 @@ export type ReleaseAsset = {
   $schema?: string;
   arch_asset?: BinaryAsset;
   last_release?: string;
+};
+export type GlobalNicStats = {
+  totalInboundTraffic: number;
+  totalOutboundTraffic: number;
+};
+export type NicIoStats = {
+  deviceName: string;
+  inboundTraffic: number;
+  outboundTraffic: number;
+};
+export type NetworkHealth = {
+  global: GlobalNicStats;
+  perNicIO: NicIoStats[] | null;
 };
 export type ProcessStatus = {
   connections: number;
@@ -604,6 +617,7 @@ export type HealthPing = {
   disk_health: DiskHealth;
   last_error: string;
   last_release: ReleaseAsset;
+  network_health: NetworkHealth;
   protected_mode: boolean;
   read_only: boolean;
   samba_process_status: SambaProcessStatus;
