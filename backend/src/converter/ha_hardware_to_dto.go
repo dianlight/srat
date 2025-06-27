@@ -1,6 +1,8 @@
 package converter
 
 import (
+	"strings"
+
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/u-root/u-root/pkg/mount"
@@ -18,6 +20,7 @@ type HaHardwareToDto interface {
 	// goverter:map Filesystems Partitions
 	// goverter:useUnderlyingTypeMethods
 	// goverter:skipCopySameType
+	// goverter:map . Device | extractDevice
 	DriveToDisk(source hardware.Drive, target *dto.Disk) error
 
 	// goverter:useZeroValueOnPointerInconsistency
@@ -57,4 +60,15 @@ func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointD
 	}
 
 	return &mountPointDatas
+}
+
+func extractDevice(source hardware.Drive) *string {
+	if source.Filesystems == nil || len(*source.Filesystems) == 0 || (*source.Filesystems)[0].Device == nil {
+		return nil
+	}
+	// Trim trailing digits to get the disk device from a partition device (e.g., /dev/sda1 -> /dev/sda).
+	originalDevice := *(*source.Filesystems)[0].Device
+	trimmedDevice := strings.TrimRight(originalDevice, "0123456789")
+	trimmedDevice = strings.TrimPrefix(trimmedDevice, "/dev/")
+	return &trimmedDevice
 }

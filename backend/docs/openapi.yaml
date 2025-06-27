@@ -1,5 +1,33 @@
 components:
   schemas:
+    AddonStatsData:
+      additionalProperties: false
+      properties:
+        blk_read:
+          format: int64
+          type: integer
+        blk_write:
+          format: int64
+          type: integer
+        cpu_percent:
+          format: double
+          type: number
+        memory_limit:
+          format: int64
+          type: integer
+        memory_percent:
+          format: double
+          type: number
+        memory_usage:
+          format: int64
+          type: integer
+        network_rx:
+          format: int64
+          type: integer
+        network_tx:
+          format: int64
+          type: integer
+      type: object
     BinaryAsset:
       additionalProperties: false
       properties:
@@ -40,6 +68,8 @@ components:
       properties:
         connection_bus:
           type: string
+        device:
+          type: string
         ejectable:
           type: boolean
         id:
@@ -63,6 +93,45 @@ components:
           type: integer
         vendor:
           type: string
+      type: object
+    DiskHealth:
+      additionalProperties: false
+      properties:
+        global:
+          $ref: "#/components/schemas/GlobalDiskStats"
+        per_disk_io:
+          items:
+            $ref: "#/components/schemas/DiskIOStats"
+          type:
+            - array
+            - "null"
+      required:
+        - global
+        - per_disk_io
+      type: object
+    DiskIOStats:
+      additionalProperties: false
+      properties:
+        device_name:
+          type: string
+        read_iops:
+          format: double
+          type: number
+        read_latency_ms:
+          format: double
+          type: number
+        write_iops:
+          format: double
+          type: number
+        write_latency_ms:
+          format: double
+          type: number
+      required:
+        - device_name
+        - read_iops
+        - write_iops
+        - read_latency_ms
+        - write_latency_ms
       type: object
     ErrorDetail:
       additionalProperties: false
@@ -148,6 +217,23 @@ components:
         - mountFlags
         - customMountFlags
       type: object
+    GlobalDiskStats:
+      additionalProperties: false
+      properties:
+        total_iops:
+          format: double
+          type: number
+        total_read_latency_ms:
+          format: double
+          type: number
+        total_write_latency_ms:
+          format: double
+          type: number
+      required:
+        - total_iops
+        - total_read_latency_ms
+        - total_write_latency_ms
+      type: object
     HealthPing:
       additionalProperties: false
       properties:
@@ -158,6 +244,8 @@ components:
           format: uri
           readOnly: true
           type: string
+        addon_stats:
+          $ref: "#/components/schemas/AddonStatsData"
         alive:
           type: boolean
         aliveTime:
@@ -167,6 +255,8 @@ components:
           type: string
         dirty_tracking:
           $ref: "#/components/schemas/DataDirtyTracker"
+        disk_health:
+          $ref: "#/components/schemas/DiskHealth"
         last_error:
           type: string
         last_release:
@@ -194,6 +284,8 @@ components:
         - secure_mode
         - protected_mode
         - build_version
+        - addon_stats
+        - disk_health
       type: object
     InterfaceAddr:
       additionalProperties: false

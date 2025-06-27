@@ -24,6 +24,7 @@ require (
 	github.com/jarcoal/httpmock v1.4.0
 	github.com/m1/go-generate-password v0.2.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/prometheus/procfs v0.15.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
@@ -161,3 +162,5 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
+
+
