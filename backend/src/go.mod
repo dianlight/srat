@@ -5,7 +5,7 @@ go 1.24.3
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v72 v72.0.0
+	github.com/google/go-github/v73 v73.0.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jinzhu/copier v0.4.0
 	github.com/jpillora/overseer v1.1.6
@@ -141,7 +141,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.1
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250624121115-49b1224d2aef
+	github.com/snapcore/snapd v0.0.0-20250627080240-8a2eca0f333a
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
