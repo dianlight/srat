@@ -15,6 +15,5 @@ python3 -m pip install ruff openapi-python-client
 openapi-python-client --install-completion
 
 #gemini
-bun add -g @google/gemini-cli
-bun pm -g untrusted
-bun pm -g trust
+bun add -g @google/gemini-cli ||:
+bun pm -g trust --all ||:
