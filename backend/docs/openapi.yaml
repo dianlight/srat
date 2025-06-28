@@ -121,6 +121,8 @@ components:
     DiskIOStats:
       additionalProperties: false
       properties:
+        device_description:
+          type: string
         device_name:
           type: string
         read_iops:
@@ -139,6 +141,7 @@ components:
           type: number
       required:
         - device_name
+        - device_description
         - read_iops
         - write_iops
         - read_latency_ms
@@ -644,8 +647,6 @@ components:
           type: string
         encryption:
           $ref: "#/components/schemas/SambaSessionEncryptionStruct"
-        expiration_time:
-          type: string
         gid:
           format: int64
           minimum: 0
@@ -678,7 +679,6 @@ components:
         - username
         - groupname
         - creation_time
-        - expiration_time
         - auth_time
         - remote_machine
         - hostname

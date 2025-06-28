@@ -570,6 +570,7 @@ export type SmartInfo = {
   temperature: number;
 };
 export type DiskIoStats = {
+  device_description: string;
   device_name: string;
   read_iops: number;
   read_latency_ms: number;
@@ -663,7 +664,6 @@ export type SambaSession = {
   };
   creation_time: string;
   encryption: SambaSessionEncryptionStruct;
-  expiration_time: string;
   gid: number;
   groupname: string;
   hostname: string;

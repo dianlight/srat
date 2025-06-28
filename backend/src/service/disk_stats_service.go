@@ -97,11 +97,12 @@ func (s *diskStatsService) updateDiskStats() error {
 		if s.lastStats[*disk.Device] != nil {
 
 			dstat := dto.DiskIOStats{
-				DeviceName:   *disk.Id,
-				ReadIOPS:     (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Device].ReadIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
-				WriteIOPS:    (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Device].WriteIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
-				ReadLatency:  (float64(stats.ReadTicks) - float64(s.lastStats[*disk.Device].ReadTicks)) / (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Device].ReadIOs)),
-				WriteLatency: (float64(stats.WriteTicks) - float64(s.lastStats[*disk.Device].WriteTicks)) / (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Device].WriteIOs)),
+				DeviceName:        *disk.Device,
+				DeviceDescription: *disk.Id,
+				ReadIOPS:          (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Device].ReadIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
+				WriteIOPS:         (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Device].WriteIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
+				ReadLatency:       (float64(stats.ReadTicks) - float64(s.lastStats[*disk.Device].ReadTicks)) / (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Device].ReadIOs)),
+				WriteLatency:      (float64(stats.WriteTicks) - float64(s.lastStats[*disk.Device].WriteTicks)) / (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Device].WriteIOs)),
 			}
 			if dstat.ReadIOPS < 0 || math.IsNaN(dstat.ReadIOPS) {
 				dstat.ReadIOPS = 0

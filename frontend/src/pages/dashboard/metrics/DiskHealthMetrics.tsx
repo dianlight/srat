@@ -21,6 +21,7 @@ export function DiskHealthMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
                 <Table aria-label="disk health table" size="small">
                     <TableHead>
                         <TableRow>
+                            <TableCell>Description</TableCell>
                             <TableCell>Device</TableCell>
                             <TableCell align="right">Reads IOP/s</TableCell>
                             <TableCell align="right">Writes IOP/s</TableCell>
@@ -31,6 +32,9 @@ export function DiskHealthMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
                     <TableBody>
                         {diskHealth?.per_disk_io?.map((io) => (
                             <TableRow key={io.device_name}>
+                                <TableCell component="th" scope="row">
+                                    {io.device_description}
+                                </TableCell>
                                 <TableCell component="th" scope="row">
                                     {io.device_name}
                                 </TableCell>
@@ -53,9 +57,12 @@ export function DiskHealthMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" component="div">
+                                    {diskHealth?.per_disk_io?.find(io => io.device_name === diskName)?.device_description}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" component="div">
                                     {diskName}
                                 </Typography>
-                                {partitions?.map((partition) => {
+                                {[...(partitions || [])]?.sort((a, b) => a.device?.localeCompare(b.device))?.map((partition) => {
                                     const totalSpace = partition.total_space_bytes || 0;
                                     const freeSpace = partition.free_space_bytes || 0;
                                     const usedSpace = totalSpace - freeSpace;
