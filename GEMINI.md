@@ -17,8 +17,11 @@ This project appears to be a web application with a Go backend and a JavaScript/
 
 ## Build & Test Commands
 
-*This section is a placeholder and should be filled in with the correct commands.*
-
+- **Root:**
+  - To build all architectures: `make`
+  - To prepare the development environment (install pre-commit hooks, backend prerequisites, and frontend dependencies): `make prepare`
+  - To clean build artifacts: `make clean`
+  - To run the Gemini CLI: `make gemini`
 - **Backend:**
   - To generate code: `make -C backend gen`
   - To build: `make -C backend build`
