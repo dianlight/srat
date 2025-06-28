@@ -52,6 +52,7 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 addonNetwork: true,
                 globalDiskIo: true,
                 globalNetworkIo: true,
+                sambaSessions: true,
             };
         }
     });
