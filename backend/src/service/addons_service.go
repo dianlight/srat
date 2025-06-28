@@ -54,7 +54,7 @@ const (
 )
 
 // NewAddonsService creates a new instance of AddonsService.
-func NewAddonsService(params AddonsServiceParams) AddonsServiceInterface {
+func NewAddonsService(lc fx.Lifecycle, params AddonsServiceParams) AddonsServiceInterface {
 	if params.AddonsClient == nil {
 		slog.WarnContext(params.Ctx, "AddonsClient is not available for AddonsService. Operations requiring it will fail.")
 	}
@@ -66,13 +66,13 @@ func NewAddonsService(params AddonsServiceParams) AddonsServiceInterface {
 		statsCache:         gocache.New(statsCacheExpiry, statsCacheCleanup),
 	}
 
-	params.Ctx.Value("wg").(*sync.WaitGroup).Add(1)
-	go func() {
-		defer params.Ctx.Value("wg").(*sync.WaitGroup).Done()
-		p.apictx.ProtectedMode, _ = p.CheckProtectedMode()
-	}()
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			p.apictx.ProtectedMode, _ = p.CheckProtectedMode()
+			return nil
+		},
+	})
 	return p
-
 }
 
 // CheckProtectedMode implements the AddonsServiceInterface.
@@ -100,7 +100,7 @@ func (s *AddonsService) CheckProtectedMode() (bool, error) {
 	}
 
 	resp, err := s.addonsClient.GetSelfAddonInfoWithResponse(s.ctx)
-	if err != nil {
+	if err != nil || resp == nil {
 		return false, errors.Wrapf(err, "failed to get addon info for '%s'", "self")
 	}
 
