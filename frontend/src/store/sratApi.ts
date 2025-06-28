@@ -636,24 +636,64 @@ export type SambaProcessStatus = {
   smbd: ProcessStatus;
   wsdd2: ProcessStatus;
 };
+export type Value = {
+  channel_id: string;
+  creation_time: string;
+  local_address: string;
+  remote_address: string;
+};
+export type SambaSessionEncryptionStruct = {
+  cipher: string;
+  degree: string;
+};
+export type SambaServerId = {
+  pid: string;
+  task_id: string;
+  unique_id: string;
+  vnn: string;
+};
+export type SambaSessionSigningStruct = {
+  cipher: string;
+  degree: string;
+};
 export type SambaSession = {
+  auth_time: string;
+  channels: {
+    [key: string]: Value;
+  };
+  creation_time: string;
+  encryption: SambaSessionEncryptionStruct;
+  expiration_time: string;
   gid: number;
   groupname: string;
   hostname: string;
-  is_encrypted: boolean;
   remote_machine: string;
+  server_id: SambaServerId;
   session_dialect: string;
-  session_id: number;
-  signing: string;
+  session_id: string;
+  signing: SambaSessionSigningStruct;
   uid: number;
   username: string;
 };
+export type SambaTconEncryptionStruct = {
+  cipher: string;
+  degree: string;
+};
+export type SambaTconSigningStruct = {
+  cipher: string;
+  degree: string;
+};
 export type SambaTcon = {
-  connect_time: string;
+  connected_at: string;
   device: string;
-  session_id: number;
+  encryption: SambaTconEncryptionStruct;
+  machine: string;
+  server_id: SambaServerId;
+  service: string;
+  session_id: string;
   share: string;
-  tcon_id: number;
+  signing: SambaTconSigningStruct;
+  tcon_id: string;
 };
 export type SambaStatus = {
   /** A URL to the JSON Schema for this object. */

@@ -2,13 +2,13 @@ package service
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/addons"
+	"github.com/dianlight/srat/tlog"
 	gocache "github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -56,7 +56,7 @@ const (
 // NewAddonsService creates a new instance of AddonsService.
 func NewAddonsService(lc fx.Lifecycle, params AddonsServiceParams) AddonsServiceInterface {
 	if params.AddonsClient == nil {
-		slog.WarnContext(params.Ctx, "AddonsClient is not available for AddonsService. Operations requiring it will fail.")
+		tlog.Debug("AddonsClient is not available for AddonsService. Operations requiring it will fail.")
 	}
 	p := &AddonsService{
 		ctx:                params.Ctx,

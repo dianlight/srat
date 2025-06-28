@@ -59,7 +59,7 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, error) {
 
 	attrs, err := dev.ReadGenericAttributes()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read generic attributes for device %s", devicePath)
+		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath)
 	}
 
 	ret := &dto.SmartInfo{
