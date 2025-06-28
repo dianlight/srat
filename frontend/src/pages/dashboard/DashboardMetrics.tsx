@@ -1,5 +1,6 @@
-import { Accordion, AccordionDetails, AccordionSummary, Typography, Box, Grid, useTheme } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Typography, Box, Grid, useTheme, Menu, MenuItem, FormControlLabel, Checkbox, IconButton } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useHealth } from "../../hooks/healthHook";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVolume } from "../../hooks/volumeHook";
@@ -34,6 +35,58 @@ export function DashboardMetrics() {
     // New states for global metrics
     const [diskIopsHistory, setDiskIopsHistory] = useState<number[]>([]);
     const [networkTrafficHistory, setNetworkTrafficHistory] = useState<number[]>([]);
+
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [metricVisibility, setMetricVisibility] = useState<Record<string, boolean>>(() => {
+        try {
+            const storedVisibility = localStorage.getItem('metricVisibility');
+            return storedVisibility ? JSON.parse(storedVisibility) : {
+                uptime: true,
+                addonCpu: true,
+                addonMemory: true,
+                addonDiskIo: true,
+                addonNetwork: true,
+                globalDiskIo: true,
+                globalNetworkIo: true,
+            };
+        } catch (e) {
+            console.error("Failed to parse metric visibility from localStorage", e);
+            return {
+                uptime: true,
+                addonCpu: true,
+                addonMemory: true,
+                addonDiskIo: true,
+                addonNetwork: true,
+                globalDiskIo: true,
+                globalNetworkIo: true,
+            };
+        }
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('metricVisibility', JSON.stringify(metricVisibility));
+        } catch (e) {
+            console.error("Failed to save metric visibility to localStorage", e);
+        }
+    }, [metricVisibility]);
+
+    const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+        event.stopPropagation(); // Prevent accordion from toggling
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleMenuClose = (event: React.MouseEvent<HTMLElement>) => {
+        event.stopPropagation(); // Prevent accordion from toggling
+        setAnchorEl(null);
+    };
+
+    const handleToggleMetric = (metricName: string) => {
+        setMetricVisibility(prev => ({
+            ...prev,
+            [metricName]: !prev[metricName],
+        }));
+    };
 
     const processData = useMemo((): ProcessStatus[] => {
         if (!health?.samba_process_status) {
@@ -168,6 +221,7 @@ export function DashboardMetrics() {
 
 
     const renderUptimeMetric = () => {
+        if (!metricVisibility.uptime) return null;
         return (
             <MetricCard
                 title="Server Uptime"
@@ -179,6 +233,7 @@ export function DashboardMetrics() {
     };
 
     const renderAddonCpuMetric = () => {
+        if (!metricVisibility.addonCpu) return null;
         return (
             <MetricCard
                 title="Addon CPU"
@@ -191,6 +246,7 @@ export function DashboardMetrics() {
     };
 
     const renderAddonMemoryMetric = () => {
+        if (!metricVisibility.addonMemory) return null;
         const { memory_percent, memory_usage, memory_limit } = health?.addon_stats || {};
         return (
             <MetricCard
@@ -208,6 +264,7 @@ export function DashboardMetrics() {
     };
 
     const renderAddonDiskIoMetric = () => {
+        if (!metricVisibility.addonDiskIo) return null;
         const readRate = addonDiskReadRateHistory.length > 0 ? addonDiskReadRateHistory[addonDiskReadRateHistory.length - 1] : 0;
         const writeRate = addonDiskWriteRateHistory.length > 0 ? addonDiskWriteRateHistory[addonDiskWriteRateHistory.length - 1] : 0;
         const totalHistory = addonDiskReadRateHistory.map((r, i) => r + (addonDiskWriteRateHistory[i] ?? 0));
@@ -229,6 +286,7 @@ export function DashboardMetrics() {
     };
 
     const renderAddonNetworkMetric = () => {
+        if (!metricVisibility.addonNetwork) return null;
         const rxRate = addonNetworkRxRateHistory.length > 0 ? addonNetworkRxRateHistory[addonNetworkRxRateHistory.length - 1] : 0;
         const txRate = addonNetworkTxRateHistory.length > 0 ? addonNetworkTxRateHistory[addonNetworkTxRateHistory.length - 1] : 0;
         const totalHistory = addonNetworkRxRateHistory.map((r, i) => r + (addonNetworkTxRateHistory[i] ?? 0));
@@ -250,6 +308,7 @@ export function DashboardMetrics() {
     };
 
     const renderGlobalDiskIoMetric = () => {
+        if (!metricVisibility.globalDiskIo) return null;
         const { total_read_latency_ms, total_write_latency_ms } = health?.disk_health?.global || {};
         return (
             <MetricCard
@@ -268,6 +327,7 @@ export function DashboardMetrics() {
     };
 
     const renderGlobalNetworkIoMetric = () => {
+        if (!metricVisibility.globalNetworkIo) return null;
         const { totalInboundTraffic, totalOutboundTraffic } = health?.network_health?.global || {};
         const totalTraffic = (totalInboundTraffic ?? 0) + (totalOutboundTraffic ?? 0);
 
@@ -300,31 +360,85 @@ export function DashboardMetrics() {
                 aria-controls="panel-metrics-content"
                 id="panel-metrics-header"
             >
-                <Typography variant="h6">System Metrics</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <Typography variant="h6">System Metrics</Typography>
+                    <IconButton
+                        aria-label="show metrics menu"
+                        aria-controls="metrics-menu"
+                        aria-haspopup="true"
+                        onClick={handleMenuClick}
+                        color="inherit"
+                    >
+                        <MoreVertIcon />
+                    </IconButton>
+                    <Menu
+                        id="metrics-menu"
+                        anchorEl={anchorEl}
+                        keepMounted
+                        open={Boolean(anchorEl)}
+                        onClose={handleMenuClose}
+                    >
+                        {Object.entries(metricVisibility).map(([key, isVisible]) => (
+                            <MenuItem key={key} onClick={(e) => {
+                                e.stopPropagation(); // Prevent accordion from toggling
+                                handleToggleMetric(key);
+                            }}>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={isVisible}
+                                            onChange={(e) => {
+                                                e.stopPropagation(); // Prevent accordion from toggling
+                                                handleToggleMetric(key);
+                                            }}
+                                            name={key}
+                                            color="primary"
+                                        />
+                                    }
+                                    label={key.replace(/([A-Z])/g, ' $1').trim()}
+                                />
+                            </MenuItem>
+                        ))}
+                    </Menu>
+                </Box>
             </AccordionSummary>
             <AccordionDetails>
                 <Grid container spacing={3} sx={{ mb: 4 }}>
-                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-                        {renderUptimeMetric()}
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-                        {renderAddonCpuMetric()}
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-                        {renderAddonMemoryMetric()}
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-                        {renderAddonDiskIoMetric()}
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-                        {renderAddonNetworkMetric()}
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-                        {renderGlobalDiskIoMetric()}
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-                        {renderGlobalNetworkIoMetric()}
-                    </Grid>
+                    {metricVisibility.uptime && (
+                        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+                            {renderUptimeMetric()}
+                        </Grid>
+                    )}
+                    {metricVisibility.addonCpu && (
+                        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+                            {renderAddonCpuMetric()}
+                        </Grid>
+                    )}
+                    {metricVisibility.addonMemory && (
+                        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+                            {renderAddonMemoryMetric()}
+                        </Grid>
+                    )}
+                    {metricVisibility.addonDiskIo && (
+                        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+                            {renderAddonDiskIoMetric()}
+                        </Grid>
+                    )}
+                    {metricVisibility.addonNetwork && (
+                        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+                            {renderAddonNetworkMetric()}
+                        </Grid>
+                    )}
+                    {metricVisibility.globalDiskIo && (
+                        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+                            {renderGlobalDiskIoMetric()}
+                        </Grid>
+                    )}
+                    {metricVisibility.globalNetworkIo && (
+                        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+                            {renderGlobalNetworkIoMetric()}
+                        </Grid>
+                    )}
                 </Grid>
                 <ProcessMetrics
                     processData={processData}
