@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"math"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/dianlight/srat/dto"
@@ -129,7 +130,7 @@ func (s *diskStatsService) updateDiskStats() error {
 		}
 
 		// --- Smart data population ---
-		smartStats, err := s.smartService.GetSmartInfo(*disk.Device)
+		smartStats, err := s.smartService.GetSmartInfo("/dev/" + *disk.Device)
 		if err != nil {
 			tlog.Error("Error getting SMART stats", "disk", *disk.Device, "err", err)
 		} else {
@@ -159,8 +160,12 @@ func (s *diskStatsService) updateDiskStats() error {
 						if part.Size != nil {
 							totalSpace = uint64(*part.Size)
 						}
-						// Try to get free space from MountPointData (not present, so leave 0)
-						// Optionally, could use lsblk or statfs here
+
+						var stat syscall.Statfs_t
+						if err := syscall.Statfs(mp.Path, &stat); err == nil {
+							freeSpace = stat.Bfree * uint64(stat.Bsize)
+							totalSpace = stat.Blocks * uint64(stat.Bsize)
+						}
 						info := dto.PerPartitionInfo{
 							MountPoint:    mp.Path,
 							Device:        mp.Device,
