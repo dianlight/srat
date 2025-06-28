@@ -17,8 +17,10 @@ export function MetricCard({ title, subheader, value, history, isLoading, error,
     const theme = useTheme();
 
     const renderHistory = () => {
-        if (!history || history.length <= 1) {
+        if (history && history.length <= 1) {
             return <Typography variant="caption">gathering data...</Typography>;
+        } else if (!history) {
+            return "";
         }
 
         if (historyType === 'bar') {

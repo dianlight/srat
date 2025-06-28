@@ -1,11 +1,20 @@
 
-import { Grid, Card, CardHeader, CardContent, Typography, CircularProgress, Alert } from "@mui/material";
-import { PieChart } from '@mui/x-charts/PieChart';
+import { Grid, Card, CardHeader, CardContent, Typography, CircularProgress, Alert, useTheme } from "@mui/material";
 import { type Disk, type DiskHealth, type HealthPing } from "../../../store/sratApi";
 import { humanizeBytes, decodeEscapeSequence } from "./utils";
 import WarningIcon from '@mui/icons-material/Warning';
+import { rainbowSurgePalette } from "@mui/x-charts/colorPalettes";
+import { color } from "bun";
+import {
+    pieArcClasses,
+    PieChart,
+    //   pieClasses,
+} from '@mui/x-charts/PieChart';
 
 export function VolumeMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
+
+    const theme = useTheme();
+    const palette = rainbowSurgePalette(theme.palette.mode);
 
     if (!diskHealth || !diskHealth.per_partition_info || Object.keys(diskHealth.per_partition_info).length === 0) {
         return (
@@ -22,7 +31,49 @@ export function VolumeMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
     return (
         <Grid container spacing={3}>
             {Object.keys(diskHealth?.per_partition_info).map(diskname => {
+                const partitionSeriesData = (diskHealth.per_partition_info[diskname] || [])
+                    .map((p) => {
+                        return {
+                            label: p.device || 'unknown',
+                            value: p.total_space_bytes || 0,
+                        }
+                    });
+
+                const freespaceSeriesData = (diskHealth.per_partition_info[diskname] || [])
+                    .map((p, index) => {
+                        return [{
+                            label: p.device || 'unknown',
+                            value: (p.total_space_bytes || 0) - (p.free_space_bytes || 0),
+                            color: palette[index]
+                        }, {
+                            label: p.device || 'unknown',
+                            value: p.free_space_bytes || 0,
+                            color: 'gray',
+                        }]
+                    }).flat();
+
+
+                /*
+
+
+
+
+
+
                 const chartData = (diskHealth?.per_partition_info[diskname] || [])
+                    .filter(p => p.total_space_bytes > 0)
+                    .map((p) => {
+                        const fsType = p.fstype || 'N/A';
+                        const fsckNeeded = p.fsck_needed || false;
+
+                        return {
+                            id: p.device || 'unknown',
+                            value: p.total_space_bytes || 0,
+                            label: `${fsType}`,
+                            icon: fsckNeeded ? <WarningIcon fontSize="small" /> : null,
+                        };
+                    });
+                const freeData = (diskHealth?.per_partition_info[diskname] || [])
                     .filter(p => p.total_space_bytes > 0)
                     .map((p) => {
                         const freeSpace = p.free_space_bytes ? humanizeBytes(p.free_space_bytes) : 'N/A';
@@ -31,11 +82,13 @@ export function VolumeMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
 
                         return {
                             id: p.device || 'unknown',
-                            value: p.total_space_bytes || 0,
-                            label: `${decodeEscapeSequence(p.device || 'Unknown')} - ${fsType} - Free: ${freeSpace}`,
+                            value: p.free_space_bytes || 0,
+                            label: `Free: ${freeSpace}`,
                             icon: fsckNeeded ? <WarningIcon fontSize="small" /> : null,
                         };
                     });
+                */
+                console.log(`Disk: ${diskname}, Chart Data:`, partitionSeriesData, 'Free Data:', freespaceSeriesData);
 
                 return (
                     <Grid size={{ xs: 12, md: 6, lg: 4 }} key={diskname}>
@@ -51,37 +104,32 @@ export function VolumeMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
                             />
                             <CardContent sx={{ width: '100%', height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                 <PieChart
-                                    series={[{
-                                        data: chartData,
-                                        highlightScope: { fade: 'global', highlight: 'item' },
-                                        faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
-                                        arcLabel: (item) => humanizeBytes(item.value || 0),
-                                        arcLabelMinAngle: 25,
-                                        valueFormatter: (item) => `${item.label}`,
-                                        innerRadius: 30,
-                                        outerRadius: 100,
-                                        paddingAngle: 5,
-                                        cornerRadius: 15,
-                                        cx: 150,
-                                        cy: 115,
-                                    }]}
+                                    series={[
+                                        {
+                                            innerRadius: 0,
+                                            outerRadius: 80,
+                                            data: partitionSeriesData,
+                                            highlightScope: { fade: 'global', highlight: 'item' },
+                                            valueFormatter: (item) => humanizeBytes(item.value || 0),
+                                            // arcLabel: (item) => humanizeBytes(item.value || 0),
+                                        },
+                                        {
+                                            id: 'outer',
+                                            innerRadius: 90,
+                                            outerRadius: 100,
+                                            data: freespaceSeriesData,
+                                            highlightScope: { fade: 'global', highlight: 'item' },
+                                            //                                            arcLabel: (item) => humanizeBytes(item.value || 0),
+                                            valueFormatter: (item) => humanizeBytes(item.value || 0),
+                                        },
+                                    ]}
+
+                                    hideLegend
                                     width={300}
                                     height={250}
-                                    slotProps={{
-                                        legend: {
-                                            direction: "horizontal",
-                                            position: { vertical: 'bottom', horizontal: 'center' },
-                                            sx: {
-                                                fontSize: '0.75rem',
-                                                gap: 1,
-                                            },
-                                            //itemMarkWidth: 10,
-                                            // itemMarkHeight: 10,
-
-                                            //    labelStyle: {
-                                            //        display: 'flex',
-                                            //        alignItems: 'center',
-                                            //    }
+                                    sx={{
+                                        [`.${pieArcClasses.series}[data-series="outer"] .${pieArcClasses.root}`]: {
+                                            opacity: 0.6,
                                         },
                                     }}
                                 />
