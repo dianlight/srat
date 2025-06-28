@@ -5,9 +5,6 @@ import type { DiskHealth } from "../../../store/sratApi";
 export function DiskHealthMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
     return (
         <>
-            <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-                Disk I/O Health
-            </Typography>
             <TableContainer component={Paper}>
                 <Table aria-label="disk health table" size="small">
                     <TableHead>
