@@ -23,6 +23,15 @@ func NewSambaHanler(apictx *dto.ContextState, sambaService service.SambaServiceI
 func (self *SambaHanler) RegisterSambaHandler(api huma.API) {
 	huma.Get(api, "/samba/config", self.GetSambaConfig, huma.OperationTags("samba"))
 	huma.Put(api, "/samba/apply", self.ApplySamba, huma.OperationTags("samba"))
+	huma.Get(api, "/samba/status", self.GetSambaStatus, huma.OperationTags("samba"))
+}
+
+func (handler *SambaHanler) GetSambaStatus(ctx context.Context, input *struct{}) (*struct{ Body dto.SambaStatus }, error) {
+	status, err := handler.sambaService.GetSambaStatus()
+	if err != nil {
+		return nil, err
+	}
+	return &struct{ Body dto.SambaStatus }{Body: *status}, nil
 }
 
 // ApplySamba applies the Samba configuration by writing, testing, and restarting the Samba service.
