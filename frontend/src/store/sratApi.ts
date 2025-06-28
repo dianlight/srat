@@ -553,16 +553,32 @@ export type GlobalDiskStats = {
   total_read_latency_ms: number;
   total_write_latency_ms: number;
 };
+export type SmartInfo = {
+  power_cycle_count: number;
+  power_on_hours: number;
+  temperature: number;
+};
 export type DiskIoStats = {
   device_name: string;
   read_iops: number;
   read_latency_ms: number;
+  smart_data?: SmartInfo;
   write_iops: number;
   write_latency_ms: number;
+};
+export type PerPartitionInfo = {
+  device: string;
+  free_space_bytes: number;
+  fsck_needed: boolean;
+  fsck_supported: boolean;
+  fstype: string;
+  mount_point: string;
+  total_space_bytes: number;
 };
 export type DiskHealth = {
   global: GlobalDiskStats;
   per_disk_io: DiskIoStats[] | null;
+  per_partition_info: PerPartitionInfo[] | null;
 };
 export type BinaryAsset = {
   browser_download_url?: string;
@@ -581,11 +597,12 @@ export type GlobalNicStats = {
   totalOutboundTraffic: number;
 };
 export type NicIoStats = {
+  deviceMaxSpeed: number;
   deviceName: string;
   inboundTraffic: number;
   outboundTraffic: number;
 };
-export type NetworkHealth = {
+export type NetworkStats = {
   global: GlobalNicStats;
   perNicIO: NicIoStats[] | null;
 };
@@ -617,7 +634,7 @@ export type HealthPing = {
   disk_health: DiskHealth;
   last_error: string;
   last_release: ReleaseAsset;
-  network_health: NetworkHealth;
+  network_health: NetworkStats;
   protected_mode: boolean;
   read_only: boolean;
   samba_process_status: SambaProcessStatus;

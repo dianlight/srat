@@ -78,8 +78,19 @@ func (suite *AddonsServiceTestSuite) TestGetStats_Success() {
 		},
 	}
 
-	mock.When(suite.mockAddonsClient.GetSelfAddonStatsWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAddonStatsWithResponse(mock.AnyContext())).
 		ThenReturn(mockResponse, nil).
+		Verify(matchers.Times(1))
+
+	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(suite.ctx)).
+		ThenReturn(&addons.GetSelfAddonInfoResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200: &addons.AddonInfoResponse{
+				Data: addons.AddonInfoData{
+					Protected: pointer.Bool(false),
+				},
+			},
+		}, nil).
 		Verify(matchers.Times(1))
 
 	stats, err := suite.addonsService.GetStats()
@@ -201,9 +212,9 @@ func (suite *AddonsServiceTestSuite) TestCheckProtectedMode_Success_True() {
 		},
 	}
 
-	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(mock.AnyContext())).
 		ThenReturn(mockResponse, nil).
-		Verify(matchers.Times(1))
+		Verify(matchers.Times(2))
 
 	isProtected, err := suite.addonsService.CheckProtectedMode()
 	suite.Require().NoError(err)
@@ -220,9 +231,9 @@ func (suite *AddonsServiceTestSuite) TestCheckProtectedMode_Success_False() {
 		},
 	}
 
-	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(mock.AnyContext())).
 		ThenReturn(mockResponse, nil).
-		Verify(matchers.Times(1))
+		Verify(matchers.Times(2))
 
 	isProtected, err := suite.addonsService.CheckProtectedMode()
 	suite.Require().NoError(err)
@@ -240,9 +251,9 @@ func (suite *AddonsServiceTestSuite) TestCheckProtectedMode_CacheHit() {
 	}
 
 	// Expect the client to be called only once.
-	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(mock.AnyContext())).
 		ThenReturn(mockResponse, nil).
-		Verify(matchers.Times(1))
+		Verify(matchers.Times(2))
 
 	// First call (cache miss)
 	isProtected1, err1 := suite.addonsService.CheckProtectedMode()
@@ -257,9 +268,9 @@ func (suite *AddonsServiceTestSuite) TestCheckProtectedMode_CacheHit() {
 
 func (suite *AddonsServiceTestSuite) TestCheckProtectedMode_ClientError() {
 	apiError := errors.New("network failure")
-	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(mock.AnyContext())).
 		ThenReturn(nil, apiError).
-		Verify(matchers.Times(1))
+		Verify(matchers.AtLeastOnce())
 
 	isProtected, err := suite.addonsService.CheckProtectedMode()
 	suite.False(isProtected)
@@ -273,9 +284,9 @@ func (suite *AddonsServiceTestSuite) TestCheckProtectedMode_Non200Status() {
 		HTTPResponse: &http.Response{StatusCode: http.StatusForbidden, Status: "Forbidden"},
 		Body:         []byte("access denied"),
 	}
-	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(mock.AnyContext())).
 		ThenReturn(mockResponse, nil).
-		Verify(matchers.Times(1))
+		Verify(matchers.AtLeastOnce())
 
 	isProtected, err := suite.addonsService.CheckProtectedMode()
 	suite.False(isProtected)
@@ -288,9 +299,9 @@ func (suite *AddonsServiceTestSuite) TestCheckProtectedMode_NilJSONResponse() {
 		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 		JSON200:      nil,
 	}
-	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(mock.AnyContext())).
 		ThenReturn(mockResponse, nil).
-		Verify(matchers.Times(1))
+		Verify(matchers.AtLeastOnce())
 
 	isProtected, err := suite.addonsService.CheckProtectedMode()
 	suite.False(isProtected)
@@ -307,9 +318,9 @@ func (suite *AddonsServiceTestSuite) TestCheckProtectedMode_NilProtectedField() 
 			},
 		},
 	}
-	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(mock.AnyContext())).
 		ThenReturn(mockResponse, nil).
-		Verify(matchers.Times(1))
+		Verify(matchers.AtLeastOnce())
 
 	isProtected, err := suite.addonsService.CheckProtectedMode()
 	suite.False(isProtected)

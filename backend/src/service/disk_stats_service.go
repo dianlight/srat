@@ -26,10 +26,11 @@ type diskStatsService struct {
 	lastStats         map[string]*blockdevice.IOStats // lastStats stores the last collected disk I/O statistics.
 	currentDiskHealth *dto.DiskHealth
 	updateMutex       *sync.Mutex
+	smartService      SmartService
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
-func NewDiskStatsService(VolumeService VolumeServiceInterface, Ctx context.Context) DiskStatsService {
+func NewDiskStatsService(VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartService) DiskStatsService {
 	fs, err := blockdevice.NewFS("/proc", "/sys")
 	if err != nil {
 		tlog.Error("Failed to create block device filesystem", "error", err)
@@ -42,6 +43,7 @@ func NewDiskStatsService(VolumeService VolumeServiceInterface, Ctx context.Conte
 		lastUpdateTime: time.Now(),
 		updateMutex:    &sync.Mutex{},
 		lastStats:      make(map[string]*blockdevice.IOStats),
+		smartService:   SmartService,
 	}
 	Ctx.Value("wg").(*sync.WaitGroup).Add(1)
 	go func() {
@@ -83,6 +85,7 @@ func (s *diskStatsService) updateDiskStats() error {
 			TotalReadLatency:  0,
 			TotalWriteLatency: 0,
 		},
+		PerPartitionInfo: make([]dto.PerPartitionInfo, 0),
 	}
 
 	for _, disk := range *disks {
@@ -123,6 +126,54 @@ func (s *diskStatsService) updateDiskStats() error {
 			s.lastStats[*disk.Device] = &stats
 		} else {
 			s.lastStats[*disk.Device] = &stats
+		}
+
+		// --- Smart data population ---
+		smartStats, err := s.smartService.GetSmartInfo(*disk.Device)
+		if err != nil {
+			tlog.Error("Error getting SMART stats", "disk", *disk.Device, "err", err)
+		} else {
+			s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStats
+		}
+
+		// --- PerPartitionInfo population ---
+		if disk.Partitions != nil {
+			for _, part := range *disk.Partitions {
+				if part.MountPointData != nil {
+					for _, mp := range *part.MountPointData {
+						// Fill PerPartitionInfo
+						var fstype string
+						if mp.FSType != nil {
+							fstype = *mp.FSType
+						}
+						// Determine fsck support (simple heuristic)
+						fsckSupported := false
+						switch fstype {
+						case "ext2", "ext3", "ext4", "xfs", "btrfs", "f2fs", "vfat", "exfat", "ntfs":
+							fsckSupported = true
+						}
+						// Heuristic: fsck needed if not mounted, or if fstype supports fsck and not clean (not implemented: always false)
+						fsckNeeded := false // TODO: implement real check for dirty/needs fsck
+						// Use partition size if available
+						var totalSpace, freeSpace uint64
+						if part.Size != nil {
+							totalSpace = uint64(*part.Size)
+						}
+						// Try to get free space from MountPointData (not present, so leave 0)
+						// Optionally, could use lsblk or statfs here
+						info := dto.PerPartitionInfo{
+							MountPoint:    mp.Path,
+							Device:        mp.Device,
+							FSType:        fstype,
+							FreeSpace:     freeSpace,
+							TotalSpace:    totalSpace,
+							FsckNeeded:    fsckNeeded,
+							FsckSupported: fsckSupported,
+						}
+						s.currentDiskHealth.PerPartitionInfo = append(s.currentDiskHealth.PerPartitionInfo, info)
+					}
+				}
+			}
 		}
 	}
 	s.lastUpdateTime = time.Now()

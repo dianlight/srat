@@ -19,6 +19,7 @@ require (
 )
 
 require (
+	github.com/anatol/smart.go v0.0.0-20241126061019-f03d79b340d2
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf
 	github.com/jarcoal/httpmock v1.4.0

@@ -105,9 +105,16 @@ components:
           type:
             - array
             - "null"
+        per_partition_info:
+          items:
+            $ref: "#/components/schemas/PerPartitionInfo"
+          type:
+            - array
+            - "null"
       required:
         - global
         - per_disk_io
+        - per_partition_info
       type: object
     DiskIOStats:
       additionalProperties: false
@@ -120,6 +127,8 @@ components:
         read_latency_ms:
           format: double
           type: number
+        smart_data:
+          $ref: "#/components/schemas/SmartInfo"
         write_iops:
           format: double
           type: number
@@ -496,6 +505,36 @@ components:
         system:
           type: boolean
       type: object
+    PerPartitionInfo:
+      additionalProperties: false
+      properties:
+        device:
+          type: string
+        free_space_bytes:
+          format: int64
+          minimum: 0
+          type: integer
+        fsck_needed:
+          type: boolean
+        fsck_supported:
+          type: boolean
+        fstype:
+          type: string
+        mount_point:
+          type: string
+        total_space_bytes:
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - mount_point
+        - device
+        - fstype
+        - free_space_bytes
+        - total_space_bytes
+        - fsck_needed
+        - fsck_supported
+      type: object
     ProcessStatus:
       additionalProperties: false
       properties:
@@ -664,6 +703,26 @@ components:
           items:
             type: string
           type: array
+      type: object
+    SmartInfo:
+      additionalProperties: false
+      properties:
+        power_cycle_count:
+          format: int64
+          minimum: 0
+          type: integer
+        power_on_hours:
+          format: int64
+          minimum: 0
+          type: integer
+        temperature:
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - temperature
+        - power_on_hours
+        - power_cycle_count
       type: object
     SmbConf:
       additionalProperties: false
