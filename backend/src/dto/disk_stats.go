@@ -30,7 +30,7 @@ type PerPartitionInfo struct {
 
 // DiskHealth contains all disk-related health information.
 type DiskHealth struct {
-	Global           GlobalDiskStats    `json:"global"`
-	PerDiskIO        []DiskIOStats      `json:"per_disk_io"`
-	PerPartitionInfo []PerPartitionInfo `json:"per_partition_info"`
+	Global           GlobalDiskStats               `json:"global"`
+	PerDiskIO        []DiskIOStats                 `json:"per_disk_io"`
+	PerPartitionInfo map[string][]PerPartitionInfo `json:"per_partition_info"`
 }

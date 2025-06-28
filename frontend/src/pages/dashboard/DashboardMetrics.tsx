@@ -12,7 +12,7 @@ const MAX_HISTORY_LENGTH = 10;
 
 export function DashboardMetrics() {
     const { health, isLoading, error } = useHealth();
-    const { disks, isLoading: isLoadingVolumes, error: errorVolumes } = useVolume();
+    //const { disks, isLoading: isLoadingVolumes, error: errorVolumes } = useVolume();
 
     const [connectionsHistory, setConnectionsHistory] = useState<Record<string, number[]>>({});
     const [cpuHistory, setCpuHistory] = useState<Record<string, number[]>>({});
@@ -95,7 +95,7 @@ export function DashboardMetrics() {
             />
             <DiskHealthMetricsAccordion diskHealth={health?.disk_health} />
             <NetworkHealthMetricsAccordion networkHealth={health?.network_health} />
-            <VolumeMetricsAccordion disks={disks} isLoadingVolumes={isLoadingVolumes} errorVolumes={errorVolumes} />
+            <VolumeMetricsAccordion diskHealth={health?.disk_health} />
         </>
     );
 }
