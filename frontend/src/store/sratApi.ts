@@ -49,6 +49,13 @@ const injectedRtkApi = api
         query: () => ({ url: `/samba/config` }),
         providesTags: ["samba"],
       }),
+      getSambaStatus: build.query<
+        GetSambaStatusApiResponse,
+        GetSambaStatusApiArg
+      >({
+        query: () => ({ url: `/samba/status` }),
+        providesTags: ["samba"],
+      }),
       getSettings: build.query<GetSettingsApiResponse, GetSettingsApiArg>({
         query: () => ({ url: `/settings` }),
         providesTags: ["system"],
@@ -294,6 +301,10 @@ export type GetSambaConfigApiResponse = /** status 200 OK */
   | SmbConf
   | /** status default Error */ ErrorModel;
 export type GetSambaConfigApiArg = void;
+export type GetSambaStatusApiResponse = /** status 200 OK */
+  | SambaStatus
+  | /** status default Error */ ErrorModel;
+export type GetSambaStatusApiArg = void;
 export type GetSettingsApiResponse = /** status 200 OK */
   | Settings
   | /** status default Error */ ErrorModel;
@@ -578,7 +589,9 @@ export type PerPartitionInfo = {
 export type DiskHealth = {
   global: GlobalDiskStats;
   per_disk_io: DiskIoStats[] | null;
-  per_partition_info: PerPartitionInfo[] | null;
+  per_partition_info: {
+    [key: string]: PerPartitionInfo[] | null;
+  };
 };
 export type BinaryAsset = {
   browser_download_url?: string;
@@ -656,6 +669,38 @@ export type SmbConf = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   data: string;
+};
+export type SambaSession = {
+  gid: number;
+  groupname: string;
+  hostname: string;
+  is_encrypted: boolean;
+  remote_machine: string;
+  session_dialect: string;
+  session_id: number;
+  signing: string;
+  uid: number;
+  username: string;
+};
+export type SambaTcon = {
+  connect_time: string;
+  device: string;
+  session_id: number;
+  share: string;
+  tcon_id: number;
+};
+export type SambaStatus = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  sessions: {
+    [key: string]: SambaSession;
+  };
+  smb_conf: string;
+  tcons: {
+    [key: string]: SambaTcon;
+  };
+  timestamp: string;
+  version: string;
 };
 export type Settings = {
   /** A URL to the JSON Schema for this object. */
@@ -815,6 +860,7 @@ export const {
   usePutRestartMutation,
   usePutSambaApplyMutation,
   useGetSambaConfigQuery,
+  useGetSambaStatusQuery,
   useGetSettingsQuery,
   usePatchSettingsMutation,
   usePutSettingsMutation,

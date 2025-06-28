@@ -1,10 +1,12 @@
 package service
 
 import (
+	"encoding/json"
 	"log"
 	"log/slog"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
@@ -12,6 +14,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tempio"
+	cache "github.com/patrickmn/go-cache"
 	"github.com/shirou/gopsutil/v4/process"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -20,6 +23,7 @@ import (
 type SambaServiceInterface interface {
 	CreateConfigStream() (data *[]byte, err error)
 	GetSambaProcess() (*dto.SambaProcessStatus, error)
+	GetSambaStatus() (*dto.SambaStatus, error)
 	//StreamToFile(stream *[]byte, path string) error
 	//StartSambaService(id uint) error
 	//StopSambaService(id uint) error
@@ -39,6 +43,7 @@ type SambaService struct {
 	prop_repo           repository.PropertyRepositoryInterface
 	samba_user_repo     repository.SambaUserRepositoryInterface
 	mount_client        mount.ClientWithResponsesInterface
+	cache               *cache.Cache
 }
 
 type SambaServiceParams struct {
@@ -62,8 +67,31 @@ func NewSambaService(in SambaServiceParams) SambaServiceInterface {
 	p.samba_user_repo = in.Samba_user_repo
 	p.mount_client = in.Mount_client
 	p.supervisor_service = in.Su
+	p.cache = cache.New(1*time.Minute, 10*time.Minute)
 	in.Dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
 	return p
+}
+
+func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, error) {
+	if x, found := self.cache.Get("samba_status"); found {
+		return x.(*dto.SambaStatus), nil
+	}
+
+	cmd := exec.Command("smbstatus", "-j")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, errors.Errorf("Error executing smbstatus: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
+	}
+
+	var status dto.SambaStatus
+	err = json.Unmarshal(out, &status)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	self.cache.Set("samba_status", &status, cache.DefaultExpiration)
+
+	return &status, nil
 }
 
 func (self *SambaService) CreateConfigStream() (data *[]byte, err error) {

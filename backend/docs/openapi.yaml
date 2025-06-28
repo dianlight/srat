@@ -106,11 +106,13 @@ components:
             - array
             - "null"
         per_partition_info:
-          items:
-            $ref: "#/components/schemas/PerPartitionInfo"
-          type:
-            - array
-            - "null"
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/PerPartitionInfo"
+            type:
+              - array
+              - "null"
+          type: object
       required:
         - global
         - per_disk_io
@@ -609,6 +611,104 @@ components:
         - wsdd2
         - avahi
       type: object
+    SambaSession:
+      additionalProperties: false
+      properties:
+        gid:
+          format: int64
+          minimum: 0
+          type: integer
+        groupname:
+          type: string
+        hostname:
+          type: string
+        is_encrypted:
+          type: boolean
+        remote_machine:
+          type: string
+        session_dialect:
+          type: string
+        session_id:
+          format: int64
+          minimum: 0
+          type: integer
+        signing:
+          type: string
+        uid:
+          format: int64
+          minimum: 0
+          type: integer
+        username:
+          type: string
+      required:
+        - session_id
+        - uid
+        - gid
+        - username
+        - groupname
+        - remote_machine
+        - hostname
+        - session_dialect
+        - is_encrypted
+        - signing
+      type: object
+    SambaStatus:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SambaStatus.json
+          format: uri
+          readOnly: true
+          type: string
+        sessions:
+          additionalProperties:
+            $ref: "#/components/schemas/SambaSession"
+          type: object
+        smb_conf:
+          type: string
+        tcons:
+          additionalProperties:
+            $ref: "#/components/schemas/SambaTcon"
+          type: object
+        timestamp:
+          format: date-time
+          type: string
+        version:
+          type: string
+      required:
+        - timestamp
+        - version
+        - smb_conf
+        - sessions
+        - tcons
+      type: object
+    SambaTcon:
+      additionalProperties: false
+      properties:
+        connect_time:
+          format: date-time
+          type: string
+        device:
+          type: string
+        session_id:
+          format: int64
+          minimum: 0
+          type: integer
+        share:
+          type: string
+        tcon_id:
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - tcon_id
+        - session_id
+        - share
+        - device
+        - connect_time
+      type: object
     Settings:
       additionalProperties: false
       properties:
@@ -982,6 +1082,25 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       summary: Get samba config
+      tags:
+        - samba
+  /samba/status:
+    get:
+      operationId: get-samba-status
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SambaStatus"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get samba status
       tags:
         - samba
   /settings:
