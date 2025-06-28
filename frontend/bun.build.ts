@@ -78,6 +78,14 @@ async function build(): Promise<BuildOutput | void> {
         const serve: Serve = {
             fetch(req: Request) {
                 const url = new URL(req.url)
+                if (url.pathname === "/.well-known/appspecific/com.chrome.devtools.json") {
+                    const { getDevtoolData } = require("./src/devtool/server");
+                    return new Response(JSON.stringify(getDevtoolData()), {
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
+                    });
+                }
                 if (url.pathname === "/") {
                     url.pathname = "/index.html"
                 }
