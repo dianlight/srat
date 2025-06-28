@@ -125,16 +125,16 @@ func (s *diskStatsService) updateDiskStats() error {
 				s.currentDiskHealth.Global.TotalWriteLatency += dstat.WriteLatency
 			}
 			s.lastStats[*disk.Device] = &stats
+
+			// --- Smart data population ---
+			smartStats, err := s.smartService.GetSmartInfo("/dev/" + *disk.Device)
+			if err != nil {
+				tlog.Error("Error getting SMART stats", "disk", *disk.Device, "err", err)
+			} else {
+				s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStats
+			}
 		} else {
 			s.lastStats[*disk.Device] = &stats
-		}
-
-		// --- Smart data population ---
-		smartStats, err := s.smartService.GetSmartInfo("/dev/" + *disk.Device)
-		if err != nil {
-			tlog.Error("Error getting SMART stats", "disk", *disk.Device, "err", err)
-		} else {
-			s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStats
 		}
 
 		// --- PerPartitionInfo population ---
