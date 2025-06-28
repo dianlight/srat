@@ -7,9 +7,6 @@ import type { NetworkStats } from "../../../store/sratApi";
 export function NetworkHealthMetrics({ networkHealth }: { networkHealth: NetworkStats }) {
     return (
         <>
-            <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-                Network I/O Health
-            </Typography>
             <TableContainer component={Paper}>
                 <Table aria-label="network health table" size="small">
                     <TableHead>
