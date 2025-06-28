@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useGetHealthQuery, Supported_events, type DataDirtyTracker, type HealthPing, type ReleaseAsset, type SambaProcessStatus, type DiskHealth, type NetworkHealth } from "../store/sratApi";
+import { useGetHealthQuery, Supported_events, type DataDirtyTracker, type HealthPing, type ReleaseAsset, type SambaProcessStatus, type DiskHealth, type NetworkStats } from "../store/sratApi";
 import { useSSE } from "react-hooks-sse";
 
 export function useHealth() {
@@ -18,7 +18,7 @@ export function useHealth() {
         build_version: "",
         protected_mode: false,
         disk_health: {} as DiskHealth,
-        network_health: {} as NetworkHealth,
+        network_health: {} as NetworkStats,
     });
 
     const { data, error, isLoading } = useGetHealthQuery();
