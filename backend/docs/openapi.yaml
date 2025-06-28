@@ -676,7 +676,6 @@ components:
             $ref: "#/components/schemas/SambaTcon"
           type: object
         timestamp:
-          format: date-time
           type: string
         version:
           type: string
@@ -691,7 +690,6 @@ components:
       additionalProperties: false
       properties:
         connect_time:
-          format: date-time
           type: string
         device:
           type: string

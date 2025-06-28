@@ -636,40 +636,6 @@ export type SambaProcessStatus = {
   smbd: ProcessStatus;
   wsdd2: ProcessStatus;
 };
-export type HealthPing = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  addon_stats: AddonStatsData;
-  alive: boolean;
-  aliveTime: number;
-  build_version: string;
-  dirty_tracking: DataDirtyTracker;
-  disk_health: DiskHealth;
-  last_error: string;
-  last_release: ReleaseAsset;
-  network_health: NetworkStats;
-  protected_mode: boolean;
-  read_only: boolean;
-  samba_process_status: SambaProcessStatus;
-  secure_mode: boolean;
-  startTime: number;
-};
-export type InterfaceAddr = {
-  addr: string;
-};
-export type InterfaceStat = {
-  addrs: InterfaceAddr[] | null;
-  flags: string[] | null;
-  hardwareAddr: string;
-  index: number;
-  mtu: number;
-  name: string;
-};
-export type SmbConf = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  data: string;
-};
 export type SambaSession = {
   gid: number;
   groupname: string;
@@ -701,6 +667,41 @@ export type SambaStatus = {
   };
   timestamp: string;
   version: string;
+};
+export type HealthPing = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  addon_stats: AddonStatsData;
+  alive: boolean;
+  aliveTime: number;
+  build_version: string;
+  dirty_tracking: DataDirtyTracker;
+  disk_health: DiskHealth;
+  last_error: string;
+  last_release: ReleaseAsset;
+  network_health: NetworkStats;
+  protected_mode: boolean;
+  read_only: boolean;
+  samba_process_status: SambaProcessStatus;
+  samba_status: SambaStatus;
+  secure_mode: boolean;
+  startTime: number;
+};
+export type InterfaceAddr = {
+  addr: string;
+};
+export type InterfaceStat = {
+  addrs: InterfaceAddr[] | null;
+  flags: string[] | null;
+  hardwareAddr: string;
+  index: number;
+  mtu: number;
+  name: string;
+};
+export type SmbConf = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  data: string;
 };
 export type Settings = {
   /** A URL to the JSON Schema for this object. */
