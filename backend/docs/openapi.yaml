@@ -293,6 +293,8 @@ components:
           type: boolean
         samba_process_status:
           $ref: "#/components/schemas/SambaProcessStatus"
+        samba_status:
+          $ref: "#/components/schemas/SambaStatus"
         secure_mode:
           type: boolean
         startTime:
@@ -313,6 +315,7 @@ components:
         - addon_stats
         - disk_health
         - network_health
+        - samba_status
       type: object
     InterfaceAddr:
       additionalProperties: false

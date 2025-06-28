@@ -17,4 +17,5 @@ type HealthPing struct {
 	AddonStats         *addons.AddonStatsData `json:"addon_stats"`
 	DiskHealth         *DiskHealth            `json:"disk_health"`
 	NetworkHealth      *NetworkStats          `json:"network_health"`
+	SambaStatus        *SambaStatus           `json:"samba_status"`
 }

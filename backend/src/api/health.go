@@ -176,6 +176,13 @@ func (self *HealthHanler) run() error {
 			} else {
 				self.HealthPing.NetworkHealth = netStats
 			}
+			sambaStatus, err := self.sambaService.GetSambaStatus()
+			if err != nil {
+				slog.Error("Error getting samba status for health ping", "err", err)
+			} else {
+				self.HealthPing.SambaStatus = sambaStatus
+			}
+
 			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()
 			err = self.EventEmitter(self.HealthPing)
