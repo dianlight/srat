@@ -11,6 +11,11 @@ import type { ProcessStatus } from "./metrics/types";
 const MAX_HISTORY_LENGTH = 10;
 
 export function DashboardMetrics() {
+    const [expandedAccordion, setExpandedAccordion] = useState<string | false>(false);
+
+    const handleChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+        setExpandedAccordion(isExpanded ? panel : false);
+    };
     const { health, isLoading, error } = useHealth();
     //const { disks, isLoading: isLoadingVolumes, error: errorVolumes } = useVolume();
 
@@ -92,10 +97,24 @@ export function DashboardMetrics() {
                 cpuHistory={cpuHistory}
                 memoryHistory={memoryHistory}
                 connectionsHistory={connectionsHistory}
+                expanded={expandedAccordion === 'processMetrics'}
+                onChange={handleChange('processMetrics')}
             />
-            <DiskHealthMetricsAccordion diskHealth={health?.disk_health} />
-            <NetworkHealthMetricsAccordion networkHealth={health?.network_health} />
-            <SambaStatusMetricsAccordion sambaStatus={health?.samba_status} />
+            <DiskHealthMetricsAccordion
+                diskHealth={health?.disk_health}
+                expanded={expandedAccordion === 'diskHealthMetrics'}
+                onChange={handleChange('diskHealthMetrics')}
+            />
+            <NetworkHealthMetricsAccordion
+                networkHealth={health?.network_health}
+                expanded={expandedAccordion === 'networkHealthMetrics'}
+                onChange={handleChange('networkHealthMetrics')}
+            />
+            <SambaStatusMetricsAccordion
+                sambaStatus={health?.samba_status}
+                expanded={expandedAccordion === 'sambaStatusMetrics'}
+                onChange={handleChange('sambaStatusMetrics')}
+            />
         </>
     );
 }

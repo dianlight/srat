@@ -5,11 +5,13 @@ import type { SambaStatus } from "../../../store/sratApi";
 
 interface SambaStatusMetricsAccordionProps {
     sambaStatus: SambaStatus;
+    expanded: boolean;
+    onChange: (event: React.SyntheticEvent, isExpanded: boolean) => void;
 }
 
-export function SambaStatusMetricsAccordion({ sambaStatus }: SambaStatusMetricsAccordionProps) {
+export function SambaStatusMetricsAccordion({ sambaStatus, expanded, onChange }: SambaStatusMetricsAccordionProps) {
     return (
-        <Accordion defaultExpanded>
+        <Accordion expanded={expanded} onChange={onChange}>
             <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls="panel-samba-metrics-content"

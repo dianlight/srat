@@ -8,6 +8,8 @@ interface ProcessMetricsAccordionProps {
     cpuHistory: Record<string, number[]>;
     memoryHistory: Record<string, number[]>;
     connectionsHistory: Record<string, number[]>;
+    expanded: boolean;
+    onChange: (event: React.SyntheticEvent, isExpanded: boolean) => void;
 }
 
 export function ProcessMetricsAccordion({
@@ -15,9 +17,11 @@ export function ProcessMetricsAccordion({
     cpuHistory,
     memoryHistory,
     connectionsHistory,
+    expanded,
+    onChange,
 }: ProcessMetricsAccordionProps) {
     return (
-        <Accordion defaultExpanded>
+        <Accordion expanded={expanded} onChange={onChange}>
             <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls="panel-process-metrics-content"

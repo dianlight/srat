@@ -6,11 +6,13 @@ import type { NetworkStats } from "../../../store/sratApi";
 
 interface NetworkHealthMetricsAccordionProps {
     networkHealth: NetworkStats;
+    expanded: boolean;
+    onChange: (event: React.SyntheticEvent, isExpanded: boolean) => void;
 }
 
-export function NetworkHealthMetricsAccordion({ networkHealth }: NetworkHealthMetricsAccordionProps) {
+export function NetworkHealthMetricsAccordion({ networkHealth, expanded, onChange }: NetworkHealthMetricsAccordionProps) {
     return (
-        <Accordion defaultExpanded>
+        <Accordion expanded={expanded} onChange={onChange}>
             <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls="panel-network-health-content"
