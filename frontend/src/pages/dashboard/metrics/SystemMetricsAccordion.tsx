@@ -26,6 +26,7 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
 
     const [diskIopsHistory, setDiskIopsHistory] = useState<number[]>([]);
     const [networkTrafficHistory, setNetworkTrafficHistory] = useState<number[]>([]);
+    const [sambaSessionsHistory, setSambaSessionsHistory] = useState<number[]>([]);
 
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [metricVisibility, setMetricVisibility] = useState<Record<string, boolean>>(() => {
@@ -39,6 +40,7 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 addonNetwork: true,
                 globalDiskIo: true,
                 globalNetworkIo: true,
+                sambaSessions: true,
             };
         } catch (e) {
             console.error("Failed to parse metric visibility from localStorage", e);
@@ -136,6 +138,15 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
             const totalTraffic = (health.network_health.global.totalInboundTraffic ?? 0) + (health.network_health.global.totalOutboundTraffic ?? 0);
             setNetworkTrafficHistory(prev => {
                 const newHistory = [...prev, totalTraffic];
+                if (newHistory.length > MAX_HISTORY_LENGTH) newHistory.shift();
+                return newHistory;
+            });
+        }
+
+        if (health.samba_status?.sessions) {
+            const sessionCount = Object.keys(health.samba_status.sessions).length;
+            setSambaSessionsHistory(prev => {
+                const newHistory = [...prev, sessionCount];
                 if (newHistory.length > MAX_HISTORY_LENGTH) newHistory.shift();
                 return newHistory;
             });
@@ -269,6 +280,20 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
         );
     };
 
+    const renderSambaSessionsMetric = () => {
+        if (!metricVisibility.sambaSessions) return null;
+        const sessionCount = Object.keys(health?.samba_status?.sessions || {}).length;
+        return (
+            <MetricCard
+                title="Samba Sessions"
+                value={sessionCount.toString()}
+                history={sambaSessionsHistory}
+                isLoading={isLoading}
+                error={!!error || !health?.samba_status}
+            />
+        );
+    };
+
     return (
         <Accordion defaultExpanded>
             <AccordionSummary
@@ -353,6 +378,11 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                     {metricVisibility.globalNetworkIo && (
                         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
                             {renderGlobalNetworkIoMetric()}
+                        </Grid>
+                    )}
+                    {metricVisibility.sambaSessions && (
+                        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+                            {renderSambaSessionsMetric()}
                         </Grid>
                     )}
                 </Grid>
