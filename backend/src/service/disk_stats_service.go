@@ -128,7 +128,7 @@ func (s *diskStatsService) updateDiskStats() error {
 
 			// --- Smart data population ---
 			smartStats, err := s.smartService.GetSmartInfo("/dev/" + *disk.Device)
-			if err != nil {
+			if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
 				tlog.Error("Error getting SMART stats", "disk", *disk.Device, "err", err)
 			} else {
 				s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStats

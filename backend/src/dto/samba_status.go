@@ -30,29 +30,63 @@ func (ct *CustomTime) UnmarshalJSON(b []byte) (err error) {
 
 type SambaStatus struct {
 	Timestamp CustomTime              `json:"timestamp"`
-	Version   string                 `json:"version"`
-	SmbConf   string                 `json:"smb_conf"`
+	Version   string                  `json:"version"`
+	SmbConf   string                  `json:"smb_conf"`
 	Sessions  map[string]SambaSession `json:"sessions"`
 	Tcons     map[string]SambaTcon    `json:"tcons"`
 }
 
+type SambaServerID struct {
+	PID      string `json:"pid"`
+	TaskID   string `json:"task_id"`
+	VNN      string `json:"vnn"`
+	UniqueID string `json:"unique_id"`
+}
+
 type SambaSession struct {
-	SessionID    uint64 `json:"session_id"`
-	UserID       uint64 `json:"uid"`
-	GroupID      uint64 `json:"gid"`
-	Username     string `json:"username"`
-	Groupname    string `json:"groupname"`
-	RemoteMachine string `json:"remote_machine"`
-	Hostname     string `json:"hostname"`
-	SessionDialect string `json:"session_dialect"`
-	IsEncrypted  bool   `json:"is_encrypted"`
-	Signing      string `json:"signing"`
+	SessionID    string        `json:"session_id"`
+	ServerID     SambaServerID `json:"server_id"`
+	UserID       uint64        `json:"uid"`
+	GroupID      uint64        `json:"gid"`
+	Username     string        `json:"username"`
+	Groupname    string        `json:"groupname"`
+	CreationTime CustomTime    `json:"creation_time"`
+	//ExpirationTime CustomTime    `json:"expiration_time"`
+	AuthTime       CustomTime `json:"auth_time"`
+	RemoteMachine  string     `json:"remote_machine"`
+	Hostname       string     `json:"hostname"`
+	SessionDialect string     `json:"session_dialect"`
+	Encryption     struct {
+		Cipher string `json:"cipher"`
+		Degree string `json:"degree"`
+	} `json:"encryption"`
+	Signing struct {
+		Cipher string `json:"cipher"`
+		Degree string `json:"degree"`
+	} `json:"signing"`
+	Channels map[string]struct {
+		ChannelID     string     `json:"channel_id"`
+		CreationTime  CustomTime `json:"creation_time"`
+		LocalAddress  string     `json:"local_address"`
+		RemoteAddress string     `json:"remote_address"`
+	} `json:"channels"`
 }
 
 type SambaTcon struct {
-	TconID      uint64    `json:"tcon_id"`
-	SessionID   uint64    `json:"session_id"`
-	Share       string    `json:"share"`
-	Device      string    `json:"device"`
-	ConnectTime CustomTime `json:"connect_time"`
+	TconID      string        `json:"tcon_id"`
+	SessionID   string        `json:"session_id"`
+	Share       string        `json:"share"`
+	Device      string        `json:"device"`
+	Service     string        `json:"service"`
+	ServerID    SambaServerID `json:"server_id"`
+	Machine     string        `json:"machine"`
+	ConnectedAt CustomTime    `json:"connected_at"`
+	Encryption  struct {
+		Cipher string `json:"cipher"`
+		Degree string `json:"degree"`
+	} `json:"encryption"`
+	Signing struct {
+		Cipher string `json:"cipher"`
+		Degree string `json:"degree"`
+	} `json:"signing"`
 }

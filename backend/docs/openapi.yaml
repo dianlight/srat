@@ -614,9 +614,38 @@ components:
         - wsdd2
         - avahi
       type: object
+    SambaServerID:
+      additionalProperties: false
+      properties:
+        pid:
+          type: string
+        task_id:
+          type: string
+        unique_id:
+          type: string
+        vnn:
+          type: string
+      required:
+        - pid
+        - task_id
+        - vnn
+        - unique_id
+      type: object
     SambaSession:
       additionalProperties: false
       properties:
+        auth_time:
+          type: string
+        channels:
+          additionalProperties:
+            $ref: "#/components/schemas/Value"
+          type: object
+        creation_time:
+          type: string
+        encryption:
+          $ref: "#/components/schemas/SambaSessionEncryptionStruct"
+        expiration_time:
+          type: string
         gid:
           format: int64
           minimum: 0
@@ -625,18 +654,16 @@ components:
           type: string
         hostname:
           type: string
-        is_encrypted:
-          type: boolean
         remote_machine:
           type: string
+        server_id:
+          $ref: "#/components/schemas/SambaServerID"
         session_dialect:
           type: string
         session_id:
-          format: int64
-          minimum: 0
-          type: integer
-        signing:
           type: string
+        signing:
+          $ref: "#/components/schemas/SambaSessionSigningStruct"
         uid:
           format: int64
           minimum: 0
@@ -645,15 +672,42 @@ components:
           type: string
       required:
         - session_id
+        - server_id
         - uid
         - gid
         - username
         - groupname
+        - creation_time
+        - expiration_time
+        - auth_time
         - remote_machine
         - hostname
         - session_dialect
-        - is_encrypted
+        - encryption
         - signing
+        - channels
+      type: object
+    SambaSessionEncryptionStruct:
+      additionalProperties: false
+      properties:
+        cipher:
+          type: string
+        degree:
+          type: string
+      required:
+        - cipher
+        - degree
+      type: object
+    SambaSessionSigningStruct:
+      additionalProperties: false
+      properties:
+        cipher:
+          type: string
+        degree:
+          type: string
+      required:
+        - cipher
+        - degree
       type: object
     SambaStatus:
       additionalProperties: false
@@ -689,26 +743,59 @@ components:
     SambaTcon:
       additionalProperties: false
       properties:
-        connect_time:
+        connected_at:
           type: string
         device:
           type: string
+        encryption:
+          $ref: "#/components/schemas/SambaTconEncryptionStruct"
+        machine:
+          type: string
+        server_id:
+          $ref: "#/components/schemas/SambaServerID"
+        service:
+          type: string
         session_id:
-          format: int64
-          minimum: 0
-          type: integer
+          type: string
         share:
           type: string
+        signing:
+          $ref: "#/components/schemas/SambaTconSigningStruct"
         tcon_id:
-          format: int64
-          minimum: 0
-          type: integer
+          type: string
       required:
         - tcon_id
         - session_id
         - share
         - device
-        - connect_time
+        - service
+        - server_id
+        - machine
+        - connected_at
+        - encryption
+        - signing
+      type: object
+    SambaTconEncryptionStruct:
+      additionalProperties: false
+      properties:
+        cipher:
+          type: string
+        degree:
+          type: string
+      required:
+        - cipher
+        - degree
+      type: object
+    SambaTconSigningStruct:
+      additionalProperties: false
+      properties:
+        cipher:
+          type: string
+        degree:
+          type: string
+      required:
+        - cipher
+        - degree
       type: object
     Settings:
       additionalProperties: false
@@ -905,6 +992,23 @@ components:
           type: string
       required:
         - username
+      type: object
+    Value:
+      additionalProperties: false
+      properties:
+        channel_id:
+          type: string
+        creation_time:
+          type: string
+        local_address:
+          type: string
+        remote_address:
+          type: string
+      required:
+        - channel_id
+        - creation_time
+        - local_address
+        - remote_address
       type: object
     Welcome:
       additionalProperties: false
