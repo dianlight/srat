@@ -48,6 +48,7 @@ import { toast } from "react-toastify";
 import { Download } from "@mui/icons-material"
 import { Dashboard } from "../pages/dashboard/Dashboard"
 
+import { ErrorBoundary } from "./ErrorBoundary";
 // Define tab configurations
 interface TabConfig {
     id: TabIDs;
@@ -418,7 +419,9 @@ export function NavBar(props: { error: string, bodyRef: React.RefObject<HTMLDivE
             <>
                 {visibleTabs.map((tab) => (
                     <TabPanel key={tab.id} value={value} index={tab.actualIndex as number}>
-                        {tab.component}
+                        <ErrorBoundary>
+                            {tab.component}
+                        </ErrorBoundary>
                     </TabPanel>
                 ))}
             </>,

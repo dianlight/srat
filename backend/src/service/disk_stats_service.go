@@ -85,7 +85,7 @@ func (s *diskStatsService) updateDiskStats() error {
 			TotalReadLatency:  0,
 			TotalWriteLatency: 0,
 		},
-		PerPartitionInfo: make([]dto.PerPartitionInfo, 0),
+		PerPartitionInfo: make(map[string][]dto.PerPartitionInfo, 0),
 	}
 
 	for _, disk := range *disks {
@@ -170,7 +170,10 @@ func (s *diskStatsService) updateDiskStats() error {
 							FsckNeeded:    fsckNeeded,
 							FsckSupported: fsckSupported,
 						}
-						s.currentDiskHealth.PerPartitionInfo = append(s.currentDiskHealth.PerPartitionInfo, info)
+						if s.currentDiskHealth.PerPartitionInfo[*disk.Device] == nil {
+							s.currentDiskHealth.PerPartitionInfo[*disk.Device] = make([]dto.PerPartitionInfo, 0)
+						}
+						s.currentDiskHealth.PerPartitionInfo[*disk.Device] = append(s.currentDiskHealth.PerPartitionInfo[*disk.Device], info)
 					}
 				}
 			}
