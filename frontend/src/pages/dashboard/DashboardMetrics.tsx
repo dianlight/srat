@@ -1,68 +1,17 @@
-import { Accordion, AccordionDetails, AccordionSummary, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, CircularProgress, Alert, useTheme, Grid, Card, CardHeader, CardContent } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Typography, Box, Grid, useTheme } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useHealth } from "../../hooks/healthHook";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparklines, SparklinesBars, SparklinesLine, SparklinesSpots } from 'react-sparklines';
 import { useVolume } from "../../hooks/volumeHook";
-import { PieChart } from '@mui/x-charts/PieChart';
-
-interface ProcessStatus {
-    name: string;
-    pid: number | null;
-    status: 'Running' | 'Stopped';
-    cpu: number | null;
-    connections: number | null;
-    memory: number | null;
-}
-
-interface AddonStatsData {
-    blk_read?: number | null;
-    blk_write?: number | null;
-    cpu_percent?: number | null;
-    memory_limit?: number | null;
-    memory_percent?: number | null;
-    memory_usage?: number | null;
-    network_rx?: number | null;
-    network_tx?: number | null;
-}
-
-function humanizeBytes(bytes: number): string {
-    if (bytes <= 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-};
+import { MetricCard } from "./metrics/MetricCard";
+import { ProcessMetrics } from "./metrics/ProcessMetrics";
+import { DiskHealthMetrics } from "./metrics/DiskHealthMetrics";
+import { NetworkHealthMetrics } from "./metrics/NetworkHealthMetrics";
+import { VolumeMetrics } from "./metrics/VolumeMetrics";
+import type { ProcessStatus, AddonStatsData } from "./metrics/types";
+import { humanizeBytes, formatUptime } from "./metrics/utils";
 
 const MAX_HISTORY_LENGTH = 10;
-
-// A simplified version of what's in Volumes.tsx
-function decodeEscapeSequence(source: string) {
-    if (typeof source !== 'string') return '';
-    return source.replace(/\\x([0-9A-Fa-f]{2})/g, function (_match, group1) {
-        return String.fromCharCode(parseInt(String(group1), 16));
-    });
-};
-
-function formatUptime(millis: number): string {
-    let seconds = Math.floor((Date.now() - millis) / 1000);
-    if (seconds <= 0) return '0 seconds';
-
-    const days = Math.floor(seconds / (24 * 3600));
-    seconds %= (24 * 3600);
-    const hours = Math.floor(seconds / 3600);
-    seconds %= 3600;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-
-    const parts = [];
-    if (days > 0) parts.push(`${days}d`);
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0) parts.push(`${minutes}m`);
-    if (remainingSeconds > 0 || parts.length === 0) parts.push(`${remainingSeconds}s`);
-
-    return parts.join(' ');
-}
 
 
 export function DashboardMetrics() {
@@ -216,596 +165,133 @@ export function DashboardMetrics() {
         }
     }, [health, isLoading, error]);
 
-    const renderProcessMetrics = () => {
-        if (isLoading) {
-            return (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <CircularProgress />
-                </Box>
-            );
-        }
 
-        if (error) {
-            return <Alert severity="error">Could not load system metrics.</Alert>;
-        }
-
-        return (
-            <>
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                    Overview of Samba-related processes.
-                </Typography>
-                <TableContainer component={Paper}>
-                    <Table aria-label="samba processes table" size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Process</TableCell>
-                                <TableCell align="right">Status</TableCell>
-                                <TableCell align="right">PID</TableCell>
-                                <TableCell align="right">CPU (%)</TableCell>
-                                <TableCell align="right">Memory (%)</TableCell>
-                                <TableCell align="right">Connections</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {processData.map((process) => (
-                                <TableRow key={process.name}>
-                                    <TableCell component="th" scope="row">
-                                        {process.name}
-                                    </TableCell>
-                                    <TableCell align="right" sx={{ color: process.status === 'Running' ? 'success.main' : 'error.main' }}>
-                                        {process.status}
-                                    </TableCell>
-                                    <TableCell align="right">{process.pid ?? 'N/A'}</TableCell>
-                                    <TableCell align="right" sx={{ minWidth: 150 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                                            <Typography variant="body2" sx={{ mr: 1, minWidth: '45px', textAlign: 'right' }}>
-                                                {process.cpu !== null ? `${process.cpu.toFixed(1)}%` : 'N/A'}
-                                            </Typography>
-                                            <Box sx={{ width: 50, height: 20 }}>
-                                                {(cpuHistory[process.name]?.length || 0) > 1 ? (
-                                                    <Sparklines data={cpuHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20} min={0} max={100}>
-                                                        <SparklinesLine color={theme.palette.primary.main} />
-                                                        <SparklinesSpots />
-                                                    </Sparklines>
-                                                ) : null}
-                                            </Box>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell align="right" sx={{ minWidth: 150 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                                            <Typography variant="body2" sx={{ mr: 1, minWidth: '70px', textAlign: 'right' }}>
-                                                {process.memory !== null ? `${process.memory.toFixed(1)}%` : 'N/A'}
-                                            </Typography>
-                                            <Box sx={{ width: 50, height: 20 }}>
-                                                {(memoryHistory[process.name]?.length || 0) > 1 ? (
-                                                    <Sparklines data={memoryHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20} min={0} max={100}>
-                                                        <SparklinesLine color={theme.palette.success.main} />
-                                                        <SparklinesSpots />
-                                                    </Sparklines>
-                                                ) : null}
-                                            </Box>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell align="right" sx={{ minWidth: 150 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                                            <Typography variant="body2" sx={{ mr: 1, minWidth: '45px', textAlign: 'right' }}>
-                                                {process.connections ?? 'N/A'}
-                                            </Typography>
-                                            <Box sx={{ width: 50, height: 20 }}>
-                                                {(connectionsHistory[process.name]?.length || 0) > 1 ? (
-                                                    <Sparklines data={connectionsHistory[process.name]} limit={MAX_HISTORY_LENGTH} width={60} height={20} min={0}>
-                                                        <SparklinesBars style={{ fill: "#41c3f9", fillOpacity: ".25" }} />
-                                                        <SparklinesLine color={theme.palette.secondary.main} />
-                                                    </Sparklines>
-                                                ) : null}
-                                            </Box>
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </>
-        );
-    };
 
     const renderUptimeMetric = () => {
-        if (isLoading) {
-            return (
-                <Card>
-                    <CardHeader title="Server Uptime" />
-                    <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <CircularProgress />
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        if (error || !health?.startTime) {
-            return (
-                <Card>
-                    <CardHeader title="Server Uptime" />
-                    <CardContent>
-                        <Alert severity="warning">Uptime data not available.</Alert>
-                    </CardContent>
-                </Card>
-            );
-        }
-
         return (
-            <Card>
-                <CardHeader title="Server Uptime" />
-                <CardContent>
-                    <Typography variant="h4" component="div" align="center">
-                        {/* Calculate uptime duration: current time - startTime (last start timestamp) */}
-                        {formatUptime(health.startTime)}
-                    </Typography>
-                </CardContent>
-            </Card>
+            <MetricCard
+                title="Server Uptime"
+                value={health?.startTime ? formatUptime(health.startTime) : 'N/A'}
+                isLoading={isLoading}
+                error={!!error || !health?.startTime}
+            />
         );
     };
 
     const renderAddonCpuMetric = () => {
-        if (isLoading) {
-            return (
-                <Card>
-                    <CardHeader title="Addon CPU" />
-                    <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <CircularProgress />
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        if (error || !health?.addon_stats) {
-            return (
-                <Card>
-                    <CardHeader title="Addon CPU" />
-                    <CardContent>
-                        <Alert severity="warning">CPU data not available.</Alert>
-                    </CardContent>
-                </Card>
-            );
-        }
-
         return (
-            <Card>
-                <CardHeader title="Addon CPU" />
-                <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Typography variant="h4" component="div">
-                            {`${(health.addon_stats.cpu_percent ?? 0).toFixed(1)}%`}
-                        </Typography>
-                        <Box sx={{ width: '50%', height: 40 }}>
-                            {addonCpuHistory.length > 1 && (
-                                <Sparklines data={addonCpuHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40} min={0} max={100}>
-                                    <SparklinesLine color={theme.palette.primary.main} />
-                                    <SparklinesSpots />
-                                </Sparklines>
-                            )}
-                        </Box>
-                    </Box>
-                </CardContent>
-            </Card>
+            <MetricCard
+                title="Addon CPU"
+                value={`${(health?.addon_stats?.cpu_percent ?? 0).toFixed(1)}%`}
+                history={addonCpuHistory}
+                isLoading={isLoading}
+                error={!!error || !health?.addon_stats}
+            />
         );
     };
 
     const renderAddonMemoryMetric = () => {
-        if (isLoading) {
-            return (
-                <Card>
-                    <CardHeader title="Addon Memory" />
-                    <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <CircularProgress />
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        if (error || !health?.addon_stats) {
-            return (
-                <Card>
-                    <CardHeader title="Addon Memory" />
-                    <CardContent>
-                        <Alert severity="warning">Memory data not available.</Alert>
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        const { memory_percent, memory_usage, memory_limit } = health.addon_stats;
-
+        const { memory_percent, memory_usage, memory_limit } = health?.addon_stats || {};
         return (
-            <Card>
-                <CardHeader title="Addon Memory" />
-                <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="h4" component="div">
-                            {`${(memory_percent ?? 0).toFixed(1)}%`}
-                        </Typography>
-                        <Box sx={{ width: '50%', height: 40 }}>
-                            {addonMemoryHistory.length > 1 && (
-                                <Sparklines data={addonMemoryHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40} min={0} max={100}>
-                                    <SparklinesLine color={theme.palette.success.main} />
-                                    <SparklinesSpots />
-                                </Sparklines>
-                            )}
-                        </Box>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" align="center">
-                        {`${humanizeBytes(memory_usage ?? 0)} / ${humanizeBytes(memory_limit ?? 0)}`}
-                    </Typography>
-                </CardContent>
-            </Card>
+            <MetricCard
+                title="Addon Memory"
+                value={`${(memory_percent ?? 0).toFixed(1)}%`}
+                history={addonMemoryHistory}
+                isLoading={isLoading}
+                error={!!error || !health?.addon_stats}
+            >
+                <Typography variant="body2" color="text.secondary" align="center">
+                    {`${humanizeBytes(memory_usage ?? 0)} / ${humanizeBytes(memory_limit ?? 0)}`}
+                </Typography>
+            </MetricCard>
         );
     };
 
     const renderAddonDiskIoMetric = () => {
-        if (isLoading) {
-            return (
-                <Card>
-                    <CardHeader title="Addon Disk I/O" />
-                    <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <CircularProgress />
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        if (error || !health?.addon_stats) {
-            return (
-                <Card>
-                    <CardHeader title="Addon Disk I/O" />
-                    <CardContent>
-                        <Alert severity="warning">I/O data not available.</Alert>
-                    </CardContent>
-                </Card>
-            );
-        }
-
         const readRate = addonDiskReadRateHistory.length > 0 ? addonDiskReadRateHistory[addonDiskReadRateHistory.length - 1] : 0;
         const writeRate = addonDiskWriteRateHistory.length > 0 ? addonDiskWriteRateHistory[addonDiskWriteRateHistory.length - 1] : 0;
         const totalHistory = addonDiskReadRateHistory.map((r, i) => r + (addonDiskWriteRateHistory[i] ?? 0));
 
         return (
-            <Card>
-                <CardHeader title="Addon Disk I/O" subheader="per second" />
-                <CardContent>
-                    <Box>
-                        <Typography variant="body2">Read: {humanizeBytes(readRate)}/s</Typography>
-                        <Typography variant="body2">Write: {humanizeBytes(writeRate)}/s</Typography>
-                    </Box>
-                    <Box sx={{ height: 40, mt: 1, display: 'flex', justifyContent: 'center' }}>
-                        {totalHistory.length > 1 ? (
-                            <Sparklines data={totalHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40}>
-                                <SparklinesBars style={{ fill: theme.palette.info.main, fillOpacity: ".5" }} />
-                            </Sparklines>
-                        ) : <Typography variant="caption">gathering data...</Typography>}
-                    </Box>
-                </CardContent>
-            </Card>
+            <MetricCard
+                title="Addon Disk I/O"
+                subheader="per second"
+                value={`${humanizeBytes(readRate + writeRate)}/s`}
+                history={totalHistory}
+                isLoading={isLoading}
+                error={!!error || !health?.addon_stats}
+                historyType='bar'
+            >
+                <Typography variant="body2">Read: {humanizeBytes(readRate)}/s</Typography>
+                <Typography variant="body2">Write: {humanizeBytes(writeRate)}/s</Typography>
+            </MetricCard>
         );
     };
 
     const renderAddonNetworkMetric = () => {
-        if (isLoading) {
-            return (
-                <Card>
-                    <CardHeader title="Addon Network I/O" />
-                    <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <CircularProgress />
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        if (error || !health?.addon_stats) {
-            return (
-                <Card>
-                    <CardHeader title="Addon Network I/O" />
-                    <CardContent>
-                        <Alert severity="warning">Network data not available.</Alert>
-                    </CardContent>
-                </Card>
-            );
-        }
-
         const rxRate = addonNetworkRxRateHistory.length > 0 ? addonNetworkRxRateHistory[addonNetworkRxRateHistory.length - 1] : 0;
         const txRate = addonNetworkTxRateHistory.length > 0 ? addonNetworkTxRateHistory[addonNetworkTxRateHistory.length - 1] : 0;
         const totalHistory = addonNetworkRxRateHistory.map((r, i) => r + (addonNetworkTxRateHistory[i] ?? 0));
 
         return (
-            <Card>
-                <CardHeader title="Addon Network I/O" subheader="per second" />
-                <CardContent>
-                    <Box>
-                        <Typography variant="body2">Received: {humanizeBytes(rxRate)}/s</Typography>
-                        <Typography variant="body2">Sent: {humanizeBytes(txRate)}/s</Typography>
-                    </Box>
-                    <Box sx={{ height: 40, mt: 1, display: 'flex', justifyContent: 'center' }}>
-                        {totalHistory.length > 1 ? (
-                            <Sparklines data={totalHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40}>
-                                <SparklinesBars style={{ fill: theme.palette.secondary.main, fillOpacity: ".5" }} />
-                            </Sparklines>
-                        ) : <Typography variant="caption">gathering data...</Typography>}
-                    </Box>
-                </CardContent>
-            </Card>
+            <MetricCard
+                title="Addon Network I/O"
+                subheader="per second"
+                value={`${humanizeBytes(rxRate + txRate)}/s`}
+                history={totalHistory}
+                isLoading={isLoading}
+                error={!!error || !health?.addon_stats}
+                historyType='bar'
+            >
+                <Typography variant="body2">Received: {humanizeBytes(rxRate)}/s</Typography>
+                <Typography variant="body2">Sent: {humanizeBytes(txRate)}/s</Typography>
+            </MetricCard>
         );
     };
 
     const renderGlobalDiskIoMetric = () => {
-        if (isLoading) {
-            return (
-                <Card>
-                    <CardHeader title="Global Disk I/O" />
-                    <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <CircularProgress />
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        if (error || !health?.disk_health?.global) {
-            return (
-                <Card>
-                    <CardHeader title="Global Disk I/O" />
-                    <CardContent>
-                        <Alert severity="warning">Disk I/O data not available.</Alert>
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        const { total_iops } = health.disk_health.global;
-
+        const { total_read_latency_ms, total_write_latency_ms } = health?.disk_health?.global || {};
         return (
-            <Card>
-                <CardHeader title="Global Disk I/O" subheader="IOPS" />
-                <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Typography variant="h4" component="div">
-                            {`${(total_iops ?? 0).toFixed(1)}`}
-                        </Typography>
-                        <Box sx={{ width: '50%', height: 40 }}>
-                            {diskIopsHistory.length > 1 && (
-                                <Sparklines data={diskIopsHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40}>
-                                    <SparklinesLine color={theme.palette.info.main} />
-                                    <SparklinesSpots />
-                                </Sparklines>
-                            )}
-                        </Box>
-                    </Box>
-                </CardContent>
-            </Card>
+            <MetricCard
+                title="Global Disk I/O"
+                subheader="IOPS"
+                value={`${(health?.disk_health?.global?.total_iops ?? 0).toFixed(1)}`}
+                history={diskIopsHistory}
+                isLoading={isLoading}
+                error={!!error || !health?.disk_health?.global}
+            >
+                <Typography variant="body2" color="text.secondary" align="center">
+                    Latency (r/w): {(total_read_latency_ms ?? 0).toFixed(2)}ms / {(total_write_latency_ms ?? 0).toFixed(2)}ms
+                </Typography>
+            </MetricCard>
         );
     };
 
     const renderGlobalNetworkIoMetric = () => {
-        if (isLoading) {
-            return (
-                <Card>
-                    <CardHeader title="Global Network I/O" />
-                    <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <CircularProgress />
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        if (error || !health?.network_health?.global) {
-            return (
-                <Card>
-                    <CardHeader title="Global Network I/O" />
-                    <CardContent>
-                        <Alert severity="warning">Network I/O data not available.</Alert>
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        const { totalInboundTraffic, totalOutboundTraffic } = health.network_health.global;
+        const { totalInboundTraffic, totalOutboundTraffic } = health?.network_health?.global || {};
         const totalTraffic = (totalInboundTraffic ?? 0) + (totalOutboundTraffic ?? 0);
 
         return (
-            <Card>
-                <CardHeader title="Global Network I/O" subheader="per second" />
-                <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="h4" component="div">
-                            {`${humanizeBytes(totalTraffic)}/s`}
-                        </Typography>
-                        <Box sx={{ width: '50%', height: 40 }}>
-                            {networkTrafficHistory.length > 1 && (
-                                <Sparklines data={networkTrafficHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40}>
-                                    <SparklinesLine color={theme.palette.secondary.main} />
-                                    <SparklinesSpots />
-                                </Sparklines>
-                            )}
-                        </Box>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" align="center">
-                        In: {humanizeBytes(totalInboundTraffic ?? 0)}/s | Out: {humanizeBytes(totalOutboundTraffic ?? 0)}/s
-                    </Typography>
-                </CardContent>
-            </Card>
-        );
-    };
-
-    const renderVolumeMetrics = () => {
-        if (isLoadingVolumes) {
-            return (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
-                    <CircularProgress />
-                </Box>
-            );
-        }
-
-        if (errorVolumes) {
-            return <Alert severity="error">Could not load disk information.</Alert>;
-        }
-
-        const disksWithPartitions = disks?.filter(d => d.partitions && d.partitions.some(p => p.size && p.size > 0)) || [];
-
-        if (disksWithPartitions.length === 0) {
-            return <Typography>No partitions with size information found to display.</Typography>;
-        }
-
-        return (
-            <Grid container spacing={3}>
-                {disksWithPartitions.map(disk => {
-                    const chartData = (disk.partitions || [])
-                        .filter(p => p.size && p.size > 0)
-                        .map((p) => ({
-                            id: p.id || p.device || 'unknown',
-                            value: p.size || 0,
-                            label: decodeEscapeSequence(p.name || p.device || 'Unknown'),
-                        }));
-
-                    return (
-                        <Grid size={{ xs: 12, md: 6, lg: 4 }} key={disk.id}>
-                            <Card sx={{ height: '100%' }}>
-                                <CardHeader
-                                    title={decodeEscapeSequence(disk.id || disk.model || 'Unknown Disk')}
-                                    slotProps={
-                                        {
-                                            title: {
-                                                variant: 'subtitle2',
-                                                noWrap: true,
-                                            },
-                                        }
-                                    }
-                                />
-                                <CardContent sx={{ width: '100%', height: 300, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                                    <PieChart
-                                        series={[{
-                                            data: chartData,
-                                            highlightScope: { fade: 'global', highlight: 'item' },
-                                            faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
-                                            arcLabel: (item) => humanizeBytes(item.value || 0),
-                                            arcLabelMinAngle: 25,
-                                            valueFormatter: (item) => humanizeBytes(item.value || 0),
-                                            innerRadius: 30,
-                                            outerRadius: 100,
-                                            paddingAngle: 5,
-                                            cornerRadius: 15,
-                                            cx: 150,
-                                            cy: 115, // Adjusted to make space for the legend
-                                        }]}
-                                        width={300}
-                                        height={250} // Set a fixed height for the chart
-                                        slotProps={{
-                                            legend: {
-                                                direction: "horizontal", // Use horizontal legend
-                                                position: { vertical: 'bottom', horizontal: 'center' },
-                                                sx: {
-                                                    fontSize: '0.75rem',
-                                                    gap: 1,
-                                                },
-                                            },
-                                        }}
-                                    />
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                    );
-                })}
-            </Grid>
-        );
-    };
-
-    const renderDiskHealthMetrics = () => {
-        if (isLoading) {
-            return (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <CircularProgress />
-                </Box>
-            );
-        }
-
-        if (error || !health?.disk_health) {
-            return <Alert severity="error">Could not load disk health metrics.</Alert>;
-        }
-
-        return (
-            <>
-                <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-                    Disk I/O Health
+            <MetricCard
+                title="Global Network I/O"
+                subheader="per second"
+                value={`${humanizeBytes(totalTraffic)}/s`}
+                history={networkTrafficHistory}
+                isLoading={isLoading}
+                error={!!error || !health?.network_health?.global}
+            >
+                <Typography variant="body2" color="text.secondary" align="center">
+                    In: {humanizeBytes(totalInboundTraffic ?? 0)}/s | Out: {humanizeBytes(totalOutboundTraffic ?? 0)}/s
                 </Typography>
-                <TableContainer component={Paper}>
-                    <Table aria-label="disk health table" size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Device</TableCell>
-                                <TableCell align="right">Reads IOP/s</TableCell>
-                                <TableCell align="right">Writes IOP/s</TableCell>
-                                <TableCell align="right">Read Latency (ms)</TableCell>
-                                <TableCell align="right">Write Latency (ms)</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {health.disk_health?.per_disk_io?.map((io, i) => {
-                                return (
-                                    <TableRow key={io.device_name}>
-                                        <TableCell component="th" scope="row">
-                                            {io.device_name}
-                                        </TableCell>
-                                        <TableCell align="right">{io.read_iops?.toFixed(2)}</TableCell>
-                                        <TableCell align="right">{io.write_iops?.toFixed(2)}</TableCell>
-                                        <TableCell align="right">{io.read_latency_ms?.toFixed(2)}</TableCell>
-                                        <TableCell align="right">{io.write_latency_ms?.toFixed(2)}</TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </>
+            </MetricCard>
         );
     };
 
-    const renderNetworkHealthMetrics = () => {
-        if (isLoading) {
-            return (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <CircularProgress />
-                </Box>
-            );
-        }
 
-        if (error || !health?.network_health) {
-            return <Alert severity="error">Could not load network health metrics.</Alert>;
-        }
 
-        return (
-            <>
-                <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-                    Network I/O Health
-                </Typography>
-                <TableContainer component={Paper}>
-                    <Table aria-label="network health table" size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Device</TableCell>
-                                <TableCell align="right">Inbound Traffic (B/s)</TableCell>
-                                <TableCell align="right">Outbound Traffic (B/s)</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {health.network_health?.perNicIO?.map((nic, i) => (
-                                <TableRow key={nic.deviceName}>
-                                    <TableCell component="th" scope="row">{nic.deviceName}</TableCell>
-                                    <TableCell align="right">{humanizeBytes(nic.inboundTraffic)}/s</TableCell>
-                                    <TableCell align="right">{humanizeBytes(nic.outboundTraffic)}/s</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </>
-        );
-    };
+
+
+
 
     return (
         <Accordion defaultExpanded>
@@ -840,13 +326,18 @@ export function DashboardMetrics() {
                         {renderGlobalNetworkIoMetric()}
                     </Grid>
                 </Grid>
-                {renderProcessMetrics()}
-                {renderDiskHealthMetrics()}
-                {renderNetworkHealthMetrics()}
+                <ProcessMetrics
+                    processData={processData}
+                    cpuHistory={cpuHistory}
+                    memoryHistory={memoryHistory}
+                    connectionsHistory={connectionsHistory}
+                />
+                <DiskHealthMetrics diskHealth={health?.disk_health} />
+                <NetworkHealthMetrics networkHealth={health?.network_health} />
                 <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
                     Disk Usage
                 </Typography>
-                {renderVolumeMetrics()}
+                <VolumeMetrics disks={disks} isLoadingVolumes={isLoadingVolumes} errorVolumes={errorVolumes} />
             </AccordionDetails>
         </Accordion>
     );

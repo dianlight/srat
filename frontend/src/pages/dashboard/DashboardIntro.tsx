@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, Typography, Box, IconButton, Collapse, C
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import { type NewsItem } from "../../hooks/githubNewsHook";
+import { useEffect, useRef } from "react";
 
 interface DashboardIntroProps {
     isCollapsed: boolean;
@@ -12,6 +13,18 @@ interface DashboardIntroProps {
 }
 
 export function DashboardIntro({ isCollapsed, onToggleCollapse, news, isLoading, error }: DashboardIntroProps) {
+    const initialCheckDone = useRef(false);
+
+    useEffect(() => {
+        // Once news has loaded, if there are news items, expand the intro panel.
+        // This should only happen on the initial load.
+        if (!isLoading && !initialCheckDone.current) {
+            if (news.length > 0) {
+                onToggleCollapse();
+            }
+            initialCheckDone.current = true;
+        }
+    }, [news, isLoading, onToggleCollapse]);
 
     const renderNews = () => {
         if (isLoading) {
