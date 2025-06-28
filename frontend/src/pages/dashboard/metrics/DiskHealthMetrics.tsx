@@ -1,6 +1,18 @@
 
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography } from "@mui/material";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, Card, CardContent, Grid, LinearProgress } from "@mui/material";
 import type { DiskHealth } from "../../../store/sratApi";
+
+function humanizeBytes(bytes: number, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
 
 export function DiskHealthMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
     return (
@@ -31,6 +43,45 @@ export function DiskHealthMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+                Disk Partitions
+            </Typography>
+            <Grid container spacing={2}>
+                {Object.entries(diskHealth?.per_partition_info || {}).map(([diskName, partitions]) => (
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={diskName}>
+                        <Card>
+                            <CardContent>
+                                <Typography variant="h6" component="div">
+                                    {diskName}
+                                </Typography>
+                                {partitions?.map((partition) => {
+                                    const totalSpace = partition.total_space_bytes || 0;
+                                    const freeSpace = partition.free_space_bytes || 0;
+                                    const usedSpace = totalSpace - freeSpace;
+                                    const usagePercentage = totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0;
+
+                                    return (
+                                        <div key={partition.device} style={{ marginTop: '16px' }}>
+                                            <Typography variant="subtitle2">
+                                                {partition.mount_point || partition.device}
+                                            </Typography>
+                                            <LinearProgress
+                                                variant="determinate"
+                                                value={usagePercentage}
+                                                sx={{ height: 10, borderRadius: 5 }}
+                                            />
+                                            <Typography variant="body2" color="text.secondary">
+                                                {humanizeBytes(freeSpace)} free of {humanizeBytes(totalSpace)}
+                                            </Typography>
+                                        </div>
+                                    );
+                                })}
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                ))}
+            </Grid>
         </>
     );
 }
