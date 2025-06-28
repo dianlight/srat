@@ -5,7 +5,7 @@ import { SystemMetricsAccordion } from "./metrics/SystemMetricsAccordion";
 import { ProcessMetricsAccordion } from "./metrics/ProcessMetricsAccordion";
 import { DiskHealthMetricsAccordion } from "./metrics/DiskHealthMetricsAccordion";
 import { NetworkHealthMetricsAccordion } from "./metrics/NetworkHealthMetricsAccordion";
-import { VolumeMetricsAccordion } from "./metrics/VolumeMetricsAccordion";
+import { SambaStatusMetricsAccordion } from "./metrics/SambaStatusMetricsAccordion";
 import type { ProcessStatus } from "./metrics/types";
 
 const MAX_HISTORY_LENGTH = 10;
@@ -95,7 +95,7 @@ export function DashboardMetrics() {
             />
             <DiskHealthMetricsAccordion diskHealth={health?.disk_health} />
             <NetworkHealthMetricsAccordion networkHealth={health?.network_health} />
-            <VolumeMetricsAccordion diskHealth={health?.disk_health} />
+            <SambaStatusMetricsAccordion sambaStatus={health?.samba_status} />
         </>
     );
 }
