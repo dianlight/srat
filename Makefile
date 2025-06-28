@@ -70,3 +70,6 @@ dev_remote:
 	sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 root@192.168.0.68:/homeassistant/custom_components /mnt/remote_comp
 	cp -rv custom_components/srat_companion /mnt/remote_comp/
 	umount -l /mnt/remote_comp > /dev/null 2>&1 || :
+.PHONY: gemini
+gemini:
+	bun --bun $(shell which gemini)
