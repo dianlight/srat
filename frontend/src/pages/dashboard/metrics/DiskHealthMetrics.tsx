@@ -72,7 +72,7 @@ export function DiskHealthMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
                                                 sx={{ height: 10, borderRadius: 5 }}
                                             />
                                             <Typography variant="body2" color="text.secondary">
-                                                {humanizeBytes(freeSpace)} free of {humanizeBytes(totalSpace)}
+                                                {freeSpace > 0 && `${humanizeBytes(freeSpace)} free of `}{humanizeBytes(totalSpace)}
                                             </Typography>
                                         </div>
                                     );
