@@ -82,6 +82,10 @@ export function DashboardMetrics() {
     const [addonNetworkTxRateHistory, setAddonNetworkTxRateHistory] = useState<number[]>([]);
     const prevAddonStatsRef = useRef<AddonStatsData | null>(null);
 
+    // New states for global metrics
+    const [diskIopsHistory, setDiskIopsHistory] = useState<number[]>([]);
+    const [networkTrafficHistory, setNetworkTrafficHistory] = useState<number[]>([]);
+
     const processData = useMemo((): ProcessStatus[] => {
         if (!health?.samba_process_status) {
             return [];
@@ -191,6 +195,25 @@ export function DashboardMetrics() {
             }
             prevAddonStatsRef.current = addon_stats;
         }
+
+        // Update global disk IOPS history
+        if (health.disk_health?.global) {
+            setDiskIopsHistory(prev => {
+                const newHistory = [...prev, health.disk_health!.global.total_iops ?? 0];
+                if (newHistory.length > MAX_HISTORY_LENGTH) newHistory.shift();
+                return newHistory;
+            });
+        }
+
+        // Update global network traffic history
+        if (health.network_health?.global) {
+            const totalTraffic = (health.network_health.global.totalInboundTraffic ?? 0) + (health.network_health.global.totalOutboundTraffic ?? 0);
+            setNetworkTrafficHistory(prev => {
+                const newHistory = [...prev, totalTraffic];
+                if (newHistory.length > MAX_HISTORY_LENGTH) newHistory.shift();
+                return newHistory;
+            });
+        }
     }, [health, isLoading, error]);
 
     const renderProcessMetrics = () => {
@@ -291,7 +314,7 @@ export function DashboardMetrics() {
         if (isLoading) {
             return (
                 <Card>
-                    <CardHeader title="System Uptime" />
+                    <CardHeader title="Server Uptime" />
                     <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <CircularProgress />
                     </CardContent>
@@ -302,7 +325,7 @@ export function DashboardMetrics() {
         if (error || !health?.startTime) {
             return (
                 <Card>
-                    <CardHeader title="System Uptime" />
+                    <CardHeader title="Server Uptime" />
                     <CardContent>
                         <Alert severity="warning">Uptime data not available.</Alert>
                     </CardContent>
@@ -312,7 +335,7 @@ export function DashboardMetrics() {
 
         return (
             <Card>
-                <CardHeader title="System Uptime" />
+                <CardHeader title="Server Uptime" />
                 <CardContent>
                     <Typography variant="h4" component="div" align="center">
                         {/* Calculate uptime duration: current time - startTime (last start timestamp) */}
@@ -422,7 +445,7 @@ export function DashboardMetrics() {
         if (isLoading) {
             return (
                 <Card>
-                    <CardHeader title="Disk I/O" />
+                    <CardHeader title="Addon Disk I/O" />
                     <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <CircularProgress />
                     </CardContent>
@@ -433,7 +456,7 @@ export function DashboardMetrics() {
         if (error || !health?.addon_stats) {
             return (
                 <Card>
-                    <CardHeader title="Disk I/O" />
+                    <CardHeader title="Addon Disk I/O" />
                     <CardContent>
                         <Alert severity="warning">I/O data not available.</Alert>
                     </CardContent>
@@ -447,7 +470,7 @@ export function DashboardMetrics() {
 
         return (
             <Card>
-                <CardHeader title="Disk I/O" subheader="per second" />
+                <CardHeader title="Addon Disk I/O" subheader="per second" />
                 <CardContent>
                     <Box>
                         <Typography variant="body2">Read: {humanizeBytes(readRate)}/s</Typography>
@@ -469,7 +492,7 @@ export function DashboardMetrics() {
         if (isLoading) {
             return (
                 <Card>
-                    <CardHeader title="Network I/O" />
+                    <CardHeader title="Addon Network I/O" />
                     <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <CircularProgress />
                     </CardContent>
@@ -480,7 +503,7 @@ export function DashboardMetrics() {
         if (error || !health?.addon_stats) {
             return (
                 <Card>
-                    <CardHeader title="Network I/O" />
+                    <CardHeader title="Addon Network I/O" />
                     <CardContent>
                         <Alert severity="warning">Network data not available.</Alert>
                     </CardContent>
@@ -494,7 +517,7 @@ export function DashboardMetrics() {
 
         return (
             <Card>
-                <CardHeader title="Network I/O" subheader="per second" />
+                <CardHeader title="Addon Network I/O" subheader="per second" />
                 <CardContent>
                     <Box>
                         <Typography variant="body2">Received: {humanizeBytes(rxRate)}/s</Typography>
@@ -507,6 +530,104 @@ export function DashboardMetrics() {
                             </Sparklines>
                         ) : <Typography variant="caption">gathering data...</Typography>}
                     </Box>
+                </CardContent>
+            </Card>
+        );
+    };
+
+    const renderGlobalDiskIoMetric = () => {
+        if (isLoading) {
+            return (
+                <Card>
+                    <CardHeader title="Global Disk I/O" />
+                    <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <CircularProgress />
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        if (error || !health?.disk_health?.global) {
+            return (
+                <Card>
+                    <CardHeader title="Global Disk I/O" />
+                    <CardContent>
+                        <Alert severity="warning">Disk I/O data not available.</Alert>
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        const { total_iops } = health.disk_health.global;
+
+        return (
+            <Card>
+                <CardHeader title="Global Disk I/O" subheader="IOPS" />
+                <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Typography variant="h4" component="div">
+                            {`${(total_iops ?? 0).toFixed(1)}`}
+                        </Typography>
+                        <Box sx={{ width: '50%', height: 40 }}>
+                            {diskIopsHistory.length > 1 && (
+                                <Sparklines data={diskIopsHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40}>
+                                    <SparklinesLine color={theme.palette.info.main} />
+                                    <SparklinesSpots />
+                                </Sparklines>
+                            )}
+                        </Box>
+                    </Box>
+                </CardContent>
+            </Card>
+        );
+    };
+
+    const renderGlobalNetworkIoMetric = () => {
+        if (isLoading) {
+            return (
+                <Card>
+                    <CardHeader title="Global Network I/O" />
+                    <CardContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <CircularProgress />
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        if (error || !health?.network_health?.global) {
+            return (
+                <Card>
+                    <CardHeader title="Global Network I/O" />
+                    <CardContent>
+                        <Alert severity="warning">Network I/O data not available.</Alert>
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        const { totalInboundTraffic, totalOutboundTraffic } = health.network_health.global;
+        const totalTraffic = (totalInboundTraffic ?? 0) + (totalOutboundTraffic ?? 0);
+
+        return (
+            <Card>
+                <CardHeader title="Global Network I/O" subheader="per second" />
+                <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="h4" component="div">
+                            {`${humanizeBytes(totalTraffic)}/s`}
+                        </Typography>
+                        <Box sx={{ width: '50%', height: 40 }}>
+                            {networkTrafficHistory.length > 1 && (
+                                <Sparklines data={networkTrafficHistory} limit={MAX_HISTORY_LENGTH} width={100} height={40}>
+                                    <SparklinesLine color={theme.palette.secondary.main} />
+                                    <SparklinesSpots />
+                                </Sparklines>
+                            )}
+                        </Box>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" align="center">
+                        In: {humanizeBytes(totalInboundTraffic ?? 0)}/s | Out: {humanizeBytes(totalOutboundTraffic ?? 0)}/s
+                    </Typography>
                 </CardContent>
             </Card>
         );
@@ -711,6 +832,12 @@ export function DashboardMetrics() {
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
                         {renderAddonNetworkMetric()}
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+                        {renderGlobalDiskIoMetric()}
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+                        {renderGlobalNetworkIoMetric()}
                     </Grid>
                 </Grid>
                 {renderProcessMetrics()}
