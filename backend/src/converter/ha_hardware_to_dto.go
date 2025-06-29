@@ -63,13 +63,15 @@ func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointD
 	return &mountPointDatas
 }
 
+var deviceRegexp = regexp.MustCompile(`p?\d+$`)
+
 func extractDevice(source hardware.Drive) *string {
 	if source.Filesystems == nil || len(*source.Filesystems) == 0 || (*source.Filesystems)[0].Device == nil {
 		return nil
 	}
 	// Trim trailing digits to get the disk device from a partition device (e.g., /dev/sda1 -> /dev/sda).
 	originalDevice := *(*source.Filesystems)[0].Device
-	trimmedDevice := regexp.MustCompile(`p?\d+$`).ReplaceAllString(originalDevice, "")
+	trimmedDevice := deviceRegexp.ReplaceAllString(originalDevice, "")
 	trimmedDevice = strings.TrimPrefix(trimmedDevice, "/dev/")
 	return &trimmedDevice
 }
