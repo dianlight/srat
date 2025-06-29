@@ -48,8 +48,8 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 uptime: true,
                 addonCpu: true,
                 addonMemory: true,
-                addonDiskIo: true,
-                addonNetwork: true,
+                addonDiskIo: false,
+                addonNetwork: false,
                 globalDiskIo: true,
                 globalNetworkIo: true,
                 sambaSessions: true,
@@ -305,6 +305,8 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                     <Typography variant="h6">System Metrics</Typography>
                     <IconButton
+                        component="div"
+                        role="button"
                         aria-label="show metrics menu"
                         aria-controls="metrics-menu"
                         aria-haspopup="true"
@@ -329,10 +331,6 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                                     control={
                                         <Checkbox
                                             checked={isVisible}
-                                            onChange={(e) => {
-                                                e.stopPropagation();
-                                                handleToggleMetric(key);
-                                            }}
                                             name={key}
                                             color="primary"
                                         />
