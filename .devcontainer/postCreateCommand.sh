@@ -14,7 +14,7 @@ prompt_for_var() {
     INPUT_VALUE="" # Initialize to empty
 
     # Check if the variable is already set in the target env file
-    EXISTING_VALUE=$(grep "^${VAR_NAME}=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2-)
+    EXISTING_VALUE=$(grep "^${VAR_NAME}=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2- | sed 's/\\"//g')
 
     # Determine initial value from environment, then existing file
     if [ -n "${!VAR_NAME}" ]; then
