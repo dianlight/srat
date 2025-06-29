@@ -53,6 +53,7 @@ prompt_for_var() {
             else
                 echo "Error reading input for ${VAR_NAME} (status: $READ_STATUS). Using default or skipping."
             fi
+        fi
     fi
 
     # Write to the .env file, only if a value is determined
@@ -63,7 +64,7 @@ prompt_for_var() {
             grep -v "^${VAR_NAME}=" "${ENV_FILE}" > "${ENV_FILE}.tmp"
             mv "${ENV_FILE}.tmp" "${ENV_FILE}"
         fi
-        echo "${VAR_NAME}=\"${INPUT_VALUE}\"" >> "${ENV_FILE}"
+        echo "${VAR_NAME}=${INPUT_VALUE}" >> "${ENV_FILE}"
     else
         echo "Variable ${VAR_NAME} is empty and will not be added to ${ENV_FILE}."
         # If the variable was previously in the .env file but is now skipped/empty,

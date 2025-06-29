@@ -46,7 +46,8 @@
 		"PATH": "${containerEnv:HOME}/.bun/bin:${containerEnv:PATH}",
 		"SUPERVISOR_URL": "http://${containerEnv:HOMEASSISTANT_IP}/",
 		"SUPERVISOR_TOKEN": "${containerEnv:SUPERVISOR_TOKEN}",
-		"HOST_PROJECT_PATH": "${localWorkspaceFolder}"
+		"HOST_PROJECT_PATH": "${localWorkspaceFolder}",
+		"PS1": "%(?:%{%}%1{➜%} :%{%}%1{➜%} ) %{%}%c%{%} $(git_prompt_info)"
 	},
 	//	"containerEnv": {
 	// These will be set as environment variables inside the container
@@ -97,6 +98,11 @@
 		}
 	},
 	"features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": true,
+			"installOhMyZsh": true,
+			"configureZshAsDefaultShell": true
+		},
 		"ghcr.io/cirolosapio/devcontainers-features/alpine-docker-outside-of-docker:0": {
 			"installDockerCompose": true
 		},

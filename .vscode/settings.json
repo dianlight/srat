@@ -34,5 +34,6 @@
   "editor.codeActionsOnSave": {
     "source.action.useSortedKeys.biome": "explicit",
     "source.fixAll.biome": "explicit",
-  }
+  },
+  "biome.lsp.bin": "/root/.bun/bin/biome"
 }
