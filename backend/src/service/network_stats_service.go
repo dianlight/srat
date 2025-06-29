@@ -90,7 +90,13 @@ func (s *networkStatsService) updateNetworkStats() error {
 	if err != nil {
 		return err
 	}
-	if BindAllInterfaces.(bool) {
+	bindAll, ok := BindAllInterfaces.(bool)
+	if !ok {
+		slog.Warn("BindAllInterfaces property from DB is not of expected type bool", "type", fmt.Sprintf("%T", BindAllInterfaces))
+		s.lastUpdateTime = time.Now()
+		return nil
+	}
+	if bindAll {
 		for nicName := range stats {
 			if nicName == "lo" {
 				continue
