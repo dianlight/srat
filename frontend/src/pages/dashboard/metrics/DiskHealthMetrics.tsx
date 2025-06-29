@@ -62,7 +62,7 @@ export function DiskHealthMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
                                 <Typography variant="body2" color="text.secondary" component="div">
                                     {diskName}
                                 </Typography>
-                                {[...(partitions || [])]?.sort((a, b) => a.device?.localeCompare(b.device))?.map((partition) => {
+                                {[...(partitions || [])]?.sort((a, b) => (a.device || '').localeCompare(b.device || ''))?.map((partition) => {
                                     const totalSpace = partition.total_space_bytes || 0;
                                     const freeSpace = partition.free_space_bytes || 0;
                                     const usedSpace = totalSpace - freeSpace;

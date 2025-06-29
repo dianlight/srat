@@ -110,7 +110,7 @@ gen_patch:
 mount_remote:
 	umount -l /mnt/remote > /dev/null 2>&1 || :
 	mkdir -p /mnt/remote > /dev/null 2>&1 || :
-	sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 root@192.168.0.68:/addon_configs/local_sambanas2 /mnt/remote
+	sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2 /mnt/remote
 
 .PHONY: build_remote
 build_remote: /mnt/remote/bootconfig.json
