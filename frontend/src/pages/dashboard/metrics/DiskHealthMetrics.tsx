@@ -43,6 +43,7 @@ export function DiskHealthMetrics({
 							<TableCell align="right">Writes IOP/s</TableCell>
 							<TableCell align="right">Read Latency (ms)</TableCell>
 							<TableCell align="right">Write Latency (ms)</TableCell>
+							<TableCell align="right">Temperature (°C)</TableCell>
 						</TableRow>
 					</TableHead>
 					<TableBody>
@@ -61,6 +62,9 @@ export function DiskHealthMetrics({
 								</TableCell>
 								<TableCell align="right">
 									{io.write_latency_ms?.toFixed(2)}
+								</TableCell>
+								<TableCell align="right">
+									{io.smart_data?.temperature ? `${io.smart_data.temperature}°C` : "N/A"}
 								</TableCell>
 							</TableRow>
 						))}
