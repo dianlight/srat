@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/dianlight/srat/dto"
@@ -68,7 +69,7 @@ func extractDevice(source hardware.Drive) *string {
 	}
 	// Trim trailing digits to get the disk device from a partition device (e.g., /dev/sda1 -> /dev/sda).
 	originalDevice := *(*source.Filesystems)[0].Device
-	trimmedDevice := strings.TrimRight(originalDevice, "0123456789")
+	trimmedDevice := regexp.MustCompile(`p?\d+$`).ReplaceAllString(originalDevice, "")
 	trimmedDevice = strings.TrimPrefix(trimmedDevice, "/dev/")
 	return &trimmedDevice
 }
