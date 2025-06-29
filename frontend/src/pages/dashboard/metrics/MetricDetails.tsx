@@ -32,7 +32,7 @@ export function MetricDetails({
 
 	const handleAccordionChange =
 		(panel: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
-			setExpandedAccordion(isExpanded ? panel : false);
+			setExpandedAccordion(isExpanded ? panel : "system-metrics-details");
 		};
 
 	const handleDetailClick = (metricId: string) => {
