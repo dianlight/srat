@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -97,13 +98,30 @@ func (s *networkStatsService) updateNetworkStats() error {
 		},
 	}
 
-	for _, nic := range nics.([]interface{}) {
-		if netDev, ok := stats[nic.(string)]; ok {
-			if lastNetDev, ok := s.lastStats[nic.(string)]; ok {
+	nicSlice, ok := nics.([]interface{})
+	if !ok {
+		if nics != nil {
+			slog.Warn("Interfaces property from DB is not of expected type []interface{}", "type", fmt.Sprintf("%T", nics))
+		} else {
+			slog.Debug("Interfaces property from DB is nil")
+		}
+		s.lastUpdateTime = time.Now()
+		return nil
+	}
 
-				nc, err := s.sysfs.NetClassByIface(nic.(string))
+	for _, nic := range nicSlice {
+		nicName, ok := nic.(string)
+		if !ok {
+			slog.Warn("Skipping non-string value in interfaces list", "value", nic)
+			continue
+		}
+
+		if netDev, ok := stats[nicName]; ok {
+			if lastNetDev, ok := s.lastStats[nicName]; ok {
+
+				nc, err := s.sysfs.NetClassByIface(nicName)
 				if err != nil {
-					slog.Error("Failed to get sysfs for network interface", "interface", nic, "error", err)
+					slog.Error("Failed to get sysfs for network interface", "interface", nicName, "error", err)
 				}
 				speed := int64(0)
 				if nc != nil && nc.Speed != nil {
@@ -111,7 +129,7 @@ func (s *networkStatsService) updateNetworkStats() error {
 				}
 
 				dstat := dto.NicIOStats{
-					DeviceName:      nic.(string),
+					DeviceName:      nicName,
 					DeviceMaxSpeed:  speed,
 					InboundTraffic:  (float64(netDev.RxBytes) - float64(lastNetDev.RxBytes)) / time.Since(s.lastUpdateTime).Seconds(),
 					OutboundTraffic: (float64(netDev.TxBytes) - float64(lastNetDev.TxBytes)) / time.Since(s.lastUpdateTime).Seconds(),
@@ -120,9 +138,10 @@ func (s *networkStatsService) updateNetworkStats() error {
 				s.currentNetHealth.Global.TotalInboundTraffic += dstat.InboundTraffic
 				s.currentNetHealth.Global.TotalOutboundTraffic += dstat.OutboundTraffic
 			}
-			s.lastStats[nic.(string)] = netDev
+			s.lastStats[nicName] = netDev
 		}
 	}
+
 	s.lastUpdateTime = time.Now()
 	return nil
 }
