@@ -60,11 +60,12 @@ prompt_for_var() {
     # Write to the .env file, only if a value is determined
     if [ -n "$INPUT_VALUE" ]; then
         echo "Exporting ${VAR_NAME}=${INPUT_VALUE}" # Debug print
+        # To avoid issues with special characters in sed, we'll remove the old line and append the new one.
         if grep -q "^${VAR_NAME}=" "${ENV_FILE}" 2>/dev/null; then
-            sed -i "s|^${VAR_NAME}=.*|${VAR_NAME}=\"${INPUT_VALUE}\"|" "${ENV_FILE}"
-        else
-            echo "${VAR_NAME}=\"${INPUT_VALUE}\"" >> "${ENV_FILE}"
+            grep -v "^${VAR_NAME}=" "${ENV_FILE}" > "${ENV_FILE}.tmp"
+            mv "${ENV_FILE}.tmp" "${ENV_FILE}"
         fi
+        echo "${VAR_NAME}=\"${INPUT_VALUE}\"" >> "${ENV_FILE}"
     else
         echo "Variable ${VAR_NAME} is empty and will not be added to ${ENV_FILE}."
         # If the variable was previously in the .env file but is now skipped/empty,
