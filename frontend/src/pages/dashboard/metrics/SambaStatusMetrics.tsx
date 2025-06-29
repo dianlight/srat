@@ -2,7 +2,7 @@
 import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import { type SambaStatus } from "../../../store/sratApi";
 
-export function SambaStatusMetrics({ sambaStatus }: { sambaStatus: SambaStatus }) {
+export function SambaStatusMetrics({ sambaStatus }: { sambaStatus: SambaStatus | undefined }) {
 
     if (!sambaStatus) {
         return <Typography>Samba status data not available.</Typography>;

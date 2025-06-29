@@ -1,21 +1,12 @@
 import { useHealth } from "../../hooks/healthHook";
 import { useVolume } from "../../hooks/volumeHook";
 import { useMemo, useState, useEffect } from "react";
-import { SystemMetricsAccordion } from "./metrics/SystemMetricsAccordion";
-import { ProcessMetricsAccordion } from "./metrics/ProcessMetricsAccordion";
-import { DiskHealthMetricsAccordion } from "./metrics/DiskHealthMetricsAccordion";
-import { NetworkHealthMetricsAccordion } from "./metrics/NetworkHealthMetricsAccordion";
-import { SambaStatusMetricsAccordion } from "./metrics/SambaStatusMetricsAccordion";
+import { MetricDetails } from "./metrics/MetricDetails";
 import type { ProcessStatus } from "./metrics/types";
 
 const MAX_HISTORY_LENGTH = 10;
 
 export function DashboardMetrics() {
-    const [expandedAccordion, setExpandedAccordion] = useState<string | false>(false);
-
-    const handleChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
-        setExpandedAccordion(isExpanded ? panel : false);
-    };
     const { health, isLoading, error } = useHealth();
     //const { disks, isLoading: isLoadingVolumes, error: errorVolumes } = useVolume();
 
@@ -90,31 +81,14 @@ export function DashboardMetrics() {
     }, [health, isLoading, error]);
 
     return (
-        <>
-            <SystemMetricsAccordion health={health} isLoading={isLoading} error={error} />
-            <ProcessMetricsAccordion
-                processData={processData}
-                cpuHistory={cpuHistory}
-                memoryHistory={memoryHistory}
-                connectionsHistory={connectionsHistory}
-                expanded={expandedAccordion === 'processMetrics'}
-                onChange={handleChange('processMetrics')}
-            />
-            <DiskHealthMetricsAccordion
-                diskHealth={health?.disk_health}
-                expanded={expandedAccordion === 'diskHealthMetrics'}
-                onChange={handleChange('diskHealthMetrics')}
-            />
-            <NetworkHealthMetricsAccordion
-                networkHealth={health?.network_health}
-                expanded={expandedAccordion === 'networkHealthMetrics'}
-                onChange={handleChange('networkHealthMetrics')}
-            />
-            <SambaStatusMetricsAccordion
-                sambaStatus={health?.samba_status}
-                expanded={expandedAccordion === 'sambaStatusMetrics'}
-                onChange={handleChange('sambaStatusMetrics')}
-            />
-        </>
+        <MetricDetails
+            health={health}
+            isLoading={isLoading}
+            error={error}
+            processData={processData}
+            cpuHistory={cpuHistory}
+            memoryHistory={memoryHistory}
+            connectionsHistory={connectionsHistory}
+        />
     );
 }

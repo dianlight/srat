@@ -4,14 +4,14 @@ import { DiskHealthMetrics } from "./DiskHealthMetrics";
 import type { DiskHealth } from "../../../store/sratApi";
 
 interface DiskHealthMetricsAccordionProps {
-    diskHealth: DiskHealth;
+    diskHealth: DiskHealth | undefined;
     expanded: boolean;
     onChange: (event: React.SyntheticEvent, isExpanded: boolean) => void;
 }
 
 export function DiskHealthMetricsAccordion({ diskHealth, expanded, onChange }: DiskHealthMetricsAccordionProps) {
     return (
-        <Accordion expanded={expanded} onChange={onChange}>
+        <Accordion expanded={expanded} onChange={onChange} id="disk-health-details">
             <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls="panel-disk-health-content"

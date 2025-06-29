@@ -13,9 +13,12 @@ interface SystemMetricsAccordionProps {
     health: HealthPing | null;
     isLoading: boolean;
     error: Error | null | undefined | {};
+    expandedAccordion: string | false;
+    onAccordionChange: (accordionId: string) => (event: React.SyntheticEvent, isExpanded: boolean) => void;
+    onDetailClick: (metricId: string) => void;
 }
 
-export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetricsAccordionProps) {
+export function SystemMetricsAccordion({ health, isLoading, error, expandedAccordion, onAccordionChange, onDetailClick }: SystemMetricsAccordionProps) {
     const [addonCpuHistory, setAddonCpuHistory] = useState<number[]>([]);
     const [addonMemoryHistory, setAddonMemoryHistory] = useState<number[]>([]);
     const [addonDiskReadRateHistory, setAddonDiskReadRateHistory] = useState<number[]>([]);
@@ -175,6 +178,8 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 history={addonCpuHistory}
                 isLoading={isLoading}
                 error={!!error || !health?.addon_stats}
+                detailMetricId="processMetrics"
+                onDetailClick={onDetailClick}
             />
         );
     };
@@ -189,6 +194,8 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 history={addonMemoryHistory}
                 isLoading={isLoading}
                 error={!!error || !health?.addon_stats}
+                detailMetricId="processMetrics"
+                onDetailClick={onDetailClick}
             >
                 <Typography variant="body2" color="text.secondary" align="center">
                     {`${humanizeBytes(memory_usage ?? 0)} / ${humanizeBytes(memory_limit ?? 0)}`}
@@ -212,6 +219,8 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 isLoading={isLoading}
                 error={!!error || !health?.addon_stats}
                 historyType='bar'
+                detailMetricId="diskHealthMetrics"
+                onDetailClick={onDetailClick}
             >
                 <Typography variant="body2">Read: {humanizeBytes(readRate)}/s</Typography>
                 <Typography variant="body2">Write: {humanizeBytes(writeRate)}/s</Typography>
@@ -234,6 +243,8 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 isLoading={isLoading}
                 error={!!error || !health?.addon_stats}
                 historyType='bar'
+                detailMetricId="networkHealthMetrics"
+                onDetailClick={onDetailClick}
             >
                 <Typography variant="body2">Received: {humanizeBytes(rxRate)}/s</Typography>
                 <Typography variant="body2">Sent: {humanizeBytes(txRate)}/s</Typography>
@@ -252,6 +263,8 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 history={diskIopsHistory}
                 isLoading={isLoading}
                 error={!!error || !health?.disk_health?.global}
+                detailMetricId="diskHealthMetrics"
+                onDetailClick={onDetailClick}
             >
                 <Typography variant="body2" color="text.secondary" align="center">
                     Latency (r/w): {(total_read_latency_ms ?? 0).toFixed(2)}ms / {(total_write_latency_ms ?? 0).toFixed(2)}ms
@@ -273,6 +286,8 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 history={networkTrafficHistory}
                 isLoading={isLoading}
                 error={!!error || !health?.network_health?.global}
+                detailMetricId="networkHealthMetrics"
+                onDetailClick={onDetailClick}
             >
                 <Typography variant="body2" color="text.secondary" align="center">
                     In: {humanizeBytes(totalInboundTraffic ?? 0)}/s | Out: {humanizeBytes(totalOutboundTraffic ?? 0)}/s
@@ -291,12 +306,14 @@ export function SystemMetricsAccordion({ health, isLoading, error }: SystemMetri
                 history={sambaSessionsHistory}
                 isLoading={isLoading}
                 error={!!error || !health?.samba_status}
+                detailMetricId="sambaStatusMetrics"
+                onDetailClick={onDetailClick}
             />
         );
     };
 
     return (
-        <Accordion defaultExpanded>
+        <Accordion expanded={expandedAccordion === 'system-metrics-details'} onChange={onAccordionChange('system-metrics-details')}>
             <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls="panel-system-metrics-content"

@@ -14,7 +14,7 @@ function humanizeBytes(bytes: number, decimals = 2) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-export function DiskHealthMetrics({ diskHealth }: { diskHealth: DiskHealth }) {
+export function DiskHealthMetrics({ diskHealth }: { diskHealth: DiskHealth | undefined }) {
     return (
         <>
             <TableContainer component={Paper}>
