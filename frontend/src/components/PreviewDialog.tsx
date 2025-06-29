@@ -54,14 +54,14 @@ function ObjectField(props: { value: any; id?: string; nkey?: string }) {
 		typeof props.value === "number"
 	) {
 		return (
-			<TableRow key={"" + props.id + "-" + props.nkey}>
+			<TableRow key={`${props.id}-${props.nkey}`}>
 				<TableCell>{props.nkey}</TableCell>
 				<TableCell align="right">{props.value}</TableCell>
 			</TableRow>
 		);
 	} else if (typeof props.value === "boolean") {
 		return (
-			<TableRow key={"" + props.id + "-" + props.nkey}>
+			<TableRow key={`${props.id}-${props.nkey}`}>
 				<TableCell>{props.nkey}</TableCell>
 				<TableCell align="right">{props.value ? "Yes" : "No"}</TableCell>
 			</TableRow>
@@ -70,8 +70,8 @@ function ObjectField(props: { value: any; id?: string; nkey?: string }) {
 		return props.value.map((item, index) => (
 			<ObjectField
 				value={item}
-				key={props.id + "." + index}
-				id={props.id + "." + index}
+				key={`${props.id}.${index}`}
+				id={`${props.id}.${index}`}
 				nkey={props.nkey}
 			/>
 		));
@@ -81,15 +81,15 @@ function ObjectField(props: { value: any; id?: string; nkey?: string }) {
 			return (
 				<ObjectField
 					value={Object.getOwnPropertyDescriptor(props.value, sel)?.value}
-					key={props.id + "." + index}
-					id={props.id + "." + index}
-					nkey={(props.nkey !== undefined ? props.nkey + "." : "") + sel}
+					key={`${props.id}.${index}`}
+					id={`${props.id}.${index}`}
+					nkey={(props.nkey !== undefined ? `${props.nkey}.` : "") + sel}
 				/>
 			);
 		});
 	} else {
 		return (
-			<TableRow key={"unk." + props.id}>
+			<TableRow key={`unk.${props.id}`}>
 				<TableCell>Unknown type: {typeof props.value}</TableCell>
 			</TableRow>
 		);

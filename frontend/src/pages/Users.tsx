@@ -20,7 +20,6 @@ import {
 	Grid,
 	IconButton,
 	List,
-	ListItem,
 	ListItemAvatar,
 	ListItemButton,
 	ListItemText,
@@ -57,7 +56,7 @@ export function Users() {
 	const read_only = useReadOnly();
 	const users = useGetUsersQuery();
 	//const admin = useGetUseradminQuery();
-	const [errorInfo, setErrorInfo] = useState<string>("");
+	const [_errorInfo, setErrorInfo] = useState<string>("");
 	const [selected, setSelected] = useState<UsersProps>({
 		username: "",
 		password: "",
@@ -84,7 +83,7 @@ export function Users() {
 		if (data.doCreate) {
 			userCreate({ user: data })
 				.unwrap()
-				.then((res) => {
+				.then((_res) => {
 					setErrorInfo("");
 					setSelected({ username: "", password: "" });
 					users.refetch();
@@ -100,7 +99,7 @@ export function Users() {
 		} else if (data.is_admin) {
 			userAdminUpdate({ user: data })
 				.unwrap()
-				.then((res) => {
+				.then((_res) => {
 					setErrorInfo("");
 					users.refetch();
 				})
@@ -114,7 +113,7 @@ export function Users() {
 		} else {
 			userUpdate({ username: data.username, user: data })
 				.unwrap()
-				.then((res) => {
+				.then((_res) => {
 					setErrorInfo("");
 					setSelected({ username: "", password: "" });
 					users.refetch();
@@ -147,7 +146,7 @@ export function Users() {
 				}
 				userDelete({ username: data.username })
 					.unwrap()
-					.then((res) => {
+					.then((_res) => {
 						setErrorInfo("");
 						setSelected({ username: "", password: "" });
 						users.refetch();

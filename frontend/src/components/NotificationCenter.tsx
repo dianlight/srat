@@ -162,7 +162,7 @@ export function NotificationCenter() {
 														aria-label="close"
 														color="inherit"
 														size="small"
-														onClick={() => { }}
+														onClick={() => {}}
 													>
 														<CloseIcon fontSize="inherit" />
 													</IconButton>
@@ -174,7 +174,7 @@ export function NotificationCenter() {
 															aria-label="close"
 															color="inherit"
 															size="small"
-															onClick={() => { }}
+															onClick={() => {}}
 														>
 															<CheckIcon fontSize="inherit" />
 														</IconButton>
@@ -200,11 +200,13 @@ export function NotificationCenter() {
 														{notification.data.error.detail}
 													</Typography>
 												)}
-												{notification.data.error.errors?.map((error, index) => (
-													<Typography variant="body2" gutterBottom>
-														{error.message} {error.value} {error.location}
-													</Typography>
-												))}
+												{notification.data.error.errors?.map(
+													(error, _index) => (
+														<Typography variant="body2" gutterBottom>
+															{error.message} {error.value} {error.location}
+														</Typography>
+													),
+												)}
 											</>
 										)}
 									</Alert>

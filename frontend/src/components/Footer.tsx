@@ -17,7 +17,7 @@ export function Footer(props: { healthData: HealthPing }) {
 
 	//const samba = useSWR<DtoSambaProcessStatus>('/samba/status', () => apiContext.samba.statusList().then(res => res.data));
 
-	const handleRestart = () => {
+	const _handleRestart = () => {
 		if (!isLoading) {
 			restart()
 				.unwrap()

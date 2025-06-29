@@ -1,37 +1,23 @@
-import { DevTool } from "@hookform/devtools";
-import { Label } from "@mui/icons-material";
 import AutorenewIcon from "@mui/icons-material/Autorenew"; // Icon for fetching hostname
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd"; // Import an icon for the button
-import {
-	Chip,
-	CircularProgress,
-	IconButton,
-	Stack,
-	Typography,
-} from "@mui/material";
+import { CircularProgress, IconButton, Stack } from "@mui/material";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
 import InputAdornment from "@mui/material/InputAdornment";
 import Tooltip from "@mui/material/Tooltip";
-import debounce from "lodash.debounce";
 import { MuiChipsInput } from "mui-chips-input";
-import { useCallback, useContext, useEffect, useRef } from "react";
 import {
 	AutocompleteElement,
 	CheckboxElement,
 	Controller,
-	SelectElement,
 	TextFieldElement,
 	useForm,
 } from "react-hook-form-mui";
-import { InView, useInView } from "react-intersection-observer";
-import language from "react-syntax-highlighter/dist/esm/languages/hljs/1c";
-import { NIL } from "uuid";
+import { InView } from "react-intersection-observer";
 import { useReadOnly } from "../hooks/readonlyHook";
 import default_json from "../json/default_config.json";
 import {
-	type GetUpdateChannelsApiResponse,
 	type InterfaceStat,
 	type Settings,
 	useGetHostnameQuery,
@@ -110,7 +96,7 @@ export function Settings() {
 		values: globalConfig as Settings,
 		disabled: read_only,
 	});
-	const [update, updateResponse] = usePutSettingsMutation();
+	const [update, _updateResponse] = usePutSettingsMutation();
 	const {
 		data: hostname,
 		isLoading: isHostnameFetching,

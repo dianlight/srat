@@ -13,6 +13,13 @@ const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/
 const MAX_NEWS_ITEMS = 5;
 const MAX_NEWS_AGE_MONTHS = 3;
 
+interface Discussion {
+	id: number;
+	title: string;
+	html_url: string;
+	created_at: string;
+}
+
 export function useGithubNews() {
 	const [news, setNews] = useState<NewsItem[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -27,7 +34,7 @@ export function useGithubNews() {
 				if (!response.ok) {
 					throw new Error(`GitHub API request failed: ${response.statusText}`);
 				}
-				const data = await response.json();
+				const data = (await response.json()) as Discussion[];
 
 				const threeMonthsAgo = new Date();
 				threeMonthsAgo.setMonth(
@@ -36,17 +43,17 @@ export function useGithubNews() {
 
 				const filteredNews = data
 					.filter(
-						(discussion: any) =>
+						(discussion: Discussion) =>
 							new Date(discussion.created_at) > threeMonthsAgo,
 					)
 					.sort(
-						(a: any, b: any) =>
+						(a: Discussion, b: Discussion) =>
 							new Date(b.created_at).getTime() -
 							new Date(a.created_at).getTime(),
 					)
 					.slice(0, MAX_NEWS_ITEMS)
 					.map(
-						(discussion: any): NewsItem => ({
+						(discussion: Discussion): NewsItem => ({
 							id: discussion.id,
 							title: discussion.title,
 							url: discussion.html_url,

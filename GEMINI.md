@@ -26,11 +26,14 @@ This project appears to be a web application with a Go backend and a JavaScript/
   - To generate code: `make -C backend gen`
   - To build: `make -C backend build`
   - To test: `make -C backend test`
+  - To lint: `make -C backend format`
 - **Frontend:**
   - To install dependencies: `cd frontend && bun install`
   - To generate code: `cd frontend && bun gen`
   - To build: `cd frontend && bun build`
   - To test: `cd frontend && bun test`
+  - To lint: `cd frontend && bun lint`
+
 
 ## Architectural Notes
 

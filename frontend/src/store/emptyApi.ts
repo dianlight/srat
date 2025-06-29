@@ -5,7 +5,7 @@ let APIURL = process.env.APIURL;
 console.debug("Configuration APIURL", APIURL);
 async function testURL(url: string): Promise<boolean> {
 	try {
-		const parsedUrl = new URL(url);
+		const _parsedUrl = new URL(url);
 		return await fetch(url, { method: "GET" })
 			.then((response) => {
 				if (response.ok) {
@@ -20,7 +20,7 @@ async function testURL(url: string): Promise<boolean> {
 				console.error(`Error fetching API URL: ${error}`);
 				return false;
 			});
-	} catch (e) {
+	} catch (_e) {
 		return false;
 	}
 }
@@ -33,7 +33,7 @@ if (APIURL === undefined || APIURL === "" || APIURL === "dynamic") {
 	console.info(
 		`Dynamic APIURL provided, using generated: ${APIURL}/ from ${window.location.href}`,
 	);
-	if (!(await testURL(APIURL + "/health"))) {
+	if (!(await testURL(`${APIURL}/health`))) {
 		APIURL = "http://localhost:8080";
 		console.error(
 			"APIURL is not reachable, using default: http://localhost:8080",
@@ -51,7 +51,7 @@ if (APIURL === undefined || APIURL === "") {
     console.info(`Dynamic APIURL provided, using generated: ${APIURL}/ from ${window.location.href}`)
 }
     */
-console.log("* API URL", APIURL + "/", "Reachable: ", await testURL(APIURL));
+console.log("* API URL", `${APIURL}/`, "Reachable: ", await testURL(APIURL));
 
 // initialize an empty api service that we'll inject endpoints into later as needed
 export const emptySplitApi = createApi({
@@ -73,4 +73,4 @@ export const emptySplitApi = createApi({
 	endpoints: () => ({}),
 });
 
-export const apiUrl = APIURL + "/";
+export const apiUrl = `${APIURL}/`;

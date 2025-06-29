@@ -1,4 +1,4 @@
-import { Backdrop, CircularProgress, Typography } from "@mui/material";
+import { Backdrop, CircularProgress } from "@mui/material";
 import Container from "@mui/material/Container";
 import { useEffect, useRef, useState } from "react";
 //import { DirtyDataContext, ModeContext } from "./Contexts";
@@ -10,7 +10,7 @@ import { useHealth } from "./hooks/healthHook";
 export function App() {
 	//const [status, setStatus] = useState<DtoHealthPing>({ alive: false, read_only: true });
 	//    const [dirtyData, setDirtyData] = useState<DtoDataDirtyTracker>({});
-	const [errorInfo, setErrorInfo] = useState<string>("");
+	const [errorInfo, _setErrorInfo] = useState<string>("");
 	const [error, resetError] = useErrorBoundary((error, errorInfo) =>
 		console.error(error, errorInfo),
 	);

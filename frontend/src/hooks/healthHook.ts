@@ -33,7 +33,8 @@ export function useHealth() {
 
 	const { data, error, isLoading } = useGetHealthQuery();
 	const ssedata = useSSE(Supported_events.Heartbeat, {} as HealthPing, {
-		parser(input: any): HealthPing {
+		parser(input: string): HealthPing {
+			//console.log("Got sse health data", input);
 			const c = JSON.parse(input);
 			//console.log("Got sse health data", c);
 			return c;

@@ -1,5 +1,5 @@
 import { useColorScheme } from "@mui/material/styles";
-import { InView, useInView } from "react-intersection-observer";
+import { InView } from "react-intersection-observer";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import {
 	a11yDark,

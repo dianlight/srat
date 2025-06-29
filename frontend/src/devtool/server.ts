@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 
 export function getDevtoolData() {
 	const projectRoot = process.env.HOST_PROJECT_PATH || path.resolve();
