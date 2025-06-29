@@ -71,10 +71,8 @@ export function SambaStatusMetrics({
 							<TableHead>
 								<TableRow>
 									<TableCell>Tcon ID</TableCell>
-									<TableCell>Device</TableCell>
 									<TableCell>Machine</TableCell>
 									<TableCell>Service</TableCell>
-									<TableCell>Share</TableCell>
 								</TableRow>
 							</TableHead>
 							<TableBody>
@@ -83,10 +81,8 @@ export function SambaStatusMetrics({
 										<TableCell component="th" scope="row">
 											{tcon.tcon_id}
 										</TableCell>
-										<TableCell>{tcon.device}</TableCell>
 										<TableCell>{tcon.machine}</TableCell>
 										<TableCell>{tcon.service}</TableCell>
-										<TableCell>{tcon.share}</TableCell>
 									</TableRow>
 								))}
 							</TableBody>
