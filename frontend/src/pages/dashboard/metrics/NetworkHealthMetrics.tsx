@@ -15,7 +15,7 @@ import {
 	SparklinesLine,
 	SparklinesSpots,
 } from "react-sparklines";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { NetworkStats } from "../../../store/sratApi";
 import { humanizeBytes } from "./utils";
 
@@ -65,6 +65,16 @@ export function NetworkHealthMetrics({
 			return newHistory;
 		});
 	}, [networkHealth]);
+	const sortedPerNicIO = useMemo(
+		() =>
+			networkHealth?.perNicIO
+				? [...networkHealth.perNicIO].sort((a, b) =>
+					(a.deviceName || "").localeCompare(b.deviceName || ""),
+				)
+				: [],
+		[networkHealth?.perNicIO],
+	);
+
 	return (
 		<TableContainer component={Paper}>
 			<Table aria-label="network health table" size="small">
@@ -76,7 +86,7 @@ export function NetworkHealthMetrics({
 					</TableRow>
 				</TableHead>
 				<TableBody>
-					{networkHealth?.perNicIO?.map((nic) => (
+					{sortedPerNicIO.map((nic) => (
 						<TableRow key={nic.deviceName}>
 							<TableCell component="th" scope="row">
 								{nic.deviceName}

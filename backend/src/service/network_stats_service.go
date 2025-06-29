@@ -84,10 +84,41 @@ func (s *networkStatsService) updateNetworkStats() error {
 	if err != nil {
 		return err
 	}
+	var nicSlice []interface{}
 
-	nics, err := s.prop_repo.Value("Interfaces", false)
+	BindAllInterfaces, err := s.prop_repo.Value("BindAllInterfaces", false)
 	if err != nil {
 		return err
+	}
+	bindAll, ok := BindAllInterfaces.(bool)
+	if !ok {
+		slog.Warn("BindAllInterfaces property from DB is not of expected type bool", "type", fmt.Sprintf("%T", BindAllInterfaces))
+		s.lastUpdateTime = time.Now()
+		return nil
+	}
+	if bindAll {
+		for nicName := range stats {
+			if nicName == "lo" {
+				continue
+			}
+			nicSlice = append(nicSlice, nicName)
+		}
+	} else {
+		nics, err := s.prop_repo.Value("Interfaces", false)
+		if err != nil {
+			return err
+		}
+		var ok bool
+		nicSlice, ok = nics.([]interface{})
+		if !ok {
+			if nics != nil {
+				slog.Warn("Interfaces property from DB is not of expected type []interface{}", "type", fmt.Sprintf("%T", nics))
+			} else {
+				slog.Debug("Interfaces property from DB is nil")
+			}
+			s.lastUpdateTime = time.Now()
+			return nil
+		}
 	}
 
 	s.currentNetHealth = &dto.NetworkStats{
@@ -96,17 +127,6 @@ func (s *networkStatsService) updateNetworkStats() error {
 			TotalInboundTraffic:  0,
 			TotalOutboundTraffic: 0,
 		},
-	}
-
-	nicSlice, ok := nics.([]interface{})
-	if !ok {
-		if nics != nil {
-			slog.Warn("Interfaces property from DB is not of expected type []interface{}", "type", fmt.Sprintf("%T", nics))
-		} else {
-			slog.Debug("Interfaces property from DB is nil")
-		}
-		s.lastUpdateTime = time.Now()
-		return nil
 	}
 
 	for _, nic := range nicSlice {
