@@ -8,9 +8,7 @@ on:
     # Allows manual triggering of the workflow
 
 permissions:
-  contents: read
-  # Required to list releases
-  releases: write # Required to delete releases
+  contents: write # Required to list and delete releases
 
 jobs:
   delete-old-prereleases:

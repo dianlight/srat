@@ -1,22 +1,21 @@
-import { NavBar } from "./components/NavBar";
-import { Footer } from "./components/Footer";
+import { Backdrop, CircularProgress } from "@mui/material";
+import Container from "@mui/material/Container";
 import { useEffect, useRef, useState } from "react";
 //import { DirtyDataContext, ModeContext } from "./Contexts";
 import { useErrorBoundary } from "react-use-error-boundary";
-import Container from "@mui/material/Container";
-import { Backdrop, CircularProgress, Typography } from "@mui/material";
+import { Footer } from "./components/Footer";
+import { NavBar } from "./components/NavBar";
 import { useHealth } from "./hooks/healthHook";
 
-
 export function App() {
-    //const [status, setStatus] = useState<DtoHealthPing>({ alive: false, read_only: true });
-    //    const [dirtyData, setDirtyData] = useState<DtoDataDirtyTracker>({});
-    const [errorInfo, setErrorInfo] = useState<string>('')
-    const [error, resetError] = useErrorBoundary(
-        (error, errorInfo) => console.error(error, errorInfo)
-    );
-    const mainArea = useRef<HTMLDivElement>(null);
-    /*
+	//const [status, setStatus] = useState<DtoHealthPing>({ alive: false, read_only: true });
+	//    const [dirtyData, setDirtyData] = useState<DtoDataDirtyTracker>({});
+	const [errorInfo, _setErrorInfo] = useState<string>("");
+	const [error, resetError] = useErrorBoundary((error, errorInfo) =>
+		console.error(error, errorInfo),
+	);
+	const mainArea = useRef<HTMLDivElement>(null);
+	/*
     const status = useSSE(DtoEventType.Heartbeat, { alive: false, read_only: true }, {
         parser(input: any): DtoHealthPing {
             console.log("Got heartbeat", input)
@@ -24,26 +23,26 @@ export function App() {
         },
     });
     */
-    const { health: status, isLoading, error: herror } = useHealth();
-    //const [sseEventSource, sseStatus] = useEventSource(apiContext.instance.getUri() + "/sse", true)
+	const { health: status, isLoading, error: herror } = useHealth();
+	//const [sseEventSource, sseStatus] = useEventSource(apiContext.instance.getUri() + "/sse", true)
 
-    // This useEffect handles the automatic reset of errors after a delay.
-    // It ensures that a timer is set only when an error occurs, and cleared if the error resolves
-    // or the component unmounts. This prevents multiple timers from being created.
-    useEffect(() => {
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        if (error || herror) {
-            timer = setTimeout(() => {
-                resetError();
-            }, 5000);
-        }
-        return () => {
-            if (timer) clearTimeout(timer);
-        };
-    }, [error, herror, resetError]);
+	// This useEffect handles the automatic reset of errors after a delay.
+	// It ensures that a timer is set only when an error occurs, and cleared if the error resolves
+	// or the component unmounts. This prevents multiple timers from being created.
+	useEffect(() => {
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		if (error || herror) {
+			timer = setTimeout(() => {
+				resetError();
+			}, 5000);
+		}
+		return () => {
+			if (timer) clearTimeout(timer);
+		};
+	}, [error, herror, resetError]);
 
-    useEffect(() => {
-        /*
+	useEffect(() => {
+		/*
         const mhuuid = ws.subscribe<DtoHealthPing>(DtoEventType.EventHeartbeat, (data) => {
             // console.log("Got heartbeat", data)
             if (timeoutpid) clearTimeout(timeoutpid);
@@ -69,7 +68,7 @@ export function App() {
             sessionStorage.setItem("srat_dirty", (Object.values(data).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0) ? "true" : "false");
         })
         */
-        /*
+		/*
         if (sseEventSource) {
             sseEventSource.onerror = () => {
                 setStatus({ alive: false, read_only: true });
@@ -77,23 +76,23 @@ export function App() {
             }
         }
         */
-        function onBeforeUnload(ev: BeforeUnloadEvent) {
-            if (sessionStorage.getItem("srat_dirty") === "true") {
-                ev.preventDefault();
-                return "Are you sure you want to leave? Your changes will be lost.";
-            }
-            return
-        };
+		function onBeforeUnload(ev: BeforeUnloadEvent) {
+			if (sessionStorage.getItem("srat_dirty") === "true") {
+				ev.preventDefault();
+				return "Are you sure you want to leave? Your changes will be lost.";
+			}
+			return;
+		}
 
-        window.addEventListener("beforeunload", onBeforeUnload);
+		window.addEventListener("beforeunload", onBeforeUnload);
 
-        return () => {
-            //ws.unsubscribe(mhuuid);
-            //ws.unsubscribe(drtyuid);
-            window.removeEventListener("beforeunload", onBeforeUnload);
-        };
-    }, [])
-    /*
+		return () => {
+			//ws.unsubscribe(mhuuid);
+			//ws.unsubscribe(drtyuid);
+			window.removeEventListener("beforeunload", onBeforeUnload);
+		};
+	}, []);
+	/*
         useEventSourceListener(
             sseEventSource,
             [DtoEventType.EventHeartbeat],
@@ -105,30 +104,33 @@ export function App() {
             [sseStatus],
         );
     */
-    return (
-        /*     <ModeContext.Provider value={status}>
+	return (
+		/*     <ModeContext.Provider value={status}>
                  <DirtyDataContext.Provider value={dirtyData}>*/
-        <>
-            <Container maxWidth="lg" disableGutters={true} sx={{
-                minHeight: "100vh",
-                display: 'flex',
-                flexDirection: 'column'
-            }}>
-                <NavBar error={errorInfo} bodyRef={mainArea} />
-                <div ref={mainArea} className="fullBody" style={{ flexGrow: 1 }}>
-                </div>
-                <Footer healthData={status} />
-            </Container>
-            <Backdrop
-                sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
-                open={status.alive === false || isLoading}
-                content={isLoading ? 'Loading...' : 'Server is not reachable'}
-            >
-                <CircularProgress color="inherit" />
-            </Backdrop>
-        </>
-        /*
+		<>
+			<Container
+				maxWidth="lg"
+				disableGutters={true}
+				sx={{
+					minHeight: "100vh",
+					display: "flex",
+					flexDirection: "column",
+				}}
+			>
+				<NavBar error={errorInfo} bodyRef={mainArea} />
+				<div ref={mainArea} className="fullBody" style={{ flexGrow: 1 }}></div>
+				<Footer healthData={status} />
+			</Container>
+			<Backdrop
+				sx={(theme) => ({ color: "#fff", zIndex: theme.zIndex.drawer + 1 })}
+				open={status.alive === false || isLoading}
+				content={isLoading ? "Loading..." : "Server is not reachable"}
+			>
+				<CircularProgress color="inherit" />
+			</Backdrop>
+		</>
+		/*
             </DirtyDataContext.Provider>
         </ModeContext.Provider>*/
-    );
+	);
 }

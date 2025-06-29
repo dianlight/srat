@@ -32,26 +32,26 @@ main {
 
 html,
 body {
-  height: 100%;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
+	height: 100%;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
 }
 
 #root {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
 }
 
 .fullBody {
-  min-height: calc(100vh - 140px);
+	min-height: calc(100vh - 140px);
 }
 
 .brand-logo {
-  max-height: 48px;
+	max-height: 48px;
 }
 
 .MuiToolbar-dense {
-  max-height: 48px;
+	max-height: 48px;
 }

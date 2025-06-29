@@ -103,9 +103,16 @@ gen_patch:
 	cd ${HOME}/gohack/github.com/samber/slog-http; git diff > $(ROOT_DIR)/patches/slog-http.patch
 	cd ${HOME}/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
 
+ /mnt/remote/bootconfig.json: mount_remote
+	[ -f /mnt/remote/bootconfig.json ] || echo "No remote mount found use make mount_remote"
 
 .PHONY: mount_remote
 mount_remote:
 	umount -l /mnt/remote > /dev/null 2>&1 || :
 	mkdir -p /mnt/remote > /dev/null 2>&1 || :
-	sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 root@192.168.0.68:/addon_configs/local_sambanas2 /mnt/remote
+	sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2 /mnt/remote
+
+.PHONY: build_remote
+build_remote: /mnt/remote/bootconfig.json
+	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS);cd - && \
+	$(MAKE) test_build

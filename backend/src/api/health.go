@@ -25,18 +25,24 @@ type HealthHanler struct {
 	OutputEventsCount      uint64
 	OutputEventsInterleave time.Duration
 	dto.HealthPing
-	broadcaster  service.BroadcasterServiceInterface
-	sambaService service.SambaServiceInterface
-	dirtyService service.DirtyDataServiceInterface
+	broadcaster         service.BroadcasterServiceInterface
+	sambaService        service.SambaServiceInterface
+	dirtyService        service.DirtyDataServiceInterface
+	addonsService       service.AddonsServiceInterface
+	diskStatsService    service.DiskStatsService
+	networkStatsService service.NetworkStatsService
 }
 
 type HealthHandlerParams struct {
 	fx.In
-	Ctx          context.Context
-	Apictx       *dto.ContextState
-	Broadcaster  service.BroadcasterServiceInterface
-	SambaService service.SambaServiceInterface
-	DirtyService service.DirtyDataServiceInterface
+	Ctx                context.Context
+	Apictx             *dto.ContextState
+	Broadcaster        service.BroadcasterServiceInterface
+	SambaService       service.SambaServiceInterface
+	DirtyService       service.DirtyDataServiceInterface
+	AddonsService      service.AddonsServiceInterface
+	NetworkStatService service.NetworkStatsService
+	DiskStatsService   service.DiskStatsService
 }
 
 func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
@@ -49,6 +55,7 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	p := new(HealthHanler)
 	p.Alive = true
 	p.AliveTime = time.Now().UnixMilli()
+	p.StartTime = time.Now().UnixMilli()
 	p.ReadOnly = param.Apictx.ReadOnlyMode
 	p.LastError = ""
 	p.ctx = param.Ctx
@@ -56,8 +63,11 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 	p.broadcaster = param.Broadcaster
 	p.sambaService = param.SambaService
 	p.OutputEventsCount = 0
+	p.addonsService = param.AddonsService
 	p.SecureMode = param.Apictx.SecureMode
 	p.dirtyService = param.DirtyService
+	p.diskStatsService = param.DiskStatsService
+	p.networkStatsService = param.NetworkStatService
 	p.BuildVersion = config.BuildVersion()
 	if param.Apictx.Heartbeat > 0 {
 		p.OutputEventsInterleave = time.Duration(param.Apictx.Heartbeat) * time.Second
@@ -144,16 +154,46 @@ func (self *HealthHanler) run() error {
 		case <-self.ctx.Done():
 			slog.Info("Run process closed", "err", self.ctx.Err())
 			return errors.WithStack(self.ctx.Err())
-		default:
-			//slog.Debug("Richiesto aggiornamento per Healthy")
+		case <-time.After(self.OutputEventsInterleave): // Use a timer to control loop frequency
+			// Get Addon Stats
+			stats, err := self.addonsService.GetStats()
+			if err != nil {
+				slog.Error("Error getting addon stats for health ping", "err", err)
+				self.HealthPing.AddonStats = nil // Clear stats on error
+			} else {
+				self.HealthPing.AddonStats = stats
+			}
 			self.checkSamba()
+			diskStats, err := self.diskStatsService.GetDiskStats()
+			if err != nil {
+				slog.Error("Error getting disk stats for health ping", "err", err)
+				self.HealthPing.DiskHealth = nil
+			} else {
+				self.HealthPing.DiskHealth = diskStats
+			}
+			netStats, err := self.networkStatsService.GetNetworkStats()
+			if err != nil {
+				slog.Error("Error getting network stats for health ping", "err", err)
+				self.HealthPing.NetworkHealth = nil
+			} else {
+				self.HealthPing.NetworkHealth = netStats
+			}
+			sambaStatus, err := self.sambaService.GetSambaStatus()
+			if err != nil {
+				slog.Error("Error getting samba status for health ping", "err", err)
+				self.HealthPing.SambaStatus = nil
+			} else {
+				self.HealthPing.SambaStatus = sambaStatus
+			}
+
 			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()
-			err := self.EventEmitter(self.HealthPing)
+			err = self.EventEmitter(self.HealthPing)
 			if err != nil {
 				slog.Error("Error emitting health message: %w", "err", err)
 			}
-			time.Sleep(self.OutputEventsInterleave)
+			// default:
+			// slog.Debug("Richiesto aggiornamento per Healthy")
 		}
 	}
 }

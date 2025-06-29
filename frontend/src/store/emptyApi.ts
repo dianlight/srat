@@ -1,37 +1,44 @@
 // Or from '@reduxjs/toolkit/query' if not using the auto-generated hooks
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 let APIURL = process.env.APIURL;
-console.debug("Configuration APIURL", APIURL)
+console.debug("Configuration APIURL", APIURL);
 async function testURL(url: string): Promise<boolean> {
-    try {
-        const parsedUrl = new URL(url);
-        return await fetch(url, { method: 'GET' })
-            .then((response) => {
-                if (response.ok) {
-                    console.log(`API URL is reachable: ${url}`);
-                    return true;
-                } else {
-                    console.error(`API URL is not reachable: ${url}`);
-                    return false;
-                }
-            })
-            .catch((error) => {
-                console.error(`Error fetching API URL: ${error}`);
-                return false;
-            });
-    } catch (e) {
-        return false;
-    }
+	try {
+		const _parsedUrl = new URL(url);
+		return await fetch(url, { method: "GET" })
+			.then((response) => {
+				if (response.ok) {
+					console.log(`API URL is reachable: ${url}`);
+					return true;
+				} else {
+					console.error(`API URL is not reachable: ${url}`);
+					return false;
+				}
+			})
+			.catch((error) => {
+				console.error(`Error fetching API URL: ${error}`);
+				return false;
+			});
+	} catch (_e) {
+		return false;
+	}
 }
 
 if (APIURL === undefined || APIURL === "" || APIURL === "dynamic") {
-    APIURL = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
-    console.info(`Dynamic APIURL provided, using generated: ${APIURL}/ from ${window.location.href}`)
-    if (!(await testURL(APIURL + "/health"))) {
-        APIURL = "http://localhost:8080";
-        console.error("APIURL is not reachable, using default: http://localhost:8080");
-    }
+	APIURL = window.location.href.substring(
+		0,
+		window.location.href.lastIndexOf("/"),
+	);
+	console.info(
+		`Dynamic APIURL provided, using generated: ${APIURL}/ from ${window.location.href}`,
+	);
+	if (!(await testURL(`${APIURL}/health`))) {
+		APIURL = "http://localhost:8080";
+		console.error(
+			"APIURL is not reachable, using default: http://localhost:8080",
+		);
+	}
 }
 
 /*
@@ -44,13 +51,13 @@ if (APIURL === undefined || APIURL === "") {
     console.info(`Dynamic APIURL provided, using generated: ${APIURL}/ from ${window.location.href}`)
 }
     */
-console.log("* API URL", APIURL + "/", "Reachable: ", await testURL(APIURL));
+console.log("* API URL", `${APIURL}/`, "Reachable: ", await testURL(APIURL));
 
 // initialize an empty api service that we'll inject endpoints into later as needed
 export const emptySplitApi = createApi({
-    baseQuery: fetchBaseQuery({
-        baseUrl: APIURL,
-        /*
+	baseQuery: fetchBaseQuery({
+		baseUrl: APIURL,
+		/*
           HA use auto-generated headers see https://developers.home-assistant.io/docs/add-ons/security#authenticating-a-user-when-using-ingress
           this can be implemented to allow UI outside HA with authentication
 
@@ -62,8 +69,8 @@ export const emptySplitApi = createApi({
             return headers
     }
         */
-    }),
-    endpoints: () => ({}),
-})
+	}),
+	endpoints: () => ({}),
+});
 
-export const apiUrl = APIURL + "/";
+export const apiUrl = `${APIURL}/`;

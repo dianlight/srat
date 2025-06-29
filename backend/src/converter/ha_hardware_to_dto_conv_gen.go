@@ -11,6 +11,9 @@ import (
 type HaHardwareToDtoImpl struct{}
 
 func (c *HaHardwareToDtoImpl) DriveToDisk(source hardware.Drive, target *dto.Disk) error {
+	if source != (hardware.Drive{}) {
+		target.Device = extractDevice(source)
+	}
 	if source.ConnectionBus != nil {
 		target.ConnectionBus = source.ConnectionBus
 	}

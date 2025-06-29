@@ -5,3 +5,5 @@ backend/src/web/static/*
 !backend/src/web/static/.keep
 .DS_Store
 backend/tmp/
+.devcontainer/.env
+.env

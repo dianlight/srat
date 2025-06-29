@@ -1,5 +1,33 @@
 components:
   schemas:
+    AddonStatsData:
+      additionalProperties: false
+      properties:
+        blk_read:
+          format: int64
+          type: integer
+        blk_write:
+          format: int64
+          type: integer
+        cpu_percent:
+          format: double
+          type: number
+        memory_limit:
+          format: int64
+          type: integer
+        memory_percent:
+          format: double
+          type: number
+        memory_usage:
+          format: int64
+          type: integer
+        network_rx:
+          format: int64
+          type: integer
+        network_tx:
+          format: int64
+          type: integer
+      type: object
     BinaryAsset:
       additionalProperties: false
       properties:
@@ -40,6 +68,8 @@ components:
       properties:
         connection_bus:
           type: string
+        device:
+          type: string
         ejectable:
           type: boolean
         id:
@@ -63,6 +93,59 @@ components:
           type: integer
         vendor:
           type: string
+      type: object
+    DiskHealth:
+      additionalProperties: false
+      properties:
+        global:
+          $ref: "#/components/schemas/GlobalDiskStats"
+        per_disk_io:
+          items:
+            $ref: "#/components/schemas/DiskIOStats"
+          type:
+            - array
+            - "null"
+        per_partition_info:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/PerPartitionInfo"
+            type:
+              - array
+              - "null"
+          type: object
+      required:
+        - global
+        - per_disk_io
+        - per_partition_info
+      type: object
+    DiskIOStats:
+      additionalProperties: false
+      properties:
+        device_description:
+          type: string
+        device_name:
+          type: string
+        read_iops:
+          format: double
+          type: number
+        read_latency_ms:
+          format: double
+          type: number
+        smart_data:
+          $ref: "#/components/schemas/SmartInfo"
+        write_iops:
+          format: double
+          type: number
+        write_latency_ms:
+          format: double
+          type: number
+      required:
+        - device_name
+        - device_description
+        - read_iops
+        - write_iops
+        - read_latency_ms
+        - write_latency_ms
       type: object
     ErrorDetail:
       additionalProperties: false
@@ -148,6 +231,36 @@ components:
         - mountFlags
         - customMountFlags
       type: object
+    GlobalDiskStats:
+      additionalProperties: false
+      properties:
+        total_iops:
+          format: double
+          type: number
+        total_read_latency_ms:
+          format: double
+          type: number
+        total_write_latency_ms:
+          format: double
+          type: number
+      required:
+        - total_iops
+        - total_read_latency_ms
+        - total_write_latency_ms
+      type: object
+    GlobalNicStats:
+      additionalProperties: false
+      properties:
+        totalInboundTraffic:
+          format: double
+          type: number
+        totalOutboundTraffic:
+          format: double
+          type: number
+      required:
+        - totalInboundTraffic
+        - totalOutboundTraffic
+      type: object
     HealthPing:
       additionalProperties: false
       properties:
@@ -158,6 +271,8 @@ components:
           format: uri
           readOnly: true
           type: string
+        addon_stats:
+          $ref: "#/components/schemas/AddonStatsData"
         alive:
           type: boolean
         aliveTime:
@@ -167,21 +282,31 @@ components:
           type: string
         dirty_tracking:
           $ref: "#/components/schemas/DataDirtyTracker"
+        disk_health:
+          $ref: "#/components/schemas/DiskHealth"
         last_error:
           type: string
         last_release:
           $ref: "#/components/schemas/ReleaseAsset"
+        network_health:
+          $ref: "#/components/schemas/NetworkStats"
         protected_mode:
           type: boolean
         read_only:
           type: boolean
         samba_process_status:
           $ref: "#/components/schemas/SambaProcessStatus"
+        samba_status:
+          $ref: "#/components/schemas/SambaStatus"
         secure_mode:
           type: boolean
+        startTime:
+          format: int64
+          type: integer
       required:
         - alive
         - aliveTime
+        - startTime
         - read_only
         - samba_process_status
         - last_error
@@ -190,6 +315,10 @@ components:
         - secure_mode
         - protected_mode
         - build_version
+        - addon_stats
+        - disk_health
+        - network_health
+        - samba_status
       type: object
     InterfaceAddr:
       additionalProperties: false
@@ -326,6 +455,41 @@ components:
         - path
         - type
       type: object
+    NetworkStats:
+      additionalProperties: false
+      properties:
+        global:
+          $ref: "#/components/schemas/GlobalNicStats"
+        perNicIO:
+          items:
+            $ref: "#/components/schemas/NicIOStats"
+          type:
+            - array
+            - "null"
+      required:
+        - perNicIO
+        - global
+      type: object
+    NicIOStats:
+      additionalProperties: false
+      properties:
+        deviceMaxSpeed:
+          format: int64
+          type: integer
+        deviceName:
+          type: string
+        inboundTraffic:
+          format: double
+          type: number
+        outboundTraffic:
+          format: double
+          type: number
+      required:
+        - deviceName
+        - deviceMaxSpeed
+        - inboundTraffic
+        - outboundTraffic
+      type: object
     Partition:
       additionalProperties: false
       properties:
@@ -348,6 +512,36 @@ components:
           type: integer
         system:
           type: boolean
+      type: object
+    PerPartitionInfo:
+      additionalProperties: false
+      properties:
+        device:
+          type: string
+        free_space_bytes:
+          format: int64
+          minimum: 0
+          type: integer
+        fsck_needed:
+          type: boolean
+        fsck_supported:
+          type: boolean
+        fstype:
+          type: string
+        mount_point:
+          type: string
+        total_space_bytes:
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - mount_point
+        - device
+        - fstype
+        - free_space_bytes
+        - total_space_bytes
+        - fsck_needed
+        - fsck_supported
       type: object
     ProcessStatus:
       additionalProperties: false
@@ -422,6 +616,186 @@ components:
         - nmbd
         - wsdd2
         - avahi
+      type: object
+    SambaServerID:
+      additionalProperties: false
+      properties:
+        pid:
+          type: string
+        task_id:
+          type: string
+        unique_id:
+          type: string
+        vnn:
+          type: string
+      required:
+        - pid
+        - task_id
+        - vnn
+        - unique_id
+      type: object
+    SambaSession:
+      additionalProperties: false
+      properties:
+        auth_time:
+          type: string
+        channels:
+          additionalProperties:
+            $ref: "#/components/schemas/Value"
+          type: object
+        creation_time:
+          type: string
+        encryption:
+          $ref: "#/components/schemas/SambaSessionEncryptionStruct"
+        gid:
+          format: int64
+          minimum: 0
+          type: integer
+        groupname:
+          type: string
+        hostname:
+          type: string
+        remote_machine:
+          type: string
+        server_id:
+          $ref: "#/components/schemas/SambaServerID"
+        session_dialect:
+          type: string
+        session_id:
+          type: string
+        signing:
+          $ref: "#/components/schemas/SambaSessionSigningStruct"
+        uid:
+          format: int64
+          minimum: 0
+          type: integer
+        username:
+          type: string
+      required:
+        - session_id
+        - server_id
+        - uid
+        - gid
+        - username
+        - groupname
+        - creation_time
+        - auth_time
+        - remote_machine
+        - hostname
+        - session_dialect
+        - encryption
+        - signing
+        - channels
+      type: object
+    SambaSessionEncryptionStruct:
+      additionalProperties: false
+      properties:
+        cipher:
+          type: string
+        degree:
+          type: string
+      required:
+        - cipher
+        - degree
+      type: object
+    SambaSessionSigningStruct:
+      additionalProperties: false
+      properties:
+        cipher:
+          type: string
+        degree:
+          type: string
+      required:
+        - cipher
+        - degree
+      type: object
+    SambaStatus:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SambaStatus.json
+          format: uri
+          readOnly: true
+          type: string
+        sessions:
+          additionalProperties:
+            $ref: "#/components/schemas/SambaSession"
+          type: object
+        smb_conf:
+          type: string
+        tcons:
+          additionalProperties:
+            $ref: "#/components/schemas/SambaTcon"
+          type: object
+        timestamp:
+          type: string
+        version:
+          type: string
+      required:
+        - timestamp
+        - version
+        - smb_conf
+        - sessions
+        - tcons
+      type: object
+    SambaTcon:
+      additionalProperties: false
+      properties:
+        connected_at:
+          type: string
+        device:
+          type: string
+        encryption:
+          $ref: "#/components/schemas/SambaTconEncryptionStruct"
+        machine:
+          type: string
+        server_id:
+          $ref: "#/components/schemas/SambaServerID"
+        service:
+          type: string
+        session_id:
+          type: string
+        share:
+          type: string
+        signing:
+          $ref: "#/components/schemas/SambaTconSigningStruct"
+        tcon_id:
+          type: string
+      required:
+        - tcon_id
+        - session_id
+        - share
+        - device
+        - service
+        - server_id
+        - machine
+        - connected_at
+        - encryption
+        - signing
+      type: object
+    SambaTconEncryptionStruct:
+      additionalProperties: false
+      properties:
+        cipher:
+          type: string
+        degree:
+          type: string
+      required:
+        - cipher
+        - degree
+      type: object
+    SambaTconSigningStruct:
+      additionalProperties: false
+      properties:
+        cipher:
+          type: string
+        degree:
+          type: string
+      required:
+        - cipher
+        - degree
       type: object
     Settings:
       additionalProperties: false
@@ -518,6 +892,26 @@ components:
             type: string
           type: array
       type: object
+    SmartInfo:
+      additionalProperties: false
+      properties:
+        power_cycle_count:
+          format: int64
+          minimum: 0
+          type: integer
+        power_on_hours:
+          format: int64
+          minimum: 0
+          type: integer
+        temperature:
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - temperature
+        - power_on_hours
+        - power_cycle_count
+      type: object
     SmbConf:
       additionalProperties: false
       properties:
@@ -598,6 +992,23 @@ components:
           type: string
       required:
         - username
+      type: object
+    Value:
+      additionalProperties: false
+      properties:
+        channel_id:
+          type: string
+        creation_time:
+          type: string
+        local_address:
+          type: string
+        remote_address:
+          type: string
+      required:
+        - channel_id
+        - creation_time
+        - local_address
+        - remote_address
       type: object
     Welcome:
       additionalProperties: false
@@ -776,6 +1187,25 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       summary: Get samba config
+      tags:
+        - samba
+  /samba/status:
+    get:
+      operationId: get-samba-status
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SambaStatus"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get samba status
       tags:
         - samba
   /settings:
@@ -1277,6 +1707,24 @@ paths:
                   oneOf:
                     - properties:
                         data:
+                          $ref: "#/components/schemas/HealthPing"
+                        event:
+                          const: heartbeat
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event heartbeat
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/Welcome"
                         event:
                           const: hello
@@ -1292,6 +1740,28 @@ paths:
                         - data
                         - event
                       title: Event hello
+                      type: object
+                    - properties:
+                        data:
+                          items:
+                            $ref: "#/components/schemas/SharedResource"
+                          type:
+                            - array
+                            - "null"
+                        event:
+                          const: share
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event share
                       type: object
                     - properties:
                         data:
@@ -1332,46 +1802,6 @@ paths:
                         - data
                         - event
                       title: Event volumes
-                      type: object
-                    - properties:
-                        data:
-                          $ref: "#/components/schemas/HealthPing"
-                        event:
-                          const: heartbeat
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event heartbeat
-                      type: object
-                    - properties:
-                        data:
-                          items:
-                            $ref: "#/components/schemas/SharedResource"
-                          type:
-                            - array
-                            - "null"
-                        event:
-                          const: share
-                          description: The event name.
-                          type: string
-                        id:
-                          description: The event ID.
-                          type: integer
-                        retry:
-                          description: The retry time in milliseconds.
-                          type: integer
-                      required:
-                        - data
-                        - event
-                      title: Event share
                       type: object
                 title: Server Sent Events
                 type: array

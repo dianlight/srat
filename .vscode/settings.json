@@ -15,7 +15,6 @@
   "commitSage.commit.onlyStagedChanges": true,
   "commitSage.commit.promptForRefs": true,
   "commitSage.gemini.model": "gemini-2.0-flash-exp",
-  "geminicodeassist.updateChannel": "Default",
   "geminicodeassist.beta.enableGeneratedCodeDocumentationView": true,
   "geminicodeassist.codeGenerationPaneViewEnabled": true,
   "remote.localPortHost": "allInterfaces",
@@ -31,5 +30,9 @@
   "go.inlayHints.assignVariableTypes": true,
   "go.inlayHints.compositeLiteralFields": true,
   "go.inlayHints.constantValues": true,
-  "github.copilot.chat.commitMessageGeneration.instructions": []
+  "github.copilot.chat.commitMessageGeneration.instructions": [],
+  "editor.codeActionsOnSave": {
+    "source.action.useSortedKeys.biome": "explicit",
+    "source.fixAll.biome": "explicit",
+  }
 }

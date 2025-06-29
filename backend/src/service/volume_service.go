@@ -19,6 +19,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/tlog"
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/shomali11/util/xhashes"
 	"github.com/snapcore/snapd/osutil"
@@ -413,11 +414,11 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 }
 
 func (self *VolumeService) udevEventHandler() {
-	slog.Debug("Starting Udev event handler...") // Changed log level
+	tlog.Trace("Starting Udev event handler...") // Changed log level
 
 	conn := new(netlink.UEventConn)
 	if err := conn.Connect(netlink.UdevEvent); err != nil {
-		slog.Error("Unable to connect to Netlink Kobject UEvent socket", "err", err)
+		tlog.Error("Unable to connect to Netlink Kobject UEvent socket", "err", err)
 		return // Exit goroutine if connection fails
 	}
 	defer conn.Close()

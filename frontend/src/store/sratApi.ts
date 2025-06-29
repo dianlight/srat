@@ -49,6 +49,13 @@ const injectedRtkApi = api
         query: () => ({ url: `/samba/config` }),
         providesTags: ["samba"],
       }),
+      getSambaStatus: build.query<
+        GetSambaStatusApiResponse,
+        GetSambaStatusApiArg
+      >({
+        query: () => ({ url: `/samba/status` }),
+        providesTags: ["samba"],
+      }),
       getSettings: build.query<GetSettingsApiResponse, GetSettingsApiArg>({
         query: () => ({ url: `/settings` }),
         providesTags: ["system"],
@@ -294,6 +301,10 @@ export type GetSambaConfigApiResponse = /** status 200 OK */
   | SmbConf
   | /** status default Error */ ErrorModel;
 export type GetSambaConfigApiArg = void;
+export type GetSambaStatusApiResponse = /** status 200 OK */
+  | SambaStatus
+  | /** status default Error */ ErrorModel;
+export type GetSambaStatusApiArg = void;
 export type GetSettingsApiResponse = /** status 200 OK */
   | Settings
   | /** status default Error */ ErrorModel;
@@ -366,9 +377,27 @@ export type GetSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
+          data: HealthPing;
+          /** The event name. */
+          event: "heartbeat";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: Welcome;
           /** The event name. */
           event: "hello";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: SharedResource[] | null;
+          /** The event name. */
+          event: "share";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -387,24 +416,6 @@ export type SseApiResponse = /** status 200 OK */
           data: Disk[] | null;
           /** The event name. */
           event: "volumes";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: HealthPing;
-          /** The event name. */
-          event: "heartbeat";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: SharedResource[] | null;
-          /** The event name. */
-          event: "share";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -532,11 +543,56 @@ export type ErrorModel = {
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
 };
+export type AddonStatsData = {
+  blk_read?: number;
+  blk_write?: number;
+  cpu_percent?: number;
+  memory_limit?: number;
+  memory_percent?: number;
+  memory_usage?: number;
+  network_rx?: number;
+  network_tx?: number;
+};
 export type DataDirtyTracker = {
   settings: boolean;
   shares: boolean;
   users: boolean;
   volumes: boolean;
+};
+export type GlobalDiskStats = {
+  total_iops: number;
+  total_read_latency_ms: number;
+  total_write_latency_ms: number;
+};
+export type SmartInfo = {
+  power_cycle_count: number;
+  power_on_hours: number;
+  temperature: number;
+};
+export type DiskIoStats = {
+  device_description: string;
+  device_name: string;
+  read_iops: number;
+  read_latency_ms: number;
+  smart_data?: SmartInfo;
+  write_iops: number;
+  write_latency_ms: number;
+};
+export type PerPartitionInfo = {
+  device: string;
+  free_space_bytes: number;
+  fsck_needed: boolean;
+  fsck_supported: boolean;
+  fstype: string;
+  mount_point: string;
+  total_space_bytes: number;
+};
+export type DiskHealth = {
+  global: GlobalDiskStats;
+  per_disk_io: DiskIoStats[] | null;
+  per_partition_info: {
+    [key: string]: PerPartitionInfo[] | null;
+  };
 };
 export type BinaryAsset = {
   browser_download_url?: string;
@@ -549,6 +605,20 @@ export type ReleaseAsset = {
   $schema?: string;
   arch_asset?: BinaryAsset;
   last_release?: string;
+};
+export type GlobalNicStats = {
+  totalInboundTraffic: number;
+  totalOutboundTraffic: number;
+};
+export type NicIoStats = {
+  deviceMaxSpeed: number;
+  deviceName: string;
+  inboundTraffic: number;
+  outboundTraffic: number;
+};
+export type NetworkStats = {
+  global: GlobalNicStats;
+  perNicIO: NicIoStats[] | null;
 };
 export type ProcessStatus = {
   connections: number;
@@ -567,19 +637,95 @@ export type SambaProcessStatus = {
   smbd: ProcessStatus;
   wsdd2: ProcessStatus;
 };
+export type Value = {
+  channel_id: string;
+  creation_time: string;
+  local_address: string;
+  remote_address: string;
+};
+export type SambaSessionEncryptionStruct = {
+  cipher: string;
+  degree: string;
+};
+export type SambaServerId = {
+  pid: string;
+  task_id: string;
+  unique_id: string;
+  vnn: string;
+};
+export type SambaSessionSigningStruct = {
+  cipher: string;
+  degree: string;
+};
+export type SambaSession = {
+  auth_time: string;
+  channels: {
+    [key: string]: Value;
+  };
+  creation_time: string;
+  encryption: SambaSessionEncryptionStruct;
+  gid: number;
+  groupname: string;
+  hostname: string;
+  remote_machine: string;
+  server_id: SambaServerId;
+  session_dialect: string;
+  session_id: string;
+  signing: SambaSessionSigningStruct;
+  uid: number;
+  username: string;
+};
+export type SambaTconEncryptionStruct = {
+  cipher: string;
+  degree: string;
+};
+export type SambaTconSigningStruct = {
+  cipher: string;
+  degree: string;
+};
+export type SambaTcon = {
+  connected_at: string;
+  device: string;
+  encryption: SambaTconEncryptionStruct;
+  machine: string;
+  server_id: SambaServerId;
+  service: string;
+  session_id: string;
+  share: string;
+  signing: SambaTconSigningStruct;
+  tcon_id: string;
+};
+export type SambaStatus = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  sessions: {
+    [key: string]: SambaSession;
+  };
+  smb_conf: string;
+  tcons: {
+    [key: string]: SambaTcon;
+  };
+  timestamp: string;
+  version: string;
+};
 export type HealthPing = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  addon_stats: AddonStatsData;
   alive: boolean;
   aliveTime: number;
   build_version: string;
   dirty_tracking: DataDirtyTracker;
+  disk_health: DiskHealth;
   last_error: string;
   last_release: ReleaseAsset;
+  network_health: NetworkStats;
   protected_mode: boolean;
   read_only: boolean;
   samba_process_status: SambaProcessStatus;
+  samba_status: SambaStatus;
   secure_mode: boolean;
+  startTime: number;
 };
 export type InterfaceAddr = {
   addr: string;
@@ -689,6 +835,7 @@ export type Partition = {
 };
 export type Disk = {
   connection_bus?: string;
+  device?: string;
   ejectable?: boolean;
   id?: string;
   model?: string;
@@ -754,6 +901,7 @@ export const {
   usePutRestartMutation,
   usePutSambaApplyMutation,
   useGetSambaConfigQuery,
+  useGetSambaStatusQuery,
   useGetSettingsQuery,
   usePatchSettingsMutation,
   usePutSettingsMutation,

@@ -23,3 +23,7 @@ prepare:
 clean:
 	cd $(FRONTEND_DIRS); bun clean
 	$(MAKE) -C $(BACKEND_DIRS) clean
+
+.PHONY: gemini
+gemini:
+	bun --bun $(shell which gemini)

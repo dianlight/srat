@@ -2,6 +2,9 @@ package dto
 
 // Disk defines model for  Disk.
 type Disk struct {
+	// Device Special device file for the drive (e.g. /dev/sda).
+	Device *string `json:"device,omitempty"`
+
 	// ConnectionBus Physical connection bus of the drive (USB, etc.).
 	ConnectionBus *string `json:"connection_bus,omitempty"`
 
