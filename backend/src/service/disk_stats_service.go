@@ -94,6 +94,9 @@ func (s *diskStatsService) updateDiskStats() error {
 			tlog.Debug("Skipping disk with nil device", "diskID", disk.Id)
 			continue
 		}
+		stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.Device)
+
+		if err != nil {
 			return err
 		}
 		if s.lastStats[*disk.Device] != nil {
