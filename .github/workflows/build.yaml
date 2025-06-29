@@ -79,7 +79,7 @@ jobs:
 
             TAGS_SORTED_STRING=""
             if [ ${#FILTERED_TAGS_LIST[@]} -gt 0 ]; then
-              TAGS_SORTED_STRING=$(printf "%s\n" "${FILTERED_TAGS_LIST[@]}" | sort -V)
+              TAGS_SORTED_STRING=$(printf "%s\n" "${FILTERED_TAGS_LIST[@]}" | sed '/-/!{s/$/_/}' | sort -V | sed 's/_$//')
               echo "Found and sorted relevant tags from non-draft releases:"
               echo "${TAGS_SORTED_STRING}"
             else
