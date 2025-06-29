@@ -24,3 +24,5 @@ coverage.xml
 # Home Assistant configuration
 config/*
 !config/configuration.yaml
+.devcontainer/.env
+.env
