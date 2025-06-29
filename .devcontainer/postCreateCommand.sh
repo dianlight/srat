@@ -47,14 +47,12 @@ prompt_for_var() {
                 # User pressed Enter, no default, leave empty
                 INPUT_VALUE=""
             fi
-        elif [ $READ_STATUS -ne 0 ]; then # Timeout or other error occurred
-            if [ $READ_STATUS -eq 1 ]; then
+        elif [ $READ_STATUS -gt 128 ]; then # Timeout or other error occurred
+            if [ $READ_STATUS -eq 142 ]; then
                 echo "Timeout for ${VAR_NAME}. Using default or skipping."
             else
-                echo "Error reading input for ${VAR_NAME}. Using default or skipping."
+                echo "Error reading input for ${VAR_NAME} (status: $READ_STATUS). Using default or skipping."
             fi
-            INPUT_VALUE="${DEFAULT_VALUE:-}"
-        fi
     fi
 
     # Write to the .env file, only if a value is determined
