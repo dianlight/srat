@@ -1,7 +1,7 @@
 declare global {
-    interface Window {
-        APIUrl: string
-    }
+	interface Window {
+		APIUrl: string;
+	}
 }
 
-export { }
+export {};

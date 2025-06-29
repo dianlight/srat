@@ -30,5 +30,9 @@
   "go.inlayHints.assignVariableTypes": true,
   "go.inlayHints.compositeLiteralFields": true,
   "go.inlayHints.constantValues": true,
-  "github.copilot.chat.commitMessageGeneration.instructions": []
+  "github.copilot.chat.commitMessageGeneration.instructions": [],
+  "editor.codeActionsOnSave": {
+    "source.action.useSortedKeys.biome": "explicit",
+    "source.fixAll.biome": "explicit",
+  }
 }
