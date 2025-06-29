@@ -4,7 +4,7 @@ import { humanizeBytes } from "./utils";
 import type { NetworkStats } from "../../../store/sratApi";
 
 
-export function NetworkHealthMetrics({ networkHealth }: { networkHealth: NetworkStats }) {
+export function NetworkHealthMetrics({ networkHealth }: { networkHealth: NetworkStats | undefined }) {
     return (
         <>
             <TableContainer component={Paper}>

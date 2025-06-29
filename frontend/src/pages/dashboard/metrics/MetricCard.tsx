@@ -1,6 +1,7 @@
 
-import { Card, CardHeader, CardContent, Typography, Box, CircularProgress, Alert, useTheme } from "@mui/material";
+import { Card, CardHeader, CardContent, Typography, Box, CircularProgress, Alert, useTheme, Tooltip, IconButton } from "@mui/material";
 import { Sparklines, SparklinesLine, SparklinesSpots, SparklinesBars } from 'react-sparklines';
+import InfoIcon from '@mui/icons-material/Info';
 
 export interface MetricCardProps {
     title: string;
@@ -11,10 +12,18 @@ export interface MetricCardProps {
     error: boolean;
     historyType?: 'line' | 'bar';
     children?: React.ReactNode;
+    detailMetricId?: string;
+    onDetailClick?: (metricId: string) => void;
 }
 
-export function MetricCard({ title, subheader, value, history, isLoading, error, historyType = 'line', children }: MetricCardProps) {
+export function MetricCard({ title, subheader, value, history, isLoading, error, historyType = 'line', children, detailMetricId, onDetailClick }: MetricCardProps) {
     const theme = useTheme();
+
+    const handleDetailClick = () => {
+        if (onDetailClick && detailMetricId) {
+            onDetailClick(detailMetricId);
+        }
+    };
 
     const renderHistory = () => {
         if (history && history.length <= 1) {
@@ -69,7 +78,19 @@ export function MetricCard({ title, subheader, value, history, isLoading, error,
 
     return (
         <Card>
-            <CardHeader title={title} subheader={subheader} />
+            <CardHeader
+                title={title}
+                subheader={subheader}
+                action={
+                    detailMetricId && onDetailClick && (
+                        <Tooltip title="Show Details">
+                            <IconButton onClick={handleDetailClick} size="small">
+                                <InfoIcon />
+                            </IconButton>
+                        </Tooltip>
+                    )
+                }
+            />
             <CardContent>
                 {renderContent()}
             </CardContent>

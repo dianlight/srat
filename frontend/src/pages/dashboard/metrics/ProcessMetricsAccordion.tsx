@@ -21,7 +21,7 @@ export function ProcessMetricsAccordion({
     onChange,
 }: ProcessMetricsAccordionProps) {
     return (
-        <Accordion expanded={expanded} onChange={onChange}>
+        <Accordion expanded={expanded} onChange={onChange} id="process-metrics-details">
             <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls="panel-process-metrics-content"
