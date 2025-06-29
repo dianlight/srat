@@ -91,7 +91,8 @@
 				"zoellner.openapi-preview",
 				"golang.go",
 				"oorzc.mind-map",
-				"eamodio.gitlens"
+				"eamodio.gitlens",
+				"biomejs.biome"
 			]
 		}
 	},

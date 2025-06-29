@@ -11,3 +11,9 @@ make -C .. prepare || :
 #gemini
 bun add -g @google/gemini-cli ||:
 bun pm -g trust --all ||:
+sed -i '1s/node/bun/' "$HOME/.bun/bin/gemini" ||:
+
+#biome
+bun add -g biome ||:
+bun pm -g trust --all ||:
+sed -i '1s/node/bun/' "$HOME/.bun/bin/biome" ||:
