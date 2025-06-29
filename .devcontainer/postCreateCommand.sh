@@ -47,21 +47,13 @@ prompt_for_var() {
                 # User pressed Enter, no default, leave empty
                 INPUT_VALUE=""
             fi
-        elif [ $READ_STATUS -eq 1 ]; then # Timeout occurred
-            echo "Timeout for ${VAR_NAME}. Using default or skipping."
-            if [ -n "$DEFAULT_VALUE" ]; then
-                INPUT_VALUE="${DEFAULT_VALUE}"
+        elif [ $READ_STATUS -ne 0 ]; then # Timeout or other error occurred
+            if [ $READ_STATUS -eq 1 ]; then
+                echo "Timeout for ${VAR_NAME}. Using default or skipping."
             else
-                # No default, variable remains empty
-                INPUT_VALUE=""
+                echo "Error reading input for ${VAR_NAME}. Using default or skipping."
             fi
-        else # Other error with read command
-            echo "Error reading input for ${VAR_NAME}. Using default or skipping."
-            if [ -n "$DEFAULT_VALUE" ]; then
-                INPUT_VALUE="${DEFAULT_VALUE}"
-            else
-                INPUT_VALUE=""
-            fi
+            INPUT_VALUE="${DEFAULT_VALUE:-}"
         fi
     fi
 
