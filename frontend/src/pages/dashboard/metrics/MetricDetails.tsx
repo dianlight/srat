@@ -27,7 +27,7 @@ export function MetricDetails({
 	connectionsHistory,
 }: MetricDetailsProps) {
 	const [expandedAccordion, setExpandedAccordion] = useState<string | false>(
-		false,
+		"system-metrics-details",
 	);
 
 	const handleAccordionChange =
