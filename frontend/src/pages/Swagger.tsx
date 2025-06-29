@@ -1,8 +1,4 @@
 import { Box } from "@mui/material";
-import { InView } from "react-intersection-observer";
-//import SwaggerUI from "swagger-ui-react"
-//import "swagger-ui-react/swagger-ui.css"
-import { apiUrl } from "../store/emptyApi";
 
 export function Swagger() {
 	/*

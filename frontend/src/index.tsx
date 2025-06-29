@@ -101,7 +101,7 @@ root.render(
 			<Provider store={store}>
 				<ConfirmProvider>
 					<StrictMode>
-						<SSEProvider source={() => new SSESource(apiUrl + "sse")}>
+						<SSEProvider source={() => new SSESource(`${apiUrl}sse`)}>
 							<BrowserRouter>
 								<App />
 							</BrowserRouter>

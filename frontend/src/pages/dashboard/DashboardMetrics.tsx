@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useHealth } from "../../hooks/healthHook";
-import { useVolume } from "../../hooks/volumeHook";
 import { MetricDetails } from "./metrics/MetricDetails";
 import type { ProcessStatus } from "./metrics/types";
 

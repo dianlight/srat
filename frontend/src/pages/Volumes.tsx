@@ -9,7 +9,6 @@ import ComputerIcon from "@mui/icons-material/Computer";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
 // Add EjectIcon to your imports
 import EjectIcon from "@mui/icons-material/Eject";
-import ExpandLess from "@mui/icons-material/ExpandLess"; // Import expand icons
 import ExpandMore from "@mui/icons-material/ExpandMore"; // Import expand icons
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SdStorageIcon from "@mui/icons-material/SdStorage";
@@ -24,11 +23,9 @@ import {
 	Accordion,
 	AccordionDetails,
 	AccordionSummary,
-	Autocomplete,
 	Avatar,
 	Button,
 	Chip,
-	Collapse,
 	Dialog,
 	DialogActions,
 	DialogContent,
@@ -47,7 +44,6 @@ import {
 	MenuItem,
 	Stack,
 	Switch,
-	TextField,
 	Tooltip,
 	Typography,
 	useMediaQuery,
@@ -58,16 +54,13 @@ import MD5 from "crypto-js/md5";
 import { filesize } from "filesize";
 import { useConfirm } from "material-ui-confirm";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { useFormState } from "react-dom";
 import {
 	AutocompleteElement,
 	CheckboxElement,
-	Controller,
 	TextFieldElement,
 	useFieldArray,
 	useForm,
 } from "react-hook-form-mui"; // Import TextFieldElement
-import { InView } from "react-intersection-observer";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { FontAwesomeSvgIcon } from "../components/FontAwesomeSvgIcon";
@@ -309,11 +302,11 @@ export function Volumes() {
 		undefined,
 	); // Can hold a disk or partition
 	const confirm = useConfirm();
-	const [mountVolume, mountVolumeResult] =
+	const [mountVolume, _mountVolumeResult] =
 		usePostVolumeByMountPathHashMountMutation();
-	const [umountVolume, umountVolumeResult] =
+	const [umountVolume, _umountVolumeResult] =
 		useDeleteVolumeByMountPathHashMountMutation();
-	const [ejectDiskMutation, ejectDiskResult] =
+	const [ejectDiskMutation, _ejectDiskResult] =
 		usePostVolumeDiskByDiskIdEjectMutation();
 	const [patchMountSettings] = usePatchVolumeByMountPathHashSettingsMutation();
 
@@ -417,7 +410,6 @@ export function Volumes() {
 		hideSystemPartitions,
 		expandedAccordion,
 		isDiskRendered,
-		localStorageKey,
 	]);
 
 	useEffect(() => {
@@ -447,14 +439,7 @@ export function Volumes() {
 				localStorage.removeItem(localStorageKey);
 			}
 		}
-	}, [
-		expandedAccordion,
-		disks,
-		hideSystemPartitions,
-		initialAutoOpenDone.current,
-		isDiskRendered,
-		localStorageKey,
-	]);
+	}, [expandedAccordion, disks, hideSystemPartitions, isDiskRendered]);
 
 	// Effect to handle navigation state for opening mount settings for a specific volume
 	useEffect(() => {
@@ -474,7 +459,7 @@ export function Volumes() {
 			for (const disk of disks) {
 				if (disk.partitions) {
 					for (const partition of disk.partitions) {
-						const diskIdx = disks.indexOf(disk);
+						const _diskIdx = disks.indexOf(disk);
 						if (
 							partition.mount_point_data?.some(
 								(mpd) => mpd.path_hash === mountPathHashFromState,
@@ -505,10 +490,17 @@ export function Volumes() {
 				navigate(location.pathname, { replace: true, state: {} });
 			}
 		}
-	}, [disks, location.state, navigate, hideSystemPartitions, isDiskRendered]);
+	}, [
+		disks,
+		location.state,
+		navigate,
+		hideSystemPartitions,
+		isDiskRendered,
+		location.pathname,
+	]);
 
 	const handleAccordionChange =
-		(panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+		(panel: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
 			setExpandedAccordion(isExpanded ? panel : false);
 			if (!initialAutoOpenDone.current) {
 				initialAutoOpenDone.current = true;
@@ -567,7 +559,7 @@ export function Volumes() {
 
 	function handleCreateShare(partition: Partition) {
 		const firstMountPointData = partition.mount_point_data?.[0];
-		if (firstMountPointData && firstMountPointData.path) {
+		if (firstMountPointData?.path) {
 			// Ensure path exists for preselection
 			navigate("/", {
 				state: {
@@ -587,7 +579,7 @@ export function Volumes() {
 		const mountData = partition.mount_point_data?.[0];
 		const share = mountData?.shares?.[0]; // Get the first share associated with this mount point
 
-		if (share && share.name) {
+		if (share?.name) {
 			// Navigate to the shares page and pass the share name as state
 			navigate("/", {
 				state: { tabId: TabIDs.SHARES, shareName: share.name } as LocationState,
@@ -648,7 +640,7 @@ export function Volumes() {
 		});
 	}
 
-	function onSubmitEjectDisk(disk: Disk) {
+	function _onSubmitEjectDisk(disk: Disk) {
 		if (read_only || !disk || !disk.removable) {
 			toast.error("Disk is not ejectable or action is not permitted.");
 			return;
@@ -1002,7 +994,7 @@ export function Volumes() {
 													partition.mount_point_data.some(
 														(mpd) => mpd.is_mounted,
 													);
-												const hasShares =
+												const _hasShares =
 													partition.mount_point_data &&
 													partition.mount_point_data.length > 0 &&
 													partition.mount_point_data.some((mpd) => {
@@ -1015,7 +1007,7 @@ export function Volumes() {
 
 												const firstMountPath =
 													partition.mount_point_data?.[0]?.path;
-												const showShareActions =
+												const _showShareActions =
 													isMounted && firstMountPath?.startsWith("/mnt/");
 												const partitionNameDecoded = decodeEscapeSequence(
 													partition.name || "Unknown Partition",
@@ -1350,7 +1342,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 											freeSolo: true,
 											disabled: props.readOnlyView,
 											size: "small",
-											onChange: (event, value) => {
+											onChange: (_event, value) => {
 												if (props.readOnlyView) return;
 												console.log("FS Type changed:", value);
 												setValue("custom_flags", []); // Clear custom flags when FS type changes
@@ -1496,7 +1488,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 														}),
 													onChange: props.readOnlyView
 														? undefined
-														: (event, value) => {
+														: (_event, value) => {
 																const flagsWithValue = (
 																	value as MountFlag[]
 																).filter((v) => v.needsValue);

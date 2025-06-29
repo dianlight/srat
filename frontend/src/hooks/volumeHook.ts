@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useSSE } from "react-hooks-sse";
 import {
 	type Disk,
-	type SharedResource,
 	Supported_events,
-	useGetSharesQuery,
 	useGetVolumesQuery,
 } from "../store/sratApi";
 import { setDisks } from "../store/sseSlice";
@@ -17,10 +15,10 @@ export function useVolume() {
 
 	const { data, error, isLoading, fulfilledTimeStamp } = useGetVolumesQuery();
 
-	const statusSSE = useSSE(Supported_events.Volumes, [] as Disk[], {
-		parser(input: any): Disk[] {
+	const _statusSSE = useSSE(Supported_events.Volumes, [] as Disk[], {
+		parser(input: string): Disk[] {
 			const c = JSON.parse(input);
-			console.log("Got disks", c);
+			//console.log("Got disks", c);
 			dispatch(setDisks(c as Disk[]));
 			useVolume_lastReadTimestamp = Date.now();
 			return c;
@@ -45,7 +43,7 @@ export function useVolume() {
 		if (error) {
 			console.error("Error fetching volumes:", error);
 		}
-	}, [data]);
+	}, [data, dispatch, error, fulfilledTimeStamp]);
 
 	return { disks, isLoading, error };
 }

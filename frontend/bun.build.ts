@@ -121,7 +121,7 @@ async function build(): Promise<BuildOutput | undefined> {
 				console.log(`D ${values.outDir}/${file}`);
 				Bun.file(`${values.outDir}/${file}`)
 					.delete()
-					.catch((err) => {});
+					.catch((_err) => {});
 			}
 
 			Bun.build(buildConfig).then((result) => {

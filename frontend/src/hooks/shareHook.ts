@@ -19,10 +19,10 @@ export function useShare() {
 	// statusSSE variable is not directly used, but useSSE hook initializes the SSE connection
 	// and its parser handles data dispatching.
 	useSSE(Supported_events.Share, [] as SharedResource[], {
-		parser(input: any): SharedResource[] {
+		parser(input: string): SharedResource[] {
 			const c = JSON.parse(input);
 			// Assuming 'c' is SharedResource[] as per API spec for 'share' event
-			console.log("Got shares from SSE", c);
+			//console.log("Got shares from SSE", c);
 			dispatch(setShares(c as SharedResource[]));
 			shareHook_lastReadTimestamp = Date.now();
 			return c;

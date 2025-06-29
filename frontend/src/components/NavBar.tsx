@@ -32,12 +32,11 @@ import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useConfirm } from "material-ui-confirm";
-import { useContext, useEffect, useMemo, useState } from "react"; // Added useMemo
+import { useEffect, useMemo, useState } from "react"; // Added useMemo
 import { createPortal } from "react-dom";
 import { useSSE } from "react-hooks-sse";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
-import { v4 as uuidv4 } from "uuid";
 import pkg from "../../package.json";
 import { useHealth } from "../hooks/healthHook";
 import { useReadOnly } from "../hooks/readonlyHook";
@@ -54,14 +53,12 @@ import { Volumes } from "../pages/Volumes";
 import { type LocationState, TabIDs } from "../store/locationState";
 import {
 	type HealthPing,
-	type ReleaseAsset,
 	Supported_events,
 	Update_process_state,
 	type UpdateProgress,
 	usePutSambaApplyMutation,
 	usePutUpdateMutation,
 } from "../store/sratApi";
-import { useAppSelector } from "../store/store";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotificationCenter } from "./NotificationCenter";
 
@@ -196,7 +193,7 @@ export function NavBar(props: {
 	const read_only = useReadOnly();
 	const health = useHealth();
 	const location = useLocation();
-	const navigate = useNavigate();
+	const _navigate = useNavigate();
 
 	const visibleTabs = useMemo(() => {
 		return ALL_TAB_CONFIGS.filter(
@@ -292,9 +289,9 @@ export function NavBar(props: {
 			setValue(targetIndex);
 		}
 		localStorage.setItem("srat_tab", targetIndex.toString());
-	}, [location.state, visibleTabs, navigate]); // `value` is intentionally omitted to avoid loops on its own change
+	}, [location.state, visibleTabs, value]); // `value` is intentionally omitted to avoid loops on its own change
 
-	const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+	const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
 		setValue(newValue);
 		localStorage.setItem("srat_tab", newValue.toString());
 	};
@@ -309,7 +306,7 @@ export function NavBar(props: {
 			if (confirmed) {
 				doUpdate()
 					.unwrap()
-					.then((res) => {
+					.then((_res) => {
 						//updateStatus.update_status = (res as UpdateProgress).update_status;
 						//users.mutate();
 					})
@@ -449,7 +446,7 @@ export function NavBar(props: {
 									</Tooltip>
 								</IconButton>
 							)}
-							{updateStatus.last_release != undefined && (
+							{updateStatus.last_release !== undefined && (
 								<IconButton onClick={handleDoUpdate} size="small">
 									<Tooltip
 										title={`Update ${updateStatus.last_release} available`}
@@ -477,7 +474,7 @@ export function NavBar(props: {
 									</Tooltip>
 								</IconButton>
 							)}
-							{updateStatus.progress != undefined ? (
+							{updateStatus.progress !== undefined ? (
 								<CircularProgressWithLabel
 									value={updateStatus.progress}
 									color="success"
@@ -488,9 +485,9 @@ export function NavBar(props: {
 							<IconButton
 								size="small"
 								onClick={() => {
-									mode == "light"
+									mode === "light"
 										? setMode("dark")
-										: mode == "dark"
+										: mode === "dark"
 											? setMode("system")
 											: setMode("light");
 								}}
@@ -523,17 +520,15 @@ export function NavBar(props: {
 			</AppBar>
 			{props.bodyRef.current &&
 				createPortal(
-					<>
-						{visibleTabs.map((tab) => (
-							<TabPanel
-								key={tab.id}
-								value={value}
-								index={tab.actualIndex as number}
-							>
-								<ErrorBoundary>{tab.component}</ErrorBoundary>
-							</TabPanel>
-						))}
-					</>,
+					visibleTabs.map((tab) => (
+						<TabPanel
+							key={tab.id}
+							value={value}
+							index={tab.actualIndex as number}
+						>
+							<ErrorBoundary>{tab.component}</ErrorBoundary>
+						</TabPanel>
+					)),
 					props.bodyRef.current /*document.getElementById('mainarea')!*/,
 				)}
 		</>

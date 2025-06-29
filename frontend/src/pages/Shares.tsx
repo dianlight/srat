@@ -1,4 +1,4 @@
-import { DriveFileMove, Eject } from "@mui/icons-material";
+import { DriveFileMove } from "@mui/icons-material";
 import AddIcon from "@mui/icons-material/Add";
 import BackupIcon from "@mui/icons-material/Backup";
 import BlockIcon from "@mui/icons-material/Block";
@@ -6,7 +6,6 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DataObjectIcon from "@mui/icons-material/DataObject"; // For camelCase
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import FolderSharedIcon from "@mui/icons-material/FolderShared";
 import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
@@ -24,7 +23,6 @@ import {
 	AccordionSummary,
 	Box,
 	Chip,
-	Collapse,
 	Fab,
 	InputAdornment,
 	ListItemIcon,
@@ -56,7 +54,7 @@ import type { OverridableComponent } from "@mui/material/OverridableComponent";
 import { useConfirm } from "material-ui-confirm";
 import { MuiChipsInput } from "mui-chips-input";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Controller, useForm, useFormState } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import {
 	AutocompleteElement,
 	CheckboxElement,
@@ -338,19 +336,19 @@ export function Shares() {
 	);
 	const [showPreview, setShowPreview] = useState<boolean>(false);
 	const [showEdit, setShowEdit] = useState<boolean>(false);
-	const [showUserEdit, setShowUserEdit] = useState<boolean>(false);
+	const [_showUserEdit, _setShowUserEdit] = useState<boolean>(false);
 	//const formRef = useRef<HTMLFormElement>(null);
 	const [initialNewShareData, setInitialNewShareData] = useState<
 		ShareEditProps | undefined
 	>(undefined);
 	const confirm = useConfirm();
-	const [updateShare, updateShareResult] = usePutShareByShareNameMutation();
-	const [deleteShare, updateDeleteShareResult] =
+	const [updateShare, _updateShareResult] = usePutShareByShareNameMutation();
+	const [deleteShare, _updateDeleteShareResult] =
 		useDeleteShareByShareNameMutation();
-	const [createShare, createShareResult] = usePostShareMutation();
-	const [enableShare, enableShareResult] =
+	const [createShare, _createShareResult] = usePostShareMutation();
+	const [enableShare, _enableShareResult] =
 		usePutShareByShareNameEnableMutation();
-	const [disableShare, disableShareResult] =
+	const [disableShare, _disableShareResult] =
 		usePutShareByShareNameDisableMutation();
 
 	// Calculate if a new share can be created
@@ -374,8 +372,7 @@ export function Shares() {
 					if (partition.mount_point_data) {
 						for (const mpd of partition.mount_point_data) {
 							if (
-								mpd &&
-								mpd.is_mounted &&
+								mpd?.is_mounted &&
 								mpd.path &&
 								mpd.path_hash &&
 								!usedPathHashes.has(mpd.path_hash)
@@ -400,7 +397,7 @@ export function Shares() {
 		if (shareNameFromState && shares) {
 			// Logic for opening an existing share for editing
 			const shareEntry = Object.entries(shares).find(
-				([key, value]) => value.name === shareNameFromState,
+				([_key, value]) => value.name === shareNameFromState,
 			);
 
 			if (shareEntry) {
@@ -434,7 +431,7 @@ export function Shares() {
 			navigate(location.pathname, { replace: true, state: {} });
 		}
 		// Dependencies: shares data and location.state
-	}, [shares, location.state, navigate]);
+	}, [shares, location.state, navigate, location.pathname]);
 
 	const groupedAndSortedShares = useMemo(() => {
 		if (!shares) {
@@ -562,10 +559,10 @@ export function Shares() {
 			}
 			// If initialSetupDone.current is false, groups are still loading/validating; don't touch localStorage for a string value yet.
 		}
-	}, [expandedAccordion, groupedAndSortedShares, initialSetupDone.current]); // initialSetupDone.current ensures we save based on a validated state.
+	}, [expandedAccordion, groupedAndSortedShares]); // initialSetupDone.current ensures we save based on a validated state.
 
 	const handleAccordionChange =
-		(panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+		(panel: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
 			setExpandedAccordion(isExpanded ? panel : false);
 		};
 
@@ -748,7 +745,7 @@ export function Shares() {
 			<List dense={true}>
 				<Divider />
 				{groupedAndSortedShares.map(
-					([usageGroup, sharesInGroup], groupIndex) => (
+					([usageGroup, sharesInGroup], _groupIndex) => (
 						<Accordion
 							key={usageGroup}
 							expanded={expandedAccordion === usageGroup}
@@ -916,8 +913,8 @@ export function Shares() {
 																							>
 																								{u.username}
 																								{u !==
-																									props.users![
-																										props.users!.length - 1
+																									props.users?.[
+																										props.users?.length - 1
 																									] && ", "}
 																							</Typography>
 																						))}
@@ -953,8 +950,8 @@ export function Shares() {
 																								>
 																									{u.username}
 																									{u !==
-																										props.ro_users![
-																											props.ro_users!.length - 1
+																										props.ro_users?.[
+																											props.ro_users?.length - 1
 																										] && ", "}
 																								</span>
 																							))}
@@ -1109,7 +1106,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 				veto_files: [],
 			}); // Reset to default values when closing or not open
 		}
-	}, [props.open, reset, users]);
+	}, [props.open, reset, users, props.objectToEdit]);
 
 	// Effect to auto-populate share name if empty when a volume is selected
 	const selectedMountPointData = watch("mount_point_data");
@@ -1136,13 +1133,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 				}
 			}
 		}
-	}, [
-		props.open,
-		selectedMountPointData,
-		currentShareName,
-		setValue,
-		setActiveCasingIndex /* getPathBaseName and sanitizeAndUppercaseShareName are stable */,
-	]);
+	}, [props.open, selectedMountPointData, currentShareName, setValue]);
 
 	function handleCloseSubmit(data?: ShareEditProps) {
 		setEditName(false);
@@ -1192,7 +1183,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 		<Fragment>
 			<Dialog
 				open={props.open}
-				onClose={(event, reason) => {
+				onClose={(_event, reason) => {
 					if (reason && reason === "backdropClick") {
 						return; // Prevent dialog from closing on backdrop click
 					}
@@ -1610,11 +1601,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 						<Button
 							onClick={() => {
 								// Ensure objectToEdit and org_name are valid before calling onDeleteSubmit
-								if (
-									props.objectToEdit &&
-									props.objectToEdit.org_name &&
-									props.onDeleteSubmit
-								) {
+								if (props.objectToEdit?.org_name && props.onDeleteSubmit) {
 									props.onDeleteSubmit(
 										props.objectToEdit.org_name,
 										props.objectToEdit,

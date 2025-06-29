@@ -15,7 +15,7 @@ import { ActionableItemsList } from "./components/ActionableItemsList";
 export function DashboardActions() {
 	const { disks, isLoading, error } = useVolume();
 	const read_only = useReadOnly();
-	const navigate = useNavigate();
+	const _navigate = useNavigate();
 
 	const actionablePartitions = useMemo(() => {
 		const partitions: { partition: Partition; action: "mount" | "share" }[] =

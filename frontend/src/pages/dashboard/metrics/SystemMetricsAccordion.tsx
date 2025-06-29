@@ -13,7 +13,7 @@ import {
 	MenuItem,
 	Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { HealthPing } from "../../../store/sratApi";
 import { MetricCard } from "./MetricCard";
 import type { AddonStatsData } from "./types";
@@ -197,7 +197,7 @@ export function SystemMetricsAccordion({
 			setDiskIopsHistory((prev) => {
 				const newHistory = [
 					...prev,
-					health.disk_health!.global.total_iops ?? 0,
+					health.disk_health?.global.total_iops ?? 0,
 				];
 				if (newHistory.length > MAX_HISTORY_LENGTH) newHistory.shift();
 				return newHistory;
