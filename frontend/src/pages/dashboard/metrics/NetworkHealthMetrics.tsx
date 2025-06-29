@@ -76,7 +76,9 @@ export function NetworkHealthMetrics({
 					</TableRow>
 				</TableHead>
 				<TableBody>
-					{networkHealth?.perNicIO?.map((nic) => (
+					{networkHealth?.perNicIO?.sort((a, b) =>
+						(a.deviceName || "").localeCompare(b.deviceName || ""),
+					)?.map((nic) => (
 						<TableRow key={nic.deviceName}>
 							<TableCell component="th" scope="row">
 								{nic.deviceName}
