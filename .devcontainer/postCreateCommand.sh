@@ -17,8 +17,8 @@ prompt_for_var() {
     EXISTING_VALUE=$(grep "^${VAR_NAME}=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2-)
 
     # Determine initial value from environment, then existing file
-    if [ -n "$(eval echo \$${VAR_NAME})" ]; then
-        INPUT_VALUE="$(eval echo \$${VAR_NAME})"
+    if [ -n "${!VAR_NAME}" ]; then
+        INPUT_VALUE="${!VAR_NAME}"
         echo "${VAR_NAME} is already set in current shell: ${INPUT_VALUE}"
     elif [ -n "$EXISTING_VALUE" ]; then
         INPUT_VALUE="${EXISTING_VALUE}"
