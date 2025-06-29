@@ -5,11 +5,17 @@
 		"--cap-add=SYS_PTRACE",
 		"--security-opt",
 		"seccomp=unconfined",
-		"--privileged"
+		"--privileged",
+		"--env-file",
+		".devcontainer/.env" // Pass the .env file to Docker directly
 	],
+	"initializeCommand": "mkdir -p .devcontainer && touch .devcontainer/.env && chmod 600 .devcontainer/.env",
 	"updateContentCommand": {
-		"mainScrip": "./.devcontainer/updateContentCommand.sh"
+		"mainScrip": ".devcontainer/updateContentCommand.sh"
 	},
+	"remoteUser": "root",
+	"postCreateCommand": ".devcontainer/postCreateCommand.sh",
+	"postStartCommand": "chmod +x .devcontainer/postStartCommand.sh && CONTAINER_WORKSPACE_FOLDER=${containerWorkspaceFolder} ./.devcontainer/postStartCommand.sh",
 	"portsAttributes": {
 		"8080": {
 			"label": "Backend",
@@ -38,9 +44,16 @@
 	"remoteEnv": {
 		"BUN_INSTALL": "${containerEnv:HOME}/.bun",
 		"PATH": "${containerEnv:HOME}/.bun/bin:${containerEnv:PATH}",
-		"SUPERVISOR_URL": "http://homeassistant2.local/",
-		"SUPERVISOR_TOKEN": "<put me here!>"
+		"SUPERVISOR_URL": "http://${containerEnv:HOMEASSISTANT_IP}/",
+		"SUPERVISOR_TOKEN": "${containerEnv:SUPERVISOR_TOKEN}",
+		"HOST_PROJECT_PATH": "${localWorkspaceFolder}"
 	},
+	//	"containerEnv": {
+	// These will be set as environment variables inside the container
+	//		"HOMEASSISTANT_IP": "${localEnv:HOMEASSISTANT_IP}",
+	//		"HOMEASSISTANT_SSH_USER": "${localEnv:HOMEASSISTANT_SSH_USER}"
+	//	},
+	"userEnvProbe": "loginInteractiveShell",
 	"customizations": {
 		"vscode": {
 			"settings": {
@@ -56,6 +69,12 @@
 				"go.lintFlags": [
 					"--fast"
 				]
+			},
+			"terminal.integrated.defaultProfile.linux": "bash",
+			"terminal.integrated.profiles.linux": {
+				"bash": {
+					"path": "/bin/bash"
+				}
 			},
 			"extensions": [
 				"vivaxy.vscode-conventional-commits",
@@ -85,6 +104,6 @@
 	},
 	"mounts": [
 		"type=bind,source=${localEnv:HOME}/.ssh,target=/root/.ssh,readonly",
-		"type=bind,source=${localEnv:HOME}/.gemini,target=/root/.gemini"
+		//		"type=bind,source=${localEnv:HOME}/.gemini,target=/root/.gemini"
 	]
 }
