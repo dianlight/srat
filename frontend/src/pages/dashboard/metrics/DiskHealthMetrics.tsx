@@ -1,4 +1,5 @@
 import {
+	Box,
 	Card,
 	CardContent,
 	Grid,
@@ -11,8 +12,17 @@ import {
 	TableHead,
 	TableRow,
 	Typography,
+	useTheme,
 } from "@mui/material";
-import type { DiskHealth } from "../../../store/sratApi";
+import {
+	Sparklines,
+	SparklinesLine,
+	SparklinesSpots,
+} from "react-sparklines";
+import { useEffect, useRef, useState } from "react";
+import type { DiskHealth, DiskIoStats } from "../../../store/sratApi";
+
+const MAX_HISTORY_LENGTH = 10;
 
 function humanizeBytes(bytes: number, decimals = 2) {
 	if (bytes === 0) return "0 Bytes";
@@ -31,6 +41,67 @@ export function DiskHealthMetrics({
 }: {
 	diskHealth: DiskHealth | undefined;
 }) {
+	const theme = useTheme();
+
+	const [diskIoHistory, setDiskIoHistory] = useState<Record<string, {
+		read_iops: number[];
+		write_iops: number[];
+		read_latency_ms: number[];
+		write_latency_ms: number[];
+		temperature: number[];
+	}>>({});
+
+	useEffect(() => {
+		if (!diskHealth?.per_disk_io) {
+			return;
+		}
+
+		setDiskIoHistory((prevHistory) => {
+			const newHistory = { ...prevHistory };
+			diskHealth.per_disk_io?.forEach((io) => {
+				const deviceName = io.device_name;
+				if (!newHistory[deviceName]) {
+					newHistory[deviceName] = {
+						read_iops: [],
+						write_iops: [],
+						read_latency_ms: [],
+						write_latency_ms: [],
+						temperature: [],
+					};
+				}
+
+				const updateHistory = (historyArray: number[], newValue: number) => {
+					const updated = [...historyArray, newValue];
+					if (updated.length > MAX_HISTORY_LENGTH) {
+						updated.shift();
+					}
+					return updated;
+				};
+
+				newHistory[deviceName].read_iops = updateHistory(
+					newHistory[deviceName].read_iops,
+					io.read_iops ?? 0,
+				);
+				newHistory[deviceName].write_iops = updateHistory(
+					newHistory[deviceName].write_iops,
+					io.write_iops ?? 0,
+				);
+				newHistory[deviceName].read_latency_ms = updateHistory(
+					newHistory[deviceName].read_latency_ms,
+					io.read_latency_ms ?? 0,
+				);
+				newHistory[deviceName].write_latency_ms = updateHistory(
+					newHistory[deviceName].write_latency_ms,
+					io.write_latency_ms ?? 0,
+				);
+				newHistory[deviceName].temperature = updateHistory(
+					newHistory[deviceName].temperature,
+					io.smart_data?.temperature ?? 0,
+				);
+			});
+			return newHistory;
+		});
+	}, [diskHealth]);
 	return (
 		<>
 			<TableContainer component={Paper}>
@@ -55,16 +126,155 @@ export function DiskHealthMetrics({
 								<TableCell component="th" scope="row">
 									{io.device_name}
 								</TableCell>
-								<TableCell align="right">{io.read_iops?.toFixed(2)}</TableCell>
-								<TableCell align="right">{io.write_iops?.toFixed(2)}</TableCell>
-								<TableCell align="right">
-									{io.read_latency_ms?.toFixed(2)}
+								<TableCell align="right" sx={{ minWidth: 150 }}>
+									<Box
+										sx={{
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "flex-end",
+										}}
+									>
+										<Typography
+											variant="body2"
+											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+										>
+											{io.read_iops?.toFixed(2)}
+										</Typography>
+										<Box sx={{ width: 50, height: 20 }}>
+											{(diskIoHistory[io.device_name]?.read_iops?.length || 0) > 1 ? (
+												<Sparklines
+													data={diskIoHistory[io.device_name].read_iops}
+													limit={MAX_HISTORY_LENGTH}
+													width={60}
+													height={20}
+													min={0}
+												>
+													<SparklinesLine color={theme.palette.primary.main} />
+													<SparklinesSpots />
+												</Sparklines>
+											) : null}
+										</Box>
+									</Box>
 								</TableCell>
-								<TableCell align="right">
-									{io.write_latency_ms?.toFixed(2)}
+								<TableCell align="right" sx={{ minWidth: 150 }}>
+									<Box
+										sx={{
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "flex-end",
+										}}
+									>
+										<Typography
+											variant="body2"
+											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+										>
+											{io.write_iops?.toFixed(2)}
+										</Typography>
+										<Box sx={{ width: 50, height: 20 }}>
+											{(diskIoHistory[io.device_name]?.write_iops?.length || 0) > 1 ? (
+												<Sparklines
+													data={diskIoHistory[io.device_name].write_iops}
+													limit={MAX_HISTORY_LENGTH}
+													width={60}
+													height={20}
+													min={0}
+												>
+													<SparklinesLine color={theme.palette.primary.main} />
+													<SparklinesSpots />
+												</Sparklines>
+											) : null}
+										</Box>
+									</Box>
 								</TableCell>
-								<TableCell align="right">
-									{io.smart_data?.temperature ? `${io.smart_data.temperature}°C` : "N/A"}
+								<TableCell align="right" sx={{ minWidth: 150 }}>
+									<Box
+										sx={{
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "flex-end",
+										}}
+									>
+										<Typography
+											variant="body2"
+											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+										>
+											{io.read_latency_ms?.toFixed(2)}
+										</Typography>
+										<Box sx={{ width: 50, height: 20 }}>
+											{(diskIoHistory[io.device_name]?.read_latency_ms?.length || 0) > 1 ? (
+												<Sparklines
+													data={diskIoHistory[io.device_name].read_latency_ms}
+													limit={MAX_HISTORY_LENGTH}
+													width={60}
+													height={20}
+													min={0}
+												>
+													<SparklinesLine color={theme.palette.primary.main} />
+													<SparklinesSpots />
+												</Sparklines>
+											) : null}
+										</Box>
+									</Box>
+								</TableCell>
+								<TableCell align="right" sx={{ minWidth: 150 }}>
+									<Box
+										sx={{
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "flex-end",
+										}}
+									>
+										<Typography
+											variant="body2"
+											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+										>
+											{io.write_latency_ms?.toFixed(2)}
+										</Typography>
+										<Box sx={{ width: 50, height: 20 }}>
+											{(diskIoHistory[io.device_name]?.write_latency_ms?.length || 0) > 1 ? (
+												<Sparklines
+													data={diskIoHistory[io.device_name].write_latency_ms}
+													limit={MAX_HISTORY_LENGTH}
+													width={60}
+													height={20}
+													min={0}
+												>
+													<SparklinesLine color={theme.palette.primary.main} />
+													<SparklinesSpots />
+												</Sparklines>
+											) : null}
+										</Box>
+									</Box>
+								</TableCell>
+								<TableCell align="right" sx={{ minWidth: 150 }}>
+									<Box
+										sx={{
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "flex-end",
+										}}
+									>
+										<Typography
+											variant="body2"
+											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+										>
+											{io.smart_data?.temperature ? `${io.smart_data.temperature}°C` : "N/A"}
+										</Typography>
+										<Box sx={{ width: 50, height: 20 }}>
+											{(diskIoHistory[io.device_name]?.temperature?.length || 0) > 1 ? (
+												<Sparklines
+													data={diskIoHistory[io.device_name].temperature}
+													limit={MAX_HISTORY_LENGTH}
+													width={60}
+													height={20}
+													min={0}
+												>
+													<SparklinesLine color={theme.palette.primary.main} />
+													<SparklinesSpots />
+												</Sparklines>
+											) : null}
+										</Box>
+									</Box>
 								</TableCell>
 							</TableRow>
 						))}
