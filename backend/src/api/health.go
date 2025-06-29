@@ -167,18 +167,21 @@ func (self *HealthHanler) run() error {
 			diskStats, err := self.diskStatsService.GetDiskStats()
 			if err != nil {
 				slog.Error("Error getting disk stats for health ping", "err", err)
+				self.HealthPing.DiskHealth = nil
 			} else {
 				self.HealthPing.DiskHealth = diskStats
 			}
 			netStats, err := self.networkStatsService.GetNetworkStats()
 			if err != nil {
 				slog.Error("Error getting network stats for health ping", "err", err)
+				self.HealthPing.NetworkHealth = nil
 			} else {
 				self.HealthPing.NetworkHealth = netStats
 			}
 			sambaStatus, err := self.sambaService.GetSambaStatus()
 			if err != nil {
 				slog.Error("Error getting samba status for health ping", "err", err)
+				self.HealthPing.SambaStatus = nil
 			} else {
 				self.HealthPing.SambaStatus = sambaStatus
 			}
