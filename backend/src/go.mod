@@ -25,7 +25,7 @@ require (
 	github.com/jarcoal/httpmock v1.4.0
 	github.com/m1/go-generate-password v0.2.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/prometheus/procfs v0.15.1
+	github.com/prometheus/procfs v0.16.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
@@ -69,7 +69,7 @@ require (
 require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.3.1
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/danielgtaylor/mexpr v1.9.1 // indirect
@@ -142,7 +142,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.1
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250627080240-8a2eca0f333a
+	github.com/snapcore/snapd v0.0.0-20250627163303-db5fb67b68a9
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
@@ -163,5 +163,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
