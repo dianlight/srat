@@ -57,7 +57,7 @@ require (
 	github.com/rogpeppe/gohack v1.0.2 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect
-	github.com/zarldev/goenums v0.4.0 // indirect
+	github.com/zarldev/goenums v0.4.3 // indirect
 	go.opentelemetry.io/otel v1.36.0 // indirect
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
 	golang.org/x/tools/go/vcs v0.1.0-deprecated // indirect
@@ -142,7 +142,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.1
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250627163303-db5fb67b68a9
+	github.com/snapcore/snapd v0.0.0-20250630071836-6370f51bfd64
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
