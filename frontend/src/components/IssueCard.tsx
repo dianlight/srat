@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, Typography, Button, Box, Link } from '@mui/material';
-import type { Issue } from '../store/sratApi';
+import type { Issugit config --local commit.gpgsign falsee } from '../store/sratApi';
 
 interface IssueCardProps {
   issue: Issue;
