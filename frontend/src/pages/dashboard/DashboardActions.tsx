@@ -66,6 +66,9 @@ export function DashboardActions() {
 				<Typography variant="h6">Actionable Items</Typography>
 			</AccordionSummary>
 			<AccordionDetails>
+				{issues && issues.map((issue) => (
+					<IssueCard key={issue.id} issue={issue} onResolve={handleResolveIssue} />
+				))}
 				<ActionableItemsList
 					actionablePartitions={actionablePartitions}
 					isLoading={isLoading}

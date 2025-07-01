@@ -14,6 +14,8 @@ This project appears to be a web application with a Go backend and a JavaScript/
 
 - The backend uses Go modules for dependency management (`go.mod`).
 - The frontend uses `bun` for package management (`bun.lockb`, `package.json`).
+- To update the frontend client (`sratApi.ts`) first need to update backend's openapi docs (`openapi.yaml`,`openapi.json`) with  `make -C backend gen` and then the client with  `cd frontend && bun gen`
+- Use also backend and frontend lint to check the code 
 
 ## Commit structure
 
