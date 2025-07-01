@@ -1,9 +1,12 @@
 #!/bin/bash
 
+if [[ "${GIT_REFLOG_ACTION}" =~ "rebase".*"reword" ]]; then
+    exit 0
+fi
+
 # This script is designed to be used as a pre-commit hook.
 # It removes 'replace' directives from go.mod if go.mod is staged for commit.
 # It saves the original go.mod to a temporary file for post-commit restoration.
-echo $1
 
 GO_MOD_FILE="backend/src/go.mod"
 TEMP_GO_MOD_ORIGINAL="/tmp/go.mod.original.$$" # Unique temp file for this run

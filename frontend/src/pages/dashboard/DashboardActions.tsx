@@ -9,13 +9,17 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useReadOnly } from "../../hooks/readonlyHook";
 import { useVolume } from "../../hooks/volumeHook";
-import type { Partition } from "../../store/sratApi";
+import { useGetApiIssuesQuery, type Issue, type Partition } from "../../store/sratApi";
 import { ActionableItemsList } from "./components/ActionableItemsList";
+import IssueCard from "../../components/IssueCard";
 
 export function DashboardActions() {
 	const { disks, isLoading, error } = useVolume();
 	const read_only = useReadOnly();
 	const _navigate = useNavigate();
+
+
+	const  { data: issues, isLoading: is_inLoading } = useGetApiIssuesQuery()
 
 	const actionablePartitions = useMemo(() => {
 		const partitions: { partition: Partition; action: "mount" | "share" }[] =
@@ -53,10 +57,14 @@ export function DashboardActions() {
 		return partitions;
 	}, [disks, read_only]);
 
+	function handleResolveIssue(id: number): void {
+		throw new Error("Function not implemented.");
+	}
+
 	return (
 		<Accordion
-			key={isLoading ? "loading" : "loaded"}
-			defaultExpanded={!isLoading && !error && actionablePartitions.length > 0}
+			key={(isLoading || is_inLoading)? "loading" : "loaded"}
+			defaultExpanded={!isLoading && !error && (actionablePartitions.length+(issues as Issue[])?.length||0) > 0}
 		>
 			<AccordionSummary
 				expandIcon={<ExpandMoreIcon />}
@@ -66,6 +74,11 @@ export function DashboardActions() {
 				<Typography variant="h6">Actionable Items</Typography>
 			</AccordionSummary>
 			<AccordionDetails>
+				{!is_inLoading && issues && Array.isArray(issues) &&
+					issues.map((issue) => (
+						<IssueCard key={issue.id} issue={issue} onResolve={handleResolveIssue} />
+					))
+				}
 				<ActionableItemsList
 					actionablePartitions={actionablePartitions}
 					isLoading={isLoading}

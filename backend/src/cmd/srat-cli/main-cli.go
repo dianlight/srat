@@ -250,6 +250,7 @@ func main() {
 			samba_service service.SambaServiceInterface,
 			supervisor_service service.SupervisorServiceInterface,
 			upgrade_service service.UpgradeServiceInterface,
+			apiContext *dto.ContextState,
 		) {
 			// Setting the actual LogLevel
 			err := props_repo.SetValue("LogLevel", *logLevelString) // Use existing err
@@ -292,29 +293,33 @@ func main() {
 				slog.Info("******* Autocreating users done! ********")
 
 				// Automount all volumes
-				slog.Info("******* Automounting all shares! ********")
-				all, err := mount_repo.All()
-				if err != nil {
-					log.Fatalf("Cant load mounts - %#+v", err)
-				}
-				for _, mnt := range all {
-					if mnt.Type == "ADDON" && *mnt.IsToMountAtStartup {
-						slog.Info("Automounting share", "path", mnt.Path)
-						conv := converter.DtoToDbomConverterImpl{}
-						mpd := dto.MountPointData{}
-						conv.MountPointPathToMountPointData(mnt, &mpd)
-						err := volume_service.MountVolume(&mpd)
-						if err != nil {
-							if errors.Is(err, dto.ErrorAlreadyMounted) {
-								slog.Info("Share already mounted", "path", mnt.Path)
-							} else {
-								slog.Error("Error automounting share", "path", mnt.Path, "err", err)
-							}
-						}
-						slog.Debug("Share automounted", "path", mnt.Path)
+				if !apiContext.ProtectedMode {
+					slog.Info("******* Automounting all shares! ********")
+					all, err := mount_repo.All()
+					if err != nil {
+						log.Fatalf("Cant load mounts - %#+v", err)
 					}
+					for _, mnt := range all {
+						if mnt.Type == "ADDON" && mnt.IsToMountAtStartup != nil && *mnt.IsToMountAtStartup {
+							slog.Info("Automounting share", "path", mnt.Path)
+							conv := converter.DtoToDbomConverterImpl{}
+							mpd := dto.MountPointData{}
+							conv.MountPointPathToMountPointData(mnt, &mpd)
+							err := volume_service.MountVolume(&mpd)
+							if err != nil {
+								if errors.Is(err, dto.ErrorAlreadyMounted) {
+									slog.Info("Share already mounted", "path", mnt.Path)
+								} else {
+									slog.Error("Error automounting share", "path", mnt.Path, "err", err)
+								}
+							}
+							slog.Debug("Share automounted", "path", mnt.Path)
+						}
+					}
+					slog.Info("******* Automounting all shares done! ********")
+				} else {
+					slog.Info("******* Protected mode is ON, skipping automounting shares! ********")
 				}
-				slog.Info("******* Automounting all shares done! ********")
 
 				// Apply config to samba
 				slog.Info("******* Applying Samba config ********")

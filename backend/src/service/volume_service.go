@@ -98,6 +98,12 @@ func NewVolumeService(
 }
 
 func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
+	if ms.staticConfig.ProtectedMode {
+		return errors.WithDetails(dto.ErrorOperationNotPermittedInProtectedMode,
+			"Operation", "MountVolume",
+			"Detail", "Mount operation is not permitted when ProtectedMode is enabled.",
+		)
+	}
 
 	if md.Path == "" {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
