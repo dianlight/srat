@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, Typography, Button, Box, Link } from '@mui/material';
-import type { Issugit config --local commit.gpgsign falsee } from '../store/sratApi';
+import type { Issue } from '../store/sratApi';
 
 interface IssueCardProps {
   issue: Issue;
@@ -9,7 +9,7 @@ interface IssueCardProps {
 
 const IssueCard: React.FC<IssueCardProps> = ({ issue, onResolve }) => {
   return (
-    <Card sx={{ mb: 2, backgroundColor: '#f8d7da', border: '1px solid #f5c6cb' }}>
+    <Card sx={{ mb: 2 }}>
       <CardContent>
         <Typography variant="h6" component="div">
           {issue.title}
