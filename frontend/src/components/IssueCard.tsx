@@ -9,7 +9,7 @@ interface IssueCardProps {
 
 const IssueCard: React.FC<IssueCardProps> = ({ issue, onResolve }) => {
   return (
-    <Card sx={{ mb: 2 }}>
+    <Card sx={{ mb: 2, backgroundColor: '#f8d7da', border: '1px solid #f5c6cb' }}>
       <CardContent>
         <Typography variant="h6" component="div">
           {issue.title}
