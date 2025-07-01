@@ -15,8 +15,8 @@
   "commitSage.commit.onlyStagedChanges": true,
   "commitSage.commit.promptForRefs": true,
   "commitSage.gemini.model": "gemini-2.0-flash-exp",
-  "geminicodeassist.beta.enableGeneratedCodeDocumentationView": true,
   "geminicodeassist.codeGenerationPaneViewEnabled": true,
+  "geminicodeassist.updateChannel": "Insiders",
   "remote.localPortHost": "allInterfaces",
   "typescript.inlayHints.parameterTypes.enabled": true,
   "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
@@ -39,5 +39,5 @@
     "source.action.useSortedKeys.biome": "explicit",
     "source.fixAll.biome": "explicit",
   },
-  "biome.lsp.bin": "/root/.bun/bin/biome"
+  "biome.requireConfiguration": true
 }
