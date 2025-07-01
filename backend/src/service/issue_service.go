@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"go.uber.org/fx"
@@ -9,12 +10,12 @@ import (
 // IssueService handles business logic for issues.
 type IssueService struct {
 	repo      *repository.IssueRepository
-	converter IssueToDtoConverter
+	converter converter.IssueToDtoConverterImpl
 }
 
 // NewIssueService creates a new issue service.
-func NewIssueService(repo *repository.IssueRepository, converter IssueToDtoConverter) *IssueService {
-	return &IssueService{repo: repo, converter: converter}
+func NewIssueService(repo *repository.IssueRepository) *IssueService {
+	return &IssueService{repo: repo, converter: converter.IssueToDtoConverterImpl{}}
 }
 
 // Create creates a new issue.

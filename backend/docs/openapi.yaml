@@ -361,6 +361,37 @@ components:
         - flags
         - addrs
       type: object
+    Issue:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Issue.json
+          format: uri
+          readOnly: true
+          type: string
+        date:
+          format: date-time
+          type: string
+        description:
+          type: string
+        detailLink:
+          type: string
+        id:
+          format: int64
+          minimum: 0
+          type: integer
+        resolutionLink:
+          type: string
+        title:
+          type: string
+      required:
+        - id
+        - date
+        - title
+        - description
+      type: object
     JsonPatchOp:
       additionalProperties: false
       properties:
@@ -598,6 +629,17 @@ components:
         arch_asset:
           $ref: "#/components/schemas/BinaryAsset"
         last_release:
+          type: string
+      type: object
+    ResolveIssueOutputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ResolveIssueOutputBody.json
+          format: uri
+          readOnly: true
           type: string
       type: object
     SambaProcessStatus:
@@ -1056,6 +1098,112 @@ info:
   version: 1.0.0
 openapi: 3.1.0
 paths:
+  /api/issues:
+    get:
+      operationId: get-issues
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Issue"
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get all open issues
+      tags:
+        - Issues
+    post:
+      operationId: create-issue
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Issue"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Create a new issue
+      tags:
+        - Issues
+  /api/issues/{id}:
+    delete:
+      operationId: resolve-issue
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            format: int64
+            minimum: 0
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResolveIssueOutputBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Resolve an issue
+      tags:
+        - Issues
+    put:
+      operationId: update-issue
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            format: int64
+            minimum: 0
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Issue"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Update an issue
+      tags:
+        - Issues
   /filesystems:
     get:
       operationId: list-filesystems

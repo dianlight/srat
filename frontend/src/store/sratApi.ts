@@ -1,5 +1,6 @@
 import { emptySplitApi as api } from "./emptyApi";
 export const addTagTypes = [
+  "Issues",
   "system",
   "samba",
   "share",
@@ -12,6 +13,42 @@ const injectedRtkApi = api
   })
   .injectEndpoints({
     endpoints: (build) => ({
+      getApiIssues: build.query<GetApiIssuesApiResponse, GetApiIssuesApiArg>({
+        query: () => ({ url: `/api/issues` }),
+        providesTags: ["Issues"],
+      }),
+      postApiIssues: build.mutation<
+        PostApiIssuesApiResponse,
+        PostApiIssuesApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/issues`,
+          method: "POST",
+          body: queryArg.issue,
+        }),
+        invalidatesTags: ["Issues"],
+      }),
+      deleteApiIssuesById: build.mutation<
+        DeleteApiIssuesByIdApiResponse,
+        DeleteApiIssuesByIdApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/issues/${queryArg.id}`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["Issues"],
+      }),
+      putApiIssuesById: build.mutation<
+        PutApiIssuesByIdApiResponse,
+        PutApiIssuesByIdApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/issues/${queryArg.id}`,
+          method: "PUT",
+          body: queryArg.issue,
+        }),
+        invalidatesTags: ["Issues"],
+      }),
       getFilesystems: build.query<
         GetFilesystemsApiResponse,
         GetFilesystemsApiArg
@@ -277,6 +314,29 @@ const injectedRtkApi = api
     overrideExisting: false,
   });
 export { injectedRtkApi as sratApi };
+export type GetApiIssuesApiResponse =
+  | /** status 200 OK */ (Issue[] | null)
+  | /** status default Error */ ErrorModel;
+export type GetApiIssuesApiArg = void;
+export type PostApiIssuesApiResponse = /** status 200 OK */
+  | Issue
+  | /** status default Error */ ErrorModel;
+export type PostApiIssuesApiArg = {
+  issue: Issue;
+};
+export type DeleteApiIssuesByIdApiResponse = /** status 200 OK */
+  | ResolveIssueOutputBody
+  | /** status default Error */ ErrorModel;
+export type DeleteApiIssuesByIdApiArg = {
+  id: number;
+};
+export type PutApiIssuesByIdApiResponse = /** status 200 OK */
+  | Issue
+  | /** status default Error */ ErrorModel;
+export type PutApiIssuesByIdApiArg = {
+  id: number;
+  issue: Issue;
+};
 export type GetFilesystemsApiResponse =
   | /** status 200 OK */ (FilesystemType[] | null)
   | /** status default Error */ ErrorModel;
@@ -505,19 +565,15 @@ export type GetVolumesApiResponse =
   | /** status 200 OK */ (Disk[] | null)
   | /** status default Error */ ErrorModel;
 export type GetVolumesApiArg = void;
-export type MountFlag = {
-  description?: string;
-  name: string;
-  needsValue?: boolean;
-  value?: string;
-  value_description?: string;
-  value_validation_regex?: string;
-};
-export type FilesystemType = {
-  customMountFlags: MountFlag[] | null;
-  mountFlags: MountFlag[] | null;
-  name: string;
-  type: string;
+export type Issue = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  date: string;
+  description: string;
+  detailLink?: string;
+  id: number;
+  resolutionLink?: string;
+  title: string;
 };
 export type ErrorDetail = {
   /** Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -542,6 +598,24 @@ export type ErrorModel = {
   title?: string;
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
+};
+export type ResolveIssueOutputBody = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+};
+export type MountFlag = {
+  description?: string;
+  name: string;
+  needsValue?: boolean;
+  value?: string;
+  value_description?: string;
+  value_validation_regex?: string;
+};
+export type FilesystemType = {
+  customMountFlags: MountFlag[] | null;
+  mountFlags: MountFlag[] | null;
+  name: string;
+  type: string;
 };
 export type AddonStatsData = {
   blk_read?: number;
@@ -894,6 +968,10 @@ export enum Update_process_state {
   Error = "Error",
 }
 export const {
+  useGetApiIssuesQuery,
+  usePostApiIssuesMutation,
+  useDeleteApiIssuesByIdMutation,
+  usePutApiIssuesByIdMutation,
   useGetFilesystemsQuery,
   useGetHealthQuery,
   useGetHostnameQuery,

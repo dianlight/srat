@@ -22,7 +22,7 @@ func NewIssueAPI(service *service.IssueService) *IssueAPI {
 }
 
 // GetIssuesInput defines the input for getting issues.
-type GetIssuesInput struct {}
+type GetIssuesInput struct{}
 
 // GetIssuesOutput defines the output for getting issues.
 type GetIssuesOutput struct {
@@ -51,7 +51,7 @@ type ResolveIssueOutput struct {
 
 // UpdateIssueInput defines the input for updating an issue.
 type UpdateIssueInput struct {
-	ID uint `path:"id"`
+	ID   uint `path:"id"`
 	Body dto.Issue
 }
 
@@ -61,7 +61,7 @@ type UpdateIssueOutput struct {
 }
 
 // Register registers the issue API endpoints.
-func (a *IssueAPI) Register(api huma.API) {
+func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "get-issues",
 		Summary:     "Get all open issues",

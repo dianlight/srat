@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2025.6.10-dev.7",
+  "version": "2025.6.10-dev.13",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -68,7 +68,7 @@
   "scripts": {
     "nextversion": "bun run version.ts -i alpha",
     "version": "bun run version.ts",
-    "build": "bun run bun.build.ts",
+    "build": "bun tsc --noEmit && bun run bun.build.ts",
     "watch": "bun run bun.build.ts -w",
     "gowatch": "bun run bun.build.ts -w -o ../backend/src/web/static",
     "clean": "rm -rf out",
