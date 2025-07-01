@@ -73,11 +73,13 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewDiskStatsService,
 		service.NewNetworkStatsService,
 		service.NewSmartService,
+		service.NewIssueService,
 
 		repository.NewMountPointPathRepository,
 		repository.NewExportedShareRepository,
 		repository.NewPropertyRepositoryRepository,
 		repository.NewSambaUserRepository,
+		repository.NewIssueRepository,
 	)
 }
 
