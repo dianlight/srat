@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [[ "${GIT_REFLOG_ACTION}" =~ "rebase".*"reword" ]]; then
+    exit 0
+fi
+
 # This script is designed to be used as a post-commit hook.
 # It restores the original go.mod content from a temporary file
 # if it was modified by the pre-commit hook.

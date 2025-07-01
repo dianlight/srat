@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+if [[ "${GIT_REFLOG_ACTION}" =~ "rebase".*"reword" ]]; then
+    exit 0
+fi
+
 PACKAGE_JSON_PATH="frontend/package.json"
 
 # Ensure the script is run from the repository root
