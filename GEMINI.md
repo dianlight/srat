@@ -13,8 +13,9 @@ This project appears to be a web application with a Go backend and a JavaScript/
 ## Development Environment
 
 - The backend uses Go modules for dependency management (`go.mod`).
+  - All goverter interface must be in the converter packages
 - The frontend uses `bun` for package management (`bun.lockb`, `package.json`).
-- To update the frontend client (`sratApi.ts`) first need to update backend's openapi docs (`openapi.yaml`,`openapi.json`) with  `make -C backend gen` and then the client with  `cd frontend && bun gen`
+  - To update the frontend client (`sratApi.ts`) first need to update backend's openapi docs (`openapi.yaml`,`openapi.json`) with  `make -C backend gen` and then the client with  `cd frontend && bun gen`
 - Use also backend and frontend lint to check the code 
 
 ## Commit structure
@@ -35,7 +36,7 @@ Guidelines:
      - Use bullet points (`*`) for clarity.
      - Clearly describe the motivation, context, or technical details behind the change, if applicable.
      
-Commit messages should be clear, informative, and professional, aiding readability and project tracking."
+Commit messages should be clear, informative, and professional, aiding readability and project tracking.
 
 ## Build & Test Commands
 
@@ -52,7 +53,7 @@ Commit messages should be clear, informative, and professional, aiding readabili
 - **Frontend:**
   - To install dependencies: `cd frontend && bun install`
   - To generate code: `cd frontend && bun gen`
-  - To build: `cd frontend && bun build`
+  - To build: `cd frontend && bun run build`
   - To test: `cd frontend && bun test`
   - To lint: `cd frontend && bun lint`
 
