@@ -13,7 +13,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.25.5
+	github.com/shirou/gopsutil/v4 v4.25.6
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/sys v0.33.0 // indirect
 )
@@ -29,7 +29,7 @@ require (
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
-	gorm.io/datatypes v1.2.5
+	gorm.io/datatypes v1.2.6
 )
 
 require (
@@ -135,14 +135,14 @@ require (
 )
 
 require (
-	github.com/danielgtaylor/huma/v2 v2.33.0
+	github.com/danielgtaylor/huma/v2 v2.34.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/itchyny/gojq v0.12.17
 	github.com/lmittmann/tint v1.1.2
 	github.com/ovechkin-dm/mockio/v2 v2.0.1
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250630122025-242926542c19
+	github.com/snapcore/snapd v0.0.0-20250701072420-982e0cb88bec
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
