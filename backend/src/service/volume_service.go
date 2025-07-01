@@ -432,7 +432,7 @@ func (self *VolumeService) udevEventHandler() {
 	queue := make(chan netlink.UEvent, 10) // Added buffer to queue
 	errorChan := make(chan error, 1)       // Renamed and buffered error channel
 	quit := conn.Monitor(queue, errorChan, nil /*matcher*/)
-	slog.Info("Udev monitor started successfully.")
+	tlog.Trace("Udev monitor started successfully.")
 
 	// Handling message from queue
 	for {
@@ -546,11 +546,25 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 			}
 			for partIdx := range *disk.Partitions {
 				partition := &(*disk.Partitions)[partIdx]
+
+				if partition.Device == nil || *partition.Device == "" {
+					slog.Debug("Skipping partition with nil or empty device path", "disk_id", disk.Id, "partition_index", partIdx)
+					continue
+				}
+
 				if partition.MountPointData == nil || len(*partition.MountPointData) == 0 {
 					info, errLsblk := self.lsblk.GetInfoFromDevice(*partition.Device)
 					if errLsblk != nil {
-						slog.Warn("Error getting info from device", "device", *partition.Device, "err", errLsblk)
-						continue
+						if errors.Is(errLsblk, lsblk.DeviceNotFound) {
+							slog.Warn("Device not found in Lsblk", "device", *partition.Device)
+							continue
+						} else if errors.Is(errLsblk, lsblk.NoPermission) {
+							slog.Warn("No permission to access device in Lsblk", "device", *partition.Device, "device", *partition.Device)
+							continue
+						} else {
+							slog.Warn("Error getting info from device", "device", *partition.Device, "err", errLsblk)
+							continue
+						}
 					}
 					mountPointDto := &dto.MountPointData{}
 					errConvLsblk := lsblkconv.LsblkInfoToMountPointData(info, mountPointDto)

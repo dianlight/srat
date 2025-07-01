@@ -20,6 +20,7 @@ require (
 
 require (
 	github.com/anatol/smart.go v0.0.0-20241126061019-f03d79b340d2
+	github.com/danielgtaylor/huma/v2 v2.34.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf
 	github.com/jarcoal/httpmock v1.4.0
@@ -39,7 +40,6 @@ require (
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
 	github.com/bep/golibsass v1.2.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
-	github.com/danielgtaylor/huma/v2 v2.34.0 // indirect
 	github.com/dave/jennifer v1.6.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -136,7 +136,6 @@ require (
 )
 
 require (
-	github.com/danielgtaylor/huma/v2 v2.34.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/itchyny/gojq v0.12.17
 	github.com/lmittmann/tint v1.1.2
