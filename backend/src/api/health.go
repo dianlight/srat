@@ -45,7 +45,7 @@ type HealthHandlerParams struct {
 	DiskStatsService   service.DiskStatsService
 }
 
-func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
+func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler {
 	_healthHanlerIntanceMutex.Lock()
 	defer _healthHanlerIntanceMutex.Unlock()
 	if _healthHanlerIntance != nil {
@@ -75,11 +75,17 @@ func NewHealthHandler(param HealthHandlerParams) *HealthHanler {
 		p.OutputEventsInterleave = 5 * time.Second
 	}
 	p.ProtectedMode = param.Apictx.ProtectedMode
-	param.Ctx.Value("wg").(*sync.WaitGroup).Add(1)
-	go func() {
-		defer param.Ctx.Value("wg").(*sync.WaitGroup).Done()
-		p.run()
-	}()
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
+			go func() {
+				defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+				p.run()
+			}()
+			return nil
+		},
+	})
 	_healthHanlerIntance = p
 	return p
 }

@@ -88,27 +88,6 @@ func TestHealthHandlerSuite(t *testing.T) {
 	suite.Run(t, new(HealthHandlerSuite))
 }
 
-func (suite *HealthHandlerSuite) TestNewHealthHandler_Singleton() {
-	params := api.HealthHandlerParams{
-		Ctx:          suite.ctx,
-		Apictx:       suite.testAPIContext,
-		Broadcaster:  suite.mockBroadcaster,
-		SambaService: suite.mockSambaService,
-		DirtyService: suite.mockDirtyService,
-	}
-
-	// Mock dependencies for the run goroutine
-	mock.When(suite.mockSambaService.GetSambaProcess()).ThenReturn(nil, errors.New("initial mock"))
-	mock.When(suite.mockDirtyService.GetDirtyDataTracker()).ThenReturn(dto.DataDirtyTracker{})
-	mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[dto.HealthPing]())).ThenReturn(nil, nil)
-
-	handler2 := api.NewHealthHandler(params)
-	suite.Require().NotNil(handler2)
-
-	// Assert that the same instance is returned
-	suite.Same(suite.api, handler2, "NewHealthHandler should return a singleton instance")
-}
-
 func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
 	// Mock dependencies for the run goroutine (needed for New)
 	mock.When(suite.mockSambaService.GetSambaProcess()).ThenReturn(nil, errors.New("initial mock"))

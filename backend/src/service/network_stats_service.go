@@ -9,10 +9,10 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
-	"github.com/dianlight/srat/tlog"
 	"github.com/prometheus/procfs"
 	"github.com/prometheus/procfs/sysfs"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 )
 
 // NetworkStatsService is a service for collecting network I/O statistics.
@@ -32,15 +32,15 @@ type networkStatsService struct {
 }
 
 // NewNetworkStatsService creates a new NetworkStatsService.
-func NewNetworkStatsService(Ctx context.Context, prop_repo repository.PropertyRepositoryInterface) NetworkStatsService {
+func NewNetworkStatsService(lc fx.Lifecycle, Ctx context.Context, prop_repo repository.PropertyRepositoryInterface) NetworkStatsService {
 	fs, err := procfs.NewFS("/proc")
 	if err != nil {
-		tlog.Error("Failed to create procfs filesystem", "error", err)
+		slog.Error("Failed to create procfs filesystem", "error", err)
 	}
 
 	sfs, err := sysfs.NewFS("/sys")
 	if err != nil {
-		tlog.Error("Failed to create sysfs filesystem", "error", err)
+		slog.Error("Failed to create sysfs filesystem", "error", err)
 	}
 
 	ns := &networkStatsService{
@@ -52,11 +52,20 @@ func NewNetworkStatsService(Ctx context.Context, prop_repo repository.PropertyRe
 		updateMutex:    &sync.Mutex{},
 		lastStats:      make(map[string]procfs.NetDevLine),
 	}
-	Ctx.Value("wg").(*sync.WaitGroup).Add(1)
-	go func() {
-		defer Ctx.Value("wg").(*sync.WaitGroup).Done()
-		ns.run()
-	}()
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			Ctx.Value("wg").(*sync.WaitGroup).Add(1)
+			err := ns.updateNetworkStats()
+			if err != nil {
+				slog.Error("Failed to update network stats", "error", err)
+			}
+			go func() {
+				defer Ctx.Value("wg").(*sync.WaitGroup).Done()
+				ns.run()
+			}()
+			return nil
+		},
+	})
 	return ns
 }
 
@@ -69,7 +78,7 @@ func (self *networkStatsService) run() error {
 		case <-time.After(time.Second * 10):
 			err := self.updateNetworkStats()
 			if err != nil {
-				tlog.Error("Failed to update network stats", "error", err)
+				slog.Error("Failed to update network stats", "error", err)
 				continue
 			}
 		}

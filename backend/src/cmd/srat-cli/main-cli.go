@@ -240,6 +240,7 @@ func main() {
 			}
 		}),
 		fx.Invoke(func(
+			lc fx.Lifecycle,
 			mount_repo repository.MountPointPathRepositoryInterface,
 			props_repo repository.PropertyRepositoryInterface,
 			exported_share_repo repository.ExportedShareRepositoryInterface,
@@ -252,169 +253,175 @@ func main() {
 			upgrade_service service.UpgradeServiceInterface,
 			apiContext *dto.ContextState,
 		) {
-			// Setting the actual LogLevel
-			err := props_repo.SetValue("LogLevel", *logLevelString) // Use existing err
-			if err != nil {
-				log.Fatalf("Cant set log level - %#+v", err)
-			}
-
-			if command == "start" {
-				// Autocreate users
-				slog.Info("******* Autocreating users ********")
-				_ha_mount_user_password_, err := props_repo.Value("_ha_mount_user_password_", true)
-				if err != nil {
-					log.Fatalf("Cant get password for _ha_mount_user_ user - %#+v", err)
-				}
-				err = unixsamba.CreateSambaUser("_ha_mount_user_", _ha_mount_user_password_.(string), unixsamba.UserOptions{
-					CreateHome:    false,
-					SystemAccount: false,
-					Shell:         "/sbin/nologin",
-				})
-				if err != nil {
-					log.Fatalf("Cant create samba user %#+v", err)
-				}
-				users, err := samba_user_repo.All()
-				if err != nil {
-					log.Fatalf("Cant load users - %#+v", err)
-				}
-				for _, user := range users {
-					slog.Info("Autocreating user", "name", user.Username)
-					err = unixsamba.CreateSambaUser(user.Username, user.Password, unixsamba.UserOptions{
-						CreateHome:    false,
-						SystemAccount: false,
-						Shell:         "/sbin/nologin",
-					})
+			lc.Append(fx.Hook{
+				OnStart: func(ctx context.Context) error {
+					// Setting the actual LogLevel
+					err := props_repo.SetValue("LogLevel", *logLevelString) // Use existing err
 					if err != nil {
-						slog.Error("Error autocreating user", "name", user.Username, "err", err)
-					} else {
-						slog.Info("User created successfully", "name", user.Username)
+						log.Fatalf("Cant set log level - %#+v", err)
 					}
-				}
-				slog.Info("******* Autocreating users done! ********")
 
-				// Automount all volumes
-				if !apiContext.ProtectedMode {
-					slog.Info("******* Automounting all shares! ********")
-					all, err := mount_repo.All()
-					if err != nil {
-						log.Fatalf("Cant load mounts - %#+v", err)
-					}
-					for _, mnt := range all {
-						if mnt.Type == "ADDON" && mnt.IsToMountAtStartup != nil && *mnt.IsToMountAtStartup {
-							slog.Info("Automounting share", "path", mnt.Path)
-							conv := converter.DtoToDbomConverterImpl{}
-							mpd := dto.MountPointData{}
-							conv.MountPointPathToMountPointData(mnt, &mpd)
-							err := volume_service.MountVolume(&mpd)
+					if command == "start" {
+						// Autocreate users
+						slog.Info("******* Autocreating users ********")
+						_ha_mount_user_password_, err := props_repo.Value("_ha_mount_user_password_", true)
+						if err != nil {
+							log.Fatalf("Cant get password for _ha_mount_user_ user - %#+v", err)
+						}
+						err = unixsamba.CreateSambaUser("_ha_mount_user_", _ha_mount_user_password_.(string), unixsamba.UserOptions{
+							CreateHome:    false,
+							SystemAccount: false,
+							Shell:         "/sbin/nologin",
+						})
+						if err != nil {
+							log.Fatalf("Cant create samba user %#+v", err)
+						}
+						users, err := samba_user_repo.All()
+						if err != nil {
+							log.Fatalf("Cant load users - %#+v", err)
+						}
+						for _, user := range users {
+							slog.Info("Autocreating user", "name", user.Username)
+							err = unixsamba.CreateSambaUser(user.Username, user.Password, unixsamba.UserOptions{
+								CreateHome:    false,
+								SystemAccount: false,
+								Shell:         "/sbin/nologin",
+							})
 							if err != nil {
-								if errors.Is(err, dto.ErrorAlreadyMounted) {
-									slog.Info("Share already mounted", "path", mnt.Path)
-								} else {
-									slog.Error("Error automounting share", "path", mnt.Path, "err", err)
+								slog.Error("Error autocreating user", "name", user.Username, "err", err)
+							} else {
+								slog.Info("User created successfully", "name", user.Username)
+							}
+						}
+						slog.Info("******* Autocreating users done! ********")
+
+						// Automount all volumes
+						if !apiContext.ProtectedMode {
+							slog.Info("******* Automounting all shares! ********")
+							all, err := mount_repo.All()
+							if err != nil {
+								log.Fatalf("Cant load mounts - %#+v", err)
+							}
+							for _, mnt := range all {
+								if mnt.Type == "ADDON" && mnt.IsToMountAtStartup != nil && *mnt.IsToMountAtStartup {
+									slog.Info("Automounting share", "path", mnt.Path)
+									conv := converter.DtoToDbomConverterImpl{}
+									mpd := dto.MountPointData{}
+									conv.MountPointPathToMountPointData(mnt, &mpd)
+									err := volume_service.MountVolume(&mpd)
+									if err != nil {
+										if errors.Is(err, dto.ErrorAlreadyMounted) {
+											slog.Info("Share already mounted", "path", mnt.Path)
+										} else {
+											slog.Error("Error automounting share", "path", mnt.Path, "err", err)
+										}
+									}
+									slog.Debug("Share automounted", "path", mnt.Path)
 								}
 							}
-							slog.Debug("Share automounted", "path", mnt.Path)
+							slog.Info("******* Automounting all shares done! ********")
+						} else {
+							slog.Info("******* Protected mode is ON, skipping automounting shares! ********")
 						}
-					}
-					slog.Info("******* Automounting all shares done! ********")
-				} else {
-					slog.Info("******* Protected mode is ON, skipping automounting shares! ********")
-				}
 
-				// Apply config to samba
-				slog.Info("******* Applying Samba config ********")
-				err = samba_service.WriteAndRestartSambaConfig()
-				if err != nil {
-					log.Fatalf("Cant apply samba config - %#+v", err)
-				}
-				slog.Info("******* Samba config applied! ********")
-			} else if command == "stop" {
-				slog.Info("******* Unmounting all shares from Homeassistant ********")
-				// remount network share on ha_core
-				shares, err := exported_share_repo.All()
-				if err != nil {
-					log.Fatalf("Can't get Shares - %#+v", err)
-				}
-
-				for _, share := range *shares {
-					if share.Disabled != nil && *share.Disabled {
-						continue
-					}
-					switch share.Usage {
-					case "media", "share", "backup":
-						err = supervisor_service.NetworkUnmountShare(share)
+						// Apply config to samba
+						slog.Info("******* Applying Samba config ********")
+						err = samba_service.WriteAndRestartSambaConfig()
 						if err != nil {
-							slog.Error("UnMounting error", "share", share, "err", err)
+							log.Fatalf("Cant apply samba config - %#+v", err)
 						}
-					}
-				}
-				slog.Info("******* Unmounted all shares from Homeassistant ********")
-			} else if command == "upgrade" {
-				slog.Info("Starting upgrade process", "channel", *upgradeChannel)
-				updch, ett := dto.ParseUpdateChannel(*upgradeChannel)
-				if ett != nil {
-					slog.Error("Error parsing upgrade channel", "err", ett)
-					return
-				}
-				ett = props_repo.SetValue("UpdateChannel", updch)
-				if ett != nil {
-					slog.Error("Error setting upgrade channel", "err", ett)
-					return
-				}
+						slog.Info("******* Samba config applied! ********")
+					} else if command == "stop" {
+						slog.Info("******* Unmounting all shares from Homeassistant ********")
+						// remount network share on ha_core
+						shares, err := exported_share_repo.All()
+						if err != nil {
+							log.Fatalf("Can't get Shares - %#+v", err)
+						}
 
-				if updch == dto.UpdateChannels.DEVELOP {
-					slog.Info("Attempting local update for DEVELOP channel.")
-					err = upgrade_service.InstallUpdateLocal(&updch)
-					if err != nil {
-						if errors.Is(err, dto.ErrorNoUpdateAvailable) {
-							slog.Info("No local update found or directory missing.", "error", err)
-						} else {
-							slog.Error("Error during local update process", "err", err)
+						for _, share := range *shares {
+							if share.Disabled != nil && *share.Disabled {
+								continue
+							}
+							switch share.Usage {
+							case "media", "share", "backup":
+								err = supervisor_service.NetworkUnmountShare(share)
+								if err != nil {
+									slog.Error("UnMounting error", "share", share, "err", err)
+								}
+							}
 						}
-					} else {
-						slog.Info("Local update installed successfully. Please restart the application.")
-					}
-				} else {
-					err = props_repo.SetValue("UpdateChannel", updch)
-					if err != nil {
-						slog.Error("Error setting upgrade channel", "err", err)
-						return
-					}
+						slog.Info("******* Unmounted all shares from Homeassistant ********")
+					} else if command == "upgrade" {
+						slog.Info("Starting upgrade process", "channel", *upgradeChannel)
+						updch, ett := dto.ParseUpdateChannel(*upgradeChannel)
+						if ett != nil {
+							slog.Error("Error parsing upgrade channel", "err", ett)
+							return nil
+						}
+						ett = props_repo.SetValue("UpdateChannel", updch)
+						if ett != nil {
+							slog.Error("Error setting upgrade channel", "err", ett)
+							return nil
+						}
 
-					asset, err := upgrade_service.GetUpgradeReleaseAsset(&updch)
-					if err != nil {
-						if errors.Is(err, dto.ErrorNoUpdateAvailable) {
-							slog.Info("No update available for the requested channel.")
-						} else {
-							slog.Error("Error checking for updates", "err", err)
-						}
-					} else if asset != nil {
-						slog.Info("Update available", "version", asset.LastRelease, "asset_name", asset.ArchAsset.Name)
-						updatePkg, errDownload := upgrade_service.DownloadAndExtractBinaryAsset(asset.ArchAsset)
-						if errDownload != nil {
-							slog.Error("Error downloading or extracting update", "err", errDownload)
-							// os.RemoveAll(updatePkg.TempDirPath) // Ensure cleanup on error if updatePkg is not nil
-						} else {
-							slog.Info("Update downloaded and extracted successfully", "temp_dir", updatePkg.TempDirPath)
-							if updatePkg.CurrentExecutablePath != nil {
-								slog.Info("Matching executable found", "path", *updatePkg.CurrentExecutablePath)
-								errInstall := upgrade_service.InstallUpdatePackage(updatePkg)
-								if errInstall != nil {
-									slog.Error("Error installing update for overseer", "err", errInstall)
+						if updch == dto.UpdateChannels.DEVELOP {
+							slog.Info("Attempting local update for DEVELOP channel.")
+							err = upgrade_service.InstallUpdateLocal(&updch)
+							if err != nil {
+								if errors.Is(err, dto.ErrorNoUpdateAvailable) {
+									slog.Info("No local update found or directory missing.", "error", err)
+								} else {
+									slog.Error("Error during local update process", "err", err)
 								}
 							} else {
-								slog.Warn("Update downloaded, but no directly matching executable found by name. Check extracted files.", "paths", updatePkg.OtherFilesPaths)
+								slog.Info("Local update installed successfully. Please restart the application.")
 							}
-							slog.Debug("Cleaning up temporary update directory", "path", updatePkg.TempDirPath)
-							if err := os.RemoveAll(updatePkg.TempDirPath); err != nil {
-								slog.Warn("Failed to remove temporary update directory", "path", updatePkg.TempDirPath, "err", err)
+						} else {
+							err = props_repo.SetValue("UpdateChannel", updch)
+							if err != nil {
+								slog.Error("Error setting upgrade channel", "err", err)
+								return nil
+							}
+
+							asset, err := upgrade_service.GetUpgradeReleaseAsset(&updch)
+							if err != nil {
+								if errors.Is(err, dto.ErrorNoUpdateAvailable) {
+									slog.Info("No update available for the requested channel.")
+								} else {
+									slog.Error("Error checking for updates", "err", err)
+								}
+							} else if asset != nil {
+								slog.Info("Update available", "version", asset.LastRelease, "asset_name", asset.ArchAsset.Name)
+								updatePkg, errDownload := upgrade_service.DownloadAndExtractBinaryAsset(asset.ArchAsset)
+								if errDownload != nil {
+									slog.Error("Error downloading or extracting update", "err", errDownload)
+									// os.RemoveAll(updatePkg.TempDirPath) // Ensure cleanup on error if updatePkg is not nil
+								} else {
+									slog.Info("Update downloaded and extracted successfully", "temp_dir", updatePkg.TempDirPath)
+									if updatePkg.CurrentExecutablePath != nil {
+										slog.Info("Matching executable found", "path", *updatePkg.CurrentExecutablePath)
+										errInstall := upgrade_service.InstallUpdatePackage(updatePkg)
+										if errInstall != nil {
+											slog.Error("Error installing update for overseer", "err", errInstall)
+										}
+									} else {
+										slog.Warn("Update downloaded, but no directly matching executable found by name. Check extracted files.", "paths", updatePkg.OtherFilesPaths)
+									}
+									slog.Debug("Cleaning up temporary update directory", "path", updatePkg.TempDirPath)
+									if err := os.RemoveAll(updatePkg.TempDirPath); err != nil {
+										slog.Warn("Failed to remove temporary update directory", "path", updatePkg.TempDirPath, "err", err)
+									}
+								}
+							} else {
+								slog.Info("No update available (asset was nil).")
 							}
 						}
-					} else {
-						slog.Info("No update available (asset was nil).")
 					}
-				}
-			}
+					return nil
+				},
+			})
+
 		}),
 	)
 

@@ -59,6 +59,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			})
 		},
 		lsblk.NewLSBKInterpreter,
+		service.NewAddonsService,
 		service.NewBroadcasterService,
 		service.NewVolumeService,
 		service.NewSambaService,
@@ -69,7 +70,6 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewShareService,
 		service.NewUserService,
 		service.NewHostService,
-		service.NewAddonsService,
 		service.NewDiskStatsService,
 		service.NewNetworkStatsService,
 		service.NewSmartService,

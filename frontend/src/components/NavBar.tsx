@@ -15,6 +15,10 @@ import UndoIcon from "@mui/icons-material/Undo";
 import {
 	CircularProgress,
 	type CircularProgressProps,
+	List,
+	ListItem,
+	ListItemText,
+	ListSubheader,
 	Menu,
 	MenuItem,
 	Tab,
@@ -402,23 +406,39 @@ export function NavBar(props: {
 								(acc, value) => acc + (value ? 1 : 0),
 								0,
 							) > 0 && (
-								<Tooltip title="Restart Samba demon now!" arrow>
-									<IconButton onClick={handleRestartNow} size="small">
-										<RestartAltIcon sx={{ color: "white" }} />
-										<CircularProgress
-											size={32}
-											sx={{
-												color: "blueviolet",
-												position: "absolute",
-												zIndex: 1,
-											}}
-										/>
-									</IconButton>
-								</Tooltip>
-							)}
+									<Tooltip title="Restart Samba demon now!" arrow>
+										<IconButton onClick={handleRestartNow} size="small">
+											<RestartAltIcon sx={{ color: "white" }} />
+											<CircularProgress
+												size={32}
+												sx={{
+													color: "blueviolet",
+													position: "absolute",
+													zIndex: 1,
+												}}
+											/>
+										</IconButton>
+									</Tooltip>
+								)}
 							{process.env.NODE_ENV !== "production" && (
 								<IconButton size="small">
-									<Tooltip title="Development Environment" arrow>
+									<Tooltip title={
+										<List
+											dense
+											subheader={
+												<ListSubheader id="nested-list-subheader">
+													Development Environment Debug
+												</ListSubheader>
+											}
+										>
+											<ListItem>
+												<ListItemText
+													primary="Protecte Mode"
+													secondary={health.health.protected_mode ? "Enabled" : "Disabled"}
+												/>
+											</ListItem>
+										</List>
+									} arrow>
 										<BugReportIcon sx={{ color: "orange" }} />
 									</Tooltip>
 								</IconButton>
