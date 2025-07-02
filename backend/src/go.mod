@@ -20,7 +20,7 @@ require (
 
 require (
 	github.com/anatol/smart.go v0.0.0-20241126061019-f03d79b340d2
-	github.com/danielgtaylor/huma/v2 v2.34.0
+	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf
 	github.com/jarcoal/httpmock v1.4.0
@@ -142,7 +142,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.1
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250701072420-982e0cb88bec
+	github.com/snapcore/snapd v0.0.0-20250702080854-846d56dff4ac
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
@@ -163,5 +163,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
