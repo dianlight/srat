@@ -39,5 +39,6 @@
     "source.action.useSortedKeys.biome": "explicit",
     "source.fixAll.biome": "explicit",
   },
-  "biome.requireConfiguration": true
+  "biome.requireConfiguration": true,
+  "python.analysis.typeCheckingMode": "standard"
 }
