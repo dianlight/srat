@@ -27,4 +27,5 @@ sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/biome)" ||:
 
 cd "$(dirname "$0")/.."
 apk add --no-cache py3-pip
-python3 -m pip install --requirement requirements.txt
+python3 -m pip install ruff  openapi-python-client
+openapi-python-client --install-completion
