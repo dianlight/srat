@@ -29,5 +29,3 @@ sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/gemini)" ||:
 bun add -g biome ||:
 bun pm -g trust --all ||:
 sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/biome)" ||:
-
-

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Script to generate OpenAPI client for SRAT Companion."""
 
+import os
 import subprocess
 import sys
-import os
 from pathlib import Path
 
 
