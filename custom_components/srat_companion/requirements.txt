@@ -1,0 +1,4 @@
+# Runtime requirements for SRAT Companion integration
+# This file is used by Home Assistant to install dependencies
+
+aiohttp-sse-client>=0.2.1

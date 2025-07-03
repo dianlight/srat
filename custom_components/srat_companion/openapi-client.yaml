@@ -1,3 +1,0 @@
-post_hooks:
-   - "ruff check . --fix"
-   - "ruff format ."

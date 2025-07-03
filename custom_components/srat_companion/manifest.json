@@ -1,17 +1,16 @@
 {
   "domain": "srat_companion",
   "name": "SRAT Companion",
-  "version": "1.0.0",
+  "codeowners": ["@dianlight"],
   "config_flow": true,
+  "dependencies": ["zeroconf"],
   "documentation": "https://github.com/dianlight/srat",
-  "requirements": [],
-  "dependencies": ["hassio"],
-  "codeowners": [
-    "@dianlight"
-  ],
-  "iot_class": "local_polling",
+  "homekit": {},
+  "iot_class": "local_push",
   "issue_tracker": "https://github.com/dianlight/srat/issues",
-  "translation_strings_paths": [
-    "translations"
-  ]
+  "loggers": ["custom_components.srat_companion"],
+  "requirements": ["aiohttp-sse-client"],
+  "ssdp": [],
+  "version": "1.0.0",
+  "zeroconf": ["_srat._tcp.local."]
 }

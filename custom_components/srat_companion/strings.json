@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Choose how to discover your SRAT service",
+        "data": {
+          "discovery_method": "Discovery Method"
+        }
+      },
+      "zeroconf_discovery": {
+        "title": "Zeroconf Discovery",
+        "description": "Select a discovered SRAT service",
+        "data": {
+          "service": "SRAT Service"
+        }
+      },
+      "addon_discovery": {
+        "title": "Addon Discovery",
+        "description": "Select a discovered SRAT addon from the running addons",
+        "data": {
+          "addon": "SRAT Addon"
+        }
+      },
+      "manual": {
+        "title": "Manual Configuration",
+        "description": "Enter the IP address and port of your SRAT service",
+        "data": {
+          "manual_ip": "IP Address",
+          "manual_port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to SRAT service",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error occurred",
+      "no_services_found": "No SRAT services found on the network",
+      "no_addons_found": "No SRAT addons found running. Searched for: {addon_slugs}",
+      "addon_discovery_failed": "Failed to discover addons: {error}"
+    },
+    "abort": {
+      "already_configured": "Device is already configured",
+      "not_srat_service": "Not a SRAT service",
+      "cannot_connect": "Cannot connect to SRAT service"
+    }
+  },
+  "issues": {
+    "connection_error": {
+      "title": "SRAT Companion Connection Error",
+      "description": "Failed to connect to SRAT service at {host}:{port}. Error: {error}"
+    }
+  }
+}

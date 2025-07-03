@@ -1,4 +1,22 @@
-colorlog==6.9.0
-homeassistant==2025.6.1
-pip>=21.3.1
-ruff==0.11.13
+# Requirements for SRAT Companion Home Assistant Integration
+
+# Core dependencies
+aiohttp-sse-client>=0.2.1
+zeroconf>=0.47.0
+
+# OpenAPI client generation (development only)
+openapi-python-client>=0.13.0
+
+# Optional dependencies for enhanced functionality
+pydantic>=1.10.0
+httpx>=0.24.0
+
+# Development and testing dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-homeassistant-custom-component>=0.12.0
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.0.0
+

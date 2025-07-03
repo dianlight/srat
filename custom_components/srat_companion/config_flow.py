@@ -1,142 +1,413 @@
 """Config flow for SRAT Companion integration."""
+from __future__ import annotations
 
+import asyncio
 import logging
+from typing import Any
+
+import aiohttp
+import voluptuous as vol
+from zeroconf import ServiceBrowser, ServiceListener, Zeroconf
+from zeroconf.asyncio import AsyncZeroconf
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.components import zeroconf
+from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
-# from homeassistant.helpers.issue_registry import AbstractFixFlow
-# Import the slug suffix constant from __init__
-from .__init__ import ADDON_SLUG_SUFFIX
+from .const import (
+    CONF_ADDON_SLUGS,
+    CONF_DISCOVERY_METHOD,
+    CONF_MANUAL_IP,
+    CONF_MANUAL_PORT,
+    DEFAULT_ADDON_SLUGS,
+    DEFAULT_PORT,
+    DISCOVERY_ADDON,
+    DISCOVERY_MANUAL,
+    DISCOVERY_ZEROCONF,
+    DOMAIN,
+    ERROR_CANNOT_CONNECT,
+    ERROR_UNKNOWN,
+    ZEROCONF_SERVICE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "srat_companion"
+
+class SratServiceListener(ServiceListener):
+    """Zeroconf service listener for SRAT services."""
+
+    def __init__(self) -> None:
+        """Initialize the listener."""
+        self.services: dict[str, dict[str, Any]] = {}
+
+    def remove_service(self, zc: Zeroconf, type_: str, name: str) -> None:
+        """Remove a service."""
+        if name in self.services:
+            del self.services[name]
+
+    def add_service(self, zc: Zeroconf, type_: str, name: str) -> None:
+        """Add a service."""
+        info = zc.get_service_info(type_, name)
+        if info:
+            self.services[name] = {
+                "host": info.parsed_addresses()[0] if info.parsed_addresses() else None,
+                "port": info.port,
+                "properties": info.properties,
+            }
+
+    def update_service(self, zc: Zeroconf, type_: str, name: str) -> None:
+        """Update a service."""
+        self.add_service(zc, type_, name)
+
+
+async def validate_connection(
+    hass: HomeAssistant, host: str, port: int
+) -> dict[str, Any]:
+    """Validate that we can connect to the SRAT service."""
+    session = async_get_clientsession(hass)
+    
+    try:
+        async with session.get(
+            f"http://{host}:{port}/api/health",
+            timeout=aiohttp.ClientTimeout(total=10),
+        ) as response:
+            if response.status == 200:
+                return {"title": f"SRAT Companion at {host}:{port}"}
+            else:
+                return {"error": ERROR_CANNOT_CONNECT}
+    except Exception:
+        return {"error": ERROR_CANNOT_CONNECT}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for SRAT Companion."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
-    async def async_step_user(self, user_input: dict | None = None) -> ConfigFlowResult:
-        """Handle the initial step when adding the integration manually."""
-        # We enforce a single instance of this integration as it monitors a pattern.
-        await self.async_set_unique_id(DOMAIN)  # The unique ID for the main integration
-        self._abort_if_unique_id_configured()
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self.discovered_services: dict[str, dict[str, Any]] = {}
+        self.addon_services: dict[str, dict[str, Any]] = {}
 
-        if user_input is not None:
-            return self.async_create_entry(
-                title=f"Add-on Monitoring: *{ADDON_SLUG_SUFFIX}",
-                data={},  # No user data needed as the slug is a constant pattern
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the initial step."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="user",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(CONF_DISCOVERY_METHOD): SelectSelector(
+                            SelectSelectorConfig(
+                                options=[
+                                    {"value": DISCOVERY_ZEROCONF, "label": "Zeroconf Discovery"},
+                                    {"value": DISCOVERY_ADDON, "label": "Addon Discovery"},
+                                    {"value": DISCOVERY_MANUAL, "label": "Manual Configuration"},
+                                ],
+                                mode=SelectSelectorMode.DROPDOWN,
+                            )
+                        )
+                    }
+                ),
             )
 
-        # Show a confirmation form as no input is required
-        return self.async_show_form(
-            step_id="user", description_placeholders={"addon_suffix": ADDON_SLUG_SUFFIX}
-        )
+        discovery_method = user_input[CONF_DISCOVERY_METHOD]
+        
+        if discovery_method == DISCOVERY_ZEROCONF:
+            return await self.async_step_zeroconf_discovery()
+        elif discovery_method == DISCOVERY_ADDON:
+            return await self.async_step_addon_discovery()
+        else:
+            return await self.async_step_manual()
 
-    async def async_step_discovery(self, discovery_info=None) -> ConfigFlowResult:
-        """Handle discovery of the running (or installed) add-on."""
-        _LOGGER.debug("Discovery step initiated with info: %s", discovery_info)
-        if discovery_info is None:
-            return self.async_abort(reason="no_discovery_info")
-
-        # Discovery info will contain the addon_slug that was found.
-        discovered_slug = discovery_info.get(
-            "addon"
-        )  # The 'addon' key is used in the async_init data in __init__.py
-        if not discovered_slug or not discovered_slug.endswith(ADDON_SLUG_SUFFIX):
-            _LOGGER.warning(
-                "Discovery initiated for an unexpected add-on slug: %s. Expected suffix: %s",
-                discovered_slug,
-                ADDON_SLUG_SUFFIX,
-            )
-            return self.async_abort(reason="unexpected_addon_slug")
-
-        # Use the discovered add-on slug as the unique ID for the discovery config entry.
-        # This allows multiple add-ons matching the pattern to be offered for configuration.
-        await self.async_set_unique_id(discovered_slug)
-        self._abort_if_unique_id_configured()
-
-        self.context["title_placeholders"] = {"name": discovered_slug}
-
-        return self.async_show_form(
-            step_id="discovery_confirm",
-            description_placeholders={"addon_slug": discovered_slug},
-        )
-
-    async def async_step_discovery_confirm(self, user_input=None) -> ConfigFlowResult:
-        """Confirm discovery."""
-        if user_input is not None:
-            # Create the config entry for the specific discovered addon.
-            # The slug is derived from the unique_id.
-            addon_slug = self.unique_id
-            return self.async_create_entry(
-                title=f"Discovered Add-on: {addon_slug}",
-                data={"addon": addon_slug},  # Store the discovered slug
-            )
-        return self.async_abort(reason="not_confirmed")
-
-
-class AddonRepairFlow:
-    """Repair flow for non-started addons."""
-
-    # The translation for this flow is defined in strings.json under "issues"
-    # The fix_flow in the create_issue call must match this ID.
-    @property
-    def flow_id(self) -> str:
-        """Return the repair flow ID."""
-        return f"{DOMAIN}_start_addon_fix"
-
-    from typing import Optional
-
-    def __init__(self, addon_slug: str, context: dict | None = None) -> None:
-        """Initialize the repair flow."""
-        self.addon_slug = addon_slug
-        self.context = context or {}
-        # super().__init__()  # Not needed since we are not inheriting from AbstractFixFlow
-
-    async def async_step_init(self, user_input=None) -> ConfigFlowResult:
-        """Handle the initial step of the repair flow."""
-        # Get the addon slug from the issue context
-        addon_slug = self.context.get("addon_slug")
-        if not addon_slug:
-            _LOGGER.error("Addon slug not found in repair flow context.")
-            raise RuntimeError("missing_addon_slug")
-
-        return self.async_show_form(
-            step_id="confirm_start",
-            description_placeholders={"addon_slug": addon_slug},
-        )
-
-    async def async_step_confirm_start(self, user_input=None) -> ConfigFlowResult:
-        """Confirm and execute the start action."""
-        addon_slug = self.context.get("addon_slug")
-        if not addon_slug:
-            raise RuntimeError("missing_addon_slug")
-
-        if user_input is not None:
+    async def async_step_zeroconf_discovery(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle zeroconf discovery."""
+        if user_input is None:
+            # Discover services
+            azc = AsyncZeroconf()
+            listener = SratServiceListener()
+            
             try:
-                _LOGGER.info(
-                    "Attempting to start addon '%s' via repair flow.", addon_slug
-                )
-                # Here you would add logic to actually start the addon if needed.
-                return self.async_show_success(
-                    description_placeholders={"addon_slug": addon_slug}
-                )
-            except RuntimeError as err:
-                _LOGGER.exception(
-                    "Failed to start addon '%s' via repair flow: %s", addon_slug, err
-                )
+                browser = ServiceBrowser(azc.zeroconf, ZEROCONF_SERVICE, listener)
+                await asyncio.sleep(3)  # Wait for discovery
+                browser.cancel()
+                
+                self.discovered_services = listener.services
+                
+                if not self.discovered_services:
+                    return self.async_show_form(
+                        step_id="zeroconf_discovery",
+                        errors={"base": "no_services_found"},
+                    )
+                
+                # Create options for discovered services
+                options = []
+                for name, info in self.discovered_services.items():
+                    if info["host"] and info["port"]:
+                        options.append({
+                            "value": name,
+                            "label": f"{name} ({info['host']}:{info['port']})"
+                        })
+                
                 return self.async_show_form(
-                    step_id="confirm_start",
-                    description_placeholders={
-                        "addon_slug": addon_slug,
-                        "error": str(err),
-                    },
-                    errors={"base": "failed_to_start"},
+                    step_id="zeroconf_discovery",
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required("service"): SelectSelector(
+                                SelectSelectorConfig(
+                                    options=options,
+                                    mode=SelectSelectorMode.DROPDOWN,
+                                )
+                            )
+                        }
+                    ),
                 )
-        return self.async_show_form(step_id="confirm_start")  # Should not happen
+            finally:
+                await azc.async_close()
+        
+        # Validate selected service
+        selected_service = user_input["service"]
+        service_info = self.discovered_services[selected_service]
+        
+        result = await validate_connection(
+            self.hass, service_info["host"], service_info["port"]
+        )
+        
+        if "error" in result:
+            return self.async_show_form(
+                step_id="zeroconf_discovery",
+                errors={"base": result["error"]},
+            )
+        
+        return self.async_create_entry(
+            title=result["title"],
+            data={
+                CONF_HOST: service_info["host"],
+                CONF_PORT: service_info["port"],
+                CONF_DISCOVERY_METHOD: DISCOVERY_ZEROCONF,
+            },
+        )
+
+    async def async_step_addon_discovery(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle addon discovery."""
+        # Automatically search through the predefined addon slugs
+        addon_slugs = DEFAULT_ADDON_SLUGS
+        
+        try:
+            # Search for running addons
+            discovered_addons = await self._discover_addons(addon_slugs)
+            
+            if not discovered_addons:
+                return self.async_show_form(
+                    step_id="addon_discovery",
+                    errors={"base": "no_addons_found"},
+                    description_placeholders={"addon_slugs": ", ".join(addon_slugs)},
+                )
+            
+            if user_input is None:
+                # Show discovered addons for selection
+                options = []
+                for slug, info in discovered_addons.items():
+                    options.append({
+                        "value": slug,
+                        "label": f"{info['name']} ({info['host']}:{info['port']})"
+                    })
+                
+                return self.async_show_form(
+                    step_id="addon_discovery",
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required("addon"): SelectSelector(
+                                SelectSelectorConfig(
+                                    options=options,
+                                    mode=SelectSelectorMode.DROPDOWN,
+                                )
+                            )
+                        }
+                    ),
+                )
+            
+            # Validate selected addon
+            selected_addon = user_input["addon"]
+            addon_info = discovered_addons[selected_addon]
+            
+            result = await validate_connection(
+                self.hass, addon_info["host"], addon_info["port"]
+            )
+            
+            if "error" in result:
+                return self.async_show_form(
+                    step_id="addon_discovery",
+                    errors={"base": result["error"]},
+                )
+            
+            return self.async_create_entry(
+                title=f"SRAT Companion ({addon_info['name']})",
+                data={
+                    CONF_HOST: addon_info["host"],
+                    CONF_PORT: addon_info["port"],
+                    CONF_DISCOVERY_METHOD: DISCOVERY_ADDON,
+                    "addon_slug": selected_addon,
+                    "addon_name": addon_info["name"],
+                },
+            )
+            
+        except Exception as err:
+            _LOGGER.error("Error during addon discovery: %s", err)
+            return self.async_show_form(
+                step_id="addon_discovery",
+                errors={"base": "addon_discovery_failed"},
+                description_placeholders={"error": str(err)},
+            )
+
+    async def _discover_addons(self, addon_slugs: list[str]) -> dict[str, dict[str, Any]]:
+        """Discover running addons by slug."""
+        discovered = {}
+        
+        # This would need to be implemented using Home Assistant Supervisor API
+        # For now, we'll simulate the discovery process
+        
+        try:
+            # Check if we have access to supervisor
+            if not hasattr(self.hass, 'components') or 'hassio' not in self.hass.components:
+                _LOGGER.debug("Supervisor not available, skipping addon discovery")
+                return discovered
+            
+            # Import supervisor API (if available)
+            try:
+                from homeassistant.components.hassio import get_supervisor_client
+                supervisor = get_supervisor_client(self.hass)
+                
+                # Get list of all addons
+                addons_response = await supervisor.addons.list()
+                
+                if not addons_response.ok:
+                    _LOGGER.error("Failed to get addon list from supervisor")
+                    return discovered
+                
+                addons_data = addons_response.json()
+                
+                # Search through our target addon slugs
+                for addon_slug in addon_slugs:
+                    for addon in addons_data.get("data", {}).get("addons", []):
+                        if addon.get("slug") == addon_slug and addon.get("state") == "started":
+                            # Get detailed addon info
+                            addon_info_response = await supervisor.addons.info(addon_slug)
+                            if addon_info_response.ok:
+                                addon_info = addon_info_response.json().get("data", {})
+                                
+                                # Extract network information
+                                network_info = addon_info.get("network", {})
+                                host = addon_info.get("ip_address", "127.0.0.1")
+                                
+                                # Try to find the port from network configuration
+                                port = DEFAULT_PORT
+                                if network_info:
+                                    # Look for HTTP port in network config
+                                    for port_key, port_config in network_info.items():
+                                        if isinstance(port_config, dict) and "host" in port_config:
+                                            port = port_config["host"]
+                                            break
+                                        elif isinstance(port_config, int):
+                                            port = port_config
+                                            break
+                                
+                                discovered[addon_slug] = {
+                                    "host": host,
+                                    "port": port,
+                                    "name": addon_info.get("name", addon_slug),
+                                    "version": addon_info.get("version"),
+                                    "slug": addon_slug,
+                                }
+                                
+                                _LOGGER.debug(
+                                    "Discovered addon %s at %s:%s", 
+                                    addon_slug, host, port
+                                )
+                                break
+                
+            except ImportError:
+                _LOGGER.debug("Supervisor API not available")
+                
+        except Exception as err:
+            _LOGGER.error("Error discovering addons: %s", err)
+            raise
+        
+        return discovered
+
+    async def async_step_manual(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle manual configuration."""
+        errors = {}
+        
+        if user_input is not None:
+            host = user_input[CONF_MANUAL_IP]
+            port = user_input[CONF_MANUAL_PORT]
+            
+            result = await validate_connection(self.hass, host, port)
+            
+            if "error" not in result:
+                return self.async_create_entry(
+                    title=result["title"],
+                    data={
+                        CONF_HOST: host,
+                        CONF_PORT: port,
+                        CONF_DISCOVERY_METHOD: DISCOVERY_MANUAL,
+                    },
+                )
+            
+            errors["base"] = result["error"]
+        
+        return self.async_show_form(
+            step_id="manual",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_MANUAL_IP): str,
+                    vol.Required(CONF_MANUAL_PORT, default=DEFAULT_PORT): int,
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_zeroconf(
+        self, discovery_info: zeroconf.ZeroconfServiceInfo
+    ) -> FlowResult:
+        """Handle zeroconf discovery."""
+        if discovery_info.type != ZEROCONF_SERVICE:
+            return self.async_abort(reason="not_srat_service")
+        
+        host = discovery_info.host
+        port = discovery_info.port
+        
+        # Check if already configured
+        await self.async_set_unique_id(f"{host}:{port}")
+        self._abort_if_unique_id_configured()
+        
+        # Validate connection
+        result = await validate_connection(self.hass, host, port)
+        
+        if "error" in result:
+            return self.async_abort(reason=result["error"])
+        
+        return self.async_create_entry(
+            title=result["title"],
+            data={
+                CONF_HOST: host,
+                CONF_PORT: port,
+                CONF_DISCOVERY_METHOD: DISCOVERY_ZEROCONF,
+            },
+        )
