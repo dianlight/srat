@@ -1,8 +1,8 @@
 {
 	"name": "SRAT",
-	//"image": "ghcr.io/hassio-addons/base:18.0.1",
+	"image": "ghcr.io/hassio-addons/base:18.0.1",
 	//"image": "ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.22",
-	"image": "ghcr.io/home-assistant/aarch64-base-python:3.13-alpine3.22",
+	//"image": "ghcr.io/home-assistant/aarch64-base-python:3.13-alpine3.22",
 	"runArgs": [
 		//	"--platform=linux/amd64",
 		"--cap-add=SYS_PTRACE",
@@ -16,9 +16,6 @@
 	"updateContentCommand": {
 		"mainScrip": ".devcontainer/updateContentCommand.sh"
 	},
-	"forwardPorts": [
-		8123
-	],
 	"remoteUser": "root",
 	"postCreateCommand": ".devcontainer/postCreateCommand.sh",
 	"postStartCommand": "chmod +x .devcontainer/postStartCommand.sh && CONTAINER_WORKSPACE_FOLDER=${containerWorkspaceFolder} ./.devcontainer/postStartCommand.sh",

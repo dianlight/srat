@@ -1,4 +1,5 @@
 """Sensor platform for SRAT Companion."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -21,12 +22,12 @@ async def async_setup_entry(
 ) -> None:
     """Set up SRAT Companion sensor based on a config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    
+
     entities = [
         SratConnectionSensor(coordinator, entry),
         SratEventCountSensor(coordinator, entry),
     ]
-    
+
     async_add_entities(entities)
 
 
@@ -99,10 +100,10 @@ class SratEventCountSensor(SratBaseSensor):
             "host": self.host,
             "port": self.port,
         }
-        
+
         if self.coordinator.data and "events" in self.coordinator.data:
             events = self.coordinator.data["events"]
             if events:
                 attrs["last_event"] = events[-1]
-        
+
         return attrs

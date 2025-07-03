@@ -1,4 +1,5 @@
 """Constants for the SRAT Companion integration."""
+
 from __future__ import annotations
 
 from typing import Final
@@ -19,7 +20,11 @@ DISCOVERY_ADDON: Final = "addon"
 DISCOVERY_MANUAL: Final = "manual"
 
 # Default values
-DEFAULT_ADDON_SLUGS: Final = ["local_sambanas2", "c9a35110_sambanas2", "1a32f091_sambanas2"]
+DEFAULT_ADDON_SLUGS: Final = [
+    "local_sambanas2",
+    "c9a35110_sambanas2",
+    "1a32f091_sambanas2",
+]
 DEFAULT_PORT: Final = 3000
 DEFAULT_TIMEOUT: Final = 30
 
