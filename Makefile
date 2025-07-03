@@ -78,16 +78,18 @@ gemini:
 lint:
 	$(MAKE) -C $(BACKEND_DIRS) lint
 	cd $(FRONTEND_DIRS); bun run lint
+	cd ..
 	cd $(COMPONENTS_DIRS); ruff format .; ruff check . --fix
 
 .PHONY: gen
 gen:
 	$(MAKE) -C $(BACKEND_DIRS) gen
 	cd $(FRONTEND_DIRS); bun run gen
-	openapi-python-client generate --config ./custom_components/srat_companion/openapi-client.yaml --path ./backend/docs/openapi.json --output ./custom_components/srat_companion/api
+	cd ..
+	openapi-python-client generate  --path ./backend/docs/openapi.json --output-path ./custom_components/srat_companion/api
 
 .PHONY: dev_ha
-.ONESHELL: 
+.ONESHELL:
 dev_ha:
 	# Create config dir if not present
 	if [[ ! -d "${PWD}/config" ]]; then
@@ -103,4 +105,11 @@ dev_ha:
 
 	# Start Home Assistant
 	hass --config "${PWD}/config" --debug
-	
+
+.PHONY: dev_remote
+dev_remote:
+	umount -l /mnt/remote_comp > /dev/null 2>&1 || :
+	mkdir -p /mnt/remote_comp > /dev/null 2>&1 || :
+	sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 root@192.168.0.68:/homeassistant/custom_components /mnt/remote_comp
+	cp -rv custom_components/srat_companion /mnt/remote_comp/
+	umount -l /mnt/remote_comp > /dev/null 2>&1 || :
