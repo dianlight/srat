@@ -26,6 +26,6 @@ bun pm -g trust --all ||:
 sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/biome)" ||:
 
 cd "$(dirname "$0")/.."
-apk add --no-cache py3-pip
-python3 -m pip install ruff  openapi-python-client
+apk add --no-cache py3-pip libturbojpeg ffmpeg go2rtc libpcap-dev
+python3 -m pip install ruff openapi-python-client
 openapi-python-client --install-completion
