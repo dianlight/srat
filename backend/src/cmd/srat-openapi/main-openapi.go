@@ -26,7 +26,7 @@ func main() {
 	// set global logger with custom options
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	output = flag.String("out", "./docs/", "Output directory where create openapi.* files")
-	internal.Banner("srat-openapi")
+	internal.Banner("srat-openapi", "")
 
 	flag.Usage = func() {
 		flag.PrintDefaults()

@@ -68,7 +68,7 @@ func main() {
 	addonIpAddress = flag.String("ip-address", "127.0.0.1", "Addon IP address // $(bashio::addon.ip_address)")
 
 	flag.Usage = func() {
-		internal.Banner("srat")
+		internal.Banner("srat", "server")
 		flag.PrintDefaults()
 	}
 
@@ -112,7 +112,7 @@ type writeDeadliner interface {
 
 func prog(state overseer.State) {
 
-	internal.Banner("srat-server")
+	internal.Banner("srat-server", "")
 
 	slog.Debug("Startup Options", "Flags", os.Args)
 	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))

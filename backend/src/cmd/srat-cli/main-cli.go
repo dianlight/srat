@@ -107,7 +107,7 @@ func main() {
 	flag.Parse()
 
 	if !*silentMode {
-		internal.Banner("srat-cli")
+		internal.Banner("srat-cli", flag.Args()[0])
 	}
 
 	if len(flag.Args()) < 1 {
