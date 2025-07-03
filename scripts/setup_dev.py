@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-def setup_development():
+def setup_development() -> bool:
     """Set up development environment."""
     print("Setting up SRAT Companion development environment...")
 
