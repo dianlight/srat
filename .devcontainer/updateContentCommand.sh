@@ -11,12 +11,10 @@ curl -fsSL https://bun.sh/install | bash -s "bun-v1.2.15"
 #Git
 git config --global --add safe.directory /workspaces/srat
 
-# Software
-make -C .. prepare || :
 
 # python
 cd "$(dirname "$0")/.."
-apk add --no-cache poetry py3-pip libturbojpeg ffmpeg go2rtc libpcap-dev
+apk add --no-cache py3-pip libturbojpeg ffmpeg go2rtc libpcap-dev
 python3 -m pip install ruff openapi-python-client
 openapi-python-client --install-completion
 
@@ -29,3 +27,6 @@ sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/gemini)" ||:
 bun add -g biome ||:
 bun pm -g trust --all ||:
 sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/biome)" ||:
+
+# Software
+make -C .. prepare || :
