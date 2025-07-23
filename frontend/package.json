@@ -16,18 +16,18 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.1.2",
-    "@gtramontina.com/bun-html-live-reload": "^1.0.1",
-    "@hookform/devtools": "^4.4.0",
-    "@redux-devtools/extension": "^3.0.0",
-    "@rtk-query/codegen-openapi": "^2.0.0",
-    "@types/bun": "^1.2.15",
-    "@types/crypto-js": "^4.2.2",
-    "@types/lodash.debounce": "^4.0.9",
-    "@types/react": "^19.1.6",
-    "@types/react-dom": "^19.1.6",
-    "@types/react-sparklines": "^1.7.5",
-    "@types/react-syntax-highlighter": "^15.5.13",
-    "@types/semver": "^7.7.0"
+    "@gtramontina.com/bun-html-live-reload": "1.0.1",
+    "@hookform/devtools": "4.4.0",
+    "@redux-devtools/extension": "3.3.0",
+    "@rtk-query/codegen-openapi": "2.0.0",
+    "@types/bun": "1.2.19",
+    "@types/crypto-js": "4.2.2",
+    "@types/lodash.debounce": "4.0.9",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "@types/react-sparklines": "1.7.5",
+    "@types/react-syntax-highlighter": "15.5.13",
+    "@types/semver": "7.7.0"
   },
   "peerDependencies": {
     "typescript": "^5.8.3"
