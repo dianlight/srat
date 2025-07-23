@@ -1,9 +1,17 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "extends": [
-        "config:recommended",
+        "config:best-practices",
         "customManagers:dockerfileVersions",
-        "customManagers:githubActionsVersions"
+        "customManagers:githubActionsVersions",
+        "customManagers:makefileVersions",
+        "customManagers:biomeVersion",
+        ":automergeDigest",
+        ":automergeLinters",
+        "replacements:all",
+        "security:openssf-scorecard",
+        "workarounds:all",
+        "group:monorepos"
     ],
     "labels": [
         "dependencies",
@@ -11,7 +19,6 @@
     ],
     "semanticCommits":"enabled",
     "commitMessagePrefix": "⬆️",
-    "commitMessageTopic": "{{depName}}",
     "configMigration": true,
     "rebaseWhen": "behind-base-branch",
     "dependencyDashboard": true,
