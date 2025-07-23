@@ -15,7 +15,7 @@
     "url": "https://github.com/dianlight/srat"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.0.6",
+    "@biomejs/biome": "2.1.2",
     "@gtramontina.com/bun-html-live-reload": "^1.0.1",
     "@hookform/devtools": "^4.4.0",
     "@redux-devtools/extension": "^3.0.0",
@@ -90,7 +90,7 @@
     "tree-sitter",
     "tree-sitter-json"
   ],
-  "packageManager": "bun@1.2.17",
+  "packageManager": "bun@1.2.19",
   "engines": {
     "bun": ">=1.2.13"
   },
