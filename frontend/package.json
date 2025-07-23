@@ -45,7 +45,7 @@
     "@mui/x-charts": "^8.5.3",
     "@reduxjs/toolkit": "^2.8.2",
     "crypto-js": "^4.2.0",
-    "filesize": "^10.1.6",
+    "filesize": "^11.0.0",
     "lodash.debounce": "^4.0.8",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^7.0.1",
