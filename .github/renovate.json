@@ -5,7 +5,7 @@
         "customManagers:dockerfileVersions",
         "customManagers:githubActionsVersions",
         "customManagers:makefileVersions",
-        "customManagers:biomeVersion",
+        "customManagers:biomeVersions",
         ":automergeDigest",
         ":automergeLinters",
         "replacements:all",
