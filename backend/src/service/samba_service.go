@@ -39,7 +39,7 @@ type SambaService struct {
 	apictx              *dto.ContextState
 	dirtyservice        DirtyDataServiceInterface
 	supervisor_service  SupervisorServiceInterface
-	exported_share_repo repository.ExportedShareRepositoryInterface
+	share_service ShareServiceInterface
 	prop_repo           repository.PropertyRepositoryInterface
 	samba_user_repo     repository.SambaUserRepositoryInterface
 	mount_client        mount.ClientWithResponsesInterface
@@ -51,7 +51,7 @@ type SambaServiceParams struct {
 
 	Apictx              *dto.ContextState
 	Dirtyservice        DirtyDataServiceInterface
-	Exported_share_repo repository.ExportedShareRepositoryInterface
+	Share_service       ShareServiceInterface
 	Prop_repo           repository.PropertyRepositoryInterface
 	Samba_user_repo     repository.SambaUserRepositoryInterface
 	Mount_client        mount.ClientWithResponsesInterface `optional:"true"`
@@ -62,7 +62,7 @@ func NewSambaService(in SambaServiceParams) SambaServiceInterface {
 	p := &SambaService{}
 	p.apictx = in.Apictx
 	p.dirtyservice = in.Dirtyservice
-	p.exported_share_repo = in.Exported_share_repo
+	p.share_service = in.Share_service
 	p.prop_repo = in.Prop_repo
 	p.samba_user_repo = in.Samba_user_repo
 	p.mount_client = in.Mount_client
@@ -119,7 +119,7 @@ func (self *SambaService) _JSONFromDatabase() (tconfig config.Config, err error)
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
-	shares, err := self.exported_share_repo.All()
+	shares, err := self.share_service.All()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
@@ -238,7 +238,7 @@ func (self *SambaService) RestartSambaService() error {
 		// Remount network shares on ha_core
 		// This logic might be better placed after confirming all local services are stable
 		// or if it's specifically tied to smbd/nmbd reloads.
-		shares, err := self.exported_share_repo.All()
+		shares, err := self.share_service.All()
 		if err != nil {
 			return errors.WithStack(err)
 		}

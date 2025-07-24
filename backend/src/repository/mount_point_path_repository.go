@@ -22,6 +22,7 @@ type MountPointPathRepositoryInterface interface {
 	FindByPath(path string) (*dbom.MountPointPath, error)
 	FindByDevice(device string) (*dbom.MountPointPath, error)
 	Exists(id string) (bool, error)
+	Delete(path string) error
 }
 
 func NewMountPointPathRepository(db *gorm.DB) MountPointPathRepositoryInterface {
@@ -93,4 +94,8 @@ func (r *MountPointPathRepository) Exists(path string) (bool, error) {
 		return false, nil
 	}
 	return true, err
+}
+
+func (r *MountPointPathRepository) Delete(path string) error {
+	return r.db.Delete(&dbom.MountPointPath{Path: path}).Error
 }
