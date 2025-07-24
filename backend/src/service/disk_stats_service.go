@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/tlog"
 	"github.com/prometheus/procfs/blockdevice"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 )
 
 // DiskStatsService is a service for collecting disk I/O statistics.
@@ -31,10 +31,10 @@ type diskStatsService struct {
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
-func NewDiskStatsService(VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartService) DiskStatsService {
+func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartService) DiskStatsService {
 	fs, err := blockdevice.NewFS("/proc", "/sys")
 	if err != nil {
-		tlog.Error("Failed to create block device filesystem", "error", err)
+		slog.Error("Failed to create block device filesystem", "error", err)
 	}
 
 	ds := &diskStatsService{
@@ -46,11 +46,20 @@ func NewDiskStatsService(VolumeService VolumeServiceInterface, Ctx context.Conte
 		lastStats:      make(map[string]*blockdevice.IOStats),
 		smartService:   SmartService,
 	}
-	Ctx.Value("wg").(*sync.WaitGroup).Add(1)
-	go func() {
-		defer Ctx.Value("wg").(*sync.WaitGroup).Done()
-		ds.run()
-	}()
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			err := ds.updateDiskStats()
+			if err != nil {
+				slog.Error("Failed to update disk stats", "error", err)
+			}
+			Ctx.Value("wg").(*sync.WaitGroup).Add(1)
+			go func() {
+				defer Ctx.Value("wg").(*sync.WaitGroup).Done()
+				ds.run()
+			}()
+			return nil
+		},
+	})
 	return ds
 }
 
@@ -63,7 +72,7 @@ func (self *diskStatsService) run() error {
 		case <-time.After(time.Second * 10):
 			err := self.updateDiskStats()
 			if err != nil {
-				tlog.Error("Failed to update disk stats", "error", err)
+				slog.Error("Failed to update disk stats", "error", err)
 				continue
 			}
 		}
@@ -91,7 +100,7 @@ func (s *diskStatsService) updateDiskStats() error {
 
 	for _, disk := range *disks {
 		if disk.Device == nil {
-			tlog.Debug("Skipping disk with nil device", "diskID", disk.Id)
+			slog.Debug("Skipping disk with nil device", "diskID", disk.Id)
 			continue
 		}
 		stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.Device)
@@ -135,7 +144,7 @@ func (s *diskStatsService) updateDiskStats() error {
 			// --- Smart data population ---
 			smartStats, err := s.smartService.GetSmartInfo("/dev/" + *disk.Device)
 			if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-				tlog.Error("Error getting SMART stats", "disk", *disk.Device, "err", err)
+				slog.Error("Error getting SMART stats", "disk", *disk.Device, "err", err)
 			} else {
 				s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStats
 			}

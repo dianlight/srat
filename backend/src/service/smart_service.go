@@ -1,11 +1,13 @@
 package service
 
 import (
+	"os"
 	"sync"
 	"time"
 
 	"github.com/anatol/smart.go"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/tlog"
 	gocache "github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
 )
@@ -50,6 +52,20 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, error) {
 			return info, nil
 		}
 	}
+	// Check if the device path exists and is readable before attempting to open it with smart.go
+	file, err := os.OpenFile(devicePath, os.O_RDONLY, 0)
+	if err != nil {
+		if os.IsNotExist(err) {
+			tlog.Trace("SMART: device path does not exist on filesystem, skipping.", "device", devicePath)
+			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "does not exist")
+		}
+		if os.IsPermission(err) {
+			tlog.Trace("SMART: device path is not readable, skipping.", "device", devicePath, "error", err)
+			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "not readable")
+		}
+		return nil, errors.Wrapf(err, "error checking device path '%s'", devicePath)
+	}
+	file.Close() // We just wanted to check if we can open it.
 
 	dev, err := smart.Open(devicePath)
 	if err != nil {

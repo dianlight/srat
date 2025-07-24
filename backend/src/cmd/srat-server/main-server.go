@@ -112,7 +112,7 @@ type writeDeadliner interface {
 
 func prog(state overseer.State) {
 
-	internal.Banner("srat")
+	internal.Banner("srat-server")
 
 	slog.Debug("Startup Options", "Flags", os.Args)
 	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
@@ -170,6 +170,7 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewSambaHanler),
 			server.AsHumaRoute(api.NewUpgradeHanler),
 			server.AsHumaRoute(api.NewSystemHanler),
+			server.AsHumaRoute(api.NewIssueAPI),
 			server.NewMuxRouter,
 			server.NewHTTPServer,
 			server.NewHumaAPI,
@@ -191,12 +192,13 @@ func prog(state overseer.State) {
 					if err != nil {
 						return errors.WithMessage(err)
 					}
-					tlog.Debug("Route:", "template", template)
+					slog.Debug("Route:", "template", template)
 					return nil
 				})
 			},
 		),
 		fx.Invoke(func(
+			lc fx.Lifecycle,
 			props_repo repository.PropertyRepositoryInterface,
 			samba_service service.SambaServiceInterface,
 		) {
@@ -206,13 +208,19 @@ func prog(state overseer.State) {
 				log.Fatalf("Cant set log level - %#+v", err)
 			}
 
-			// Apply config to samba
-			slog.Info("******* Applying Samba config ********")
-			err = samba_service.WriteAndRestartSambaConfig()
-			if err != nil {
-				log.Fatalf("Cant apply samba config - %#+v", err)
-			}
-			slog.Info("******* Samba config applied! ********")
+			lc.Append(fx.Hook{
+				OnStart: func(ctx context.Context) error {
+					// Apply config to samba
+					slog.Info("******* Applying Samba config ********")
+					err = samba_service.WriteAndRestartSambaConfig()
+					if err != nil {
+						log.Fatalf("Cant apply samba config - %#+v", err)
+					}
+					slog.Info("******* Samba config applied! ********")
+					return nil
+				},
+			})
+
 		}),
 	)
 

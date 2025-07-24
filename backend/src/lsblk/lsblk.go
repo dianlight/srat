@@ -105,6 +105,7 @@ type LSBKInterpreter struct {
 
 var (
 	DeviceNotFound = errors.Base("device not found")
+	NoPermission   = errors.Base("no permission")
 	NoInfoFound    = errors.Base("device info not found")
 )
 
@@ -159,9 +160,16 @@ func (self *LSBKInterpreter) GetInfoFromDevice(devName string) (info *LSBKInfo, 
 	devName, _ = strings.CutPrefix(devName, "/dev/")
 
 	// check if file devName exists using os.OpenFile
-	if _, err := os.OpenFile(fmt.Sprintf("/dev/%s", devName), os.O_RDONLY, 0); err != nil {
-		return nil, errors.WithDetails(DeviceNotFound, "desc", fmt.Sprintf("device %s not found", devName), "err", err.Error())
+	file, err := os.OpenFile(fmt.Sprintf("/dev/%s", devName), os.O_RDONLY, 0)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, errors.WithDetails(DeviceNotFound, "desc", fmt.Sprintf("device %s not found", devName), "err", err.Error())
+		}
+		if os.IsPermission(err) {
+			return nil, errors.WithDetails(NoPermission, "desc", fmt.Sprintf("device %s not permission to open", devName), "err", err.Error())
+		}
 	}
+	file.Close()
 
 	result := &LSBKInfo{}
 

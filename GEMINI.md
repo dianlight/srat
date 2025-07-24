@@ -13,7 +13,50 @@ This project appears to be a web application with a Go backend and a JavaScript/
 ## Development Environment
 
 - The backend uses Go modules for dependency management (`go.mod`).
+  - All goverter interface must be in the converter packages
 - The frontend uses `bun` for package management (`bun.lockb`, `package.json`).
+  - To update the frontend client (`sratApi.ts`) first need to update backend's openapi docs (`openapi.yaml`,`openapi.json`) with  `make -C backend gen` and then the client with  `cd frontend && bun gen`
+- Use also backend and frontend lint to check the code 
+
+## Commit structure
+
+Follow the Conventional Commits format strictly for commit messages. 
+Use the structure below:
+
+<type>[optional scope]: <gitmoji> <description>
+
+[optional footer]
+
+
+Guidelines:
+  1. **Type and Scope**: Choose an appropriate type (e.g., `feat`, `fix`) and optional scope to describe the affected module or feature.
+  2. **Gitmoji**: Include a relevant `gitmoji` that best represents the nature of the change.
+  3. **Description**: Write a concise, informative description in the header; use backticks if referencing code or specific terms.
+  4. **Body**: For additional details, use a well-structured body section:
+     - Use bullet points (`*`) for clarity.
+     - Clearly describe the motivation, context, or technical details behind the change, if applicable.
+     
+Commit messages should be clear, informative, and professional, aiding readability and project tracking.
+
+## Commit structure
+
+Follow the Conventional Commits format strictly for commit messages. 
+Use the structure below:
+
+<type>[optional scope]: <gitmoji> <description>
+
+[optional footer]
+
+
+Guidelines:
+  1. **Type and Scope**: Choose an appropriate type (e.g., `feat`, `fix`) and optional scope to describe the affected module or feature.
+  2. **Gitmoji**: Include a relevant `gitmoji` that best represents the nature of the change.
+  3. **Description**: Write a concise, informative description in the header; use backticks if referencing code or specific terms.
+  4. **Body**: For additional details, use a well-structured body section:
+     - Use bullet points (`*`) for clarity.
+     - Clearly describe the motivation, context, or technical details behind the change, if applicable.
+     
+Commit messages should be clear, informative, and professional, aiding readability and project tracking."
 
 ## Build & Test Commands
 
@@ -30,7 +73,7 @@ This project appears to be a web application with a Go backend and a JavaScript/
 - **Frontend:**
   - To install dependencies: `cd frontend && bun install`
   - To generate code: `cd frontend && bun gen`
-  - To build: `cd frontend && bun build`
+  - To build: `cd frontend && bun run build`
   - To test: `cd frontend && bun test`
   - To lint: `cd frontend && bun lint`
 

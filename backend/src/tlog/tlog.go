@@ -55,31 +55,31 @@ func init() {
 }
 
 func Trace(msg string, args ...any) {
-	slog.Log(context.Background(), LevelTrace, msg, args...)
+	slog.Default().Log(context.Background(), LevelTrace, msg, args...)
 }
 
 func Debug(msg string, args ...any) {
-	slog.Log(context.Background(), slog.LevelDebug, msg, args...)
+	slog.Default().Log(context.Background(), slog.LevelDebug, msg, args...)
 }
 
 func Info(msg string, args ...any) {
-	slog.Log(context.Background(), slog.LevelInfo, msg, args...)
+	slog.Default().Log(context.Background(), slog.LevelInfo, msg, args...)
 }
 
 func Notice(msg string, args ...any) {
-	slog.Log(context.Background(), LevelNotice, msg, args...)
+	slog.Default().Log(context.Background(), LevelNotice, msg, args...)
 }
 
 func Warn(msg string, args ...any) {
-	slog.Log(context.Background(), slog.LevelWarn, msg, args...)
+	slog.Default().Log(context.Background(), slog.LevelWarn, msg, args...)
 }
 
 func Error(msg string, args ...any) {
-	slog.Log(context.Background(), slog.LevelError, msg, args...)
+	slog.Default().Log(context.Background(), slog.LevelError, msg, args...)
 }
 
 func Fatal(msg string, args ...any) {
-	slog.Log(context.Background(), LevelFatal, msg, args...)
+	slog.Default().Log(context.Background(), LevelFatal, msg, args...)
 	os.Exit(1)
 }
 

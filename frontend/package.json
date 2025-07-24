@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2025.6.9-dev.64",
+  "version": "2025.7.0-dev.23",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -15,19 +15,19 @@
     "url": "https://github.com/dianlight/srat"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.0.6",
-    "@gtramontina.com/bun-html-live-reload": "^1.0.1",
-    "@hookform/devtools": "^4.4.0",
-    "@redux-devtools/extension": "^3.0.0",
-    "@rtk-query/codegen-openapi": "^2.0.0",
-    "@types/bun": "^1.2.15",
-    "@types/crypto-js": "^4.2.2",
-    "@types/lodash.debounce": "^4.0.9",
-    "@types/react": "^19.1.6",
-    "@types/react-dom": "^19.1.6",
-    "@types/react-sparklines": "^1.7.5",
-    "@types/react-syntax-highlighter": "^15.5.13",
-    "@types/semver": "^7.7.0"
+    "@biomejs/biome": "2.1.2",
+    "@gtramontina.com/bun-html-live-reload": "1.0.1",
+    "@hookform/devtools": "4.4.0",
+    "@redux-devtools/extension": "3.3.0",
+    "@rtk-query/codegen-openapi": "2.0.0",
+    "@types/bun": "1.2.19",
+    "@types/crypto-js": "4.2.2",
+    "@types/lodash.debounce": "4.0.9",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "@types/react-sparklines": "1.7.5",
+    "@types/react-syntax-highlighter": "15.5.13",
+    "@types/semver": "7.7.0"
   },
   "peerDependencies": {
     "typescript": "^5.8.3"
@@ -36,16 +36,16 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@fontsource/roboto": "^5.2.5",
-    "@fortawesome/free-brands-svg-icons": "^6.7.2",
-    "@fortawesome/free-regular-svg-icons": "^6.7.2",
-    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@fortawesome/free-brands-svg-icons": "^7.0.0",
+    "@fortawesome/free-regular-svg-icons": "^7.0.0",
+    "@fortawesome/free-solid-svg-icons": "^7.0.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@mui/icons-material": "^7.1.1",
     "@mui/material": "^7.1.1",
     "@mui/x-charts": "^8.5.3",
     "@reduxjs/toolkit": "^2.8.2",
     "crypto-js": "^4.2.0",
-    "filesize": "^10.1.6",
+    "filesize": "^11.0.0",
     "lodash.debounce": "^4.0.8",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^7.0.1",
@@ -68,7 +68,7 @@
   "scripts": {
     "nextversion": "bun run version.ts -i alpha",
     "version": "bun run version.ts",
-    "build": "bun run bun.build.ts",
+    "build": "bun tsc --noEmit && bun run bun.build.ts",
     "watch": "bun run bun.build.ts -w",
     "gowatch": "bun run bun.build.ts -w -o ../backend/src/web/static",
     "clean": "rm -rf out",
@@ -90,7 +90,7 @@
     "tree-sitter",
     "tree-sitter-json"
   ],
-  "packageManager": "bun@1.2.17",
+  "packageManager": "bun@1.2.19",
   "engines": {
     "bun": ">=1.2.13"
   },

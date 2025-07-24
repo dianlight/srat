@@ -30,7 +30,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 		panic(errors.Errorf("failed to connect database %s", v.ApiCtx.DatabasePath))
 	}
 	// Migrate the schema
-	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{})
+	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{}, &Issue{})
 	if err != nil {
 		slog.Error("failed to migrate database", "error", err, "path", v.ApiCtx.DatabasePath)
 		slog.Warn("Resetting Database to Default State")

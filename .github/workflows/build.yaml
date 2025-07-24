@@ -30,7 +30,7 @@ jobs:
     name: Set version
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0 # fetch-depth: 0 is required for git commands to see all history/tags
 
@@ -156,17 +156,17 @@ jobs:
     needs: setversion
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
       - name: Setup go ${{ env.GOLANG_VERSION }}
-        uses: actions/setup-go@v5.5.0
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
           cache-dependency-path: "**/*.sum"
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
         with:
           bun-version-file: frontend/package.json
 
@@ -196,7 +196,7 @@ jobs:
       - name: Check if tag ${{ needs.setversion.outputs.version }} exists
         if: github.event_name != 'pull_request'
         id: checkTag
-        uses: mukunku/tag-exists-action@v1.6.0
+        uses: mukunku/tag-exists-action@bdad1eaa119ce71b150b952c97351c75025c06a9 # v1.6.0
         with:
           tag: '${{ needs.setversion.outputs.version }}'
 
@@ -204,7 +204,7 @@ jobs:
         # CRITICAL IMPROVEMENT: This step is now safer.
         # It will ONLY run if the tag already exists AND it's a dev build (version contains '.dev').
         # This prevents accidentally moving a final release tag.
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
         if: |
           github.event_name != 'pull_request' &&
           steps.checkTag.outputs.exists == 'true' &&
@@ -220,7 +220,7 @@ jobs:
             })
 
       - name: Create tag ${{ needs.setversion.outputs.version }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
         if: ${{ github.event_name != 'pull_request' && steps.checkTag.outputs.exists == 'false' }}
         with:
           script: |
@@ -261,7 +261,7 @@ jobs:
 
       - name: Upload binaries as artifact
         if: steps.built_all.conclusion == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: binary-builds
           path: /tmp/build_artifacts/*.zip
@@ -274,18 +274,18 @@ jobs:
     needs: [build, setversion]
     steps:
       - name: Delete old draft releases
-        uses: hugo19941994/delete-draft-releases@v1.0.1
+        uses: hugo19941994/delete-draft-releases@1bdca1ea7ffb25ae7f468a7bdb40056dae98175e # v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         id: download_art
         with:
           name: binary-builds
 
       - name: Create Release and Upload Assets
         if: github.event_name != 'release' || github.event.action != 'published' || !github.event.release.prerelease
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2
         with:
           tag_name: ${{ needs.setversion.outputs.version }}
           name: Release ${{ needs.setversion.outputs.version }}
