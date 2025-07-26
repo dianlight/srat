@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"math"
+	"os"
 	"sync"
 	"syscall"
 	"time"
@@ -32,9 +33,15 @@ type diskStatsService struct {
 
 // NewDiskStatsService creates a new DiskStatsService.
 func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartService) DiskStatsService {
-	fs, err := blockdevice.NewFS("/proc", "/sys")
-	if err != nil {
-		slog.Error("Failed to create block device filesystem", "error", err)
+	var fs blockdevice.FS
+	var err error
+
+	// Only try to initialize filesystem if we're not in mock mode
+	if os.Getenv("SRAT_MOCK") != "true" {
+		fs, err = blockdevice.NewFS("/proc", "/sys")
+		if err != nil {
+			slog.Warn("Failed to create block device filesystem, using mock data", "error", err)
+		}
 	}
 
 	ds := &diskStatsService{
@@ -49,7 +56,7 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			err := ds.updateDiskStats()
-			if err != nil {
+			if err != nil && !errors.Is(err, dto.ErrorNotFound) {
 				slog.Error("Failed to update disk stats", "error", err)
 			}
 			Ctx.Value("wg").(*sync.WaitGroup).Add(1)
@@ -71,7 +78,7 @@ func (self *diskStatsService) run() error {
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(time.Second * 10):
 			err := self.updateDiskStats()
-			if err != nil {
+			if err != nil && !errors.Is(err, dto.ErrorNotFound) {
 				slog.Error("Failed to update disk stats", "error", err)
 				continue
 			}
@@ -85,7 +92,11 @@ func (s *diskStatsService) updateDiskStats() error {
 
 	disks, err := s.volumeService.GetVolumesData()
 	if err != nil {
-		return err
+		if !errors.Is(err, dto.ErrorNotFound) {
+			return err
+		}
+		slog.Debug("No volumes data found, continuing with empty disk list")
+		disks = &[]dto.Disk{}
 	}
 
 	s.currentDiskHealth = &dto.DiskHealth{

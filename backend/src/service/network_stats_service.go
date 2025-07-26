@@ -57,7 +57,12 @@ func NewNetworkStatsService(lc fx.Lifecycle, Ctx context.Context, prop_repo repo
 			Ctx.Value("wg").(*sync.WaitGroup).Add(1)
 			err := ns.updateNetworkStats()
 			if err != nil {
-				slog.Error("Failed to update network stats", "error", err)
+				// Ignore NotFound error, log others
+				if errors.Is(err, dto.ErrorNotFound) {
+					// ignore
+				} else {
+					slog.Error("Failed to update network stats", "error", err)
+				}
 			}
 			go func() {
 				defer Ctx.Value("wg").(*sync.WaitGroup).Done()
