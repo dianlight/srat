@@ -2,10 +2,8 @@ package api
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"net/http"
-	"sync"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
@@ -14,24 +12,19 @@ import (
 )
 
 type ShareHandler struct {
-	sharesQueueMutex sync.RWMutex
-	broadcaster      service.BroadcasterServiceInterface
-	apiContext       *dto.ContextState
-	dirtyservice     service.DirtyDataServiceInterface
-	shareService     service.ShareServiceInterface
+	apiContext   *dto.ContextState
+	dirtyservice service.DirtyDataServiceInterface
+	shareService service.ShareServiceInterface
 }
 
-func NewShareHandler(broadcaster service.BroadcasterServiceInterface,
-	apiContext *dto.ContextState,
+func NewShareHandler(apiContext *dto.ContextState,
 	dirtyService service.DirtyDataServiceInterface,
 	shareService service.ShareServiceInterface,
 ) *ShareHandler {
 	p := new(ShareHandler)
-	p.broadcaster = broadcaster
 	p.apiContext = apiContext
 	p.dirtyservice = dirtyService
 	p.shareService = shareService
-	p.sharesQueueMutex = sync.RWMutex{}
 	return p
 }
 
@@ -122,27 +115,12 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 		return nil, errors.Wrapf(err, "failed to create share %s", input.Body.Name)
 	}
 	self.dirtyservice.SetDirtyShares()
-	go self.notifyClient()
+	go self.shareService.NotifyClient()
 
 	return &struct {
 		Status int
 		Body   dto.SharedResource
 	}{Status: http.StatusCreated, Body: *createdShare}, nil
-}
-
-// notifyClient retrieves all exported shares from the repository, converts them to shared resources,
-// and broadcasts the list of shared resources to clients. It uses a read lock to ensure thread-safe
-// access to the shares queue.
-func (self *ShareHandler) notifyClient() {
-	self.sharesQueueMutex.RLock()
-	defer self.sharesQueueMutex.RUnlock()
-
-	shares, err := self.shareService.ListShares()
-	if err != nil {
-		log.Printf("Error listing shares in notifyClient: %v", err)
-		return
-	}
-	self.broadcaster.BroadcastMessage(shares)
 }
 
 // UpdateShare updates an existing share with the provided input data.
@@ -184,7 +162,7 @@ func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
 	}
 
 	self.dirtyservice.SetDirtyShares()
-	go self.notifyClient()
+	go self.shareService.NotifyClient()
 	return &struct{ Body dto.SharedResource }{Body: *updatedShare}, nil
 }
 
@@ -213,7 +191,7 @@ func (self *ShareHandler) DeleteShare(ctx context.Context, input *struct {
 	}
 
 	self.dirtyservice.SetDirtyShares()
-	go self.notifyClient()
+	go self.shareService.NotifyClient()
 	return &struct{}{}, nil
 }
 
@@ -230,7 +208,7 @@ func (self *ShareHandler) DisableShare(ctx context.Context, input *struct {
 	}
 
 	self.dirtyservice.SetDirtyShares()
-	go self.notifyClient()
+	go self.shareService.NotifyClient()
 	return &struct{ Body dto.SharedResource }{Body: *disabledShare}, nil
 }
 
@@ -247,6 +225,6 @@ func (self *ShareHandler) EnableShare(ctx context.Context, input *struct {
 	}
 
 	self.dirtyservice.SetDirtyShares()
-	go self.notifyClient()
+	go self.shareService.NotifyClient()
 	return &struct{ Body dto.SharedResource }{Body: *enabledShare}, nil
 }

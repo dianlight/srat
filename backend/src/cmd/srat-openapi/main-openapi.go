@@ -20,13 +20,17 @@ import (
 	"go.uber.org/fx"
 )
 
-var output *string
-
 func main() {
 	// set global logger with custom options
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
-	output = flag.String("out", "./docs/", "Output directory where create openapi.* files")
+	output := flag.String("out", "./docs/", "Output directory where create openapi.* files")
+	mockMode := flag.Bool("mock", true, "Use mock data for generation")
 	internal.Banner("srat-openapi")
+
+	// Set mock mode for OpenAPI generation
+	if *mockMode {
+		os.Setenv("SRAT_MOCK", "true")
+	}
 
 	flag.Usage = func() {
 		flag.PrintDefaults()

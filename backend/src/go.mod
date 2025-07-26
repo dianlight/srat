@@ -5,7 +5,7 @@ go 1.24.3
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v73 v73.0.0
+	github.com/google/go-github/v74 v74.0.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jinzhu/copier v0.4.0
 	github.com/jpillora/overseer v1.1.6
@@ -46,7 +46,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.147.6 // indirect
-	github.com/jmattheis/goverter v1.9.0 // indirect
+	github.com/jmattheis/goverter v1.9.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
@@ -143,7 +143,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.2
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250723115130-7a10bc203860
+	github.com/snapcore/snapd v0.0.0-20250725160005-0da3c54fbc60
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
@@ -151,7 +151,7 @@ require (
 	go.uber.org/fx v1.24.0
 	golang.org/x/time v0.12.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/gorm v1.30.0
+	gorm.io/gorm v1.30.1
 	moul.io/banner v1.0.1
 )
 

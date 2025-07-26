@@ -19,7 +19,7 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v73/github"
+	"github.com/google/go-github/v74/github"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -118,6 +118,6 @@ func ProvideFrontendOption() fx.Option {
 // ProvideCyclicDependencyWorkaroundOption provides the FX option for the ShareService/VolumeService cyclic dependency.
 func ProvideCyclicDependencyWorkaroundOption() fx.Option {
 	return fx.Invoke(func(s service.ShareServiceInterface, v service.VolumeServiceInterface) {
-		s.SetVolumeService(v) // Bypass block for cyclic dep in FX
+		//		s.SetVolumeService(v) // Bypass block for cyclic dep in FX
 	})
 }

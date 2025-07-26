@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dto"
 	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 )
@@ -79,6 +80,9 @@ func (self *PropertyRepository) Value(key string, include_internal bool) (interf
 	var prop dbom.Property
 	err := self.db.Model(&dbom.Property{}).First(&prop, "key = ? and (internal = ? or internal = false)", key, include_internal).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorNotFound)
+		}
 		return nil, errors.WithStack(err)
 	}
 	return prop.Value, nil
