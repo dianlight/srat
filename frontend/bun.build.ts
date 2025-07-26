@@ -2,8 +2,9 @@
 
 import { watch } from "node:fs";
 import { parseArgs } from "node:util";
-import { htmlLiveReload } from "@gtramontina.com/bun-html-live-reload";
-import { type BuildConfig, type BuildOutput, Glob, type Serve } from "bun";
+import { withHtmlLiveReload, reloadClients } from "bun-html-live-reload";
+import { type BuildConfig, type BuildOutput, Glob, type Serve, $ } from "bun";
+import path from "node:path";
 
 const { values, positionals } = parseArgs({
 	args: Bun.argv,
@@ -15,9 +16,9 @@ const { values, positionals } = parseArgs({
 			description: "Watch for changes and rebuild automatically",
 		},
 		serve: {
-			type: "string",
+			type: "boolean",
 			short: "s",
-			description: "Specify the host and port to serve the application",
+			description: "Start the HTTP Server",
 		},
 		apiContextUrl: {
 			type: "string",
@@ -76,10 +77,19 @@ async function build(): Promise<BuildOutput | undefined> {
 			return result;
 		});
 	} else if (values.serve) {
-		console.log(`Serving ${values.serve} -> ${values.outDir}`);
-		const serve: Serve = {
-			fetch(req: Request) {
-				const url = new URL(req.url);
+		console.log(`Serving ${values.outDir}`);
+
+		Bun.build(buildConfig);
+
+		watch(path.resolve(import.meta.dir, "src")).on("change", async () => {
+			await $`rm -r ${values.outDir}`;
+			await Bun.build(buildConfig);
+			reloadClients();
+		});
+
+		Bun.serve({
+			fetch: withHtmlLiveReload(async (request) => {
+				const url = new URL(request.url);
 				if (
 					url.pathname === "/.well-known/appspecific/com.chrome.devtools.json"
 				) {
@@ -93,23 +103,22 @@ async function build(): Promise<BuildOutput | undefined> {
 				if (url.pathname === "/") {
 					url.pathname = "/index.html";
 				}
-				const path = values.serve + url.pathname;
-				console.log(`Request ${req.mode} ${url.pathname} ==> ${path}`);
-				return new Response(Bun.file(path));
-			},
+				console.log(`Values ${import.meta.dir} ${values.outDir} ${url.pathname}`);
+				const tpath = path.normalize(path.join(import.meta.dir, values.outDir!, url.pathname));
+				const afile = Bun.file(tpath)
+				console.log(`Request ${request.mode} ${url.pathname} ==> ${tpath} ${await afile.exists()} [${afile.size}]`);
+				return new Response(await afile.arrayBuffer(), {
+					headers: {
+						"Content-Type": afile.type,
+					}
+				});
+			}),
 			port: 3000,
 			development: {
 				console: true,
 				hmr: true,
 			},
-		};
-
-		Bun.serve(
-			htmlLiveReload(serve, {
-				buildConfig,
-				watchPath: `${import.meta.dir}/src`,
-			}),
-		);
+		});
 		console.log("Serving http://localhost:3000/index.html");
 	} else if (values.watch) {
 		console.log(`Build Watch ${import.meta.dir}/src -> ${values.outDir}`);
@@ -121,7 +130,7 @@ async function build(): Promise<BuildOutput | undefined> {
 				console.log(`D ${values.outDir}/${file}`);
 				Bun.file(`${values.outDir}/${file}`)
 					.delete()
-					.catch((_err) => {});
+					.catch((_err) => { });
 			}
 
 			Bun.build(buildConfig).then((result) => {
