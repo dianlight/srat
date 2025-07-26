@@ -139,8 +139,8 @@ function PartitionActions({
 		partition.mount_point_data.some((mpd) => {
 			return (
 				mpd.shares &&
-				mpd.shares.length > 0 &&
-				mpd.shares.some((share) => !share.disabled)
+				mpd.shares.length > 0 //&&
+				//mpd.shares.some((share) => !share.disabled)
 			);
 		});
 	const firstMountPath = partition.mount_point_data?.[0]?.path;
@@ -999,8 +999,8 @@ export function Volumes() {
 													partition.mount_point_data.some((mpd) => {
 														return (
 															mpd.shares &&
-															mpd.shares.length > 0 &&
-															mpd.shares.some((share) => !share.disabled)
+															mpd.shares.length > 0 // &&
+															//	mpd.shares.some((share) => !share.disabled)
 														);
 													});
 
@@ -1389,7 +1389,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 													getOptionLabel: (option) =>
 														(option as MountFlag).name,
 													renderOption: (props, option) => (
-														<li {...props}>
+														<li  {...props} key={props.key}>
 															<Tooltip title={option.description || ""}>
 																<span>
 																	{option.name}{" "}
