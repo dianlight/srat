@@ -61,6 +61,7 @@ import {
 	AutocompleteElement,
 	CheckboxElement,
 	SelectElement,
+	SwitchElement,
 	TextFieldElement,
 } from "react-hook-form-mui";
 import { InView } from "react-intersection-observer";
@@ -1036,7 +1037,6 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 	} = useGetUsersQuery();
 	const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume();
 	const [editName, setEditName] = useState(false);
-	const [isEnabled, setIsEnabled] = useState(!props.objectToEdit?.disabled);
 	// Casing cycle state should be managed here if it's reset by volume selection
 	const [activeCasingIndex, setActiveCasingIndex] = useState(0);
 	const {
@@ -1050,11 +1050,10 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 	} = useForm<ShareEditProps>(
 			// Removed initial values from here, will be handled by useEffect + reset
 		);
+	const isDisabled = watch('disabled');
 
 	useEffect(() => {
 		if (props.open) {
-			setIsEnabled(!props.objectToEdit?.disabled)
-			// Find admin user from the fetched users list
 			const adminUser = Array.isArray(users)
 				? users.find((u) => u.is_admin)
 				: undefined;
@@ -1079,6 +1078,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 					timemachine: props.objectToEdit.timemachine || false,
 					usage: props.objectToEdit.usage || Usage.None,
 					veto_files: props.objectToEdit.veto_files || [],
+					disabled: props.objectToEdit.disabled,
 					// any other fields from ShareEditProps that might be in objectToEdit
 				});
 				setEditName(isNewShareCreation); // Enable name edit for new shares
@@ -1093,6 +1093,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 					timemachine: false,
 					usage: Usage.None,
 					veto_files: [],
+					disabled: false,
 					// mount_point_data will be undefined, user must select
 				});
 				setEditName(true);
@@ -1108,6 +1109,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 				timemachine: false,
 				usage: Usage.None,
 				veto_files: [],
+				disabled: false,
 			}); // Reset to default values when closing or not open
 		}
 	}, [props.open, reset, users, props.objectToEdit]);
@@ -1206,15 +1208,12 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 						)}
 					</Box>
 					{props.objectToEdit?.org_name !== "" && (
-						<FormControlLabel
-							control={
-								<Switch
-									checked={isEnabled}
-									onChange={(e) => setIsEnabled(e.target.checked)}
-									color="primary"
-								/>
-							}
-							label={isEnabled ? "Enabled" : "Disabled"}
+
+						<SwitchElement
+							control={control}
+							name="disabled"
+							color="primary"
+							label={isDisabled ? "Disabled" : "Enabled"}
 							sx={{ mr: 0 }}
 						/>
 					)}
@@ -1225,7 +1224,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 							label="Share Name"
 							required
 							size="small"
-							disabled={!isEnabled}
+							disabled={isDisabled}
 							rules={{
 								required: "Share name is required",
 								pattern: {
@@ -1278,7 +1277,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 											size="small"
 											label="Usage"
 											name="usage"
-											disabled={!isEnabled}
+											disabled={isDisabled}
 											options={Object.keys(Usage)
 												.filter(
 													(usage) => usage.toLowerCase() !== Usage.Internal,
@@ -1311,7 +1310,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												required
 												loading={vlLoading}
 												autocompleteProps={{
-													disabled: !isEnabled,
+													disabled: isDisabled,
 													size: "small",
 													renderValue: (value) => {
 														return (value as MountPointData).path || "--";
@@ -1383,7 +1382,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												render={({ field, fieldState: { error } }) => (
 													<MuiChipsInput
 														{...field}
-														disabled={!isEnabled}
+														disabled={isDisabled}
 														size="small"
 														hideClearAll
 														label="Veto Files"
@@ -1421,7 +1420,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 																	<InputAdornment position="end" sx={{ pr: 1 }}>
 																		<Tooltip title="Add suggested default Veto files">
 																			<IconButton
-																				disabled={!isEnabled}
+																				disabled={isDisabled}
 																				aria-label="add suggested default veto files"
 																				onClick={() => {
 																					const currentVetoFiles: string[] =
@@ -1465,7 +1464,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												size="small"
 												label="Support Timemachine Backups"
 												name="timemachine"
-												disabled={!isEnabled}
+												disabled={isDisabled}
 												control={control}
 											/>
 										</Grid>
@@ -1474,7 +1473,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												size="small"
 												label="Support Recycle Bin"
 												name="recycle_bin_enabled"
-												disabled={!isEnabled}
+												disabled={isDisabled}
 												control={control}
 											/>
 										</Grid>
@@ -1490,7 +1489,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 											control={control}
 											loading={usLoading}
 											autocompleteProps={{
-												disabled: !isEnabled,
+												disabled: isDisabled,
 												size: "small",
 												limitTags: 5,
 												getOptionKey: (option) =>
@@ -1561,7 +1560,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 											control={control}
 											loading={usLoading}
 											autocompleteProps={{
-												disabled: !isEnabled,
+												disabled: isDisabled,
 												size: "small",
 												limitTags: 5,
 												getOptionKey: (option) =>
