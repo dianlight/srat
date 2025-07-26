@@ -67,7 +67,7 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, ta
 		target.Path = source.Path
 	}
 	if source.Path != "" {
-		target.PathHash = xhashes.MD5(source.Path)
+		target.PathHash = xhashes.SHA1(source.Path)
 	}
 	if source.Path != "" {
 		target.Type = pathToType(source.Path)

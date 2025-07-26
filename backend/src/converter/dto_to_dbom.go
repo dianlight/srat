@@ -28,7 +28,7 @@ type DtoToDbomConverter interface {
 	// goverter:ignore Invalid IsHAMounted HaStatus
 	exportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error)
 
-	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:MD5
+	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Path IsInvalid | isPathDirNotExists
 	// goverter:map Data CustomFlags
@@ -82,7 +82,7 @@ type DtoToDbomConverter interface {
 	// goverter:map Data CustomFlags
 	// goverter:map Path IsInvalid | isPathDirNotExists
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
-	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:MD5
+	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error
 
 	// goverter:update target

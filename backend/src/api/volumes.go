@@ -64,13 +64,10 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 	MountPathHash string             `path:"mount_path_hash"`
 	Body          dto.MountPointData `required:"true"`
 }) (*struct{ Body dto.MountPointData }, error) {
-	defer func() {
-		go self.vservice.NotifyClient()
-	}()
 
 	mount_data := input.Body
 
-	if mount_data.Path == "" || mount_data.PathHash != xhashes.MD5(mount_data.Path) {
+	if mount_data.Path == "" || mount_data.PathHash != xhashes.SHA1(mount_data.Path) {
 		return nil, huma.Error409Conflict("Inconsistent MountPath provided in the request")
 	}
 

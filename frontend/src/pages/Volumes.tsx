@@ -1237,7 +1237,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 		}
 	}, [props.open, props.objectToEdit, reset, replace]); // Added `replace` to dependencies
 
-	function handleCloseSubmit(formData: xMountPointData) {
+	async function handleCloseSubmit(formData: xMountPointData) {
 		if (props.readOnlyView) {
 			props.onClose();
 			return;
@@ -1267,7 +1267,10 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 
 		const submitData: MountPointData = {
 			path: formData.path,
-			path_hash: new Bun.CryptoHasher('md5').update(formData.path).digest('hex'),
+			path_hash: await crypto.subtle.digest('SHA-1', new TextEncoder().encode(formData.path)).then(hashBuffer =>
+				Array.from(new Uint8Array(hashBuffer))
+					.map(b => b.toString(16).padStart(2, '0'))
+					.join('')),
 			fstype: formData.fstype || undefined,
 			flags: formData.flags,
 			custom_flags: custom_flags,
@@ -1298,7 +1301,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 				</DialogTitle>
 				<form
 					id="mountvolumeform"
-					onSubmit={handleSubmit(handleCloseSubmit)}
+					onSubmit={handleSubmit((data) => handleCloseSubmit(data))}
 					noValidate
 				>
 					<DialogContent>

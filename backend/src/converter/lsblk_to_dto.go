@@ -22,7 +22,7 @@ type LsblkToDtoConverter interface {
 	// goverter:map Fstype FSType
 	// goverter:map Mountpoint IsMounted | isMounted
 	// goverter:map Mountpoint Type | pathToType
-	// goverter:map Mountpoint PathHash | github.com/shomali11/util/xhashes:MD5
+	// goverter:map Mountpoint PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:useZeroValueOnPointerInconsistency
 	LsblkInfoToMountPointData(source *lsblk.LSBKInfo, target *dto.MountPointData) error
 }

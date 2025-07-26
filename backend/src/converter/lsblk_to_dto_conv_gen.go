@@ -17,7 +17,7 @@ func (c *LsblkToDtoConverterImpl) LsblkInfoToMountPointData(source *lsblk.LSBKIn
 			target.Path = source.Mountpoint
 		}
 		if source.Mountpoint != "" {
-			target.PathHash = xhashes.MD5(source.Mountpoint)
+			target.PathHash = xhashes.SHA1(source.Mountpoint)
 		}
 		if source.Mountpoint != "" {
 			target.Type = pathToType(source.Mountpoint)

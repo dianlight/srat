@@ -98,6 +98,10 @@ func NewVolumeService(
 }
 
 func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
+	defer func() {
+		go ms.NotifyClient()
+	}()
+
 	if ms.staticConfig.ProtectedMode {
 		return errors.WithDetails(dto.ErrorOperationNotPermittedInProtectedMode,
 			"Operation", "MountVolume",
@@ -337,7 +341,6 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			return errors.WithDetails(dto.ErrorDatabaseError, "Detail", "Failed to save mount state after successful mount. Volume has been unmounted.",
 				"Device", real_device, "Path", dbom_mount_data.Path, "Error", err)
 		}
-		go ms.NotifyClient()
 		conv.MountPointPathToMountPointData(*dbom_mount_data, md)
 	}
 	return nil
@@ -349,7 +352,7 @@ func (ms *VolumeService) PathHashToPath(pathhash string) (string, errors.E) {
 		return "", errors.WithStack(err)
 	}
 	for _, mount_data := range dbom_mount_data {
-		if xhashes.MD5(mount_data.Path) == pathhash {
+		if xhashes.SHA1(mount_data.Path) == pathhash {
 			return mount_data.Path, nil
 		}
 	}
@@ -357,6 +360,10 @@ func (ms *VolumeService) PathHashToPath(pathhash string) (string, errors.E) {
 }
 
 func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) errors.E {
+
+	defer func() {
+		go ms.NotifyClient()
+	}()
 	dbom_mount_data, err := ms.mount_repo.FindByPath(path)
 	if err != nil {
 		// If not found in DB, maybe still try to unmount the path?
@@ -414,7 +421,6 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 			// However, the DB is now potentially out of sync.
 		}
 	}
-	go ms.NotifyClient()
 	return nil
 
 }
@@ -750,6 +756,10 @@ func extractMajorMinor(device string) (int, int, error) {
 func (self *VolumeService) EjectDisk(diskID string) error {
 	slog.Info("Attempting to eject disk", "disk_id", diskID)
 
+	defer func() {
+		go self.NotifyClient()
+	}()
+
 	allDisks, err := self.GetVolumesData()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get volume data before ejecting disk %s", diskID)
@@ -805,11 +815,14 @@ func (self *VolumeService) EjectDisk(diskID string) error {
 	}
 
 	slog.Info("Disk ejected successfully", "disk_id", diskID, "device_path", devicePath)
-	go self.NotifyClient() // Notify clients of the change
 	return nil
 }
 
 func (ms *VolumeService) UpdateMountPointSettings(path string, updates dto.MountPointData) (*dto.MountPointData, errors.E) {
+
+	defer func() {
+		go ms.NotifyClient()
+	}()
 	dbMountData, err := ms.mount_repo.FindByPath(path)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -848,12 +861,14 @@ func (ms *VolumeService) UpdateMountPointSettings(path string, updates dto.Mount
 	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &updatedDto); convErr != nil {
 		return nil, errors.WithStack(convErr)
 	}
-	// Consider if a notification is needed after settings change
-	// go ms.notifyClient()
 	return &updatedDto, nil
 }
 
 func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.MountPointData) (*dto.MountPointData, errors.E) {
+
+	defer func() {
+		go ms.NotifyClient()
+	}()
 	dbMountData, err := ms.mount_repo.FindByPath(path)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -900,7 +915,6 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 			return nil, errors.WithStack(err)
 		}
 	}
-	go ms.NotifyClient() // Consider if settings changes should trigger a volume data broadcast
 
 	currentDto := dto.MountPointData{}
 	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &currentDto); convErr != nil {

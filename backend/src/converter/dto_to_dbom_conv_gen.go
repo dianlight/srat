@@ -91,7 +91,7 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 		target.Path = source.Path
 	}
 	if source.Path != "" {
-		target.PathHash = xhashes.MD5(source.Path)
+		target.PathHash = xhashes.SHA1(source.Path)
 	}
 	if source.Type != "" {
 		target.Type = source.Type
@@ -339,7 +339,7 @@ func (c *DtoToDbomConverterImpl) mountPointDataToMountPointPath(source dto.Mount
 func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.MountPointPath) (dto.MountPointData, error) {
 	var dtoMountPointData dto.MountPointData
 	dtoMountPointData.Path = source.Path
-	dtoMountPointData.PathHash = xhashes.MD5(source.Path)
+	dtoMountPointData.PathHash = xhashes.SHA1(source.Path)
 	dtoMountPointData.Type = source.Type
 	pString := source.FSType
 	dtoMountPointData.FSType = &pString
