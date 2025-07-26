@@ -793,8 +793,8 @@ export function Volumes() {
 						} else {
 							// Cancelled mount dialog or no data returned
 							setSelected(undefined);
+							setShowMount(false);
 						}
-						setShowMount(false);
 					}
 				}}
 			/>
@@ -1301,7 +1301,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 				</DialogTitle>
 				<form
 					id="mountvolumeform"
-					onSubmit={handleSubmit((data) => handleCloseSubmit(data))}
+					onSubmit={handleSubmit(async (data) => await handleCloseSubmit(data))}
 					noValidate
 				>
 					<DialogContent>
@@ -1586,7 +1586,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 								<Button
 									type="submit"
 									form="mountvolumeform"
-									disabled={mounting}
+									loading={mounting}
 									variant="contained"
 								>
 									Mount
