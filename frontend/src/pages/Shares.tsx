@@ -1419,37 +1419,39 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 																endAdornment: (
 																	<InputAdornment position="end" sx={{ pr: 1 }}>
 																		<Tooltip title="Add suggested default Veto files">
-																			<IconButton
-																				disabled={isDisabled}
-																				aria-label="add suggested default veto files"
-																				onClick={() => {
-																					const currentVetoFiles: string[] =
-																						getValues("veto_files") || [];
-																					const defaultVetoFiles: string[] =
-																						default_json.veto_files || [];
-																					const newVetoFilesToAdd =
-																						defaultVetoFiles.filter(
-																							(defaultFile) =>
-																								!currentVetoFiles.includes(
-																									defaultFile,
-																								),
+																			<span>
+																				<IconButton
+																					disabled={isDisabled}
+																					aria-label="add suggested default veto files"
+																					onClick={() => {
+																						const currentVetoFiles: string[] =
+																							getValues("veto_files") || [];
+																						const defaultVetoFiles: string[] =
+																							default_json.veto_files || [];
+																						const newVetoFilesToAdd =
+																							defaultVetoFiles.filter(
+																								(defaultFile) =>
+																									!currentVetoFiles.includes(
+																										defaultFile,
+																									),
+																							);
+																						setValue(
+																							"veto_files",
+																							[
+																								...currentVetoFiles,
+																								...newVetoFilesToAdd,
+																							],
+																							{
+																								shouldDirty: true,
+																								shouldValidate: true,
+																							},
 																						);
-																					setValue(
-																						"veto_files",
-																						[
-																							...currentVetoFiles,
-																							...newVetoFilesToAdd,
-																						],
-																						{
-																							shouldDirty: true,
-																							shouldValidate: true,
-																						},
-																					);
-																				}}
-																				edge="end"
-																			>
-																				<PlaylistAddIcon />
-																			</IconButton>
+																					}}
+																					edge="end"
+																				>
+																					<PlaylistAddIcon />
+																				</IconButton>
+																			</span>
 																		</Tooltip>
 																	</InputAdornment>
 																),
