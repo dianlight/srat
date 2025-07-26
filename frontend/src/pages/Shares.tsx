@@ -24,12 +24,14 @@ import {
 	Box,
 	Chip,
 	Fab,
+	FormControlLabel,
 	InputAdornment,
 	ListItemIcon,
 	Menu,
 	MenuItem,
 	Stack,
 	type SvgIconTypeMap,
+	Switch,
 	Tooltip,
 	Typography,
 	useMediaQuery,
@@ -829,13 +831,13 @@ export function Shares() {
 																	<FolderSharedIcon color="error" />
 																</Tooltip>
 															)) || (
-																<Tooltip
-																	title={props.mount_point_data?.warnings}
-																	arrow
-																>
-																	<FolderSharedIcon />
-																</Tooltip>
-															)}
+																	<Tooltip
+																		title={props.mount_point_data?.warnings}
+																		arrow
+																	>
+																		<FolderSharedIcon />
+																	</Tooltip>
+																)}
 														</Avatar>
 													</ListItemAvatar>
 													<ListItemText
@@ -914,7 +916,7 @@ export function Shares() {
 																								{u.username}
 																								{u !==
 																									props.users?.[
-																										props.users?.length - 1
+																									props.users?.length - 1
 																									] && ", "}
 																							</Typography>
 																						))}
@@ -951,7 +953,7 @@ export function Shares() {
 																									{u.username}
 																									{u !==
 																										props.ro_users?.[
-																											props.ro_users?.length - 1
+																										props.ro_users?.length - 1
 																										] && ", "}
 																								</span>
 																							))}
@@ -1024,6 +1026,7 @@ interface ShareEditDialogProps {
 	objectToEdit?: ShareEditProps;
 	shares?: SharedResource[]; // Added to receive shares data
 	onDeleteSubmit?: (shareName: string, shareData: SharedResource) => void; // Added for delete action
+	onToggleEnabled?: (enabled: boolean) => void; // Added for enable/disable toggle
 }
 function ShareEditDialog(props: ShareEditDialogProps) {
 	const {
@@ -1033,6 +1036,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 	} = useGetUsersQuery();
 	const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume();
 	const [editName, setEditName] = useState(false);
+	const [isEnabled, setIsEnabled] = useState(!props.objectToEdit?.disabled);
 	// Casing cycle state should be managed here if it's reset by volume selection
 	const [activeCasingIndex, setActiveCasingIndex] = useState(0);
 	const {
@@ -1044,12 +1048,12 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 		setValue,
 		getValues,
 	} = useForm<ShareEditProps>(
-		// Removed initial values from here, will be handled by useEffect + reset
-	);
+			// Removed initial values from here, will be handled by useEffect + reset
+		);
 
 	useEffect(() => {
 		if (props.open) {
-			//console.log("Opening share edit dialog")
+			setIsEnabled(!props.objectToEdit?.disabled)
 			// Find admin user from the fetched users list
 			const adminUser = Array.isArray(users)
 				? users.find((u) => u.is_admin)
@@ -1066,9 +1070,9 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 					// Otherwise, use the users from objectToEdit (could be empty for new, or populated for existing).
 					users:
 						isNewShareCreation &&
-						(!props.objectToEdit.users ||
-							props.objectToEdit.users.length === 0) &&
-						adminUser
+							(!props.objectToEdit.users ||
+								props.objectToEdit.users.length === 0) &&
+							adminUser
 							? [adminUser]
 							: props.objectToEdit.users || [],
 					ro_users: props.objectToEdit.ro_users || [],
@@ -1190,14 +1194,29 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 					handleCloseSubmit(); // Proceed with closing for other reasons (e.g., explicit button calls)
 				}}
 			>
-				<DialogTitle>
-					{!(editName || props.objectToEdit?.org_name === "") && (
-						<>
-							<IconButton onClick={() => setEditName(true)}>
-								<ModeEditIcon fontSize="small" />
-							</IconButton>
-							{props.objectToEdit?.name}
-						</>
+				<DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+						{!(editName || props.objectToEdit?.org_name === "") && (
+							<>
+								<IconButton onClick={() => setEditName(true)}>
+									<ModeEditIcon fontSize="small" />
+								</IconButton>
+								{props.objectToEdit?.name}
+							</>
+						)}
+					</Box>
+					{props.objectToEdit?.org_name !== "" && (
+						<FormControlLabel
+							control={
+								<Switch
+									checked={isEnabled}
+									onChange={(e) => setIsEnabled(e.target.checked)}
+									color="primary"
+								/>
+							}
+							label={isEnabled ? "Enabled" : "Disabled"}
+							sx={{ mr: 0 }}
+						/>
 					)}
 					{(editName || props.objectToEdit?.org_name === "") && (
 						<TextFieldElement
@@ -1206,6 +1225,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 							label="Share Name"
 							required
 							size="small"
+							disabled={!isEnabled}
 							rules={{
 								required: "Share name is required",
 								pattern: {
@@ -1258,6 +1278,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 											size="small"
 											label="Usage"
 											name="usage"
+											disabled={!isEnabled}
 											options={Object.keys(Usage)
 												.filter(
 													(usage) => usage.toLowerCase() !== Usage.Internal,
@@ -1290,6 +1311,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												required
 												loading={vlLoading}
 												autocompleteProps={{
+													disabled: !isEnabled,
 													size: "small",
 													renderValue: (value) => {
 														return (value as MountPointData).path || "--";
@@ -1299,7 +1321,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 													getOptionKey: (option) =>
 														(option as MountPointData)?.path_hash || "",
 													renderOption: (props, option) => (
-														<li {...props}>
+														<li {...props} key={props.key}>
 															<Typography variant="body2">
 																{option.path}
 															</Typography>
@@ -1361,6 +1383,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												render={({ field, fieldState: { error } }) => (
 													<MuiChipsInput
 														{...field}
+														disabled={!isEnabled}
 														size="small"
 														hideClearAll
 														label="Veto Files"
@@ -1398,6 +1421,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 																	<InputAdornment position="end" sx={{ pr: 1 }}>
 																		<Tooltip title="Add suggested default Veto files">
 																			<IconButton
+																				disabled={!isEnabled}
 																				aria-label="add suggested default veto files"
 																				onClick={() => {
 																					const currentVetoFiles: string[] =
@@ -1441,6 +1465,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												size="small"
 												label="Support Timemachine Backups"
 												name="timemachine"
+												disabled={!isEnabled}
 												control={control}
 											/>
 										</Grid>
@@ -1449,6 +1474,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												size="small"
 												label="Support Recycle Bin"
 												name="recycle_bin_enabled"
+												disabled={!isEnabled}
 												control={control}
 											/>
 										</Grid>
@@ -1464,6 +1490,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 											control={control}
 											loading={usLoading}
 											autocompleteProps={{
+												disabled: !isEnabled,
 												size: "small",
 												limitTags: 5,
 												getOptionKey: (option) =>
@@ -1471,7 +1498,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												getOptionLabel: (option) =>
 													(option as User).username || "",
 												renderOption: (props, option) => (
-													<li {...props}>
+													<li {...props} key={props.key}>
 														<Typography
 															variant="body2"
 															color={option.is_admin ? "warning" : "default"}
@@ -1518,6 +1545,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 											textFieldProps={{
 												//helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
 												//error: !!fsError,
+
 												InputLabelProps: { shrink: true },
 											}}
 										/>
@@ -1533,6 +1561,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 											control={control}
 											loading={usLoading}
 											autocompleteProps={{
+												disabled: !isEnabled,
 												size: "small",
 												limitTags: 5,
 												getOptionKey: (option) =>
@@ -1540,7 +1569,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												getOptionLabel: (option) =>
 													(option as User).username || "",
 												renderOption: (props, option) => (
-													<li {...props}>
+													<li {...props} key={props.key}>
 														<Typography
 															variant="body2"
 															color={option.is_admin ? "warning" : "default"}
@@ -1587,6 +1616,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 											textFieldProps={{
 												//helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
 												//error: !!fsError,
+
 												InputLabelProps: { shrink: true },
 											}}
 										/>
