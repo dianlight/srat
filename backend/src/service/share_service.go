@@ -2,6 +2,7 @@ package service
 
 import (
 	"log"
+	"log/slog"
 	"sync"
 
 	"github.com/dianlight/srat/converter"
@@ -25,7 +26,8 @@ type ShareServiceInterface interface {
 	GetShareFromPath(path string) (*dto.SharedResource, error)
 	DisableShareFromPath(path string) (*dto.SharedResource, error)
 	NotifyClient()
-	SetVolumeService(v VolumeServiceInterface)
+	VerifyShare(share *dto.SharedResource) error
+	//SetVolumeService(v VolumeServiceInterface)
 }
 
 type ShareService struct {
@@ -34,7 +36,7 @@ type ShareService struct {
 	mount_repo          repository.MountPointPathRepositoryInterface
 	broadcaster         BroadcasterServiceInterface
 	sharesQueueMutex    *sync.RWMutex
-	volumeService      VolumeServiceInterface
+	// volumeService       VolumeServiceInterface
 }
 
 type ShareServiceParams struct {
@@ -76,6 +78,14 @@ func (s *ShareService) ListShares() ([]dto.SharedResource, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to convert share")
 		}
+
+		// Verify share validity
+		err = s.VerifyShare(&dtoShare)
+		if err != nil {
+			slog.Error("Error verifying share", "share", dtoShare.Name, "err", err)
+			continue
+		}
+
 		dtoShares = append(dtoShares, dtoShare)
 	}
 	return dtoShares, nil
@@ -95,6 +105,11 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
+
+	if err := s.VerifyShare(&dtoShare); err != nil {
+		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
+	}
+
 	return &dtoShare, nil
 }
 
@@ -139,6 +154,10 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
 
+	if err := s.VerifyShare(&dtoShare); err != nil {
+		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
+	}
+
 	return &dtoShare, nil
 }
 
@@ -157,19 +176,30 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
 
-	if name != share.Name {
-		existing, err := s.exported_share_repo.FindByName(share.Name)
-		if err != nil && !errors.Is(err, dto.ErrorShareNotFound) {
-			return nil, errors.Wrap(err, "failed to check for existing share")
+	if len(dbShare.Users) == 0 {
+		adminUser, adminErr := s.samba_user_repo.GetAdmin()
+		if adminErr != nil {
+			return nil, errors.Wrap(adminErr, "failed to get admin user for new share")
 		}
-		if existing != nil {
-			return nil, dto.ErrorShareAlreadyExists
-		}
-		err = s.exported_share_repo.UpdateName(name, share.Name)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to update share name")
-		}
+		dbShare.Users = append(dbShare.Users, adminUser)
 	}
+
+	if err := s.exported_share_repo.Save(dbShare); err != nil {
+		// Note: gorm.ErrDuplicatedKey might not be standard across all GORM dialects/drivers.
+		// Checking for a more generic "constraint violation" or relying on the FindByName check might be more robust.
+		return nil, errors.Wrapf(err, "failed to save share '%s' to repository", share.Name)
+	}
+
+	var createdDtoShare dto.SharedResource
+	if err := conv.ExportedShareToSharedResource(*dbShare, &createdDtoShare); err != nil {
+		return nil, errors.Wrapf(err, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
+	}
+
+	if err := s.VerifyShare(&createdDtoShare); err != nil {
+		slog.Warn("New share verification failed", "share", createdDtoShare.Name, "err", err)
+	}
+
+	go s.NotifyClient()
 
 	err = s.mount_repo.Save(&dbShare.MountPointData)
 	if err != nil {
@@ -191,22 +221,22 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 	return &dtoShare, nil
 }
 
+// DeleteShare deletes a shared resource by its name.
 func (s *ShareService) DeleteShare(name string) error {
-	share, err := s.exported_share_repo.FindByName(name)
-	if err != nil {
-		return errors.Wrap(err, "failed to get share")
-	}
-	if share == nil {
-		return dto.ErrorShareNotFound
+	var ashare *dto.SharedResource
+	ashare, err := s.GetShare(name)
+	if err != nil { // Leverage GetShare for not-found check
+		return err
 	}
 	err = s.exported_share_repo.Delete(name)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete share")
 	}
-	err = s.mount_repo.Delete(share.MountPointData.Path)
+	err = s.mount_repo.Delete(ashare.MountPointData.Path)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete mount point")
 	}
+	go s.NotifyClient()
 	return nil
 }
 
@@ -305,6 +335,35 @@ func (s *ShareService) NotifyClient() {
 	s.broadcaster.BroadcastMessage(shares)
 }
 
-func (s *ShareService) SetVolumeService(v VolumeServiceInterface) {
-	s.volumeService = v
+// VerifyShare checks the validity of a share and disables it if invalid
+func (s *ShareService) VerifyShare(share *dto.SharedResource) error {
+	if share == nil {
+		return errors.New("share cannot be nil")
+	}
+
+	// Check if MountPointData exists and has a valid path
+	if share.MountPointData == nil || share.MountPointData.Path == "" {
+		slog.Warn("Share has no valid MountPointData", "share", share.Name)
+		_, err := s.DisableShare(share.Name)
+		if err != nil {
+			return errors.Wrapf(err, "failed to disable invalid share '%s'", share.Name)
+		}
+		return nil
+	}
+
+	// Check if mount is active in Home Assistant
+	if share.Usage != "internal" && share.Usage != "none" {
+		if share.IsHAMounted != nil && !*share.IsHAMounted {
+			slog.Warn("Share mount point is not mounted in Home Assistant",
+				"share", share.Name,
+				"status", share.HaStatus)
+			_, err := s.DisableShare(share.Name)
+			if err != nil {
+				return errors.Wrapf(err, "failed to disable share '%s' with invalid mount point", share.Name)
+			}
+			return nil
+		}
+	}
+
+	return nil
 }
