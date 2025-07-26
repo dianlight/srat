@@ -81,7 +81,10 @@ async function build(): Promise<BuildOutput | undefined> {
 
 		Bun.build(buildConfig);
 
-		watch(path.join(import.meta.dir, "src")).on("change", async () => {
+		watch(path.join(import.meta.dir, "src"), {
+			recursive: true
+		}).on("change", async (event, filename) => {
+			console.log(`Change file: ${filename}`);
 			await $`rm -r  ${import.meta.dir}/${values.outDir}`;
 			await Bun.build(buildConfig);
 			reloadClients();
