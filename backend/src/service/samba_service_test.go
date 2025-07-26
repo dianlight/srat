@@ -27,13 +27,13 @@ type SambaServiceSuite struct {
 	suite.Suite
 	sambaService service.SambaServiceInterface
 	//apictx              dto.ContextState
-	exported_share_repo repository.ExportedShareRepositoryInterface
-	property_repo       repository.PropertyRepositoryInterface
-	samba_user_repo     repository.SambaUserRepositoryInterface
-	ctrl                *matchers.MockController
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	app                 *fxtest.App
+	share_service   service.ShareServiceInterface
+	property_repo   repository.PropertyRepositoryInterface
+	samba_user_repo repository.SambaUserRepositoryInterface
+	ctrl            *matchers.MockController
+	ctx             context.Context
+	cancel          context.CancelFunc
+	app             *fxtest.App
 }
 
 func TestSambaServiceSuite(t *testing.T) {
@@ -63,16 +63,19 @@ func (suite *SambaServiceSuite) SetupTest() {
 				return &sharedResources
 			},
 			service.NewSambaService,
+			service.NewShareService,
+			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
 			mock.Mock[service.SupervisorServiceInterface],
 			mock.Mock[repository.ExportedShareRepositoryInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
+			mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[mount.ClientWithResponsesInterface],
 		),
 		fx.Populate(&suite.sambaService),
 		fx.Populate(&suite.property_repo),
-		fx.Populate(&suite.exported_share_repo),
+		fx.Populate(&suite.share_service),
 		fx.Populate(&suite.samba_user_repo),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
@@ -138,7 +141,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 		//		},
 	}, nil)
 
-	mock.When(suite.exported_share_repo.All()).ThenReturn(&[]dbom.ExportedShare{
+	mock.When(suite.share_service.All()).ThenReturn(&[]dbom.ExportedShare{
 		{
 			Name:               "CONFIG",
 			MountPointDataPath: "/homeassistant",

@@ -189,7 +189,7 @@ func main() {
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
 			props_repo repository.PropertyRepositoryInterface,
-			exported_share_repo repository.ExportedShareRepositoryInterface,
+			share_service service.ShareServiceInterface,
 			hardwareClient hardware.ClientWithResponsesInterface,
 			samba_user_repo repository.SambaUserRepositoryInterface,
 			volume_service service.VolumeServiceInterface,
@@ -232,7 +232,7 @@ func main() {
 					log.Fatalf("Cant create samba user %#+v", err)
 				}
 
-				err = firstTimeJSONImporter(config, mount_repo, props_repo, exported_share_repo, samba_user_repo, *_ha_mount_user_password_)
+				err = firstTimeJSONImporter(config, mount_repo, props_repo, share_service, samba_user_repo, *_ha_mount_user_password_)
 				if err != nil {
 					log.Fatalf("Cant import json settings - %#+v", errors.WithStack(err))
 				}
@@ -243,7 +243,7 @@ func main() {
 			lc fx.Lifecycle,
 			mount_repo repository.MountPointPathRepositoryInterface,
 			props_repo repository.PropertyRepositoryInterface,
-			exported_share_repo repository.ExportedShareRepositoryInterface,
+			share_service service.ShareServiceInterface,
 			hardwareClient hardware.ClientWithResponsesInterface,
 			samba_user_repo repository.SambaUserRepositoryInterface,
 			volume_service service.VolumeServiceInterface,
@@ -324,20 +324,20 @@ func main() {
 							slog.Info("******* Protected mode is ON, skipping automounting shares! ********")
 						}
 
-						// Apply config to samba
-						slog.Info("******* Applying Samba config ********")
-						err = samba_service.WriteAndRestartSambaConfig()
-						if err != nil {
-							log.Fatalf("Cant apply samba config - %#+v", err)
-						}
-						slog.Info("******* Samba config applied! ********")
-					} else if command == "stop" {
-						slog.Info("******* Unmounting all shares from Homeassistant ********")
-						// remount network share on ha_core
-						shares, err := exported_share_repo.All()
-						if err != nil {
-							log.Fatalf("Can't get Shares - %#+v", err)
-						}
+				// Apply config to samba
+				slog.Info("******* Applying Samba config ********")
+				err = samba_service.WriteAndRestartSambaConfig()
+				if err != nil {
+					log.Fatalf("Cant apply samba config - %#+v", err)
+				}
+				slog.Info("******* Samba config applied! ********")
+			} else if command == "stop" {
+				slog.Info("******* Unmounting all shares from Homeassistant ********")
+				// remount network share on ha_core
+				shares, err := share_service.All()
+				if err != nil {
+					log.Fatalf("Can't get Shares - %#+v", err)
+				}
 
 						for _, share := range *shares {
 							if share.Disabled != nil && *share.Disabled {
@@ -438,7 +438,7 @@ func main() {
 func firstTimeJSONImporter(config config.Config,
 	mount_repository repository.MountPointPathRepositoryInterface,
 	props_repository repository.PropertyRepositoryInterface,
-	export_share_repository repository.ExportedShareRepositoryInterface,
+	share_service service.ShareServiceInterface,
 	users_repository repository.SambaUserRepositoryInterface,
 	_ha_mount_user_password_ string,
 ) (err error) {
@@ -471,7 +471,7 @@ func firstTimeJSONImporter(config config.Config,
 		//		slog.Debug("Share ", "id", share.MountPointData.ID)
 		(*shares)[i] = share
 	}
-	err = export_share_repository.SaveAll(shares)
+	err = share_service.SaveAll(shares)
 	if err != nil {
 		return errors.WithStack(err)
 	}

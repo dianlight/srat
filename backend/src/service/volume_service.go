@@ -485,7 +485,8 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 		dbconv := converter.DtoToDbomConverterImpl{}
 		lsblkconv := converter.LsblkToDtoConverterImpl{}
 
-		if self.staticConfig.SupervisorURL == "demo" {
+		// Use mock data in demo mode or when SRAT_MOCK is true
+		if self.staticConfig.SupervisorURL == "demo" || os.Getenv("SRAT_MOCK") == "true" {
 			ret = append(ret, dto.Disk{
 				Id: pointer.String("DemoDisk"),
 				Partitions: &[]dto.Partition{
@@ -506,10 +507,19 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 			return &ret, nil
 		}
 
+		// Skip hardware client if it's not initialized
+		if self.hardwareClient == nil {
+			slog.Debug("Hardware client not initialized, continuing with empty disk list")
+			return &ret, nil
+		}
+
 		hwser, errHw := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx)
 		if errHw != nil || hwser == nil {
-			slog.Error("Failed to get hardware info from Home Assistant Supervisor", "err", errHw)
-			return nil, errors.Wrap(errHw, "failed to get hardware info from HA Supervisor")
+			if !errors.Is(errHw, dto.ErrorNotFound) {
+				slog.Error("Failed to get hardware info from Home Assistant Supervisor", "err", errHw)
+				return nil, errors.Wrap(errHw, "failed to get hardware info from HA Supervisor")
+			}
+			slog.Debug("Hardware info not found, continuing with empty disk list")
 		}
 
 		if hwser.StatusCode() != 200 || hwser.JSON200 == nil || hwser.JSON200.Data == nil || hwser.JSON200.Data.Drives == nil {
