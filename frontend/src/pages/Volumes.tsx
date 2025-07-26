@@ -50,7 +50,6 @@ import {
 	useTheme,
 } from "@mui/material";
 import List from "@mui/material/List";
-import MD5 from "crypto-js/md5";
 import { filesize } from "filesize";
 import { useConfirm } from "material-ui-confirm";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -775,8 +774,8 @@ export function Volumes() {
 				// Type guard to ensure we only pass Partitions to the mount dialog
 				objectToEdit={
 					selected &&
-					!(selected as Disk).partitions &&
-					(selected as Partition).name
+						!(selected as Disk).partitions &&
+						(selected as Partition).name
 						? (selected as Partition)
 						: undefined
 				}
@@ -1075,12 +1074,12 @@ export function Volumes() {
 																			)}
 																			{partition.mount_point_data?.[0]
 																				?.fstype && (
-																				<Chip
-																					label={`Type: ${partition.mount_point_data[0].fstype}`}
-																					size="small"
-																					variant="outlined"
-																				/>
-																			)}
+																					<Chip
+																						label={`Type: ${partition.mount_point_data[0].fstype}`}
+																						size="small"
+																						variant="outlined"
+																					/>
+																				)}
 																			{isMounted && (
 																				<Chip
 																					label={`Mount: ${partition.mount_point_data?.map((mpd) => mpd.path).join(" ")}`}
@@ -1090,7 +1089,7 @@ export function Volumes() {
 																			)}
 																			{partition.host_mount_point_data &&
 																				partition.host_mount_point_data.length >
-																					0 && (
+																				0 && (
 																					<Chip
 																						label={`Mount: ${partition.host_mount_point_data.map((mpd) => mpd.path).join(" ")}`}
 																						size="small"
@@ -1268,7 +1267,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 
 		const submitData: MountPointData = {
 			path: formData.path,
-			path_hash: MD5(formData.path).toString(),
+			path_hash: new Bun.CryptoHasher('md5').update(formData.path).digest('hex'),
 			fstype: formData.fstype || undefined,
 			flags: formData.flags,
 			custom_flags: custom_flags,
@@ -1335,8 +1334,8 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 											fsLoading
 												? []
 												: ((filesystems as FilesystemType[]) || []).map(
-														(fs) => fs.name,
-													)
+													(fs) => fs.name,
+												)
 										}
 										autocompleteProps={{
 											freeSolo: true,
@@ -1376,7 +1375,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 													fsLoading
 														? []
 														: (filesystems as FilesystemType[])[0]
-																?.mountFlags || []
+															?.mountFlags || []
 												} // Use string keys for options
 												control={control}
 												autocompleteProps={{
@@ -1433,8 +1432,8 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 													fsLoading
 														? []
 														: (filesystems as FilesystemType[]).find(
-																(fs) => fs.name === watch("fstype"),
-															)?.customMountFlags || []
+															(fs) => fs.name === watch("fstype"),
+														)?.customMountFlags || []
 												}
 												control={control}
 												autocompleteProps={{
@@ -1489,39 +1488,39 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 													onChange: props.readOnlyView
 														? undefined
 														: (_event, value) => {
-																const flagsWithValue = (
-																	value as MountFlag[]
-																).filter((v) => v.needsValue);
-																const currentFieldValues =
-																	watch("custom_flags_values") || [];
+															const flagsWithValue = (
+																value as MountFlag[]
+															).filter((v) => v.needsValue);
+															const currentFieldValues =
+																watch("custom_flags_values") || [];
 
-																// Filter out existing values for flags that are no longer selected
-																const newFieldValues =
-																	currentFieldValues.filter((fv) =>
-																		flagsWithValue.some(
-																			(selectedFlag) =>
-																				selectedFlag.name === fv.name,
-																		),
-																	);
+															// Filter out existing values for flags that are no longer selected
+															const newFieldValues =
+																currentFieldValues.filter((fv) =>
+																	flagsWithValue.some(
+																		(selectedFlag) =>
+																			selectedFlag.name === fv.name,
+																	),
+																);
 
-																// Add new placeholders for newly selected flags that need values
-																flagsWithValue.forEach((selectedFlag) => {
-																	if (
-																		!newFieldValues.some(
-																			(fv) => fv.name === selectedFlag.name,
-																		)
-																	) {
-																		newFieldValues.push({
-																			...selectedFlag,
-																			value: selectedFlag.value || "",
-																		}); // Use existing value or empty
-																	}
-																});
-																replace(newFieldValues);
-																setValue("custom_flags", value as MountFlag[], {
-																	shouldDirty: true,
-																}); // also update the custom_flags themselves
-															},
+															// Add new placeholders for newly selected flags that need values
+															flagsWithValue.forEach((selectedFlag) => {
+																if (
+																	!newFieldValues.some(
+																		(fv) => fv.name === selectedFlag.name,
+																	)
+																) {
+																	newFieldValues.push({
+																		...selectedFlag,
+																		value: selectedFlag.value || "",
+																	}); // Use existing value or empty
+																}
+															});
+															replace(newFieldValues);
+															setValue("custom_flags", value as MountFlag[], {
+																shouldDirty: true,
+															}); // also update the custom_flags themselves
+														},
 												}}
 												textFieldProps={{
 													disabled: props.readOnlyView,
@@ -1602,7 +1601,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 /*
 // Helper to check if a value is a string key of the Flags enum (remains the same)
 function isFlagsKey(key: string): key is keyof typeof Flags {
-    // Ensure Flags is treated as an object for Object.keys
-    return Object.keys(Flags as object).includes(key);
+	// Ensure Flags is treated as an object for Object.keys
+	return Object.keys(Flags as object).includes(key);
 }
 */
