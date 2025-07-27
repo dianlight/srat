@@ -100,15 +100,30 @@ export function MetricCard({
 				<Box
 					sx={{
 						display: "flex",
-						alignItems: "center",
+						flexDirection: { xs: "column", sm: "row" },
+						alignItems: { xs: "stretch", sm: "center" },
 						justifyContent: "space-between",
-						mb: 1,
+						mb: history ? 1 : 0,
+						gap: history ? 2 : 0,
 					}}
 				>
-					<Typography variant="h4" component="div">
+					<Typography
+						variant="h4"
+						component="div"
+						sx={{
+							textAlign: { xs: "center", sm: "left" }
+						}}
+					>
 						{value}
 					</Typography>
-					<Box sx={{ width: "50%", height: 40 }}>{renderHistory()}</Box>
+					<Box sx={{
+						width: { xs: "100%", sm: "40%" },
+						height: history ? 40 : 0,
+						minWidth: history ? 100 : 'auto',
+						display: history ? 'block' : 'none'
+					}}>
+						{renderHistory()}
+					</Box>
 				</Box>
 				{children}
 			</>
@@ -120,12 +135,34 @@ export function MetricCard({
 			<CardHeader
 				title={title}
 				subheader={subheader}
+				sx={{
+					p: { xs: 1.5, sm: 2 },
+					"& .MuiCardHeader-content": {
+						overflow: "hidden",
+					},
+					"& .MuiCardHeader-title": {
+						fontSize: { xs: "1rem", sm: "1.25rem" },
+						whiteSpace: "nowrap",
+						overflow: "hidden",
+						textOverflow: "ellipsis"
+					},
+					"& .MuiCardHeader-subheader": {
+						fontSize: { xs: "0.75rem", sm: "0.875rem" },
+						whiteSpace: "nowrap",
+						overflow: "hidden",
+						textOverflow: "ellipsis"
+					}
+				}}
 				action={
 					detailMetricId &&
 					onDetailClick && (
 						<Tooltip title="Show Details">
-							<IconButton onClick={handleDetailClick} size="small">
-								<InfoIcon />
+							<IconButton
+								onClick={handleDetailClick}
+								size="small"
+								sx={{ ml: { xs: 0.5, sm: 1 } }}
+							>
+								<InfoIcon sx={{ fontSize: { xs: "1.25rem", sm: "1.5rem" } }} />
 							</IconButton>
 						</Tooltip>
 					)
