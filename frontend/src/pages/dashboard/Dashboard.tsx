@@ -1,4 +1,4 @@
-import { Grid, Stack } from "@mui/material";
+import { Box, Grid, Stack } from "@mui/material";
 import { useState } from "react";
 import { useGithubNews } from "../../hooks/githubNewsHook";
 import { DashboardActions } from "./DashboardActions";
@@ -14,10 +14,12 @@ export function Dashboard() {
 	};
 
 	return (
-		<Grid container spacing={3} sx={{ p: 2, pt: 3 }}>
-			<Grid
-				size={{ xs: isIntroCollapsed ? 2 : 12, md: isIntroCollapsed ? 1 : 4 }}
-				sx={{ display: { xs: "none", md: "flex" } }}
+		<Grid container spacing={{ xs: 2, sm: 3 }} sx={{ p: { xs: 1, sm: 2 }, pt: { xs: 2, sm: 3 } }}>
+			<Box
+				sx={{
+					display: { xs: "none", md: "flex" },
+					width: { md: isIntroCollapsed ? '8.33%' : '33.33%' }
+				}}
 			>
 				<DashboardIntro
 					isCollapsed={isIntroCollapsed}
@@ -26,13 +28,17 @@ export function Dashboard() {
 					isLoading={isLoadingNews}
 					error={errorNews}
 				/>
-			</Grid>
-			<Grid size={{ xs: 12, md: isIntroCollapsed ? 11 : 8 }}>
-				<Stack spacing={3}>
+			</Box>
+			<Box
+				sx={{
+					width: { xs: '100%', md: isIntroCollapsed ? '91.67%' : '66.67%' }
+				}}
+			>
+				<Stack spacing={{ xs: 2, sm: 3 }}>
 					<DashboardActions />
 					<DashboardMetrics />
 				</Stack>
-			</Grid>
+			</Box>
 		</Grid>
 	);
 }

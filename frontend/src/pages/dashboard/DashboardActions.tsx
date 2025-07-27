@@ -5,7 +5,7 @@ import {
 	AccordionSummary,
 	Typography,
 } from "@mui/material";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useReadOnly } from "../../hooks/readonlyHook";
 import { useVolume } from "../../hooks/volumeHook";
@@ -17,9 +17,9 @@ export function DashboardActions() {
 	const { disks, isLoading, error } = useVolume();
 	const read_only = useReadOnly();
 	const _navigate = useNavigate();
+	const [expanded, setExpanded] = useState(false);
 
-
-	const  { data: issues, isLoading: is_inLoading } = useGetApiIssuesQuery()
+	const { data: issues, isLoading: is_inLoading } = useGetApiIssuesQuery();
 
 	const actionablePartitions = useMemo(() => {
 		const partitions: { partition: Partition; action: "mount" | "share" }[] =
@@ -61,10 +61,21 @@ export function DashboardActions() {
 		throw new Error("Function not implemented.");
 	}
 
+	// Set initial expanded state based on content
+	useEffect(() => {
+		if (!isLoading && !error && (actionablePartitions.length + (Array.isArray(issues) ? issues.length : 0) > 0)) {
+			setExpanded(true);
+		}
+	}, [isLoading, error, actionablePartitions.length, issues]);
+
+	const handleAccordionChange = (_event: React.SyntheticEvent, isExpanded: boolean) => {
+		setExpanded(isExpanded);
+	};
+
 	return (
 		<Accordion
-			key={(isLoading || is_inLoading)? "loading" : "loaded"}
-			defaultExpanded={!isLoading && !error && (actionablePartitions.length+(issues as Issue[])?.length||0) > 0}
+			expanded={expanded}
+			onChange={handleAccordionChange}
 		>
 			<AccordionSummary
 				expandIcon={<ExpandMoreIcon />}
