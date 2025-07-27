@@ -103,8 +103,8 @@ export function MetricCard({
 						flexDirection: { xs: "column", sm: "row" },
 						alignItems: { xs: "stretch", sm: "center" },
 						justifyContent: "space-between",
-						mb: history ? 1 : 0,
-						gap: history ? 2 : 0,
+						mb: history ? { xs: 0.5, sm: 1 } : 0,
+						gap: history ? { xs: 1, sm: 2 } : 0,
 					}}
 				>
 					<Typography
@@ -131,14 +131,15 @@ export function MetricCard({
 	};
 
 	return (
-		<Card>
+		<Card sx={{ p: { xs: 0.5, sm: 1 } }}>
 			<CardHeader
 				title={title}
 				subheader={subheader}
 				sx={{
-					p: { xs: 1.5, sm: 2 },
+					p: { xs: 1, sm: 1.5 },
 					"& .MuiCardHeader-content": {
 						overflow: "hidden",
+						my: { xs: -0.5, sm: 0 }
 					},
 					"& .MuiCardHeader-title": {
 						fontSize: { xs: "1rem", sm: "1.25rem" },
@@ -168,7 +169,14 @@ export function MetricCard({
 					)
 				}
 			/>
-			<CardContent>{renderContent()}</CardContent>
+			<CardContent sx={{
+				p: { xs: 1, sm: 2 },
+				"&:last-child": {
+					pb: { xs: 1, sm: 2 }
+				}
+			}}>
+				{renderContent()}
+			</CardContent>
 		</Card>
 	);
 }

@@ -332,7 +332,13 @@ export function NavBar(props: {
 		<>
 			<AppBar position="static">
 				<Container maxWidth="xl">
-					<Toolbar disableGutters variant="dense">
+					<Toolbar
+						disableGutters
+						sx={{
+							minHeight: '56px !important',
+							height: '56px'
+						}}
+					>
 						{matches && (
 							<img
 								id="logo-container"
@@ -341,6 +347,7 @@ export function NavBar(props: {
 								src={isLogoHovered ? icon : logo}
 								onMouseEnter={() => setIsLogoHovered(true)}
 								onMouseLeave={() => setIsLogoHovered(false)}
+								style={{ height: '40px' }}
 							/>
 						)}
 						{matches ? (
