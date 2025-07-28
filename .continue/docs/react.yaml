@@ -1,0 +1,9 @@
+name: React Docs
+version: 0.0.2
+schema: v1
+
+docs:
+  - name: "React"
+    startUrl: "https://react.dev/reference/"
+    rootUrl: "https://react.dev/reference/"
+    faviconUrl: "https://react.dev/favicon.ico"

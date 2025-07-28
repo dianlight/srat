@@ -1,0 +1,7 @@
+name: Uber Fx docs
+version: 0.0.1
+schema: v1
+
+docs:
+  - name: Uber FX
+    startUrl: "https://uber-go.github.io/fx/"
