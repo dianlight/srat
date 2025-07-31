@@ -3,6 +3,9 @@ import {
 	Accordion,
 	AccordionDetails,
 	AccordionSummary,
+	Box,
+	FormControlLabel,
+	Switch,
 	Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -18,6 +21,7 @@ export function DashboardActions() {
 	const read_only = useReadOnly();
 	const _navigate = useNavigate();
 	const [expanded, setExpanded] = useState(false);
+	const [showIgnored, setShowIgnored] = useState(false);
 
 	const { data: issues, isLoading: is_inLoading } = useGetApiIssuesQuery();
 
@@ -82,18 +86,42 @@ export function DashboardActions() {
 				aria-controls="actions-content"
 				id="actions-header"
 			>
-				<Typography variant="h6">Actionable Items</Typography>
+				<Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+					<Typography variant="h6">Actionable Items</Typography>
+					<FormControlLabel
+						onClick={(e) => e.stopPropagation()}
+						onFocus={(e) => e.stopPropagation()}
+						control={
+							<Switch
+								size="small"
+								checked={showIgnored}
+								onChange={(e) => {
+									e.stopPropagation();
+									setShowIgnored(e.target.checked);
+								}}
+							/>
+						}
+						label="Show Ignored"
+						sx={{ mr: 1 }}
+					/>
+				</Box>
 			</AccordionSummary>
 			<AccordionDetails>
 				{!is_inLoading && issues && Array.isArray(issues) &&
 					issues.map((issue) => (
-						<IssueCard key={issue.id} issue={issue} onResolve={handleResolveIssue} />
+						<IssueCard
+							key={issue.id}
+							issue={issue}
+							onResolve={handleResolveIssue}
+							showIgnored={showIgnored}
+						/>
 					))
 				}
 				<ActionableItemsList
 					actionablePartitions={actionablePartitions}
 					isLoading={isLoading}
 					error={error}
+					showIgnored={showIgnored}
 				/>
 			</AccordionDetails>
 		</Accordion>
