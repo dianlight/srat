@@ -18,7 +18,7 @@ export function Dashboard() {
 			<Box
 				sx={{
 					display: { xs: "none", md: "flex" },
-					width: { md: isIntroCollapsed ? '8.33%' : '33.33%' }
+					width: { md: isIntroCollapsed ? '40px' : '100%' }
 				}}
 			>
 				<DashboardIntro
@@ -31,7 +31,7 @@ export function Dashboard() {
 			</Box>
 			<Box
 				sx={{
-					width: { xs: '100%', md: isIntroCollapsed ? '91.67%' : '66.67%' }
+					width: { xs: '100%', md: isIntroCollapsed ? '90%' : '100%' }
 				}}
 			>
 				<Stack spacing={{ xs: 2, sm: 3 }}>
