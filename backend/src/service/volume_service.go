@@ -51,7 +51,8 @@ type VolumeService struct {
 	hardwareClient    hardware.ClientWithResponsesInterface
 	lsblk             lsblk.LSBLKInterpreterInterface
 	fs_service        FilesystemServiceInterface
-	shareService      ShareServiceInterface // Added for disabling shares
+	shareService      ShareServiceInterface
+	issueRepository   *repository.IssueRepository
 	staticConfig      *dto.ContextState
 	sfGroup           singleflight.Group
 }
@@ -64,7 +65,8 @@ type VolumeServiceProps struct {
 	HardwareClient    hardware.ClientWithResponsesInterface `optional:"true"`
 	LsblkInterpreter  lsblk.LSBLKInterpreterInterface
 	FilesystemService FilesystemServiceInterface
-	ShareService      ShareServiceInterface // Added
+	ShareService      ShareServiceInterface
+	IssueRepository   *repository.IssueRepository
 	StaticConfig      *dto.ContextState
 }
 
@@ -81,7 +83,8 @@ func NewVolumeService(
 		lsblk:             in.LsblkInterpreter,
 		fs_service:        in.FilesystemService,
 		staticConfig:      in.StaticConfig,
-		shareService:      in.ShareService, // Added
+		shareService:      in.ShareService,
+		issueRepository:   in.IssueRepository,
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -426,7 +429,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 }
 
 func (self *VolumeService) udevEventHandler() {
-	tlog.Trace("Starting Udev event handler...") // Changed log level
+	tlog.Trace("Starting Udev event handler...")
 
 	conn := new(netlink.UEventConn)
 	if err := conn.Connect(netlink.UdevEvent); err != nil {
@@ -435,9 +438,9 @@ func (self *VolumeService) udevEventHandler() {
 	}
 	defer conn.Close()
 
-	queue := make(chan netlink.UEvent, 10) // Added buffer to queue
-	errorChan := make(chan error, 1)       // Renamed and buffered error channel
-	quit := conn.Monitor(queue, errorChan, nil /*matcher*/)
+	queue := make(chan netlink.UEvent, 10)
+	errorChan := make(chan error, 1)
+	quit := conn.Monitor(queue, errorChan, nil)
 	tlog.Trace("Udev monitor started successfully.")
 
 	// Handling message from queue
@@ -445,34 +448,102 @@ func (self *VolumeService) udevEventHandler() {
 		select {
 		case <-self.ctx.Done():
 			slog.Info("Udev event handler stopping due to context cancellation.", "err", self.ctx.Err())
-			close(quit) // Signal monitor to stop
-			// Drain remaining events? Maybe not necessary.
+			close(quit)
 			return
 		case uevent := <-queue:
 			// Filter events - only interested in block devices for now
 			if subsystem, ok := uevent.Env["SUBSYSTEM"]; ok && subsystem == "block" {
 				action := uevent.Action
 				devName, _ := uevent.Env["DEVNAME"]
-				devType, _ := uevent.Env["DEVTYPE"]                                                               // disk, partition
-				slog.Debug("Received Udev block event", "action", action, "devname", devName, "devtype", devType) // Changed log level
+				devType, _ := uevent.Env["DEVTYPE"]
+				slog.Debug("Received Udev block event", "action", action, "devname", devName, "devtype", devType)
 
-				// Trigger notification on add/remove/change events for block devices
+				// Process block device events
 				if action == "add" || action == "remove" || action == "change" {
-					slog.Info("Relevant Udev event detected, triggering client notification.", "action", action, "devname", devName)
+					slog.Info("Processing block device event", "action", action, "devname", devName)
+
+					// Get current volumes data
+					volumesData, err := self.GetVolumesData()
+					if err != nil {
+						slog.Error("Failed to get volumes data after udev event", "err", err)
+						continue
+					}
+
+					// Create a map of currently mounted paths
+					currentlyMounted := make(map[string]bool)
+					if volumesData != nil {
+						for _, disk := range *volumesData {
+							if disk.Partitions != nil {
+								for _, partition := range *disk.Partitions {
+									if partition.MountPointData != nil {
+										for _, mp := range *partition.MountPointData {
+											if mp.IsMounted {
+												currentlyMounted[mp.Path] = true
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+
+					// Check all shares
+					mountPoints, err := self.mount_repo.All()
+					if err != nil {
+						slog.Error("Failed to get mount points from repository", "err", err)
+						continue
+					}
+
+					for _, mp := range mountPoints {
+						// Skip if the mount point doesn't have any shares
+						if mp.Shares == nil || len(mp.Shares) == 0 {
+							continue
+						}
+
+						// Check if path is currently mounted
+						isMounted := currentlyMounted[mp.Path]
+
+						// Get existing mounted status from osutil
+						wasMounted, err := osutil.IsMounted(mp.Path)
+						if err != nil {
+							slog.Warn("Failed to check mount status", "path", mp.Path, "err", err)
+							wasMounted = false
+						}
+
+						if wasMounted && !isMounted {
+							// Create an issue for unmounted volume
+							issue := &dbom.Issue{
+								Title:       fmt.Sprintf("Volume unmounted: %s", mp.Path),
+								Description: fmt.Sprintf("The volume at path %s was unexpectedly unmounted. This may affect shared resources.", mp.Path),
+								DetailLink:  fmt.Sprintf("/storage/volumes?path=%s", mp.Path),
+							}
+
+							// Save the issue using issue repository
+							if err := self.issueRepository.Create(issue); err != nil {
+								slog.Error("Failed to create issue for unmounted volume", "path", mp.Path, "err", err)
+							}
+
+							// Disable shares for the unmounted volume
+							_, err := self.shareService.DisableShareFromPath(mp.Path)
+							if err != nil && !errors.Is(err, dto.ErrorShareNotFound) {
+								slog.Error("Failed to disable share for unmounted volume", "path", mp.Path, "err", err)
+							}
+						}
+
+						// Update mount point data if needed
+						if err := self.mount_repo.Save(&mp); err != nil {
+							slog.Error("Failed to update mount point", "path", mp.Path, "err", err)
+						}
+					}
+
+					// Notify clients of changes
 					go self.NotifyClient()
 				}
 			}
-			// Optional: Log other events at debug level if needed
-			// else {
-			//  slog.Debug("Ignoring Udev event from other subsystem", "subsystem", subsystem)
-			// }
 		case err := <-errorChan:
 			slog.Error("Error received from Udev monitor", "err", err)
-			// Decide if error is fatal. If e.g. permission error, might need to stop.
-			// For now, just log and continue. If monitor stops, loop will exit via quit channel closure.
 		}
 	}
-	// slog.Info("Udev event handler finished.") // This might not be reached if ctx cancels
 }
 
 func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
