@@ -58,6 +58,7 @@ require (
 	github.com/rogpeppe/gohack v1.0.2 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect
 	github.com/zarldev/goenums v0.4.3 // indirect
 	go.opentelemetry.io/otel v1.36.0 // indirect

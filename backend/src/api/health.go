@@ -190,7 +190,12 @@ func (self *HealthHanler) run() error {
 				self.HealthPing.SambaStatus = nil
 			} else {
 				self.HealthPing.SambaStatus = sambaStatus
+				// Also broadcast the samba status separately for Home Assistant integration
+				self.broadcaster.BroadcastMessage(*sambaStatus)
 			}
+
+			// Also broadcast the samba process status separately for Home Assistant integration
+			self.broadcaster.BroadcastMessage(self.HealthPing.SambaProcessStatus)
 
 			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()

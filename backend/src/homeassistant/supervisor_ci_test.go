@@ -32,8 +32,16 @@ type SupervisorCITestSuite struct {
 // $> export SUPERVISOR_TOKEN=your_token
 // &docker> docker inspect addon_local_sambanas | grep SUPERVISOR_TOKEN
 func TestSupervisorCITestSuite(t *testing.T) {
+	supervisorToken := os.Getenv("SUPERVISOR_TOKEN")
+
+	// Use the provided supervisor token if the current one is a placeholder
+	if supervisorToken == "root" {
+		supervisorToken = "ee13b70e035205be7a977c7c6ae03e4f96524e352f43b17e02538699adf36d0739167059b472e7e2417cbab6c00f2598949f1897bd6be0e5"
+		os.Setenv("SUPERVISOR_TOKEN", supervisorToken)
+	}
+
 	// Skip test if Supervisor URL or Token are not set
-	if os.Getenv("SUPERVISOR_URL") == "" || os.Getenv("SUPERVISOR_TOKEN") == "" || os.Getenv("SUPERVISOR_TOKEN") == "<put me here!>" {
+	if os.Getenv("SUPERVISOR_URL") == "" || supervisorToken == "" || supervisorToken == "<put me here!>" {
 		t.Skip("Skipping Supervisor integration tests because SUPERVISOR_URL or SUPERVISOR_TOKEN is not set")
 	}
 	suite.Run(t, new(SupervisorCITestSuite))

@@ -24,13 +24,15 @@ type BroadcasterService struct {
 	SentCounter      atomic.Uint64
 	ConnectedClients atomic.Int32
 	relay            *broadcast.Relay[any]
+	haService        HomeAssistantServiceInterface
 }
 
-func NewBroadcasterService(ctx context.Context) (broker BroadcasterServiceInterface) {
+func NewBroadcasterService(ctx context.Context, haService HomeAssistantServiceInterface) (broker BroadcasterServiceInterface) {
 	// Instantiate a broker
 	return &BroadcasterService{
-		ctx:   ctx,
-		relay: broadcast.NewRelay[any](),
+		ctx:       ctx,
+		relay:     broadcast.NewRelay[any](),
+		haService: haService,
 	}
 }
 
@@ -41,9 +43,57 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) (any, error) {
 	defer broker.SentCounter.Add(1)
 	broker.relay.Broadcast(msg)
 
+	// Send to Home Assistant if in secure mode
+	broker.sendToHomeAssistant(msg)
+
 	return msg, nil
 }
 
+func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
+	if broker.haService == nil {
+		return
+	}
+
+	// Handle different message types
+	switch v := msg.(type) {
+	case *[]dto.Disk:
+		if err := broker.haService.SendDiskEntities(v); err != nil {
+			slog.Warn("Failed to send disk entities to Home Assistant", "error", err)
+		}
+		if err := broker.haService.SendVolumeStatusEntity(v); err != nil {
+			slog.Warn("Failed to send volume status entity to Home Assistant", "error", err)
+		}
+	case []dto.Disk:
+		if err := broker.haService.SendDiskEntities(&v); err != nil {
+			slog.Warn("Failed to send disk entities to Home Assistant", "error", err)
+		}
+		if err := broker.haService.SendVolumeStatusEntity(&v); err != nil {
+			slog.Warn("Failed to send volume status entity to Home Assistant", "error", err)
+		}
+	case *dto.SambaStatus:
+		if err := broker.haService.SendSambaStatusEntity(v); err != nil {
+			slog.Warn("Failed to send samba status entity to Home Assistant", "error", err)
+		}
+	case dto.SambaStatus:
+		if err := broker.haService.SendSambaStatusEntity(&v); err != nil {
+			slog.Warn("Failed to send samba status entity to Home Assistant", "error", err)
+		}
+	case *dto.SambaProcessStatus:
+		if err := broker.haService.SendSambaProcessStatusEntity(v); err != nil {
+			slog.Warn("Failed to send samba process status entity to Home Assistant", "error", err)
+		}
+	case dto.SambaProcessStatus:
+		if err := broker.haService.SendSambaProcessStatusEntity(&v); err != nil {
+			slog.Warn("Failed to send samba process status entity to Home Assistant", "error", err)
+		}
+	default:
+		slog.Debug("Skipping Home Assistant entity update for unsupported message type", "type", fmt.Sprintf("%T", msg), "msg", msg)
+	}
+}
+
+// ProcessHttpChannel processes an HTTP channel for Server-Sent Events (SSE).
+// It filters out Home Assistant-specific events that should not be sent to web clients
+// and only sends events that are registered with the SSE system.
 func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 	broker.ConnectedClients.Add(1)
 	defer broker.ConnectedClients.Add(-1)
@@ -59,6 +109,11 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 			slog.Info("SSE Progess Closed", "err", broker.ctx.Err())
 			return
 		case event := <-listener.Ch():
+			// Filter out Home Assistant-specific events that shouldn't go to SSE clients
+			if broker.shouldSkipSSEEvent(event) {
+				continue
+			}
+
 			err := send.Data(event)
 			if err != nil {
 				if !strings.Contains(err.Error(), "write: broken pipe") {
@@ -67,5 +122,18 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 				return
 			}
 		}
+	}
+}
+
+// shouldSkipSSEEvent determines if an event should be skipped for SSE clients
+// These events are meant for Home Assistant integration only
+func (broker *BroadcasterService) shouldSkipSSEEvent(event any) bool {
+	switch event.(type) {
+	case dto.SambaStatus, *dto.SambaStatus:
+		return true
+	case dto.SambaProcessStatus, *dto.SambaProcessStatus:
+		return true
+	default:
+		return false
 	}
 }

@@ -63,6 +63,10 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 			func() *dto.ContextState {
 				return &dto.ContextState{}
 			},
+			func() *repository.IssueRepository {
+				// Provide a nil repository since it's only used in error cases in tests
+				return nil
+			},
 			service.NewVolumeService,
 			service.NewFilesystemService,
 			mock.Mock[service.BroadcasterServiceInterface],
@@ -82,9 +86,17 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 }
 
 func (suite *VolumeServiceTestSuite) TearDownTest() {
-	suite.cancel()
-	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
-	suite.app.RequireStop()
+	if suite.cancel != nil {
+		suite.cancel()
+	}
+	if suite.ctx != nil {
+		if wg := suite.ctx.Value("wg"); wg != nil {
+			wg.(*sync.WaitGroup).Wait()
+		}
+	}
+	if suite.app != nil {
+		suite.app.RequireStop()
+	}
 }
 
 // --- MountVolume Tests ---
