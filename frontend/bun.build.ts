@@ -117,6 +117,7 @@ async function build(): Promise<BuildOutput | undefined> {
 				});
 			}),
 			port: 3000,
+			idleTimeout: 60, // Set idle timeout to 60 seconds (configurable)
 			development: {
 				console: true,
 				hmr: true,
