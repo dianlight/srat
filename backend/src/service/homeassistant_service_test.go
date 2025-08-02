@@ -161,6 +161,46 @@ func (suite *HomeAssistantServiceTestSuite) TestSanitizeEntityId() {
 	assert.NoError(suite.T(), err)
 }
 
+func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntities_NoClient() {
+	// Arrange
+	diskHealth := &dto.DiskHealth{
+		Global: dto.GlobalDiskStats{
+			TotalIOPS:         42.5,
+			TotalReadLatency:  1.5,
+			TotalWriteLatency: 2.3,
+		},
+		PerDiskIO: []dto.DiskIOStats{
+			{
+				DeviceName:        "sda",
+				DeviceDescription: "Samsung SSD",
+				ReadIOPS:          20.0,
+				WriteIOPS:         22.5,
+				ReadLatency:       1.2,
+				WriteLatency:      2.1,
+			},
+		},
+		PerPartitionInfo: map[string][]dto.PerPartitionInfo{
+			"sda": {
+				{
+					Device:        "/dev/sda1",
+					MountPoint:    "/",
+					FSType:        "ext4",
+					TotalSpace:    1000000000,
+					FreeSpace:     500000000,
+					FsckNeeded:    false,
+					FsckSupported: true,
+				},
+			},
+		},
+	}
+
+	// Act - should not panic or return error when client is nil
+	err := suite.haService.SendDiskHealthEntities(diskHealth)
+
+	// Assert
+	assert.NoError(suite.T(), err)
+}
+
 func TestHomeAssistantServiceSuite(t *testing.T) {
 	suite.Run(t, new(HomeAssistantServiceTestSuite))
 }

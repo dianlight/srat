@@ -34,6 +34,16 @@ func TestBroadcasterService_shouldSkipSSEEvent(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "DiskHealth should be skipped",
+			event:    dto.DiskHealth{},
+			expected: true,
+		},
+		{
+			name:     "DiskHealth pointer should be skipped",
+			event:    &dto.DiskHealth{},
+			expected: true,
+		},
+		{
 			name:     "HealthPing should not be skipped",
 			event:    dto.HealthPing{},
 			expected: false,

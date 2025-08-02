@@ -176,6 +176,8 @@ func (self *HealthHanler) run() error {
 				self.HealthPing.DiskHealth = nil
 			} else {
 				self.HealthPing.DiskHealth = diskStats
+				// Also broadcast the disk health separately for Home Assistant integration
+				self.broadcaster.BroadcastMessage(*diskStats)
 			}
 			netStats, err := self.networkStatsService.GetNetworkStats()
 			if err != nil {

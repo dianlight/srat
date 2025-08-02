@@ -70,6 +70,14 @@ func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
 		if err := broker.haService.SendVolumeStatusEntity(&v); err != nil {
 			slog.Warn("Failed to send volume status entity to Home Assistant", "error", err)
 		}
+	case *dto.DiskHealth:
+		if err := broker.haService.SendDiskHealthEntities(v); err != nil {
+			slog.Warn("Failed to send disk health entities to Home Assistant", "error", err)
+		}
+	case dto.DiskHealth:
+		if err := broker.haService.SendDiskHealthEntities(&v); err != nil {
+			slog.Warn("Failed to send disk health entities to Home Assistant", "error", err)
+		}
 	case *dto.SambaStatus:
 		if err := broker.haService.SendSambaStatusEntity(v); err != nil {
 			slog.Warn("Failed to send samba status entity to Home Assistant", "error", err)
@@ -132,6 +140,8 @@ func (broker *BroadcasterService) shouldSkipSSEEvent(event any) bool {
 	case dto.SambaStatus, *dto.SambaStatus:
 		return true
 	case dto.SambaProcessStatus, *dto.SambaProcessStatus:
+		return true
+	case dto.DiskHealth, *dto.DiskHealth:
 		return true
 	default:
 		return false

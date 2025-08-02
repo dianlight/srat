@@ -17,6 +17,7 @@ type HomeAssistantServiceInterface interface {
 	SendSambaStatusEntity(status *dto.SambaStatus) error
 	SendSambaProcessStatusEntity(status *dto.SambaProcessStatus) error
 	SendVolumeStatusEntity(data *[]dto.Disk) error
+	SendDiskHealthEntities(diskHealth *dto.DiskHealth) error
 }
 
 type HomeAssistantService struct {
@@ -380,6 +381,170 @@ func (s *HomeAssistantService) sendPartitionEntity(partition dto.Partition, disk
 	}
 
 	slog.Debug("Sent partition entity to Home Assistant", "entity_id", entityId, "partition_id", *partition.Id, "state", state)
+	return nil
+}
+
+func (s *HomeAssistantService) SendDiskHealthEntities(diskHealth *dto.DiskHealth) error {
+	if s.coreClient == nil || diskHealth == nil {
+		return nil
+	}
+
+	// Send global disk health entity
+	if err := s.sendGlobalDiskHealthEntity(diskHealth); err != nil {
+		slog.Warn("Failed to send global disk health entity to Home Assistant", "error", err)
+	}
+
+	// Send individual disk I/O entities
+	if diskHealth.PerDiskIO != nil {
+		for _, diskIO := range diskHealth.PerDiskIO {
+			if err := s.sendDiskIOEntity(diskIO); err != nil {
+				slog.Warn("Failed to send disk I/O entity to Home Assistant", "device", diskIO.DeviceName, "error", err)
+			}
+		}
+	}
+
+	// Send partition health entities
+	for diskName, partitions := range diskHealth.PerPartitionInfo {
+		for _, partition := range partitions {
+			if err := s.sendPartitionHealthEntity(diskName, partition); err != nil {
+				slog.Warn("Failed to send partition health entity to Home Assistant", "device", partition.Device, "error", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *HomeAssistantService) sendGlobalDiskHealthEntity(diskHealth *dto.DiskHealth) error {
+	entityId := "sensor.srat_global_disk_health"
+
+	attributes := map[string]interface{}{
+		"icon":                "mdi:harddisk-plus",
+		"friendly_name":       "SRAT Global Disk Health",
+		"device_class":        "frequency",
+		"unit_of_measurement": "IOPS",
+		"total_iops":          diskHealth.Global.TotalIOPS,
+		"read_latency_ms":     diskHealth.Global.TotalReadLatency,
+		"write_latency_ms":    diskHealth.Global.TotalWriteLatency,
+	}
+
+	// Determine state based on IOPS
+	state := fmt.Sprintf("%.2f", diskHealth.Global.TotalIOPS)
+
+	entity := core_api.EntityState{
+		EntityId:   &entityId,
+		State:      &state,
+		Attributes: &attributes,
+	}
+
+	resp, err := s.coreClient.PostEntityStateWithResponse(s.ctx, entityId, entity)
+	if err != nil {
+		return errors.Wrap(err, "failed to send global disk health entity")
+	}
+
+	if resp.StatusCode() < 200 || resp.StatusCode() >= 300 {
+		return errors.Errorf("failed to send global disk health entity: HTTP %d", resp.StatusCode())
+	}
+
+	slog.Debug("Sent global disk health entity to Home Assistant", "entity_id", entityId, "iops", diskHealth.Global.TotalIOPS)
+	return nil
+}
+
+func (s *HomeAssistantService) sendDiskIOEntity(diskIO dto.DiskIOStats) error {
+	entityId := fmt.Sprintf("sensor.srat_disk_io_%s", sanitizeEntityId(diskIO.DeviceName))
+
+	attributes := map[string]interface{}{
+		"icon":                "mdi:chart-line",
+		"friendly_name":       fmt.Sprintf("SRAT Disk I/O %s", diskIO.DeviceName),
+		"device_class":        "frequency",
+		"unit_of_measurement": "IOPS",
+		"device_name":         diskIO.DeviceName,
+		"read_iops":           diskIO.ReadIOPS,
+		"write_iops":          diskIO.WriteIOPS,
+		"read_latency_ms":     diskIO.ReadLatency,
+		"write_latency_ms":    diskIO.WriteLatency,
+	}
+
+	if diskIO.DeviceDescription != "" {
+		attributes["device_description"] = diskIO.DeviceDescription
+	}
+
+	// Add SMART data if available
+	if diskIO.SmartData != nil {
+		attributes["smart_temperature"] = diskIO.SmartData.Temperature
+		attributes["smart_power_on_hours"] = diskIO.SmartData.PowerOnHours
+		attributes["smart_power_cycle_count"] = diskIO.SmartData.PowerCycleCount
+	}
+
+	// Calculate total IOPS as state
+	totalIOPS := diskIO.ReadIOPS + diskIO.WriteIOPS
+	state := fmt.Sprintf("%.2f", totalIOPS)
+
+	entity := core_api.EntityState{
+		EntityId:   &entityId,
+		State:      &state,
+		Attributes: &attributes,
+	}
+
+	resp, err := s.coreClient.PostEntityStateWithResponse(s.ctx, entityId, entity)
+	if err != nil {
+		return errors.Wrap(err, "failed to send disk I/O entity")
+	}
+
+	if resp.StatusCode() < 200 || resp.StatusCode() >= 300 {
+		return errors.Errorf("failed to send disk I/O entity: HTTP %d", resp.StatusCode())
+	}
+
+	slog.Debug("Sent disk I/O entity to Home Assistant", "entity_id", entityId, "device", diskIO.DeviceName, "iops", totalIOPS)
+	return nil
+}
+
+func (s *HomeAssistantService) sendPartitionHealthEntity(diskName string, partition dto.PerPartitionInfo) error {
+	// Create a more specific entity ID combining disk and partition info
+	deviceSanitized := sanitizeEntityId(partition.Device)
+	entityId := fmt.Sprintf("sensor.srat_partition_health_%s", deviceSanitized)
+
+	attributes := map[string]interface{}{
+		"icon":                "mdi:folder-information",
+		"friendly_name":       fmt.Sprintf("SRAT Partition Health %s", partition.Device),
+		"device_class":        "data_size",
+		"unit_of_measurement": "bytes",
+		"device":              partition.Device,
+		"mount_point":         partition.MountPoint,
+		"fstype":              partition.FSType,
+		"total_space_bytes":   partition.TotalSpace,
+		"free_space_bytes":    partition.FreeSpace,
+		"fsck_needed":         partition.FsckNeeded,
+		"fsck_supported":      partition.FsckSupported,
+		"disk_name":           diskName,
+	}
+
+	// Calculate usage percentage
+	usagePercent := 0.0
+	if partition.TotalSpace > 0 {
+		usagePercent = float64(partition.TotalSpace-partition.FreeSpace) / float64(partition.TotalSpace) * 100
+		attributes["usage_percent"] = fmt.Sprintf("%.2f", usagePercent)
+	}
+
+	// State represents free space in bytes
+	state := fmt.Sprintf("%d", partition.FreeSpace)
+
+	entity := core_api.EntityState{
+		EntityId:   &entityId,
+		State:      &state,
+		Attributes: &attributes,
+	}
+
+	resp, err := s.coreClient.PostEntityStateWithResponse(s.ctx, entityId, entity)
+	if err != nil {
+		return errors.Wrap(err, "failed to send partition health entity")
+	}
+
+	if resp.StatusCode() < 200 || resp.StatusCode() >= 300 {
+		return errors.Errorf("failed to send partition health entity: HTTP %d", resp.StatusCode())
+	}
+
+	slog.Debug("Sent partition health entity to Home Assistant", "entity_id", entityId, "device", partition.Device, "free_space", partition.FreeSpace)
 	return nil
 }
 
