@@ -40,6 +40,7 @@ type VolumeServiceInterface interface {
 	EjectDisk(diskID string) error
 	UpdateMountPointSettings(path string, settingsUpdate dto.MountPointData) (*dto.MountPointData, errors.E)
 	PatchMountPointSettings(path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
+	HandleRemovedDisks(currentDisks *[]dto.Disk) error
 	NotifyClient()
 }
 
@@ -496,7 +497,7 @@ func (self *VolumeService) udevEventHandler() {
 
 					for _, mp := range mountPoints {
 						// Skip if the mount point doesn't have any shares
-						if mp.Shares == nil || len(mp.Shares) == 0 {
+						if len(mp.Shares) == 0 {
 							continue
 						}
 
@@ -744,6 +745,14 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 			}
 		}
 
+		// Check for removed disks and handle cleanup
+		slog.Debug("Checking for removed disks and performing cleanup...")
+		err := self.HandleRemovedDisks(&ret)
+		if err != nil {
+			slog.Error("Error handling removed disks", "err", err)
+			// Don't return error here, as the main operation succeeded
+		}
+
 		slog.Debug("Finished getting and syncing volumes data (core logic).")
 		return &ret, nil
 	})
@@ -781,6 +790,141 @@ func (self *VolumeService) NotifyClient() {
 		// Log the error from broadcasting
 		slog.Error("Failed to broadcast volume data update", "err", broadcastErr)
 	}
+}
+
+// HandleRemovedDisks checks for mount points in the database that reference devices
+// that no longer exist in the current volume data and performs cleanup
+func (self *VolumeService) HandleRemovedDisks(currentDisks *[]dto.Disk) error {
+	// Get all mount points from the database
+	allMountPoints, err := self.mount_repo.All()
+	if err != nil {
+		return errors.Wrap(err, "failed to get all mount points from database")
+	}
+
+	// Create a map of currently available devices from the volume data
+	availableDevices := make(map[string]bool)
+	if currentDisks != nil {
+		for _, disk := range *currentDisks {
+			if disk.Partitions != nil {
+				for _, partition := range *disk.Partitions {
+					if partition.Device != nil && *partition.Device != "" {
+						// Store both with and without /dev/ prefix for compatibility
+						device := strings.TrimPrefix(*partition.Device, "/dev/")
+						availableDevices[device] = true
+						availableDevices["/dev/"+device] = true
+						availableDevices[*partition.Device] = true
+					}
+				}
+			}
+		}
+	}
+
+	// Check each mount point to see if its device still exists
+	for _, mountPoint := range allMountPoints {
+		if mountPoint.Device == "" {
+			continue // Skip mount points without device information
+		}
+
+		// Check if the device is still available
+		deviceExists := availableDevices[mountPoint.Device] ||
+			availableDevices["/dev/"+mountPoint.Device] ||
+			availableDevices[strings.TrimPrefix(mountPoint.Device, "/dev/")]
+
+		if !deviceExists {
+			slog.Info("Detected removed disk, performing cleanup",
+				"device", mountPoint.Device,
+				"mount_path", mountPoint.Path)
+
+			// Check if the path is currently mounted according to the OS
+			isMounted, mountCheckErr := osutil.IsMounted(mountPoint.Path)
+			if mountCheckErr != nil {
+				slog.Warn("Failed to check mount status for removed disk cleanup",
+					"path", mountPoint.Path,
+					"device", mountPoint.Device,
+					"err", mountCheckErr)
+				isMounted = false // Assume not mounted if we can't check
+			}
+
+			// Disable any shares for this mount point
+			if len(mountPoint.Shares) > 0 {
+				slog.Info("Disabling shares for removed disk",
+					"device", mountPoint.Device,
+					"mount_path", mountPoint.Path,
+					"share_count", len(mountPoint.Shares))
+
+				_, shareErr := self.shareService.DisableShareFromPath(mountPoint.Path)
+				if shareErr != nil && !errors.Is(shareErr, dto.ErrorShareNotFound) {
+					slog.Error("Failed to disable share for removed disk",
+						"path", mountPoint.Path,
+						"device", mountPoint.Device,
+						"err", shareErr)
+				}
+			}
+
+			// If the path is still mounted, perform a lazy unmount
+			if isMounted {
+				slog.Info("Performing lazy unmount for removed disk",
+					"device", mountPoint.Device,
+					"mount_path", mountPoint.Path)
+
+				unmountErr := mount.Unmount(mountPoint.Path, false, true) // lazy=true, force=false
+				if unmountErr != nil {
+					slog.Error("Failed to lazy unmount removed disk",
+						"path", mountPoint.Path,
+						"device", mountPoint.Device,
+						"err", unmountErr)
+
+					// Try force unmount as fallback
+					slog.Info("Attempting force unmount as fallback",
+						"device", mountPoint.Device,
+						"mount_path", mountPoint.Path)
+
+					forceUnmountErr := mount.Unmount(mountPoint.Path, true, true) // force=true, lazy=true
+					if forceUnmountErr != nil {
+						slog.Error("Failed to force unmount removed disk",
+							"path", mountPoint.Path,
+							"device", mountPoint.Device,
+							"err", forceUnmountErr)
+					}
+				}
+
+				// Clean up the mount point directory if unmount succeeded
+				if unmountErr == nil {
+					removeErr := os.Remove(mountPoint.Path)
+					if removeErr != nil {
+						slog.Warn("Failed to remove mount point directory for removed disk",
+							"path", mountPoint.Path,
+							"device", mountPoint.Device,
+							"err", removeErr)
+					} else {
+						slog.Debug("Removed mount point directory for removed disk",
+							"path", mountPoint.Path,
+							"device", mountPoint.Device)
+					}
+				}
+			}
+
+			// Create an issue to notify about the removed disk
+			issue := &dbom.Issue{
+				Title:       fmt.Sprintf("Disk removed: %s", mountPoint.Device),
+				Description: fmt.Sprintf("The disk %s mounted at %s was physically removed from the system. Associated shares have been disabled and the volume has been unmounted.", mountPoint.Device, mountPoint.Path),
+				DetailLink:  fmt.Sprintf("/storage/volumes?device=%s", mountPoint.Device),
+			}
+
+			if createIssueErr := self.issueRepository.Create(issue); createIssueErr != nil {
+				slog.Error("Failed to create issue for removed disk",
+					"device", mountPoint.Device,
+					"path", mountPoint.Path,
+					"err", createIssueErr)
+			}
+
+			slog.Info("Completed cleanup for removed disk",
+				"device", mountPoint.Device,
+				"mount_path", mountPoint.Path)
+		}
+	}
+
+	return nil
 }
 
 func (self *VolumeService) createBlockDevice(device string) error {
