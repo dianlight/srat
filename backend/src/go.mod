@@ -13,7 +13,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.25.6
+	github.com/shirou/gopsutil/v4 v4.25.7
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/sys v0.34.0 // indirect
 )
@@ -58,7 +58,6 @@ require (
 	github.com/rogpeppe/gohack v1.0.2 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect
 	github.com/zarldev/goenums v0.4.3 // indirect
 	go.opentelemetry.io/otel v1.36.0 // indirect
@@ -144,7 +143,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.2
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250725160005-0da3c54fbc60
+	github.com/snapcore/snapd v0.0.0-20250801131919-7ef1164cce8a
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
