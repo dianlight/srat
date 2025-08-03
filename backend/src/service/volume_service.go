@@ -42,6 +42,10 @@ type VolumeServiceInterface interface {
 	PatchMountPointSettings(path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
 	HandleRemovedDisks(currentDisks *[]dto.Disk) error
 	NotifyClient()
+	CreateAutomountFailureNotification(mountPath, device string, err errors.E)
+	CreateUnmountedPartitionNotification(mountPath, device string)
+	DismissAutomountNotification(mountPath string, notificationType string)
+	CheckUnmountedAutomountPartitions() error
 }
 
 type VolumeService struct {
@@ -56,6 +60,7 @@ type VolumeService struct {
 	issueRepository   *repository.IssueRepository
 	staticConfig      *dto.ContextState
 	sfGroup           singleflight.Group
+	haService         HomeAssistantServiceInterface
 }
 
 type VolumeServiceProps struct {
@@ -69,6 +74,7 @@ type VolumeServiceProps struct {
 	ShareService      ShareServiceInterface
 	IssueRepository   *repository.IssueRepository
 	StaticConfig      *dto.ContextState
+	HAService         HomeAssistantServiceInterface `optional:"true"`
 }
 
 func NewVolumeService(
@@ -86,6 +92,7 @@ func NewVolumeService(
 		staticConfig:      in.StaticConfig,
 		shareService:      in.ShareService,
 		issueRepository:   in.IssueRepository,
+		haService:         in.HAService,
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -347,6 +354,11 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		}
 		conv.MountPointPathToMountPointData(*dbom_mount_data, md)
 	}
+
+	// Dismiss any existing failure notifications since the mount was successful
+	ms.DismissAutomountNotification(dbom_mount_data.Path, "automount_failure")
+	ms.DismissAutomountNotification(dbom_mount_data.Path, "unmounted_partition")
+
 	return nil
 }
 
@@ -423,6 +435,11 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 			slog.Error("Unmount succeeded but failed to update DB state", "path", path, "err", err)
 			// Don't return error here, as the primary operation (unmount) succeeded.
 			// However, the DB is now potentially out of sync.
+		}
+
+		// If this partition was marked for automount but is now unmounted, create a notification
+		if dbom_mount_data.IsToMountAtStartup != nil && *dbom_mount_data.IsToMountAtStartup {
+			ms.CreateUnmountedPartitionNotification(dbom_mount_data.Path, dbom_mount_data.Device)
 		}
 	}
 	return nil
@@ -750,6 +767,14 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 		err := self.HandleRemovedDisks(&ret)
 		if err != nil {
 			slog.Error("Error handling removed disks", "err", err)
+			// Don't return error here, as the main operation succeeded
+		}
+
+		// Check for unmounted partitions marked for automount
+		slog.Debug("Checking for unmounted automount partitions...")
+		err = self.CheckUnmountedAutomountPartitions()
+		if err != nil {
+			slog.Error("Error checking unmounted automount partitions", "err", err)
 			// Don't return error here, as the main operation succeeded
 		}
 
@@ -1136,4 +1161,106 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 		return nil, errors.WithStack(convErr)
 	}
 	return &currentDto, nil
+}
+
+// CreateAutomountFailureNotification creates a persistent notification for failed automount operations
+func (self *VolumeService) CreateAutomountFailureNotification(mountPath, device string, err errors.E) {
+	if self.haService == nil {
+		slog.Debug("Home Assistant service not available, skipping automount failure notification")
+		return
+	}
+
+	notificationID := fmt.Sprintf("srat_automount_failure_%s", xhashes.SHA1(mountPath))
+	title := "Automount Failed"
+
+	var message string
+	if errors.Is(err, dto.ErrorDeviceNotFound) {
+		message = fmt.Sprintf("Device '%s' for mount point '%s' not found during startup. The device may have been removed or disconnected.", device, mountPath)
+	} else if errors.Is(err, dto.ErrorMountFail) {
+		message = fmt.Sprintf("Failed to mount device '%s' to '%s' during startup. Check device filesystem and permissions.", device, mountPath)
+	} else {
+		message = fmt.Sprintf("Automount failed for device '%s' to '%s': %s", device, mountPath, err.Error())
+	}
+
+	notifyErr := self.haService.CreatePersistentNotification(notificationID, title, message)
+	if notifyErr != nil {
+		slog.Error("Failed to create automount failure notification", "mount_path", mountPath, "device", device, "err", notifyErr)
+	} else {
+		slog.Info("Created automount failure notification", "mount_path", mountPath, "device", device, "notification_id", notificationID)
+	}
+}
+
+// CreateUnmountedPartitionNotification creates a persistent notification for unmounted partitions that are marked for automount
+func (self *VolumeService) CreateUnmountedPartitionNotification(mountPath, device string) {
+	if self.haService == nil {
+		slog.Debug("Home Assistant service not available, skipping unmounted partition notification")
+		return
+	}
+
+	notificationID := fmt.Sprintf("srat_unmounted_partition_%s", xhashes.SHA1(mountPath))
+	title := "Unmounted Partition with Automount Enabled"
+	message := fmt.Sprintf("Partition '%s' (device: %s) is configured for automount but is currently unmounted. This may indicate a device issue or the device is not connected.", mountPath, device)
+
+	notifyErr := self.haService.CreatePersistentNotification(notificationID, title, message)
+	if notifyErr != nil {
+		slog.Error("Failed to create unmounted partition notification", "mount_path", mountPath, "device", device, "err", notifyErr)
+	} else {
+		slog.Info("Created unmounted partition notification", "mount_path", mountPath, "device", device, "notification_id", notificationID)
+	}
+}
+
+// DismissAutomountNotification dismisses an automount-related notification
+func (self *VolumeService) DismissAutomountNotification(mountPath string, notificationType string) {
+	if self.haService == nil {
+		return
+	}
+
+	notificationID := fmt.Sprintf("srat_%s_%s", notificationType, xhashes.SHA1(mountPath))
+
+	notifyErr := self.haService.DismissPersistentNotification(notificationID)
+	if notifyErr != nil {
+		slog.Warn("Failed to dismiss automount notification", "mount_path", mountPath, "notification_type", notificationType, "err", notifyErr)
+	} else {
+		slog.Debug("Dismissed automount notification", "mount_path", mountPath, "notification_type", notificationType, "notification_id", notificationID)
+	}
+}
+
+// CheckUnmountedAutomountPartitions checks for partitions marked for automount that are not currently mounted
+func (self *VolumeService) CheckUnmountedAutomountPartitions() error {
+	// Get all mount points from the database that are marked for automount
+	allMountPoints, err := self.mount_repo.All()
+	if err != nil {
+		return errors.Wrap(err, "failed to get all mount points from database")
+	}
+
+	for _, mountPoint := range allMountPoints {
+		// Skip if not marked for automount
+		if mountPoint.IsToMountAtStartup == nil || !*mountPoint.IsToMountAtStartup {
+			continue
+		}
+
+		// Check if the path is currently mounted
+		isMounted, mountCheckErr := osutil.IsMounted(mountPoint.Path)
+		if mountCheckErr != nil {
+			slog.Warn("Failed to check mount status for automount partition",
+				"path", mountPoint.Path,
+				"device", mountPoint.Device,
+				"err", mountCheckErr)
+			continue
+		}
+
+		if !isMounted {
+			slog.Info("Found unmounted partition marked for automount",
+				"device", mountPoint.Device,
+				"mount_path", mountPoint.Path)
+
+			// Create a notification for the unmounted partition
+			self.CreateUnmountedPartitionNotification(mountPoint.Path, mountPoint.Device)
+		} else {
+			// If it's mounted, dismiss any existing unmounted partition notifications
+			self.DismissAutomountNotification(mountPoint.Path, "unmounted_partition")
+		}
+	}
+
+	return nil
 }

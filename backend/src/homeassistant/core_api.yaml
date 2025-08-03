@@ -95,6 +95,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EntityState"
+  /core/api/services/{domain}/{service}:
+    post:
+      tags:
+        - core_api
+      summary: Chiama un servizio Home Assistant.
+      description: Chiama un servizio specifico in Home Assistant, come le notifiche persistent o altre automazioni.
+      operationId: callService
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: domain
+          in: path
+          description: Dominio del servizio (es. persistent_notification, light, etc.).
+          required: true
+          schema:
+            type: string
+        - name: service
+          in: path
+          description: Nome del servizio da chiamare (es. create, dismiss, etc.).
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Dati del servizio da inviare.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceData"
+      responses:
+        "200":
+          description: Operazione riuscita.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServiceResult"
 components:
   schemas:
     EntityState:
@@ -151,6 +188,35 @@ components:
         context:
           type: object
           description: Un dizionario con attributi extra relativi al contesto dello stato.
+    ServiceData:
+      type: object
+      description: Dati da inviare al servizio Home Assistant.
+      additionalProperties: true
+      properties:
+        notification_id:
+          type: string
+          description: ID univoco per la notifica (per persistent_notification).
+        title:
+          type: string
+          description: Titolo della notifica.
+        message:
+          type: string
+          description: Messaggio della notifica.
+    ServiceResult:
+      type: object
+      properties:
+        context:
+          type: object
+          description: Contesto del risultato del servizio.
+        domain:
+          type: string
+          description: Dominio del servizio chiamato.
+        service:
+          type: string
+          description: Nome del servizio chiamato.
+        service_data:
+          type: object
+          description: Dati inviati al servizio.
   securitySchemes:
     bearerAuth:
       type: http

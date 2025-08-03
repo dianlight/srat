@@ -54,8 +54,137 @@ type EntityState struct {
 	State *string `json:"state,omitempty"`
 }
 
+// ServiceData Dati da inviare al servizio Home Assistant.
+type ServiceData struct {
+	// Message Messaggio della notifica.
+	Message *string `json:"message,omitempty"`
+
+	// NotificationId ID univoco per la notifica (per persistent_notification).
+	NotificationId *string `json:"notification_id,omitempty"`
+
+	// Title Titolo della notifica.
+	Title                *string                `json:"title,omitempty"`
+	AdditionalProperties map[string]interface{} `json:"-"`
+}
+
+// ServiceResult defines model for ServiceResult.
+type ServiceResult struct {
+	// Context Contesto del risultato del servizio.
+	Context *map[string]interface{} `json:"context,omitempty"`
+
+	// Domain Dominio del servizio chiamato.
+	Domain *string `json:"domain,omitempty"`
+
+	// Service Nome del servizio chiamato.
+	Service *string `json:"service,omitempty"`
+
+	// ServiceData Dati inviati al servizio.
+	ServiceData *map[string]interface{} `json:"service_data,omitempty"`
+}
+
+// CallServiceJSONRequestBody defines body for CallService for application/json ContentType.
+type CallServiceJSONRequestBody = ServiceData
+
 // PostEntityStateJSONRequestBody defines body for PostEntityState for application/json ContentType.
 type PostEntityStateJSONRequestBody = EntityState
+
+// Getter for additional properties for ServiceData. Returns the specified
+// element and whether it was found
+func (a ServiceData) Get(fieldName string) (value interface{}, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for ServiceData
+func (a *ServiceData) Set(fieldName string, value interface{}) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]interface{})
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for ServiceData to handle AdditionalProperties
+func (a *ServiceData) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["message"]; found {
+		err = json.Unmarshal(raw, &a.Message)
+		if err != nil {
+			return fmt.Errorf("error reading 'message': %w", err)
+		}
+		delete(object, "message")
+	}
+
+	if raw, found := object["notification_id"]; found {
+		err = json.Unmarshal(raw, &a.NotificationId)
+		if err != nil {
+			return fmt.Errorf("error reading 'notification_id': %w", err)
+		}
+		delete(object, "notification_id")
+	}
+
+	if raw, found := object["title"]; found {
+		err = json.Unmarshal(raw, &a.Title)
+		if err != nil {
+			return fmt.Errorf("error reading 'title': %w", err)
+		}
+		delete(object, "title")
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]interface{})
+		for fieldName, fieldBuf := range object {
+			var fieldVal interface{}
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for ServiceData to handle AdditionalProperties
+func (a ServiceData) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	if a.Message != nil {
+		object["message"], err = json.Marshal(a.Message)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'message': %w", err)
+		}
+	}
+
+	if a.NotificationId != nil {
+		object["notification_id"], err = json.Marshal(a.NotificationId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'notification_id': %w", err)
+		}
+	}
+
+	if a.Title != nil {
+		object["title"], err = json.Marshal(a.Title)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'title': %w", err)
+		}
+	}
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
+}
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -133,6 +262,11 @@ type ClientInterface interface {
 	// GetApi request
 	GetApi(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CallServiceWithBody request with any body
+	CallServiceWithBody(ctx context.Context, domain string, service string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CallService(ctx context.Context, domain string, service string, body CallServiceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetEntityState request
 	GetEntityState(ctx context.Context, entityId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -144,6 +278,30 @@ type ClientInterface interface {
 
 func (c *Client) GetApi(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetApiRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CallServiceWithBody(ctx context.Context, domain string, service string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCallServiceRequestWithBody(c.Server, domain, service, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CallService(ctx context.Context, domain string, service string, body CallServiceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCallServiceRequest(c.Server, domain, service, body)
 	if err != nil {
 		return nil, err
 	}
@@ -213,6 +371,60 @@ func NewGetApiRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewCallServiceRequest calls the generic CallService builder with application/json body
+func NewCallServiceRequest(server string, domain string, service string, body CallServiceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCallServiceRequestWithBody(server, domain, service, "application/json", bodyReader)
+}
+
+// NewCallServiceRequestWithBody generates requests for CallService with any type of body
+func NewCallServiceRequestWithBody(server string, domain string, service string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "domain", runtime.ParamLocationPath, domain)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "service", runtime.ParamLocationPath, service)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/api/services/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -344,6 +556,11 @@ type ClientWithResponsesInterface interface {
 	// GetApiWithResponse request
 	GetApiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiResponse, error)
 
+	// CallServiceWithBodyWithResponse request with any body
+	CallServiceWithBodyWithResponse(ctx context.Context, domain string, service string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CallServiceResponse, error)
+
+	CallServiceWithResponse(ctx context.Context, domain string, service string, body CallServiceJSONRequestBody, reqEditors ...RequestEditorFn) (*CallServiceResponse, error)
+
 	// GetEntityStateWithResponse request
 	GetEntityStateWithResponse(ctx context.Context, entityId string, reqEditors ...RequestEditorFn) (*GetEntityStateResponse, error)
 
@@ -372,6 +589,28 @@ func (r GetApiResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetApiResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CallServiceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ServiceResult
+}
+
+// Status returns HTTPResponse.Status
+func (r CallServiceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CallServiceResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -432,6 +671,23 @@ func (c *ClientWithResponses) GetApiWithResponse(ctx context.Context, reqEditors
 	return ParseGetApiResponse(rsp)
 }
 
+// CallServiceWithBodyWithResponse request with arbitrary body returning *CallServiceResponse
+func (c *ClientWithResponses) CallServiceWithBodyWithResponse(ctx context.Context, domain string, service string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CallServiceResponse, error) {
+	rsp, err := c.CallServiceWithBody(ctx, domain, service, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCallServiceResponse(rsp)
+}
+
+func (c *ClientWithResponses) CallServiceWithResponse(ctx context.Context, domain string, service string, body CallServiceJSONRequestBody, reqEditors ...RequestEditorFn) (*CallServiceResponse, error) {
+	rsp, err := c.CallService(ctx, domain, service, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCallServiceResponse(rsp)
+}
+
 // GetEntityStateWithResponse request returning *GetEntityStateResponse
 func (c *ClientWithResponses) GetEntityStateWithResponse(ctx context.Context, entityId string, reqEditors ...RequestEditorFn) (*GetEntityStateResponse, error) {
 	rsp, err := c.GetEntityState(ctx, entityId, reqEditors...)
@@ -476,6 +732,32 @@ func ParseGetApiResponse(rsp *http.Response) (*GetApiResponse, error) {
 		var dest struct {
 			Result *GetApi200Result `json:"result,omitempty"`
 		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCallServiceResponse parses an HTTP response from a CallServiceWithResponse call
+func ParseCallServiceResponse(rsp *http.Response) (*CallServiceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CallServiceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ServiceResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

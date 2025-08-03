@@ -18,6 +18,8 @@ type HomeAssistantServiceInterface interface {
 	SendSambaProcessStatusEntity(status *dto.SambaProcessStatus) error
 	SendVolumeStatusEntity(data *[]dto.Disk) error
 	SendDiskHealthEntities(diskHealth *dto.DiskHealth) error
+	CreatePersistentNotification(notificationID, title, message string) error
+	DismissPersistentNotification(notificationID string) error
 }
 
 type HomeAssistantService struct {
@@ -545,6 +547,54 @@ func (s *HomeAssistantService) sendPartitionHealthEntity(diskName string, partit
 	}
 
 	slog.Debug("Sent partition health entity to Home Assistant", "entity_id", entityId, "device", partition.Device, "free_space", partition.FreeSpace)
+	return nil
+}
+
+func (s *HomeAssistantService) CreatePersistentNotification(notificationID, title, message string) error {
+	if s.coreClient == nil {
+		slog.Debug("Skipping persistent notification creation - no Home Assistant client available")
+		return nil
+	}
+
+	serviceData := core_api.ServiceData{
+		NotificationId: &notificationID,
+		Title:          &title,
+		Message:        &message,
+	}
+
+	resp, err := s.coreClient.CallServiceWithResponse(s.ctx, "persistent_notification", "create", serviceData)
+	if err != nil {
+		return errors.Wrap(err, "failed to call persistent_notification.create service")
+	}
+
+	if resp.HTTPResponse.StatusCode < 200 || resp.HTTPResponse.StatusCode >= 300 {
+		return errors.Errorf("failed to create persistent notification: HTTP %d", resp.HTTPResponse.StatusCode)
+	}
+
+	slog.Debug("Created persistent notification in Home Assistant", "notification_id", notificationID, "title", title)
+	return nil
+}
+
+func (s *HomeAssistantService) DismissPersistentNotification(notificationID string) error {
+	if s.coreClient == nil {
+		slog.Debug("Skipping persistent notification dismissal - no Home Assistant client available")
+		return nil
+	}
+
+	serviceData := core_api.ServiceData{
+		NotificationId: &notificationID,
+	}
+
+	resp, err := s.coreClient.CallServiceWithResponse(s.ctx, "persistent_notification", "dismiss", serviceData)
+	if err != nil {
+		return errors.Wrap(err, "failed to call persistent_notification.dismiss service")
+	}
+
+	if resp.HTTPResponse.StatusCode < 200 || resp.HTTPResponse.StatusCode >= 300 {
+		return errors.Errorf("failed to dismiss persistent notification: HTTP %d", resp.HTTPResponse.StatusCode)
+	}
+
+	slog.Debug("Dismissed persistent notification in Home Assistant", "notification_id", notificationID)
 	return nil
 }
 

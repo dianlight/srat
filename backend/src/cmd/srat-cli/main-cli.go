@@ -312,32 +312,48 @@ func main() {
 									if err != nil {
 										if errors.Is(err, dto.ErrorAlreadyMounted) {
 											slog.Info("Share already mounted", "path", mnt.Path)
+											// Dismiss any existing failure notifications since the partition is now mounted
+											volume_service.DismissAutomountNotification(mnt.Path, "automount_failure")
+											volume_service.DismissAutomountNotification(mnt.Path, "unmounted_partition")
 										} else {
 											slog.Error("Error automounting share", "path", mnt.Path, "err", err)
+											// Create a persistent notification about the automount failure
+											volume_service.CreateAutomountFailureNotification(mnt.Path, mnt.Device, err)
 										}
+									} else {
+										slog.Debug("Share automounted", "path", mnt.Path)
+										// Dismiss any existing failure notifications since the partition is now mounted
+										volume_service.DismissAutomountNotification(mnt.Path, "automount_failure")
+										volume_service.DismissAutomountNotification(mnt.Path, "unmounted_partition")
 									}
-									slog.Debug("Share automounted", "path", mnt.Path)
 								}
 							}
 							slog.Info("******* Automounting all shares done! ********")
+
+							// Check for any partitions marked for automount that are still unmounted
+							slog.Info("******* Checking for unmounted automount partitions ********")
+							err = volume_service.CheckUnmountedAutomountPartitions()
+							if err != nil {
+								slog.Error("Error checking unmounted automount partitions", "err", err)
+							}
 						} else {
 							slog.Info("******* Protected mode is ON, skipping automounting shares! ********")
 						}
 
-				// Apply config to samba
-				slog.Info("******* Applying Samba config ********")
-				err = samba_service.WriteAndRestartSambaConfig()
-				if err != nil {
-					log.Fatalf("Cant apply samba config - %#+v", err)
-				}
-				slog.Info("******* Samba config applied! ********")
-			} else if command == "stop" {
-				slog.Info("******* Unmounting all shares from Homeassistant ********")
-				// remount network share on ha_core
-				shares, err := share_service.All()
-				if err != nil {
-					log.Fatalf("Can't get Shares - %#+v", err)
-				}
+						// Apply config to samba
+						slog.Info("******* Applying Samba config ********")
+						err = samba_service.WriteAndRestartSambaConfig()
+						if err != nil {
+							log.Fatalf("Cant apply samba config - %#+v", err)
+						}
+						slog.Info("******* Samba config applied! ********")
+					} else if command == "stop" {
+						slog.Info("******* Unmounting all shares from Homeassistant ********")
+						// remount network share on ha_core
+						shares, err := share_service.All()
+						if err != nil {
+							log.Fatalf("Can't get Shares - %#+v", err)
+						}
 
 						for _, share := range *shares {
 							if share.Disabled != nil && *share.Disabled {
