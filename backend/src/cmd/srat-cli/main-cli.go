@@ -31,13 +31,7 @@ import (
 	"go.uber.org/fx"
 )
 
-// var options *config.Options
 var smbConfigFile *string
-
-// var globalRouter *mux.Router
-//var optionsFile *string
-
-// var wait time.Duration
 var dockerInterface *string
 var dockerNetwork *string
 var configFile *string
