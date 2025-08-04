@@ -116,6 +116,7 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, error) {
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, error) {
 	existing, err := s.exported_share_repo.FindByName(share.Name)
 	if err != nil && !errors.Is(err, dto.ErrorShareNotFound) {
+		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
 		return nil, errors.Wrap(err, "failed to check for existing share")
 	}
 	if existing != nil {

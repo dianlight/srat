@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dto"
 	"gitlab.com/tozd/go/errors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -55,8 +56,10 @@ func (r *ExportedShareRepository) All() (*[]dbom.ExportedShare, error) {
 func (p *ExportedShareRepository) FindByName(name string) (*dbom.ExportedShare, error) {
 	var share dbom.ExportedShare
 	err := p.db.Preload(clause.Associations).First(&share, "name = ?", name).Error
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.WithStack(err)
+	} else if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, dto.ErrorShareNotFound
 	}
 	return &share, nil
 }
