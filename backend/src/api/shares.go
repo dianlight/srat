@@ -112,6 +112,7 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorShareAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
+		slog.Error("Failed to create share", "share_name", input.Body.Name, "error", err)
 		return nil, errors.Wrapf(err, "failed to create share %s", input.Body.Name)
 	}
 	self.dirtyservice.SetDirtyShares()
