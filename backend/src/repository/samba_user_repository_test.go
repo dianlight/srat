@@ -1,117 +1,378 @@
-package repository
+package repository_test
 
 import (
+	"context"
+	"sync"
 	"testing"
 
 	"github.com/dianlight/srat/dbom"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/unixsamba"
+	"github.com/ovechkin-dm/mockio/v2/matchers"
+	"github.com/ovechkin-dm/mockio/v2/mock"
+	"github.com/stretchr/testify/suite"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
 )
 
-func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	err = db.AutoMigrate(&dbom.SambaUser{})
-	require.NoError(t, err)
-
-	return db
+type SambaUserRepositorySuite struct {
+	suite.Suite
+	repo   repository.SambaUserRepositoryInterface
+	ctx    context.Context
+	cancel context.CancelFunc
+	db     *gorm.DB
+	app    *fxtest.App
+	ctrl   *matchers.MockController
 }
 
-func TestSambaUserRepository_GetAdmin(t *testing.T) {
-	t.Run("returns admin user when exists", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewSambaUserRepository(db)
+func TestSambaUserRepositorySuite(t *testing.T) {
+	suite.Run(t, new(SambaUserRepositorySuite))
+}
 
-		// Create admin user
-		adminUser := dbom.SambaUser{
-			Username: "admin",
-			IsAdmin:  true,
-			Password: "password123",
-		}
-		err := db.Create(&adminUser).Error
-		require.NoError(t, err)
+func (suite *SambaUserRepositorySuite) SetupTest() {
+	suite.ctrl = mock.NewMockController(suite.T())
 
-		// Create non-admin user
-		regularUser := dbom.SambaUser{
-			Username: "user1",
-			IsAdmin:  false,
-			Password: "password456",
-		}
-		err = db.Create(&regularUser).Error
-		require.NoError(t, err)
+	// Mock unixsamba dependencies
+	unixsamba.SetCommandExecutor(mock.Mock[unixsamba.CommandExecutor](suite.ctrl))
+	unixsamba.SetOSUserLookuper(mock.Mock[unixsamba.OSUserLookuper](suite.ctrl))
 
-		// Test GetAdmin
-		result, err := repo.GetAdmin()
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return suite.ctrl },
+			func() (context.Context, context.CancelFunc) {
+				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+			},
+			func() *dto.ContextState {
+				sharedResources := dto.ContextState{}
+				sharedResources.ReadOnlyMode = false
+				sharedResources.Heartbeat = 1
+				sharedResources.DockerInterface = "hassio"
+				sharedResources.DockerNet = "172.30.32.0/23"
+				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
+				return &sharedResources
+			},
+			dbom.NewDB,
+			repository.NewSambaUserRepository,
+		),
+		fx.Populate(&suite.repo),
+		fx.Populate(&suite.ctx),
+		fx.Populate(&suite.cancel),
+		fx.Populate(&suite.db),
+	)
+	suite.app.RequireStart()
+}
 
-		assert.NoError(t, err)
-		assert.Equal(t, "admin", result.Username)
-		assert.True(t, result.IsAdmin)
-		assert.Equal(t, "password123", result.Password)
-	})
+func (suite *SambaUserRepositorySuite) TearDownTest() {
+	if suite.cancel != nil {
+		suite.cancel()
+		suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	}
+	suite.app.RequireStop()
+}
 
-	t.Run("returns ErrRecordNotFound when no admin user exists", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewSambaUserRepository(db)
+func (suite *SambaUserRepositorySuite) TestGetAdminSuccess() {
+	// Arrange
+	adminUser := &dbom.SambaUser{
+		Username: "admin",
+		IsAdmin:  true,
+		Password: "password123",
+	}
+	err := suite.db.Create(adminUser).Error
+	suite.Require().NoError(err)
 
-		// Create only non-admin users
-		regularUser := dbom.SambaUser{
-			Username: "user1",
-			IsAdmin:  false,
-			Password: "password456",
-		}
-		err := db.Create(&regularUser).Error
-		require.NoError(t, err)
+	// Create non-admin user
+	regularUser := &dbom.SambaUser{
+		Username: "user1",
+		IsAdmin:  false,
+		Password: "password456",
+	}
+	err = suite.db.Create(regularUser).Error
+	suite.Require().NoError(err)
 
-		// Test GetAdmin
-		result, err := repo.GetAdmin()
+	// Act
+	result, err := suite.repo.GetAdmin()
 
-		assert.Error(t, err)
-		assert.Equal(t, gorm.ErrRecordNotFound, err)
-		assert.Equal(t, dbom.SambaUser{}, result)
-	})
+	// Assert
+	suite.NoError(err)
+	suite.Equal("admin", result.Username)
+	suite.True(result.IsAdmin)
+	suite.Equal("password123", result.Password)
 
-	t.Run("returns ErrRecordNotFound when no users exist", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewSambaUserRepository(db)
+	// Cleanup
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
+}
 
-		// Test GetAdmin with empty database
-		result, err := repo.GetAdmin()
+func (suite *SambaUserRepositorySuite) TestGetAdminNotFound() {
+	// Arrange - Create only non-admin users
+	regularUser := &dbom.SambaUser{
+		Username: "user1",
+		IsAdmin:  false,
+		Password: "password456",
+	}
+	err := suite.db.Create(regularUser).Error
+	suite.Require().NoError(err)
 
-		assert.Error(t, err)
-		assert.Equal(t, gorm.ErrRecordNotFound, err)
-		assert.Equal(t, dbom.SambaUser{}, result)
-	})
+	// Act
+	result, err := suite.repo.GetAdmin()
 
-	t.Run("returns first admin user when multiple admin users exist", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewSambaUserRepository(db)
+	// Assert
+	suite.Error(err)
+	suite.Equal(gorm.ErrRecordNotFound, err)
+	suite.Equal(dbom.SambaUser{}, result)
 
-		// Create multiple admin users
-		admin1 := dbom.SambaUser{
-			Username: "admin1",
-			IsAdmin:  true,
-			Password: "password1",
-		}
-		err := db.Create(&admin1).Error
-		require.NoError(t, err)
+	// Cleanup
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
+}
 
-		admin2 := dbom.SambaUser{
-			Username: "admin2",
-			IsAdmin:  true,
-			Password: "password2",
-		}
-		err = db.Create(&admin2).Error
-		require.NoError(t, err)
+func (suite *SambaUserRepositorySuite) TestGetAdminEmptyDatabase() {
+	// Act
+	result, err := suite.repo.GetAdmin()
 
-		// Test GetAdmin
-		result, err := repo.GetAdmin()
+	// Assert
+	suite.Error(err)
+	suite.Equal(gorm.ErrRecordNotFound, err)
+	suite.Equal(dbom.SambaUser{}, result)
+}
 
-		assert.NoError(t, err)
-		assert.True(t, result.IsAdmin)
-		// Should return one of the admin users (first one found)
-		assert.Contains(t, []string{"admin1", "admin2"}, result.Username)
-	})
+func (suite *SambaUserRepositorySuite) TestGetAdminMultipleAdmins() {
+	// Arrange - Create multiple admin users
+	admin1 := &dbom.SambaUser{
+		Username: "admin1",
+		IsAdmin:  true,
+		Password: "password1",
+	}
+	err := suite.db.Create(admin1).Error
+	suite.Require().NoError(err)
+
+	admin2 := &dbom.SambaUser{
+		Username: "admin2",
+		IsAdmin:  true,
+		Password: "password2",
+	}
+	err = suite.db.Create(admin2).Error
+	suite.Require().NoError(err)
+
+	// Act
+	result, err := suite.repo.GetAdmin()
+
+	// Assert
+	suite.NoError(err)
+	suite.True(result.IsAdmin)
+	// Should return one of the admin users (first one found)
+	suite.Contains([]string{"admin1", "admin2"}, result.Username)
+
+	// Cleanup
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
+}
+
+func (suite *SambaUserRepositorySuite) TestAllUsers() {
+	// Arrange
+	users := []dbom.SambaUser{
+		{Username: "admin", IsAdmin: true, Password: "adminpass"},
+		{Username: "user1", IsAdmin: false, Password: "userpass1"},
+		{Username: "user2", IsAdmin: false, Password: "userpass2"},
+	}
+
+	for _, user := range users {
+		err := suite.db.Create(&user).Error
+		suite.Require().NoError(err)
+	}
+
+	// Act
+	result, err := suite.repo.All()
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(result)
+	suite.Len(result, 3)
+
+	// Cleanup
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
+}
+
+func (suite *SambaUserRepositorySuite) TestAllUsersEmpty() {
+	// Act
+	result, err := suite.repo.All()
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(result)
+	suite.Empty(result)
+}
+
+func (suite *SambaUserRepositorySuite) TestSaveUser() {
+	// Arrange
+	user := &dbom.SambaUser{
+		Username: "testuser",
+		IsAdmin:  false,
+		Password: "testpass",
+	}
+
+	// Act
+	err := suite.repo.Save(user)
+
+	// Assert
+	suite.NoError(err)
+
+	// Verify user was saved
+	var savedUser dbom.SambaUser
+	err = suite.db.Where("username = ?", "testuser").First(&savedUser).Error
+	suite.NoError(err)
+	suite.Equal("testuser", savedUser.Username)
+	suite.Equal("testpass", savedUser.Password)
+	suite.False(savedUser.IsAdmin)
+
+	// Cleanup
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
+}
+
+func (suite *SambaUserRepositorySuite) TestCreateUser() {
+	// Arrange
+	user := &dbom.SambaUser{
+		Username: "newuser",
+		IsAdmin:  false,
+		Password: "newpass",
+	}
+
+	// Act
+	err := suite.repo.Create(user)
+
+	// Assert
+	suite.NoError(err)
+
+	// Verify user was created
+	var createdUser dbom.SambaUser
+	err = suite.db.Where("username = ?", "newuser").First(&createdUser).Error
+	suite.NoError(err)
+	suite.Equal("newuser", createdUser.Username)
+
+	// Cleanup
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
+}
+
+func (suite *SambaUserRepositorySuite) TestGetUserByNameSuccess() {
+	// Arrange
+	user := &dbom.SambaUser{
+		Username: "findme",
+		IsAdmin:  false,
+		Password: "findpass",
+	}
+	err := suite.db.Create(user).Error
+	suite.Require().NoError(err)
+
+	// Act
+	result, err := suite.repo.GetUserByName("findme")
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(result)
+	suite.Equal("findme", result.Username)
+	suite.False(result.IsAdmin)
+
+	// Cleanup
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
+}
+
+func (suite *SambaUserRepositorySuite) TestGetUserByNameNotFound() {
+	// Act
+	result, err := suite.repo.GetUserByName("nonexistent")
+
+	// Assert
+	suite.Error(err)
+	suite.Nil(result)
+}
+
+func (suite *SambaUserRepositorySuite) TestGetUserByNameAdminUser() {
+	// Arrange - Create admin user
+	admin := &dbom.SambaUser{
+		Username: "admin",
+		IsAdmin:  true,
+		Password: "adminpass",
+	}
+	err := suite.db.Create(admin).Error
+	suite.Require().NoError(err)
+
+	// Act - Try to get admin user with GetUserByName (should fail as it excludes admins)
+	result, err := suite.repo.GetUserByName("admin")
+
+	// Assert
+	suite.Error(err)
+	suite.Nil(result)
+
+	// Cleanup
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
+}
+
+func (suite *SambaUserRepositorySuite) TestDeleteUser() {
+	// Arrange
+	user := &dbom.SambaUser{
+		Username: "deleteme",
+		IsAdmin:  false,
+		Password: "deletepass",
+	}
+	err := suite.db.Create(user).Error
+	suite.Require().NoError(err)
+
+	// Act
+	err = suite.repo.Delete("deleteme")
+
+	// Assert
+	suite.NoError(err)
+
+	// Verify user was deleted
+	var deletedUser dbom.SambaUser
+	err = suite.db.Where("username = ?", "deleteme").First(&deletedUser).Error
+	suite.Error(err)
+	suite.Equal(gorm.ErrRecordNotFound, err)
+}
+
+func (suite *SambaUserRepositorySuite) TestDeleteAdminUser() {
+	// Arrange - Create admin user
+	admin := &dbom.SambaUser{
+		Username: "admin",
+		IsAdmin:  true,
+		Password: "adminpass",
+	}
+	err := suite.db.Create(admin).Error
+	suite.Require().NoError(err)
+
+	// Act - Try to delete admin user (should not work due to is_admin = false constraint)
+	err = suite.repo.Delete("admin")
+
+	// Assert
+	suite.NoError(err) // The delete operation succeeds but doesn't delete anything
+
+	// Verify admin user still exists
+	var adminUser dbom.SambaUser
+	err = suite.db.Where("username = ?", "admin").First(&adminUser).Error
+	suite.NoError(err)
+	suite.Equal("admin", adminUser.Username)
+
+	// Cleanup
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
+}
+
+func (suite *SambaUserRepositorySuite) TestSaveAllUsers() {
+	// Arrange
+	users := &dbom.SambaUsers{
+		{Username: "user1", IsAdmin: false, Password: "pass1"},
+		{Username: "user2", IsAdmin: false, Password: "pass2"},
+		{Username: "user3", IsAdmin: false, Password: "pass3"},
+	}
+
+	// Act
+	err := suite.repo.SaveAll(users)
+
+	// Assert
+	suite.NoError(err)
+
+	// Verify all users were saved
+	var count int64
+	suite.db.Model(&dbom.SambaUser{}).Count(&count)
+	suite.Equal(int64(3), count)
+
+	// Cleanup
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.SambaUser{})
 }

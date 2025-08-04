@@ -31,7 +31,6 @@ require (
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
 	gorm.io/datatypes v1.2.6
-	gorm.io/driver/sqlite v1.4.3
 )
 
 require (
@@ -49,7 +48,6 @@ require (
 	github.com/gohugoio/hugo v0.147.6 // indirect
 	github.com/jmattheis/goverter v1.9.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-sqlite3 v1.14.15 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/ovechkin-dm/go-dyno v0.5.2 // indirect
