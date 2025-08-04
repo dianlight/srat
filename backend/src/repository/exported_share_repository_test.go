@@ -192,7 +192,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_FindByNa
 
 	// Assert
 	suite.Require().Error(err)
-	suite.Require().ErrorIs(err, gorm.ErrRecordNotFound)
+	suite.Require().ErrorIs(err, dto.ErrorShareNotFound)
 	suite.Nil(foundShare)
 }
 
@@ -261,7 +261,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Delete()
 	// Check that it is really deleted
 	_, err = suite.export_share_repo.FindByName("delete_me")
 	suite.Require().Error(err)
-	suite.Require().ErrorIs(err, gorm.ErrRecordNotFound)
+	suite.Require().ErrorIs(err, dto.ErrorShareNotFound)
 
 	// Cleanup
 	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
@@ -290,7 +290,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_UpdateNa
 	// Check that it is really updated
 	_, err = suite.export_share_repo.FindByName("old_name")
 	suite.Require().Error(err)
-	suite.Require().ErrorIs(err, gorm.ErrRecordNotFound)
+	suite.Require().ErrorIs(err, dto.ErrorShareNotFound)
 
 	newShare, err := suite.export_share_repo.FindByName("new_name")
 	suite.Require().NoError(err)
