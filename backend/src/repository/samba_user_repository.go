@@ -37,17 +37,13 @@ func NewSambaUserRepository(db *gorm.DB) SambaUserRepositoryInterface {
 }
 
 func (p *SambaUserRepository) GetAdmin() (dbom.SambaUser, error) {
-	ret := p.db.Model(&dbom.SambaUser{}).Preload(clause.Associations).Where("is_admin = ?", true).First(p)
+	var user dbom.SambaUser
+	ret := p.db.Model(&dbom.SambaUser{}).Preload(clause.Associations).Where("is_admin = ?", true).First(&user)
 	if ret.Error != nil {
 		return dbom.SambaUser{}, ret.Error
 	}
 	if ret.RowsAffected == 0 {
 		return dbom.SambaUser{}, gorm.ErrRecordNotFound
-	}
-	var user dbom.SambaUser
-	err := ret.Scan(&user).Error
-	if err != nil {
-		return dbom.SambaUser{}, err
 	}
 	return user, nil
 }
