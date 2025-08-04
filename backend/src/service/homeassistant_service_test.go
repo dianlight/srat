@@ -6,7 +6,6 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -46,7 +45,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaStatusEntity_NoClient()
 	err := suite.haService.SendSambaStatusEntity(sambaStatus)
 
 	// Assert
-	assert.NoError(suite.T(), err)
+	suite.NoError(err)
 }
 
 func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntity_NoClient() {
@@ -74,7 +73,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntity_NoC
 	err := suite.haService.SendSambaProcessStatusEntity(processStatus)
 
 	// Assert
-	assert.NoError(suite.T(), err)
+	suite.NoError(err)
 }
 
 func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntities_NoClient() {
@@ -121,7 +120,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntities_NoClient() {
 	err := suite.haService.SendDiskEntities(disks)
 
 	// Assert
-	assert.NoError(suite.T(), err)
+	suite.NoError(err)
 }
 
 func (suite *HomeAssistantServiceTestSuite) TestNoClientConfigured_DoesNotSendEntities() {
@@ -139,7 +138,7 @@ func (suite *HomeAssistantServiceTestSuite) TestNoClientConfigured_DoesNotSendEn
 	err := haService.SendSambaStatusEntity(sambaStatus)
 
 	// Assert
-	assert.NoError(suite.T(), err)
+	suite.NoError(err)
 }
 
 func (suite *HomeAssistantServiceTestSuite) TestSanitizeEntityId() {
@@ -158,7 +157,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSanitizeEntityId() {
 	err := suite.haService.SendDiskEntities(disks)
 
 	// Assert
-	assert.NoError(suite.T(), err)
+	suite.NoError(err)
 }
 
 func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntities_NoClient() {
@@ -198,7 +197,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntities_NoClient(
 	err := suite.haService.SendDiskHealthEntities(diskHealth)
 
 	// Assert
-	assert.NoError(suite.T(), err)
+	suite.NoError(err)
 }
 
 func TestHomeAssistantServiceSuite(t *testing.T) {
