@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2025.8.0-dev.2",
+  "version": "2025.8.0-dev.3",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -20,6 +20,7 @@
     "@redux-devtools/extension": "3.3.0",
     "@rtk-query/codegen-openapi": "2.0.0",
     "@types/bun": "1.2.19",
+    "@types/js-sha1": "^0.6.3",
     "@types/lodash.debounce": "4.0.9",
     "@types/react": "19.1.9",
     "@types/react-dom": "19.1.7",
@@ -44,6 +45,7 @@
     "@mui/x-charts": "^8.5.3",
     "@reduxjs/toolkit": "^2.8.2",
     "filesize": "^11.0.0",
+    "js-sha1": "^0.7.0",
     "lodash.debounce": "^4.0.8",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^7.0.1",
