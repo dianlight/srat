@@ -3,7 +3,7 @@ import {
 	faPlugCircleMinus,
 	faPlugCircleXmark,
 } from "@fortawesome/free-solid-svg-icons";
-import sha1 from "js-sha1";
+import { sha1 } from "js-sha1";
 import AddIcon from "@mui/icons-material/Add";
 // ... other icon imports ...
 import ComputerIcon from "@mui/icons-material/Computer";
