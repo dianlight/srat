@@ -67,7 +67,7 @@ Added comprehensive bun support to the documentation validation system, making i
 - Updated installation instructions
 - Mentioned automatic detection behavior
 
-#### Setup Summary (`DOCUMENTATION_VALIDATION_SETUP.md`)
+#### Setup Summary (`docs/DOCUMENTATION_VALIDATION_SETUP.md`)
 
 - Updated feature descriptions to mention bun support
 - Added package manager compatibility information

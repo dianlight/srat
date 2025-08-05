@@ -221,7 +221,7 @@ JavaScript runtime: node, Package manager: npm
 - ✅ `README.md` - Prerequisites section
 - ✅ `docs/DOCUMENTATION_GUIDELINES.md` - Usage instructions
 - ✅ `docs/BUN_COMPATIBILITY.md` - Comprehensive compatibility guide
-- ✅ `DOCUMENTATION_VALIDATION_SETUP.md` - Setup summary
+- ✅ `docs/DOCUMENTATION_VALIDATION_SETUP.md` - Setup summary
 
 ### New Documentation
 
