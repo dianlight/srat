@@ -24,6 +24,7 @@
 - `enable`/`disable` share functionality is not working as expected.
 - Renaming the admin user does not correctly create the new user or rename the existing one; issues persist until a full addon reboot.
 - Fix dianlight/hassio-addons#448 [SambaNAS2] Unable to create share for mounted volume
+- Fix dianlight/hassio-addons#447 [SambaNAS2] Unable to mount external drive
 
 #### **🚧 Work in progess**
 
