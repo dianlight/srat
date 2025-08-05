@@ -60,7 +60,7 @@ jobs:
           # Filter pre-releases that were created *after* the latest stable release.
           # Sort them by creation date in descending order.
           prereleases_to_consider=$(echo "$releases_json" | jq -r --argjson latest_stable_date "$latest_stable_release_date" '
-            map(select(.prerelease == true and (.createdAt > $latest_stable_date))) |
+            map(select(.isPrerelease == true and (.createdAt > $latest_stable_date))) |
             sort_by(.createdAt) |
             reverse |
             .[] |
