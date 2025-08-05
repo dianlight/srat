@@ -1,0 +1,558 @@
+name: Documentation Validation
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "**/*.md"
+      - ".github/workflows/documentation.yml"
+      - ".github/copilot-rules.md"
+      - ".github/copilot-instructions.md"
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "IMPLEMENTATION_*.md"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "**/*.md"
+      - ".github/workflows/documentation.yml"
+      - ".github/copilot-rules.md"
+      - ".github/copilot-instructions.md"
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "IMPLEMENTATION_*.md"
+  schedule:
+    # Run weekly on Mondays at 8:00 AM UTC to check for broken links
+    - cron: '0 8 * * 1'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  markdown-lint:
+    runs-on: ubuntu-latest
+    name: Markdown Linting
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '20'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+        with:
+          bun-version: latest
+
+      - name: Install markdownlint-cli2
+        run: |
+          if command -v bun >/dev/null 2>&1; then
+            echo "Installing with bun..."
+            bun add -g markdownlint-cli2
+          else
+            echo "Installing with npm..."
+            npm install -g markdownlint-cli2
+          fi
+
+      - name: Create markdownlint config
+        run: |
+          cat > .markdownlint-cli2.jsonc << 'EOF'
+          {
+            "config": {
+              "MD013": false,
+              "MD033": {
+                "allowed_elements": ["img", "a", "br", "details", "summary"]
+              },
+              "MD041": false
+            },
+            "globs": [
+              "**/*.md"
+            ],
+            "ignores": [
+              "node_modules",
+              ".git"
+            ]
+          }
+          EOF
+
+      - name: Run markdownlint
+        run: markdownlint-cli2
+
+  link-check:
+    runs-on: ubuntu-latest
+    name: Link Validation
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '20'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+        with:
+          bun-version: latest
+
+      - name: Install markdown-link-check
+        run: |
+          if command -v bun >/dev/null 2>&1; then
+            echo "Installing with bun..."
+            bun add -g markdown-link-check
+          else
+            echo "Installing with npm..."
+            npm install -g markdown-link-check
+          fi
+
+      - name: Create link check config
+        run: |
+          cat > .markdown-link-check.json << 'EOF'
+          {
+            "timeout": "20s",
+            "retryOn429": true,
+            "retryCount": 3,
+            "fallbackProtocols": ["http", "https"],
+            "aliveStatusCodes": [200, 206, 301, 302, 307, 308],
+            "ignorePatterns": [
+              {
+                "pattern": "^https://my.home-assistant.io"
+              },
+              {
+                "pattern": "^mailto:"
+              },
+              {
+                "pattern": "^#"
+              }
+            ]
+          }
+          EOF
+
+      - name: Check links in README.md
+        run: markdown-link-check README.md --config .markdown-link-check.json
+
+      - name: Check links in CHANGELOG.md
+        run: markdown-link-check CHANGELOG.md --config .markdown-link-check.json
+
+      - name: Check links in documentation files
+        run: |
+          find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | \
+          xargs -I {} markdown-link-check {} --config .markdown-link-check.json
+
+  spell-check:
+    runs-on: ubuntu-latest
+    name: Spell Check
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '20'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+        with:
+          bun-version: latest
+
+      - name: Install cspell
+        run: |
+          if command -v bun >/dev/null 2>&1; then
+            echo "Installing with bun..."
+            bun add -g cspell
+          else
+            echo "Installing with npm..."
+            npm install -g cspell
+          fi
+
+      - name: Create cspell config
+        run: |
+          cat > .cspell.json << 'EOF'
+          {
+            "version": "0.2",
+            "language": "en",
+            "words": [
+              "SRAT",
+              "SambaNAS",
+              "Hass",
+              "addon",
+              "addons",
+              "hassio",
+              "dianlight",
+              "struct",
+              "func",
+              "vars",
+              "uint",
+              "bool",
+              "TODO",
+              "API",
+              "JSON",
+              "YAML",
+              "HTTP",
+              "HTTPS",
+              "URL",
+              "UUID",
+              "CLI",
+              "GUI",
+              "REST",
+              "TCP",
+              "UDP",
+              "SSH",
+              "TLS",
+              "SSL",
+              "OAuth",
+              "JWT",
+              "CORS",
+              "CSRF",
+              "XSS",
+              "MIME",
+              "UTF",
+              "ASCII",
+              "ISO",
+              "RFC",
+              "W3C",
+              "IETF",
+              "IEEE",
+              "ANSI",
+              "POSIX",
+              "GNU",
+              "GPL",
+              "MIT",
+              "BSD",
+              "Apache",
+              "Docker",
+              "Kubernetes",
+              "Redis",
+              "PostgreSQL",
+              "MySQL",
+              "SQLite",
+              "MongoDB",
+              "GraphQL",
+              "gRPC",
+              "WebSocket",
+              "WebRTC",
+              "OAuth2",
+              "OpenID",
+              "SAML",
+              "LDAP",
+              "SMTP",
+              "IMAP",
+              "POP3",
+              "FTP",
+              "SFTP",
+              "rsync",
+              "cron",
+              "systemd",
+              "nginx",
+              "apache",
+              "golang",
+              "javascript",
+              "typescript",
+              "nodejs",
+              "npm",
+              "yarn",
+              "webpack",
+              "babel",
+              "eslint",
+              "prettier",
+              "jest",
+              "cypress",
+              "storybook",
+              "dockerfile",
+              "makefile",
+              "gitignore",
+              "gitattributes",
+              "gitmodules",
+              "gitconfig",
+              "bashrc",
+              "zshrc",
+              "vimrc",
+              "tmux",
+              "chmod",
+              "chown",
+              "sudo",
+              "systemctl",
+              "journalctl",
+              "wget",
+              "curl",
+              "grep",
+              "awk",
+              "sed",
+              "jq",
+              "yq"
+            ],
+            "flagWords": [],
+            "ignorePaths": [
+              "node_modules/**",
+              ".git/**",
+              "*.log",
+              "*.lock",
+              "*.sum",
+              "*.mod"
+            ],
+            "ignoreRegExpList": [
+              "/\\b[A-Z]{2,}\\b/g",
+              "/\\b\\d+\\.\\d+\\.\\d+\\b/g",
+              "/\\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\\b/gi",
+              "/\\b[a-f0-9]{40}\\b/g",
+              "/\\bhttps?:\\/\\/[^\\s]+/g"
+            ]
+          }
+          EOF
+
+      - name: Run spell check
+        run: cspell "**/*.md"
+
+  version-consistency:
+    runs-on: ubuntu-latest
+    name: Version Consistency Check
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Check version consistency
+        run: |
+          # Extract version from various files and check consistency
+          echo "Checking version consistency across documentation..."
+          
+          # Check if version references in README match package.json (if exists)
+          if [ -f "frontend/package.json" ]; then
+            FRONTEND_VERSION=$(grep '"version"' frontend/package.json | sed 's/.*"version": "\(.*\)".*/\1/')
+            echo "Frontend version: $FRONTEND_VERSION"
+          fi
+          
+          # Check Go module version if exists
+          if [ -f "backend/src/go.mod" ]; then
+            GO_MODULE=$(grep '^module ' backend/src/go.mod | awk '{print $2}')
+            echo "Go module: $GO_MODULE"
+          fi
+          
+          # Check for hardcoded versions in documentation
+          echo "Scanning for hardcoded version references..."
+          grep -rn "version.*[0-9]\+\.[0-9]\+\.[0-9]\+" *.md docs/ || echo "No hardcoded versions found in markdown files"
+
+  format-check:
+    runs-on: ubuntu-latest
+    name: Format Check
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '20'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+        with:
+          bun-version: latest
+
+      - name: Install prettier
+        run: |
+          if command -v bun >/dev/null 2>&1; then
+            echo "Installing with bun..."
+            bun add -g prettier
+          else
+            echo "Installing with npm..."
+            npm install -g prettier
+          fi
+
+      - name: Create prettier config
+        run: |
+          cat > .prettierrc << 'EOF'
+          {
+            "printWidth": 100,
+            "tabWidth": 2,
+            "useTabs": false,
+            "semi": false,
+            "singleQuote": false,
+            "quoteProps": "as-needed",
+            "trailingComma": "none",
+            "bracketSpacing": true,
+            "proseWrap": "preserve",
+            "overrides": [
+              {
+                "files": "*.md",
+                "options": {
+                  "proseWrap": "preserve",
+                  "printWidth": 100
+                }
+              }
+            ]
+          }
+          EOF
+
+      - name: Check Markdown formatting
+        run: |
+          # Check if markdown files are properly formatted
+          prettier --check "**/*.md" || {
+            echo "❌ Markdown files are not properly formatted"
+            echo "Run 'prettier --write \"**/*.md\"' to fix formatting issues"
+            exit 1
+          }
+
+  content-validation:
+    runs-on: ubuntu-latest
+    name: Content Validation
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Validate table of contents
+        run: |
+          echo "Checking for Table of Contents in long documents..."
+          
+          # Check if large markdown files have TOC
+          find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | while read file; do
+            lines=$(wc -l < "$file")
+            if [ $lines -gt 200 ]; then
+              if ! grep -q -i "table of contents\|toc\|- \[.*\](#.*)" "$file"; then
+                echo "⚠️  $file is $lines lines long but may be missing a Table of Contents"
+              fi
+            fi
+          done
+
+      - name: Check for required sections in README
+        run: |
+          echo "Validating README.md structure..."
+          
+          # Check for required sections
+          required_sections=("Installation" "Usage" "License")
+          
+          for section in "${required_sections[@]}"; do
+            if ! grep -q "## $section\|# $section" README.md; then
+              echo "⚠️  README.md is missing required section: $section"
+            fi
+          done
+
+      - name: Validate CHANGELOG format
+        run: |
+          if [ -f "CHANGELOG.md" ]; then
+            echo "Validating CHANGELOG.md format..."
+            
+            # Check for proper version headers
+            if ! grep -q "## \[.*\] - [0-9]" CHANGELOG.md; then
+              echo "⚠️  CHANGELOG.md may not follow proper version format"
+            fi
+            
+            # Check for standard sections
+            standard_sections=("Added" "Changed" "Fixed" "Removed" "Deprecated" "Security")
+            missing_any=false
+            
+            for section in "${standard_sections[@]}"; do
+              if grep -q "### $section" CHANGELOG.md; then
+                echo "✅ Found $section section in CHANGELOG.md"
+              fi
+            done
+          fi
+
+      - name: Check code block languages
+        run: |
+          echo "Checking code block language specifications..."
+          
+          # Find code blocks without language specification
+          find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | xargs grep -n "^```$" | \
+          while IFS=: read -r file line_num content; do
+            echo "⚠️  $file:$line_num - Code block without language specification"
+          done || echo "✅ All code blocks have language specifications"
+
+  security-check:
+    runs-on: ubuntu-latest
+    name: Security Check
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Check for sensitive information
+        run: |
+          echo "Scanning for potentially sensitive information in documentation..."
+          
+          # Common patterns for sensitive data
+          patterns=(
+            "password.*="
+            "token.*="
+            "secret.*="
+            "key.*="
+            "api_key"
+            "private_key"
+            "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"
+          )
+          
+          found_issues=false
+          
+          for pattern in "${patterns[@]}"; do
+            matches=$(grep -rn -i "$pattern" *.md docs/ 2>/dev/null || true)
+            if [ -n "$matches" ]; then
+              echo "⚠️  Potential sensitive information found (pattern: $pattern):"
+              echo "$matches"
+              found_issues=true
+            fi
+          done
+          
+          if [ "$found_issues" = true ]; then
+            echo "❌ Please review the flagged content for sensitive information"
+            exit 1
+          else
+            echo "✅ No obvious sensitive information found in documentation"
+          fi
+
+  auto-fix:
+    runs-on: ubuntu-latest
+    name: Auto-fix Documentation Issues
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [markdown-lint, format-check]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '20'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+        with:
+          bun-version: latest
+
+      - name: Install tools
+        run: |
+          if command -v bun >/dev/null 2>&1; then
+            echo "Installing with bun..."
+            bun add -g prettier markdownlint-cli2
+          else
+            echo "Installing with npm..."
+            npm install -g prettier markdownlint-cli2
+          fi
+
+      - name: Auto-fix formatting issues
+        run: |
+          # Auto-fix prettier issues
+          prettier --write "**/*.md" || true
+          
+          # Auto-fix basic markdownlint issues where possible
+          markdownlint-cli2-fix "**/*.md" || true
+
+      - name: Commit fixes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          if git diff --quiet; then
+            echo "No changes to commit"
+          else
+            git add .
+            git commit -m "docs: auto-fix documentation formatting and linting issues"
+            git push
+          fi

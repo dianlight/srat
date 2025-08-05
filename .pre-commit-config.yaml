@@ -28,6 +28,98 @@ repos:
           files: ^frontend/package\.json$ # Only run if frontend/package.json is changed
           pass_filenames: false # Script knows the file path and handles it
 
+        # Documentation validation hooks
+        - id: validate-links-format
+          name: Validate link formats
+          entry: bash
+          language: system
+          files: '\.md$'
+          args:
+            - -c
+            - |
+              # Check for raw URLs that should be formatted as proper links
+              for file in "$@"; do
+                if [ -f "$file" ]; then
+                  echo "Checking link formats in $file..."
+                  
+                  # Find potential raw URLs
+                  raw_urls=$(grep -n 'https\?://[^)]*[^)]' "$file" | grep -v '\[.*\](' | grep -v '^\s*\[.*\]:' || true)
+                  
+                  if [ -n "$raw_urls" ]; then
+                    echo "⚠️  $file contains raw URLs that should be formatted as proper links:"
+                    echo "$raw_urls"
+                    echo "Consider formatting as [description](url) instead"
+                  fi
+                fi
+              done
+              echo "✅ Link format checks completed"
+
+        - id: check-changelog-format
+          name: Check CHANGELOG.md format
+          entry: bash
+          language: system
+          files: '^CHANGELOG\.md$'
+          args:
+            - -c
+            - |
+              if [ -f "CHANGELOG.md" ]; then
+                echo "Validating CHANGELOG.md format..."
+                
+                # Check for proper version headers
+                if ! grep -q "## \[.*\] - [0-9]" CHANGELOG.md; then
+                  echo "⚠️  CHANGELOG.md may not follow proper version format"
+                fi
+                
+                echo "✅ CHANGELOG.md format check completed"
+              fi
+
+        - id: format-markdown-basic
+          name: Basic markdown formatting
+          entry: bash
+          language: system
+          files: '\.md$'
+          args:
+            - -c
+            - |
+              echo "Running basic markdown formatting..."
+              for file in "$@"; do
+                if [ -f "$file" ]; then
+                  echo "Formatting $file..."
+                  
+                  # Remove trailing whitespace (already handled by pre-commit-hooks)
+                  # Ensure file ends with newline (already handled by pre-commit-hooks)
+                  
+                  # Fix common markdown issues
+                  sed -i 's/[[:space:]]*$//' "$file"  # Remove trailing spaces
+                  
+                fi
+              done
+              echo "✅ Basic markdown formatting completed"
+
+        - id: lint-markdown-basic
+          name: Basic markdown linting
+          entry: bash
+          language: system
+          files: '\.md$'
+          args:
+            - -c
+            - |
+              echo "Running basic markdown linting..."
+              for file in "$@"; do
+                if [ -f "$file" ]; then
+                  echo "Checking $file..."
+              
+                  
+                  # Check for trailing whitespace
+                  if grep -n '[[:space:]]$' "$file" >/dev/null; then
+                    echo "❌ $file contains trailing whitespace"
+                    grep -n '[[:space:]]$' "$file"
+                    exit 1
+                  fi
+                fi
+              done
+              echo "✅ Basic markdown linting passed"
+
 #          - id: gohack-disable
 #            name: disable gohack
 #            stages: [pre-commit]
@@ -50,8 +142,10 @@ repos:
     - repo: https://github.com/pre-commit/pre-commit-hooks
       rev: v5.0.0
       hooks:
-          #    -   id: trailing-whitespace
-          #    -   id: end-of-file-fixer
+          - id: trailing-whitespace
+            types: [markdown]
+          - id: end-of-file-fixer
+            types: [markdown]
           - id: check-yaml
           #    -   id: check-json
           - id: check-toml
@@ -59,9 +153,11 @@ repos:
           - id: check-added-large-files
             args: ["--maxkb=1024"]
           - id: check-merge-conflict
+          - id: check-case-conflict
+          - id: check-symlinks
 
     - repo: https://github.com/tekwizely/pre-commit-golang
-      rev: v1.0.0-rc.1
+      rev: v1.0.0-rc.2
       hooks:
           #
           # Go Build

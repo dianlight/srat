@@ -5,6 +5,7 @@ When SRAT has a configured Home Assistant Core API client, it will automatically
 ## Entities Created
 
 ### Volume Status Entity
+
 - **Entity ID**: `sensor.srat_volume_status`
 - **State**: Total number of disks
 - **Attributes**:
@@ -14,7 +15,9 @@ When SRAT has a configured Home Assistant Core API client, it will automatically
   - `shared_partitions`: Number of partitions with active Samba shares
 
 ### Disk Entities
+
 For each detected disk, an entity is created:
+
 - **Entity ID**: `sensor.srat_disk_{disk_id}`
 - **State**: "connected"
 - **Attributes**:
@@ -30,7 +33,9 @@ For each detected disk, an entity is created:
   - `partition_count`: Number of partitions on the disk
 
 ### Partition Entities
+
 For each partition on each disk, an entity is created:
+
 - **Entity ID**: `sensor.srat_partition_{partition_id}`
 - **State**: "unmounted", "mounted", or "shared"
 - **Attributes**:
@@ -45,6 +50,7 @@ For each partition on each disk, an entity is created:
   - `share_count`: Number of active Samba shares
 
 ### Samba Status Entity
+
 - **Entity ID**: `sensor.srat_samba_status`
 - **State**: "connected", "idle", or "unknown"
 - **Attributes**:
@@ -55,6 +61,7 @@ For each partition on each disk, an entity is created:
   - `tcon_count`: Number of active tree connections
 
 ### Samba Process Status Entity
+
 - **Entity ID**: `sensor.srat_samba_process_status`
 - **State**: "running", "partial", or "stopped"
 - **Attributes**:
@@ -84,6 +91,7 @@ For each partition on each disk, an entity is created:
 ## Configuration
 
 The integration is automatically enabled when:
+
 - SRAT has a configured Home Assistant Core API client
 - The `SUPERVISOR_TOKEN` environment variable is set (when running in addon mode)
 - The supervisor URL is accessible
@@ -99,6 +107,7 @@ srat-server --addon --port 8080 --ha-token "$SUPERVISOR_TOKEN" --ha-url "http://
 ```
 
 The integration will automatically:
+
 1. Create entities for all detected disks and partitions
 2. Update entity states when volumes are mounted/unmounted
 3. Monitor Samba service status and process health
@@ -157,5 +166,6 @@ If entities are not appearing in Home Assistant:
 Entity IDs are automatically generated based on the disk/partition IDs, with special characters replaced by underscores and converted to lowercase for Home Assistant compatibility.
 
 For example:
+
 - Disk ID `usb-SanDisk_USB_3.2Gen1-0:0` becomes `sensor.srat_disk_usb_sandisk_usb_3_2gen1_0_0`
 - Partition ID `uuid-12345678-1234-1234-1234-123456789abc` becomes `sensor.srat_partition_uuid_12345678_1234_1234_1234_123456789abc`

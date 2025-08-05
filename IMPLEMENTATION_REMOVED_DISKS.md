@@ -1,3 +1,5 @@
+# Summary of Implementation: Handle Removed Disks Feature
+
 ## Summary of Implementation: Handle Removed Disks Feature
 
 I have successfully implemented the functionality to handle mounted disks that are physically removed from the system. Here's what the implementation does:
@@ -17,11 +19,13 @@ I have successfully implemented the functionality to handle mounted disks that a
 ### Implementation Details:
 
 #### New Method: `HandleRemovedDisks`
+
 - **Location**: `backend/src/service/volume_service.go`
 - **Purpose**: Checks for mount points in the database that reference devices no longer available in the current system
 - **Integration**: Called automatically during each `GetVolumesData()` execution
 
 #### How It Works:
+
 1. **Data Collection**: Gets all mount points from the database and creates a map of currently available devices from `GetVolumesData()`
 2. **Comparison**: Compares stored mount points against currently available devices
 3. **Device Matching**: Checks multiple device path formats (`sda1`, `/dev/sda1`) for compatibility
@@ -34,24 +38,29 @@ I have successfully implemented the functionality to handle mounted disks that a
    - Creates an issue to notify about the removed disk
 
 #### Error Handling:
+
 - Non-critical errors are logged but don't stop the main operation
 - The system continues to function even if cleanup partially fails
 - Database consistency is maintained
 
 #### Safety Features:
+
 - Uses lazy unmount by default to avoid disrupting running processes
 - Only attempts force unmount as a last resort
 - Comprehensive logging for troubleshooting
 - Graceful degradation when operations fail
 
 ### Usage:
+
 The feature works automatically - no user intervention required. When `GetVolumesData()` is called (which happens regularly), the system will:
+
 1. Check for removed disks
 2. Clean up associated shares
 3. Safely unmount orphaned mount points
 4. Create issues for administrator notification
 
 ### Benefits:
+
 - **Prevents Stale Mounts**: Automatically cleans up mount points for removed devices
 - **Share Consistency**: Ensures shares don't point to non-existent mount points
 - **System Stability**: Prevents issues from accumulating over time

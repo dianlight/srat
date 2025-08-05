@@ -13,6 +13,7 @@ When creating Go tests for API handlers in this project, follow these patterns b
 ### Required Imports
 
 Include these standard imports for API handler tests:
+
 ```go
 import (
     "context"
@@ -39,6 +40,7 @@ import (
 ### Test Suite Fields
 
 Each test suite should include:
+
 - The handler being tested (e.g., `api *api.SettingsHandler`)
 - Mock services used by the handler
 - Dependency injection app (`app *fxtest.App`)
@@ -55,21 +57,21 @@ func (suite *HandlerNameSuite) SetupTest() {
         fx.Provide(
             // Mock controller
             func() *matchers.MockController { return mock.NewMockController(suite.T()) },
-            
+
             // Context with cancellation
             func() (context.Context, context.CancelFunc) {
                 return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
             },
-            
+
             // Handler constructor
             api.NewHandlerName,
-            
+
             // Real services (when not mocked)
             service.NewDirtyDataService,
-            
+
             // Mock services
             mock.Mock[service.InterfaceName],
-            
+
             // Context state provider
             func() *dto.ContextState {
                 // Initialize with test data
@@ -80,7 +82,7 @@ func (suite *HandlerNameSuite) SetupTest() {
                     DockerNet: "172.30.32.0/23",
                 }
             },
-            
+
             // Configuration provider
             func() config.Config {
                 // Load test configuration
@@ -92,7 +94,7 @@ func (suite *HandlerNameSuite) SetupTest() {
         // ... other dependencies
     )
     suite.app.RequireStart()
-    
+
     // Set up mock expectations
     mock.When(suite.mockService.Method(mock.Any[Type]())).ThenReturn(expected, nil)
 }
@@ -115,64 +117,66 @@ func (suite *HandlerNameSuite) TearDownTest() {
 ### Test Methods
 
 #### HTTP Test Pattern
+
 For HTTP endpoint tests using humatest:
 
 ```go
 func (suite *HandlerNameSuite) TestMethodName() {
     _, api := humatest.New(suite.T())
     suite.handler.RegisterHandlerName(api)
-    
+
     // For PATCH operations, add autopatch
     autopatch.AutoPatch(api)
-    
+
     // Prepare test data
     input := dto.SomeType{
         Field: "value",
     }
-    
+
     // Make HTTP request
     resp := api.Get("/endpoint")  // or Post, Patch, etc.
     suite.Require().Equal(http.StatusOK, resp.Code)
-    
+
     // Parse response
     var result dto.SomeType
     err := json.Unmarshal(resp.Body.Bytes(), &result)
     suite.Require().NoError(err)
-    
+
     // Assertions
     suite.Equal(expected, result)
-    
+
     // Verify dirty state if applicable
     suite.True(suite.dirtyService.GetDirtyDataTracker().SomeField)
 }
 ```
 
 #### Direct Handler Test Pattern
+
 For testing handlers directly (like in shares_test.go):
 
 ```go
 func (suite *HandlerNameSuite) TestMethodName() {
     // Prepare input
     input := dto.SomeType{Name: "test"}
-    
+
     // Configure mock expectations
     mock.When(suite.mockService.Method(mock.Any[dto.SomeType]())).ThenReturn(expected, nil)
-    
+
     // Prepare request input
     requestInput := &struct {
         Body dto.SomeType `required:"true"`
     }{
         Body: input,
     }
-    
+
     // Execute
     result, err := suite.handler.Method(context.Background(), requestInput)
-    
+
     // Assert
     suite.NoError(err)
     suite.NotNil(result)
     suite.Equal(http.StatusCreated, result.Status)
-    
+
     // Verify mock calls
     mock.Verify(suite.mockService, matchers.Times(1)).Method()
 }
@@ -187,14 +191,14 @@ func (suite *HandlerNameSuite) TestMethodNameError() {
     // Configure mock to return error
     expectedErr := dto.ErrorSomeCondition
     mock.When(suite.mockService.Method(mock.Any[dto.SomeType]())).ThenReturn(nil, expectedErr)
-    
+
     // Execute
     result, err := suite.handler.Method(context.Background(), input)
-    
+
     // Assert error
     suite.Error(err)
     suite.Nil(result)
-    
+
     // Check specific error type if needed
     statusErr, ok := err.(huma.StatusError)
     suite.True(ok)
