@@ -10,8 +10,25 @@ interface TelemetryConfig {
     version: string;
 }
 
+// Export Rollbar configuration for use with @rollbar/react Provider
+export const createRollbarConfig = (accessToken: string): Rollbar.Configuration => ({
+    accessToken,
+    environment: process.env.NODE_ENV || 'development',
+    codeVersion: packageJson.version,
+    captureUncaught: true,
+    captureUnhandledRejections: true,
+    payload: {
+        client: {
+            javascript: {
+                code_version: packageJson.version,
+                source_map_enabled: false,
+            }
+        }
+    },
+    enabled: accessToken !== 'disabled',
+});
+
 class TelemetryService {
-    private rollbar: Rollbar | null = null;
     private mode: TelemetryMode = 'Ask';
     private config: TelemetryConfig;
     private isConfigured = false;
@@ -25,89 +42,13 @@ class TelemetryService {
      */
     configure(mode: TelemetryMode): void {
         this.mode = mode;
+        this.isConfigured = mode === 'All' || mode === 'Errors';
 
-        // Shutdown existing Rollbar instance
-        if (this.rollbar) {
-            // Rollbar doesn't have a shutdown method, but we can set it to null
-            this.rollbar = null;
-            this.isConfigured = false;
-        }
-
-        // Only initialize Rollbar if mode is All or Errors
-        if (mode === 'All' || mode === 'Errors') {
-            this.rollbar = new Rollbar({
-                accessToken: this.config.accessToken,
-                environment: this.config.environment,
-                codeVersion: this.config.version,
-                captureUncaught: mode === 'All' || mode === 'Errors', // Capture uncaught exceptions
-                captureUnhandledRejections: mode === 'All' || mode === 'Errors', // Capture unhandled promises
-                payload: {
-                    client: {
-                        javascript: {
-                            code_version: this.config.version,
-                            source_map_enabled: false,
-                        }
-                    }
-                },
-                // Rollbar is enabled since we're in All or Errors mode
-                enabled: true,
-            });
-
-            this.isConfigured = true;
+        if (this.isConfigured) {
             console.log(`Rollbar telemetry configured: ${mode}`);
-
-            // Send a test event if mode is All
-            if (mode === 'All') {
-                this.reportEvent('telemetry_enabled', {
-                    version: this.config.version,
-                    environment: this.config.environment,
-                });
-            }
         } else {
             console.log(`Rollbar telemetry disabled: ${mode}`);
         }
-    }
-
-    /**
-     * Report an error to the telemetry service
-     */
-    reportError(error: Error | string, extraData?: Record<string, any>): void {
-        if (!this.isConfigured || !this.rollbar) {
-            return; // Silently ignore if not configured
-        }
-
-        if (this.mode === 'Disabled' || this.mode === 'Ask') {
-            return; // Don't report if disabled or asking
-        }
-
-        // Report errors for both All and Errors modes
-        if (this.mode === 'All' || this.mode === 'Errors') {
-            this.rollbar.error(error, extraData);
-            console.debug('Error reported to Rollbar:', error);
-        }
-    }
-
-    /**
-     * Report a telemetry event to the service
-     */
-    reportEvent(event: string, data?: Record<string, any>): void {
-        if (!this.isConfigured || !this.rollbar) {
-            return; // Silently ignore if not configured
-        }
-
-        // Only report events in All mode
-        if (this.mode !== 'All') {
-            return;
-        }
-
-        const eventData = {
-            ...data,
-            event_type: event,
-            timestamp: new Date().toISOString(),
-        };
-
-        this.rollbar.info(`Event: ${event}`, eventData);
-        console.debug('Event reported to Rollbar:', event, eventData);
     }
 
     /**
@@ -123,8 +64,21 @@ class TelemetryService {
     isEnabled(): boolean {
         return this.mode === 'All' || this.mode === 'Errors';
     }
-}
 
+    /**
+     * Check if the service is configured
+     */
+    getIsConfigured(): boolean {
+        return this.isConfigured;
+    }
+
+    /**
+     * Get the access token
+     */
+    getAccessToken(): string {
+        return this.config.accessToken;
+    }
+}
 // Create a singleton instance
 const telemetryService = new TelemetryService({
     accessToken: process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled', // Set via environment at build time

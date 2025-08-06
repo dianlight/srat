@@ -2,7 +2,7 @@ import { Backdrop, CircularProgress } from "@mui/material";
 import Container from "@mui/material/Container";
 import { useEffect, useRef, useState } from "react";
 //import { DirtyDataContext, ModeContext } from "./Contexts";
-import { useErrorBoundary } from "react-use-error-boundary";
+import { Provider as RollbarProvider } from "@rollbar/react";
 import { Footer } from "./components/Footer";
 import { NavBar } from "./components/NavBar";
 import TelemetryModal from "./components/TelemetryModal";
@@ -10,14 +10,13 @@ import { ErrorBoundaryWrapper } from "./components/ErrorBoundaryWrapper";
 import { useHealth } from "./hooks/healthHook";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
 import { useTelemetryInitialization } from "./hooks/useTelemetryInitialization";
+import { createRollbarConfig } from "./services/telemetryService";
+import telemetryService from "./services/telemetryService";
 
 export function App() {
 	//const [status, setStatus] = useState<DtoHealthPing>({ alive: false, read_only: true });
 	//    const [dirtyData, setDirtyData] = useState<DtoDataDirtyTracker>({});
 	const [errorInfo, _setErrorInfo] = useState<string>("");
-	const [error, resetError] = useErrorBoundary((error, errorInfo) =>
-		console.error(error, errorInfo),
-	);
 	const mainArea = useRef<HTMLDivElement>(null);
 	/*
 	const status = useSSE(DtoEventType.Heartbeat, { alive: false, read_only: true }, {
@@ -39,15 +38,16 @@ export function App() {
 	// or the component unmounts. This prevents multiple timers from being created.
 	useEffect(() => {
 		let timer: ReturnType<typeof setTimeout> | undefined;
-		if (error || herror) {
+		if (herror) {
 			timer = setTimeout(() => {
-				resetError();
+				// With the new error boundary, we don't need to manually reset errors
+				console.log('Error auto-reset timer triggered');
 			}, 5000);
 		}
 		return () => {
 			if (timer) clearTimeout(timer);
 		};
-	}, [error, herror, resetError]);
+	}, [herror]);
 
 	useEffect(() => {
 		/*
@@ -115,32 +115,34 @@ export function App() {
 	return (
 		/*     <ModeContext.Provider value={status}>
 				 <DirtyDataContext.Provider value={dirtyData}>*/
-		<ErrorBoundaryWrapper>
-			<Container
-				maxWidth="lg"
-				disableGutters={true}
-				sx={{
-					minHeight: "100vh",
-					display: "flex",
-					flexDirection: "column",
-				}}
-			>
-				<NavBar error={errorInfo} bodyRef={mainArea} />
-				<div ref={mainArea} className="fullBody" style={{ flexGrow: 1 }}></div>
-				<Footer healthData={status} />
-			</Container>
-			<Backdrop
-				sx={(theme) => ({ color: "#fff", zIndex: theme.zIndex.drawer + 1 })}
-				open={status.alive === false || isLoading}
-				content={isLoading ? "Loading..." : "Server is not reachable"}
-			>
-				<CircularProgress color="inherit" />
-			</Backdrop>
-			<TelemetryModal
-				open={showTelemetryModal}
-				onClose={dismissTelemetryModal}
-			/>
-		</ErrorBoundaryWrapper>
+		<RollbarProvider config={createRollbarConfig(telemetryService.getAccessToken())}>
+			<ErrorBoundaryWrapper>
+				<Container
+					maxWidth="lg"
+					disableGutters={true}
+					sx={{
+						minHeight: "100vh",
+						display: "flex",
+						flexDirection: "column",
+					}}
+				>
+					<NavBar error={errorInfo} bodyRef={mainArea} />
+					<div ref={mainArea} className="fullBody" style={{ flexGrow: 1 }}></div>
+					<Footer healthData={status} />
+				</Container>
+				<Backdrop
+					sx={(theme) => ({ color: "#fff", zIndex: theme.zIndex.drawer + 1 })}
+					open={status.alive === false || isLoading}
+					content={isLoading ? "Loading..." : "Server is not reachable"}
+				>
+					<CircularProgress color="inherit" />
+				</Backdrop>
+				<TelemetryModal
+					open={showTelemetryModal}
+					onClose={dismissTelemetryModal}
+				/>
+			</ErrorBoundaryWrapper>
+		</RollbarProvider>
 		/*
 			</DirtyDataContext.Provider>
 		</ModeContext.Provider>*/

@@ -3,7 +3,6 @@ import * as ReactDOM from "react-dom/client";
 import { App } from "./App.tsx";
 import "./css/style.css";
 import "./img/favicon.ico";
-import { ErrorBoundaryContext } from "react-use-error-boundary";
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
@@ -95,20 +94,18 @@ class SSESource implements Source {
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 root.render(
-	<ErrorBoundaryContext>
-		<ThemeProvider theme={theme} noSsr>
-			<CssBaseline />
-			<Provider store={store}>
-				<ConfirmProvider>
-					<StrictMode>
-						<SSEProvider source={() => new SSESource(`${apiUrl}sse`)}>
-							<BrowserRouter>
-								<App />
-							</BrowserRouter>
-						</SSEProvider>
-					</StrictMode>
-				</ConfirmProvider>
-			</Provider>
-		</ThemeProvider>
-	</ErrorBoundaryContext>,
+	<ThemeProvider theme={theme} noSsr>
+		<CssBaseline />
+		<Provider store={store}>
+			<ConfirmProvider>
+				<StrictMode>
+					<SSEProvider source={() => new SSESource(`${apiUrl}sse`)}>
+						<BrowserRouter>
+							<App />
+						</BrowserRouter>
+					</SSEProvider>
+				</StrictMode>
+			</ConfirmProvider>
+		</Provider>
+	</ThemeProvider>,
 );
