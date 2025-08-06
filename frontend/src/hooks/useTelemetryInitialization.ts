@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useGetSettingsQuery, type Settings, Telemetry_mode } from '../store/sratApi';
 import telemetryService, { type TelemetryMode } from '../services/telemetryService';
+import packageJson from '../../package.json';
 
 /**
  * Hook to initialize and configure telemetry service based on user settings
@@ -23,7 +24,7 @@ export const useTelemetryInitialization = () => {
             // Report app initialization event if telemetry is enabled
             if (settings.telemetry_mode === Telemetry_mode.All) {
                 telemetryService.reportEvent('app_initialized', {
-                    version: '1.0.0', // This should be dynamic
+                    version: packageJson.version, // Use the actual package version
                     timestamp: new Date().toISOString(),
                     userAgent: navigator.userAgent,
                 });

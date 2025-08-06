@@ -4,7 +4,9 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/addons"
@@ -77,10 +79,26 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewSmartService,
 		service.NewIssueService,
 		func() service.TelemetryServiceInterface {
+			// Use telemetry configuration set at build time via ldflags
+			accessToken := config.RollbarToken
+			if accessToken == "" {
+				accessToken = "disabled" // Use placeholder if not set at build time
+			}
+
+			// Determine environment: use build-time setting or auto-detect from version
+			environment := config.RollbarEnvironment
+			if environment == "" {
+				if config.Version == "0.0.0-dev.0" || strings.Contains(config.Version, "-dev.") {
+					environment = "development"
+				} else {
+					environment = "production"
+				}
+			}
+
 			return service.NewTelemetryService(
-				"YOUR_ROLLBAR_ACCESS_TOKEN", // This should be configured via environment variable
-				"production",
-				"v1.0.0", // This should be configured dynamically
+				accessToken,
+				environment,
+				config.Version, // Use the version set at build time
 			)
 		},
 

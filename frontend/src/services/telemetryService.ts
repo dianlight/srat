@@ -1,4 +1,5 @@
 import Rollbar from 'rollbar';
+import packageJson from '../../package.json';
 
 // Telemetry modes matching the backend enum
 export type TelemetryMode = 'Ask' | 'All' | 'Errors' | 'Disabled';
@@ -126,9 +127,9 @@ class TelemetryService {
 
 // Create a singleton instance
 const telemetryService = new TelemetryService({
-    accessToken: 'YOUR_ROLLBAR_CLIENT_ACCESS_TOKEN', // This should be configured via environment
+    accessToken: process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled', // Set via environment at build time
     environment: process.env.NODE_ENV || 'development',
-    version: '1.0.0', // This should match the app version
+    version: packageJson.version, // Use the version from package.json
 });
 
 export default telemetryService;

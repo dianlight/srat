@@ -1,6 +1,12 @@
 # Rollbar Telemetry Implementation
 
-This document describes the implementation of Rollbar telemetry and error reporting with configurable privacy modes.
+This document describes the implementation of Rollbar tele### Backend Environment Variables
+- `ROLLBAR_CLIENT_ACCESS_TOKEN`: Unified Rollbar access token (embedded at build time via ldflags)
+- `ROLLBAR_ENVIRONMENT`: Override automatic environment detection (embedded at build time via ldflags)
+- Version is automatically set from `config.Version` (configured via build ldflags)
+- Environment auto-detected: "development" for dev versions, "production" for releases
+- **Security**: Tokens are embedded at build time, not read from runtime environment
+- **Simplification**: Same token used for both backend and frontendand error reporting with configurable privacy modes.
 
 ## Overview
 
@@ -93,14 +99,17 @@ The telemetry system provides four configuration modes:
 ## Configuration
 
 ### Backend Environment Variables
-- Rollbar access token should be configured via environment variable
-- Environment (production/development) detection
-- Version should be set dynamically
+- `ROLLBAR_ACCESS_TOKEN`: Server-side Rollbar access token (embedded at build time via ldflags)
+- `ROLLBAR_ENVIRONMENT`: Override automatic environment detection (embedded at build time via ldflags)
+- Version is automatically set from `config.Version` (configured via build ldflags)
+- Environment auto-detected: "development" for dev versions, "production" for releases
+- **Security**: Tokens are embedded at build time, not read from runtime environment
 
 ### Frontend Configuration
-- Rollbar client access token needs configuration
-- Environment detection via NODE_ENV
-- Version should match backend version
+- `ROLLBAR_CLIENT_ACCESS_TOKEN`: Client-side Rollbar access token (set at build time)
+- Environment detection via `NODE_ENV` (development/production)
+- Version automatically sourced from `package.json`
+- Build system injects environment variables via `define` in bun.build.ts
 
 ## Privacy Compliance
 
