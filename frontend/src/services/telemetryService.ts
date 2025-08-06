@@ -21,7 +21,7 @@ export const createRollbarConfig = (accessToken: string): Rollbar.Configuration 
         client: {
             javascript: {
                 code_version: packageJson.version,
-                source_map_enabled: false,
+                source_map_enabled: true,
             }
         }
     },
