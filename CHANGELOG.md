@@ -9,11 +9,12 @@
 - Manage Avahi service
 - Veto files for share not global [#79](https://github.com/dianlight/srat/issues/79)
 - Ingress security validation [#89](https://github.com/dianlight/srat/issues/89)
-- [W] Dashboard
+- Dashboard
+- Add Rollbar telemetry service for error tracking and monitoring
 
-#### **🚧 Work in progess**
+#### **🚧 Work in progress**
 
-- [ ] Manage `local master`option (?)
+- [ ] Manage `local master` option (?)
 - [ ] Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
 - [ ] Custom component [#83](https://github.com/dianlight/srat/issues/83)
 - [x] Smart Control [#100](https://github.com/dianlight/srat/issues/100)
@@ -26,16 +27,16 @@
 - Fix dianlight/hassio-addons#448 [SambaNAS2] Unable to create share for mounted volume
 - Fix dianlight/hassio-addons#447 [SambaNAS2] Unable to mount external drive
 
-#### **🚧 Work in progess**
+#### **🚧 Work in progress**
 
-- [W] Addon protected mode check [#80](https://github.com/dianlight/srat/issues/85)
+- [W] Addon protected mode check [#85](https://github.com/dianlight/srat/issues/85)
 
 ### 🏗 Chore
 
-- Implemet wachdog
+- Implement watchdog
 - Align UI elements to HA [#81](https://github.com/dianlight/srat/issues/81)
 
-#### **🚧 Work in progess**
+#### **🚧 Work in progress**
 
 - [ ] Create the base documentation [#80](https://github.com/dianlight/srat/issues/80)
 - [ ] Display version from ADDON
