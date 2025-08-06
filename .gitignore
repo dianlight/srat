@@ -8,3 +8,4 @@ backend/tmp/
 .devcontainer/.env
 .env
 config/
+.env.example
