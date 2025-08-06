@@ -1,0 +1,37 @@
+name: Create Release Announcement
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  # Required to create a discussion
+  discussions: write
+
+jobs:
+  set-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.setenv.outputs.environment }}
+    steps:
+      - name: Set environment variable
+        id: setenv
+        run: |
+          if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+            echo "environment=prerelease" >> $GITHUB_OUTPUT
+          else
+            echo "environment=production" >> $GITHUB_OUTPUT
+          fi
+  create_discussion:
+    name: Rollbar Deploy Tracking 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify deploy to Rollbar (backend)
+        uses: rollbar/github-deploy-action@2.1.2
+        id: rollbar_deploy
+        with:
+          environment: ${{ needs.set-environment.outputs.environment }}"
+          version: ${{ github.event.release.name || github.sha }}
+        env:
+          ROLLBAR_ACCESS_TOKEN: ${{ secrets.ROLLBAR_ACCESS_TOKEN }}
+          ROLLBAR_USERNAME: ${{ github.actor }}    
