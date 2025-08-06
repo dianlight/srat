@@ -15,6 +15,10 @@ import { StrictMode } from "react";
 import { type Listener, type Source, SSEProvider } from "react-hooks-sse";
 import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router";
+import { Provider as RollbarProvider } from "@rollbar/react";
+import { ErrorBoundaryWrapper } from "./components/ErrorBoundaryWrapper";
+import { createRollbarConfig } from "./services/telemetryService";
+import telemetryService from "./services/telemetryService";
 import { apiUrl } from "./store/emptyApi.ts";
 import { Supported_events } from "./store/sratApi.ts";
 //import { apiContext } from './Contexts.ts';
@@ -94,18 +98,22 @@ class SSESource implements Source {
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 root.render(
-	<ThemeProvider theme={theme} noSsr>
-		<CssBaseline />
-		<Provider store={store}>
-			<ConfirmProvider>
-				<StrictMode>
-					<SSEProvider source={() => new SSESource(`${apiUrl}sse`)}>
-						<BrowserRouter>
-							<App />
-						</BrowserRouter>
-					</SSEProvider>
-				</StrictMode>
-			</ConfirmProvider>
-		</Provider>
-	</ThemeProvider>,
+	<RollbarProvider config={createRollbarConfig(telemetryService.getAccessToken())}>
+		<ErrorBoundaryWrapper>
+			<ThemeProvider theme={theme} noSsr>
+				<CssBaseline />
+				<Provider store={store}>
+					<ConfirmProvider>
+						<StrictMode>
+							<SSEProvider source={() => new SSESource(`${apiUrl}sse`)}>
+								<BrowserRouter>
+									<App />
+								</BrowserRouter>
+							</SSEProvider>
+						</StrictMode>
+					</ConfirmProvider>
+				</Provider>
+			</ThemeProvider>
+		</ErrorBoundaryWrapper>
+	</RollbarProvider>,
 );

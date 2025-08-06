@@ -2,16 +2,12 @@ import { Backdrop, CircularProgress } from "@mui/material";
 import Container from "@mui/material/Container";
 import { useEffect, useRef, useState } from "react";
 //import { DirtyDataContext, ModeContext } from "./Contexts";
-import { Provider as RollbarProvider } from "@rollbar/react";
 import { Footer } from "./components/Footer";
 import { NavBar } from "./components/NavBar";
 import TelemetryModal from "./components/TelemetryModal";
-import { ErrorBoundaryWrapper } from "./components/ErrorBoundaryWrapper";
 import { useHealth } from "./hooks/healthHook";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
 import { useTelemetryInitialization } from "./hooks/useTelemetryInitialization";
-import { createRollbarConfig } from "./services/telemetryService";
-import telemetryService from "./services/telemetryService";
 
 export function App() {
 	//const [status, setStatus] = useState<DtoHealthPing>({ alive: false, read_only: true });
@@ -115,34 +111,32 @@ export function App() {
 	return (
 		/*     <ModeContext.Provider value={status}>
 				 <DirtyDataContext.Provider value={dirtyData}>*/
-		<RollbarProvider config={createRollbarConfig(telemetryService.getAccessToken())}>
-			<ErrorBoundaryWrapper>
-				<Container
-					maxWidth="lg"
-					disableGutters={true}
-					sx={{
-						minHeight: "100vh",
-						display: "flex",
-						flexDirection: "column",
-					}}
-				>
-					<NavBar error={errorInfo} bodyRef={mainArea} />
-					<div ref={mainArea} className="fullBody" style={{ flexGrow: 1 }}></div>
-					<Footer healthData={status} />
-				</Container>
-				<Backdrop
-					sx={(theme) => ({ color: "#fff", zIndex: theme.zIndex.drawer + 1 })}
-					open={status.alive === false || isLoading}
-					content={isLoading ? "Loading..." : "Server is not reachable"}
-				>
-					<CircularProgress color="inherit" />
-				</Backdrop>
-				<TelemetryModal
-					open={showTelemetryModal}
-					onClose={dismissTelemetryModal}
-				/>
-			</ErrorBoundaryWrapper>
-		</RollbarProvider>
+		<>
+			<Container
+				maxWidth="lg"
+				disableGutters={true}
+				sx={{
+					minHeight: "100vh",
+					display: "flex",
+					flexDirection: "column",
+				}}
+			>
+				<NavBar error={errorInfo} bodyRef={mainArea} />
+				<div ref={mainArea} className="fullBody" style={{ flexGrow: 1 }}></div>
+				<Footer healthData={status} />
+			</Container>
+			<Backdrop
+				sx={(theme) => ({ color: "#fff", zIndex: theme.zIndex.drawer + 1 })}
+				open={status.alive === false || isLoading}
+				content={isLoading ? "Loading..." : "Server is not reachable"}
+			>
+				<CircularProgress color="inherit" />
+			</Backdrop>
+			<TelemetryModal
+				open={showTelemetryModal}
+				onClose={dismissTelemetryModal}
+			/>
+		</>
 		/*
 			</DirtyDataContext.Provider>
 		</ModeContext.Provider>*/

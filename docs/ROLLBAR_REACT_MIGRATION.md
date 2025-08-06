@@ -41,16 +41,17 @@ The migration improves error handling and telemetry reporting by using React-spe
 
 ### 5. App-Level Integration
 
-**File**: `src/App.tsx`
-
-- Added `Provider` from `@rollbar/react` as the root-level provider
-- Removed manual error boundary handling
-- Cleaned up unused `useErrorBoundary` imports
-
 **File**: `src/index.tsx`
 
-- Removed `ErrorBoundaryContext` wrapper
-- Simplified provider tree
+- Added `Provider` from `@rollbar/react` as the root-level provider (wrapping all other providers)
+- Added `ErrorBoundaryWrapper` at the top level to catch all application errors
+- Structured provider hierarchy: RollbarProvider → ErrorBoundaryWrapper → ThemeProvider → ... → App
+
+**File**: `src/App.tsx`
+
+- Removed RollbarProvider and ErrorBoundaryWrapper (moved to index.tsx)
+- Simplified to focus on core application logic
+- Cleaned up unused imports related to Rollbar
 
 ### 6. Hook Updates
 
@@ -62,12 +63,11 @@ The migration improves error handling and telemetry reporting by using React-spe
 ## Benefits
 
 1. **Better React Integration**: Uses React patterns like Context and hooks
-2. **Automatic Error Boundary**: Built-in error boundary handles React errors seamlessly
+2. **Automatic Error Boundary**: Built-in error boundary handles React errors seamlessly at the application root level
 3. **Improved Error Handling**: Better fallback UI and error information
 4. **Simplified Code**: Less manual instance management
 5. **Type Safety**: Better TypeScript integration with @rollbar/react
-
-## Usage Examples
+6. **Proper Provider Hierarchy**: RollbarProvider at the root ensures all components have access to error reporting## Usage Examples
 
 ### Basic Error Reporting
 ```typescript
