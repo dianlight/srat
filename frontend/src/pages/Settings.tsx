@@ -1,6 +1,6 @@
 import AutorenewIcon from "@mui/icons-material/Autorenew"; // Icon for fetching hostname
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd"; // Import an icon for the button
-import { CircularProgress, IconButton, Stack } from "@mui/material";
+import { CircularProgress, IconButton, Stack, Typography } from "@mui/material";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
@@ -24,7 +24,10 @@ import {
 	useGetNicsQuery,
 	useGetSettingsQuery,
 	useGetUpdateChannelsQuery,
+	useGetTelemetryModesQuery,
+	useGetTelemetryInternetConnectionQuery,
 	usePutSettingsMutation,
+	Telemetry_mode,
 } from "../store/sratApi";
 
 // --- IP Address and CIDR Validation Helpers ---
@@ -38,23 +41,23 @@ const IPV4_OR_CIDR_REGEX =
 // Mask range /0 to /128
 const IPV6_OR_CIDR_REGEX = new RegExp(
 	"^(" +
-		"([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|" + // 1:2:3:4:5:6:7:8
-		"([0-9a-fA-F]{1,4}:){1,7}:|" + // 1::                                 1:2:3:4:5:6:7::
-		"([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|" + // 1::8               1:2:3:4:5:6::8   1:2:3:4:5:6::8
-		"([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|" + // 1::7:8             1:2:3:4:5::7:8   1:2:3:4:5::8
-		"([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|" + // 1::6:7:8           1:2:3:4::6:7:8   1:2:3:4::8
-		"([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|" + // 1::5:6:7:8         1:2:3::5:6:7:8   1:2:3::8
-		"([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|" + // 1::4:5:6:7:8       1:2::4:5:6:7:8   1:2::8
-		"[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|" + // 1::3:4:5:6:7:8     1::3:4:5:6:7:8   1::8
-		":((:[0-9a-fA-F]{1,4}){1,7}|:)|" + // ::2:3:4:5:6:7:8    ::2:3:4:5:6:7:8  ::8       ::
-		"fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|" + // fe80::7:8%eth0     fe80::7:8%1  (link-local IPv6 addresses with zone index)
-		"::(ffff(:0{1,4}){0,1}:){0,1}" +
-		"((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}" +
-		"(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|" + // ::255.255.255.255  ::ffff:255.255.255.255  ::ffff:0:255.255.255.255 (IPv4-mapped IPv6 addresses and IPv4-translated addresses)
-		"([0-9a-fA-F]{1,4}:){1,4}:" +
-		"((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}" + // 2001:db8:3:4::192.0.2.33  64:ff9b::192.0.2.33 (IPv4-Embedded IPv6 Address)
-		"(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])" +
-		")(\/(?:[0-9]|[1-9][0-9]|1[01][0-9]|12[0-8]))?$", // Optional CIDR mask /0 to /128
+	"([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|" + // 1:2:3:4:5:6:7:8
+	"([0-9a-fA-F]{1,4}:){1,7}:|" + // 1::                                 1:2:3:4:5:6:7::
+	"([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|" + // 1::8               1:2:3:4:5:6::8   1:2:3:4:5:6::8
+	"([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|" + // 1::7:8             1:2:3:4:5::7:8   1:2:3:4:5::8
+	"([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|" + // 1::6:7:8           1:2:3:4::6:7:8   1:2:3:4::8
+	"([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|" + // 1::5:6:7:8         1:2:3::5:6:7:8   1:2:3::8
+	"([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|" + // 1::4:5:6:7:8       1:2::4:5:6:7:8   1:2::8
+	"[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|" + // 1::3:4:5:6:7:8     1::3:4:5:6:7:8   1::8
+	":((:[0-9a-fA-F]{1,4}){1,7}|:)|" + // ::2:3:4:5:6:7:8    ::2:3:4:5:6:7:8  ::8       ::
+	"fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|" + // fe80::7:8%eth0     fe80::7:8%1  (link-local IPv6 addresses with zone index)
+	"::(ffff(:0{1,4}){0,1}:){0,1}" +
+	"((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}" +
+	"(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|" + // ::255.255.255.255  ::ffff:255.255.255.255  ::ffff:0:255.255.255.255 (IPv4-mapped IPv6 addresses and IPv4-translated addresses)
+	"([0-9a-fA-F]{1,4}:){1,4}:" +
+	"((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}" + // 2001:db8:3:4::192.0.2.33  64:ff9b::192.0.2.33 (IPv4-Embedded IPv6 Address)
+	"(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])" +
+	")(\/(?:[0-9]|[1-9][0-9]|1[01][0-9]|12[0-8]))?$", // Optional CIDR mask /0 to /128
 );
 
 function isValidIpAddressOrCidr(ip: string): boolean {
@@ -81,6 +84,10 @@ export function Settings() {
 	const { data: nic, isLoading: inLoadinf } = useGetNicsQuery();
 	const { data: updateChannels, isLoading: isChLoading } =
 		useGetUpdateChannelsQuery();
+	const { data: telemetryModes, isLoading: isTelemetryLoading } =
+		useGetTelemetryModesQuery();
+	const { data: internetConnection, isLoading: isInternetLoading } =
+		useGetTelemetryInternetConnectionQuery();
 
 	const {
 		control,
@@ -107,11 +114,11 @@ export function Settings() {
 	const bindAllWatch = watch("bind_all_interfaces");
 
 	/*
-    const debouncedCommit = debounce((data: Settings) => {
-        //console.log("Committing")
-        handleCommit(data);
-    }, 500, { leading: true });
-    */
+	const debouncedCommit = debounce((data: Settings) => {
+		//console.log("Committing")
+		handleCommit(data);
+	}, 500, { leading: true });
+	*/
 
 	function handleCommit(data: Settings) {
 		console.log(data);
@@ -141,25 +148,25 @@ export function Settings() {
 	};
 
 	/*
-    useEffect(() => {
-        // make sure to unsubscribe;
-        const callback = subscribe({
-            formState: {
-                isDirty: true,
-            },
-            callback: ({ values }) => {
-                //console.log(values);
-                //console.log(formState.isDirty, formState.isSubmitted, formState.isSubmitting)
-                handleSubmit(debouncedCommit)()
-            }
-        })
+	useEffect(() => {
+		// make sure to unsubscribe;
+		const callback = subscribe({
+			formState: {
+				isDirty: true,
+			},
+			callback: ({ values }) => {
+				//console.log(values);
+				//console.log(formState.isDirty, formState.isSubmitted, formState.isSubmitting)
+				handleSubmit(debouncedCommit)()
+			}
+		})
 
-        return () => callback();
+		return () => callback();
 
-        // You can also just return the subscribe
-        // return subscribe();
-    }, [subscribe, handleSubmit])
-    */
+		// You can also just return the subscribe
+		// return subscribe();
+	}, [subscribe, handleSubmit])
+	*/
 
 	return (
 		<InView>
@@ -184,6 +191,26 @@ export function Settings() {
 								options={(updateChannels as string[]) || []}
 								control={control}
 							/>
+						</Grid>
+						<Grid size={{ xs: 12, md: 4 }}>
+							<AutocompleteElement
+								label="Telemetry Mode"
+								name="telemetry_mode"
+								loading={isTelemetryLoading}
+								autocompleteProps={{
+									size: "small",
+									disabled: read_only || isInternetLoading || !internetConnection,
+								}}
+								options={
+									(telemetryModes as string[])?.filter(mode => mode !== Telemetry_mode.Ask) || []
+								}
+								control={control}
+							/>
+							{!internetConnection && !isInternetLoading && (
+								<Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+									Internet connection required for telemetry settings
+								</Typography>
+							)}
 						</Grid>
 						<Grid size={12}>
 							<Divider />

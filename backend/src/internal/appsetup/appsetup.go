@@ -76,6 +76,13 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewNetworkStatsService,
 		service.NewSmartService,
 		service.NewIssueService,
+		func() service.TelemetryServiceInterface {
+			return service.NewTelemetryService(
+				"YOUR_ROLLBAR_ACCESS_TOKEN", // This should be configured via environment variable
+				"production",
+				"v1.0.0", // This should be configured dynamically
+			)
+		},
 
 		repository.NewMountPointPathRepository,
 		repository.NewExportedShareRepository,

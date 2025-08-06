@@ -171,6 +171,7 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewUpgradeHanler),
 			server.AsHumaRoute(api.NewSystemHanler),
 			server.AsHumaRoute(api.NewIssueAPI),
+			server.AsHumaRoute(api.NewTelemetryHandler),
 			server.NewMuxRouter,
 			server.NewHTTPServer,
 			server.NewHumaAPI,

@@ -11,4 +11,5 @@ type Settings struct {
 	LogLevel          string        `json:"log_level,omitempty"`
 	MultiChannel      bool          `json:"multi_channel,omitempty"`
 	UpdateChannel     UpdateChannel `json:"update_channel,omitempty" enum:"None,Develop,Release,Prerelease"`
+	TelemetryMode     TelemetryMode `json:"telemetry_mode,omitempty" enum:"Ask,All,Errors,Disabled"`
 }
