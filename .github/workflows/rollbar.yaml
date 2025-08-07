@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify deploy to Rollbar (backend)
-        uses: rollbar/github-deploy-action@2.1.2
+        uses: rollbar/github-deploy-action@eaf2a60ea238bd273226eee0ddceecfe5611964d # 2.1.2
         id: rollbar_deploy
         with:
           environment: ${{ needs.set-environment.outputs.environment }}"
