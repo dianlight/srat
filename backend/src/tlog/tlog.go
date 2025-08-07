@@ -10,8 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
+	slogformatter "github.com/samber/slog-formatter"
 )
 
 // Custom log levels extending slog.Level
@@ -81,15 +83,49 @@ var reverseLevelNames = map[slog.Level]string{
 	LevelFatal:  "FATAL",
 }
 
+// Color configuration for different log levels
+var levelColors = map[slog.Level]*color.Color{
+	LevelTrace:  color.New(color.FgHiBlack), // Bright black (gray)
+	LevelDebug:  color.New(color.FgCyan),    // Cyan
+	LevelInfo:   color.New(color.FgGreen),   // Green
+	LevelNotice: color.New(color.FgBlue),    // Blue
+	LevelWarn:   color.New(color.FgYellow),  // Yellow
+	LevelError:  color.New(color.FgRed),     // Red
+	LevelFatal:  color.New(color.FgHiRed),   // Bright red
+}
+
+// FormatterConfig holds configuration for log formatting
+type FormatterConfig struct {
+	EnableColors      bool
+	EnableFormatting  bool
+	HideSensitiveData bool
+	TimeFormat        string
+}
+
+// defaultFormatterConfig provides default configuration
+var defaultFormatterConfig = FormatterConfig{
+	EnableColors:      true, // Will be disabled automatically if terminal doesn't support colors
+	EnableFormatting:  true,
+	HideSensitiveData: false,
+	TimeFormat:        time.RFC3339,
+}
+
 var (
-	programLevel = new(slog.LevelVar) // Info by default
-	mu           sync.RWMutex         // protects logger configuration changes
-	processor    *eventProcessor      // global event processor
-	processorMu  sync.Mutex           // protects processor initialization
+	programLevel      = new(slog.LevelVar) // Info by default
+	mu                sync.RWMutex         // protects logger configuration changes
+	processor         *eventProcessor      // global event processor
+	processorMu       sync.Mutex           // protects processor initialization
+	formatterConfig   FormatterConfig      // current formatter configuration
+	formatterConfigMu sync.RWMutex         // protects formatter configuration changes
 )
 
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	// Initialize formatter configuration with terminal detection
+	formatterConfig = defaultFormatterConfig
+	formatterConfig.EnableColors = defaultFormatterConfig.EnableColors && isTerminalSupported()
+
 	initializeProcessor()
 	initializeLogger()
 }
@@ -322,19 +358,64 @@ func emitLogEvent(ctx context.Context, level slog.Level, msg string, args ...any
 	}
 }
 
+// isTerminalSupported checks if the terminal supports colors
+func isTerminalSupported() bool {
+	return isatty.IsTerminal(os.Stderr.Fd())
+}
+
+// createBaseHandler creates the base slog handler with appropriate configuration
+func createBaseHandler() slog.Handler {
+	formatterConfigMu.RLock()
+	config := formatterConfig
+	formatterConfigMu.RUnlock()
+
+	isTerminal := isTerminalSupported()
+
+	// Create base tint handler
+	handler := tint.NewHandler(os.Stderr, &tint.Options{
+		Level:       programLevel,
+		TimeFormat:  config.TimeFormat,
+		NoColor:     !isTerminal || !config.EnableColors,
+		AddSource:   true,
+		ReplaceAttr: replaceLogLevel,
+	})
+
+	// If formatting is enabled, wrap with slog-formatter
+	if config.EnableFormatting {
+		var formatters []slogformatter.Formatter
+
+		// Add error formatter for better error display
+		formatters = append(formatters, slogformatter.ErrorFormatter("error"))
+
+		// Add sensitive data formatter if enabled
+		if config.HideSensitiveData {
+			formatters = append(formatters,
+				slogformatter.PIIFormatter("password"),
+				slogformatter.PIIFormatter("token"),
+				slogformatter.PIIFormatter("key"),
+				slogformatter.PIIFormatter("secret"),
+				slogformatter.IPAddressFormatter("ip"),
+				slogformatter.IPAddressFormatter("addr"),
+				slogformatter.IPAddressFormatter("address"),
+			)
+		}
+
+		// Add time formatter
+		formatters = append(formatters, slogformatter.TimeFormatter(config.TimeFormat, time.Local))
+
+		// Apply formatters if any exist
+		if len(formatters) > 0 {
+			handler = slogformatter.NewFormatterHandler(formatters...)(handler)
+		}
+	}
+
+	return handler
+}
+
 // initializeLogger sets up the default slog configuration
 func initializeLogger() {
-	isTerminal := isatty.IsTerminal(os.Stderr.Fd())
-
-	slog.SetDefault(slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:       programLevel,
-			TimeFormat:  time.RFC3339,
-			NoColor:     !isTerminal,
-			AddSource:   true,
-			ReplaceAttr: replaceLogLevel,
-		}),
-	))
+	handler := createBaseHandler()
+	slog.SetDefault(slog.New(handler))
 }
 
 // replaceLogLevel customizes the display names for custom log levels
@@ -506,23 +587,130 @@ func getSupportedLevelsString() string {
 	return strings.Join(levels, ", ")
 }
 
+// SetFormatterConfig updates the formatter configuration and reinitializes the logger
+func SetFormatterConfig(config FormatterConfig) {
+	formatterConfigMu.Lock()
+	formatterConfig = config
+	formatterConfig.EnableColors = config.EnableColors && isTerminalSupported()
+	formatterConfigMu.Unlock()
+
+	// Reinitialize the logger with new configuration
+	mu.Lock()
+	defer mu.Unlock()
+	initializeLogger()
+}
+
+// GetFormatterConfig returns the current formatter configuration
+func GetFormatterConfig() FormatterConfig {
+	formatterConfigMu.RLock()
+	defer formatterConfigMu.RUnlock()
+	return formatterConfig
+}
+
+// EnableColors enables or disables colored output
+func EnableColors(enabled bool) {
+	formatterConfigMu.Lock()
+	formatterConfig.EnableColors = enabled && isTerminalSupported()
+	formatterConfigMu.Unlock()
+
+	// Reinitialize the logger with new configuration
+	mu.Lock()
+	defer mu.Unlock()
+	initializeLogger()
+}
+
+// IsColorsEnabled returns true if colors are enabled and terminal supports them
+func IsColorsEnabled() bool {
+	formatterConfigMu.RLock()
+	defer formatterConfigMu.RUnlock()
+	return formatterConfig.EnableColors && isTerminalSupported()
+}
+
+// EnableSensitiveDataHiding enables or disables hiding of sensitive data (PII)
+func EnableSensitiveDataHiding(enabled bool) {
+	formatterConfigMu.Lock()
+	formatterConfig.HideSensitiveData = enabled
+	formatterConfigMu.Unlock()
+
+	// Reinitialize the logger with new configuration
+	mu.Lock()
+	defer mu.Unlock()
+	initializeLogger()
+}
+
+// IsSensitiveDataHidingEnabled returns true if sensitive data hiding is enabled
+func IsSensitiveDataHidingEnabled() bool {
+	formatterConfigMu.RLock()
+	defer formatterConfigMu.RUnlock()
+	return formatterConfig.HideSensitiveData
+}
+
+// SetTimeFormat sets the time format for log timestamps
+func SetTimeFormat(format string) {
+	formatterConfigMu.Lock()
+	formatterConfig.TimeFormat = format
+	formatterConfigMu.Unlock()
+
+	// Reinitialize the logger with new configuration
+	mu.Lock()
+	defer mu.Unlock()
+	initializeLogger()
+}
+
+// GetTimeFormat returns the current time format
+func GetTimeFormat() string {
+	formatterConfigMu.RLock()
+	defer formatterConfigMu.RUnlock()
+	return formatterConfig.TimeFormat
+}
+
 // WithLevel creates a logger with a specific minimum level
 // This is useful for creating loggers with different levels without affecting the global logger
 func WithLevel(level slog.Level) *slog.Logger {
 	levelVar := new(slog.LevelVar)
 	levelVar.Set(level)
 
-	isTerminal := isatty.IsTerminal(os.Stderr.Fd())
+	formatterConfigMu.RLock()
+	config := formatterConfig
+	formatterConfigMu.RUnlock()
 
-	return slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:       levelVar,
-			TimeFormat:  time.RFC3339,
-			NoColor:     !isTerminal,
-			AddSource:   true,
-			ReplaceAttr: replaceLogLevel,
-		}),
-	)
+	isTerminal := isTerminalSupported()
+
+	// Create base handler with specific level
+	handler := tint.NewHandler(os.Stderr, &tint.Options{
+		Level:       levelVar,
+		TimeFormat:  config.TimeFormat,
+		NoColor:     !isTerminal || !config.EnableColors,
+		AddSource:   true,
+		ReplaceAttr: replaceLogLevel,
+	})
+
+	// Apply formatters if enabled
+	if config.EnableFormatting {
+		var formatters []slogformatter.Formatter
+
+		formatters = append(formatters, slogformatter.ErrorFormatter("error"))
+
+		if config.HideSensitiveData {
+			formatters = append(formatters,
+				slogformatter.PIIFormatter("password"),
+				slogformatter.PIIFormatter("token"),
+				slogformatter.PIIFormatter("key"),
+				slogformatter.PIIFormatter("secret"),
+				slogformatter.IPAddressFormatter("ip"),
+				slogformatter.IPAddressFormatter("addr"),
+				slogformatter.IPAddressFormatter("address"),
+			)
+		}
+
+		formatters = append(formatters, slogformatter.TimeFormatter(config.TimeFormat, time.Local))
+
+		if len(formatters) > 0 {
+			handler = slogformatter.NewFormatterHandler(formatters...)(handler)
+		}
+	}
+
+	return slog.New(handler)
 }
 
 // NewLogger creates a new Logger instance with the default configuration
@@ -632,4 +820,71 @@ func (l *Logger) FatalContext(ctx context.Context, msg string, args ...any) {
 	l.Logger.Log(ctx, LevelFatal, msg, args...)
 	emitLogEvent(ctx, LevelFatal, msg, args...)
 	os.Exit(1)
+}
+
+// Color-enabled printing functions for enhanced output
+
+// ColorPrint prints a message with color for the specified log level
+func ColorPrint(level slog.Level, message string, args ...interface{}) {
+	if !IsColorsEnabled() {
+		fmt.Printf(message, args...)
+		return
+	}
+
+	if colorFunc, exists := levelColors[level]; exists {
+		colorFunc.Printf(message, args...)
+	} else {
+		fmt.Printf(message, args...)
+	}
+}
+
+// ColorPrintln prints a message with color and newline for the specified log level
+func ColorPrintln(level slog.Level, message string, args ...interface{}) {
+	ColorPrint(level, message+"\n", args...)
+}
+
+// ColorTrace prints a trace message with color (if enabled)
+func ColorTrace(message string, args ...interface{}) {
+	ColorPrint(LevelTrace, message, args...)
+}
+
+// ColorDebug prints a debug message with color (if enabled)
+func ColorDebug(message string, args ...interface{}) {
+	ColorPrint(LevelDebug, message, args...)
+}
+
+// ColorInfo prints an info message with color (if enabled)
+func ColorInfo(message string, args ...interface{}) {
+	ColorPrint(LevelInfo, message, args...)
+}
+
+// ColorNotice prints a notice message with color (if enabled)
+func ColorNotice(message string, args ...interface{}) {
+	ColorPrint(LevelNotice, message, args...)
+}
+
+// ColorWarn prints a warning message with color (if enabled)
+func ColorWarn(message string, args ...interface{}) {
+	ColorPrint(LevelWarn, message, args...)
+}
+
+// ColorError prints an error message with color (if enabled)
+func ColorError(message string, args ...interface{}) {
+	ColorPrint(LevelError, message, args...)
+}
+
+// ColorFatal prints a fatal message with color (if enabled)
+func ColorFatal(message string, args ...interface{}) {
+	ColorPrint(LevelFatal, message, args...)
+}
+
+// PrintWithLevel prints a message with the appropriate level prefix and color
+func PrintWithLevel(level slog.Level, message string, args ...interface{}) {
+	levelName := reverseLevelNames[level]
+	if levelName == "" {
+		levelName = level.String()
+	}
+
+	fullMessage := fmt.Sprintf("[%s] %s", levelName, message)
+	ColorPrint(level, fullMessage, args...)
 }

@@ -364,3 +364,177 @@ type LogEvent struct {
     Context   context.Context
 }
 ```
+
+## Enhanced Formatting & Colors
+
+The `tlog` package includes enhanced formatting capabilities powered by `samber/slog-formatter` and color support via `fatih/color`.
+
+### Formatter Configuration
+
+#### FormatterConfig Structure
+
+```go
+type FormatterConfig struct {
+    EnableColors      bool   // Enable colored output (auto-disabled if terminal doesn't support colors)
+    EnableFormatting  bool   // Enable slog-formatter enhancements
+    HideSensitiveData bool   // Hide sensitive data like passwords, tokens, IPs
+    TimeFormat        string // Time format for timestamps
+}
+```
+
+#### Configuration Functions
+
+```go
+// Get current formatter configuration
+config := tlog.GetFormatterConfig()
+
+// Set custom configuration
+customConfig := tlog.FormatterConfig{
+    EnableColors:      true,
+    EnableFormatting:  true,
+    HideSensitiveData: true,
+    TimeFormat:        "2006-01-02 15:04:05",
+}
+tlog.SetFormatterConfig(customConfig)
+
+// Individual configuration options
+tlog.EnableColors(true)                    // Enable/disable colors
+tlog.EnableSensitiveDataHiding(true)       // Hide sensitive data
+tlog.SetTimeFormat("2006-01-02 15:04:05") // Custom time format
+
+// Check current settings
+isColorsEnabled := tlog.IsColorsEnabled()
+isSensitiveHidden := tlog.IsSensitiveDataHidingEnabled()
+timeFormat := tlog.GetTimeFormat()
+```
+
+### Color-Enhanced Printing
+
+The package provides color-enhanced printing functions that work alongside terminal detection:
+
+```go
+// Basic color printing functions
+tlog.ColorTrace("Trace message with color")
+tlog.ColorDebug("Debug message with color")
+tlog.ColorInfo("Info message with color")
+tlog.ColorNotice("Notice message with color")
+tlog.ColorWarn("Warning message with color")
+tlog.ColorError("Error message with color")
+tlog.ColorFatal("Fatal message with color")
+
+// Formatted color printing
+tlog.ColorPrint(tlog.LevelInfo, "User %s logged in at %s", username, time.Now())
+tlog.ColorPrintln(tlog.LevelWarn, "Connection timeout after %d seconds", 30)
+
+// Print with level prefix
+tlog.PrintWithLevel(tlog.LevelError, "Database connection failed")
+// Output: [ERROR] Database connection failed
+```
+
+### Sensitive Data Protection
+
+When `HideSensitiveData` is enabled, the following fields are automatically masked:
+
+- **Password fields**: `password`, `pwd`, `pass`
+- **Token fields**: `token`, `jwt`, `auth_token`, `access_token`
+- **API keys**: `key`, `api_key`, `secret`, `client_secret`
+- **IP addresses**: `ip`, `addr`, `address`, `remote_addr`
+
+```go
+// Enable sensitive data hiding
+tlog.EnableSensitiveDataHiding(true)
+
+// This will mask the sensitive fields
+tlog.Info("User login attempt", 
+    "username", "alice",
+    "password", "secret123",      // Masked as "secr*******"
+    "token", "jwt-xyz-123",       // Masked as "jwt-*******"
+    "ip", "192.168.1.100")        // Masked as "*******"
+```
+
+### Enhanced Error Formatting
+
+The formatter provides enhanced error formatting that includes:
+
+- Error message and type information
+- Stack traces (when available)
+- Structured error details
+
+```go
+import "errors"
+
+err := errors.New("database connection failed")
+tlog.Error("Operation failed", "error", err)
+// Enhanced output includes error type and structured information
+```
+
+### Time Format Options
+
+Common time format examples:
+
+```go
+// RFC3339 (default)
+tlog.SetTimeFormat(time.RFC3339)           // "2006-01-02T15:04:05Z07:00"
+
+// Human-readable formats
+tlog.SetTimeFormat("2006-01-02 15:04:05")  // "2006-01-02 15:04:05"
+tlog.SetTimeFormat("15:04:05.000")         // "15:04:05.000"
+tlog.SetTimeFormat("Jan 02 15:04:05")      // "Jan 02 15:04:05"
+
+// Unix timestamp
+tlog.SetTimeFormat("unix")                 // Unix timestamp format
+```
+
+### Color Levels
+
+Each log level has an associated color:
+
+- **TRACE**: Bright Black (Gray)
+- **DEBUG**: Cyan
+- **INFO**: Green
+- **NOTICE**: Blue
+- **WARN**: Yellow
+- **ERROR**: Red
+- **FATAL**: Bright Red
+
+Colors are automatically disabled when:
+- Terminal doesn't support colors
+- Output is redirected to a file
+- Colors are explicitly disabled via configuration
+
+## Enhanced Logger Creation
+
+### Logger with Custom Configuration
+
+```go
+// Create logger with specific level
+debugLogger := tlog.WithLevel(tlog.LevelDebug)
+debugLogger.Debug("This will appear")
+debugLogger.Trace("This won't appear (below debug level)")
+
+// Create new logger instances
+logger1 := tlog.NewLogger()                      // Uses default configuration
+logger2 := tlog.NewLoggerWithLevel(tlog.LevelError) // Only logs errors and fatal
+```
+
+### Logger Methods
+
+All Logger instances support the same methods as package-level functions:
+
+```go
+logger := tlog.NewLogger()
+
+logger.Trace("message", "key", "value")
+logger.Debug("message", "key", "value")
+logger.Info("message", "key", "value")
+logger.Notice("message", "key", "value")
+logger.Warn("message", "key", "value")
+logger.Error("message", "key", "value")
+logger.Fatal("message", "key", "value") // Exits program
+
+// Context variants
+ctx := context.Background()
+logger.TraceContext(ctx, "message", "key", "value")
+logger.DebugContext(ctx, "message", "key", "value")
+// ... etc
+```

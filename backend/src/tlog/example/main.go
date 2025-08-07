@@ -198,6 +198,9 @@ func main() {
 
 	fmt.Println()
 	fmt.Println("=== Demonstration Complete ===")
+
+	// Run the enhanced formatter demonstration
+	formatterDemo()
 }
 
 func performExpensiveOperation() string {

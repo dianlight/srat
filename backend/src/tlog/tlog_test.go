@@ -752,6 +752,128 @@ func (suite *TlogSuite) TestLoggerWithLevelFunctionality() {
 	})
 }
 
+// Test formatter configuration
+func (suite *TlogSuite) TestFormatterConfig() {
+	// Test default configuration
+	config := tlog.GetFormatterConfig()
+	suite.True(config.EnableFormatting)
+	suite.Equal("2006-01-02T15:04:05Z07:00", config.TimeFormat)
+
+	// Test setting custom configuration
+	newConfig := tlog.FormatterConfig{
+		EnableColors:      true,
+		EnableFormatting:  true,
+		HideSensitiveData: true,
+		TimeFormat:        "2006-01-02 15:04:05",
+	}
+
+	tlog.SetFormatterConfig(newConfig)
+	updatedConfig := tlog.GetFormatterConfig()
+	suite.Equal(newConfig.EnableFormatting, updatedConfig.EnableFormatting)
+	suite.Equal(newConfig.HideSensitiveData, updatedConfig.HideSensitiveData)
+	suite.Equal(newConfig.TimeFormat, updatedConfig.TimeFormat)
+}
+
+// Test color configuration
+func (suite *TlogSuite) TestColorConfiguration() {
+	// Test enabling colors
+	tlog.EnableColors(true)
+	// Note: IsColorsEnabled() depends on terminal support, so we just test the function exists
+	_ = tlog.IsColorsEnabled()
+
+	// Test disabling colors
+	tlog.EnableColors(false)
+	suite.False(tlog.IsColorsEnabled()) // Should be false when explicitly disabled
+}
+
+// Test sensitive data hiding
+func (suite *TlogSuite) TestSensitiveDataHiding() {
+	// Test enabling sensitive data hiding
+	tlog.EnableSensitiveDataHiding(true)
+	suite.True(tlog.IsSensitiveDataHidingEnabled())
+
+	// Test disabling sensitive data hiding
+	tlog.EnableSensitiveDataHiding(false)
+	suite.False(tlog.IsSensitiveDataHidingEnabled())
+}
+
+// Test time format configuration
+func (suite *TlogSuite) TestTimeFormatConfiguration() {
+	customFormat := "2006-01-02 15:04:05"
+
+	tlog.SetTimeFormat(customFormat)
+	suite.Equal(customFormat, tlog.GetTimeFormat())
+
+	// Restore default
+	tlog.SetTimeFormat("2006-01-02T15:04:05Z07:00")
+	suite.Equal("2006-01-02T15:04:05Z07:00", tlog.GetTimeFormat())
+}
+
+// Test color printing functions
+func (suite *TlogSuite) TestColorPrinting() {
+	// Test that color printing functions don't panic
+	suite.NotPanics(func() {
+		tlog.ColorTrace("trace message")
+		tlog.ColorDebug("debug message")
+		tlog.ColorInfo("info message")
+		tlog.ColorNotice("notice message")
+		tlog.ColorWarn("warning message")
+		tlog.ColorError("error message")
+	})
+
+	// Test ColorPrint and ColorPrintln
+	suite.NotPanics(func() {
+		tlog.ColorPrint(tlog.LevelInfo, "formatted %s", "message")
+		tlog.ColorPrintln(tlog.LevelWarn, "warning with newline")
+	})
+
+	// Test PrintWithLevel
+	suite.NotPanics(func() {
+		tlog.PrintWithLevel(tlog.LevelError, "error message with level prefix")
+	})
+}
+
+// Test enhanced logger creation
+func (suite *TlogSuite) TestEnhancedLoggerCreation() {
+	// Test creating logger with level
+	logger := tlog.WithLevel(tlog.LevelDebug)
+	suite.NotNil(logger)
+
+	// Test creating new logger instances
+	logger1 := tlog.NewLogger()
+	logger2 := tlog.NewLoggerWithLevel(tlog.LevelError)
+
+	suite.NotNil(logger1)
+	suite.NotNil(logger2)
+
+	// Test that methods exist on Logger
+	suite.NotPanics(func() {
+		logger1.Info("test message")
+		logger2.Error("error message")
+	})
+}
+
+// Test formatter integration with logging
+func (suite *TlogSuite) TestFormatterIntegrationWithLogging() {
+	// Enable formatting and sensitive data hiding
+	tlog.EnableSensitiveDataHiding(true)
+
+	// Test that logging with potentially sensitive data doesn't panic
+	suite.NotPanics(func() {
+		tlog.Info("user login", "password", "secret123", "token", "abc123")
+		tlog.Error("connection failed", "ip", "192.168.1.1", "addr", "10.0.0.1")
+	})
+
+	// Test with context
+	ctx := context.Background()
+	suite.NotPanics(func() {
+		tlog.InfoContext(ctx, "context logging", "key", "secret")
+	})
+
+	// Clean up
+	tlog.EnableSensitiveDataHiding(false)
+}
+
 func TestTlogSuite(t *testing.T) {
 	// Ensure cleanup after all tests
 	defer func() {

@@ -7,7 +7,13 @@ replace github.com/dianlight/srat => ../../
 require github.com/dianlight/srat v0.0.0-00010101000000-000000000000
 
 require (
+	github.com/fatih/color v1.18.0 // indirect
 	github.com/lmittmann/tint v1.1.2 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/samber/lo v1.49.1 // indirect
+	github.com/samber/slog-formatter v1.2.0 // indirect
+	github.com/samber/slog-multi v1.3.3 // indirect
 	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
 )
