@@ -637,6 +637,121 @@ func (suite *TlogSuite) TestCallbacksWithNoRegistrations() {
 	})
 }
 
+// Logger struct tests
+
+func (suite *TlogSuite) TestNewLogger() {
+	logger := tlog.NewLogger()
+	suite.NotNil(logger)
+	suite.NotNil(logger.Logger)
+}
+
+func (suite *TlogSuite) TestNewLoggerWithLevel() {
+	logger := tlog.NewLoggerWithLevel(tlog.LevelDebug)
+	suite.NotNil(logger)
+	suite.NotNil(logger.Logger)
+}
+
+func (suite *TlogSuite) TestLoggerMethods() {
+	logger := tlog.NewLogger()
+
+	// Test that logger methods don't panic
+	suite.NotPanics(func() {
+		logger.Trace("trace message")
+		logger.Debug("debug message")
+		logger.Info("info message")
+		logger.Notice("notice message")
+		logger.Warn("warn message")
+		logger.Error("error message")
+	})
+}
+
+func (suite *TlogSuite) TestLoggerContextMethods() {
+	logger := tlog.NewLogger()
+	ctx := context.Background()
+
+	// Test that logger context methods don't panic
+	suite.NotPanics(func() {
+		logger.TraceContext(ctx, "trace message")
+		logger.DebugContext(ctx, "debug message")
+		logger.InfoContext(ctx, "info message")
+		logger.NoticeContext(ctx, "notice message")
+		logger.WarnContext(ctx, "warn message")
+		logger.ErrorContext(ctx, "error message")
+	})
+}
+
+func (suite *TlogSuite) TestLoggerCallbackIntegration() {
+	logger := tlog.NewLogger()
+
+	var callbackTriggered int32
+	var capturedEvent tlog.LogEvent
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	callbackID := tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
+		atomic.StoreInt32(&callbackTriggered, 1)
+		capturedEvent = event
+		wg.Done()
+	})
+
+	// Log an error message
+	testMessage := "test error message"
+	logger.Error(testMessage, "key", "value")
+
+	// Wait for callback to be triggered (with timeout)
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Callback was triggered
+	case <-time.After(100 * time.Millisecond):
+		suite.Fail("Callback was not triggered within timeout")
+	}
+
+	suite.Equal(int32(1), atomic.LoadInt32(&callbackTriggered))
+	suite.Equal(testMessage, capturedEvent.Message)
+	suite.Equal(tlog.LevelError, capturedEvent.Level)
+
+	// Clean up
+	tlog.UnregisterCallback(tlog.LevelError, callbackID)
+}
+
+func (suite *TlogSuite) TestLoggerEmbeddedSlogFunctionality() {
+	logger := tlog.NewLogger()
+
+	// Test that we can use embedded slog.Logger methods
+	suite.NotPanics(func() {
+		// Use slog methods through embedding
+		structuredLogger := logger.With("component", "test")
+		structuredLogger.Info("test message")
+
+		// Use WithGroup
+		groupedLogger := logger.WithGroup("group")
+		groupedLogger.Info("grouped message")
+
+		// Direct access to underlying Logger
+		logger.Logger.Log(context.Background(), slog.LevelInfo, "direct slog usage")
+	})
+}
+
+func (suite *TlogSuite) TestLoggerWithLevelFunctionality() {
+	// Create logger with debug level
+	debugLogger := tlog.NewLoggerWithLevel(tlog.LevelDebug)
+
+	// Set global level to error to ensure our logger has its own level
+	tlog.SetLevel(tlog.LevelError)
+
+	// The debug logger should still be able to log at debug level
+	suite.NotPanics(func() {
+		debugLogger.Debug("debug message from level-specific logger")
+		debugLogger.Info("info message from level-specific logger")
+	})
+}
+
 func TestTlogSuite(t *testing.T) {
 	// Ensure cleanup after all tests
 	defer func() {

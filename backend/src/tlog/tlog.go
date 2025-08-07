@@ -37,6 +37,11 @@ type LogEvent struct {
 // LogCallback is the function signature for log event callbacks
 type LogCallback func(event LogEvent)
 
+// Logger wraps slog.Logger with additional tlog functionality
+type Logger struct {
+	*slog.Logger
+}
+
 // callbackEntry holds a callback with its metadata
 type callbackEntry struct {
 	callback LogCallback
@@ -518,4 +523,113 @@ func WithLevel(level slog.Level) *slog.Logger {
 			ReplaceAttr: replaceLogLevel,
 		}),
 	)
+}
+
+// NewLogger creates a new Logger instance with the default configuration
+func NewLogger() *Logger {
+	return &Logger{
+		Logger: slog.Default(),
+	}
+}
+
+// NewLoggerWithLevel creates a new Logger instance with a specific minimum level
+func NewLoggerWithLevel(level slog.Level) *Logger {
+	return &Logger{
+		Logger: WithLevel(level),
+	}
+}
+
+// Logger methods that emit events to callbacks
+
+// Trace logs a message at trace level
+func (l *Logger) Trace(msg string, args ...any) {
+	ctx := context.Background()
+	l.Logger.Log(ctx, LevelTrace, msg, args...)
+	emitLogEvent(ctx, LevelTrace, msg, args...)
+}
+
+// TraceContext logs a message at trace level with context
+func (l *Logger) TraceContext(ctx context.Context, msg string, args ...any) {
+	l.Logger.Log(ctx, LevelTrace, msg, args...)
+	emitLogEvent(ctx, LevelTrace, msg, args...)
+}
+
+// Debug logs a message at debug level
+func (l *Logger) Debug(msg string, args ...any) {
+	ctx := context.Background()
+	l.Logger.Log(ctx, slog.LevelDebug, msg, args...)
+	emitLogEvent(ctx, slog.LevelDebug, msg, args...)
+}
+
+// DebugContext logs a message at debug level with context
+func (l *Logger) DebugContext(ctx context.Context, msg string, args ...any) {
+	l.Logger.Log(ctx, slog.LevelDebug, msg, args...)
+	emitLogEvent(ctx, slog.LevelDebug, msg, args...)
+}
+
+// Info logs a message at info level
+func (l *Logger) Info(msg string, args ...any) {
+	ctx := context.Background()
+	l.Logger.Log(ctx, slog.LevelInfo, msg, args...)
+	emitLogEvent(ctx, slog.LevelInfo, msg, args...)
+}
+
+// InfoContext logs a message at info level with context
+func (l *Logger) InfoContext(ctx context.Context, msg string, args ...any) {
+	l.Logger.Log(ctx, slog.LevelInfo, msg, args...)
+	emitLogEvent(ctx, slog.LevelInfo, msg, args...)
+}
+
+// Notice logs a message at notice level
+func (l *Logger) Notice(msg string, args ...any) {
+	ctx := context.Background()
+	l.Logger.Log(ctx, LevelNotice, msg, args...)
+	emitLogEvent(ctx, LevelNotice, msg, args...)
+}
+
+// NoticeContext logs a message at notice level with context
+func (l *Logger) NoticeContext(ctx context.Context, msg string, args ...any) {
+	l.Logger.Log(ctx, LevelNotice, msg, args...)
+	emitLogEvent(ctx, LevelNotice, msg, args...)
+}
+
+// Warn logs a message at warning level
+func (l *Logger) Warn(msg string, args ...any) {
+	ctx := context.Background()
+	l.Logger.Log(ctx, slog.LevelWarn, msg, args...)
+	emitLogEvent(ctx, slog.LevelWarn, msg, args...)
+}
+
+// WarnContext logs a message at warning level with context
+func (l *Logger) WarnContext(ctx context.Context, msg string, args ...any) {
+	l.Logger.Log(ctx, slog.LevelWarn, msg, args...)
+	emitLogEvent(ctx, slog.LevelWarn, msg, args...)
+}
+
+// Error logs a message at error level
+func (l *Logger) Error(msg string, args ...any) {
+	ctx := context.Background()
+	l.Logger.Log(ctx, slog.LevelError, msg, args...)
+	emitLogEvent(ctx, slog.LevelError, msg, args...)
+}
+
+// ErrorContext logs a message at error level with context
+func (l *Logger) ErrorContext(ctx context.Context, msg string, args ...any) {
+	l.Logger.Log(ctx, slog.LevelError, msg, args...)
+	emitLogEvent(ctx, slog.LevelError, msg, args...)
+}
+
+// Fatal logs a message at fatal level and exits the program
+func (l *Logger) Fatal(msg string, args ...any) {
+	ctx := context.Background()
+	l.Logger.Log(ctx, LevelFatal, msg, args...)
+	emitLogEvent(ctx, LevelFatal, msg, args...)
+	os.Exit(1)
+}
+
+// FatalContext logs a message at fatal level with context and exits the program
+func (l *Logger) FatalContext(ctx context.Context, msg string, args ...any) {
+	l.Logger.Log(ctx, LevelFatal, msg, args...)
+	emitLogEvent(ctx, LevelFatal, msg, args...)
+	os.Exit(1)
 }
