@@ -1,0 +1,648 @@
+package tlog_test
+
+import (
+	"context"
+	"log/slog"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/dianlight/srat/tlog"
+	"github.com/stretchr/testify/suite"
+)
+
+type TlogSuite struct {
+	suite.Suite
+	originalLevel slog.Level
+}
+
+func (suite *TlogSuite) SetupTest() {
+	// Store the original level to restore it after each test
+	suite.originalLevel = tlog.GetLevel()
+	// Ensure a clean restart of the processor for each test
+	tlog.RestartProcessor()
+}
+
+func (suite *TlogSuite) TearDownTest() {
+	// Restore the original level
+	tlog.SetLevel(suite.originalLevel)
+	// Clear callbacks after each test
+	tlog.ClearAllCallbacks()
+}
+
+func (suite *TlogSuite) TestSetAndGetLevel() {
+	// Test setting and getting various levels
+	levels := []slog.Level{
+		tlog.LevelTrace,
+		tlog.LevelDebug,
+		tlog.LevelInfo,
+		tlog.LevelNotice,
+		tlog.LevelWarn,
+		tlog.LevelError,
+		tlog.LevelFatal,
+	}
+
+	for _, level := range levels {
+		tlog.SetLevel(level)
+		suite.Equal(level, tlog.GetLevel())
+	}
+}
+
+func (suite *TlogSuite) TestSetLevelFromString() {
+	testCases := []struct {
+		input         string
+		expectedLevel slog.Level
+		shouldError   bool
+	}{
+		{"trace", tlog.LevelTrace, false},
+		{"debug", tlog.LevelDebug, false},
+		{"info", tlog.LevelInfo, false},
+		{"notice", tlog.LevelNotice, false},
+		{"warn", tlog.LevelWarn, false},
+		{"warning", tlog.LevelWarn, false}, // alias
+		{"error", tlog.LevelError, false},
+		{"fatal", tlog.LevelFatal, false},
+
+		// Case-insensitive tests
+		{"TRACE", tlog.LevelTrace, false},
+		{"Debug", tlog.LevelDebug, false},
+		{"INFO", tlog.LevelInfo, false},
+		{"Notice", tlog.LevelNotice, false},
+		{"WARN", tlog.LevelWarn, false},
+		{"Warning", tlog.LevelWarn, false},
+		{"ERROR", tlog.LevelError, false},
+		{"Fatal", tlog.LevelFatal, false},
+
+		// With whitespace
+		{"  trace  ", tlog.LevelTrace, false},
+		{"\tdebug\n", tlog.LevelDebug, false},
+
+		// Invalid cases
+		{"invalid", 0, true},
+		{"", 0, true},
+		{"tracee", 0, true},
+		{"debugg", 0, true},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.input, func() {
+			err := tlog.SetLevelFromString(tc.input)
+
+			if tc.shouldError {
+				suite.Error(err)
+				if tc.input == "" {
+					suite.Contains(err.Error(), "log level cannot be empty")
+				} else {
+					suite.Contains(err.Error(), "invalid log level")
+				}
+			} else {
+				suite.NoError(err)
+				suite.Equal(tc.expectedLevel, tlog.GetLevel())
+			}
+		})
+	}
+}
+
+func (suite *TlogSuite) TestGetLevelString() {
+	testCases := []struct {
+		level          slog.Level
+		expectedString string
+	}{
+		{tlog.LevelTrace, "TRACE"},
+		{tlog.LevelDebug, "DEBUG"},
+		{tlog.LevelInfo, "INFO"},
+		{tlog.LevelNotice, "NOTICE"},
+		{tlog.LevelWarn, "WARN"},
+		{tlog.LevelError, "ERROR"},
+		{tlog.LevelFatal, "FATAL"},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.expectedString, func() {
+			tlog.SetLevel(tc.level)
+			result := tlog.GetLevelString()
+			suite.Equal(tc.expectedString, result)
+		})
+	}
+}
+
+func (suite *TlogSuite) TestIsLevelEnabled() {
+	// Set level to Info
+	tlog.SetLevel(tlog.LevelInfo)
+
+	// Levels that should be enabled (>= Info)
+	suite.True(tlog.IsLevelEnabled(tlog.LevelInfo))
+	suite.True(tlog.IsLevelEnabled(tlog.LevelNotice))
+	suite.True(tlog.IsLevelEnabled(tlog.LevelWarn))
+	suite.True(tlog.IsLevelEnabled(tlog.LevelError))
+	suite.True(tlog.IsLevelEnabled(tlog.LevelFatal))
+
+	// Levels that should be disabled (< Info)
+	suite.False(tlog.IsLevelEnabled(tlog.LevelTrace))
+	suite.False(tlog.IsLevelEnabled(tlog.LevelDebug))
+}
+
+func (suite *TlogSuite) TestWithLevel() {
+	// Create a logger with Trace level
+	logger := tlog.WithLevel(tlog.LevelTrace)
+	suite.NotNil(logger)
+
+	// The global level should remain unchanged
+	originalLevel := tlog.GetLevel()
+	tlog.SetLevel(tlog.LevelError)
+
+	// Verify the global level changed but our custom logger is separate
+	suite.Equal(tlog.LevelError, tlog.GetLevel())
+
+	// Note: We can't directly test the custom logger's level without exposing internals
+	// but we can verify it was created successfully
+	suite.NotNil(logger)
+
+	// Restore original level
+	tlog.SetLevel(originalLevel)
+}
+
+func (suite *TlogSuite) TestSetLevelFromStringErrorMessages() {
+	err := tlog.SetLevelFromString("")
+	suite.Error(err)
+	suite.Contains(err.Error(), "log level cannot be empty")
+
+	err = tlog.SetLevelFromString("invalid")
+	suite.Error(err)
+	suite.Contains(err.Error(), "invalid log level 'invalid'")
+	suite.Contains(err.Error(), "supported levels are")
+
+	// Verify the error message contains expected level names (order may vary)
+	supportedLevels := []string{"trace", "debug", "info", "notice", "warn", "error", "fatal"}
+	for _, level := range supportedLevels {
+		suite.Contains(strings.ToLower(err.Error()), level)
+	}
+	// Also check for the 'warning' alias
+	suite.True(strings.Contains(strings.ToLower(err.Error()), "warning") || strings.Contains(strings.ToLower(err.Error()), "warn"))
+}
+
+func (suite *TlogSuite) TestCustomLevels() {
+	// Test that our custom levels have the expected values
+	suite.Equal(slog.Level(-8), tlog.LevelTrace)
+	suite.Equal(slog.LevelDebug, tlog.LevelDebug)
+	suite.Equal(slog.LevelInfo, tlog.LevelInfo)
+	suite.Equal(slog.Level(2), tlog.LevelNotice)
+	suite.Equal(slog.LevelWarn, tlog.LevelWarn)
+	suite.Equal(slog.LevelError, tlog.LevelError)
+	suite.Equal(slog.Level(12), tlog.LevelFatal)
+}
+
+func (suite *TlogSuite) TestLoggingFunctions() {
+	// Test that logging functions don't panic
+	// Note: We can't easily test the output without capturing logs,
+	// but we can ensure the functions execute without errors
+
+	suite.NotPanics(func() {
+		tlog.Trace("test trace message", "key", "value")
+	})
+
+	suite.NotPanics(func() {
+		tlog.Debug("test debug message", "key", "value")
+	})
+
+	suite.NotPanics(func() {
+		tlog.Info("test info message", "key", "value")
+	})
+
+	suite.NotPanics(func() {
+		tlog.Notice("test notice message", "key", "value")
+	})
+
+	suite.NotPanics(func() {
+		tlog.Warn("test warn message", "key", "value")
+	})
+
+	suite.NotPanics(func() {
+		tlog.Error("test error message", "key", "value")
+	})
+}
+
+func (suite *TlogSuite) TestContextLoggingFunctions() {
+	ctx := context.Background()
+
+	// Test that context logging functions don't panic
+	suite.NotPanics(func() {
+		tlog.TraceContext(ctx, "test trace message", "key", "value")
+	})
+
+	suite.NotPanics(func() {
+		tlog.DebugContext(ctx, "test debug message", "key", "value")
+	})
+
+	suite.NotPanics(func() {
+		tlog.InfoContext(ctx, "test info message", "key", "value")
+	})
+
+	suite.NotPanics(func() {
+		tlog.NoticeContext(ctx, "test notice message", "key", "value")
+	})
+
+	suite.NotPanics(func() {
+		tlog.WarnContext(ctx, "test warn message", "key", "value")
+	})
+
+	suite.NotPanics(func() {
+		tlog.ErrorContext(ctx, "test error message", "key", "value")
+	})
+}
+
+func (suite *TlogSuite) TestConcurrency() {
+	// Test that concurrent access to level setting/getting is safe
+	done := make(chan bool, 10)
+
+	for i := 0; i < 10; i++ {
+		go func(level slog.Level) {
+			defer func() { done <- true }()
+
+			tlog.SetLevel(level)
+			retrievedLevel := tlog.GetLevel()
+			suite.IsType(slog.Level(0), retrievedLevel)
+
+			// Test level string conversion
+			levelStr := tlog.GetLevelString()
+			suite.NotEmpty(levelStr)
+
+			// Test IsLevelEnabled
+			enabled := tlog.IsLevelEnabled(level)
+			suite.IsType(true, enabled)
+		}(slog.Level(i - 4)) // Use various levels including negative ones
+	}
+
+	// Wait for all goroutines to complete
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+}
+
+// Callback Tests
+
+func (suite *TlogSuite) TestRegisterCallback() {
+	var receivedEvent tlog.LogEvent
+	var callbackExecuted bool
+	var mu sync.Mutex
+
+	callback := func(event tlog.LogEvent) {
+		mu.Lock()
+		defer mu.Unlock()
+		receivedEvent = event
+		callbackExecuted = true
+	}
+
+	// Register callback for error level
+	callbackID := tlog.RegisterCallback(tlog.LevelError, callback)
+	suite.NotEmpty(callbackID)
+
+	// Verify callback count
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelError))
+
+	// Trigger an error log
+	testMessage := "test error message"
+	tlog.Error(testMessage, "key", "value")
+
+	// Wait for callback to execute
+	suite.Eventually(func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return callbackExecuted
+	}, time.Second*2, time.Millisecond*50)
+
+	// Verify callback was called with correct event
+	mu.Lock()
+	defer mu.Unlock()
+	suite.True(callbackExecuted)
+	suite.Equal(tlog.LevelError, receivedEvent.Level)
+	suite.Equal(testMessage, receivedEvent.Message)
+	suite.Equal([]any{"key", "value"}, receivedEvent.Args)
+	suite.NotZero(receivedEvent.Timestamp)
+	suite.NotNil(receivedEvent.Context)
+}
+
+func (suite *TlogSuite) TestUnregisterCallback() {
+	var callbackExecuted bool
+	var mu sync.Mutex
+
+	callback := func(event tlog.LogEvent) {
+		mu.Lock()
+		defer mu.Unlock()
+		callbackExecuted = true
+	}
+
+	// Register callback
+	callbackID := tlog.RegisterCallback(tlog.LevelInfo, callback)
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelInfo))
+
+	// Unregister callback
+	success := tlog.UnregisterCallback(tlog.LevelInfo, callbackID)
+	suite.True(success)
+	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelInfo))
+
+	// Trigger log - callback should not execute
+	tlog.Info("test message")
+
+	// Wait a bit to ensure callback doesn't execute
+	time.Sleep(time.Millisecond * 100)
+
+	mu.Lock()
+	defer mu.Unlock()
+	suite.False(callbackExecuted)
+
+	// Try to unregister non-existent callback
+	success = tlog.UnregisterCallback(tlog.LevelInfo, "non-existent")
+	suite.False(success)
+}
+
+func (suite *TlogSuite) TestMultipleCallbacks() {
+	var callback1Count, callback2Count int32
+
+	callback1 := func(event tlog.LogEvent) {
+		atomic.AddInt32(&callback1Count, 1)
+	}
+
+	callback2 := func(event tlog.LogEvent) {
+		atomic.AddInt32(&callback2Count, 1)
+	}
+
+	// Register multiple callbacks for the same level
+	id1 := tlog.RegisterCallback(tlog.LevelWarn, callback1)
+	id2 := tlog.RegisterCallback(tlog.LevelWarn, callback2)
+
+	suite.Equal(2, tlog.GetCallbackCount(tlog.LevelWarn))
+
+	// Trigger warning
+	tlog.Warn("test warning")
+
+	// Wait for callbacks to execute
+	suite.Eventually(func() bool {
+		return atomic.LoadInt32(&callback1Count) > 0 && atomic.LoadInt32(&callback2Count) > 0
+	}, time.Second*2, time.Millisecond*50)
+
+	suite.Equal(int32(1), atomic.LoadInt32(&callback1Count))
+	suite.Equal(int32(1), atomic.LoadInt32(&callback2Count))
+
+	// Unregister one callback
+	success := tlog.UnregisterCallback(tlog.LevelWarn, id1)
+	suite.True(success)
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelWarn))
+
+	// Reset counters
+	atomic.StoreInt32(&callback1Count, 0)
+	atomic.StoreInt32(&callback2Count, 0)
+
+	// Trigger another warning
+	tlog.Warn("another test warning")
+
+	// Wait for callback to execute
+	suite.Eventually(func() bool {
+		return atomic.LoadInt32(&callback2Count) > 0
+	}, time.Second*2, time.Millisecond*50)
+
+	// Only callback2 should have executed
+	suite.Equal(int32(0), atomic.LoadInt32(&callback1Count))
+	suite.Equal(int32(1), atomic.LoadInt32(&callback2Count))
+
+	// Clean up
+	tlog.UnregisterCallback(tlog.LevelWarn, id2)
+}
+
+func (suite *TlogSuite) TestClearCallbacks() {
+	callback := func(event tlog.LogEvent) {}
+
+	// Register callbacks for different levels
+	tlog.RegisterCallback(tlog.LevelError, callback)
+	tlog.RegisterCallback(tlog.LevelWarn, callback)
+	tlog.RegisterCallback(tlog.LevelInfo, callback)
+
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelError))
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelWarn))
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelInfo))
+
+	// Clear callbacks for one level
+	tlog.ClearCallbacks(tlog.LevelError)
+	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelError))
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelWarn))
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelInfo))
+
+	// Clear all callbacks
+	tlog.ClearAllCallbacks()
+	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelError))
+	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelWarn))
+	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelInfo))
+}
+
+func (suite *TlogSuite) TestCallbackPanicRecovery() {
+	var normalCallbackExecuted bool
+	var mu sync.Mutex
+
+	// Callback that panics
+	panicCallback := func(event tlog.LogEvent) {
+		panic("test panic in callback")
+	}
+
+	// Normal callback
+	normalCallback := func(event tlog.LogEvent) {
+		mu.Lock()
+		defer mu.Unlock()
+		normalCallbackExecuted = true
+	}
+
+	// Register both callbacks
+	tlog.RegisterCallback(tlog.LevelError, panicCallback)
+	tlog.RegisterCallback(tlog.LevelError, normalCallback)
+
+	// Trigger error log - should not crash the program
+	suite.NotPanics(func() {
+		tlog.Error("test error with panic callback")
+	})
+
+	// Normal callback should still execute despite panic in other callback
+	suite.Eventually(func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return normalCallbackExecuted
+	}, time.Second*2, time.Millisecond*50)
+}
+
+func (suite *TlogSuite) TestCallbackWithContextMethods() {
+	var receivedEvents []tlog.LogEvent
+	var mu sync.Mutex
+
+	callback := func(event tlog.LogEvent) {
+		mu.Lock()
+		defer mu.Unlock()
+		receivedEvents = append(receivedEvents, event)
+	}
+
+	// Register callback for debug level
+	tlog.RegisterCallback(tlog.LevelDebug, callback)
+
+	ctx := context.WithValue(context.Background(), "test-key", "test-value")
+
+	// Test context methods
+	tlog.DebugContext(ctx, "debug with context", "debug", true)
+
+	// Wait for callback
+	suite.Eventually(func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(receivedEvents) > 0
+	}, time.Second*2, time.Millisecond*50)
+
+	mu.Lock()
+	defer mu.Unlock()
+	suite.Len(receivedEvents, 1)
+	suite.Equal(tlog.LevelDebug, receivedEvents[0].Level)
+	suite.Equal("debug with context", receivedEvents[0].Message)
+	suite.Equal(ctx, receivedEvents[0].Context)
+}
+
+func (suite *TlogSuite) TestCallbackConcurrency() {
+	var callbackCount int32
+	var wg sync.WaitGroup
+
+	callback := func(event tlog.LogEvent) {
+		defer wg.Done()
+		atomic.AddInt32(&callbackCount, 1)
+		// Simulate some work
+		time.Sleep(time.Millisecond * 10)
+	}
+
+	// Register callback
+	tlog.RegisterCallback(tlog.LevelInfo, callback)
+
+	// Trigger multiple logs concurrently
+	numLogs := 10
+	for i := 0; i < numLogs; i++ {
+		wg.Add(1)
+		go func(i int) {
+			tlog.Info("concurrent log", "iteration", i)
+		}(i)
+	}
+
+	// Wait for all callbacks to complete
+	done := make(chan bool)
+	go func() {
+		wg.Wait()
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		// Success
+	case <-time.After(time.Second * 5):
+		suite.Fail("Callbacks did not complete within timeout")
+	}
+
+	suite.Equal(int32(numLogs), atomic.LoadInt32(&callbackCount))
+}
+
+func (suite *TlogSuite) TestAllLogLevelsWithCallbacks() {
+	var receivedEvents []tlog.LogEvent
+	var mu sync.Mutex
+
+	callback := func(event tlog.LogEvent) {
+		mu.Lock()
+		defer mu.Unlock()
+		receivedEvents = append(receivedEvents, event)
+	}
+
+	// Register callbacks for all levels
+	levels := []slog.Level{
+		tlog.LevelTrace,
+		tlog.LevelDebug,
+		tlog.LevelInfo,
+		tlog.LevelNotice,
+		tlog.LevelWarn,
+		tlog.LevelError,
+	}
+
+	for _, level := range levels {
+		tlog.RegisterCallback(level, callback)
+	}
+
+	// Trigger logs for each level
+	tlog.Trace("trace message")
+	tlog.Debug("debug message")
+	tlog.Info("info message")
+	tlog.Notice("notice message")
+	tlog.Warn("warn message")
+	tlog.Error("error message")
+
+	// Wait for callbacks
+	suite.Eventually(func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(receivedEvents) == len(levels)
+	}, time.Second*2, time.Millisecond*50)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Verify all events were received
+	suite.Len(receivedEvents, len(levels))
+
+	// Create maps for easier verification since order is not guaranteed
+	eventsByLevel := make(map[slog.Level]tlog.LogEvent)
+	for _, event := range receivedEvents {
+		eventsByLevel[event.Level] = event
+	}
+
+	// Verify event details
+	expectedMessages := map[slog.Level]string{
+		tlog.LevelTrace:  "trace message",
+		tlog.LevelDebug:  "debug message",
+		tlog.LevelInfo:   "info message",
+		tlog.LevelNotice: "notice message",
+		tlog.LevelWarn:   "warn message",
+		tlog.LevelError:  "error message",
+	}
+
+	for level, expectedMsg := range expectedMessages {
+		event, exists := eventsByLevel[level]
+		suite.True(exists, "Event for level %v should exist", level)
+		suite.Equal(level, event.Level)
+		suite.Equal(expectedMsg, event.Message)
+	}
+}
+
+func (suite *TlogSuite) TestGetCallbackCount() {
+	// Initially no callbacks
+	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelError))
+
+	callback := func(event tlog.LogEvent) {}
+
+	// Add callbacks
+	tlog.RegisterCallback(tlog.LevelError, callback)
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelError))
+
+	tlog.RegisterCallback(tlog.LevelError, callback)
+	suite.Equal(2, tlog.GetCallbackCount(tlog.LevelError))
+
+	// Different level should still be 0
+	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelWarn))
+}
+
+func (suite *TlogSuite) TestCallbacksWithNoRegistrations() {
+	// Should not panic when logging with no callbacks registered
+	suite.NotPanics(func() {
+		tlog.Info("info without callbacks")
+		tlog.Error("error without callbacks")
+		tlog.Warn("warn without callbacks")
+	})
+}
+
+func TestTlogSuite(t *testing.T) {
+	// Ensure cleanup after all tests
+	defer func() {
+		tlog.ClearAllCallbacks()
+		tlog.Shutdown()
+	}()
+
+	suite.Run(t, new(TlogSuite))
+}

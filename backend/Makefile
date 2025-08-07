@@ -4,6 +4,7 @@ SRC_DIRS := ./src
 FRONTEND_DIRS := ../frontend
 STATIC_DIRS := ./src/web/static
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+TMPDIR?=/tmp
 
 
 #ALL_SRCS := $(shell find $(SRC_DIRS) -name '*.go')
@@ -92,16 +93,16 @@ static: $(FRONTEND_DIRS)/node_modules
 .ONESHELL:
 patch:
 	go tool -C $(SRC_DIRS) gohack undo
-	rm -rf ${HOME}/gohack
+	rm -rf "$(TMPDIR)/gohack"
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/samber/slog-http
-	git -C ${HOME}/gohack/github.com/samber/slog-http apply $(ROOT_DIR)/patches/slog-http.patch
+	git -C "$(TMPDIR)/gohack/github.com/samber/slog-http" apply $(ROOT_DIR)/patches/slog-http.patch
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/jpillora/overseer
-	git -C ${HOME}/gohack/github.com/jpillora/overseer apply $(ROOT_DIR)/patches/overseer.patch
+	git -C "$(TMPDIR)/gohack/github.com/jpillora/overseer" apply $(ROOT_DIR)/patches/overseer.patch
 
 gen_patch:
 	mkdir patches > /dev/null 2>&1 || :
-	cd ${HOME}/gohack/github.com/samber/slog-http; git diff > $(ROOT_DIR)/patches/slog-http.patch
-	cd ${HOME}/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
+	cd $(TMPDIR)/gohack/github.com/samber/slog-http; git diff > $(ROOT_DIR)/patches/slog-http.patch
+	cd $(TMPDIR)/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
 
  /mnt/remote/bootconfig.json: mount_remote
 	[ -f /mnt/remote/bootconfig.json ] || echo "No remote mount found use make mount_remote"
