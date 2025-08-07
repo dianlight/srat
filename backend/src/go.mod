@@ -50,10 +50,10 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
-	github.com/ovechkin-dm/go-dyno v0.5.2 // indirect
+	github.com/ovechkin-dm/go-dyno v0.5.3 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/petermattis/goid v0.0.0-20250319124200-ccd6737f222a // indirect
+	github.com/petermattis/goid v0.0.0-20250721140440-ea1c0173183e // indirect
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/rogpeppe/gohack v1.0.2 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
@@ -140,10 +140,10 @@ require (
 	github.com/glebarez/sqlite v1.11.0
 	github.com/itchyny/gojq v0.12.17
 	github.com/lmittmann/tint v1.1.2
-	github.com/ovechkin-dm/mockio/v2 v2.0.2
+	github.com/ovechkin-dm/mockio/v2 v2.0.3
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250801131919-7ef1164cce8a
+	github.com/snapcore/snapd v0.0.0-20250806172106-00ff6742899d
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
@@ -164,5 +164,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
