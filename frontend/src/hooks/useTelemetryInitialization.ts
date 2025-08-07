@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGetSettingsQuery, type Settings, Telemetry_mode } from '../store/sratApi';
 import telemetryService, { type TelemetryMode } from '../services/telemetryService';
 import { useRollbarTelemetry } from './useRollbarTelemetry';
@@ -10,6 +10,8 @@ import packageJson from '../../package.json';
 export const useTelemetryInitialization = () => {
     const { data: settings, isLoading } = useGetSettingsQuery();
     const { reportEvent } = useRollbarTelemetry();
+    const previousTelemetryMode = useRef<Telemetry_mode | undefined>(undefined);
+    const hasInitialized = useRef(false);
 
     useEffect(() => {
         if (isLoading) return;
@@ -20,11 +22,17 @@ export const useTelemetryInitialization = () => {
         };
 
         if (isValidSettings(settings) && settings.telemetry_mode) {
-            // Configure telemetry service with current settings
-            telemetryService.configure(settings.telemetry_mode as TelemetryMode);
+            const currentTelemetryMode = settings.telemetry_mode;
 
-            // Report app initialization event if telemetry is enabled
-            if (settings.telemetry_mode === Telemetry_mode.All) {
+            // Configure telemetry service with current settings
+            telemetryService.configure(currentTelemetryMode as TelemetryMode);
+
+            // Only send events on startup or when telemetry mode changes to All
+            const isStartup = !hasInitialized.current;
+            const changedToAll = previousTelemetryMode.current !== Telemetry_mode.All &&
+                currentTelemetryMode === Telemetry_mode.All;
+
+            if (currentTelemetryMode === Telemetry_mode.All && (isStartup || changedToAll)) {
                 // Send a test event to validate configuration
                 reportEvent('telemetry_enabled', {
                     version: packageJson.version,
@@ -37,6 +45,10 @@ export const useTelemetryInitialization = () => {
                     userAgent: navigator.userAgent,
                 });
             }
+
+            // Update tracking refs
+            previousTelemetryMode.current = currentTelemetryMode;
+            hasInitialized.current = true;
         }
     }, [settings, isLoading, reportEvent]);
 

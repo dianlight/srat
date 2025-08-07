@@ -42,12 +42,19 @@ class TelemetryService {
      */
     configure(mode: TelemetryMode): void {
         this.mode = mode;
-        this.isConfigured = mode === 'All' || mode === 'Errors';
+        const newIsConfigured = mode === 'All' || mode === 'Errors';
 
-        if (this.isConfigured) {
-            console.log(`Rollbar telemetry configured: ${mode}`);
+        // Only log if the configuration status actually changes
+        if (this.isConfigured !== newIsConfigured) {
+            this.isConfigured = newIsConfigured;
+
+            if (this.isConfigured) {
+                console.debug(`Rollbar telemetry configured: ${mode}`);
+            } else {
+                console.debug(`Rollbar telemetry disabled: ${mode}`);
+            }
         } else {
-            console.log(`Rollbar telemetry disabled: ${mode}`);
+            this.isConfigured = newIsConfigured;
         }
     }
 
