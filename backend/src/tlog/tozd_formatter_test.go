@@ -116,24 +116,18 @@ func (suite *TozdErrorFormatterSuite) TestErrorWithStackTrace() {
 			suite.Equal("error with stack", attr.Value.String())
 			hasMessage = true
 		case "stacktrace":
-			suite.Equal(slog.KindGroup, attr.Value.Kind())
+			suite.Equal(slog.KindString, attr.Value.Kind())
 			hasStacktrace = true
 
-			// Check that stack frames are present and formatted
-			stackAttrs := attr.Value.Group()
-			suite.NotEmpty(stackAttrs, "Stack trace should have frames")
+			// Check that stack trace content is present and formatted
+			stackContent := attr.Value.String()
+			suite.NotEmpty(stackContent, "Stack trace should have content")
 
-			// Check first frame format
-			if len(stackAttrs) > 0 {
-				firstFrame := stackAttrs[0]
-				frameContent := firstFrame.Value.String()
-
-				// Frame should contain file path, line number, and function name
-				suite.Contains(frameContent, ":") // file:line separator
-				suite.True(strings.Contains(frameContent, "tlog") ||
-					strings.Contains(frameContent, "TestError"),
-					"Frame should contain relevant function name")
-			}
+			// Stack trace should contain file path, line number, and function name
+			suite.Contains(stackContent, ":") // file:line separator
+			suite.True(strings.Contains(stackContent, "tlog") ||
+				strings.Contains(stackContent, "TestError"),
+				"Stack trace should contain relevant function name")
 		}
 	}
 
@@ -209,7 +203,9 @@ func (suite *TozdErrorFormatterSuite) TestComplexError() {
 		case "details":
 			suite.Equal(slog.KindGroup, attr.Value.Kind())
 		case "stacktrace":
-			suite.Equal(slog.KindGroup, attr.Value.Kind())
+			suite.Equal(slog.KindString, attr.Value.Kind())
+			stackContent := attr.Value.String()
+			suite.NotEmpty(stackContent)
 		case "cause":
 			suite.Equal("database connection failed", attr.Value.String())
 		}
@@ -235,20 +231,17 @@ func (suite *TozdErrorFormatterSuite) TestColorFormatting() {
 	suite.True(changed)
 
 	if IsColorsEnabled() {
-		// When colors are enabled, stack frames should contain ANSI color codes
+		// When colors are enabled, stack trace should contain ANSI color codes
 		attrs := value.Group()
 
 		for _, attr := range attrs {
 			if attr.Key == "stacktrace" {
-				stackAttrs := attr.Value.Group()
-				if len(stackAttrs) > 0 {
-					firstFrame := stackAttrs[0].Value.String()
-					// Should contain ANSI escape sequences when colors are enabled
-					// Look for common ANSI color codes
-					hasColorCodes := strings.Contains(firstFrame, "\033[") ||
-						strings.Contains(firstFrame, "\x1b[")
-					suite.True(hasColorCodes, "Stack frame should contain color codes when colors are enabled")
-				}
+				stackContent := attr.Value.String()
+				// Should contain ANSI escape sequences when colors are enabled
+				// Look for common ANSI color codes
+				hasColorCodes := strings.Contains(stackContent, "\033[") ||
+					strings.Contains(stackContent, "\x1b[")
+				suite.True(hasColorCodes, "Stack trace should contain color codes when colors are enabled")
 				break
 			}
 		}
@@ -265,6 +258,98 @@ func (suite *TozdErrorFormatterSuite) TestColorFormatting() {
 	// When colors are disabled, output should not contain ANSI codes
 	// This is harder to test directly since the color library might still add codes
 	// but at least we've tested both paths
+}
+
+func (suite *TozdErrorFormatterSuite) TestTreeFormatting() {
+	// Test tree formatting when both colors and unicode are available
+	EnableColors(true)
+	formatter := TozdErrorFormatter("error")
+
+	// Create an error with multiple stack frames by calling through helper functions
+	err := suite.createNestedError()
+
+	value, changed := formatter(nil, slog.Attr{
+		Key:   "error",
+		Value: slog.AnyValue(err),
+	})
+
+	suite.True(changed)
+	attrs := value.Group()
+
+	for _, attr := range attrs {
+		if attr.Key == "stacktrace" {
+			stackContent := attr.Value.String()
+			suite.NotEmpty(stackContent, "Should have stack trace content")
+
+			// Check for tree characters in stack trace
+			lines := strings.Split(stackContent, "\n")
+			suite.True(len(lines) >= 2, "Should have multiple stack frame lines")
+
+			// Check for tree characters in multi-frame stack traces
+			if len(lines) > 1 {
+				lastLine := lines[len(lines)-1]
+				// Last frame should have "└─" (or "`-" fallback)
+				suite.True(strings.Contains(lastLine, "└─") || strings.Contains(lastLine, "`-"),
+					"Last frame should contain tree terminator: %s", lastLine)
+
+				// Earlier frames should have "├─" (or "|-" fallback)
+				for i := 0; i < len(lines)-1; i++ {
+					line := lines[i]
+					if strings.TrimSpace(line) != "" {
+						suite.True(strings.Contains(line, "├─") || strings.Contains(line, "|-"),
+							"Frame %d should contain tree branch: %s", i, line)
+					}
+				}
+			}
+			break
+		}
+	}
+}
+
+func (suite *TozdErrorFormatterSuite) TestTreeFormattingWithColorsDisabled() {
+	// Test with colors disabled (should fall back to ASCII tree characters)
+	EnableColors(false)
+	formatter := TozdErrorFormatter("error")
+
+	err := suite.createNestedError()
+
+	value, changed := formatter(nil, slog.Attr{
+		Key:   "error",
+		Value: slog.AnyValue(err),
+	})
+
+	suite.True(changed)
+	attrs := value.Group()
+
+	for _, attr := range attrs {
+		if attr.Key == "stacktrace" {
+			stackContent := attr.Value.String()
+
+			if strings.Contains(stackContent, "\n") {
+				lines := strings.Split(stackContent, "\n")
+				if len(lines) > 1 {
+					// Should use ASCII tree characters when colors are disabled
+					lastLine := lines[len(lines)-1]
+					suite.True(strings.Contains(lastLine, "`-") || strings.Contains(lastLine, "└─"),
+						"Should use ASCII fallback tree characters when colors disabled: %s", lastLine)
+				}
+			}
+			break
+		}
+	}
+}
+
+// Helper function to create nested error with multiple stack frames
+func (suite *TozdErrorFormatterSuite) createNestedError() error {
+	return suite.helperLevel1()
+}
+
+func (suite *TozdErrorFormatterSuite) helperLevel1() error {
+	return suite.helperLevel2()
+}
+
+func (suite *TozdErrorFormatterSuite) helperLevel2() error {
+	return errors.WithStack(errors.New("nested error"))
 }
 
 func (suite *TozdErrorFormatterSuite) TestNilError() {

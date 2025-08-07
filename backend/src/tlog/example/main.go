@@ -203,6 +203,7 @@ func main() {
 	// Run the enhanced formatter demonstration
 	formatterDemo()
 	formatterColorDemo()
+	treeDemo()
 	fmt.Println("Formatter demonstration complete.")
 }
 

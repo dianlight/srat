@@ -367,6 +367,35 @@ func isTerminalSupported() bool {
 	return isatty.IsTerminal(os.Stderr.Fd())
 }
 
+// supportsUnicode checks if the terminal supports Unicode characters for tree formatting
+func supportsUnicode() bool {
+	if !isTerminalSupported() {
+		return false
+	}
+
+	// Check common environment variables that indicate Unicode support
+	term := os.Getenv("TERM")
+	langVar := os.Getenv("LANG")
+	lcAll := os.Getenv("LC_ALL")
+
+	// Most modern terminals support Unicode
+	unicodeTerms := []string{"xterm", "screen", "tmux", "alacritty", "kitty", "iterm", "vscode"}
+	for _, unicodeTerm := range unicodeTerms {
+		if strings.Contains(strings.ToLower(term), unicodeTerm) {
+			return true
+		}
+	}
+
+	// Check for UTF-8 in language settings
+	if strings.Contains(strings.ToUpper(langVar), "UTF-8") ||
+		strings.Contains(strings.ToUpper(lcAll), "UTF-8") {
+		return true
+	}
+
+	// Default to true for most modern environments
+	return term != "dumb" && term != ""
+}
+
 // extractContextValues extracts key-value pairs from context
 func extractContextValues(ctx context.Context) []slog.Attr {
 	var attrs []slog.Attr
@@ -486,46 +515,100 @@ func TozdErrorFormatter(key string) slogformatter.Formatter {
 		if stackTracer, ok := v.(interface{ StackTrace() []uintptr }); ok {
 			stackTrace := stackTracer.StackTrace()
 			if len(stackTrace) > 0 {
-				var stackFrames []any
-
 				// Use runtime.CallersFrames to get proper frame information
 				frames := runtime.CallersFrames(stackTrace)
 				frameIndex := 0
 
+				// Determine if we should use tree formatting
+				useTreeFormat := supportsUnicode() && IsColorsEnabled()
+
+				// Tree characters for Unicode-supported terminals
+				treeChars := struct {
+					vertical   string
+					branch     string
+					lastBranch string
+					space      string
+				}{
+					vertical:   "│ ",
+					branch:     "├─ ",
+					lastBranch: "└─ ",
+					space:      "   ",
+				}
+
+				// Fallback ASCII characters for terminals without Unicode support
+				if !useTreeFormat {
+					treeChars.vertical = "| "
+					treeChars.branch = "|- "
+					treeChars.lastBranch = "`- "
+					treeChars.space = "   "
+				}
+
+				var allFrames []string // Collect all frames first to determine which is last
+
 				for {
 					frame, more := frames.Next()
-
 					frameInfo := fmt.Sprintf("%s:%d %s", frame.File, frame.Line, frame.Function)
-
-					// Apply color formatting if colors are enabled
-					if IsColorsEnabled() {
-						if frameIndex == 0 {
-							// Highlight the top frame (most recent) in red
-							frameInfo = color.New(color.FgRed, color.Bold).Sprint(frameInfo)
-						} else if frameIndex < 3 {
-							// Highlight the next few frames in yellow
-							frameInfo = color.New(color.FgYellow).Sprint(frameInfo)
-						} else {
-							// Use gray for deeper stack frames
-							frameInfo = color.New(color.FgHiBlack).Sprint(frameInfo)
-						}
-					}
-
-					stackFrames = append(stackFrames, slog.String(fmt.Sprintf("frame_%d", frameIndex), frameInfo))
+					allFrames = append(allFrames, frameInfo)
 					frameIndex++
 
-					if !more {
-						break
-					}
-
-					// Limit stack trace depth to prevent excessive output
-					if frameIndex >= 20 {
-						stackFrames = append(stackFrames, slog.String("truncated", "... (truncated)"))
+					if !more || frameIndex >= 20 {
+						if frameIndex >= 20 && more {
+							allFrames = append(allFrames, "... (truncated)")
+						}
 						break
 					}
 				}
 
-				attrs = append(attrs, slog.Group("stacktrace", stackFrames...))
+				// Build the complete stacktrace as a single formatted string
+				var stackLines []string
+
+				for i, frameInfo := range allFrames {
+					var prefix string
+					var coloredFrameInfo string
+
+					// Determine the tree prefix
+					if len(allFrames) == 1 {
+						prefix = ""
+					} else if i == len(allFrames)-1 {
+						prefix = treeChars.lastBranch
+					} else {
+						prefix = treeChars.branch
+					}
+
+					// Apply color formatting if colors are enabled
+					if IsColorsEnabled() {
+						var frameColor *color.Color
+						if i == 0 {
+							// Highlight the top frame (most recent) in red
+							frameColor = color.New(color.FgRed, color.Bold)
+						} else if i < 3 {
+							// Highlight the next few frames in yellow
+							frameColor = color.New(color.FgYellow)
+						} else {
+							// Use gray for deeper stack frames
+							frameColor = color.New(color.FgHiBlack)
+						}
+
+						coloredFrameInfo = frameColor.Sprint(frameInfo)
+
+						// Color the tree prefix too
+						if prefix != "" {
+							coloredPrefix := color.New(color.FgCyan).Sprint(prefix)
+							coloredFrameInfo = coloredPrefix + coloredFrameInfo
+						} else {
+							coloredFrameInfo = prefix + coloredFrameInfo
+						}
+					} else {
+						coloredFrameInfo = prefix + frameInfo
+					}
+
+					stackLines = append(stackLines, coloredFrameInfo)
+				}
+
+				// Join all lines with newlines to create the tree structure
+				stacktraceString := strings.Join(stackLines, "\n")
+
+				attrs = append(attrs, slog.String("stacktrace", stacktraceString))
 			}
 		}
 

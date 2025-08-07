@@ -83,6 +83,49 @@ func TestNestedStackTrace(t *testing.T) {
 	tlog.Error("Nested error with stack trace", "error", nestedErr)
 }
 
+// TestTreeStackTrace demonstrates tree-formatted stack traces
+func TestTreeStackTrace(t *testing.T) {
+	tlog.SetLevel(tlog.LevelDebug)
+	tlog.EnableColors(true)
+
+	t.Log("Testing tree-formatted stack traces...")
+
+	// Create a nested error to get a good stack trace
+	nestedErr := createDeeperNestedError()
+	tlog.Error("Tree formatted stack trace", "error", nestedErr)
+
+	// Test with colors disabled to show ASCII fallback
+	t.Log("Testing tree formatting with ASCII fallback...")
+	tlog.EnableColors(false)
+	tlog.Error("Tree formatted (ASCII)", "error", nestedErr)
+
+	// Re-enable colors for other tests
+	tlog.EnableColors(true)
+}
+
+// Helper functions to create deeper stack traces for tree formatting demonstration
+func createDeeperNestedError() errors.E {
+	return firstLevel()
+}
+
+func firstLevel() errors.E {
+	return secondLevel()
+}
+
+func secondLevel() errors.E {
+	return thirdLevel()
+}
+
+func thirdLevel() errors.E {
+	return errors.WithStack(
+		errors.WithDetails(
+			errors.New("deeply nested error for tree demonstration"),
+			"depth", 3,
+			"component", "tree_demo",
+		),
+	)
+}
+
 // BenchmarkTozdErrorFormatter benchmarks the performance of the formatter
 func BenchmarkTozdErrorFormatter(b *testing.B) {
 	err := errors.WithDetails(

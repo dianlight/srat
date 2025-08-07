@@ -518,6 +518,71 @@ tlog.Error("Operation failed", "error", err)
 // Enhanced output includes error type and structured information
 ```
 
+### Tozd Error Formatting with Tree Stack Traces
+
+The tlog package provides special formatting for [`gitlab.com/tozd/go/errors`](https://gitlab.com/tozd/go/errors) that includes:
+
+- **Tree-formatted stack traces**: When the terminal supports Unicode and colors are enabled, stack traces are displayed with tree characters (`├─`, `└─`) for better readability
+- **Colored output**: Different stack frame depths are colored differently (red for top frame, yellow for recent frames, gray for deeper frames)
+- **ASCII fallback**: When Unicode is not supported, ASCII tree characters (`|-`, `` `-`) are used
+- **Error details**: Structured key-value details are preserved and displayed
+- **Error chains**: Cause relationships are maintained and displayed
+
+#### Example Usage
+
+```go
+import "gitlab.com/tozd/go/errors"
+
+// Create error with details
+baseErr := errors.WithDetails(
+    errors.New("database connection failed"),
+    "host", "localhost",
+    "port", 5432,
+    "database", "myapp",
+)
+
+// Add stack trace
+stackErr := errors.WithStack(baseErr)
+
+// Log the error - stack trace will be formatted as a tree
+tlog.Error("Service initialization failed", "error", stackErr)
+```
+
+#### Output Examples
+
+With Unicode support and colors enabled:
+```
+ERROR Service initialization failed
+  error:
+    message: database connection failed
+    details:
+      host: localhost
+      port: 5432
+      database: myapp
+    stacktrace:
+      frame_0: ├─ /path/to/main.go:42 main.initDatabase
+      frame_1: ├─ /path/to/service.go:15 service.Initialize  
+      frame_2: └─ /path/to/main.go:25 main.main
+```
+
+Without Unicode support (ASCII fallback):
+```
+ERROR Service initialization failed
+  error:
+    message: database connection failed
+    stacktrace:
+      frame_0: |- /path/to/main.go:42 main.initDatabase
+      frame_1: |- /path/to/service.go:15 service.Initialize
+      frame_2: `- /path/to/main.go:25 main.main
+```
+
+#### Features
+
+- **Automatic terminal detection**: Tree formatting is automatically enabled when the terminal supports Unicode characters
+- **Color coding**: Stack frames are colored by depth for easy visual scanning
+- **Cause chains**: Wrapped errors show their causes in the output
+- **Detail preservation**: Error details are maintained and displayed in a structured format
+
 ### Time Format Options
 
 Common time format examples:
