@@ -375,10 +375,11 @@ The `tlog` package includes enhanced formatting capabilities powered by `samber/
 
 ```go
 type FormatterConfig struct {
-    EnableColors      bool   // Enable colored output (auto-disabled if terminal doesn't support colors)
-    EnableFormatting  bool   // Enable slog-formatter enhancements
-    HideSensitiveData bool   // Hide sensitive data like passwords, tokens, IPs
-    TimeFormat        string // Time format for timestamps
+    EnableColors        bool   // Enable colored output (auto-disabled if terminal doesn't support colors)
+    EnableFormatting    bool   // Enable slog-formatter enhancements
+    HideSensitiveData   bool   // Hide sensitive data like passwords, tokens, IPs
+    TimeFormat          string // Time format for timestamps
+    MultilineStacktrace bool   // Enable multiline display of stacktraces instead of escaped single line
 }
 ```
 
@@ -401,11 +402,13 @@ tlog.SetFormatterConfig(customConfig)
 tlog.EnableColors(true)                    // Enable/disable colors
 tlog.EnableSensitiveDataHiding(true)       // Hide sensitive data
 tlog.SetTimeFormat("2006-01-02 15:04:05") // Custom time format
+tlog.EnableMultilineStacktrace(true)       // Enable multiline stacktrace display
 
 // Check current settings
 isColorsEnabled := tlog.IsColorsEnabled()
 isSensitiveHidden := tlog.IsSensitiveDataHidingEnabled()
 timeFormat := tlog.GetTimeFormat()
+isMultilineStacktrace := tlog.IsMultilineStacktraceEnabled()
 ```
 
 ### Advanced Formatters
@@ -582,6 +585,31 @@ ERROR Service initialization failed
 - **Color coding**: Stack frames are colored by depth for easy visual scanning
 - **Cause chains**: Wrapped errors show their causes in the output
 - **Detail preservation**: Error details are maintained and displayed in a structured format
+
+#### Multiline Stacktrace Display
+
+By default, stacktraces are displayed as a single escaped string for compatibility with most log parsers. However, you can enable multiline display for better readability:
+
+```go
+// Enable multiline stacktrace display
+tlog.EnableMultilineStacktrace(true)
+
+// Log an error - stacktrace will be displayed as separate log attributes
+err := errors.WithStack(errors.New("example error"))
+tlog.Error("Something went wrong", "error", err)
+```
+
+**Single-line format (default):**
+```
+ERROR Something went wrong error.stacktrace="├─ /path/to/file.go:42 main.function1\n├─ /path/to/file.go:25 main.function2\n└─ /path/to/file.go:10 main.main"
+```
+
+**Multiline format (when enabled):**
+```
+ERROR Something went wrong error.stacktrace.frame_0="├─ /path/to/file.go:42 main.function1" error.stacktrace.frame_1="├─ /path/to/file.go:25 main.function2" error.stacktrace.frame_2="└─ /path/to/file.go:10 main.main"
+```
+
+The multiline format is particularly useful when using log aggregation tools that can parse structured log attributes and display them in a more readable format.
 
 ### Time Format Options
 

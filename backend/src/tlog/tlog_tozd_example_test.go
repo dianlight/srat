@@ -103,7 +103,29 @@ func TestTreeStackTrace(t *testing.T) {
 	tlog.EnableColors(true)
 }
 
-// Helper functions to create deeper stack traces for tree formatting demonstration
+// TestMultilineStackTrace demonstrates multiline stacktrace formatting
+func TestMultilineStackTrace(t *testing.T) {
+	tlog.SetLevel(tlog.LevelDebug)
+	tlog.EnableColors(true)
+
+	t.Log("Testing multiline stacktrace formatting...")
+
+	// Create error for demonstration
+	nestedErr := createDeeperNestedError()
+
+	// Test single-line format (default)
+	t.Log("Single-line stacktrace format:")
+	tlog.EnableMultilineStacktrace(false)
+	tlog.Error("Single-line format", "error", nestedErr)
+
+	// Test multiline format
+	t.Log("Multiline stacktrace format:")
+	tlog.EnableMultilineStacktrace(true)
+	tlog.Error("Multiline format", "error", nestedErr)
+
+	// Reset to default
+	tlog.EnableMultilineStacktrace(false)
+} // Helper functions to create deeper stack traces for tree formatting demonstration
 func createDeeperNestedError() errors.E {
 	return firstLevel()
 }

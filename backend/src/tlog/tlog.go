@@ -100,18 +100,20 @@ var levelColors = map[slog.Level]*color.Color{
 
 // FormatterConfig holds configuration for log formatting
 type FormatterConfig struct {
-	EnableColors      bool
-	EnableFormatting  bool
-	HideSensitiveData bool
-	TimeFormat        string
+	EnableColors        bool
+	EnableFormatting    bool
+	HideSensitiveData   bool
+	TimeFormat          string
+	MultilineStacktrace bool // Enable multiline display of stacktraces instead of escaped single line
 }
 
 // defaultFormatterConfig provides default configuration
 var defaultFormatterConfig = FormatterConfig{
-	EnableColors:      true, // Will be disabled automatically if terminal doesn't support colors
-	EnableFormatting:  true,
-	HideSensitiveData: false,
-	TimeFormat:        time.RFC3339,
+	EnableColors:        true, // Will be disabled automatically if terminal doesn't support colors
+	EnableFormatting:    true,
+	HideSensitiveData:   false,
+	TimeFormat:          time.RFC3339,
+	MultilineStacktrace: false, // Default to single line for compatibility
 }
 
 var (
@@ -605,10 +607,24 @@ func TozdErrorFormatter(key string) slogformatter.Formatter {
 					stackLines = append(stackLines, coloredFrameInfo)
 				}
 
-				// Join all lines with newlines to create the tree structure
-				stacktraceString := strings.Join(stackLines, "\n")
+				// Check if multiline stacktrace is enabled
+				formatterConfigMu.RLock()
+				multilineEnabled := formatterConfig.MultilineStacktrace
+				formatterConfigMu.RUnlock()
 
-				attrs = append(attrs, slog.String("stacktrace", stacktraceString))
+				if multilineEnabled {
+					// For multiline output, add each frame as a separate log message
+					// We'll format them as individual slog attributes with proper indentation
+					var stackFrames []any
+					for i, line := range stackLines {
+						stackFrames = append(stackFrames, slog.String(fmt.Sprintf("frame_%d", i), line))
+					}
+					attrs = append(attrs, slog.Group("stacktrace", stackFrames...))
+				} else {
+					// Join all lines with newlines to create the single-line tree structure
+					stacktraceString := strings.Join(stackLines, "\n")
+					attrs = append(attrs, slog.String("stacktrace", stacktraceString))
+				}
 			}
 		}
 
@@ -985,6 +1001,27 @@ func GetTimeFormat() string {
 	formatterConfigMu.RLock()
 	defer formatterConfigMu.RUnlock()
 	return formatterConfig.TimeFormat
+}
+
+// EnableMultilineStacktrace enables or disables multiline display of stacktraces
+// When enabled, stacktraces are displayed as separate log attributes for each frame
+// When disabled (default), stacktraces are displayed as a single escaped string
+func EnableMultilineStacktrace(enabled bool) {
+	formatterConfigMu.Lock()
+	formatterConfig.MultilineStacktrace = enabled
+	formatterConfigMu.Unlock()
+
+	// Reinitialize the logger with new configuration
+	mu.Lock()
+	defer mu.Unlock()
+	initializeLogger()
+}
+
+// IsMultilineStacktraceEnabled returns true if multiline stacktrace display is enabled
+func IsMultilineStacktraceEnabled() bool {
+	formatterConfigMu.RLock()
+	defer formatterConfigMu.RUnlock()
+	return formatterConfig.MultilineStacktrace
 }
 
 // WithLevel creates a logger with a specific minimum level

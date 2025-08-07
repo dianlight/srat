@@ -204,6 +204,7 @@ func main() {
 	formatterDemo()
 	formatterColorDemo()
 	treeDemo()
+	multilineDemo()
 	fmt.Println("Formatter demonstration complete.")
 }
 

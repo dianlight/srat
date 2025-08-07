@@ -1,6 +1,7 @@
 package tlog
 
 import (
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -116,18 +117,24 @@ func (suite *TozdErrorFormatterSuite) TestErrorWithStackTrace() {
 			suite.Equal("error with stack", attr.Value.String())
 			hasMessage = true
 		case "stacktrace":
-			suite.Equal(slog.KindString, attr.Value.Kind())
 			hasStacktrace = true
 
-			// Check that stack trace content is present and formatted
-			stackContent := attr.Value.String()
-			suite.NotEmpty(stackContent, "Stack trace should have content")
+			// Check format based on multiline setting
+			if IsMultilineStacktraceEnabled() {
+				suite.Equal(slog.KindGroup, attr.Value.Kind())
+				stackAttrs := attr.Value.Group()
+				suite.NotEmpty(stackAttrs, "Stack trace should have frames")
+			} else {
+				suite.Equal(slog.KindString, attr.Value.Kind())
+				stackContent := attr.Value.String()
+				suite.NotEmpty(stackContent, "Stack trace should have content")
 
-			// Stack trace should contain file path, line number, and function name
-			suite.Contains(stackContent, ":") // file:line separator
-			suite.True(strings.Contains(stackContent, "tlog") ||
-				strings.Contains(stackContent, "TestError"),
-				"Stack trace should contain relevant function name")
+				// Stack trace should contain file path, line number, and function name
+				suite.Contains(stackContent, ":") // file:line separator
+				suite.True(strings.Contains(stackContent, "tlog") ||
+					strings.Contains(stackContent, "TestError"),
+					"Stack trace should contain relevant function name")
+			}
 		}
 	}
 
@@ -203,9 +210,18 @@ func (suite *TozdErrorFormatterSuite) TestComplexError() {
 		case "details":
 			suite.Equal(slog.KindGroup, attr.Value.Kind())
 		case "stacktrace":
-			suite.Equal(slog.KindString, attr.Value.Kind())
-			stackContent := attr.Value.String()
-			suite.NotEmpty(stackContent)
+			// Check format based on multiline setting
+			if IsMultilineStacktraceEnabled() {
+				suite.Equal(slog.KindGroup, attr.Value.Kind())
+			} else {
+				suite.Equal(slog.KindString, attr.Value.Kind())
+			}
+			// Just verify content exists
+			if attr.Value.Kind() == slog.KindString {
+				suite.NotEmpty(attr.Value.String())
+			} else {
+				suite.NotEmpty(attr.Value.Group())
+			}
 		case "cause":
 			suite.Equal("database connection failed", attr.Value.String())
 		}
@@ -350,6 +366,78 @@ func (suite *TozdErrorFormatterSuite) helperLevel1() error {
 
 func (suite *TozdErrorFormatterSuite) helperLevel2() error {
 	return errors.WithStack(errors.New("nested error"))
+}
+
+func (suite *TozdErrorFormatterSuite) TestMultilineStacktrace() {
+	// Test multiline stacktrace mode
+	EnableMultilineStacktrace(true)
+	suite.True(IsMultilineStacktraceEnabled(), "Multiline stacktrace should be enabled")
+
+	formatter := TozdErrorFormatter("error")
+	err := suite.createNestedError()
+
+	value, changed := formatter(nil, slog.Attr{
+		Key:   "error",
+		Value: slog.AnyValue(err),
+	})
+
+	suite.True(changed)
+	attrs := value.Group()
+
+	for _, attr := range attrs {
+		if attr.Key == "stacktrace" {
+			// In multiline mode, stacktrace should be a group
+			suite.Equal(slog.KindGroup, attr.Value.Kind())
+			stackAttrs := attr.Value.Group()
+			suite.NotEmpty(stackAttrs, "Should have stack frame attributes")
+
+			// Each frame should be a separate attribute
+			for i, frameAttr := range stackAttrs {
+				suite.Equal(fmt.Sprintf("frame_%d", i), frameAttr.Key)
+				frameContent := frameAttr.Value.String()
+				suite.NotEmpty(frameContent, "Frame content should not be empty")
+
+				// Should contain tree characters and be properly formatted
+				if len(stackAttrs) > 1 {
+					if i == len(stackAttrs)-1 {
+						// Last frame should have terminator
+						suite.True(strings.Contains(frameContent, "└─") || strings.Contains(frameContent, "`-"),
+							"Last frame should contain tree terminator")
+					} else {
+						// Other frames should have branch
+						suite.True(strings.Contains(frameContent, "├─") || strings.Contains(frameContent, "|-"),
+							"Frame should contain tree branch")
+					}
+				}
+			}
+			break
+		}
+	}
+
+	// Test single-line mode (default)
+	EnableMultilineStacktrace(false)
+	suite.False(IsMultilineStacktraceEnabled(), "Multiline stacktrace should be disabled")
+
+	value2, changed2 := formatter(nil, slog.Attr{
+		Key:   "error",
+		Value: slog.AnyValue(err),
+	})
+
+	suite.True(changed2)
+	attrs2 := value2.Group()
+
+	for _, attr := range attrs2 {
+		if attr.Key == "stacktrace" {
+			// In single-line mode, stacktrace should be a string
+			suite.Equal(slog.KindString, attr.Value.Kind())
+			stackContent := attr.Value.String()
+			suite.NotEmpty(stackContent, "Stack trace content should not be empty")
+
+			// Should contain newline characters for the tree structure
+			suite.Contains(stackContent, "\n", "Should contain newlines for tree structure")
+			break
+		}
+	}
 }
 
 func (suite *TozdErrorFormatterSuite) TestNilError() {
