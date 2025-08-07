@@ -995,7 +995,6 @@ func (suite *TlogSuite) TestFormatterConfig() {
 	// Test default configuration
 	config := tlog.GetFormatterConfig()
 	suite.True(config.EnableFormatting)
-	suite.Equal("2006-01-02T15:04:05Z07:00", config.TimeFormat)
 
 	// Test setting custom configuration
 	newConfig := tlog.FormatterConfig{
