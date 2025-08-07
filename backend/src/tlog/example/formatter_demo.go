@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/dianlight/srat/tlog"
@@ -21,37 +22,6 @@ func formatterColorDemo() {
 	fmt.Printf("  - Time Format: %s\n", config.TimeFormat)
 	fmt.Printf("  - Terminal Colors Supported: %v\n", tlog.IsColorsEnabled())
 
-	// Demonstrate color printing functions
-	fmt.Println()
-	fmt.Println("2. Color-Enhanced Printing:")
-	tlog.ColorTrace("This is a TRACE message with color\n")
-	tlog.ColorDebug("This is a DEBUG message with color\n")
-	tlog.ColorInfo("This is an INFO message with color\n")
-	tlog.ColorNotice("This is a NOTICE message with color\n")
-	tlog.ColorWarn("This is a WARN message with color\n")
-	tlog.ColorError("This is an ERROR message with color\n")
-
-	fmt.Println()
-	fmt.Println("3. Messages with Level Prefixes (All Levels):")
-	tlog.PrintWithLevelAll("Sample message for all levels")
-
-	fmt.Println()
-	fmt.Println("3b. Individual Level Prefix Examples:")
-	tlog.PrintWithLevel(tlog.LevelTrace, "TRACE level with colored prefix only\n")
-	tlog.PrintWithLevel(tlog.LevelDebug, "DEBUG level with colored prefix only\n")
-	tlog.PrintWithLevel(tlog.LevelInfo, "INFO level with colored prefix only\n")
-	tlog.PrintWithLevel(tlog.LevelNotice, "NOTICE level with colored prefix only\n")
-	tlog.PrintWithLevel(tlog.LevelWarn, "WARN level with full message colored\n")
-	tlog.PrintWithLevel(tlog.LevelError, "ERROR level with full message colored\n")
-	tlog.PrintWithLevel(tlog.LevelFatal, "FATAL level with full message colored\n")
-
-	// Demonstrate formatted printing with arguments
-	fmt.Println()
-	fmt.Println("4. Formatted Color Messages:")
-	tlog.ColorPrint(tlog.LevelInfo, "User %s logged in at %s\n", "alice", time.Now().Format("15:04:05"))
-	tlog.ColorPrintln(tlog.LevelWarn, "Connection timeout after %d seconds", 30)
-	tlog.ColorPrintln(tlog.LevelError, "Failed to process %d out of %d items", 5, 100)
-
 	// Demonstrate time format configuration
 	fmt.Println()
 	fmt.Println("5. Custom Time Format:")
@@ -65,6 +35,8 @@ func formatterColorDemo() {
 	// Restore original format
 	tlog.SetTimeFormat(originalFormat)
 	tlog.Info("Log with restored time format", "timestamp", time.Now())
+
+	os.Exit(0) // Exit to prevent further logs from showing at lower levels
 
 	// Demonstrate sensitive data hiding
 	fmt.Println()

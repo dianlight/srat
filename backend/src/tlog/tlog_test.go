@@ -1046,30 +1046,6 @@ func (suite *TlogSuite) TestTimeFormatConfiguration() {
 	suite.Equal("2006-01-02T15:04:05Z07:00", tlog.GetTimeFormat())
 }
 
-// Test color printing functions
-func (suite *TlogSuite) TestColorPrinting() {
-	// Test that color printing functions don't panic
-	suite.NotPanics(func() {
-		tlog.ColorTrace("trace message")
-		tlog.ColorDebug("debug message")
-		tlog.ColorInfo("info message")
-		tlog.ColorNotice("notice message")
-		tlog.ColorWarn("warning message")
-		tlog.ColorError("error message")
-	})
-
-	// Test ColorPrint and ColorPrintln
-	suite.NotPanics(func() {
-		tlog.ColorPrint(tlog.LevelInfo, "formatted %s", "message")
-		tlog.ColorPrintln(tlog.LevelWarn, "warning with newline")
-	})
-
-	// Test PrintWithLevel
-	suite.NotPanics(func() {
-		tlog.PrintWithLevel(tlog.LevelError, "error message with level prefix")
-	})
-}
-
 // Test enhanced logger creation
 func (suite *TlogSuite) TestEnhancedLoggerCreation() {
 	// Test creating logger with level

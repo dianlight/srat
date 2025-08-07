@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/dianlight/srat/tlog"
@@ -14,6 +15,25 @@ func main() {
 	fmt.Println()
 
 	// Set initial level to INFO
+	tlog.SetLevel(tlog.LevelTrace)
+	fmt.Printf("Initial log level: %s\n", tlog.GetLevelString())
+
+	// Demonstrate basic logging
+	fmt.Println()
+	fmt.Println("0. Basic Logging Functions:")
+	tlog.Trace("This trace message won't appear (level too low)")
+	tlog.Debug("This debug message won't appear (level too low)")
+	slog.Debug("This debug message won't appear (level too low)")
+	tlog.Info("This is an info message", "component", "demo")
+	slog.Info("This is an info message", "component", "demo")
+	tlog.Notice("This is a notice message", "action", "demonstration")
+	tlog.Warn("This is a warning message", "issue", "example")
+	slog.Warn("This is a warning message", "issue", "example")
+	tlog.Error("This is an error message", "error", "demonstration error")
+	slog.Error("This is an error message", "error", "demonstration error")
+	//tlog.Fatal("This is a fatal message, will exit the program")
+
+	// Set initial level to INFO
 	tlog.SetLevel(tlog.LevelInfo)
 	fmt.Printf("Initial log level: %s\n", tlog.GetLevelString())
 
@@ -22,10 +42,14 @@ func main() {
 	fmt.Println("1. Basic Logging Functions:")
 	tlog.Trace("This trace message won't appear (level too low)")
 	tlog.Debug("This debug message won't appear (level too low)")
+	slog.Debug("This debug message won't appear (level too low)")
 	tlog.Info("This is an info message", "component", "demo")
+	slog.Info("This is an info message", "component", "demo")
 	tlog.Notice("This is a notice message", "action", "demonstration")
 	tlog.Warn("This is a warning message", "issue", "example")
+	slog.Warn("This is a warning message", "issue", "example")
 	tlog.Error("This is an error message", "error", "demonstration error")
+	slog.Error("This is an error message", "error", "demonstration error")
 
 	// Demonstrate level changing from strings
 	fmt.Println()
@@ -70,7 +94,9 @@ func main() {
 
 	tlog.TraceContext(ctx, "Processing request", "operation", "demonstration")
 	tlog.DebugContext(ctx, "Debug information", "step", 1)
+	slog.DebugContext(ctx, "Debug information", "step", 1)
 	tlog.InfoContext(ctx, "Request processed", "duration", time.Millisecond*150)
+	slog.InfoContext(ctx, "Request processed", "duration", time.Millisecond*150)
 
 	// Demonstrate level checking for expensive operations
 	fmt.Println()
@@ -97,7 +123,7 @@ func main() {
 
 	// Demonstrate callback functionality
 	fmt.Println()
-	fmt.Println("7. Event Callbacks:")
+	fmt.Println("7. Event Callbacks:") // FIXME: slog don't send callback!
 
 	// Counter for tracking callback executions
 	var errorCount, warnCount int
@@ -127,9 +153,13 @@ func main() {
 	// Trigger some logs that will execute callbacks
 	tlog.SetLevel(tlog.LevelWarn)
 	tlog.Warn("First warning message", "source", "demo")
+	slog.Warn("First warning message", "source", "demo")
 	tlog.Error("First error message", "code", 500)
+	slog.Error("First error message", "code", 500)
 	tlog.Warn("Second warning message", "source", "demo")
+	slog.Warn("Second warning message", "source", "demo")
 	tlog.Error("Second error message", "code", 404)
+	slog.Error("Second error message", "code", 404)
 
 	// Wait a moment for callbacks to execute (they're async)
 	time.Sleep(time.Millisecond * 50)
@@ -205,6 +235,8 @@ func main() {
 	formatterColorDemo()
 	treeDemo()
 	multilineDemo()
+
+	slog.Info("TLog demonstration complete", "status", "success")
 	fmt.Println("Formatter demonstration complete.")
 }
 
@@ -230,6 +262,7 @@ func formatterDemo() {
 	fmt.Println("10. Basic Tozd Error with Stack Trace:")
 	basicErr := errors.WithStack(errors.New("basic connection error"))
 	tlog.Error("Basic tozd error demonstration", "error", basicErr)
+	slog.Error("Basic tozd error demonstration", "error", basicErr)
 
 	fmt.Println()
 	fmt.Println("11. Tozd Error with Details:")
@@ -242,6 +275,7 @@ func formatterDemo() {
 		"retry_count", 3,
 	)
 	tlog.Error("Detailed tozd error", "error", detailedErr)
+	slog.Error("Detailed tozd error", "error", detailedErr)
 
 	fmt.Println()
 	fmt.Println("12. Chained Tozd Errors:")

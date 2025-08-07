@@ -87,15 +87,14 @@ var reverseLevelNames = map[slog.Level]string{
 	LevelFatal:  "FATAL",
 }
 
-// Color configuration for different log levels
-var levelColors = map[slog.Level]*color.Color{
-	LevelTrace:  color.New(color.FgHiBlack), // Bright black (gray)
-	LevelDebug:  color.New(color.FgCyan),    // Cyan
-	LevelInfo:   color.New(color.FgGreen),   // Green
-	LevelNotice: color.New(color.FgBlue),    // Blue
-	LevelWarn:   color.New(color.FgYellow),  // Yellow
-	LevelError:  color.New(color.FgRed),     // Red
-	LevelFatal:  color.New(color.FgHiRed),   // Bright red
+var levelColorNumbers = map[string]uint8{
+	"TRACE":  7,
+	"DEBUG":  6,
+	"INFO":   2,
+	"NOTICE": 4,
+	"WARN":   3,
+	"ERROR":  1,
+	"FATAL":  9,
 }
 
 // FormatterConfig holds configuration for log formatting
@@ -806,7 +805,8 @@ func createBaseHandler() slog.Handler {
 		Level:      programLevel,
 		TimeFormat: config.TimeFormat,
 		NoColor:    !isTerminal || !config.EnableColors,
-		AddSource:  true,
+
+		AddSource: true,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			// First apply the level replacement
 			a = replaceLogLevel(groups, a)
@@ -897,6 +897,7 @@ func replaceLogLevel(groups []string, a slog.Attr) slog.Attr {
 		case slog.Level:
 			if name, exists := reverseLevelNames[val]; exists {
 				a.Value = slog.StringValue(name)
+				a = tint.Attr(levelColorNumbers[name], a) // TODO: Get color from level
 			}
 		case string:
 			// If it's already a string, leave it as is
@@ -1005,7 +1006,7 @@ func Fatal(msg string, args ...any) {
 	ctx := context.Background()
 	slog.Default().Log(ctx, LevelFatal, msg, args...)
 	emitLogEvent(ctx, LevelFatal, msg, args...)
-	os.Exit(1)
+	panic("Fatal log called, exiting program") // Use panic to ensure all deferred functions run
 }
 
 // FatalContext logs a message at fatal level with context and exits the program
@@ -1014,7 +1015,7 @@ func FatalContext(ctx context.Context, msg string, args ...any) {
 	allArgs := append(args, contextArgs...)
 	slog.Default().Log(ctx, LevelFatal, msg, allArgs...)
 	emitLogEvent(ctx, LevelFatal, msg, allArgs...)
-	os.Exit(1)
+	panic("Fatal log called, exiting program") // Use panic to ensure all deferred functions run
 }
 
 // SetLevel sets the minimum log level
@@ -1331,115 +1332,12 @@ func (l *Logger) Fatal(msg string, args ...any) {
 	ctx := context.Background()
 	l.Logger.Log(ctx, LevelFatal, msg, args...)
 	emitLogEvent(ctx, LevelFatal, msg, args...)
-	os.Exit(1)
+	panic("Fatal log called, exiting program") // Use panic to ensure all deferred functions run
 }
 
 // FatalContext logs a message at fatal level with context and exits the program
 func (l *Logger) FatalContext(ctx context.Context, msg string, args ...any) {
 	l.Logger.Log(ctx, LevelFatal, msg, args...)
 	emitLogEvent(ctx, LevelFatal, msg, args...)
-	os.Exit(1)
-}
-
-// Color-enabled printing functions for enhanced output
-
-// ColorPrint prints a message with color for the specified log level
-func ColorPrint(level slog.Level, message string, args ...interface{}) {
-	if !IsColorsEnabled() {
-		fmt.Printf(message, args...)
-		return
-	}
-
-	if colorFunc, exists := levelColors[level]; exists {
-		colorFunc.Printf(message, args...)
-	} else {
-		fmt.Printf(message, args...)
-	}
-}
-
-// ColorPrintln prints a message with color and newline for the specified log level
-func ColorPrintln(level slog.Level, message string, args ...interface{}) {
-	ColorPrint(level, message+"\n", args...)
-}
-
-// ColorTrace prints a trace message with color (if enabled)
-func ColorTrace(message string, args ...interface{}) {
-	ColorPrint(LevelTrace, message, args...)
-}
-
-// ColorDebug prints a debug message with color (if enabled)
-func ColorDebug(message string, args ...interface{}) {
-	ColorPrint(LevelDebug, message, args...)
-}
-
-// ColorInfo prints an info message with color (if enabled)
-func ColorInfo(message string, args ...interface{}) {
-	ColorPrint(LevelInfo, message, args...)
-}
-
-// ColorNotice prints a notice message with color (if enabled)
-func ColorNotice(message string, args ...interface{}) {
-	ColorPrint(LevelNotice, message, args...)
-}
-
-// ColorWarn prints a warning message with color (if enabled)
-func ColorWarn(message string, args ...interface{}) {
-	ColorPrint(LevelWarn, message, args...)
-}
-
-// ColorError prints an error message with color (if enabled)
-func ColorError(message string, args ...interface{}) {
-	ColorPrint(LevelError, message, args...)
-}
-
-// ColorFatal prints a fatal message with color (if enabled)
-func ColorFatal(message string, args ...interface{}) {
-	ColorPrint(LevelFatal, message, args...)
-}
-
-// PrintWithLevel prints a message with the appropriate level prefix and selective coloring
-func PrintWithLevel(level slog.Level, message string, args ...interface{}) {
-	levelName := reverseLevelNames[level]
-	if levelName == "" {
-		levelName = level.String()
-	}
-
-	// Format the message with arguments
-	formattedMessage := fmt.Sprintf(message, args...)
-
-	if !IsColorsEnabled() {
-		fmt.Printf("[%s] %s", levelName, formattedMessage)
-		return
-	}
-
-	// For levels below WARN (TRACE, DEBUG, INFO, NOTICE), color only the prefix
-	if level < LevelWarn {
-		if colorFunc, exists := levelColors[level]; exists {
-			colorFunc.Printf("[%s]", levelName)
-			fmt.Printf(" %s", formattedMessage)
-		} else {
-			fmt.Printf("[%s] %s", levelName, formattedMessage)
-		}
-	} else {
-		// For WARN and above, color the entire message
-		ColorPrint(level, "[%s] %s", levelName, formattedMessage)
-	}
-}
-
-// PrintWithLevelAll demonstrates all log levels with their respective formatting
-func PrintWithLevelAll(message string, args ...interface{}) {
-	levels := []slog.Level{
-		LevelTrace,
-		LevelDebug,
-		LevelInfo,
-		LevelNotice,
-		LevelWarn,
-		LevelError,
-		LevelFatal,
-	}
-
-	fmt.Println("\nAll Log Levels with Prefixes:")
-	for _, level := range levels {
-		PrintWithLevel(level, message+"\n", args...)
-	}
+	panic("Fatal log called, exiting program") // Use panic to ensure all deferred functions run
 }
