@@ -168,6 +168,4 @@ tool (
 	github.com/zarldev/goenums
 )
 
-replace github.com/samber/slog-http => C:\Users\uga06422\gohack\github.com\samber\slog-http
 
-replace github.com/jpillora/overseer => C:\Users\uga06422\gohack\github.com\jpillora\overseer
