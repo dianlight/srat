@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
 	slogformatter "github.com/samber/slog-formatter"
+	"gitlab.com/tozd/go/errors"
 )
 
 // Custom log levels extending slog.Level
@@ -462,6 +464,80 @@ func UnixTimestampFormatter(key string) slogformatter.Formatter {
 	})
 }
 
+// TozdErrorFormatter formats gitlab.com/tozd/go/errors with colored stacktraces
+func TozdErrorFormatter(key string) slogformatter.Formatter {
+	return slogformatter.FormatByType(func(v errors.E) slog.Value {
+		// Create formatted error information
+		var attrs []slog.Attr
+
+		// Add error message
+		attrs = append(attrs, slog.String("message", v.Error()))
+
+		// Check if error has details
+		if details := errors.Details(v); len(details) > 0 {
+			var detailAttrs []any
+			for k, val := range details {
+				detailAttrs = append(detailAttrs, slog.Any(k, val))
+			}
+			attrs = append(attrs, slog.Group("details", detailAttrs...))
+		}
+
+		// Check if error has a stack trace
+		if stackTracer, ok := v.(interface{ StackTrace() []uintptr }); ok {
+			stackTrace := stackTracer.StackTrace()
+			if len(stackTrace) > 0 {
+				var stackFrames []any
+
+				// Use runtime.CallersFrames to get proper frame information
+				frames := runtime.CallersFrames(stackTrace)
+				frameIndex := 0
+
+				for {
+					frame, more := frames.Next()
+
+					frameInfo := fmt.Sprintf("%s:%d %s", frame.File, frame.Line, frame.Function)
+
+					// Apply color formatting if colors are enabled
+					if IsColorsEnabled() {
+						if frameIndex == 0 {
+							// Highlight the top frame (most recent) in red
+							frameInfo = color.New(color.FgRed, color.Bold).Sprint(frameInfo)
+						} else if frameIndex < 3 {
+							// Highlight the next few frames in yellow
+							frameInfo = color.New(color.FgYellow).Sprint(frameInfo)
+						} else {
+							// Use gray for deeper stack frames
+							frameInfo = color.New(color.FgHiBlack).Sprint(frameInfo)
+						}
+					}
+
+					stackFrames = append(stackFrames, slog.String(fmt.Sprintf("frame_%d", frameIndex), frameInfo))
+					frameIndex++
+
+					if !more {
+						break
+					}
+
+					// Limit stack trace depth to prevent excessive output
+					if frameIndex >= 20 {
+						stackFrames = append(stackFrames, slog.String("truncated", "... (truncated)"))
+						break
+					}
+				}
+
+				attrs = append(attrs, slog.Group("stacktrace", stackFrames...))
+			}
+		}
+
+		// Add cause if available (for error chains)
+		if cause := errors.Cause(v); cause != nil && cause != v {
+			attrs = append(attrs, slog.String("cause", cause.Error()))
+		}
+
+		return slog.GroupValue(attrs...)
+	})
+}
+
 // createBaseHandler creates the base slog handler with appropriate configuration
 func createBaseHandler() slog.Handler {
 	formatterConfigMu.RLock()
@@ -501,7 +577,10 @@ func createBaseHandler() slog.Handler {
 	if config.EnableFormatting {
 		var formatters []slogformatter.Formatter
 
-		// Add error formatter for better error display
+		// Add tozd errors formatter for enhanced error display with stacktraces
+		formatters = append(formatters, TozdErrorFormatter("error"))
+
+		// Add generic error formatter for better error display (as fallback)
 		formatters = append(formatters, slogformatter.ErrorFormatter("error"))
 
 		// Add sensitive data formatter if enabled
@@ -558,9 +637,18 @@ func initializeLogger() {
 // replaceLogLevel customizes the display names for custom log levels
 func replaceLogLevel(groups []string, a slog.Attr) slog.Attr {
 	if a.Key == slog.LevelKey {
-		level := a.Value.Any().(slog.Level)
-		if name, exists := reverseLevelNames[level]; exists {
-			a.Value = slog.StringValue(name)
+		// Type assertion with check to handle both slog.Level and string values
+		switch val := a.Value.Any().(type) {
+		case slog.Level:
+			if name, exists := reverseLevelNames[val]; exists {
+				a.Value = slog.StringValue(name)
+			}
+		case string:
+			// If it's already a string, leave it as is
+			// This can happen if it was already processed by another formatter
+		default:
+			// Try to convert if it's not a string or slog.Level
+			// This is a fallback in case the type changes in the future
 		}
 	}
 	return a
@@ -841,6 +929,9 @@ func WithLevel(level slog.Level) *slog.Logger {
 	if config.EnableFormatting {
 		var formatters []slogformatter.Formatter
 
+		formatters = append(formatters, TozdErrorFormatter("error"))
+
+		// Add generic error formatter for better error display (as fallback)
 		formatters = append(formatters, slogformatter.ErrorFormatter("error"))
 
 		if config.HideSensitiveData {

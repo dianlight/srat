@@ -8,7 +8,7 @@ import (
 	"github.com/dianlight/srat/tlog"
 )
 
-func formatterDemo() {
+func formatterColorDemo() {
 	fmt.Println("\n=== TLog Enhanced Formatter Demonstration ===")
 	fmt.Println()
 
@@ -180,8 +180,4 @@ func formatterDemo() {
 
 	fmt.Println()
 	fmt.Println("=== End of Formatter Demonstration ===")
-}
-
-func main() {
-	formatterDemo()
 }

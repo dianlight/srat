@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/tlog"
+	"gitlab.com/tozd/go/errors"
 )
 
 func main() {
@@ -201,10 +202,144 @@ func main() {
 
 	// Run the enhanced formatter demonstration
 	formatterDemo()
+	formatterColorDemo()
+	fmt.Println("Formatter demonstration complete.")
 }
 
 func performExpensiveOperation() string {
 	// Simulate expensive operation
 	time.Sleep(time.Millisecond * 100)
 	return "expensive_result"
+}
+
+// formatterDemo demonstrates the enhanced tozd error formatter capabilities
+func formatterDemo() {
+	fmt.Println()
+	fmt.Println("=== Enhanced Tozd Error Formatter Demonstration ===")
+
+	// Ensure we're at a level that shows errors
+	tlog.SetLevel(tlog.LevelDebug)
+
+	// Enable colors for better demonstration
+	tlog.EnableColors(true)
+	fmt.Printf("Colors enabled: %v\n", tlog.IsColorsEnabled())
+
+	fmt.Println()
+	fmt.Println("10. Basic Tozd Error with Stack Trace:")
+	basicErr := errors.WithStack(errors.New("basic connection error"))
+	tlog.Error("Basic tozd error demonstration", "error", basicErr)
+
+	fmt.Println()
+	fmt.Println("11. Tozd Error with Details:")
+	detailedErr := errors.WithDetails(
+		errors.New("database connection failed"),
+		"host", "localhost",
+		"port", 5432,
+		"database", "user_db",
+		"timeout", "30s",
+		"retry_count", 3,
+	)
+	tlog.Error("Detailed tozd error", "error", detailedErr)
+
+	fmt.Println()
+	fmt.Println("12. Chained Tozd Errors:")
+	baseErr := errors.WithDetails(
+		errors.New("network timeout"),
+		"endpoint", "https://api.example.com",
+		"timeout_ms", 5000,
+	)
+	serviceErr := errors.Wrap(baseErr, "user service unavailable")
+	controllerErr := errors.WithDetails(
+		errors.Wrap(serviceErr, "failed to process user request"),
+		"user_id", "12345",
+		"request_id", "req-abc-def",
+		"timestamp", time.Now().Unix(),
+	)
+	stackErr := errors.WithStack(controllerErr)
+
+	tlog.Error("Complex error chain", "error", stackErr)
+
+	fmt.Println()
+	fmt.Println("13. Nested Function Call Stack:")
+	nestedErr := createDeepError()
+	tlog.Error("Error from nested function calls", "error", nestedErr)
+
+	fmt.Println()
+	fmt.Println("14. Error with Context Values:")
+	ctx := context.WithValue(context.Background(), "request_id", "demo-req-789")
+	ctx = context.WithValue(ctx, "user_id", "demo-user-456")
+	ctx = context.WithValue(ctx, "session_id", "session-xyz")
+
+	contextErr := errors.WithDetails(
+		errors.WithStack(errors.New("permission denied")),
+		"resource", "/api/users/secret",
+		"required_role", "admin",
+		"user_role", "user",
+	)
+	tlog.ErrorContext(ctx, "Authorization error with context", "error", contextErr)
+
+	fmt.Println()
+	fmt.Println("15. Joined Errors:")
+	err1 := errors.WithStack(errors.New("first validation error"))
+	err2 := errors.WithDetails(
+		errors.New("second validation error"),
+		"field", "email",
+		"value", "invalid@",
+	)
+	err3 := errors.WithDetails(
+		errors.New("third validation error"),
+		"field", "age",
+		"value", -5,
+	)
+	joinedErr := errors.Join(err1, err2, err3)
+	tlog.Error("Multiple validation errors", "error", joinedErr)
+
+	fmt.Println()
+	fmt.Println("16. Performance Comparison:")
+	fmt.Println("Standard error:")
+	stdErr := fmt.Errorf("standard error: %s", "something went wrong")
+	tlog.Error("Standard Go error", "error", stdErr)
+
+	fmt.Println()
+	fmt.Println("Tozd error with same message:")
+	tozdErr := errors.WithStack(errors.New("something went wrong"))
+	tlog.Error("Enhanced tozd error", "error", tozdErr)
+
+	fmt.Println()
+	fmt.Println("17. Color Demonstration (if terminal supports colors):")
+	if tlog.IsColorsEnabled() {
+		fmt.Println("The stack traces above should show:")
+		fmt.Println("  - Recent frames in RED")
+		fmt.Println("  - Intermediate frames in YELLOW")
+		fmt.Println("  - Deeper frames in GRAY")
+	} else {
+		fmt.Println("Colors are not enabled (terminal may not support them)")
+	}
+
+	fmt.Println()
+	fmt.Println("=== Tozd Error Formatter Demonstration Complete ===")
+}
+
+// Helper functions to create nested error stack traces
+func createDeepError() errors.E {
+	return levelOneFunction()
+}
+
+func levelOneFunction() errors.E {
+	return levelTwoFunction()
+}
+
+func levelTwoFunction() errors.E {
+	return levelThreeFunction()
+}
+
+func levelThreeFunction() errors.E {
+	return errors.WithDetails(
+		errors.WithStack(errors.New("deep nested error occurred")),
+		"level", "three",
+		"function", "levelThreeFunction",
+		"operation", "data_processing",
+		"file_path", "/tmp/data.json",
+		"line_number", 42,
+	)
 }
