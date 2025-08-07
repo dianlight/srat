@@ -9,14 +9,16 @@ import (
 )
 
 func main() {
-	fmt.Println("=== TLog Package Demonstration ===\n")
+	fmt.Println("=== TLog Package Demonstration ===")
+	fmt.Println()
 
 	// Set initial level to INFO
 	tlog.SetLevel(tlog.LevelInfo)
 	fmt.Printf("Initial log level: %s\n", tlog.GetLevelString())
 
 	// Demonstrate basic logging
-	fmt.Println("\n1. Basic Logging Functions:")
+	fmt.Println()
+	fmt.Println("1. Basic Logging Functions:")
 	tlog.Trace("This trace message won't appear (level too low)")
 	tlog.Debug("This debug message won't appear (level too low)")
 	tlog.Info("This is an info message", "component", "demo")
@@ -25,7 +27,8 @@ func main() {
 	tlog.Error("This is an error message", "error", "demonstration error")
 
 	// Demonstrate level changing from strings
-	fmt.Println("\n2. Level Management:")
+	fmt.Println()
+	fmt.Println("2. Level Management:")
 	levels := []string{"trace", "DEBUG", "Info", "NOTICE", "warn", "ERROR"}
 
 	for _, level := range levels {
@@ -44,7 +47,8 @@ func main() {
 	}
 
 	// Demonstrate error handling
-	fmt.Println("\n3. Error Handling:")
+	fmt.Println()
+	fmt.Println("3. Error Handling:")
 	err := tlog.SetLevelFromString("invalid_level")
 	if err != nil {
 		fmt.Printf("Expected error: %v\n", err)
@@ -56,7 +60,8 @@ func main() {
 	}
 
 	// Demonstrate context logging
-	fmt.Println("\n4. Context Logging:")
+	fmt.Println()
+	fmt.Println("4. Context Logging:")
 	tlog.SetLevel(tlog.LevelTrace)
 
 	ctx := context.WithValue(context.Background(), "requestId", "demo-123")
@@ -67,7 +72,8 @@ func main() {
 	tlog.InfoContext(ctx, "Request processed", "duration", time.Millisecond*150)
 
 	// Demonstrate level checking for expensive operations
-	fmt.Println("\n5. Performance Optimization:")
+	fmt.Println()
+	fmt.Println("5. Performance Optimization:")
 	tlog.SetLevel(tlog.LevelWarn)
 
 	if tlog.IsLevelEnabled(tlog.LevelDebug) {
@@ -79,7 +85,8 @@ func main() {
 	}
 
 	// Demonstrate custom logger
-	fmt.Println("\n6. Custom Logger Instance:")
+	fmt.Println()
+	fmt.Println("6. Custom Logger Instance:")
 	customLogger := tlog.WithLevel(tlog.LevelTrace)
 	fmt.Println("Created custom logger with TRACE level (global level is still WARN)")
 
@@ -88,7 +95,8 @@ func main() {
 	_ = customLogger
 
 	// Demonstrate callback functionality
-	fmt.Println("\n7. Event Callbacks:")
+	fmt.Println()
+	fmt.Println("7. Event Callbacks:")
 
 	// Counter for tracking callback executions
 	var errorCount, warnCount int
@@ -128,7 +136,8 @@ func main() {
 	fmt.Printf("Final counts - Errors: %d, Warnings: %d\n", errorCount, warnCount)
 
 	// Demonstrate callback management
-	fmt.Println("\n8. Callback Management:")
+	fmt.Println()
+	fmt.Println("8. Callback Management:")
 
 	// Show callback counts
 	fmt.Printf("Current callback counts - Error: %d, Warn: %d\n",
@@ -157,7 +166,8 @@ func main() {
 	tlog.Warn("This warning won't trigger a callback")
 
 	// Demonstrate callback error handling
-	fmt.Println("\n9. Callback Error Handling:")
+	fmt.Println()
+	fmt.Println("9. Callback Error Handling:")
 
 	// Register a callback that will panic
 	panicCallbackID := tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
@@ -186,7 +196,8 @@ func main() {
 	// Ensure graceful shutdown of callback processor
 	defer tlog.Shutdown()
 
-	fmt.Println("\n=== Demonstration Complete ===")
+	fmt.Println()
+	fmt.Println("=== Demonstration Complete ===")
 }
 
 func performExpensiveOperation() string {

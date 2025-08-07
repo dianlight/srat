@@ -1,9 +1,10 @@
-package tlog_test
+package main
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/dianlight/srat/tlog"
 )
@@ -40,6 +41,9 @@ func ExampleLogger_callbacks() {
 
 	// This will trigger the callback
 	logger.Error("Database connection failed")
+
+	// Wait for callback to execute (callbacks are asynchronous)
+	time.Sleep(10 * time.Millisecond)
 
 	// Clean up
 	tlog.UnregisterCallback(tlog.LevelError, callbackID)

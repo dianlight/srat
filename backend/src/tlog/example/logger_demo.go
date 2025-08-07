@@ -1,17 +1,19 @@
-package tlog
+package main
 
 import (
 	"context"
 	"log/slog"
+
+	"github.com/dianlight/srat/tlog"
 )
 
-// Example demonstrates how to use the new Logger struct
+// ExampleLogger demonstrates how to use the new Logger struct
 func ExampleLogger() {
 	// Create a new logger with default configuration
-	logger := NewLogger()
+	logger := tlog.NewLogger()
 
 	// Create a logger with a specific level
-	debugLogger := NewLoggerWithLevel(LevelDebug)
+	debugLogger := tlog.NewLoggerWithLevel(tlog.LevelDebug)
 
 	// Use the logger just like slog.Logger (embedded methods)
 	logger.Info("This is an info message")
@@ -30,7 +32,7 @@ func ExampleLogger() {
 	debugLogger.Trace("This trace message will also be visible")
 
 	// Register a callback to handle error events
-	callbackID := RegisterCallback(LevelError, func(event LogEvent) {
+	callbackID := tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
 		// Handle error events (e.g., send notifications, write to database)
 		println("Error callback triggered:", event.Message)
 	})
@@ -39,7 +41,7 @@ func ExampleLogger() {
 	logger.Error("Something went wrong", "code", 500)
 
 	// Unregister the callback when done
-	UnregisterCallback(LevelError, callbackID)
+	tlog.UnregisterCallback(tlog.LevelError, callbackID)
 
 	// Since Logger embeds *slog.Logger, you can use all slog methods
 	logger.With("component", "auth").Info("User logged in", "user_id", 123)
