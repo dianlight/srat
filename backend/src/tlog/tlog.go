@@ -331,6 +331,159 @@ func RestartProcessor() {
 	go processor.processEvents()
 }
 
+// formatArgsForCallback applies formatter configuration to args for callbacks
+func formatArgsForCallback(args []any) []any {
+	formatterConfigMu.RLock()
+	config := formatterConfig
+	formatterConfigMu.RUnlock()
+
+	if !config.EnableFormatting {
+		return args
+	}
+
+	// Convert args to key-value pairs and apply formatting
+	var formattedArgs []any
+
+	for i := 0; i < len(args); i += 2 {
+		if i+1 < len(args) {
+			key := fmt.Sprintf("%v", args[i])
+			value := args[i+1]
+
+			// Apply custom formatting based on the configuration
+			formattedValue := applyCustomFormatting(key, value, config)
+			formattedArgs = append(formattedArgs, key, formattedValue)
+		} else {
+			// Odd number of args, append as-is
+			formattedArgs = append(formattedArgs, args[i])
+		}
+	}
+
+	return formattedArgs
+}
+
+// applyCustomFormatting applies specific formatting rules based on FormatterConfig
+func applyCustomFormatting(key string, value any, config FormatterConfig) any {
+	keyStr := strings.ToLower(key)
+
+	// Apply sensitive data hiding if enabled
+	if config.HideSensitiveData {
+		// Check for sensitive fields
+		sensitiveFields := []string{
+			"password", "pwd", "pass", "passwd", "token", "jwt",
+			"auth_token", "access_token", "refresh_token", "key",
+			"api_key", "secret", "client_secret", "private_key",
+		}
+
+		for _, sensitive := range sensitiveFields {
+			if strings.Contains(keyStr, sensitive) {
+				return "[REDACTED]"
+			}
+		}
+
+		// Handle IP addresses
+		if strings.Contains(keyStr, "ip") || strings.Contains(keyStr, "addr") || strings.Contains(keyStr, "address") {
+			if str, ok := value.(string); ok {
+				// Simple IP address detection and masking
+				if strings.Contains(str, ".") && len(strings.Split(str, ".")) == 4 {
+					parts := strings.Split(str, ".")
+					if len(parts) >= 2 {
+						return parts[0] + "." + parts[1] + ".xxx.xxx"
+					}
+				}
+			}
+		}
+	}
+
+	// Handle error formatting (tozd errors)
+	if err, ok := value.(errors.E); ok {
+		// Create formatted error information similar to TozdErrorFormatter
+		formattedError := map[string]any{
+			"message": err.Error(),
+		}
+
+		// Add details if available
+		if details := errors.Details(err); len(details) > 0 {
+			formattedError["details"] = details
+		}
+
+		// Add stack trace if available
+		if stackTracer, ok := err.(interface{ StackTrace() []uintptr }); ok {
+			stackTrace := stackTracer.StackTrace()
+			if len(stackTrace) > 0 {
+				frames := runtime.CallersFrames(stackTrace)
+				var frameStrings []string
+				frameIndex := 0
+
+				for {
+					frame, more := frames.Next()
+					frameInfo := fmt.Sprintf("%s:%d %s", frame.File, frame.Line, frame.Function)
+					frameStrings = append(frameStrings, frameInfo)
+					frameIndex++
+
+					if !more || frameIndex >= 20 {
+						break
+					}
+				}
+
+				if config.MultilineStacktrace {
+					formattedError["stacktrace_frames"] = frameStrings
+				} else {
+					formattedError["stacktrace"] = strings.Join(frameStrings, " -> ")
+				}
+			}
+		}
+
+		// Add cause if available
+		if cause := errors.Cause(err); cause != nil && cause != err {
+			formattedError["cause"] = cause.Error()
+		}
+
+		return formattedError
+	}
+
+	// Handle standard error formatting
+	if err, ok := value.(error); ok && err != nil {
+		return map[string]any{
+			"message": err.Error(),
+			"type":    fmt.Sprintf("%T", err),
+		}
+	}
+
+	// Handle time formatting
+	if t, ok := value.(time.Time); ok {
+		return t.Format(config.TimeFormat)
+	}
+
+	// Handle Unix timestamp formatting
+	timeFields := []string{"timestamp", "created_at", "updated_at", "time"}
+	for _, timeField := range timeFields {
+		if strings.Contains(keyStr, timeField) {
+			switch v := value.(type) {
+			case int64:
+				if v > 0 {
+					return time.Unix(v, 0).Format(config.TimeFormat)
+				}
+			case int:
+				if v > 0 {
+					return time.Unix(int64(v), 0).Format(config.TimeFormat)
+				}
+			case string:
+				if parsed, err := strconv.ParseInt(v, 10, 64); err == nil && parsed > 0 {
+					return time.Unix(parsed, 0).Format(config.TimeFormat)
+				}
+			case float64:
+				if v > 0 {
+					return time.Unix(int64(v), 0).Format(config.TimeFormat)
+				}
+			}
+			break
+		}
+	}
+
+	// Return original value if no formatting applied
+	return value
+}
+
 // emitLogEvent sends a log event to the processor if callbacks are registered
 func emitLogEvent(ctx context.Context, level slog.Level, msg string, args ...any) {
 	if processor == nil {
@@ -346,10 +499,13 @@ func emitLogEvent(ctx context.Context, level slog.Level, msg string, args ...any
 		return
 	}
 
+	// Format args according to FormatterConfig before passing to callbacks
+	formattedArgs := formatArgsForCallback(args)
+
 	event := LogEvent{
 		Level:     level,
 		Message:   msg,
-		Args:      args,
+		Args:      formattedArgs,
 		Timestamp: time.Now(),
 		Context:   ctx,
 	}

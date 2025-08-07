@@ -2,6 +2,7 @@ package tlog_test
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -609,6 +610,243 @@ func (suite *TlogSuite) TestAllLogLevelsWithCallbacks() {
 		suite.Equal(level, event.Level)
 		suite.Equal(expectedMsg, event.Message)
 	}
+}
+
+func (suite *TlogSuite) TestCallbackArgsFormatting() {
+	// Test that args are formatted according to FormatterConfig before passing to callbacks
+	var receivedEvents []tlog.LogEvent
+	var mu sync.Mutex
+
+	callback := func(event tlog.LogEvent) {
+		mu.Lock()
+		defer mu.Unlock()
+		receivedEvents = append(receivedEvents, event)
+	}
+
+	// Register callback for info level
+	tlog.RegisterCallback(tlog.LevelInfo, callback)
+
+	// Test 1: Sensitive data hiding when enabled
+	suite.Run("SensitiveDataHiding", func() {
+		// Enable sensitive data hiding
+		config := tlog.GetFormatterConfig()
+		config.HideSensitiveData = true
+		tlog.SetFormatterConfig(config)
+
+		// Clear previous events
+		mu.Lock()
+		receivedEvents = nil
+		mu.Unlock()
+
+		// Log with sensitive data
+		tlog.Info("test message", "password", "secret123", "token", "abc123", "normal_field", "visible")
+
+		// Wait for callback
+		suite.Eventually(func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			return len(receivedEvents) > 0
+		}, time.Second*2, time.Millisecond*50)
+
+		// Verify sensitive data is redacted in callback args
+		mu.Lock()
+		defer mu.Unlock()
+		suite.Require().Len(receivedEvents, 1)
+
+		event := receivedEvents[0]
+		argsMap := make(map[string]any)
+		for i := 0; i < len(event.Args); i += 2 {
+			if i+1 < len(event.Args) {
+				key := fmt.Sprintf("%v", event.Args[i])
+				argsMap[key] = event.Args[i+1]
+			}
+		}
+
+		suite.Equal("[REDACTED]", argsMap["password"])
+		suite.Equal("[REDACTED]", argsMap["token"])
+		suite.Equal("visible", argsMap["normal_field"])
+	})
+
+	// Test 2: Error formatting
+	suite.Run("ErrorFormatting", func() {
+		// Enable formatting
+		config := tlog.GetFormatterConfig()
+		config.EnableFormatting = true
+		config.HideSensitiveData = false
+		tlog.SetFormatterConfig(config)
+
+		// Clear previous events
+		mu.Lock()
+		receivedEvents = nil
+		mu.Unlock()
+
+		// Log with standard error
+		testErr := fmt.Errorf("test error message")
+		tlog.Info("error occurred", "error", testErr, "context", "test")
+
+		// Wait for callback
+		suite.Eventually(func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			return len(receivedEvents) > 0
+		}, time.Second*2, time.Millisecond*50)
+
+		// Verify error is formatted in callback args
+		mu.Lock()
+		defer mu.Unlock()
+		suite.Require().Len(receivedEvents, 1)
+
+		event := receivedEvents[0]
+		argsMap := make(map[string]any)
+		for i := 0; i < len(event.Args); i += 2 {
+			if i+1 < len(event.Args) {
+				key := fmt.Sprintf("%v", event.Args[i])
+				argsMap[key] = event.Args[i+1]
+			}
+		}
+
+		// Error should be formatted as a map
+		errorValue := argsMap["error"]
+		suite.IsType(map[string]any{}, errorValue)
+
+		errorMap := errorValue.(map[string]any)
+		suite.Equal("test error message", errorMap["message"])
+		suite.Contains(errorMap["type"], "errorString") // fmt.Errorf creates *errors.errorString
+		suite.Equal("test", argsMap["context"])
+	})
+
+	// Test 3: Time formatting
+	suite.Run("TimeFormatting", func() {
+		// Set custom time format
+		config := tlog.GetFormatterConfig()
+		config.EnableFormatting = true
+		config.TimeFormat = "2006-01-02 15:04:05"
+		tlog.SetFormatterConfig(config)
+
+		// Clear previous events
+		mu.Lock()
+		receivedEvents = nil
+		mu.Unlock()
+
+		// Log with time values
+		testTime := time.Date(2024, 12, 25, 15, 30, 45, 0, time.UTC)
+		timestamp := int64(1735142445) // Unix timestamp for December 25, 2024, 17:00:45 UTC
+		tlog.Info("time test", "time", testTime, "timestamp", timestamp, "created_at", timestamp)
+
+		// Wait for callback
+		suite.Eventually(func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			return len(receivedEvents) > 0
+		}, time.Second*2, time.Millisecond*50)
+
+		// Verify time formatting in callback args
+		mu.Lock()
+		defer mu.Unlock()
+		suite.Require().Len(receivedEvents, 1)
+
+		event := receivedEvents[0]
+		argsMap := make(map[string]any)
+		for i := 0; i < len(event.Args); i += 2 {
+			if i+1 < len(event.Args) {
+				key := fmt.Sprintf("%v", event.Args[i])
+				argsMap[key] = event.Args[i+1]
+			}
+		}
+
+		// Direct time.Time should be formatted
+		suite.Equal("2024-12-25 15:30:45", argsMap["time"])
+
+		// Unix timestamps should be formatted for time-related fields
+		expectedTimestamp := time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
+		suite.Equal(expectedTimestamp, argsMap["timestamp"])  // Formatted from Unix timestamp
+		suite.Equal(expectedTimestamp, argsMap["created_at"]) // Formatted from Unix timestamp
+	})
+
+	// Test 4: No formatting when disabled
+	suite.Run("NoFormattingWhenDisabled", func() {
+		// Disable formatting
+		config := tlog.GetFormatterConfig()
+		config.EnableFormatting = false
+		tlog.SetFormatterConfig(config)
+
+		// Clear previous events
+		mu.Lock()
+		receivedEvents = nil
+		mu.Unlock()
+
+		// Log with data that would normally be formatted
+		testErr := fmt.Errorf("test error")
+		tlog.Info("no formatting test", "error", testErr, "password", "secret123")
+
+		// Wait for callback
+		suite.Eventually(func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			return len(receivedEvents) > 0
+		}, time.Second*2, time.Millisecond*50)
+
+		// Verify args are not formatted
+		mu.Lock()
+		defer mu.Unlock()
+		suite.Require().Len(receivedEvents, 1)
+
+		event := receivedEvents[0]
+		argsMap := make(map[string]any)
+		for i := 0; i < len(event.Args); i += 2 {
+			if i+1 < len(event.Args) {
+				key := fmt.Sprintf("%v", event.Args[i])
+				argsMap[key] = event.Args[i+1]
+			}
+		}
+
+		// Args should remain unformatted
+		suite.Equal(testErr, argsMap["error"])        // Original error object
+		suite.Equal("secret123", argsMap["password"]) // Not redacted
+	})
+
+	// Test 5: IP address masking
+	suite.Run("IPAddressMasking", func() {
+		// Enable sensitive data hiding
+		config := tlog.GetFormatterConfig()
+		config.HideSensitiveData = true
+		config.EnableFormatting = true
+		tlog.SetFormatterConfig(config)
+
+		// Clear previous events
+		mu.Lock()
+		receivedEvents = nil
+		mu.Unlock()
+
+		// Log with IP addresses
+		tlog.Info("network info", "client_ip", "192.168.1.100", "server_address", "10.0.0.1", "port", 8080)
+
+		// Wait for callback
+		suite.Eventually(func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			return len(receivedEvents) > 0
+		}, time.Second*2, time.Millisecond*50)
+
+		// Verify IP addresses are masked
+		mu.Lock()
+		defer mu.Unlock()
+		suite.Require().Len(receivedEvents, 1)
+
+		event := receivedEvents[0]
+		argsMap := make(map[string]any)
+		for i := 0; i < len(event.Args); i += 2 {
+			if i+1 < len(event.Args) {
+				key := fmt.Sprintf("%v", event.Args[i])
+				argsMap[key] = event.Args[i+1]
+			}
+		}
+
+		// IP addresses should be masked
+		suite.Equal("192.168.xxx.xxx", argsMap["client_ip"])
+		suite.Equal("10.0.xxx.xxx", argsMap["server_address"])
+		suite.Equal(8080, argsMap["port"]) // Non-IP field should remain unchanged
+	})
 }
 
 func (suite *TlogSuite) TestGetCallbackCount() {
