@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -363,6 +365,103 @@ func isTerminalSupported() bool {
 	return isatty.IsTerminal(os.Stderr.Fd())
 }
 
+// extractContextValues extracts key-value pairs from context
+func extractContextValues(ctx context.Context) []slog.Attr {
+	var attrs []slog.Attr
+
+	// Use reflection to inspect context values
+	// This is a basic implementation - could be extended
+	if ctx != nil {
+		// Try common context keys
+		commonKeys := []string{"request_id", "user_id", "session_id", "trace_id", "span_id"}
+		for _, key := range commonKeys {
+			if val := ctx.Value(key); val != nil {
+				attrs = append(attrs, slog.Any(key, val))
+			}
+		}
+	}
+
+	return attrs
+}
+
+// extractContextToArgs extracts context values and converts them to args format
+func extractContextToArgs(ctx context.Context) []any {
+	if ctx == nil {
+		return nil
+	}
+
+	var args []any
+
+	// Try common context keys
+	commonKeys := []string{"request_id", "user_id", "session_id", "trace_id", "span_id"}
+	for _, key := range commonKeys {
+		if val := ctx.Value(key); val != nil {
+			args = append(args, key, val)
+		}
+	}
+
+	return args
+}
+
+// HTTPRequestFormatter formats HTTP request information
+func HTTPRequestFormatter(key string) slogformatter.Formatter {
+	return slogformatter.FormatByType(func(v *http.Request) slog.Value {
+		if v == nil {
+			return slog.StringValue("<nil>")
+		}
+		return slog.GroupValue(
+			slog.String("method", v.Method),
+			slog.String("url", v.URL.String()),
+			slog.String("proto", v.Proto),
+			slog.Int64("content_length", v.ContentLength),
+		)
+	})
+}
+
+// HTTPResponseFormatter formats HTTP response information
+func HTTPResponseFormatter(key string) slogformatter.Formatter {
+	return slogformatter.FormatByType(func(v *http.Response) slog.Value {
+		if v == nil {
+			return slog.StringValue("<nil>")
+		}
+		return slog.GroupValue(
+			slog.String("status", v.Status),
+			slog.Int("status_code", v.StatusCode),
+			slog.String("proto", v.Proto),
+			slog.Int64("content_length", v.ContentLength),
+		)
+	})
+}
+
+// UnixTimestampFormatter formats Unix timestamps
+func UnixTimestampFormatter(key string) slogformatter.Formatter {
+	return slogformatter.FormatByKey(key, func(v slog.Value) slog.Value {
+		var timestamp int64
+		var ok bool
+
+		switch val := v.Any().(type) {
+		case int64:
+			timestamp, ok = val, true
+		case int:
+			timestamp, ok = int64(val), true
+		case string:
+			if parsed, err := strconv.ParseInt(val, 10, 64); err == nil {
+				timestamp, ok = parsed, true
+			}
+		case float64:
+			timestamp, ok = int64(val), true
+		}
+
+		if ok && timestamp > 0 {
+			// Convert Unix timestamp to readable time
+			t := time.Unix(timestamp, 0)
+			return slog.StringValue(t.Format(time.RFC3339))
+		}
+
+		return v
+	})
+}
+
 // createBaseHandler creates the base slog handler with appropriate configuration
 func createBaseHandler() slog.Handler {
 	formatterConfigMu.RLock()
@@ -371,13 +470,31 @@ func createBaseHandler() slog.Handler {
 
 	isTerminal := isTerminalSupported()
 
-	// Create base tint handler
+	// Create base tint handler with context extraction
 	handler := tint.NewHandler(os.Stderr, &tint.Options{
-		Level:       programLevel,
-		TimeFormat:  config.TimeFormat,
-		NoColor:     !isTerminal || !config.EnableColors,
-		AddSource:   true,
-		ReplaceAttr: replaceLogLevel,
+		Level:      programLevel,
+		TimeFormat: config.TimeFormat,
+		NoColor:    !isTerminal || !config.EnableColors,
+		AddSource:  true,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// First apply the level replacement
+			a = replaceLogLevel(groups, a)
+
+			// Extract context values and add them as log attributes
+			if a.Key == "context" {
+				if ctx, ok := a.Value.Any().(context.Context); ok {
+					ctxAttrs := extractContextValues(ctx)
+					if len(ctxAttrs) > 0 {
+						args := make([]any, len(ctxAttrs))
+						for i, attr := range ctxAttrs {
+							args[i] = attr
+						}
+						return slog.Group("ctx", args...)
+					}
+				}
+			}
+			return a
+		},
 	})
 
 	// If formatting is enabled, wrap with slog-formatter
@@ -390,13 +507,33 @@ func createBaseHandler() slog.Handler {
 		// Add sensitive data formatter if enabled
 		if config.HideSensitiveData {
 			formatters = append(formatters,
+				// Password and credential fields
 				slogformatter.PIIFormatter("password"),
+				slogformatter.PIIFormatter("pwd"),
+				slogformatter.PIIFormatter("pass"),
+				slogformatter.PIIFormatter("passwd"),
 				slogformatter.PIIFormatter("token"),
+				slogformatter.PIIFormatter("jwt"),
+				slogformatter.PIIFormatter("auth_token"),
+				slogformatter.PIIFormatter("access_token"),
+				slogformatter.PIIFormatter("refresh_token"),
 				slogformatter.PIIFormatter("key"),
+				slogformatter.PIIFormatter("api_key"),
 				slogformatter.PIIFormatter("secret"),
+				slogformatter.PIIFormatter("client_secret"),
+				slogformatter.PIIFormatter("private_key"),
+				// Network addresses
 				slogformatter.IPAddressFormatter("ip"),
 				slogformatter.IPAddressFormatter("addr"),
 				slogformatter.IPAddressFormatter("address"),
+				slogformatter.IPAddressFormatter("remote_addr"),
+				slogformatter.IPAddressFormatter("client_ip"),
+				// Custom additional formatters
+				HTTPRequestFormatter("request"),
+				HTTPResponseFormatter("response"),
+				UnixTimestampFormatter("timestamp"),
+				UnixTimestampFormatter("created_at"),
+				UnixTimestampFormatter("updated_at"),
 			)
 		}
 
@@ -438,8 +575,10 @@ func Trace(msg string, args ...any) {
 
 // TraceContext logs a message at trace level with context
 func TraceContext(ctx context.Context, msg string, args ...any) {
-	slog.Default().Log(ctx, LevelTrace, msg, args...)
-	emitLogEvent(ctx, LevelTrace, msg, args...)
+	contextArgs := extractContextToArgs(ctx)
+	allArgs := append(args, contextArgs...)
+	slog.Default().Log(ctx, LevelTrace, msg, allArgs...)
+	emitLogEvent(ctx, LevelTrace, msg, allArgs...)
 }
 
 // Debug logs a message at debug level
@@ -451,8 +590,10 @@ func Debug(msg string, args ...any) {
 
 // DebugContext logs a message at debug level with context
 func DebugContext(ctx context.Context, msg string, args ...any) {
-	slog.Default().Log(ctx, slog.LevelDebug, msg, args...)
-	emitLogEvent(ctx, slog.LevelDebug, msg, args...)
+	contextArgs := extractContextToArgs(ctx)
+	allArgs := append(args, contextArgs...)
+	slog.Default().Log(ctx, slog.LevelDebug, msg, allArgs...)
+	emitLogEvent(ctx, slog.LevelDebug, msg, allArgs...)
 }
 
 // Info logs a message at info level
@@ -464,8 +605,11 @@ func Info(msg string, args ...any) {
 
 // InfoContext logs a message at info level with context
 func InfoContext(ctx context.Context, msg string, args ...any) {
-	slog.Default().Log(ctx, slog.LevelInfo, msg, args...)
-	emitLogEvent(ctx, slog.LevelInfo, msg, args...)
+	// Extract context values and add them to args
+	contextArgs := extractContextToArgs(ctx)
+	allArgs := append(args, contextArgs...)
+	slog.Default().Log(ctx, slog.LevelInfo, msg, allArgs...)
+	emitLogEvent(ctx, slog.LevelInfo, msg, allArgs...)
 }
 
 // Notice logs a message at notice level
@@ -477,8 +621,10 @@ func Notice(msg string, args ...any) {
 
 // NoticeContext logs a message at notice level with context
 func NoticeContext(ctx context.Context, msg string, args ...any) {
-	slog.Default().Log(ctx, LevelNotice, msg, args...)
-	emitLogEvent(ctx, LevelNotice, msg, args...)
+	contextArgs := extractContextToArgs(ctx)
+	allArgs := append(args, contextArgs...)
+	slog.Default().Log(ctx, LevelNotice, msg, allArgs...)
+	emitLogEvent(ctx, LevelNotice, msg, allArgs...)
 }
 
 // Warn logs a message at warning level
@@ -490,8 +636,10 @@ func Warn(msg string, args ...any) {
 
 // WarnContext logs a message at warning level with context
 func WarnContext(ctx context.Context, msg string, args ...any) {
-	slog.Default().Log(ctx, slog.LevelWarn, msg, args...)
-	emitLogEvent(ctx, slog.LevelWarn, msg, args...)
+	contextArgs := extractContextToArgs(ctx)
+	allArgs := append(args, contextArgs...)
+	slog.Default().Log(ctx, slog.LevelWarn, msg, allArgs...)
+	emitLogEvent(ctx, slog.LevelWarn, msg, allArgs...)
 }
 
 // Error logs a message at error level
@@ -503,8 +651,10 @@ func Error(msg string, args ...any) {
 
 // ErrorContext logs a message at error level with context
 func ErrorContext(ctx context.Context, msg string, args ...any) {
-	slog.Default().Log(ctx, slog.LevelError, msg, args...)
-	emitLogEvent(ctx, slog.LevelError, msg, args...)
+	contextArgs := extractContextToArgs(ctx)
+	allArgs := append(args, contextArgs...)
+	slog.Default().Log(ctx, slog.LevelError, msg, allArgs...)
+	emitLogEvent(ctx, slog.LevelError, msg, allArgs...)
 }
 
 // Fatal logs a message at fatal level and exits the program
@@ -517,8 +667,10 @@ func Fatal(msg string, args ...any) {
 
 // FatalContext logs a message at fatal level with context and exits the program
 func FatalContext(ctx context.Context, msg string, args ...any) {
-	slog.Default().Log(ctx, LevelFatal, msg, args...)
-	emitLogEvent(ctx, LevelFatal, msg, args...)
+	contextArgs := extractContextToArgs(ctx)
+	allArgs := append(args, contextArgs...)
+	slog.Default().Log(ctx, LevelFatal, msg, allArgs...)
+	emitLogEvent(ctx, LevelFatal, msg, allArgs...)
 	os.Exit(1)
 }
 
@@ -878,13 +1030,49 @@ func ColorFatal(message string, args ...interface{}) {
 	ColorPrint(LevelFatal, message, args...)
 }
 
-// PrintWithLevel prints a message with the appropriate level prefix and color
+// PrintWithLevel prints a message with the appropriate level prefix and selective coloring
 func PrintWithLevel(level slog.Level, message string, args ...interface{}) {
 	levelName := reverseLevelNames[level]
 	if levelName == "" {
 		levelName = level.String()
 	}
 
-	fullMessage := fmt.Sprintf("[%s] %s", levelName, message)
-	ColorPrint(level, fullMessage, args...)
+	// Format the message with arguments
+	formattedMessage := fmt.Sprintf(message, args...)
+
+	if !IsColorsEnabled() {
+		fmt.Printf("[%s] %s", levelName, formattedMessage)
+		return
+	}
+
+	// For levels below WARN (TRACE, DEBUG, INFO, NOTICE), color only the prefix
+	if level < LevelWarn {
+		if colorFunc, exists := levelColors[level]; exists {
+			colorFunc.Printf("[%s]", levelName)
+			fmt.Printf(" %s", formattedMessage)
+		} else {
+			fmt.Printf("[%s] %s", levelName, formattedMessage)
+		}
+	} else {
+		// For WARN and above, color the entire message
+		ColorPrint(level, "[%s] %s", levelName, formattedMessage)
+	}
+}
+
+// PrintWithLevelAll demonstrates all log levels with their respective formatting
+func PrintWithLevelAll(message string, args ...interface{}) {
+	levels := []slog.Level{
+		LevelTrace,
+		LevelDebug,
+		LevelInfo,
+		LevelNotice,
+		LevelWarn,
+		LevelError,
+		LevelFatal,
+	}
+
+	fmt.Println("\nAll Log Levels with Prefixes:")
+	for _, level := range levels {
+		PrintWithLevel(level, message+"\n", args...)
+	}
 }

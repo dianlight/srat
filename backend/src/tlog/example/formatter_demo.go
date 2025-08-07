@@ -32,10 +32,18 @@ func formatterDemo() {
 	tlog.ColorError("This is an ERROR message with color\n")
 
 	fmt.Println()
-	fmt.Println("3. Messages with Level Prefixes:")
-	tlog.PrintWithLevel(tlog.LevelInfo, "Information with level prefix\n")
-	tlog.PrintWithLevel(tlog.LevelWarn, "Warning with level prefix\n")
-	tlog.PrintWithLevel(tlog.LevelError, "Error with level prefix\n")
+	fmt.Println("3. Messages with Level Prefixes (All Levels):")
+	tlog.PrintWithLevelAll("Sample message for all levels")
+
+	fmt.Println()
+	fmt.Println("3b. Individual Level Prefix Examples:")
+	tlog.PrintWithLevel(tlog.LevelTrace, "TRACE level with colored prefix only\n")
+	tlog.PrintWithLevel(tlog.LevelDebug, "DEBUG level with colored prefix only\n")
+	tlog.PrintWithLevel(tlog.LevelInfo, "INFO level with colored prefix only\n")
+	tlog.PrintWithLevel(tlog.LevelNotice, "NOTICE level with colored prefix only\n")
+	tlog.PrintWithLevel(tlog.LevelWarn, "WARN level with full message colored\n")
+	tlog.PrintWithLevel(tlog.LevelError, "ERROR level with full message colored\n")
+	tlog.PrintWithLevel(tlog.LevelFatal, "FATAL level with full message colored\n")
 
 	// Demonstrate formatted printing with arguments
 	fmt.Println()
@@ -104,6 +112,8 @@ func formatterDemo() {
 	fmt.Println()
 	fmt.Println("8. Context-Aware Logging with Formatting:")
 	ctx := context.WithValue(context.Background(), "request_id", "req-12345")
+	ctx = context.WithValue(ctx, "user_id", "user-456")
+	ctx = context.WithValue(ctx, "trace_id", "trace-abc-xyz")
 
 	tlog.InfoContext(ctx, "Processing request",
 		"method", "GET",
@@ -114,6 +124,30 @@ func formatterDemo() {
 		"error", "database connection timeout",
 		"duration", "30s",
 		"retry_count", 3)
+
+	// Demonstrate additional formatters
+	fmt.Println()
+	fmt.Println("8b. Additional Formatters (Unix Timestamps, HTTP data):")
+
+	// Enable sensitive data hiding for this demo
+	tlog.EnableSensitiveDataHiding(true)
+
+	currentTimestamp := time.Now().Unix()
+	tlog.Info("Unix timestamp formatting",
+		"timestamp", currentTimestamp,
+		"created_at", int64(1609459200), // Jan 1, 2021
+		"updated_at", "1640995200") // Jan 1, 2022 as string
+
+	// Simulate HTTP request/response data
+	tlog.Info("HTTP request processed",
+		"client_ip", "192.168.1.50",
+		"remote_addr", "10.0.0.100",
+		"auth_token", "Bearer jwt-abc-123-xyz",
+		"api_key", "sk-test-key-12345",
+		"private_key", "-----BEGIN RSA PRIVATE KEY-----")
+
+	// Restore original sensitive data setting
+	tlog.EnableSensitiveDataHiding(false)
 
 	// Demonstrate custom formatter configuration
 	fmt.Println()
@@ -146,4 +180,8 @@ func formatterDemo() {
 
 	fmt.Println()
 	fmt.Println("=== End of Formatter Demonstration ===")
+}
+
+func main() {
+	formatterDemo()
 }

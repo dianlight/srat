@@ -408,6 +408,26 @@ isSensitiveHidden := tlog.IsSensitiveDataHidingEnabled()
 timeFormat := tlog.GetTimeFormat()
 ```
 
+### Advanced Formatters
+
+The package includes specialized formatters for common data types:
+
+#### Built-in Formatters
+
+- **HTTPRequestFormatter**: Formats HTTP request objects with method, URL, protocol, and content length
+- **HTTPResponseFormatter**: Formats HTTP response objects with status, status code, protocol, and content length  
+- **UnixTimestampFormatter**: Converts Unix timestamps to readable RFC3339 format
+- **Enhanced PIIFormatter**: Masks sensitive fields including passwords, tokens, API keys, and IP addresses
+
+```go
+// These are automatically applied when EnableFormatting is true
+tlog.Info("HTTP request processed", 
+    "timestamp", 1673587200,           // Converted to: 2023-01-13T06:00:00Z
+    "client_ip", "192.168.1.100",      // Masked as: *******
+    "auth_token", "Bearer jwt-abc",     // Masked as: Bear*******
+    "private_key", "-----BEGIN RSA")   // Masked as: ----*******
+```
+
 ### Color-Enhanced Printing
 
 The package provides color-enhanced printing functions that work alongside terminal detection:
@@ -426,19 +446,47 @@ tlog.ColorFatal("Fatal message with color")
 tlog.ColorPrint(tlog.LevelInfo, "User %s logged in at %s", username, time.Now())
 tlog.ColorPrintln(tlog.LevelWarn, "Connection timeout after %d seconds", 30)
 
-// Print with level prefix
-tlog.PrintWithLevel(tlog.LevelError, "Database connection failed")
-// Output: [ERROR] Database connection failed
+// Print with level prefix - colors only the prefix for levels < WARN
+tlog.PrintWithLevel(tlog.LevelInfo, "Information message")   // [INFO] in color, message in normal
+tlog.PrintWithLevel(tlog.LevelWarn, "Warning message")       // Full message in warning color
+
+// Demonstrate all log levels with appropriate coloring
+tlog.PrintWithLevelAll("Sample message for all levels")
 ```
+
+### Enhanced Context Support
+
+Context values are automatically extracted and included in log output:
+
+```go
+// Create context with tracking information
+ctx := context.WithValue(context.Background(), "request_id", "req-12345")
+ctx = context.WithValue(ctx, "user_id", "user-456")
+ctx = context.WithValue(ctx, "trace_id", "trace-abc-xyz")
+
+// Context values are automatically included in the log output
+tlog.InfoContext(ctx, "Processing request", "method", "GET", "path", "/api/users")
+// Output: ... Processing request method=GET path=/api/users request_id=req-12345 user_id=user-456 trace_id=trace-abc-xyz
+
+tlog.ErrorContext(ctx, "Request failed", "error", "timeout", "duration", "30s")
+// Output: ... Request failed error=timeout duration=30s request_id=req-12345 user_id=user-456 trace_id=trace-abc-xyz
+```
+
+Supported context keys that are automatically extracted:
+- `request_id`
+- `user_id`
+- `session_id`
+- `trace_id`
+- `span_id`
 
 ### Sensitive Data Protection
 
 When `HideSensitiveData` is enabled, the following fields are automatically masked:
 
-- **Password fields**: `password`, `pwd`, `pass`
-- **Token fields**: `token`, `jwt`, `auth_token`, `access_token`
-- **API keys**: `key`, `api_key`, `secret`, `client_secret`
-- **IP addresses**: `ip`, `addr`, `address`, `remote_addr`
+- **Password fields**: `password`, `pwd`, `pass`, `passwd`
+- **Token fields**: `token`, `jwt`, `auth_token`, `access_token`, `refresh_token`
+- **API keys**: `key`, `api_key`, `secret`, `client_secret`, `private_key`
+- **IP addresses**: `ip`, `addr`, `address`, `remote_addr`, `client_ip`
 
 ```go
 // Enable sensitive data hiding
@@ -447,9 +495,11 @@ tlog.EnableSensitiveDataHiding(true)
 // This will mask the sensitive fields
 tlog.Info("User login attempt", 
     "username", "alice",
-    "password", "secret123",      // Masked as "secr*******"
-    "token", "jwt-xyz-123",       // Masked as "jwt-*******"
-    "ip", "192.168.1.100")        // Masked as "*******"
+    "password", "secret123",          // Masked as "secr*******"
+    "auth_token", "Bearer jwt-xyz",   // Masked as "Bear*******"
+    "api_key", "sk-test-key-123",     // Masked as "sk-t*******"
+    "client_ip", "192.168.1.100",     // Masked as "*******"
+    "private_key", "-----BEGIN RSA")  // Masked as "----*******"
 ```
 
 ### Enhanced Error Formatting
