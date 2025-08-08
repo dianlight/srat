@@ -16,256 +16,66 @@ func main() {
 
 	// Set initial level to INFO
 	tlog.SetLevel(tlog.LevelTrace)
-	fmt.Printf("Initial log level: %s\n", tlog.GetLevelString())
 
-	// Demonstrate basic logging
+	// Demonstrate all logging functions
 	fmt.Println()
-	fmt.Println("0. Basic Logging Functions:")
-	tlog.Trace("This trace message won't appear (level too low)")
-	tlog.Debug("This debug message won't appear (level too low)")
-	slog.Debug("This debug message won't appear (level too low)")
-	tlog.Info("This is an info message", "component", "demo")
-	slog.Info("This is an info message", "component", "demo")
-	tlog.Notice("This is a notice message", "action", "demonstration")
-	tlog.Warn("This is a warning message", "issue", "example")
-	slog.Warn("This is a warning message", "issue", "example")
-	tlog.Error("This is an error message", "error", "demonstration error")
-	slog.Error("This is an error message", "error", "demonstration error")
-	//tlog.Fatal("This is a fatal message, will exit the program")
-
-	// Set initial level to INFO
-	tlog.SetLevel(tlog.LevelInfo)
-	fmt.Printf("Initial log level: %s\n", tlog.GetLevelString())
-
-	// Demonstrate basic logging
-	fmt.Println()
-	fmt.Println("1. Basic Logging Functions:")
-	tlog.Trace("This trace message won't appear (level too low)")
-	tlog.Debug("This debug message won't appear (level too low)")
-	slog.Debug("This debug message won't appear (level too low)")
-	tlog.Info("This is an info message", "component", "demo")
-	slog.Info("This is an info message", "component", "demo")
-	tlog.Notice("This is a notice message", "action", "demonstration")
-	tlog.Warn("This is a warning message", "issue", "example")
-	slog.Warn("This is a warning message", "issue", "example")
-	tlog.Error("This is an error message", "error", "demonstration error")
-	slog.Error("This is an error message", "error", "demonstration error")
-
-	// Demonstrate level changing from strings
-	fmt.Println()
-	fmt.Println("2. Level Management:")
-	levels := []string{"trace", "DEBUG", "Info", "NOTICE", "warn", "ERROR"}
-
-	for _, level := range levels {
-		err := tlog.SetLevelFromString(level)
-		if err != nil {
-			fmt.Printf("Error setting level '%s': %v\n", level, err)
-			continue
-		}
-		fmt.Printf("Set level to: %s (current: %s)\n", level, tlog.GetLevelString())
-
-		// Show what's enabled at this level
-		fmt.Printf("  - Trace enabled: %v\n", tlog.IsLevelEnabled(tlog.LevelTrace))
-		fmt.Printf("  - Debug enabled: %v\n", tlog.IsLevelEnabled(tlog.LevelDebug))
-		fmt.Printf("  - Info enabled: %v\n", tlog.IsLevelEnabled(tlog.LevelInfo))
-		fmt.Printf("  - Error enabled: %v\n", tlog.IsLevelEnabled(tlog.LevelError))
-	}
-
-	// Demonstrate error handling
-	fmt.Println()
-	fmt.Println("3. Error Handling:")
-	err := tlog.SetLevelFromString("invalid_level")
-	if err != nil {
-		fmt.Printf("Expected error: %v\n", err)
-	}
-
-	err = tlog.SetLevelFromString("")
-	if err != nil {
-		fmt.Printf("Expected error: %v\n", err)
-	}
+	fmt.Println("1. All logging functions:")
+	tlog.Trace("[TLOG] This trace message")
+	tlog.Debug("[TLOG] This debug message")
+	slog.Debug("[SLOG] This debug message")
+	tlog.Info("[TLOG] This is an info message", "component", "demo")
+	slog.Info("[SLOG] This is an info message", "component", "demo")
+	tlog.Notice("[TLOG] This is a notice message", "action", "demonstration")
+	tlog.Warn("[TLOG] This is a warning message", "issue", "example")
+	slog.Warn("[SLOG] This is a warning message", "issue", "example")
+	tlog.Error("[TLOG] This is an error message", "error", "demonstration error")
+	slog.Error("[SLOG] This is an error message", "error", "demonstration error")
+	// Demonstrate fatal without stopping the demo: wrap in recover to ignore the panic
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("[demo] Ignored panic from tlog.Fatal: %v\n", r)
+			}
+		}()
+		tlog.Fatal("[TLOG] This is a fatal message, will exit the program")
+	}()
 
 	// Demonstrate context logging
 	fmt.Println()
-	fmt.Println("4. Context Logging:")
+	fmt.Println("2. Context Logging:") // FIXME: context is not exposed in log!
 	tlog.SetLevel(tlog.LevelTrace)
 
 	ctx := context.WithValue(context.Background(), "requestId", "demo-123")
 	ctx = context.WithValue(ctx, "userId", "user-456")
 
-	tlog.TraceContext(ctx, "Processing request", "operation", "demonstration")
-	tlog.DebugContext(ctx, "Debug information", "step", 1)
-	slog.DebugContext(ctx, "Debug information", "step", 1)
-	tlog.InfoContext(ctx, "Request processed", "duration", time.Millisecond*150)
-	slog.InfoContext(ctx, "Request processed", "duration", time.Millisecond*150)
-
-	// Demonstrate level checking for expensive operations
-	fmt.Println()
-	fmt.Println("5. Performance Optimization:")
-	tlog.SetLevel(tlog.LevelWarn)
-
-	if tlog.IsLevelEnabled(tlog.LevelDebug) {
-		// This expensive operation won't run because debug is disabled
-		expensiveResult := performExpensiveOperation()
-		tlog.Debug("Expensive operation result", "result", expensiveResult)
-	} else {
-		fmt.Println("Skipped expensive debug operation (debug level disabled)")
-	}
-
-	// Demonstrate custom logger
-	fmt.Println()
-	fmt.Println("6. Custom Logger Instance:")
-	customLogger := tlog.WithLevel(tlog.LevelTrace)
-	fmt.Println("Created custom logger with TRACE level (global level is still WARN)")
-
-	// Note: We can't easily demonstrate the custom logger output here
-	// but it would log at TRACE level while global logger remains at WARN
-	_ = customLogger
-
-	// Demonstrate callback functionality
-	fmt.Println()
-	fmt.Println("7. Event Callbacks:") // FIXME: slog don't send callback!
-
-	// Counter for tracking callback executions
-	var errorCount, warnCount int
-
-	// Register callback for error level logs
-	errorCallbackID := tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
-		errorCount++
-		fmt.Printf("  [CALLBACK] Error detected: %s (count: %d)\n", event.Message, errorCount)
-
-		// Example: Could send to monitoring system
-		// monitoring.RecordError(event.Message, event.Args)
-	})
-
-	// Register callback for warn level logs
-	warnCallbackID := tlog.RegisterCallback(tlog.LevelWarn, func(event tlog.LogEvent) {
-		warnCount++
-		fmt.Printf("  [CALLBACK] Warning logged: %s (count: %d)\n", event.Message, warnCount)
-
-		// Example: Could log to audit system
-		// auditLog.Record(event.Level, event.Message, event.Timestamp)
-	})
-
-	fmt.Printf("Registered callbacks - Error: %d, Warn: %d\n",
-		tlog.GetCallbackCount(tlog.LevelError),
-		tlog.GetCallbackCount(tlog.LevelWarn))
-
-	// Trigger some logs that will execute callbacks
-	tlog.SetLevel(tlog.LevelWarn)
-	tlog.Warn("First warning message", "source", "demo")
-	slog.Warn("First warning message", "source", "demo")
-	tlog.Error("First error message", "code", 500)
-	slog.Error("First error message", "code", 500)
-	tlog.Warn("Second warning message", "source", "demo")
-	slog.Warn("Second warning message", "source", "demo")
-	tlog.Error("Second error message", "code", 404)
-	slog.Error("Second error message", "code", 404)
-
-	// Wait a moment for callbacks to execute (they're async)
-	time.Sleep(time.Millisecond * 50)
-
-	fmt.Printf("Final counts - Errors: %d, Warnings: %d\n", errorCount, warnCount)
-
-	// Demonstrate callback management
-	fmt.Println()
-	fmt.Println("8. Callback Management:")
-
-	// Show callback counts
-	fmt.Printf("Current callback counts - Error: %d, Warn: %d\n",
-		tlog.GetCallbackCount(tlog.LevelError),
-		tlog.GetCallbackCount(tlog.LevelWarn))
-
-	// Unregister error callback
-	success := tlog.UnregisterCallback(tlog.LevelError, errorCallbackID)
-	fmt.Printf("Unregistered error callback: %v\n", success)
-
-	// Clear all warn callbacks
-	tlog.ClearCallbacks(tlog.LevelWarn)
-	fmt.Printf("Cleared all warn callbacks\n")
-
-	// Suppress unused variable warning
-	_ = warnCallbackID
-
-	// Verify no callbacks remain
-	fmt.Printf("Remaining callback counts - Error: %d, Warn: %d\n",
-		tlog.GetCallbackCount(tlog.LevelError),
-		tlog.GetCallbackCount(tlog.LevelWarn))
-
-	// Test that callbacks no longer execute
-	fmt.Println("Testing with no callbacks:")
-	tlog.Error("This error won't trigger a callback")
-	tlog.Warn("This warning won't trigger a callback")
-
-	// Demonstrate callback error handling
-	fmt.Println()
-	fmt.Println("9. Callback Error Handling:")
-
-	// Register a callback that will panic
-	panicCallbackID := tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
-		fmt.Printf("  [CALLBACK] About to panic for: %s\n", event.Message)
-		panic("intentional panic in callback")
-	})
-
-	// Register a normal callback
-	normalCallbackID := tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
-		fmt.Printf("  [CALLBACK] Normal callback still works: %s\n", event.Message)
-	})
-
-	fmt.Println("Triggering error with panic callback...")
-	tlog.Error("Test error for panic demonstration", "test", true)
-
-	// Wait for callbacks to execute
-	time.Sleep(time.Millisecond * 100)
-
-	fmt.Println("Note: The panic in the callback was recovered automatically.")
-	fmt.Println("Check the log output above for the panic recovery message.")
-
-	// Clean up callbacks
-	tlog.UnregisterCallback(tlog.LevelError, panicCallbackID)
-	tlog.UnregisterCallback(tlog.LevelError, normalCallbackID)
-
-	// Ensure graceful shutdown of callback processor
-	defer tlog.Shutdown()
+	tlog.TraceContext(ctx, "[TLOG] Processing request", "operation", "demonstration")
+	tlog.DebugContext(ctx, "[TLOG] Debug information", "step", 1)
+	slog.DebugContext(ctx, "[SLOG] Debug information", "step", 1)
+	tlog.InfoContext(ctx, "[TLOG] Request processed", "duration", time.Millisecond*150)
+	slog.InfoContext(ctx, "[SLOG] Request processed", "duration", time.Millisecond*150)
 
 	fmt.Println()
-	fmt.Println("=== Demonstration Complete ===")
-
-	// Run the enhanced formatter demonstration
-	formatterDemo()
-	formatterColorDemo()
-	treeDemo()
-	multilineDemo()
-
-	slog.Info("TLog demonstration complete", "status", "success")
-	fmt.Println("Formatter demonstration complete.")
-}
-
-func performExpensiveOperation() string {
-	// Simulate expensive operation
-	time.Sleep(time.Millisecond * 100)
-	return "expensive_result"
-}
-
-// formatterDemo demonstrates the enhanced tozd error formatter capabilities
-func formatterDemo() {
-	fmt.Println()
-	fmt.Println("=== Enhanced Tozd Error Formatter Demonstration ===")
-
-	// Ensure we're at a level that shows errors
-	tlog.SetLevel(tlog.LevelDebug)
-
-	// Enable colors for better demonstration
-	tlog.EnableColors(true)
-	fmt.Printf("Colors enabled: %v\n", tlog.IsColorsEnabled())
+	fmt.Println("3. Basic Error with Stack Trace:")
+	stdErr := fmt.Errorf("standard error: %s", "something went wrong")
+	tlog.EnableMultilineStacktrace(false)
+	tlog.Error("[TLOG] Basic tozd error demonstration (oneline)", "error", stdErr)
+	slog.Error("[SLOG] Basic tozd error demonstration (oneline)", "error", stdErr)
+	tlog.EnableMultilineStacktrace(true)
+	tlog.Error("[TLOG] Basic tozd error demonstration (multiline)", "error", stdErr)
+	slog.Error("[SLOG] Basic tozd error demonstration (multiline)", "error", stdErr)
 
 	fmt.Println()
-	fmt.Println("10. Basic Tozd Error with Stack Trace:")
+	fmt.Println("4. Basic Tozd Error with Stack Trace:")
 	basicErr := errors.WithStack(errors.New("basic connection error"))
-	tlog.Error("Basic tozd error demonstration", "error", basicErr)
-	slog.Error("Basic tozd error demonstration", "error", basicErr)
+	tlog.EnableMultilineStacktrace(false)
+	tlog.Error("[TLOG] Basic tozd error demonstration (oneline)", "error", basicErr)
+	slog.Error("[SLOG] Basic tozd error demonstration (oneline)", "error", basicErr)
+	tlog.EnableMultilineStacktrace(true)
+	tlog.Error("[TLOG] Basic tozd error demonstration (multiline)", "error", basicErr)
+	slog.Error("[SLOG] Basic tozd error demonstration (multiline)", "error", basicErr)
 
 	fmt.Println()
-	fmt.Println("11. Tozd Error with Details:")
+	fmt.Println("5. Tozd Error with Details:")
 	detailedErr := errors.WithDetails(
 		errors.New("database connection failed"),
 		"host", "localhost",
@@ -274,11 +84,11 @@ func formatterDemo() {
 		"timeout", "30s",
 		"retry_count", 3,
 	)
-	tlog.Error("Detailed tozd error", "error", detailedErr)
-	slog.Error("Detailed tozd error", "error", detailedErr)
+	tlog.Error("[TLOG] Detailed tozd error", "error", detailedErr)
+	slog.Error("[SLOG] Detailed tozd error", "error", detailedErr)
 
 	fmt.Println()
-	fmt.Println("12. Chained Tozd Errors:")
+	fmt.Println("5. Chained Tozd Errors:")
 	baseErr := errors.WithDetails(
 		errors.New("network timeout"),
 		"endpoint", "https://api.example.com",
@@ -293,16 +103,18 @@ func formatterDemo() {
 	)
 	stackErr := errors.WithStack(controllerErr)
 
-	tlog.Error("Complex error chain", "error", stackErr)
+	tlog.Error("[TLOG] Complex error chain", "error", stackErr)
+	slog.Error("[SLOG] Complex error chain", "error", stackErr)
 
 	fmt.Println()
-	fmt.Println("13. Nested Function Call Stack:")
+	fmt.Println("6. Nested Function Call Stack:")
 	nestedErr := createDeepError()
-	tlog.Error("Error from nested function calls", "error", nestedErr)
+	tlog.Error("[TLOG] Error from nested function calls", "error", nestedErr)
+	slog.Error("[SLOG] Error from nested function calls", "error", nestedErr)
 
 	fmt.Println()
-	fmt.Println("14. Error with Context Values:")
-	ctx := context.WithValue(context.Background(), "request_id", "demo-req-789")
+	fmt.Println("7. Error with Context Values:")
+	ctx = context.WithValue(context.Background(), "request_id", "demo-req-789")
 	ctx = context.WithValue(ctx, "user_id", "demo-user-456")
 	ctx = context.WithValue(ctx, "session_id", "session-xyz")
 
@@ -312,10 +124,11 @@ func formatterDemo() {
 		"required_role", "admin",
 		"user_role", "user",
 	)
-	tlog.ErrorContext(ctx, "Authorization error with context", "error", contextErr)
+	tlog.ErrorContext(ctx, "[TLOG] Authorization error with context", "error", contextErr)
+	slog.ErrorContext(ctx, "[SLOG] Authorization error with context", "error", contextErr)
 
 	fmt.Println()
-	fmt.Println("15. Joined Errors:")
+	fmt.Println("8. Joined Errors:")
 	err1 := errors.WithStack(errors.New("first validation error"))
 	err2 := errors.WithDetails(
 		errors.New("second validation error"),
@@ -328,32 +141,131 @@ func formatterDemo() {
 		"value", -5,
 	)
 	joinedErr := errors.Join(err1, err2, err3)
-	tlog.Error("Multiple validation errors", "error", joinedErr)
+	tlog.Error("[TLOG] Multiple validation errors", "error", joinedErr)
+	slog.Error("[SLOG] Multiple validation errors", "error", joinedErr)
 
+	// Demonstrate time format configuration
 	fmt.Println()
-	fmt.Println("16. Performance Comparison:")
-	fmt.Println("Standard error:")
-	stdErr := fmt.Errorf("standard error: %s", "something went wrong")
-	tlog.Error("Standard Go error", "error", stdErr)
+	fmt.Println("9. Custom Time Format:")
+	originalFormat := tlog.GetTimeFormat()
 
-	fmt.Println()
-	fmt.Println("Tozd error with same message:")
-	tozdErr := errors.WithStack(errors.New("something went wrong"))
-	tlog.Error("Enhanced tozd error", "error", tozdErr)
+	tlog.Info("[TLOG] Log with default time format", "timestamp", time.Now())
+	slog.Info("[SLOG] Log with default time format", "timestamp", time.Now())
 
+	tlog.SetTimeFormat("2006-01-02 15:04:05")
+	tlog.Info("[TLOG] Log with custom time format", "timestamp", time.Now())
+	slog.Info("[SLOG] Log with custom time format", "timestamp", time.Now())
+
+	// Restore original format
+	tlog.SetTimeFormat(originalFormat)
+	tlog.Info("[TLOG] Log with restored time format", "timestamp", time.Now())
+	slog.Info("[SLOG] Log with restored time format", "timestamp", time.Now())
+
+	// Demonstrate sensitive data hiding
 	fmt.Println()
-	fmt.Println("17. Color Demonstration (if terminal supports colors):")
-	if tlog.IsColorsEnabled() {
-		fmt.Println("The stack traces above should show:")
-		fmt.Println("  - Recent frames in RED")
-		fmt.Println("  - Intermediate frames in YELLOW")
-		fmt.Println("  - Deeper frames in GRAY")
-	} else {
-		fmt.Println("Colors are not enabled (terminal may not support them)")
+	fmt.Println("10. Sensitive Data Handling:")
+
+	// First without hiding
+	fmt.Println("   Without sensitive data hiding:")
+	tlog.Info("[TLOG] User authentication",
+		"username", "alice",
+		"password", "secret123",
+		"token", "jwt-token-xyz",
+		"api_key", "sk-1234567890",
+		"ip", "192.168.1.100")
+	slog.Info("[SLOG] User authentication",
+		"username", "alice",
+		"password", "secret123",
+		"token", "jwt-token-xyz",
+		"api_key", "sk-1234567890",
+		"ip", "192.168.1.100")
+
+	// Enable sensitive data hiding
+	tlog.EnableSensitiveDataHiding(true)
+	fmt.Println("   With sensitive data hiding enabled:")
+	tlog.Info("[TLOG] User authentication",
+		"username", "alice",
+		"password", "secret123",
+		"token", "jwt-token-xyz",
+		"api_key", "sk-1234567890",
+		"ip", "192.168.1.100")
+	slog.Info("[SLOG] User authentication",
+		"username", "alice",
+		"password", "secret123",
+		"token", "jwt-token-xyz",
+		"api_key", "sk-1234567890",
+		"ip", "192.168.1.100")
+
+	// Disable sensitive data hiding
+	tlog.EnableSensitiveDataHiding(false)
+
+	// Demonstrate context logging with enhanced formatting
+	fmt.Println()
+	fmt.Println("11. Context-Aware Logging with Formatting:")
+	ctx = context.WithValue(context.Background(), "request_id", "req-12345")
+	ctx = context.WithValue(ctx, "user_id", "user-456")
+	ctx = context.WithValue(ctx, "trace_id", "trace-abc-xyz")
+
+	tlog.InfoContext(ctx, "[TLOG] Processing request",
+		"method", "GET",
+		"path", "/api/users",
+		"user_agent", "Mozilla/5.0")
+	slog.InfoContext(ctx, "[SLOG] Processing request",
+		"method", "GET",
+		"path", "/api/users",
+		"user_agent", "Mozilla/5.0")
+
+	tlog.ErrorContext(ctx, "[TLOG] Request failed",
+		"error", "database connection timeout",
+		"duration", "30s",
+		"retry_count", 3)
+	slog.ErrorContext(ctx, "[SLOG] Request failed",
+		"error", "database connection timeout",
+		"duration", "30s",
+		"retry_count", 3)
+
+	currentTimestamp := time.Now().Unix()
+	tlog.Info("[TLOG] Unix timestamp formatting",
+		"timestamp", currentTimestamp,
+		"created_at", int64(1609459200), // Jan 1, 2021
+		"updated_at", "1640995200") // Jan 1, 2022 as string
+	slog.Info("[SLOG] Unix timestamp formatting",
+		"timestamp", currentTimestamp,
+		"created_at", int64(1609459200), // Jan 1, 2021
+		"updated_at", "1640995200") // Jan 1, 2022 as string
+
+	// Simulate HTTP request/response data
+	tlog.Info("[TLOG] HTTP request processed",
+		"client_ip", "192.168.1.50",
+		"remote_addr", "10.0.0.100",
+		"auth_token", "Bearer jwt-abc-123-xyz",
+		"api_key", "sk-test-key-12345",
+		"private_key", "-----BEGIN RSA PRIVATE KEY-----")
+	slog.Info("[SLOG] HTTP request processed",
+		"client_ip", "192.168.1.50",
+		"remote_addr", "10.0.0.100",
+		"auth_token", "Bearer jwt-abc-123-xyz",
+		"api_key", "sk-test-key-12345",
+		"private_key", "-----BEGIN RSA PRIVATE KEY-----")
+
+	// Demonstrate custom formatter configuration
+	fmt.Println()
+	fmt.Println("12. Custom Formatter Configuration:")
+
+	customConfig := tlog.FormatterConfig{
+		EnableColors:      true,
+		EnableFormatting:  true,
+		HideSensitiveData: true,
+		TimeFormat:        "15:04:05.000", // Short time format
 	}
+	tlog.SetFormatterConfig(customConfig)
 
-	fmt.Println()
-	fmt.Println("=== Tozd Error Formatter Demonstration Complete ===")
+	tlog.Info("[TLOG] Message with custom config", "test", "formatting")
+	slog.Info("[SLOG] Message with custom config", "test", "formatting")
+	tlog.Warn("[TLOG] Warning with custom config", "password", "hidden-secret")
+	slog.Warn("[SLOG] Warning with custom config", "password", "hidden-secret")
+
+	fmt.Println("Formatter demonstration complete.")
 }
 
 // Helper functions to create nested error stack traces
