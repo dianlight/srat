@@ -24,7 +24,7 @@ func (suite *TozdErrorFormatterSuite) TearDownTest() {
 }
 
 func (suite *TozdErrorFormatterSuite) TestSimpleError() {
-	formatter := TozdErrorFormatter("error")
+	formatter := TozdErrorFormatter(false)
 	err := errors.New("simple test error")
 
 	value, changed := formatter(nil, slog.Attr{
@@ -52,7 +52,7 @@ func (suite *TozdErrorFormatterSuite) TestSimpleError() {
 }
 
 func (suite *TozdErrorFormatterSuite) TestErrorWithDetails() {
-	formatter := TozdErrorFormatter("error")
+	formatter := TozdErrorFormatter(false)
 	err := errors.WithDetails(
 		errors.New("error with details"),
 		"user_id", "12345",
@@ -98,7 +98,7 @@ func (suite *TozdErrorFormatterSuite) TestErrorWithDetails() {
 }
 
 func (suite *TozdErrorFormatterSuite) TestErrorWithStackTrace() {
-	formatter := TozdErrorFormatter("error")
+	formatter := TozdErrorFormatter(false)
 	err := errors.WithStack(errors.New("error with stack"))
 
 	value, changed := formatter(nil, slog.Attr{
@@ -143,7 +143,7 @@ func (suite *TozdErrorFormatterSuite) TestErrorWithStackTrace() {
 }
 
 func (suite *TozdErrorFormatterSuite) TestErrorWithCause() {
-	formatter := TozdErrorFormatter("error")
+	formatter := TozdErrorFormatter(false)
 
 	baseErr := errors.New("root cause error")
 	wrappedErr := errors.Wrap(baseErr, "wrapped error")
@@ -174,7 +174,7 @@ func (suite *TozdErrorFormatterSuite) TestErrorWithCause() {
 }
 
 func (suite *TozdErrorFormatterSuite) TestComplexError() {
-	formatter := TozdErrorFormatter("error")
+	formatter := TozdErrorFormatter(false)
 
 	// Create a complex error with details, stack trace, and cause
 	baseErr := errors.WithDetails(
@@ -236,7 +236,7 @@ func (suite *TozdErrorFormatterSuite) TestComplexError() {
 func (suite *TozdErrorFormatterSuite) TestColorFormatting() {
 	// Test with colors enabled
 	EnableColors(true)
-	formatter := TozdErrorFormatter("error")
+	formatter := TozdErrorFormatter(false)
 	err := errors.WithStack(errors.New("colored error"))
 
 	value, changed := formatter(nil, slog.Attr{
@@ -279,7 +279,7 @@ func (suite *TozdErrorFormatterSuite) TestColorFormatting() {
 func (suite *TozdErrorFormatterSuite) TestTreeFormatting() {
 	// Test tree formatting when both colors and unicode are available
 	EnableColors(true)
-	formatter := TozdErrorFormatter("error")
+	formatter := TozdErrorFormatter(false)
 
 	// Create an error with multiple stack frames by calling through helper functions
 	err := suite.createNestedError()
@@ -325,7 +325,7 @@ func (suite *TozdErrorFormatterSuite) TestTreeFormatting() {
 func (suite *TozdErrorFormatterSuite) TestTreeFormattingWithColorsDisabled() {
 	// Test with colors disabled (should fall back to ASCII tree characters)
 	EnableColors(false)
-	formatter := TozdErrorFormatter("error")
+	formatter := TozdErrorFormatter(false)
 
 	err := suite.createNestedError()
 
@@ -373,7 +373,7 @@ func (suite *TozdErrorFormatterSuite) TestMultilineStacktrace() {
 	EnableMultilineStacktrace(true)
 	suite.True(IsMultilineStacktraceEnabled(), "Multiline stacktrace should be enabled")
 
-	formatter := TozdErrorFormatter("error")
+	formatter := TozdErrorFormatter(true)
 	err := suite.createNestedError()
 
 	value, changed := formatter(nil, slog.Attr{
@@ -441,7 +441,7 @@ func (suite *TozdErrorFormatterSuite) TestMultilineStacktrace() {
 }
 
 func (suite *TozdErrorFormatterSuite) TestNilError() {
-	formatter := TozdErrorFormatter("error")
+	formatter := TozdErrorFormatter(false)
 
 	// Test with nil interface (not a tozd error)
 	_, changed := formatter(nil, slog.Attr{

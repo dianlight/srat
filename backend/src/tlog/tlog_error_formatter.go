@@ -3,6 +3,8 @@ package tlog
 import (
 	"fmt"
 	"log/slog"
+	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -11,8 +13,80 @@ import (
 	"gitlab.com/tozd/go/errors"
 )
 
+// ErrorFormatter transforms a go error into a readable error.
+//
+// Example:
+//
+//	err := reader.Close()
+//	err = fmt.Errorf("could not close reader: %v", err)
+//	logger.With("error", reader.Close()).Log("error")
+//
+// passed to ErrorFormatter("error"), will be transformed into:
+//
+//	"error": {
+//	  "message": "could not close reader: file already closed",
+//	  "type": "*io.ErrClosedPipe"
+//	}
+func ErrorFormatter(fieldName string, multiLine bool) slogformatter.Formatter {
+	return slogformatter.FormatByFieldType(fieldName, func(err error) slog.Value {
+		stack := stacktrace()
+		values := []slog.Attr{
+			slog.String("message", err.Error()),
+			slog.String("type", reflect.TypeOf(err).String()),
+			slog.String("stacktrace", stack),
+		}
+		if multiLine {
+			// Tree characters for Unicode-supported terminals
+			treeChars := struct {
+				vertical   string
+				branch     string
+				lastBranch string
+				space      string
+			}{
+				vertical:   "│ ",
+				branch:     "├─ ",
+				lastBranch: "└─ ",
+				space:      "   ",
+			}
+			// Determine if we should use tree formatting
+			useTreeFormat := supportsUnicode() && IsColorsEnabled()
+
+			// Fallback ASCII characters for terminals without Unicode support
+			if !useTreeFormat {
+				treeChars.vertical = "| "
+				treeChars.branch = "|- "
+				treeChars.lastBranch = "`- "
+				treeChars.space = "   "
+			}
+
+			fmt.Printf("%s: %s\n", color.RedString("Exception"), color.HiRedString(err.Error()))
+			for line := range strings.SplitSeq(stack, "\n") {
+				//line = strings.
+				fmt.Printf("%s\n", color.HiWhiteString(strings.ReplaceAll(line, "\t", " "+treeChars.lastBranch)))
+			}
+		}
+		return slog.GroupValue(values...)
+	})
+}
+
+// bearer:disable go_lang_permissive_regex_validation
+var reStacktrace = regexp.MustCompile(`log/slog.*\n|tlog/tlog.*\n`)
+
+func stacktrace() string {
+	stackInfo := make([]byte, 1024*1024)
+
+	if stackSize := runtime.Stack(stackInfo, false); stackSize > 0 {
+		traceLines := reStacktrace.Split(string(stackInfo[:stackSize]), -1)
+		if len(traceLines) > 0 {
+			return traceLines[len(traceLines)-1]
+		}
+	}
+
+	return ""
+}
+
 // TozdErrorFormatter formats gitlab.com/tozd/go/errors with colored stacktraces
-func TozdErrorFormatter(key string) slogformatter.Formatter {
+func TozdErrorFormatter(multiline bool) slogformatter.Formatter {
 	return slogformatter.FormatByType(func(v errors.E) slog.Value {
 		// Create formatted error information
 		var attrs []slog.Attr

@@ -11,6 +11,7 @@ require (
 
 require (
 	github.com/fatih/color v1.18.0 // indirect
+	github.com/k0kubun/pp/v3 v3.5.0 // indirect
 	github.com/lmittmann/tint v1.1.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

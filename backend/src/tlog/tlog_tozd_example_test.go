@@ -2,6 +2,7 @@ package tlog_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/dianlight/srat/tlog"
@@ -116,16 +117,20 @@ func TestMultilineStackTrace(t *testing.T) {
 	// Test single-line format (default)
 	t.Log("Single-line stacktrace format:")
 	tlog.EnableMultilineStacktrace(false)
+	tlog.Error("Single-line format", "error", fmt.Errorf("this is a single-line error"))
 	tlog.Error("Single-line format", "error", nestedErr)
 
 	// Test multiline format
 	t.Log("Multiline stacktrace format:")
 	tlog.EnableMultilineStacktrace(true)
+	tlog.Error("Multiline format", "error", fmt.Errorf("this is a multiline error"))
 	tlog.Error("Multiline format", "error", nestedErr)
 
 	// Reset to default
 	tlog.EnableMultilineStacktrace(false)
-} // Helper functions to create deeper stack traces for tree formatting demonstration
+}
+
+// Helper functions to create deeper stack traces for tree formatting demonstration
 func createDeeperNestedError() errors.E {
 	return firstLevel()
 }

@@ -6,11 +6,11 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/k0kubun/pp/v3"
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
 	slogformatter "github.com/samber/slog-formatter"
@@ -184,6 +184,9 @@ func createBaseHandler(level slog.Level) slog.Handler {
 
 	isTerminal := isTerminalSupported()
 
+	pp.SetDefaultOutput(os.Stderr)
+	pp.Default.SetColoringEnabled(config.EnableColors && isTerminal)
+
 	// Create base tint handler with context extraction
 	handler := tint.NewHandler(os.Stderr, &tint.Options{
 		Level:      level,
@@ -220,10 +223,10 @@ func createBaseHandler(level slog.Level) slog.Handler {
 		var formatters []slogformatter.Formatter
 
 		// Add tozd errors formatter for enhanced error display with stacktraces
-		formatters = append(formatters, TozdErrorFormatter("error"))
+		formatters = append(formatters, TozdErrorFormatter(config.MultilineStacktrace))
 
 		// Add generic error formatter for better error display (as fallback)
-		formatters = append(formatters, slogformatter.ErrorFormatter("error"))
+		formatters = append(formatters, ErrorFormatter("error", config.MultilineStacktrace))
 
 		// Add sensitive data formatter if enabled
 		if config.HideSensitiveData {
@@ -319,6 +322,10 @@ func Debug(msg string, args ...any) {
 	ctx := context.Background()
 	defaultLogger.log(ctx, slog.LevelDebug, msg, args...)
 }
+
+// log is the low-level logging method for methods that take ...any.
+// It must always be called directly by an exported logging method
+// or function, because it uses a fixed call depth to obtain the pc.
 func (l *Logger) log(ctx context.Context, level slog.Level, msg string, args ...any) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -326,13 +333,24 @@ func (l *Logger) log(ctx context.Context, level slog.Level, msg string, args ...
 	if !l.Enabled(ctx, level) {
 		return
 	}
-	var pc uintptr
-	var pcs [1]uintptr
+	//var pc uintptr
+	var pcs []uintptr = make([]uintptr, 50)
 	// skip [runtime.Callers, this function, this function's caller]
-	runtime.Callers(3, pcs[:])
-	pc = pcs[0]
+	//pp.Printf("%+v\n", runtime.Callers(3, pcs[:]))
+	//frames := runtime.CallersFrames(pcs)
+	//for {
+	//	frame, more := frames.Next()
+	//	pp.Printf("%s %s %s\n", frame.File, frame.Line, frame.Function)
+	//	if !more {
+	//		break
+	//	}
+	//}
+	//
+	//debug.PrintStack()
 
-	r := slog.NewRecord(time.Now(), level, msg, pc)
+	//pp.Printf("Args: %+v\n", args)
+
+	r := slog.NewRecord(time.Now(), level, msg, pcs[0])
 	r.Add(args...)
 	_ = l.Handler().Handle(ctx, r)
 }
