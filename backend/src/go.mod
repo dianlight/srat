@@ -56,7 +56,8 @@ require (
 	github.com/petermattis/goid v0.0.0-20250319124200-ccd6737f222a // indirect
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/rogpeppe/gohack v1.0.2 // indirect
-	github.com/samber/lo v1.49.1 // indirect
+	github.com/samber/lo v1.51.0 // indirect
+	github.com/samber/slog-common v0.19.0 // indirect
 	github.com/samber/slog-formatter v1.2.0 // indirect
 	github.com/samber/slog-multi v1.3.3 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
