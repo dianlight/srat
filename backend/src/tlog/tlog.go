@@ -14,6 +14,7 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
 	slogformatter "github.com/samber/slog-formatter"
+	slogmulti "github.com/samber/slog-multi"
 )
 
 // Custom log levels extending slog.Level
@@ -211,6 +212,9 @@ func createBaseHandler(level slog.Level) slog.Handler {
 		},
 	})
 
+	// Composite The final Handler
+	handler = slogmulti.Fanout(handler, NewEventHandler())
+
 	// If formatting is enabled, wrap with slog-formatter
 	if config.EnableFormatting {
 		var formatters []slogformatter.Formatter
@@ -246,11 +250,10 @@ func createBaseHandler(level slog.Level) slog.Handler {
 				slogformatter.IPAddressFormatter("remote_addr"),
 				slogformatter.IPAddressFormatter("client_ip"),
 				// Custom additional formatters
-				HTTPRequestFormatter("request"),
-				HTTPResponseFormatter("response"),
-				UnixTimestampFormatter("timestamp"),
-				UnixTimestampFormatter("created_at"),
-				UnixTimestampFormatter("updated_at"),
+				slogformatter.UnixTimestampFormatter(time.Millisecond),
+				slogformatter.HTTPRequestFormatter(false),
+				slogformatter.HTTPResponseFormatter(false),
+				slogformatter.TimeFormatter(config.TimeFormat, time.Local),
 			)
 		}
 
@@ -278,7 +281,7 @@ func initializeLogger() {
 }
 
 // replaceLogLevel customizes the display names for custom log levels
-func replaceLogLevel(groups []string, a slog.Attr) slog.Attr {
+func replaceLogLevel(_ []string, a slog.Attr) slog.Attr {
 	if a.Key == slog.LevelKey {
 		// Type assertion with check to handle both slog.Level and string values
 		switch val := a.Value.Any().(type) {
@@ -302,7 +305,6 @@ func replaceLogLevel(groups []string, a slog.Attr) slog.Attr {
 func Trace(msg string, args ...any) {
 	ctx := context.Background()
 	defaultLogger.log(ctx, LevelTrace, msg, args...)
-	emitLogEvent(ctx, LevelTrace, msg, args...)
 }
 
 // TraceContext logs a message at trace level with context
@@ -310,14 +312,12 @@ func TraceContext(ctx context.Context, msg string, args ...any) {
 	contextArgs := extractContextToArgs(ctx)
 	allArgs := append(args, contextArgs...)
 	defaultLogger.log(ctx, LevelTrace, msg, allArgs...)
-	emitLogEvent(ctx, LevelTrace, msg, allArgs...)
 }
 
 // Debug logs a message at debug level
 func Debug(msg string, args ...any) {
 	ctx := context.Background()
 	defaultLogger.log(ctx, slog.LevelDebug, msg, args...)
-	emitLogEvent(ctx, slog.LevelDebug, msg, args...)
 }
 func (l *Logger) log(ctx context.Context, level slog.Level, msg string, args ...any) {
 	if ctx == nil {
@@ -342,14 +342,12 @@ func DebugContext(ctx context.Context, msg string, args ...any) {
 	contextArgs := extractContextToArgs(ctx)
 	allArgs := append(args, contextArgs...)
 	defaultLogger.log(ctx, slog.LevelDebug, msg, allArgs...)
-	emitLogEvent(ctx, slog.LevelDebug, msg, allArgs...)
 }
 
 // Info logs a message at info level
 func Info(msg string, args ...any) {
 	ctx := context.Background()
 	defaultLogger.log(ctx, slog.LevelInfo, msg, args...)
-	emitLogEvent(ctx, slog.LevelInfo, msg, args...)
 }
 
 // InfoContext logs a message at info level with context
@@ -358,14 +356,12 @@ func InfoContext(ctx context.Context, msg string, args ...any) {
 	contextArgs := extractContextToArgs(ctx)
 	allArgs := append(args, contextArgs...)
 	defaultLogger.log(ctx, slog.LevelInfo, msg, allArgs...)
-	emitLogEvent(ctx, slog.LevelInfo, msg, allArgs...)
 }
 
 // Notice logs a message at notice level
 func Notice(msg string, args ...any) {
 	ctx := context.Background()
 	defaultLogger.log(ctx, LevelNotice, msg, args...)
-	emitLogEvent(ctx, LevelNotice, msg, args...)
 }
 
 // NoticeContext logs a message at notice level with context
@@ -373,14 +369,12 @@ func NoticeContext(ctx context.Context, msg string, args ...any) {
 	contextArgs := extractContextToArgs(ctx)
 	allArgs := append(args, contextArgs...)
 	defaultLogger.log(ctx, LevelNotice, msg, allArgs...)
-	emitLogEvent(ctx, LevelNotice, msg, allArgs...)
 }
 
 // Warn logs a message at warning level
 func Warn(msg string, args ...any) {
 	ctx := context.Background()
 	defaultLogger.log(ctx, slog.LevelWarn, msg, args...)
-	emitLogEvent(ctx, slog.LevelWarn, msg, args...)
 }
 
 // WarnContext logs a message at warning level with context
@@ -388,14 +382,12 @@ func WarnContext(ctx context.Context, msg string, args ...any) {
 	contextArgs := extractContextToArgs(ctx)
 	allArgs := append(args, contextArgs...)
 	defaultLogger.log(ctx, slog.LevelWarn, msg, allArgs...)
-	emitLogEvent(ctx, slog.LevelWarn, msg, allArgs...)
 }
 
 // Error logs a message at error level
 func Error(msg string, args ...any) {
 	ctx := context.Background()
 	defaultLogger.log(ctx, slog.LevelError, msg, args...)
-	emitLogEvent(ctx, slog.LevelError, msg, args...)
 }
 
 // ErrorContext logs a message at error level with context
@@ -403,14 +395,12 @@ func ErrorContext(ctx context.Context, msg string, args ...any) {
 	contextArgs := extractContextToArgs(ctx)
 	allArgs := append(args, contextArgs...)
 	defaultLogger.log(ctx, slog.LevelError, msg, allArgs...)
-	emitLogEvent(ctx, slog.LevelError, msg, allArgs...)
 }
 
 // Fatal logs a message at fatal level and exits the program
 func Fatal(msg string, args ...any) {
 	ctx := context.Background()
 	defaultLogger.log(ctx, LevelFatal, msg, args...)
-	emitLogEvent(ctx, LevelFatal, msg, args...)
 	panic("Fatal log called, exiting program") // Use panic to ensure all deferred functions run
 }
 
@@ -419,7 +409,6 @@ func FatalContext(ctx context.Context, msg string, args ...any) {
 	contextArgs := extractContextToArgs(ctx)
 	allArgs := append(args, contextArgs...)
 	defaultLogger.log(ctx, LevelFatal, msg, allArgs...)
-	emitLogEvent(ctx, LevelFatal, msg, allArgs...)
 	panic("Fatal log called, exiting program") // Use panic to ensure all deferred functions run
 }
 
@@ -613,39 +602,33 @@ func NewLoggerWithLevel(level slog.Level) *Logger {
 func (l *Logger) Trace(msg string, args ...any) {
 	ctx := context.Background()
 	l.Logger.Log(ctx, LevelTrace, msg, args...)
-	emitLogEvent(ctx, LevelTrace, msg, args...)
 }
 
 // TraceContext logs a message at trace level with context
 func (l *Logger) TraceContext(ctx context.Context, msg string, args ...any) {
 	l.Logger.Log(ctx, LevelTrace, msg, args...)
-	emitLogEvent(ctx, LevelTrace, msg, args...)
 }
 
 // Notice logs a message at notice level
 func (l *Logger) Notice(msg string, args ...any) {
 	ctx := context.Background()
 	l.Logger.Log(ctx, LevelNotice, msg, args...)
-	emitLogEvent(ctx, LevelNotice, msg, args...)
 }
 
 // NoticeContext logs a message at notice level with context
 func (l *Logger) NoticeContext(ctx context.Context, msg string, args ...any) {
 	l.Logger.Log(ctx, LevelNotice, msg, args...)
-	emitLogEvent(ctx, LevelNotice, msg, args...)
 }
 
 // Fatal logs a message at fatal level and exits the program
 func (l *Logger) Fatal(msg string, args ...any) {
 	ctx := context.Background()
 	l.Logger.Log(ctx, LevelFatal, msg, args...)
-	emitLogEvent(ctx, LevelFatal, msg, args...)
 	panic("Fatal log called, exiting program") // Use panic to ensure all deferred functions run
 }
 
 // FatalContext logs a message at fatal level with context and exits the program
 func (l *Logger) FatalContext(ctx context.Context, msg string, args ...any) {
 	l.Logger.Log(ctx, LevelFatal, msg, args...)
-	emitLogEvent(ctx, LevelFatal, msg, args...)
 	panic("Fatal log called, exiting program") // Use panic to ensure all deferred functions run
 }

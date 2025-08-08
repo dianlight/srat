@@ -5,22 +5,72 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
-
-	"gitlab.com/tozd/go/errors"
 )
 
 // LogEvent represents a log event passed to callbacks
 type LogEvent struct {
-	Level     slog.Level
-	Message   string
-	Args      []any
-	Timestamp time.Time
-	Context   context.Context
+	Record  slog.Record
+	Context context.Context
+}
+
+type EventHandler struct {
+	enabled bool
+}
+
+func NewEventHandler() slog.Handler {
+	return &EventHandler{
+		enabled: true,
+	}
+}
+
+func (h *EventHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return h
+}
+
+func (h *EventHandler) WithGroup(name string) slog.Handler {
+	// https://cs.opensource.google/go/x/exp/+/46b07846:slog/handler.go;l=247
+	if name == "" {
+		return h
+	}
+
+	return h
+}
+
+func (h *EventHandler) Enabled(_ context.Context, _ slog.Level) bool {
+	return h.enabled
+}
+
+func (h *EventHandler) Handle(ctx context.Context, record slog.Record) error {
+
+	if processor == nil {
+		return nil
+	}
+
+	// Quick check if there are any callbacks for this level
+	processor.callbacksMu.RLock()
+	hasCallbacks := len(processor.callbacks[record.Level]) > 0
+	processor.callbacksMu.RUnlock()
+
+	if !hasCallbacks {
+		return nil
+	}
+
+	event := LogEvent{
+		Record:  record,
+		Context: ctx,
+	}
+
+	// Non-blocking send to avoid affecting logging performance
+	select {
+	case processor.eventChan <- event:
+		// Event queued successfully
+	default:
+		// Channel is full, drop the event to avoid blocking
+		log.Println("tlog: callback event queue full, dropping event")
+	}
+	return nil
 }
 
 // LogCallback is the function signature for log event callbacks
@@ -93,7 +143,7 @@ func (ep *eventProcessor) processEvents() {
 // executeCallbacks runs all callbacks for a specific log level
 func (ep *eventProcessor) executeCallbacks(event LogEvent) {
 	ep.callbacksMu.RLock()
-	callbacks := ep.callbacks[event.Level]
+	callbacks := ep.callbacks[event.Record.Level]
 	ep.callbacksMu.RUnlock()
 
 	for _, entry := range callbacks {
@@ -243,36 +293,7 @@ func RestartProcessor() {
 	go processor.processEvents()
 }
 
-// formatArgsForCallback applies formatter configuration to args for callbacks
-func formatArgsForCallback(args []any) []any {
-	formatterConfigMu.RLock()
-	config := formatterConfig
-	formatterConfigMu.RUnlock()
-
-	if !config.EnableFormatting {
-		return args
-	}
-
-	// Convert args to key-value pairs and apply formatting
-	var formattedArgs []any
-
-	for i := 0; i < len(args); i += 2 {
-		if i+1 < len(args) {
-			key := fmt.Sprintf("%v", args[i])
-			value := args[i+1]
-
-			// Apply custom formatting based on the configuration
-			formattedValue := applyCustomFormatting(key, value, config)
-			formattedArgs = append(formattedArgs, key, formattedValue)
-		} else {
-			// Odd number of args, append as-is
-			formattedArgs = append(formattedArgs, args[i])
-		}
-	}
-
-	return formattedArgs
-}
-
+/*
 // applyCustomFormatting applies specific formatting rules based on FormatterConfig
 func applyCustomFormatting(key string, value any, config FormatterConfig) any {
 	keyStr := strings.ToLower(key)
@@ -395,39 +416,4 @@ func applyCustomFormatting(key string, value any, config FormatterConfig) any {
 	// Return original value if no formatting applied
 	return value
 }
-
-// emitLogEvent sends a log event to the processor if callbacks are registered
-func emitLogEvent(ctx context.Context, level slog.Level, msg string, args ...any) {
-	if processor == nil {
-		return
-	}
-
-	// Quick check if there are any callbacks for this level
-	processor.callbacksMu.RLock()
-	hasCallbacks := len(processor.callbacks[level]) > 0
-	processor.callbacksMu.RUnlock()
-
-	if !hasCallbacks {
-		return
-	}
-
-	// Format args according to FormatterConfig before passing to callbacks
-	formattedArgs := formatArgsForCallback(args)
-
-	event := LogEvent{
-		Level:     level,
-		Message:   msg,
-		Args:      formattedArgs,
-		Timestamp: time.Now(),
-		Context:   ctx,
-	}
-
-	// Non-blocking send to avoid affecting logging performance
-	select {
-	case processor.eventChan <- event:
-		// Event queued successfully
-	default:
-		// Channel is full, drop the event to avoid blocking
-		log.Println("tlog: callback event queue full, dropping event")
-	}
-}
+*/

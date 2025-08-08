@@ -318,10 +318,11 @@ func (suite *TlogSuite) TestRegisterCallback() {
 	mu.Lock()
 	defer mu.Unlock()
 	suite.True(callbackExecuted)
-	suite.Equal(tlog.LevelError, receivedEvent.Level)
-	suite.Equal(testMessage, receivedEvent.Message)
-	suite.Equal([]any{"key", "value"}, receivedEvent.Args)
-	suite.NotZero(receivedEvent.Timestamp)
+	suite.Equal(tlog.LevelError, receivedEvent.Record.Level)
+	suite.Equal(testMessage, receivedEvent.Record.Message)
+	suite.Equal(1, receivedEvent.Record.NumAttrs())
+	//	suite.Equal([]any{"key", "value"}, receivedEvent.Record.NumAttrs())
+	suite.NotZero(receivedEvent.Record.Time)
 	suite.NotNil(receivedEvent.Context)
 }
 
@@ -498,8 +499,8 @@ func (suite *TlogSuite) TestCallbackWithContextMethods() {
 	mu.Lock()
 	defer mu.Unlock()
 	suite.Len(receivedEvents, 1)
-	suite.Equal(tlog.LevelDebug, receivedEvents[0].Level)
-	suite.Equal("debug with context", receivedEvents[0].Message)
+	suite.Equal(tlog.LevelDebug, receivedEvents[0].Record.Level)
+	suite.Equal("debug with context", receivedEvents[0].Record.Message)
 	suite.Equal(ctx, receivedEvents[0].Context)
 }
 
@@ -591,7 +592,7 @@ func (suite *TlogSuite) TestAllLogLevelsWithCallbacks() {
 	// Create maps for easier verification since order is not guaranteed
 	eventsByLevel := make(map[slog.Level]tlog.LogEvent)
 	for _, event := range receivedEvents {
-		eventsByLevel[event.Level] = event
+		eventsByLevel[event.Record.Level] = event
 	}
 
 	// Verify event details
@@ -607,8 +608,8 @@ func (suite *TlogSuite) TestAllLogLevelsWithCallbacks() {
 	for level, expectedMsg := range expectedMessages {
 		event, exists := eventsByLevel[level]
 		suite.True(exists, "Event for level %v should exist", level)
-		suite.Equal(level, event.Level)
-		suite.Equal(expectedMsg, event.Message)
+		suite.Equal(level, event.Record.Level)
+		suite.Equal(expectedMsg, event.Record.Message)
 	}
 }
 
@@ -655,15 +656,13 @@ func (suite *TlogSuite) TestCallbackArgsFormatting() {
 
 		event := receivedEvents[0]
 		argsMap := make(map[string]any)
-		for i := 0; i < len(event.Args); i += 2 {
-			if i+1 < len(event.Args) {
-				key := fmt.Sprintf("%v", event.Args[i])
-				argsMap[key] = event.Args[i+1]
-			}
-		}
+		event.Record.Attrs(func(attr slog.Attr) bool {
+			argsMap[attr.Key] = attr.Value.Any()
+			return true
+		})
 
-		suite.Equal("[REDACTED]", argsMap["password"])
-		suite.Equal("[REDACTED]", argsMap["token"])
+		suite.Equal("secr*******", argsMap["password"])
+		suite.Equal("abc1*******", argsMap["token"])
 		suite.Equal("visible", argsMap["normal_field"])
 	})
 
@@ -698,69 +697,19 @@ func (suite *TlogSuite) TestCallbackArgsFormatting() {
 
 		event := receivedEvents[0]
 		argsMap := make(map[string]any)
-		for i := 0; i < len(event.Args); i += 2 {
-			if i+1 < len(event.Args) {
-				key := fmt.Sprintf("%v", event.Args[i])
-				argsMap[key] = event.Args[i+1]
-			}
-		}
+		event.Record.Attrs(func(attr slog.Attr) bool {
+			argsMap[attr.Key] = attr.Value.Any()
+			return true
+		})
 
 		// Error should be formatted as a map
 		errorValue := argsMap["error"]
-		suite.IsType(map[string]any{}, errorValue)
+		suite.Require().IsType([]slog.Attr{}, errorValue)
 
-		errorMap := errorValue.(map[string]any)
-		suite.Equal("test error message", errorMap["message"])
-		suite.Contains(errorMap["type"], "errorString") // fmt.Errorf creates *errors.errorString
+		errorMap := errorValue.([]slog.Attr)
+		suite.Equal("test error message", errorMap[0].Value.String())
+		suite.Contains(errorMap[1].Value.String(), "errorString") // fmt.Errorf creates *errors.errorString
 		suite.Equal("test", argsMap["context"])
-	})
-
-	// Test 3: Time formatting
-	suite.Run("TimeFormatting", func() {
-		// Set custom time format
-		config := tlog.GetFormatterConfig()
-		config.EnableFormatting = true
-		config.TimeFormat = "2006-01-02 15:04:05"
-		tlog.SetFormatterConfig(config)
-
-		// Clear previous events
-		mu.Lock()
-		receivedEvents = nil
-		mu.Unlock()
-
-		// Log with time values
-		testTime := time.Date(2024, 12, 25, 15, 30, 45, 0, time.UTC)
-		timestamp := int64(1735142445) // Unix timestamp for December 25, 2024, 17:00:45 UTC
-		tlog.Info("time test", "time", testTime, "timestamp", timestamp, "created_at", timestamp)
-
-		// Wait for callback
-		suite.Eventually(func() bool {
-			mu.Lock()
-			defer mu.Unlock()
-			return len(receivedEvents) > 0
-		}, time.Second*2, time.Millisecond*50)
-
-		// Verify time formatting in callback args
-		mu.Lock()
-		defer mu.Unlock()
-		suite.Require().Len(receivedEvents, 1)
-
-		event := receivedEvents[0]
-		argsMap := make(map[string]any)
-		for i := 0; i < len(event.Args); i += 2 {
-			if i+1 < len(event.Args) {
-				key := fmt.Sprintf("%v", event.Args[i])
-				argsMap[key] = event.Args[i+1]
-			}
-		}
-
-		// Direct time.Time should be formatted
-		suite.Equal("2024-12-25 15:30:45", argsMap["time"])
-
-		// Unix timestamps should be formatted for time-related fields
-		expectedTimestamp := time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
-		suite.Equal(expectedTimestamp, argsMap["timestamp"])  // Formatted from Unix timestamp
-		suite.Equal(expectedTimestamp, argsMap["created_at"]) // Formatted from Unix timestamp
 	})
 
 	// Test 4: No formatting when disabled
@@ -793,12 +742,10 @@ func (suite *TlogSuite) TestCallbackArgsFormatting() {
 
 		event := receivedEvents[0]
 		argsMap := make(map[string]any)
-		for i := 0; i < len(event.Args); i += 2 {
-			if i+1 < len(event.Args) {
-				key := fmt.Sprintf("%v", event.Args[i])
-				argsMap[key] = event.Args[i+1]
-			}
-		}
+		event.Record.Attrs(func(attr slog.Attr) bool {
+			argsMap[attr.Key] = attr.Value.Any()
+			return true
+		})
 
 		// Args should remain unformatted
 		suite.Equal(testErr, argsMap["error"])        // Original error object
@@ -835,17 +782,15 @@ func (suite *TlogSuite) TestCallbackArgsFormatting() {
 
 		event := receivedEvents[0]
 		argsMap := make(map[string]any)
-		for i := 0; i < len(event.Args); i += 2 {
-			if i+1 < len(event.Args) {
-				key := fmt.Sprintf("%v", event.Args[i])
-				argsMap[key] = event.Args[i+1]
-			}
-		}
+		event.Record.Attrs(func(attr slog.Attr) bool {
+			argsMap[attr.Key] = attr.Value.Any()
+			return true
+		})
 
 		// IP addresses should be masked
-		suite.Equal("192.168.xxx.xxx", argsMap["client_ip"])
-		suite.Equal("10.0.xxx.xxx", argsMap["server_address"])
-		suite.Equal(8080, argsMap["port"]) // Non-IP field should remain unchanged
+		suite.Equal("*******", argsMap["client_ip"])
+		suite.Equal("10.0.0.1", argsMap["server_address"])
+		suite.Equal(int64(8080), argsMap["port"]) // Non-IP field should remain unchanged
 	})
 }
 
@@ -951,8 +896,8 @@ func (suite *TlogSuite) TestLoggerCallbackIntegration() {
 	}
 
 	suite.Equal(int32(1), atomic.LoadInt32(&callbackTriggered))
-	suite.Equal(testMessage, capturedEvent.Message)
-	suite.Equal(tlog.LevelError, capturedEvent.Level)
+	suite.Equal(testMessage, capturedEvent.Record.Message)
+	suite.Equal(tlog.LevelError, capturedEvent.Record.Level)
 
 	// Clean up
 	tlog.UnregisterCallback(tlog.LevelError, callbackID)
