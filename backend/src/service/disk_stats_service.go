@@ -57,7 +57,7 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 		OnStart: func(ctx context.Context) error {
 			err := ds.updateDiskStats()
 			if err != nil && !errors.Is(err, dto.ErrorNotFound) {
-				slog.Error("Failed to update disk stats", "error", err)
+				slog.Warn("Failed to update disk stats", "error", err)
 			}
 			Ctx.Value("wg").(*sync.WaitGroup).Add(1)
 			go func() {
