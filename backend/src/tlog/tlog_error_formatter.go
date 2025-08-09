@@ -16,7 +16,7 @@ func stackTraceFormatter(frames *runtime.Frames) string {
 	//	if multiLine {
 	//		return slog.String("stacktrace", frames.String())
 	//	}
-	//	return slog.String("stacktrace", strings.ReplaceAll(frames.String(), "\n", " "))
+	// TODO: Support multi-line stack trace formatting if needed in the future.
 
 	var stackLines []string
 
