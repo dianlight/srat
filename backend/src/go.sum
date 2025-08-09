@@ -228,6 +228,8 @@ github.com/jpillora/overseer v1.1.6/go.mod h1:aPXQtxuVb9PVWRWTXpo+LdnC/YXQ0IBLNX
 github.com/jpillora/s3 v1.1.4 h1:YCCKDWzb/Ye9EBNd83ATRF/8wPEy0xd43Rezb6u6fzc=
 github.com/jpillora/s3 v1.1.4/go.mod h1:yedE603V+crlFi1Kl/5vZJaBu9pUzE9wvKegU/lF2zs=
 github.com/juju/gnuflag v0.0.0-20171113085948-2ce1bb71843d/go.mod h1:2PavIy+JPciBPrBUjwbNvtwB6RQlve+hkpll6QSNmOE=
+github.com/k0kubun/pp/v3 v3.5.0 h1:iYNlYA5HJAJvkD4ibuf9c8y6SHM0QFhaBuCqm1zHp0w=
+github.com/k0kubun/pp/v3 v3.5.0/go.mod h1:5lzno5ZZeEeTV/Ky6vs3g6d1U3WarDrH8k240vMtGro=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 h1:Z9n2FFNUXsshfwJMBgNA0RU6/i7WVaAegv3PtuIHPMs=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51/go.mod h1:CzGEWj7cYgsdH8dAjBGEr58BoE7ScuLd+fwFZ44+/x8=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
@@ -350,8 +352,18 @@ github.com/rogpeppe/gohack v1.0.2 h1:lYiGLFzvZC3RvzeE4GoUV3nTecDxTpVusVsQY4nAXGc
 github.com/rogpeppe/gohack v1.0.2/go.mod h1:DE8wqaJRPvHU0fden5cSYy7ar2dTbbccPT/eeOYcbcE=
 github.com/rs/cors v1.11.1 h1:eU3gRzXLRK57F5rKMGMZURNdIG4EoAmX8k94r9wXWHA=
 github.com/rs/cors v1.11.1/go.mod h1:XyqrcTp5zjWr1wsJ8PIRZssZ8b/WMcMf71DJnit4EMU=
+github.com/samber/lo v1.49.1 h1:4BIFyVfuQSEpluc7Fua+j1NolZHiEHEpaSEKdsH0tew=
+github.com/samber/lo v1.49.1/go.mod h1:dO6KHFzUKXgP8LDhU0oI8d2hekjXnGOu0DB8Jecxd6o=
+github.com/samber/lo v1.51.0 h1:kysRYLbHy/MB7kQZf5DSN50JHmMsNEdeY24VzJFu7wI=
+github.com/samber/lo v1.51.0/go.mod h1:4+MXEGsJzbKGaUEQFKBq2xtfuznW9oz/WrgyzMzRoM0=
+github.com/samber/slog-common v0.19.0 h1:fNcZb8B2uOLooeYwFpAlKjkQTUafdjfqKcwcC89G9YI=
+github.com/samber/slog-common v0.19.0/go.mod h1:dTz+YOU76aH007YUU0DffsXNsGFQRQllPQh9XyNoA3M=
+github.com/samber/slog-formatter v1.2.0 h1:gTSHm4CxyySyhcxRkzk21CSKbGCdZVipbRMhINkNtQU=
+github.com/samber/slog-formatter v1.2.0/go.mod h1:hgjhSd5Vf69XCOnVp0UW0QHCxJ8iDEm/qASjji6FNoI=
 github.com/samber/slog-http v1.7.0 h1:sFrwkdw3Nrtcqq6WLkFL0K0Drlh76TPRvo0d8epF2a4=
 github.com/samber/slog-http v1.7.0/go.mod h1:PAcQQrYFo5KM7Qbk50gNNwKEAMGCyfsw6GN5dI0iv9g=
+github.com/samber/slog-multi v1.3.3 h1:qhFXaYdW73FIWLt8SrXMXfPwY58NpluzKDwRdPvhWWY=
+github.com/samber/slog-multi v1.3.3/go.mod h1:ACuZ5B6heK57TfMVkVknN2UZHoFfjCwRxR0Q2OXKHlo=
 github.com/sergi/go-diff v1.1.0/go.mod h1:STckp+ISIX8hZLjrqAeVduY0gWCT9IjLuqbuNXdaHfM=
 github.com/sergi/go-diff v1.4.0 h1:n/SP9D5ad1fORl+llWyN+D6qoUETXNZARKjyY2/KVCw=
 github.com/sergi/go-diff v1.4.0/go.mod h1:A0bzQcvG0E7Rwjx0REVgAGH58e96+X0MeOfepqsbeW4=

@@ -10,13 +10,6 @@
     "sensors"
   ],
   "makefile.configureOnOpen": false,
-  "better-comments.highlightPlainText": true,
-  "commitSage.commit.commitFormat": "emojiKarma",
-  "commitSage.commit.onlyStagedChanges": true,
-  "commitSage.commit.promptForRefs": true,
-  "commitSage.gemini.model": "gemini-2.0-flash-exp",
-  "geminicodeassist.codeGenerationPaneViewEnabled": true,
-  "geminicodeassist.updateChannel": "Insiders",
   "remote.localPortHost": "allInterfaces",
   "typescript.inlayHints.parameterTypes.enabled": true,
   "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
@@ -38,6 +31,5 @@
   "editor.codeActionsOnSave": {
     "source.action.useSortedKeys.biome": "explicit",
     "source.fixAll.biome": "explicit",
-  },
-  "biome.requireConfiguration": true
+  }
 }

@@ -82,7 +82,7 @@ Enhanced the documentation validation system with improved `make` targets that f
 
 ### Developer Experience
 
-```bash
+````bash
 ```bash
 # Step-by-step improved workflow
 make docs-check      # ✅ Validate dependencies first
@@ -90,7 +90,7 @@ make docs-install    # 🚀 Install tools with detected package manager
 make docs-validate   # 🔍 Run comprehensive validation
 make docs-fix        # 🔧 Auto-fix any issues
 make docs-help       # 📚 Get help anytime
-```
+````
 
 ## Error Handling
 
@@ -110,7 +110,7 @@ make docs-help       # 📚 Get help anytime
 
 ### `make docs-check`
 
-```bash
+````bash
 $ make docs-check
 Checking documentation validation dependencies...
 ❌ Node.js is required but not installed
@@ -133,7 +133,7 @@ Available make targets:
 
 Package manager support:
   ✅ bun detected and will be used
-```
+````
 
 ## Benefits
 
@@ -169,7 +169,7 @@ Package manager support:
 
 ### Make Target Structure
 
-```makefile
+````makefile
 # Pattern used for all documentation targets
 docs-target:
     @echo "Action description..."
@@ -219,3 +219,4 @@ docs-target:
 **Status**: ✅ Complete and tested
 **Compatibility**: Works with all existing workflows
 **Dependencies**: Node.js + (bun OR npm) + optional pre-commit
+````

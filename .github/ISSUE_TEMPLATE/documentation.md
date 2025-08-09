@@ -21,7 +21,7 @@ assignees: ""
 - [ ] Architecture/implementation documentation
 - [ ] README update
 - [ ] CHANGELOG entry
-- [ ] Other: ****\_\_\_****
+- [ ] Other: \***\*\_\_\_\*\***
 
 ### Files Affected
 
@@ -32,7 +32,7 @@ assignees: ""
 - [ ] docs/HOME_ASSISTANT_INTEGRATION.md
 - [ ] IMPLEMENTATION\_\*.md files
 - [ ] API documentation (OpenAPI specs)
-- [ ] Other: ****\_\_\_****
+- [ ] Other: \***\*\_\_\_\*\***
 
 ### Description
 

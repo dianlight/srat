@@ -47,6 +47,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.147.6 // indirect
 	github.com/jmattheis/goverter v1.9.1 // indirect
+	github.com/k0kubun/pp/v3 v3.5.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
@@ -56,6 +57,10 @@ require (
 	github.com/petermattis/goid v0.0.0-20250721140440-ea1c0173183e // indirect
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/rogpeppe/gohack v1.0.2 // indirect
+	github.com/samber/lo v1.51.0 // indirect
+	github.com/samber/slog-common v0.19.0 // indirect
+	github.com/samber/slog-formatter v1.2.0 // indirect
+	github.com/samber/slog-multi v1.3.3 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect
