@@ -336,22 +336,6 @@ func (l *Logger) log(ctx context.Context, level slog.Level, msg string, args ...
 	var pcs []uintptr = make([]uintptr, 50)
 	// skip [runtime.Callers, this function, this function's caller]
 	runtime.Callers(3, pcs[:])
-	//pp.Printf("%+v\n", runtime.Callers(3, pcs[:]))
-	//frames := runtime.CallersFrames(pcs)
-	//for {
-	//	frame, more := frames.Next()
-	//	pp.Printf("%s %s %s\n", frame.File, frame.Line, frame.Function)
-	//	if !more {
-	//		break
-	//	}
-	//}
-	//
-	//debug.PrintStack()
-
-	//pp.Printf("Args: %+v\n", args)
-	var pcs []uintptr = make([]uintptr, 50)
-	// skip [runtime.Callers, this function, this function's caller]
-	runtime.Callers(3, pcs[:])
 	r := slog.NewRecord(time.Now(), level, msg, pcs[0])
 	r.Add(args...)
 	_ = l.Handler().Handle(ctx, r)
