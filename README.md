@@ -11,6 +11,20 @@ SRAT (SambaNAS REST Administration Tool) is a new system designed to provide a s
 
 Currently under development and in an alpha state, SRAT is set to become the preferred system for configuring and using this addon, eventually "retiring" the YAML configuration.
 
+## Key Features
+
+- **Modern Web UI**: React-based frontend with TypeScript support
+- **RESTful API**: Go-based backend with comprehensive API documentation
+- **Enhanced Logging**: Advanced logging system with the `tlog` package featuring:
+  - Custom log levels (TRACE, DEBUG, INFO, NOTICE, WARN, ERROR, FATAL)
+  - Automatic color support with terminal detection
+  - Sensitive data protection (passwords, tokens, API keys automatically masked)
+  - Enhanced error formatting with tree-structured stack traces
+  - Context-aware logging with request tracking
+  - Thread-safe operations and asynchronous callback system
+- **Docker Integration**: Seamless integration with Home Assistant addons
+- **Real-time Updates**: Server-sent events for live configuration updates
+
 :construction_worker: This is a part for new SambaNas2 Home Assistant Addon. :construction_worker:
 
 ## Installation
@@ -111,6 +125,36 @@ make prepare
 
 # Install documentation validation tools
 make docs-install
+```
+
+## Enhanced Logging System
+
+SRAT includes a comprehensive logging system with the `tlog` package. For detailed information about logging capabilities, see [backend/src/tlog/README.md](./backend/src/tlog/README.md).
+
+### Key Logging Features
+
+- **Professional Formatting**: Powered by `samber/slog-formatter` with automatic error structuring
+- **Security-First**: Automatic masking of sensitive data (passwords, tokens, API keys, IP addresses)
+- **Developer-Friendly**: Color-coded output with terminal detection and level-based coloring
+- **Production-Ready**: Thread-safe operations with configurable output formats
+- **Context-Aware**: Automatic extraction and display of request/trace/user context
+
+### Quick Logging Examples
+
+```go
+import "github.com/dianlight/srat/tlog"
+
+// Basic usage with enhanced formatting
+tlog.Info("Server started", "port", 8080, "version", "1.0.0")
+tlog.Error("Database connection failed", "error", err, "host", "localhost")
+
+// Context-aware logging
+ctx := context.WithValue(context.Background(), "request_id", "req-12345")
+tlog.InfoContext(ctx, "Processing request", "method", "GET", "path", "/api/users")
+
+// Enable security features
+tlog.EnableSensitiveDataHiding(true) // Auto-masks passwords, tokens, IPs
+tlog.EnableColors(true)              // Color output (auto-disabled if not terminal)
 ```
 
 ## Documentation Validation

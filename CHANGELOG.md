@@ -10,6 +10,18 @@
 - Veto files for share not global [#79](https://github.com/dianlight/srat/issues/79)
 - Ingress security validation [#89](https://github.com/dianlight/srat/issues/89)
 - [W] Dashboard
+- **Enhanced TLog Package [#152](https://github.com/dianlight/srat/issues/152)**: Complete logging system overhaul with advanced formatting capabilities:
+  - Added support for `github.com/k0kubun/pp/v3` for enhanced pretty printing
+  - Integrated `samber/slog-formatter` for professional-grade log formatting
+  - Enhanced error formatting with structured display and tree-formatted stack traces for `tozd/go/errors`
+  - Automatic terminal detection for color support
+  - Sensitive data protection (automatic masking of passwords, tokens, API keys, IP addresses)
+  - Custom time formatting with multiple preset options
+  - Enhanced context value extraction and display
+  - HTTP request/response formatting for web applications
+  - Comprehensive color support with level-based coloring (TRACE=Gray, DEBUG=Cyan, INFO=Green, etc.)
+  - Thread-safe configuration management
+  - Backward compatibility maintained with existing code
 
 #### **🚧 Work in progess**
 
@@ -25,6 +37,7 @@
 - Renaming the admin user does not correctly create the new user or rename the existing one; issues persist until a full addon reboot.
 - Fix dianlight/hassio-addons#448 [SambaNAS2] Unable to create share for mounted volume
 - Fix dianlight/hassio-addons#447 [SambaNAS2] Unable to mount external drive
+- **Disk Stats Service**: Changed log level from `Error` to `Warn` for disk stats update failures to reduce log noise and better distinguish between critical errors and warnings
 
 #### **🚧 Work in progess**
 
@@ -34,6 +47,11 @@
 
 - Implemet wachdog
 - Align UI elements to HA [#81](https://github.com/dianlight/srat/issues/81)
+- **Dependencies**: Updated Go dependencies including:
+  - Added `github.com/k0kubun/pp/v3` v3.5.0 for pretty printing
+  - Updated `github.com/samber/lo` to v1.51.0
+  - Added `github.com/samber/slog-common` v0.19.0 for enhanced logging functionality
+  - Added gohack replace directives for `samber/slog-http` and `jpillora/overseer` for development
 
 #### **🚧 Work in progess**
 

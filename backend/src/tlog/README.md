@@ -115,7 +115,7 @@ The tlog package supports registering callback functions that are executed async
 errorCallbackID := tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
     // Send to monitoring system
     sendToMonitoring(event.Message, event.Level, event.Args)
-    
+
     // Or send email alert
     if event.Level >= tlog.LevelError {
         sendEmailAlert(event.Message, event.Timestamp)
@@ -176,12 +176,12 @@ tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
     // Extract error information
     var errorMsg string
     var errorCode int
-    
+
     for i := 0; i < len(event.Args); i += 2 {
         if i+1 < len(event.Args) {
             key := fmt.Sprintf("%v", event.Args[i])
             value := event.Args[i+1]
-            
+
             switch key {
             case "error":
                 errorMsg = fmt.Sprintf("%v", value)
@@ -192,7 +192,7 @@ tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
             }
         }
     }
-    
+
     // Send to monitoring service
     monitoring.RecordError(monitoring.ErrorEvent{
         Message:   event.Message,
@@ -290,7 +290,7 @@ The package automatically configures itself on initialization:
    ```go
    // Good
    tlog.Info("User logged in", "userId", user.ID, "email", user.Email)
-   
+
    // Less ideal
    tlog.Info(fmt.Sprintf("User %s (%d) logged in", user.Email, user.ID))
    ```
@@ -310,7 +310,7 @@ The package automatically configures itself on initialization:
        errorCounter.Inc()
        errorQueue <- event
    })
-   
+
    // Avoid - heavy operations in callbacks
    tlog.RegisterCallback(tlog.LevelInfo, func(event tlog.LogEvent) {
        // Don't do expensive operations here
@@ -379,7 +379,6 @@ type FormatterConfig struct {
     EnableFormatting    bool   // Enable slog-formatter enhancements
     HideSensitiveData   bool   // Hide sensitive data like passwords, tokens, IPs
     TimeFormat          string // Time format for timestamps
-    MultilineStacktrace bool   // Enable multiline display of stacktraces instead of escaped single line
 }
 ```
 
@@ -402,13 +401,11 @@ tlog.SetFormatterConfig(customConfig)
 tlog.EnableColors(true)                    // Enable/disable colors
 tlog.EnableSensitiveDataHiding(true)       // Hide sensitive data
 tlog.SetTimeFormat("2006-01-02 15:04:05") // Custom time format
-tlog.EnableMultilineStacktrace(true)       // Enable multiline stacktrace display
 
 // Check current settings
 isColorsEnabled := tlog.IsColorsEnabled()
 isSensitiveHidden := tlog.IsSensitiveDataHidingEnabled()
 timeFormat := tlog.GetTimeFormat()
-isMultilineStacktrace := tlog.IsMultilineStacktraceEnabled()
 ```
 
 ### Advanced Formatters
@@ -418,13 +415,13 @@ The package includes specialized formatters for common data types:
 #### Built-in Formatters
 
 - **HTTPRequestFormatter**: Formats HTTP request objects with method, URL, protocol, and content length
-- **HTTPResponseFormatter**: Formats HTTP response objects with status, status code, protocol, and content length  
+- **HTTPResponseFormatter**: Formats HTTP response objects with status, status code, protocol, and content length
 - **UnixTimestampFormatter**: Converts Unix timestamps to readable RFC3339 format
 - **Enhanced PIIFormatter**: Masks sensitive fields including passwords, tokens, API keys, and IP addresses
 
 ```go
 // These are automatically applied when EnableFormatting is true
-tlog.Info("HTTP request processed", 
+tlog.Info("HTTP request processed",
     "timestamp", 1673587200,           // Converted to: 2023-01-13T06:00:00Z
     "client_ip", "192.168.1.100",      // Masked as: *******
     "auth_token", "Bearer jwt-abc",     // Masked as: Bear*******
@@ -496,7 +493,7 @@ When `HideSensitiveData` is enabled, the following fields are automatically mask
 tlog.EnableSensitiveDataHiding(true)
 
 // This will mask the sensitive fields
-tlog.Info("User login attempt", 
+tlog.Info("User login attempt",
     "username", "alice",
     "password", "secret123",          // Masked as "secr*******"
     "auth_token", "Bearer jwt-xyz",   // Masked as "Bear*******"
@@ -564,7 +561,7 @@ ERROR Service initialization failed
       database: myapp
     stacktrace:
       frame_0: ├─ /path/to/main.go:42 main.initDatabase
-      frame_1: ├─ /path/to/service.go:15 service.Initialize  
+      frame_1: ├─ /path/to/service.go:15 service.Initialize
       frame_2: └─ /path/to/main.go:25 main.main
 ```
 
@@ -585,31 +582,6 @@ ERROR Service initialization failed
 - **Color coding**: Stack frames are colored by depth for easy visual scanning
 - **Cause chains**: Wrapped errors show their causes in the output
 - **Detail preservation**: Error details are maintained and displayed in a structured format
-
-#### Multiline Stacktrace Display
-
-By default, stacktraces are displayed as a single escaped string for compatibility with most log parsers. However, you can enable multiline display for better readability:
-
-```go
-// Enable multiline stacktrace display
-tlog.EnableMultilineStacktrace(true)
-
-// Log an error - stacktrace will be displayed as separate log attributes
-err := errors.WithStack(errors.New("example error"))
-tlog.Error("Something went wrong", "error", err)
-```
-
-**Single-line format (default):**
-```
-ERROR Something went wrong error.stacktrace="├─ /path/to/file.go:42 main.function1\n├─ /path/to/file.go:25 main.function2\n└─ /path/to/file.go:10 main.main"
-```
-
-**Multiline format (when enabled):**
-```
-ERROR Something went wrong error.stacktrace.frame_0="├─ /path/to/file.go:42 main.function1" error.stacktrace.frame_1="├─ /path/to/file.go:25 main.function2" error.stacktrace.frame_2="└─ /path/to/file.go:10 main.main"
-```
-
-The multiline format is particularly useful when using log aggregation tools that can parse structured log attributes and display them in a more readable format.
 
 ### Time Format Options
 
