@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -68,20 +69,18 @@ var levelColorNumbers = map[string]uint8{
 
 // FormatterConfig holds configuration for log formatting
 type FormatterConfig struct {
-	EnableColors        bool
-	EnableFormatting    bool
-	HideSensitiveData   bool
-	TimeFormat          string
-	MultilineStacktrace bool // Enable multiline display of stacktraces instead of escaped single line
+	EnableColors      bool
+	EnableFormatting  bool
+	HideSensitiveData bool
+	TimeFormat        string
 }
 
 // defaultFormatterConfig provides default configuration
 var defaultFormatterConfig = FormatterConfig{
-	EnableColors:        true, // Will be disabled automatically if terminal doesn't support colors
-	EnableFormatting:    true,
-	HideSensitiveData:   false,
-	TimeFormat:          time.RFC3339,
-	MultilineStacktrace: false, // Default to single line for compatibility
+	EnableColors:      true, // Will be disabled automatically if terminal doesn't support colors
+	EnableFormatting:  true,
+	HideSensitiveData: false,
+	TimeFormat:        time.RFC3339,
 }
 
 var (
@@ -223,10 +222,10 @@ func createBaseHandler(level slog.Level) slog.Handler {
 		var formatters []slogformatter.Formatter
 
 		// Add tozd errors formatter for enhanced error display with stacktraces
-		formatters = append(formatters, TozdErrorFormatter(config.MultilineStacktrace))
+		formatters = append(formatters, TozdErrorFormatter())
 
 		// Add generic error formatter for better error display (as fallback)
-		formatters = append(formatters, ErrorFormatter("error", config.MultilineStacktrace))
+		formatters = append(formatters, ErrorFormatter("error"))
 
 		// Add sensitive data formatter if enabled
 		if config.HideSensitiveData {
@@ -336,6 +335,7 @@ func (l *Logger) log(ctx context.Context, level slog.Level, msg string, args ...
 	//var pc uintptr
 	var pcs []uintptr = make([]uintptr, 50)
 	// skip [runtime.Callers, this function, this function's caller]
+	runtime.Callers(3, pcs[:])
 	//pp.Printf("%+v\n", runtime.Callers(3, pcs[:]))
 	//frames := runtime.CallersFrames(pcs)
 	//for {
@@ -570,27 +570,6 @@ func GetTimeFormat() string {
 	formatterConfigMu.RLock()
 	defer formatterConfigMu.RUnlock()
 	return formatterConfig.TimeFormat
-}
-
-// EnableMultilineStacktrace enables or disables multiline display of stacktraces
-// When enabled, stacktraces are displayed as separate log attributes for each frame
-// When disabled (default), stacktraces are displayed as a single escaped string
-func EnableMultilineStacktrace(enabled bool) {
-	formatterConfigMu.Lock()
-	formatterConfig.MultilineStacktrace = enabled
-	formatterConfigMu.Unlock()
-
-	// Reinitialize the logger with new configuration
-	mu.Lock()
-	defer mu.Unlock()
-	initializeLogger()
-}
-
-// IsMultilineStacktraceEnabled returns true if multiline stacktrace display is enabled
-func IsMultilineStacktraceEnabled() bool {
-	formatterConfigMu.RLock()
-	defer formatterConfigMu.RUnlock()
-	return formatterConfig.MultilineStacktrace
 }
 
 // WithLevel creates a logger with a specific minimum level
