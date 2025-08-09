@@ -10,6 +10,7 @@
 - Veto files for share not global [#79](https://github.com/dianlight/srat/issues/79)
 - Ingress security validation [#89](https://github.com/dianlight/srat/issues/89)
 - [W] Dashboard
+- Frontend: Async console.error callbacks & React hook — added a registry to register callbacks executed asynchronously whenever `console.error` is called, plus `useConsoleErrorCallback` hook for easy integration in components.
 - **Enhanced TLog Package [#152](https://github.com/dianlight/srat/issues/152)**: Complete logging system overhaul with advanced formatting capabilities:
   - Added support for `github.com/k0kubun/pp/v3` for enhanced pretty printing
   - Integrated `samber/slog-formatter` for professional-grade log formatting
