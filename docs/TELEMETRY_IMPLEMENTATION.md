@@ -1,12 +1,14 @@
 # Rollbar Telemetry Implementation
 
-This document describes the implementation of Rollbar tele### Backend Environment Variables
+This document describes the implementation of Rollbar telemetry and error reporting with configurable privacy modes.
+
+### Backend Environment Variables
 - `ROLLBAR_CLIENT_ACCESS_TOKEN`: Unified Rollbar access token (embedded at build time via ldflags)
 - `ROLLBAR_ENVIRONMENT`: Override automatic environment detection (embedded at build time via ldflags)
 - Version is automatically set from `config.Version` (configured via build ldflags)
 - Environment auto-detected: "development" for dev versions, "production" for releases
-- **Security**: Tokens are embedded at build time, not read from runtime environment
-- **Simplification**: Same token used for both backend and frontendand error reporting with configurable privacy modes.
+- Security: Tokens are embedded at build time, not read from runtime environment
+- Simplification: Same token can be used for both backend and frontend
 
 ## Overview
 
@@ -52,6 +54,12 @@ The telemetry system provides four configuration modes:
    - Error and event reporting
    - TypeScript types for mode safety
 
+2. **useRollbarTelemetry hook** (`hooks/useRollbarTelemetry.ts`)
+   - Thin wrapper around `@rollbar/react` that honors current telemetry mode
+   - `reportError(error, extraData?)`: sends errors when mode is `All` or `Errors`
+   - `reportEvent(event, data?)`: sends events only when mode is `All`
+   - Safe no-ops if telemetry is not configured or disabled
+
 2. **TelemetryModal** (`components/TelemetryModal.tsx`)
    - Modal dialog for initial telemetry preference selection
    - Displays only when mode is "Ask" and internet is available
@@ -72,7 +80,29 @@ The telemetry system provides four configuration modes:
 5. **Hooks**
    - `useTelemetryModal.ts` - Determines when to show telemetry modal
    - `useTelemetryInitialization.ts` - Initializes service on app load
-   - `useErrorReporting.ts` - Manual error reporting
+    - `useErrorReporting.ts` - Manual error reporting
+    - `useRollbarTelemetry.ts` - Rollbar wrapper honoring telemetry modes
+
+#### Frontend usage examples
+
+```tsx
+import { useRollbarTelemetry } from "../hooks/useRollbarTelemetry";
+
+export function SaveButton() {
+   const { reportEvent, reportError } = useRollbarTelemetry();
+
+   const onClick = async () => {
+      try {
+         reportEvent("save_clicked", { source: "toolbar" });
+         // ... perform save
+      } catch (err) {
+         reportError(err instanceof Error ? err : String(err), { action: "save" });
+      }
+   };
+
+   return <button onClick={onClick}>Save</button>;
+}
+```
 
 ## User Experience
 

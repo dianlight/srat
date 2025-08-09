@@ -21,7 +21,7 @@ The SRAT telemetry system uses Rollbar for error reporting and analytics. Config
 
 | Variable | Required | Description | Default |
 |----------|----------|-------------|---------|
-| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No | Client-side Rollbar access token | `disabled` |
+| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No | Client-side Rollbar access token (injected at build time via Bun define) | `disabled` |
 
 ## Version Management
 
@@ -43,7 +43,7 @@ The telemetry tokens are read from environment variables at **build time** and e
 
 ### Frontend
 
-The frontend version comes from `package.json` and is automatically updated by the `scripts/update-frontend-version.sh` script based on Git tags.
+The frontend version comes from `package.json` and can be updated by the `scripts/update-frontend-version.sh` script based on Git tags.
 
 ## Environment Detection
 
@@ -110,12 +110,12 @@ docker build \
 ## Token Types
 
 ### Unified Rollbar Token
-- Single token used by both backend and frontend
+- Single token can be used by both backend and frontend
 - Simplifies configuration and deployment
 - Can be either server-side or client-side token depending on your Rollbar setup
 - Required for error reporting from both components
 
-**Note**: Using a single token simplifies configuration but consider security implications in your specific deployment.
+Note: Using a single token simplifies configuration but consider security implications in your specific deployment. If preferred, you can supply different tokens for backend and frontend by customizing your build pipelines.
 
 ## Security Considerations
 
@@ -186,6 +186,12 @@ export ROLLBAR_ENVIRONMENT="staging"
 4. **Wrong environment detected**: Set `ROLLBAR_ENVIRONMENT` explicitly at build time
 
 ### Debug Steps
+
+## Frontend integration notes
+
+- Rollbar is provided via `@rollbar/react` provider using `createRollbarConfig()`
+- Use `useRollbarTelemetry` hook to send errors/events respecting user-selected mode
+- Events are sent only in `All` mode; errors in `All` and `Errors`; no data is sent in `Ask` or `Disabled`
 
 1. Check environment variables are set before building
 2. Verify tokens are valid in Rollbar dashboard
