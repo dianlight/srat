@@ -29,11 +29,11 @@ This document contains development notes, useful packages, and technical referen
 
 ### Minimal Size for Loopback Disks
 
-| File System | Minimum Size | Notes |
-|-------------|--------------|-------|
-| exFAT       | 10 MB        | Good for cross-platform compatibility |
+| File System | Minimum Size | Notes                                  |
+| ----------- | ------------ | -------------------------------------- |
+| exFAT       | 10 MB        | Good for cross-platform compatibility  |
 | FAT32       | 512 MB       | Legacy compatibility, size limitations |
-| NTFS        | 10 MB        | Windows native, good compression |
+| NTFS        | 10 MB        | Windows native, good compression       |
 
 ## Development Guidelines
 

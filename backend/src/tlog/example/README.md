@@ -17,6 +17,7 @@ go run main.go
 ```
 
 This will run a comprehensive demonstration of all tlog features including:
+
 - Basic logging functions
 - Level management
 - Error handling
@@ -33,6 +34,7 @@ go test -run Example
 ```
 
 This will run the example test functions that demonstrate:
+
 - Creating new loggers
 - Using different log levels
 - Context-aware logging methods

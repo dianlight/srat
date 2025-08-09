@@ -76,7 +76,6 @@ This is a table of contents for your project. It helps the reader navigate throu
 - [Contribute](#contribute)
 - [License](#license)
 
-
 # Installation
 [(Back to top)](#table-of-contents)
 
@@ -90,7 +89,6 @@ You can add snippets here that your readers can copy-paste with click:
 ```shell
 gh repo clone navendu-pottekkat/awesome-readme
 ```
-
 
 # Usage
 [(Back to top)](#table-of-contents)

@@ -34,6 +34,7 @@ type FormatterConfig struct {
 ### 4. **New Public API Functions**
 
 #### Configuration Functions
+
 - `SetFormatterConfig(config FormatterConfig)` - Set complete formatter configuration
 - `GetFormatterConfig() FormatterConfig` - Get current configuration
 - `EnableColors(enabled bool)` - Enable/disable colors
@@ -44,6 +45,7 @@ type FormatterConfig struct {
 - `GetTimeFormat() string` - Get current time format
 
 #### Color Printing Functions
+
 - `ColorPrint(level, message, args...)` - Print with level-based colors
 - `ColorPrintln(level, message, args...)` - Print with colors and newline
 - `ColorTrace/Debug/Info/Notice/Warn/Error/Fatal(message, args...)` - Level-specific color printing
@@ -86,6 +88,7 @@ func isTerminalSupported() bool {
 ```
 
 Colors are automatically:
+
 - **Enabled**: When terminal supports colors AND colors are enabled in config
 - **Disabled**: When output is redirected, terminal doesn't support colors, or manually disabled
 
@@ -101,6 +104,7 @@ When `HideSensitiveData` is enabled, the following fields are automatically mask
 - **IP Addresses**: `ip`, `addr`, `address` → `"*******"`
 
 Example:
+
 ```go
 tlog.EnableSensitiveDataHiding(true)
 tlog.Info("User login", "username", "alice", "password", "secret123")
@@ -130,6 +134,7 @@ All tests pass with 100% success rate, maintaining existing functionality while 
 ## Example Usage
 
 ### Basic Enhanced Logging
+
 ```go
 // Enable colors and sensitive data hiding
 tlog.EnableColors(true)
@@ -140,13 +145,14 @@ tlog.ColorInfo("Application started successfully")
 tlog.ColorWarn("Configuration file not found, using defaults")
 
 // Standard logging with enhanced formatting
-tlog.Info("User authentication", 
+tlog.Info("User authentication",
     "username", "alice",
     "password", "secret123", // Will be masked
     "ip", "192.168.1.100")   // Will be masked
 ```
 
 ### Custom Configuration
+
 ```go
 config := tlog.FormatterConfig{
     EnableColors:      true,

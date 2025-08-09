@@ -263,6 +263,7 @@ When implementing new features or modifying existing functionality in Go package
    - Integration patterns with other components
 
 2. **Code Comments**: Include comprehensive examples in code comments for complex APIs:
+
    ```go
    // Example usage:
    //   callback := func(event LogEvent) { ... }

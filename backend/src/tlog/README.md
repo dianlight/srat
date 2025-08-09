@@ -279,6 +279,7 @@ The package automatically configures itself on initialization:
 2. **Leverage context**: Use the context variants (`InfoContext`, `ErrorContext`, etc.) when you have relevant context information like request IDs or user information.
 
 3. **Check level enablement**: For expensive operations, check if the level is enabled before performing the work:
+
    ```go
    if tlog.IsLevelEnabled(tlog.LevelDebug) {
        expensive := doExpensiveCalculation()
@@ -287,6 +288,7 @@ The package automatically configures itself on initialization:
    ```
 
 4. **Use structured logging**: Prefer key-value pairs over string formatting:
+
    ```go
    // Good
    tlog.Info("User logged in", "userId", user.ID, "email", user.Email)
@@ -296,6 +298,7 @@ The package automatically configures itself on initialization:
    ```
 
 5. **Handle level setting errors**: Always check errors when setting levels from strings:
+
    ```go
    if err := tlog.SetLevelFromString(configLevel); err != nil {
        tlog.Error("Invalid log level in config", "level", configLevel, "error", err)
@@ -304,6 +307,7 @@ The package automatically configures itself on initialization:
    ```
 
 6. **Use callbacks judiciously**: Register callbacks only for levels that need special handling. Keep callback functions lightweight to avoid impacting performance:
+
    ```go
    // Good - lightweight callback
    tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
@@ -319,6 +323,7 @@ The package automatically configures itself on initialization:
    ```
 
 7. **Clean up callbacks**: Remember to unregister callbacks or clear them when they're no longer needed:
+
    ```go
    callbackID := tlog.RegisterCallback(tlog.LevelError, errorHandler)
    defer tlog.UnregisterCallback(tlog.LevelError, callbackID)
@@ -332,6 +337,7 @@ The improved tlog package is fully backward compatible. Existing code will conti
 - Use `tlog.IsLevelEnabled()` for expensive debug operations
 - Take advantage of better error messages in level configuration code
 - Register callbacks for critical log levels to implement monitoring and alerting:
+
   ```go
   // Add monitoring for errors
   tlog.RegisterCallback(tlog.LevelError, func(event tlog.LogEvent) {
@@ -473,6 +479,7 @@ tlog.ErrorContext(ctx, "Request failed", "error", "timeout", "duration", "30s")
 ```
 
 Supported context keys that are automatically extracted:
+
 - `request_id`
 - `user_id`
 - `session_id`
@@ -551,6 +558,7 @@ tlog.Error("Service initialization failed", "error", stackErr)
 #### Output Examples
 
 With Unicode support and colors enabled:
+
 ```
 ERROR Service initialization failed
   error:
@@ -566,6 +574,7 @@ ERROR Service initialization failed
 ```
 
 Without Unicode support (ASCII fallback):
+
 ```
 ERROR Service initialization failed
   error:
@@ -613,6 +622,7 @@ Each log level has an associated color:
 - **FATAL**: Bright Red
 
 Colors are automatically disabled when:
+
 - Terminal doesn't support colors
 - Output is redirected to a file
 - Colors are explicitly disabled via configuration

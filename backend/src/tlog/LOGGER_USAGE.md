@@ -18,14 +18,14 @@ import (
 func main() {
     // Create a logger with default configuration
     logger := tlog.NewLogger()
-    
+
     // Create a logger with a specific minimum level
     debugLogger := tlog.NewLoggerWithLevel(tlog.LevelDebug)
-    
+
     // Use the logger methods
     logger.Info("Application started")
     logger.Error("Something went wrong", "error", "connection failed")
-    
+
     // Use context-aware logging
     ctx := context.Background()
     logger.InfoContext(ctx, "Processing request", "request_id", "abc123")
@@ -46,7 +46,7 @@ The `Logger` struct provides:
 ```go
 // Standard logging methods
 logger.Trace("trace message")
-logger.Debug("debug message") 
+logger.Debug("debug message")
 logger.Info("info message")
 logger.Notice("notice message")
 logger.Warn("warning message")
@@ -105,7 +105,7 @@ The Logger struct provides instance methods that correspond to the package-level
 tlog.Info("message")
 tlog.Error("error message")
 
-// New Logger struct usage  
+// New Logger struct usage
 logger := tlog.NewLogger()
 logger.Info("message")
 logger.Error("error message")
