@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/tlog"
 	"github.com/rollbar/rollbar-go"
 )
 
@@ -31,6 +34,10 @@ type TelemetryService struct {
 	accessToken       string
 	environment       string
 	version           string
+
+	// tlog callback management
+	tlogErrorCallbackID string
+	tlogFatalCallbackID string
 }
 
 // NewTelemetryService creates a new telemetry service instance
@@ -53,6 +60,9 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
 		ts.rollbarConfigured = false
 	}
 
+	// Always ensure callbacks are cleared before (re)configuring
+	ts.unregisterTlogCallbacks()
+
 	// Only initialize Rollbar if mode is All or Errors and internet is available
 	if (mode == dto.TelemetryModes.TELEMETRYMODEALL || mode == dto.TelemetryModes.TELEMETRYMODEERRORS) && ts.IsConnectedToInternet() {
 		rollbar.SetToken(ts.accessToken)
@@ -64,6 +74,9 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
 		ts.rollbarConfigured = true
 		slog.Info("Rollbar telemetry configured", "mode", mode.String())
 
+		// Register tlog callbacks for Error and Fatal levels
+		ts.registerTlogCallbacks()
+
 		// Send a test event if mode is All
 		if mode == dto.TelemetryModes.TELEMETRYMODEALL {
 			ts.ReportEvent("telemetry_enabled", map[string]interface{}{
@@ -73,6 +86,8 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
 		}
 	} else {
 		slog.Info("Rollbar telemetry disabled", "mode", mode.String(), "internet", ts.IsConnectedToInternet())
+		// Ensure callbacks are not registered when disabled
+		ts.unregisterTlogCallbacks()
 	}
 
 	return nil
@@ -160,5 +175,75 @@ func (ts *TelemetryService) Shutdown() {
 		rollbar.Close()
 		ts.rollbarConfigured = false
 		slog.Info("Rollbar telemetry service shutdown")
+	}
+	// Unregister any tlog callbacks
+	ts.unregisterTlogCallbacks()
+}
+
+// registerTlogCallbacks registers callbacks to forward tlog Error/Fatal to Rollbar
+func (ts *TelemetryService) registerTlogCallbacks() {
+	// Safety: avoid duplicate registrations
+	ts.unregisterTlogCallbacks()
+
+	callback := func(event tlog.LogEvent) {
+		// Only forward when configured and mode allows
+		if !ts.rollbarConfigured {
+			return
+		}
+		if ts.mode != dto.TelemetryModes.TELEMETRYMODEALL && ts.mode != dto.TelemetryModes.TELEMETRYMODEERRORS {
+			return
+		}
+
+		// Try to extract an error from the log event attributes
+		var extractedErr error
+		var found bool
+		event.Record.Attrs(func(attr slog.Attr) bool {
+			key := strings.ToLower(attr.Key)
+			if key == "error" || key == "err" {
+				v := attr.Value.Any()
+				switch vv := v.(type) {
+				case error:
+					extractedErr = vv
+					found = true
+				case []slog.Attr:
+					// When formatted, error may be represented as slice of Attrs, first usually message
+					if len(vv) > 0 {
+						extractedErr = errors.New(vv[0].Value.String())
+						found = true
+					}
+				case string:
+					if vv != "" {
+						extractedErr = errors.New(vv)
+						found = true
+					}
+				}
+			}
+			return true
+		})
+
+		if !found {
+			// Fallback to record message
+			extractedErr = errors.New(event.Record.Message)
+		}
+
+		// Use existing telemetry path to report error
+		_ = ts.ReportError(extractedErr)
+	}
+
+	ts.tlogErrorCallbackID = tlog.RegisterCallback(tlog.LevelError, callback)
+	ts.tlogFatalCallbackID = tlog.RegisterCallback(tlog.LevelFatal, callback)
+}
+
+// unregisterTlogCallbacks removes previously registered callbacks, if any
+func (ts *TelemetryService) unregisterTlogCallbacks() {
+	if ts.tlogErrorCallbackID != "" {
+		if tlog.UnregisterCallback(tlog.LevelError, ts.tlogErrorCallbackID) {
+			ts.tlogErrorCallbackID = ""
+		}
+	}
+	if ts.tlogFatalCallbackID != "" {
+		if tlog.UnregisterCallback(tlog.LevelFatal, ts.tlogFatalCallbackID) {
+			ts.tlogFatalCallbackID = ""
+		}
 	}
 }
