@@ -419,7 +419,7 @@ func ErrorContext(ctx context.Context, msg string, args ...any) {
 func Fatal(msg string, args ...any) {
 	ctx := context.Background()
 	defaultLogger.log(ctx, LevelFatal, msg, args...)
-	panic("Fatal log called, exiting program") // Use panic to ensure all deferred functions run
+	os.Exit(1)
 }
 
 // FatalContext logs a message at fatal level with context and exits the program
