@@ -1,0 +1,18 @@
+{
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackProtocols": ["http", "https"],
+  "aliveStatusCodes": [200, 206, 301, 302, 307, 308],
+  "ignorePatterns": [
+    {
+      "pattern": "^https://my.home-assistant.io"
+    },
+    {
+      "pattern": "^mailto:"
+    },
+    {
+      "pattern": "^#"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
 	"name": "SRAT",
-	"image": "ghcr.io/hassio-addons/base:18.0.3",
+	"image": "ghcr.io/hassio-addons/base:18.1.0",
 	"runArgs": [
 		"--cap-add=SYS_PTRACE",
 		"--security-opt",
@@ -92,9 +92,7 @@
 				"VizzleTF.geminicommit",
 				"zoellner.openapi-preview",
 				"golang.go",
-				"oorzc.mind-map",
-				"eamodio.gitlens",
-				"Continue.continue"
+				"oorzc.mind-map"
 			]
 		}
 	},

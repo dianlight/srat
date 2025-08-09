@@ -233,3 +233,61 @@ Test data should be placed in `backend/test/data/` directory. Reference configur
 ### Template Files
 
 When tests need template files, reference them from the templates directory: `"../templates/smb.gtpl"`.
+
+## Package Documentation and Examples Guidelines
+
+When implementing new features or modifying existing functionality in Go packages, always ensure that related documentation and examples are updated to reflect the changes:
+
+### Documentation Update Requirements
+
+1. **README Files**: Update package README.md files to include:
+   - New features in the Features section
+   - Updated API documentation with new functions/methods
+   - Usage examples demonstrating new functionality
+   - Best practices and safety considerations
+   - Migration notes for breaking changes
+
+2. **API Reference**: Ensure all public functions, types, and constants are documented with:
+   - Function signatures and parameter descriptions
+   - Return value explanations
+   - Usage examples for complex APIs
+   - Error handling patterns
+
+### Example Update Requirements
+
+1. **Example Programs**: Update or create example programs (typically in `example/` directories) that demonstrate:
+   - Basic usage of new features
+   - Advanced use cases and edge cases
+   - Error handling and recovery patterns
+   - Performance considerations
+   - Integration patterns with other components
+
+2. **Code Comments**: Include comprehensive examples in code comments for complex APIs:
+
+   ```go
+   // Example usage:
+   //   callback := func(event LogEvent) { ... }
+   //   id := RegisterCallback(LevelError, callback)
+   //   defer UnregisterCallback(LevelError, id)
+   ```
+
+### Update Process
+
+When adding features to a package:
+
+1. **Implement the feature** with comprehensive tests
+2. **Update README.md** to document the new functionality
+3. **Update or create examples** that demonstrate the feature
+4. **Test examples** to ensure they work correctly
+5. **Update API documentation** with complete function references
+6. **Add best practices** and safety guidelines
+7. **Include migration notes** if there are breaking changes
+
+### Quality Standards
+
+- Examples should be **runnable** and **well-commented**
+- Documentation should be **clear** and **comprehensive**
+- Include **real-world use cases** and **practical examples**
+- Demonstrate **error handling** and **edge cases**
+- Show **performance considerations** and **best practices**
+- Provide **complete API reference** with all parameters and return values

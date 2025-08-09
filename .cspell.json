@@ -1,0 +1,22 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "SRAT",
+    "SambaNAS",
+    "Hass",
+    "addon",
+    "addons",
+    "hassio",
+    "dianlight"
+  ],
+  "flagWords": [],
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "*.log",
+    "*.lock",
+    "*.sum",
+    "*.mod"
+  ]
+}

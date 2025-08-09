@@ -4,6 +4,7 @@ SRC_DIRS := ./src
 FRONTEND_DIRS := ../frontend
 STATIC_DIRS := ./src/web/static
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+TMPDIR?=/tmp
 
 
 #ALL_SRCS := $(shell find $(SRC_DIRS) -name '*.go')
@@ -45,7 +46,7 @@ format:
 	make patch
 
 .PHONY: clean
-clean:
+clean: clean_examples
 	go clean
 	rm -rf dist
 
@@ -82,6 +83,24 @@ dev:
 .PHONY: update
 update:
 	go get -C $(SRC_DIRS) -u ./...
+
+.PHONY: examples
+examples: example_tlog
+
+.PHONY: example_tlog
+example_tlog:
+	@echo "Building and running tlog example..."
+	cd $(SRC_DIRS)/tlog/example && go build -o tlog-example . && ./tlog-example
+
+.PHONY: test_examples
+test_examples:
+	@echo "Running example tests..."
+	cd $(SRC_DIRS)/tlog/example && go test -run Example -v
+
+.PHONY: clean_examples
+clean_examples:
+	@echo "Cleaning example binaries..."
+	rm -f $(SRC_DIRS)/tlog/example/tlog-example
 
 
 $(FRONTEND_DIRS)/node_modules:

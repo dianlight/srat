@@ -56,7 +56,7 @@ The project uses several tools to validate documentation:
 
 ### Running Validation Locally
 
-```bash
+````bash
 # Check dependencies first
 make docs-check
 
@@ -269,3 +269,4 @@ When making breaking changes:
 - [Semantic Versioning](https://semver.org/)
 - [GitHub Flavored Markdown](https://github.github.com/gfm/)
 - [Documentation Best Practices](https://www.writethedocs.org/guide/)
+````

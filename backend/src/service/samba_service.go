@@ -14,6 +14,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tempio"
+	"github.com/dianlight/srat/tlog"
 	cache "github.com/patrickmn/go-cache"
 	"github.com/shirou/gopsutil/v4/process"
 	"gitlab.com/tozd/go/errors"
@@ -34,28 +35,28 @@ type SambaServiceInterface interface {
 }
 
 type SambaService struct {
-	DockerInterface     string
-	DockerNet           string
-	apictx              *dto.ContextState
-	dirtyservice        DirtyDataServiceInterface
-	supervisor_service  SupervisorServiceInterface
-	share_service ShareServiceInterface
-	prop_repo           repository.PropertyRepositoryInterface
-	samba_user_repo     repository.SambaUserRepositoryInterface
-	mount_client        mount.ClientWithResponsesInterface
-	cache               *cache.Cache
+	DockerInterface    string
+	DockerNet          string
+	apictx             *dto.ContextState
+	dirtyservice       DirtyDataServiceInterface
+	supervisor_service SupervisorServiceInterface
+	share_service      ShareServiceInterface
+	prop_repo          repository.PropertyRepositoryInterface
+	samba_user_repo    repository.SambaUserRepositoryInterface
+	mount_client       mount.ClientWithResponsesInterface
+	cache              *cache.Cache
 }
 
 type SambaServiceParams struct {
 	fx.In
 
-	Apictx              *dto.ContextState
-	Dirtyservice        DirtyDataServiceInterface
-	Share_service       ShareServiceInterface
-	Prop_repo           repository.PropertyRepositoryInterface
-	Samba_user_repo     repository.SambaUserRepositoryInterface
-	Mount_client        mount.ClientWithResponsesInterface `optional:"true"`
-	Su                  SupervisorServiceInterface
+	Apictx          *dto.ContextState
+	Dirtyservice    DirtyDataServiceInterface
+	Share_service   ShareServiceInterface
+	Prop_repo       repository.PropertyRepositoryInterface
+	Samba_user_repo repository.SambaUserRepositoryInterface
+	Mount_client    mount.ClientWithResponsesInterface `optional:"true"`
+	Su              SupervisorServiceInterface
 }
 
 func NewSambaService(in SambaServiceParams) SambaServiceInterface {
@@ -269,9 +270,9 @@ func (self *SambaService) RestartSambaService() error {
 			return errors.Errorf("Error restarting wsdd2 service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outWsdd2)})
 		}
 	} else if os.IsNotExist(statErr) {
-		slog.Warn("wsdd2 service path not found, skipping restart.", "path", wsdd2ServicePath)
+		tlog.Warn("wsdd2 service path not found, skipping restart.", "path", wsdd2ServicePath)
 	} else {
-		slog.Error("Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
+		tlog.Error("Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
 	}
 
 	// Restart avahi service using s6

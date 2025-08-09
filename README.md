@@ -11,6 +11,21 @@ SRAT (SambaNAS REST Administration Tool) is a new system designed to provide a s
 
 Currently under development and in an alpha state, SRAT is set to become the preferred system for configuring and using this addon, eventually "retiring" the YAML configuration.
 
+## Key Features
+
+- **Modern Web UI**: React-based frontend with TypeScript support
+- **RESTful API**: Go-based backend with comprehensive API documentation
+- **Enhanced Logging**: Advanced logging system with the `tlog` package featuring:
+  - Custom log levels (TRACE, DEBUG, INFO, NOTICE, WARN, ERROR, FATAL)
+  - Automatic color support with terminal detection
+  - Sensitive data protection (passwords, tokens, API keys automatically masked)
+  - Enhanced error formatting with tree-structured stack traces
+  - Context-aware logging with request tracking
+  - Thread-safe operations and asynchronous callback system
+- **Docker Integration**: Seamless integration with Home Assistant addons
+- **Real-time Updates**: Server-sent events for live configuration updates
+- **Frontend Error Callbacks**: Async `console.error` callback registry + React hook to capture errors without affecting render cycles
+
 :construction_worker: This is a part for new SambaNas2 Home Assistant Addon. :construction_worker:
 
 ## Installation
@@ -35,9 +50,9 @@ or
 
 ## Sponsor
 
-<a href="https://github.com/sponsors/dianlight"><img src="https://img.shields.io/github/sponsors/dianlight?style=flat-square&logo=githubsponsors&logoColor=%23EA4AAA&link=https%3A%2F%2Fgithub.com%2Fsponsors%2Fdianlight"></a>
+<a href="https://github.com/sponsors/dianlight"><img src="https://img.shields.io/github/sponsors/dianlight?style=flat-square&logo=githubsponsors&logoColor=%23EA4AAA&link=https%3A%2F%2Fgithub.com%2Fsponsors%2Fdianlight" alt="Github Sponsor"></a>
 
-<a href="https://www.buymeacoffee.com/ypKZ2I0"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=ypKZ2I0&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" /></a>
+<a href="https://www.buymeacoffee.com/ypKZ2I0"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=ypKZ2I0&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy Me a Coffee"/></a>
 
 <!--
 # Quick Start Demo
@@ -62,7 +77,6 @@ This is a table of contents for your project. It helps the reader navigate throu
 - [Contribute](#contribute)
 - [License](#license)
 
-
 # Installation
 [(Back to top)](#table-of-contents)
 
@@ -76,7 +90,6 @@ You can add snippets here that your readers can copy-paste with click:
 ```shell
 gh repo clone navendu-pottekkat/awesome-readme
 ```
-
 
 # Usage
 [(Back to top)](#table-of-contents)
@@ -111,6 +124,36 @@ make prepare
 
 # Install documentation validation tools
 make docs-install
+```
+
+## Enhanced Logging System
+
+SRAT includes a comprehensive logging system with the `tlog` package. For detailed information about logging capabilities, see [backend/src/tlog/README.md](./backend/src/tlog/README.md).
+
+### Key Logging Features
+
+- **Professional Formatting**: Powered by `samber/slog-formatter` with automatic error structuring
+- **Security-First**: Automatic masking of sensitive data (passwords, tokens, API keys, IP addresses)
+- **Developer-Friendly**: Color-coded output with terminal detection and level-based coloring
+- **Production-Ready**: Thread-safe operations with configurable output formats
+- **Context-Aware**: Automatic extraction and display of request/trace/user context
+
+### Quick Logging Examples
+
+```go
+import "github.com/dianlight/srat/tlog"
+
+// Basic usage with enhanced formatting
+tlog.Info("Server started", "port", 8080, "version", "1.0.0")
+tlog.Error("Database connection failed", "error", err, "host", "localhost")
+
+// Context-aware logging
+ctx := context.WithValue(context.Background(), "request_id", "req-12345")
+tlog.InfoContext(ctx, "Processing request", "method", "GET", "path", "/api/users")
+
+// Enable security features
+tlog.EnableSensitiveDataHiding(true) // Auto-masks passwords, tokens, IPs
+tlog.EnableColors(true)              // Color output (auto-disabled if not terminal)
 ```
 
 ## Documentation Validation
@@ -157,8 +200,8 @@ You can add information on how they can open issues or how they can sponsor the 
 
 -->
 
-# License
+## License
 
-[(Back to top)](#table-of-contents)
+<!-- [(Back to top)](#table-of-contents) -->
 
 [Apache 2.0 license](./LICENSE)
