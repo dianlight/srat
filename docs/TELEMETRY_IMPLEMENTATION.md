@@ -2,7 +2,8 @@
 
 This document describes the implementation of Rollbar telemetry and error reporting with configurable privacy modes.
 
-### Backend Environment Variables
+## Backend Environment Variables
+
 - `ROLLBAR_CLIENT_ACCESS_TOKEN`: Unified Rollbar access token (embedded at build time via ldflags)
 - `ROLLBAR_ENVIRONMENT`: Override automatic environment detection (embedded at build time via ldflags)
 - Version is automatically set from `config.Version` (configured via build ldflags)
@@ -13,6 +14,7 @@ This document describes the implementation of Rollbar telemetry and error report
 ## Overview
 
 The telemetry system provides four configuration modes:
+
 - **Ask** (default): User hasn't chosen a preference yet
 - **All**: Send errors and telemetry events to Rollbar servers
 - **Errors**: Send only errors to Rollbar servers
@@ -60,28 +62,28 @@ The telemetry system provides four configuration modes:
    - `reportEvent(event, data?)`: sends events only when mode is `All`
    - Safe no-ops if telemetry is not configured or disabled
 
-2. **TelemetryModal** (`components/TelemetryModal.tsx`)
+3. **TelemetryModal** (`components/TelemetryModal.tsx`)
    - Modal dialog for initial telemetry preference selection
    - Displays only when mode is "Ask" and internet is available
    - Cannot be dismissed without making a choice
    - Includes privacy disclaimer and Rollbar information
 
-3. **Settings Integration** (`pages/Settings.tsx`)
+4. **Settings Integration** (`pages/Settings.tsx`)
    - Added telemetry mode field to settings form
    - Disabled when no internet connection
    - Excludes "Ask" from user-selectable options
    - Shows helper text when internet is unavailable
 
-4. **Error Boundary Integration** (`components/ErrorBoundaryWrapper.tsx`)
+5. **Error Boundary Integration** (`components/ErrorBoundaryWrapper.tsx`)
    - Automatic error reporting to telemetry service
    - Additional context (user agent, URL, timestamp)
    - Manual error/event reporting hooks
 
-5. **Hooks**
+6. **Hooks**
    - `useTelemetryModal.ts` - Determines when to show telemetry modal
    - `useTelemetryInitialization.ts` - Initializes service on app load
-    - `useErrorReporting.ts` - Manual error reporting
-    - `useRollbarTelemetry.ts` - Rollbar wrapper honoring telemetry modes
+   - `useErrorReporting.ts` - Manual error reporting
+   - `useRollbarTelemetry.ts` - Rollbar wrapper honoring telemetry modes
 
 #### Frontend usage examples
 
@@ -89,24 +91,25 @@ The telemetry system provides four configuration modes:
 import { useRollbarTelemetry } from "../hooks/useRollbarTelemetry";
 
 export function SaveButton() {
-   const { reportEvent, reportError } = useRollbarTelemetry();
+  const { reportEvent, reportError } = useRollbarTelemetry();
 
-   const onClick = async () => {
-      try {
-         reportEvent("save_clicked", { source: "toolbar" });
-         // ... perform save
-      } catch (err) {
-         reportError(err instanceof Error ? err : String(err), { action: "save" });
-      }
-   };
+  const onClick = async () => {
+    try {
+      reportEvent("save_clicked", { source: "toolbar" });
+      // ... perform save
+    } catch (err) {
+      reportError(err instanceof Error ? err : String(err), { action: "save" });
+    }
+  };
 
-   return <button onClick={onClick}>Save</button>;
+  return <button onClick={onClick}>Save</button>;
 }
 ```
 
 ## User Experience
 
 ### First Launch
+
 1. If user hasn't set telemetry preference (mode = "Ask")
 2. And internet connection is available
 3. Modal dialog appears requiring user to choose preference
@@ -114,6 +117,7 @@ export function SaveButton() {
 5. Choice is saved and telemetry service is configured accordingly
 
 ### Settings Page
+
 1. Telemetry Mode field available in settings
 2. Field disabled if no internet connection
 3. Helper text explains internet requirement
@@ -121,6 +125,7 @@ export function SaveButton() {
 5. Changes take effect immediately
 
 ### Error Handling
+
 1. Uncaught errors automatically reported (if enabled)
 2. Manual error reporting available via hooks
 3. Telemetry events reported for feature usage (if All mode)
@@ -129,6 +134,7 @@ export function SaveButton() {
 ## Configuration
 
 ### Backend Environment Variables
+
 - `ROLLBAR_ACCESS_TOKEN`: Server-side Rollbar access token (embedded at build time via ldflags)
 - `ROLLBAR_ENVIRONMENT`: Override automatic environment detection (embedded at build time via ldflags)
 - Version is automatically set from `config.Version` (configured via build ldflags)
@@ -136,6 +142,7 @@ export function SaveButton() {
 - **Security**: Tokens are embedded at build time, not read from runtime environment
 
 ### Frontend Configuration
+
 - `ROLLBAR_CLIENT_ACCESS_TOKEN`: Client-side Rollbar access token (set at build time)
 - Environment detection via `NODE_ENV` (development/production)
 - Version automatically sourced from `package.json`
@@ -152,6 +159,7 @@ export function SaveButton() {
 ## Migration Path
 
 Existing installations will:
+
 1. Have `telemetry_mode` set to "Ask" after upgrade
 2. Show telemetry modal on next UI access (if internet available)
 3. Function normally if user chooses "Disabled"
@@ -168,14 +176,17 @@ Existing installations will:
 ## Dependencies Added
 
 ### Backend
+
 - `github.com/rollbar/rollbar-go` v1.4.8
 
 ### Frontend
+
 - `rollbar` v2.26.4
 
 ## Files Created/Modified
 
 ### Backend
+
 - `dto/telemetry_mode.go` (new)
 - `dto/telemetrymodes_enums.go` (generated)
 - `service/telemetry_service.go` (new)
@@ -189,6 +200,7 @@ Existing installations will:
 - `cmd/srat-openapi/main-openapi.go` (modified)
 
 ### Frontend
+
 - `services/telemetryService.ts` (new)
 - `components/TelemetryModal.tsx` (new)
 - `components/ErrorBoundaryWrapper.tsx` (new)

@@ -106,9 +106,9 @@ func main() {
 	}
 }
 
-type writeDeadliner interface {
-	SetWriteDeadline(time.Time) error
-}
+//type writeDeadliner interface {
+//	SetWriteDeadline(time.Time) error
+//}
 
 func prog(state overseer.State) {
 

@@ -70,32 +70,34 @@ The migration improves error handling and telemetry reporting by using React-spe
 6. **Proper Provider Hierarchy**: RollbarProvider at the root ensures all components have access to error reporting## Usage Examples
 
 ### Basic Error Reporting
+
 ```typescript
-import { useErrorReporting } from '../components/ErrorBoundaryWrapper';
+import { useErrorReporting } from "../components/ErrorBoundaryWrapper";
 
 function MyComponent() {
-    const { reportError, reportEvent } = useErrorReporting();
+  const { reportError, reportEvent } = useErrorReporting();
 
-    const handleError = (error: Error) => {
-        reportError(error, { context: 'user-action' });
-    };
+  const handleError = (error: Error) => {
+    reportError(error, { context: "user-action" });
+  };
 
-    const handleEvent = () => {
-        reportEvent('user-clicked-button', { buttonId: 'save' });
-    };
+  const handleEvent = () => {
+    reportEvent("user-clicked-button", { buttonId: "save" });
+  };
 }
 ```
 
 ### Using Rollbar Directly
+
 ```typescript
-import { useRollbarTelemetry } from '../hooks/useRollbarTelemetry';
+import { useRollbarTelemetry } from "../hooks/useRollbarTelemetry";
 
 function MyComponent() {
-    const { reportError, isEnabled, currentMode } = useRollbarTelemetry();
+  const { reportError, isEnabled, currentMode } = useRollbarTelemetry();
 
-    if (isEnabled) {
-        // Telemetry is enabled based on user settings
-    }
+  if (isEnabled) {
+    // Telemetry is enabled based on user settings
+  }
 }
 ```
 

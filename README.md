@@ -31,7 +31,11 @@ Currently under development and in an alpha state, SRAT is set to become the pre
 
 ## Installation
 
-Use my addon SmabaNAS2
+Use my addon SambaNAS2
+
+## Usage
+
+SRAT can be used to manage Samba shares, users, and configuration via a modern web UI or REST API. For usage instructions, see the documentation in the `docs/` folder or access the API documentation at `/docs` when running the backend server.
 
 The installation of this add-on is pretty straightforward and not different in
 comparison to installing any other Hass.io add-on.
@@ -81,7 +85,7 @@ This is a table of contents for your project. It helps the reader navigate throu
 # Installation
 [(Back to top)](#table-of-contents)
 
-> **Note**: For longer README files, I usually add a "Back to top" buttton as shown above. It makes it easy to navigate.
+> **Note**: For longer README files, I usually add a "Back to top" button as shown above. It makes it easy to navigate.
 
 This is where your installation instructions go.
 

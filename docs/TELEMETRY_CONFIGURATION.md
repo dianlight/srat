@@ -10,18 +10,18 @@ The SRAT telemetry system uses Rollbar for error reporting and analytics. Config
 
 ### Backend (Go)
 
-| Variable | Required | Description | Default |
-|----------|----------|-------------|---------|
-| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No | Rollbar access token (set at build time) | `""` (disabled) |
-| `ROLLBAR_ENVIRONMENT` | No | Rollbar environment name (set at build time) | Auto-detected from version |
+| Variable                      | Required | Description                                  | Default                    |
+| ----------------------------- | -------- | -------------------------------------------- | -------------------------- |
+| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No       | Rollbar access token (set at build time)     | `""` (disabled)            |
+| `ROLLBAR_ENVIRONMENT`         | No       | Rollbar environment name (set at build time) | Auto-detected from version |
 
 **Note**: Backend telemetry configuration is set at **build time** via ldflags, not runtime environment variables.
 
 ### Frontend (TypeScript)
 
-| Variable | Required | Description | Default |
-|----------|----------|-------------|---------|
-| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No | Client-side Rollbar access token (injected at build time via Bun define) | `disabled` |
+| Variable                      | Required | Description                                                              | Default    |
+| ----------------------------- | -------- | ------------------------------------------------------------------------ | ---------- |
+| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No       | Client-side Rollbar access token (injected at build time via Bun define) | `disabled` |
 
 ## Version Management
 
@@ -36,6 +36,7 @@ The backend version and telemetry configuration are automatically set at build t
 ```
 
 The version is sourced from:
+
 1. `VERSION` environment variable (for CI/CD)
 2. Git tags via `git describe --tags --always --abbrev=0 --match='[0-9]*.[0-9]*.[0-9]*'`
 
@@ -68,6 +69,7 @@ make build
 ### Local Development
 
 1. **Create `.env` file** (optional):
+
    ```bash
    # Unified Rollbar token (used for both backend and frontend)
    ROLLBAR_CLIENT_ACCESS_TOKEN=your_rollbar_token_here
@@ -77,12 +79,14 @@ make build
    ```
 
 2. **Source environment and build**:
+
    ```bash
    source .env
    make build
    ```
 
    Or set variables inline:
+
    ```bash
    ROLLBAR_CLIENT_ACCESS_TOKEN=token make build
    ```
@@ -110,6 +114,7 @@ docker build \
 ## Token Types
 
 ### Unified Rollbar Token
+
 - Single token can be used by both backend and frontend
 - Simplifies configuration and deployment
 - Can be either server-side or client-side token depending on your Rollbar setup
@@ -127,6 +132,7 @@ Note: Using a single token simplifies configuration but consider security implic
 ## Fallback Behavior
 
 When tokens are not configured at build time:
+
 - Backend telemetry service initializes with empty token (disabled)
 - Frontend telemetry service initializes with `accessToken: "disabled"`
 - No data is sent to Rollbar
@@ -136,12 +142,14 @@ When tokens are not configured at build time:
 ## Testing Configuration
 
 1. **Check token presence** (before building):
+
    ```bash
    # Unified token for both backend and frontend
    echo $ROLLBAR_CLIENT_ACCESS_TOKEN
    ```
 
 2. **Build with tokens**:
+
    ```bash
    ROLLBAR_CLIENT_ACCESS_TOKEN=your_token make build
    ```
@@ -158,12 +166,14 @@ When tokens are not configured at build time:
 ## Example Configurations
 
 ### Development Setup
+
 ```bash
 export ROLLBAR_CLIENT_ACCESS_TOKEN="dev_rollbar_token_abc123"
 export ROLLBAR_ENVIRONMENT="development"
 ```
 
 ### Production CI/CD
+
 ```yaml
 env:
   ROLLBAR_CLIENT_ACCESS_TOKEN: ${{ secrets.ROLLBAR_CLIENT_ACCESS_TOKEN }}
@@ -171,6 +181,7 @@ env:
 ```
 
 ### Staging Environment
+
 ```bash
 export ROLLBAR_CLIENT_ACCESS_TOKEN="staging_rollbar_token_def456"
 export ROLLBAR_ENVIRONMENT="staging"

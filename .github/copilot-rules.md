@@ -22,6 +22,7 @@
 ### API Handler Conventions
 
 1. **Handler structure**: Follow this pattern for API handlers:
+
    ```go
    type SomethingHandler struct {
        apiContext   *dto.ContextState
@@ -31,6 +32,7 @@
    ```
 
 2. **Constructor pattern**: Use this pattern for handler constructors:
+
    ```go
    func NewSomethingHandler(
        apiContext *dto.ContextState,
@@ -46,6 +48,7 @@
    ```
 
 3. **Registration pattern**: Use this pattern for registering HTTP routes:
+
    ```go
    func (self *SomethingHandler) RegisterSomethingHandler(api huma.API) {
        huma.Get(api, "/something", self.GetSomething, huma.OperationTags("something"))
@@ -56,6 +59,7 @@
    ```
 
 4. **Handler method signatures**: Use this pattern for handler methods:
+
    ```go
    func (self *SomethingHandler) GetSomething(ctx context.Context, input *struct{}) (*struct{ Body dto.Something }, error) {
        // Implementation
@@ -64,6 +68,7 @@
    ```
 
 5. **Path parameters**: Use this pattern for path parameters:
+
    ```go
    func (self *SomethingHandler) GetSomethingById(ctx context.Context, input *struct {
        ID string `path:"id" maxLength:"30" example:"123" doc:"ID of the something"`
@@ -71,6 +76,7 @@
    ```
 
 6. **Request body handling**: Use this pattern for request bodies:
+
    ```go
    func (self *SomethingHandler) CreateSomething(ctx context.Context, input *struct {
        Body dto.Something `required:"true"`
@@ -86,6 +92,7 @@
 ### Service Layer Conventions
 
 1. **Service interfaces**: Define interfaces for all services:
+
    ```go
    type SomethingServiceInterface interface {
        GetSomething(id string) (*dto.Something, error)
@@ -96,6 +103,7 @@
    ```
 
 2. **Service implementation**: Follow this pattern:
+
    ```go
    type SomethingService struct {
        repo      repository.SomethingRepositoryInterface
@@ -119,6 +127,7 @@
 ### Repository Layer Conventions
 
 1. **Repository interfaces**: Define interfaces with GORM operations:
+
    ```go
    type SomethingRepositoryInterface interface {
        All() ([]dbom.Something, error)
@@ -129,6 +138,7 @@
    ```
 
 2. **Repository implementation**: Use GORM with thread-safe patterns:
+
    ```go
    type SomethingRepository struct {
        db    *gorm.DB
@@ -146,12 +156,14 @@
 ### Error Handling
 
 1. **Error types**: Define domain-specific errors in `dto/error_code.go`:
+
    ```go
    var ErrorSomethingNotFound = errors.Base("Something not found")
    var ErrorSomethingAlreadyExists = errors.Base("Something already exists")
    ```
 
 2. **Error wrapping**: Use gitlab.com/tozd/go/errors for error wrapping:
+
    ```go
    if err != nil {
        return nil, errors.Wrap(err, "failed to get something")
@@ -159,6 +171,7 @@
    ```
 
 3. **HTTP error mapping**: Map domain errors to HTTP status codes:
+
    ```go
    if errors.Is(err, dto.ErrorSomethingNotFound) {
        return nil, huma.Error404NotFound(err.Error())
@@ -171,6 +184,7 @@
 ### Testing Conventions
 
 1. **Test suite structure**: Use testify/suite for all tests:
+
    ```go
    type SomethingHandlerSuite struct {
        suite.Suite
@@ -183,6 +197,7 @@
    ```
 
 2. **SetupTest pattern**: Use FX dependency injection in tests:
+
    ```go
    func (suite *SomethingHandlerSuite) SetupTest() {
        suite.app = fxtest.New(suite.T(),
@@ -212,6 +227,7 @@
    ```
 
 3. **TearDownTest pattern**: Always clean up resources:
+
    ```go
    func (suite *SomethingHandlerSuite) TearDownTest() {
        if suite.cancel != nil {
@@ -223,6 +239,7 @@
    ```
 
 4. **HTTP test pattern**: Use humatest for HTTP endpoint testing:
+
    ```go
    func (suite *SomethingHandlerSuite) TestGetSomething() {
        _, api := humatest.New(suite.T())
@@ -241,6 +258,7 @@
    ```
 
 5. **Test runner**: Always include the test runner:
+
    ```go
    func TestSomethingHandlerSuite(t *testing.T) {
        suite.Run(t, new(SomethingHandlerSuite))
@@ -250,6 +268,7 @@
 ### Dependency Injection with FX
 
 1. **Service registration**: Register services as FX providers:
+
    ```go
    fx.Provide(
        server.AsHumaRoute(api.NewSomethingHandler),
@@ -259,6 +278,7 @@
    ```
 
 2. **Parameter structs**: Use parameter structs for dependency injection:
+
    ```go
    type SomethingParams struct {
        fx.In
@@ -270,6 +290,7 @@
 ### Data Transfer and Conversion
 
 1. **DTO definitions**: Define DTOs with JSON tags and validation:
+
    ```go
    type Something struct {
        ID   string `json:"id"`
@@ -278,6 +299,7 @@
    ```
 
 2. **Converter pattern**: Use goverter for automatic conversions:
+
    ```go
    // goverter:converter
    // goverter:output:file ./converter_gen.go
@@ -290,16 +312,19 @@
 ### Async Operations and Broadcasting
 
 1. **Dirty state tracking**: Mark data as dirty after modifications:
+
    ```go
    self.dirtyService.SetDirtySomething()
    ```
 
 2. **Async notifications**: Use goroutines for async operations:
+
    ```go
    go self.someService.NotifyClient()
    ```
 
 3. **Context with WaitGroup**: Use context with WaitGroup for async lifecycle:
+
    ```go
    context.WithValue(context.Background(), "wg", &sync.WaitGroup{})
    ```
@@ -307,16 +332,19 @@
 ### Huma API Framework Usage
 
 1. **Operation tags**: Use consistent operation tags for API grouping:
+
    ```go
    huma.OperationTags("system"), huma.OperationTags("share"), huma.OperationTags("user")
    ```
 
 2. **AutoPatch**: Enable autopatch for PATCH operations:
+
    ```go
    autopatch.AutoPatch(api)
    ```
 
 3. **Response structures**: Use anonymous structs for responses:
+
    ```go
    return &struct{ Body dto.Something }{Body: result}, nil
    ```
@@ -324,12 +352,14 @@
 ### Logging and Observability
 
 1. **Structured logging**: Use slog for structured logging:
+
    ```go
    slog.Error("Failed to create something", "name", input.Body.Name, "error", err)
    slog.Debug("Processing request", "id", input.ID)
    ```
 
 2. **Error context**: Provide context in error messages:
+
    ```go
    return nil, errors.Wrapf(err, "failed to create something %s", input.Body.Name)
    ```
@@ -337,6 +367,7 @@
 ### Configuration and Context
 
 1. **Context state**: Use dto.ContextState for application configuration:
+
    ```go
    type ContextState struct {
        ReadOnlyMode    bool
@@ -349,6 +380,7 @@
    ```
 
 2. **Template handling**: Load templates into context state:
+
    ```go
    sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
    ```
@@ -356,12 +388,14 @@
 ### Mock and Testing Utilities
 
 1. **Mockio usage**: Use mockio/v2 for mocking:
+
    ```go
    mock.When(suite.mockService.Method(mock.Any[Type]())).ThenReturn(expected, nil)
    mock.Verify(suite.mockService, matchers.Times(1)).Method()
    ```
 
 2. **Test data paths**: Use relative paths for test data:
+
    ```go
    "../../test/data/config.json"
    "../templates/smb.gtpl"
@@ -383,7 +417,8 @@
 ### Build and Deployment Conventions
 
 1. **Binary output structure**: Follow the established build destination patterns:
-   ```
+
+   ```t
    backend/
    ├── dist/           # Production builds (CGO_ENABLED=0, optimized)
    │   ├── x86_64/     # AMD64 architecture binaries
@@ -398,7 +433,7 @@
    ```
 
 2. **Build targets**: Use the established build destinations:
-   - **Production builds**: `./dist/${ARCH}/` for optimized, stripped binaries
+   - **Pxroduction builds**: `./dist/${ARCH}/` for optimized, stripped binaries
    - **Development builds**: `./tmp/` for development and testing
    - **Architecture-specific**: Always organize by architecture (x86_64, armv7, aarch64)
 
@@ -409,6 +444,7 @@
    - `srat` - Quick development binary (tmp builds only)
 
 4. **Makefile integration**: When creating new binaries:
+
    ```makefile
    # Production build to dist/${ARCH}/
    CGO_ENABLED=0 $(AARGS) go build -C $(SRC_DIRS) -tags=embedallowed
@@ -538,24 +574,29 @@
   - **Database migrations**: Schema changes or data model updates
 
 - **Documentation format**: Follow the project's established emoji-based format:
+
   ```markdown
-  ## 2025.08.* [ 🚧 Unreleased ]
+  ## 2025.08.\* [ 🚧 Unreleased ]
 
   ### ✨ Features
+
   - New share management API endpoints [#123](https://github.com/dianlight/srat/issues/123)
   - Support for ARM64 architecture builds
   - Manage recycle bin option for shares
 
   #### **🚧 Work in progress**
+
   - [ ] Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
   - [x] Smart Control [#100](https://github.com/dianlight/srat/issues/100)
 
   ### 🐛 Bug Fixes
+
   - Fix share enable/disable functionality not working as expected
   - Resolved memory leak in SSE broadcasting [#456](https://github.com/dianlight/srat/issues/456)
   - Fix admin user renaming issues requiring full addon reboot
 
   ### 🏗 Chore
+
   - Updated Huma v2 framework integration
   - Modified binary output structure in Makefile
   - Implement watchdog functionality

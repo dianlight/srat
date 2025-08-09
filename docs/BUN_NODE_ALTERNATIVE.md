@@ -1,5 +1,7 @@
 # Bun as Node.js Alternative - Enhancement Summary
 
+[[*TOC*]]
+
 ## Overview
 
 Enhanced the documentation validation system to support **bun as a complete Node.js alternative**, allowing developers to use bun as both JavaScript runtime and package manager without requiring Node.js installation.
@@ -22,7 +24,7 @@ fi
 ```bash
 # Supports Node.js OR bun as runtime
 if command -v node &> /dev/null; then
-    NODE_RUNTIME="node"
+  NODE_RUNTIME="node"
 elif command -v bun &> /dev/null; then
     NODE_RUNTIME="bun"
 else
