@@ -233,10 +233,10 @@ This document summarizes the comprehensive documentation validation system imple
 
 ## 📚 Resources and References
 
-- [Documentation Guidelines](docs/DOCUMENTATION_GUIDELINES.md)
-- [GitHub Copilot Rules](.github/copilot-rules.md)
-- [Validation Workflow](.github/workflows/documentation.yml)
-- [Validation Script](scripts/validate-docs.sh)
+- [Documentation Guidelines](DOCUMENTATION_GUIDELINES.md)
+- [GitHub Copilot Rules](../.github/copilot-rules.md)
+- [Validation Workflow](../.github/workflows/documentation.yml)
+- [Validation Script](../scripts/validate-docs.sh)
 
 ## 🤝 Contributing
 

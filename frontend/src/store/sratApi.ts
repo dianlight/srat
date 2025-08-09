@@ -191,6 +191,20 @@ const injectedRtkApi = api
         query: () => ({ url: `/sse` }),
         providesTags: ["system"],
       }),
+      getTelemetryInternetConnection: build.query<
+        GetTelemetryInternetConnectionApiResponse,
+        GetTelemetryInternetConnectionApiArg
+      >({
+        query: () => ({ url: `/telemetry/internet-connection` }),
+        providesTags: ["system"],
+      }),
+      getTelemetryModes: build.query<
+        GetTelemetryModesApiResponse,
+        GetTelemetryModesApiArg
+      >({
+        query: () => ({ url: `/telemetry/modes` }),
+        providesTags: ["system"],
+      }),
       getUpdate: build.query<GetUpdateApiResponse, GetUpdateApiArg>({
         query: () => ({ url: `/update` }),
         providesTags: ["system"],
@@ -484,6 +498,14 @@ export type SseApiResponse = /** status 200 OK */
     )[]
   | /** status default Error */ ErrorModel;
 export type SseApiArg = void;
+export type GetTelemetryInternetConnectionApiResponse = /** status 200 OK */
+  | boolean
+  | /** status default Error */ ErrorModel;
+export type GetTelemetryInternetConnectionApiArg = void;
+export type GetTelemetryModesApiResponse =
+  | /** status 200 OK */ (string[] | null)
+  | /** status default Error */ ErrorModel;
+export type GetTelemetryModesApiArg = void;
 export type GetUpdateApiResponse = /** status 200 OK */
   | ReleaseAsset
   | /** status default Error */ ErrorModel;
@@ -828,6 +850,7 @@ export type Settings = {
   log_level?: string;
   mountoptions?: string[] | null;
   multi_channel?: boolean;
+  telemetry_mode?: Telemetry_mode;
   update_channel?: Update_channel;
   workgroup?: string;
 };
@@ -921,6 +944,12 @@ export type Disk = {
   size?: number;
   vendor?: string;
 };
+export enum Telemetry_mode {
+  Ask = "Ask",
+  All = "All",
+  Errors = "Errors",
+  Disabled = "Disabled",
+}
 export enum Update_channel {
   None = "None",
   Develop = "Develop",
@@ -992,6 +1021,8 @@ export const {
   usePutShareByShareNameEnableMutation,
   useGetSharesQuery,
   useSseQuery,
+  useGetTelemetryInternetConnectionQuery,
+  useGetTelemetryModesQuery,
   useGetUpdateQuery,
   usePutUpdateMutation,
   useGetUpdateChannelsQuery,

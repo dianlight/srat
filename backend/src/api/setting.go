@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/converter"
@@ -12,9 +13,10 @@ import (
 )
 
 type SettingsHanler struct {
-	apiContext   *dto.ContextState
-	dirtyService service.DirtyDataServiceInterface
-	props_repo   repository.PropertyRepositoryInterface
+	apiContext       *dto.ContextState
+	dirtyService     service.DirtyDataServiceInterface
+	props_repo       repository.PropertyRepositoryInterface
+	telemetryService service.TelemetryServiceInterface
 }
 
 // NewSettingsHanler creates a new instance of SettingsHanler with the provided
@@ -24,14 +26,17 @@ type SettingsHanler struct {
 // Parameters:
 //   - apiContext: A pointer to dto.ContextState which holds the context state for the API.
 //   - dirtyService: An implementation of the DirtyDataServiceInterface which handles dirty data operations.
+//   - props_repo: An implementation of the PropertyRepositoryInterface which handles property operations.
+//   - telemetryService: An implementation of the TelemetryServiceInterface which handles telemetry operations.
 //
 // Returns:
 //   - A pointer to the newly created SettingsHanler instance.
-func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyDataServiceInterface, props_repo repository.PropertyRepositoryInterface) *SettingsHanler {
+func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyDataServiceInterface, props_repo repository.PropertyRepositoryInterface, telemetryService service.TelemetryServiceInterface) *SettingsHanler {
 	p := new(SettingsHanler)
 	p.apiContext = apiContext
 	p.dirtyService = dirtyService
 	p.props_repo = props_repo
+	p.telemetryService = telemetryService
 	return p
 }
 
@@ -87,6 +92,16 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+
+	// Configure telemetry service when settings are updated
+	if self.telemetryService != nil {
+		err = self.telemetryService.Configure(config.TelemetryMode)
+		if err != nil {
+			// Log error but don't fail the settings update
+			slog.Error("Failed to configure telemetry service", "error", err)
+		}
+	}
+
 	self.dirtyService.SetDirtySettings()
 	return &struct{ Body dto.Settings }{Body: config}, nil
 }

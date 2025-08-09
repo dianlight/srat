@@ -186,13 +186,13 @@ func (suite *TlogSuite) TestSetLevelFromStringErrorMessages() {
 
 func (suite *TlogSuite) TestCustomLevels() {
 	// Test that our custom levels have the expected values
-	suite.Equal(slog.Level(-8), tlog.LevelTrace)
+	suite.Equal(tlog.LevelTrace, slog.Level(-8))
 	suite.Equal(slog.LevelDebug, tlog.LevelDebug)
 	suite.Equal(slog.LevelInfo, tlog.LevelInfo)
-	suite.Equal(slog.Level(2), tlog.LevelNotice)
+	suite.Equal(tlog.LevelNotice, slog.Level(2))
 	suite.Equal(slog.LevelWarn, tlog.LevelWarn)
 	suite.Equal(slog.LevelError, tlog.LevelError)
-	suite.Equal(slog.Level(12), tlog.LevelFatal)
+	suite.Equal(tlog.LevelFatal, slog.Level(12))
 }
 
 func (suite *TlogSuite) TestLoggingFunctions() {

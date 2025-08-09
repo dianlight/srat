@@ -25,12 +25,13 @@ jobs:
   create_discussion:
     name: Rollbar Deploy Tracking 
     runs-on: ubuntu-latest
+    needs: set-environment
     steps:
       - name: Notify deploy to Rollbar (backend)
         uses: rollbar/github-deploy-action@eaf2a60ea238bd273226eee0ddceecfe5611964d # 2.1.2
         id: rollbar_deploy
         with:
-          environment: ${{ needs.set-environment.outputs.environment }}"
+          environment: ${{ needs.set-environment.outputs.environment }}
           version: ${{ github.event.release.name || github.sha }}
         env:
           ROLLBAR_ACCESS_TOKEN: ${{ secrets.ROLLBAR_ACCESS_TOKEN }}

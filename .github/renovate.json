@@ -17,7 +17,7 @@
         "dependencies",
         "no-stale"
     ],
-    "semanticCommits":"enabled",
+    "semanticCommits": "enabled",
     "commitMessagePrefix": "⬆️",
     "configMigration": true,
     "rebaseWhen": "behind-base-branch",
@@ -27,8 +27,8 @@
         "dependencyDashboardApproval": true
     },
     "postUpdateOptions": [
-         "gomodTidy",
-         "gomodUpdateImportPaths"
+        "gomodTidy",
+        "gomodUpdateImportPaths"
     ],
     "dependencyDashboardAutoclose": true,
     "customManagers": [
@@ -58,6 +58,14 @@
     ],
     "packageRules": [
         {
+            "packageRules": [
+                {
+                    "packageNames": [
+                        "github.com/dianlight/srat"
+                    ],
+                    "enabled": false
+                }
+            ],
             "commitMessageTopic": "{{groupName}} {{depName}}",
             "groupName": "BackEnd",
             "matchFileNames": [

@@ -3,10 +3,12 @@ package config
 import "fmt"
 
 var (
-	Version        = "0.0.0-dev.0"
-	CommitHash     = "n/a"
-	BuildTimestamp = "n/a"
-	Repository     = "dianlight/srat"
+	Version            = "0.0.0-dev.0"
+	CommitHash         = "n/a"
+	BuildTimestamp     = "n/a"
+	Repository         = "dianlight/srat"
+	RollbarToken       = ""
+	RollbarEnvironment = ""
 )
 
 func BuildVersion() string {

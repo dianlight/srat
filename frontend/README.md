@@ -21,13 +21,13 @@ The frontend provides a small utility to register callbacks executed asynchronou
 ### API
 
 - `registerConsoleErrorCallback(cb: (...args: unknown[]) => void): () => void`
-	- Registers a callback; returns an unsubscribe function.
+  - Registers a callback; returns an unsubscribe function.
 - `getConsoleErrorCallbackCount(): number`
-	- Returns number of currently registered callbacks (for diagnostics).
+  - Returns number of currently registered callbacks (for diagnostics).
 - `enableConsoleErrorPatch(): void`
-	- Manually apply the patch (usually not needed; registration auto-patches).
+  - Manually apply the patch (usually not needed; registration auto-patches).
 - `disableConsoleErrorPatch(): void`
-	- Restore the original `console.error` (intended for tests).
+  - Restore the original `console.error` (intended for tests).
 
 ### Behavior
 
@@ -42,7 +42,7 @@ The frontend provides a small utility to register callbacks executed asynchronou
 import { registerConsoleErrorCallback } from "./src/devtool/consoleErrorRegistry";
 
 const unsubscribe = registerConsoleErrorCallback((...args) => {
-	// Send to telemetry, show toast, collect metrics, etc.
+  // Send to telemetry, show toast, collect metrics, etc.
 });
 
 // Later
@@ -55,10 +55,10 @@ unsubscribe();
 import { useConsoleErrorCallback } from "./src/hooks/useConsoleErrorCallback";
 
 export function ErrorTelemetryBinder() {
-	useConsoleErrorCallback((...args) => {
-		// Runs asynchronously after the original console.error
-		// e.g., send to monitoring service
-	});
-	return null;
+  useConsoleErrorCallback((...args) => {
+    // Runs asynchronously after the original console.error
+    // e.g., send to monitoring service
+  });
+  return null;
 }
 ```

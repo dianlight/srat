@@ -42,6 +42,11 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 		return err
 	}
 	target.UpdateChannel = dtoUpdateChannel
+	dtoTelemetryMode, err := dto.ParseTelemetryMode(source.TelemetryMode)
+	if err != nil {
+		return err
+	}
+	target.TelemetryMode = dtoTelemetryMode
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ConfigToUser(source config.Config, target *dto.User) error {

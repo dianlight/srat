@@ -85,4 +85,7 @@ prompt_for_var HOMEASSISTANT_SSH_USER "Enter the SSH username for your Home Assi
 # Prompt for SUPERVISOR_TOKEN (no default, timeout: 30s)
 prompt_for_var SUPERVISOR_TOKEN "Enter your Home Assistant Supervisor Token" "" 60
 
+# Prompt for ROLLBAR_CLIENT_ACCESS_TOKEN (no default, timeout: 30s)
+prompt_for_var ROLLBAR_CLIENT_ACCESS_TOKEN "Enter your Rollbar Client Access Token" "" 60
+
 echo "Environment variables processed. Check ${ENV_FILE}"
