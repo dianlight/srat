@@ -559,7 +559,7 @@ tlog.Error("Service initialization failed", "error", stackErr)
 
 With Unicode support and colors enabled:
 
-```
+```bash
 ERROR Service initialization failed
   error:
     message: database connection failed
@@ -575,7 +575,7 @@ ERROR Service initialization failed
 
 Without Unicode support (ASCII fallback):
 
-```
+```bash
 ERROR Service initialization failed
   error:
     message: database connection failed
