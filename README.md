@@ -24,6 +24,7 @@ Currently under development and in an alpha state, SRAT is set to become the pre
   - Thread-safe operations and asynchronous callback system
 - **Docker Integration**: Seamless integration with Home Assistant addons
 - **Real-time Updates**: Server-sent events for live configuration updates
+- **Frontend Error Callbacks**: Async `console.error` callback registry + React hook to capture errors without affecting render cycles
 
 :construction_worker: This is a part for new SambaNas2 Home Assistant Addon. :construction_worker:
 
