@@ -17,6 +17,7 @@ import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router";
 import { Provider as RollbarProvider } from "@rollbar/react";
 import { ErrorBoundaryWrapper } from "./components/ErrorBoundaryWrapper";
+import { ConsoleErrorToRollbar } from "./components/ConsoleErrorToRollbar";
 import { createRollbarConfig } from "./services/telemetryService";
 import telemetryService from "./services/telemetryService";
 import { apiUrl } from "./store/emptyApi.ts";
@@ -99,6 +100,8 @@ class SSESource implements Source {
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 root.render(
 	<RollbarProvider config={createRollbarConfig(telemetryService.getAccessToken())}>
+		{/* Bridge console.error to Rollbar respecting telemetry mode */}
+		<ConsoleErrorToRollbar />
 		<ErrorBoundaryWrapper>
 			<ThemeProvider theme={theme} noSsr>
 				<CssBaseline />
