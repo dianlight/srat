@@ -90,9 +90,7 @@
 				"VizzleTF.geminicommit",
 				"zoellner.openapi-preview",
 				"golang.go",
-				"oorzc.mind-map",
-				"eamodio.gitlens",
-				"Continue.continue"
+				"oorzc.mind-map"
 			]
 		}
 	},
