@@ -31,7 +31,7 @@ require (
 	github.com/prometheus/procfs v0.17.0
 	github.com/rollbar/rollbar-go v1.4.8
 	github.com/samber/slog-formatter v1.2.0
-	github.com/samber/slog-multi v1.3.3
+	github.com/samber/slog-multi v1.4.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
@@ -61,6 +61,7 @@ require (
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/rogpeppe/gohack v1.0.2 // indirect
 	github.com/samber/lo v1.51.0 // indirect
+	github.com/samber/slog-common v0.19.0 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect
@@ -169,5 +170,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
