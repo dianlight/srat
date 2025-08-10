@@ -55,38 +55,6 @@ func ErrorFormatter(fieldName string) slogformatter.Formatter {
 			slog.String("type", reflect.TypeOf(err).String()),
 			slog.String("stacktrace", stackTraceFormatter(stack)),
 		}
-		/*
-			if multiLine {
-				// Tree characters for Unicode-supported terminals
-				treeChars := struct {
-					vertical   string
-					branch     string
-					lastBranch string
-					space      string
-				}{
-					vertical:   "│ ",
-					branch:     "├─ ",
-					lastBranch: "└─ ",
-					space:      "   ",
-				}
-				// Determine if we should use tree formatting
-				useTreeFormat := supportsUnicode() && IsColorsEnabled()
-
-				// Fallback ASCII characters for terminals without Unicode support
-				if !useTreeFormat {
-					treeChars.vertical = "| "
-					treeChars.branch = "|- "
-					treeChars.lastBranch = "`- "
-					treeChars.space = "   "
-				}
-
-				fmt.Printf("%s: %s\n", color.RedString("Exception"), color.HiRedString(err.Error()))
-				for line := range strings.SplitSeq(stack, "\n") {
-					//line = strings.
-					fmt.Printf("%s\n", color.HiWhiteString(strings.ReplaceAll(line, "\t", " "+treeChars.lastBranch)))
-				}
-			}
-		*/
 		return slog.GroupValue(values...)
 	})
 }
