@@ -24,7 +24,7 @@ type TelemetryServiceInterface interface {
 	// Configure configures the telemetry service with the given mode
 	Configure(mode dto.TelemetryMode) error
 	// ReportError reports an error to the telemetry service
-	ReportError(err error) error
+	ReportError(interfaces ...interface{}) error
 	// ReportEvent reports a telemetry event to the service
 	ReportEvent(event string, data map[string]interface{}) error
 	// IsConnectedToInternet checks if internet connection is available
@@ -147,8 +147,19 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
 	return nil
 }
 
-// ReportError reports an error to the telemetry service
-func (ts *TelemetryService) ReportError(err error) error {
+/*
+ReportError reports an error to the telemetry service.
+
+	Error reports an item with level `error`. This function recognizes arguments with the following types:
+
+*http.Request
+error
+string
+map[string]interface{}
+int
+The string and error types are mutually exclusive. If an error is present then a stack trace is captured. If an int is also present then we skip that number of stack frames. If the map is present it is used as extra custom data in the item. If a string is present without an error, then we log a message without a stack trace. If a request is present we extract as much relevant information from it as we can.
+*/
+func (ts *TelemetryService) ReportError(interfaces ...interface{}) error {
 	if !ts.rollbarConfigured {
 		return nil // Silently ignore if not configured
 	}
@@ -159,8 +170,8 @@ func (ts *TelemetryService) ReportError(err error) error {
 
 	// Report errors for both All and Errors modes
 	if ts.mode == dto.TelemetryModes.TELEMETRYMODEALL || ts.mode == dto.TelemetryModes.TELEMETRYMODEERRORS {
-		rollbar.Error(err)
-		slog.Debug("Error reported to Rollbar", "error", err.Error())
+		rollbar.Error(interfaces...)
+		slog.Debug("Error reported to Rollbar", "error", interfaces)
 	}
 
 	return nil
@@ -250,38 +261,42 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 
 		// Try to extract an error from the log event attributes
 		var extractedErr error
-		var found bool
+		extraData := make(map[string]interface{})
 		event.Record.Attrs(func(attr slog.Attr) bool {
+			tlog.Trace("Attr:", attr.Key, "=", attr.Value.Any())
 			key := strings.ToLower(attr.Key)
 			if key == "error" || key == "err" {
 				v := attr.Value.Any()
+				extraData[key] = v
 				switch vv := v.(type) {
 				case error:
 					extractedErr = vv
-					found = true
+					delete(extraData, key)
+					return true
 				case []slog.Attr:
+					extraData[key] = map[string]interface{}{}
 					// When formatted, error may be represented as slice of Attrs, first usually message
 					if len(vv) > 0 {
-						extractedErr = errors.New(vv[0].Value.String())
-						found = true
-					}
-				case string:
-					if vv != "" {
-						extractedErr = errors.New(vv)
-						found = true
+						for _, a := range vv {
+							extraData[key].(map[string]interface{})[a.Key] = a.Value.Any()
+							if a.Key == "org_error" {
+								extractedErr = a.Value.Any().(error)
+								delete(extraData[key].(map[string]interface{}), a.Key)
+								return true
+							}
+						}
 					}
 				}
 			}
 			return true
 		})
 
-		if !found {
-			// Fallback to record message
-			extractedErr = errors.New(event.Record.Message)
-		}
-
 		// Use existing telemetry path to report error
-		_ = ts.ReportError(extractedErr)
+		if extractedErr == nil {
+			_ = ts.ReportError(event.Record.Message, extraData)
+		} else {
+			_ = ts.ReportError(extractedErr, extraData)
+		}
 	}
 
 	ts.tlogErrorCallbackID = tlog.RegisterCallback(tlog.LevelError, callback)

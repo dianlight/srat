@@ -305,7 +305,7 @@ func (suite *TlogSuite) TestRegisterCallback() {
 
 	// Trigger an error log
 	testMessage := "test error message"
-	tlog.Error(testMessage, "key", "value")
+	tlog.Error(testMessage, "key", "value", "pippo", "pluto")
 
 	// Wait for callback to execute
 	suite.Eventually(func() bool {
@@ -320,8 +320,78 @@ func (suite *TlogSuite) TestRegisterCallback() {
 	suite.True(callbackExecuted)
 	suite.Equal(tlog.LevelError, receivedEvent.Record.Level)
 	suite.Equal(testMessage, receivedEvent.Record.Message)
-	suite.Equal(1, receivedEvent.Record.NumAttrs())
+	suite.Equal(2, receivedEvent.Record.NumAttrs())
 	//	suite.Equal([]any{"key", "value"}, receivedEvent.Record.NumAttrs())
+	suite.NotZero(receivedEvent.Record.Time)
+	suite.NotNil(receivedEvent.Context)
+}
+
+func (suite *TlogSuite) TestRegisterCallbackForError() {
+	var receivedEvent tlog.LogEvent
+	var callbackExecuted bool
+	var mu sync.Mutex
+
+	callback := func(event tlog.LogEvent) {
+		mu.Lock()
+		defer mu.Unlock()
+		receivedEvent = event
+		callbackExecuted = true
+	}
+
+	// Register callback for error level
+	callbackID := tlog.RegisterCallback(tlog.LevelError, callback)
+	suite.NotEmpty(callbackID)
+
+	// Verify callback count
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelError))
+
+	// Trigger an error log
+	testMessage := "test error message"
+	tlog.Error(testMessage, "key", "value", "pippo", "pluto", "error", fmt.Errorf("XX test error"))
+
+	// Wait for callback to execute
+	suite.Eventually(func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return callbackExecuted
+	}, time.Second*2, time.Millisecond*50)
+
+	// Verify callback was called with correct event
+	mu.Lock()
+	defer mu.Unlock()
+	suite.True(callbackExecuted)
+	suite.Equal(tlog.LevelError, receivedEvent.Record.Level)
+	suite.Equal(testMessage, receivedEvent.Record.Message)
+	suite.Equal(3, receivedEvent.Record.NumAttrs())
+	var extractedErr error
+	receivedEvent.Record.Attrs(func(attr slog.Attr) bool {
+		suite.T().Log("Attr:", attr.Key, "=", attr.Value.Any())
+		key := strings.ToLower(attr.Key)
+		if key == "error" || key == "err" {
+			v := attr.Value.Any()
+			switch vv := v.(type) {
+			case error:
+				extractedErr = vv
+				return false
+			case []slog.Attr:
+				// When formatted, error may be represented as slice of Attrs, first usually message
+				if len(vv) > 0 {
+					for _, a := range vv {
+						if a.Key == "org_error" {
+							extractedErr = a.Value.Any().(error)
+							return false
+						}
+					}
+				}
+			}
+		}
+		return true
+	})
+
+	suite.NotZero(extractedErr)
+	suite.Error(extractedErr)
+	suite.Equal("XX test error", extractedErr.Error(), "Extracted error should match the original")
+
 	suite.NotZero(receivedEvent.Record.Time)
 	suite.NotNil(receivedEvent.Context)
 }

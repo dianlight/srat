@@ -30,16 +30,17 @@ func main() {
 	slog.Warn("[SLOG] This is a warning message", "issue", "example")
 	tlog.Error("[TLOG] This is an error message", "error", "demonstration error")
 	slog.Error("[SLOG] This is an error message", "error", "demonstration error")
-	// Demonstrate fatal without stopping the demo: wrap in recover to ignore the panic
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Printf("[demo] Ignored panic from tlog.Fatal: %v\n", r)
-			}
+	/*
+		// Demonstrate fatal without stopping the demo: wrap in recover to ignore the panic
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("[demo] Ignored panic from tlog.Fatal: %v\n", r)
+				}
+			}()
+			tlog.Fatal("[TLOG] This is a fatal message, will exit the program")
 		}()
-		tlog.Fatal("[TLOG] This is a fatal message, will exit the program")
-	}()
-
+	*/
 	// Demonstrate context logging
 	fmt.Println()
 	fmt.Println("2. Context Logging:") // FIXME: context is not exposed in log!

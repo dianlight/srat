@@ -215,6 +215,12 @@ func createBaseHandler(level slog.Level) slog.Handler {
 					}
 				}
 			}
+
+			// Remove error.org_error from output
+			if a.Key == "org_error" {
+				return slog.Attr{}
+			}
+
 			return a
 		},
 	})
