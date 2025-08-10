@@ -873,6 +873,13 @@ components:
             - "null"
         multi_channel:
           type: boolean
+        telemetry_mode:
+          enum:
+            - Ask
+            - All
+            - Errors
+            - Disabled
+          type: string
         update_channel:
           enum:
             - None
@@ -1420,6 +1427,13 @@ paths:
                   type: array
                 multi_channel:
                   type: boolean
+                telemetry_mode:
+                  enum:
+                    - Ask
+                    - All
+                    - Errors
+                    - Disabled
+                  type: string
                 update_channel:
                   enum:
                     - None
@@ -1463,6 +1477,13 @@ paths:
                   type: array
                 multi_channel:
                   type: boolean
+                telemetry_mode:
+                  enum:
+                    - Ask
+                    - All
+                    - Errors
+                    - Disabled
+                  type: string
                 update_channel:
                   enum:
                     - None
@@ -1961,6 +1982,48 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       summary: Server sent events
+      tags:
+        - system
+  /telemetry/internet-connection:
+    get:
+      operationId: get-telemetry-internet-connection
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get telemetry internet connection
+      tags:
+        - system
+  /telemetry/modes:
+    get:
+      operationId: list-telemetry-modes
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: List telemetry modes
       tags:
         - system
   /update:

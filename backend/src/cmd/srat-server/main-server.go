@@ -106,9 +106,9 @@ func main() {
 	}
 }
 
-type writeDeadliner interface {
-	SetWriteDeadline(time.Time) error
-}
+//type writeDeadliner interface {
+//	SetWriteDeadline(time.Time) error
+//}
 
 func prog(state overseer.State) {
 
@@ -171,6 +171,7 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewUpgradeHanler),
 			server.AsHumaRoute(api.NewSystemHanler),
 			server.AsHumaRoute(api.NewIssueAPI),
+			server.AsHumaRoute(api.NewTelemetryHandler),
 			server.NewMuxRouter,
 			server.NewHTTPServer,
 			server.NewHumaAPI,

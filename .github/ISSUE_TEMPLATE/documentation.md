@@ -6,8 +6,6 @@ labels: ["documentation", "needs-review"]
 assignees: ""
 ---
 
-# Documentation Update Request
-
 ## Documentation Update Request
 
 ### Type of Documentation Update

@@ -27,7 +27,7 @@ type Share struct {
 
 type Shares map[string]Share
 
-const CURRENT_CONFIG_VERSION = 3
+const CURRENT_CONFIG_VERSION = 4
 
 type Config struct {
 	CurrentFile       string
@@ -77,6 +77,7 @@ type Config struct {
 	DockerInterface string `json:"docker_interface"`
 	DockerNet       string `json:"docker_net"`
 	UpdateChannel   string `json:"update_channel"`
+	TelemetryMode   string `json:"telemetry_mode"`
 }
 
 // ReadConfigBuffer reads and parses a configuration file.
@@ -220,6 +221,16 @@ func (in *Config) MigrateConfig() error {
 				share.Usage = "media"
 				in.Shares[shareName] = share
 			}
+		}
+	}
+
+	// From version 3 to version 4 - Add telemetry mode
+	if in.ConfigSpecVersion == 3 {
+		slog.Debug("Migrating config from version 3 to version 4")
+		in.ConfigSpecVersion = 4
+		// Set default telemetry mode to Ask
+		if in.TelemetryMode == "" {
+			in.TelemetryMode = "Ask"
 		}
 	}
 

@@ -265,19 +265,6 @@ func (suite *TozdErrorFormatterSuite) TestColorFormatting() {
 	// but at least we've tested both paths
 }
 
-// Helper function to create nested error with multiple stack frames
-func (suite *TozdErrorFormatterSuite) createNestedError() error {
-	return suite.helperLevel1()
-}
-
-func (suite *TozdErrorFormatterSuite) helperLevel1() error {
-	return suite.helperLevel2()
-}
-
-func (suite *TozdErrorFormatterSuite) helperLevel2() error {
-	return errors.WithStack(errors.New("nested error"))
-}
-
 func (suite *TozdErrorFormatterSuite) TestNilError() {
 	formatter := TozdErrorFormatter()
 

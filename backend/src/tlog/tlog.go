@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fatih/color"
+
 	"github.com/k0kubun/pp/v3"
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
@@ -105,7 +107,8 @@ func init() {
 
 // isTerminalSupported checks if the terminal supports colors
 func isTerminalSupported() bool {
-	return isatty.IsTerminal(os.Stderr.Fd())
+	//slog.Info("Checking if terminal supports colors", "term", os.Getenv("TERM"))
+	return isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd()) || strings.Contains(os.Getenv("TERM"), "color")
 }
 
 // supportsUnicode checks if the terminal supports Unicode characters for tree formatting
@@ -186,6 +189,8 @@ func createBaseHandler(level slog.Level) slog.Handler {
 	pp.SetDefaultOutput(os.Stderr)
 	pp.Default.SetColoringEnabled(config.EnableColors && isTerminal)
 
+	color.NoColor = !isTerminal || !config.EnableColors
+
 	// Create base tint handler with context extraction
 	handler := tint.NewHandler(os.Stderr, &tint.Options{
 		Level:      level,
@@ -210,6 +215,12 @@ func createBaseHandler(level slog.Level) slog.Handler {
 					}
 				}
 			}
+
+			// Remove error.org_error from output
+			if a.Key == "org_error" {
+				return slog.Attr{}
+			}
+
 			return a
 		},
 	})

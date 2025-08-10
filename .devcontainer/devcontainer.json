@@ -46,6 +46,8 @@
 		"PATH": "${containerEnv:HOME}/.bun/bin:${containerEnv:PATH}",
 		"SUPERVISOR_URL": "http://${containerEnv:HOMEASSISTANT_IP}/",
 		"SUPERVISOR_TOKEN": "${containerEnv:SUPERVISOR_TOKEN}",
+		"HOMEASSISTANT_IP": "${containerEnv:HOMEASSISTANT_IP}",
+		"ROLLBAR_CLIENT_ACCESS_TOKEN": "${containerEnv:ROLLBAR_CLIENT_ACCESS_TOKEN}",
 		"HOST_PROJECT_PATH": "${localWorkspaceFolder}",
 		"PS1": "%(?:%{%}%1{➜%} :%{%}%1{➜%} ) %{%}%c%{%} $(git_prompt_info)"
 	},
@@ -87,7 +89,6 @@
 				"Gruntfuggly.todo-tree",
 				"yy0931.vscode-sqlite3-editor",
 				"be5invis.toml",
-				"VizzleTF.geminicommit",
 				"zoellner.openapi-preview",
 				"golang.go",
 				"oorzc.mind-map"

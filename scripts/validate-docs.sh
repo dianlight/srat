@@ -33,97 +33,45 @@ print_status() {
     esac
 }
 
-# Check if required tools are installed
+# Check if required tools are installed (bunx or npmx)
 check_dependencies() {
     print_status "info" "Checking dependencies..."
-    
     local missing_deps=()
-    
-    # Check for JavaScript runtime (prefer bun over Node.js)
-    if command -v bun &> /dev/null; then
-        NODE_RUNTIME="bun"
-        print_status "info" "Using bun as JavaScript runtime (Node.js alternative)"
-    elif command -v node &> /dev/null; then
-        NODE_RUNTIME="node"
-        print_status "info" "Using Node.js as JavaScript runtime"
+    RUNNER=""
+    if command -v bunx &> /dev/null; then
+        RUNNER="bunx"
+        print_status "info" "Using bunx for running JS CLI tools"
+    elif command -v npmx &> /dev/null; then
+        RUNNER="npmx"
+        print_status "info" "Using npmx for running JS CLI tools"
     else
-        missing_deps+=("node or bun (JavaScript runtime)")
+        missing_deps+=("bunx or npmx (JS CLI runner)")
     fi
-    
-    # Check for package manager (prefer bun, fallback to npm)
-    if command -v bun &> /dev/null; then
-        PACKAGE_MANAGER="bun"
-        print_status "info" "Using bun as package manager"
-    elif command -v npm &> /dev/null; then
-        PACKAGE_MANAGER="npm"
-        print_status "info" "Using npm as package manager"
-    else
-        missing_deps+=("npm or bun (package manager)")
-    fi
-    
-    # Check for pre-commit
     if ! command -v pre-commit &> /dev/null; then
         missing_deps+=("pre-commit")
     fi
-    
     if [ ${#missing_deps[@]} -ne 0 ]; then
         print_status "error" "Missing dependencies: ${missing_deps[*]}"
         echo "Please install the missing dependencies and try again."
-        echo "For JavaScript runtime, install either Node.js or bun."
-        echo "For package manager, install either npm or bun."
+        echo "For JS CLI runner, install bunx or npmx."
         exit 1
     fi
-    
     print_status "success" "All dependencies are installed"
-    print_status "info" "JavaScript runtime: $NODE_RUNTIME, Package manager: $PACKAGE_MANAGER"
+    print_status "info" "JS CLI runner: $RUNNER"
 }
 
-# Install Node.js packages if needed
+ # Additional help text for JS CLI runner
+ echo "All JS CLI tools (markdownlint, cspell, prettier, etc.) are run via bunx or npmx."
+
+# No need to install packages with bunx/npmx
 install_packages() {
-    print_status "info" "Installing Node.js packages using $PACKAGE_MANAGER..."
-    
-    local packages=(
-        "markdownlint-cli2"
-        "markdown-link-check"
-        "cspell"
-        "prettier"
-    )
-    
-    for package in "${packages[@]}"; do
-        # Check if package is installed globally
-        local is_installed=false
-        
-        if [ "$PACKAGE_MANAGER" = "bun" ]; then
-            # For bun, check if the binary is available
-            if command -v "${package}" &> /dev/null; then
-                is_installed=true
-            fi
-        else
-            # For npm, use npm list
-            if npm list -g "$package" &> /dev/null; then
-                is_installed=true
-            fi
-        fi
-        
-        if [ "$is_installed" = false ]; then
-            print_status "info" "Installing $package with $PACKAGE_MANAGER..."
-            
-            if [ "$PACKAGE_MANAGER" = "bun" ]; then
-                bun add -g "$package"
-            else
-                npm install -g "$package"
-            fi
-        fi
-    done
-    
-    print_status "success" "Node.js packages installed with $PACKAGE_MANAGER"
+    print_status "info" "No package installation needed with $RUNNER (bunx/npmx)"
 }
 
 # Run markdownlint
 run_markdownlint() {
     print_status "info" "Running markdownlint..."
-    
-    if markdownlint-cli2 "**/*.md"; then
+    if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules" ; then
         print_status "success" "Markdownlint passed"
         return 0
     else
@@ -163,8 +111,8 @@ EOF
     fi
     
     # Check links in all markdown files
-    find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | while read -r file; do
-        if ! markdown-link-check "$file" --config .markdown-link-check.json; then
+    find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" | while read -r file; do
+        if ! $RUNNER markdown-link-check "$file" --config .markdown-link-check.json; then
             print_status "error" "Link check failed for $file"
             failed=1
         fi
@@ -182,36 +130,8 @@ EOF
 # Run spell check
 run_spell_check() {
     print_status "info" "Running spell check..."
-    
-    # Create cspell config if it doesn't exist
-    if [ ! -f ".cspell.json" ]; then
-        cat > .cspell.json << 'EOF'
-{
-  "version": "0.2",
-  "language": "en",
-  "words": [
-    "SRAT",
-    "SambaNAS",
-    "Hass",
-    "addon",
-    "addons",
-    "hassio",
-    "dianlight"
-  ],
-  "flagWords": [],
-  "ignorePaths": [
-    "node_modules/**",
-    ".git/**",
-    "*.log",
-    "*.lock",
-    "*.sum",
-    "*.mod"
-  ]
-}
-EOF
-    fi
-    
-    if cspell "**/*.md"; then
+        
+    if $RUNNER cspell "**/*.md"; then
         print_status "success" "Spell check passed"
         return 0
     else
@@ -224,11 +144,11 @@ EOF
 run_format_check() {
     print_status "info" "Running format check..."
     
-    if prettier --check "**/*.md"; then
+    if $RUNNER prettier --check "**/*.md"  --ignore-path "frontend/node_modules/**"; then
         print_status "success" "Format check passed"
         return 0
     else
-        print_status "warning" "Format check failed - run 'prettier --write \"**/*.md\"' to fix"
+        print_status "warning" "Format check failed - run '$RUNNER prettier --write "**/*.md"' to fix"
         return 1
     fi
 }
@@ -240,7 +160,7 @@ run_custom_checks() {
     local failed=0
     
     # Check for TOC in long documents
-    find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | while read -r file; do
+    find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" | while read -r file; do
         lines=$(wc -l < "$file")
         if [ "$lines" -gt 200 ]; then
             if ! grep -q -i "table of contents\|toc\|- \[.*\](#.*)" "$file"; then
@@ -302,7 +222,7 @@ main() {
         print_status "error" "Some documentation validation checks failed"
         echo
         echo "💡 Tips:"
-        echo "   - Run 'prettier --write \"**/*.md\"' to fix formatting issues"
+        echo "   - Run 'prettier --write \"**/*.md\" --ignore-path \"frontend/node_modules/**\"' to fix formatting issues"
         echo "   - Or use '$0 --fix' to auto-fix formatting"
         echo "   - Check the output above for specific issues to address"
         echo "   - You can run individual checks by examining this script"
@@ -338,44 +258,18 @@ case "${1:-}" in
     "--fix")
         print_status "info" "Running auto-fix for formatting issues..."
         
-        # Determine JavaScript runtime (prefer bun over node)
-        if command -v bun &> /dev/null; then
-            NODE_RUNTIME="bun"
-            print_status "info" "Using bun as JavaScript runtime"
-        elif command -v node &> /dev/null; then
-            NODE_RUNTIME="node"
+        # Use bunx or npmx for prettier
+        if command -v bunx &> /dev/null; then
+            RUNNER="bunx"
+            print_status "info" "Using bunx for running prettier"
+        elif command -v npmx &> /dev/null; then
+            RUNNER="npmx"
+            print_status "info" "Using npmx for running prettier"
         else
-            print_status "error" "No JavaScript runtime found (Node.js or bun required)"
+            print_status "error" "No JS CLI runner found (bunx or npmx required)"
             exit 1
         fi
-        
-        # Determine package manager for prettier (prefer bun)
-        if command -v bun &> /dev/null; then
-            PACKAGE_MANAGER="bun"
-        elif command -v npm &> /dev/null; then
-            PACKAGE_MANAGER="npm"
-        else
-            print_status "error" "No package manager found (bun or npm required)"
-            exit 1
-        fi
-        
-        # Check if prettier is available, install if needed
-        if [ "$PACKAGE_MANAGER" = "bun" ]; then
-            # For bun, check if prettier is installed globally
-            if ! bun pm -g ls | grep -q "prettier"; then
-                print_status "info" "Installing prettier with $PACKAGE_MANAGER..."
-                bun add -g prettier
-            fi
-            # Use bun to run prettier directly
-            bun /root/.bun/install/global/node_modules/prettier/bin/prettier.cjs --write "**/*.md"
-        else
-            # For npm, use traditional approach
-            if ! command -v prettier &> /dev/null; then
-                print_status "info" "Installing prettier with $PACKAGE_MANAGER..."
-                npm install -g prettier
-            fi
-            prettier --write "**/*.md"
-        fi
+        $RUNNER prettier --write "**/*.md" --ignore-path "frontend/node_modules/**"
         print_status "success" "Auto-fix completed"
         exit 0
         ;;

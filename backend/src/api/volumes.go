@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
@@ -14,7 +13,7 @@ import (
 	"github.com/shomali11/util/xhashes"
 )
 
-var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
+//var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
 
 //var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
 //var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
@@ -75,7 +74,11 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorMountFail) {
 			tlog.Error("Failed to mount volume", "mount_path", mount_data.Path, "error", errE)
-			return nil, huma.Error422UnprocessableEntity(errE.Details()["Message"].(string), errE)
+			if errE.Details() != nil && errE.Details()["Message"] != nil {
+				return nil, huma.Error422UnprocessableEntity(errE.Details()["Message"].(string), errE)
+			} else {
+				return nil, huma.Error422UnprocessableEntity("Failed to mount volume", errE)
+			}
 		} else if errors.Is(errE, dto.ErrorDeviceNotFound) {
 			return nil, huma.Error404NotFound("Device Not Found", errE)
 		} else if errors.Is(errE, dto.ErrorInvalidParameter) {

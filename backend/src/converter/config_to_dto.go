@@ -50,6 +50,7 @@ type ConfigToDtoConverter interface {
 	// goverter:update target
 	// goverter:update:ignoreZeroValueField no
 	// goverter:map UpdateChannel UpdateChannel | github.com/dianlight/srat/dto:ParseUpdateChannel
+	// goverter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
 	ConfigToSettings(source config.Config, target *dto.Settings) error
 
 	// g.overter:update target

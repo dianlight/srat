@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -156,7 +157,8 @@ func (ep *eventProcessor) safeExecuteCallback(callback LogCallback, event LogEve
 	defer func() {
 		if r := recover(); r != nil {
 			// Log the panic but don't affect the main program
-			log.Printf("tlog callback panic recovered: %v", r)
+			stack := debug.Stack()
+			log.Printf("tlog callback panic recovered: %v\n%s", r, stack)
 		}
 	}()
 
