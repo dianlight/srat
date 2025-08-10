@@ -58,7 +58,7 @@
     ],
     "packageRules": [
         {
-            "packageNames": [
+            "matchPackageNames": [
                 "github.com/dianlight/srat"
             ],
             "enabled": false
