@@ -471,8 +471,6 @@
    - Embedded using Go embed directives with `embedallowed` tag
    - Development builds use `embedallowed_no` to skip embedding
 
-## Code Quality Guidelines
-
 ## Markdown Documentation Rules
 
 ### File Updates
@@ -539,6 +537,8 @@
 - Installation instructions should match current process
 
 ## Project-Specific Rules
+
+
 
 ### SRAT Architecture
 

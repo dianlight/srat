@@ -58,14 +58,12 @@
     ],
     "packageRules": [
         {
-            "packageRules": [
-                {
-                    "packageNames": [
-                        "github.com/dianlight/srat"
-                    ],
-                    "enabled": false
-                }
+            "packageNames": [
+                "github.com/dianlight/srat"
             ],
+            "enabled": false
+        },
+        {
             "commitMessageTopic": "{{groupName}} {{depName}}",
             "groupName": "BackEnd",
             "matchFileNames": [
