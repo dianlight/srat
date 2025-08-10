@@ -107,7 +107,7 @@ func init() {
 
 // isTerminalSupported checks if the terminal supports colors
 func isTerminalSupported() bool {
-	slog.Info("Checking if terminal supports colors", "term", os.Getenv("TERM"))
+	//slog.Info("Checking if terminal supports colors", "term", os.Getenv("TERM"))
 	return isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd()) || strings.Contains(os.Getenv("TERM"), "color")
 }
 

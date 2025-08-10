@@ -538,8 +538,6 @@
 
 ## Project-Specific Rules
 
-
-
 ### SRAT Architecture
 
 - Update backend documentation when Go services change

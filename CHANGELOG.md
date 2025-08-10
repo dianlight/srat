@@ -1,6 +1,6 @@
 # Changelog
 
-## 2025.08.\* [ 🚧 Unreleased ]
+## [ 🚧 Unreleased ]
 
 ### ✨ Features
 
