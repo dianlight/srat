@@ -47,6 +47,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			},
 			api.NewSettingsHanler,
 			service.NewDirtyDataService,
+			service.NewTelemetryService,
 			//			mock.Mock[service.BroadcasterServiceInterface],
 			//			mock.Mock[service.SambaServiceInterface],
 			//mock.Mock[service.DirtyDataServiceInterface],

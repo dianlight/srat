@@ -2,14 +2,19 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
+	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
+
+	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tlog"
 	"github.com/rollbar/rollbar-go"
 )
@@ -29,11 +34,14 @@ type TelemetryServiceInterface interface {
 }
 
 type TelemetryService struct {
+	ctx               context.Context
 	mode              dto.TelemetryMode
 	rollbarConfigured bool
 	accessToken       string
 	environment       string
 	version           string
+
+	prop repository.PropertyRepositoryInterface
 
 	// tlog callback management
 	tlogErrorCallbackID string
@@ -41,13 +49,54 @@ type TelemetryService struct {
 }
 
 // NewTelemetryService creates a new telemetry service instance
-func NewTelemetryService(accessToken, environment, version string) TelemetryServiceInterface {
-	return &TelemetryService{
-		mode:        dto.TelemetryModes.TELEMETRYMODEASK, // Default to Ask
+func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context, prop repository.PropertyRepositoryInterface) (TelemetryServiceInterface, errors.E) {
+	accessToken := config.RollbarToken
+	if accessToken == "" {
+		accessToken = "disabled" // Use placeholder if not set at build time
+	}
+
+	// Determine environment: use build-time setting or auto-detect from version
+	environment := config.RollbarEnvironment
+	if environment == "" {
+		if config.Version == "0.0.0-dev.0" || strings.Contains(config.Version, "-dev.") {
+			environment = "development"
+		} else {
+			environment = "production"
+		}
+	}
+
+	dbconfig, err := prop.All(true)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	var conv converter.DtoToDbomConverterImpl
+
+	var mconfig dto.Settings
+	err = conv.PropertiesToSettings(dbconfig, &mconfig)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if !mconfig.TelemetryMode.IsValid() {
+		mconfig.TelemetryMode = dto.TelemetryModes.TELEMETRYMODEASK
+	}
+
+	tm := &TelemetryService{
+		ctx:         Ctx,
+		prop:        prop,
+		mode:        mconfig.TelemetryMode,
 		accessToken: accessToken,
 		environment: environment,
-		version:     version,
+		version:     config.Version,
 	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			tm.Configure(mconfig.TelemetryMode)
+			return nil
+		},
+	})
+
+	return tm, nil
 }
 
 // Configure configures the telemetry service with the given mode
@@ -68,11 +117,16 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
 		rollbar.SetToken(ts.accessToken)
 		rollbar.SetEnvironment(ts.environment)
 		rollbar.SetCodeVersion(ts.version)
-		rollbar.SetServerHost("srat-server")
-		rollbar.SetServerRoot("/")
+		rollbar.SetPlatform("client")
+		rollbar.SetServerRoot("github.com/" + config.Repository)
+		rollbar.SetCustom(map[string]interface{}{
+			"version":     ts.version,
+			"environment": ts.environment,
+			// TODO: Add Hassos and Homeassistant data info
+		})
 
 		ts.rollbarConfigured = true
-		slog.Info("Rollbar telemetry configured", "mode", mode.String())
+		slog.Info("Rollbar telemetry configured", "mode", mode.String(), "platform", rollbar.Platform(), "environment", ts.environment, "version", ts.version)
 
 		// Register tlog callbacks for Error and Fatal levels
 		ts.registerTlogCallbacks()

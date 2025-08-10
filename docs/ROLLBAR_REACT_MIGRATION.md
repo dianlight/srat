@@ -67,7 +67,9 @@ The migration improves error handling and telemetry reporting by using React-spe
 3. **Improved Error Handling**: Better fallback UI and error information
 4. **Simplified Code**: Less manual instance management
 5. **Type Safety**: Better TypeScript integration with @rollbar/react
-6. **Proper Provider Hierarchy**: RollbarProvider at the root ensures all components have access to error reporting## Usage Examples
+6. **Proper Provider Hierarchy**: RollbarProvider at the root ensures all components have access to error reporting
+
+## Usage Examples
 
 ### Basic Error Reporting
 

@@ -1205,7 +1205,7 @@ func (self *VolumeService) CreateUnmountedPartitionNotification(mountPath, devic
 	if notifyErr != nil {
 		slog.Error("Failed to create unmounted partition notification", "mount_path", mountPath, "device", device, "err", notifyErr)
 	} else {
-		slog.Info("Created unmounted partition notification", "mount_path", mountPath, "device", device, "notification_id", notificationID)
+		tlog.Trace("Created unmounted partition notification", "mount_path", mountPath, "device", device, "notification_id", notificationID)
 	}
 }
 
@@ -1250,7 +1250,7 @@ func (self *VolumeService) CheckUnmountedAutomountPartitions() error {
 		}
 
 		if !isMounted {
-			slog.Info("Found unmounted partition marked for automount",
+			tlog.Trace("Found unmounted partition marked for automount",
 				"device", mountPoint.Device,
 				"mount_path", mountPoint.Path)
 

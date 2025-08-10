@@ -135,7 +135,7 @@ export function SaveButton() {
 
 ### Backend Environment Variables
 
-- `ROLLBAR_ACCESS_TOKEN`: Server-side Rollbar access token (embedded at build time via ldflags)
+- `ROLLBAR_CLIENT_ACCESS_TOKEN.`: Server-side Rollbar access token (embedded at build time via ldflags)
 - `ROLLBAR_ENVIRONMENT`: Override automatic environment detection (embedded at build time via ldflags)
 - Version is automatically set from `config.Version` (configured via build ldflags)
 - Environment auto-detected: "development" for dev versions, "production" for releases
