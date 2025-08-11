@@ -108,7 +108,32 @@ func NewDB(lc fx.Lifecycle, v struct {
 	// Check filesystem permissions before attempting to open database
 	checkFileSystemPermissions(v.ApiCtx.DatabasePath)
 
-	db, err := gorm.Open(sqlite.Open(v.ApiCtx.DatabasePath), &gorm.Config{
+	// Ensure a robust SQLite DSN with sane defaults for concurrency
+	// - cache=shared to allow sharing the cache between connections
+	// - _pragma=foreign_keys(1) to enforce FKs
+	// - _pragma=journal_mode(WAL) to allow readers during writes
+	// - _pragma=busy_timeout(5000) to wait for up to 5s instead of returning SQLITE_BUSY
+	// - _pragma=synchronous(NORMAL) a common balance when using WAL
+	dsn := v.ApiCtx.DatabasePath
+	if !strings.Contains(dsn, "?") {
+		dsn += "?cache=shared"
+	} else if !strings.Contains(dsn, "cache=shared") {
+		dsn += "&cache=shared"
+	}
+	// helper to append pragma only if missing
+	addPragma := func(s, pragma string) string {
+		if strings.Contains(strings.ToLower(s), strings.ToLower(pragma)) {
+			return s
+		}
+		// use & separator since we ensured there is already a ?
+		return s + "&_pragma=" + pragma
+	}
+	dsn = addPragma(dsn, "foreign_keys(1)")
+	dsn = addPragma(dsn, "journal_mode(WAL)")
+	dsn = addPragma(dsn, "busy_timeout(5000)")
+	dsn = addPragma(dsn, "synchronous(NORMAL)")
+
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 		//db, err = gorm.Open(gormlite.Open(dbpath), &gorm.Config{
 		TranslateError:         true,
 		SkipDefaultTransaction: true,
@@ -136,7 +161,16 @@ func NewDB(lc fx.Lifecycle, v struct {
 		panic(errors.Errorf("failed to connect database %s", v.ApiCtx.DatabasePath))
 	}
 
-	// Check if database is readonly after successful connection
+	// Apply conservative connection pool settings for SQLite
+	if sqlDB, dbErr := db.DB(); dbErr == nil {
+		// Single connection avoids many SQLITE_BUSY scenarios in embedded SQLite
+		sqlDB.SetMaxOpenConns(1)
+		sqlDB.SetMaxIdleConns(1)
+	} else {
+		slog.Warn("Failed to get SQL DB for pool tuning", "error", dbErr)
+	}
+
+	// Check if database is readonly after successful connection (post pool setup)
 	if readonly, readonlyErr := checkDatabaseReadonly(db, v.ApiCtx.DatabasePath); readonly {
 		slog.Error("Database is readonly after connection", "error", readonlyErr, "path", v.ApiCtx.DatabasePath)
 		slog.Warn("Closing readonly database and creating fresh instance")

@@ -69,12 +69,16 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 }
 
 func (r *MountPointPathRepository) FindByPath(path string) (*dbom.MountPointPath, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 	var mp dbom.MountPointPath
 	err := r.db.Where("path = ?", path).First(&mp).Error
 	return &mp, err
 }
 
 func (r *MountPointPathRepository) FindByDevice(device string) (*dbom.MountPointPath, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 	var mp dbom.MountPointPath
 	// Ensure we search for the base device name, without "/dev/" prefix
 	normalizedDevice := strings.TrimPrefix(device, "/dev/")
@@ -82,12 +86,16 @@ func (r *MountPointPathRepository) FindByDevice(device string) (*dbom.MountPoint
 	return &mp, errors.WithStack(err)
 }
 func (r *MountPointPathRepository) All() (Data []dbom.MountPointPath, Error error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 	var mps []dbom.MountPointPath
 	err := r.db.Find(&mps).Error
 	return mps, err
 }
 
 func (r *MountPointPathRepository) Exists(path string) (bool, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 	var mp dbom.MountPointPath
 	err := r.db.Where("path = ?", path).First(&mp).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -97,5 +105,7 @@ func (r *MountPointPathRepository) Exists(path string) (bool, error) {
 }
 
 func (r *MountPointPathRepository) Delete(path string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	return r.db.Delete(&dbom.MountPointPath{Path: path}).Error
 }

@@ -53,6 +53,24 @@ or
 [repository]: https://github.com/dianlight/hassio-addons
 [beta-repository]: https://github.com/dianlight/hassio-addons-beta
 
+## Database
+
+SRAT uses SQLite for persistence via the GORM ORM. The backend initializes the database with resilience-focused defaults:
+
+- journal_mode=WAL for safe readers during writes
+- busy_timeout=5000ms to reduce transient SQLITE_BUSY
+- synchronous=NORMAL tuned for WAL
+- foreign_keys=ON
+- cache=shared
+- connection pool limited to 1 open/idle connection (embedded DB best practice)
+
+You can set the database path via the `--db` flag when running the server or CLI. For example:
+
+- File on disk (recommended for production): `--db /data/srat.db`
+- In-memory for tests/dev: `--db "file::memory:?cache=shared&_pragma=foreign_keys(1)"`
+
+Note: The application will check filesystem permissions and report if the selected path or directory is not writable. On first run, schema migrations are applied automatically.
+
 ## Sponsor
 
 <a href="https://github.com/sponsors/dianlight"><img src="https://img.shields.io/github/sponsors/dianlight?style=flat-square&logo=githubsponsors&logoColor=%23EA4AAA&link=https%3A%2F%2Fgithub.com%2Fsponsors%2Fdianlight" alt="Github Sponsor"></a>

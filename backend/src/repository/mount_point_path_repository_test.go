@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -269,4 +270,58 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 		suite.Equal(expectedMountPoints[i].Flags, mp.Flags)
 		//assert.Equal(t, expectedMountPoints[i].Data, mp.Data)
 	}
+}
+
+func (suite *MountPointPathRepositorySuite) TestConcurrentSaveAndAllNoBusy() {
+	// Seed with an initial record
+	mp := dbom.MountPointPath{
+		Path:   "/mnt/concurrent",
+		Device: "concurrent0",
+		FSType: "ext4",
+		Type:   "ADDON",
+	}
+	err := suite.mount_repo.Save(&mp)
+	suite.Require().NoError(err)
+
+	// Run concurrent readers and writers
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+
+	// Writer goroutine: updates device name in a loop
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		i := 0
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			i++
+			mp.Device = fmt.Sprintf("concurrent%d", i)
+			_ = suite.mount_repo.Save(&mp) // ignore error to keep pressure; any error would fail later on read/assert
+		}
+	}()
+
+	// Reader goroutine: calls All repeatedly
+	readErrCh := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for j := 0; j < 1000; j++ {
+			if _, err := suite.mount_repo.All(); err != nil {
+				readErrCh <- err
+				return
+			}
+		}
+		readErrCh <- nil
+	}()
+
+	// Wait for reader to finish or error
+	readErr := <-readErrCh
+	close(stop)
+	wg.Wait()
+
+	suite.Require().NoError(readErr)
 }

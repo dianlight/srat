@@ -40,6 +40,7 @@
 - Fix dianlight/hassio-addons#448 [SambaNAS2] Unable to create share for mounted volume
 - Fix dianlight/hassio-addons#447 [SambaNAS2] Unable to mount external drive
 - **Disk Stats Service**: Changed log level from `Error` to `Warn` for disk stats update failures to reduce log noise and better distinguish between critical errors and warnings
+- **SQLite concurrency lock (SQLITE_BUSY) resolved [#164](https://github.com/dianlight/srat/issues/164)**: Hardened database configuration to prevent intermittent "database is locked" errors when reading mount points under concurrent load. Changes include enabling WAL mode, setting `busy_timeout=5000ms`, using `synchronous=NORMAL`, and constraining the connection pool to a single open/idle connection. Added repository-level RWMutex guards and a concurrency stress test.
 
 #### **🚧 Work in progress**
 
