@@ -339,6 +339,9 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 			}
 
 			v := a.Value.Any()
+			if v == nil {
+				return // Skip nil values
+			}
 			switch vv := v.(type) {
 			case *http.Request:
 				// Capture request, do not include in extraData
