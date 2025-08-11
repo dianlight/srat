@@ -291,3 +291,17 @@ When adding features to a package:
 - Demonstrate **error handling** and **edge cases**
 - Show **performance considerations** and **best practices**
 - Provide **complete API reference** with all parameters and return values
+
+## Security and Quality Gates
+
+When making changes, always include a security scan step and report it in your final summary.
+
+- Run gosec on the backend codebase to detect common security issues
+    - How to run:
+        - From repo root: `make security`
+        - Or from backend: `make -C backend gosec`
+    - The scan excludes generated files (`-exclude-generated`).
+- Include gosec in the Quality Gates section as:
+    - Security (gosec): PASS/FAIL with the number of issues if available
+
+These checks complement Build, Lint/Typecheck, and Unit tests, and help maintain a strong security posture.

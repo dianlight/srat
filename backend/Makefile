@@ -65,6 +65,22 @@ gen: $(SRCS)
 	go generate -C $(SRC_DIRS)  ./... && \
 	go run -C $(SRC_DIRS) ./cmd/srat-openapi -out ../docs
 
+
+.PHONY: gosec security
+# Run Go security checks with gosec
+gosec:
+	@echo "Running gosec security scan..."
+	@GOSEC_BIN=$$(command -v gosec 2>/dev/null || echo $$(go env GOPATH)/bin/gosec); \
+	if [ ! -x "$$GOSEC_BIN" ]; then \
+		echo "Installing gosec..."; \
+		GOBIN=$$(go env GOPATH)/bin GO111MODULE=on go install github.com/securego/gosec/v2/cmd/gosec@latest; \
+		GOSEC_BIN=$$(go env GOPATH)/bin/gosec; \
+	fi; \
+	cd $(SRC_DIRS); "$$GOSEC_BIN" -exclude-generated ./...
+
+# Alias
+security: gosec
+
 .PHONY: dev_cli
 .ONESHELL:
 dev_cli:

@@ -132,5 +132,9 @@ gemini:
 	bun --bun $(shell which gemini)
 
 .PHONY: check
-check: docs-check
+check: docs-check security
 	pre-commit run --all-files
+
+.PHONY: security
+security:
+	$(MAKE) -C $(BACKEND_DIRS) gosec

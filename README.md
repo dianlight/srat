@@ -201,6 +201,20 @@ The validation includes:
 - Content structure validation
 - Security scanning
 
+## Security scanning
+
+This project uses gosec to scan Go code for common security issues.
+
+Quick usage:
+
+- Run full repo security check: `make security`
+- Or only backend: `cd backend && make gosec`
+
+Notes:
+
+- Generated code is excluded with `-exclude-generated`.
+- The Makefile will install gosec automatically if it's missing (via `go install`).
+
 ## Building the Project
 
 ```shell
