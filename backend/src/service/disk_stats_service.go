@@ -185,13 +185,22 @@ func (s *diskStatsService) updateDiskStats() error {
 						// Use partition size if available
 						var totalSpace, freeSpace uint64
 						if part.Size != nil {
-							totalSpace = uint64(*part.Size)
+							// Prevent integer overflow/underflow converting int -> uint64
+							if *part.Size > 0 {
+								totalSpace = uint64(*part.Size)
+							} else {
+								totalSpace = 0
+							}
 						}
 
 						var stat syscall.Statfs_t
 						if err := syscall.Statfs(mp.Path, &stat); err == nil {
-							freeSpace = stat.Bfree * uint64(stat.Bsize)
-							totalSpace = stat.Blocks * uint64(stat.Bsize)
+							// Guard against negative block size before converting to uint64
+							if stat.Bsize > 0 {
+								bsize := uint64(stat.Bsize)
+								freeSpace = stat.Bfree * bsize
+								totalSpace = stat.Blocks * bsize
+							}
 						}
 						info := dto.PerPartitionInfo{
 							MountPoint:    mp.Path,

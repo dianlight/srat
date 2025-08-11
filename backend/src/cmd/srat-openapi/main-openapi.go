@@ -85,7 +85,7 @@ func main() {
 				if err != nil {
 					slog.Error("Unable to generate YAML", "error", err)
 				}
-				err = os.WriteFile(*output+"/openapi.yaml", yaml, 0644)
+				err = os.WriteFile(*output+"/openapi.yaml", yaml, 0o600)
 				if err != nil {
 					slog.Error("Unable to write YAML", "error", err)
 				}
@@ -93,7 +93,7 @@ func main() {
 				if err != nil {
 					slog.Error("Unable to generate JSON", "error", err)
 				}
-				err = os.WriteFile(*output+"/openapi.json", json, 0644)
+				err = os.WriteFile(*output+"/openapi.json", json, 0o600)
 				if err != nil {
 					slog.Error("Unable to write JSON", "error", err)
 				}
