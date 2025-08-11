@@ -110,7 +110,7 @@ require (
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/oapi-codegen/oapi-codegen/v2 v2.5.0
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/rekby/gpt v0.0.0-20200614112001-7da10aec5566 // indirect
@@ -170,3 +170,5 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
+
+

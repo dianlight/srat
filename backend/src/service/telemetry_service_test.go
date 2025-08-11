@@ -147,7 +147,7 @@ func (suite *TelemetryServiceSuite) TestReportError_NotConfigured_NoHTTP() {
 	suite.Require().NoError(err)
 
 	// Assert: no POSTs sent when not configured
-	suite.Equal("", suite.lastRollbarBody)
+	suite.Empty(suite.lastRollbarBody)
 }
 
 func (suite *TelemetryServiceSuite) TestReportEvent_OnlyInAllMode() {
@@ -155,7 +155,7 @@ func (suite *TelemetryServiceSuite) TestReportEvent_OnlyInAllMode() {
 	suite.resetHTTPCalls()
 	_ = suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS)
 	_ = suite.telemetry.ReportEvent("custom_test", map[string]interface{}{"x": 1})
-	suite.Equal("", suite.lastRollbarBody)
+	suite.Empty(suite.lastRollbarBody)
 
 	// All mode: should send
 	// But only if internet is available; simulate down to avoid network
@@ -233,7 +233,7 @@ func (suite *TelemetryServiceSuite) TestReportError_StandardError_JSONContainsCu
 			}
 		}
 		if frames, ok := trace["frames"].([]interface{}); ok {
-			suite.Greater(len(frames), 0)
+			suite.NotEmpty(frames)
 			suite.Equal("github.com/dianlight/srat/service/telemetry_service_test.go", frames[0].(map[string]interface{})["filename"])
 		}
 	} else if traceChain, ok := body["trace_chain"].([]interface{}); ok && len(traceChain) > 0 {
@@ -244,7 +244,7 @@ func (suite *TelemetryServiceSuite) TestReportError_StandardError_JSONContainsCu
 				}
 			}
 			if frames, ok := first["frames"].([]interface{}); ok {
-				suite.Greater(len(frames), 0)
+				suite.NotEmpty(frames)
 				suite.Contains(frames[0].(map[string]interface{})["filename"], "/service/telemetry_service_test.go")
 			}
 		}
@@ -291,7 +291,7 @@ func (suite *TelemetryServiceSuite) TestReportError_ErrorsE_JSONContainsCustomAn
 			}
 		}
 		if frames, ok := trace["frames"].([]interface{}); ok {
-			suite.Greater(len(frames), 0)
+			suite.NotEmpty(frames)
 			suite.Contains(frames[0].(map[string]interface{})["filename"], "/service/telemetry_service_test.go")
 		}
 	} else if traceChain, ok := body["trace_chain"].([]interface{}); ok && len(traceChain) > 0 {
@@ -302,7 +302,7 @@ func (suite *TelemetryServiceSuite) TestReportError_ErrorsE_JSONContainsCustomAn
 				}
 			}
 			if frames, ok := first["frames"].([]interface{}); ok {
-				suite.Greater(len(frames), 0)
+				suite.NotEmpty(frames)
 				suite.Contains(frames[0].(map[string]interface{})["filename"], "/service/telemetry_service_test.go")
 			}
 		}
