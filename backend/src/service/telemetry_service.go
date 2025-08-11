@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	oerrors "github.com/pkg/errors"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 
@@ -130,6 +131,50 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
 			"cpu":         runtime.NumCPU(),
 			// TODO: Add Hassos and Homeassistant data info
 		})
+		rollbar.SetStackTracer(func(err error) ([]runtime.Frame, bool) {
+			// preserve the default behavior for other types of errors
+			if trace, ok := rollbar.DefaultStackTracer(err); ok {
+				return trace, ok
+			}
+
+			type stackTracer interface {
+				StackTrace() oerrors.StackTrace
+			}
+
+			if nerr, ok := oerrors.Cause(err).(stackTracer); ok && nerr != nil {
+				// Convert github.com/pkg/errors StackTrace -> []uintptr -> []runtime.Frame
+				st := nerr.StackTrace()
+				pcs := make([]uintptr, 0, len(st))
+				for _, f := range st {
+					pcs = append(pcs, uintptr(f))
+				}
+				frames := runtime.CallersFrames(pcs)
+				var out []runtime.Frame
+				for {
+					f, more := frames.Next()
+					out = append(out, f)
+					if !more {
+						break
+					}
+				}
+				return out, true
+			}
+
+			if cerr, ok := err.(errors.E); ok {
+				frames := runtime.CallersFrames(cerr.StackTrace())
+				var out []runtime.Frame
+				for {
+					f, more := frames.Next()
+					out = append(out, f)
+					if !more {
+						break
+					}
+				}
+				return out, true
+			}
+
+			return nil, false
+		})
 
 		ts.rollbarConfigured = true
 		slog.Info("Rollbar telemetry configured", "mode", mode.String(), "platform", rollbar.Platform(), "environment", ts.environment, "version", ts.version)
@@ -173,6 +218,8 @@ func (ts *TelemetryService) ReportError(interfaces ...interface{}) error {
 	if ts.mode == dto.TelemetryModes.TELEMETRYMODEDISABLED || ts.mode == dto.TelemetryModes.TELEMETRYMODEASK {
 		return nil // Don't report if disabled or asking
 	}
+
+	//interfaces = append(interfaces, 3)
 
 	// Report errors for both All and Errors modes
 	if ts.mode == dto.TelemetryModes.TELEMETRYMODEALL || ts.mode == dto.TelemetryModes.TELEMETRYMODEERRORS {
