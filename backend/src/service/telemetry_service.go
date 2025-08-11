@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -116,12 +118,16 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
 	if (mode == dto.TelemetryModes.TELEMETRYMODEALL || mode == dto.TelemetryModes.TELEMETRYMODEERRORS) && ts.IsConnectedToInternet() {
 		rollbar.SetToken(ts.accessToken)
 		rollbar.SetEnvironment(ts.environment)
+		rollbar.SetCaptureIp(rollbar.CaptureIpAnonymize)
 		rollbar.SetCodeVersion(ts.version)
 		rollbar.SetPlatform("client")
 		rollbar.SetServerRoot("github.com/" + config.Repository)
 		rollbar.SetCustom(map[string]interface{}{
 			"version":     ts.version,
 			"environment": ts.environment,
+			"arch":        runtime.GOARCH,
+			"os":          runtime.GOOS,
+			"cpu":         runtime.NumCPU(),
 			// TODO: Add Hassos and Homeassistant data info
 		})
 
@@ -259,43 +265,88 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 			return
 		}
 
-		// Try to extract an error from the log event attributes
+		// Try to extract an error and request from log event attributes
 		var extractedErr error
+		var request *http.Request
 		extraData := make(map[string]interface{})
+
+		// ANSI escape code remover
+		ansiRegexp := regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
+		stripANSI := func(s string) string { return ansiRegexp.ReplaceAllString(s, "") }
+
+		// Recursively process attributes into a map, extracting error/request and cleaning strings
+		var processAttr func(a slog.Attr, dst map[string]interface{})
+		processAttr = func(a slog.Attr, dst map[string]interface{}) {
+			key := strings.ToLower(a.Key)
+
+			// Handle groups first
+			if a.Value.Kind() == slog.KindGroup {
+				groupMap := map[string]interface{}{}
+				for _, ga := range a.Value.Group() {
+					processAttr(ga, groupMap)
+				}
+				if len(groupMap) > 0 {
+					dst[key] = groupMap
+				}
+				return
+			}
+
+			v := a.Value.Any()
+			switch vv := v.(type) {
+			case *http.Request:
+				// Capture request, do not include in extraData
+				request = vv
+				return
+			case errors.E:
+				// Capture structured error, do not include in extraData
+				extractedErr = vv
+				return
+			case error:
+				// Capture generic error, do not include in extraData
+				extractedErr = vv
+				return
+			case string:
+				dst[key] = stripANSI(vv)
+				return
+			case fmt.Stringer:
+				dst[key] = stripANSI(vv.String())
+				return
+			case []slog.Attr:
+				// Some formatters may expose groups via Any()
+				nested := map[string]interface{}{}
+				for _, ga := range vv {
+					processAttr(ga, nested)
+				}
+				if len(nested) > 0 {
+					dst[key] = nested
+				}
+				return
+			default:
+				// Fallback: store value as-is
+				dst[key] = vv
+				return
+			}
+		}
+
 		event.Record.Attrs(func(attr slog.Attr) bool {
 			tlog.Trace("Attr:", attr.Key, "=", attr.Value.Any())
-			key := strings.ToLower(attr.Key)
-			if key == "error" || key == "err" {
-				v := attr.Value.Any()
-				extraData[key] = v
-				switch vv := v.(type) {
-				case error:
-					extractedErr = vv
-					delete(extraData, key)
-					return true
-				case []slog.Attr:
-					extraData[key] = map[string]interface{}{}
-					// When formatted, error may be represented as slice of Attrs, first usually message
-					if len(vv) > 0 {
-						for _, a := range vv {
-							extraData[key].(map[string]interface{})[a.Key] = a.Value.Any()
-							if a.Key == "org_error" {
-								extractedErr = a.Value.Any().(error)
-								delete(extraData[key].(map[string]interface{}), a.Key)
-								return true
-							}
-						}
-					}
-				}
-			}
+			processAttr(attr, extraData)
 			return true
 		})
 
 		// Use existing telemetry path to report error
 		if extractedErr == nil {
-			_ = ts.ReportError(event.Record.Message, extraData)
+			if request != nil {
+				_ = ts.ReportError(request, "§ "+event.Record.Message, extraData)
+			} else {
+				_ = ts.ReportError("§ "+event.Record.Message, extraData)
+			}
 		} else {
-			_ = ts.ReportError(extractedErr, extraData)
+			if request != nil {
+				_ = ts.ReportError(request, extractedErr, extraData)
+			} else {
+				_ = ts.ReportError(extractedErr, extraData)
+			}
 		}
 	}
 
