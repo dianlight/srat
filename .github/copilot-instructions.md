@@ -305,3 +305,19 @@ When making changes, always include a security scan step and report it in your f
     - Security (gosec): PASS/FAIL with the number of issues if available
 
 These checks complement Build, Lint/Typecheck, and Unit tests, and help maintain a strong security posture.
+
+## Git Hooks and pre-commit Policy
+
+Always manage git hooks via pre-commit. Do not place scripts in .git/hooks or configure core.hooksPath. When you need to add or modify hooks:
+
+1. Edit the repository's .pre-commit-config.yaml to add a new hook or adjust existing ones
+2. Prefer local hooks with language: system that delegate to existing Makefile targets (e.g., make -C backend gosec)
+3. Ensure stages are set appropriately (commit, push, etc.) and pass_filenames is false for repo-wide checks
+4. Install hooks for all configured types locally with:
+    - pre-commit install (respects default_install_hook_types)
+    - pre-commit install --hook-type pre-push (needed for push-stage hooks)
+5. Document any new hooks briefly in README.md
+
+Notes:
+- The project enforces a gosec scan on commit for backend Go changes and a quick Go build+test on push.
+- The legacy .githooks directory is deprecated and must remain empty.

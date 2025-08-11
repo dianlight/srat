@@ -8,12 +8,12 @@ index c6c24ed..c21e2c2 100644
  	"net/http"
 +	"time"
  )
- 
+
  var _ WrapResponseWriter = (*bodyWriter)(nil)
 @@ -60,6 +61,15 @@ func (w *bodyWriter) Flush() {
  	}
  }
- 
+
 +func (w bodyWriter) SetWriteDeadline(t time.Time) error {
 +	if d, ok := w.ResponseWriter.(interface {
 +		SetWriteDeadline(t time.Time) error

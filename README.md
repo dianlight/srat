@@ -242,3 +242,20 @@ You can add information on how they can open issues or how they can sponsor the 
 <!-- [(Back to top)](#table-of-contents) -->
 
 [Apache 2.0 license](./LICENSE)
+
+## Development: pre-commit hooks
+
+This repository manages all git hooks via pre-commit. Don’t add scripts under .git/hooks or set core.hooksPath.
+
+Quick start:
+
+- Install pre-commit (pipx, pip, brew, apk add py3-pip + pip install pre-commit)
+- Install hooks: pre-commit install && pre-commit install --hook-type pre-push
+- Run all hooks: pre-commit run --all-files
+
+Enforced hooks:
+
+- On commit: gosec security scan for backend Go changes (high severity/high confidence)
+- On push: backend quick build + test
+
+See .pre-commit-config.yaml for full list. The legacy .githooks directory is deprecated.

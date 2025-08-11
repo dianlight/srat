@@ -355,13 +355,15 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 		}
 
 		if f.FileInfo().IsDir() {
-			if err := os.MkdirAll(targetPath, f.Mode()); err != nil {
+			// Use a safe default when creating directories; adjust later if needed
+			if err := os.MkdirAll(targetPath, 0o750); err != nil {
 				errWrapped := errors.Wrapf(err, "failed to create directory %s during extraction", targetPath)
 				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
 				return nil, errWrapped
 			}
 		} else {
-			if err := os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
+			// Ensure parent directory exists with safe permissions
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0o750); err != nil {
 				errWrapped := errors.Wrapf(err, "failed to create parent directory for %s during extraction", targetPath)
 				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
 				return nil, errWrapped

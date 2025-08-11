@@ -16,6 +16,7 @@ ALL:
 prepare:
 	pre-commit install
 	pre-commit install --hook-type post-commit
+	pre-commit install --hook-type pre-push
 	$(MAKE) -C $(BACKEND_DIRS) PREREQUISITE
 	cd $(FRONTEND_DIRS); bun install
 
@@ -41,7 +42,7 @@ docs-fix:
 	else \
 		echo "Warning: No package manager found. Auto-fix may fail."; \
 	fi
-	@./scripts/validate-docs.sh --fix 
+	@./scripts/validate-docs.sh --fix
 	bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" --fix
 
 .PHONY: docs-check

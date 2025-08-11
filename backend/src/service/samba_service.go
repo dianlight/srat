@@ -194,7 +194,8 @@ func (self *SambaService) WriteSambaConfig() error {
 		return errors.WithStack(err)
 	}
 
-	err = os.WriteFile(self.apictx.SambaConfigFile, *stream, 0644)
+	// Restrict permissions on config file
+	err = os.WriteFile(self.apictx.SambaConfigFile, *stream, 0o600)
 	if err != nil {
 		return errors.WithStack(err)
 	}

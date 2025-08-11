@@ -83,9 +83,9 @@ run_markdownlint() {
 # Run link check
 run_link_check() {
     print_status "info" "Running link check..."
-    
+
     local failed=0
-    
+
     # Create link check config if it doesn't exist
     if [ ! -f ".markdown-link-check.json" ]; then
         cat > .markdown-link-check.json << 'EOF'
@@ -109,7 +109,7 @@ run_link_check() {
 }
 EOF
     fi
-    
+
     # Check links in all markdown files
     find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" | while read -r file; do
         if ! $RUNNER markdown-link-check "$file" --config .markdown-link-check.json; then
@@ -117,7 +117,7 @@ EOF
             failed=1
         fi
     done
-    
+
     if [ $failed -eq 0 ]; then
         print_status "success" "Link check passed"
         return 0
@@ -130,7 +130,7 @@ EOF
 # Run spell check
 run_spell_check() {
     print_status "info" "Running spell check..."
-        
+
     if $RUNNER cspell "**/*.md"; then
         print_status "success" "Spell check passed"
         return 0
@@ -143,7 +143,7 @@ run_spell_check() {
 # Run prettier format check
 run_format_check() {
     print_status "info" "Running format check..."
-    
+
     if $RUNNER prettier --check "**/*.md"  --ignore-path "frontend/node_modules/**"; then
         print_status "success" "Format check passed"
         return 0
@@ -156,9 +156,9 @@ run_format_check() {
 # Run custom validation checks
 run_custom_checks() {
     print_status "info" "Running custom validation checks..."
-    
+
     local failed=0
-    
+
     # Check for TOC in long documents
     find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" | while read -r file; do
         lines=$(wc -l < "$file")
@@ -168,11 +168,11 @@ run_custom_checks() {
             fi
         fi
     done
-    
+
     # Check README structure
     if [ -f "README.md" ]; then
         required_sections=("Installation" "Usage" "License")
-        
+
         for section in "${required_sections[@]}"; do
             if ! grep -q "## $section\|# $section" README.md; then
                 print_status "warning" "README.md is missing required section: $section"
@@ -180,7 +180,7 @@ run_custom_checks() {
             fi
         done
     fi
-    
+
     # Check CHANGELOG format
     if [ -f "CHANGELOG.md" ]; then
         if ! grep -q "## \[.*\] - [0-9]" CHANGELOG.md; then
@@ -188,7 +188,7 @@ run_custom_checks() {
             failed=1
         fi
     fi
-    
+
     if [ $failed -eq 0 ]; then
         print_status "success" "Custom validation checks passed"
         return 0
@@ -201,20 +201,20 @@ run_custom_checks() {
 # Main execution
 main() {
     local exit_code=0
-    
+
     echo "📚 SRAT Documentation Validation"
     echo "================================"
-    
+
     check_dependencies
     install_packages
-    
+
     # Run all checks
     run_markdownlint || exit_code=1
     run_link_check || exit_code=1
     run_spell_check || exit_code=1
     run_format_check || exit_code=1
     run_custom_checks || exit_code=1
-    
+
     echo
     if [ $exit_code -eq 0 ]; then
         print_status "success" "All documentation validation checks passed!"
@@ -228,7 +228,7 @@ main() {
         echo "   - You can run individual checks by examining this script"
         echo "   - This script supports both bun and npm package managers"
     fi
-    
+
     exit $exit_code
 }
 
@@ -257,7 +257,7 @@ case "${1:-}" in
         ;;
     "--fix")
         print_status "info" "Running auto-fix for formatting issues..."
-        
+
         # Use bunx or npmx for prettier
         if command -v bunx &> /dev/null; then
             RUNNER="bunx"

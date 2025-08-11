@@ -150,7 +150,21 @@ func (*LSBKInterpreter) runCmd(command string) (output []byte, err error) {
 	if len(command) == 0 {
 		return nil, errors.New("invalid command")
 	}
+	// Only allow expected binary without shell meta characters
+	if strings.ContainsAny(command, "|;&><`$") {
+		return nil, errors.New("invalid characters in command")
+	}
 	commands := strings.Fields(command)
+	if len(commands) == 0 {
+		return nil, errors.New("invalid command")
+	}
+	// Execute without shell; first token must be a known binary
+	switch commands[0] {
+	case "lsblk":
+		// ok
+	default:
+		return nil, errors.New("unsupported command")
+	}
 	output, err = exec.Command(commands[0], commands[1:]...).Output()
 	return output, err
 }

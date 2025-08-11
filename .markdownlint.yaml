@@ -43,7 +43,7 @@ MD040: true  # Require language specification for code blocks
 MD049:
   style: asterisk
 
-# Configuration for strong style  
+# Configuration for strong style
 MD050:
   style: asterisk
 

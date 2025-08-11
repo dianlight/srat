@@ -293,7 +293,8 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 	slog.Debug("Attempting to mount volume", "device", real_device, "path", dbom_mount_data.Path, "fstype", dbom_mount_data.FSType, "flags", flags, "data", data)
 
 	var mp *mount.MountPoint
-	mountFunc := func() error { return os.MkdirAll(dbom_mount_data.Path, 0o666) }
+	// Ensure secure directory permissions when creating mount point
+	mountFunc := func() error { return os.MkdirAll(dbom_mount_data.Path, 0o750) }
 
 	if dbom_mount_data.FSType == "" {
 		// Use TryMount if FSType is not specified

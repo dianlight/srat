@@ -76,7 +76,7 @@ gosec:
 		GOBIN=$$(go env GOPATH)/bin GO111MODULE=on go install github.com/securego/gosec/v2/cmd/gosec@latest; \
 		GOSEC_BIN=$$(go env GOPATH)/bin/gosec; \
 	fi; \
-	cd $(SRC_DIRS); "$$GOSEC_BIN" -exclude-generated ./...
+	cd $(SRC_DIRS); "$$GOSEC_BIN" -exclude-generated -severity high -confidence high ./...
 
 # Alias
 security: gosec

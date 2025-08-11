@@ -1,239 +1,132 @@
-# See https://pre-commit.com for more information
-# See https://pre-commit.com/hooks.html for more hooks
 default_install_hook_types: [pre-commit, post-commit, commit-msg]
+
 repos:
-    - repo: local
-      hooks:
-        - id: remove-go-mod-replace
-          name: Remove go.mod replace lines
-          stages: [pre-commit]
-          entry: ./scripts/remove-go-mod-replace.sh
-          language: system
-          files: ^backend/src/go\.mod$ # Only run if go.mod is among the changed files
-          pass_filenames: true # The script handles the go.mod file directly
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-toml
+      - id: check-xml
+      - id: check-case-conflict
+      - id: check-symlinks
 
-        - id: restore-go-mod-replace
-          name: Restore go.mod replace lines
-          entry: ./scripts/restore-go-mod-replace.sh
-          language: system
-          always_run: true # This hook should always run after commit attempts
-          stages: [post-commit] # This ensures it runs after the commit
-          pass_filenames: true
+  - repo: local
+    hooks:
+      - id: gosec-backend
+        name: gosec (backend, high severity)
+        entry: bash -c 'make -C backend gosec'
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        files: '^backend/src/.*\.go$'
 
-        - id: update-frontend-package-version
-          name: Update frontend package.json version from git tag
-          stages: [pre-commit]
-          entry: ./scripts/update-frontend-version.sh
-          language: system
-          files: ^frontend/package\.json$ # Only run if frontend/package.json is changed
-          pass_filenames: false # Script knows the file path and handles it
+      - id: go-build-test-backend
+        name: go build+test (backend quick)
+        entry: bash -c 'make -C backend build && make -C backend test -j1 --no-print-directory'
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        files: '^backend/src/.*\.go$'
 
-        # Documentation validation hooks
-        - id: validate-links-format
-          name: Validate link formats
-          entry: bash
-          language: system
-          files: '\.md$'
-          args:
-            - -c
-            - |
-              # Check for raw URLs that should be formatted as proper links
-              for file in "$@"; do
-                if [ -f "$file" ]; then
-                  echo "Checking link formats in $file..."
-                  
-                  # Find potential raw URLs
-                  raw_urls=$(grep -n 'https\?://[^)]*[^)]' "$file" | grep -v '\[.*\](' | grep -v '^\s*\[.*\]:' || true)
-                  
-                  if [ -n "$raw_urls" ]; then
-                    echo "⚠️  $file contains raw URLs that should be formatted as proper links:"
-                    echo "$raw_urls"
-                    echo "Consider formatting as [description](url) instead"
-                  fi
+      - id: remove-go-mod-replace
+        name: Remove go.mod replace lines
+        stages: [pre-commit]
+        entry: ./scripts/remove-go-mod-replace.sh
+        language: system
+        files: '^backend/src/go\.mod$'
+        pass_filenames: true
+
+      - id: restore-go-mod-replace
+        name: Restore go.mod replace lines
+        entry: ./scripts/restore-go-mod-replace.sh
+        language: system
+        always_run: true
+        stages: [post-commit]
+        pass_filenames: true
+
+      - id: update-frontend-package-version
+        name: Update frontend package.json version from git tag
+        stages: [pre-commit]
+        entry: ./scripts/update-frontend-version.sh
+        language: system
+        files: '^frontend/package\.json$'
+        pass_filenames: false
+
+      - id: validate-links-format
+        name: Validate link formats
+        entry: bash
+        language: system
+        files: '\\.(md)$'
+        args:
+          - -c
+          - |
+            for file in "$@"; do
+              if [ -f "$file" ]; then
+                echo "Checking link formats in $file..."
+                raw_urls=$(grep -n 'https\?://[^)]*[^)]' "$file" | grep -v '\\[.*\\](' | grep -v '^\\s*\\[.*\\]:' || true)
+                if [ -n "$raw_urls" ]; then
+                  echo "Warning: $file contains raw URLs that should be formatted as [text](url):"
+                  echo "$raw_urls"
                 fi
-              done
-              echo "✅ Link format checks completed"
-
-        - id: check-changelog-format
-          name: Check CHANGELOG.md format
-          entry: bash
-          language: system
-          files: '^CHANGELOG\.md$'
-          args:
-            - -c
-            - |
-              if [ -f "CHANGELOG.md" ]; then
-                echo "Validating CHANGELOG.md format..."
-                
-                # Check for proper version headers
-                if ! grep -q "## \[.*\] - [0-9]" CHANGELOG.md; then
-                  echo "⚠️  CHANGELOG.md may not follow proper version format"
-                fi
-                
-                echo "✅ CHANGELOG.md format check completed"
               fi
+            done
+            echo "Link format checks completed"
 
-        - id: format-markdown-basic
-          name: Basic markdown formatting
-          entry: bash
-          language: system
-          files: '\.md$'
-          args:
-            - -c
-            - |
-              echo "Running basic markdown formatting..."
-              for file in "$@"; do
-                if [ -f "$file" ]; then
-                  echo "Formatting $file..."
-                  
-                  # Remove trailing whitespace (already handled by pre-commit-hooks)
-                  # Ensure file ends with newline (already handled by pre-commit-hooks)
-                  
-                  # Fix common markdown issues
-                  sed -i 's/[[:space:]]*$//' "$file"  # Remove trailing spaces
-                  
+      - id: check-changelog-format
+        name: Check CHANGELOG.md format
+        entry: bash
+        language: system
+        files: '^CHANGELOG\\.md$'
+        args:
+          - -c
+          - |
+            if [ -f "CHANGELOG.md" ]; then
+              echo "Validating CHANGELOG.md format..."
+              if ! grep -q "## \[.*\] - [0-9]" CHANGELOG.md; then
+                echo "Warning: CHANGELOG.md may not follow proper version format"
+              fi
+              echo "CHANGELOG.md format check completed"
+            fi
+
+      - id: format-markdown-basic
+        name: Basic markdown formatting
+        entry: bash
+        language: system
+        files: '\\.(md)$'
+        args:
+          - -c
+          - |
+            echo "Running basic markdown formatting..."
+            for file in "$@"; do
+              if [ -f "$file" ]; then
+                sed -i 's/[[:space:]]*$//' "$file"
+              fi
+            done
+            echo "Basic markdown formatting completed"
+
+      - id: lint-markdown-basic
+        name: Basic markdown linting
+        entry: bash
+        language: system
+        files: '\\.(md)$'
+        args:
+          - -c
+          - |
+            echo "Running basic markdown linting..."
+            for file in "$@"; do
+              if [ -f "$file" ]; then
+                if grep -n '[[:space:]]$' "$file" >/dev/null; then
+                  echo "Error: $file contains trailing whitespace"
+                  grep -n '[[:space:]]$' "$file"
+                  exit 1
                 fi
-              done
-              echo "✅ Basic markdown formatting completed"
+              fi
+            done
+            echo "Basic markdown linting passed"
 
-        - id: lint-markdown-basic
-          name: Basic markdown linting
-          entry: bash
-          language: system
-          files: '\.md$'
-          args:
-            - -c
-            - |
-              echo "Running basic markdown linting..."
-              for file in "$@"; do
-                if [ -f "$file" ]; then
-                  echo "Checking $file..."
-              
-                  
-                  # Check for trailing whitespace
-                  if grep -n '[[:space:]]$' "$file" >/dev/null; then
-                    echo "❌ $file contains trailing whitespace"
-                    grep -n '[[:space:]]$' "$file"
-                    exit 1
-                  fi
-                fi
-              done
-              echo "✅ Basic markdown linting passed"
-
-    - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v5.0.0
-      hooks:
-          - id: trailing-whitespace
-            types: [markdown]
-          - id: end-of-file-fixer
-            types: [markdown]
-          - id: check-yaml
-          #    -   id: check-json
-          - id: check-toml
-          - id: check-xml
-          - id: check-added-large-files
-            args: ["--maxkb=1024"]
-          - id: check-merge-conflict
-          - id: check-case-conflict
-          - id: check-symlinks
-
-    - repo: https://github.com/tekwizely/pre-commit-golang
-      rev: v1.0.0-rc.2
-      hooks:
-          #
-          # Go Build
-          #
-          - id: go-build-mod
-          #-   id: go-build-pkg
-          #- id: go-build-repo-mod
-          #-   id: go-build-repo-pkg
-      #
-      # Go Mod Tidy
-      #
-      #-   id: go-mod-tidy
-      #-   id: go-mod-tidy-repo
-      #
-      # Go Test
-      #
-      #-   id: go-test-mod
-      #-   id: go-test-pkg
-      #-   id: go-test-repo-mod
-      #-   id: go-test-repo-pkg
-      #
-      # Go Vet
-      #
-      #-   id: go-vet
-      #-   id: go-vet-mod
-      #-   id: go-vet-pkg
-      #-   id: go-vet-repo-mod
-      #-   id: go-vet-repo-pkg
-      #
-      # Revive
-      #
-      #-   id: go-revive
-      #-   id: go-revive-mod
-      #-   id: go-revive-repo-mod
-      #
-      # GoSec
-      #
-      #-   id: go-sec-mod
-      #-   id: go-sec-pkg
-      #-   id: go-sec-repo-mod
-      #-   id: go-sec-repo-pkg
-      #
-      # StaticCheck
-      #
-      #-   id: go-staticcheck-mod
-      #-   id: go-staticcheck-pkg
-      #-   id: go-staticcheck-repo-mod
-      #-   id: go-staticcheck-repo-pkg
-      #
-      # StructSlop
-      #
-      #-   id: go-structslop-mod
-      #-   id: go-structslop-pkg
-      #-   id: go-structslop-repo-mod
-      #-   id: go-structslop-repo-pkg
-      #
-      # Formatters
-      #
-      #-   id: go-fmt
-      #-   id: go-fmt-repo
-      #-   id: go-fumpt        # replaces go-fmt
-      #-   id: go-fumpt-repo   # replaces go-fmt-repo
-      #-   id: go-imports      # replaces go-fmt
-      #-   id: go-imports-repo # replaces go-fmt-repo
-      #-   id: go-returns      # replaces go-imports & go-fmt
-      #-   id: go-returns-repo # replaces go-imports-repo & go-fmt-repo
-      #
-      # Style Checkers
-      #
-      #-   id: go-lint
-      #-   id: go-critic
-      #
-      # GolangCI-Lint
-      # - Fast Multi-Linter
-      # - Can be configured to replace MOST other hooks
-      # - Supports repo config file for configuration
-      # - https://github.com/golangci/golangci-lint
-      #
-      #-   id: golangci-lint
-      #-   id: golangci-lint-mod
-      #-   id: golangci-lint-pkg
-      #-   id: golangci-lint-repo-mod
-      #-   id: golangci-lint-repo-pkg
-      #
-      # Invoking Custom Go Tools
-      # - Configured *entirely* through the `args` attribute, ie:
-      #   args: [ go, test, ./... ]
-      # - Use arg `--hook:error-on-output` to indicate that any output from the tool
-      #   should be treated as an error.
-      # - Use the `name` attribute to provide better messaging when the hook runs
-      # - Use the `alias` attribute to be able to invoke your hook via `pre-commit run`
-      #
-      #-   id: my-cmd
-      #-   id: my-cmd-mod
-      #-   id: my-cmd-pkg
-      #-   id: my-cmd-repo
-      #-   id: my-cmd-repo-mod
-      #-   id: my-cmd-repo-pkg
+  # tekwizely/pre-commit-golang is optional; local hooks cover our needs

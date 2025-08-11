@@ -106,7 +106,7 @@ components:
       properties:
         user_id:
           type: string
-          description: The ID of the user authenticated for the new session 
+          description: The ID of the user authenticated for the new session
     IngressSession:
       type: object
       properties:

@@ -436,6 +436,101 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_NotAZipF
 	suite.Contains(err.Error(), "failed to open downloaded zip asset") // zip.OpenReader error
 }
 
+func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_BlocksZipTraversal() {
+	// Create a zip containing a file that attempts path traversal
+	asset := dto.BinaryAsset{Name: "evil.zip", BrowserDownloadURL: "http://example.com/evil.zip"}
+	buf := new(bytes.Buffer)
+	zw := zip.NewWriter(buf)
+	// File tries to escape extraction dir
+	_, err := zw.Create("../escape.txt")
+	suite.Require().NoError(err)
+	suite.Require().NoError(zw.Close())
+
+	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL,
+		func(req *http.Request) (*http.Response, error) {
+			resp := httpmock.NewBytesResponse(200, buf.Bytes())
+			resp.Header.Set("Content-Type", "application/zip")
+			resp.ContentLength = int64(buf.Len())
+			return resp, nil
+		})
+
+	updatePkg, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
+	suite.Nil(updatePkg)
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "invalid file path in zip")
+}
+
+func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_SetsSafePermissions() {
+	// Verify directories are created with 0750 and files respect archive mode
+	currentExePath, _ := os.Executable()
+	currentExeName := filepath.Base(currentExePath)
+
+	asset := dto.BinaryAsset{
+		Name:               "perm_test.zip",
+		BrowserDownloadURL: "http://example.com/perm_test.zip",
+	}
+
+	// Build a zip with nested dir and files
+	buf := new(bytes.Buffer)
+	zw := zip.NewWriter(buf)
+
+	// Create a directory entry
+	dirHeader := &zip.FileHeader{Name: "nested/", Method: zip.Deflate}
+	dirHeader.SetMode(0o777) // even if zip says 0777, extractor should mkdir with 0750
+	_, err := zw.CreateHeader(dirHeader)
+	suite.Require().NoError(err)
+
+	// Create executable file (pretend to be current exe name)
+	exeHeader := &zip.FileHeader{Name: "nested/" + currentExeName, Method: zip.Deflate}
+	exeHeader.SetMode(0o755)
+	exeWriter, err := zw.CreateHeader(exeHeader)
+	suite.Require().NoError(err)
+	_, _ = exeWriter.Write([]byte("binary"))
+
+	// Create regular file
+	fileHeader := &zip.FileHeader{Name: "nested/config.txt", Method: zip.Deflate}
+	fileHeader.SetMode(0o644)
+	fileWriter, err := zw.CreateHeader(fileHeader)
+	suite.Require().NoError(err)
+	_, _ = fileWriter.Write([]byte("data"))
+
+	suite.Require().NoError(zw.Close())
+
+	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL,
+		func(req *http.Request) (*http.Response, error) {
+			resp := httpmock.NewBytesResponse(200, buf.Bytes())
+			resp.Header.Set("Content-Type", "application/zip")
+			resp.ContentLength = int64(buf.Len())
+			return resp, nil
+		})
+
+	updatePkg, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(updatePkg)
+	defer os.RemoveAll(updatePkg.TempDirPath)
+
+	// Check that directory is 0750 despite zip header suggesting 0777
+	nestedDir := filepath.Join(updatePkg.TempDirPath, "nested")
+	info, err := os.Stat(nestedDir)
+	suite.Require().NoError(err)
+	suite.True(info.IsDir())
+	suite.Equal(os.FileMode(0o750)|os.ModeDir, info.Mode()&os.ModePerm|os.ModeDir)
+
+	// Check files exist; mode is as written by extractor (we use f.Mode())
+	exePath := filepath.Join(nestedDir, currentExeName)
+	finfo, err := os.Stat(exePath)
+	suite.Require().NoError(err)
+	suite.True(finfo.Mode().IsRegular())
+	// mode equals 0755 from header
+	suite.Equal(os.FileMode(0o755), finfo.Mode()&os.ModePerm)
+
+	cfgPath := filepath.Join(nestedDir, "config.txt")
+	cinfo, err := os.Stat(cfgPath)
+	suite.Require().NoError(err)
+	suite.True(cinfo.Mode().IsRegular())
+	suite.Equal(os.FileMode(0o644), cinfo.Mode()&os.ModePerm)
+}
+
 // --- InstallUpdatePackage & InstallOverseerUpdate Tests ---
 
 func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_NilPackage() {

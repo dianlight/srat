@@ -34,7 +34,7 @@ paths:
                   data:
                     $ref: '#/components/schemas/HardwareInfo'
 components:
-  schemas:    
+  schemas:
     Device:
       type: object
       properties:
@@ -88,8 +88,8 @@ components:
       properties:
         devices:
           type: array
-          items:            
-            $ref: '#/components/schemas/Device'            
+          items:
+            $ref: '#/components/schemas/Device'
         drives:
           type: array
           items:

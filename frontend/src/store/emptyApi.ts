@@ -62,7 +62,7 @@ export const emptySplitApi = createApi({
           this can be implemented to allow UI outside HA with authentication
 
         prepareHeaders: (headers, { getState }) => {
-            const token = getState().auth.token 
+            const token = getState().auth.token
             if (token) {
                 headers.set('authorization', `Bearer ${token}`)
             }
