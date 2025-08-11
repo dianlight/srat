@@ -388,7 +388,7 @@ func (suite *TlogSuite) TestRegisterCallbackForError() {
 		return true
 	})
 
-	suite.NotZero(extractedErr)
+	suite.Error(extractedErr)
 	suite.Error(extractedErr)
 	suite.Equal("XX test error", extractedErr.Error(), "Extracted error should match the original")
 

@@ -120,25 +120,6 @@ repos:
               done
               echo "✅ Basic markdown linting passed"
 
-#          - id: gohack-disable
-#            name: disable gohack
-#            stages: [pre-commit]
-#            description: Disable gohack before commit
-#            entry: sh -c 'cd backend/src && go tool gohack undo && git add go.mod'
-#            language: system
-#            #        files: ^backend/src/
-#            types: [text]
-
-#          - id: gohack-enable
-#            name: enable gohack
-#            stages: [post-commit]
-#            description: Enable gohack after commit
-#            entry: make -C backend patch
-#            always_run: true
-#            language: system
-#            #        files: ^backend/src/
-#            types: [text]
-
     - repo: https://github.com/pre-commit/pre-commit-hooks
       rev: v5.0.0
       hooks:
@@ -164,8 +145,8 @@ repos:
           #
           - id: go-build-mod
           #-   id: go-build-pkg
-          - id: go-build-repo-mod
-      #-   id: go-build-repo-pkg
+          #- id: go-build-repo-mod
+          #-   id: go-build-repo-pkg
       #
       # Go Mod Tidy
       #
