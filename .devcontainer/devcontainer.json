@@ -47,6 +47,7 @@
 		"SUPERVISOR_URL": "http://${containerEnv:HOMEASSISTANT_IP}/",
 		"SUPERVISOR_TOKEN": "${containerEnv:SUPERVISOR_TOKEN}",
 		"HOMEASSISTANT_IP": "${containerEnv:HOMEASSISTANT_IP}",
+		"ROLLBAR_MCP_ACCESS_TOKEN": "${containerEnv:ROLLBAR_MCP_ACCESS_TOKEN}",
 		"ROLLBAR_CLIENT_ACCESS_TOKEN": "${containerEnv:ROLLBAR_CLIENT_ACCESS_TOKEN}",
 		"HOST_PROJECT_PATH": "${localWorkspaceFolder}",
 		"PS1": "%(?:%{%}%1{➜%} :%{%}%1{➜%} ) %{%}%c%{%} $(git_prompt_info)"
