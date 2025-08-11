@@ -31,5 +31,6 @@
   "editor.codeActionsOnSave": {
     "source.action.useSortedKeys.biome": "explicit",
     "source.fixAll.biome": "explicit",
-  }
+  },
+  "chat.agent.maxRequests": 100
 }
