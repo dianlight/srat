@@ -2,6 +2,15 @@ import { Box } from "@mui/material";
 import 'openapi-explorer';
 import { apiUrl } from "../store/emptyApi";
 
+// Allow the custom web component <openapi-explorer> in TSX
+declare global {
+	namespace JSX {
+		interface IntrinsicElements {
+			'openapi-explorer': any;
+		}
+	}
+}
+
 export function Swagger() {
 	/*
 		return <InView as="div">
