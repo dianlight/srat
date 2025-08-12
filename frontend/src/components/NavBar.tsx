@@ -60,8 +60,8 @@ import {
 	Supported_events,
 	Update_process_state,
 	type UpdateProgress,
-	usePutSambaApplyMutation,
-	usePutUpdateMutation,
+	usePutApiSambaApplyMutation,
+	usePutApiUpdateMutation,
 } from "../store/sratApi";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotificationCenter } from "./NotificationCenter";
@@ -220,8 +220,8 @@ export function NavBar(props: {
 		},
 	});
 
-	const [doUpdate] = usePutUpdateMutation();
-	const [restartSamba] = usePutSambaApplyMutation();
+	const [doUpdate] = usePutApiUpdateMutation();
+	const [restartSamba] = usePutApiSambaApplyMutation();
 
 	const { mode, setMode } = useColorScheme();
 	//const [update, setUpdate] = useState<string | undefined>()

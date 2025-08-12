@@ -20,13 +20,13 @@ import default_json from "../json/default_config.json";
 import {
 	type InterfaceStat,
 	type Settings,
-	useGetHostnameQuery,
-	useGetNicsQuery,
-	useGetSettingsQuery,
-	useGetUpdateChannelsQuery,
-	useGetTelemetryModesQuery,
-	useGetTelemetryInternetConnectionQuery,
-	usePutSettingsMutation,
+	useGetApiHostnameQuery,
+	useGetApiNicsQuery,
+	useGetApiSettingsQuery,
+	useGetApiUpdateChannelsQuery,
+	useGetApiTelemetryModesQuery,
+	useGetApiTelemetryInternetConnectionQuery,
+	usePutApiSettingsMutation,
 	Telemetry_mode,
 } from "../store/sratApi";
 
@@ -80,14 +80,14 @@ export function Settings() {
 		isLoading,
 		error,
 		refetch,
-	} = useGetSettingsQuery();
-	const { data: nic, isLoading: inLoadinf } = useGetNicsQuery();
+	} = useGetApiSettingsQuery();
+	const { data: nic, isLoading: inLoadinf } = useGetApiNicsQuery();
 	const { data: updateChannels, isLoading: isChLoading } =
-		useGetUpdateChannelsQuery();
+		useGetApiUpdateChannelsQuery();
 	const { data: telemetryModes, isLoading: isTelemetryLoading } =
-		useGetTelemetryModesQuery();
+		useGetApiTelemetryModesQuery();
 	const { data: internetConnection, isLoading: isInternetLoading } =
-		useGetTelemetryInternetConnectionQuery();
+		useGetApiTelemetryInternetConnectionQuery();
 
 	const {
 		control,
@@ -103,13 +103,13 @@ export function Settings() {
 		values: globalConfig as Settings,
 		disabled: read_only,
 	});
-	const [update, _updateResponse] = usePutSettingsMutation();
+	const [update, _updateResponse] = usePutApiSettingsMutation();
 	const {
 		data: hostname,
 		isLoading: isHostnameFetching,
 		error: host_error,
 		refetch: triggerGetSystemHostname,
-	} = useGetHostnameQuery();
+	} = useGetApiHostnameQuery();
 
 	const bindAllWatch = watch("bind_all_interfaces");
 

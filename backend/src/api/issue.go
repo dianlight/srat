@@ -66,7 +66,7 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 		OperationID: "get-issues",
 		Summary:     "Get all open issues",
 		Method:      http.MethodGet,
-		Path:        "/api/issues",
+		Path:        "/issues",
 		Tags:        []string{"Issues"},
 	}, func(ctx context.Context, input *GetIssuesInput) (*GetIssuesOutput, error) {
 		issues, err := a.service.FindOpen()
@@ -81,7 +81,7 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 		OperationID: "create-issue",
 		Summary:     "Create a new issue",
 		Method:      http.MethodPost,
-		Path:        "/api/issues",
+		Path:        "/issues",
 		Tags:        []string{"Issues"},
 	}, func(ctx context.Context, input *CreateIssueInput) (*CreateIssueOutput, error) {
 		newIssue, err := a.service.Create(&input.Body)
@@ -96,7 +96,7 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 		OperationID: "resolve-issue",
 		Summary:     "Resolve an issue",
 		Method:      http.MethodDelete,
-		Path:        "/api/issues/{id}",
+		Path:        "/issues/{id}",
 		Tags:        []string{"Issues"},
 	}, func(ctx context.Context, input *ResolveIssueInput) (*ResolveIssueOutput, error) {
 		if err := a.service.Resolve(input.ID); err != nil {
@@ -110,7 +110,7 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 		OperationID: "update-issue",
 		Summary:     "Update an issue",
 		Method:      http.MethodPut,
-		Path:        "/api/issues/{id}",
+		Path:        "/issues/{id}",
 		Tags:        []string{"Issues"},
 	}, func(ctx context.Context, input *UpdateIssueInput) (*UpdateIssueOutput, error) {
 		input.Body.ID = input.ID

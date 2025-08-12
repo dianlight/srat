@@ -5,17 +5,17 @@ import {
 	a11yDark,
 	a11yLight,
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { type SmbConf, useGetSambaConfigQuery } from "../store/sratApi";
+import { type SmbConf, useGetApiSambaConfigQuery } from "../store/sratApi";
 
 export function SmbConf() {
 	const { mode, setMode } = useColorScheme();
 	/*
-    const { ref, inView, entry } = useInView({
-        /* Optional options * /
-    threshold: 0,
-    });
-    */
-	const smbconfig = useGetSambaConfigQuery();
+	const { ref, inView, entry } = useInView({
+		/* Optional options * /
+	threshold: 0,
+	});
+	*/
+	const smbconfig = useGetApiSambaConfigQuery();
 
 	return (
 		<InView

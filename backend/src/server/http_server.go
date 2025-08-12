@@ -23,6 +23,9 @@ func NewHTTPServer(
 	apiContext context.Context,
 	cxtClose context.CancelFunc,
 ) *http.Server {
+	sloghttp.RequestIDKey = "X-Request-Id"
+	sloghttp.SpanIDKey = "X-Span-Id"
+	sloghttp.TraceIDKey = "X-Trace-Id"
 	handler := sloghttp.NewWithConfig(slog.Default(), sloghttp.Config{
 		DefaultLevel:       slog.LevelDebug,
 		WithRequestBody:    true,

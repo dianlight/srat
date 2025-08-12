@@ -3,7 +3,7 @@ import { useSSE } from "react-hooks-sse";
 import {
 	type SharedResource,
 	Supported_events,
-	useGetSharesQuery,
+	useGetApiSharesQuery,
 } from "../store/sratApi";
 import { setShares } from "../store/sseSlice";
 import { useAppDispatch, useAppSelector } from "../store/store";
@@ -14,7 +14,7 @@ export function useShare() {
 	const dispatch = useAppDispatch();
 	const shares = useAppSelector((state) => state.sse.shares);
 
-	const { data, error, isLoading, fulfilledTimeStamp } = useGetSharesQuery();
+	const { data, error, isLoading, fulfilledTimeStamp } = useGetApiSharesQuery();
 
 	// statusSSE variable is not directly used, but useSSE hook initializes the SSE connection
 	// and its parser handles data dispatching.

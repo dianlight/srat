@@ -111,6 +111,7 @@ func isTerminalSupported() bool {
 	return isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd()) || strings.Contains(os.Getenv("TERM"), "color")
 }
 
+/*
 // supportsUnicode checks if the terminal supports Unicode characters for tree formatting
 func supportsUnicode() bool {
 	if !isTerminalSupported() {
@@ -139,6 +140,7 @@ func supportsUnicode() bool {
 	// Default to true for most modern environments
 	return term != "dumb" && term != ""
 }
+*/
 
 // extractContextValues extracts key-value pairs from context
 func extractContextValues(ctx context.Context) []slog.Attr {
@@ -148,7 +150,7 @@ func extractContextValues(ctx context.Context) []slog.Attr {
 	// This is a basic implementation - could be extended
 	if ctx != nil {
 		// Try common context keys
-		commonKeys := []string{"request_id", "user_id", "session_id", "trace_id", "span_id"}
+		commonKeys := []string{"X-Trace-Id", "X-Span-Id", "request_id", "user_id", "session_id", "trace_id", "span_id"}
 		for _, key := range commonKeys {
 			if val := ctx.Value(key); val != nil {
 				attrs = append(attrs, slog.Any(key, val))
@@ -168,7 +170,7 @@ func extractContextToArgs(ctx context.Context) []any {
 	var args []any
 
 	// Try common context keys
-	commonKeys := []string{"request_id", "user_id", "session_id", "trace_id", "span_id"}
+	commonKeys := []string{"X-Trace-Id", "X-Span-Id", "request_id", "user_id", "session_id", "trace_id", "span_id"}
 	for _, key := range commonKeys {
 		if val := ctx.Value(key); val != nil {
 			args = append(args, key, val)

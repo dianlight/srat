@@ -75,11 +75,11 @@ import {
 	type MountPointData,
 	type Partition,
 	Type,
-	useDeleteVolumeByMountPathHashMountMutation,
-	useGetFilesystemsQuery,
-	usePatchVolumeByMountPathHashSettingsMutation,
-	usePostVolumeByMountPathHashMountMutation,
-	usePostVolumeDiskByDiskIdEjectMutation,
+	useDeleteApiVolumeByMountPathHashMountMutation,
+	useGetApiFilesystemsQuery,
+	usePatchApiVolumeByMountPathHashSettingsMutation,
+	usePostApiVolumeByMountPathHashMountMutation,
+	usePostApiVolumeDiskByDiskIdEjectMutation,
 } from "../store/sratApi";
 
 // --- Helper functions (decodeEscapeSequence, onSubmitMountVolume, etc.) remain the same ---
@@ -321,12 +321,12 @@ export function Volumes() {
 	); // Can hold a disk or partition
 	const confirm = useConfirm();
 	const [mountVolume, _mountVolumeResult] =
-		usePostVolumeByMountPathHashMountMutation();
+		usePostApiVolumeByMountPathHashMountMutation();
 	const [umountVolume, _umountVolumeResult] =
-		useDeleteVolumeByMountPathHashMountMutation();
+		useDeleteApiVolumeByMountPathHashMountMutation();
 	const [ejectDiskMutation, _ejectDiskResult] =
-		usePostVolumeDiskByDiskIdEjectMutation();
-	const [patchMountSettings] = usePatchVolumeByMountPathHashSettingsMutation();
+		usePostApiVolumeDiskByDiskIdEjectMutation();
+	const [patchMountSettings] = usePatchApiVolumeByMountPathHashSettingsMutation();
 
 	const localStorageKey = "srat_volumes_expanded_accordion";
 
@@ -1213,7 +1213,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 		data: filesystems,
 		isLoading: fsLoading,
 		error: fsError,
-	} = useGetFilesystemsQuery();
+	} = useGetApiFilesystemsQuery();
 	const [mounting, setMounting] = useState(false);
 
 	// Use useEffect to update form values when objectToEdit changes or dialog opens

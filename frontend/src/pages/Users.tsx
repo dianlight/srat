@@ -40,11 +40,11 @@ import { toast } from "react-toastify";
 import { useReadOnly } from "../hooks/readonlyHook";
 import {
 	type User,
-	useDeleteUserByUsernameMutation,
-	useGetUsersQuery,
-	usePostUserMutation,
-	usePutUseradminMutation,
-	usePutUserByUsernameMutation,
+	useDeleteApiUserByUsernameMutation,
+	useGetApiUsersQuery,
+	usePostApiUserMutation,
+	usePutApiUseradminMutation,
+	usePutApiUserByUsernameMutation,
 } from "../store/sratApi";
 
 interface UsersProps extends User {
@@ -54,7 +54,7 @@ interface UsersProps extends User {
 
 export function Users() {
 	const read_only = useReadOnly();
-	const users = useGetUsersQuery();
+	const users = useGetApiUsersQuery();
 	//const admin = useGetUseradminQuery();
 	const [_errorInfo, setErrorInfo] = useState<string>("");
 	const [selected, setSelected] = useState<UsersProps>({
@@ -63,10 +63,10 @@ export function Users() {
 	});
 	const confirm = useConfirm();
 	const [showEdit, setShowEdit] = useState<boolean>(false);
-	const [userCreate] = usePostUserMutation();
-	const [userAdminUpdate] = usePutUseradminMutation();
-	const [userUpdate] = usePutUserByUsernameMutation();
-	const [userDelete] = useDeleteUserByUsernameMutation();
+	const [userCreate] = usePostApiUserMutation();
+	const [userAdminUpdate] = usePutApiUseradminMutation();
+	const [userUpdate] = usePutApiUserByUsernameMutation();
+	const [userDelete] = useDeleteApiUserByUsernameMutation();
 
 	function onSubmitEditUser(data?: UsersProps) {
 		if (!data || !data.username || !data.password) {
@@ -379,11 +379,11 @@ function UserEditDialog(props: {
 		},
 		values: props.objectToEdit?.doCreate
 			? {
-					username: "",
-					password: "",
-					is_admin: false,
-					doCreate: true,
-				}
+				username: "",
+				password: "",
+				is_admin: false,
+				doCreate: true,
+			}
 			: props.objectToEdit,
 	});
 
@@ -423,10 +423,10 @@ function UserEditDialog(props: {
 												? props.objectToEdit.is_admin
 													? {}
 													: {
-															input: {
-																readOnly: true,
-															},
-														}
+														input: {
+															readOnly: true,
+														},
+													}
 												: {}
 										}
 									/>

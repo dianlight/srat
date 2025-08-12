@@ -7,19 +7,20 @@ import pkg from "../../package.json";
 import { getGitCommitHash } from "../macro/getGitCommitHash.ts" with {
 	type: "macro",
 };
-import { type HealthPing, usePutRestartMutation } from "../store/sratApi.ts";
+import { type HealthPing, usePutApiRestartMutation } from "../store/sratApi.ts";
 //import { apiContext } from "../Contexts.ts";
 
 export function Footer(props: { healthData: HealthPing }) {
 	const theme = useTheme();
 	const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
-	const [restart, { isLoading }] = usePutRestartMutation();
+	//const [restart, { isLoading }] = usePutApiRestartMutation();
 
 	//const samba = useSWR<DtoSambaProcessStatus>('/samba/status', () => apiContext.samba.statusList().then(res => res.data));
 
+	/*
 	const _handleRestart = () => {
 		if (!isLoading) {
-			restart()
+			restart({})
 				.unwrap()
 				.then(() => {
 					console.log("Server restarted successfully");
@@ -29,6 +30,7 @@ export function Footer(props: { healthData: HealthPing }) {
 				});
 		}
 	};
+	*/
 
 	return (
 		<Paper

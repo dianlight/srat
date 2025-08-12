@@ -2,19 +2,26 @@ import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import { useDispatch, useSelector } from "react-redux";
 import { errorSlice } from "./errorSlice";
+import mdcMiddleware from "./mdcMiddleware";
+import { mdcSlice } from "./mdcSlice";
 import { sratApi } from "./sratApi";
 import { sseSlice } from "./sseSlice";
-//import { dirtySlice } from './dirtySlice'
 
 export const store = configureStore({
 	reducer: {
 		//        dirty: dirtySlice.reducer,
 		sse: sseSlice.reducer,
 		errors: errorSlice.reducer,
+		mdc: mdcSlice.reducer,
 		[sratApi.reducerPath]: sratApi.reducer,
 	},
-	middleware: (getDefaultMiddleware) =>
-		getDefaultMiddleware().concat(sratApi.middleware),
+	middleware: (getDefaultMiddleware) => {
+		// By default, put our MDC middleware before RTK Query so it can read outgoing args;
+		// it will also observe fulfilled/rejected after RTKQ since all middlewares see all actions.
+		return getDefaultMiddleware()
+			.concat(mdcMiddleware)
+			.concat(sratApi.middleware);
+	},
 	devTools: process.env.NODE_ENV !== "production",
 });
 

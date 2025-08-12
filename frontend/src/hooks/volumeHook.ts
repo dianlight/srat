@@ -3,7 +3,7 @@ import { useSSE } from "react-hooks-sse";
 import {
 	type Disk,
 	Supported_events,
-	useGetVolumesQuery,
+	useGetApiVolumesQuery,
 } from "../store/sratApi";
 import { setDisks } from "../store/sseSlice";
 import { useAppDispatch, useAppSelector } from "../store/store";
@@ -13,7 +13,7 @@ export function useVolume() {
 	const dispatch = useAppDispatch();
 	const disks = useAppSelector((state) => state.sse.disks);
 
-	const { data, error, isLoading, fulfilledTimeStamp } = useGetVolumesQuery();
+	const { data, error, isLoading, fulfilledTimeStamp } = useGetApiVolumesQuery();
 
 	const _statusSSE = useSSE(Supported_events.Volumes, [] as Disk[], {
 		parser(input: string): Disk[] {

@@ -1,7 +1,7 @@
 import { emptySplitApi as api } from "./emptyApi";
 export const addTagTypes = [
-  "Issues",
   "system",
+  "Issues",
   "samba",
   "share",
   "user",
@@ -13,6 +13,24 @@ const injectedRtkApi = api
   })
   .injectEndpoints({
     endpoints: (build) => ({
+      getApiFilesystems: build.query<
+        GetApiFilesystemsApiResponse,
+        GetApiFilesystemsApiArg
+      >({
+        query: () => ({ url: `/api/filesystems` }),
+        providesTags: ["system"],
+      }),
+      getApiHealth: build.query<GetApiHealthApiResponse, GetApiHealthApiArg>({
+        query: () => ({ url: `/api/health` }),
+        providesTags: ["system"],
+      }),
+      getApiHostname: build.query<
+        GetApiHostnameApiResponse,
+        GetApiHostnameApiArg
+      >({
+        query: () => ({ url: `/api/hostname` }),
+        providesTags: ["system"],
+      }),
       getApiIssues: build.query<GetApiIssuesApiResponse, GetApiIssuesApiArg>({
         query: () => ({ url: `/api/issues` }),
         providesTags: ["Issues"],
@@ -49,236 +67,235 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["Issues"],
       }),
-      getFilesystems: build.query<
-        GetFilesystemsApiResponse,
-        GetFilesystemsApiArg
+      getApiNics: build.query<GetApiNicsApiResponse, GetApiNicsApiArg>({
+        query: () => ({ url: `/api/nics` }),
+        providesTags: ["system"],
+      }),
+      putApiRestart: build.mutation<
+        PutApiRestartApiResponse,
+        PutApiRestartApiArg
       >({
-        query: () => ({ url: `/filesystems` }),
-        providesTags: ["system"],
-      }),
-      getHealth: build.query<GetHealthApiResponse, GetHealthApiArg>({
-        query: () => ({ url: `/health` }),
-        providesTags: ["system"],
-      }),
-      getHostname: build.query<GetHostnameApiResponse, GetHostnameApiArg>({
-        query: () => ({ url: `/hostname` }),
-        providesTags: ["system"],
-      }),
-      getNics: build.query<GetNicsApiResponse, GetNicsApiArg>({
-        query: () => ({ url: `/nics` }),
-        providesTags: ["system"],
-      }),
-      putRestart: build.mutation<PutRestartApiResponse, PutRestartApiArg>({
-        query: () => ({ url: `/restart`, method: "PUT" }),
+        query: () => ({ url: `/api/restart`, method: "PUT" }),
         invalidatesTags: ["system"],
       }),
-      putSambaApply: build.mutation<
-        PutSambaApplyApiResponse,
-        PutSambaApplyApiArg
+      putApiSambaApply: build.mutation<
+        PutApiSambaApplyApiResponse,
+        PutApiSambaApplyApiArg
       >({
-        query: () => ({ url: `/samba/apply`, method: "PUT" }),
+        query: () => ({ url: `/api/samba/apply`, method: "PUT" }),
         invalidatesTags: ["samba"],
       }),
-      getSambaConfig: build.query<
-        GetSambaConfigApiResponse,
-        GetSambaConfigApiArg
+      getApiSambaConfig: build.query<
+        GetApiSambaConfigApiResponse,
+        GetApiSambaConfigApiArg
       >({
-        query: () => ({ url: `/samba/config` }),
+        query: () => ({ url: `/api/samba/config` }),
         providesTags: ["samba"],
       }),
-      getSambaStatus: build.query<
-        GetSambaStatusApiResponse,
-        GetSambaStatusApiArg
+      getApiSambaStatus: build.query<
+        GetApiSambaStatusApiResponse,
+        GetApiSambaStatusApiArg
       >({
-        query: () => ({ url: `/samba/status` }),
+        query: () => ({ url: `/api/samba/status` }),
         providesTags: ["samba"],
       }),
-      getSettings: build.query<GetSettingsApiResponse, GetSettingsApiArg>({
-        query: () => ({ url: `/settings` }),
+      getApiSettings: build.query<
+        GetApiSettingsApiResponse,
+        GetApiSettingsApiArg
+      >({
+        query: () => ({ url: `/api/settings` }),
         providesTags: ["system"],
       }),
-      patchSettings: build.mutation<
-        PatchSettingsApiResponse,
-        PatchSettingsApiArg
+      patchApiSettings: build.mutation<
+        PatchApiSettingsApiResponse,
+        PatchApiSettingsApiArg
       >({
         query: (queryArg) => ({
-          url: `/settings`,
+          url: `/api/settings`,
           method: "PATCH",
           body: queryArg.body,
         }),
         invalidatesTags: ["system"],
       }),
-      putSettings: build.mutation<PutSettingsApiResponse, PutSettingsApiArg>({
+      putApiSettings: build.mutation<
+        PutApiSettingsApiResponse,
+        PutApiSettingsApiArg
+      >({
         query: (queryArg) => ({
-          url: `/settings`,
+          url: `/api/settings`,
           method: "PUT",
           body: queryArg.settings,
         }),
         invalidatesTags: ["system"],
       }),
-      postShare: build.mutation<PostShareApiResponse, PostShareApiArg>({
-        query: (queryArg) => ({
-          url: `/share`,
-          method: "POST",
-          body: queryArg.sharedResource,
-        }),
-        invalidatesTags: ["share"],
-      }),
-      deleteShareByShareName: build.mutation<
-        DeleteShareByShareNameApiResponse,
-        DeleteShareByShareNameApiArg
+      postApiShare: build.mutation<PostApiShareApiResponse, PostApiShareApiArg>(
+        {
+          query: (queryArg) => ({
+            url: `/api/share`,
+            method: "POST",
+            body: queryArg.sharedResource,
+          }),
+          invalidatesTags: ["share"],
+        },
+      ),
+      deleteApiShareByShareName: build.mutation<
+        DeleteApiShareByShareNameApiResponse,
+        DeleteApiShareByShareNameApiArg
       >({
         query: (queryArg) => ({
-          url: `/share/${queryArg.shareName}`,
+          url: `/api/share/${queryArg.shareName}`,
           method: "DELETE",
         }),
         invalidatesTags: ["share"],
       }),
-      getShareByShareName: build.query<
-        GetShareByShareNameApiResponse,
-        GetShareByShareNameApiArg
+      getApiShareByShareName: build.query<
+        GetApiShareByShareNameApiResponse,
+        GetApiShareByShareNameApiArg
       >({
-        query: (queryArg) => ({ url: `/share/${queryArg.shareName}` }),
+        query: (queryArg) => ({ url: `/api/share/${queryArg.shareName}` }),
         providesTags: ["share"],
       }),
-      patchShareByShareName: build.mutation<
-        PatchShareByShareNameApiResponse,
-        PatchShareByShareNameApiArg
+      patchApiShareByShareName: build.mutation<
+        PatchApiShareByShareNameApiResponse,
+        PatchApiShareByShareNameApiArg
       >({
         query: (queryArg) => ({
-          url: `/share/${queryArg.shareName}`,
+          url: `/api/share/${queryArg.shareName}`,
           method: "PATCH",
           body: queryArg.body,
         }),
         invalidatesTags: ["share"],
       }),
-      putShareByShareName: build.mutation<
-        PutShareByShareNameApiResponse,
-        PutShareByShareNameApiArg
+      putApiShareByShareName: build.mutation<
+        PutApiShareByShareNameApiResponse,
+        PutApiShareByShareNameApiArg
       >({
         query: (queryArg) => ({
-          url: `/share/${queryArg.shareName}`,
+          url: `/api/share/${queryArg.shareName}`,
           method: "PUT",
           body: queryArg.sharedResource,
         }),
         invalidatesTags: ["share"],
       }),
-      putShareByShareNameDisable: build.mutation<
-        PutShareByShareNameDisableApiResponse,
-        PutShareByShareNameDisableApiArg
+      putApiShareByShareNameDisable: build.mutation<
+        PutApiShareByShareNameDisableApiResponse,
+        PutApiShareByShareNameDisableApiArg
       >({
         query: (queryArg) => ({
-          url: `/share/${queryArg.shareName}/disable`,
+          url: `/api/share/${queryArg.shareName}/disable`,
           method: "PUT",
         }),
         invalidatesTags: ["share"],
       }),
-      putShareByShareNameEnable: build.mutation<
-        PutShareByShareNameEnableApiResponse,
-        PutShareByShareNameEnableApiArg
+      putApiShareByShareNameEnable: build.mutation<
+        PutApiShareByShareNameEnableApiResponse,
+        PutApiShareByShareNameEnableApiArg
       >({
         query: (queryArg) => ({
-          url: `/share/${queryArg.shareName}/enable`,
+          url: `/api/share/${queryArg.shareName}/enable`,
           method: "PUT",
         }),
         invalidatesTags: ["share"],
       }),
-      getShares: build.query<GetSharesApiResponse, GetSharesApiArg>({
-        query: () => ({ url: `/shares` }),
+      getApiShares: build.query<GetApiSharesApiResponse, GetApiSharesApiArg>({
+        query: () => ({ url: `/api/shares` }),
         providesTags: ["share"],
       }),
       sse: build.query<SseApiResponse, SseApiArg>({
-        query: () => ({ url: `/sse` }),
+        query: () => ({ url: `/api/sse` }),
         providesTags: ["system"],
       }),
-      getTelemetryInternetConnection: build.query<
-        GetTelemetryInternetConnectionApiResponse,
-        GetTelemetryInternetConnectionApiArg
+      getApiTelemetryInternetConnection: build.query<
+        GetApiTelemetryInternetConnectionApiResponse,
+        GetApiTelemetryInternetConnectionApiArg
       >({
-        query: () => ({ url: `/telemetry/internet-connection` }),
+        query: () => ({ url: `/api/telemetry/internet-connection` }),
         providesTags: ["system"],
       }),
-      getTelemetryModes: build.query<
-        GetTelemetryModesApiResponse,
-        GetTelemetryModesApiArg
+      getApiTelemetryModes: build.query<
+        GetApiTelemetryModesApiResponse,
+        GetApiTelemetryModesApiArg
       >({
-        query: () => ({ url: `/telemetry/modes` }),
+        query: () => ({ url: `/api/telemetry/modes` }),
         providesTags: ["system"],
       }),
-      getUpdate: build.query<GetUpdateApiResponse, GetUpdateApiArg>({
-        query: () => ({ url: `/update` }),
+      getApiUpdate: build.query<GetApiUpdateApiResponse, GetApiUpdateApiArg>({
+        query: () => ({ url: `/api/update` }),
         providesTags: ["system"],
       }),
-      putUpdate: build.mutation<PutUpdateApiResponse, PutUpdateApiArg>({
-        query: () => ({ url: `/update`, method: "PUT" }),
-        invalidatesTags: ["system"],
-      }),
-      getUpdateChannels: build.query<
-        GetUpdateChannelsApiResponse,
-        GetUpdateChannelsApiArg
+      putApiUpdate: build.mutation<PutApiUpdateApiResponse, PutApiUpdateApiArg>(
+        {
+          query: () => ({ url: `/api/update`, method: "PUT" }),
+          invalidatesTags: ["system"],
+        },
+      ),
+      getApiUpdateChannels: build.query<
+        GetApiUpdateChannelsApiResponse,
+        GetApiUpdateChannelsApiArg
       >({
-        query: () => ({ url: `/update_channels` }),
+        query: () => ({ url: `/api/update_channels` }),
         providesTags: ["system"],
       }),
-      postUser: build.mutation<PostUserApiResponse, PostUserApiArg>({
+      postApiUser: build.mutation<PostApiUserApiResponse, PostApiUserApiArg>({
         query: (queryArg) => ({
-          url: `/user`,
+          url: `/api/user`,
           method: "POST",
           body: queryArg.user,
         }),
         invalidatesTags: ["user"],
       }),
-      deleteUserByUsername: build.mutation<
-        DeleteUserByUsernameApiResponse,
-        DeleteUserByUsernameApiArg
+      deleteApiUserByUsername: build.mutation<
+        DeleteApiUserByUsernameApiResponse,
+        DeleteApiUserByUsernameApiArg
       >({
         query: (queryArg) => ({
-          url: `/user/${queryArg.username}`,
+          url: `/api/user/${queryArg.username}`,
           method: "DELETE",
         }),
         invalidatesTags: ["user"],
       }),
-      putUserByUsername: build.mutation<
-        PutUserByUsernameApiResponse,
-        PutUserByUsernameApiArg
+      putApiUserByUsername: build.mutation<
+        PutApiUserByUsernameApiResponse,
+        PutApiUserByUsernameApiArg
       >({
         query: (queryArg) => ({
-          url: `/user/${queryArg.username}`,
+          url: `/api/user/${queryArg.username}`,
           method: "PUT",
           body: queryArg.user,
         }),
         invalidatesTags: ["user"],
       }),
-      putUseradmin: build.mutation<PutUseradminApiResponse, PutUseradminApiArg>(
-        {
-          query: (queryArg) => ({
-            url: `/useradmin`,
-            method: "PUT",
-            body: queryArg.user,
-          }),
-          invalidatesTags: ["user"],
-        },
-      ),
-      getUsers: build.query<GetUsersApiResponse, GetUsersApiArg>({
-        query: () => ({ url: `/users` }),
-        providesTags: ["user"],
-      }),
-      postVolumeDiskByDiskIdEject: build.mutation<
-        PostVolumeDiskByDiskIdEjectApiResponse,
-        PostVolumeDiskByDiskIdEjectApiArg
+      putApiUseradmin: build.mutation<
+        PutApiUseradminApiResponse,
+        PutApiUseradminApiArg
       >({
         query: (queryArg) => ({
-          url: `/volume/disk/${queryArg.diskId}/eject`,
+          url: `/api/useradmin`,
+          method: "PUT",
+          body: queryArg.user,
+        }),
+        invalidatesTags: ["user"],
+      }),
+      getApiUsers: build.query<GetApiUsersApiResponse, GetApiUsersApiArg>({
+        query: () => ({ url: `/api/users` }),
+        providesTags: ["user"],
+      }),
+      postApiVolumeDiskByDiskIdEject: build.mutation<
+        PostApiVolumeDiskByDiskIdEjectApiResponse,
+        PostApiVolumeDiskByDiskIdEjectApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/volume/disk/${queryArg.diskId}/eject`,
           method: "POST",
         }),
         invalidatesTags: ["volume"],
       }),
-      deleteVolumeByMountPathHashMount: build.mutation<
-        DeleteVolumeByMountPathHashMountApiResponse,
-        DeleteVolumeByMountPathHashMountApiArg
+      deleteApiVolumeByMountPathHashMount: build.mutation<
+        DeleteApiVolumeByMountPathHashMountApiResponse,
+        DeleteApiVolumeByMountPathHashMountApiArg
       >({
         query: (queryArg) => ({
-          url: `/volume/${queryArg.mountPathHash}/mount`,
+          url: `/api/volume/${queryArg.mountPathHash}/mount`,
           method: "DELETE",
           params: {
             force: queryArg.force,
@@ -287,47 +304,61 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["volume"],
       }),
-      postVolumeByMountPathHashMount: build.mutation<
-        PostVolumeByMountPathHashMountApiResponse,
-        PostVolumeByMountPathHashMountApiArg
+      postApiVolumeByMountPathHashMount: build.mutation<
+        PostApiVolumeByMountPathHashMountApiResponse,
+        PostApiVolumeByMountPathHashMountApiArg
       >({
         query: (queryArg) => ({
-          url: `/volume/${queryArg.mountPathHash}/mount`,
+          url: `/api/volume/${queryArg.mountPathHash}/mount`,
           method: "POST",
           body: queryArg.mountPointData,
         }),
         invalidatesTags: ["volume"],
       }),
-      patchVolumeByMountPathHashSettings: build.mutation<
-        PatchVolumeByMountPathHashSettingsApiResponse,
-        PatchVolumeByMountPathHashSettingsApiArg
+      patchApiVolumeByMountPathHashSettings: build.mutation<
+        PatchApiVolumeByMountPathHashSettingsApiResponse,
+        PatchApiVolumeByMountPathHashSettingsApiArg
       >({
         query: (queryArg) => ({
-          url: `/volume/${queryArg.mountPathHash}/settings`,
+          url: `/api/volume/${queryArg.mountPathHash}/settings`,
           method: "PATCH",
           body: queryArg.mountPointData,
         }),
         invalidatesTags: ["volume"],
       }),
-      putVolumeByMountPathHashSettings: build.mutation<
-        PutVolumeByMountPathHashSettingsApiResponse,
-        PutVolumeByMountPathHashSettingsApiArg
+      putApiVolumeByMountPathHashSettings: build.mutation<
+        PutApiVolumeByMountPathHashSettingsApiResponse,
+        PutApiVolumeByMountPathHashSettingsApiArg
       >({
         query: (queryArg) => ({
-          url: `/volume/${queryArg.mountPathHash}/settings`,
+          url: `/api/volume/${queryArg.mountPathHash}/settings`,
           method: "PUT",
           body: queryArg.mountPointData,
         }),
         invalidatesTags: ["volume"],
       }),
-      getVolumes: build.query<GetVolumesApiResponse, GetVolumesApiArg>({
-        query: () => ({ url: `/volumes` }),
-        providesTags: ["volume"],
-      }),
+      getApiVolumes: build.query<GetApiVolumesApiResponse, GetApiVolumesApiArg>(
+        {
+          query: () => ({ url: `/api/volumes` }),
+          providesTags: ["volume"],
+        },
+      ),
     }),
     overrideExisting: false,
   });
 export { injectedRtkApi as sratApi };
+export type GetApiFilesystemsApiResponse =
+  | /** status 200 OK */ (FilesystemType[] | null)
+  | /** status default Error */ ErrorModel;
+export type GetApiFilesystemsApiArg = void;
+export type GetApiHealthApiResponse = /** status 200 OK */
+  | HealthPing
+  | /** status default Error */ ErrorModel;
+export type GetApiHealthApiArg = void;
+export type GetApiHostnameApiResponse = /** status 200 OK */
+  | string
+  | /** status default Error */ ErrorModel;
+export type GetApiHostnameApiArg = void;
 export type GetApiIssuesApiResponse =
   | /** status 200 OK */ (Issue[] | null)
   | /** status default Error */ ErrorModel;
@@ -351,103 +382,92 @@ export type PutApiIssuesByIdApiArg = {
   id: number;
   issue: Issue;
 };
-export type GetFilesystemsApiResponse =
-  | /** status 200 OK */ (FilesystemType[] | null)
-  | /** status default Error */ ErrorModel;
-export type GetFilesystemsApiArg = void;
-export type GetHealthApiResponse = /** status 200 OK */
-  | HealthPing
-  | /** status default Error */ ErrorModel;
-export type GetHealthApiArg = void;
-export type GetHostnameApiResponse = /** status 200 OK */
-  | string
-  | /** status default Error */ ErrorModel;
-export type GetHostnameApiArg = void;
-export type GetNicsApiResponse =
+export type GetApiNicsApiResponse =
   | /** status 200 OK */ (InterfaceStat[] | null)
   | /** status default Error */ ErrorModel;
-export type GetNicsApiArg = void;
-export type PutRestartApiResponse = /** status default Error */ ErrorModel;
-export type PutRestartApiArg = void;
-export type PutSambaApplyApiResponse = /** status default Error */ ErrorModel;
-export type PutSambaApplyApiArg = void;
-export type GetSambaConfigApiResponse = /** status 200 OK */
+export type GetApiNicsApiArg = void;
+export type PutApiRestartApiResponse = /** status default Error */ ErrorModel;
+export type PutApiRestartApiArg = void;
+export type PutApiSambaApplyApiResponse =
+  /** status default Error */ ErrorModel;
+export type PutApiSambaApplyApiArg = void;
+export type GetApiSambaConfigApiResponse = /** status 200 OK */
   | SmbConf
   | /** status default Error */ ErrorModel;
-export type GetSambaConfigApiArg = void;
-export type GetSambaStatusApiResponse = /** status 200 OK */
+export type GetApiSambaConfigApiArg = void;
+export type GetApiSambaStatusApiResponse = /** status 200 OK */
   | SambaStatus
   | /** status default Error */ ErrorModel;
-export type GetSambaStatusApiArg = void;
-export type GetSettingsApiResponse = /** status 200 OK */
+export type GetApiSambaStatusApiArg = void;
+export type GetApiSettingsApiResponse = /** status 200 OK */
   | Settings
   | /** status default Error */ ErrorModel;
-export type GetSettingsApiArg = void;
-export type PatchSettingsApiResponse = /** status 200 OK */
+export type GetApiSettingsApiArg = void;
+export type PatchApiSettingsApiResponse = /** status 200 OK */
   | Settings
   | /** status default Error */ ErrorModel;
-export type PatchSettingsApiArg = {
+export type PatchApiSettingsApiArg = {
   body: JsonPatchOp[] | null;
 };
-export type PutSettingsApiResponse = /** status 200 OK */
+export type PutApiSettingsApiResponse = /** status 200 OK */
   | Settings
   | /** status default Error */ ErrorModel;
-export type PutSettingsApiArg = {
+export type PutApiSettingsApiArg = {
   settings: Settings;
 };
-export type PostShareApiResponse = /** status 200 OK */
+export type PostApiShareApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
-export type PostShareApiArg = {
+export type PostApiShareApiArg = {
   sharedResource: SharedResource;
 };
-export type DeleteShareByShareNameApiResponse =
+export type DeleteApiShareByShareNameApiResponse =
   /** status default Error */ ErrorModel;
-export type DeleteShareByShareNameApiArg = {
+export type DeleteApiShareByShareNameApiArg = {
   /** Name of the share */
   shareName: string;
 };
-export type GetShareByShareNameApiResponse = /** status 200 OK */
+export type GetApiShareByShareNameApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
-export type GetShareByShareNameApiArg = {
+export type GetApiShareByShareNameApiArg = {
   /** Name of the share */
   shareName: string;
 };
-export type PatchShareByShareNameApiResponse = /** status 200 OK */
+export type PatchApiShareByShareNameApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
-export type PatchShareByShareNameApiArg = {
+export type PatchApiShareByShareNameApiArg = {
   /** Name of the share */
   shareName: string;
   body: JsonPatchOp[] | null;
 };
-export type PutShareByShareNameApiResponse = /** status 200 OK */
+export type PutApiShareByShareNameApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
-export type PutShareByShareNameApiArg = {
+export type PutApiShareByShareNameApiArg = {
   /** Name of the share */
   shareName: string;
   sharedResource: SharedResource;
 };
-export type PutShareByShareNameDisableApiResponse = /** status 200 OK */
+export type PutApiShareByShareNameDisableApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
-export type PutShareByShareNameDisableApiArg = {
+export type PutApiShareByShareNameDisableApiArg = {
   /** Name of the share to disable */
   shareName: string;
 };
-export type PutShareByShareNameEnableApiResponse = /** status 200 OK */
+export type PutApiShareByShareNameEnableApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
-export type PutShareByShareNameEnableApiArg = {
+export type PutApiShareByShareNameEnableApiArg = {
   /** Name of the share to enable */
   shareName: string;
 };
-export type GetSharesApiResponse =
+export type GetApiSharesApiResponse =
   | /** status 200 OK */ (SharedResource[] | null)
   | /** status default Error */ ErrorModel;
-export type GetSharesApiArg = void;
+export type GetApiSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
@@ -498,104 +518,107 @@ export type SseApiResponse = /** status 200 OK */
     )[]
   | /** status default Error */ ErrorModel;
 export type SseApiArg = void;
-export type GetTelemetryInternetConnectionApiResponse = /** status 200 OK */
+export type GetApiTelemetryInternetConnectionApiResponse = /** status 200 OK */
   | boolean
   | /** status default Error */ ErrorModel;
-export type GetTelemetryInternetConnectionApiArg = void;
-export type GetTelemetryModesApiResponse =
+export type GetApiTelemetryInternetConnectionApiArg = void;
+export type GetApiTelemetryModesApiResponse =
   | /** status 200 OK */ (string[] | null)
   | /** status default Error */ ErrorModel;
-export type GetTelemetryModesApiArg = void;
-export type GetUpdateApiResponse = /** status 200 OK */
+export type GetApiTelemetryModesApiArg = void;
+export type GetApiUpdateApiResponse = /** status 200 OK */
   | ReleaseAsset
   | /** status default Error */ ErrorModel;
-export type GetUpdateApiArg = void;
-export type PutUpdateApiResponse = /** status 200 OK */
+export type GetApiUpdateApiArg = void;
+export type PutApiUpdateApiResponse = /** status 200 OK */
   | UpdateProgress
   | /** status default Error */ ErrorModel;
-export type PutUpdateApiArg = void;
-export type GetUpdateChannelsApiResponse =
+export type PutApiUpdateApiArg = void;
+export type GetApiUpdateChannelsApiResponse =
   | /** status 200 OK */ (string[] | null)
   | /** status default Error */ ErrorModel;
-export type GetUpdateChannelsApiArg = void;
-export type PostUserApiResponse = /** status 200 OK */
+export type GetApiUpdateChannelsApiArg = void;
+export type PostApiUserApiResponse = /** status 200 OK */
   | User
   | /** status default Error */ ErrorModel;
-export type PostUserApiArg = {
+export type PostApiUserApiArg = {
   user: User;
 };
-export type DeleteUserByUsernameApiResponse =
+export type DeleteApiUserByUsernameApiResponse =
   /** status default Error */ ErrorModel;
-export type DeleteUserByUsernameApiArg = {
+export type DeleteApiUserByUsernameApiArg = {
   /** Username */
   username: string;
 };
-export type PutUserByUsernameApiResponse = /** status 200 OK */
+export type PutApiUserByUsernameApiResponse = /** status 200 OK */
   | User
   | /** status default Error */ ErrorModel;
-export type PutUserByUsernameApiArg = {
+export type PutApiUserByUsernameApiArg = {
   /** Username */
   username: string;
   user: User;
 };
-export type PutUseradminApiResponse = /** status 200 OK */
+export type PutApiUseradminApiResponse = /** status 200 OK */
   | User
   | /** status default Error */ ErrorModel;
-export type PutUseradminApiArg = {
+export type PutApiUseradminApiArg = {
   user: User;
 };
-export type GetUsersApiResponse =
+export type GetApiUsersApiResponse =
   | /** status 200 OK */ (User[] | null)
   | /** status default Error */ ErrorModel;
-export type GetUsersApiArg = void;
-export type PostVolumeDiskByDiskIdEjectApiResponse =
+export type GetApiUsersApiArg = void;
+export type PostApiVolumeDiskByDiskIdEjectApiResponse =
   /** status default Error */ ErrorModel;
-export type PostVolumeDiskByDiskIdEjectApiArg = {
+export type PostApiVolumeDiskByDiskIdEjectApiArg = {
   /** The ID of the disk to eject (e.g., sda, sdb) */
   diskId: string;
 };
-export type DeleteVolumeByMountPathHashMountApiResponse =
+export type DeleteApiVolumeByMountPathHashMountApiResponse =
   /** status default Error */ ErrorModel;
-export type DeleteVolumeByMountPathHashMountApiArg = {
+export type DeleteApiVolumeByMountPathHashMountApiArg = {
   mountPathHash: string;
   /** Force umount operation */
   force?: boolean;
   /** Lazy umount operation */
   lazy?: boolean;
 };
-export type PostVolumeByMountPathHashMountApiResponse = /** status 200 OK */
+export type PostApiVolumeByMountPathHashMountApiResponse = /** status 200 OK */
   | MountPointData
   | /** status default Error */ ErrorModel;
-export type PostVolumeByMountPathHashMountApiArg = {
+export type PostApiVolumeByMountPathHashMountApiArg = {
   mountPathHash: string;
   mountPointData: MountPointData;
 };
-export type PatchVolumeByMountPathHashSettingsApiResponse =
+export type PatchApiVolumeByMountPathHashSettingsApiResponse =
   /** status 200 OK */ MountPointData | /** status default Error */ ErrorModel;
-export type PatchVolumeByMountPathHashSettingsApiArg = {
+export type PatchApiVolumeByMountPathHashSettingsApiArg = {
   mountPathHash: string;
   mountPointData: MountPointData;
 };
-export type PutVolumeByMountPathHashSettingsApiResponse = /** status 200 OK */
-  | MountPointData
-  | /** status default Error */ ErrorModel;
-export type PutVolumeByMountPathHashSettingsApiArg = {
+export type PutApiVolumeByMountPathHashSettingsApiResponse =
+  /** status 200 OK */ MountPointData | /** status default Error */ ErrorModel;
+export type PutApiVolumeByMountPathHashSettingsApiArg = {
   mountPathHash: string;
   mountPointData: MountPointData;
 };
-export type GetVolumesApiResponse =
+export type GetApiVolumesApiResponse =
   | /** status 200 OK */ (Disk[] | null)
   | /** status default Error */ ErrorModel;
-export type GetVolumesApiArg = void;
-export type Issue = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  date: string;
-  description: string;
-  detailLink?: string;
-  id: number;
-  resolutionLink?: string;
-  title: string;
+export type GetApiVolumesApiArg = void;
+export type MountFlag = {
+  description?: string;
+  name: string;
+  needsValue?: boolean;
+  value?: string;
+  value_description?: string;
+  value_validation_regex?: string;
+};
+export type FilesystemType = {
+  customMountFlags: MountFlag[] | null;
+  mountFlags: MountFlag[] | null;
+  name: string;
+  type: string;
 };
 export type ErrorDetail = {
   /** Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -620,24 +643,6 @@ export type ErrorModel = {
   title?: string;
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
-};
-export type ResolveIssueOutputBody = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-};
-export type MountFlag = {
-  description?: string;
-  name: string;
-  needsValue?: boolean;
-  value?: string;
-  value_description?: string;
-  value_validation_regex?: string;
-};
-export type FilesystemType = {
-  customMountFlags: MountFlag[] | null;
-  mountFlags: MountFlag[] | null;
-  name: string;
-  type: string;
 };
 export type AddonStatsData = {
   blk_read?: number;
@@ -823,6 +828,20 @@ export type HealthPing = {
   secure_mode: boolean;
   startTime: number;
 };
+export type Issue = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  date: string;
+  description: string;
+  detailLink?: string;
+  id: number;
+  resolutionLink?: string;
+  title: string;
+};
+export type ResolveIssueOutputBody = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+};
 export type InterfaceAddr = {
   addr: string;
 };
@@ -997,44 +1016,44 @@ export enum Update_process_state {
   Error = "Error",
 }
 export const {
+  useGetApiFilesystemsQuery,
+  useGetApiHealthQuery,
+  useGetApiHostnameQuery,
   useGetApiIssuesQuery,
   usePostApiIssuesMutation,
   useDeleteApiIssuesByIdMutation,
   usePutApiIssuesByIdMutation,
-  useGetFilesystemsQuery,
-  useGetHealthQuery,
-  useGetHostnameQuery,
-  useGetNicsQuery,
-  usePutRestartMutation,
-  usePutSambaApplyMutation,
-  useGetSambaConfigQuery,
-  useGetSambaStatusQuery,
-  useGetSettingsQuery,
-  usePatchSettingsMutation,
-  usePutSettingsMutation,
-  usePostShareMutation,
-  useDeleteShareByShareNameMutation,
-  useGetShareByShareNameQuery,
-  usePatchShareByShareNameMutation,
-  usePutShareByShareNameMutation,
-  usePutShareByShareNameDisableMutation,
-  usePutShareByShareNameEnableMutation,
-  useGetSharesQuery,
+  useGetApiNicsQuery,
+  usePutApiRestartMutation,
+  usePutApiSambaApplyMutation,
+  useGetApiSambaConfigQuery,
+  useGetApiSambaStatusQuery,
+  useGetApiSettingsQuery,
+  usePatchApiSettingsMutation,
+  usePutApiSettingsMutation,
+  usePostApiShareMutation,
+  useDeleteApiShareByShareNameMutation,
+  useGetApiShareByShareNameQuery,
+  usePatchApiShareByShareNameMutation,
+  usePutApiShareByShareNameMutation,
+  usePutApiShareByShareNameDisableMutation,
+  usePutApiShareByShareNameEnableMutation,
+  useGetApiSharesQuery,
   useSseQuery,
-  useGetTelemetryInternetConnectionQuery,
-  useGetTelemetryModesQuery,
-  useGetUpdateQuery,
-  usePutUpdateMutation,
-  useGetUpdateChannelsQuery,
-  usePostUserMutation,
-  useDeleteUserByUsernameMutation,
-  usePutUserByUsernameMutation,
-  usePutUseradminMutation,
-  useGetUsersQuery,
-  usePostVolumeDiskByDiskIdEjectMutation,
-  useDeleteVolumeByMountPathHashMountMutation,
-  usePostVolumeByMountPathHashMountMutation,
-  usePatchVolumeByMountPathHashSettingsMutation,
-  usePutVolumeByMountPathHashSettingsMutation,
-  useGetVolumesQuery,
+  useGetApiTelemetryInternetConnectionQuery,
+  useGetApiTelemetryModesQuery,
+  useGetApiUpdateQuery,
+  usePutApiUpdateMutation,
+  useGetApiUpdateChannelsQuery,
+  usePostApiUserMutation,
+  useDeleteApiUserByUsernameMutation,
+  usePutApiUserByUsernameMutation,
+  usePutApiUseradminMutation,
+  useGetApiUsersQuery,
+  usePostApiVolumeDiskByDiskIdEjectMutation,
+  useDeleteApiVolumeByMountPathHashMountMutation,
+  usePostApiVolumeByMountPathHashMountMutation,
+  usePatchApiVolumeByMountPathHashSettingsMutation,
+  usePutApiVolumeByMountPathHashSettingsMutation,
+  useGetApiVolumesQuery,
 } = injectedRtkApi;

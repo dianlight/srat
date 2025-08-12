@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2025.8.0-dev.12",
+  "version": "2025.8.0-dev.14",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -75,7 +75,7 @@
     "clean": "rm -rf out",
     "dev": "bun --hot run bun.build.ts -w -s ./out",
     "dev:remote": "bun --hot run bun.build.ts -w -s ./out -c http://192.168.0.68:3000/",
-    "gen": "rtk-query-codegen-openapi api.config.json",
+    "gen": "rtk-query-codegen-openapi api.config.js",
     "lint": "bunx biome check --write"
   },
   "patchedDependencies": {},

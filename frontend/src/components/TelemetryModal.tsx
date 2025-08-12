@@ -15,9 +15,9 @@ import {
     CircularProgress,
 } from '@mui/material';
 import {
-    useGetTelemetryInternetConnectionQuery,
-    usePutSettingsMutation,
-    useGetSettingsQuery,
+    useGetApiTelemetryInternetConnectionQuery,
+    usePutApiSettingsMutation,
+    useGetApiSettingsQuery,
     Telemetry_mode,
 } from '../store/sratApi';
 import type { TelemetryMode } from '../services/telemetryService';
@@ -32,9 +32,9 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
     const [selectedMode, setSelectedMode] = useState<Telemetry_mode>(Telemetry_mode.All);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { data: internetConnection, isLoading: isCheckingConnection } = useGetTelemetryInternetConnectionQuery();
-    const { data: settings } = useGetSettingsQuery();
-    const [updateSettings] = usePutSettingsMutation();
+    const { data: internetConnection, isLoading: isCheckingConnection } = useGetApiTelemetryInternetConnectionQuery();
+    const { data: settings } = useGetApiSettingsQuery();
+    const [updateSettings] = usePutApiSettingsMutation();
 
     // Don't show modal if no internet connection
     useEffect(() => {

@@ -28,6 +28,24 @@ export const ConsoleErrorToRollbar: React.FC = () => {
                 }
             });
         }
+        // Attach MDS (mdsSlice) snapshot to extras.mds from the Redux store if available
+        try {
+            const g = globalThis as unknown as Record<string, any>;
+            const store =
+                g.__SRAT_STORE__ ??
+                g.store ??
+                g.reduxStore;
+
+            const state = typeof store?.getState === "function" ? store.getState() : undefined;
+            const mds = state?.mdsSlice ?? state?.mds;
+
+            if (mds != null) {
+                extras.mds = mds;
+            }
+        } catch {
+            console.warn("Failed to attach mdsSlice to Rollbar extras"); // eslint-disable-line no-console
+        }
+
 
         if (first instanceof Error) {
             reportError(first, extras);

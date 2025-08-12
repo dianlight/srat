@@ -79,12 +79,12 @@ import {
 	type SharedResource,
 	Usage,
 	type User,
-	useDeleteShareByShareNameMutation,
-	useGetUsersQuery,
-	usePostShareMutation,
-	usePutShareByShareNameDisableMutation,
-	usePutShareByShareNameEnableMutation,
-	usePutShareByShareNameMutation,
+	useDeleteApiShareByShareNameMutation,
+	useGetApiUsersQuery,
+	usePostApiShareMutation,
+	usePutApiShareByShareNameDisableMutation,
+	usePutApiShareByShareNameEnableMutation,
+	usePutApiShareByShareNameMutation,
 } from "../store/sratApi";
 import { useAppDispatch } from "../store/store";
 
@@ -345,14 +345,14 @@ export function Shares() {
 		ShareEditProps | undefined
 	>(undefined);
 	const confirm = useConfirm();
-	const [updateShare, _updateShareResult] = usePutShareByShareNameMutation();
+	const [updateShare, _updateShareResult] = usePutApiShareByShareNameMutation();
 	const [deleteShare, _updateDeleteShareResult] =
-		useDeleteShareByShareNameMutation();
-	const [createShare, _createShareResult] = usePostShareMutation();
+		useDeleteApiShareByShareNameMutation();
+	const [createShare, _createShareResult] = usePostApiShareMutation();
 	const [enableShare, _enableShareResult] =
-		usePutShareByShareNameEnableMutation();
+		usePutApiShareByShareNameEnableMutation();
 	const [disableShare, _disableShareResult] =
-		usePutShareByShareNameDisableMutation();
+		usePutApiShareByShareNameDisableMutation();
 
 	// Calculate if a new share can be created
 	const canCreateNewShare = useMemo(() => {
@@ -1034,7 +1034,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 		data: users,
 		isLoading: usLoading,
 		error: usError,
-	} = useGetUsersQuery();
+	} = useGetApiUsersQuery();
 	const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume();
 	const [editName, setEditName] = useState(false);
 	// Casing cycle state should be managed here if it's reset by volume selection

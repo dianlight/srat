@@ -1,6 +1,8 @@
 package server
 
 import (
+	"maps"
+
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humamux"
 	"github.com/danielgtaylor/huma/v2/autopatch"
@@ -18,6 +20,7 @@ func NewHumaAPI(v struct {
 	Routes []HumaRoute `group:"api_routes"`
 }) huma.API {
 	config := huma.DefaultConfig("SRAT API", "1.0.0")
+	config.Servers = []*huma.Server{}
 	config.Info.Description = "This are samba rest admin API"
 	config.Info.Contact = &huma.Contact{}
 	config.Info.Contact.Name = "Lucio Tarantino"
@@ -33,19 +36,77 @@ func NewHumaAPI(v struct {
 			Description: "HomeAssistant Supervisor Token",
 			In:          "header",
 			Name:        "X-Supervisor-Token",
-			Scheme:      "bearer",
 		},
 	}
 	config.Security = []map[string][]string{
 		{"ApiKeyAuth": {}},
 	}
 
-	api := humamux.New(v.Mux, config)
-	for _, route := range v.Routes {
-		huma.AutoRegister(api, route)
+	config.Components.Parameters = map[string]*huma.Param{
+		"X-Span-Id": {
+			Description: "Unique span ID",
+			In:          "header",
+			Name:        "X-Span-Id",
+			Schema:      &huma.Schema{Type: "string"},
+		},
+		"X-Trace-Id": {
+			Description: "Unique trace ID",
+			In:          "header",
+			Name:        "X-Trace-Id",
+			Schema:      &huma.Schema{Type: "string"},
+		},
 	}
-	autopatch.AutoPatch(api)
-	return api
+
+	config.Components.Headers = map[string]*huma.Header{
+		"X-Span-Id": {
+			Description: "Unique span ID",
+			Schema:      &huma.Schema{Type: "string"},
+		},
+		"X-Trace-Id": {
+			Description: "Unique trace ID",
+			Schema:      &huma.Schema{Type: "string"},
+		},
+	}
+
+	api := humamux.New(v.Mux, config)
+	apigroup := huma.NewGroup(api, "/api")
+	apigroup.UseSimpleModifier(func(op *huma.Operation) {
+		for p := range maps.Values(config.Components.Parameters) {
+			op.Parameters = append(op.Parameters, &huma.Param{
+				Ref: "#/components/parameters/" + p.Name,
+			})
+		}
+		op.Responses["4xx"] = &huma.Response{
+			Content: map[string]*huma.MediaType{
+				"application/problem+json": {
+					Schema: &huma.Schema{
+						Ref: "#/components/schemas/ErrorModel",
+					},
+				},
+			},
+			Description: "Error",
+		}
+
+		for code := range op.Responses {
+			if op.Responses[code].Headers == nil {
+				op.Responses[code].Headers = make(map[string]*huma.Header)
+			}
+			for key := range maps.Keys(config.Components.Headers) {
+				op.Responses[code].Headers[key] = &huma.Header{
+					Ref: "#/components/headers/" + key,
+				}
+			}
+
+			//			maps.Copy(op.Responses[code].Headers, config.Components.Headers)
+		}
+	})
+
+	for _, route := range v.Routes {
+		huma.AutoRegister(apigroup, route)
+	}
+	autopatch.AutoPatch(apigroup)
+
+	return apigroup
 }
 
 func AsHumaRoute(f any) any {

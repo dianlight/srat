@@ -9,7 +9,7 @@ import {
 	type SambaProcessStatus,
 	type SambaStatus,
 	Supported_events,
-	useGetHealthQuery,
+	useGetApiHealthQuery,
 } from "../store/sratApi";
 
 export function useHealth() {
@@ -31,7 +31,7 @@ export function useHealth() {
 		samba_status: {} as SambaStatus,
 	});
 
-	const { data, error, isLoading } = useGetHealthQuery();
+	const { data, error, isLoading } = useGetApiHealthQuery();
 	const ssedata = useSSE(Supported_events.Heartbeat, {} as HealthPing, {
 		parser(input: string): HealthPing {
 			//console.log("Got sse health data", input);
