@@ -8,6 +8,7 @@ import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 import "./img/favicon.ico";
+import normalizeUrl from 'normalize-url';
 import "@mui/icons-material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { ConfirmProvider } from "material-ui-confirm";
@@ -108,7 +109,7 @@ root.render(
 				<Provider store={store}>
 					<ConfirmProvider>
 						<StrictMode>
-							<SSEProvider source={() => new SSESource(`${apiUrl}api/sse`)}>
+							<SSEProvider source={() => new SSESource(normalizeUrl(apiUrl + "/api/sse"))}>
 								<BrowserRouter>
 									<App />
 								</BrowserRouter>
