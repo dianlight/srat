@@ -23,7 +23,18 @@ func NewHTTPServer(
 	apiContext context.Context,
 	cxtClose context.CancelFunc,
 ) *http.Server {
-	handler := cors.New(
+	handler := sloghttp.NewWithConfig(slog.Default(), sloghttp.Config{
+		DefaultLevel:       slog.LevelDebug,
+		WithRequestBody:    true,
+		WithRequestHeader:  true,
+		WithResponseBody:   true,
+		WithResponseHeader: true,
+		WithUserAgent:      true,
+		WithRequestID:      true,
+		WithSpanID:         true,
+		WithTraceID:        true,
+	})(sloghttp.Recovery(mux))
+	handler = cors.New(
 		cors.Options{
 			//AllowedOrigins:   []string{"*"},
 			AllowOriginFunc:     func(origin string) bool { return true },
@@ -33,17 +44,12 @@ func NewHTTPServer(
 			AllowPrivateNetwork: true,
 			MaxAge:              300,
 		},
-	).Handler(mux)
-	loggedRouter := sloghttp.NewWithConfig(slog.Default(), sloghttp.Config{
-		DefaultLevel:  slog.LevelDebug,
-		WithUserAgent: false,
-		WithRequestID: false,
-	})(sloghttp.Recovery(handler))
+	).Handler(handler)
 	srv := &http.Server{
 		ReadTimeout:  time.Second * 15,
 		WriteTimeout: time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      loggedRouter,
+		Handler:      handler,
 		ErrorLog:     slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 	}
 	lc.Append(fx.Hook{
