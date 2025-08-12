@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2025.8.0-dev.14",
+  "version": "2025.8.0-dev.15",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -50,6 +50,7 @@
     "lodash.debounce": "^4.0.8",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^7.0.1",
+    "openapi-explorer": "^2.2.764",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.57.0",

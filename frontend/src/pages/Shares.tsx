@@ -1320,7 +1320,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 													getOptionKey: (option) =>
 														(option as MountPointData)?.path_hash || "",
 													renderOption: (props, option) => (
-														<li {...props} key={props.key}>
+														<li {...props}>
 															<Typography variant="body2">
 																{option.path}
 															</Typography>
