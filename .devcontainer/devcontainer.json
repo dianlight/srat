@@ -81,7 +81,6 @@
 				}
 			},
 			"extensions": [
-				"vivaxy.vscode-conventional-commits",
 				"ms-vscode.makefile-tools",
 				"github.vscode-github-actions",
 				"esbenp.prettier-vscode",
@@ -92,7 +91,8 @@
 				"be5invis.toml",
 				"zoellner.openapi-preview",
 				"golang.go",
-				"oorzc.mind-map"
+				"oorzc.mind-map",
+				"ZencoderAI.zencoder"
 			]
 		}
 	},
