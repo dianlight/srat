@@ -1,5 +1,6 @@
 // Or from '@reduxjs/toolkit/query' if not using the auto-generated hooks
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import normalizeUrl from 'normalize-url';
 
 let APIURL = process.env.APIURL;
 console.debug("Configuration APIURL", APIURL);
@@ -76,10 +77,10 @@ export const emptySplitApi = createApi({
 					typeof globalThis.crypto?.randomUUID === "function"
 						? globalThis.crypto.randomUUID()
 						: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-								const r = (Math.random() * 16) | 0;
-								const v = c === "x" ? r : (r & 0x3) | 0x8;
-								return v.toString(16);
-							});
+							const r = (Math.random() * 16) | 0;
+							const v = c === "x" ? r : (r & 0x3) | 0x8;
+							return v.toString(16);
+						});
 				setIfMissing("X-Span-Id", spanId);
 				setIfMissing("X-Trace-Id", mdc?.traceId); // Don't touch need to identify a transaction
 			} catch (err) {
@@ -91,4 +92,4 @@ export const emptySplitApi = createApi({
 	endpoints: () => ({}),
 });
 
-export const apiUrl = `${APIURL}/`;
+export const apiUrl = normalizeUrl(`${APIURL}/`);
