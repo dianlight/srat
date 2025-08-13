@@ -1,4 +1,4 @@
-name: Create Release Announcement
+name: RollBar Create Release Announcement
 
 on:
   release:
