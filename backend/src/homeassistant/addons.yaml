@@ -7,7 +7,7 @@ info:
     name: Home Assistant Developers
     url: https://developers.home-assistant.io/docs/api/supervisor/
 servers:
-  - url: http://{supervisor_address}/
+  - url: http://{supervisor_address}
     description: Base URL for the Home Assistant Supervisor API.
     variables:
       supervisor_address:

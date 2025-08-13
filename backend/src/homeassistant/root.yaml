@@ -1,0 +1,202 @@
+openapi: 3.0.0
+info:
+  title: Home Assistant Supervisor - Root API
+  description: |-
+    This is a partial definition of the Home Assistant Supervisor API.
+    It includes endpoints related to system information and update management.
+    Reference documentation: https://developers.home-assistant.io/docs/api/supervisor/endpoints#root
+  version: "2025.8.0"
+servers:
+  - url: http://{supervisor_host}
+    variables:
+      supervisor_host:
+        default: supervisor
+        description: The hostname or IP of the Supervisor.
+
+paths:
+  /info:
+    get:
+      summary: Get system information
+      description: Returns a data object with various information about the Supervisor, Host, and Home Assistant.
+      operationId: getSystemInfo
+      tags:
+        - Root
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Response with system information.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    example: ok
+                  data:
+                    $ref: '#/components/schemas/SystemInfo'
+
+  /available_updates:
+    get:
+      summary: Get available updates
+      description: Returns a list of available updates for the various system components.
+      operationId: getAvailableUpdates
+      tags:
+        - Root
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Response with the list of updates.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    example: ok
+                  data:
+                    type: object
+                    properties:
+                      available_updates:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UpdateItem'
+
+  /reload_updates:
+    post:
+      summary: Reload updates
+      description: Reloads the list of available updates.
+      operationId: reloadUpdates
+      tags:
+        - Root
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Operation completed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOkResponse'
+
+  /refresh_updates:
+    post:
+      summary: Refresh update data
+      description: Forces a fetch of new update data from the internet.
+      operationId: refreshUpdates
+      tags:
+        - Root
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Operation completed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOkResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    SystemInfo:
+      type: object
+      properties:
+        supervisor:
+          type: string
+          example: "2024.08.0"
+        homeassistant:
+          type: string
+          example: "2024.8.0"
+        hassos:
+          type: string
+          nullable: true
+          example: "12.3"
+        doker:
+          type: string
+          nullable: true
+          example: "28.3.0"
+        hostname:
+          type: string
+          example: "homeassistant"
+        operating_system:
+          type: string
+          example: "Home Assistant OS 12.3"
+        features:
+          type: array
+          items:
+            type: string
+            nullable: true
+            x-speakeasy-unknown-values: allow
+            enum:
+              - reboot
+              - shutdown
+              - services
+              - network
+              - hostname
+              - timedate
+              - os_agent
+              - haos
+              - resolved
+              - journal
+              - disk
+              - mount
+              - null
+        machine:
+          type: string
+          example: "raspberrypi4-64"
+        machine_id:
+          type: string
+          example: "00dd001fb86e4b3d92588d721fb0dcf0"
+        arch:
+          type: string
+          example: "aarch64"
+        state:
+          type: string
+          example: "running"
+        supported_arch:
+          type: array
+          items:
+            type: string
+          example: "amd64,i386"
+        supported:
+          type: boolean
+          example: true
+        channel:
+          type: string
+          example: "stable"
+        logging:
+          type: string
+          example: "info"
+        timezone:
+          type: string
+          example: "Europe/Zurich"
+    UpdateItem:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Home Assistant Core"
+        version:
+          type: string
+          example: "2024.8.0"
+        version_latest:
+          type: string
+          example: "2024.8.1"
+        update_type:
+          type: string
+          example: "core"
+        # Add other update object properties here if needed
+
+    SimpleOkResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          example: ok

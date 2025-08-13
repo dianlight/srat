@@ -55,6 +55,7 @@ func (suite *TelemetryServiceSuite) SetupTest() {
 			},
 			service.NewTelemetryService,
 			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[service.HaRootServiceInterface], // Use mock for HaRootServiceInterface
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),
 		fx.Populate(&suite.propRepo),

@@ -44,7 +44,8 @@ type TelemetryService struct {
 	environment       string
 	version           string
 
-	prop repository.PropertyRepositoryInterface
+	prop   repository.PropertyRepositoryInterface
+	haroot HaRootServiceInterface
 
 	// tlog callback management
 	tlogErrorCallbackID string
@@ -52,7 +53,10 @@ type TelemetryService struct {
 }
 
 // NewTelemetryService creates a new telemetry service instance
-func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context, prop repository.PropertyRepositoryInterface) (TelemetryServiceInterface, errors.E) {
+func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
+	prop repository.PropertyRepositoryInterface,
+	haroot HaRootServiceInterface,
+) (TelemetryServiceInterface, errors.E) {
 	accessToken := config.RollbarToken
 	if accessToken == "" {
 		accessToken = "disabled" // Use placeholder if not set at build time
@@ -90,6 +94,7 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context, prop repository.P
 		accessToken: accessToken,
 		environment: environment,
 		version:     config.Version,
+		haroot:      haroot,
 	}
 
 	lc.Append(fx.Hook{
@@ -105,6 +110,9 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context, prop repository.P
 // Configure configures the telemetry service with the given mode
 func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
 	ts.mode = mode
+	if mode == dto.TelemetryModes.TELEMETRYMODEDISABLED || mode == dto.TelemetryModes.TELEMETRYMODEASK {
+		return nil
+	}
 
 	// Shutdown existing configuration
 	if ts.rollbarConfigured {
@@ -114,6 +122,11 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
 
 	// Always ensure callbacks are cleared before (re)configuring
 	ts.unregisterTlogCallbacks()
+
+	sysinfo, err := ts.haroot.GetSystemInfo()
+	if err != nil {
+		slog.Warn("Error getting system info", "error", errors.WithStack(err))
+	}
 
 	// Only initialize Rollbar if mode is All or Errors and internet is available
 	if (mode == dto.TelemetryModes.TELEMETRYMODEALL || mode == dto.TelemetryModes.TELEMETRYMODEERRORS) && ts.IsConnectedToInternet() {
@@ -129,8 +142,11 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
 			"arch":        runtime.GOARCH,
 			"os":          runtime.GOOS,
 			"cpu":         runtime.NumCPU(),
-			// TODO: Add Hassos and Homeassistant data info
+			"sysinfo":     sysinfo,
 		})
+		if sysinfo != nil && sysinfo.MachineId != nil {
+			rollbar.SetPerson(*sysinfo.MachineId, "", "")
+		}
 		rollbar.SetStackTracer(func(err error) ([]runtime.Frame, bool) {
 			// preserve the default behavior for other types of errors
 			if trace, ok := rollbar.DefaultStackTracer(err); ok {

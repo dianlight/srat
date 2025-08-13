@@ -14,6 +14,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/ingress"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/homeassistant/resolution"
+	"github.com/dianlight/srat/homeassistant/root"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
@@ -68,6 +69,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewUpgradeService,
 		service.NewDirtyDataService,
 		service.NewSupervisorService,
+		service.NewHaRootService,
 		service.NewFilesystemService,
 		service.NewShareService,
 		service.NewUserService,
@@ -111,6 +113,9 @@ func ProvideHAClientDependencies(params BaseAppParams) fx.Option {
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (core_api.ClientWithResponsesInterface, error) {
 			return core_api.NewClientWithResponses(params.StaticConfig.SupervisorURL, core_api.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (root.ClientWithResponsesInterface, error) {
+			return root.NewClientWithResponses(params.StaticConfig.SupervisorURL, root.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 	)
 }

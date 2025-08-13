@@ -10,3 +10,4 @@ package homeassistant
 //go:generate go tool oapi-codegen -config cfg.yaml  -package host -o host/client.gen.go host.yaml
 //go:generate go tool oapi-codegen -config cfg.yaml  -package addons -o addons/client.gen.go addons.yaml
 //go:generate go tool oapi-codegen -config cfg.yaml  -package resolution -o resolution/client.gen.go resolution.yaml
+//go:generate go tool oapi-codegen -config cfg.yaml  -package root -o root/client.gen.go root.yaml
