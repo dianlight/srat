@@ -53,8 +53,8 @@ jobs:
         with:
           extra_args: --files $(find . -name "*.md" | grep -v "node_modules")
 
-     # - name: Run documentation validation
-     #   run: make docs-validate
+      - name: Run documentation validation
+        run: make docs-validate
 
   auto-fix:
     runs-on: ubuntu-latest
