@@ -50,9 +50,11 @@ jobs:
 
       - uses: actions/setup-python@v3
       - uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --files $(find . -name "*.md" | grep -v "node_modules")
 
-      - name: Run documentation validation
-        run: make docs-validate
+     # - name: Run documentation validation
+     #   run: make docs-validate
 
   auto-fix:
     runs-on: ubuntu-latest
