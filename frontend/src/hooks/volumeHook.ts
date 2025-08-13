@@ -13,7 +13,8 @@ export function useVolume() {
 	const dispatch = useAppDispatch();
 	const disks = useAppSelector((state) => state.sse.disks);
 
-	const { data, error, isLoading, fulfilledTimeStamp } = useGetApiVolumesQuery();
+	const { data, error, isLoading, fulfilledTimeStamp } =
+		useGetApiVolumesQuery();
 
 	const _statusSSE = useSSE(Supported_events.Volumes, [] as Disk[], {
 		parser(input: string): Disk[] {

@@ -50,6 +50,7 @@ func (suite *HealthHandlerSuite) SetupTest() {
 			mock.Mock[service.AddonsServiceInterface],
 			mock.Mock[service.DiskStatsService],
 			mock.Mock[service.NetworkStatsService],
+			mock.Mock[service.HaRootServiceInterface],
 			func() *dto.ContextState {
 				sharedResources := dto.ContextState{}
 				sharedResources.ReadOnlyMode = false

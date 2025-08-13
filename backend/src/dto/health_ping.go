@@ -18,4 +18,5 @@ type HealthPing struct {
 	DiskHealth         *DiskHealth            `json:"disk_health"`
 	NetworkHealth      *NetworkStats          `json:"network_health"`
 	SambaStatus        *SambaStatus           `json:"samba_status"`
+	MachineId          *string                `json:"machine_id,omitempty"`
 }

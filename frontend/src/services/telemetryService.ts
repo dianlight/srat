@@ -13,6 +13,7 @@ interface TelemetryConfig {
 // Export Rollbar configuration for use with @rollbar/react Provider
 export const createRollbarConfig = (
 	accessToken: string,
+	machineId?: string,
 ): Rollbar.Configuration => ({
 	accessToken,
 	environment: process.env.NODE_ENV || "development",
@@ -26,6 +27,11 @@ export const createRollbarConfig = (
 				source_map_enabled: true,
 			},
 		},
+		person: machineId
+			? {
+					id: machineId,
+				}
+			: undefined,
 	},
 	enabled: accessToken !== "disabled",
 });
@@ -34,6 +40,7 @@ class TelemetryService {
 	private mode: TelemetryMode = "Ask";
 	private config: TelemetryConfig;
 	private isConfigured = false;
+	private machineId?: string;
 
 	constructor(config: TelemetryConfig) {
 		this.config = config;
@@ -86,6 +93,20 @@ class TelemetryService {
 	 */
 	getAccessToken(): string {
 		return this.config.accessToken;
+	}
+
+	/**
+	 * Set the machine ID for telemetry identification
+	 */
+	setMachineId(machineId?: string): void {
+		this.machineId = machineId;
+	}
+
+	/**
+	 * Get the current machine ID
+	 */
+	getMachineId(): string | undefined {
+		return this.machineId;
 	}
 }
 // Create a singleton instance

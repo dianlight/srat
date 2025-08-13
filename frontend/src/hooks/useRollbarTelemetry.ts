@@ -24,7 +24,7 @@ export const useRollbarTelemetry = () => {
 		// Report errors for both All and Errors modes
 		if (mode === "All" || mode === "Errors") {
 			rollbar.error(error, extraData);
-			console.debug("Error reported to Rollbar:", error);
+			console.debug("Error reported to Rollbar:", error, extraData);
 		}
 	};
 

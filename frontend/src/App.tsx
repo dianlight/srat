@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 //import { DirtyDataContext, ModeContext } from "./Contexts";
 import { Footer } from "./components/Footer";
 import { NavBar } from "./components/NavBar";
+import { RollbarPersonUpdater } from "./components/RollbarPersonUpdater";
 import TelemetryModal from "./components/TelemetryModal";
 import { useHealth } from "./hooks/healthHook";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
@@ -112,6 +113,8 @@ export function App() {
 		/*     <ModeContext.Provider value={status}>
 				 <DirtyDataContext.Provider value={dirtyData}>*/
 		<>
+			{/* Update Rollbar person information when machine_id becomes available */}
+			<RollbarPersonUpdater />
 			<Container
 				maxWidth="lg"
 				disableGutters={true}

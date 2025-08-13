@@ -32,6 +32,7 @@ type HealthHanler struct {
 	addonsService       service.AddonsServiceInterface
 	diskStatsService    service.DiskStatsService
 	networkStatsService service.NetworkStatsService
+	haRootService       service.HaRootServiceInterface
 }
 
 type HealthHandlerParams struct {
@@ -44,6 +45,7 @@ type HealthHandlerParams struct {
 	AddonsService      service.AddonsServiceInterface
 	NetworkStatService service.NetworkStatsService
 	DiskStatsService   service.DiskStatsService
+	HaRootService      service.HaRootServiceInterface `optional:"true"`
 }
 
 func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler {
@@ -69,6 +71,7 @@ func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler 
 	p.dirtyService = param.DirtyService
 	p.diskStatsService = param.DiskStatsService
 	p.networkStatsService = param.NetworkStatService
+	p.haRootService = param.HaRootService
 	p.BuildVersion = config.BuildVersion()
 	if param.Apictx.Heartbeat > 0 {
 		p.OutputEventsInterleave = time.Duration(param.Apictx.Heartbeat) * time.Second
@@ -205,6 +208,17 @@ func (self *HealthHanler) run() error {
 
 			// Also broadcast the samba process status separately for Home Assistant integration
 			self.broadcaster.BroadcastMessage(self.HealthPing.SambaProcessStatus)
+
+			// Get machine_id from ha_root service if available
+			if self.haRootService != nil {
+				sysInfo, err := self.haRootService.GetSystemInfo()
+				if err != nil {
+					slog.Debug("Error getting system info for machine_id", "err", err)
+					self.HealthPing.MachineId = nil
+				} else if sysInfo != nil && sysInfo.MachineId != nil {
+					self.HealthPing.MachineId = sysInfo.MachineId
+				}
+			}
 
 			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSSE } from "react-hooks-sse";
+import telemetryService from "../services/telemetryService";
 import {
 	type DataDirtyTracker,
 	type DiskHealth,
@@ -47,7 +48,13 @@ export function useHealth() {
 			((data as HealthPing).aliveTime || 0) > (health.aliveTime || 0)
 		) {
 			//console.log("Update Data from rest service", data);
-			setHealth(data as HealthPing);
+			const healthData = data as HealthPing;
+			setHealth(healthData);
+
+			// Update machine_id in telemetry service if available
+			if (healthData.machine_id) {
+				telemetryService.setMachineId(healthData.machine_id);
+			}
 		}
 		if (error) {
 			console.error("Error fetching health data:", error);
@@ -58,6 +65,11 @@ export function useHealth() {
 		if (ssedata && (ssedata.aliveTime || 0) > (health.aliveTime || 0)) {
 			//console.log("Update Data from sse service", ssedata);
 			setHealth(ssedata);
+
+			// Update machine_id in telemetry service if available
+			if (ssedata.machine_id) {
+				telemetryService.setMachineId(ssedata.machine_id);
+			}
 		}
 	}, [ssedata, health.aliveTime]);
 

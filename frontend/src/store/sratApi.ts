@@ -205,6 +205,10 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/sse` }),
         providesTags: ["system"],
       }),
+      getApiStatus: build.query<GetApiStatusApiResponse, GetApiStatusApiArg>({
+        query: () => ({ url: `/api/status` }),
+        providesTags: ["system"],
+      }),
       getApiTelemetryInternetConnection: build.query<
         GetApiTelemetryInternetConnectionApiResponse,
         GetApiTelemetryInternetConnectionApiArg
@@ -518,6 +522,10 @@ export type SseApiResponse = /** status 200 OK */
     )[]
   | /** status default Error */ ErrorModel;
 export type SseApiArg = void;
+export type GetApiStatusApiResponse = /** status 200 OK */
+  | boolean
+  | /** status default Error */ ErrorModel;
+export type GetApiStatusApiArg = void;
 export type GetApiTelemetryInternetConnectionApiResponse = /** status 200 OK */
   | boolean
   | /** status default Error */ ErrorModel;
@@ -820,6 +828,7 @@ export type HealthPing = {
   disk_health: DiskHealth;
   last_error: string;
   last_release: ReleaseAsset;
+  machine_id?: string;
   network_health: NetworkStats;
   protected_mode: boolean;
   read_only: boolean;
@@ -1040,6 +1049,7 @@ export const {
   usePutApiShareByShareNameEnableMutation,
   useGetApiSharesQuery,
   useSseQuery,
+  useGetApiStatusQuery,
   useGetApiTelemetryInternetConnectionQuery,
   useGetApiTelemetryModesQuery,
   useGetApiUpdateQuery,
