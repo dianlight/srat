@@ -63,7 +63,9 @@
     "Tozd",
     "tozd",
     "myapp",
-    "elif"
+    "elif",
+    "gosec",
+    "pipx"
   ],
   "flagWords": [],
   "ignorePaths": [
