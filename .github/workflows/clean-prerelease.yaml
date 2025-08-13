@@ -36,7 +36,7 @@ jobs:
           # We need `prerelease` flag and `createdAt` for filtering.
           # The `--limit 100` is a precaution; adjust if you have many more releases.
           echo "Fetching all releases..."
-          releases_json=$(gh release list --limit 100 --json tagName,prerelease,createdAt --repo "$REPO")
+          releases_json=$(gh release list --limit 100 --json tagName,isPrerelease,createdAt --repo "$REPO")
 
           # Check if any releases were fetched
           if [ -z "$releases_json" ] || [ "$(echo "$releases_json" | jq length)" -eq 0 ]; then
@@ -49,9 +49,9 @@ jobs:
           # Find the creation timestamp of the latest non-prerelease (stable) release.
           # If no stable release exists, all pre-releases will be considered.
           latest_stable_release_date=$(echo "$releases_json" | jq -r '
-            map(select(.prerelease == false)) |
+            map(select(.isPrerelease == false)) |
             sort_by(.createdAt) |
-            .reverse |
+            reverse |
             .[0].createdAt // "1970-01-01T00:00:00Z" # Default to epoch if no stable release
           ')
 
@@ -59,7 +59,7 @@ jobs:
 
           # Filter pre-releases that were created *after* the latest stable release.
           # Sort them by creation date in descending order.
-          prereleases_to_consider=$(echo "$releases_json" | jq -r --argjson latest_stable_date "$latest_stable_release_date" '
+          prereleases_to_consider=$(echo "$releases_json" | jq -r --arg latest_stable_date "$latest_stable_release_date" '
             map(select(.isPrerelease == true and (.createdAt > $latest_stable_date))) |
             sort_by(.createdAt) |
             reverse |
