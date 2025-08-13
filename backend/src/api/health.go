@@ -96,6 +96,7 @@ func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler 
 // HealthCheckHandler function. The endpoint is tagged with "system".
 func (self *HealthHanler) RegisterVolumeHandlers(api huma.API) {
 	huma.Get(api, "/health", self.HealthCheckHandler, huma.OperationTags("system"))
+	huma.Get(api, "/status", self.HealthStatusHandler, huma.OperationTags("system"))
 }
 
 // HealthCheckHandler handles the health check request and returns the health status.
@@ -109,6 +110,10 @@ func (self *HealthHanler) RegisterVolumeHandlers(api huma.API) {
 // - An error if the health check fails.
 func (self *HealthHanler) HealthCheckHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.HealthPing }, error) {
 	return &struct{ Body dto.HealthPing }{Body: self.HealthPing}, nil
+}
+
+func (self *HealthHanler) HealthStatusHandler(ctx context.Context, input *struct{}) (*struct{ Body bool }, error) {
+	return &struct{ Body bool }{Body: self.HealthPing.Alive}, nil
 }
 
 // EventEmitter broadcasts a health ping message using the broadcaster.
