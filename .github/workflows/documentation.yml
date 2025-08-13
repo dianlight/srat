@@ -48,6 +48,9 @@ jobs:
         with:
           bun-version: latest
 
+      - uses: actions/setup-python@v3
+      - uses: pre-commit/action@v3.0.1
+
       - name: Run documentation validation
         run: make docs-validate
 
@@ -67,6 +70,9 @@ jobs:
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
         with:
           bun-version: latest
+
+      - uses: actions/setup-python@v3
+      - uses: pre-commit/action@v3.0.1
 
       - name: Auto-fix formatting issues
         run: make docs-fix
