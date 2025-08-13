@@ -74,8 +74,12 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorMountFail) {
 			tlog.Error("Failed to mount volume", "mount_path", mount_data.Path, "error", errE)
-			if errE.Details() != nil && errE.Details()["Message"] != nil {
-				return nil, huma.Error422UnprocessableEntity(errE.Details()["Message"].(string), errE)
+			if errE.Details() != nil {
+				var errMessage string
+				for key, value := range errE.Details() {
+					errMessage += fmt.Sprintf("%s: %v\n", key, value)
+				}
+				return nil, huma.Error422UnprocessableEntity(errMessage, errE)
 			} else {
 				return nil, huma.Error422UnprocessableEntity("Failed to mount volume", errE)
 			}

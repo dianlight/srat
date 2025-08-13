@@ -359,7 +359,14 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 				dst[key] = stripANSI(vv)
 				return
 			case fmt.Stringer:
-				dst[key] = stripANSI(vv.String())
+				func() {
+					defer func() {
+						if recover() != nil {
+							dst[key] = fmt.Sprintf("%+v", vv) // Fallback if Stringer panics
+						}
+					}()
+					dst[key] = stripANSI(vv.String())
+				}()
 				return
 			case []slog.Attr:
 				// Some formatters may expose groups via Any()

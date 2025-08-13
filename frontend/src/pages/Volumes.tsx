@@ -526,7 +526,7 @@ export function Volumes() {
 		};
 
 	function onSubmitMountVolume(data?: MountPointData) {
-		console.log("Mount Request Data:", data);
+		console.trace("Mount Request Data:", data);
 		// Type guard to check if selected is a Partition
 		const isPartition = (item: any): item is Partition =>
 			item && !(item as Disk).partitions && item.name;
@@ -557,8 +557,6 @@ export function Volumes() {
 				toast.info(
 					`Volume ${(res as MountPointData).path || selected.name} mounted successfully.`,
 				);
-				setSelected(undefined); // Clear selection after successful mount
-				setShowMount(false); // Close the mount dialog
 			})
 			.catch((err) => {
 				console.error("Mount Error:", err);
@@ -572,6 +570,10 @@ export function Volumes() {
 				toast.error(`${errorCode}: ${errorMsg}`, {
 					data: { error: errorData || err },
 				});
+			})
+			.finally(() => {
+				setSelected(undefined); // Clear selection after successful mount
+				setShowMount(false); // Close the mount dialog
 			});
 	}
 
@@ -1294,7 +1296,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 			is_to_mount_at_startup: formData.is_to_mount_at_startup, // Include the switch value in submitted data
 			type: Type.Addon,
 		};
-		console.log("Submitting Mount Data:", submitData);
+		console.debug("Submitting Mount Data:", submitData);
 		setMounting(true);
 		props.onClose(submitData);
 	}
