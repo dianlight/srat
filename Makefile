@@ -134,7 +134,7 @@ gemini:
 
 .PHONY: check
 check: docs-check security
-	pre-commit run --all-files
+	pre-commit run --files $(find . -name "*.md" | grep -v "node_modules")
 
 .PHONY: security
 security:

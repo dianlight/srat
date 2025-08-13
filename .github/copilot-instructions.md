@@ -297,12 +297,12 @@ When adding features to a package:
 When making changes, always include a security scan step and report it in your final summary.
 
 - Run gosec on the backend codebase to detect common security issues
-    - How to run:
-        - From repo root: `make security`
-        - Or from backend: `make -C backend gosec`
-    - The scan excludes generated files (`-exclude-generated`).
+  - How to run:
+    - From repo root: `make security`
+    - Or from backend: `make -C backend gosec`
+  - The scan excludes generated files (`-exclude-generated`).
 - Include gosec in the Quality Gates section as:
-    - Security (gosec): PASS/FAIL with the number of issues if available
+  - Security (gosec): PASS/FAIL with the number of issues if available
 
 These checks complement Build, Lint/Typecheck, and Unit tests, and help maintain a strong security posture.
 
@@ -314,10 +314,11 @@ Always manage git hooks via pre-commit. Do not place scripts in .git/hooks or co
 2. Prefer local hooks with language: system that delegate to existing Makefile targets (e.g., make -C backend gosec)
 3. Ensure stages are set appropriately (commit, push, etc.) and pass_filenames is false for repo-wide checks
 4. Install hooks for all configured types locally with:
-    - pre-commit install (respects default_install_hook_types)
-    - pre-commit install --hook-type pre-push (needed for push-stage hooks)
+   - pre-commit install (respects default_install_hook_types)
+   - pre-commit install --hook-type pre-push (needed for push-stage hooks)
 5. Document any new hooks briefly in README.md
 
 Notes:
+
 - The project enforces a gosec scan on commit for backend Go changes and a quick Go build+test on push.
 - The legacy .githooks directory is deprecated and must remain empty.
