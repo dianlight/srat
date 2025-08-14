@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2025.8.0-dev.16",
+  "version": "2025.8.0-dev.15",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -43,6 +43,7 @@
     "@mui/icons-material": "^7.1.1",
     "@mui/material": "^7.1.1",
     "@mui/x-charts": "^8.5.3",
+    "@reactour/tour": "^3.8.0",
     "@reduxjs/toolkit": "^2.8.2",
     "@rollbar/react": "^1.0.0",
     "filesize": "^11.0.0",

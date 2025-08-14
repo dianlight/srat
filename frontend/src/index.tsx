@@ -25,6 +25,7 @@ import { apiUrl } from "./store/emptyApi.ts";
 import { Supported_events } from "./store/sratApi.ts";
 //import { apiContext } from './Contexts.ts';
 import { store } from "./store/store.ts";
+import { TourProvider } from '@reactour/tour'
 
 const theme = createTheme({
 	cssVariables: {
@@ -111,7 +112,22 @@ root.render(
 						<StrictMode>
 							<SSEProvider source={() => new SSESource(normalizeUrl(apiUrl + "/api/sse"))}>
 								<BrowserRouter>
-									<App />
+									<TourProvider steps={[]}
+										styles={{
+											popover: (base) => ({
+												...base,
+												color: 'black',
+												borderRadius: 10,
+											}),
+											maskArea: (base) => ({ ...base, rx: 5 }),
+											//maskWrapper: (base) => ({ ...base, color: '#ef5a3d' }),
+											badge: (base) => ({ ...base, left: 'auto', right: '-0.8125em' }),
+											//controls: (base) => ({ ...base, marginTop: 100 }),
+											close: (base) => ({ ...base, right: 'auto', color: 'black', left: 8, top: 8 }),
+										}}
+									>
+										<App />
+									</TourProvider>
 								</BrowserRouter>
 							</SSEProvider>
 						</StrictMode>
