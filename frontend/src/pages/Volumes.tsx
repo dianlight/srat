@@ -348,9 +348,9 @@ export function Volumes() {
 					(p) =>
 						!(
 							hideSystem &&
-							(p.system ||
+							(p.system && (
 								p.name?.startsWith("hassos-") ||
-								(p.host_mount_point_data && p.host_mount_point_data.length > 0))
+								(p.host_mount_point_data && p.host_mount_point_data.length > 0)))
 						),
 				) || [];
 			const hasActualPartitions = disk.partitions && disk.partitions.length > 0;
@@ -477,13 +477,14 @@ export function Volumes() {
 			for (const disk of disks) {
 				if (disk.partitions) {
 					for (const partition of disk.partitions) {
-						const _diskIdx = disks.indexOf(disk);
+						const diskIdx = disks.indexOf(disk);
 						if (
 							partition.mount_point_data?.some(
 								(mpd) => mpd.path_hash === mountPathHashFromState,
 							)
 						) {
 							foundPartition = partition;
+							foundDiskIdentifier = disk.id || `disk-${diskIdx}`;
 							break;
 						}
 					}
@@ -863,10 +864,10 @@ export function Volumes() {
 							(partition) =>
 								!(
 									hideSystemPartitions &&
-									(partition.system ||
-										partition.name?.startsWith("hassos-") ||
-										(partition.host_mount_point_data &&
-											partition.host_mount_point_data.length > 0))
+									(partition.system &&
+										(partition.name?.startsWith("hassos-") ||
+											(partition.host_mount_point_data &&
+												partition.host_mount_point_data.length > 0)))
 								),
 						) || [];
 
