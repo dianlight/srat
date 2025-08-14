@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/tlog"
 	"github.com/glebarez/sqlite"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -15,57 +16,43 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// checkDatabaseReadonly checks if the database is readonly and logs the cause
-func checkDatabaseReadonly(db *gorm.DB, dbPath string) (bool, error) {
-	// Get the underlying SQL database
-	sqlDB, err := db.DB()
-	if err != nil {
-		return false, fmt.Errorf("failed to get underlying SQL database: %w", err)
-	}
-
-	// Test write capability by trying to create a temporary table
-	testTableSQL := "CREATE TEMP TABLE _readonly_test (id INTEGER)"
-	_, err = sqlDB.Exec(testTableSQL)
-	if err != nil {
-		// Check if it's a readonly error
-		if strings.Contains(strings.ToLower(err.Error()), "readonly") {
-			slog.Error("Database is readonly - cannot create temporary table",
-				"error", err,
-				"path", dbPath)
-			return true, err
-		}
-		// Other error, but not necessarily readonly
-		slog.Warn("Failed to create test table, but might not be readonly issue",
-			"error", err,
-			"path", dbPath)
-		return false, err
-	}
-
-	// Clean up the test table
-	_, err = sqlDB.Exec("DROP TABLE _readonly_test")
-	if err != nil {
-		slog.Warn("Failed to clean up test table", "error", err)
-	}
-
-	return false, nil
-}
-
 // checkFileSystemPermissions checks filesystem-level issues
-func checkFileSystemPermissions(dbPath string) {
+func checkFileSystemPermissions(dbPath string) errors.E {
 	// Extract the actual file path (remove query parameters)
 	filePath := strings.Split(dbPath, "?")[0]
+
+	if strings.Contains(dbPath, ":memory:") {
+		// In-memory database, no file to check
+		return nil
+	}
 
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		slog.Info("Database file does not exist, will be created", "path", filePath)
-		return
+		// check if path is writable
+		baseDir := filePath
+		if !strings.HasSuffix(baseDir, "/") {
+			baseDir = baseDir[:strings.LastIndex(baseDir, "/")]
+		}
+		if baseDir == "" {
+			baseDir = "."
+		}
+		testFile := baseDir + "/.db_write_test"
+		f, err := os.Create(testFile)
+		if err != nil {
+			return errors.Errorf("Database directory %s is not writable %w",
+				baseDir, err)
+		}
+		f.Close()
+		os.Remove(testFile)
+		return nil
 	}
 
 	// Check file permissions
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
-		slog.Error("Failed to get file info", "error", err, "path", filePath)
-		return
+		//		slog.Error("Failed to get file info", "error", err, "path", filePath)
+		return errors.WithStack(err)
 	}
 
 	mode := fileInfo.Mode()
@@ -76,9 +63,9 @@ func checkFileSystemPermissions(dbPath string) {
 
 	// Check if file is writable
 	if mode&0200 == 0 {
-		slog.Error("Database file is not writable",
-			"path", filePath,
-			"mode", mode.String())
+		return errors.Errorf("Database file %s is not writable mode: %s",
+			filePath,
+			mode.String())
 	}
 
 	// Check directory permissions
@@ -91,13 +78,14 @@ func checkFileSystemPermissions(dbPath string) {
 			"writable", dirMode&0200 != 0)
 
 		if dirMode&0200 == 0 {
-			slog.Error("Database directory is not writable",
-				"path", dir,
-				"mode", dirMode.String())
+			return errors.Errorf("Database directory %s is not writable mode:%s",
+				dir,
+				dirMode.String())
 		}
 	} else {
-		slog.Error("Failed to check directory permissions", "error", err, "dir", dir)
+		return errors.WithStack(err)
 	}
+	return nil
 }
 
 func NewDB(lc fx.Lifecycle, v struct {
@@ -106,7 +94,11 @@ func NewDB(lc fx.Lifecycle, v struct {
 }) *gorm.DB {
 
 	// Check filesystem permissions before attempting to open database
-	checkFileSystemPermissions(v.ApiCtx.DatabasePath)
+	errE := checkFileSystemPermissions(v.ApiCtx.DatabasePath)
+	if errE != nil {
+		tlog.Fatal("Filesystem permissions check failed", "error", errE, "path", v.ApiCtx.DatabasePath)
+		return nil
+	}
 
 	// Ensure a robust SQLite DSN with sane defaults for concurrency
 	// - cache=shared to allow sharing the cache between connections
@@ -132,33 +124,31 @@ func NewDB(lc fx.Lifecycle, v struct {
 	dsn = addPragma(dsn, "journal_mode(WAL)")
 	dsn = addPragma(dsn, "busy_timeout(5000)")
 	dsn = addPragma(dsn, "synchronous(NORMAL)")
+	dsn = addPragma(dsn, "cell_size_check(1)")
+	dsn = addPragma(dsn, "optimize")
 
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		//db, err = gorm.Open(gormlite.Open(dbpath), &gorm.Config{
 		TranslateError:         true,
 		SkipDefaultTransaction: true,
 		Logger:                 logger.Default.LogMode(logger.Silent),
 	})
 
-	if err != nil {
-		slog.Error("Failed to connect to database", "error", err, "path", v.ApiCtx.DatabasePath)
+	if errE = errors.WithStack(err); errE != nil {
+		slog.Error("Failed to connect to database", "error", errE, "path", v.ApiCtx.DatabasePath)
 
 		// Check if it's a readonly issue and try to resolve
 		if strings.Contains(strings.ToLower(err.Error()), "readonly") {
 			slog.Error("Database connection failed due to readonly issue, attempting to create fresh database")
-			checkFileSystemPermissions(v.ApiCtx.DatabasePath)
-
 			// Remove the existing database file and try again
-			filePath := strings.Split(v.ApiCtx.DatabasePath, "?")[0]
-			if removeErr := os.Remove(filePath); removeErr != nil {
-				slog.Error("Failed to remove readonly database file", "error", removeErr, "path", filePath)
-			} else {
-				slog.Info("Removed readonly database file, attempting to recreate", "path", filePath)
-				return NewDB(lc, v) // Recursive call to create fresh DB
-			}
+			return replaceDatabase(lc, v)
 		}
-
 		panic(errors.Errorf("failed to connect database %s", v.ApiCtx.DatabasePath))
+	}
+
+	errE = checkDBIntegrity(db)
+	if errE != nil {
+		slog.Error("Failed to check database integrity", "error", errE, "path", v.ApiCtx.DatabasePath)
+		return replaceDatabase(lc, v)
 	}
 
 	// Apply conservative connection pool settings for SQLite
@@ -170,50 +160,11 @@ func NewDB(lc fx.Lifecycle, v struct {
 		slog.Warn("Failed to get SQL DB for pool tuning", "error", dbErr)
 	}
 
-	// Check if database is readonly after successful connection (post pool setup)
-	if readonly, readonlyErr := checkDatabaseReadonly(db, v.ApiCtx.DatabasePath); readonly {
-		slog.Error("Database is readonly after connection", "error", readonlyErr, "path", v.ApiCtx.DatabasePath)
-		slog.Warn("Closing readonly database and creating fresh instance")
-
-		// Close the readonly database
-		if sqlDB, dbErr := db.DB(); dbErr == nil {
-			sqlDB.Close()
-		}
-
-		// Remove the readonly database file
-		filePath := strings.Split(v.ApiCtx.DatabasePath, "?")[0]
-		if removeErr := os.Remove(filePath); removeErr != nil {
-			slog.Error("Failed to remove readonly database file", "error", removeErr, "path", filePath)
-			panic(errors.Errorf("database is readonly and cannot be removed: %s", v.ApiCtx.DatabasePath))
-		}
-
-		slog.Info("Removed readonly database file, creating fresh database", "path", filePath)
-		return NewDB(lc, v) // Recursive call to create fresh DB
-	}
-
 	// Migrate the schema
 	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{}, &Issue{})
-	if err != nil {
-		slog.Error("Failed to migrate database", "error", err, "path", v.ApiCtx.DatabasePath)
-
-		// Check if migration failed due to readonly database
-		if strings.Contains(strings.ToLower(err.Error()), "readonly") {
-			slog.Error("Database migration failed due to readonly issue")
-			checkFileSystemPermissions(v.ApiCtx.DatabasePath)
-		}
-
-		slog.Warn("Resetting Database to Default State")
-		sqlDB, _ := db.DB()
-		sqlDB.Close()
-
-		filePath := strings.Split(v.ApiCtx.DatabasePath, "?")[0]
-		if removeErr := os.Remove(filePath); removeErr != nil {
-			slog.Error("Failed to remove database file during reset", "error", removeErr, "path", filePath)
-		} else {
-			slog.Info("Removed database file, creating fresh database", "path", filePath)
-		}
-
-		return NewDB(lc, v)
+	if errE = errors.WithStack(err); errE != nil {
+		slog.Error("Failed to migrate database", "error", errE, "path", v.ApiCtx.DatabasePath)
+		return replaceDatabase(lc, v)
 	}
 
 	lc.Append(fx.Hook{
@@ -222,14 +173,80 @@ func NewDB(lc fx.Lifecycle, v struct {
 		},
 		OnStop: func(ctx context.Context) error {
 			sqlDB, err := db.DB()
-			if err != nil {
-				panic(err)
+			if errE = errors.WithStack(err); errE != nil {
+				slog.Error("Failed to get SQL DB on shutdown", "error", errE, "path", v.ApiCtx.DatabasePath)
+			} else {
+				sqlDB.Close()
 			}
-			// Close
-			sqlDB.Close()
 			return nil
 		},
 	})
 
 	return db
+}
+
+func replaceDatabase(lc fx.Lifecycle, v struct {
+	fx.In
+	ApiCtx *dto.ContextState
+}) *gorm.DB {
+	filePath := strings.Split(v.ApiCtx.DatabasePath, "?")[0]
+	if removeErr := os.Remove(filePath); removeErr != nil {
+		slog.Error("Failed to remove readonly database file", "error", removeErr, "path", filePath)
+	} else {
+		slog.Info("Removed readonly database file, attempting to recreate", "path", filePath)
+		return NewDB(lc, v)
+	}
+	return nil
+}
+
+func checkDBIntegrity(db *gorm.DB) errors.E {
+	sqlDB, dbErr := db.DB()
+	if errE := errors.WithStack(dbErr); errE != nil {
+		return errors.Errorf("failed to get SQL DB for PRAGMA checks: %w", errE)
+	}
+	// Run integrity_check
+	rows, icErr := sqlDB.Query("PRAGMA integrity_check;")
+	if errE := errors.WithStack(icErr); errE != nil {
+		slog.Warn("Failed to run integrity_check pragma", "error", errE)
+	} else {
+		defer rows.Close()
+		index := 0
+		problems := make([]string, 0, 10)
+		for rows.Next() {
+			index++
+			var result string
+			if scanErr := rows.Scan(&result); scanErr == nil {
+				if index == 1 && result == "ok" {
+					break
+				}
+				slog.Info("PRAGMA integrity_check result", "result", result)
+				problems = append(problems, result)
+			}
+		}
+		if len(problems) != 0 {
+			return errors.Errorf("database integrity check failed: %v", problems)
+		}
+	}
+	// Run foreign_key_check
+	rows, fkErr := sqlDB.Query("PRAGMA foreign_key_check;")
+	if errE := errors.WithStack(fkErr); errE != nil {
+		slog.Warn("Failed to run foreign_key_check pragma", "error", errE)
+	} else {
+		defer rows.Close()
+		index := 0
+		problems := make([]string, 0, 20)
+		for rows.Next() {
+			index++
+			var table string
+			var rowid, parent, fkid interface{}
+			if scanErr := rows.Scan(&table, &rowid, &parent, &fkid); scanErr == nil {
+				slog.Info("PRAGMA foreign_key_check result", "table", table, "rowid", rowid, "parent", parent, "fkid", fkid)
+				problems = append(problems, fmt.Sprintf("Table: %s, RowID: %v, Parent: %v, FkID: %v", table, rowid, parent, fkid))
+			}
+		}
+		if len(problems) > 0 {
+			return errors.Errorf("database foreign key check failed: %v", problems)
+		}
+	}
+	return nil
 }
