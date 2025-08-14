@@ -32,5 +32,7 @@
     "source.action.useSortedKeys.biome": "explicit",
     "source.fixAll.biome": "explicit",
   },
-  "chat.agent.maxRequests": 100
+  "chat.agent.maxRequests": 100,
+  "geminicodeassist.agentYoloMode": true,
+  "geminicodeassist.updateChannel": "Insiders"
 }
