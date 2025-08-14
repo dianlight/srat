@@ -371,7 +371,7 @@ export function Shares() {
 		for (const disk of volumes) {
 			if (disk.partitions) {
 				for (const partition of disk.partitions) {
-					if (partition.system) continue; // Skip system partitions
+					//if (partition.system) continue; // Skip system partitions
 					if (partition.mount_point_data) {
 						for (const mpd of partition.mount_point_data) {
 							if (
@@ -718,8 +718,6 @@ export function Shares() {
 					}
 				>
 					<span>
-						{" "}
-						{/* Wrapper for Tooltip when Fab might be disabled */}
 						<Fab
 							id="create_new_share"
 							color="primary"
@@ -823,7 +821,13 @@ export function Shares() {
 													}
 												>
 													<ListItemAvatar>
-														<Avatar>
+														<Avatar
+															sx={{ width: 32, height: 32 }}
+															onClick={() => {
+																setSelected([share, props]);
+																setShowPreview(true);
+															}}
+														>
 															{(props.mount_point_data?.invalid && (
 																<Tooltip
 																	title={props.mount_point_data?.invalid_error}
@@ -853,10 +857,6 @@ export function Shares() {
 																{props.name}
 															</Box>
 														}
-														onClick={() => {
-															setSelected([share, props]);
-															setShowPreview(true);
-														}}
 														secondary={
 															<Typography variant="body2" component="div">
 																{props.mount_point_data?.path && (
@@ -1300,7 +1300,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 													(volumes
 														?.flatMap((disk) => disk.partitions)
 														?.filter(Boolean)
-														.filter((partition) => !partition?.system)
+														.filter((partition) => !(partition?.system && partition?.host_mount_point_data && partition?.host_mount_point_data.length > 0))
 														.flatMap((partition) => partition?.mount_point_data)
 														.filter(
 															(mp) => mp?.path !== "",

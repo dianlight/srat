@@ -167,7 +167,7 @@ function PartitionActions({
 
 	if (
 		read_only ||
-		partition.system ||
+		//partition.system ||
 		partition.name?.startsWith("hassos-") ||
 		(partition.host_mount_point_data &&
 			partition.host_mount_point_data.length > 0)
@@ -178,7 +178,7 @@ function PartitionActions({
 	const actionItems = [];
 
 	// Automount Toggle Button
-	if (!hasShares && partition.mount_point_data?.[0]) {
+	if (!hasShares && partition.mount_point_data?.[0]?.path) {
 		if (partition.mount_point_data?.[0]?.is_to_mount_at_startup) {
 			actionItems.push({
 				key: "disable-automount",
@@ -529,7 +529,7 @@ export function Volumes() {
 		console.trace("Mount Request Data:", data);
 		// Type guard to check if selected is a Partition
 		const isPartition = (item: any): item is Partition =>
-			item && !(item as Disk).partitions && item.name;
+			item && !(item as Disk).partitions;
 
 		if (!selected || !isPartition(selected) || !data || !data.path) {
 			toast.error("Cannot mount: Invalid selection or missing data.");
@@ -660,6 +660,7 @@ export function Volumes() {
 		});
 	}
 
+	/*
 	function _onSubmitEjectDisk(disk: Disk) {
 		if (read_only || !disk || !disk.removable) {
 			toast.error("Disk is not ejectable or action is not permitted.");
@@ -699,6 +700,7 @@ export function Volumes() {
 			}
 		});
 	}
+	*/
 
 	function handleToggleAutomount(partition: Partition) {
 		if (read_only) return;
@@ -790,13 +792,11 @@ export function Volumes() {
 
 	return (
 		<>
-			{/* Pass selected (could be disk or partition) to mount dialog */}
 			<VolumeMountDialog
 				// Type guard to ensure we only pass Partitions to the mount dialog
 				objectToEdit={
 					selected &&
-						!(selected as Disk).partitions &&
-						(selected as Partition).name
+						!(selected as Disk).partitions
 						? (selected as Partition)
 						: undefined
 				}
@@ -911,21 +911,19 @@ export function Volumes() {
 									>
 										<ListItemAvatar
 											sx={{ pt: 1, cursor: "pointer" }}
-											onClick={(e) => {
-												e.stopPropagation();
-												setSelected(disk);
-												setShowPreview(true);
-											}}
 										>
-											<Avatar>{renderDiskIcon(disk)}</Avatar>
+											<Avatar
+												onClick={(e) => {
+													e.stopPropagation();
+													setSelected(disk);
+													setShowPreview(true);
+												}}
+											>
+												{renderDiskIcon(disk)}
+											</Avatar>
 										</ListItemAvatar>
 										<ListItemText
 											sx={{ cursor: "pointer", overflowWrap: "break-word" }}
-											onClick={(e) => {
-												e.stopPropagation();
-												setSelected(disk);
-												setShowPreview(true);
-											}}
 											primary={`Disk: ${disk.model?.toUpperCase() || `Disk ${diskIdx + 1}`}`}
 											disableTypography
 											secondary={
@@ -1030,17 +1028,14 @@ export function Volumes() {
 												const _showShareActions =
 													isMounted && firstMountPath?.startsWith("/mnt/");
 												const partitionNameDecoded = decodeEscapeSequence(
-													partition.name || "Unknown Partition",
+													partition.name || "Unnamed Partition",
 												);
 
 												return (
 													<Fragment key={partitionIdentifier}>
 														<ListItemButton
 															sx={{ pl: 1, alignItems: "flex-start" }} // Align items top
-															onClick={() => {
-																setSelected(partition);
-																setShowPreview(true);
-															}}
+
 														>
 															<ListItem
 																disablePadding
@@ -1068,7 +1063,13 @@ export function Volumes() {
 																>
 																	{" "}
 																	{/* Align avatar */}
-																	<Avatar sx={{ width: 32, height: 32 }}>
+																	<Avatar
+																		sx={{ width: 32, height: 32 }}
+																		onClick={() => {
+																			setSelected(partition);
+																			setShowPreview(true);
+																		}}
+																	>
 																		{renderPartitionIcon(partition)}
 																	</Avatar>
 																</ListItemAvatar>
@@ -1112,7 +1113,7 @@ export function Volumes() {
 																				partition.host_mount_point_data.length >
 																				0 && (
 																					<Chip
-																						label={`Mount: ${partition.host_mount_point_data.map((mpd) => mpd.path).join(" ")}`}
+																						label={`Host: ${partition.host_mount_point_data.map((mpd) => mpd.path).join(" ")}`}
 																						size="small"
 																						variant="outlined"
 																					/>
@@ -1296,7 +1297,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 			is_to_mount_at_startup: formData.is_to_mount_at_startup, // Include the switch value in submitted data
 			type: Type.Addon,
 		};
-		console.debug("Submitting Mount Data:", submitData);
+		//console.debug("Submitting Mount Data:", submitData);
 		setMounting(true);
 		props.onClose(submitData);
 	}
@@ -1306,7 +1307,7 @@ function VolumeMountDialog(props: VolumeMountDialogProps) {
 	}
 
 	const partitionNameDecoded = decodeEscapeSequence(
-		props.objectToEdit?.name || "",
+		props.objectToEdit?.name || "Unnamed Partition",
 	);
 	const partitionId = props.objectToEdit?.id || "N/A";
 
