@@ -53,7 +53,7 @@ import { Shares } from "../pages/Shares";
 import { SmbConf } from "../pages/SmbConf";
 import { Swagger } from "../pages/Swagger";
 import { Users } from "../pages/Users";
-import { Volumes } from "../pages/Volumes";
+import { Volumes } from "../pages/volumes/Volumes";
 import { type LocationState, TabIDs } from "../store/locationState";
 import {
 	type HealthPing,

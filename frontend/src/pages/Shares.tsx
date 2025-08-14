@@ -1403,6 +1403,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 																);
 															return (
 																<Component
+																	key={key}
 																	{...props}
 																	sx={{
 																		color: isDefault
@@ -1410,7 +1411,6 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 																			: "text.primary",
 																	}}
 																	size="small"
-																	key={key}
 																/>
 															);
 														}}
@@ -1499,7 +1499,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												getOptionLabel: (option) =>
 													(option as User).username || "",
 												renderOption: (props, option) => (
-													<li {...props} key={props.key}>
+													<li {...props} >
 														<Typography
 															variant="body2"
 															color={option.is_admin ? "warning" : "default"}
@@ -1570,7 +1570,7 @@ function ShareEditDialog(props: ShareEditDialogProps) {
 												getOptionLabel: (option) =>
 													(option as User).username || "",
 												renderOption: (props, option) => (
-													<li {...props} key={props.key}>
+													<li {...props}>
 														<Typography
 															variant="body2"
 															color={option.is_admin ? "warning" : "default"}
