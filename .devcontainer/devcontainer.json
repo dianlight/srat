@@ -92,7 +92,8 @@
 				"zoellner.openapi-preview",
 				"golang.go",
 				"oorzc.mind-map",
-				"ZencoderAI.zencoder"
+				"ZencoderAI.zencoder",
+				"google.geminicodeassist"
 			]
 		}
 	},
