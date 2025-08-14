@@ -4,6 +4,8 @@
 
 ### ✨ Features
 
+- **Auto-Update Service**: Implemented a backend service for automatic updates from GitHub releases, with support for multiple channels and local development builds.
+- **Telemetry Configuration**: Added UI in Settings to configure telemetry modes, dependent on internet connectivity.
 - Manage `recycle bin`option for share
 - Manage WSDD2 service
 - Manage Avahi service
@@ -29,7 +31,6 @@
 
 - [ ] Manage `local master` option (?)
 - [ ] Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
-- [ ] Custom component [#83](https://github.com/dianlight/srat/issues/83)
 - [x] Smart Control [#100](https://github.com/dianlight/srat/issues/100)
 - [x] HDD Spin down [#101](https://github.com/dianlight/srat/issues/101)
 
@@ -55,11 +56,8 @@
   - Updated `github.com/samber/lo` to v1.51.0
   - Added `github.com/samber/slog-common` v0.19.0 for enhanced logging functionality
   - Added gohack replace directives for `samber/slog-http` and `jpillora/overseer` for development
-
-#### **🚧 Work in progress**
-
-- [ ] Create the base documentation [#80](https://github.com/dianlight/srat/issues/80)
-- [ ] Display version from ADDON
+- Create the base documentation [#80](https://github.com/dianlight/srat/issues/80)
+- Display version from ADDON
 
 ## 2025.06.1-dev.801 [ 🧪 Pre-release ]
 
