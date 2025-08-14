@@ -375,6 +375,7 @@ export function Settings() {
 											);
 											return (
 												<Component
+													key={key}
 													{...props}
 													sx={{
 														color: isDefault
@@ -382,7 +383,6 @@ export function Settings() {
 															: "text.primary",
 													}}
 													size="small"
-													key={key}
 												/>
 											);
 										}}
