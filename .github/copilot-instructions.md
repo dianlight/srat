@@ -226,6 +226,18 @@ func TestHandlerNameSuite(t *testing.T) {
 6. **Clean up resources**: Always implement proper teardown in `TearDownTest`
 7. **Use testify assertions**: Prefer `suite.Equal`, `suite.NoError`, etc. over raw Go comparisons
 
+### Frontend Component Organization Rules
+
+- `src/components/` is **only for generic, reusable components** that can be used across multiple pages.
+- **Page-specific components** must go in `src/pages/<pagename>/`.
+- If a page has specific components, place both the page and its components in `src/pages/<pagename>/`.
+  - **Example:** For the dashboard page:
+    - Page: `src/pages/dashboard/Dashboard.tsx`
+    - Specific components: `src/pages/dashboard/DashboardWidget.tsx`, `src/pages/dashboard/ChartPanel.tsx`, etc.
+    - Do **not** place dashboard-specific components in `src/components/`.
+
+
+
 ### Configuration Files
 
 Test data should be placed in `backend/test/data/` directory. Reference configuration files using relative paths like `"../../test/data/config.json"`.

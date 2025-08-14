@@ -62,3 +62,12 @@ export function ErrorTelemetryBinder() {
   return null;
 }
 ```
+### Frontend Component Organization Rules
+
+- `src/components/` is **only for generic, reusable components** that can be used across multiple pages.
+- **Page-specific components** must go in `src/pages/<pagename>/`.
+- If a page has specific components, place both the page and its components in `src/pages/<pagename>/`.
+  - **Example:** For the dashboard page:
+    - Page: `src/pages/dashboard/Dashboard.tsx`
+    - Specific components: `src/pages/dashboard/DashboardWidget.tsx`, `src/pages/dashboard/ChartPanel.tsx`, etc.
+    - Do **not** place dashboard-specific components in `src/components/`.
