@@ -62,6 +62,7 @@ export function ErrorTelemetryBinder() {
   return null;
 }
 ```
+
 ### Frontend Component Organization Rules
 
 - `src/components/` is **only for generic, reusable components** that can be used across multiple pages.

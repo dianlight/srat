@@ -236,8 +236,6 @@ func TestHandlerNameSuite(t *testing.T) {
     - Specific components: `src/pages/dashboard/DashboardWidget.tsx`, `src/pages/dashboard/ChartPanel.tsx`, etc.
     - Do **not** place dashboard-specific components in `src/components/`.
 
-
-
 ### Configuration Files
 
 Test data should be placed in `backend/test/data/` directory. Reference configuration files using relative paths like `"../../test/data/config.json"`.
