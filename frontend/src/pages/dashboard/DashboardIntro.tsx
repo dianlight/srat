@@ -142,7 +142,11 @@ export function DashboardIntro({
 				<>
 					<CardHeader
 						title="Welcome to SRAT"
-						titleTypographyProps={{ variant: "h6" }}
+						slotProps={{
+							Title: {
+								sx: { variant: "h6", fontWeight: "bold" },
+							},
+						}}
 						action={
 							// Button on the right side of the header
 							<IconButton aria-label="collapse" onClick={onToggleCollapse}>

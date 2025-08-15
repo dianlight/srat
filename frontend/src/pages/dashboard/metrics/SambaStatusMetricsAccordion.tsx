@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import type { SambaStatus } from "../../../store/sratApi";
 import { SambaStatusMetrics } from "./SambaStatusMetrics";
+import { TabIDs } from "../../../store/locationState";
 
 interface SambaStatusMetricsAccordionProps {
 	sambaStatus: SambaStatus | undefined;
@@ -21,6 +22,8 @@ export function SambaStatusMetricsAccordion({
 }: SambaStatusMetricsAccordionProps) {
 	return (
 		<Accordion
+			data-tutor={`reactour__tab${TabIDs.DASHBOARD}__step8`}
+
 			expanded={expanded}
 			onChange={onChange}
 			id="samba-status-details"

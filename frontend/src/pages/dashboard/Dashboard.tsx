@@ -4,6 +4,7 @@ import { useGithubNews } from "../../hooks/githubNewsHook";
 import { DashboardActions } from "./DashboardActions";
 import { DashboardIntro } from "./DashboardIntro";
 import { DashboardMetrics } from "./DashboardMetrics";
+import { TabIDs } from "../../store/locationState";
 
 export function Dashboard() {
 	const { news, isLoading: isLoadingNews, error: errorNews } = useGithubNews();
@@ -20,6 +21,7 @@ export function Dashboard() {
 					display: { xs: "none", md: "flex" },
 					width: { md: isIntroCollapsed ? '40px' : '100%' }
 				}}
+				data-tutor={`reactour__tab${TabIDs.DASHBOARD}__step2`}
 			>
 				<DashboardIntro
 					isCollapsed={isIntroCollapsed}

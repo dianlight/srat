@@ -15,6 +15,7 @@ import { useVolume } from "../../hooks/volumeHook";
 import { useGetApiIssuesQuery, type Issue, type Partition } from "../../store/sratApi";
 import { ActionableItemsList } from "./components/ActionableItemsList";
 import IssueCard from "../../components/IssueCard";
+import { TabIDs } from "../../store/locationState";
 
 export function DashboardActions() {
 	const { disks, isLoading, error } = useVolume();
@@ -78,6 +79,7 @@ export function DashboardActions() {
 
 	return (
 		<Accordion
+			data-tutor={`reactour__tab${TabIDs.DASHBOARD}__step3`}
 			expanded={expanded}
 			onChange={handleAccordionChange}
 		>

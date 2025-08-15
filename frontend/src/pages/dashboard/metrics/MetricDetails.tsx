@@ -6,6 +6,7 @@ import { ProcessMetricsAccordion } from "./ProcessMetricsAccordion";
 import { SambaStatusMetricsAccordion } from "./SambaStatusMetricsAccordion";
 import { SystemMetricsAccordion } from "./SystemMetricsAccordion";
 import type { ProcessStatus } from "./types";
+import { TabIDs } from "../../../store/locationState";
 
 interface MetricDetailsProps {
 	health: HealthPing | null;

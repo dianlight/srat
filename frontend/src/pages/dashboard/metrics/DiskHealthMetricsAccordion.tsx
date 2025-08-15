@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import type { DiskHealth } from "../../../store/sratApi";
 import { DiskHealthMetrics } from "./DiskHealthMetrics";
+import { TabIDs } from "../../../store/locationState";
 
 interface DiskHealthMetricsAccordionProps {
 	diskHealth: DiskHealth | undefined;
@@ -20,7 +21,11 @@ export function DiskHealthMetricsAccordion({
 	onChange,
 }: DiskHealthMetricsAccordionProps) {
 	return (
-		<Accordion expanded={expanded} onChange={onChange} id="disk-health-details">
+		<Accordion
+			data-tutor={`reactour__tab${TabIDs.DASHBOARD}__step6`}
+			expanded={expanded}
+			onChange={onChange}
+			id="disk-health-details">
 			<AccordionSummary
 				expandIcon={<ExpandMoreIcon />}
 				aria-controls="panel-disk-health-content"

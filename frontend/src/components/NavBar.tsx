@@ -89,8 +89,8 @@ const NoTutorialSteps: StepType[] = [
 
 const ALL_TAB_CONFIGS: TabConfig[] = [
 	{ id: TabIDs.DASHBOARD, label: "Dashboard", component: <Dashboard />, tutorialSteps: DashboardSteps },
-	{ id: TabIDs.SHARES, label: "Shares", component: <Shares />, tutorialSteps: NoTutorialSteps },
 	{ id: TabIDs.VOLUMES, label: "Volumes", component: <Volumes />, tutorialSteps: NoTutorialSteps },
+	{ id: TabIDs.SHARES, label: "Shares", component: <Shares />, tutorialSteps: NoTutorialSteps },
 	{ id: TabIDs.USERS, label: "Users", component: <Users />, tutorialSteps: NoTutorialSteps },
 	{ id: TabIDs.SETTINGS, label: "Settings", component: <Settings />, tutorialSteps: NoTutorialSteps },
 	{
@@ -388,6 +388,7 @@ export function NavBar(props: {
 								{visibleTabs.map((tab) => (
 									<Tab
 										key={tab.id}
+										data-tutor={`reactour__tab${tab.id}__step1`}
 										label={tab.label}
 										{...a11yProps(tab.actualIndex as number)}
 										icon={getTabIcon(tab, health.health)}
