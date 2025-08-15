@@ -205,9 +205,10 @@ function TabPanel(props: TabPanelProps) {
 			hidden={value !== index}
 			id={`full-width-tabpanel-${index}`}
 			aria-labelledby={`full-width-tab-${index}`}
+			data-tutor="reactour__step1"
 			{...other}
 		>
-			{value === index && <Box data-tutor="reactour__step1" sx={{ p: 3 }}>{children}</Box>}
+			{value === index && <Box sx={{ p: 3 }}>{children}</Box>}
 		</div>
 	);
 }

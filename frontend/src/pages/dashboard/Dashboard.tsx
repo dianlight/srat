@@ -5,6 +5,8 @@ import { DashboardActions } from "./DashboardActions";
 import { DashboardIntro } from "./DashboardIntro";
 import { DashboardMetrics } from "./DashboardMetrics";
 import { TabIDs } from "../../store/locationState";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { set } from "react-hook-form";
 
 export function Dashboard() {
 	const { news, isLoading: isLoadingNews, error: errorNews } = useGithubNews();
@@ -14,8 +16,16 @@ export function Dashboard() {
 		setIsIntroCollapsed((prev) => !prev);
 	};
 
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_2, (elem) => {
+		setIsIntroCollapsed(false);
+	});
+
 	return (
-		<Grid container spacing={{ xs: 2, sm: 3 }} sx={{ p: { xs: 1, sm: 2 }, pt: { xs: 2, sm: 3 } }}>
+		<Grid
+			container
+			spacing={{ xs: 2, sm: 3 }} sx={{ p: { xs: 1, sm: 2 }, pt: { xs: 2, sm: 3 } }}
+			data-tutor={`reactour__tab${TabIDs.DASHBOARD}__step0`}
+		>
 			<Box
 				sx={{
 					display: { xs: "none", md: "flex" },

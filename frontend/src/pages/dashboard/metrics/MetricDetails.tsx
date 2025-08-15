@@ -7,6 +7,7 @@ import { SambaStatusMetricsAccordion } from "./SambaStatusMetricsAccordion";
 import { SystemMetricsAccordion } from "./SystemMetricsAccordion";
 import type { ProcessStatus } from "./types";
 import { TabIDs } from "../../../store/locationState";
+import { TourEvents, TourEventTypes } from "../../../utils/TourEvents";
 
 interface MetricDetailsProps {
 	health: HealthPing | null;
@@ -39,6 +40,22 @@ export function MetricDetails({
 	const handleDetailClick = (metricId: string) => {
 		setExpandedAccordion(metricId);
 	};
+
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_4, (elem) => {
+		setExpandedAccordion("systemMetrics");
+	});
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_5, (elem) => {
+		setExpandedAccordion("processMetrics");
+	});
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_6, (elem) => {
+		setExpandedAccordion("diskHealthMetrics");
+	});
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_7, (elem) => {
+		setExpandedAccordion("networkHealthMetrics");
+	});
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_8, (elem) => {
+		setExpandedAccordion("sambaStatusMetrics");
+	});
 
 	return (
 		<>

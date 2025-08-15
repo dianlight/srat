@@ -1,9 +1,10 @@
 import type { StepType } from '@reactour/tour'
 import { TabIDs } from '../../store/locationState';
 import { Box, Divider, Typography } from '@mui/material';
+import { TourEvents, TourEventTypes } from '../../utils/TourEvents';
 export const DashboardSteps: StepType[] = [
     {
-        selector: '[data-tutor="reactour__step1"]',
+        selector: `[data-tutor="reactour__tab${TabIDs.DASHBOARD}__step0"]`,
         content: <Box sx={{ p: 3, maxWidth: '600px', mx: 'auto' }}>
             <Typography variant="h4" component="h1" gutterBottom>
                 Welcome to Your New Dashboard!
@@ -45,11 +46,12 @@ export const DashboardSteps: StepType[] = [
         </>,
         position: "center",
         action: (elem) => {
-            console.log("Step 2 action triggered", elem);
+            TourEvents.emit(TourEventTypes.DASHBOARD_STEP_2, elem);
         }
     },
     {
         selector: `[data-tutor="reactour__tab${TabIDs.DASHBOARD}__step3"]`,
+        mutationObservables: [`[data-tutor="reactour__tab${TabIDs.DASHBOARD}__step3"]`],
         content: <>
             <Typography variant="h6" component="h2" gutterBottom>
                 Actionable Items
@@ -59,6 +61,9 @@ export const DashboardSteps: StepType[] = [
                 This is the actionable items section. Here you can find tasks and suggestions based on your hardware and software configurations.
             </Typography>
         </>,
+        action: (elem) => {
+            TourEvents.emit(TourEventTypes.DASHBOARD_STEP_3, elem);
+        }
     },
     {
         selector: `[data-tutor="reactour__tab${TabIDs.DASHBOARD}__step4"]`,
@@ -71,53 +76,92 @@ export const DashboardSteps: StepType[] = [
                 This is the metrics overview section. Here you can see key performance indicators and other important data at a glance.
             </Typography>
         </>,
+        action: (elem) => {
+            TourEvents.emit(TourEventTypes.DASHBOARD_STEP_4, elem);
+        }
     },
     {
         selector: `[data-tutor="reactour__tab${TabIDs.DASHBOARD}__step5"]`,
         content: <>
             <Typography variant="h6" component="h2" gutterBottom>
-                Step 5
+                Process Metrics
             </Typography>
 
+            <Typography variant="body1" color="text.secondary" paragraph>
+                Here you can view detailed metrics for important system processes:
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+                <strong>smbd</strong>: Handles file sharing and network access for SMB/CIFS clients. It enables Windows and other devices to access shared folders and files on your system.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+                <strong>nmbd</strong>: Manages NetBIOS name resolution and browsing. It helps devices discover your server on the local network and supports legacy Windows networking.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+                <strong>wsdd2</strong>: Provides Web Service Discovery, allowing Windows 10+ clients to find your shares automatically using modern protocols.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+                <strong>avahi</strong>: Implements mDNS/DNS-SD (Bonjour/ZeroConf), making your server discoverable by macOS, Linux, and other devices supporting network service discovery.
+            </Typography>
             <Typography variant="body1" color="text.secondary">
-                This is the fifth step.
+                Monitoring these processes helps ensure your network shares and discovery features are working correctly.
             </Typography>
         </>,
+        action: (elem) => {
+            TourEvents.emit(TourEventTypes.DASHBOARD_STEP_5, elem);
+        }
     },
     {
         selector: `[data-tutor="reactour__tab${TabIDs.DASHBOARD}__step6"]`,
         content: <>
             <Typography variant="h6" component="h2" gutterBottom>
-                Step 6
+                Disk Health
             </Typography>
 
-            <Typography variant="body1" color="text.secondary">
-                This is the sixth step.
+            <Typography variant="body1" color="text.secondary" paragraph>
+                Here you can monitor your disk health, including key metrics such as IOPS (input/output operations per second), latency, and temperature (if available). These indicators help you assess disk performance and detect potential issues early.
+            </Typography>
+            <Typography variant="body1" color="text.secondary" paragraph>
+                You can also view partition occupation, which shows how much space is used and available on each disk partition. Keeping an eye on these metrics helps ensure your system runs smoothly and prevents unexpected storage problems.
             </Typography>
         </>,
+        action: (elem) => {
+            TourEvents.emit(TourEventTypes.DASHBOARD_STEP_6, elem);
+        }
     },
     {
         selector: `[data-tutor="reactour__tab${TabIDs.DASHBOARD}__step7"]`,
         content: <>
             <Typography variant="h6" component="h2" gutterBottom>
-                Step 7
+                Network Health
             </Typography>
 
+            <Typography variant="body1" color="text.secondary" paragraph>
+                Here you can monitor key network health metrics such as IOPS (input/output operations per second) and latency. IOPS indicates how many network operations are being processed, helping you understand the throughput and responsiveness of your network connections.
+            </Typography>
+            <Typography variant="body1" color="text.secondary" paragraph>
+                Latency measures the time it takes for data to travel across the network. Lower latency means faster communication between devices, which is important for smooth file sharing and remote access.
+            </Typography>
             <Typography variant="body1" color="text.secondary">
-                This is the seventh step.
+                Keeping an eye on these metrics helps you detect network bottlenecks and maintain reliable connectivity for all your devices.
             </Typography>
         </>,
+        action: (elem) => {
+            TourEvents.emit(TourEventTypes.DASHBOARD_STEP_7, elem);
+        }
     },
     {
         selector: `[data-tutor="reactour__tab${TabIDs.DASHBOARD}__step8"]`,
         content: <>
             <Typography variant="h6" component="h2" gutterBottom>
-                Step 8
+                Samba Status
             </Typography>
 
             <Typography variant="body1" color="text.secondary">
-                This is the eighth step.
+                Here you can view the status of the Samba services running on your system. Monitoring these services helps ensure that file sharing and network access are functioning correctly.
             </Typography>
         </>,
+        action: (elem) => {
+            TourEvents.emit(TourEventTypes.DASHBOARD_STEP_8, elem);
+        }
     },
 ]

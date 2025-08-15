@@ -25,7 +25,8 @@ import { apiUrl } from "./store/emptyApi.ts";
 import { Supported_events } from "./store/sratApi.ts";
 //import { apiContext } from './Contexts.ts';
 import { store } from "./store/store.ts";
-import { TourProvider } from '@reactour/tour'
+import { TourProvider, } from '@reactour/tour'
+import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock'
 
 const theme = createTheme({
 	cssVariables: {
@@ -99,6 +100,24 @@ class SSESource implements Source {
 	}
 }
 
+const disableBody = (target: any) => {
+	if (!target) {
+		console.warn("No target element provided for disabling body scroll");
+		target = document.body; // Default to body if no target is provided
+	}
+	console.debug("Disabling body scroll", target);
+	disableBodyScroll(target);
+};
+const enableBody = (target: any) => {
+	if (!target) {
+		console.warn("No target element provided for enabling body scroll");
+		target = document.body; // Default to body if no target is provided
+	}
+	console.debug("Enabling body scroll", target);
+	enableBodyScroll(target);
+}
+
+
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 root.render(
 	<RollbarProvider config={createRollbarConfig(telemetryService.getAccessToken())}>
@@ -112,7 +131,10 @@ root.render(
 						<StrictMode>
 							<SSEProvider source={() => new SSESource(normalizeUrl(apiUrl + "/api/sse"))}>
 								<BrowserRouter>
-									<TourProvider steps={[]}
+									<TourProvider
+										afterOpen={disableBody}
+										beforeClose={enableBody}
+										steps={[]}
 										styles={{
 											popover: (base) => ({
 												...base,
