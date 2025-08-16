@@ -1,7 +1,7 @@
 import type { StepType } from '@reactour/tour'
-import { TabIDs } from '../store/locationState';
 import { Box, Divider, Typography } from '@mui/material';
-import { TourEvents, TourEventTypes } from '../utils/TourEvents';
+import { TabIDs } from '../../store/locationState';
+import { TourEvents, TourEventTypes } from '../../utils/TourEvents';
 
 export const SharesSteps: StepType[] = [
     {

@@ -51,7 +51,7 @@ import icon from "../img/icon.png";
 import logo from "../img/logo.png";
 import { Dashboard } from "../pages/dashboard/Dashboard";
 import { Settings } from "../pages/Settings";
-import { Shares } from "../pages/Shares";
+import { Shares } from "../pages/shares";
 import { SmbConf } from "../pages/SmbConf";
 import { Swagger } from "../pages/Swagger";
 import { Users } from "../pages/Users";
@@ -69,7 +69,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { NotificationCenter } from "./NotificationCenter";
 import { useTour, type StepType } from '@reactour/tour'
 import { DashboardSteps } from "../pages/dashboard/DashboardTourStep";
-import { SharesSteps } from "../pages/SharesTourStep";
+import { SharesSteps } from "../pages/shares/SharesTourStep";
 
 // Define tab configurations
 interface TabConfig {
