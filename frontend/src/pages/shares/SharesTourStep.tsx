@@ -26,7 +26,7 @@ export const SharesSteps: StepType[] = [
                 Navigate with the Tab Menu
             </Typography>
 
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" >
                 This is the tab menu, your primary navigation tool. Use it to get to the shares section where you can manage your Samba shares.
             </Typography>
         </>,
@@ -37,7 +37,7 @@ export const SharesSteps: StepType[] = [
             <Typography variant="h6" component="h2" gutterBottom>
                 Create New Share
             </Typography>
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" >
                 Use this button to create a new share. It's enabled when an unused mounted path is available.
             </Typography>
         </>,
@@ -52,7 +52,7 @@ export const SharesSteps: StepType[] = [
             <Typography variant="h6" component="h2" gutterBottom>
                 Share Groups
             </Typography>
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" >
                 Shares are grouped by usage. Expand a group to see its shares.
             </Typography>
         </>,
@@ -66,7 +66,7 @@ export const SharesSteps: StepType[] = [
             <Typography variant="h6" component="h2" gutterBottom>
                 Share Actions
             </Typography>
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" >
                 Each share provides quick actions like settings, view mount settings, delete, enable/disable.
             </Typography>
         </>,

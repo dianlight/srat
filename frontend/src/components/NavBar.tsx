@@ -70,6 +70,7 @@ import { NotificationCenter } from "./NotificationCenter";
 import { useTour, type StepType } from '@reactour/tour'
 import { DashboardSteps } from "../pages/dashboard/DashboardTourStep";
 import { SharesSteps } from "../pages/shares/SharesTourStep";
+import { VolumesSteps } from "../pages/volumes/VolumesTourStep";
 
 // Define tab configurations
 interface TabConfig {
@@ -90,7 +91,7 @@ const NoTutorialSteps: StepType[] = [
 
 const ALL_TAB_CONFIGS: TabConfig[] = [
 	{ id: TabIDs.DASHBOARD, label: "Dashboard", component: <Dashboard />, tutorialSteps: DashboardSteps },
-	{ id: TabIDs.VOLUMES, label: "Volumes", component: <Volumes />, tutorialSteps: NoTutorialSteps },
+	{ id: TabIDs.VOLUMES, label: "Volumes", component: <Volumes />, tutorialSteps: VolumesSteps },
 	{ id: TabIDs.SHARES, label: "Shares", component: <Shares />, tutorialSteps: SharesSteps },
 	{ id: TabIDs.USERS, label: "Users", component: <Users />, tutorialSteps: NoTutorialSteps },
 	{ id: TabIDs.SETTINGS, label: "Settings", component: <Settings />, tutorialSteps: NoTutorialSteps },

@@ -47,7 +47,7 @@ import { useAppDispatch } from "../../store/store";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { ShareActions } from "./ShareActions";
 import { ShareEditDialog } from "./ShareEditDialog";
-import { ShareEditProps } from "./types";
+import type { ShareEditProps } from "./types";
 import { getPathBaseName, sanitizeAndUppercaseShareName } from "./utils";
 
 export function Shares() {
@@ -729,7 +729,7 @@ export function Shares() {
 																						e.stopPropagation();
 																						setSelected([share, props]);
 																						setShowEdit(true);
-																					}}
+																				}}
 																					size="small"
 																					variant="outlined"
 																					icon={<FolderSpecialIcon />}

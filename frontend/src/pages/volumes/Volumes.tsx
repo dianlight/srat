@@ -44,6 +44,7 @@ import { PartitionActions } from "./components/PartitionActions";
 import { VolumeMountDialog } from "./components/VolumeMountDialog";
 import { useVolumeAccordion } from "./hooks/useVolumeAccordion";
 import { decodeEscapeSequence } from "./utils";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 
 export function Volumes() {
 	const read_only = useReadOnly();
@@ -302,6 +303,46 @@ export function Volumes() {
 				);
 			});
 	}
+
+	useEffect(() => {
+		const handleVolumesStep3 = () => {
+			// find first disk and expand it
+			if (disks && disks.length > 0) {
+				const firstDisk = disks[0];
+				const diskIdentifier = firstDisk.id || `disk-0`;
+				setExpandedAccordion(diskIdentifier);
+			}
+		};
+
+		const handleVolumesStep4 = () => {
+			// find first disk and expand it
+			if (disks && disks.length > 0) {
+				const firstDisk = disks[0];
+				const diskIdentifier = firstDisk.id || `disk-0`;
+				setExpandedAccordion(diskIdentifier);
+			}
+		};
+
+		const handleVolumesStep5 = () => {
+			// find first disk and expand it
+			if (disks && disks.length > 0) {
+				const firstDisk = disks[0];
+				const diskIdentifier = firstDisk.id || `disk-0`;
+				setExpandedAccordion(diskIdentifier);
+			}
+		};
+
+		TourEvents.on(TourEventTypes.VOLUMES_STEP_3, handleVolumesStep3);
+		TourEvents.on(TourEventTypes.VOLUMES_STEP_4, handleVolumesStep4);
+		TourEvents.on(TourEventTypes.VOLUMES_STEP_5, handleVolumesStep5);
+
+		return () => {
+			TourEvents.off(TourEventTypes.VOLUMES_STEP_3, handleVolumesStep3);
+			TourEvents.off(TourEventTypes.VOLUMES_STEP_4, handleVolumesStep4);
+			TourEvents.off(TourEventTypes.VOLUMES_STEP_5, handleVolumesStep5);
+		};
+	}, [disks, setExpandedAccordion]);
+
 	// Handle loading and error states
 	if (isLoading) {
 		return <Typography>Loading volumes...</Typography>;
@@ -402,7 +443,7 @@ export function Volumes() {
 				}}
 			/>
 			<br />
-			<Stack direction="row" justifyContent="flex-start" sx={{ pl: 2, mb: 1 }}>
+			<Stack direction="row" justifyContent="flex-start" sx={{ pl: 2, mb: 1 }} data-tutor={`reactour__tab${TabIDs.VOLUMES}__step2`}>
 				<FormControlLabel
 					control={
 						<Switch
@@ -417,7 +458,7 @@ export function Volumes() {
 					}
 				/>
 			</Stack>
-			<List dense={true}>
+			<List dense={true} data-tutor={`reactour__tab${TabIDs.VOLUMES}__step0`}>
 				<Divider />
 				{/* Iterate over disks */}
 				{disks &&
@@ -444,6 +485,7 @@ export function Volumes() {
 						return (
 							<Fragment key={diskIdentifier}>
 								<Accordion
+									data-tutor={`reactour__tab${TabIDs.VOLUMES}__step3`}
 									expanded={expandedAccordion === diskIdentifier}
 									onChange={handleAccordionChange(diskIdentifier)}
 									sx={{
@@ -547,6 +589,7 @@ export function Volumes() {
 												disablePadding
 												dense={true}
 												sx={{ pl: 4 }}
+												data-tutor={`reactour__tab${TabIDs.VOLUMES}__step4`}
 											>
 												{filteredPartitions.map((partition, partIdx) => {
 													const partitionIdentifier =
@@ -566,6 +609,7 @@ export function Volumes() {
 														<Fragment key={partitionIdentifier}>
 															<ListItemButton
 																sx={{ pl: 1, alignItems: "flex-start" }} // Align items top
+																data-tutor={`reactour__tab${TabIDs.VOLUMES}__step5`}
 															>
 																<ListItem
 																	disablePadding

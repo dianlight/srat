@@ -27,6 +27,9 @@ import { Supported_events } from "./store/sratApi.ts";
 import { store } from "./store/store.ts";
 import { TourProvider, } from '@reactour/tour'
 import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock'
+import { DashboardSteps } from "./pages/dashboard/DashboardTourStep.tsx";
+import { SharesSteps } from "./pages/shares/SharesTourStep.tsx";
+import { VolumesSteps } from "./pages/volumes/VolumesTourStep.tsx";
 
 const theme = createTheme({
 	cssVariables: {
@@ -138,14 +141,16 @@ root.render(
 										styles={{
 											popover: (base) => ({
 												...base,
-												color: 'black',
+												color: theme.palette.text.primary,
+												backgroundColor: theme.palette.background.paper,
 												borderRadius: 10,
+												opacity: 0.9,
 											}),
 											maskArea: (base) => ({ ...base, rx: 5 }),
 											//maskWrapper: (base) => ({ ...base, color: '#ef5a3d' }),
 											badge: (base) => ({ ...base, left: 'auto', right: '-0.8125em' }),
 											//controls: (base) => ({ ...base, marginTop: 100 }),
-											close: (base) => ({ ...base, right: 'auto', color: 'black', left: 8, top: 8 }),
+											close: (base) => ({ ...base, right: 'auto', color: theme.palette.text.primary, left: 8, top: 8 }),
 										}}
 									>
 										<App />

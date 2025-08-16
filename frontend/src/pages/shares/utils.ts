@@ -20,7 +20,7 @@ export function getPathBaseName(path: string): string {
 export function sanitizeAndUppercaseShareName(name: string): string {
 	if (!name) return "";
 	// Replace invalid characters (/:*?"<>|) and whitespace with an underscore, then convert to uppercase
-	return name.replace(/[\/:*?"<>|\s]+/g, "_").toUpperCase();
+	return name.replace(/[/:*?"<>|\s]+/g, "_").toUpperCase();
 }
 
 // --- Veto File Entry Validation Helper ---
