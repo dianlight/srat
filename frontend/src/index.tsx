@@ -53,7 +53,7 @@ class SSESource implements Source {
 		console.log("Creating SSE client", endpoint);
 		const eventSource = new EventSource(endpoint, { withCredentials: true });
 		eventSource.onerror = () => {
-			console.error("SSE connection error");
+			console.warn("SSE connection error");
 			this.heartbeatListener.forEach((func) =>
 				func({ data: '{ "alive": false, "read_only": true }' }),
 			);
