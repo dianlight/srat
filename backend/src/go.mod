@@ -149,7 +149,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.3
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250814183544-603f5aaed8b4
+	github.com/snapcore/snapd v0.0.0-20250815015426-3e628a4c04f3
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.14.0
 	github.com/xorcare/pointer v1.2.2
