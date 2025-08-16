@@ -71,6 +71,7 @@ import { useTour, type StepType } from '@reactour/tour'
 import { DashboardSteps } from "../pages/dashboard/DashboardTourStep";
 import { SharesSteps } from "../pages/shares/SharesTourStep";
 import { VolumesSteps } from "../pages/volumes/VolumesTourStep";
+import { SettingsSteps } from "../pages/settings/SettingsTourStep";
 
 // Define tab configurations
 interface TabConfig {
@@ -94,7 +95,7 @@ const ALL_TAB_CONFIGS: TabConfig[] = [
 	{ id: TabIDs.VOLUMES, label: "Volumes", component: <Volumes />, tutorialSteps: VolumesSteps },
 	{ id: TabIDs.SHARES, label: "Shares", component: <Shares />, tutorialSteps: SharesSteps },
 	{ id: TabIDs.USERS, label: "Users", component: <Users />, tutorialSteps: NoTutorialSteps },
-	{ id: TabIDs.SETTINGS, label: "Settings", component: <Settings />, tutorialSteps: NoTutorialSteps },
+	{ id: TabIDs.SETTINGS, label: "Settings", component: <Settings />, tutorialSteps: SettingsSteps },
 	{
 		id: TabIDs.SMB_FILE_CONFIG,
 		label: "smb.conf",
