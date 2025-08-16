@@ -1,334 +1,254 @@
-# GitHub Copilot Instructions for SRAT Project
+# SRAT Project Development Guidelines
 
-## Test Creation Guidelines
+This document provides a comprehensive set of rules, conventions, and guidelines for developing the SRAT project. It consolidates information on backend (Go) and frontend (React) development, testing, documentation, and project workflow.
 
-When creating Go tests for API handlers in this project, follow these patterns based on `setting_test.go`:
+## 1. Git & Project Workflow
 
-### Test Suite Structure
+### Git Hooks and pre-commit Policy
 
-1. **Use testify/suite**: All test files should use the `testify/suite` package for structured testing
-2. **Package naming**: Test files should use the `package api_test` naming convention
-3. **Suite struct naming**: Follow the pattern `{HandlerName}HandlerSuite` (e.g., `SettingsHandlerSuite`, `ShareHandlerSuite`)
+Always manage git hooks via `pre-commit`. Do not place scripts in `.git/hooks` or configure `core.hooksPath`.
 
-### Required Imports
+1.  **Modify Configuration**: To add or change hooks, edit the repository's `.pre-commit-config.yaml`.
+2.  **Hook Type**: Prefer `local` hooks with `language: system` that delegate to existing `Makefile` targets (e.g., `make -C backend gosec`).
+3.  **Configuration**: Ensure `stages` are set appropriately (e.g., `commit`, `push`) and `pass_filenames` is `false` for repo-wide checks.
+4.  **Installation**: Install hooks locally with:
+    *   `pre-commit install` (for default hook types)
+    *   `pre-commit install --hook-type pre-push` (for push-stage hooks)
 
-Include these standard imports for API handler tests:
+*Note: The project enforces a `gosec` scan on commit for backend Go changes and a quick Go build+test on push.*
 
-```go
-import (
-    "context"
-    "encoding/json"
-    "net/http"
-    "sync"
-    "testing"
+### CHANGELOG.md Rules
 
-    "github.com/danielgtaylor/huma/v2/autopatch"
-    "github.com/danielgtaylor/huma/v2/humatest"
-    "github.com/dianlight/srat/api"
-    "github.com/dianlight/srat/config"
-    "github.com/dianlight/srat/converter"
-    "github.com/dianlight/srat/dto"
-    "github.com/dianlight/srat/service"
-    "github.com/ovechkin-dm/mockio/v2/matchers"
-    "github.com/ovechkin-dm/mockio/v2/mock"
-    "github.com/stretchr/testify/suite"
-    "go.uber.org/fx"
-    "go.uber.org/fx/fxtest"
-)
-```
+Update `CHANGELOG.md` for any significant changes.
 
-### Test Suite Fields
+-   **When to Update**: Update the changelog **after** validating that the changes work correctly (i.e., tests and builds pass).
+-   **What to Document**:
+    -   API changes (new endpoints, schema modifications)
+    -   Breaking changes requiring user action
+    -   New user-facing features
+    -   Significant bug fixes
+    -   Security updates
+    -   Build, deployment, or database schema changes
+-   **Format**: Follow the established emoji-based format.
 
-Each test suite should include:
+    ```markdown
+    ## 2025.08.* [ 🚧 Unreleased ]
 
-- The handler being tested (e.g., `api *api.SettingsHandler`)
-- Mock services used by the handler
-- Dependency injection app (`app *fxtest.App`)
-- Context and cancellation function for async operations
-- Any required configuration or shared state
+    ### ✨ Features
 
-### SetupTest Method
+    - New share management API endpoints [#123](https://github.com/dianlight/srat/issues/123)
 
-Follow this pattern for `SetupTest`:
+    ### 🐛 Bug Fixes
 
-```go
-func (suite *HandlerNameSuite) SetupTest() {
-    suite.app = fxtest.New(suite.T(),
-        fx.Provide(
-            // Mock controller
-            func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+    - Fix share enable/disable functionality not working as expected
 
-            // Context with cancellation
-            func() (context.Context, context.CancelFunc) {
-                return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
-            },
+    ### 🏗 Chore
 
-            // Handler constructor
-            api.NewHandlerName,
+    - Updated Huma v2 framework integration
+    ```
+-   **Required Information**: Include a clear description, issue/PR references (`[#123](...)`), and migration steps for any breaking changes.
 
-            // Real services (when not mocked)
-            service.NewDirtyDataService,
+## 2. Backend Development (Go)
 
-            // Mock services
-            mock.Mock[service.InterfaceName],
+### Package Organization
 
-            // Context state provider
-            func() *dto.ContextState {
-                // Initialize with test data
-                return &dto.ContextState{
-                    ReadOnlyMode: false,
-                    Heartbeat: 1,
-                    DockerInterface: "hassio",
-                    DockerNet: "172.30.32.0/23",
-                }
-            },
+1.  **Package Naming**: Use descriptive, lowercase package names without underscores.
+2.  **Project Structure**: Adhere to the established structure:
+    -   `api/`: HTTP handlers and API endpoints
+    -   `service/`: Business logic and service layer
+    -   `repository/`: Data access layer
+    -   `dto/`: Data Transfer Objects
+    -   `dbom/`: Database Object Models
+    -   `converter/`: Object conversion utilities
+    -   `config/`: Configuration management
+    -   `internal/`: Internal utilities and app setup
+3.  **Import Organization**: Group imports in this order:
+    1.  Standard library
+    2.  External libraries
+    3.  Internal project imports (`github.com/dianlight/srat/...`)
 
-            // Configuration provider
-            func() config.Config {
-                // Load test configuration
-            },
-        ),
-        // Populate all dependencies
-        fx.Populate(&suite.mockService),
-        fx.Populate(&suite.handler),
-        // ... other dependencies
-    )
-    suite.app.RequireStart()
+### Code Quality & Naming Conventions
 
-    // Set up mock expectations
-    mock.When(suite.mockService.Method(mock.Any[Type]())).ThenReturn(expected, nil)
-}
-```
+-   **Receiver Name**: Use `self` as the receiver name for methods.
+-   **Interface Naming**: End interface names with `Interface` (e.g., `SomeServiceInterface`).
+-   **Constructor Naming**: Use the `NewTypeName` pattern.
+-   **Error Handling**: Always handle errors explicitly; do not ignore them.
+-   **Thread Safety**: Use mutexes for shared state in repositories.
+-   **Formatting**: Use `gofmt` and follow standard Go conventions.
+-   **Import Aliases**: Use consistent aliases (e.g., `errors` for `gitlab.com/tozd/go/errors`).
 
-### TearDownTest Method
+### API Layer (Handlers)
 
-Always include proper cleanup:
+-   **Constructor**: Use a `NewSomethingHandler` function to instantiate handlers.
+-   **Registration**: Register HTTP routes in a `RegisterSomethingHandler(api huma.API)` method.
+-   **Method Signatures**: Follow standard patterns for handler methods, clearly defining inputs, outputs, and path parameters.
+-   **Request Body**: Define request bodies inside an anonymous `input` struct.
+-   **Response Body**: Use anonymous structs for responses (e.g., `*struct{ Body dto.Something }`).
+-   **Operation Tags**: Use consistent tags for API grouping (e.g., `huma.OperationTags("system")`).
 
-```go
-func (suite *HandlerNameSuite) TearDownTest() {
-    if suite.cancel != nil {
-        suite.cancel()
-        suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
-    }
-    suite.app.RequireStop()
-}
-```
+### Service Layer
 
-### Test Methods
+-   **Interfaces**: Define an interface for every service.
+-   **Implementation**: Use parameter structs with `fx.In` for dependency injection.
 
-#### HTTP Test Pattern
+### Repository Layer
 
-For HTTP endpoint tests using humatest:
+-   **Interfaces**: Define interfaces with GORM operations.
+-   **Implementation**: Use GORM with a `sync.RWMutex` to ensure thread safety.
 
-```go
-func (suite *HandlerNameSuite) TestMethodName() {
-    _, api := humatest.New(suite.T())
-    suite.handler.RegisterHandlerName(api)
+### Dependency Injection (FX)
 
-    // For PATCH operations, add autopatch
-    autopatch.AutoPatch(api)
+-   **Service Registration**: Register all services, repositories, and handlers as FX providers.
+-   **Parameter Structs**: Use `fx.In` structs for dependency injection in constructors.
 
-    // Prepare test data
-    input := dto.SomeType{
-        Field: "value",
-    }
+### Error Handling
 
-    // Make HTTP request
-    resp := api.Get("/endpoint")  // or Post, Patch, etc.
-    suite.Require().Equal(http.StatusOK, resp.Code)
+-   **Error Types**: Define domain-specific errors in `dto/error_code.go` (e.g., `ErrorSomethingNotFound`).
+-   **Error Wrapping**: Use `gitlab.com/tozd/go/errors` for wrapping errors to preserve context.
+-   **HTTP Mapping**: Map domain errors to specific HTTP status codes in the API layer (e.g., `huma.Error404NotFound`).
 
-    // Parse response
-    var result dto.SomeType
-    err := json.Unmarshal(resp.Body.Bytes(), &result)
-    suite.Require().NoError(err)
+### Logging and Observability
 
-    // Assertions
-    suite.Equal(expected, result)
+-   **Structured Logging**: Use `slog` for structured, key-value based logging.
+-   **Error Context**: Provide meaningful context in error messages and logs.
 
-    // Verify dirty state if applicable
-    suite.True(suite.dirtyService.GetDirtyDataTracker().SomeField)
-}
-```
+### Configuration and Context
 
-#### Direct Handler Test Pattern
+-   **Context State**: Use `dto.ContextState` to manage application-wide configuration and state.
+-   **Template Handling**: Load templates from the `/templates` directory.
 
-For testing handlers directly (like in shares_test.go):
+### Async Operations and Broadcasting
 
-```go
-func (suite *HandlerNameSuite) TestMethodName() {
-    // Prepare input
-    input := dto.SomeType{Name: "test"}
+-   **Dirty State**: After modifications, mark data as dirty using `dirtyService.SetDirtySomething()`.
+-   **Notifications**: Use goroutines for asynchronous operations like client notifications.
+-   **WaitGroup Context**: Use `context.WithValue(context.Background(), "wg", &sync.WaitGroup{})` to manage the lifecycle of async operations in tests.
 
-    // Configure mock expectations
-    mock.When(suite.mockService.Method(mock.Any[dto.SomeType]())).ThenReturn(expected, nil)
+### Data Transfer (DTOs) & Conversion
 
-    // Prepare request input
-    requestInput := &struct {
-        Body dto.SomeType `required:"true"`
-    }{
-        Body: input,
-    }
+-   **DTOs**: Define DTOs with JSON tags and validation rules.
+-   **Converters**: Use `goverter` for automatic conversions between `dto` and `dbom` objects.
 
-    // Execute
-    result, err := suite.handler.Method(context.Background(), requestInput)
+## 3. Frontend Development (React)
 
-    // Assert
-    suite.NoError(err)
-    suite.NotNil(result)
-    suite.Equal(http.StatusCreated, result.Status)
+### Component Organization
 
-    // Verify mock calls
-    mock.Verify(suite.mockService, matchers.Times(1)).Method()
-}
-```
+-   **Generic Components**: `src/components/` is **only** for generic, reusable components that can be used across multiple pages.
+-   **Page-Specific Components**: All components specific to a single page **must** be located within that page's directory.
+    -   **Example**: For a "Dashboard" page, the structure should be:
+        -   `src/pages/dashboard/Dashboard.tsx` (The page itself)
+        -   `src/pages/dashboard/DashboardWidget.tsx` (A component used only on the dashboard)
+        -   `src/pages/dashboard/ChartPanel.tsx` (Another component used only on the dashboard)
 
-### Error Handling Tests
+## 4. Testing (Go)
 
-Always test error scenarios:
-
-```go
-func (suite *HandlerNameSuite) TestMethodNameError() {
-    // Configure mock to return error
-    expectedErr := dto.ErrorSomeCondition
-    mock.When(suite.mockService.Method(mock.Any[dto.SomeType]())).ThenReturn(nil, expectedErr)
-
-    // Execute
-    result, err := suite.handler.Method(context.Background(), input)
-
-    // Assert error
-    suite.Error(err)
-    suite.Nil(result)
-
-    // Check specific error type if needed
-    statusErr, ok := err.(huma.StatusError)
-    suite.True(ok)
-    suite.Equal(409, statusErr.GetStatus()) // or appropriate status
-}
-```
-
-### Test Runner
-
-Always include the test runner function:
-
-```go
-func TestHandlerNameSuite(t *testing.T) {
-    suite.Run(t, new(HandlerNameSuite))
-}
-```
+Go tests for API handlers must follow these patterns, based on `testify/suite`.
 
 ### General Guidelines
 
-1. **Mock external dependencies**: Use mockio/v2 for mocking services and repositories
-2. **Test both success and error paths**: Include tests for various error conditions
-3. **Verify dirty state**: Check that `dirtyService.SetDirty*()` methods are called when expected
-4. **Async operations**: Note that `NotifyClient()` calls are async and may not be verifiable in tests without synchronization
-5. **Use meaningful test names**: Follow the pattern `Test{Method}{Scenario}` (e.g., `TestCreateShareSuccess`, `TestCreateShareAlreadyExists`)
-6. **Clean up resources**: Always implement proper teardown in `TearDownTest`
-7. **Use testify assertions**: Prefer `suite.Equal`, `suite.NoError`, etc. over raw Go comparisons
+1.  **Mock Dependencies**: Use `mockio/v2` for mocking services and repositories.
+2.  **Test Paths**: Test both success and error paths.
+3.  **Verify State**: Check that `dirtyService.SetDirty*()` methods are called when data is modified.
+4.  **Meaningful Names**: Use the pattern `Test{Method}{Scenario}` (e.g., `TestCreateShareSuccess`).
+5.  **Use Assertions**: Prefer `testify/assert` or `testify/require` (e.g., `suite.Equal(...)`).
 
-### Frontend Component Organization Rules
+### Test Suite Structure
 
-- `src/components/` is **only for generic, reusable components** that can be used across multiple pages.
-- **Page-specific components** must go in `src/pages/<pagename>/`.
-- If a page has specific components, place both the page and its components in `src/pages/<pagename>/`.
-  - **Example:** For the dashboard page:
-    - Page: `src/pages/dashboard/Dashboard.tsx`
-    - Specific components: `src/pages/dashboard/DashboardWidget.tsx`, `src/pages/dashboard/ChartPanel.tsx`, etc.
-    - Do **not** place dashboard-specific components in `src/components/`.
+-   **Package**: `package api_test`
+-   **Suite Struct**: Name it `{HandlerName}HandlerSuite`. It must embed `suite.Suite` and contain fields for the handler, mock services, `fxtest.App`, and a `context`.
 
-### Configuration Files
+### SetupTest / TearDownTest Methods
 
-Test data should be placed in `backend/test/data/` directory. Reference configuration files using relative paths like `"../../test/data/config.json"`.
+-   **`SetupTest`**: Use `fxtest.New` to build the dependency graph. Provide all mocks, real services, configuration, and context. Use `fx.Populate` to inject dependencies into the suite fields. Set up mock expectations using `mock.When(...)`.
+-   **`TearDownTest`**: Clean up resources. Cancel the context and wait for any `WaitGroup` to finish, then call `suite.app.RequireStop()`.
 
-### Template Files
+### HTTP Test Pattern (`humatest`)
 
-When tests need template files, reference them from the templates directory: `"../templates/smb.gtpl"`.
+1.  **Initialize**: `_, api := humatest.New(suite.T())`
+2.  **Register Handler**: `suite.handler.RegisterSomething(api)`
+3.  **Enable AutoPatch**: If testing a `PATCH` endpoint, call `autopatch.AutoPatch(api)`.
+4.  **Make Request**: `resp := api.Get("/endpoint")`
+5.  **Assert Status**: `suite.Require().Equal(http.StatusOK, resp.Code)`
+6.  **Assert Body**: Unmarshal the response and assert its contents.
 
-## Package Documentation and Examples Guidelines
+### Direct Handler Test Pattern
 
-When implementing new features or modifying existing functionality in Go packages, always ensure that related documentation and examples are updated to reflect the changes:
+1.  **Prepare Input**: Create the required input DTO.
+2.  **Configure Mock**: `mock.When(suite.mockService.Method(...)).ThenReturn(...)`
+3.  **Execute**: Call the handler method directly: `result, err := suite.handler.Method(ctx, input)`
+4.  **Assert**: Check the error and the result.
+5.  **Verify Mock**: `mock.Verify(suite.mockService, matchers.Times(1)).Method()`
 
-### Documentation Update Requirements
+### Error Handling Tests
 
-1. **README Files**: Update package README.md files to include:
-   - New features in the Features section
-   - Updated API documentation with new functions/methods
-   - Usage examples demonstrating new functionality
-   - Best practices and safety considerations
-   - Migration notes for breaking changes
+-   Configure the mock to return a specific error.
+-   Execute the handler method.
+-   Assert that an error is returned (`suite.Error(err)`).
+-   If applicable, check for a specific `huma.StatusError` and status code.
 
-2. **API Reference**: Ensure all public functions, types, and constants are documented with:
-   - Function signatures and parameter descriptions
-   - Return value explanations
-   - Usage examples for complex APIs
-   - Error handling patterns
+### Test Runner
 
-### Example Update Requirements
+-   Always include the test runner function:
+    ```go
+    func TestHandlerNameSuite(t *testing.T) {
+        suite.Run(t, new(HandlerNameSuite))
+    }
+    ```
 
-1. **Example Programs**: Update or create example programs (typically in `example/` directories) that demonstrate:
-   - Basic usage of new features
-   - Advanced use cases and edge cases
-   - Error handling and recovery patterns
-   - Performance considerations
-   - Integration patterns with other components
+### Test Data
 
-2. **Code Comments**: Include comprehensive examples in code comments for complex APIs:
+-   Place test configuration data in `backend/test/data/`.
+-   Reference files using relative paths (e.g., `"../../test/data/config.json"`).
 
-   ```go
-   // Example usage:
-   //   callback := func(event LogEvent) { ... }
-   //   id := RegisterCallback(LevelError, callback)
-   //   defer UnregisterCallback(LevelError, id)
-   ```
+## 5. Documentation
 
-### Update Process
+### General Markdown Rules
 
-When adding features to a package:
+-   **Update `CHANGELOG.md`** for all significant changes.
+-   Use proper heading hierarchy and consistent formatting.
+-   Include fenced code blocks with language identifiers.
+-   Keep all documentation, examples, and links current and valid.
 
-1. **Implement the feature** with comprehensive tests
-2. **Update README.md** to document the new functionality
-3. **Update or create examples** that demonstrate the feature
-4. **Test examples** to ensure they work correctly
-5. **Update API documentation** with complete function references
-6. **Add best practices** and safety guidelines
-7. **Include migration notes** if there are breaking changes
+### Package Documentation and Examples (Go)
 
-### Quality Standards
+When adding or changing features, update the corresponding documentation.
 
-- Examples should be **runnable** and **well-commented**
-- Documentation should be **clear** and **comprehensive**
-- Include **real-world use cases** and **practical examples**
-- Demonstrate **error handling** and **edge cases**
-- Show **performance considerations** and **best practices**
-- Provide **complete API reference** with all parameters and return values
+1.  **READMEs**: Update package `README.md` files with new features, API documentation, usage examples, and best practices.
+2.  **API Reference (GoDoc)**: Ensure all public functions, types, and constants are fully documented. Include examples for complex APIs.
+3.  **Examples**: Update or create runnable example programs that demonstrate new features, error handling, and best practices.
 
-## Security and Quality Gates
+### API Documentation (OpenAPI)
 
-When making changes, always include a security scan step and report it in your final summary.
+-   Update OpenAPI specs when API endpoints change.
+-   Include clear request/response examples.
+-   Document all error codes and their meanings.
 
-- Run gosec on the backend codebase to detect common security issues
-  - How to run:
-    - From repo root: `make security`
-    - Or from backend: `make -C backend gosec`
-  - The scan excludes generated files (`-exclude-generated`).
-- Include gosec in the Quality Gates section as:
-  - Security (gosec): PASS/FAIL with the number of issues if available
+### Implementation Docs
 
-These checks complement Build, Lint/Typecheck, and Unit tests, and help maintain a strong security posture.
+-   Update `docs/implementation/*.md` files when architectural decisions change.
+-   Document the reasoning behind technical choices.
 
-## Git Hooks and pre-commit Policy
+## 6. Quality & Security
 
-Always manage git hooks via pre-commit. Do not place scripts in .git/hooks or configure core.hooksPath. When you need to add or modify hooks:
+### Quality Gates
 
-1. Edit the repository's .pre-commit-config.yaml to add a new hook or adjust existing ones
-2. Prefer local hooks with language: system that delegate to existing Makefile targets (e.g., make -C backend gosec)
-3. Ensure stages are set appropriately (commit, push, etc.) and pass_filenames is false for repo-wide checks
-4. Install hooks for all configured types locally with:
-   - pre-commit install (respects default_install_hook_types)
-   - pre-commit install --hook-type pre-push (needed for push-stage hooks)
-5. Document any new hooks briefly in README.md
+-   **Before Merge**: All code must be formatted, and all documentation must be spell-checked with valid links and tested examples.
+-   **Review**: Documentation and breaking changes require maintainer review. New features must be documented.
 
-Notes:
+### Security Scans (gosec)
 
-- The project enforces a gosec scan on commit for backend Go changes and a quick Go build+test on push.
-- The legacy .githooks directory is deprecated and must remain empty.
+-   Run `gosec` on the backend codebase to detect common security issues before submitting changes.
+-   **How to run**: `make security` from the repo root.
+-   Include the result in the "Quality Gates" section of your PR summary: `Security (gosec): PASS`.
+
+## 7. Build & Deployment
+
+### Build Conventions
+
+1.  **Binary Structure**: Follow the established output structure.
+    -   `backend/dist/${ARCH}/`: Production builds (stripped, optimized).
+    -   `backend/tmp/`: Development/test builds (with debug symbols).
+2.  **Binary Naming**: Use the convention `srat-server`, `srat-cli`, etc.
+3.  **Makefile**: Use the `Makefile` targets for building. When adding a new binary, update the `Makefile` accordingly.
+4.  **Multi-architecture**: Ensure builds work for `amd64` (x86_64), `armv7`, and `arm64` (aarch64).
+5.  **Build Flags**: Use `-ldflags="-s -w"` for production and `-gcflags=all="-N -l"` for development. Always inject the version information.
+6.  **Asset Embedding**: Frontend assets are embedded into the production binary using the `embedallowed` build tag.
