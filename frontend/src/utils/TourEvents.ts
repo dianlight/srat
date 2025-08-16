@@ -15,6 +15,7 @@ export const TourEvents = {
 };
 
 export enum TourEventTypes {
+    // Dashboard steps
     DASHBOARD_STEP_2 = "tour:dashboard:step2",
     DASHBOARD_STEP_3 = "tour:dashboard:step3",
     DASHBOARD_STEP_4 = "tour:dashboard:step4",
@@ -22,4 +23,9 @@ export enum TourEventTypes {
     DASHBOARD_STEP_6 = "tour:dashboard:step6",
     DASHBOARD_STEP_7 = "tour:dashboard:step7",
     DASHBOARD_STEP_8 = "tour:dashboard:step8",
+
+    // Shares steps
+    //SHARES_STEP_2 = "tour:shares:step2",
+    SHARES_STEP_3 = "tour:shares:step3",
+    SHARES_STEP_4 = "tour:shares:step4",
 }

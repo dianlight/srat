@@ -87,6 +87,7 @@ import {
 	usePutApiShareByShareNameMutation,
 } from "../store/sratApi";
 import { useAppDispatch } from "../store/store";
+import { TourEvents, TourEventTypes } from "../utils/TourEvents";
 
 interface ShareEditProps extends SharedResource {
 	org_name: string;
@@ -270,7 +271,9 @@ function ShareActions({
 
 	if (isSmallScreen) {
 		return (
-			<>
+			<div
+				data-tutor={`reactour__tab${TabIDs.SHARES}__step4`}
+			>
 				<IconButton
 					aria-label="more actions"
 					aria-controls="share-actions-menu"
@@ -302,12 +305,14 @@ function ShareActions({
 						</MenuItem>
 					))}
 				</Menu>
-			</>
+			</div>
 		);
 	}
 
 	return (
-		<Stack direction="row" spacing={0} alignItems="center">
+		<Stack direction="row" spacing={0} alignItems="center"
+			data-tutor={`reactour__tab${TabIDs.SHARES}__step4`}
+		>
 			{actionItems.map((action) => (
 				<Tooltip title={action.title} key={action.key}>
 					<IconButton
@@ -675,8 +680,17 @@ export function Shares() {
 		return false;
 	}
 
+	TourEvents.on(TourEventTypes.SHARES_STEP_3, (elem) => {
+		setExpandedAccordion(false);
+		//console.debug("Tour Step 3:", elem);
+	});
+	TourEvents.on(TourEventTypes.SHARES_STEP_4, (elem) => {
+		setExpandedAccordion(groupedAndSortedShares?.[0]?.[0]);
+		//console.debug("Tour Step 4:", elem, groupedAndSortedShares);
+	});
+
 	return (
-		<InView>
+		<InView data-tutor={`reactour__tab${TabIDs.SHARES}__step0`}>
 			<PreviewDialog
 				title={selected?.[1].name || ""}
 				objectToDisplay={selected?.[1]}
@@ -716,6 +730,7 @@ export function Shares() {
 								? "No unshared mount points available to create a new share."
 								: "Create new share"
 					}
+					data-tutor={`reactour__tab${TabIDs.SHARES}__step2`}
 				>
 					<span>
 						<Fab
@@ -758,6 +773,7 @@ export function Shares() {
 								backgroundColor: "transparent", // Remove accordion background
 							}}
 							disableGutters // Removes left/right padding from Accordion itself
+							data-tutor={`reactour__tab${TabIDs.SHARES}__step3`}
 						>
 							<AccordionSummary
 								expandIcon={<ExpandMore />}
