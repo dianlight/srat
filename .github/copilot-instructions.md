@@ -46,7 +46,7 @@ Update `CHANGELOG.md` for any significant changes.
 
     - Updated Huma v2 framework integration
     ```
--   **Required Information**: Include a clear description, issue/PR references (`[#123](...)`), and migration steps for any breaking changes.
+-   **Required Information**: Include a clear description, issue/PR references (`[#123](https://github.com/dianlight/srat/issues/123)`), and migration steps for any breaking changes.
 
 ## 2. Backend Development (Go)
 
