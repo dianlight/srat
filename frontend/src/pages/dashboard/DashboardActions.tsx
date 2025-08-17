@@ -15,15 +15,21 @@ import { useVolume } from "../../hooks/volumeHook";
 import { useGetApiIssuesQuery, type Issue, type Partition } from "../../store/sratApi";
 import { ActionableItemsList } from "./components/ActionableItemsList";
 import IssueCard from "../../components/IssueCard";
+import { TabIDs } from "../../store/locationState";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 
 export function DashboardActions() {
 	const { disks, isLoading, error } = useVolume();
 	const read_only = useReadOnly();
-	const _navigate = useNavigate();
+	//const _navigate = useNavigate();
 	const [expanded, setExpanded] = useState(false);
 	const [showIgnored, setShowIgnored] = useState(false);
 
 	const { data: issues, isLoading: is_inLoading } = useGetApiIssuesQuery();
+
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_3, (elem) => {
+		setExpanded(true);
+	});
 
 	const actionablePartitions = useMemo(() => {
 		const partitions: { partition: Partition; action: "mount" | "share" }[] =
@@ -78,6 +84,7 @@ export function DashboardActions() {
 
 	return (
 		<Accordion
+			data-tutor={`reactour__tab${TabIDs.DASHBOARD}__step3`}
 			expanded={expanded}
 			onChange={handleAccordionChange}
 		>

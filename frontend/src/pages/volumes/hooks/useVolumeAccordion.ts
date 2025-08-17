@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type Disk } from "../../../store/sratApi";
+import type { Disk } from "../../../store/sratApi";
 
 const localStorageKey = "srat_volumes_expanded_accordion";
 
@@ -25,10 +25,9 @@ export function useVolumeAccordion(
 					(p) =>
 						!(
 							hideSystem &&
-							(p.system &&
-								(p.name?.startsWith("hassos-") ||
-									(p.host_mount_point_data &&
-										p.host_mount_point_data.length > 0)))
+							p.system &&
+							(p.name?.startsWith("hassos-") ||
+								(p.host_mount_point_data && p.host_mount_point_data.length > 0))
 						),
 				) || [];
 			const hasActualPartitions = disk.partitions && disk.partitions.length > 0;

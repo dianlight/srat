@@ -34,5 +34,5 @@
   },
   "chat.agent.maxRequests": 100,
   "geminicodeassist.agentYoloMode": true,
-  "geminicodeassist.updateChannel": "Insiders"
+  "geminicodeassist.updateChannel": "Default"
 }

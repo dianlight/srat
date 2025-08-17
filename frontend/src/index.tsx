@@ -25,6 +25,11 @@ import { apiUrl } from "./store/emptyApi.ts";
 import { Supported_events } from "./store/sratApi.ts";
 //import { apiContext } from './Contexts.ts';
 import { store } from "./store/store.ts";
+import { TourProvider, } from '@reactour/tour'
+import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock'
+import { DashboardSteps } from "./pages/dashboard/DashboardTourStep.tsx";
+import { SharesSteps } from "./pages/shares/SharesTourStep.tsx";
+import { VolumesSteps } from "./pages/volumes/VolumesTourStep.tsx";
 
 const theme = createTheme({
 	cssVariables: {
@@ -51,7 +56,7 @@ class SSESource implements Source {
 		console.log("Creating SSE client", endpoint);
 		const eventSource = new EventSource(endpoint, { withCredentials: true });
 		eventSource.onerror = () => {
-			console.error("SSE connection error");
+			console.warn("SSE connection error");
 			this.heartbeatListener.forEach((func) =>
 				func({ data: '{ "alive": false, "read_only": true }' }),
 			);
@@ -98,6 +103,24 @@ class SSESource implements Source {
 	}
 }
 
+const disableBody = (target: any) => {
+	if (!target) {
+		console.warn("No target element provided for disabling body scroll");
+		target = document.body; // Default to body if no target is provided
+	}
+	console.debug("Disabling body scroll", target);
+	disableBodyScroll(target);
+};
+const enableBody = (target: any) => {
+	if (!target) {
+		console.warn("No target element provided for enabling body scroll");
+		target = document.body; // Default to body if no target is provided
+	}
+	console.debug("Enabling body scroll", target);
+	enableBodyScroll(target);
+}
+
+
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 root.render(
 	<RollbarProvider config={createRollbarConfig(telemetryService.getAccessToken())}>
@@ -111,7 +134,27 @@ root.render(
 						<StrictMode>
 							<SSEProvider source={() => new SSESource(normalizeUrl(apiUrl + "/api/sse"))}>
 								<BrowserRouter>
-									<App />
+									<TourProvider
+										afterOpen={disableBody}
+										beforeClose={enableBody}
+										steps={[]}
+										styles={{
+											popover: (base) => ({
+												...base,
+												color: theme.palette.text.primary,
+												backgroundColor: theme.palette.background.paper,
+												borderRadius: 10,
+												opacity: 0.9,
+											}),
+											maskArea: (base) => ({ ...base, rx: 5 }),
+											//maskWrapper: (base) => ({ ...base, color: '#ef5a3d' }),
+											badge: (base) => ({ ...base, left: 'auto', right: '-0.8125em' }),
+											//controls: (base) => ({ ...base, marginTop: 100 }),
+											close: (base) => ({ ...base, right: 'auto', color: theme.palette.text.primary, left: 8, top: 8 }),
+										}}
+									>
+										<App />
+									</TourProvider>
 								</BrowserRouter>
 							</SSEProvider>
 						</StrictMode>

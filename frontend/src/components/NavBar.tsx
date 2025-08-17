@@ -2,6 +2,8 @@ import { Download } from "@mui/icons-material";
 import AutoModeIcon from "@mui/icons-material/AutoMode";
 import BugReportIcon from "@mui/icons-material/BugReport"; // Import the BugReportIcon
 import DarkModeIcon from "@mui/icons-material/DarkMode";
+import HelpIcon from "@mui/icons-material/Help";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
@@ -49,7 +51,7 @@ import icon from "../img/icon.png";
 import logo from "../img/logo.png";
 import { Dashboard } from "../pages/dashboard/Dashboard";
 import { Settings } from "../pages/Settings";
-import { Shares } from "../pages/Shares";
+import { Shares } from "../pages/shares";
 import { SmbConf } from "../pages/SmbConf";
 import { Swagger } from "../pages/Swagger";
 import { Users } from "../pages/Users";
@@ -65,6 +67,12 @@ import {
 } from "../store/sratApi";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotificationCenter } from "./NotificationCenter";
+import { useTour, type StepType } from '@reactour/tour'
+import { DashboardSteps } from "../pages/dashboard/DashboardTourStep";
+import { SharesSteps } from "../pages/shares/SharesTourStep";
+import { VolumesSteps } from "../pages/volumes/VolumesTourStep";
+import { SettingsSteps } from "../pages/settings/SettingsTourStep";
+import { UsersSteps } from "../pages/users/UsersSteps";
 
 // Define tab configurations
 interface TabConfig {
@@ -73,25 +81,35 @@ interface TabConfig {
 	component: React.ReactNode;
 	isDevelopmentOnly?: boolean;
 	actualIndex?: number; // Will be populated after filtering
+	tutorialSteps?: StepType[]; // Optional tutorial steps for this tab
 }
 
+const NoTutorialSteps: StepType[] = [
+	{
+		selector: '[data-tutor="reactour__step1"]',
+		content: 'Not yet implemented',
+	},
+];
+
 const ALL_TAB_CONFIGS: TabConfig[] = [
-	{ id: TabIDs.DASHBOARD, label: "Dashboard", component: <Dashboard /> },
-	{ id: TabIDs.SHARES, label: "Shares", component: <Shares /> },
-	{ id: TabIDs.VOLUMES, label: "Volumes", component: <Volumes /> },
-	{ id: TabIDs.USERS, label: "Users", component: <Users /> },
-	{ id: TabIDs.SETTINGS, label: "Settings", component: <Settings /> },
+	{ id: TabIDs.DASHBOARD, label: "Dashboard", component: <Dashboard />, tutorialSteps: DashboardSteps },
+	{ id: TabIDs.VOLUMES, label: "Volumes", component: <Volumes />, tutorialSteps: VolumesSteps },
+	{ id: TabIDs.SHARES, label: "Shares", component: <Shares />, tutorialSteps: SharesSteps },
+	{ id: TabIDs.USERS, label: "Users", component: <Users />, tutorialSteps: UsersSteps },
+	{ id: TabIDs.SETTINGS, label: "Settings", component: <Settings />, tutorialSteps: SettingsSteps },
 	{
 		id: TabIDs.SMB_FILE_CONFIG,
 		label: "smb.conf",
 		component: <SmbConf />,
 		isDevelopmentOnly: true,
+		tutorialSteps: NoTutorialSteps,
 	},
 	{
 		id: TabIDs.API_OPENDOC,
 		label: "API Docs",
 		component: <Swagger />,
 		isDevelopmentOnly: true,
+		tutorialSteps: NoTutorialSteps,
 	},
 ];
 
@@ -138,6 +156,7 @@ interface TabPanelProps {
 	children?: React.ReactNode;
 	index: number;
 	value: number;
+	tutorialSteps?: StepType[];
 }
 
 function CircularProgressWithLabel(
@@ -175,7 +194,14 @@ function CircularProgressWithLabel(
 }
 
 function TabPanel(props: TabPanelProps) {
-	const { children, value, index, ...other } = props;
+	const { children, value, index, tutorialSteps, ...other } = props;
+	const { setIsOpen: setTourOpen, isOpen: isTourOpen, setSteps } = useTour();
+
+	useEffect(() => {
+		if (value === index && isTourOpen && tutorialSteps && setSteps) {
+			setSteps(tutorialSteps);
+		}
+	}, [isTourOpen, tutorialSteps, value, setSteps]);
 
 	return (
 		<div
@@ -183,6 +209,7 @@ function TabPanel(props: TabPanelProps) {
 			hidden={value !== index}
 			id={`full-width-tabpanel-${index}`}
 			aria-labelledby={`full-width-tab-${index}`}
+			data-tutor="reactour__step1"
 			{...other}
 		>
 			{value === index && <Box sx={{ p: 3 }}>{children}</Box>}
@@ -197,7 +224,8 @@ export function NavBar(props: {
 	const read_only = useReadOnly();
 	const health = useHealth();
 	const location = useLocation();
-	const _navigate = useNavigate();
+	const { setIsOpen: setTourOpen, isOpen: isTourOpen } = useTour();
+	//const _navigate = useNavigate();
 
 	const visibleTabs = useMemo(() => {
 		return ALL_TAB_CONFIGS.filter(
@@ -365,6 +393,7 @@ export function NavBar(props: {
 								{visibleTabs.map((tab) => (
 									<Tab
 										key={tab.id}
+										data-tutor={`reactour__tab${tab.id}__step1`}
 										label={tab.label}
 										{...a11yProps(tab.actualIndex as number)}
 										icon={getTabIcon(tab, health.health)}
@@ -427,6 +456,7 @@ export function NavBar(props: {
 										</IconButton>
 									</Tooltip>
 								)}
+
 							{process.env.NODE_ENV !== "production" && (
 								<IconButton size="small">
 									<Tooltip title={
@@ -450,22 +480,25 @@ export function NavBar(props: {
 									</Tooltip>
 								</IconButton>
 							)}
-							<IconButton size="small">
-								<Tooltip
-									title={
-										health.health.secure_mode
-											? "Secure Mode Enabled"
-											: "Secure Mode Disabled"
-									}
-									arrow
-								>
-									{health.health.secure_mode ? (
-										<LockIcon sx={{ color: "white" }} />
-									) : (
+							{!health.health.secure_mode ? (
+								<IconButton size="small">
+									<Tooltip
+										title="Secure Mode Disabled"
+										arrow
+									>
 										<LockOpenIcon sx={{ color: "red" }} />
-									)}
-								</Tooltip>
-							</IconButton>
+									</Tooltip>
+								</IconButton>
+							) : (
+								<IconButton size="small">
+									<Tooltip
+										title="Secure Mode Enabled"
+										arrow
+									>
+										<LockIcon sx={{ color: "white" }} />
+									</Tooltip>
+								</IconButton>
+							)}
 							{read_only && (
 								<IconButton size="small">
 									<Tooltip title="ReadOnly Mode" arrow>
@@ -509,6 +542,18 @@ export function NavBar(props: {
 							) : (
 								<></>
 							)}
+							<IconButton size="small" onClick={() => setTourOpen(!isTourOpen)}>
+								<Tooltip
+									title={isTourOpen ? "Close Guided Tour" : "Start Guided Tour"}
+									arrow
+								>
+									{isTourOpen ? (
+										<HelpIcon sx={{ color: "white" }} />
+									) : (
+										<HelpOutlineIcon sx={{ color: "white" }} />
+									)}
+								</Tooltip>
+							</IconButton>
 							<IconButton
 								size="small"
 								onClick={() => {
@@ -552,6 +597,7 @@ export function NavBar(props: {
 							key={tab.id}
 							value={value}
 							index={tab.actualIndex as number}
+							tutorialSteps={tab.tutorialSteps}
 						>
 							<ErrorBoundary>{tab.component}</ErrorBoundary>
 						</TabPanel>

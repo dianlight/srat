@@ -14,9 +14,12 @@ import {
 	TextFieldElement,
 	useForm,
 } from "react-hook-form-mui";
+import { useEffect } from "react";
 import { InView } from "react-intersection-observer";
 import { useReadOnly } from "../hooks/readonlyHook";
 import default_json from "../json/default_config.json";
+import { TabIDs } from "../store/locationState";
+import { TourEvents, TourEventTypes } from "../utils/TourEvents";
 import {
 	type InterfaceStat,
 	type Settings,
@@ -147,6 +150,43 @@ export function Settings() {
 		}
 	};
 
+	// Tour event handlers
+	useEffect(() => {
+		const handleSettingsStep3 = () => {
+			// Focus on hostname field when step 3 is triggered
+			const hostnameField = document.querySelector('input[name="hostname"]') as HTMLInputElement;
+			if (hostnameField) {
+				hostnameField.focus();
+			}
+		};
+
+		const handleSettingsStep5 = () => {
+			// Focus on allow hosts field when step 5 is triggered
+			const allowHostsField = document.querySelector('input[placeholder*="Allow Hosts"]') as HTMLInputElement;
+			if (allowHostsField) {
+				allowHostsField.focus();
+			}
+		};
+
+		const handleSettingsStep8 = () => {
+			// Focus on interfaces field when step 8 is triggered
+			const interfacesField = document.querySelector('input[placeholder*="Interfaces"]') as HTMLInputElement;
+			if (interfacesField) {
+				interfacesField.focus();
+			}
+		};
+
+		TourEvents.on(TourEventTypes.SETTINGS_STEP_3, handleSettingsStep3);
+		TourEvents.on(TourEventTypes.SETTINGS_STEP_5, handleSettingsStep5);
+		TourEvents.on(TourEventTypes.SETTINGS_STEP_8, handleSettingsStep8);
+
+		return () => {
+			TourEvents.off(TourEventTypes.SETTINGS_STEP_3, handleSettingsStep3);
+			TourEvents.off(TourEventTypes.SETTINGS_STEP_5, handleSettingsStep5);
+			TourEvents.off(TourEventTypes.SETTINGS_STEP_8, handleSettingsStep8);
+		};
+	}, []);
+
 	/*
 	useEffect(() => {
 		// make sure to unsubscribe;
@@ -171,15 +211,15 @@ export function Settings() {
 	return (
 		<InView>
 			<br />
-			<Stack spacing={2} sx={{ p: 2 }}>
-				<Divider />
+			<Stack spacing={2} sx={{ p: 2 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step0`}>
+				<Divider data-tutor={`reactour__tab${TabIDs.SETTINGS}__step2`} />
 				<form
 					id="settingsform"
 					onSubmit={handleSubmit(handleCommit)}
 					noValidate
 				>
 					<Grid container spacing={2}>
-						<Grid size={{ xs: 12, md: 4 }}>
+						<Grid size={{ xs: 12, md: 4 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step2`}>
 							<AutocompleteElement
 								label="Update Channel"
 								name="update_channel"
@@ -215,7 +255,7 @@ export function Settings() {
 						<Grid size={12}>
 							<Divider />
 						</Grid>
-						<Grid size={{ xs: 12, md: 4 }}>
+						<Grid size={{ xs: 12, md: 4 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step3`}>
 							<TextFieldElement
 								size="small"
 								sx={{ display: "flex" }}
@@ -242,7 +282,7 @@ export function Settings() {
 											<InputAdornment position="end">
 												<Tooltip title="Fetch current system hostname">
 													{/* Span needed for tooltip when IconButton is disabled */}
-													<span>
+													<span data-tutor={`reactour__tab${TabIDs.SETTINGS}__step4`}>
 														<IconButton
 															aria-label="fetch system hostname"
 															onClick={handleFetchHostname}
@@ -286,7 +326,7 @@ export function Settings() {
 								disabled={read_only}
 							/>
 						</Grid>
-						<Grid size={{ xs: 12, md: 8 }}>
+						<Grid size={{ xs: 12, md: 8 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step5`}>
 							<Controller
 								name="allow_hosts"
 								control={control}
@@ -360,6 +400,7 @@ export function Settings() {
 																		);
 																	}}
 																	edge="end"
+																	data-tutor={`reactour__tab${TabIDs.SETTINGS}__step6`}
 																>
 																	<PlaylistAddIcon />
 																</IconButton>
@@ -390,7 +431,7 @@ export function Settings() {
 								)}
 							/>
 						</Grid>
-						<Grid size={{ xs: 12, md: 4 }}>
+						<Grid size={{ xs: 12, md: 4 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step7`}>
 							<CheckboxElement
 								size="small"
 								id="compatibility_mode"
@@ -408,7 +449,7 @@ export function Settings() {
 								disabled={read_only}
 							/>
 						</Grid>
-						<Grid size={{ xs: 12, md: 8 }}>
+						<Grid size={{ xs: 12, md: 8 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step8`}>
 							<AutocompleteElement
 								multiple
 								label="Interfaces"
@@ -446,6 +487,7 @@ export function Settings() {
 						justifyContent: "flex-end",
 						alignItems: "center",
 					}}
+					data-tutor={`reactour__tab${TabIDs.SETTINGS}__step9`}
 				>
 					<Button onClick={() => reset()} disabled={!formState.isDirty}>
 						Reset

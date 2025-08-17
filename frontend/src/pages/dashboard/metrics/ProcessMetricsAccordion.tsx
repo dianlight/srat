@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import { ProcessMetrics } from "./ProcessMetrics";
 import type { ProcessStatus } from "./types";
+import { TabIDs } from "../../../store/locationState";
 
 interface ProcessMetricsAccordionProps {
 	processData: ProcessStatus[];
@@ -30,6 +31,7 @@ export function ProcessMetricsAccordion({
 			expanded={expanded}
 			onChange={onChange}
 			id="process-metrics-details"
+			data-tutor={`reactour__tab${TabIDs.DASHBOARD}__step5`}
 		>
 			<AccordionSummary
 				expandIcon={<ExpandMoreIcon />}

@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import type { NetworkStats } from "../../../store/sratApi";
 import { NetworkHealthMetrics } from "./NetworkHealthMetrics";
+import { TabIDs } from "../../../store/locationState";
 
 interface NetworkHealthMetricsAccordionProps {
 	networkHealth: NetworkStats | undefined;
@@ -24,6 +25,7 @@ export function NetworkHealthMetricsAccordion({
 			expanded={expanded}
 			onChange={onChange}
 			id="network-health-details"
+			data-tutor={`reactour__tab${TabIDs.DASHBOARD}__step7`}
 		>
 			<AccordionSummary
 				expandIcon={<ExpandMoreIcon />}

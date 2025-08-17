@@ -18,6 +18,7 @@ import type { HealthPing } from "../../../store/sratApi";
 import { MetricCard } from "./MetricCard";
 import type { AddonStatsData } from "./types";
 import { formatUptime, humanizeBytes } from "./utils";
+import { TabIDs } from "../../../store/locationState";
 
 const MAX_HISTORY_LENGTH = 10;
 
@@ -73,15 +74,15 @@ export function SystemMetricsAccordion({
 			return storedVisibility
 				? JSON.parse(storedVisibility)
 				: {
-						uptime: true,
-						addonCpu: true,
-						addonMemory: true,
-						addonDiskIo: true,
-						addonNetwork: true,
-						globalDiskIo: true,
-						globalNetworkIo: true,
-						sambaSessions: true,
-					};
+					uptime: true,
+					addonCpu: true,
+					addonMemory: true,
+					addonDiskIo: true,
+					addonNetwork: true,
+					globalDiskIo: true,
+					globalNetworkIo: true,
+					sambaSessions: true,
+				};
 		} catch (e) {
 			console.error("Failed to parse metric visibility from localStorage", e);
 			return {
@@ -412,6 +413,7 @@ export function SystemMetricsAccordion({
 
 	return (
 		<Accordion
+			data-tutor={`reactour__tab${TabIDs.DASHBOARD}__step4`}
 			expanded={expandedAccordion === "system-metrics-details"}
 			onChange={onAccordionChange("system-metrics-details")}
 		>
