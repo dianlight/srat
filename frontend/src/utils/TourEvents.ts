@@ -38,4 +38,7 @@ export enum TourEventTypes {
 	SETTINGS_STEP_3 = "tour:settings:step3",
 	SETTINGS_STEP_5 = "tour:settings:step5",
 	SETTINGS_STEP_8 = "tour:settings:step8",
+
+	// Users steps
+	USERS_STEP_3 = "tour:users:step3",
 }

@@ -38,6 +38,8 @@ import {
 import { InView } from "react-intersection-observer";
 import { toast } from "react-toastify";
 import { useReadOnly } from "../hooks/readonlyHook";
+import { TabIDs } from "../store/locationState";
+import { TourEvents, TourEventTypes } from "../utils/TourEvents";
 import {
 	type User,
 	useDeleteApiUserByUsernameMutation,
@@ -160,6 +162,11 @@ export function Users() {
 		});
 	}
 
+	TourEvents.on(TourEventTypes.USERS_STEP_3, (user) => {
+		setSelected(user);
+		setShowEdit(true);
+	});
+
 	return (
 		<InView>
 			<UserEditDialog
@@ -176,6 +183,7 @@ export function Users() {
 				direction="row"
 				justifyContent="flex-end"
 				sx={{ px: 2, mb: 1, alignItems: "center" }}
+				data-tutor={`reactour__tab${TabIDs.USERS}__step0`}
 			>
 				{read_only || (
 					<Fab
@@ -183,16 +191,21 @@ export function Users() {
 						aria-label="add"
 						// sx removed: float, top, margin - FAB is now in normal flow within Stack
 						size="small"
+
 						onClick={() => {
 							setSelected({ username: "", password: "", doCreate: true });
 							setShowEdit(true);
 						}}
 					>
-						<PersonAddIcon />
+						<PersonAddIcon data-tutor={`reactour__tab${TabIDs.USERS}__step2`} />
 					</Fab>
 				)}
 			</Stack>
-			<List dense={true} component="span">
+			<List
+				dense={true}
+				component="span"
+				data-tutor={`reactour__tab${TabIDs.USERS}__step1`}
+			>
 				<Divider />
 				{users.isSuccess &&
 					Array.isArray(users.data) &&
@@ -212,7 +225,7 @@ export function Users() {
 								<Fragment key={user.username || "admin"}>
 									<ListItemButton sx={{ alignItems: "flex-start" }}>
 										<ListItemAvatar sx={{ pt: 1 }}>
-											<Avatar>
+											<Avatar data-tutor={`reactour__tab${TabIDs.USERS}__step5`}>
 												{user.is_admin ? (
 													<AdminPanelSettingsIcon />
 												) : (
@@ -336,6 +349,7 @@ export function Users() {
 													edge="end"
 													aria-label="settings"
 													size="small"
+													data-tutor={`reactour__tab${TabIDs.USERS}__step3`}
 												>
 													<ManageAccountsIcon />
 												</IconButton>
@@ -345,6 +359,7 @@ export function Users() {
 														edge="end"
 														aria-label="delete"
 														size="small"
+														data-tutor={`reactour__tab${TabIDs.USERS}__step4`}
 													>
 														<PersonRemoveIcon />
 													</IconButton>
@@ -457,7 +472,11 @@ function UserEditDialog(props: {
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={() => handleCloseSubmit()}>Cancel</Button>
-					<Button type="submit" form="editshareform">
+					<Button
+						type="submit"
+						form="editshareform"
+						data-tutor={`reactour__tab${TabIDs.USERS}__step6`}
+					>
 						{props.objectToEdit?.doCreate ? "Create" : "Apply"}
 					</Button>
 				</DialogActions>
