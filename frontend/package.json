@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2025.8.0-dev.17",
+  "version": "2025.8.0-dev.28",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -15,7 +15,7 @@
     "url": "https://github.com/dianlight/srat"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.1.4",
+    "@biomejs/biome": "2.2.0",
     "@hookform/devtools": "4.4.0",
     "@redux-devtools/extension": "3.3.0",
     "@rtk-query/codegen-openapi": "2.0.0",
