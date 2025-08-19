@@ -37,9 +37,9 @@ import {
 } from "react-hook-form-mui";
 import { InView } from "react-intersection-observer";
 import { toast } from "react-toastify";
-import { useReadOnly } from "../hooks/readonlyHook";
-import { TabIDs } from "../store/locationState";
-import { TourEvents, TourEventTypes } from "../utils/TourEvents";
+import { useReadOnly } from "../../hooks/readonlyHook";
+import { TabIDs } from "../../store/locationState";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import {
 	type User,
 	useDeleteApiUserByUsernameMutation,
@@ -47,7 +47,7 @@ import {
 	usePostApiUserMutation,
 	usePutApiUseradminMutation,
 	usePutApiUserByUsernameMutation,
-} from "../store/sratApi";
+} from "../../store/sratApi";
 
 interface UsersProps extends User {
 	doCreate?: boolean;

@@ -16,10 +16,10 @@ import {
 } from "react-hook-form-mui";
 import { useEffect } from "react";
 import { InView } from "react-intersection-observer";
-import { useReadOnly } from "../hooks/readonlyHook";
-import default_json from "../json/default_config.json";
-import { TabIDs } from "../store/locationState";
-import { TourEvents, TourEventTypes } from "../utils/TourEvents";
+import { useReadOnly } from "../../hooks/readonlyHook";
+import default_json from "../../json/default_config.json";
+import { TabIDs } from "../../store/locationState";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import {
 	type InterfaceStat,
 	type Settings,
@@ -31,7 +31,7 @@ import {
 	useGetApiTelemetryInternetConnectionQuery,
 	usePutApiSettingsMutation,
 	Telemetry_mode,
-} from "../store/sratApi";
+} from "../../store/sratApi";
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
