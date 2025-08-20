@@ -7,8 +7,10 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/shirou/gopsutil/v4/disk"
 	osutil "github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
+	"github.com/xorcare/pointer"
 )
 
 // goverter:converter
@@ -32,8 +34,11 @@ type ConfigToDtoConverter interface {
 	// goverter:map Path Type | pathToType
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:map FS FSType
-	// goverter:map FS IsWriteSupported | github.com/dianlight/srat/dto:FSTypeIsWriteSupported
-	// goverter:map FS TimeMachineSupport | github.com/dianlight/srat/dto:TimeMachineSupportFromFS
+	// goverter:map Path IsWriteSupported | FSTypeIsWriteSupported
+	// goverter:map FS TimeMachineSupport | TimeMachineSupportFromFS
+	// goverter:map Path DiskLabel | DiskLabelFromPath
+	// goverter:map Path DiskSerial | DiskSerialFromPath
+	// goverter:map Path DiskSize | DiskSizeFromPath
 	ShareToMountPointData(source config.Share, target *dto.MountPointData) error
 
 	// goverter:update target
@@ -107,4 +112,47 @@ func PathToSource(path string) string {
 
 func pathToType(_ string) string {
 	return "ADDON"
+}
+
+func DiskLabelFromPath(path string) *string {
+	label, err := disk.Label(PathToSource(path))
+	if err != nil {
+		return nil
+	}
+	return &label
+}
+
+func DiskSerialFromPath(path string) *string {
+	serial, err := disk.SerialNumber(PathToSource(path))
+	if err != nil {
+		return nil
+	}
+	return &serial
+}
+
+func DiskSizeFromPath(path string) *uint64 {
+	usage, err := disk.Usage(path)
+	if err != nil {
+		return nil
+	}
+	return &usage.Total
+}
+
+// TimeMachineSupportFromFS returns the Time Machine support status for a given filesystem type.
+func TimeMachineSupportFromFS(fsType string) *dto.TimeMachineSupport {
+	switch fsType {
+	case "ext2", "ext3", "ext4", "jfs", "squashfs", "xfs", "btrfs", "zfs", "ubifs", "yaffs2", "reiserfs", "reiserfs4", "orangefs", "lustre", "ocfs2":
+		return &dto.TimeMachineSupports.SUPPORTED
+	case "ntfs3", "ntfs":
+		return &dto.TimeMachineSupports.EXPERIMENTAL
+	case "vfat", "msdos", "iso9660", "erofs", "exfat":
+		return &dto.TimeMachineSupports.UNSUPPORTED
+	default:
+		return &dto.TimeMachineSupports.UNKNOWN
+	}
+}
+
+func FSTypeIsWriteSupported(path string) *bool {
+	return pointer.Bool(osutil.IsWritable(path))
+
 }

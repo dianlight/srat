@@ -75,7 +75,7 @@ func (p *ExportedShareRepository) FindByMountPath(path string) (*dbom.ExportedSh
 	return &share, nil
 }
 func (p *ExportedShareRepository) SaveAll(shares *[]dbom.ExportedShare) error {
-	err := p.db.Session(&gorm.Session{FullSaveAssociations: true}).Save(shares).Error
+	err := p.db.Session(&gorm.Session{FullSaveAssociations: true}).Select("*").Save(shares).Error
 	if err != nil {
 		return errors.WithDetails(err, "shares", shares)
 	}
@@ -137,7 +137,7 @@ func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) error {
 
 			// The BeforeSave hook will see the record exists and skip its specific creation logic.
 			// Note: tx.Updates(share_struct) only updates non-zero fields by default.
-			updateErr := tx. /*Debug().*/ /*.Session(&gorm.Session{FullSaveAssociations: true})*/ Updates(share).Error
+			updateErr := tx. /*Debug().*/ /*.Session(&gorm.Session{FullSaveAssociations: true}).*/ Select("*").Updates(share).Error
 			if updateErr != nil {
 				slog.Error("Failed to update share", "share_name", share.Name, "error", updateErr)
 				return errors.WithDetails(updateErr, "share_name", share.Name, "details", share)

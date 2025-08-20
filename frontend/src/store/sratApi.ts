@@ -896,6 +896,9 @@ export type MountPointData = {
   $schema?: string;
   custom_flags?: MountFlag[];
   device?: string;
+  disk_label?: string;
+  disk_serial?: string;
+  disk_size?: number;
   flags?: MountFlag[];
   fstype?: string;
   invalid?: boolean;

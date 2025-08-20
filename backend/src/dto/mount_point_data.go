@@ -1,6 +1,9 @@
 package dto
 
 type MountPointData struct {
+	DiskLabel          *string             `json:"disk_label,omitempty" read-only:"true"`
+	DiskSerial         *string             `json:"disk_serial,omitempty" read-only:"true"`
+	DiskSize           *uint64             `json:"disk_size,omitempty" read-only:"true"` // Size of the disk in bytes.
 	Path               string              `json:"path" read-only:"true"`
 	PathHash           string              `json:"path_hash,omitempty" read-only:"true"`
 	Type               string              `json:"type" read-only:"true" enum:"HOST,ADDON"` // Type of the mountpoint.

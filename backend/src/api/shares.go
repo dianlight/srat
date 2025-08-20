@@ -147,7 +147,7 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 //  5. Converts the updated database share model back to the DTO.
 //  6. Marks shares as dirty and notifies the client asynchronously.
 func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
-	ShareName string             `path:"share_name" maxLength:"30" example:"world" doc:"Name of the share"`
+	ShareName string             `path:"share_name" maxLength:"128" example:"world" doc:"Name of the share"`
 	Body      dto.SharedResource `required:"true"`
 }) (*struct{ Body dto.SharedResource }, error) {
 	updatedShare, err := self.shareService.UpdateShare(input.ShareName, input.Body)
@@ -181,7 +181,7 @@ func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
 //
 //	An empty struct on success, or an error if the deletion fails.
 func (self *ShareHandler) DeleteShare(ctx context.Context, input *struct {
-	ShareName string `path:"share_name" maxLength:"30" example:"world" doc:"Name of the share"`
+	ShareName string `path:"share_name" maxLength:"128" example:"world" doc:"Name of the share"`
 }) (*struct{}, error) {
 	err := self.shareService.DeleteShare(input.ShareName)
 	if err != nil {
@@ -198,7 +198,7 @@ func (self *ShareHandler) DeleteShare(ctx context.Context, input *struct {
 
 // DisableShare disables a shared resource.
 func (self *ShareHandler) DisableShare(ctx context.Context, input *struct {
-	ShareName string `path:"share_name" maxLength:"30" doc:"Name of the share to disable"`
+	ShareName string `path:"share_name" maxLength:"128" doc:"Name of the share to disable"`
 }) (*struct{ Body dto.SharedResource }, error) {
 	disabledShare, err := self.shareService.DisableShare(input.ShareName)
 	if err != nil {
@@ -215,7 +215,7 @@ func (self *ShareHandler) DisableShare(ctx context.Context, input *struct {
 
 // EnableShare enables a shared resource.
 func (self *ShareHandler) EnableShare(ctx context.Context, input *struct {
-	ShareName string `path:"share_name" maxLength:"30" doc:"Name of the share to enable"`
+	ShareName string `path:"share_name" maxLength:"128" doc:"Name of the share to enable"`
 }) (*struct{ Body dto.SharedResource }, error) {
 	enabledShare, err := self.shareService.EnableShare(input.ShareName)
 	if err != nil {

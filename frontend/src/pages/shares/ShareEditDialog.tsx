@@ -49,6 +49,7 @@ import {
 	toKebabCase,
 } from "./utils";
 import { color } from "bun";
+import { humanizeBytes } from "../dashboard/metrics/utils";
 
 interface ShareEditDialogProps {
 	open: boolean;
@@ -98,20 +99,29 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 					// If it's a new share creation and no users are pre-filled, default to admin.
 					// Otherwise, use the users from objectToEdit (could be empty for new, or populated for existing).
 					users:
-						isNewShareCreation &&
-							(!props.objectToEdit.users ||
-								props.objectToEdit.users.length === 0) &&
+						props.objectToEdit.mount_point_data?.is_write_supported ?
+							(isNewShareCreation &&
+								(!props.objectToEdit.users ||
+									props.objectToEdit.users.length === 0) &&
+								adminUser
+								? [adminUser]
+								: props.objectToEdit.users || []) : [],
+					ro_users: props.objectToEdit.mount_point_data?.is_write_supported ?
+						(props.objectToEdit.ro_users || []) : (isNewShareCreation &&
+							(!props.objectToEdit.ro_users ||
+								props.objectToEdit.ro_users.length === 0) &&
 							adminUser
 							? [adminUser]
-							: props.objectToEdit.users || [],
-					ro_users: props.objectToEdit.ro_users || [],
-					timemachine: props.objectToEdit.timemachine || false,
-					recycle_bin_enabled: props.objectToEdit.recycle_bin_enabled || false,
+							: props.objectToEdit.ro_users || []),
+					timemachine: props.objectToEdit.mount_point_data?.time_machine_support === Time_machine_support.Unsupported ? false : (props.objectToEdit.timemachine || false),
+					recycle_bin_enabled: (props.objectToEdit.recycle_bin_enabled || false),
 					guest_ok: props.objectToEdit.guest_ok || false,
-					timemachine_max_size: props.objectToEdit.timemachine_max_size || "",
+					timemachine_max_size: props.objectToEdit.timemachine_max_size ||
+						(props.objectToEdit.mount_point_data?.disk_size ? humanizeBytes(props.objectToEdit.mount_point_data?.disk_size) : "MAX"),
 					usage: props.objectToEdit.usage || Usage.None,
 					veto_files: props.objectToEdit.veto_files || [],
 					disabled: props.objectToEdit.disabled,
+
 					// any other fields from ShareEditProps that might be in objectToEdit
 				});
 				setEditName(isNewShareCreation); // Enable name edit for new shares
@@ -359,16 +369,20 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 													disabled: isDisabled,
 													size: "small",
 													renderValue: (value) => {
-														return (value as MountPointData).path || "--";
+														//return ((value as MountPointData).path) || "--";
+														return <Typography variant="body2">
+															{(value as MountPointData).disk_label || "--"} <sup>{(value as MountPointData).is_write_supported ? "" : (<Typography variant="supper" color="error">Read-Only</Typography>)}</sup>
+														</Typography>
+
 													},
 													getOptionLabel: (option) =>
-														(option as MountPointData)?.path || "",
+														(option as MountPointData)?.disk_label || "",
 													getOptionKey: (option) =>
 														(option as MountPointData)?.path_hash || "",
 													renderOption: (props, option) => (
 														<li {...props}>
 															<Typography variant="body2">
-																{option.path} <span>{option.is_write_supported ? "" : (<Typography variant="caption" color="error">Read-Only</Typography>)}</span>
+																{option.disk_label} <sup>{option.is_write_supported ? "" : (<Typography variant="supper" color="error">Read-Only</Typography>)}</sup>
 															</Typography>
 														</li>
 													),
@@ -520,28 +534,30 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 												)}
 											/>
 										</Grid>
-										<Grid size={6}>
-											<Tooltip
-												title={`Time Machine is ${watch("mount_point_data")?.time_machine_support} for the current volume!`}
-											>
-												<span>
-													<CheckboxElement
-														size="small"
-														label="Support Timemachine Backups"
-														labelProps={{
-															slotProps: {
-																typography: {
-																	color: watch("mount_point_data")?.time_machine_support !== Time_machine_support.Supported ? "error" : "default"
+										{watch("mount_point_data")?.is_write_supported && (
+											<Grid size={6}>
+												<Tooltip
+													title={`Time Machine is ${watch("mount_point_data")?.time_machine_support} for the current volume!`}
+												>
+													<span>
+														<CheckboxElement
+															size="small"
+															label="Support Timemachine Backups"
+															labelProps={{
+																slotProps: {
+																	typography: {
+																		color: watch("mount_point_data")?.time_machine_support !== Time_machine_support.Supported ? "error" : "default"
+																	},
 																},
-															},
-														}}
-														name="timemachine"
-														disabled={isDisabled || watch("mount_point_data")?.time_machine_support === Time_machine_support.Unsupported}
-														control={control}
-													/>
-												</span>
-											</Tooltip>
-										</Grid>
+															}}
+															name="timemachine"
+															disabled={isDisabled || watch("mount_point_data")?.time_machine_support === Time_machine_support.Unsupported}
+															control={control}
+														/>
+													</span>
+												</Tooltip>
+											</Grid>
+										)}
 										{watch("timemachine") && (
 											<Grid size={6}>
 												<TextFieldElement

@@ -69,6 +69,15 @@ func (c *ConfigToDtoConverterImpl) OtherUserToUser(source config.User, target *d
 }
 func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, target *dto.MountPointData) error {
 	if source.Path != "" {
+		target.DiskLabel = DiskLabelFromPath(source.Path)
+	}
+	if source.Path != "" {
+		target.DiskSerial = DiskSerialFromPath(source.Path)
+	}
+	if source.Path != "" {
+		target.DiskSize = DiskSizeFromPath(source.Path)
+	}
+	if source.Path != "" {
 		target.Path = source.Path
 	}
 	if source.Path != "" {
@@ -91,11 +100,11 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, ta
 		}
 		target.IsMounted = xbool
 	}
-	if source.FS != "" {
-		target.IsWriteSupported = dto.FSTypeIsWriteSupported(source.FS)
+	if source.Path != "" {
+		target.IsWriteSupported = FSTypeIsWriteSupported(source.Path)
 	}
 	if source.FS != "" {
-		target.TimeMachineSupport = dto.TimeMachineSupportFromFS(source.FS)
+		target.TimeMachineSupport = TimeMachineSupportFromFS(source.FS)
 	}
 	return nil
 }

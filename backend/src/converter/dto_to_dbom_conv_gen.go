@@ -96,6 +96,15 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 }
 func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error {
 	if source.Path != "" {
+		target.DiskLabel = DiskLabelFromPath(source.Path)
+	}
+	if source.Path != "" {
+		target.DiskSerial = DiskSerialFromPath(source.Path)
+	}
+	if source.Path != "" {
+		target.DiskSize = DiskSizeFromPath(source.Path)
+	}
+	if source.Path != "" {
 		target.Path = source.Path
 	}
 	if source.Path != "" {
@@ -138,11 +147,11 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	if source.IsToMountAtStartup != nil {
 		target.IsToMountAtStartup = source.IsToMountAtStartup
 	}
-	if source.FSType != "" {
-		target.IsWriteSupported = dto.FSTypeIsWriteSupported(source.FSType)
+	if source.Path != "" {
+		target.IsWriteSupported = FSTypeIsWriteSupported(source.Path)
 	}
 	if source.FSType != "" {
-		target.TimeMachineSupport = dto.TimeMachineSupportFromFS(source.FSType)
+		target.TimeMachineSupport = TimeMachineSupportFromFS(source.FSType)
 	}
 	if source.Shares != nil {
 		target.Shares = make([]dto.SharedResource, len(source.Shares))
@@ -362,6 +371,9 @@ func (c *DtoToDbomConverterImpl) mountPointDataToMountPointPath(source dto.Mount
 }
 func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.MountPointPath) (dto.MountPointData, error) {
 	var dtoMountPointData dto.MountPointData
+	dtoMountPointData.DiskLabel = DiskLabelFromPath(source.Path)
+	dtoMountPointData.DiskSerial = DiskSerialFromPath(source.Path)
+	dtoMountPointData.DiskSize = DiskSizeFromPath(source.Path)
 	dtoMountPointData.Path = source.Path
 	dtoMountPointData.PathHash = xhashes.SHA1(source.Path)
 	dtoMountPointData.Type = source.Type
@@ -389,8 +401,8 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 	}
 	dtoMountPointData.IsInvalid = xbool2
 	dtoMountPointData.IsToMountAtStartup = source.IsToMountAtStartup
-	dtoMountPointData.IsWriteSupported = dto.FSTypeIsWriteSupported(source.FSType)
-	dtoMountPointData.TimeMachineSupport = dto.TimeMachineSupportFromFS(source.FSType)
+	dtoMountPointData.IsWriteSupported = FSTypeIsWriteSupported(source.Path)
+	dtoMountPointData.TimeMachineSupport = TimeMachineSupportFromFS(source.FSType)
 	if source.Shares != nil {
 		dtoMountPointData.Shares = make([]dto.SharedResource, len(source.Shares))
 		for i := 0; i < len(source.Shares); i++ {

@@ -31,6 +31,23 @@ import { DashboardSteps } from "./pages/dashboard/DashboardTourStep.tsx";
 import { SharesSteps } from "./pages/shares/SharesTourStep.tsx";
 import { VolumesSteps } from "./pages/volumes/VolumesTourStep.tsx";
 
+declare module '@mui/material/styles' {
+	interface TypographyVariants {
+		supper: React.CSSProperties;
+	}
+
+	// allow configuration using `createTheme()`
+	interface TypographyVariantsOptions {
+		supper?: React.CSSProperties;
+	}
+}
+
+declare module '@mui/material/Typography' {
+	interface TypographyPropsVariantOverrides {
+		supper: true;
+	}
+}
+
 const theme = createTheme({
 	cssVariables: {
 		colorSchemeSelector: "class",
@@ -38,6 +55,21 @@ const theme = createTheme({
 	colorSchemes: {
 		light: true,
 		dark: true,
+	},
+	typography: {
+		supper: {
+			fontSize: "0.50rem",
+			fontWeight: 600,
+		}
+	},
+	components: {
+		MuiTypography: {
+			defaultProps: {
+				variantMapping: {
+					supper: "sup",
+				},
+			},
+		},
 	},
 });
 

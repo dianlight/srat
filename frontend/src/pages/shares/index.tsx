@@ -49,6 +49,7 @@ import { ShareActions } from "./ShareActions";
 import { ShareEditDialog } from "./ShareEditDialog";
 import type { ShareEditProps } from "./types";
 import { getPathBaseName, sanitizeAndUppercaseShareName } from "./utils";
+import { humanizeBytes } from "../dashboard/metrics/utils";
 
 export function Shares() {
 	const read_only = useReadOnly();
@@ -387,8 +388,7 @@ export function Shares() {
 				.unwrap()
 				.then((res) => {
 					toast.info(
-						`Share ${
-							(res as SharedResource).name || data.name
+						`Share ${(res as SharedResource).name || data.name
 						} created successfully.`,
 					);
 					setSelected(null);
@@ -581,13 +581,13 @@ export function Shares() {
 																	<FolderSharedIcon color="error" />
 																</Tooltip>
 															)) || (
-																<Tooltip
-																	title={props.mount_point_data?.warnings}
-																	arrow
-																>
-																	<FolderSharedIcon />
-																</Tooltip>
-															)}
+																	<Tooltip
+																		title={props.mount_point_data?.warnings}
+																		arrow
+																	>
+																		<FolderSharedIcon />
+																	</Tooltip>
+																)}
 														</Avatar>
 													</ListItemAvatar>
 													<ListItemText
@@ -604,12 +604,20 @@ export function Shares() {
 														}
 														secondary={
 															<Typography variant="body2" component="div">
-																{props.mount_point_data?.path && (
+																{props.mount_point_data?.disk_label && (
 																	<Box
 																		component="span"
 																		sx={{ display: "block" }}
 																	>
-																		Path: {props.mount_point_data.path}
+																		Volume: {props.mount_point_data.disk_label} <sup>{props.mount_point_data.is_write_supported ? "" : (<Typography variant="supper" color="error">Read-Only</Typography>)}</sup>
+																	</Box>
+																)}
+																{props.mount_point_data?.disk_size && (
+																	<Box
+																		component="span"
+																		sx={{ display: "block" }}
+																	>
+																		Size: {humanizeBytes(props.mount_point_data.disk_size)}
 																	</Box>
 																)}
 																{props.mount_point_data?.warnings &&
@@ -706,7 +714,7 @@ export function Shares() {
 																										props.ro_users?.[(
 																											props.ro_users
 																												?.length || 0
-																											) - 1] && ", "}
+																										) - 1] && ", "}
 																								</span>
 																							))}
 																						</span>
@@ -718,18 +726,17 @@ export function Shares() {
 																	{props.usage &&
 																		props.usage !== Usage.Internal && (
 																			<Tooltip
-																				title={`Share Usage: ${
-																					props.is_ha_mounted
-																						? "HA Mounted"
-																						: "Not HA Mounted"
-																				}`}
+																				title={`Share Usage: ${props.is_ha_mounted
+																					? "HA Mounted"
+																					: "Not HA Mounted"
+																					}`}
 																			>
 																				<Chip
 																					onClick={(e) => {
 																						e.stopPropagation();
 																						setSelected([share, props]);
 																						setShowEdit(true);
-																				}}
+																					}}
 																					size="small"
 																					variant="outlined"
 																					icon={<FolderSpecialIcon />}

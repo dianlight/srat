@@ -13,6 +13,16 @@ type LsblkToDtoConverterImpl struct{}
 
 func (c *LsblkToDtoConverterImpl) LsblkInfoToMountPointData(source *lsblk.LSBKInfo, target *dto.MountPointData) error {
 	if source != nil {
+		if source.Partlabel != "" {
+			pString := source.Partlabel
+			target.DiskLabel = &pString
+		}
+		if source.Mountpoint != "" {
+			target.DiskSerial = DiskSerialFromPath(source.Mountpoint)
+		}
+		if source.Mountpoint != "" {
+			target.DiskSize = DiskSizeFromPath(source.Mountpoint)
+		}
 		if source.Mountpoint != "" {
 			target.Path = source.Mountpoint
 		}
@@ -23,8 +33,8 @@ func (c *LsblkToDtoConverterImpl) LsblkInfoToMountPointData(source *lsblk.LSBKIn
 			target.Type = pathToType(source.Mountpoint)
 		}
 		if source.Fstype != "" {
-			pString := source.Fstype
-			target.FSType = &pString
+			pString2 := source.Fstype
+			target.FSType = &pString2
 		}
 		if source.Name != "" {
 			target.Device = source.Name
@@ -32,11 +42,11 @@ func (c *LsblkToDtoConverterImpl) LsblkInfoToMountPointData(source *lsblk.LSBKIn
 		if source.Mountpoint != "" {
 			target.IsMounted = isMounted(source.Mountpoint)
 		}
-		if source.Fstype != "" {
-			target.IsWriteSupported = dto.FSTypeIsWriteSupported(source.Fstype)
+		if source.Mountpoint != "" {
+			target.IsWriteSupported = FSTypeIsWriteSupported(source.Mountpoint)
 		}
 		if source.Fstype != "" {
-			target.TimeMachineSupport = dto.TimeMachineSupportFromFS(source.Fstype)
+			target.TimeMachineSupport = TimeMachineSupportFromFS(source.Fstype)
 		}
 	}
 	return nil

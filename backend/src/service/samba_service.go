@@ -275,21 +275,6 @@ func (self *SambaService) RestartSambaService() error {
 	} else {
 		tlog.Error("Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
 	}
-
-	// Restart avahi service using s6
-	avahiServicePath := "/run/s6-rc/servicedirs/avahi"
-	if _, statErr := os.Stat(avahiServicePath); statErr == nil {
-		slog.Info("Restarting avahi service...")
-		cmdAvahiRestart := exec.Command("s6-svc", "-r", avahiServicePath)
-		outAvahi, cmdErr := cmdAvahiRestart.CombinedOutput()
-		if cmdErr != nil {
-			return errors.Errorf("Error restarting avahi service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outAvahi)})
-		}
-	} else if os.IsNotExist(statErr) {
-		slog.Warn("avahi service path not found, skipping restart.", "path", avahiServicePath)
-	} else {
-		slog.Error("Error checking avahi service path, skipping restart.", "path", avahiServicePath, "error", statErr)
-	}
 	return nil
 }
 

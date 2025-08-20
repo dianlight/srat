@@ -82,9 +82,7 @@ export function Footer(props: { healthData: HealthPing }) {
 								| nmbd{" "}
 								{props.healthData.samba_process_status?.nmbd?.pid || "off"} |
 								wsdd2{" "}
-								{props.healthData.samba_process_status?.wsdd2?.pid || "off"} |
-								avahi{" "}
-								{props.healthData.samba_process_status?.avahi?.pid || "off"}
+								{props.healthData.samba_process_status?.wsdd2?.pid || "off"}
 							</Typography>
 						</Tooltip>
 					)}

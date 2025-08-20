@@ -24,8 +24,11 @@ type LsblkToDtoConverter interface {
 	// goverter:map Mountpoint Type | pathToType
 	// goverter:map Mountpoint PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:map Fstype IsWriteSupported | github.com/dianlight/srat/dto:FSTypeIsWriteSupported
-	// goverter:map Fstype TimeMachineSupport | github.com/dianlight/srat/dto:TimeMachineSupportFromFS
+	// goverter:map Mountpoint IsWriteSupported | FSTypeIsWriteSupported
+	// goverter:map Fstype TimeMachineSupport | TimeMachineSupportFromFS
+	// goverter:map Partlabel DiskLabel
+	// goverter:map Mountpoint DiskSerial | DiskSerialFromPath
+	// goverter:map Mountpoint DiskSize | DiskSizeFromPath
 	LsblkInfoToMountPointData(source *lsblk.LSBKInfo, target *dto.MountPointData) error
 }
 
