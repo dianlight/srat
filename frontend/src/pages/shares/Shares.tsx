@@ -49,7 +49,9 @@ import { ShareActions } from "./ShareActions";
 import { ShareEditDialog } from "./ShareEditDialog";
 import type { ShareEditProps } from "./types";
 import { getPathBaseName, sanitizeAndUppercaseShareName } from "./utils";
-import { humanizeBytes } from "../dashboard/metrics/utils";
+import { filesize } from "filesize";
+import StorageIcon from "@mui/icons-material/Storage";
+
 
 export function Shares() {
 	const read_only = useReadOnly();
@@ -605,20 +607,27 @@ export function Shares() {
 														secondary={
 															<Typography variant="body2" component="div">
 																{props.mount_point_data?.disk_label && (
-																	<Box
-																		component="span"
-																		sx={{ display: "block" }}
-																	>
-																		Volume: {props.mount_point_data.disk_label} <sup>{props.mount_point_data.is_write_supported ? "" : (<Typography variant="supper" color="error">Read-Only</Typography>)}</sup>
-																	</Box>
+																	<Chip
+																		size="small"
+																		icon={<StorageIcon />}
+																		variant="outlined"
+																		label={`Volume: ${props.mount_point_data.disk_label}`}
+																	/>
+																)}
+																{!props.mount_point_data?.is_write_supported && (
+																	<Chip
+																		label="Read-Only"
+																		size="small"
+																		variant="outlined"
+																		color="secondary"
+																	/>
 																)}
 																{props.mount_point_data?.disk_size && (
-																	<Box
-																		component="span"
-																		sx={{ display: "block" }}
-																	>
-																		Size: {humanizeBytes(props.mount_point_data.disk_size)}
-																	</Box>
+																	<Chip
+																		label={`Size: ${filesize(props.mount_point_data.disk_size, { round: 1 })}`}
+																		size="small"
+																		variant="outlined"
+																	/>
 																)}
 																{props.mount_point_data?.warnings &&
 																	props.usage !== Usage.Internal && (

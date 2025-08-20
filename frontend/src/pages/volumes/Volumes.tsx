@@ -664,7 +664,7 @@ export function Volumes() {
 																						xs: "none",
 																						sm: "flex",
 																					},
-																			}}
+																				}}
 																			>
 																				{partition.size != null && (
 																					<Chip
@@ -672,45 +672,54 @@ export function Volumes() {
 																						size="small"
 																						variant="outlined"
 																					/>
-																			)}
-																			{partition.mount_point_data?.[0]
-																				?.fstype && (
+																				)}
+																				{partition.mount_point_data?.[0]
+																					?.fstype && (
+																						<Chip
+																							label={`Type: ${partition.mount_point_data[0].fstype}`}
+																							size="small"
+																							variant="outlined"
+																						/>
+																					)}
+																				{isMounted && partition.mount_point_data?.some(mp => mp.is_write_supported) && (
 																					<Chip
-																						label={`Type: ${partition.mount_point_data[0].fstype}`}
+																						label={`Mount: ${partition.mount_point_data?.filter(mp => mp.is_write_supported).map((mpd) => mpd.path).join(" ")}`}
 																						size="small"
 																						variant="outlined"
+																						color="success"
 																					/>
-																			)}
-																			{isMounted && (
+																				)}
+																				{isMounted && partition.mount_point_data?.some(mp => !mp.is_write_supported) && (
 																					<Chip
-																						label={`Mount: ${partition.mount_point_data?.map((mpd) => mpd.path).join(" ")}`}
+																						label={`RO Mount: ${partition.mount_point_data?.filter(mp => !mp.is_write_supported).map((mpd) => mpd.path).join(" ")}`}
 																						size="small"
 																						variant="outlined"
+																						color="secondary"
 																					/>
-																			)}
-																			{partition.host_mount_point_data &&
-																				partition.host_mount_point_data
-																					.length > 0 && (
-																					<Chip
-																						label={`Host: ${partition.host_mount_point_data.map((mpd) => mpd.path).join(" ")}`}
-																						size="small"
-																						variant="outlined"
-																					/>
-																			)}
-																			{partition.id && (
+																				)}
+																				{partition.host_mount_point_data &&
+																					partition.host_mount_point_data
+																						.length > 0 && (
+																						<Chip
+																							label={`Host: ${partition.host_mount_point_data.map((mpd) => mpd.path).join(" ")}`}
+																							size="small"
+																							variant="outlined"
+																						/>
+																					)}
+																				{partition.id && (
 																					<Chip
 																						label={`UUID: ${partition.id}`}
 																						size="small"
 																						variant="outlined"
 																					/>
-																			)}
-																			{partition.device && (
+																				)}
+																				{partition.device && (
 																					<Chip
 																						label={`Dev: ${partition.device}`}
 																						size="small"
 																						variant="outlined"
 																					/>
-																			)}
+																				)}
 																			</Stack>
 																		}
 																	/>

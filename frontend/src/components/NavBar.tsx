@@ -51,7 +51,7 @@ import icon from "../img/icon.png";
 import logo from "../img/logo.png";
 import { Dashboard } from "../pages/dashboard/Dashboard";
 import { Settings } from "../pages/settings/Settings";
-import { Shares } from "../pages/shares";
+import { Shares } from "../pages/shares/Shares";
 import { SmbConf } from "../pages/SmbConf";
 import { Swagger } from "../pages/Swagger";
 import { Users } from "../pages/users/Users";

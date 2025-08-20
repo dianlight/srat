@@ -17,8 +17,9 @@ import { useEffect, useRef, useState } from "react";
 import type { HealthPing } from "../../../store/sratApi";
 import { MetricCard } from "./MetricCard";
 import type { AddonStatsData } from "./types";
-import { formatUptime, humanizeBytes } from "./utils";
+import { formatUptime } from "./utils";
 import { TabIDs } from "../../../store/locationState";
+import { filesize } from "filesize";
 
 const MAX_HISTORY_LENGTH = 10;
 
@@ -268,7 +269,7 @@ export function SystemMetricsAccordion({
 				onDetailClick={onDetailClick}
 			>
 				<Typography variant="body2" color="text.secondary" align="center">
-					{`${humanizeBytes(memory_usage ?? 0)} / ${humanizeBytes(memory_limit ?? 0)}`}
+					{`${filesize(memory_usage ?? 0)} / ${filesize(memory_limit ?? 0)}`}
 				</Typography>
 			</MetricCard>
 		);
@@ -292,7 +293,7 @@ export function SystemMetricsAccordion({
 			<MetricCard
 				title="Addon Disk I/O"
 				subheader="per second"
-				value={`${humanizeBytes(readRate + writeRate)}/s`}
+				value={`${filesize(readRate + writeRate)}/s`}
 				history={totalHistory}
 				isLoading={isLoading}
 				error={!!error || !health?.addon_stats}
@@ -301,10 +302,10 @@ export function SystemMetricsAccordion({
 				onDetailClick={onDetailClick}
 			>
 				<Typography variant="body2">
-					Read: {humanizeBytes(readRate)}/s
+					Read: {filesize(readRate)}/s
 				</Typography>
 				<Typography variant="body2">
-					Write: {humanizeBytes(writeRate)}/s
+					Write: {filesize(writeRate)}/s
 				</Typography>
 			</MetricCard>
 		);
@@ -328,7 +329,7 @@ export function SystemMetricsAccordion({
 			<MetricCard
 				title="Addon Network I/O"
 				subheader="per second"
-				value={`${humanizeBytes(rxRate + txRate)}/s`}
+				value={`${filesize(rxRate + txRate)}/s`}
 				history={totalHistory}
 				isLoading={isLoading}
 				error={!!error || !health?.addon_stats}
@@ -337,9 +338,9 @@ export function SystemMetricsAccordion({
 				onDetailClick={onDetailClick}
 			>
 				<Typography variant="body2">
-					Received: {humanizeBytes(rxRate)}/s
+					Received: {filesize(rxRate)}/s
 				</Typography>
-				<Typography variant="body2">Sent: {humanizeBytes(txRate)}/s</Typography>
+				<Typography variant="body2">Sent: {filesize(txRate)}/s</Typography>
 			</MetricCard>
 		);
 	};
@@ -378,7 +379,7 @@ export function SystemMetricsAccordion({
 			<MetricCard
 				title="Global Network I/O"
 				subheader="per second"
-				value={`${humanizeBytes(totalTraffic)}/s`}
+				value={`${filesize(totalTraffic)}/s`}
 				history={networkTrafficHistory}
 				isLoading={isLoading}
 				error={!!error || !health?.network_health?.global}
@@ -386,8 +387,8 @@ export function SystemMetricsAccordion({
 				onDetailClick={onDetailClick}
 			>
 				<Typography variant="body2" color="text.secondary" align="center">
-					In: {humanizeBytes(totalInboundTraffic ?? 0)}/s | Out:{" "}
-					{humanizeBytes(totalOutboundTraffic ?? 0)}/s
+					In: {filesize(totalInboundTraffic ?? 0)}/s | Out:{" "}
+					{filesize(totalOutboundTraffic ?? 0)}/s
 				</Typography>
 			</MetricCard>
 		);

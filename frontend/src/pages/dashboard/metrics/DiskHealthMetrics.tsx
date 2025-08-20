@@ -21,20 +21,9 @@ import {
 } from "react-sparklines";
 import { useEffect, useRef, useState } from "react";
 import type { DiskHealth, DiskIoStats } from "../../../store/sratApi";
+import { filesize } from "filesize";
 
 const MAX_HISTORY_LENGTH = 10;
-
-function humanizeBytes(bytes: number, decimals = 2) {
-	if (bytes === 0) return "0 Bytes";
-
-	const k = 1024;
-	const dm = decimals < 0 ? 0 : decimals;
-	const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-
-	const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-	return `${parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
-}
 
 export function DiskHealthMetrics({
 	diskHealth,
@@ -331,8 +320,8 @@ export function DiskHealthMetrics({
 													/>
 													<Typography variant="body2" color="text.secondary">
 														{freeSpace > 0 &&
-															`${humanizeBytes(freeSpace)} free of `}
-														{humanizeBytes(totalSpace)}
+															`${filesize(freeSpace)} free of `}
+														{filesize(totalSpace)}
 													</Typography>
 												</div>
 											);

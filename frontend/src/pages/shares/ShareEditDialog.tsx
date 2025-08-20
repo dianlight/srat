@@ -49,7 +49,7 @@ import {
 	toKebabCase,
 } from "./utils";
 import { color } from "bun";
-import { humanizeBytes } from "../dashboard/metrics/utils";
+import { filesize } from "filesize";
 
 interface ShareEditDialogProps {
 	open: boolean;
@@ -117,7 +117,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 					recycle_bin_enabled: (props.objectToEdit.recycle_bin_enabled || false),
 					guest_ok: props.objectToEdit.guest_ok || false,
 					timemachine_max_size: props.objectToEdit.timemachine_max_size ||
-						(props.objectToEdit.mount_point_data?.disk_size ? humanizeBytes(props.objectToEdit.mount_point_data?.disk_size) : "MAX"),
+						(props.objectToEdit.mount_point_data?.disk_size ? filesize(props.objectToEdit.mount_point_data?.disk_size) : "MAX"),
 					usage: props.objectToEdit.usage || Usage.None,
 					veto_files: props.objectToEdit.veto_files || [],
 					disabled: props.objectToEdit.disabled,

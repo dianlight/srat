@@ -17,7 +17,7 @@ import {
 } from "react-sparklines";
 import { useEffect, useMemo, useState } from "react";
 import type { NetworkStats } from "../../../store/sratApi";
-import { humanizeBytes } from "./utils";
+import { filesize } from "filesize";
 
 const MAX_HISTORY_LENGTH = 10;
 
@@ -103,7 +103,7 @@ export function NetworkHealthMetrics({
 										variant="body2"
 										sx={{ mr: 1, minWidth: "70px", textAlign: "right" }}
 									>
-										{humanizeBytes(nic.inboundTraffic)}/s
+										{filesize(nic.inboundTraffic)}/s
 									</Typography>
 									<Box sx={{ width: 50, height: 20 }}>
 										{(networkTrafficHistory[nic.deviceName]?.inbound?.length || 0) > 1 ? (
@@ -133,7 +133,7 @@ export function NetworkHealthMetrics({
 										variant="body2"
 										sx={{ mr: 1, minWidth: "70px", textAlign: "right" }}
 									>
-										{humanizeBytes(nic.outboundTraffic)}/s
+										{filesize(nic.outboundTraffic)}/s
 									</Typography>
 									<Box sx={{ width: 50, height: 20 }}>
 										{(networkTrafficHistory[nic.deviceName]?.outbound?.length || 0) > 1 ? (
