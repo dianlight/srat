@@ -20,7 +20,9 @@ type Share struct {
 	Users       []string `json:"users,omitempty"`
 	RoUsers     []string `json:"ro_users,omitempty"`
 	TimeMachine bool     `json:"timemachine,omitempty"`
-	RecycleBin  bool     `json:"recycle_bin_enabled,omitempty"`
+		RecycleBin  *bool        `json:"recycle_bin_enabled,omitempty"`
+	GuestOk     *bool        `json:"guest_ok,omitempty"`
+	TimeMachineMaxSize *string `json:"timemachine_max_size,omitempty"`
 	Usage       string   `json:"usage,omitempty"`
 	VetoFiles   []string `json:"veto_files,omitempty"`
 }

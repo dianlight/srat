@@ -17,46 +17,76 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Attributes defines model for Attributes.
+type Attributes struct {
+	// DEVTYPE Dreiver type
+	DEVTYPE *string `json:"DEVTYPE,omitempty"`
+
+	// DRIVER Driver of the attribute.
+	DRIVER *string `json:"DRIVER,omitempty"`
+
+	// IDBUS Bus identifier.
+	IDBUS *string `json:"ID_BUS,omitempty"`
+
+	// IDFSLABELENC Encoded label of the filesystem.
+	IDFSLABELENC *string `json:"ID_FS_LABEL_ENC,omitempty"`
+
+	// IDFSTYPE Filesystem type.
+	IDFSTYPE *string `json:"ID_FS_TYPE,omitempty"`
+
+	// IDFSUSAGE Usage of the filesystem.
+	IDFSUSAGE *string `json:"ID_FS_USAGE,omitempty"`
+
+	// IDFSUUIDENC Encoded UUID of the filesystem.
+	IDFSUUIDENC *string `json:"ID_FS_UUID_ENC,omitempty"`
+
+	// IDMODELENC Encoded model identifier.
+	IDMODELENC *string `json:"ID_MODEL_ENC,omitempty"`
+
+	// IDPARTENTRYNUMBER Partition entry number.
+	IDPARTENTRYNUMBER *string `json:"ID_PART_ENTRY_NUMBER,omitempty"`
+
+	// IDPARTENTRYSCHEME Partition entry scheme.
+	IDPARTENTRYSCHEME *string `json:"ID_PART_ENTRY_SCHEME,omitempty"`
+
+	// IDREVISION Revision identifier.
+	IDREVISION *string `json:"ID_REVISION,omitempty"`
+
+	// IDSERIALSHORT Short serial identifier.
+	IDSERIALSHORT *string `json:"ID_SERIAL_SHORT,omitempty"`
+
+	// IDTYPE Type of the attribute.
+	IDTYPE *string `json:"ID_TYPE,omitempty"`
+
+	// PARTNAME Partition Name
+	PARTNAME *string `json:"PARTNAME,omitempty"`
+
+	// SUBSYSTEM Subsystem of the attribute.
+	SUBSYSTEM            *string                `json:"SUBSYSTEM,omitempty"`
+	AdditionalProperties map[string]interface{} `json:"-"`
+}
+
 // Device defines model for Device.
 type Device struct {
-	// Attributes Attributes of the device.
-	Attributes *map[string]interface{} `json:"attributes,omitempty"`
+	Attributes *Attributes `json:"attributes,omitempty"`
 
 	// ById Device by id.
 	ById *string `json:"by_id,omitempty"`
 
-	// ByPath Device by path.
-	ByPath *string `json:"by_path,omitempty"`
+	// Children Children of the device as path array.
+	Children *[]string `json:"children,omitempty"`
 
-	// Capabilities Capabilities of the device.
-	Capabilities *[]string `json:"capabilities,omitempty"`
-
-	// Description Description of the device.
-	Description *string `json:"description,omitempty"`
-
-	// DevPath Device path.
+	// DevPath DevPath of the device.
 	DevPath *string `json:"dev_path,omitempty"`
-
-	// Links List of links to other devices.
-	Links *[]string `json:"links,omitempty"`
 
 	// Name Name of the device.
 	Name *string `json:"name,omitempty"`
-
-	// Path Path of the device.
-	Path *string `json:"path,omitempty"`
 
 	// Subsystem Subsystem of the device.
 	Subsystem *string `json:"subsystem,omitempty"`
 
 	// Sysfs Sysfs of the device.
 	Sysfs *string `json:"sysfs,omitempty"`
-
-	// Type Type of the device.
-	Type *string `json:"type,omitempty"`
-
-	// UsedBy List of add-ons that use this device.
-	UsedBy *[]string `json:"used_by,omitempty"`
 }
 
 // Drive defines model for Drive.
@@ -120,6 +150,284 @@ type Filesystem struct {
 type HardwareInfo struct {
 	Devices *[]Device `json:"devices,omitempty"`
 	Drives  *[]Drive  `json:"drives,omitempty"`
+}
+
+// Getter for additional properties for Attributes. Returns the specified
+// element and whether it was found
+func (a Attributes) Get(fieldName string) (value interface{}, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for Attributes
+func (a *Attributes) Set(fieldName string, value interface{}) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]interface{})
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for Attributes to handle AdditionalProperties
+func (a *Attributes) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["DEVTYPE"]; found {
+		err = json.Unmarshal(raw, &a.DEVTYPE)
+		if err != nil {
+			return fmt.Errorf("error reading 'DEVTYPE': %w", err)
+		}
+		delete(object, "DEVTYPE")
+	}
+
+	if raw, found := object["DRIVER"]; found {
+		err = json.Unmarshal(raw, &a.DRIVER)
+		if err != nil {
+			return fmt.Errorf("error reading 'DRIVER': %w", err)
+		}
+		delete(object, "DRIVER")
+	}
+
+	if raw, found := object["ID_BUS"]; found {
+		err = json.Unmarshal(raw, &a.IDBUS)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_BUS': %w", err)
+		}
+		delete(object, "ID_BUS")
+	}
+
+	if raw, found := object["ID_FS_LABEL_ENC"]; found {
+		err = json.Unmarshal(raw, &a.IDFSLABELENC)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_FS_LABEL_ENC': %w", err)
+		}
+		delete(object, "ID_FS_LABEL_ENC")
+	}
+
+	if raw, found := object["ID_FS_TYPE"]; found {
+		err = json.Unmarshal(raw, &a.IDFSTYPE)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_FS_TYPE': %w", err)
+		}
+		delete(object, "ID_FS_TYPE")
+	}
+
+	if raw, found := object["ID_FS_USAGE"]; found {
+		err = json.Unmarshal(raw, &a.IDFSUSAGE)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_FS_USAGE': %w", err)
+		}
+		delete(object, "ID_FS_USAGE")
+	}
+
+	if raw, found := object["ID_FS_UUID_ENC"]; found {
+		err = json.Unmarshal(raw, &a.IDFSUUIDENC)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_FS_UUID_ENC': %w", err)
+		}
+		delete(object, "ID_FS_UUID_ENC")
+	}
+
+	if raw, found := object["ID_MODEL_ENC"]; found {
+		err = json.Unmarshal(raw, &a.IDMODELENC)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_MODEL_ENC': %w", err)
+		}
+		delete(object, "ID_MODEL_ENC")
+	}
+
+	if raw, found := object["ID_PART_ENTRY_NUMBER"]; found {
+		err = json.Unmarshal(raw, &a.IDPARTENTRYNUMBER)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_PART_ENTRY_NUMBER': %w", err)
+		}
+		delete(object, "ID_PART_ENTRY_NUMBER")
+	}
+
+	if raw, found := object["ID_PART_ENTRY_SCHEME"]; found {
+		err = json.Unmarshal(raw, &a.IDPARTENTRYSCHEME)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_PART_ENTRY_SCHEME': %w", err)
+		}
+		delete(object, "ID_PART_ENTRY_SCHEME")
+	}
+
+	if raw, found := object["ID_REVISION"]; found {
+		err = json.Unmarshal(raw, &a.IDREVISION)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_REVISION': %w", err)
+		}
+		delete(object, "ID_REVISION")
+	}
+
+	if raw, found := object["ID_SERIAL_SHORT"]; found {
+		err = json.Unmarshal(raw, &a.IDSERIALSHORT)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_SERIAL_SHORT': %w", err)
+		}
+		delete(object, "ID_SERIAL_SHORT")
+	}
+
+	if raw, found := object["ID_TYPE"]; found {
+		err = json.Unmarshal(raw, &a.IDTYPE)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_TYPE': %w", err)
+		}
+		delete(object, "ID_TYPE")
+	}
+
+	if raw, found := object["PARTNAME"]; found {
+		err = json.Unmarshal(raw, &a.PARTNAME)
+		if err != nil {
+			return fmt.Errorf("error reading 'PARTNAME': %w", err)
+		}
+		delete(object, "PARTNAME")
+	}
+
+	if raw, found := object["SUBSYSTEM"]; found {
+		err = json.Unmarshal(raw, &a.SUBSYSTEM)
+		if err != nil {
+			return fmt.Errorf("error reading 'SUBSYSTEM': %w", err)
+		}
+		delete(object, "SUBSYSTEM")
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]interface{})
+		for fieldName, fieldBuf := range object {
+			var fieldVal interface{}
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for Attributes to handle AdditionalProperties
+func (a Attributes) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	if a.DEVTYPE != nil {
+		object["DEVTYPE"], err = json.Marshal(a.DEVTYPE)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'DEVTYPE': %w", err)
+		}
+	}
+
+	if a.DRIVER != nil {
+		object["DRIVER"], err = json.Marshal(a.DRIVER)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'DRIVER': %w", err)
+		}
+	}
+
+	if a.IDBUS != nil {
+		object["ID_BUS"], err = json.Marshal(a.IDBUS)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_BUS': %w", err)
+		}
+	}
+
+	if a.IDFSLABELENC != nil {
+		object["ID_FS_LABEL_ENC"], err = json.Marshal(a.IDFSLABELENC)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_FS_LABEL_ENC': %w", err)
+		}
+	}
+
+	if a.IDFSTYPE != nil {
+		object["ID_FS_TYPE"], err = json.Marshal(a.IDFSTYPE)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_FS_TYPE': %w", err)
+		}
+	}
+
+	if a.IDFSUSAGE != nil {
+		object["ID_FS_USAGE"], err = json.Marshal(a.IDFSUSAGE)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_FS_USAGE': %w", err)
+		}
+	}
+
+	if a.IDFSUUIDENC != nil {
+		object["ID_FS_UUID_ENC"], err = json.Marshal(a.IDFSUUIDENC)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_FS_UUID_ENC': %w", err)
+		}
+	}
+
+	if a.IDMODELENC != nil {
+		object["ID_MODEL_ENC"], err = json.Marshal(a.IDMODELENC)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_MODEL_ENC': %w", err)
+		}
+	}
+
+	if a.IDPARTENTRYNUMBER != nil {
+		object["ID_PART_ENTRY_NUMBER"], err = json.Marshal(a.IDPARTENTRYNUMBER)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_PART_ENTRY_NUMBER': %w", err)
+		}
+	}
+
+	if a.IDPARTENTRYSCHEME != nil {
+		object["ID_PART_ENTRY_SCHEME"], err = json.Marshal(a.IDPARTENTRYSCHEME)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_PART_ENTRY_SCHEME': %w", err)
+		}
+	}
+
+	if a.IDREVISION != nil {
+		object["ID_REVISION"], err = json.Marshal(a.IDREVISION)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_REVISION': %w", err)
+		}
+	}
+
+	if a.IDSERIALSHORT != nil {
+		object["ID_SERIAL_SHORT"], err = json.Marshal(a.IDSERIALSHORT)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_SERIAL_SHORT': %w", err)
+		}
+	}
+
+	if a.IDTYPE != nil {
+		object["ID_TYPE"], err = json.Marshal(a.IDTYPE)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_TYPE': %w", err)
+		}
+	}
+
+	if a.PARTNAME != nil {
+		object["PARTNAME"], err = json.Marshal(a.PARTNAME)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'PARTNAME': %w", err)
+		}
+	}
+
+	if a.SUBSYSTEM != nil {
+		object["SUBSYSTEM"], err = json.Marshal(a.SUBSYSTEM)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'SUBSYSTEM': %w", err)
+		}
+	}
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
 }
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function

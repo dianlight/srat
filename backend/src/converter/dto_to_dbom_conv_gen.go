@@ -40,6 +40,14 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 		pBool2 := source.RecycleBin
 		target.RecycleBin = &pBool2
 	}
+	if source.GuestOk != false {
+		pBool3 := source.GuestOk
+		target.GuestOk = &pBool3
+	}
+	if source.TimeMachineMaxSize != "" {
+		pString := source.TimeMachineMaxSize
+		target.TimeMachineMaxSize = &pString
+	}
 	if source.Usage != "" {
 		target.Usage = source.Usage
 	}
@@ -174,6 +182,12 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 	if source.RecycleBin != nil {
 		target.RecycleBin = *source.RecycleBin
 	}
+	if source.GuestOk != nil {
+		target.GuestOk = *source.GuestOk
+	}
+	if source.TimeMachineMaxSize != nil {
+		target.TimeMachineMaxSize = *source.TimeMachineMaxSize
+	}
 	if source.Usage != "" {
 		target.Usage = source.Usage
 	}
@@ -297,6 +311,10 @@ func (c *DtoToDbomConverterImpl) exportedShareToSharedResource(source dbom.Expor
 	dtoSharedResource.TimeMachine = &pBool
 	pBool2 := source.RecycleBin
 	dtoSharedResource.RecycleBin = &pBool2
+	pBool3 := source.GuestOk
+	dtoSharedResource.GuestOk = &pBool3
+	pString := source.TimeMachineMaxSize
+	dtoSharedResource.TimeMachineMaxSize = &pString
 	dtoSharedResource.Usage = source.Usage
 	dtoSharedResource.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
 	pDtoMountPointData, err := c.dbomMountPointPathToPDtoMountPointData(source.MountPointData)
@@ -437,6 +455,12 @@ func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.Shared
 	}
 	if source.RecycleBin != nil {
 		dbomExportedShare.RecycleBin = *source.RecycleBin
+	}
+	if source.GuestOk != nil {
+		dbomExportedShare.GuestOk = *source.GuestOk
+	}
+	if source.TimeMachineMaxSize != nil {
+		dbomExportedShare.TimeMachineMaxSize = *source.TimeMachineMaxSize
 	}
 	dbomExportedShare.Usage = source.Usage
 	var pString *string

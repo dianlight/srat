@@ -13,10 +13,8 @@
    server multi channel support = yes
    {{- end }}
 
-   #dns proxy = yes #already default
-
-   #ea support = yes #already default
-   vfs objects = catia fruit streams_xattr recycle
+   unix extensions = no
+   vfs objects = acl_xattr catia fruit streams_xattr recycle
    fruit:aapl = yes
    fruit:model = MacSamba
 
@@ -26,10 +24,11 @@
    fruit:wipe_intentionally_left_blank_rfork = yes
    fruit:zero_file_id = yes
    fruit:delete_empty_adfiles = yes
-
-   # cherry pick from PR#167 to Test
    fruit:copyfile = yes
    fruit:nfs_aces = no
+   fruit:metadata = stream
+   fruit:veto_appledouble = no
+   spotlight = yes
 
    # Performance Enhancements for network
    socket options = TCP_NODELAY IPTOS_LOWDELAY
@@ -42,7 +41,7 @@
    netbios name = {{ .hostname | default (env "HOSTNAME") }}
    workgroup = {{ .workgroup | default "NOWORKGROUP" }}
    server string = Samba NAS2 HomeAssistant %v
-   multicast dns register = false
+   multicast dns register = true
 
    security = user
    ntlm auth = yes
@@ -75,12 +74,10 @@
    browseable = yes
    writeable = {{ has .data.fs $rosupported | ternary "no" "yes" }}
 
-   # cherry pick from PR#167
    create mask = 0664
    force create mode = 0664
    directory mask = 0775
    force directory mode = 0775
-   # End PR#167
 
    path = {{- if eq .data.name "config" }} /homeassistant{{- else }} {{ .data.path }}{{- end }}
    valid users =_ha_mount_user_ {{ .data.users|default .username|join " " }} {{ .data.ro_users|join " " }}
@@ -93,6 +90,10 @@
    {{ if and .data.veto_files (gt (len .data.veto_files) 0) -}}
    veto files = /{{ .data.veto_files | join "/" }}/
    delete veto files = yes
+   {{- end }}
+
+   {{ if .data.GuestOk -}}
+   guest ok = yes
    {{- end }}
 
 
@@ -118,7 +119,9 @@
 
    # Time Machine Settings Ref: https://github.com/markthomas93/samba.apple.templates
    fruit:time machine = yes
-   #fruit:time machine max size = SIZE [K|M|G|T|P]
+   {{ if .data.TimeMachineMaxSize -}}
+   fruit:time machine max size = {{ .data.TimeMachineMaxSize }}
+   {{- end }}
    fruit:metadata = stream
 {{ else }}
    vfs objects = catia{{ if .data.recycle_bin_enabled }} recycle{{ end }}{{/*- printf "/*%#v* /" . -*/}}

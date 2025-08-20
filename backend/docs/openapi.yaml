@@ -938,6 +938,10 @@ components:
           type: string
         recycle_bin_enabled:
           type: boolean
+        guest_ok:
+          type: boolean
+        timemachine_max_size:
+          type: string
         ro_users:
           items:
             $ref: "#/components/schemas/User"

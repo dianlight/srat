@@ -20,6 +20,8 @@ type ExportedShare struct {
 	VetoFiles          datatypes.JSONSlice[string]
 	TimeMachine        bool
 	RecycleBin         bool `gorm:"default:false"`
+	GuestOk            bool `gorm:"default:false"`
+	TimeMachineMaxSize string
 	Usage              dto.HAMountUsage
 	MountPointDataPath string
 	MountPointData     MountPointPath `gorm:"foreignKey:MountPointDataPath;references:Path;"`

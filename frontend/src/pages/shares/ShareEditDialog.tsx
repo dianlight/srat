@@ -104,6 +104,9 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 							: props.objectToEdit.users || [],
 					ro_users: props.objectToEdit.ro_users || [],
 					timemachine: props.objectToEdit.timemachine || false,
+					recycle_bin_enabled: props.objectToEdit.recycle_bin_enabled || false,
+					guest_ok: props.objectToEdit.guest_ok || false,
+					timemachine_max_size: props.objectToEdit.timemachine_max_size || "",
 					usage: props.objectToEdit.usage || Usage.None,
 					veto_files: props.objectToEdit.veto_files || [],
 					disabled: props.objectToEdit.disabled,
@@ -524,11 +527,37 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 												control={control}
 											/>
 										</Grid>
+										{watch("timemachine") && (
+											<Grid size={6}>
+												<TextFieldElement
+													size="small"
+													label="Time Machine Max Size (e.g., 100G, 5T, MAX)"
+													name="timemachine_max_size"
+													disabled={isDisabled}
+													control={control}
+													rules={{
+														pattern: {
+															value: /^(MAX|\d+[KMGTP]?)$/i,
+															message: "Invalid format. Use MAX or a number followed by K, M, G, T, P (e.g., 100G, 5T).",
+														},
+													}}
+												/>
+											</Grid>
+										)}
 										<Grid size={6}>
 											<CheckboxElement
 												size="small"
 												label="Support Recycle Bin"
 												name="recycle_bin_enabled"
+												disabled={isDisabled}
+												control={control}
+											/>
+										</Grid>
+										<Grid size={6}>
+											<CheckboxElement
+												size="small"
+												label="Guest Access"
+												name="guest_ok"
 												disabled={isDisabled}
 												control={control}
 											/>

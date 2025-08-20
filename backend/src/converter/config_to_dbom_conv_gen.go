@@ -50,7 +50,16 @@ func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedSha
 		target.TimeMachine = source.TimeMachine
 	}
 	if source.RecycleBin != false {
-		target.RecycleBin = source.RecycleBin
+		pBool := source.RecycleBin
+		target.RecycleBin = &pBool
+	}
+	if source.GuestOk != false {
+		pBool2 := source.GuestOk
+		target.GuestOk = &pBool2
+	}
+	if source.TimeMachineMaxSize != "" {
+		pString := source.TimeMachineMaxSize
+		target.TimeMachineMaxSize = &pString
 	}
 	if source.Usage != "" {
 		target.Usage = string(source.Usage)
@@ -99,8 +108,14 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 	if source.TimeMachine != false {
 		target.TimeMachine = source.TimeMachine
 	}
-	if source.RecycleBin != false {
-		target.RecycleBin = source.RecycleBin
+	if source.RecycleBin != nil {
+		target.RecycleBin = *source.RecycleBin
+	}
+	if source.GuestOk != nil {
+		target.GuestOk = *source.GuestOk
+	}
+	if source.TimeMachineMaxSize != nil {
+		target.TimeMachineMaxSize = *source.TimeMachineMaxSize
 	}
 	if source.Usage != "" {
 		target.Usage = dto.HAMountUsage(source.Usage)

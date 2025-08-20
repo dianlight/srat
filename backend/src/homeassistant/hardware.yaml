@@ -35,51 +35,79 @@ paths:
                     $ref: '#/components/schemas/HardwareInfo'
 components:
   schemas:
+    Attributes:
+      type: object
+      additionalProperties: true
+      properties:
+        DRIVER:
+          type: string
+          description: Driver of the attribute.
+        DEVTYPE:
+          type: string
+          description: Dreiver type
+        PARTNAME:
+          type: string
+          description: Partition Name
+        SUBSYSTEM:
+          type: string
+          description: Subsystem of the attribute.
+        ID_BUS:
+          type: string
+          description: Bus identifier.
+        ID_MODEL_ENC:
+          type: string
+          description: Encoded model identifier.
+        ID_REVISION:
+          type: string
+          description: Revision identifier.
+        ID_SERIAL_SHORT:
+          type: string
+          description: Short serial identifier.
+        ID_TYPE:
+          type: string
+          description: Type of the attribute.
+        ID_FS_TYPE:
+          type: string
+          description: Filesystem type.
+        ID_FS_USAGE:
+          type: string
+          description: Usage of the filesystem.
+        ID_FS_UUID_ENC:
+          type: string
+          description: Encoded UUID of the filesystem.
+        ID_FS_LABEL_ENC:
+          type: string
+          description: Encoded label of the filesystem.
+        ID_PART_ENTRY_SCHEME:
+          type: string
+          description: Partition entry scheme.
+        ID_PART_ENTRY_NUMBER:
+          type: string
+          description: Partition entry number.
     Device:
       type: object
       properties:
         name:
           type: string
           description: Name of the device.
-        path:
+        dev_path:
           type: string
-          description: Path of the device.
-        type:
-          type: string
-          description: Type of the device.
+          description: DevPath of the device.
         subsystem:
           type: string
           description: Subsystem of the device.
-        capabilities:
-          type: array
-          items:
-            type: string
-          description: Capabilities of the device.
-        used_by:
-          type: array
-          items:
-            type: string
-          description: List of add-ons that use this device.
-        links:
-          type: array
-          items:
-            type: string
-          description: List of links to other devices.
         attributes:
           type: object
           description: Attributes of the device.
-        dev_path:
-          type: string
-          description: Device path.
+          $ref: '#/components/schemas/Attributes'
+        children:
+          type: array
+          items:
+           type: string
+          description: Children of the device as path array.
         by_id:
           type: string
           description: Device by id.
-        by_path:
-          type: string
-          description: Device by path.
-        description:
-          type: string
-          description: Description of the device.
         sysfs:
           type: string
           description: Sysfs of the device.

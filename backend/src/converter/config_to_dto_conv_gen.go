@@ -125,9 +125,17 @@ func (c *ConfigToDtoConverterImpl) ShareToSharedResourceNoMountPointData(source 
 		pBool2 := source.TimeMachine
 		target.TimeMachine = &pBool2
 	}
-	if source.RecycleBin != false {
-		pBool3 := source.RecycleBin
-		target.RecycleBin = &pBool3
+	if source.RecycleBin != nil {
+		xbool := *source.RecycleBin
+		target.RecycleBin = &xbool
+	}
+	if source.GuestOk != nil {
+		xbool2 := *source.GuestOk
+		target.GuestOk = &xbool2
+	}
+	if source.TimeMachineMaxSize != nil {
+		xstring := *source.TimeMachineMaxSize
+		target.TimeMachineMaxSize = &xstring
 	}
 	if source.Usage != "" {
 		target.Usage = dto.HAMountUsage(source.Usage)
@@ -177,7 +185,16 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 		target.TimeMachine = *source.TimeMachine
 	}
 	if source.RecycleBin != nil {
-		target.RecycleBin = *source.RecycleBin
+		xbool := *source.RecycleBin
+		target.RecycleBin = &xbool
+	}
+	if source.GuestOk != nil {
+		xbool2 := *source.GuestOk
+		target.GuestOk = &xbool2
+	}
+	if source.TimeMachineMaxSize != nil {
+		xstring := *source.TimeMachineMaxSize
+		target.TimeMachineMaxSize = &xstring
 	}
 	if source.Usage != "" {
 		target.Usage = string(source.Usage)
