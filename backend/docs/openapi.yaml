@@ -489,6 +489,8 @@ components:
           type: boolean
         is_to_mount_at_startup:
           type: boolean
+        is_write_supported:
+          type: boolean
         path:
           type: string
         path_hash:
@@ -499,6 +501,13 @@ components:
           type:
             - array
             - "null"
+        time_machine_support:
+          enum:
+            - unsupported
+            - supported
+            - experimental
+            - unknown
+          type: string
         type:
           enum:
             - HOST
@@ -669,8 +678,6 @@ components:
     SambaProcessStatus:
       additionalProperties: false
       properties:
-        avahi:
-          $ref: "#/components/schemas/ProcessStatus"
         nmbd:
           $ref: "#/components/schemas/ProcessStatus"
         smbd:
@@ -681,7 +688,6 @@ components:
         - smbd
         - nmbd
         - wsdd2
-        - avahi
       type: object
     SambaServerID:
       additionalProperties: false
@@ -926,6 +932,8 @@ components:
           type: string
         disabled:
           type: boolean
+        guest_ok:
+          type: boolean
         ha_status:
           type: string
         invalid:
@@ -938,10 +946,6 @@ components:
           type: string
         recycle_bin_enabled:
           type: boolean
-        guest_ok:
-          type: boolean
-        timemachine_max_size:
-          type: string
         ro_users:
           items:
             $ref: "#/components/schemas/User"
@@ -950,6 +954,8 @@ components:
             - "null"
         timemachine:
           type: boolean
+        timemachine_max_size:
+          type: string
         usage:
           enum:
             - none
@@ -1371,8 +1377,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -1469,8 +1475,8 @@ paths:
     get:
       operationId: list-api-nics
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -1594,8 +1600,8 @@ paths:
     get:
       operationId: get-api-samba-config
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2111,6 +2117,8 @@ paths:
                   type: string
                 disabled:
                   type: boolean
+                guest_ok:
+                  type: boolean
                 ha_status:
                   type: string
                 invalid:
@@ -2127,6 +2135,8 @@ paths:
                   type: array
                 timemachine:
                   type: boolean
+                timemachine_max_size:
+                  type: string
                 usage:
                   enum:
                     - none
@@ -2156,6 +2166,8 @@ paths:
                   type: string
                 disabled:
                   type: boolean
+                guest_ok:
+                  type: boolean
                 ha_status:
                   type: string
                 invalid:
@@ -2172,6 +2184,8 @@ paths:
                   type: array
                 timemachine:
                   type: boolean
+                timemachine_max_size:
+                  type: string
                 usage:
                   enum:
                     - none
@@ -2297,8 +2311,8 @@ paths:
             description: Name of the share to disable
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2958,8 +2972,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -3110,8 +3124,8 @@ paths:
           schema:
             description: The ID of the disk to eject (e.g., sda, sdb)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -3267,8 +3281,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:

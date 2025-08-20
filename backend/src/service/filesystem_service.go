@@ -280,7 +280,9 @@ func (s *FilesystemService) MountFlagsToSyscallFlagAndData(inputFlags []dto.Moun
 		rawFlagName := strings.TrimSpace(mf.Name)
 		lowerFlagName := strings.ToLower(rawFlagName) // Use lowercase for map lookups
 
-		// --- New Validation Check ---
+		// ---
+		// New Validation Check
+		// ---
 		if !mf.NeedsValue && mf.FlagValue != "" {
 			return 0, "", errors.WithDetails(dto.ErrorInvalidParameter,
 				"Flag", mf.Name,

@@ -32,6 +32,8 @@ type ConfigToDtoConverter interface {
 	// goverter:map Path Type | pathToType
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:map FS FSType
+	// goverter:map FS IsWriteSupported | github.com/dianlight/srat/dto:FSTypeIsWriteSupported
+	// goverter:map FS TimeMachineSupport | github.com/dianlight/srat/dto:TimeMachineSupportFromFS
 	ShareToMountPointData(source config.Share, target *dto.MountPointData) error
 
 	// goverter:update target

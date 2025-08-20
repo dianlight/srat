@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"syscall"
+
+	"github.com/xorcare/pointer"
 )
 
 type FilesystemType struct {
@@ -154,4 +156,35 @@ func (self MountFlags) StringValue() string {
 		}
 	}
 	return strings.Join(dest, ",")
+}
+
+// TimeMachineSupportFromFS returns the Time Machine support status for a given filesystem type.
+func TimeMachineSupportFromFS(fsType string) *TimeMachineSupport {
+	switch fsType {
+	case "ext2", "ext3", "ext4", "jfs", "squashfs", "xfs", "btrfs", "zfs", "ubifs", "yaffs2", "reiserfs", "reiserfs4", "orangefs", "lustre", "ocfs2":
+		return &TimeMachineSupports.SUPPORTED
+	case "ntfs3", "ntfs":
+		return &TimeMachineSupports.EXPERIMENTAL
+	case "vfat", "msdos", "iso9660", "erofs", "exfat":
+		return &TimeMachineSupports.UNSUPPORTED
+	default:
+		return &TimeMachineSupports.UNKNOWN
+	}
+}
+
+func (s *FilesystemType) TimeMachineSupportFromFS(fsType string) TimeMachineSupport {
+	return *TimeMachineSupportFromFS(fsType)
+}
+
+func FSTypeIsWriteSupported(fsType string) *bool {
+	switch fsType {
+	case "apfs", "iso9660", "squashfs":
+		return pointer.Bool(false)
+	default:
+		return pointer.Bool(true)
+	}
+}
+
+func (s *FilesystemType) FSTypeIsWriteSupported(fsType string) bool {
+	return *FSTypeIsWriteSupported(fsType)
 }

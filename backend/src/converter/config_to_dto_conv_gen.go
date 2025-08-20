@@ -91,6 +91,12 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share, ta
 		}
 		target.IsMounted = xbool
 	}
+	if source.FS != "" {
+		target.IsWriteSupported = dto.FSTypeIsWriteSupported(source.FS)
+	}
+	if source.FS != "" {
+		target.TimeMachineSupport = dto.TimeMachineSupportFromFS(source.FS)
+	}
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, context []dto.User) error {

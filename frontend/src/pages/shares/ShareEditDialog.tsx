@@ -28,10 +28,11 @@ import {
 } from "react-hook-form-mui";
 import { useVolume } from "../../hooks/volumeHook";
 import default_json from "../../json/default_config.json";
-import type {
-	MountPointData,
-	SharedResource,
-	User,
+import {
+	type MountPointData,
+	type SharedResource,
+	type User,
+	Time_machine_support,
 } from "../../store/sratApi";
 import {
 	Usage,
@@ -47,6 +48,7 @@ import {
 	toCamelCase,
 	toKebabCase,
 } from "./utils";
+import { color } from "bun";
 
 interface ShareEditDialogProps {
 	open: boolean;
@@ -366,7 +368,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 													renderOption: (props, option) => (
 														<li {...props}>
 															<Typography variant="body2">
-																{option.path}
+																{option.path} <span>{option.is_write_supported ? "" : (<Typography variant="caption" color="error">Read-Only</Typography>)}</span>
 															</Typography>
 														</li>
 													),
@@ -519,13 +521,26 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 											/>
 										</Grid>
 										<Grid size={6}>
-											<CheckboxElement
-												size="small"
-												label="Support Timemachine Backups"
-												name="timemachine"
-												disabled={isDisabled}
-												control={control}
-											/>
+											<Tooltip
+												title={`Time Machine is ${watch("mount_point_data")?.time_machine_support} for the current volume!`}
+											>
+												<span>
+													<CheckboxElement
+														size="small"
+														label="Support Timemachine Backups"
+														labelProps={{
+															slotProps: {
+																typography: {
+																	color: watch("mount_point_data")?.time_machine_support !== Time_machine_support.Supported ? "error" : "default"
+																},
+															},
+														}}
+														name="timemachine"
+														disabled={isDisabled || watch("mount_point_data")?.time_machine_support === Time_machine_support.Unsupported}
+														control={control}
+													/>
+												</span>
+											</Tooltip>
 										</Grid>
 										{watch("timemachine") && (
 											<Grid size={6}>
@@ -533,6 +548,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 													size="small"
 													label="Time Machine Max Size (e.g., 100G, 5T, MAX)"
 													name="timemachine_max_size"
+													sx={{ display: "flex" }}
 													disabled={isDisabled}
 													control={control}
 													rules={{
@@ -544,15 +560,17 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 												/>
 											</Grid>
 										)}
-										<Grid size={6}>
-											<CheckboxElement
-												size="small"
-												label="Support Recycle Bin"
-												name="recycle_bin_enabled"
-												disabled={isDisabled}
-												control={control}
-											/>
-										</Grid>
+										{watch("mount_point_data")?.is_write_supported && (
+											<Grid size={6}>
+												<CheckboxElement
+													size="small"
+													label="Support Recycle Bin"
+													name="recycle_bin_enabled"
+													disabled={isDisabled}
+													control={control}
+												/>
+											</Grid>
+										)}
 										<Grid size={6}>
 											<CheckboxElement
 												size="small"
@@ -564,80 +582,82 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 										</Grid>
 									</>
 								)}
-								<Grid size={6}>
-									{!usLoading && ((users as User[]) || []).length > 0 && (
-										<AutocompleteElement
-											multiple
-											name="users"
-											label="Read and Write users"
-											options={usLoading ? [] : (users as User[]) || []} // Use string keys for options
-											control={control}
-											loading={usLoading}
-											autocompleteProps={{
-												disabled: isDisabled,
-												size: "small",
-												limitTags: 5,
-												getOptionKey: (option) =>
-													(option as User).username || "",
-												getOptionLabel: (option) =>
-													(option as User).username || "",
-												renderOption: (props, option) => (
-													<li {...props}>
-														<Typography
-															variant="body2"
-															color={option.is_admin ? "warning" : "default"}
-														>
-															{option.username}
-														</Typography>
-													</li>
-												),
-												getOptionDisabled: (option) => {
-													if (
-														watch("ro_users")?.find(
-															(user) =>
-																user.username === option.username,
-														)
-													) {
-														return true; // Disable if the user is already in the users list
-													}
-													return false;
-												},
-												isOptionEqualToValue(option, value) {
-													return option.username === value.username;
-												},
-												renderValue: (values, getItemProps) =>
-													values.map((option, index) => {
-														const { key, ...itemProps } = getItemProps({
-															index,
-														});
-														//console.log(values, option)
-														return (
-															<Chip
-																color={
-																	(option as User).is_admin
-																		? "warning"
-																		: "default"
-																}
-																key={key}
-																variant="outlined"
-																label={
-																	(option as User)?.username || "bobo"
-																}
-																size="small"
-																{...itemProps}
-															/>
-														);
-													}),
-											}}
-											textFieldProps={{
-												//helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
-												//error: !!fsError,
+								{watch("mount_point_data")?.is_write_supported && (
+									<Grid size={6}>
+										{!usLoading && ((users as User[]) || []).length > 0 && (
+											<AutocompleteElement
+												multiple
+												name="users"
+												label="Read and Write users"
+												options={usLoading ? [] : (users as User[]) || []} // Use string keys for options
+												control={control}
+												loading={usLoading}
+												autocompleteProps={{
+													disabled: isDisabled,
+													size: "small",
+													limitTags: 5,
+													getOptionKey: (option) =>
+														(option as User).username || "",
+													getOptionLabel: (option) =>
+														(option as User).username || "",
+													renderOption: (props, option) => (
+														<li {...props}>
+															<Typography
+																variant="body2"
+																color={option.is_admin ? "warning" : "default"}
+															>
+																{option.username}
+															</Typography>
+														</li>
+													),
+													getOptionDisabled: (option) => {
+														if (
+															watch("ro_users")?.find(
+																(user) =>
+																	user.username === option.username,
+															)
+														) {
+															return true; // Disable if the user is already in the users list
+														}
+														return false;
+													},
+													isOptionEqualToValue(option, value) {
+														return option.username === value.username;
+													},
+													renderValue: (values, getItemProps) =>
+														values.map((option, index) => {
+															const { key, ...itemProps } = getItemProps({
+																index,
+															});
+															//console.log(values, option)
+															return (
+																<Chip
+																	color={
+																		(option as User).is_admin
+																			? "warning"
+																			: "default"
+																	}
+																	key={key}
+																	variant="outlined"
+																	label={
+																		(option as User)?.username || "bobo"
+																	}
+																	size="small"
+																	{...itemProps}
+																/>
+															);
+														}),
+												}}
+												textFieldProps={{
+													//helperText: fsError ? 'Error loading filesystems' : (fsLoading ? 'Loading...' : 'Leave blank to auto-detect'),
+													//error: !!fsError,
 
-												InputLabelProps: { shrink: true },
-											}}
-										/>
-									)}
-								</Grid>
+													InputLabelProps: { shrink: true },
+												}}
+											/>
+										)}
+									</Grid>
+								)}
 								<Grid size={6}>
 									{!usLoading && ((users as User[]) || []).length > 0 && (
 										<AutocompleteElement

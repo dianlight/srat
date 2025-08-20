@@ -32,6 +32,12 @@ func (c *LsblkToDtoConverterImpl) LsblkInfoToMountPointData(source *lsblk.LSBKIn
 		if source.Mountpoint != "" {
 			target.IsMounted = isMounted(source.Mountpoint)
 		}
+		if source.Fstype != "" {
+			target.IsWriteSupported = dto.FSTypeIsWriteSupported(source.Fstype)
+		}
+		if source.Fstype != "" {
+			target.TimeMachineSupport = dto.TimeMachineSupportFromFS(source.Fstype)
+		}
 	}
 	return nil
 }

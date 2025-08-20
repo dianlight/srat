@@ -138,6 +138,12 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	if source.IsToMountAtStartup != nil {
 		target.IsToMountAtStartup = source.IsToMountAtStartup
 	}
+	if source.FSType != "" {
+		target.IsWriteSupported = dto.FSTypeIsWriteSupported(source.FSType)
+	}
+	if source.FSType != "" {
+		target.TimeMachineSupport = dto.TimeMachineSupportFromFS(source.FSType)
+	}
 	if source.Shares != nil {
 		target.Shares = make([]dto.SharedResource, len(source.Shares))
 		for i := 0; i < len(source.Shares); i++ {
@@ -383,6 +389,8 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 	}
 	dtoMountPointData.IsInvalid = xbool2
 	dtoMountPointData.IsToMountAtStartup = source.IsToMountAtStartup
+	dtoMountPointData.IsWriteSupported = dto.FSTypeIsWriteSupported(source.FSType)
+	dtoMountPointData.TimeMachineSupport = dto.TimeMachineSupportFromFS(source.FSType)
 	if source.Shares != nil {
 		dtoMountPointData.Shares = make([]dto.SharedResource, len(source.Shares))
 		for i := 0; i < len(source.Shares); i++ {

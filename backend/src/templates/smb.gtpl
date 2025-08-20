@@ -41,7 +41,7 @@
    netbios name = {{ .hostname | default (env "HOSTNAME") }}
    workgroup = {{ .workgroup | default "NOWORKGROUP" }}
    server string = Samba NAS2 HomeAssistant %v
-   multicast dns register = true
+   multicast dns register = yes
 
    security = user
    ntlm auth = yes

@@ -741,7 +741,6 @@ export type ProcessStatus = {
   status: string[] | null;
 };
 export type SambaProcessStatus = {
-  avahi: ProcessStatus;
   nmbd: ProcessStatus;
   smbd: ProcessStatus;
   wsdd2: ProcessStatus;
@@ -903,9 +902,11 @@ export type MountPointData = {
   invalid_error?: string;
   is_mounted?: boolean;
   is_to_mount_at_startup?: boolean;
+  is_write_supported?: boolean;
   path: string;
   path_hash?: string;
   shares?: SharedResource[] | null;
+  time_machine_support?: Time_machine_support;
   type: Type;
   warnings?: string;
 };
@@ -923,6 +924,7 @@ export type SharedResource = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   disabled?: boolean;
+  guest_ok?: boolean;
   ha_status?: string;
   invalid?: boolean;
   is_ha_mounted?: boolean;
@@ -931,6 +933,7 @@ export type SharedResource = {
   recycle_bin_enabled?: boolean;
   ro_users?: User[] | null;
   timemachine?: boolean;
+  timemachine_max_size?: string;
   usage?: Usage;
   users?: User[] | null;
   veto_files?: string[];
@@ -991,6 +994,12 @@ export enum Op {
   Move = "move",
   Copy = "copy",
   Test = "test",
+}
+export enum Time_machine_support {
+  Unsupported = "unsupported",
+  Supported = "supported",
+  Experimental = "experimental",
+  Unknown = "unknown",
 }
 export enum Type {
   Host = "HOST",

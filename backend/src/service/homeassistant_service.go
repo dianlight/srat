@@ -127,7 +127,7 @@ func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.SambaPro
 		"smbd_running":  status.Smbd.IsRunning,
 		"nmbd_running":  status.Nmbd.IsRunning,
 		"wsdd2_running": status.Wsdd2.IsRunning,
-		"avahi_running": status.Avahi.IsRunning,
+		//"avahi_running": status.Avahi.IsRunning,
 	}
 
 	// Add detailed process information
@@ -154,9 +154,9 @@ func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.SambaPro
 	if status.Wsdd2.IsRunning {
 		runningCount++
 	}
-	if status.Avahi.IsRunning {
-		runningCount++
-	}
+	//if status.Avahi.IsRunning {
+	//	runningCount++
+	//}
 
 	if runningCount >= 2 {
 		state = "running"

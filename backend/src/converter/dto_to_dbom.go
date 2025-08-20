@@ -33,6 +33,8 @@ type DtoToDbomConverter interface {
 	// goverter:map Path IsInvalid | isPathDirNotExists
 	// goverter:map Data CustomFlags
 	// goverter:ignore InvalidError Warnings
+	// goverter:map FSType IsWriteSupported | github.com/dianlight/srat/dto:FSTypeIsWriteSupported
+	// goverter:map FSType TimeMachineSupport | github.com/dianlight/srat/dto:TimeMachineSupportFromFS
 	mountPointPathToMountPointData(source dbom.MountPointPath) (dto.MountPointData, error)
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
@@ -83,6 +85,8 @@ type DtoToDbomConverter interface {
 	// goverter:map Path IsInvalid | isPathDirNotExists
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
+	// goverter:map FSType IsWriteSupported | github.com/dianlight/srat/dto:FSTypeIsWriteSupported
+	// goverter:map FSType TimeMachineSupport | github.com/dianlight/srat/dto:TimeMachineSupportFromFS
 	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error
 
 	// goverter:update target

@@ -109,6 +109,7 @@ func (handler *SystemHanler) readLinesOffsetN(filename string, offset uint, n in
 
 // Source: https://github.com/shirou/gopsutil
 func (handler *SystemHanler) getFileSystems() ([]string, error) {
+	// TODO: Missing fuse3 fs
 	filename := "/proc/filesystems"
 	lines, err := handler.readLinesOffsetN(filename, 0, -1)
 	if err != nil {
