@@ -16,6 +16,7 @@ import {
 	Stack,
 	Tooltip,
 	Typography,
+	useTheme,
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
 import { Fragment, useState } from "react";
@@ -201,7 +202,22 @@ export function Users() {
 
 							return (
 								<Fragment key={user.username || "admin"}>
-									<ListItemButton sx={{ alignItems: "flex-start" }}>
+									<ListItemButton
+										sx={[
+											(theme) => ({
+												backgroundColor: theme.vars?.palette.background.default,
+											}),
+											(theme) =>
+												theme.applyStyles('dark', {
+													backgroundColor: theme.vars?.palette.grey[900],
+												}),
+										]//{
+											//											alignItems: "flex-start",
+											//											bgcolor: theme.vars?.palette.background.paper,
+											//										}
+										}
+
+									>
 										<ListItemAvatar sx={{ pt: 1 }}>
 											<Avatar
 												data-tutor={`reactour__tab${TabIDs.USERS}__step5`}
