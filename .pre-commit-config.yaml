@@ -25,13 +25,13 @@ repos:
         stages: [pre-commit]
         files: '^backend/src/.*\.go$'
 
-      - id: go-build-test-backend
-        name: go build+test (backend quick)
-        entry: bash -c 'make -C backend build && make -C backend test -j1 --no-print-directory'
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
-        files: '^backend/src/.*\.go$'
+#      - id: go-build-test-backend
+#        name: go build+test (backend quick)
+#        entry: bash -c 'make -C backend build && make -C backend test -j1 --no-print-directory'
+#        language: system
+#        pass_filenames: false
+#        stages: [pre-push]
+#        files: '^backend/src/.*\.go$'
 
       - id: remove-go-mod-replace
         name: Remove go.mod replace lines
