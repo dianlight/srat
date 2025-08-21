@@ -1,6 +1,6 @@
 module github.com/dianlight/srat
 
-go 1.24.3
+go 1.25.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -26,6 +26,7 @@ require (
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/k0kubun/pp/v3 v3.5.0
+	github.com/lonegunmanb/go-defaults v1.4.0
 	github.com/m1/go-generate-password v0.2.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/prometheus/procfs v0.17.0
@@ -51,7 +52,6 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.147.6 // indirect
 	github.com/jmattheis/goverter v1.9.1 // indirect
-	github.com/lonegunmanb/go-defaults v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
