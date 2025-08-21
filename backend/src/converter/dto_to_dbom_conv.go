@@ -109,7 +109,7 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 						newvalue.Set(reflect.Append(newvalue, newElem))
 					}
 				} else {
-					return errors.Errorf("Type mismatch for field: %s %T->%T", prop.Key, prop.Value, newvalue.Interface())
+					return errors.Errorf("Type mismatch for field: %s(%s) %T->%T", prop.Key, prop.Value, prop.Value, newvalue.Interface())
 				}
 			}
 		} /*else {
