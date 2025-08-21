@@ -15,6 +15,7 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tempio"
 	"github.com/dianlight/srat/tlog"
+	"github.com/lonegunmanb/go-defaults"
 	cache "github.com/patrickmn/go-cache"
 	"github.com/shirou/gopsutil/v4/process"
 	"gitlab.com/tozd/go/errors"
@@ -127,7 +128,7 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err error) 
 
 	tconfig = config.Config{}
 	// set default values
-	tconfig.LocalMaster = true
+	defaults.SetDefaults(&tconfig)
 	// end
 	err = conv.DbomObjectsToConfig(properties, users, *shares, &tconfig)
 	if err != nil {
