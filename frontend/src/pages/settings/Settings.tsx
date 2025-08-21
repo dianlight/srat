@@ -211,7 +211,20 @@ export function Settings() {
 	return (
 		<InView>
 			<br />
-			<Stack spacing={2} sx={{ p: 2 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step0`}>
+			<Stack
+				spacing={2}
+				sx={[
+					(theme) => ({
+
+						backgroundColor: theme.vars?.palette.background.default,
+					}),
+					(theme) =>
+						theme.applyStyles('dark', {
+							backgroundColor: theme.vars?.palette.grey[900],
+						}),
+				]}
+				data-tutor={`reactour__tab${TabIDs.SETTINGS}__step0`}
+			>
 				<Divider data-tutor={`reactour__tab${TabIDs.SETTINGS}__step2`} />
 				<form
 					id="settingsform"
@@ -219,7 +232,9 @@ export function Settings() {
 					noValidate
 				>
 					<Grid container spacing={2}>
-						<Grid size={{ xs: 12, md: 4 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step2`}>
+						<Grid
+							size={{ xs: 12, md: 4 }}
+							data-tutor={`reactour__tab${TabIDs.SETTINGS}__step2`}>
 							<AutocompleteElement
 								label="Update Channel"
 								name="update_channel"
