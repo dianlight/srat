@@ -1,24 +1,14 @@
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import EditIcon from "@mui/icons-material/Edit";
-import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
 	Avatar,
 	Box,
-	Button,
 	Chip,
-	Dialog,
-	DialogActions,
-	DialogContent,
-	DialogContentText,
-	DialogTitle,
 	Divider,
 	Fab,
-	Grid,
-	IconButton,
 	List,
 	ListItemAvatar,
 	ListItemButton,
@@ -29,35 +19,25 @@ import {
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
 import { Fragment, useState } from "react";
-import { useForm } from "react-hook-form";
-import {
-	PasswordElement,
-	PasswordRepeatElement,
-	TextFieldElement,
-} from "react-hook-form-mui";
 import { InView } from "react-intersection-observer";
 import { toast } from "react-toastify";
 import { useReadOnly } from "../../hooks/readonlyHook";
 import { TabIDs } from "../../store/locationState";
-import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import {
-	type User,
 	useDeleteApiUserByUsernameMutation,
 	useGetApiUsersQuery,
 	usePostApiUserMutation,
 	usePutApiUseradminMutation,
 	usePutApiUserByUsernameMutation,
 } from "../../store/sratApi";
-
-interface UsersProps extends User {
-	doCreate?: boolean;
-	"password-repeat"?: string;
-}
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { UserActions } from "./UserActions";
+import { UserEditDialog } from "./UserEditDialog";
+import type { UsersProps } from "./types";
 
 export function Users() {
 	const read_only = useReadOnly();
 	const users = useGetApiUsersQuery();
-	//const admin = useGetUseradminQuery();
 	const [_errorInfo, setErrorInfo] = useState<string>("");
 	const [selected, setSelected] = useState<UsersProps>({
 		username: "",
@@ -128,7 +108,6 @@ export function Users() {
 					console.error(err);
 				});
 		}
-		// formRef.current?.reset();
 	}
 
 	function onSubmitDeleteUser(data: UsersProps) {
@@ -191,7 +170,6 @@ export function Users() {
 						aria-label="add"
 						// sx removed: float, top, margin - FAB is now in normal flow within Stack
 						size="small"
-
 						onClick={() => {
 							setSelected({ username: "", password: "", doCreate: true });
 							setShowEdit(true);
@@ -225,7 +203,9 @@ export function Users() {
 								<Fragment key={user.username || "admin"}>
 									<ListItemButton sx={{ alignItems: "flex-start" }}>
 										<ListItemAvatar sx={{ pt: 1 }}>
-											<Avatar data-tutor={`reactour__tab${TabIDs.USERS}__step5`}>
+											<Avatar
+												data-tutor={`reactour__tab${TabIDs.USERS}__step5`}
+											>
 												{user.is_admin ? (
 													<AdminPanelSettingsIcon />
 												) : (
@@ -339,33 +319,15 @@ export function Users() {
 												</Stack>
 											}
 										/>
-										{!read_only && (
-											<Stack direction="column" spacing={0} sx={{ pl: 1 }}>
-												<IconButton
-													onClick={() => {
-														setSelected(user);
-														setShowEdit(true);
-													}}
-													edge="end"
-													aria-label="settings"
-													size="small"
-													data-tutor={`reactour__tab${TabIDs.USERS}__step3`}
-												>
-													<ManageAccountsIcon />
-												</IconButton>
-												{!user.is_admin && (
-													<IconButton
-														onClick={() => onSubmitDeleteUser(user)}
-														edge="end"
-														aria-label="delete"
-														size="small"
-														data-tutor={`reactour__tab${TabIDs.USERS}__step4`}
-													>
-														<PersonRemoveIcon />
-													</IconButton>
-												)}
-											</Stack>
-										)}
+										<UserActions
+											user={user}
+											read_only={read_only || false}
+											onEdit={(user) => {
+												setSelected(user);
+												setShowEdit(true);
+											}}
+											onDelete={onSubmitDeleteUser}
+										/>
 									</ListItemButton>
 									<Divider component="li" />
 								</Fragment>
@@ -373,114 +335,5 @@ export function Users() {
 						})}
 			</List>
 		</InView>
-	);
-}
-
-function UserEditDialog(props: {
-	open: boolean;
-	onClose: (data?: UsersProps) => void;
-	objectToEdit?: UsersProps;
-}) {
-	const {
-		control,
-		handleSubmit,
-		watch,
-		formState: { errors },
-	} = useForm<UsersProps>({
-		defaultValues: {
-			username: "",
-			password: "",
-			is_admin: false,
-		},
-		values: props.objectToEdit?.doCreate
-			? {
-				username: "",
-				password: "",
-				is_admin: false,
-				doCreate: true,
-			}
-			: props.objectToEdit,
-	});
-
-	function handleCloseSubmit(data?: UsersProps) {
-		props.onClose(data);
-	}
-
-	return (
-		<Fragment>
-			<Dialog open={props.open} onClose={() => handleCloseSubmit()}>
-				<DialogTitle>
-					{props.objectToEdit?.is_admin
-						? "Administrator"
-						: props.objectToEdit?.username || "New User"}
-				</DialogTitle>
-				<DialogContent>
-					<Stack spacing={2}>
-						<DialogContentText>
-							Please enter the username and password for the user.
-						</DialogContentText>
-						<form
-							id="editshareform"
-							onSubmit={handleSubmit(handleCloseSubmit)}
-							noValidate
-						>
-							<Grid container spacing={2}>
-								<Grid size={6}>
-									<TextFieldElement
-										size="small"
-										name="username"
-										autoComplete="username"
-										label="User Name"
-										required
-										control={control}
-										slotProps={
-											props.objectToEdit?.username
-												? props.objectToEdit.is_admin
-													? {}
-													: {
-														input: {
-															readOnly: true,
-														},
-													}
-												: {}
-										}
-									/>
-								</Grid>
-								<Grid size={6}>
-									<PasswordElement
-										size="small"
-										autoComplete="new-password"
-										name="password"
-										label="Password"
-										required
-										control={control}
-									/>
-									<PasswordRepeatElement
-										size="small"
-										autoComplete="new-password"
-										passwordFieldName={"password"}
-										name={"password-repeat"}
-										margin={"dense"}
-										label={"Repeat Password"}
-										required
-										control={control}
-									/>
-								</Grid>
-							</Grid>
-						</form>
-					</Stack>
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={() => handleCloseSubmit()}>Cancel</Button>
-					<Button
-						type="submit"
-						form="editshareform"
-						data-tutor={`reactour__tab${TabIDs.USERS}__step6`}
-					>
-						{props.objectToEdit?.doCreate ? "Create" : "Apply"}
-					</Button>
-				</DialogActions>
-			</Dialog>
-		</Fragment>
 	);
 }
