@@ -124,7 +124,10 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 
 			err := send.Data(event)
 			if err != nil {
-				if !strings.Contains(err.Error(), "write: broken pipe") {
+				if !strings.Contains(err.Error(), "broken pipe") &&
+					!strings.Contains(err.Error(), "context canceled") &&
+					!strings.Contains(err.Error(), "connection reset by peer") &&
+					!strings.Contains(err.Error(), "i/o timeout") {
 					slog.Warn("Error sending event to client", "event", event, "err", err)
 				}
 				return
