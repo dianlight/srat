@@ -10,6 +10,8 @@ import {
 	Tooltip,
 	Typography,
 	useTheme,
+	type SxProps,
+	type Theme,
 } from "@mui/material";
 import {
 	Sparklines,
@@ -29,6 +31,7 @@ export interface MetricCardProps {
 	children?: React.ReactNode;
 	detailMetricId?: string;
 	onDetailClick?: (metricId: string) => void;
+	sx?: SxProps<Theme>;
 }
 
 export function MetricCard({
@@ -42,6 +45,7 @@ export function MetricCard({
 	children,
 	detailMetricId,
 	onDetailClick,
+	sx,
 }: MetricCardProps) {
 	const theme = useTheme();
 
@@ -80,11 +84,13 @@ export function MetricCard({
 		if (isLoading) {
 			return (
 				<Box
-					sx={{
+					sx={[{
 						display: "flex",
 						justifyContent: "center",
 						alignItems: "center",
-					}}
+					},
+					...(Array.isArray(sx) ? sx : [sx])
+					]}
 				>
 					<CircularProgress />
 				</Box>
@@ -98,14 +104,15 @@ export function MetricCard({
 		return (
 			<>
 				<Box
-					sx={{
+					sx={[{
 						display: "flex",
 						flexDirection: { xs: "column", sm: "row" },
 						alignItems: { xs: "stretch", sm: "center" },
 						justifyContent: "space-between",
 						mb: history ? { xs: 0.5, sm: 1 } : 0,
 						gap: history ? { xs: 1, sm: 2 } : 0,
-					}}
+					}
+					]}
 				>
 					<Typography
 						variant="h4"
@@ -131,11 +138,11 @@ export function MetricCard({
 	};
 
 	return (
-		<Card sx={{ p: { xs: 0.5, sm: 1 } }}>
+		<Card sx={[{ p: { xs: 0.5, sm: 1 } }, ...(Array.isArray(sx) ? sx : [sx])]}>
 			<CardHeader
 				title={title}
 				subheader={subheader}
-				sx={{
+				sx={[{
 					p: { xs: 1, sm: 1.5 },
 					"& .MuiCardHeader-content": {
 						overflow: "hidden",
@@ -153,7 +160,7 @@ export function MetricCard({
 						overflow: "hidden",
 						textOverflow: "ellipsis"
 					}
-				}}
+				}, ...(Array.isArray(sx) ? sx : [sx])]}
 				action={
 					detailMetricId &&
 					onDetailClick && (
@@ -169,12 +176,12 @@ export function MetricCard({
 					)
 				}
 			/>
-			<CardContent sx={{
+			<CardContent sx={[{
 				p: { xs: 1, sm: 2 },
 				"&:last-child": {
 					pb: { xs: 1, sm: 2 }
 				}
-			}}>
+			}, ...(Array.isArray(sx) ? sx : [sx])]}>
 				{renderContent()}
 			</CardContent>
 		</Card>

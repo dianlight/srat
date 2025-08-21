@@ -68,41 +68,109 @@ export function SystemMetricsAccordion({
 
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [metricVisibility, setMetricVisibility] = useState<
-		Record<string, boolean>
+		Record<string, {
+			visible: boolean;
+			title: string;
+			enabled: boolean;
+		}>
 	>(() => {
 		try {
-			const storedVisibility = localStorage.getItem("metricVisibility");
+			const storedVisibility = localStorage.getItem("metricVisibility2");
 			return storedVisibility
 				? JSON.parse(storedVisibility)
 				: {
-					uptime: true,
-					addonCpu: true,
-					addonMemory: true,
-					addonDiskIo: true,
-					addonNetwork: true,
-					globalDiskIo: true,
-					globalNetworkIo: true,
-					sambaSessions: true,
+					uptime: {
+						visible: true,
+						title: "Uptime",
+						enabled: true,
+					},
+					addonCpu: {
+						visible: true,
+						title: "Addon CPU",
+						enabled: true,
+					},
+					addonMemory: {
+						visible: true,
+						title: "Addon Memory",
+						enabled: true,
+					},
+					addonDiskIo: {
+						visible: false,
+						title: "Addon Disk I/O",
+						enabled: false,
+					},
+					addonNetwork: {
+						visible: false,
+						title: "Addon Network",
+						enabled: false,
+					},
+					globalDiskIo: {
+						visible: true,
+						title: "Global Disk I/O",
+						enabled: true,
+					},
+					globalNetworkIo: {
+						visible: true,
+						title: "Global Network I/O",
+						enabled: true,
+					},
+					sambaSessions: {
+						visible: true,
+						title: "Samba Sessions",
+						enabled: true,
+					},
 				};
 		} catch (e) {
 			console.error("Failed to parse metric visibility from localStorage", e);
 			return {
-				uptime: true,
-				addonCpu: true,
-				addonMemory: true,
-				addonDiskIo: false,
-				addonNetwork: false,
-				globalDiskIo: true,
-				globalNetworkIo: true,
-				sambaSessions: true,
-			};
+				uptime: {
+					visible: true,
+					title: "Uptime",
+					enabled: true,
+				},
+				addonCpu: {
+					visible: true,
+					title: "Addon CPU",
+					enabled: true,
+				},
+				addonMemory: {
+					visible: true,
+					title: "Addon Memory",
+					enabled: true,
+				},
+				addonDiskIo: {
+					visible: false,
+					title: "Addon Disk I/O",
+					enabled: false,
+				},
+				addonNetwork: {
+					visible: false,
+					title: "Addon Network",
+					enabled: false,
+				},
+				globalDiskIo: {
+					visible: true,
+					title: "Global Disk I/O",
+					enabled: true,
+				},
+				globalNetworkIo: {
+					visible: true,
+					title: "Global Network I/O",
+					enabled: true,
+				},
+				sambaSessions: {
+					visible: true,
+					title: "Samba Sessions",
+					enabled: true,
+				}
+			}
 		}
 	});
 
 	useEffect(() => {
 		try {
 			localStorage.setItem(
-				"metricVisibility",
+				"metricVisibility2",
 				JSON.stringify(metricVisibility),
 			);
 		} catch (e) {
@@ -121,9 +189,10 @@ export function SystemMetricsAccordion({
 	};
 
 	const handleToggleMetric = (metricName: string) => {
+		//console.debug("Toggling metric visibility:", metricName, metricVisibility[metricName]);
 		setMetricVisibility((prev) => ({
 			...prev,
-			[metricName]: !prev[metricName],
+			[metricName]: { ...prev[metricName], visible: !prev[metricName].visible },
 		}));
 	};
 
@@ -228,7 +297,7 @@ export function SystemMetricsAccordion({
 	}, [health, isLoading, error]);
 
 	const renderUptimeMetric = () => {
-		if (!metricVisibility.uptime) return null;
+		if (!metricVisibility.uptime.visible) return null;
 		return (
 			<MetricCard
 				title="Server Uptime"
@@ -240,7 +309,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderAddonCpuMetric = () => {
-		if (!metricVisibility.addonCpu) return null;
+		if (!metricVisibility.addonCpu.visible) return null;
 		return (
 			<MetricCard
 				title="Addon CPU"
@@ -255,7 +324,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderAddonMemoryMetric = () => {
-		if (!metricVisibility.addonMemory) return null;
+		if (!metricVisibility.addonMemory.visible) return null;
 		const { memory_percent, memory_usage, memory_limit } =
 			health?.addon_stats || {};
 		return (
@@ -276,7 +345,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderAddonDiskIoMetric = () => {
-		if (!metricVisibility.addonDiskIo) return null;
+		if (!metricVisibility.addonDiskIo.visible) return null;
 		const readRate =
 			addonDiskReadRateHistory.length > 0
 				? addonDiskReadRateHistory[addonDiskReadRateHistory.length - 1]
@@ -312,7 +381,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderAddonNetworkMetric = () => {
-		if (!metricVisibility.addonNetwork) return null;
+		if (!metricVisibility.addonNetwork.visible) return null;
 		const rxRate =
 			addonNetworkRxRateHistory.length > 0
 				? addonNetworkRxRateHistory[addonNetworkRxRateHistory.length - 1]
@@ -346,7 +415,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderGlobalDiskIoMetric = () => {
-		if (!metricVisibility.globalDiskIo) return null;
+		if (!metricVisibility.globalDiskIo.visible) return null;
 		const { total_read_latency_ms, total_write_latency_ms } =
 			health?.disk_health?.global || {};
 		return (
@@ -369,7 +438,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderGlobalNetworkIoMetric = () => {
-		if (!metricVisibility.globalNetworkIo) return null;
+		if (!metricVisibility.globalNetworkIo.visible) return null;
 		const { totalInboundTraffic, totalOutboundTraffic } =
 			health?.network_health?.global || {};
 		const totalTraffic =
@@ -395,7 +464,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderSambaSessionsMetric = () => {
-		if (!metricVisibility.sambaSessions) return null;
+		if (!metricVisibility.sambaSessions.visible) return null;
 		const sessionCount = Object.keys(
 			health?.samba_status?.sessions || {},
 		).length;
@@ -450,7 +519,7 @@ export function SystemMetricsAccordion({
 						open={Boolean(anchorEl)}
 						onClose={handleMenuClose}
 					>
-						{Object.entries(metricVisibility).map(([key, isVisible]) => (
+						{Object.entries(metricVisibility).map(([key, data]) => (
 							<MenuItem
 								key={key}
 								onClick={(e) => {
@@ -459,10 +528,14 @@ export function SystemMetricsAccordion({
 								}}
 							>
 								<FormControlLabel
+									disabled={!data.enabled}
 									control={
-										<Checkbox checked={isVisible} name={key} color="primary" />
+										<Checkbox
+											checked={data.visible}
+											name={key} color="primary"
+										/>
 									}
-									label={key.replace(/([A-Z])/g, " $1").trim()}
+									label={data.title || key.replace(/([A-Z])/g, " $1").trim()}
 								/>
 							</MenuItem>
 						))}
@@ -471,42 +544,42 @@ export function SystemMetricsAccordion({
 			</AccordionSummary>
 			<AccordionDetails>
 				<Grid container spacing={3} sx={{ mb: 4 }}>
-					{metricVisibility.uptime && (
+					{metricVisibility.uptime.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderUptimeMetric()}
 						</Grid>
 					)}
-					{metricVisibility.addonCpu && (
+					{metricVisibility.addonCpu.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderAddonCpuMetric()}
 						</Grid>
 					)}
-					{metricVisibility.addonMemory && (
+					{metricVisibility.addonMemory.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderAddonMemoryMetric()}
 						</Grid>
 					)}
-					{metricVisibility.addonDiskIo && (
+					{metricVisibility.addonDiskIo.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderAddonDiskIoMetric()}
 						</Grid>
 					)}
-					{metricVisibility.addonNetwork && (
+					{metricVisibility.addonNetwork.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderAddonNetworkMetric()}
 						</Grid>
 					)}
-					{metricVisibility.globalDiskIo && (
+					{metricVisibility.globalDiskIo.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderGlobalDiskIoMetric()}
 						</Grid>
 					)}
-					{metricVisibility.globalNetworkIo && (
+					{metricVisibility.globalNetworkIo.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderGlobalNetworkIoMetric()}
 						</Grid>
 					)}
-					{metricVisibility.sambaSessions && (
+					{metricVisibility.sambaSessions.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderSambaSessionsMetric()}
 						</Grid>
