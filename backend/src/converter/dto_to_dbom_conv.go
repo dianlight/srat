@@ -5,8 +5,7 @@ package converter
 import (
 	"database/sql"
 	"database/sql/driver" // Added for driver.Valuer
-	"fmt"
-	"log/slog" // Added for logging
+	"log/slog"            // Added for logging
 	"reflect"
 
 	"github.com/dianlight/srat/dbom"
@@ -87,12 +86,20 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 				newvalue.Set(reflect.Zero(newvalue.Type()))
 			} else if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
 				newvalue.Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type()))
+			} else if reflect.ValueOf(prop.Value).Kind() == reflect.Ptr && !reflect.ValueOf(prop.Value).IsNil() && reflect.ValueOf(prop.Value).Elem().Type().ConvertibleTo(newvalue.Type()) {
+				// prop.Value is a pointer, newvalue is a value
+				newvalue.Set(reflect.ValueOf(prop.Value).Elem().Convert(newvalue.Type()))
+			} else if newvalue.Kind() == reflect.Ptr && reflect.ValueOf(prop.Value).Type().ConvertibleTo(newvalue.Type().Elem()) {
+				// newvalue is a pointer, prop.Value is a value
+				ptr := reflect.New(newvalue.Type().Elem())
+				ptr.Elem().Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type().Elem()))
+				newvalue.Set(ptr)
 			} else if newvalue.CanAddr() && newvalue.Addr().Type().Implements(scannerType) {
 				// If the field implements sql.Scanner, use its Scan method.
 				scanner := newvalue.Addr().Interface().(sql.Scanner)
 				err := scanner.Scan(prop.Value)
 				if err != nil {
-					return fmt.Errorf("error scanning field %s: %w", prop.Key, err)
+					return errors.Errorf("error scanning field %s: %w", prop.Key, err)
 				}
 			} else {
 				if newvalue.Kind() == reflect.Slice {
@@ -102,7 +109,7 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 						newvalue.Set(reflect.Append(newvalue, newElem))
 					}
 				} else {
-					return fmt.Errorf("Type mismatch for field: %s", prop.Key)
+					return errors.Errorf("Type mismatch for field: %s %T->%T", prop.Key, prop.Value, newvalue.Interface())
 				}
 			}
 		} /*else {

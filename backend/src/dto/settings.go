@@ -12,5 +12,5 @@ type Settings struct {
 	MultiChannel      bool          `json:"multi_channel,omitempty"`
 	UpdateChannel     UpdateChannel `json:"update_channel,omitempty" enum:"None,Develop,Release,Prerelease"`
 	TelemetryMode     TelemetryMode `json:"telemetry_mode,omitempty" enum:"Ask,All,Errors,Disabled"`
-	LocalMaster       bool          `json:"local_master,omitempty"`
+	LocalMaster       *bool         `json:"local_master,omitempty" default:"true"`
 }

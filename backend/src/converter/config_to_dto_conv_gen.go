@@ -47,7 +47,8 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 		return err
 	}
 	target.TelemetryMode = dtoTelemetryMode
-	target.LocalMaster = source.LocalMaster
+	pBool := source.LocalMaster
+	target.LocalMaster = &pBool
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ConfigToUser(source config.Config, target *dto.User) error {

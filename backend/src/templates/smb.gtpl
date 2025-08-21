@@ -1,4 +1,11 @@
+# DEBUG: {{ toJson . }}
 [global]
+   {{if not .local_master -}}
+   local master = no
+   {{- else -}}
+   local master = yes
+   {{- end }}
+
    {{ if .compatibility_mode -}}
    client min protocol = NT1
    server min protocol = NT1
