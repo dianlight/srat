@@ -3,7 +3,6 @@
 package converter
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -94,7 +93,7 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 						newvalue.SetBool(false)
 					}
 				} else {
-					return fmt.Errorf("Type mismatch for field: %s %T->%T", prop.Key, prop.Value, newvalue.Interface())
+					return errors.Errorf("P->C Type mismatch for field: %s %T->%T", prop.Key, prop.Value, newvalue.Interface())
 				}
 			}
 		}

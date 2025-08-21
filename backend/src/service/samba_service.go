@@ -96,7 +96,7 @@ func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, error) {
 }
 
 func (self *SambaService) CreateConfigStream() (data *[]byte, err error) {
-	config, err := self._JSONFromDatabase()
+	config, err := self.jSONFromDatabase()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -109,7 +109,7 @@ func (self *SambaService) CreateConfigStream() (data *[]byte, err error) {
 	return &datar, errors.WithStack(err)
 }
 
-func (self *SambaService) _JSONFromDatabase() (tconfig config.Config, err error) {
+func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err error) {
 	var conv converter.ConfigToDbomConverterImpl
 
 	properties, err := self.prop_repo.All(true)
@@ -126,6 +126,9 @@ func (self *SambaService) _JSONFromDatabase() (tconfig config.Config, err error)
 	}
 
 	tconfig = config.Config{}
+	// set default values
+	tconfig.LocalMaster = true
+	// end
 	err = conv.DbomObjectsToConfig(properties, users, *shares, &tconfig)
 	if err != nil {
 		return tconfig, errors.WithStack(err)
