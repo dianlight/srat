@@ -874,6 +874,7 @@ export type Settings = {
   compatibility_mode?: boolean;
   hostname?: string;
   interfaces?: string[];
+  local_master?: boolean;
   log_level?: string;
   mountoptions?: string[] | null;
   multi_channel?: boolean;

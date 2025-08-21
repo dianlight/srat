@@ -13,23 +13,23 @@ import (
 )
 
 type Share struct {
-	Name        string   `json:"name,omitempty"`
-	Path        string   `json:"path"`
-	FS          string   `json:"fs"`
-	Disabled    bool     `json:"disabled,omitempty"`
-	Users       []string `json:"users,omitempty"`
-	RoUsers     []string `json:"ro_users,omitempty"`
-	TimeMachine bool     `json:"timemachine,omitempty"`
-		RecycleBin  *bool        `json:"recycle_bin_enabled,omitempty"`
-	GuestOk     *bool        `json:"guest_ok,omitempty"`
-	TimeMachineMaxSize *string `json:"timemachine_max_size,omitempty"`
-	Usage       string   `json:"usage,omitempty"`
-	VetoFiles   []string `json:"veto_files,omitempty"`
+	Name               string   `json:"name,omitempty"`
+	Path               string   `json:"path"`
+	FS                 string   `json:"fs"`
+	Disabled           bool     `json:"disabled,omitempty"`
+	Users              []string `json:"users,omitempty"`
+	RoUsers            []string `json:"ro_users,omitempty"`
+	TimeMachine        bool     `json:"timemachine,omitempty"`
+	RecycleBin         *bool    `json:"recycle_bin_enabled,omitempty"`
+	GuestOk            *bool    `json:"guest_ok,omitempty"`
+	TimeMachineMaxSize *string  `json:"timemachine_max_size,omitempty"`
+	Usage              string   `json:"usage,omitempty"`
+	VetoFiles          []string `json:"veto_files,omitempty"`
 }
 
 type Shares map[string]Share
 
-const CURRENT_CONFIG_VERSION = 4
+const CURRENT_CONFIG_VERSION = 5
 
 type Config struct {
 	CurrentFile       string
@@ -37,6 +37,7 @@ type Config struct {
 	Hostname          string `json:"hostname,omitempty"`
 	// Options
 	Workgroup        string   `json:"workgroup"`
+	LocalMaster      bool     `json:"local_master" default:"true"`
 	Username         string   `json:"username"`
 	Password         string   `json:"password"`
 	Automount        bool     `json:"automount"`
@@ -236,6 +237,15 @@ func (in *Config) MigrateConfig() error {
 		}
 	}
 
+	// From version 4 to version 5 - Add local master
+	if in.ConfigSpecVersion == 4 {
+		slog.Debug("Migrating config from version 4 to version 5")
+		in.ConfigSpecVersion = 5
+		// Set default local master to false
+		if !in.LocalMaster {
+			in.LocalMaster = true
+		}
+	}
 	if in.ConfigSpecVersion != CURRENT_CONFIG_VERSION {
 		return fmt.Errorf("unsupported config version: %d (expected %d)", in.ConfigSpecVersion, CURRENT_CONFIG_VERSION)
 	}

@@ -121,6 +121,10 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			Key:   "WSDD",
 			Value: "none",
 		},
+		"LocalMaster": dbom.Property{
+			Key:   "LocalMaster",
+			Value: suite.config.LocalMaster,
+		},
 	}, nil)
 
 }

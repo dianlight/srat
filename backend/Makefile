@@ -52,7 +52,8 @@ clean: clean_examples
 
 .PHONY: test
 test: $(ALL_SRCS)
-	cd $(SRC_DIRS);GOMAXPROCS=1 go tool gotest -failfast -coverpkg=./... ./...
+	#cd $(SRC_DIRS);GOMAXPROCS=1 go tool gotest -failfast -coverpkg=./... ./...
+	go -C $(SRC_DIRS) tool gotest -failfast -coverpkg=./... ./...
 
 .PHONY: test_ci
 test_ci: $(ALL_SRCS)

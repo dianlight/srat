@@ -11,6 +11,7 @@ import {
 	AutocompleteElement,
 	CheckboxElement,
 	Controller,
+	SwitchElement,
 	TextFieldElement,
 	useForm,
 } from "react-hook-form-mui";
@@ -116,12 +117,6 @@ export function Settings() {
 
 	const bindAllWatch = watch("bind_all_interfaces");
 
-	/*
-	const debouncedCommit = debounce((data: Settings) => {
-		//console.log("Committing")
-		handleCommit(data);
-	}, 500, { leading: true });
-	*/
 
 	function handleCommit(data: Settings) {
 		console.log(data);
@@ -187,27 +182,6 @@ export function Settings() {
 		};
 	}, []);
 
-	/*
-	useEffect(() => {
-		// make sure to unsubscribe;
-		const callback = subscribe({
-			formState: {
-				isDirty: true,
-			},
-			callback: ({ values }) => {
-				//console.log(values);
-				//console.log(formState.isDirty, formState.isSubmitted, formState.isSubmitting)
-				handleSubmit(debouncedCommit)()
-			}
-		})
-
-		return () => callback();
-
-		// You can also just return the subscribe
-		// return subscribe();
-	}, [subscribe, handleSubmit])
-	*/
-
 	return (
 		<InView>
 			<br />
@@ -230,6 +204,7 @@ export function Settings() {
 					id="settingsform"
 					onSubmit={handleSubmit(handleCommit)}
 					noValidate
+					autoComplete="off"
 				>
 					<Grid container spacing={2}>
 						<Grid
@@ -242,6 +217,8 @@ export function Settings() {
 								autocompleteProps={{
 									size: "small",
 									disabled: read_only || process.env.NODE_ENV === "production",
+									contentEditable: false, // Prevent manual input in production
+									disableClearable: true
 								}}
 								options={(updateChannels as string[]) || []}
 								control={control}
@@ -251,10 +228,17 @@ export function Settings() {
 							<AutocompleteElement
 								label="Telemetry Mode"
 								name="telemetry_mode"
+								required
 								loading={isTelemetryLoading}
 								autocompleteProps={{
 									size: "small",
 									disabled: read_only || isInternetLoading || !internetConnection,
+									contentEditable: false, // Prevent manual input in production
+									disableClearable: true,
+									autoComplete: false,
+								}}
+								textFieldProps={{
+									autoComplete: "off",
 								}}
 								options={
 									(telemetryModes as string[])?.filter(mode => mode !== Telemetry_mode.Ask) || []
@@ -318,6 +302,56 @@ export function Settings() {
 								}}
 							/>
 						</Grid>
+						<Grid size={{ xs: 12, md: 2 }}>
+							<Tooltip
+								title={
+									<>
+										<Typography variant="h6" component="div">
+											Enable Local Master
+										</Typography>
+										<Typography variant="body2">
+											This option allows nmbd(8) to try and become a local master
+											browser on a subnet. If set to no then nmbd will not
+											attempt to become a local master browser on a subnet and
+											will also lose in all browsing elections. By default this
+											value is set to yes. Setting this value to yes doesn't
+											mean that Samba will become the local master browser on a
+											subnet, just that nmbd will participate in elections for
+											local master browser.
+										</Typography>
+										<Typography variant="body2">
+											Setting this value to no will cause nmbd never to become a
+											local master browser.
+										</Typography>
+									</>
+								}
+							>
+								<SwitchElement
+									switchProps={{
+										"aria-label": "Local Master",
+										size: "small",
+									}}
+									sx={{ display: "flex" }}
+									name="local_master"
+									label="Local Master"
+									control={control}
+									disabled={read_only}
+								/>
+							</Tooltip>
+						</Grid>
+						<Grid size={{ xs: 12, md: 2 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step7`}>
+							<SwitchElement
+								switchProps={{
+									'aria-label': 'Compatibility Mode',
+									size: "small",
+								}}
+								id="compatibility_mode"
+								label="Compatibility Mode"
+								name="compatibility_mode"
+								control={control}
+								disabled={read_only}
+							/>
+						</Grid>
 						<Grid size={{ xs: 12, md: 4 }}>
 							<TextFieldElement
 								size="small"
@@ -341,7 +375,7 @@ export function Settings() {
 								disabled={read_only}
 							/>
 						</Grid>
-						<Grid size={{ xs: 12, md: 8 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step5`}>
+						<Grid size={{ xs: 12, md: 12 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step5`}>
 							<Controller
 								name="allow_hosts"
 								control={control}
@@ -446,25 +480,45 @@ export function Settings() {
 								)}
 							/>
 						</Grid>
-						<Grid size={{ xs: 12, md: 4 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step7`}>
-							<CheckboxElement
-								size="small"
-								id="compatibility_mode"
-								label="Compatibility Mode"
-								name="compatibility_mode"
-								control={control}
-								disabled={read_only}
-							/>
-							<CheckboxElement
-								size="small"
-								id="multi_channel"
-								label="Multi Channel Mode"
-								name="multi_channel"
-								control={control}
-								disabled={read_only}
-							/>
+						<Grid size={{ xs: 12, md: 2 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step7`}>
+							<Tooltip
+								title={
+									<>
+										<Typography variant="h6" component="div">
+											Enable Multi Channel Mode
+										</Typography>
+										<Typography variant="body2">
+											This boolean parameter controls whether smbd(8) will support
+											SMB3 multi-channel.
+										</Typography>
+									</>
+								}
+							>
+								<SwitchElement
+									switchProps={{
+										"aria-label": "Multi Channel Mode",
+										size: "small",
+									}}
+									id="multi_channel"
+									label="Multi Channel Mode"
+									name="multi_channel"
+									control={control}
+									disabled={read_only}
+								/>
+							</Tooltip>
 						</Grid>
-						<Grid size={{ xs: 12, md: 8 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step8`}>
+						<Grid size={{ xs: 12, md: 4 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step8`}>
+							<SwitchElement
+								switchProps={{
+									'aria-label': 'Bind All Interfaces',
+									size: "small",
+								}}
+								id="bind_all_interfaces"
+								label="Bind All Interfaces"
+								name="bind_all_interfaces"
+								control={control}
+								disabled={read_only}
+							/>
 							<AutocompleteElement
 								multiple
 								label="Interfaces"
@@ -480,16 +534,6 @@ export function Settings() {
 									size: "small",
 									disabled: bindAllWatch || read_only,
 								}}
-							/>
-						</Grid>
-						<Grid size={{ xs: 12, md: 4 }}>
-							<CheckboxElement
-								size="small"
-								id="bind_all_interfaces"
-								label="Bind All Interfaces"
-								name="bind_all_interfaces"
-								control={control}
-								disabled={read_only}
 							/>
 						</Grid>
 					</Grid>

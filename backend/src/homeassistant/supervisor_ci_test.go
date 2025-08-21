@@ -3,7 +3,6 @@ package homeassistant_test
 import (
 	"context"
 	"log"
-	"log/slog"
 	"os"
 	"testing"
 
@@ -95,6 +94,9 @@ func (suite *SupervisorCITestSuite) TestCoreInfo() {
 	suite.Require().NoError(err)
 	suite.Require().NotNil(resp.Body)
 	suite.T().Log(string(resp.Body[:]))
+	if resp.StatusCode() == 403 {
+		suite.T().SkipNow()
+	}
 	suite.Require().Equal(200, resp.StatusCode(), "Expected status code 200 but got %d body %s", resp.StatusCode(), resp.Status())
 	suite.Require().NotNil(resp.JSON200, "Response body is %v", resp.Body)
 	suite.Require().NotNil(resp.JSON200.Data.Version, "Response object is %v", resp.JSON200)
@@ -113,7 +115,7 @@ func (suite *SupervisorCITestSuite) TestCoreApiGetEntityState() {
 		suite.Require().NotNil(resp.JSON200.EntityId)
 		suite.Equal(entityId, *resp.JSON200.EntityId)
 	} else {
-		slog.Warn("Unauthorized access to entity state. Check your permissions.")
+		suite.T().SkipNow()
 	}
 }
 
@@ -121,6 +123,9 @@ func (suite *SupervisorCITestSuite) TestCoreApiGetEntityState() {
 func (suite *SupervisorCITestSuite) TestGetHardware() {
 	resp, err := suite.hardwareClient.GetHardwareInfoWithResponse(suite.ctx)
 	suite.Require().NoError(err)
+	if resp.StatusCode() == 403 {
+		suite.T().SkipNow()
+	}
 	suite.T().Log(string(resp.Body[:]))
 	suite.Require().NotNil(resp.Body)
 	suite.Require().Equal(200, resp.StatusCode(), "Expected status code 200 but got %d body %s", resp.StatusCode(), resp.Status())
@@ -140,6 +145,9 @@ func (suite *SupervisorCITestSuite) TestGetMounts() {
 	suite.Require().NoError(err)
 	suite.Require().NotNil(resp.Body)
 	suite.T().Log(string(resp.Body[:]))
+	if resp.StatusCode() == 403 {
+		suite.T().SkipNow()
+	}
 	suite.Require().Equal(200, resp.StatusCode(), "Expected status code 200 but got %d body %s", resp.StatusCode(), resp.Status())
 	suite.Require().NotNil(resp.JSON200)
 	suite.NotEmpty(*resp.JSON200)
@@ -151,6 +159,9 @@ func (suite *SupervisorCITestSuite) TestGetIngress() {
 	suite.Require().NoError(err)
 	suite.Require().NotNil(resp.Body)
 	suite.T().Log(string(resp.Body[:]))
+	if resp.StatusCode() == 403 {
+		suite.T().SkipNow()
+	}
 	suite.Require().Equal(200, resp.StatusCode(), "Expected status code 200 but got %d body %s", resp.StatusCode(), resp.Status())
 	suite.Require().NotNil(resp.JSON200)
 	suite.Require().NotNil(resp.JSON200.Data)
