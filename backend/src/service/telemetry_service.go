@@ -13,6 +13,7 @@ import (
 	oerrors "github.com/pkg/errors"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
+	"golang.org/x/time/rate"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
@@ -50,6 +51,9 @@ type TelemetryService struct {
 	// tlog callback management
 	tlogErrorCallbackID string
 	tlogFatalCallbackID string
+
+	// Limiter
+	errorSessionLimiter *rate.Sometimes
 }
 
 // NewTelemetryService creates a new telemetry service instance
@@ -64,9 +68,11 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 
 	// Determine environment: use build-time setting or auto-detect from version
 	environment := config.RollbarEnvironment
+	errorSessionLimiter := rate.Sometimes{First: 10}
 	if environment == "" {
 		if config.Version == "0.0.0-dev.0" || strings.Contains(config.Version, "-dev.") {
 			environment = "development"
+			errorSessionLimiter = rate.Sometimes{First: 2}
 		} else {
 			environment = "production"
 		}
@@ -88,13 +94,14 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 	}
 
 	tm := &TelemetryService{
-		ctx:         Ctx,
-		prop:        prop,
-		mode:        mconfig.TelemetryMode,
-		accessToken: accessToken,
-		environment: environment,
-		version:     config.Version,
-		haroot:      haroot,
+		ctx:                 Ctx,
+		prop:                prop,
+		mode:                mconfig.TelemetryMode,
+		accessToken:         accessToken,
+		environment:         environment,
+		version:             config.Version,
+		haroot:              haroot,
+		errorSessionLimiter: &errorSessionLimiter,
 	}
 
 	lc.Append(fx.Hook{
@@ -239,8 +246,10 @@ func (ts *TelemetryService) ReportError(interfaces ...interface{}) error {
 
 	// Report errors for both All and Errors modes
 	if ts.mode == dto.TelemetryModes.TELEMETRYMODEALL || ts.mode == dto.TelemetryModes.TELEMETRYMODEERRORS {
-		rollbar.Error(interfaces...)
-		slog.Debug("Error reported to Rollbar", "error", interfaces)
+		ts.errorSessionLimiter.Do(func() {
+			rollbar.Error(interfaces...)
+			slog.Debug("Error reported to Rollbar", "error", interfaces)
+		})
 	}
 
 	return nil
