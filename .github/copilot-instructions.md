@@ -12,8 +12,8 @@ Always manage git hooks via `pre-commit`. Do not place scripts in `.git/hooks` o
 2. **Hook Type**: Prefer `local` hooks with `language: system` that delegate to existing `Makefile` targets (e.g., `make -C backend gosec`).
 3. **Configuration**: Ensure `stages` are set appropriately (e.g., `commit`, `push`) and `pass_filenames` is `false` for repo-wide checks.
 4. **Installation**: Install hooks locally with:
-    - `pre-commit install` (for default hook types)
-    - `pre-commit install --hook-type pre-push` (for push-stage hooks)
+   - `pre-commit install` (for default hook types)
+   - `pre-commit install --hook-type pre-push` (for push-stage hooks)
 
 *Note: The project enforces a `gosec` scan on commit for backend Go changes and a quick Go build+test on push.*
 
@@ -78,18 +78,18 @@ cd backend && make build
 
 1. **Package Naming**: Use descriptive, lowercase package names without underscores.
 2. **Project Structure**: Adhere to the established structure:
-    - `api/`: HTTP handlers and API endpoints
-    - `service/`: Business logic and service layer
-    - `repository/`: Data access layer
-    - `dto/`: Data Transfer Objects
-    - `dbom/`: Database Object Models
-    - `converter/`: Object conversion utilities
-    - `config/`: Configuration management
-    - `internal/`: Internal utilities and app setup
+   - `api/`: HTTP handlers and API endpoints
+   - `service/`: Business logic and service layer
+   - `repository/`: Data access layer
+   - `dto/`: Data Transfer Objects
+   - `dbom/`: Database Object Models
+   - `converter/`: Object conversion utilities
+   - `config/`: Configuration management
+   - `internal/`: Internal utilities and app setup
 3. **Import Organization**: Group imports in this order:
-    1. Standard library
-    2. External libraries
-    3. Internal project imports (`github.com/dianlight/srat/...`)
+   1. Standard library
+   2. External libraries
+   3. Internal project imports (`github.com/dianlight/srat/...`)
 
 ### Code Quality & Naming Conventions
 
@@ -300,8 +300,8 @@ When adding or changing features, update the corresponding documentation.
 ### Build Conventions
 
 1. **Binary Structure**: Follow the established output structure.
-    - `backend/dist/${ARCH}/`: Production builds (stripped, optimized).
-    - `backend/tmp/`: Development/test builds (with debug symbols).
+   - `backend/dist/${ARCH}/`: Production builds (stripped, optimized).
+   - `backend/tmp/`: Development/test builds (with debug symbols).
 2. **Binary Naming**: Use the convention `srat-server`, `srat-cli`, etc.
 3. **Makefile**: Use the `Makefile` targets for building. When adding a new binary, update the `Makefile` accordingly.
 4. **Multi-architecture**: Ensure builds work for `amd64` (x86_64), `armv7`, and `arm64` (aarch64).

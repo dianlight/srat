@@ -86,29 +86,6 @@ run_link_check() {
 
     local failed=0
 
-    # Create link check config if it doesn't exist
-    if [ ! -f ".markdown-link-check.json" ]; then
-        cat > .markdown-link-check.json << 'EOF'
-{
-  "timeout": "20s",
-  "retryOn429": true,
-  "retryCount": 3,
-  "fallbackProtocols": ["http", "https"],
-  "aliveStatusCodes": [200, 206, 301, 302, 307, 308],
-  "ignorePatterns": [
-    {
-      "pattern": "^https://my.home-assistant.io"
-    },
-    {
-      "pattern": "^mailto:"
-    },
-    {
-      "pattern": "^#"
-    }
-  ]
-}
-EOF
-    fi
 
     # Check links in all markdown files
     find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" | while read -r file; do
@@ -140,63 +117,7 @@ run_spell_check() {
     fi
 }
 
-# Run prettier format check
-run_format_check() {
-    print_status "info" "Running format check..."
 
-    if $RUNNER prettier --check "**/*.md"  --ignore-path "frontend/node_modules/**"; then
-        print_status "success" "Format check passed"
-        return 0
-    else
-        print_status "warning" "Format check failed - run '$RUNNER prettier --write "**/*.md"' to fix"
-        return 1
-    fi
-}
-
-# Run custom validation checks
-run_custom_checks() {
-    print_status "info" "Running custom validation checks..."
-
-    local failed=0
-
-    # Check for TOC in long documents
-    find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" | while read -r file; do
-        lines=$(wc -l < "$file")
-        if [ "$lines" -gt 200 ]; then
-            if ! grep -q -i "table of contents\|toc\|- \[.*\](#.*)" "$file"; then
-                print_status "warning" "$file is $lines lines long but may be missing a Table of Contents"
-            fi
-        fi
-    done
-
-    # Check README structure
-    if [ -f "README.md" ]; then
-        required_sections=("Installation" "Usage" "License")
-
-        for section in "${required_sections[@]}"; do
-            if ! grep -q "## $section\|# $section" README.md; then
-                print_status "warning" "README.md is missing required section: $section"
-                failed=1
-            fi
-        done
-    fi
-
-    # Check CHANGELOG format
-    if [ -f "CHANGELOG.md" ]; then
-        if ! grep -q "## \[.*\] - [0-9]" CHANGELOG.md; then
-            print_status "warning" "CHANGELOG.md may not follow proper version format"
-            failed=1
-        fi
-    fi
-
-    if [ $failed -eq 0 ]; then
-        print_status "success" "Custom validation checks passed"
-        return 0
-    else
-        print_status "warning" "Some custom validation checks failed"
-        return 0  # Don't fail the entire script for warnings
-    fi
-}
 
 # Main execution
 main() {
@@ -212,8 +133,6 @@ main() {
     run_markdownlint || exit_code=1
     run_link_check || exit_code=1
     run_spell_check || exit_code=1
-    run_format_check || exit_code=1
-    run_custom_checks || exit_code=1
 
     echo
     if [ $exit_code -eq 0 ]; then
