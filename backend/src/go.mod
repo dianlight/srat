@@ -129,7 +129,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
-	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6
+	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sync v0.16.0
@@ -150,9 +150,9 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.3
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250819075545-bb1f7c35fdc2
+	github.com/snapcore/snapd v0.0.0-20250822125716-ed3861c599b1
 	github.com/thoas/go-funk v0.9.3
-	github.com/u-root/u-root v0.14.0
+	github.com/u-root/u-root v0.15.0
 	github.com/xorcare/pointer v1.2.2
 	gitlab.com/tozd/go/errors v0.10.0
 	go.uber.org/fx v1.24.0
@@ -171,5 +171,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
