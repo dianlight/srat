@@ -102,7 +102,7 @@ class SSESource implements Source {
 			}
 		};
 		eventSource.onopen = () => {
-			console.log("SSE connection open");
+			console.debug("SSE connection open");
 			if (this.resetTimer) clearTimeout(this.resetTimer);
 			this.faultCount = 0;
 			this.listeners.forEach((values, key) =>

@@ -11,8 +11,17 @@ type IssueRepository struct {
 	db *gorm.DB
 }
 
+// IssueRepositoryInterface defines the methods for the issue repository.
+type IssueRepositoryInterface interface {
+	Create(issue *dbom.Issue) error
+	Update(issue *dbom.Issue) error
+	Delete(id uint) error
+	FindOpen() ([]*dbom.Issue, error)
+	FindByTitle(title string) (*dbom.Issue, error)
+}
+
 // NewIssueRepository creates a new issue repository.
-func NewIssueRepository(db *gorm.DB) *IssueRepository {
+func NewIssueRepository(db *gorm.DB) IssueRepositoryInterface {
 	return &IssueRepository{db: db}
 }
 
@@ -36,6 +45,16 @@ func (r *IssueRepository) FindOpen() ([]*dbom.Issue, error) {
 	var issues []*dbom.Issue
 	err := r.db.Find(&issues).Error
 	return issues, err
+}
+
+// FindByTitle finds an issue by title.
+func (r *IssueRepository) FindByTitle(title string) (*dbom.Issue, error) {
+	var issue dbom.Issue
+	err := r.db.Where("title = ?", title).First(&issue).Error
+	if err != nil {
+		return nil, err
+	}
+	return &issue, nil
 }
 
 // Fx provides the issue repository as a dependency.

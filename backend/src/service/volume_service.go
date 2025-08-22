@@ -35,7 +35,7 @@ import (
 type VolumeServiceInterface interface {
 	MountVolume(md *dto.MountPointData) errors.E
 	UnmountVolume(id string, force bool, lazy bool) errors.E
-	GetVolumesData() (*[]dto.Disk, error)
+	GetVolumesData() (*[]dto.Disk, errors.E)
 	PathHashToPath(pathhash string) (string, errors.E)
 	EjectDisk(diskID string) error
 	UpdateMountPointSettings(path string, settingsUpdate dto.MountPointData) (*dto.MountPointData, errors.E)
@@ -57,7 +57,7 @@ type VolumeService struct {
 	lsblk             lsblk.LSBLKInterpreterInterface
 	fs_service        FilesystemServiceInterface
 	shareService      ShareServiceInterface
-	issueRepository   *repository.IssueRepository
+	issueService      IssueServiceInterface
 	staticConfig      *dto.ContextState
 	sfGroup           singleflight.Group
 	haService         HomeAssistantServiceInterface
@@ -72,7 +72,7 @@ type VolumeServiceProps struct {
 	LsblkInterpreter  lsblk.LSBLKInterpreterInterface
 	FilesystemService FilesystemServiceInterface
 	ShareService      ShareServiceInterface
-	IssueRepository   *repository.IssueRepository
+	IssueService      IssueServiceInterface
 	StaticConfig      *dto.ContextState
 	HAService         HomeAssistantServiceInterface `optional:"true"`
 }
@@ -91,7 +91,7 @@ func NewVolumeService(
 		fs_service:        in.FilesystemService,
 		staticConfig:      in.StaticConfig,
 		shareService:      in.ShareService,
-		issueRepository:   in.IssueRepository,
+		issueService:      in.IssueService,
 		haService:         in.HAService,
 	}
 	lc.Append(fx.Hook{
@@ -507,9 +507,9 @@ func (self *VolumeService) udevEventHandler() {
 					}
 
 					// Check all shares
-					mountPoints, err := self.mount_repo.All()
-					if err != nil {
-						slog.Error("Failed to get mount points from repository", "err", err)
+					mountPoints, errE := self.mount_repo.All()
+					if errE != nil {
+						slog.Warn("Failed to get mount points from repository", "err", errE)
 						continue
 					}
 
@@ -531,14 +531,14 @@ func (self *VolumeService) udevEventHandler() {
 
 						if wasMounted && !isMounted {
 							// Create an issue for unmounted volume
-							issue := &dbom.Issue{
+							issue := &dto.Issue{
 								Title:       fmt.Sprintf("Volume unmounted: %s", mp.Path),
 								Description: fmt.Sprintf("The volume at path %s was unexpectedly unmounted. This may affect shared resources.", mp.Path),
 								DetailLink:  fmt.Sprintf("/storage/volumes?path=%s", mp.Path),
 							}
 
 							// Save the issue using issue repository
-							if err := self.issueRepository.Create(issue); err != nil {
+							if err := self.issueService.Create(issue); err != nil {
 								slog.Error("Failed to create issue for unmounted volume", "path", mp.Path, "err", err)
 							}
 
@@ -565,7 +565,7 @@ func (self *VolumeService) udevEventHandler() {
 	}
 }
 
-func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
+func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 	slog.Debug("Requesting GetVolumesData via singleflight...")
 
 	const sfKey = "GetVolumesData"
@@ -817,8 +817,8 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, error) {
 	})
 
 	if err != nil {
-		slog.Error("Singleflight execution of GetVolumesData failed", "err", err, "shared", shared)
-		return nil, err
+		//slog.Error("Singleflight execution of GetVolumesData failed", "err", err, "shared", shared)
+		return nil, errors.WithStack(err)
 	}
 
 	slog.Debug("Singleflight execution of GetVolumesData successful", "shared", shared)
@@ -890,7 +890,7 @@ func (self *VolumeService) HandleRemovedDisks(currentDisks *[]dto.Disk) error {
 			availableDevices[strings.TrimPrefix(mountPoint.Device, "/dev/")]
 
 		if !deviceExists {
-			slog.Info("Detected removed disk, performing cleanup",
+			slog.Debug("Detected removed disk, performing cleanup",
 				"device", mountPoint.Device,
 				"mount_path", mountPoint.Path)
 
@@ -906,7 +906,7 @@ func (self *VolumeService) HandleRemovedDisks(currentDisks *[]dto.Disk) error {
 
 			// Disable any shares for this mount point
 			if len(mountPoint.Shares) > 0 {
-				slog.Info("Disabling shares for removed disk",
+				slog.Debug("Disabling shares for removed disk",
 					"device", mountPoint.Device,
 					"mount_path", mountPoint.Path,
 					"share_count", len(mountPoint.Shares))
@@ -922,7 +922,7 @@ func (self *VolumeService) HandleRemovedDisks(currentDisks *[]dto.Disk) error {
 
 			// If the path is still mounted, perform a lazy unmount
 			if isMounted {
-				slog.Info("Performing lazy unmount for removed disk",
+				slog.Debug("Performing lazy unmount for removed disk",
 					"device", mountPoint.Device,
 					"mount_path", mountPoint.Path)
 
@@ -934,7 +934,7 @@ func (self *VolumeService) HandleRemovedDisks(currentDisks *[]dto.Disk) error {
 						"err", unmountErr)
 
 					// Try force unmount as fallback
-					slog.Info("Attempting force unmount as fallback",
+					slog.Debug("Attempting force unmount as fallback",
 						"device", mountPoint.Device,
 						"mount_path", mountPoint.Path)
 
@@ -964,13 +964,13 @@ func (self *VolumeService) HandleRemovedDisks(currentDisks *[]dto.Disk) error {
 			}
 
 			// Create an issue to notify about the removed disk
-			issue := &dbom.Issue{
+			issue := &dto.Issue{
 				Title:       fmt.Sprintf("Disk removed: %s", mountPoint.Device),
 				Description: fmt.Sprintf("The disk %s mounted at %s was physically removed from the system. Associated shares have been disabled and the volume has been unmounted.", mountPoint.Device, mountPoint.Path),
 				DetailLink:  fmt.Sprintf("/storage/volumes?device=%s", mountPoint.Device),
 			}
 
-			if createIssueErr := self.issueRepository.Create(issue); createIssueErr != nil {
+			if createIssueErr := self.issueService.Create(issue); createIssueErr != nil {
 				slog.Error("Failed to create issue for removed disk",
 					"device", mountPoint.Device,
 					"path", mountPoint.Path,

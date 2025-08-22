@@ -10,4 +10,5 @@ type Issue struct {
 	Description    string    `json:"description"`
 	DetailLink     string    `json:"detailLink,omitempty"`
 	ResolutionLink string    `json:"resolutionLink,omitempty"`
+	Repeating      uint      `json:"repeating"`
 }

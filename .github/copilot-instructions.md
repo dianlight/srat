@@ -207,7 +207,7 @@ Go tests for API handlers must follow these patterns, based on `testify/suite`.
 
 ### Test Suite Structure
 
-- **Package**: `package api_test`
+- **Package**: `{package}_test`
 - **Suite Struct**: Name it `{HandlerName}HandlerSuite`. It must embed `suite.Suite` and contain fields for the handler, mock services, `fxtest.App`, and a `context`.
 
 ### SetupTest / TearDownTest Methods

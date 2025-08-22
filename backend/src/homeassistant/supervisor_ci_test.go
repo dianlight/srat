@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/homeassistant/core"
@@ -91,6 +92,9 @@ func (suite *SupervisorCITestSuite) SetupTest() {
 // TestCoreInfo verifies that we can retrieve core info.
 func (suite *SupervisorCITestSuite) TestCoreInfo() {
 	resp, err := suite.coreClient.GetCoreInfoWithResponse(suite.ctx)
+	if err != nil && strings.Contains(err.Error(), "connection refused") {
+		suite.T().Skip("Skipping TestGetIngressPanels because SUPERVISOR_URL not work")
+	}
 	suite.Require().NoError(err)
 	suite.Require().NotNil(resp.Body)
 	suite.T().Log(string(resp.Body[:]))
@@ -106,6 +110,9 @@ func (suite *SupervisorCITestSuite) TestCoreInfo() {
 func (suite *SupervisorCITestSuite) TestCoreApiGetEntityState() {
 	entityId := "sun.sun" // Example entity ID, adjust as needed
 	resp, err := suite.coreAPIClient.GetEntityStateWithResponse(suite.ctx, entityId)
+	if err != nil && strings.Contains(err.Error(), "connection refused") {
+		suite.T().Skip("Skipping TestGetIngressPanels because SUPERVISOR_URL not work")
+	}
 	suite.Require().NoError(err)
 	suite.Require().NotNil(resp.Body)
 	suite.T().Log(string(resp.Body[:]))
@@ -122,6 +129,9 @@ func (suite *SupervisorCITestSuite) TestCoreApiGetEntityState() {
 // TestGetHardware verifies that we can get hardware info
 func (suite *SupervisorCITestSuite) TestGetHardware() {
 	resp, err := suite.hardwareClient.GetHardwareInfoWithResponse(suite.ctx)
+	if err != nil && strings.Contains(err.Error(), "connection refused") {
+		suite.T().Skip("Skipping TestGetIngressPanels because SUPERVISOR_URL not work")
+	}
 	suite.Require().NoError(err)
 	if resp.StatusCode() == 403 {
 		suite.T().SkipNow()
@@ -142,6 +152,9 @@ func (suite *SupervisorCITestSuite) TestGetHardware() {
 // TestGetMounts verifies that we can get mounts info
 func (suite *SupervisorCITestSuite) TestGetMounts() {
 	resp, err := suite.mountClient.GetMountsWithResponse(suite.ctx)
+	if err != nil && strings.Contains(err.Error(), "connection refused") {
+		suite.T().Skip("Skipping TestGetIngressPanels because SUPERVISOR_URL not work")
+	}
 	suite.Require().NoError(err)
 	suite.Require().NotNil(resp.Body)
 	suite.T().Log(string(resp.Body[:]))
@@ -156,6 +169,9 @@ func (suite *SupervisorCITestSuite) TestGetMounts() {
 // TestGetIngress verifies that we can get ingress info
 func (suite *SupervisorCITestSuite) TestGetIngress() {
 	resp, err := suite.ingressClient.GetIngressPanelsWithResponse(suite.ctx)
+	if err != nil && strings.Contains(err.Error(), "connection refused") {
+		suite.T().Skip("Skipping TestGetIngressPanels because SUPERVISOR_URL not work")
+	}
 	suite.Require().NoError(err)
 	suite.Require().NotNil(resp.Body)
 	suite.T().Log(string(resp.Body[:]))

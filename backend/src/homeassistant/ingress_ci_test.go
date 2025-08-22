@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/homeassistant/ingress"
@@ -35,8 +36,7 @@ func TestIngressCITestSuite(t *testing.T) {
 
 	// Skip test if Supervisor URL or Token are not set or contain placeholder values
 	if supervisorURL == "" || supervisorToken == "" ||
-		supervisorToken == "<put me here!>" ||
-		supervisorURL == "http://192.168.0.68/" {
+		supervisorToken == "<put me here!>" {
 		t.Skip("Skipping Ingress integration tests because SUPERVISOR_URL or SUPERVISOR_TOKEN is not properly configured for Home Assistant")
 	}
 
@@ -67,6 +67,9 @@ func (suite *IngressCITestSuite) SetupTest() {
 // TestGetIngressPanels verifies that we can retrieve the list of ingress panels.
 func (suite *IngressCITestSuite) TestGetIngressPanels() {
 	resp, err := suite.ingressClient.GetIngressPanelsWithResponse(suite.ctx)
+	if err != nil && strings.Contains(err.Error(), "connection refused") {
+		suite.T().Skip("Skipping TestGetIngressPanels because ${SUPERVISOR_URL} not working")
+	}
 	suite.Require().NoError(err, "Error getting ingress panels")
 	suite.Require().NotNil(resp.Body, "Get panels response body is nil")
 	suite.T().Logf("Get Panels Response: Status=%d, Body=%s", resp.StatusCode(), string(resp.Body))

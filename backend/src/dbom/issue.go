@@ -12,8 +12,9 @@ type Issue struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
-	Title          string         `gorm:"size:255"`
+	Title          string         `gorm:"size:255,uniqueIndex"`
 	Description    string
 	DetailLink     string `gorm:"size:2048"`
 	ResolutionLink string `gorm:"size:2048"`
+	Repeating      uint   `gorm:"default:1"`
 }

@@ -86,7 +86,7 @@ func (self *diskStatsService) run() error {
 	}
 }
 
-func (s *diskStatsService) updateDiskStats() error {
+func (s *diskStatsService) updateDiskStats() errors.E {
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 
@@ -117,7 +117,7 @@ func (s *diskStatsService) updateDiskStats() error {
 		stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.Device)
 
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 		if s.lastStats[*disk.Device] != nil {
 

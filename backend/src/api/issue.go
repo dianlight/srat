@@ -13,11 +13,11 @@ import (
 
 // IssueAPI handles API requests for issues.
 type IssueAPI struct {
-	service *service.IssueService
+	service service.IssueServiceInterface
 }
 
 // NewIssueAPI creates a new issue API.
-func NewIssueAPI(service *service.IssueService) *IssueAPI {
+func NewIssueAPI(service service.IssueServiceInterface) *IssueAPI {
 	return &IssueAPI{service: service}
 }
 
@@ -84,12 +84,11 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 		Path:        "/issues",
 		Tags:        []string{"Issues"},
 	}, func(ctx context.Context, input *CreateIssueInput) (*CreateIssueOutput, error) {
-		newIssue, err := a.service.Create(&input.Body)
-		if err != nil {
+		if err := a.service.Create(&input.Body); err != nil {
 			tlog.Error("failed to create issue", err)
 			return nil, huma.Error500InternalServerError("failed to create issue", err)
 		}
-		return &CreateIssueOutput{Body: newIssue}, nil
+		return &CreateIssueOutput{Body: &input.Body}, nil
 	})
 
 	huma.Register(api, huma.Operation{
