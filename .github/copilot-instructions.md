@@ -7,6 +7,7 @@ This file highlights the must-know, discoverable rules and workflows for product
 - Pre-commit and hooks: repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
 
 Key patterns and where to find them
+
 - API handlers: `backend/src/api/*` — handlers use constructor `NewXHandler` and `RegisterXHandler(api huma.API)`.
 - Services: `backend/src/service/*` — each service has an interface and an implementation wired via FX (`fx.In` param structs).
 - Repositories/DB: `backend/src/repository/*` and `backend/src/dbom/*` — GORM models live in `dbom`, converters in `converter/` and `goverter`-generated files.
@@ -14,29 +15,35 @@ Key patterns and where to find them
 - Logging: `backend/src/tlog` — use `tlog` helpers for structured logs and sensitive-data masking.
 
 Testing and mocks
+
 - Tests use `testify/suite` and `mockio/v2` for mocks. Test packages are named `{pkg}_test` and suites follow `XHandlerSuite` pattern. See `backend/src/api/*.go` and `*_test.go` for examples.
 - HTTP handler tests often use `humatest.New` to create a test API and `autopatch.AutoPatch(api)` for PATCH endpoints.
 
 Dev and quality gates
+
 - Run documentation checks: `make docs-validate` (root). Docs and examples are in `docs/`.
 - Security: `make security` runs `gosec` (backend). CI expects gosec/pass for commits.
 - Formatting: use `gofmt` for Go; frontend uses Biome/biome config (see `biome.json`).
 
 Quick examples
+
 - Start backend dev build: `cd backend && make run` (see `backend/Makefile`).
 - Run backend unit tests: `cd backend && go test ./...`.
 - Build all: `make ALL` (root Makefile).
 
 Integration notes for agents
+
 - Many constructors and handlers are wired via Uber FX — when changing signatures, update providers and `fx.Populate` calls in tests.
 - Converters are generated (`*gen.go`) — if you change DTO/dbom shapes, regenerate converters or update `converter/*` accordingly.
 - Sensitive secrets (Rollbar) are optional and guarded; don't hardcode secrets — use env or config flags the project expects.
 
 Files to open first
+
 - `backend/Makefile`, `backend/src/api/*`, `backend/src/service/*`, `backend/src/dto/error_code.go`, `backend/src/converter/*`.
 - `frontend/src/pages/` and `frontend/src/components/` for UI changes.
 
 If uncertain, run these checks before PR
+
 - `pre-commit run --all-files`
 - `make docs-validate`
 - `make security`
