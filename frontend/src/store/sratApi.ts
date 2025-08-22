@@ -843,6 +843,7 @@ export type Issue = {
   description: string;
   detailLink?: string;
   id: number;
+  repeating: number;
   resolutionLink?: string;
   title: string;
 };
