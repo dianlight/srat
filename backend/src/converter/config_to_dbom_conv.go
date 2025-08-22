@@ -66,7 +66,7 @@ func (c *ConfigToDbomConverterImpl) ConfigToProperties(source config.Config, tar
 	return nil
 }
 
-func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, target *config.Config) error {
+func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, target *config.Config) errors.E {
 	for _, prop := range source {
 		newvalue := reflect.ValueOf(target).Elem().FieldByName(prop.Key)
 		if newvalue.IsValid() {
@@ -101,7 +101,7 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 	return nil
 }
 
-func (c *ConfigToDbomConverterImpl) DbomObjectsToConfig(properties dbom.Properties, users dbom.SambaUsers, shares []dbom.ExportedShare, tconfig *config.Config) (err error) {
+func (c *ConfigToDbomConverterImpl) DbomObjectsToConfig(properties dbom.Properties, users dbom.SambaUsers, shares []dbom.ExportedShare, tconfig *config.Config) (err errors.E) {
 	err = c.PropertiesToConfig(properties, tconfig)
 	if err != nil {
 		return
@@ -112,9 +112,9 @@ func (c *ConfigToDbomConverterImpl) DbomObjectsToConfig(properties dbom.Properti
 			tconfig.Password = user.Password
 		} else {
 			var tuser config.User
-			err = c.SambaUserToUser(user, &tuser)
-			if err != nil {
-				return
+			errS := c.SambaUserToUser(user, &tuser)
+			if errS != nil {
+				return errors.WithStack(errS)
 			}
 			tconfig.OtherUsers = append(tconfig.OtherUsers, tuser)
 		}
@@ -124,9 +124,9 @@ func (c *ConfigToDbomConverterImpl) DbomObjectsToConfig(properties dbom.Properti
 	}
 	for _, share := range shares {
 		var tshare config.Share
-		err = c.ExportedShareToShare(share, &tshare)
-		if err != nil {
-			return
+		errS := c.ExportedShareToShare(share, &tshare)
+		if errS != nil {
+			return errors.WithStack(errS)
 		}
 		tconfig.Shares[share.Name] = tshare
 	}

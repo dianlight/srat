@@ -17,7 +17,7 @@ import (
 
 // NetworkStatsService is a service for collecting network I/O statistics.
 type NetworkStatsService interface {
-	GetNetworkStats() (*dto.NetworkStats, error)
+	GetNetworkStats() (*dto.NetworkStats, errors.E)
 }
 
 type networkStatsService struct {
@@ -181,7 +181,7 @@ func (s *networkStatsService) updateNetworkStats() error {
 }
 
 // GetNetworkStats collects and returns network I/O statistics.
-func (s *networkStatsService) GetNetworkStats() (*dto.NetworkStats, error) {
+func (s *networkStatsService) GetNetworkStats() (*dto.NetworkStats, errors.E) {
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 	if s.currentNetHealth == nil {

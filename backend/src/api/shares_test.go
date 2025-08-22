@@ -176,7 +176,7 @@ func (suite *ShareHandlerSuite) TestCreateShareAlreadyExists() {
 	input := dto.SharedResource{Name: "existing-share"}
 
 	// Configure mock expectations
-	mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(nil, dto.ErrorShareAlreadyExists)
+	mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(nil, errors.WithStack(dto.ErrorShareAlreadyExists))
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())
@@ -287,7 +287,7 @@ func (suite *ShareHandlerSuite) TestGetShareNotFound() {
 	shareName := "nonexistent-share"
 
 	// Configure mock expectations
-	mock.When(suite.mockShareService.GetShare(shareName)).ThenReturn(nil, dto.ErrorShareNotFound)
+	mock.When(suite.mockShareService.GetShare(shareName)).ThenReturn(nil, errors.WithStack(dto.ErrorShareNotFound))
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())
@@ -320,7 +320,7 @@ func (suite *ShareHandlerSuite) TestDeleteShareNotFound() {
 	shareName := "nonexistent-share"
 
 	// Configure mock expectations
-	mock.When(suite.mockShareService.DeleteShare(shareName)).ThenReturn(dto.ErrorShareNotFound)
+	mock.When(suite.mockShareService.DeleteShare(shareName)).ThenReturn(errors.WithStack(dto.ErrorShareNotFound))
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())

@@ -10,6 +10,7 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -114,7 +115,7 @@ func (suite *DirtyDataServiceTestSuite) TestResetDirtyStatus() {
 
 func (suite *DirtyDataServiceTestSuite) TestAddRestartCallback() {
 	var callbackCalled bool
-	callback := func() error {
+	callback := func() errors.E {
 		callbackCalled = true
 		return nil
 	}

@@ -77,9 +77,9 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) UpgradeServiceIn
 				p.updateChannel = &dto.UpdateChannels.NONE
 			} else {
 				p.updateChannel = &dto.UpdateChannel{}
-				err = p.updateChannel.Scan(value)
-				if err != nil {
-					slog.Error("Unable to convert config value", "value", value, "type", fmt.Sprintf("%T", value), "err", err)
+				errS := p.updateChannel.Scan(value)
+				if errS != nil {
+					slog.Warn("Unable to convert config value", "value", value, "type", fmt.Sprintf("%T", value), "err", errS)
 					p.updateChannel = &dto.UpdateChannels.NONE
 				}
 			}
@@ -128,7 +128,7 @@ func (self *UpgradeService) run() error {
 					slog.Error("Error emitting vrsion message", "err", err)
 				}
 			})
-			time.Sleep(time.Second * 10)
+			//time.Sleep(time.Second * 10)
 		}
 	}
 }

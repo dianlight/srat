@@ -265,7 +265,7 @@ func (in *Config) MigrateConfig() error {
 // Returns:
 //   - *Config: A pointer to the loaded and migrated Config struct.
 //   - error: An error if the file couldn't be read or parsed. If successful, this will be nil.
-func (self *Config) LoadConfig(file string) error {
+func (self *Config) LoadConfig(file string) errors.E {
 	err := self.ReadFromFile(file)
 	if err != nil {
 		return errors.WithStack(err)
@@ -274,7 +274,7 @@ func (self *Config) LoadConfig(file string) error {
 	return nil
 }
 
-func (self *Config) LoadConfigBuffer(buffer []byte) error {
+func (self *Config) LoadConfigBuffer(buffer []byte) errors.E {
 	err := self.ReadConfigBuffer(buffer)
 	if err != nil {
 		return errors.WithStack(err)

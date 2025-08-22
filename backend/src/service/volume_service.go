@@ -45,7 +45,7 @@ type VolumeServiceInterface interface {
 	CreateAutomountFailureNotification(mountPath, device string, err errors.E)
 	CreateUnmountedPartitionNotification(mountPath, device string)
 	DismissAutomountNotification(mountPath string, notificationType string)
-	CheckUnmountedAutomountPartitions() error
+	CheckUnmountedAutomountPartitions() errors.E
 }
 
 type VolumeService struct {
@@ -146,9 +146,9 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 	}
 
 	var conv converter.DtoToDbomConverterImpl
-	err = conv.MountPointDataToMountPointPath(*md, dbom_mount_data)
-	if err != nil {
-		return errors.WithStack(err)
+	errS := conv.MountPointDataToMountPointPath(*md, dbom_mount_data)
+	if errS != nil {
+		return errors.WithStack(errS)
 	}
 
 	if dbom_mount_data.Device == "" {
@@ -230,16 +230,16 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 	}
 	// --- End Device Existence Check ---
 
-	ok, err := osutil.IsMounted(dbom_mount_data.Path)
-	if err != nil {
+	ok, errS := osutil.IsMounted(dbom_mount_data.Path)
+	if errS != nil {
 		// Note: IsMounted might fail if the path doesn't exist yet, which is fine before mounting.
 		// Consider if this check needs refinement based on expected state.
 		// For now, we proceed assuming an error here might be ignorable if ok is false.
 		if ok { // Only return error if it claims to be mounted but check failed
-			slog.Error("Error checking if path is mounted", "path", dbom_mount_data.Path, "err", err)
+			//slog.Error("Error checking if path is mounted", "path", dbom_mount_data.Path, "err", errS)
 			return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking mount status", "Path", dbom_mount_data.Path, "Error", err)
 		}
-		slog.Debug("osutil.IsMounted check failed, but path not mounted, proceeding", "path", dbom_mount_data.Path, "err", err)
+		slog.Debug("osutil.IsMounted check failed, but path not mounted, proceeding", "path", dbom_mount_data.Path, "err", errS)
 		ok = false // Ensure ok is false if IsMounted errored
 	}
 
@@ -298,14 +298,14 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 
 	if dbom_mount_data.FSType == "" {
 		// Use TryMount if FSType is not specified
-		mp, err = mount.TryMount(real_device, dbom_mount_data.Path, data, flags, mountFunc)
+		mp, errS = mount.TryMount(real_device, dbom_mount_data.Path, data, flags, mountFunc)
 	} else {
 		// Use Mount if FSType is specified
-		mp, err = mount.Mount(real_device, dbom_mount_data.Path, dbom_mount_data.FSType, data, flags, mountFunc)
+		mp, errS = mount.Mount(real_device, dbom_mount_data.Path, dbom_mount_data.FSType, data, flags, mountFunc)
 	}
 
-	if err != nil {
-		slog.Error("Failed to mount volume", "device", real_device, "fstype", dbom_mount_data.FSType, "path", dbom_mount_data.Path, "flags", flags, "err", err, "mountpoint_details", mp)
+	if errS != nil {
+		slog.Error("Failed to mount volume", "device", real_device, "fstype", dbom_mount_data.FSType, "path", dbom_mount_data.Path, "flags", flags, "err", errS, "mountpoint_details", mp)
 		// Attempt to clean up directory if we created it and mount failed? Optional.
 		// os.Remove(dbom_mount_data.Path)
 		return errors.WithDetails(dto.ErrorMountFail,
@@ -314,16 +314,16 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"Path", dbom_mount_data.Path,
 			"FSType", dbom_mount_data.FSType,
 			"Flags", flags,
-			"Error", err,
+			"Error", errS,
 		)
 	} else {
 		slog.Info("Successfully mounted volume", "device", real_device, "path", dbom_mount_data.Path, "fstype", dbom_mount_data.FSType, "flags", mp.Flags, "data", mp.Data)
 		var convm converter.MountToDbomImpl
 		// Update dbom_mount_data with details from the actual mount point if available
-		err = convm.MountToMountPointPath(mp, dbom_mount_data)
-		if err != nil {
+		errS = convm.MountToMountPointPath(mp, dbom_mount_data)
+		if errS != nil {
 			// Log error but proceed, as mount succeeded
-			slog.Warn("Failed to convert mount details back to DBOM", "err", err)
+			slog.Warn("Failed to convert mount details back to DBOM", "err", errS)
 			// Don't return error here, mount was successful
 		}
 
@@ -397,7 +397,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 	}
 
 	slog.Debug("Attempting to unmount volume", "path", path, "force", force, "lazy", lazy)
-	err = mount.Unmount(path, force, lazy)
+	err = errors.WithStack(mount.Unmount(path, force, lazy))
 	if err != nil {
 		slog.Error("Failed to unmount volume", "path", path, "err", err)
 		// Check if it's already unmounted
@@ -412,7 +412,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 		slog.Info("Successfully unmounted volume", "path", path, "device", dbom_mount_data.Device)
 		if strings.HasPrefix(dbom_mount_data.Device, "/dev/loop") {
 			// If the device is a loop device, remove the loop device
-			err = loop.ClearFile(dbom_mount_data.Device)
+			err = errors.WithStack(loop.ClearFile(dbom_mount_data.Device))
 			if err != nil {
 				slog.Error("Failed to remove loop device", "device", dbom_mount_data.Device, "err", err)
 				// Log but don't return error, as unmount succeeded
@@ -420,7 +420,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 				slog.Debug("Successfully removed loop device", "device", dbom_mount_data.Device)
 			}
 		}
-		err = os.Remove(dbom_mount_data.Path) // Remove the mount point directory
+		err = errors.WithStack(os.Remove(dbom_mount_data.Path)) // Remove the mount point directory
 		if err != nil {
 			slog.Error("Failed to remove mount point directory", "path", dbom_mount_data.Path, "err", err)
 		} else {
@@ -1260,7 +1260,7 @@ func (self *VolumeService) DismissAutomountNotification(mountPath string, notifi
 }
 
 // CheckUnmountedAutomountPartitions checks for partitions marked for automount that are not currently mounted
-func (self *VolumeService) CheckUnmountedAutomountPartitions() error {
+func (self *VolumeService) CheckUnmountedAutomountPartitions() errors.E {
 	// Get all mount points from the database that are marked for automount
 	allMountPoints, err := self.mount_repo.All()
 	if err != nil {

@@ -16,13 +16,13 @@ import (
 
 type DtoToDbomConverterInterface interface {
 	DtoToDbomConverter
-	SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error
-	ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) error
-	SettingsToProperties(source dto.Settings, target *dbom.Properties) error
-	PropertiesToSettings(source dbom.Properties, target *dto.Settings) error
+	SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) errors.E
+	ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) errors.E
+	SettingsToProperties(source dto.Settings, target *dbom.Properties) errors.E
+	PropertiesToSettings(source dbom.Properties, target *dto.Settings) errors.E
 }
 
-func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, target *dbom.Properties) error {
+func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, target *dbom.Properties) errors.E {
 	keys := funk.Keys(source)
 	for _, key := range keys.([]string) {
 		newvalueReflected := reflect.ValueOf(source).FieldByName(key)
@@ -76,7 +76,7 @@ func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, targe
 	return nil
 }
 
-func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, target *dto.Settings) error {
+func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, target *dto.Settings) errors.E {
 	var scannerType = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
 
 	for _, prop := range source {
@@ -119,7 +119,7 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 	return nil
 }
 
-func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) error {
+func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) errors.E {
 	err := c.SharedResourceToExportedShareNoUsersNoMountPointPath(source, target)
 	if err != nil {
 		return errors.WithStack(err)
@@ -152,7 +152,7 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.Shared
 	return nil
 }
 
-func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) error {
+func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) errors.E {
 	err := c.ExportedShareToSharedResourceNoMountPointData(source, target)
 	if err != nil {
 		return errors.WithStack(err)

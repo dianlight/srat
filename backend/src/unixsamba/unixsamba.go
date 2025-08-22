@@ -196,7 +196,7 @@ func GetByUsername(username string) (*UserInfo, error) {
 }
 
 // CreateSambaUser creates a system Unix user and then adds them to the Samba database.
-func CreateSambaUser(username string, password string, options UserOptions) error {
+func CreateSambaUser(username string, password string, options UserOptions) errors.E {
 	useraddArgs := []string{}
 	if !options.CreateHome {
 		useraddArgs = append(useraddArgs, "-M")

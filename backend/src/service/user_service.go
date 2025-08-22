@@ -50,9 +50,9 @@ func (s *UserService) ListUsers() ([]dto.User, error) {
 	var conv converter.DtoToDbomConverterImpl
 	for _, dbuser := range dbusers {
 		var user dto.User
-		err = conv.SambaUserToUser(dbuser, &user)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to convert db user %s to dto", dbuser.Username)
+		errS := conv.SambaUserToUser(dbuser, &user)
+		if errS != nil {
+			return nil, errors.Wrapf(errS, "failed to convert db user %s to dto", dbuser.Username)
 		}
 		users = append(users, user)
 	}

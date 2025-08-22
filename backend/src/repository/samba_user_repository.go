@@ -16,17 +16,17 @@ type SambaUserRepository struct {
 }
 
 type SambaUserRepositoryInterface interface {
-	GetAdmin() (dbom.SambaUser, error)
-	All() (dbom.SambaUsers, error)
-	SaveAll(users *dbom.SambaUsers) error
+	GetAdmin() (dbom.SambaUser, errors.E)
+	All() (dbom.SambaUsers, errors.E)
+	SaveAll(users *dbom.SambaUsers) errors.E
 
-	Save(user *dbom.SambaUser) error
-	Create(user *dbom.SambaUser) error
+	Save(user *dbom.SambaUser) errors.E
+	Create(user *dbom.SambaUser) errors.E
 
-	Delete(name string) error
-	GetUserByName(name string) (*dbom.SambaUser, error)
+	Delete(name string) errors.E
+	GetUserByName(name string) (*dbom.SambaUser, errors.E)
 
-	Rename(oldname string, newname string) error
+	Rename(oldname string, newname string) errors.E
 }
 
 func NewSambaUserRepository(db *gorm.DB) SambaUserRepositoryInterface {
@@ -36,19 +36,19 @@ func NewSambaUserRepository(db *gorm.DB) SambaUserRepositoryInterface {
 	}
 }
 
-func (p *SambaUserRepository) GetAdmin() (dbom.SambaUser, error) {
+func (p *SambaUserRepository) GetAdmin() (dbom.SambaUser, errors.E) {
 	var user dbom.SambaUser
 	ret := p.db.Model(&dbom.SambaUser{}).Preload(clause.Associations).Where("is_admin = ?", true).First(&user)
 	if ret.Error != nil {
-		return dbom.SambaUser{}, ret.Error
+		return dbom.SambaUser{}, errors.WithStack(ret.Error)
 	}
 	if ret.RowsAffected == 0 {
-		return dbom.SambaUser{}, gorm.ErrRecordNotFound
+		return dbom.SambaUser{}, errors.WithStack(gorm.ErrRecordNotFound)
 	}
 	return user, nil
 }
 
-func (self *SambaUserRepository) All() (dbom.SambaUsers, error) {
+func (self *SambaUserRepository) All() (dbom.SambaUsers, errors.E) {
 	var users []dbom.SambaUser
 	err := self.db.Model(&dbom.SambaUser{}).Preload(clause.Associations).Find(&users).Error
 	if err != nil {
@@ -57,23 +57,23 @@ func (self *SambaUserRepository) All() (dbom.SambaUsers, error) {
 	return users, nil
 }
 
-func (self *SambaUserRepository) Save(user *dbom.SambaUser) error {
+func (self *SambaUserRepository) Save(user *dbom.SambaUser) errors.E {
 	self.db.Unscoped().Model(&dbom.SambaUser{}).Where("username = ?", user.Username).Update("deleted_at", nil)
-	return self.db.Debug().Save(user).Error
+	return errors.WithStack(self.db.Debug().Save(user).Error)
 }
 
-func (self *SambaUserRepository) Create(user *dbom.SambaUser) error {
+func (self *SambaUserRepository) Create(user *dbom.SambaUser) errors.E {
 	ret := self.db.Unscoped().Model(&dbom.SambaUser{}).Where("username = ?", user.Username).Update("deleted_at", nil)
 	if ret.Error != nil {
 		return errors.WithStack(ret.Error)
 	}
 	if ret.RowsAffected == 0 {
-		return self.db.Create(user).Error
+		return errors.WithStack(self.db.Create(user).Error)
 	}
-	return self.db.Save(user).Error
+	return errors.WithStack(self.db.Save(user).Error)
 }
 
-func (self *SambaUserRepository) GetUserByName(name string) (*dbom.SambaUser, error) {
+func (self *SambaUserRepository) GetUserByName(name string) (*dbom.SambaUser, errors.E) {
 	var user dbom.SambaUser
 	err := self.db.Model(&dbom.SambaUser{}).Preload(clause.Associations).Where("username = ? and is_admin = false", name).First(&user).Error
 	if err != nil {
@@ -82,11 +82,11 @@ func (self *SambaUserRepository) GetUserByName(name string) (*dbom.SambaUser, er
 	return &user, nil
 }
 
-func (self *SambaUserRepository) Delete(name string) error {
-	return self.db.Model(&dbom.SambaUser{}).Where("username = ? and is_admin = false", name).Delete(&dbom.SambaUser{Username: name}).Error
+func (self *SambaUserRepository) Delete(name string) errors.E {
+	return errors.WithStack(self.db.Model(&dbom.SambaUser{}).Where("username = ? and is_admin = false", name).Delete(&dbom.SambaUser{Username: name}).Error)
 }
 
-func (self *SambaUserRepository) SaveAll(users *dbom.SambaUsers) error {
+func (self *SambaUserRepository) SaveAll(users *dbom.SambaUsers) errors.E {
 	for _, user := range *users {
 		err := self.db.Save(&user).Error
 		if err != nil {
@@ -96,8 +96,8 @@ func (self *SambaUserRepository) SaveAll(users *dbom.SambaUsers) error {
 	return nil
 }
 
-func (self *SambaUserRepository) Rename(oldname string, newname string) error {
-	return self.db.Transaction(func(tx *gorm.DB) error {
+func (self *SambaUserRepository) Rename(oldname string, newname string) errors.E {
+	return errors.WithStack(self.db.Transaction(func(tx *gorm.DB) error {
 		var smbuser dbom.SambaUser
 		// First, retrieve the user to get the password *before* updating the name.
 		// We need the original password for the unixsamba.RenameUsername call.
@@ -115,7 +115,7 @@ func (self *SambaUserRepository) Rename(oldname string, newname string) error {
 			return errors.Wrapf(err, "failed to update username in database from %s to %s", oldname, newname)
 		}
 		return nil
-	})
+	}))
 }
 
 //func (self *SambaUserRepository)

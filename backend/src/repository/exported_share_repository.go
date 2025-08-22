@@ -17,16 +17,16 @@ type ExportedShareRepository struct {
 }
 
 type ExportedShareRepositoryInterface interface {
-	All() (*[]dbom.ExportedShare, error)
-	Save(share *dbom.ExportedShare) error
-	SaveAll(shares *[]dbom.ExportedShare) error
-	FindByName(name string) (*dbom.ExportedShare, error)
-	FindByMountPath(path string) (*dbom.ExportedShare, error)
-	Delete(name string) error
-	UpdateName(old_name string, new_name string) error
+	All() (*[]dbom.ExportedShare, errors.E)
+	Save(share *dbom.ExportedShare) errors.E
+	SaveAll(shares *[]dbom.ExportedShare) errors.E
+	FindByName(name string) (*dbom.ExportedShare, errors.E)
+	FindByMountPath(path string) (*dbom.ExportedShare, errors.E)
+	Delete(name string) errors.E
+	UpdateName(old_name string, new_name string) errors.E
 }
 
-func (p *ExportedShareRepository) UpdateName(old_name string, new_name string) error {
+func (p *ExportedShareRepository) UpdateName(old_name string, new_name string) errors.E {
 	// Get / Save Users end RoUsers association
 
 	err := p.db.
@@ -44,7 +44,7 @@ func NewExportedShareRepository(db *gorm.DB) ExportedShareRepositoryInterface {
 	}
 }
 
-func (r *ExportedShareRepository) All() (*[]dbom.ExportedShare, error) {
+func (r *ExportedShareRepository) All() (*[]dbom.ExportedShare, errors.E) {
 	var shares []dbom.ExportedShare
 	err := r.db.Preload(clause.Associations).Find(&shares).Error
 	if err != nil {
@@ -53,19 +53,19 @@ func (r *ExportedShareRepository) All() (*[]dbom.ExportedShare, error) {
 	return &shares, nil
 }
 
-func (p *ExportedShareRepository) FindByName(name string) (*dbom.ExportedShare, error) {
+func (p *ExportedShareRepository) FindByName(name string) (*dbom.ExportedShare, errors.E) {
 	var share dbom.ExportedShare
 	err := p.db.Preload(clause.Associations).First(&share, "name = ?", name).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.WithStack(err)
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, dto.ErrorShareNotFound
+		return nil, errors.WithStack(dto.ErrorShareNotFound)
 	}
 	return &share, nil
 }
 
 // FindByMountPath retrieves a specific share by its associated mount path.
-func (p *ExportedShareRepository) FindByMountPath(path string) (*dbom.ExportedShare, error) {
+func (p *ExportedShareRepository) FindByMountPath(path string) (*dbom.ExportedShare, errors.E) {
 	var share dbom.ExportedShare
 	// The ExportedShare table has a MountPointDataPath column which is the foreign key to MountPointPath.Path
 	err := p.db.Preload(clause.Associations).Where("mount_point_data_path = ?", path).First(&share).Error
@@ -74,7 +74,7 @@ func (p *ExportedShareRepository) FindByMountPath(path string) (*dbom.ExportedSh
 	}
 	return &share, nil
 }
-func (p *ExportedShareRepository) SaveAll(shares *[]dbom.ExportedShare) error {
+func (p *ExportedShareRepository) SaveAll(shares *[]dbom.ExportedShare) errors.E {
 	err := p.db.Session(&gorm.Session{FullSaveAssociations: true}).Select("*").Save(shares).Error
 	if err != nil {
 		return errors.WithDetails(err, "shares", shares)
@@ -82,8 +82,8 @@ func (p *ExportedShareRepository) SaveAll(shares *[]dbom.ExportedShare) error {
 	return nil
 }
 
-func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) error {
-	return p.db.Transaction(func(tx *gorm.DB) error {
+func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) errors.E {
+	return errors.WithStack(p.db.Transaction(func(tx *gorm.DB) error {
 		var existingShare dbom.ExportedShare // Used to check existence
 		// Check if a record with the same name (primary key) exists.
 		// The BeforeSave hook in dbom.ExportedShare will validate if share.Name is empty.
@@ -144,9 +144,9 @@ func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) error {
 			}
 			return nil
 		}
-	})
+	}))
 }
 
-func (p *ExportedShareRepository) Delete(name string) error {
-	return p.db.Select(clause.Associations).Delete(&dbom.ExportedShare{Name: name}).Error
+func (p *ExportedShareRepository) Delete(name string) errors.E {
+	return errors.WithStack(p.db.Select(clause.Associations).Delete(&dbom.ExportedShare{Name: name}).Error)
 }

@@ -26,11 +26,11 @@ import (
 // TelemetryServiceInterface defines the interface for telemetry services
 type TelemetryServiceInterface interface {
 	// Configure configures the telemetry service with the given mode
-	Configure(mode dto.TelemetryMode) error
+	Configure(mode dto.TelemetryMode) errors.E
 	// ReportError reports an error to the telemetry service
-	ReportError(interfaces ...interface{}) error
+	ReportError(interfaces ...interface{}) errors.E
 	// ReportEvent reports a telemetry event to the service
-	ReportEvent(event string, data map[string]interface{}) error
+	ReportEvent(event string, data map[string]interface{}) errors.E
 	// IsConnectedToInternet checks if internet connection is available
 	IsConnectedToInternet() bool
 	// Shutdown shuts down the telemetry service
@@ -115,7 +115,7 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 }
 
 // Configure configures the telemetry service with the given mode
-func (ts *TelemetryService) Configure(mode dto.TelemetryMode) error {
+func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 	ts.mode = mode
 	if mode == dto.TelemetryModes.TELEMETRYMODEDISABLED || mode == dto.TelemetryModes.TELEMETRYMODEASK {
 		return nil
@@ -233,7 +233,7 @@ map[string]interface{}
 int
 The string and error types are mutually exclusive. If an error is present then a stack trace is captured. If an int is also present then we skip that number of stack frames. If the map is present it is used as extra custom data in the item. If a string is present without an error, then we log a message without a stack trace. If a request is present we extract as much relevant information from it as we can.
 */
-func (ts *TelemetryService) ReportError(interfaces ...interface{}) error {
+func (ts *TelemetryService) ReportError(interfaces ...interface{}) errors.E {
 	if !ts.rollbarConfigured {
 		return nil // Silently ignore if not configured
 	}
@@ -256,7 +256,7 @@ func (ts *TelemetryService) ReportError(interfaces ...interface{}) error {
 }
 
 // ReportEvent reports a telemetry event to the service
-func (ts *TelemetryService) ReportEvent(event string, data map[string]interface{}) error {
+func (ts *TelemetryService) ReportEvent(event string, data map[string]interface{}) errors.E {
 	if !ts.rollbarConfigured {
 		return nil // Silently ignore if not configured
 	}

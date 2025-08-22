@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,10 +20,10 @@ type AddonsServiceInterface interface {
 	// CheckProtectedMode checks if a given Home Assistant addon is marked as protected.
 	// It returns true if the addon is protected, false otherwise.
 	// An error is returned if the check cannot be performed (e.g., API error, addon not found).
-	CheckProtectedMode() (bool, error)
+	CheckProtectedMode() (bool, errors.E)
 	// GetStats retrieves the resource usage statistics for the current addon.
 	// It returns an AddonStatsData object on success.
-	GetStats() (*addons.AddonStatsData, error)
+	GetStats() (*addons.AddonStatsData, errors.E)
 }
 
 // AddonsService provides methods to interact with Home Assistant addons.
@@ -76,7 +77,7 @@ func NewAddonsService(lc fx.Lifecycle, params AddonsServiceParams) AddonsService
 }
 
 // CheckProtectedMode implements the AddonsServiceInterface.
-func (s *AddonsService) CheckProtectedMode() (bool, error) {
+func (s *AddonsService) CheckProtectedMode() (bool, errors.E) {
 	// Try to get from cache first
 	if protected, found := s.protectedModeCache.Get(protectedModeCacheKey); found {
 		if p, ok := protected.(bool); ok {
@@ -120,7 +121,7 @@ func (s *AddonsService) CheckProtectedMode() (bool, error) {
 }
 
 // GetStats implements the AddonsServiceInterface.
-func (s *AddonsService) GetStats() (*addons.AddonStatsData, error) {
+func (s *AddonsService) GetStats() (*addons.AddonStatsData, errors.E) {
 	// Try to get from cache first
 	if cachedStats, found := s.statsCache.Get(statsCacheKey); found {
 		if stats, ok := cachedStats.(*addons.AddonStatsData); ok {
@@ -149,6 +150,9 @@ func (s *AddonsService) GetStats() (*addons.AddonStatsData, error) {
 	}
 
 	if resp.StatusCode() != http.StatusOK {
+		if resp != nil && resp.Body != nil && strings.Contains(string(resp.Body), "System is not ready with state: shutdown") {
+			return nil, errors.WithDetails(dto.ErrorInvalidStateForOperation, string(resp.Body))
+		}
 		return nil, errors.Errorf("failed to get addon stats: status %d, body: %s", resp.StatusCode(), string(resp.Body))
 	}
 

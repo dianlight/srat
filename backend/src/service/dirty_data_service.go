@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"gitlab.com/tozd/go/errors"
 )
 
 type DirtyDataServiceInterface interface {
@@ -14,7 +15,7 @@ type DirtyDataServiceInterface interface {
 	SetDirtyUsers()
 	SetDirtySettings()
 	GetDirtyDataTracker() dto.DataDirtyTracker
-	AddRestartCallback(callback func() error)
+	AddRestartCallback(callback func() errors.E)
 	ResetDirtyStatus()
 	IsTimerRunning() bool
 }
@@ -23,14 +24,14 @@ type DirtyDataService struct {
 	ctx              context.Context
 	dataDirtyTracker dto.DataDirtyTracker
 	timer            *time.Timer
-	restartCallbacks *[]func() error
+	restartCallbacks *[]func() errors.E
 }
 
 func NewDirtyDataService(ctx context.Context) DirtyDataServiceInterface {
 	p := new(DirtyDataService)
 	p.ctx = ctx
 	p.dataDirtyTracker = dto.DataDirtyTracker{}
-	p.restartCallbacks = &[]func() error{}
+	p.restartCallbacks = &[]func() errors.E{}
 	return p
 }
 
@@ -86,7 +87,7 @@ func (p *DirtyDataService) GetDirtyDataTracker() dto.DataDirtyTracker {
 }
 
 // add a callback to be called when the timer is triggered
-func (p *DirtyDataService) AddRestartCallback(callback func() error) {
+func (p *DirtyDataService) AddRestartCallback(callback func() errors.E) {
 	*p.restartCallbacks = append(*p.restartCallbacks, callback)
 }
 

@@ -17,12 +17,12 @@ type MountPointPathRepository struct {
 }
 
 type MountPointPathRepositoryInterface interface {
-	All() ([]dbom.MountPointPath, error)
-	Save(mp *dbom.MountPointPath) error
-	FindByPath(path string) (*dbom.MountPointPath, error)
-	FindByDevice(device string) (*dbom.MountPointPath, error)
-	Exists(id string) (bool, error)
-	Delete(path string) error
+	All() ([]dbom.MountPointPath, errors.E)
+	Save(mp *dbom.MountPointPath) errors.E
+	FindByPath(path string) (*dbom.MountPointPath, errors.E)
+	FindByDevice(device string) (*dbom.MountPointPath, errors.E)
+	Exists(id string) (bool, errors.E)
+	Delete(path string) errors.E
 }
 
 func NewMountPointPathRepository(db *gorm.DB) MountPointPathRepositoryInterface {
@@ -32,7 +32,7 @@ func NewMountPointPathRepository(db *gorm.DB) MountPointPathRepositoryInterface 
 	}
 }
 
-func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
+func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) errors.E {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -41,7 +41,7 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 	// Ideally, this normalization should be in dbom.MountPointPath.BeforeSave hook.
 	mp.Device = strings.TrimPrefix(mp.Device, "/dev/")
 
-	return r.db.Transaction(func(tx *gorm.DB) error {
+	return errors.WithStack(r.db.Transaction(func(tx *gorm.DB) error {
 		// Check if record exists to decide between Create and Update
 		var count int64
 		// mp.Path is the primary key. BeforeSave hook in MountPointPath ensures it's not empty.
@@ -65,18 +65,18 @@ func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) error {
 			opErr = tx.Clauses(clause.Returning{}).Create(mp).Error
 		}
 		return errors.WithStack(opErr) // opErr will be nil on success, errors.WithStack(nil) is nil
-	})
+	}))
 }
 
-func (r *MountPointPathRepository) FindByPath(path string) (*dbom.MountPointPath, error) {
+func (r *MountPointPathRepository) FindByPath(path string) (*dbom.MountPointPath, errors.E) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 	var mp dbom.MountPointPath
 	err := r.db.Where("path = ?", path).First(&mp).Error
-	return &mp, err
+	return &mp, errors.WithStack(err)
 }
 
-func (r *MountPointPathRepository) FindByDevice(device string) (*dbom.MountPointPath, error) {
+func (r *MountPointPathRepository) FindByDevice(device string) (*dbom.MountPointPath, errors.E) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 	var mp dbom.MountPointPath
@@ -85,15 +85,15 @@ func (r *MountPointPathRepository) FindByDevice(device string) (*dbom.MountPoint
 	err := r.db.Where("device = ?", normalizedDevice).First(&mp).Error
 	return &mp, errors.WithStack(err)
 }
-func (r *MountPointPathRepository) All() (Data []dbom.MountPointPath, Error error) {
+func (r *MountPointPathRepository) All() (Data []dbom.MountPointPath, Error errors.E) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 	var mps []dbom.MountPointPath
 	err := r.db.Find(&mps).Error
-	return mps, err
+	return mps, errors.WithStack(err)
 }
 
-func (r *MountPointPathRepository) Exists(path string) (bool, error) {
+func (r *MountPointPathRepository) Exists(path string) (bool, errors.E) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 	var mp dbom.MountPointPath
@@ -101,11 +101,11 @@ func (r *MountPointPathRepository) Exists(path string) (bool, error) {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return false, nil
 	}
-	return true, err
+	return true, errors.WithStack(err)
 }
 
-func (r *MountPointPathRepository) Delete(path string) error {
+func (r *MountPointPathRepository) Delete(path string) errors.E {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	return r.db.Delete(&dbom.MountPointPath{Path: path}).Error
+	return errors.WithStack(r.db.Delete(&dbom.MountPointPath{Path: path}).Error)
 }

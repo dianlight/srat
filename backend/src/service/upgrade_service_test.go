@@ -417,7 +417,7 @@ func (suite *UpgradeServiceTestSuite) ContainsProgress(events []dto.UpdateProgre
 }
 
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_DownloadHttpError() {
-	asset := dto.BinaryAsset{Name: "test.zip", BrowserDownloadURL: "http://example.com/test.zip"}
+	asset := dto.BinaryAsset{Name: "test.zip", BrowserDownloadURL: "https://getsamplefiles.com/download/zip/sample-1.zip"}
 	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL, httpmock.NewStringResponder(500, "Server Error"))
 
 	updatePkg, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
@@ -427,7 +427,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_Download
 }
 
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_NotAZipFile() {
-	asset := dto.BinaryAsset{Name: "notazip.txt", BrowserDownloadURL: "http://example.com/notazip.txt"}
+	asset := dto.BinaryAsset{Name: "notazip.txt", BrowserDownloadURL: "https://getsamplefiles.com/download/txt/sample-1.txt"}
 	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL, httpmock.NewStringResponder(200, "this is not zip content"))
 
 	updatePkg, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)

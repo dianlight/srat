@@ -119,7 +119,7 @@ func (suite *SambaUserRepositorySuite) TestGetAdminNotFound() {
 
 	// Assert
 	suite.Error(err)
-	suite.Equal(gorm.ErrRecordNotFound, err)
+	suite.ErrorIs(err, gorm.ErrRecordNotFound)
 	suite.Equal(dbom.SambaUser{}, result)
 
 	// Cleanup
@@ -132,7 +132,7 @@ func (suite *SambaUserRepositorySuite) TestGetAdminEmptyDatabase() {
 
 	// Assert
 	suite.Error(err)
-	suite.Equal(gorm.ErrRecordNotFound, err)
+	suite.ErrorIs(err, gorm.ErrRecordNotFound)
 	suite.Equal(dbom.SambaUser{}, result)
 }
 
@@ -211,14 +211,14 @@ func (suite *SambaUserRepositorySuite) TestSaveUser() {
 	}
 
 	// Act
-	err := suite.repo.Save(user)
+	errE := suite.repo.Save(user)
 
 	// Assert
-	suite.NoError(err)
+	suite.NoError(errE)
 
 	// Verify user was saved
 	var savedUser dbom.SambaUser
-	err = suite.db.Where("username = ?", "testuser").First(&savedUser).Error
+	err := suite.db.Where("username = ?", "testuser").First(&savedUser).Error
 	suite.NoError(err)
 	suite.Equal("testuser", savedUser.Username)
 	suite.Equal("testpass", savedUser.Password)
@@ -237,14 +237,14 @@ func (suite *SambaUserRepositorySuite) TestCreateUser() {
 	}
 
 	// Act
-	err := suite.repo.Create(user)
+	errE := suite.repo.Create(user)
 
 	// Assert
-	suite.NoError(err)
+	suite.NoError(errE)
 
 	// Verify user was created
 	var createdUser dbom.SambaUser
-	err = suite.db.Where("username = ?", "newuser").First(&createdUser).Error
+	err := suite.db.Where("username = ?", "newuser").First(&createdUser).Error
 	suite.NoError(err)
 	suite.Equal("newuser", createdUser.Username)
 

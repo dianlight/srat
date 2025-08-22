@@ -7,6 +7,7 @@ import (
 	"text/template"
 
 	sprig "github.com/Masterminds/sprig/v3"
+	"gitlab.com/tozd/go/errors"
 )
 
 // RenderTemplateFile renders a template file with the provided configuration.
@@ -38,20 +39,20 @@ func RenderTemplateFile(config *map[string]interface{}, file string) ([]byte, er
 // Returns:
 //   - []byte: The rendered template as a byte slice.
 //   - error: An error if there's an issue during template parsing or rendering.
-func RenderTemplateBuffer(config *map[string]interface{}, templateData []byte) ([]byte, error) {
+func RenderTemplateBuffer(config *map[string]interface{}, templateData []byte) ([]byte, errors.E) {
 	buf := &bytes.Buffer{}
 
 	// generate template
 	coreTemplate := template.New("tempIO").Funcs(sprig.TxtFuncMap())
 	coreTemplate, err := coreTemplate.Parse(string(templateData))
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	// render
 	err = coreTemplate.Execute(buf, *config)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	return buf.Bytes(), nil

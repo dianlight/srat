@@ -17,7 +17,7 @@ import (
 
 // DiskStatsService is a service for collecting disk I/O statistics.
 type DiskStatsService interface {
-	GetDiskStats() (*dto.DiskHealth, error)
+	GetDiskStats() (*dto.DiskHealth, errors.E)
 }
 
 type diskStatsService struct {
@@ -225,7 +225,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 }
 
 // GetDiskStats collects and returns disk I/O statistics.
-func (s *diskStatsService) GetDiskStats() (*dto.DiskHealth, error) {
+func (s *diskStatsService) GetDiskStats() (*dto.DiskHealth, errors.E) {
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 	if s.currentDiskHealth == nil {

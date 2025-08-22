@@ -23,16 +23,16 @@ import (
 )
 
 type SambaServiceInterface interface {
-	CreateConfigStream() (data *[]byte, err error)
-	GetSambaProcess() (*dto.SambaProcessStatus, error)
-	GetSambaStatus() (*dto.SambaStatus, error)
+	CreateConfigStream() (data *[]byte, err errors.E)
+	GetSambaProcess() (*dto.SambaProcessStatus, errors.E)
+	GetSambaStatus() (*dto.SambaStatus, errors.E)
 	//StreamToFile(stream *[]byte, path string) error
 	//StartSambaService(id uint) error
 	//StopSambaService(id uint) error
-	WriteSambaConfig() error
-	RestartSambaService() error
-	TestSambaConfig() error
-	WriteAndRestartSambaConfig() error
+	WriteSambaConfig() errors.E
+	RestartSambaService() errors.E
+	TestSambaConfig() errors.E
+	WriteAndRestartSambaConfig() errors.E
 }
 
 type SambaService struct {
@@ -74,7 +74,7 @@ func NewSambaService(in SambaServiceParams) SambaServiceInterface {
 	return p
 }
 
-func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, error) {
+func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, errors.E) {
 	if x, found := self.cache.Get("samba_status"); found {
 		return x.(*dto.SambaStatus), nil
 	}
@@ -96,7 +96,7 @@ func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, error) {
 	return &status, nil
 }
 
-func (self *SambaService) CreateConfigStream() (data *[]byte, err error) {
+func (self *SambaService) CreateConfigStream() (data *[]byte, err errors.E) {
 	config, err := self.jSONFromDatabase()
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -110,7 +110,7 @@ func (self *SambaService) CreateConfigStream() (data *[]byte, err error) {
 	return &datar, errors.WithStack(err)
 }
 
-func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err error) {
+func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.E) {
 	var conv converter.ConfigToDbomConverterImpl
 
 	properties, err := self.prop_repo.All(true)
@@ -152,7 +152,7 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err error) 
 // Returns:
 //   - *process.Process: A pointer to the Samba process if found, or nil if not found.
 //   - error: An error if one occurred during the process search, or nil if successful.
-func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, error) {
+func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) {
 	spc := dto.SambaProcessStatus{
 		Smbd: dto.ProcessStatus{
 			Pid: -1,
@@ -192,21 +192,21 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, error) {
 	return &spc, nil
 }
 
-func (self *SambaService) WriteSambaConfig() error {
-	stream, err := self.CreateConfigStream()
-	if err != nil {
-		return errors.WithStack(err)
+func (self *SambaService) WriteSambaConfig() errors.E {
+	stream, errE := self.CreateConfigStream()
+	if errE != nil {
+		return errors.WithStack(errE)
 	}
 
 	// Restrict permissions on config file
-	err = os.WriteFile(self.apictx.SambaConfigFile, *stream, 0o600)
+	err := os.WriteFile(self.apictx.SambaConfigFile, *stream, 0o600)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func (self *SambaService) TestSambaConfig() error {
+func (self *SambaService) TestSambaConfig() errors.E {
 
 	// Check samba configuration with exec testparm -s
 	cmd := exec.Command("testparm", "-s", self.apictx.SambaConfigFile)
@@ -217,7 +217,7 @@ func (self *SambaService) TestSambaConfig() error {
 	return nil
 }
 
-func (self *SambaService) RestartSambaService() error {
+func (self *SambaService) RestartSambaService() errors.E {
 	process, err := self.GetSambaProcess()
 	if err != nil {
 		return errors.WithStack(err)
@@ -283,7 +283,7 @@ func (self *SambaService) RestartSambaService() error {
 }
 
 // WriteSambaConfig Test and Restart
-func (self *SambaService) WriteAndRestartSambaConfig() error {
+func (self *SambaService) WriteAndRestartSambaConfig() errors.E {
 	err := self.WriteSambaConfig()
 	if err != nil {
 		return errors.WithStack(err)

@@ -276,8 +276,8 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 		},
 	}, nil)
 
-	stream, err := suite.sambaService.CreateConfigStream()
-	suite.Require().NoError(err)
+	stream, errE := suite.sambaService.CreateConfigStream()
+	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
 	fsbyte, err := os.ReadFile("../../test/data/smb.conf")

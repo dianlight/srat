@@ -13,7 +13,7 @@ import (
 // goverter:update:ignoreZeroValueField
 // goverter:useZeroValueOnPointerInconsistency
 // goverter:default:update
-// g.overter:wrapErrorsUsing github.com/dianlight/srat/converter/patherr
+// g.overter:wrapErrorsUsing gitlab.com/tozd/go/errors
 type ConfigToDbomConverter interface {
 	// goverter:update target
 	// goverter:ignore MountPointData

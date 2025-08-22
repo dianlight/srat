@@ -20,10 +20,10 @@ import (
 var _supervisor_api_mutex sync.Mutex
 
 type SupervisorServiceInterface interface {
-	NetworkMountShare(dbom.ExportedShare) error
-	NetworkUnmountShare(dbom.ExportedShare) error
-	NetworkGetAllMounted() ([]mount.Mount, error)
-	NetworkGetMountByName(name string) (*mount.Mount, error)
+	NetworkMountShare(dbom.ExportedShare) errors.E
+	NetworkUnmountShare(dbom.ExportedShare) errors.E
+	NetworkGetAllMounted() ([]mount.Mount, errors.E)
+	NetworkGetMountByName(name string) (*mount.Mount, errors.E)
 }
 
 type SupervisorService struct {
@@ -59,7 +59,7 @@ func NewSupervisorService(in SupervisorServiceParams) SupervisorServiceInterface
 	return p
 }
 
-func (self *SupervisorService) refreshNetworkMountShare() error {
+func (self *SupervisorService) refreshNetworkMountShare() errors.E {
 	_supervisor_api_mutex.Lock()
 	defer _supervisor_api_mutex.Unlock()
 
@@ -79,7 +79,7 @@ func (self *SupervisorService) refreshNetworkMountShare() error {
 	return nil
 }
 
-func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) error {
+func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) errors.E {
 	self.refreshNetworkMountShare()
 	conv := converter.HaSupervisorToDbomImpl{}
 
@@ -124,7 +124,7 @@ func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) error
 	return nil
 }
 
-func (self *SupervisorService) NetworkUnmountShare(share dbom.ExportedShare) error {
+func (self *SupervisorService) NetworkUnmountShare(share dbom.ExportedShare) errors.E {
 	resp, err := self.mount_client.RemoveMountWithResponse(self.apiContext, share.Name)
 	if err != nil {
 		return errors.Errorf("Error unmounting share %s from ha_supervisor: %w", share.Name, err)
@@ -136,7 +136,7 @@ func (self *SupervisorService) NetworkUnmountShare(share dbom.ExportedShare) err
 }
 
 // NetworkGetAllMounted retrieves all mounts currently known by the supervisor.
-func (self *SupervisorService) NetworkGetAllMounted() ([]mount.Mount, error) {
+func (self *SupervisorService) NetworkGetAllMounted() ([]mount.Mount, errors.E) {
 	if err := self.refreshNetworkMountShare(); err != nil {
 		return nil, errors.Wrap(err, "failed to refresh supervisor mounts")
 	}
@@ -151,7 +151,7 @@ func (self *SupervisorService) NetworkGetAllMounted() ([]mount.Mount, error) {
 }
 
 // NetworkGetMountByName retrieves a specific mount by its name from the supervisor.
-func (self *SupervisorService) NetworkGetMountByName(name string) (*mount.Mount, error) {
+func (self *SupervisorService) NetworkGetMountByName(name string) (*mount.Mount, errors.E) {
 	if err := self.refreshNetworkMountShare(); err != nil {
 		return nil, errors.Wrapf(err, "failed to refresh supervisor mounts before getting share '%s'", name)
 	}

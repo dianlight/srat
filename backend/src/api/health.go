@@ -128,7 +128,7 @@ func (self *HealthHanler) HealthStatusHandler(ctx context.Context, input *struct
 //
 // Returns:
 //   - error: An error if the broadcasting fails, otherwise nil.
-func (self *HealthHanler) EventEmitter(data dto.HealthPing) error {
+func (self *HealthHanler) EventEmitter(data dto.HealthPing) errors.E {
 	_, err := self.broadcaster.BroadcastMessage(data)
 	if err != nil {
 		slog.Error("Error broadcasting health message: %w", "err", err)

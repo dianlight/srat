@@ -15,12 +15,12 @@ type PropertyRepository struct {
 }
 
 type PropertyRepositoryInterface interface {
-	All(include_internal bool) (dbom.Properties, error)
-	SaveAll(props *dbom.Properties) error
+	All(include_internal bool) (dbom.Properties, errors.E)
+	SaveAll(props *dbom.Properties) errors.E
 	//DeleteAll() (dbom.Properties, error)
-	Value(key string, include_internal bool) (interface{}, error)
-	SetValue(key string, value interface{}) error
-	SetInternalValue(key string, value interface{}) error
+	Value(key string, include_internal bool) (interface{}, errors.E)
+	SetValue(key string, value interface{}) errors.E
+	SetInternalValue(key string, value interface{}) errors.E
 }
 
 func NewPropertyRepositoryRepository(db *gorm.DB) PropertyRepositoryInterface {
@@ -30,7 +30,7 @@ func NewPropertyRepositoryRepository(db *gorm.DB) PropertyRepositoryInterface {
 	}
 }
 
-func (self *PropertyRepository) All(include_internal bool) (dbom.Properties, error) {
+func (self *PropertyRepository) All(include_internal bool) (dbom.Properties, errors.E) {
 	var props []dbom.Property
 	err := self.db.Model(&dbom.Property{}).Find(&props, "internal = ? or internal = false", include_internal).Error
 	if err != nil {
@@ -44,7 +44,7 @@ func (self *PropertyRepository) All(include_internal bool) (dbom.Properties, err
 	return propss, nil
 }
 
-func (self *PropertyRepository) SaveAll(props *dbom.Properties) error {
+func (self *PropertyRepository) SaveAll(props *dbom.Properties) errors.E {
 	for _, prop := range *props {
 		err := self.db.Save(&prop).Error
 		if err != nil {
@@ -56,7 +56,7 @@ func (self *PropertyRepository) SaveAll(props *dbom.Properties) error {
 
 // SetValue saves a property with the given key and value.
 // The property is marked as not internal.
-func (self *PropertyRepository) SetValue(key string, value interface{}) error {
+func (self *PropertyRepository) SetValue(key string, value interface{}) errors.E {
 	prop := dbom.Property{
 		Key:      key,
 		Value:    value,
@@ -67,7 +67,7 @@ func (self *PropertyRepository) SetValue(key string, value interface{}) error {
 
 // SetInternalValue saves a property with the given key and value.
 // The property is marked as internal.
-func (self *PropertyRepository) SetInternalValue(key string, value interface{}) error {
+func (self *PropertyRepository) SetInternalValue(key string, value interface{}) errors.E {
 	prop := dbom.Property{
 		Key:      key,
 		Value:    value,
@@ -76,7 +76,7 @@ func (self *PropertyRepository) SetInternalValue(key string, value interface{}) 
 	return errors.WithStack(self.db.Save(&prop).Error)
 }
 
-func (self *PropertyRepository) Value(key string, include_internal bool) (interface{}, error) {
+func (self *PropertyRepository) Value(key string, include_internal bool) (interface{}, errors.E) {
 	var prop dbom.Property
 	err := self.db.Model(&dbom.Property{}).First(&prop, "key = ? and (internal = ? or internal = false)", key, include_internal).Error
 	if err != nil {
