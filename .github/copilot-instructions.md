@@ -1,203 +1,47 @@
-# SRAT Project Development Guidelines
+## COPILOT: SRAT repository — quick orientation for coding agents
 
-This document provides a comprehensive set of rules, conventions, and guidelines for developing the SRAT project. It consolidates information on backend (Go) and frontend (React) development, testing, documentation, and project workflow.
+This file highlights the must-know, discoverable rules and workflows for productive changes in this repo. Keep it short and actionable.
 
-## 1. Git & Project Workflow
+- Languages: Go backend (Go 1.25), TypeScript React frontend (Bun runtime). See `backend/go.mod` and `frontend/package.json`/`bun.lockb`.
+- Builds: backend via `backend/Makefile` (root `make` proxies many targets). Frontend uses Bun: `cd frontend && bun install && bun run build`.
+- Pre-commit and hooks: repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
 
-### Git Hooks and pre-commit Policy
+Key patterns and where to find them
+- API handlers: `backend/src/api/*` — handlers use constructor `NewXHandler` and `RegisterXHandler(api huma.API)`.
+- Services: `backend/src/service/*` — each service has an interface and an implementation wired via FX (`fx.In` param structs).
+- Repositories/DB: `backend/src/repository/*` and `backend/src/dbom/*` — GORM models live in `dbom`, converters in `converter/` and `goverter`-generated files.
+- DTOs: `backend/src/dto` define domain errors (see `dto/error_code.go`) and request/response shapes.
+- Logging: `backend/src/tlog` — use `tlog` helpers for structured logs and sensitive-data masking.
 
-Always manage git hooks via `pre-commit`. Do not place scripts in `.git/hooks` or configure `core.hooksPath`.
+Testing and mocks
+- Tests use `testify/suite` and `mockio/v2` for mocks. Test packages are named `{pkg}_test` and suites follow `XHandlerSuite` pattern. See `backend/src/api/*.go` and `*_test.go` for examples.
+- HTTP handler tests often use `humatest.New` to create a test API and `autopatch.AutoPatch(api)` for PATCH endpoints.
 
-1. **Modify Configuration**: To add or change hooks, edit the repository's `.pre-commit-config.yaml`.
-2. **Hook Type**: Prefer `local` hooks with `language: system` that delegate to existing `Makefile` targets (e.g., `make -C backend gosec`).
-3. **Configuration**: Ensure `stages` are set appropriately (e.g., `commit`, `push`) and `pass_filenames` is `false` for repo-wide checks.
-4. **Installation**: Install hooks locally with:
-   - `pre-commit install` (for default hook types)
-   - `pre-commit install --hook-type pre-push` (for push-stage hooks)
+Dev and quality gates
+- Run documentation checks: `make docs-validate` (root). Docs and examples are in `docs/`.
+- Security: `make security` runs `gosec` (backend). CI expects gosec/pass for commits.
+- Formatting: use `gofmt` for Go; frontend uses Biome/biome config (see `biome.json`).
 
-*Note: The project enforces a `gosec` scan on commit for backend Go changes and a quick Go build+test on push.*
+Quick examples
+- Start backend dev build: `cd backend && make run` (see `backend/Makefile`).
+- Run backend unit tests: `cd backend && go test ./...`.
+- Build all: `make ALL` (root Makefile).
 
-### CHANGELOG.md Rules
+Integration notes for agents
+- Many constructors and handlers are wired via Uber FX — when changing signatures, update providers and `fx.Populate` calls in tests.
+- Converters are generated (`*gen.go`) — if you change DTO/dbom shapes, regenerate converters or update `converter/*` accordingly.
+- Sensitive secrets (Rollbar) are optional and guarded; don't hardcode secrets — use env or config flags the project expects.
 
-Update `CHANGELOG.md` for any significant changes.
+Files to open first
+- `backend/Makefile`, `backend/src/api/*`, `backend/src/service/*`, `backend/src/dto/error_code.go`, `backend/src/converter/*`.
+- `frontend/src/pages/` and `frontend/src/components/` for UI changes.
 
-- **When to Update**: Update the changelog **after** validating that the changes work correctly (i.e., tests and builds pass).
-- **What to Document**:
-  - API changes (new endpoints, schema modifications)
-  - Breaking changes requiring user action
-  - New user-facing features
-  - Significant bug fixes
-  - Security updates
-  - Build, deployment, or database schema changes
-- **Format**: Follow the established emoji-based format.
+If uncertain, run these checks before PR
+- `pre-commit run --all-files`
+- `make docs-validate`
+- `make security`
 
-  ```markdown
-  ## 2025.08.\* [ 🚧 Unreleased ]
-
-  ### ✨ Features
-
-  - New share management API endpoints [#123](https://github.com/dianlight/srat/issues/123)
-
-  ### 🐛 Bug Fixes
-
-  - Fix share enable/disable functionality not working as expected
-
-  ### 🏗 Chore
-
-  - Updated Huma v2 framework integration
-  ```
-
-- **Required Information**: Include a clear description, issue/PR references (`[#123](https://github.com/dianlight/srat/issues/123)`), and migration steps for any breaking changes.
-
-## 2. Backend Development (Go)
-
-### Language & Runtime
-
-**Language**: Go
-**Version**: 1.25.0
-**Build System**: Make
-**Package Manager**: Go Modules
-
-### Dependencies
-
-**Main Dependencies**:
-
-- github.com/gorilla/mux v1.8.1 (HTTP router)
-- github.com/glebarez/sqlite v1.11.0 (SQLite database)
-- gorm.io/gorm v1.30.1 (ORM)
-- github.com/danielgtaylor/huma/v2 v2.34.1 (API framework)
-- github.com/rollbar/rollbar-go v1.4.8 (Error reporting)
-
-### Build & Installation
-
-```bash
-cd backend && make build
-```
-
-### Package Organization
-
-1. **Package Naming**: Use descriptive, lowercase package names without underscores.
-2. **Project Structure**: Adhere to the established structure:
-   - `api/`: HTTP handlers and API endpoints
-   - `service/`: Business logic and service layer
-   - `repository/`: Data access layer
-   - `dto/`: Data Transfer Objects
-   - `dbom/`: Database Object Models
-   - `converter/`: Object conversion utilities
-   - `config/`: Configuration management
-   - `internal/`: Internal utilities and app setup
-3. **Import Organization**: Group imports in this order:
-   1. Standard library
-   2. External libraries
-   3. Internal project imports (`github.com/dianlight/srat/...`)
-
-### Code Quality & Naming Conventions
-
-- **Receiver Name**: Use `self` as the receiver name for methods.
-- **Interface Naming**: End interface names with `Interface` (e.g., `SomeServiceInterface`).
-- **Constructor Naming**: Use the `NewTypeName` pattern.
-- **Error Handling**: Always handle errors explicitly; do not ignore them.
-- **Thread Safety**: Use mutexes for shared state in repositories.
-- **Formatting**: Use `gofmt` and follow standard Go conventions.
-- **Import Aliases**: Use consistent aliases (e.g., `errors` for `gitlab.com/tozd/go/errors`).
-
-### API Layer (Handlers)
-
-- **Constructor**: Use a `NewSomethingHandler` function to instantiate handlers.
-- **Registration**: Register HTTP routes in a `RegisterSomethingHandler(api huma.API)` method.
-- **Method Signatures**: Follow standard patterns for handler methods, clearly defining inputs, outputs, and path parameters.
-- **Request Body**: Define request bodies inside an anonymous `input` struct.
-- **Response Body**: Use anonymous structs for responses (e.g., `*struct{ Body dto.Something }`).
-- **Operation Tags**: Use consistent tags for API grouping (e.g., `huma.OperationTags("system")`).
-
-### Service Layer
-
-- **Interfaces**: Define an interface for every service.
-- **Implementation**: Use parameter structs with `fx.In` for dependency injection.
-
-### Repository Layer
-
-- **Interfaces**: Define interfaces with GORM operations.
-- **Implementation**: Use GORM with a `sync.RWMutex` to ensure thread safety.
-
-### Dependency Injection (FX)
-
-- **Service Registration**: Register all services, repositories, and handlers as FX providers.
-- **Parameter Structs**: Use `fx.In` structs for dependency injection in constructors.
-
-### Error Handling
-
-- **Error Types**: Define domain-specific errors in `dto/error_code.go` (e.g., `ErrorSomethingNotFound`).
-- **Error Wrapping**: Use `gitlab.com/tozd/go/errors` for wrapping errors to preserve context.
-- **HTTP Mapping**: Map domain errors to specific HTTP status codes in the API layer (e.g., `huma.Error404NotFound`).
-
-### Logging and Observability
-
-- **Structured Logging**: Use `slog` for structured, key-value based logging.
-- **Error Context**: Provide meaningful context in error messages and logs.
-
-### Configuration and Context
-
-- **Context State**: Use `dto.ContextState` to manage application-wide configuration and state.
-- **Template Handling**: Load templates from the `/templates` directory.
-
-### Async Operations and Broadcasting
-
-- **Dirty State**: After modifications, mark data as dirty using `dirtyService.SetDirtySomething()`.
-- **Notifications**: Use goroutines for asynchronous operations like client notifications.
-- **WaitGroup Context**: Use `context.WithValue(context.Background(), "wg", &sync.WaitGroup{})` to manage the lifecycle of async operations in tests.
-
-### Data Transfer (DTOs) & Conversion
-
-- **DTOs**: Define DTOs with JSON tags and validation rules.
-- **Converters**: Use `goverter` for automatic conversions between `dto` and `dbom` objects.
-
-## 3. Frontend Development (React)
-
-### Language & Runtime
-
-**Language**: TypeScript/JavaScript
-**Version**: TypeScript 5.8.3
-**Build System**: Bun
-**Package Manager**: Bun (v1.2.20)
-
-### Dependencies
-
-**Main Dependencies**:
-
-- react v19.1.0
-- @mui/material v7.1.1 (UI components)
-- @reduxjs/toolkit v2.8.2 (State management)
-- react-router-dom v7.6.2 (Routing)
-- react-hook-form v7.57.0 (Form handling)
-- rollbar v2.26.4 (Error reporting)
-
-**Development Dependencies**:
-
-- @biomejs/biome v2.1.4 (Linting)
-- @types/react v19.1.9
-- bun-html-live-reload v1.0.4
-
-### Build & Installation
-
-```bash
-cd frontend && bun install && bun run build
-```
-
-### Component Organization
-
-- **Generic Components**: `src/components/` is **only** for generic, reusable components that can be used across multiple pages.
-- **Page-Specific Components**: All components specific to a single page **must** be located within that page's directory.
-  - **Example**: For a "Dashboard" page, the structure should be:
-    - `src/pages/dashboard/Dashboard.tsx` (The page itself)
-    - `src/pages/dashboard/DashboardWidget.tsx` (A component used only on the dashboard)
-    - `src/pages/dashboard/ChartPanel.tsx` (Another component used only on the dashboard)
-
-## 4. Testing (Go)
-
-Go tests for API handlers must follow these patterns, based on `testify/suite`.
-
-### General Guidelines
+If this file misses anything important, tell me which area (build, tests, DI, logging, frontend) and I will expand with concrete examples.
 
 1. **Mock Dependencies**: Use `mockio/v2` for mocking services and repositories.
 2. **Test Paths**: Test both success and error paths.
