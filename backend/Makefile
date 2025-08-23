@@ -34,8 +34,7 @@ $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 test_build: $(SRC_DIRS) $(STATIC_DIRS)
 	mkdir -p tmp/x86_64 > /dev/null 2>&1 || :
 	CGO_ENABLED=0 go build -C $(SRC_DIRS) -tags=embedallowed_no -gcflags=all="-N -l" -ldflags="-X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT)" -o ../tmp/srat  ./cmd/srat-server && \
-	CGO_ENABLED=0 GOARCH=amd64 go build  -C $(SRC_DIRS) -tags=embedallowed -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT)" -o ../tmp/x86_64/ ./... && \
-	[ -f /mnt/remote/bootconfig.json ] && find ./tmp/x86_64/ -name "srat*" -exec cp -v {} /mnt/remote/ \; || echo "No remote mount found use make mount_remote"
+	CGO_ENABLED=0 GOARCH=amd64 go build  -C $(SRC_DIRS) -tags=embedallowed -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT)" -o ../tmp/x86_64/ ./...
 
 .PHONY: format
 format:
@@ -143,8 +142,8 @@ gen_patch:
 	cd ${HOME}/gohack/github.com/samber/slog-http; git diff > $(ROOT_DIR)/patches/slog-http.patch
 	cd ${HOME}/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
 
- /mnt/remote/bootconfig.json: mount_remote
-	[ -f /mnt/remote/bootconfig.json ] || echo "No remote mount found use make mount_remote"
+ /mnt/remote/config.db3: mount_remote
+	[ -f /mnt/remote/config.db3 ] || echo "No remote mount found use make mount_remote"
 
 .PHONY: mount_remote
 mount_remote:
@@ -153,6 +152,9 @@ mount_remote:
 	sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2 /mnt/remote
 
 .PHONY: build_remote
-build_remote: /mnt/remote/bootconfig.json
+build_remote: /mnt/remote/config.db3
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS);cd - && \
-	$(MAKE) test_build
+	$(MAKE) test_build && \
+	find ./tmp/x86_64/ -name "srat*" -exec cp -v {} /mnt/remote/ \;
+
+
