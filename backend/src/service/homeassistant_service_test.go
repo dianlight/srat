@@ -26,7 +26,7 @@ func (suite *HomeAssistantServiceTestSuite) SetupTest() {
 
 	params := service.HomeAssistantServiceParams{
 		Ctx:        suite.ctx,
-		Config:     suite.config,
+		State:      suite.config,
 		CoreClient: nil, // No client means no actual API calls
 	}
 	suite.haService = service.NewHomeAssistantService(params)
@@ -127,7 +127,7 @@ func (suite *HomeAssistantServiceTestSuite) TestNoClientConfigured_DoesNotSendEn
 	// Arrange - No core client configured
 	params := service.HomeAssistantServiceParams{
 		Ctx:        suite.ctx,
-		Config:     suite.config,
+		State:      suite.config,
 		CoreClient: nil,
 	}
 	haService := service.NewHomeAssistantService(params)

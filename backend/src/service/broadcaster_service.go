@@ -21,18 +21,24 @@ type BroadcasterServiceInterface interface {
 
 type BroadcasterService struct {
 	ctx              context.Context
+	state            *dto.ContextState
 	SentCounter      atomic.Uint64
 	ConnectedClients atomic.Int32
 	relay            *broadcast.Relay[any]
 	haService        HomeAssistantServiceInterface
 }
 
-func NewBroadcasterService(ctx context.Context, haService HomeAssistantServiceInterface) (broker BroadcasterServiceInterface) {
+func NewBroadcasterService(
+	ctx context.Context,
+	haService HomeAssistantServiceInterface,
+	state *dto.ContextState,
+) (broker BroadcasterServiceInterface) {
 	// Instantiate a broker
 	return &BroadcasterService{
 		ctx:       ctx,
 		relay:     broadcast.NewRelay[any](),
 		haService: haService,
+		state:     state,
 	}
 }
 
@@ -50,7 +56,7 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) (any, error) {
 }
 
 func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
-	if broker.haService == nil {
+	if broker.haService == nil || !broker.state.HACoreReady {
 		return
 	}
 

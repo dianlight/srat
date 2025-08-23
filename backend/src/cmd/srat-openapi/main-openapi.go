@@ -46,8 +46,10 @@ func main() {
 	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	defer apiCancel() // Ensure context is cancelled on exit
 	staticConfig := dto.ContextState{
-		ReadOnlyMode: false,
-		DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
+		ReadOnlyMode:  false,
+		DatabasePath:  "file::memory:?cache=shared&_pragma=foreign_keys(1)",
+		HACoreReady:   false, // We don't need HA integration for OpenAPI
+		ProtectedMode: true,  // No real services are running
 	}
 
 	appParams := appsetup.BaseAppParams{

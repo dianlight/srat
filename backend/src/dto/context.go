@@ -5,6 +5,7 @@ type ContextState struct {
 	ReadOnlyMode    bool
 	ProtectedMode   bool
 	SecureMode      bool
+	HACoreReady     bool
 	UpdateFilePath  string
 	UpdateChannel   UpdateChannel
 	SambaConfigFile string

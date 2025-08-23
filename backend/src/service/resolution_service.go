@@ -15,7 +15,7 @@ type ResolutionServiceParams struct {
 	ApiContext       context.Context
 	ApiContextCancel context.CancelFunc
 	ResolutionClient resolution.ClientWithResponsesInterface
-	StaticConfig     *dto.ContextState
+	State            *dto.ContextState
 }
 
 type ResolutionServiceInterface interface {
@@ -26,19 +26,19 @@ type ResolutionServiceInterface interface {
 type ResolutionService struct {
 	apiContext       context.Context
 	resolutionClient resolution.ClientWithResponsesInterface
-	staticConfig     *dto.ContextState
+	state            *dto.ContextState
 }
 
 func NewResolutionService(in ResolutionServiceParams) ResolutionServiceInterface {
 	p := &ResolutionService{}
 	p.apiContext = in.ApiContext
 	p.resolutionClient = in.ResolutionClient
-	p.staticConfig = in.StaticConfig
+	p.state = in.State
 	return p
 }
 
 func (s *ResolutionService) CreateIssue(issue dto.ResolutionIssue) error {
-	if s.staticConfig.SupervisorURL == "demo" {
+	if s.state.SupervisorURL == "demo" || s.state.HACoreReady == false {
 		return nil
 	}
 	/*
@@ -66,7 +66,7 @@ func (s *ResolutionService) CreateIssue(issue dto.ResolutionIssue) error {
 }
 
 func (s *ResolutionService) DeleteIssue(uuid types.UUID) error {
-	if s.staticConfig.SupervisorURL == "demo" {
+	if s.state.SupervisorURL == "demo" || s.state.HACoreReady == false {
 		return nil
 	}
 

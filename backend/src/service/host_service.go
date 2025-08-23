@@ -28,7 +28,7 @@ type HostServiceInterface interface {
 type HostService struct {
 	apiContext    context.Context
 	host_client   host.ClientWithResponsesInterface
-	staticConfig  *dto.ContextState
+	state         *dto.ContextState
 	hostnameCache *gocache.Cache
 	hostnameMutex sync.Mutex
 }
@@ -39,31 +39,26 @@ type HostServiceParams struct {
 	ApiContextCancel context.CancelFunc
 	HostClient       host.ClientWithResponsesInterface `optional:"true"`
 	PropertyRepo     repository.PropertyRepositoryInterface
-	StaticConfig     *dto.ContextState
+	State            *dto.ContextState
 }
 
 func NewHostService(in HostServiceParams) HostServiceInterface {
 	p := &HostService{}
 	p.apiContext = in.ApiContext
 	p.host_client = in.HostClient
-	p.staticConfig = in.StaticConfig
+	p.state = in.State
 	p.hostnameCache = gocache.New(defaultCacheExpiration, defaultCacheCleanupInterval)
 	return p
 }
 
 func (self *HostService) GetHostName() (string, error) {
-	// Try to get from cache first (read-only, no lock yet)
-	if name, found := self.hostnameCache.Get(hostnameCacheKey); found {
-		if strName, ok := name.(string); ok {
-			return strName, nil
-		}
-	}
-
-	// If not in cache, acquire lock to fetch
 	self.hostnameMutex.Lock()
 	defer self.hostnameMutex.Unlock()
 
-	// Re-check cache after acquiring lock (another goroutine might have populated it)
+	if self.state.HACoreReady == false {
+		return "homeassistant", errors.New("Home Assistant core is not ready")
+	}
+
 	if name, found := self.hostnameCache.Get(hostnameCacheKey); found {
 		if strName, ok := name.(string); ok {
 			return strName, nil
@@ -71,7 +66,7 @@ func (self *HostService) GetHostName() (string, error) {
 	}
 
 	// If still not in cache, proceed to fetch
-	if self.staticConfig.SupervisorURL != "demo" {
+	if self.state.SupervisorURL != "demo" {
 		if self.host_client == nil {
 			return "homeassistant", errors.New("Host client is not initialized")
 		}

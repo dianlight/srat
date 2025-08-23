@@ -31,6 +31,7 @@ type AddonsService struct {
 	ctx                context.Context
 	apictx             *dto.ContextState // Context state for the API, can be used for logging or passing additional information.
 	addonsClient       addons.ClientWithResponsesInterface
+	haWsService        HaWsServiceInterface
 	protectedModeCache *gocache.Cache
 	protectedModeMutex sync.Mutex
 	statsCache         *gocache.Cache
@@ -43,6 +44,7 @@ type AddonsServiceParams struct {
 	Ctx          context.Context
 	Apictx       *dto.ContextState
 	AddonsClient addons.ClientWithResponsesInterface `optional:"true"`
+	HaWsService  HaWsServiceInterface
 }
 
 const (
@@ -65,7 +67,14 @@ func NewAddonsService(lc fx.Lifecycle, params AddonsServiceParams) AddonsService
 		addonsClient:       params.AddonsClient,
 		protectedModeCache: gocache.New(protectedModeCacheExpiry, protectedModeCacheCleanup),
 		statsCache:         gocache.New(statsCacheExpiry, statsCacheCleanup),
+		haWsService:        params.HaWsService,
 	}
+
+	p.haWsService.SubscribeToHaEvents(func(ready bool) {
+		if ready {
+			p.apictx.ProtectedMode, _ = p.CheckProtectedMode()
+		}
+	})
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -78,6 +87,10 @@ func NewAddonsService(lc fx.Lifecycle, params AddonsServiceParams) AddonsService
 
 // CheckProtectedMode implements the AddonsServiceInterface.
 func (s *AddonsService) CheckProtectedMode() (bool, errors.E) {
+	if !s.apictx.HACoreReady {
+		return true, nil // If HA Core is not ready, we cannot determine protected mode but assume to true
+	}
+
 	// Try to get from cache first
 	if protected, found := s.protectedModeCache.Get(protectedModeCacheKey); found {
 		if p, ok := protected.(bool); ok {

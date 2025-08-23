@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -15,6 +16,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/homeassistant/resolution"
 	"github.com/dianlight/srat/homeassistant/root"
+	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
@@ -79,6 +81,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewSmartService,
 		service.NewIssueService,
 		service.NewTelemetryService,
+		service.NewHaWsService,
 		repository.NewMountPointPathRepository,
 		repository.NewExportedShareRepository,
 		repository.NewPropertyRepositoryRepository,
@@ -116,6 +119,9 @@ func ProvideHAClientDependencies(params BaseAppParams) fx.Option {
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (root.ClientWithResponsesInterface, error) {
 			return root.NewClientWithResponses(params.StaticConfig.SupervisorURL, root.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (websocket.ClientInterface, error) {
+			return websocket.NewClient(strings.Replace(params.StaticConfig.SupervisorURL, "http", "ws", 1), params.StaticConfig.SupervisorToken), nil
 		},
 	)
 }

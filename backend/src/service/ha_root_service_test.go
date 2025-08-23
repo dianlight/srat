@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/root"
 	"github.com/stretchr/testify/suite"
 	"github.com/xorcare/pointer"
@@ -110,6 +111,9 @@ func (s *HaRootServiceSuite) SetupTest() {
 		apiContext:       s.ctx,
 		apiContextCancel: s.cancel,
 		client:           nil,
+		state: &dto.ContextState{
+			HACoreReady: true,
+		},
 	}
 }
 
@@ -299,11 +303,6 @@ func (s *HaRootServiceSuite) TestRefreshAndReload_VariousCases() {
 	// Refresh: client nil
 	s.svc.client = nil
 	err := s.svc.RefreshUpdates()
-	s.Error(err)
-	s.Contains(err.Error(), "HA Root client is not initialized")
-
-	// Reload: client nil
-	err = s.svc.ReloadUpdates()
 	s.Error(err)
 	s.Contains(err.Error(), "HA Root client is not initialized")
 

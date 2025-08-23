@@ -355,7 +355,7 @@ func main() {
 							}
 							switch share.Usage {
 							case "media", "share", "backup":
-								err = supervisor_service.NetworkUnmountShare(share)
+								err = supervisor_service.NetworkUnmountShare(share.Name)
 								if err != nil {
 									slog.Error("UnMounting error", "share", share, "err", err)
 								}

@@ -43,7 +43,9 @@ func TestHostServiceTestSuite(t *testing.T) {
 }
 
 func (suite *HostServiceTestSuite) SetupTest() {
-	suite.staticConfig = &dto.ContextState{}
+	suite.staticConfig = &dto.ContextState{
+		HACoreReady: true,
+	}
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(

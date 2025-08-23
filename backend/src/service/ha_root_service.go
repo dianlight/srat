@@ -8,6 +8,7 @@ import (
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/root"
 	gocache "github.com/patrickmn/go-cache"
 )
@@ -33,7 +34,7 @@ type HaRootService struct {
 	apiContext       context.Context
 	apiContextCancel context.CancelFunc
 	client           root.ClientWithResponsesInterface
-	// No cache here; use package-level cache helpers
+	state            *dto.ContextState
 }
 
 type HaRootServiceParams struct {
@@ -41,6 +42,7 @@ type HaRootServiceParams struct {
 	ApiContext       context.Context
 	ApiContextCancel context.CancelFunc
 	Client           root.ClientWithResponsesInterface `optional:"true"`
+	State            *dto.ContextState
 }
 
 func NewHaRootService(in HaRootServiceParams) HaRootServiceInterface {
@@ -48,12 +50,18 @@ func NewHaRootService(in HaRootServiceParams) HaRootServiceInterface {
 		apiContext:       in.ApiContext,
 		apiContextCancel: in.ApiContextCancel,
 		client:           in.Client,
+		state:            in.State,
 	}
 }
 
 func (s *HaRootService) GetSystemInfo() (*root.SystemInfo, error) {
 	_ha_root_api_mutex.Lock()
 	defer _ha_root_api_mutex.Unlock()
+
+	if !s.state.HACoreReady {
+		return nil, errors.New("HA Core is not ready")
+	}
+
 	// Try cache first
 	if cached, found := getCachedSystemInfo(); found {
 		return cached, nil
@@ -75,6 +83,11 @@ func (s *HaRootService) GetSystemInfo() (*root.SystemInfo, error) {
 func (s *HaRootService) GetAvailableUpdates() ([]root.UpdateItem, error) {
 	_ha_root_api_mutex.Lock()
 	defer _ha_root_api_mutex.Unlock()
+
+	if !s.state.HACoreReady {
+		return []root.UpdateItem{}, nil // No update if HA is not ready
+	}
+
 	if s.client == nil {
 		return nil, errors.New("HA Root client is not initialized")
 	}
@@ -91,6 +104,7 @@ func (s *HaRootService) GetAvailableUpdates() ([]root.UpdateItem, error) {
 func (s *HaRootService) RefreshUpdates() error {
 	_ha_root_api_mutex.Lock()
 	defer _ha_root_api_mutex.Unlock()
+
 	if s.client == nil {
 		return errors.New("HA Root client is not initialized")
 	}
@@ -107,8 +121,9 @@ func (s *HaRootService) RefreshUpdates() error {
 func (s *HaRootService) ReloadUpdates() error {
 	_ha_root_api_mutex.Lock()
 	defer _ha_root_api_mutex.Unlock()
+
 	if s.client == nil {
-		return errors.New("HA Root client is not initialized")
+		return nil
 	}
 	resp, err := s.client.ReloadUpdatesWithResponse(s.apiContext)
 	if err != nil {

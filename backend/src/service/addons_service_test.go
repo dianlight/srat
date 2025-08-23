@@ -43,9 +43,12 @@ func (suite *AddonsServiceTestSuite) SetupTest() {
 			},
 			service.NewAddonsService,
 			func() *dto.ContextState {
-				return &dto.ContextState{}
+				return &dto.ContextState{
+					HACoreReady: true,
+				}
 			},
 			mock.Mock[addons.ClientWithResponsesInterface],
+			mock.Mock[service.HaWsServiceInterface],
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),
 		fx.Populate(&suite.mockAddonsClient),
@@ -180,12 +183,18 @@ func (suite *AddonsServiceTestSuite) TestGetStats_ClientNotInitialized() {
 	var addonsService service.AddonsServiceInterface
 	app := fxtest.New(suite.T(),
 		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
 				ctx := context.WithValue(context.Background(), "wg", &sync.WaitGroup{})
 				return context.WithCancel(ctx)
 			},
 			service.NewAddonsService,
-			func() *dto.ContextState { return &dto.ContextState{} },
+			mock.Mock[service.HaWsServiceInterface],
+			func() *dto.ContextState {
+				return &dto.ContextState{
+					HACoreReady: true,
+				}
+			},
 			// Provide a nil client explicitly
 			func() addons.ClientWithResponsesInterface { return nil },
 		),
