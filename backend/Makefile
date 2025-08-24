@@ -38,10 +38,11 @@ test_build: $(SRC_DIRS) $(STATIC_DIRS)
 
 .PHONY: format
 format:
-	go tool -C $(SRC_DIRS)  gohack undo
-	go mod -C $(SRC_DIRS) tidy
-	go tool -C $(SRC_DIRS)  testifylint --fix ./...
-	go -C $(SRC_DIRS)  fmt
+	go -C $(SRC_DIRS) vet ./... && \
+	go tool -C $(SRC_DIRS)  gohack undo && \
+	go mod -C $(SRC_DIRS) tidy && \
+	go tool -C $(SRC_DIRS)  testifylint --fix ./...  && \
+	go -C $(SRC_DIRS) fmt ./... && \
 	make patch
 
 .PHONY: clean
