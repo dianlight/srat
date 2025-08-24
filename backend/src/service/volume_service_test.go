@@ -132,7 +132,7 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 		return []any{nil}
 	})).Verify(matchers.AtLeastOnce())
 
-	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(
 		[]dto.Disk{}, nil)
 
 	defer func() {
@@ -223,7 +223,7 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_Success() {
 		return []any{nil}
 	})).Verify(matchers.AtLeastOnce())
 
-	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(
 		[]dto.Disk{}, nil)
 
 	//suite.mockBroadcaster.On("BroadcastMessage", mock.AnythingOfType("*[]dto.Disk")).Return(nil, nil).Once()
@@ -293,7 +293,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1", Type: "ADDON"} // Initial state in DB
 	dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, Device: "sdb1", Type: "ADDON"} // Initial state in DB
 
-	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.AtLeastOnce())
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHWResponse, nil).Verify(matchers.AtLeastOnce())
 
 	// Expect FindByPath and Save for each mount point found in hardware data
 	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
@@ -360,7 +360,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_HardwareClientError() {
 	expectedErr := errors.New("hardware client failed")
 
 	// NotifyClient is invoked asynchronously; don't enforce a strict call count to avoid flakes
-	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(nil, expectedErr)
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(nil, expectedErr)
 	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext, mock.Anything).Return(nil, expectedErr).Once()
 	// Fallback logic is commented out, so we expect the error to propagate
 
@@ -392,7 +392,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_NotF
 	mountPath1 := "/mnt/newfs"
 	expectedErr := gorm.ErrRecordNotFound
 
-	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(nil, errors.WithStack(expectedErr)).Verify(matchers.Times(1))
 
 	mock.When(suite.lsblk.GetInfoFromDevice("/dev/sda1")).ThenReturn(&lsblk.LSBKInfo{
@@ -436,7 +436,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1"}
 	expectedErr := errors.New("DB save error")
 
-	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(expectedErr).Verify(matchers.Times(1))
 	mock.When(suite.lsblk.GetInfoFromDevice("/dev/sda1")).ThenReturn(&lsblk.LSBKInfo{

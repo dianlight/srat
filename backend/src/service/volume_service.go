@@ -481,6 +481,7 @@ func (self *VolumeService) udevEventHandler() {
 					slog.Info("Processing block device event", "action", action, "devname", devName)
 
 					// Get current volumes data
+					self.hardwareClient.InvalidateHardwareInfo()
 					volumesData, err := self.GetVolumesData()
 					if err != nil {
 						slog.Error("Failed to get volumes data after udev event", "err", err)
@@ -607,7 +608,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 			return &ret, nil
 		}
 
-		ret, errHw := self.hardwareClient.GetHardwareInfo(self.ctx)
+		ret, errHw := self.hardwareClient.GetHardwareInfo()
 		if errHw != nil {
 			return nil, errHw
 		}

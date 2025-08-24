@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/tlog"
+	"github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
@@ -17,13 +20,15 @@ import (
 // of hardware info (`hardware.HardwareInfo`) so other packages don't have
 // to import the generated `hardware` package.
 type HardwareServiceInterface interface {
-	GetHardwareInfo(ctx context.Context) ([]dto.Disk, errors.E)
+	GetHardwareInfo() ([]dto.Disk, errors.E)
+	InvalidateHardwareInfo()
 }
 
 type hardwareService struct {
 	ctx      context.Context
 	haClient hardware.ClientWithResponsesInterface
 	conv     converter.HaHardwareToDtoImpl
+	cache    *cache.Cache
 }
 
 func NewHardwareService(
@@ -35,10 +40,25 @@ func NewHardwareService(
 		ctx:      ctx,
 		haClient: haClient,
 		conv:     converter.HaHardwareToDtoImpl{},
+		cache:    cache.New(30*time.Minute, 10*time.Minute),
 	}
 }
 
-func (h *hardwareService) GetHardwareInfo(ctx context.Context) ([]dto.Disk, errors.E) {
+func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
+	// try cache first
+	const hwCacheKey = "hardware_info"
+	if h.cache != nil {
+		if cached, ok := h.cache.Get(hwCacheKey); ok {
+			if disks, castOk := cached.([]dto.Disk); castOk {
+				tlog.Debug("Returning hardware info from cache", "drive_count", len(disks))
+				return disks, nil
+			}
+			// unexpected type, invalidate
+			tlog.Warn("Invalid type found in hardware info cache, invalidating", "expected", "[]dto.Disk", "actual", fmt.Sprintf("%T", cached))
+			h.cache.Delete(hwCacheKey)
+		}
+	}
+
 	ret := []dto.Disk{}
 	hwser, errHw := h.haClient.GetHardwareInfoWithResponse(h.ctx)
 	if errHw != nil || hwser == nil {
@@ -108,4 +128,14 @@ func (h *hardwareService) GetHardwareInfo(ctx context.Context) ([]dto.Disk, erro
 	}
 	return ret, nil
 
+}
+
+// InvalidateHardwareInfo clears the cached hardware info so the next call
+// to GetHardwareInfo will fetch fresh data from the HA Supervisor.
+func (h *hardwareService) InvalidateHardwareInfo() {
+	if h.cache == nil {
+		return
+	}
+	h.cache.Delete("hardware_info")
+	tlog.Debug("Invalidated hardware info cache")
 }

@@ -61,10 +61,10 @@ func NewHaWsService(lc fx.Lifecycle, params HaWsServiceParams) (HaWsServiceInter
 		return s, nil
 	}
 
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
+	s.SubscribeToHaEvents(func(ready bool) {
+		if ready {
 			// subscribe to homeassistant_started
-			unsubStart, err := s.client.SubscribeEvents(ctx, "homeassistant_started", func(ev json.RawMessage) {
+			unsubStart, err := s.client.SubscribeEvents(s.ctx, "homeassistant_started", func(ev json.RawMessage) {
 				tlog.Trace("ha_ws_service: received homeassistant_started event")
 				s.OnHaStarted()
 			})
@@ -75,7 +75,7 @@ func NewHaWsService(lc fx.Lifecycle, params HaWsServiceParams) (HaWsServiceInter
 			}
 
 			// subscribe to homeassistant_stop (the docs mention homeassistant_stop/homeassistant_started)
-			unsubStop, err2 := s.client.SubscribeEvents(ctx, "homeassistant_stop", func(ev json.RawMessage) {
+			unsubStop, err2 := s.client.SubscribeEvents(s.ctx, "homeassistant_stop", func(ev json.RawMessage) {
 				tlog.Trace("ha_ws_service: received homeassistant_stop event")
 				s.OnHaStopped()
 			})
@@ -84,7 +84,13 @@ func NewHaWsService(lc fx.Lifecycle, params HaWsServiceParams) (HaWsServiceInter
 			} else {
 				s.unsubStopped = unsubStop
 			}
+		} else {
+			tlog.Debug("ha_ws_service: Home Assistant is not ready")
+		}
+	})
 
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
 			// subscribe to connection lifecycle events
 			if s.client != nil {
 				unsubC, err := s.client.SubscribeConnectionEvents(func(ev websocket.ConnectionEvent) {
@@ -101,6 +107,11 @@ func NewHaWsService(lc fx.Lifecycle, params HaWsServiceParams) (HaWsServiceInter
 					slog.Warn("ha_ws_service: subscribe connection events failed", "error", err)
 				} else {
 					s.unsubConn = unsubC
+				}
+				err = s.client.Connect(s.ctx)
+				if err != nil {
+					slog.Warn("ha_ws_service: websocket connection failed", "error", err)
+					return err
 				}
 			}
 

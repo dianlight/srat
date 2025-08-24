@@ -78,12 +78,12 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_NoVolumes() {
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(suite.ds.currentDiskHealth)
-	suite.Len(suite.ds.currentDiskHealth.PerDiskIO, 0)
+	suite.Empty(suite.ds.currentDiskHealth.PerDiskIO)
 	suite.Equal(float64(0), suite.ds.currentDiskHealth.Global.TotalIOPS)
 	suite.Equal(float64(0), suite.ds.currentDiskHealth.Global.TotalReadLatency)
 	suite.Equal(float64(0), suite.ds.currentDiskHealth.Global.TotalWriteLatency)
 	suite.NotNil(suite.ds.currentDiskHealth.PerPartitionInfo)
-	suite.Len(suite.ds.currentDiskHealth.PerPartitionInfo, 0)
+	suite.Empty(suite.ds.currentDiskHealth.PerPartitionInfo)
 
 	// Verify mock call
 	mock.Verify(suite.volumeMock, matchers.Times(1)).GetVolumesData()
@@ -118,7 +118,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 	suite.NoError(err)
 	// Device was nil so no PerDiskIO entries should be added
 	suite.NotNil(suite.ds.currentDiskHealth)
-	suite.Len(suite.ds.currentDiskHealth.PerDiskIO, 0)
+	suite.Empty(suite.ds.currentDiskHealth.PerDiskIO)
 	// PerPartitionInfo map should not have an entry for the skipped device
 	if d.Id != nil {
 		_, exists := suite.ds.currentDiskHealth.PerPartitionInfo[*d.Id]

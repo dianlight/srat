@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
@@ -23,8 +24,6 @@ type ClientInterface interface {
 	GetConfig(ctx context.Context) (map[string]interface{}, error)
 	Receive() <-chan []byte
 	Close() error
-	// SubscribeConnectionEvents registers a handler that will be called on connection lifecycle events.
-	// The returned function unsubscribes the handler.
 	SubscribeConnectionEvents(handler func(ConnectionEvent)) (func(), error)
 }
 
@@ -86,7 +85,7 @@ type ConnectionEvent struct {
 // The URL should be a full websocket URL (ws:// or wss://).
 func NewClient(endpoint, supervisorToken string) ClientInterface {
 	return &Client{
-		endpoint:        endpoint,
+		endpoint:        endpoint + "core/websocket",
 		supervisorToken: supervisorToken,
 		recvCh:          make(chan []byte, 16),
 		closed:          make(chan struct{}),
@@ -98,8 +97,6 @@ func NewClient(endpoint, supervisorToken string) ClientInterface {
 
 // Connect dials the websocket endpoint and starts the reader loop.
 func (c *Client) Connect(ctx context.Context) error {
-	// start a background connectLoop which will keep connection alive
-	// create a cancelable context for reconnect lifecycle
 	c.reconnectMu.Lock()
 	if c.reconnectCancel != nil {
 		// already started
@@ -162,6 +159,7 @@ func (c *Client) connectLoop(ctx context.Context, connectedCh chan<- struct{}) {
 		}
 		conn, _, err := dialer.DialContext(ctx, u.String(), reqHeader)
 		if err != nil {
+			slog.Warn("websocket connect failed", "url", u, "error", err)
 			// wait with backoff and retry
 			attempt++
 			// notify retrying handlers with attempt and backoff
@@ -193,6 +191,84 @@ func (c *Client) connectLoop(ctx context.Context, connectedCh chan<- struct{}) {
 		c.connMu.Lock()
 		c.conn = conn
 		c.connMu.Unlock()
+
+		// perform Home Assistant websocket auth handshake
+		// read the initial message which should be an auth/hello message
+		var helloMsg map[string]json.RawMessage
+		// set a short deadline for the handshake
+		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			_ = conn.Close()
+			slog.Warn("failed to read hello from websocket", "error", err)
+			// continue to retry
+			continue
+		}
+		if err := json.Unmarshal(msg, &helloMsg); err != nil {
+			_ = conn.Close()
+			slog.Warn("invalid hello message from websocket", "error", err)
+			continue
+		}
+
+		// default: proceed if no auth required
+		needAuth := false
+		//slog.Info("received hello message", "message", string(msg))
+		if tRaw, ok := helloMsg["type"]; ok {
+			var t string
+			if err := json.Unmarshal(tRaw, &t); err == nil && t == "auth_required" {
+				needAuth = true
+			}
+		}
+
+		if needAuth {
+			// send auth payload. If supervisorToken available, use it as access_token
+			authPayload := map[string]interface{}{"type": "auth"}
+			if c.supervisorToken != "" {
+				authPayload["access_token"] = c.supervisorToken
+			}
+			// write auth
+			if err := conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err == nil {
+				// ignore SetWriteDeadline error; do the write
+			}
+			//slog.Info("sending auth payload", "payload", authPayload)
+			if err := conn.WriteJSON(authPayload); err != nil {
+				_ = conn.Close()
+				slog.Warn("failed to send auth payload", "error", err)
+				continue
+			}
+
+			// wait for auth_ok or auth_invalid
+			conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				_ = conn.Close()
+				slog.Warn("failed to read auth response", "error", err)
+				continue
+			}
+			var authResp map[string]json.RawMessage
+			if err := json.Unmarshal(msg, &authResp); err != nil {
+				_ = conn.Close()
+				slog.Warn("invalid auth response", "error", err)
+				continue
+			}
+			if tRaw, ok := authResp["type"]; ok {
+				var t string
+				if err := json.Unmarshal(tRaw, &t); err == nil {
+					if t == "auth_ok" {
+						// success, proceed
+					} else {
+						// auth_invalid or other
+						_ = conn.Close()
+						slog.Warn("authentication failed", "type", t)
+						continue
+					}
+				}
+			} else {
+				_ = conn.Close()
+				slog.Warn("auth response missing type")
+				continue
+			}
+		}
 
 		// signal first connect
 		if first {
