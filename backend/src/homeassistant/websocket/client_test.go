@@ -30,6 +30,7 @@ func startTestServer(t *testing.T) *httptest.Server {
 			if err != nil {
 				return
 			}
+			t.Log("<--" + string(msg))
 			// parse incoming JSON
 			var m map[string]interface{}
 			if err := json.Unmarshal(msg, &m); err != nil {
@@ -49,27 +50,33 @@ func startTestServer(t *testing.T) *httptest.Server {
 			switch typ {
 			case "get_states":
 				resp := map[string]interface{}{"id": id, "type": "result", "success": true, "result": []map[string]interface{}{{"entity_id": "light.test", "state": "on"}}}
+				t.Logf("<-- %s", string(msg))
 				_ = c.WriteJSON(resp)
 			case "get_config":
 				resp := map[string]interface{}{"id": id, "type": "result", "success": true, "result": map[string]interface{}{"version": "test"}}
+				t.Logf("<-- %s", string(msg))
 				_ = c.WriteJSON(resp)
 			case "call_service":
 				resp := map[string]interface{}{"id": id, "type": "result", "success": true, "result": nil}
+				t.Logf("<-- %s", string(msg))
 				_ = c.WriteJSON(resp)
 			case "subscribe_events":
 				// send subscribe success
 				resp := map[string]interface{}{"id": id, "type": "result", "success": true, "result": nil}
+				t.Logf("<-- %s", string(msg))
 				_ = c.WriteJSON(resp)
 				// then periodically send an event
 				go func() {
 					time.Sleep(50 * time.Millisecond)
 					ev := map[string]interface{}{"type": "event", "event": map[string]interface{}{"event_type": m["event_type"], "data": map[string]interface{}{"hello": "world"}}}
+					t.Logf("<-- %s", string(msg))
 					_ = c.WriteJSON(ev)
 				}()
 			default:
 				// unknown - send generic result if id present
 				if idf != nil {
 					resp := map[string]interface{}{"id": id, "type": "result", "success": true, "result": nil}
+					t.Logf("<-- %s", string(msg))
 					_ = c.WriteJSON(resp)
 				}
 			}
@@ -83,6 +90,7 @@ func TestConnectSendReceive(t *testing.T) {
 	srv := startTestServer(t)
 	defer srv.Close()
 
+	t.Log(srv.URL)
 	// convert http://127.0.0.1 -> ws://127.0.0.1
 	wsURL := "ws" + srv.URL[len("http"):] + "/" // keep trailing slash
 

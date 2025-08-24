@@ -192,84 +192,85 @@ func (c *Client) connectLoop(ctx context.Context, connectedCh chan<- struct{}) {
 		c.conn = conn
 		c.connMu.Unlock()
 
-		// perform Home Assistant websocket auth handshake
-		// read the initial message which should be an auth/hello message
-		var helloMsg map[string]json.RawMessage
-		// set a short deadline for the handshake
-		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			_ = conn.Close()
-			slog.Warn("failed to read hello from websocket", "error", err)
-			// continue to retry
-			continue
-		}
-		if err := json.Unmarshal(msg, &helloMsg); err != nil {
-			_ = conn.Close()
-			slog.Warn("invalid hello message from websocket", "error", err)
-			continue
-		}
-
-		// default: proceed if no auth required
-		needAuth := false
-		//slog.Info("received hello message", "message", string(msg))
-		if tRaw, ok := helloMsg["type"]; ok {
-			var t string
-			if err := json.Unmarshal(tRaw, &t); err == nil && t == "auth_required" {
-				needAuth = true
-			}
-		}
-
-		if needAuth {
-			// send auth payload. If supervisorToken available, use it as access_token
-			authPayload := map[string]interface{}{"type": "auth"}
-			if c.supervisorToken != "" {
-				authPayload["access_token"] = c.supervisorToken
-			}
-			// write auth
-			if err := conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err == nil {
-				// ignore SetWriteDeadline error; do the write
-			}
-			//slog.Info("sending auth payload", "payload", authPayload)
-			if err := conn.WriteJSON(authPayload); err != nil {
-				_ = conn.Close()
-				slog.Warn("failed to send auth payload", "error", err)
-				continue
-			}
-
-			// wait for auth_ok or auth_invalid
+		if c.supervisorToken != "" {
+			// perform Home Assistant websocket auth handshake
+			// read the initial message which should be an auth/hello message
+			var helloMsg map[string]json.RawMessage
+			// set a short deadline for the handshake
 			conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				_ = conn.Close()
-				slog.Warn("failed to read auth response", "error", err)
+				slog.Warn("failed to read hello from websocket", "error", err)
+				// continue to retry
 				continue
 			}
-			var authResp map[string]json.RawMessage
-			if err := json.Unmarshal(msg, &authResp); err != nil {
+			if err := json.Unmarshal(msg, &helloMsg); err != nil {
 				_ = conn.Close()
-				slog.Warn("invalid auth response", "error", err)
+				slog.Warn("invalid hello message from websocket", "error", err)
 				continue
 			}
-			if tRaw, ok := authResp["type"]; ok {
+
+			// default: proceed if no auth required
+			needAuth := false
+			//slog.Info("received hello message", "message", string(msg))
+			if tRaw, ok := helloMsg["type"]; ok {
 				var t string
-				if err := json.Unmarshal(tRaw, &t); err == nil {
-					if t == "auth_ok" {
-						// success, proceed
-					} else {
-						// auth_invalid or other
-						_ = conn.Close()
-						slog.Warn("authentication failed", "type", t)
-						continue
-					}
+				if err := json.Unmarshal(tRaw, &t); err == nil && t == "auth_required" {
+					needAuth = true
 				}
-			} else {
-				_ = conn.Close()
-				slog.Warn("auth response missing type")
-				continue
+			}
+
+			if needAuth {
+				// send auth payload. If supervisorToken available, use it as access_token
+				authPayload := map[string]interface{}{"type": "auth"}
+				if c.supervisorToken != "" {
+					authPayload["access_token"] = c.supervisorToken
+				}
+				// write auth
+				if err := conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err == nil {
+					// ignore SetWriteDeadline error; do the write
+				}
+				//slog.Info("sending auth payload", "payload", authPayload)
+				if err := conn.WriteJSON(authPayload); err != nil {
+					_ = conn.Close()
+					slog.Warn("failed to send auth payload", "error", err)
+					continue
+				}
+
+				// wait for auth_ok or auth_invalid
+				conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+				_, msg, err := conn.ReadMessage()
+				if err != nil {
+					_ = conn.Close()
+					slog.Warn("failed to read auth response", "error", err)
+					continue
+				}
+				var authResp map[string]json.RawMessage
+				if err := json.Unmarshal(msg, &authResp); err != nil {
+					_ = conn.Close()
+					slog.Warn("invalid auth response", "error", err)
+					continue
+				}
+				if tRaw, ok := authResp["type"]; ok {
+					var t string
+					if err := json.Unmarshal(tRaw, &t); err == nil {
+						if t == "auth_ok" {
+							// success, proceed
+						} else {
+							// auth_invalid or other
+							_ = conn.Close()
+							slog.Warn("authentication failed", "type", t)
+							continue
+						}
+					}
+				} else {
+					_ = conn.Close()
+					slog.Warn("auth response missing type")
+					continue
+				}
 			}
 		}
-
 		// signal first connect
 		if first {
 			first = false
