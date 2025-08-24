@@ -15,7 +15,7 @@
     "url": "https://github.com/dianlight/srat"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.0",
+    "@biomejs/biome": "2.2.2",
     "@hookform/devtools": "4.4.0",
     "@redux-devtools/extension": "3.3.0",
     "@rtk-query/codegen-openapi": "2.0.0",
@@ -23,7 +23,7 @@
     "@types/bun": "1.2.20",
     "@types/js-sha1": "0.6.3",
     "@types/lodash.debounce": "4.0.9",
-    "@types/react": "19.1.10",
+    "@types/react": "19.1.11",
     "@types/react-dom": "19.1.7",
     "@types/react-sparklines": "1.7.5",
     "@types/react-syntax-highlighter": "15.5.13",
