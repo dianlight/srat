@@ -68,7 +68,7 @@ jobs:
           ')
 
           # Convert to an array for easier counting and slicing
-          IFS=$'\n' read -r -d '' -A prerelease_tags <<< "$prereleases_to_consider"
+          IFS=$'\n' read -r -d '' -a prerelease_tags <<< "$prereleases_to_consider"
 
           num_prereleases=$((${#prerelease_tags[@]}))
           echo "Found $num_prereleases pre-releases to consider after the latest stable release."
