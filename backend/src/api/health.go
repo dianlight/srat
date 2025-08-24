@@ -171,6 +171,7 @@ func (self *HealthHanler) run() error {
 			self.OutputEventsInterleave = time.Duration(math.MaxInt64) // FIX rollbar#32
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(self.OutputEventsInterleave): // Use a timer to control loop frequency
+			self.ProtectedMode = self.apictx.ProtectedMode
 			// Get Addon Stats
 			stats, err := self.addonsService.GetStats()
 			if err != nil {
