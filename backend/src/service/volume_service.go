@@ -16,7 +16,6 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tlog"
@@ -53,7 +52,7 @@ type VolumeService struct {
 	volumesQueueMutex sync.RWMutex
 	broascasting      BroadcasterServiceInterface
 	mount_repo        repository.MountPointPathRepositoryInterface
-	hardwareClient    hardware.ClientWithResponsesInterface
+	hardwareClient    HardwareServiceInterface
 	lsblk             lsblk.LSBLKInterpreterInterface
 	fs_service        FilesystemServiceInterface
 	shareService      ShareServiceInterface
@@ -68,7 +67,7 @@ type VolumeServiceProps struct {
 	Ctx               context.Context
 	Broadcaster       BroadcasterServiceInterface
 	MountPointRepo    repository.MountPointPathRepositoryInterface
-	HardwareClient    hardware.ClientWithResponsesInterface `optional:"true"`
+	HardwareClient    HardwareServiceInterface `optional:"true"`
 	LsblkInterpreter  lsblk.LSBLKInterpreterInterface
 	FilesystemService FilesystemServiceInterface
 	ShareService      ShareServiceInterface
@@ -577,7 +576,6 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 		slog.Debug("Executing GetVolumesData core logic (singleflight)...")
 
 		ret := []dto.Disk{}
-		conv := converter.HaHardwareToDtoImpl{}
 		dbconv := converter.DtoToDbomConverterImpl{}
 		lsblkconv := converter.LsblkToDtoConverterImpl{}
 
@@ -609,72 +607,9 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 			return &ret, nil
 		}
 
-		hwser, errHw := self.hardwareClient.GetHardwareInfoWithResponse(self.ctx)
-		if errHw != nil || hwser == nil {
-			if !errors.Is(errHw, dto.ErrorNotFound) {
-				slog.Error("Failed to get hardware info from Home Assistant Supervisor", "err", errHw, "hwset", hwser)
-				return nil, errors.Wrap(errHw, "failed to get hardware info from HA Supervisor")
-			}
-			slog.Debug("Hardware info not found, continuing with empty disk list")
-		}
-
-		if hwser.StatusCode() != 200 || hwser.JSON200 == nil || hwser.JSON200.Data == nil || hwser.JSON200.Data.Drives == nil {
-			errMsg := "Received invalid hardware info response from HA Supervisor"
-			slog.Error(errMsg, "status_code", hwser.StatusCode(), "response_body", string(hwser.Body))
-			return nil, errors.New(errMsg)
-		}
-
-		tlog.Trace("Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
-		for i, drive := range *hwser.JSON200.Data.Drives {
-			if drive.Filesystems == nil || len(*drive.Filesystems) == 0 {
-				tlog.Debug("Skipping drive with no filesystems", "drive_index", i, "drive_id", drive.Id)
-				continue
-			}
-			var diskDto dto.Disk
-			errConvDrive := conv.DriveToDisk(drive, &diskDto)
-			if errConvDrive != nil {
-				tlog.Warn("Error converting drive to disk DTO", "drive_index", i, "drive_id", drive.Id, "err", errConvDrive)
-				continue
-			}
-			if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 {
-				tlog.Debug("Skipping drive DTO with no partitions after conversion", "drive_index", i, "drive_id", drive.Id)
-				continue
-			}
-
-			ret = append(ret, diskDto)
-		}
-
-		if hwser.JSON200.Data.Devices != nil {
-			tlog.Trace("Processing Devices from HA Supervisor", "device_count", len(*hwser.JSON200.Data.Devices))
-			for diskIdx := range ret {
-				disk := &ret[diskIdx]
-				if disk.Partitions == nil {
-					continue
-				}
-				for partIdx := range *disk.Partitions {
-					partition := &(*disk.Partitions)[partIdx]
-
-					if partition.Device == nil || *partition.Device == "" {
-						tlog.Debug("Skipping partition with nil or empty device path", "disk_id", disk.Id, "partition_index", partIdx)
-						continue
-					}
-					for deviceIdx := range *hwser.JSON200.Data.Devices {
-						device := &(*hwser.JSON200.Data.Devices)[deviceIdx]
-						if device.DevPath == nil || *device.DevPath == "" {
-							tlog.Debug("Skipping device with nil or empty name", "disk_id", disk.Id, "partition_index", partIdx, "device_index", deviceIdx)
-							continue
-						}
-
-						if (*device.DevPath == *partition.Device) && device.Attributes != nil {
-							if (partition.Name == nil || *partition.Name == "") && device.Attributes.PARTNAME != nil {
-								partition.Name = device.Attributes.PARTNAME
-								continue
-							}
-
-						}
-					}
-				}
-			}
+		ret, errHw := self.hardwareClient.GetHardwareInfo(self.ctx)
+		if errHw != nil {
+			return nil, errHw
 		}
 
 		slog.Debug("Syncing mount point data with database", "disk_count", len(ret))

@@ -82,6 +82,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewIssueService,
 		service.NewTelemetryService,
 		service.NewHaWsService,
+		service.NewHardwareService,
 		repository.NewMountPointPathRepository,
 		repository.NewExportedShareRepository,
 		repository.NewPropertyRepositoryRepository,

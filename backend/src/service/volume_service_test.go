@@ -4,7 +4,6 @@ package service_test
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 	"sync"
 	"testing"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/homeassistant/hardware" // Keep for the interface definition
 	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
@@ -31,7 +29,7 @@ import (
 type VolumeServiceTestSuite struct {
 	suite.Suite
 	mockMountRepo      repository.MountPointPathRepositoryInterface
-	mockHardwareClient hardware.ClientWithResponsesInterface
+	mockHardwareClient service.HardwareServiceInterface
 	volumeService      service.VolumeServiceInterface
 	lsblk              lsblk.LSBLKInterpreterInterface
 	ctrl               *matchers.MockController
@@ -68,7 +66,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 			service.NewFilesystemService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[repository.MountPointPathRepositoryInterface],
-			mock.Mock[hardware.ClientWithResponsesInterface],
+			mock.Mock[service.HardwareServiceInterface],
 			mock.Mock[lsblk.LSBLKInterpreterInterface],
 			mock.Mock[service.ShareServiceInterface],
 			mock.Mock[service.IssueServiceInterface],
@@ -134,14 +132,8 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
 		return []any{nil}
 	})).Verify(matchers.AtLeastOnce())
 
-	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(
-		&hardware.GetHardwareInfoResponse{
-			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-			JSON200: &struct {
-				Data   *hardware.HardwareInfo             `json:"data,omitempty"`
-				Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
-			}{Data: &hardware.HardwareInfo{Drives: &[]hardware.Drive{}}},
-		}, nil) //.Verify(matchers.AtLeastOnce())
+	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(
+		[]dto.Disk{}, nil)
 
 	defer func() {
 		err := suite.volumeService.UnmountVolume(mountPath, true, false) // Cleanup
@@ -214,18 +206,6 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_PathEmpty() {
 	suite.Equal("Mount point path is empty", details["Message"])
 }
 
-func (suite *VolumeServiceTestSuite) TestMountVolume_AlreadyMounted() {
-	// This requires mocking osutil.IsMounted to return true
-	// Skipping direct test due to mocking difficulty, relies on integration test.
-	suite.T().Skip("Skipping TestMountVolume_AlreadyMounted due to osutil.IsMounted mocking difficulty")
-}
-
-func (suite *VolumeServiceTestSuite) TestMountVolume_MountFails() {
-	// This requires mocking mount.Mount/TryMount to return an error
-	// Skipping direct test due to mocking difficulty, relies on integration test.
-	suite.T().Skip("Skipping TestMountVolume_MountFails due to mount.Mount mocking difficulty")
-}
-
 // --- UnmountVolume Tests ---
 
 func (suite *VolumeServiceTestSuite) TestUnmountVolume_Success() {
@@ -243,14 +223,8 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_Success() {
 		return []any{nil}
 	})).Verify(matchers.AtLeastOnce())
 
-	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(
-		&hardware.GetHardwareInfoResponse{
-			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-			JSON200: &struct {
-				Data   *hardware.HardwareInfo             `json:"data,omitempty"`
-				Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
-			}{Data: &hardware.HardwareInfo{Drives: &[]hardware.Drive{}}},
-		}, nil) /*.Verify(matchers.AtLeastOnce())*/
+	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(
+		[]dto.Disk{}, nil)
 
 	//suite.mockBroadcaster.On("BroadcastMessage", mock.AnythingOfType("*[]dto.Disk")).Return(nil, nil).Once()
 
@@ -270,61 +244,46 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_RepoFindByPathError() {
 	suite.ErrorIs(err, expectedErr)
 }
 
-func (suite *VolumeServiceTestSuite) TestUnmountVolume_UnmountFails() {
-	// This requires mocking mount.Unmount to return an error
-	// Skipping direct test due to mocking difficulty, relies on integration test.
-	suite.T().Skip("Skipping TestUnmountVolume_UnmountFails due to mount.Unmount mocking difficulty")
-}
-
 // --- GetVolumesData Tests ---
 
 func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
-	// Prepare mock hardware response
-	drive1 := hardware.Drive{
-		Id:     pointer.String("drive-1"),
-		Vendor: pointer.String("TestVendor"),
-		Model:  pointer.String("TestModel"),
-		Filesystems: &[]hardware.Filesystem{
-			{
-				Device:      pointer.String("/dev/sda1"),
-				Name:        pointer.String("RootFS"),
-				MountPoints: &[]string{"/mnt/rootfs"},
-				Size:        pointer.Int(1000000000),
-			},
-			{
-				Device: pointer.String("/dev/sda2"),
-				//Name:        pointer.String("DataFS"),
-				MountPoints: &[]string{"/mnt/data"}, // Mounted
-				Size:        pointer.Int(2000000000),
-			},
-		},
-	}
-	mockHWResponse := &hardware.GetHardwareInfoResponse{
-		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-		JSON200: &struct {
-			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
-			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
-		}{
-			Data: &hardware.HardwareInfo{
-				Drives: &[]hardware.Drive{drive1},
-				Devices: &[]hardware.Device{
-					{
-						Name:    pointer.String("sda1"),
-						DevPath: pointer.String("/dev/sda1"),
-						Attributes: &hardware.Attributes{
-							PARTNAME: pointer.String("RootFS"),
-						},
-					},
-					{
-						Name:    pointer.String("sda2"),
-						DevPath: pointer.String("/dev/sda2"),
-						Attributes: &hardware.Attributes{
-							PARTNAME: pointer.String("DataFS"),
-						},
-					},
+
+	mockHWResponse := []dto.Disk{
+		{
+			Id:     pointer.String("disk-1"),
+			Device: pointer.String("/dev/sda"),
+			Size:   pointer.Int(100),
+			Vendor: pointer.String("ATA"),
+			Model:  pointer.String("Model-1"),
+			Partitions: &[]dto.Partition{
+				{
+					Id:     pointer.String("part-1"),
+					Name:   pointer.String("RootFS"),
+					Device: pointer.String("/dev/sda1"),
+					Size:   pointer.Int(50),
+					HostMountPointData: &[]dto.MountPointData{{
+						Path: "/mnt/rootfs",
+					}},
 				},
 			},
-			Result: (*hardware.GetHardwareInfo200Result)(pointer.String("ok")),
+		},
+		{
+			Id:     pointer.String("disk-2"),
+			Device: pointer.String("/dev/sdb"),
+			Vendor: pointer.String("SATA"),
+			Model:  pointer.String("Model-2"),
+			Size:   pointer.Int(100),
+			Partitions: &[]dto.Partition{
+				{
+					Id:     pointer.String("part-1"),
+					Name:   pointer.String("DataFs"),
+					Device: pointer.String("/dev/sdb1"),
+					Size:   pointer.Int(50),
+					HostMountPointData: &[]dto.MountPointData{{
+						Path: "/mnt/data",
+					}},
+				},
+			},
 		},
 	}
 
@@ -332,10 +291,9 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	mountPath1 := "/mnt/rootfs"
 	mountPath2 := "/mnt/data"
 	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1", Type: "ADDON"} // Initial state in DB
-	dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, Device: "sda2", Type: "ADDON"} // Initial state in DB
+	dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, Device: "sdb1", Type: "ADDON"} // Initial state in DB
 
-	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.AtLeastOnce())
-	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext, mock.Anything).Return(mockHWResponse, nil).Once()
+	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.AtLeastOnce())
 
 	// Expect FindByPath and Save for each mount point found in hardware data
 	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
@@ -349,8 +307,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 		Fstype:     "ext4",
 	}, nil).Verify(matchers.Times(1))
 
-	mock.When(suite.lsblk.GetInfoFromDevice("/dev/sda2")).ThenReturn(&lsblk.LSBKInfo{
-		Name:       "sda2",
+	mock.When(suite.lsblk.GetInfoFromDevice("/dev/sdb1")).ThenReturn(&lsblk.LSBKInfo{
+		Name:       "sdb1",
 		Label:      "DataFS",
 		Partlabel:  "DataFS",
 		Mountpoint: mountPath2,
@@ -362,20 +320,20 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	// Assertions
 	suite.Require().NoError(err)
 	suite.Require().NotNil(disks)
-	suite.Require().Len(*disks, 1)
+	suite.Require().Len(*disks, 2)
 
 	disk := (*disks)[0]
-	suite.Equal(*drive1.Vendor, *disk.Vendor)
-	suite.Equal(*drive1.Model, *disk.Model)
+	suite.Equal(mockHWResponse[0].Vendor, disk.Vendor)
+	suite.Equal(mockHWResponse[0].Model, disk.Model)
 	suite.Require().NotNil(disk.Partitions)
-	suite.Require().Len(*disk.Partitions, 2)
+	suite.Require().Len(*disk.Partitions, 1)
 
 	// --- Assertions for Partition 1 ---
 	part1 := (*disk.Partitions)[0]
 	suite.Require().NotNil(part1.Device)
-	suite.Equal(*(*drive1.Filesystems)[0].Device, *part1.Device)
+	suite.Equal(*(*mockHWResponse[0].Partitions)[0].Device, *part1.Device)
 	suite.Require().NotNil(part1.Name)
-	suite.Equal(*(*drive1.Filesystems)[0].Name, *part1.Name)
+	suite.Equal(*(*mockHWResponse[0].Partitions)[0].Name, *part1.Name)
 	suite.Require().NotNil(part1.MountPointData)
 	suite.Require().Len(*part1.MountPointData, 1, "Expected 1 mount point for partition 1")
 	mountPoint1 := (*part1.MountPointData)[0]
@@ -384,9 +342,10 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	//suite.True(mountPoint1.IsMounted, "MountPoint1 IsMounted should be true after successful save")
 
 	// --- Assertions for Partition 2 ---
-	part2 := (*disk.Partitions)[1]
+	disk = (*disks)[1]
+	part2 := (*disk.Partitions)[0]
 	suite.Require().NotNil(part2.Device)
-	suite.Equal(*(*drive1.Filesystems)[1].Device, *part2.Device)
+	suite.Equal(*(*mockHWResponse[1].Partitions)[0].Device, *part2.Device)
 	suite.Require().NotNil(part2.Name)
 	//suite.Equal(*(*drive1.Filesystems)[1].Name, *part2.Name)
 	suite.Require().NotNil(part2.MountPointData)
@@ -401,7 +360,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_HardwareClientError() {
 	expectedErr := errors.New("hardware client failed")
 
 	// NotifyClient is invoked asynchronously; don't enforce a strict call count to avoid flakes
-	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(nil, expectedErr)
+	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(nil, expectedErr)
 	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext, mock.Anything).Return(nil, expectedErr).Once()
 	// Fallback logic is commented out, so we expect the error to propagate
 
@@ -412,24 +371,20 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_HardwareClientError() {
 }
 
 func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_NotFound() {
-	// Test when FindByPath returns gorm.ErrRecordNotFound
-	drive1 := hardware.Drive{
-		Id: pointer.String("drive-1"),
-		Filesystems: &[]hardware.Filesystem{
-			{Device: pointer.String("/dev/sda1"), MountPoints: &[]string{"/mnt/newfs"}}, // A new mount point
-		},
-	}
-	mockHWResponse := &hardware.GetHardwareInfoResponse{
-		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-		JSON200: &struct {
-			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
-			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
-		}{
-			Data: &hardware.HardwareInfo{
-				Drives: &[]hardware.Drive{drive1},
-				Devices: &[]hardware.Device{
-					{DevPath: pointer.String("/dev/sda1")},
-					{DevPath: pointer.String("/dev/sda2")},
+	mockHWResponse := []dto.Disk{
+		{
+			Id:     pointer.String("disk-1"),
+			Device: pointer.String("/dev/sda"),
+			Size:   pointer.Int(100),
+			Partitions: &[]dto.Partition{
+				{
+					Id:     pointer.String("part-1"),
+					Name:   pointer.String("RootFS"),
+					Device: pointer.String("/dev/sda1"),
+					Size:   pointer.Int(50),
+					HostMountPointData: &[]dto.MountPointData{{
+						Path: "/mnt/rootfs",
+					}},
 				},
 			},
 		},
@@ -437,7 +392,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_NotF
 	mountPath1 := "/mnt/newfs"
 	expectedErr := gorm.ErrRecordNotFound
 
-	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(nil, errors.WithStack(expectedErr)).Verify(matchers.Times(1))
 
 	mock.When(suite.lsblk.GetInfoFromDevice("/dev/sda1")).ThenReturn(&lsblk.LSBKInfo{
@@ -461,31 +416,27 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_NotF
 }
 
 func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
-	// Similar setup to Success, but mock Save to fail
-	drive1 := hardware.Drive{
-		Id: pointer.String("drive-1"),
-		Filesystems: &[]hardware.Filesystem{
-			{Device: pointer.String("/dev/sda1"), MountPoints: &[]string{"/mnt/rootfs"}},
-		},
-	}
-	mockHWResponse := &hardware.GetHardwareInfoResponse{
-		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-		JSON200: &struct {
-			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
-			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
-		}{Data: &hardware.HardwareInfo{
-			Drives: &[]hardware.Drive{drive1},
-			Devices: &[]hardware.Device{
-				{DevPath: pointer.String("/dev/sda1")},
-				{DevPath: pointer.String("/dev/sda2")},
+	mockHWResponse := []dto.Disk{
+		{
+			Id:   pointer.String("disk-1"),
+			Size: pointer.Int(100),
+			Partitions: &[]dto.Partition{
+				{
+					Id:     pointer.String("part-1"),
+					Size:   pointer.Int(50),
+					Device: pointer.String("/dev/sda1"),
+					HostMountPointData: &[]dto.MountPointData{{
+						Path: "/mnt/rootfs",
+					}},
+				},
 			},
-		}},
+		},
 	}
 	mountPath1 := "/mnt/rootfs"
 	dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, Device: "sda1"}
 	expectedErr := errors.New("DB save error")
 
-	mock.When(suite.mockHardwareClient.GetHardwareInfoWithResponse(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockHardwareClient.GetHardwareInfo(mock.AnyContext())).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(expectedErr).Verify(matchers.Times(1))
 	mock.When(suite.lsblk.GetInfoFromDevice("/dev/sda1")).ThenReturn(&lsblk.LSBKInfo{
