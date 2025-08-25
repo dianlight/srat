@@ -2,6 +2,7 @@ package dbom
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"log/slog"
 	"os"
@@ -10,11 +11,15 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/tlog"
 	"github.com/glebarez/sqlite"
+	"github.com/pressly/goose/v3"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
+
+//go:embed migrations/*.sql
+var migrations embed.FS
 
 // checkFileSystemPermissions checks filesystem-level issues
 func checkFileSystemPermissions(dbPath string) errors.E {
@@ -152,7 +157,8 @@ func NewDB(lc fx.Lifecycle, v struct {
 	}
 
 	// Apply conservative connection pool settings for SQLite
-	if sqlDB, dbErr := db.DB(); dbErr == nil {
+	sqlDB, dbErr := db.DB()
+	if dbErr == nil {
 		// Single connection avoids many SQLITE_BUSY scenarios in embedded SQLite
 		sqlDB.SetMaxOpenConns(1)
 		sqlDB.SetMaxIdleConns(1)
@@ -165,6 +171,17 @@ func NewDB(lc fx.Lifecycle, v struct {
 	if errE = errors.WithStack(err); errE != nil {
 		slog.Error("Failed to migrate database", "error", errE, "path", v.ApiCtx.DatabasePath)
 		return replaceDatabase(lc, v)
+	}
+
+	// GooseDBMigration
+	goose.SetBaseFS(migrations)
+
+	if err := goose.SetDialect("sqlite3"); err != nil {
+		panic(err)
+	}
+
+	if err := goose.Up(sqlDB, "migrations"); err != nil {
+		panic(err)
 	}
 
 	lc.Append(fx.Hook{
