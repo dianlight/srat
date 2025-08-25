@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/dianlight/srat/config"
@@ -241,16 +242,22 @@ func (self *SambaService) RestartSambaService() errors.E {
 		cmdSmbdReload := exec.Command("smbcontrol", "smbd", "reload-config")
 		outSmbd, err := cmdSmbdReload.CombinedOutput()
 		if err != nil {
-			slog.Error("Error reloading smbd config", "error", err, "output", string(outSmbd))
-			// Decide if this is a fatal error or if we should continue
+			if strings.Contains(string(outSmbd), "Can't find pid for destination") {
+				slog.Warn("Samba process (smbd) not found, skipping reload command.")
+			} else {
+				slog.Error("Error reloading smbd config", "error", err, "output", string(outSmbd))
+			}
 		}
 
 		slog.Info("Reloading nmbd configuration...")
 		cmdNmbdReload := exec.Command("smbcontrol", "nmbd", "reload-config")
 		outNmbd, err := cmdNmbdReload.CombinedOutput()
 		if err != nil {
-			slog.Error("Error reloading nmbd config", "error", err, "output", string(outNmbd))
-			// Decide if this is a fatal error or if we should continue
+			if strings.Contains(string(outNmbd), "Can't find pid for destination") {
+				slog.Warn("Samba process (nmbd) not found, skipping reload command.")
+			} else {
+				slog.Error("Error reloading nmbd config", "error", err, "output", string(outNmbd))
+			}
 		}
 
 		// Remount network shares on ha_core
