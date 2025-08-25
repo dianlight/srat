@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/dianlight/srat/converter"
@@ -11,6 +12,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/tlog"
 	"github.com/patrickmn/go-cache"
+	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
@@ -122,6 +124,9 @@ func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
 						}
 
 					}
+				}
+				if partition.Name != nil && strings.HasPrefix(*partition.Name, "hassos-") {
+					partition.System = pointer.Bool(true)
 				}
 			}
 		}
