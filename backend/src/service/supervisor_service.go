@@ -71,7 +71,9 @@ func (self *SupervisorService) NetworkGetAllMounted() (mounts map[string]mount.M
 		}
 		mounts = make(map[string]mount.Mount) // Initialize the map
 		for _, mnt := range *resp.JSON200.Data.Mounts {
-			mounts[*mnt.Name] = mnt // Populate the map
+			if *mnt.Username == "_ha_mount_user_" {
+				mounts[*mnt.Name] = mnt // Populate the map
+			}
 		}
 	}
 	return mounts, nil
