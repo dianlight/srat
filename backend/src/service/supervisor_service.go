@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 	"sync"
 
 	"gitlab.com/tozd/go/errors"
@@ -113,7 +112,7 @@ func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) error
 		}
 		if resp.StatusCode() != 200 {
 			rjson, _ := json.Marshal(rmount)
-			slog.Error("Error creating mount from ha_supervisor", "share", share, "req", string(rjson), "resp", resp)
+			//slog.Error("Error creating mount from ha_supervisor", "share", share, "req", string(rjson), "resp", string(resp.Body))
 			return errors.Errorf("Error creating mount %s from ha_supervisor: %d \nReq:%#v\nResp:%#v", *rmount.Name, resp.StatusCode(), string(rjson), string(resp.Body))
 		}
 	} else if string(share.Usage) != string(*rmount.Usage) || *rmount.State != "active" {
