@@ -816,8 +816,8 @@ func (self *VolumeService) HandleRemovedDisks(currentDisks *[]dto.Disk) error {
 
 	// Check each mount point to see if its device still exists
 	for _, mountPoint := range allMountPoints {
-		if mountPoint.Device == "" {
-			continue // Skip mount points without device information
+		if mountPoint.Device == "" || !strings.HasPrefix(mountPoint.Path, "/mnt") {
+			continue // Skip mount points without device information or are not in /mnt subpath
 		}
 
 		// Check if the device is still available
