@@ -30,6 +30,7 @@ require (
 	github.com/lonegunmanb/go-defaults v1.4.0
 	github.com/m1/go-generate-password v0.2.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/pressly/goose/v3 v3.25.0
 	github.com/prometheus/procfs v0.17.0
 	github.com/rollbar/rollbar-go v1.4.8
 	github.com/samber/slog-formatter v1.2.0
@@ -63,7 +64,6 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/petermattis/goid v0.0.0-20250721140440-ea1c0173183e // indirect
-	github.com/pressly/goose/v3 v3.25.0 // indirect
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/rogpeppe/gohack v1.0.2 // indirect
 	github.com/samber/lo v1.51.0 // indirect
@@ -156,7 +156,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.3
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250822155844-99fe9edd7196
+	github.com/snapcore/snapd v0.0.0-20250825143034-0e2efbd5c259
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.15.0
 	github.com/xorcare/pointer v1.2.2
@@ -177,5 +177,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
