@@ -25,7 +25,7 @@
   "go.inlayHints.constantValues": true,
   "github.copilot.chat.commitMessageGeneration.instructions": [
     {
-      "file": ".copilot-commit-message-instructions.md"
+      "file": ".github/.copilot-commit-message-instructions.md"
     },
   ],
   "editor.codeActionsOnSave": {
