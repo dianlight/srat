@@ -2,7 +2,6 @@ package repository
 
 import (
 	"github.com/dianlight/srat/dbom"
-	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
 
@@ -43,7 +42,7 @@ func (r *IssueRepository) Delete(id uint) error {
 // FindOpen returns all open issues.
 func (r *IssueRepository) FindOpen() ([]*dbom.Issue, error) {
 	var issues []*dbom.Issue
-	err := r.db.Find(&issues).Error
+	err := r.db.Order("created_at desc").Limit(5).Find(&issues).Error
 	return issues, err
 }
 
@@ -56,6 +55,3 @@ func (r *IssueRepository) FindByTitle(title string) (*dbom.Issue, error) {
 	}
 	return &issue, nil
 }
-
-// Fx provides the issue repository as a dependency.
-var Fx = fx.Provide(NewIssueRepository)
