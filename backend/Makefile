@@ -165,6 +165,6 @@ pprof_cpu:
 
 .PHONY: pprof_cpu_remote
 pprof_cpu_remote:
-   # https://pkg.go.dev/net/http/pprof
-   go tool -C $(SRC_DIRS) pprof -http=":" ${HOMEASSISTANT_IP}:3000/debug/pprof/profile?seconds=30 
+   # https://pkg.go.dev/net/http/pprof -http=":" 
+   go tool -C $(SRC_DIRS) pprof -http ${HOMEASSISTANT_IP}:3000/debug/pprof/profile?seconds=30 
 
