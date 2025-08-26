@@ -158,11 +158,13 @@ build_remote: /mnt/remote/config.db3
 	$(MAKE) test_build && \
 	find ./tmp/x86_64/ -name "srat*" -exec cp -v {} /mnt/remote/ \;
 
-.PHONY: pprof
-pprof: 
-    go tool -C $(SRC_DIRS) pprof localhost:8080/debug/pprof/profile?seconds=30 
+.PHONY: pprof_cpu
+pprof_cpu: 
+	# https://pkg.go.dev/net/http/pprof
+    go tool -C $(SRC_DIRS) pprof -http=":" localhost:8080/debug/pprof/profile?seconds=30 
 
-.PHONY: pprof_remote
-pprof_remote:
-   go tool -C $(SRC_DIRS) pprof ${HOMEASSISTANT_IP}:3000/debug/pprof/profile?seconds=30 
+.PHONY: pprof_cpu_remote
+pprof_cpu_remote:
+   # https://pkg.go.dev/net/http/pprof
+   go tool -C $(SRC_DIRS) pprof -http=":" ${HOMEASSISTANT_IP}:3000/debug/pprof/profile?seconds=30 
 
