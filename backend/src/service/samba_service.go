@@ -326,7 +326,7 @@ func (self *SambaService) mountHaStorage() errors.E {
 		return errors.WithStack(err)
 	}
 
-	if self.state.HACoreReady {
+	if self.state.HACoreReady && self.state.AddonIpAddress != "" {
 		for _, share := range *shares {
 			if share.Disabled != nil && *share.Disabled {
 				continue

@@ -128,7 +128,7 @@ func (self *UpgradeService) run() error {
 					slog.Error("Error emitting vrsion message", "err", err)
 				}
 			})
-			//time.Sleep(time.Second * 10)
+			time.Sleep(self.updateLimiter.Interval / 10)
 		}
 	}
 }

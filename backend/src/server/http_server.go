@@ -96,5 +96,7 @@ func NewMuxRouter(apiCtx *dto.ContextState /*, ingressClient ingress.ClientWithR
 		router.Use(NewHAMiddleware( /*ingressClient*/ ))
 	}
 
+	router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+
 	return router
 }
