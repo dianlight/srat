@@ -251,6 +251,33 @@ export function Settings() {
 								</Typography>
 							)}
 						</Grid>
+						<Grid size={{ xs: 12, md: 4 }}>
+							<Tooltip
+								title={
+									<>
+										<Typography variant="h6" component="div">
+											Export stats to Home Assistant
+										</Typography>
+										<Typography variant="body2">
+											If enabled, the status of disks, volumes and the server will be transmitted to Home Assistant.
+										</Typography>
+									</>
+								}
+							>
+								<SwitchElement
+									switchProps={{
+										"aria-label": "Export Stats to HA",
+										size: "small",
+									}}
+									sx={{ display: "flex" }}
+									name="export_stats_to_ha"
+									label="Export Stats to HA"
+									control={control}
+									disabled={read_only}
+								/>
+							</Tooltip>
+						</Grid>
+
 						<Grid size={12}>
 							<Divider />
 						</Grid>

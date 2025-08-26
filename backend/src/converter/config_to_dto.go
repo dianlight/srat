@@ -58,6 +58,7 @@ type ConfigToDtoConverter interface {
 	// goverter:update:ignoreZeroValueField no
 	// goverter:map UpdateChannel UpdateChannel | github.com/dianlight/srat/dto:ParseUpdateChannel
 	// goverter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
+	// goverter:ignore ExportStatsToHA
 	ConfigToSettings(source config.Config, target *dto.Settings) error
 
 	// g.overter:update target

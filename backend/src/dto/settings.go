@@ -13,4 +13,5 @@ type Settings struct {
 	UpdateChannel     UpdateChannel `json:"update_channel,omitempty" enum:"None,Develop,Release,Prerelease"`
 	TelemetryMode     TelemetryMode `json:"telemetry_mode,omitempty" enum:"Ask,All,Errors,Disabled"`
 	LocalMaster       *bool         `json:"local_master,omitempty" default:"true"`
+	ExportStatsToHA   *bool         `json:"export_stats_to_ha,omitempty" default:"true"`
 }

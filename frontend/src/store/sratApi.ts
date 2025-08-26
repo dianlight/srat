@@ -873,6 +873,7 @@ export type Settings = {
   allow_hosts?: string[];
   bind_all_interfaces?: boolean;
   compatibility_mode?: boolean;
+  export_stats_to_ha?: boolean;
   hostname?: string;
   interfaces?: string[];
   local_master?: boolean;
