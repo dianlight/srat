@@ -30,6 +30,7 @@
         "gomodTidy",
         "gomodUpdateImportPaths"
     ],
+    "abandonmentThreshold": "5 years",
     "dependencyDashboardAutoclose": true,
     "customManagers": [
         {
