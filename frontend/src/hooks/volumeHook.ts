@@ -32,12 +32,12 @@ export function useVolume() {
 			fulfilledTimeStamp &&
 			useVolume_lastReadTimestamp < fulfilledTimeStamp
 		) {
-			console.log(
-				"Update Data from rest service",
-				data,
-				fulfilledTimeStamp,
-				useVolume_lastReadTimestamp,
-			);
+			/* 		console.trace(
+						"Update Data from rest service",
+						data,
+						fulfilledTimeStamp,
+						useVolume_lastReadTimestamp,
+					); */
 			dispatch(setDisks(data as Disk[]));
 			useVolume_lastReadTimestamp = fulfilledTimeStamp;
 		}

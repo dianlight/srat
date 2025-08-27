@@ -87,22 +87,28 @@ class SSESource implements Source {
 	newSSEClient(endpoint: string): EventSource {
 		console.log("Creating SSE client", endpoint);
 		const eventSource = new EventSource(endpoint, { withCredentials: true });
-		eventSource.onerror = () => {
-			console.warn("SSE connection error");
-			this.heartbeatListener.forEach((func) =>
-				func({ data: '{ "alive": false, "read_only": true }' }),
-			);
+		eventSource.onerror = (e) => {
+			console.warn(`SSE connection error ${this.faultCount}`, e);
+			this.heartbeatListener.forEach((func) => {
+				try {
+					func({ data: '{ "alive": false, "read_only": true }' });
+				} catch (error) {
+					console.error("Error in heartbeat listener", error);
+				}
+			});
 			this.faultCount++;
-			if (this.faultCount > 3 && this.resetTimer === undefined) {
+			/*
+			if (eventSource.readyState == EventSource.CLOSED) {
 				this.eventSource.close();
 				this.resetTimer = setTimeout(
 					() => (this.eventSource = this.newSSEClient(endpoint)),
-					5000,
+					Math.min(30000, 1000 * this.faultCount),
 				);
 			}
+			*/
 		};
 		eventSource.onopen = () => {
-			console.debug("SSE connection open");
+			console.debug("SSE connection open", endpoint);
 			if (this.resetTimer) clearTimeout(this.resetTimer);
 			this.faultCount = 0;
 			this.listeners.forEach((values, key) =>
