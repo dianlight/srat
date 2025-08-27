@@ -133,6 +133,7 @@ func prog(state overseer.State) {
 	// apiCancel is called at the end of Run() by FX lifecycle or explicitly if Run errors
 
 	staticConfig := dto.ContextState{}
+	staticConfig.Heartbeat = 5 // Default heartbeat
 	staticConfig.AddonIpAddress = *addonIpAddress
 	staticConfig.SupervisorURL = *supervisorURL
 	staticConfig.UpdateFilePath = *updateFilePath
