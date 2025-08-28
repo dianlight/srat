@@ -14,7 +14,7 @@ require (
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/pilebones/go-udev v0.9.1
 	github.com/shirou/gopsutil/v4 v4.25.7
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.35.0 // indirect
 )
 
@@ -156,7 +156,7 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.3
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.7.0
-	github.com/snapcore/snapd v0.0.0-20250826090233-adfcb1445ee5
+	github.com/snapcore/snapd v0.0.0-20250827141749-8105ec1a7395
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.15.0
 	github.com/xorcare/pointer v1.2.2
@@ -164,7 +164,7 @@ require (
 	go.uber.org/fx v1.24.0
 	golang.org/x/time v0.12.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/gorm v1.30.1
+	gorm.io/gorm v1.30.2
 	moul.io/banner v1.0.1
 )
 
@@ -177,5 +177,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
