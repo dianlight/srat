@@ -51,8 +51,8 @@ const buildConfig: BuildConfig = {
 		asset: "[name].[ext]",
 	},
 	target: "browser",
-	sourcemap: "linked",
-	minify: false,
+	sourcemap: "inline", 
+	minify:values.watch ? false : true,
 	plugins: [
 		//copy("src/index.html", "out/index.html")
 		//  html({})
