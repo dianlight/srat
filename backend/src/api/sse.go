@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/sse"
@@ -53,7 +54,7 @@ func (self *BrokerHandler) RegisterSse(api huma.API) {
 		Method:          http.MethodGet,
 		Path:            "/sse",
 		Summary:         "Server sent events",
-		BodyReadTimeout: -1,
+		BodyReadTimeout: 5 * time.Second,
 		Tags:            []string{"system"},
 	}, map[string]any{
 		dto.EventTypes.EVENTHELLO.String():     dto.Welcome{},

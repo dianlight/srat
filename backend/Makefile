@@ -19,7 +19,7 @@ ARCH ?= $(shell arch)
 
 # Telemetry configuration from environment variables
 ROLLBAR_CLIENT_ACCESS_TOKEN?=""
-ROLLBAR_ENVIRONMENT?=""
+ROLLBAR_ENVIRONMENT?="development"
 
 all: PREREQUISITE build
 
@@ -29,12 +29,12 @@ build: $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	mkdir dist > /dev/null 2>&1 || :
-	CGO_ENABLED=0 $(AARGS) go build -C $(SRC_DIRS) -tags=embedallowed -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT)" -o ../dist/$(ARCH)/ ./...
+	CGO_ENABLED=0 $(AARGS) go build -C $(SRC_DIRS) -tags=embedallowed -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../dist/$(ARCH)/ ./...
 
 test_build: $(SRC_DIRS) $(STATIC_DIRS)
 	mkdir -p tmp/x86_64 > /dev/null 2>&1 || :
-	CGO_ENABLED=0 go build -C $(SRC_DIRS) -tags=pprof -gcflags=all="-N -l" -ldflags="-X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT)" -o ../tmp/srat  ./cmd/srat-server && \
-	CGO_ENABLED=0 GOARCH=amd64 go build  -C $(SRC_DIRS) -tags=embedallowed,pprof -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT)" -o ../tmp/x86_64/ ./...
+	CGO_ENABLED=0 go build -C $(SRC_DIRS) -tags=pprof -gcflags=all="-N -l" -ldflags="-X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../tmp/srat  ./cmd/srat-server && \
+	CGO_ENABLED=0 GOARCH=amd64 go build  -C $(SRC_DIRS) -tags=embedallowed,pprof -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../tmp/x86_64/ ./...
 
 .PHONY: format
 format:
@@ -133,14 +133,14 @@ static: $(FRONTEND_DIRS)/node_modules
 patch:
 	go tool -C $(SRC_DIRS) gohack undo
 	rm -rf ${HOME}/gohack
-	go tool -C $(SRC_DIRS) gohack get -vcs github.com/samber/slog-http
-	git -C ${HOME}/gohack/github.com/samber/slog-http apply $(ROOT_DIR)/patches/slog-http.patch
+	#go tool -C $(SRC_DIRS) gohack get -vcs github.com/samber/slog-http
+	#git -C ${HOME}/gohack/github.com/samber/slog-http apply $(ROOT_DIR)/patches/slog-http.patch
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/jpillora/overseer
 	git -C ${HOME}/gohack/github.com/jpillora/overseer apply $(ROOT_DIR)/patches/overseer.patch
 
 gen_patch:
 	mkdir patches > /dev/null 2>&1 || :
-	cd ${HOME}/gohack/github.com/samber/slog-http; git diff > $(ROOT_DIR)/patches/slog-http.patch
+	#cd ${HOME}/gohack/github.com/samber/slog-http; git diff > $(ROOT_DIR)/patches/slog-http.patch
 	cd ${HOME}/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
 
  /mnt/remote/config.db3: mount_remote

@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
+	sloghttp "github.com/dianlight/slog-http"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/rs/cors"
-	sloghttp "github.com/samber/slog-http"
 	"go.uber.org/fx"
 )
 

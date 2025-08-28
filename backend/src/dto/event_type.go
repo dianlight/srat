@@ -1,6 +1,6 @@
 package dto
 
-//go:generate go tool goenums event_type.go
+//go:generate go tool goenums -l event_type.go
 type eventType int
 
 const (
