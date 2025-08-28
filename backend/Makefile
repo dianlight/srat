@@ -56,7 +56,7 @@ test: $(ALL_SRCS)
 
 .PHONY: test_ci
 test_ci: $(ALL_SRCS)
-	cd $(SRC_DIRS)/homeassistant/;go tool gotest -failfast -coverpkg=./... ./...
+	cd $(SRC_DIRS)/homeassistant/;go tool gotest -p 1 -failfast -coverpkg=./... ./...
 
 .PHONY: docs
 docs: gen
