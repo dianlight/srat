@@ -20,6 +20,21 @@ export const createRollbarConfig = (
 	codeVersion: packageJson.version,
 	captureUncaught: true,
 	captureUnhandledRejections: true,
+	recorder: {
+		enabled: true,
+		triggers: [
+			{
+				type: 'occurrence',
+				level: ['critical'],
+				//				samplingRatio: 1.0,
+			},
+			{
+				type: 'occurrence',
+				level: ['error'],
+				//				samplingRatio: 0.5,
+			},
+		],
+	},
 	payload: {
 		client: {
 			javascript: {
@@ -29,8 +44,8 @@ export const createRollbarConfig = (
 		},
 		person: machineId
 			? {
-					id: machineId,
-				}
+				id: machineId,
+			}
 			: undefined,
 	},
 	enabled: accessToken !== "disabled",
