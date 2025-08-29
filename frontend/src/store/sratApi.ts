@@ -946,8 +946,9 @@ export type SharedResource = {
   [key: string]: any;
 };
 export type Welcome = {
+  active_clients: number;
   message: string;
-  supported_events: Supported_events;
+  supported_events: Supported_events[] | null;
   update_channel: Update_channel;
 };
 export type UpdateProgress = {

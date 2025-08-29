@@ -23,13 +23,9 @@ import { createRollbarConfig } from "./services/telemetryService";
 import telemetryService from "./services/telemetryService";
 import { apiUrl } from "./store/emptyApi.ts";
 import { Supported_events } from "./store/sratApi.ts";
-//import { apiContext } from './Contexts.ts';
 import { store } from "./store/store.ts";
 import { TourProvider, } from '@reactour/tour'
 import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock'
-import { DashboardSteps } from "./pages/dashboard/DashboardTourStep.tsx";
-import { SharesSteps } from "./pages/shares/SharesTourStep.tsx";
-import { VolumesSteps } from "./pages/volumes/VolumesTourStep.tsx";
 
 declare module '@mui/material/styles' {
 	interface TypographyVariants {
@@ -79,6 +75,7 @@ class SSESource implements Source {
 	private heartbeatListener: Listener[] = [];
 	private listeners = new Map<string, Listener[]>();
 	private faultCount = 0;
+	private dataTimeout?: Timer;
 
 	constructor(endpoint: string) {
 		this.eventSource = this.newSSEClient(endpoint);
@@ -87,8 +84,8 @@ class SSESource implements Source {
 	newSSEClient(endpoint: string): EventSource {
 		console.log("Creating SSE client", endpoint);
 		const eventSource = new EventSource(endpoint, { withCredentials: true });
-		eventSource.onerror = (e) => {
-			console.warn(`SSE connection error ${this.faultCount}`, e);
+		eventSource.addEventListener("error", (event) => {
+			console.warn(`SSE connection error ${this.faultCount}`, event);
 			this.heartbeatListener.forEach((func) => {
 				try {
 					func({ data: '{ "alive": false, "read_only": true }' });
@@ -97,17 +94,8 @@ class SSESource implements Source {
 				}
 			});
 			this.faultCount++;
-			/*
-			if (eventSource.readyState == EventSource.CLOSED) {
-				this.eventSource.close();
-				this.resetTimer = setTimeout(
-					() => (this.eventSource = this.newSSEClient(endpoint)),
-					Math.min(30000, 1000 * this.faultCount),
-				);
-			}
-			*/
-		};
-		eventSource.onopen = () => {
+		});
+		eventSource.addEventListener("open", (event) => {
 			console.debug("SSE connection open", endpoint);
 			if (this.resetTimer) clearTimeout(this.resetTimer);
 			this.faultCount = 0;
@@ -116,7 +104,7 @@ class SSESource implements Source {
 					this.eventSource.addEventListener(key, value);
 				}),
 			);
-		};
+		});
 		return eventSource;
 	}
 

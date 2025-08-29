@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 	"sync/atomic"
 
 	"github.com/dianlight/srat/dto"
@@ -24,8 +23,13 @@ type BroadcasterService struct {
 	state            *dto.ContextState
 	SentCounter      atomic.Uint64
 	ConnectedClients atomic.Int32
-	relay            *broadcast.Relay[any]
+	relay            *broadcast.Relay[broadcastEvent]
 	haService        HomeAssistantServiceInterface
+}
+
+type broadcastEvent struct {
+	ID      uint64
+	Message any
 }
 
 func NewBroadcasterService(
@@ -35,10 +39,11 @@ func NewBroadcasterService(
 ) (broker BroadcasterServiceInterface) {
 	// Instantiate a broker
 	return &BroadcasterService{
-		ctx:       ctx,
-		relay:     broadcast.NewRelay[any](),
-		haService: haService,
-		state:     state,
+		ctx:         ctx,
+		relay:       broadcast.NewRelay[broadcastEvent](),
+		haService:   haService,
+		state:       state,
+		SentCounter: atomic.Uint64{},
 	}
 }
 
@@ -47,10 +52,10 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) (any, error) {
 		tlog.Trace("Queued Message", "type", fmt.Sprintf("%T", msg), "msg", msg)
 	}
 	defer broker.SentCounter.Add(1)
-	broker.relay.Broadcast(msg)
+	broker.relay.Broadcast(broadcastEvent{ID: broker.SentCounter.Load(), Message: msg})
 
 	// Send to Home Assistant if in secure mode
-	broker.sendToHomeAssistant(msg)
+	go broker.sendToHomeAssistant(msg)
 
 	return msg, nil
 }
@@ -117,25 +122,43 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 
 	slog.Debug("SSE Connected client", "actual clients", broker.ConnectedClients.Load())
 
+	err := send(sse.Message{
+		ID:    0,
+		Retry: 1000,
+		Data: &dto.Welcome{
+			Message:         "Welcome to SRAT SSE",
+			ActiveClients:   broker.ConnectedClients.Load(),
+			SupportedEvents: dto.EventTypes.All(),
+			UpdateChannel:   broker.state.UpdateChannel.String(),
+		},
+	})
+	if err != nil {
+		slog.Warn("Error sending welcome message to SSE client", "err", err)
+	}
+
 	for {
 		select {
 		case <-broker.ctx.Done():
-			slog.Info("SSE Progess Closed", "err", broker.ctx.Err())
+			slog.Info("SSE Process Closed", "err", broker.ctx.Err(), "active clients", broker.ConnectedClients.Load())
 			return
 		case event := <-listener.Ch():
 			// Filter out Home Assistant-specific events that shouldn't go to SSE clients
-			if broker.shouldSkipSSEEvent(event) {
+			if broker.shouldSkipSSEEvent(event.Message) {
 				continue
 			}
 
-			err := send.Data(event)
+			err := send(sse.Message{
+				ID:    int(event.ID),
+				Retry: 1000,
+				Data:  event.Message,
+			})
 			if err != nil {
-				if !strings.Contains(err.Error(), "broken pipe") &&
-					!strings.Contains(err.Error(), "context canceled") &&
-					!strings.Contains(err.Error(), "connection reset by peer") &&
-					!strings.Contains(err.Error(), "i/o timeout") {
-					slog.Warn("Error sending event to client", "event", event, "err", err)
-				}
+				/* 				if !strings.Contains(err.Error(), "broken pipe") &&
+				!strings.Contains(err.Error(), "context canceled") &&
+				!strings.Contains(err.Error(), "connection reset by peer") &&
+				!strings.Contains(err.Error(), "i/o timeout") {
+				*/slog.Warn("Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+				//				}
 				return
 			}
 		}
