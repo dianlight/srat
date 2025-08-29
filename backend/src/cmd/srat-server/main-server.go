@@ -163,6 +163,7 @@ func prog(state overseer.State) {
 		fx.Provide(
 			func() *overseer.State { return &state },
 			server.AsHumaRoute(api.NewSSEBroker),
+			api.NewWebSocketBroker,
 			server.AsHumaRoute(api.NewHealthHandler),
 			server.AsHumaRoute(api.NewShareHandler),
 			server.AsHumaRoute(api.NewVolumeHandler),
@@ -183,9 +184,13 @@ func prog(state overseer.State) {
 				_ huma.API,
 				router *mux.Router,
 				static http.FileSystem,
+				wsHandler *api.WebSocketHandler,
 				//apiCtx *dto.ContextState,
 				//shutdowner fx.Shutdowner,
 			) {
+				// WebSocket route
+				router.HandleFunc("/ws", wsHandler.HandleWebSocket).Methods(http.MethodGet)
+
 				// Static Routes
 				router.PathPrefix("/").Handler(http.FileServer(static)).Methods(http.MethodGet)
 				//

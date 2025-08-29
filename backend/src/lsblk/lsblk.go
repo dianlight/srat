@@ -49,6 +49,7 @@ type Device struct {
 	ReadOnly    bool     `json:"ro,omitempty"`
 }
 
+/*
 type _Device struct {
 	Name        string      `json:"name"`
 	Path        string      `json:"path"`
@@ -82,6 +83,7 @@ type _Device struct {
 	Ptuuid      string      `json:"ptuuid"`
 	ReadOnly    bool        `json:"ro"`
 }
+*/
 
 type LSBKInfo struct {
 	Name       string `json:"name"`

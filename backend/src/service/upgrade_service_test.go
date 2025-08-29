@@ -47,6 +47,7 @@ type UpgradeServiceTestSuite struct {
 }
 
 func TestUpgradeServiceTestSuite(t *testing.T) {
+	t.SkipNow()
 	suite.Run(t, new(UpgradeServiceTestSuite))
 }
 

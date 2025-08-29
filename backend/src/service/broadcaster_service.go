@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync/atomic"
+	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/tlog"
+	"github.com/gorilla/websocket"
 	"github.com/teivah/broadcast"
 
 	"github.com/danielgtaylor/huma/v2/sse"
@@ -16,6 +19,7 @@ import (
 type BroadcasterServiceInterface interface {
 	BroadcastMessage(msg any) (any, error)
 	ProcessHttpChannel(send sse.Sender)
+	ProcessWebSocketChannel(conn *websocket.Conn)
 }
 
 type BroadcasterService struct {
@@ -165,7 +169,85 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 	}
 }
 
-// shouldSkipSSEEvent determines if an event should be skipped for SSE clients
+// ProcessWebSocketChannel processes a WebSocket connection for real-time events.
+// It filters out Home Assistant-specific events that should not be sent to web clients
+// and only sends events that are registered with the WebSocket system.
+func (broker *BroadcasterService) ProcessWebSocketChannel(conn *websocket.Conn) {
+	broker.ConnectedClients.Add(1)
+	defer broker.ConnectedClients.Add(-1)
+
+	listener := broker.relay.Listener(5)
+	defer listener.Close() // Close the listener when done
+
+	slog.Debug("WebSocket Connected client", "actual clients", broker.ConnectedClients.Load())
+
+	// Send welcome message
+	welcomeMsg := dto.Welcome{
+		Message:         "Welcome to SRAT WebSocket",
+		ActiveClients:   broker.ConnectedClients.Load(),
+		SupportedEvents: dto.EventTypes.All(),
+		UpdateChannel:   broker.state.UpdateChannel.String(),
+	}
+
+	welcomeData, err := json.Marshal(welcomeMsg)
+	if err != nil {
+		slog.Error("Failed to marshal welcome message", "error", err)
+		return
+	}
+
+	err = conn.WriteMessage(websocket.TextMessage, welcomeData)
+	if err != nil {
+		slog.Warn("Error sending welcome message to WebSocket client", "err", err)
+		return
+	}
+
+	// Handle ping/pong for connection health
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
+	// Start ping ticker
+	pingTicker := time.NewTicker(30 * time.Second)
+	defer pingTicker.Stop()
+
+	for {
+		select {
+		case <-broker.ctx.Done():
+			slog.Info("WebSocket Process Closed", "err", broker.ctx.Err(), "active clients", broker.ConnectedClients.Load())
+			return
+		case event := <-listener.Ch():
+			// Filter out Home Assistant-specific events that shouldn't go to WebSocket clients
+			if broker.shouldSkipSSEEvent(event.Message) {
+				continue
+			}
+
+			// Marshal the event data to JSON
+			eventData, err := json.Marshal(event)
+			if err != nil {
+				slog.Error("Failed to marshal event data", "error", err, "event", event)
+				continue
+			}
+
+			// Send the event data
+			err = conn.WriteMessage(websocket.TextMessage, eventData)
+			if err != nil {
+				slog.Warn("Error sending event to WebSocket client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+				return
+			}
+		case <-pingTicker.C:
+			// Send ping to keep connection alive
+			err := conn.WriteMessage(websocket.PingMessage, nil)
+			if err != nil {
+				slog.Warn("Error sending ping to WebSocket client", "err", err)
+				return
+			}
+		}
+	}
+}
+
+// shouldSkipSSEEvent determines if an event should be skipped for web clients (SSE/WebSocket)
 // These events are meant for Home Assistant integration only
 func (broker *BroadcasterService) shouldSkipSSEEvent(event any) bool {
 	switch event.(type) {

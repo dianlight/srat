@@ -9,6 +9,7 @@ import (
 	"time"
 
 	sloghttp "github.com/dianlight/slog-http"
+	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
@@ -90,13 +91,13 @@ func NewHTTPServer(
 	return srv
 }
 
-func NewMuxRouter(apiCtx *dto.ContextState /*, ingressClient ingress.ClientWithResponsesInterface*/) *mux.Router {
+func NewMuxRouter(apiCtx *dto.ContextState, wsh api.WebSocketHandler) *mux.Router {
 	router := mux.NewRouter()
 	if apiCtx.SecureMode {
 		router.Use(NewHAMiddleware( /*ingressClient*/ ))
 	}
 
 	router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
-
+	router.HandleFunc("/ws", wsh.HandleWebSocket)
 	return router
 }
