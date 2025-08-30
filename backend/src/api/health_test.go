@@ -101,7 +101,6 @@ func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
 	// Update some state for the check
 	suite.api.Alive = true
 	suite.api.LastError = "test error"
-	suite.api.BuildVersion = "v1.2.3"
 
 	rr := testAPI.Get("/health")
 	suite.Equal(http.StatusOK, rr.Code)
@@ -114,7 +113,6 @@ func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
 	suite.Equal(suite.api.HealthPing, response)
 	suite.True(response.Alive)
 	suite.Equal("test error", response.LastError)
-	suite.Equal("v1.2.3", response.BuildVersion)
 }
 
 func (suite *HealthHandlerSuite) TestEventEmitter_Success() {
@@ -125,7 +123,7 @@ func (suite *HealthHandlerSuite) TestEventEmitter_Success() {
 	mock.When(suite.mockDirtyService.GetDirtyDataTracker()).ThenReturn(dto.DataDirtyTracker{})
 	//mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[dto.HealthPing]())).ThenReturn(nil, nil).Verify(mock.Times(1))
 
-	pingData := dto.HealthPing{Alive: true, BuildVersion: "emit-test"}
+	pingData := dto.HealthPing{Alive: true}
 
 	// Expect the broadcast call
 	mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[any]())).ThenReturn(nil, nil).Verify(mock.Times(1))
@@ -147,7 +145,7 @@ func (suite *HealthHandlerSuite) TestEventEmitter_Error() {
 
 	initialCount := suite.api.OutputEventsCount
 
-	pingData := dto.HealthPing{Alive: true, BuildVersion: "emit-test-fail"}
+	pingData := dto.HealthPing{Alive: true}
 	expectedErr := errors.New("broadcast failed")
 
 	// Expect the broadcast call to fail

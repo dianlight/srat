@@ -300,8 +300,6 @@ components:
         aliveTime:
           format: int64
           type: integer
-        build_version:
-          type: string
         dirty_tracking:
           $ref: "#/components/schemas/DataDirtyTracker"
         disk_health:
@@ -310,39 +308,27 @@ components:
           type: string
         last_release:
           $ref: "#/components/schemas/ReleaseAsset"
-        machine_id:
-          type: string
         network_health:
           $ref: "#/components/schemas/NetworkStats"
-        protected_mode:
-          type: boolean
-        read_only:
-          type: boolean
         samba_process_status:
           $ref: "#/components/schemas/SambaProcessStatus"
         samba_status:
           $ref: "#/components/schemas/SambaStatus"
-        secure_mode:
-          type: boolean
-        startTime:
+        uptime:
           format: int64
           type: integer
       required:
         - alive
         - aliveTime
-        - startTime
-        - read_only
         - samba_process_status
         - last_error
         - dirty_tracking
         - last_release
-        - secure_mode
-        - protected_mode
-        - build_version
         - addon_stats
         - disk_health
         - network_health
         - samba_status
+        - uptime
       type: object
     InterfaceAddr:
       additionalProperties: false
@@ -1118,8 +1104,21 @@ components:
         active_clients:
           format: int32
           type: integer
+        build_version:
+          type: string
+        machine_id:
+          type: string
         message:
           type: string
+        protected_mode:
+          type: boolean
+        read_only:
+          type: boolean
+        secure_mode:
+          type: boolean
+        startTime:
+          format: int64
+          type: integer
         supported_events:
           items:
             enum:
@@ -1144,6 +1143,11 @@ components:
         - active_clients
         - supported_events
         - update_channel
+        - build_version
+        - secure_mode
+        - protected_mode
+        - read_only
+        - startTime
       type: object
   securitySchemes:
     ApiKeyAuth:
@@ -1548,8 +1552,8 @@ paths:
     put:
       operationId: put-api-restart
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -1712,8 +1716,8 @@ paths:
     get:
       operationId: get-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2490,8 +2494,8 @@ paths:
     get:
       operationId: sse
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2961,8 +2965,8 @@ paths:
             maxLength: 30
             minimum: 1
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3010,8 +3014,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -3162,8 +3166,8 @@ paths:
           schema:
             description: The ID of the disk to eject (e.g., sda, sdb)
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3222,8 +3226,8 @@ paths:
             default: false
             description: Lazy umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content

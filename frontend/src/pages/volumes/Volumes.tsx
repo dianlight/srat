@@ -29,7 +29,6 @@ import { Fragment, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
-import { useReadOnly } from "../../hooks/readonlyHook";
 import { useVolume } from "../../hooks/volumeHook";
 import { type LocationState, TabIDs } from "../../store/locationState";
 import {
@@ -45,9 +44,10 @@ import { VolumeMountDialog } from "./components/VolumeMountDialog";
 import { useVolumeAccordion } from "./hooks/useVolumeAccordion";
 import { decodeEscapeSequence } from "./utils";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { useGetServerEventsQuery } from "../../store/sseApi";
 
 export function Volumes() {
-	const read_only = useReadOnly();
+	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
 	const [showPreview, setShowPreview] = useState<boolean>(false);
 	const [showMount, setShowMount] = useState<boolean>(false);
 	const [showMountSettings, setShowMountSettings] = useState<boolean>(false); // For viewing mount settings
@@ -270,7 +270,7 @@ export function Volumes() {
 	}
 
 	function handleToggleAutomount(partition: Partition) {
-		if (read_only) return;
+		if (evdata?.hello.read_only) return;
 
 		const mountData = partition.mount_point_data?.[0];
 		if (!mountData || !mountData.path_hash) {
@@ -616,7 +616,7 @@ export function Volumes() {
 																	secondaryAction={
 																		<PartitionActions
 																			partition={partition}
-																			read_only={read_only}
+																			read_only={evdata?.hello.read_only || true}
 																			onToggleAutomount={
 																				handleToggleAutomount
 																			}

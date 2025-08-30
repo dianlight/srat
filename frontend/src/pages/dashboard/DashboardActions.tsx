@@ -9,22 +9,19 @@ import {
 	Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useReadOnly } from "../../hooks/readonlyHook";
 import { useVolume } from "../../hooks/volumeHook";
 import { useGetApiIssuesQuery, type Issue, type Partition } from "../../store/sratApi";
 import { ActionableItemsList } from "./components/ActionableItemsList";
 import IssueCard from "../../components/IssueCard";
 import { TabIDs } from "../../store/locationState";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { useGetServerEventsQuery } from "../../store/sseApi";
 
 export function DashboardActions() {
 	const { disks, isLoading, error } = useVolume();
-	const read_only = useReadOnly();
-	//const _navigate = useNavigate();
 	const [expanded, setExpanded] = useState(false);
 	const [showIgnored, setShowIgnored] = useState(false);
-
+	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
 	const { data: issues, isLoading: is_inLoading } = useGetApiIssuesQuery();
 
 	TourEvents.on(TourEventTypes.DASHBOARD_STEP_3, (elem) => {
@@ -34,7 +31,7 @@ export function DashboardActions() {
 	const actionablePartitions = useMemo(() => {
 		const partitions: { partition: Partition; action: "mount" | "share" }[] =
 			[];
-		if (disks && !read_only) {
+		if (disks && !evdata?.hello.read_only) {
 			for (const disk of disks) {
 				// disks type should be inferred from useVolume
 				for (const partition of disk.partitions || []) {
@@ -65,7 +62,7 @@ export function DashboardActions() {
 			}
 		}
 		return partitions;
-	}, [disks, read_only]);
+	}, [disks, evdata?.hello.read_only]);
 
 	function handleResolveIssue(id: number): void {
 		throw new Error("Function not implemented.");

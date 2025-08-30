@@ -29,7 +29,6 @@ import { InView } from "react-intersection-observer";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
-import { useReadOnly } from "../../hooks/readonlyHook";
 import { useShare } from "../../hooks/shareHook";
 import { useVolume } from "../../hooks/volumeHook";
 import { addMessage } from "../../store/errorSlice";
@@ -51,10 +50,11 @@ import type { ShareEditProps } from "./types";
 import { getPathBaseName, sanitizeAndUppercaseShareName } from "./utils";
 import { filesize } from "filesize";
 import StorageIcon from "@mui/icons-material/Storage";
+import { useGetServerEventsQuery } from "../../store/sseApi";
 
 
 export function Shares() {
-	const read_only = useReadOnly();
+	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
 	const dispatch = useAppDispatch();
 	const location = useLocation();
 	const navigate = useNavigate();
@@ -448,7 +448,7 @@ export function Shares() {
 			>
 				<Tooltip
 					title={
-						read_only
+						evdata?.hello.read_only
 							? "Cannot create share in read-only mode"
 							: !canCreateNewShare
 								? "No unshared mount points available to create a new share."
@@ -461,7 +461,7 @@ export function Shares() {
 							id="create_new_share"
 							color="primary"
 							aria-label={
-								read_only
+								evdata?.hello.read_only
 									? "Cannot create share in read-only mode"
 									: !canCreateNewShare
 										? "No unshared mount points available to create a new share."
@@ -470,12 +470,12 @@ export function Shares() {
 							// sx removed: float, top, margin - FAB is now in normal flow within Stack
 							size="small"
 							onClick={() => {
-								if (!read_only && canCreateNewShare) {
+								if (!evdata?.hello.read_only && canCreateNewShare) {
 									setSelected(null);
 									setShowEdit(true);
 								}
 							}}
-							disabled={read_only || !canCreateNewShare}
+							disabled={evdata?.hello.read_only || !canCreateNewShare}
 						>
 							<AddIcon />
 						</Fab>
@@ -539,7 +539,7 @@ export function Shares() {
 														<ShareActions
 															shareKey={share}
 															shareProps={props}
-															read_only={read_only}
+															read_only={evdata?.hello.read_only || true}
 															onEdit={(shareKey, shareProps) => {
 																setSelected([shareKey, shareProps]);
 																setShowEdit(true);

@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/tlog"
 	"github.com/gorilla/websocket"
@@ -29,6 +30,7 @@ type BroadcasterService struct {
 	ConnectedClients atomic.Int32
 	relay            *broadcast.Relay[broadcastEvent]
 	haService        HomeAssistantServiceInterface
+	haRootService    HaRootServiceInterface
 }
 
 type broadcastEvent struct {
@@ -39,15 +41,17 @@ type broadcastEvent struct {
 func NewBroadcasterService(
 	ctx context.Context,
 	haService HomeAssistantServiceInterface,
+	haRootService HaRootServiceInterface,
 	state *dto.ContextState,
 ) (broker BroadcasterServiceInterface) {
 	// Instantiate a broker
 	return &BroadcasterService{
-		ctx:         ctx,
-		relay:       broadcast.NewRelay[broadcastEvent](),
-		haService:   haService,
-		state:       state,
-		SentCounter: atomic.Uint64{},
+		ctx:           ctx,
+		relay:         broadcast.NewRelay[broadcastEvent](),
+		haService:     haService,
+		state:         state,
+		SentCounter:   atomic.Uint64{},
+		haRootService: haRootService,
 	}
 }
 
@@ -129,12 +133,7 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 	err := send(sse.Message{
 		ID:    0,
 		Retry: 1000,
-		Data: &dto.Welcome{
-			Message:         "Welcome to SRAT SSE",
-			ActiveClients:   broker.ConnectedClients.Load(),
-			SupportedEvents: dto.EventTypes.All(),
-			UpdateChannel:   broker.state.UpdateChannel.String(),
-		},
+		Data:  broker.createWelcomeMessage(),
 	})
 	if err != nil {
 		slog.Warn("Error sending welcome message to SSE client", "err", err)
@@ -182,12 +181,7 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(conn *websocket.Conn) 
 	slog.Debug("WebSocket Connected client", "actual clients", broker.ConnectedClients.Load())
 
 	// Send welcome message
-	welcomeMsg := dto.Welcome{
-		Message:         "Welcome to SRAT WebSocket",
-		ActiveClients:   broker.ConnectedClients.Load(),
-		SupportedEvents: dto.EventTypes.All(),
-		UpdateChannel:   broker.state.UpdateChannel.String(),
-	}
+	welcomeMsg := broker.createWelcomeMessage()
 
 	welcomeData, err := json.Marshal(welcomeMsg)
 	if err != nil {
@@ -245,6 +239,32 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(conn *websocket.Conn) 
 			}
 		}
 	}
+}
+
+func (broker *BroadcasterService) createWelcomeMessage() dto.Welcome {
+	welcomeMsg := dto.Welcome{
+		Message:         "Welcome to SRAT WebSocket",
+		ActiveClients:   broker.ConnectedClients.Load(),
+		SupportedEvents: dto.EventTypes.All(),
+		UpdateChannel:   broker.state.UpdateChannel.String(),
+		ReadOnly:        broker.state.ReadOnlyMode,
+		SecureMode:      broker.state.SecureMode,
+		BuildVersion:    config.BuildVersion(),
+		ProtectedMode:   broker.state.ProtectedMode,
+		StartTime:       broker.state.StartTime.Unix(),
+	}
+
+	// Get machine_id from ha_root service if available
+	if broker.haRootService != nil {
+		sysInfo, err := broker.haRootService.GetSystemInfo()
+		if err != nil {
+			slog.Debug("Error getting system info for machine_id", "err", err)
+			welcomeMsg.MachineId = nil
+		} else if sysInfo != nil && sysInfo.MachineId != nil {
+			welcomeMsg.MachineId = sysInfo.MachineId
+		}
+	}
+	return welcomeMsg
 }
 
 // shouldSkipSSEEvent determines if an event should be skipped for web clients (SSE/WebSocket)

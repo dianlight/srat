@@ -11,7 +11,6 @@ import (
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/tlog"
@@ -22,7 +21,7 @@ var _healthHanlerIntanceMutex sync.Mutex
 
 type HealthHanler struct {
 	ctx                    context.Context
-	apictx                 *dto.ContextState
+	state                  *dto.ContextState
 	OutputEventsCount      uint64
 	OutputEventsInterleave time.Duration
 	dto.HealthPing
@@ -38,7 +37,7 @@ type HealthHanler struct {
 type HealthHandlerParams struct {
 	fx.In
 	Ctx                context.Context
-	Apictx             *dto.ContextState
+	State              *dto.ContextState
 	Broadcaster        service.BroadcasterServiceInterface
 	SambaService       service.SambaServiceInterface
 	DirtyService       service.DirtyDataServiceInterface
@@ -58,27 +57,22 @@ func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler 
 	p := new(HealthHanler)
 	p.Alive = true
 	p.AliveTime = time.Now().UnixMilli()
-	p.StartTime = time.Now().UnixMilli()
-	p.ReadOnly = param.Apictx.ReadOnlyMode
 	p.LastError = ""
 	p.ctx = param.Ctx
-	p.apictx = param.Apictx
+	p.state = param.State
 	p.broadcaster = param.Broadcaster
 	p.sambaService = param.SambaService
 	p.OutputEventsCount = 0
 	p.addonsService = param.AddonsService
-	p.SecureMode = param.Apictx.SecureMode
 	p.dirtyService = param.DirtyService
 	p.diskStatsService = param.DiskStatsService
 	p.networkStatsService = param.NetworkStatService
 	p.haRootService = param.HaRootService
-	p.BuildVersion = config.BuildVersion()
-	if param.Apictx.Heartbeat > 0 {
-		p.OutputEventsInterleave = time.Duration(param.Apictx.Heartbeat) * time.Second
+	if param.State.Heartbeat > 0 {
+		p.OutputEventsInterleave = time.Duration(param.State.Heartbeat) * time.Second
 	} else {
 		p.OutputEventsInterleave = 5 * time.Second
 	}
-	p.ProtectedMode = param.Apictx.ProtectedMode
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -171,8 +165,9 @@ func (self *HealthHanler) run() error {
 			self.OutputEventsInterleave = time.Duration(math.MaxInt64) // FIX rollbar#32
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(self.OutputEventsInterleave): // Use a timer to control loop frequency
-			self.ProtectedMode = self.apictx.ProtectedMode
+			//			self.ProtectedMode = self.apictx.ProtectedMode
 			// Get Addon Stats
+			self.HealthPing.Uptime = time.Since(self.state.StartTime).Milliseconds()
 			stats, err := self.addonsService.GetStats()
 			if err != nil {
 				slog.Error("Error getting addon stats for health ping", "err", err)
@@ -209,17 +204,6 @@ func (self *HealthHanler) run() error {
 
 			// Also broadcast the samba process status separately for Home Assistant integration
 			self.broadcaster.BroadcastMessage(self.HealthPing.SambaProcessStatus)
-
-			// Get machine_id from ha_root service if available
-			if self.haRootService != nil {
-				sysInfo, err := self.haRootService.GetSystemInfo()
-				if err != nil {
-					slog.Debug("Error getting system info for machine_id", "err", err)
-					self.HealthPing.MachineId = nil
-				} else if sysInfo != nil && sysInfo.MachineId != nil {
-					self.HealthPing.MachineId = sysInfo.MachineId
-				}
-			}
 
 			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()

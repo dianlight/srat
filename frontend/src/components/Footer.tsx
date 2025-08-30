@@ -7,30 +7,12 @@ import pkg from "../../package.json";
 import { getGitCommitHash } from "../macro/getGitCommitHash.ts" with {
 	type: "macro",
 };
-import { type HealthPing, usePutApiRestartMutation } from "../store/sratApi.ts";
-//import { apiContext } from "../Contexts.ts";
+import { useGetServerEventsQuery } from "../store/sseApi.ts";
 
-export function Footer(props: { healthData: HealthPing }) {
+export function Footer() {
 	const theme = useTheme();
 	const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
-	//const [restart, { isLoading }] = usePutApiRestartMutation();
-
-	//const samba = useSWR<DtoSambaProcessStatus>('/samba/status', () => apiContext.samba.statusList().then(res => res.data));
-
-	/*
-	const _handleRestart = () => {
-		if (!isLoading) {
-			restart({})
-				.unwrap()
-				.then(() => {
-					console.log("Server restarted successfully");
-				})
-				.catch((error) => {
-					console.error("Failed to restart the server:", error);
-				});
-		}
-	};
-	*/
+	const { data: evdata, isLoading } = useGetServerEventsQuery();
 
 	return (
 		<Paper
@@ -56,7 +38,7 @@ export function Footer(props: { healthData: HealthPing }) {
 						my: isSmallScreen ? 0.5 : 1,
 					}}
 				>
-					<Tooltip title={props.healthData.build_version} arrow placement="top">
+					<Tooltip title={isLoading ? "Loading..." : evdata?.hello.build_version} arrow placement="top">
 						<Typography variant="caption">
 							<Link href={`${pkg.repository.url}/commit/${getGitCommitHash()}`}>
 								Version {pkg.version}
@@ -68,29 +50,24 @@ export function Footer(props: { healthData: HealthPing }) {
 						© 2024-2025 Copyright {pkg.author.name}
 					</Typography>
 
-					{isSmallScreen || (
+					{isSmallScreen || (isLoading && <div>Loading...</div>) ? null : (
 						<Tooltip
 							title={
 								<JsonTable
-									rows={Object.values(props.healthData.samba_process_status)}
+									rows={Object.values(evdata?.heartbeat?.samba_process_status || {})}
 								/>
 							}
 							arrow
 						>
 							<Typography variant="caption">
-								smbd {props.healthData.samba_process_status?.smbd?.pid || "off"}{" "}
+								smbd {evdata?.heartbeat?.samba_process_status?.smbd?.pid || "off"}{" "}
 								| nmbd{" "}
-								{props.healthData.samba_process_status?.nmbd?.pid || "off"} |
+								{evdata?.heartbeat?.samba_process_status?.nmbd?.pid || "off"} |
 								wsdd2{" "}
-								{props.healthData.samba_process_status?.wsdd2?.pid || "off"}
+								{evdata?.heartbeat?.samba_process_status?.wsdd2?.pid || "off"}
 							</Typography>
 						</Tooltip>
 					)}
-					{/*
-                    <Tooltip title="Restart the server" arrow>
-                        <Typography onClick={() => handleRestart()} variant="caption">[R]</Typography>
-                    </Tooltip>
-                    */}
 				</Stack>
 			</Container>
 		</Paper>

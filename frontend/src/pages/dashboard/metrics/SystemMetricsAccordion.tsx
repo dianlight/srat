@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import type { HealthPing } from "../../../store/sratApi";
 import { MetricCard } from "./MetricCard";
 import type { AddonStatsData } from "./types";
-import { formatUptime } from "./utils";
+import humanizeDuration from "humanize-duration";
 import { TabIDs } from "../../../store/locationState";
 import { filesize } from "filesize";
 
@@ -301,9 +301,9 @@ export function SystemMetricsAccordion({
 		return (
 			<MetricCard
 				title="Server Uptime"
-				value={health?.startTime ? formatUptime(health.startTime) : "N/A"}
+				value={health?.uptime ? humanizeDuration(health.uptime) : "N/A"}
 				isLoading={isLoading}
-				error={!!error || !health?.startTime}
+				error={!!error || !health?.uptime}
 			/>
 		);
 	};

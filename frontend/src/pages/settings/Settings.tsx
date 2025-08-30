@@ -17,7 +17,6 @@ import {
 } from "react-hook-form-mui";
 import { useEffect } from "react";
 import { InView } from "react-intersection-observer";
-import { useReadOnly } from "../../hooks/readonlyHook";
 import default_json from "../../json/default_config.json";
 import { TabIDs } from "../../store/locationState";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
@@ -33,6 +32,7 @@ import {
 	usePutApiSettingsMutation,
 	Telemetry_mode,
 } from "../../store/sratApi";
+import { useGetServerEventsQuery } from "../../store/sseApi";
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
@@ -78,7 +78,8 @@ const HOSTNAME_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 const WORKGROUP_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,13}[a-zA-Z0-9])?$/;
 
 export function Settings() {
-	const read_only = useReadOnly();
+	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
+
 	const {
 		data: globalConfig,
 		isLoading,
@@ -105,7 +106,7 @@ export function Settings() {
 	} = useForm({
 		mode: "onBlur",
 		values: globalConfig as Settings,
-		disabled: read_only,
+		disabled: evdata?.hello.read_only,
 	});
 	const [update, _updateResponse] = usePutApiSettingsMutation();
 	const {
@@ -133,7 +134,7 @@ export function Settings() {
 	}
 
 	const handleFetchHostname = async () => {
-		if (read_only || isHostnameFetching) return;
+		if (evdata?.hello.read_only || isHostnameFetching) return;
 		try {
 			await triggerGetSystemHostname().unwrap();
 			setValue("hostname", hostname?.toString(), {
@@ -216,7 +217,7 @@ export function Settings() {
 								loading={isChLoading}
 								autocompleteProps={{
 									size: "small",
-									disabled: read_only || process.env.NODE_ENV === "production",
+									disabled: evdata?.hello.read_only || process.env.NODE_ENV === "production",
 									contentEditable: false, // Prevent manual input in production
 									disableClearable: true
 								}}
@@ -232,7 +233,7 @@ export function Settings() {
 								loading={isTelemetryLoading}
 								autocompleteProps={{
 									size: "small",
-									disabled: read_only || isInternetLoading || !internetConnection,
+									disabled: evdata?.hello.read_only || isInternetLoading || !internetConnection,
 									contentEditable: false, // Prevent manual input in production
 									disableClearable: true,
 									autoComplete: false,
@@ -273,7 +274,7 @@ export function Settings() {
 									name="export_stats_to_ha"
 									label="Export Stats to HA"
 									control={control}
-									disabled={read_only}
+									disabled={evdata?.hello.read_only}
 								/>
 							</Tooltip>
 						</Grid>
@@ -301,7 +302,7 @@ export function Settings() {
 										message: "Hostname cannot exceed 63 characters.",
 									},
 								}}
-								disabled={read_only}
+								disabled={evdata?.hello.read_only}
 								slotProps={{
 									input: {
 										endAdornment: (
@@ -313,7 +314,7 @@ export function Settings() {
 															aria-label="fetch system hostname"
 															onClick={handleFetchHostname}
 															edge="end"
-															disabled={read_only || isHostnameFetching}
+															disabled={evdata?.hello.read_only || isHostnameFetching}
 														>
 															{isHostnameFetching ? (
 																<CircularProgress size={20} />
@@ -362,7 +363,7 @@ export function Settings() {
 									name="local_master"
 									label="Local Master"
 									control={control}
-									disabled={read_only}
+									disabled={evdata?.hello.read_only}
 								/>
 							</Tooltip>
 						</Grid>
@@ -376,7 +377,7 @@ export function Settings() {
 								label="Compatibility Mode"
 								name="compatibility_mode"
 								control={control}
-								disabled={read_only}
+								disabled={evdata?.hello.read_only}
 							/>
 						</Grid>
 						<Grid size={{ xs: 12, md: 4 }}>
@@ -399,7 +400,7 @@ export function Settings() {
 										message: "Workgroup name cannot exceed 15 characters.",
 									},
 								}}
-								disabled={read_only}
+								disabled={evdata?.hello.read_only}
 							/>
 						</Grid>
 						<Grid size={{ xs: 12, md: 12 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step5`}>
@@ -407,7 +408,7 @@ export function Settings() {
 								name="allow_hosts"
 								control={control}
 								defaultValue={[]}
-								disabled={read_only}
+								disabled={evdata?.hello.read_only}
 								rules={{
 									required: "Allow Hosts cannot be empty.",
 									validate: (chips: string[] | undefined) => {
@@ -442,7 +443,7 @@ export function Settings() {
 											input: {
 												endAdornment: (
 													<InputAdornment position="end" sx={{ pr: 1 }}>
-														{!read_only && (
+														{!evdata?.hello.read_only && (
 															<Tooltip title="Add suggested default Allow Hosts">
 																<IconButton
 																	aria-label="add suggested default allow hosts"
@@ -530,7 +531,7 @@ export function Settings() {
 									label="Multi Channel Mode"
 									name="multi_channel"
 									control={control}
-									disabled={read_only}
+									disabled={evdata?.hello.read_only}
 								/>
 							</Tooltip>
 						</Grid>
@@ -544,7 +545,7 @@ export function Settings() {
 								label="Bind All Interfaces"
 								name="bind_all_interfaces"
 								control={control}
-								disabled={read_only}
+								disabled={evdata?.hello.read_only}
 							/>
 							<AutocompleteElement
 								multiple
@@ -559,7 +560,7 @@ export function Settings() {
 								loading={inLoadinf}
 								autocompleteProps={{
 									size: "small",
-									disabled: bindAllWatch || read_only,
+									disabled: bindAllWatch || evdata?.hello.read_only,
 								}}
 							/>
 						</Grid>

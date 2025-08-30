@@ -70,7 +70,7 @@ export function App() {
 			>
 				<NavBar error={errorInfo} bodyRef={mainArea} />
 				<div ref={mainArea} className="fullBody" style={{ flexGrow: 1 }}></div>
-				<Footer healthData={status} />
+				<Footer />
 			</Container>
 			<Backdrop
 				sx={(theme) => ({ color: "#fff", zIndex: theme.zIndex.drawer + 1 })}

@@ -22,7 +22,6 @@ import { useConfirm } from "material-ui-confirm";
 import { Fragment, useState } from "react";
 import { InView } from "react-intersection-observer";
 import { toast } from "react-toastify";
-import { useReadOnly } from "../../hooks/readonlyHook";
 import { TabIDs } from "../../store/locationState";
 import {
 	useDeleteApiUserByUsernameMutation,
@@ -35,9 +34,11 @@ import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { UserActions } from "./UserActions";
 import { UserEditDialog } from "./UserEditDialog";
 import type { UsersProps } from "./types";
+import { useGetServerEventsQuery } from "../../store/sseApi";
 
 export function Users() {
-	const read_only = useReadOnly();
+	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
+
 	const users = useGetApiUsersQuery();
 	const [_errorInfo, setErrorInfo] = useState<string>("");
 	const [selected, setSelected] = useState<UsersProps>({
@@ -165,7 +166,7 @@ export function Users() {
 				sx={{ px: 2, mb: 1, alignItems: "center" }}
 				data-tutor={`reactour__tab${TabIDs.USERS}__step0`}
 			>
-				{read_only || (
+				{evdata?.hello.read_only || (
 					<Fab
 						color="primary"
 						aria-label="add"
@@ -337,7 +338,7 @@ export function Users() {
 										/>
 										<UserActions
 											user={user}
-											read_only={read_only || false}
+											read_only={evdata?.hello.read_only || false}
 											onEdit={(user) => {
 												setSelected(user);
 												setShowEdit(true);

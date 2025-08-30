@@ -14,37 +14,37 @@ import { useGetServerEventsQuery } from "../store/sseApi";
 export function useHealth() {
 	const [health, setHealth] = useState<HealthPing>({
 		alive: false,
-		read_only: true,
 		aliveTime: 0,
-		startTime: 0,
 		dirty_tracking: {} as DataDirtyTracker,
 		last_error: "",
 		last_release: {} as ReleaseAsset,
 		samba_process_status: {} as SambaProcessStatus,
-		secure_mode: false,
 		addon_stats: {},
-		build_version: "",
-		protected_mode: false,
 		disk_health: {} as DiskHealth,
 		network_health: {} as NetworkStats,
 		samba_status: {} as SambaStatus,
+		uptime: 0,
 	});
-	const { data: evdata, error: everror, isLoading: evloading, fulfilledTimeStamp: evfulfilledTimeStamp } = useGetServerEventsQuery();
-	const { data, error, isLoading, fulfilledTimeStamp } = useGetApiHealthQuery();
+	const {
+		data: evdata,
+		error: everror,
+		isLoading: evloading,
+	} = useGetServerEventsQuery();
+	const { data, error, isLoading } = useGetApiHealthQuery();
 
 	useEffect(() => {
 		if (!isLoading) {
 			console.log("Update Healt Data from REST API");
 			setHealth(data as HealthPing);
 		}
-	}, [data]);
+	}, [data, isLoading]);
 
 	useEffect(() => {
 		if (!evloading && evdata?.heartbeat) {
 			console.log("Update Healt Data from SSE", evdata.heartbeat);
 			setHealth(evdata.heartbeat);
 		}
-	}, [evdata?.heartbeat]);
+	}, [evdata?.heartbeat, evloading]);
 
-	return { health, isLoading: (isLoading && evloading), error: (error || everror) };
+	return { health, isLoading: isLoading && evloading, error: error || everror };
 }

@@ -10,7 +10,6 @@ import LockOpenIcon from "@mui/icons-material/LockOpen";
 import MenuIcon from "@mui/icons-material/Menu";
 import PreviewIcon from "@mui/icons-material/Preview";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
-import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import SaveIcon from "@mui/icons-material/Save";
 import SystemSecurityUpdateIcon from "@mui/icons-material/SystemSecurityUpdate";
 import UndoIcon from "@mui/icons-material/Undo";
@@ -40,11 +39,9 @@ import Typography from "@mui/material/Typography";
 import { useConfirm } from "material-ui-confirm";
 import { useEffect, useMemo, useState } from "react"; // Added useMemo
 import { createPortal } from "react-dom";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation } from "react-router";
 import { toast } from "react-toastify";
 import pkg from "../../package.json";
-import { useHealth } from "../hooks/healthHook";
-import { useReadOnly } from "../hooks/readonlyHook";
 import github from "../img/github.svg";
 import icon from "../img/icon.png";
 import logo from "../img/logo.png";
@@ -58,9 +55,7 @@ import { Volumes } from "../pages/volumes/Volumes";
 import { type LocationState, TabIDs } from "../store/locationState";
 import {
 	type HealthPing,
-	Supported_events,
 	Update_process_state,
-	type UpdateProgress,
 	usePutApiSambaApplyMutation,
 	usePutApiUpdateMutation,
 } from "../store/sratApi";
@@ -221,8 +216,6 @@ export function NavBar(props: {
 	error: string;
 	bodyRef: React.RefObject<HTMLDivElement | null>;
 }) {
-	const read_only = useReadOnly();
-	const health = useHealth();
 	const location = useLocation();
 	const { setIsOpen: setTourOpen, isOpen: isTourOpen } = useTour();
 	//const _navigate = useNavigate();
@@ -391,7 +384,7 @@ export function NavBar(props: {
 										data-tutor={`reactour__tab${tab.id}__step1`}
 										label={tab.label}
 										{...a11yProps(tab.actualIndex as number)}
-										icon={getTabIcon(tab, health.health)}
+										icon={getTabIcon(tab, evdata?.heartbeat)}
 										iconPosition="end"
 										sx={{ maxHeight: "48px", minHeight: "48px" }}
 									/>
@@ -433,7 +426,8 @@ export function NavBar(props: {
 						)}
 
 						<Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
-							{Object.values(health.health.dirty_tracking || {}).reduce(
+							{/*
+							{Object.values(evdata.health.dirty_tracking || {}).reduce(
 								(acc, value) => acc + (value ? 1 : 0),
 								0,
 							) > 0 && (
@@ -451,7 +445,7 @@ export function NavBar(props: {
 										</IconButton>
 									</Tooltip>
 								)}
-
+								*/}
 							{process.env.NODE_ENV !== "production" && (
 								<IconButton size="small">
 									<Tooltip title={
@@ -465,8 +459,8 @@ export function NavBar(props: {
 										>
 											<ListItem>
 												<ListItemText
-													primary="Protecte Mode"
-													secondary={health.health.protected_mode ? "Enabled" : "Disabled"}
+													primary="Protected Mode"
+													secondary={evdata?.hello.protected_mode ? "Enabled" : "Disabled"}
 												/>
 											</ListItem>
 										</List>
@@ -475,7 +469,7 @@ export function NavBar(props: {
 									</Tooltip>
 								</IconButton>
 							)}
-							{!health.health.secure_mode ? (
+							{!evdata?.hello.secure_mode ? (
 								<IconButton size="small">
 									<Tooltip
 										title="Secure Mode Disabled"
@@ -494,7 +488,7 @@ export function NavBar(props: {
 									</Tooltip>
 								</IconButton>
 							)}
-							{read_only && (
+							{evdata?.hello.read_only && (
 								<IconButton size="small">
 									<Tooltip title="ReadOnly Mode" arrow>
 										<PreviewIcon sx={{ color: "white" }} />

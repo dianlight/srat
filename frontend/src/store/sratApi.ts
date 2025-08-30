@@ -822,19 +822,14 @@ export type HealthPing = {
   addon_stats: AddonStatsData;
   alive: boolean;
   aliveTime: number;
-  build_version: string;
   dirty_tracking: DataDirtyTracker;
   disk_health: DiskHealth;
   last_error: string;
   last_release: ReleaseAsset;
-  machine_id?: string;
   network_health: NetworkStats;
-  protected_mode: boolean;
-  read_only: boolean;
   samba_process_status: SambaProcessStatus;
   samba_status: SambaStatus;
-  secure_mode: boolean;
-  startTime: number;
+  uptime: number;
 };
 export type Issue = {
   /** A URL to the JSON Schema for this object. */
@@ -947,7 +942,13 @@ export type SharedResource = {
 };
 export type Welcome = {
   active_clients: number;
+  build_version: string;
+  machine_id?: string;
   message: string;
+  protected_mode: boolean;
+  read_only: boolean;
+  secure_mode: boolean;
+  startTime: number;
   supported_events: Supported_events[] | null;
   update_channel: Update_channel;
 };

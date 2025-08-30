@@ -1,5 +1,7 @@
 package dto
 
+import "time"
+
 type ContextState struct {
 	AddonIpAddress  string
 	ReadOnlyMode    bool
@@ -16,4 +18,5 @@ type ContextState struct {
 	SupervisorURL   string
 	SupervisorToken string
 	DatabasePath    string
+	StartTime       time.Time
 }
