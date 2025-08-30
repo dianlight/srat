@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import { useSSE } from "react-hooks-sse";
-import telemetryService from "../services/telemetryService";
 import {
 	type DataDirtyTracker,
 	type DiskHealth,
@@ -9,9 +7,9 @@ import {
 	type ReleaseAsset,
 	type SambaProcessStatus,
 	type SambaStatus,
-	Supported_events,
 	useGetApiHealthQuery,
 } from "../store/sratApi";
+import { useGetServerEventsQuery } from "../store/sseApi";
 
 export function useHealth() {
 	const [health, setHealth] = useState<HealthPing>({
@@ -31,47 +29,22 @@ export function useHealth() {
 		network_health: {} as NetworkStats,
 		samba_status: {} as SambaStatus,
 	});
-
-	const { data, error, isLoading } = useGetApiHealthQuery();
-	const ssedata = useSSE(Supported_events.Heartbeat, {} as HealthPing, {
-		parser(input: string): HealthPing {
-			//console.log("Got sse health data", input);
-			const c = JSON.parse(input);
-			//console.log("Got sse health data", c);
-			return c;
-		},
-	});
+	const { data: evdata, error: everror, isLoading: evloading, fulfilledTimeStamp: evfulfilledTimeStamp } = useGetServerEventsQuery();
+	const { data, error, isLoading, fulfilledTimeStamp } = useGetApiHealthQuery();
 
 	useEffect(() => {
-		if (
-			data &&
-			((data as HealthPing).aliveTime || 0) > (health.aliveTime || 0)
-		) {
-			//console.log("Update Data from rest service", data);
-			const healthData = data as HealthPing;
-			setHealth(healthData);
-
-			// Update machine_id in telemetry service if available
-			if (healthData.machine_id) {
-				telemetryService.setMachineId(healthData.machine_id);
-			}
+		if (!isLoading) {
+			console.log("Update Healt Data from REST API");
+			setHealth(data as HealthPing);
 		}
-		if (error) {
-			console.error("Error fetching health data:", error);
-		}
-	}, [data, error, health.aliveTime]);
+	}, [data]);
 
 	useEffect(() => {
-		if (ssedata && (ssedata.aliveTime || 0) > (health.aliveTime || 0)) {
-			//console.log("Update Data from sse service", ssedata);
-			setHealth(ssedata);
-
-			// Update machine_id in telemetry service if available
-			if (ssedata.machine_id) {
-				telemetryService.setMachineId(ssedata.machine_id);
-			}
+		if (!evloading && evdata?.heartbeat) {
+			console.log("Update Healt Data from SSE", evdata.heartbeat);
+			setHealth(evdata.heartbeat);
 		}
-	}, [ssedata, health.aliveTime]);
+	}, [evdata?.heartbeat]);
 
-	return { health, isLoading, error };
+	return { health, isLoading: (isLoading && evloading), error: (error || everror) };
 }

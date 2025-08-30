@@ -40,7 +40,6 @@ import Typography from "@mui/material/Typography";
 import { useConfirm } from "material-ui-confirm";
 import { useEffect, useMemo, useState } from "react"; // Added useMemo
 import { createPortal } from "react-dom";
-import { useSSE } from "react-hooks-sse";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import pkg from "../../package.json";
@@ -73,6 +72,7 @@ import { SharesSteps } from "../pages/shares/SharesTourStep";
 import { VolumesSteps } from "../pages/volumes/VolumesTourStep";
 import { SettingsSteps } from "../pages/settings/SettingsTourStep";
 import { UsersSteps } from "../pages/users/UsersSteps";
+import { useGetServerEventsQuery } from "../store/sseApi";
 
 // Define tab configurations
 interface TabConfig {
@@ -241,12 +241,7 @@ export function NavBar(props: {
 		}));
 	}, []); // process.env.NODE_ENV is a build-time constant
 
-	const updateStatus = useSSE(Supported_events.Updating, {} as UpdateProgress, {
-		parser(input: any): UpdateProgress {
-			console.log("Got Update Progress Event", input);
-			return JSON.parse(input);
-		},
-	});
+	const { data: evdata, error: everror, isLoading: evloading, fulfilledTimeStamp: evfulfilledTimeStamp } = useGetServerEventsQuery();
 
 	const [doUpdate] = usePutApiUpdateMutation();
 	const [restartSamba] = usePutApiSambaApplyMutation();
@@ -331,7 +326,7 @@ export function NavBar(props: {
 	function handleDoUpdate() {
 		console.log("Doing update");
 		confirm({
-			title: `Update to ${updateStatus.last_release}?`,
+			title: `Update to ${evdata?.updating?.last_release}?`,
 			description:
 				"If you proceed the new version is downloaded and installed.",
 		}).then(({ confirmed, reason }) => {
@@ -506,10 +501,10 @@ export function NavBar(props: {
 									</Tooltip>
 								</IconButton>
 							)}
-							{updateStatus.last_release !== undefined && (
+							{evdata?.updating?.last_release !== undefined && (
 								<IconButton onClick={handleDoUpdate} size="small">
 									<Tooltip
-										title={`Update ${updateStatus.last_release} available`}
+										title={`Update ${evdata.updating.last_release} available`}
 										arrow
 									>
 										{((update_status) => {
@@ -524,19 +519,19 @@ export function NavBar(props: {
 													);
 												case Update_process_state.Error:
 													toast.error("Error during update", {
-														data: { error: updateStatus.error_message },
+														data: { error: evdata.updating.error_message },
 													});
 													return <BugReportIcon sx={{ color: "red" }} />;
 												default:
 													return <Download sx={{ color: "white" }} />;
 											}
-										})(updateStatus)}
+										})(evdata.updating)}
 									</Tooltip>
 								</IconButton>
 							)}
-							{updateStatus.progress !== undefined ? (
+							{evdata?.updating?.progress !== undefined ? (
 								<CircularProgressWithLabel
-									value={updateStatus.progress}
+									value={evdata.updating.progress}
 									color="success"
 								/>
 							) : (

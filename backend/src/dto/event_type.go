@@ -9,5 +9,4 @@ const (
 	eventVolumes                    // "volumes"
 	eventHeartbeat                  // "heartbeat"
 	eventShare                      // "share"
-	eventDirty                      // "dirty"
 )

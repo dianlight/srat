@@ -1,54 +1,29 @@
-import { useEffect } from "react";
-import { useSSE } from "react-hooks-sse";
+import { useEffect, useState } from "react";
 import {
 	type SharedResource,
-	Supported_events,
 	useGetApiSharesQuery,
 } from "../store/sratApi";
-import { setShares } from "../store/sseSlice";
-import { useAppDispatch, useAppSelector } from "../store/store";
-
-let shareHook_lastReadTimestamp = 0;
+import { useGetServerEventsQuery } from "../store/sseApi";
 
 export function useShare() {
-	const dispatch = useAppDispatch();
-	const shares = useAppSelector((state) => state.sse.shares);
-
 	const { data, error, isLoading, fulfilledTimeStamp } = useGetApiSharesQuery();
+	const { data: evdata, error: everror, isLoading: evloading, fulfilledTimeStamp: evfulfilledTimeStamp } = useGetServerEventsQuery();
 
-	// statusSSE variable is not directly used, but useSSE hook initializes the SSE connection
-	// and its parser handles data dispatching.
-	useSSE(Supported_events.Share, [] as SharedResource[], {
-		parser(input: string): SharedResource[] {
-			const c = JSON.parse(input);
-			// Assuming 'c' is SharedResource[] as per API spec for 'share' event
-			//console.log("Got shares from SSE", c);
-			dispatch(setShares(c as SharedResource[]));
-			shareHook_lastReadTimestamp = Date.now();
-			return c;
-		},
-	});
+	const [shares, setShares] = useState<Array<SharedResource>>([]);
 
 	useEffect(() => {
-		if (
-			data &&
-			fulfilledTimeStamp &&
-			shareHook_lastReadTimestamp < fulfilledTimeStamp
-		) {
-			console.log(
-				"Update Shares from REST service",
-				data,
-				fulfilledTimeStamp,
-				shareHook_lastReadTimestamp,
-			);
-			// Data from GetSharesApiResponse is SharedResource[] | null
-			dispatch(setShares(data as SharedResource[]));
-			shareHook_lastReadTimestamp = fulfilledTimeStamp;
+		if (!isLoading) {
+			console.log("Update Shares Data from REST API");
+			setShares(data as SharedResource[]);
 		}
-		if (error) {
-			console.error("Error fetching shares:", error);
-		}
-	}, [data, fulfilledTimeStamp, dispatch, error]);
+	}, [data]);
 
-	return { shares, isLoading, error };
+	useEffect(() => {
+		if (!evloading && evdata?.share) {
+			console.log("Update Shares Data from SSE", evdata.share);
+			setShares(evdata.share);
+		}
+	}, [evdata]);
+
+	return { shares: shares, isLoading: (isLoading && evloading), error: (error || everror) };
 }

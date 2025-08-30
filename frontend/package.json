@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2025.8.0-dev.27",
+  "version": "2025.8.0-dev.30",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -60,7 +60,6 @@
     "react-dom": "^19.1.1",
     "react-hook-form": "^7.62.0",
     "react-hook-form-mui": "^7.6.2",
-    "react-hooks-sse": "^2.1.0",
     "react-intersection-observer": "^9.16.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.8.2",

@@ -11,24 +11,13 @@ import { useTelemetryModal } from "./hooks/useTelemetryModal";
 import { useTelemetryInitialization } from "./hooks/useTelemetryInitialization";
 
 export function App() {
-	//const [status, setStatus] = useState<DtoHealthPing>({ alive: false, read_only: true });
-	//    const [dirtyData, setDirtyData] = useState<DtoDataDirtyTracker>({});
 	const [errorInfo, _setErrorInfo] = useState<string>("");
 	const mainArea = useRef<HTMLDivElement>(null);
-	/*
-	const status = useSSE(DtoEventType.Heartbeat, { alive: false, read_only: true }, {
-		parser(input: any): DtoHealthPing {
-			console.log("Got heartbeat", input)
-			return JSON.parse(input);
-		},
-	});
-	*/
 	const { health: status, isLoading, error: herror } = useHealth();
 	const { shouldShow: showTelemetryModal, dismiss: dismissTelemetryModal } = useTelemetryModal();
 
 	// Initialize telemetry service based on settings
 	useTelemetryInitialization();
-	//const [sseEventSource, sseStatus] = useEventSource(apiContext.instance.getUri() + "/sse", true)
 
 	// This useEffect handles the automatic reset of errors after a delay.
 	// It ensures that a timer is set only when an error occurs, and cleared if the error resolves
@@ -47,40 +36,6 @@ export function App() {
 	}, [herror]);
 
 	useEffect(() => {
-		/*
-		const mhuuid = ws.subscribe<DtoHealthPing>(DtoEventType.EventHeartbeat, (data) => {
-			// console.log("Got heartbeat", data)
-			if (timeoutpid) clearTimeout(timeoutpid);
-			if (process.env.NODE_ENV === "development" && data.read_only === true) {
-				console.log("Dev mode force read_only to false");
-				data.read_only = false;
-			}
-			//data.last_time = Date.now();
-			setStatus(data);
-			function timeoutStatus() {
-				setStatus({ alive: false, read_only: true });
-			}
-			timeoutpid = setTimeout(timeoutStatus, 10000);
-		})
-		ws.onError((event) => {
-			console.error("WS error2", event.type, JSON.stringify(event))
-			setStatus({ alive: false, read_only: true });
-			setErrorInfo(JSON.stringify(event));
-		})
-		const drtyuid = ws.subscribe<DtoDataDirtyTracker>(DtoEventType.EventDirty, (data) => {
-			console.log("Got dirty data", data)
-			setDirtyData(data);
-			sessionStorage.setItem("srat_dirty", (Object.values(data).reduce((acc, value) => acc + (value ? 1 : 0), 0) > 0) ? "true" : "false");
-		})
-		*/
-		/*
-		if (sseEventSource) {
-			sseEventSource.onerror = () => {
-				setStatus({ alive: false, read_only: true });
-				setErrorInfo("SSE connection error");
-			}
-		}
-		*/
 		function onBeforeUnload(ev: BeforeUnloadEvent) {
 			if (sessionStorage.getItem("srat_dirty") === "true") {
 				ev.preventDefault();
@@ -97,18 +52,7 @@ export function App() {
 			window.removeEventListener("beforeunload", onBeforeUnload);
 		};
 	}, []);
-	/*
-		useEventSourceListener(
-			sseEventSource,
-			[DtoEventType.EventHeartbeat],
-			(evt) => {
-				//console.log("SSE EventHeartbeat", evt);
-				setStatus(JSON.parse(evt.data));
-				setDirtyData(status.dirty_tracking || {});
-			},
-			[sseStatus],
-		);
-	*/
+
 	return (
 		/*     <ModeContext.Provider value={status}>
 				 <DirtyDataContext.Provider value={dirtyData}>*/

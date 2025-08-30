@@ -13,7 +13,7 @@ import "@mui/icons-material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { ConfirmProvider } from "material-ui-confirm";
 import { StrictMode } from "react";
-import { type Listener, type Source, SSEProvider } from "react-hooks-sse";
+//import { type Listener, type Source, SSEProvider } from "react-hooks-sse";
 import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router";
 import { Provider as RollbarProvider } from "@rollbar/react";
@@ -68,7 +68,7 @@ const theme = createTheme({
 		},
 	},
 });
-
+/*
 class SSESource implements Source {
 	private eventSource: EventSource;
 	private resetTimer?: Timer;
@@ -128,7 +128,7 @@ class SSESource implements Source {
 		this.eventSource.close();
 	}
 }
-
+*/
 const disableBody = (target: any) => {
 	if (!target) {
 		console.warn("No target element provided for disabling body scroll");
@@ -146,7 +146,6 @@ const enableBody = (target: any) => {
 	enableBodyScroll(target);
 }
 
-
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 root.render(
 	<RollbarProvider config={createRollbarConfig(telemetryService.getAccessToken())}>
@@ -158,31 +157,31 @@ root.render(
 				<Provider store={store}>
 					<ConfirmProvider>
 						<StrictMode>
-							<SSEProvider source={() => new SSESource(normalizeUrl(apiUrl + "/api/sse"))}>
-								<BrowserRouter>
-									<TourProvider
-										afterOpen={disableBody}
-										beforeClose={enableBody}
-										steps={[]}
-										styles={{
-											popover: (base) => ({
-												...base,
-												color: theme.palette.text.primary,
-												backgroundColor: theme.palette.background.paper,
-												borderRadius: 10,
-												opacity: 0.9,
-											}),
-											maskArea: (base) => ({ ...base, rx: 5 }),
-											//maskWrapper: (base) => ({ ...base, color: '#ef5a3d' }),
-											badge: (base) => ({ ...base, left: 'auto', right: '-0.8125em' }),
-											//controls: (base) => ({ ...base, marginTop: 100 }),
-											close: (base) => ({ ...base, right: 'auto', color: theme.palette.text.primary, left: 8, top: 8 }),
-										}}
-									>
-										<App />
-									</TourProvider>
-								</BrowserRouter>
-							</SSEProvider>
+							{/* <SSEProvider source={() => new SSESource(normalizeUrl(apiUrl + "/api/sse"))}> */}
+							<BrowserRouter>
+								<TourProvider
+									afterOpen={disableBody}
+									beforeClose={enableBody}
+									steps={[]}
+									styles={{
+										popover: (base) => ({
+											...base,
+											color: theme.palette.text.primary,
+											backgroundColor: theme.palette.background.paper,
+											borderRadius: 10,
+											opacity: 0.9,
+										}),
+										maskArea: (base) => ({ ...base, rx: 5 }),
+										//maskWrapper: (base) => ({ ...base, color: '#ef5a3d' }),
+										badge: (base) => ({ ...base, left: 'auto', right: '-0.8125em' }),
+										//controls: (base) => ({ ...base, marginTop: 100 }),
+										close: (base) => ({ ...base, right: 'auto', color: theme.palette.text.primary, left: 8, top: 8 }),
+									}}
+								>
+									<App />
+								</TourProvider>
+							</BrowserRouter>
+							{/* </SSEProvider> */}
 						</StrictMode>
 					</ConfirmProvider>
 				</Provider>

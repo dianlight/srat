@@ -1025,7 +1025,6 @@ export enum Supported_events {
   Volumes = "volumes",
   Heartbeat = "heartbeat",
   Share = "share",
-  Dirty = "dirty",
 }
 export enum Update_process_state {
   Idle = "Idle",
