@@ -75,6 +75,7 @@ func main() {
 			server.AsHumaRoute(api.NewSystemHanler),
 			server.AsHumaRoute(api.NewIssueAPI),
 			server.AsHumaRoute(api.NewTelemetryHandler),
+			api.NewWebSocketBroker,
 			server.NewMuxRouter,
 			server.NewHumaAPI,
 		),

@@ -91,7 +91,7 @@ func NewHTTPServer(
 	return srv
 }
 
-func NewMuxRouter(apiCtx *dto.ContextState, wsh api.WebSocketHandler) *mux.Router {
+func NewMuxRouter(apiCtx *dto.ContextState, wsh *api.WebSocketHandler) *mux.Router {
 	router := mux.NewRouter()
 	if apiCtx.SecureMode {
 		router.Use(NewHAMiddleware( /*ingressClient*/ ))
