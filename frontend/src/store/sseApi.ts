@@ -47,13 +47,6 @@ export const sseApi = createApi({
 					}),
 				}),
 			); // Dummy response as we won't use fetch for SSE
-			/*
-            const response = await fetch(url, options);
-            if (!response.ok) {
-                throw new Error("Network response was not ok");
-            }
-            return response;
-            */
 		},
 	}),
 	tagTypes: ["system"],
@@ -66,7 +59,7 @@ export const sseApi = createApi({
 				_arg,
 				{ updateCachedData, cacheDataLoaded, cacheEntryRemoved },
 			) {
-				console.log("* Starting SSE connection");
+				//console.log("* Starting SSE connection");
 				const eventSource = new EventSource(`${apiUrl}/api/sse`, {
 					withCredentials: true,
 				});
@@ -77,51 +70,29 @@ export const sseApi = createApi({
 
 					eventSource.addEventListener("error", (event) => {
 						console.warn(`* SSE connection error ${faultCount}`, event);
-						/*
-                        this.heartbeatListener.forEach((func) => {
-                            try {
-                                func({ data: '{ "alive": false, "read_only": true }' });
-                            } catch (error) {
-                                console.error("Error in heartbeat listener", error);
-                            }
-                        });
-                        */
 						faultCount++;
 					});
 					eventSource.addEventListener("open", (event) => {
-						console.debug("* SSE connection open", event);
+						//console.debug("* SSE connection open", event);
 						faultCount = 0;
 
 						Object.values(Supported_events).forEach((event) => {
 							eventSource.addEventListener(event, (data) => {
 								updateCachedData((draft) => {
-									console.log(
-										`* SSE event ${event} received:`,
-										event,
-										data,
-										draft[event],
-									);
+									//console.log(
+									//	`* SSE event ${event} received:`,
+									//	event,
+									//	data,
+									//	draft[event],
+									//);
 									if (draft !== undefined && draft !== null) {
-										console.log(`* Updating draft for event ${event}`);
+										// console.log(`* Updating draft for event ${event}`);
 										draft[event] = JSON.parse(data.data);
 									}
 								});
 							});
 						});
 					});
-
-					/*
-                    const listener = (event: MessageEvent) => {
-                        const data = JSON.parse(event.data)
-                        if (!isMessage(data) || data.channel !== arg) return
-
-                        updateCachedData((draft) => {
-                            draft.push(data)
-                        })
-                    }
-
-                    ws.addEventListener('message', listener)
-                    */
 				} catch (error) {
 					// no-op in case `cacheEntryRemoved` resolves before `cacheDataLoaded`,
 					// in which case `cacheDataLoaded` will throw

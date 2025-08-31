@@ -460,7 +460,7 @@ export function NavBar(props: {
 											<ListItem>
 												<ListItemText
 													primary="Protected Mode"
-													secondary={evdata?.hello.protected_mode ? "Enabled" : "Disabled"}
+													secondary={evdata?.hello?.protected_mode ? "Enabled" : "Disabled"}
 												/>
 											</ListItem>
 										</List>
@@ -469,7 +469,7 @@ export function NavBar(props: {
 									</Tooltip>
 								</IconButton>
 							)}
-							{!evdata?.hello.secure_mode ? (
+							{!evdata?.hello?.secure_mode ? (
 								<IconButton size="small">
 									<Tooltip
 										title="Secure Mode Disabled"
@@ -488,7 +488,7 @@ export function NavBar(props: {
 									</Tooltip>
 								</IconButton>
 							)}
-							{evdata?.hello.read_only && (
+							{evdata?.hello?.read_only && (
 								<IconButton size="small">
 									<Tooltip title="ReadOnly Mode" arrow>
 										<PreviewIcon sx={{ color: "white" }} />

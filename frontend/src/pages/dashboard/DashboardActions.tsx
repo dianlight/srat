@@ -31,7 +31,7 @@ export function DashboardActions() {
 	const actionablePartitions = useMemo(() => {
 		const partitions: { partition: Partition; action: "mount" | "share" }[] =
 			[];
-		if (disks && !evdata?.hello.read_only) {
+		if (disks && !evdata?.hello?.read_only) {
 			for (const disk of disks) {
 				// disks type should be inferred from useVolume
 				for (const partition of disk.partitions || []) {
@@ -62,7 +62,7 @@ export function DashboardActions() {
 			}
 		}
 		return partitions;
-	}, [disks, evdata?.hello.read_only]);
+	}, [disks, evdata?.hello?.read_only]);
 
 	function handleResolveIssue(id: number): void {
 		throw new Error("Function not implemented.");

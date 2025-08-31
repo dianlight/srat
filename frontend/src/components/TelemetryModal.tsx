@@ -20,8 +20,6 @@ import {
     useGetApiSettingsQuery,
     Telemetry_mode,
 } from '../store/sratApi';
-import type { TelemetryMode } from '../services/telemetryService';
-import telemetryService from '../services/telemetryService';
 
 interface TelemetryModalProps {
     open: boolean;
@@ -55,9 +53,6 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
                     telemetry_mode: selectedMode,
                 },
             }).unwrap();
-
-            // Configure telemetry service
-            telemetryService.configure(selectedMode as TelemetryMode);
 
             onClose();
         } catch (error) {

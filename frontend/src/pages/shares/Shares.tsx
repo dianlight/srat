@@ -448,7 +448,7 @@ export function Shares() {
 			>
 				<Tooltip
 					title={
-						evdata?.hello.read_only
+						evdata?.hello?.read_only
 							? "Cannot create share in read-only mode"
 							: !canCreateNewShare
 								? "No unshared mount points available to create a new share."
@@ -461,7 +461,7 @@ export function Shares() {
 							id="create_new_share"
 							color="primary"
 							aria-label={
-								evdata?.hello.read_only
+								evdata?.hello?.read_only
 									? "Cannot create share in read-only mode"
 									: !canCreateNewShare
 										? "No unshared mount points available to create a new share."
@@ -470,12 +470,12 @@ export function Shares() {
 							// sx removed: float, top, margin - FAB is now in normal flow within Stack
 							size="small"
 							onClick={() => {
-								if (!evdata?.hello.read_only && canCreateNewShare) {
+								if (!evdata?.hello?.read_only && canCreateNewShare) {
 									setSelected(null);
 									setShowEdit(true);
 								}
 							}}
-							disabled={evdata?.hello.read_only || !canCreateNewShare}
+							disabled={evdata?.hello?.read_only || !canCreateNewShare}
 						>
 							<AddIcon />
 						</Fab>
@@ -539,7 +539,7 @@ export function Shares() {
 														<ShareActions
 															shareKey={share}
 															shareProps={props}
-															read_only={evdata?.hello.read_only || true}
+															read_only={evdata?.hello?.read_only || true}
 															onEdit={(shareKey, shareProps) => {
 																setSelected([shareKey, shareProps]);
 																setShowEdit(true);

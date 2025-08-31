@@ -166,7 +166,7 @@ export function Users() {
 				sx={{ px: 2, mb: 1, alignItems: "center" }}
 				data-tutor={`reactour__tab${TabIDs.USERS}__step0`}
 			>
-				{evdata?.hello.read_only || (
+				{evdata?.hello?.read_only || (
 					<Fab
 						color="primary"
 						aria-label="add"
@@ -338,7 +338,7 @@ export function Users() {
 										/>
 										<UserActions
 											user={user}
-											read_only={evdata?.hello.read_only || false}
+											read_only={evdata?.hello?.read_only || false}
 											onEdit={(user) => {
 												setSelected(user);
 												setShowEdit(true);

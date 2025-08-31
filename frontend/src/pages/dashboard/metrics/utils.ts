@@ -4,4 +4,3 @@ export function decodeEscapeSequence(source: string) {
 		String.fromCharCode(parseInt(String(group1), 16)),
 	);
 }
-

@@ -270,7 +270,7 @@ export function Volumes() {
 	}
 
 	function handleToggleAutomount(partition: Partition) {
-		if (evdata?.hello.read_only) return;
+		if (evdata?.hello?.read_only) return;
 
 		const mountData = partition.mount_point_data?.[0];
 		if (!mountData || !mountData.path_hash) {
@@ -616,7 +616,7 @@ export function Volumes() {
 																	secondaryAction={
 																		<PartitionActions
 																			partition={partition}
-																			read_only={evdata?.hello.read_only || true}
+																			read_only={evdata?.hello?.read_only || true}
 																			onToggleAutomount={
 																				handleToggleAutomount
 																			}

@@ -14,14 +14,14 @@ export function useVolume() {
 
 	useEffect(() => {
 		if (!isLoading) {
-			console.log("Update Data from REST API");
+			//console.log("Update Data from REST API");
 			setDisks(data as Disk[]);
 		}
 	}, [data, isLoading]);
 
 	useEffect(() => {
 		if (!evloading && evdata?.volumes) {
-			console.log("Update Data from SSE", evdata.volumes);
+			//console.log("Update Data from SSE", evdata.volumes);
 			setDisks(evdata.volumes);
 		}
 	}, [evdata?.volumes, evloading]);

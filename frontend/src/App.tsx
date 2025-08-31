@@ -1,23 +1,20 @@
 import { Backdrop, CircularProgress } from "@mui/material";
 import Container from "@mui/material/Container";
 import { useEffect, useRef, useState } from "react";
-//import { DirtyDataContext, ModeContext } from "./Contexts";
 import { Footer } from "./components/Footer";
 import { NavBar } from "./components/NavBar";
-import { RollbarPersonUpdater } from "./components/RollbarPersonUpdater";
 import TelemetryModal from "./components/TelemetryModal";
-import { useHealth } from "./hooks/healthHook";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
-import { useTelemetryInitialization } from "./hooks/useTelemetryInitialization";
+import { useGetServerEventsQuery } from "./store/sseApi";
+import { Telemetry_mode, useGetApiSettingsQuery, type Settings } from "./store/sratApi";
+import { useRollbarTelemetry } from "./hooks/useRollbarTelemetry";
 
 export function App() {
 	const [errorInfo, _setErrorInfo] = useState<string>("");
 	const mainArea = useRef<HTMLDivElement>(null);
-	const { health: status, isLoading, error: herror } = useHealth();
+	const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
 	const { shouldShow: showTelemetryModal, dismiss: dismissTelemetryModal } = useTelemetryModal();
-
-	// Initialize telemetry service based on settings
-	useTelemetryInitialization();
+	const { reportError, reportEvent, telemetryMode, isLoading: rollbarLoading } = useRollbarTelemetry();
 
 	// This useEffect handles the automatic reset of errors after a delay.
 	// It ensures that a timer is set only when an error occurs, and cleared if the error resolves
@@ -47,18 +44,13 @@ export function App() {
 		window.addEventListener("beforeunload", onBeforeUnload);
 
 		return () => {
-			//ws.unsubscribe(mhuuid);
-			//ws.unsubscribe(drtyuid);
 			window.removeEventListener("beforeunload", onBeforeUnload);
 		};
 	}, []);
 
 	return (
-		/*     <ModeContext.Provider value={status}>
-				 <DirtyDataContext.Provider value={dirtyData}>*/
 		<>
 			{/* Update Rollbar person information when machine_id becomes available */}
-			<RollbarPersonUpdater />
 			<Container
 				maxWidth="lg"
 				disableGutters={true}
@@ -74,8 +66,8 @@ export function App() {
 			</Container>
 			<Backdrop
 				sx={(theme) => ({ color: "#fff", zIndex: theme.zIndex.drawer + 1 })}
-				open={status.alive === false || isLoading}
-				content={isLoading ? "Loading..." : "Server is not reachable"}
+				open={evdata?.heartbeat?.alive === false || (isLoading || rollbarLoading) || herror !== undefined}
+				content={(isLoading || rollbarLoading) ? "Loading..." : "Server is not reachable"}
 			>
 				<CircularProgress color="inherit" />
 			</Backdrop>
@@ -84,8 +76,5 @@ export function App() {
 				onClose={dismissTelemetryModal}
 			/>
 		</>
-		/*
-			</DirtyDataContext.Provider>
-		</ModeContext.Provider>*/
 	);
 }

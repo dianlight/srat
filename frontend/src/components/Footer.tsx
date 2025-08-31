@@ -38,7 +38,7 @@ export function Footer() {
 						my: isSmallScreen ? 0.5 : 1,
 					}}
 				>
-					<Tooltip title={isLoading ? "Loading..." : evdata?.hello.build_version} arrow placement="top">
+					<Tooltip title={isLoading ? "Loading..." : evdata?.hello?.build_version} arrow placement="top">
 						<Typography variant="caption">
 							<Link href={`${pkg.repository.url}/commit/${getGitCommitHash()}`}>
 								Version {pkg.version}

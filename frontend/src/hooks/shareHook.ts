@@ -14,14 +14,14 @@ export function useShare() {
 
 	useEffect(() => {
 		if (!isLoading) {
-			console.log("Update Shares Data from REST API");
+			//console.log("Update Shares Data from REST API");
 			setShares(data as SharedResource[]);
 		}
 	}, [data, isLoading]);
 
 	useEffect(() => {
 		if (!evloading && evdata?.share) {
-			console.log("Update Shares Data from SSE", evdata.share);
+			//console.log("Update Shares Data from SSE", evdata.share);
 			setShares(evdata.share);
 		}
 	}, [evdata, evloading]);

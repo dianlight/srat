@@ -1,5 +1,13 @@
-import { useRollbar } from "@rollbar/react";
-import telemetryService from "../services/telemetryService";
+import { useRollbar, useRollbarConfiguration } from "@rollbar/react";
+import { useEffect, useState } from "react";
+import type Rollbar from "rollbar";
+import packageJson from "../../package.json";
+import {
+	type Settings,
+	Telemetry_mode,
+	useGetApiSettingsQuery,
+} from "../store/sratApi";
+import { useGetServerEventsQuery } from "../store/sseApi";
 
 /**
  * Hook that provides Rollbar functionality with telemetry mode checking
@@ -7,52 +15,129 @@ import telemetryService from "../services/telemetryService";
  */
 export const useRollbarTelemetry = () => {
 	const rollbar = useRollbar();
+	const {
+		data: apiSettings,
+		isLoading: apiLoading,
+		error: apiError,
+	} = useGetApiSettingsQuery();
+	const [telemetryMode, setTelemetryMode] = useState<Telemetry_mode>(
+		Telemetry_mode.Disabled,
+	);
+	const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
+	const [rollbarConfig, setRollbarConfig] = useState<Rollbar.Configuration>({
+		accessToken: process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || "disabled",
+		environment: process.env.NODE_ENV || "development",
+		codeVersion: packageJson.version,
+		captureUncaught: true,
+		captureUnhandledRejections: true,
+		recorder: {
+			enabled: false,
+			triggers: [
+				{
+					type: "occurrence",
+					level: ["critical"],
+					//				samplingRatio: 1.0,
+				},
+				{
+					type: "occurrence",
+					level: ["error"],
+					//				samplingRatio: 0.5,
+				},
+			],
+		},
+		payload: {
+			client: {
+				javascript: {
+					code_version: packageJson.version,
+					source_map_enabled: true,
+				},
+			},
+		},
+		enabled: false,
+	});
+	useRollbarConfiguration(rollbarConfig);
+
+	useEffect(() => {
+		setTelemetryMode(
+			(apiSettings as Settings)?.telemetry_mode || Telemetry_mode.Ask,
+		);
+	}, [apiSettings]);
+
+	useEffect(() => {
+		if (!isLoading && !apiLoading && evdata?.hello && apiSettings) {
+			// Configure Telemetry
+			const accessToken = process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || "disabled";
+			const enableRollbar =
+				accessToken !== "disabled" &&
+				[Telemetry_mode.Errors, Telemetry_mode.All].includes(
+					(apiSettings as Settings)?.telemetry_mode || Telemetry_mode.Ask,
+				);
+			setRollbarConfig({
+				accessToken,
+				environment: process.env.NODE_ENV || "development",
+				codeVersion: packageJson.version,
+				captureUncaught: true,
+				captureUnhandledRejections: true,
+				recorder: {
+					enabled: enableRollbar,
+					triggers: [
+						{
+							type: "occurrence",
+							level: ["critical"],
+							//				samplingRatio: 1.0,
+						},
+						{
+							type: "occurrence",
+							level: ["error"],
+							//				samplingRatio: 0.5,
+						},
+					],
+				},
+				payload: {
+					client: {
+						javascript: {
+							code_version: packageJson.version,
+							source_map_enabled: true,
+						},
+					},
+					person: evdata?.hello.machine_id
+						? {
+								id: evdata.hello.machine_id,
+							}
+						: undefined,
+				},
+				enabled: enableRollbar,
+			});
+		}
+	}, [isLoading, evdata?.hello, apiSettings, apiLoading]);
 
 	const reportError = (
 		error: Error | string,
 		extraData?: Record<string, unknown>,
 	) => {
-		if (!telemetryService.getIsConfigured()) {
-			return; // Silently ignore if not configured
-		}
-
-		const mode = telemetryService.getCurrentMode();
-		if (mode === "Disabled" || mode === "Ask") {
-			return; // Don't report if disabled or asking
-		}
-
-		// Report errors for both All and Errors modes
-		if (mode === "All" || mode === "Errors") {
+		if ([Telemetry_mode.Errors, Telemetry_mode.All].includes(telemetryMode)) {
 			rollbar.error(error, extraData);
-			console.debug("Error reported to Rollbar:", error, extraData);
 		}
 	};
 
 	const reportEvent = (event: string, data?: Record<string, unknown>) => {
-		if (!telemetryService.getIsConfigured()) {
-			return; // Silently ignore if not configured
+		if ([Telemetry_mode.All].includes(telemetryMode)) {
+			const eventData = {
+				...data,
+				event_type: event,
+				timestamp: new Date().toISOString(),
+			};
+
+			rollbar.info(`Event: ${event}`, eventData);
+			console.debug("Event reported to Rollbar:", event, eventData);
 		}
-
-		const mode = telemetryService.getCurrentMode();
-		// Only report events in All mode
-		if (mode !== "All") {
-			return;
-		}
-
-		const eventData = {
-			...data,
-			event_type: event,
-			timestamp: new Date().toISOString(),
-		};
-
-		rollbar.info(`Event: ${event}`, eventData);
-		console.debug("Event reported to Rollbar:", event, eventData);
 	};
 
 	return {
 		reportError,
 		reportEvent,
-		isEnabled: telemetryService.isEnabled(),
-		currentMode: telemetryService.getCurrentMode(),
+		telemetryMode,
+		isLoading: apiLoading || isLoading,
+		error: apiError || herror,
 	};
 };
