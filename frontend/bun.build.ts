@@ -51,8 +51,8 @@ const buildConfig: BuildConfig = {
 		asset: "[name].[ext]",
 	},
 	target: "browser",
-	sourcemap: "inline", 
-	minify:values.watch ? false : true,
+	sourcemap: "inline",
+	minify: values.watch ? false : true,
 	plugins: [
 		//copy("src/index.html", "out/index.html")
 		//  html({})
@@ -61,6 +61,7 @@ const buildConfig: BuildConfig = {
 		"process.env.APIURL": APIURL,
 		"process.env.NODE_ENV": values.watch ? "'development'" : "'production'",
 		"process.env.ROLLBAR_CLIENT_ACCESS_TOKEN": `"${process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled'}"`,
+		"process.env.SERVER_EVENT_BACKEND": "'WS'", // SSE or WS
 	},
 };
 

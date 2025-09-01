@@ -98,6 +98,6 @@ func NewMuxRouter(apiCtx *dto.ContextState, wsh *api.WebSocketHandler) *mux.Rout
 	}
 
 	router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
-	router.HandleFunc("/ws", wsh.HandleWebSocket)
+	wsh.RegisterWs(router)
 	return router
 }

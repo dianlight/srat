@@ -1,19 +1,31 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"reflect"
+	"time"
 
+	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/service"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"gitlab.com/tozd/go/errors"
 )
 
 type WebSocketHandler struct {
+	ctx         context.Context
 	broadcaster service.BroadcasterServiceInterface
 	upgrader    websocket.Upgrader
+	eventMap    map[string]any
+	reverseMap  map[string]string
 }
 
-func NewWebSocketBroker(broadcaster service.BroadcasterServiceInterface) *WebSocketHandler {
+func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServiceInterface) *WebSocketHandler {
 	// Instantiate a WebSocket broker
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -24,18 +36,33 @@ func NewWebSocketBroker(broadcaster service.BroadcasterServiceInterface) *WebSoc
 			return true
 		},
 	}
+	eventMap := map[string]any{
+		dto.EventTypes.EVENTHELLO.String():     dto.Welcome{},
+		dto.EventTypes.EVENTUPDATING.String():  dto.UpdateProgress{},
+		dto.EventTypes.EVENTVOLUMES.String():   []dto.Disk{},
+		dto.EventTypes.EVENTHEARTBEAT.String(): dto.HealthPing{},
+		dto.EventTypes.EVENTSHARE.String():     []dto.SharedResource{},
+	}
+
+	reverseMap := reverseMap(eventMap)
 
 	return &WebSocketHandler{
+		ctx:         ctx,
 		broadcaster: broadcaster,
 		upgrader:    upgrader,
+		eventMap:    eventMap,
+		reverseMap:  reverseMap,
 	}
 }
 
-/*
-func (self *WebSocketHandler) RegisterSystemHandler(api huma.API) {
-	huma.Get(api, "/ws", self.HandleWebSocket, huma.OperationTags("system"))
+func reverseMap(m map[string]any) map[string]string {
+	n := make(map[string]string, len(m))
+	for k, v := range m {
+		n[reflect.TypeOf(v).Name()] = k
+	}
+	return n
 }
-*/
+
 // HandleWebSocket handles the WebSocket upgrade and connection
 // This method should be called from an HTTP handler that matches the /ws path
 func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +73,54 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 	}
 	defer conn.Close()
 
+	// Handle ping/pong for connection health
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	slog.Debug("WebSocket client connected")
-	self.broadcaster.ProcessWebSocketChannel(conn)
+
+	self.broadcaster.ProcessWebSocketChannel(func(msg ws.Message) errors.E {
+
+		// Marshal the event data to JSON
+		eventData, err := json.Marshal(msg.Data)
+		if err != nil {
+			return errors.WithDetails(err, "message", "Failed to marshal event data", "event", msg)
+		}
+
+		typeName := self.reverseMap[reflect.TypeOf(msg.Data).Name()]
+
+		// Send the event data
+		err = conn.WriteMessage(websocket.TextMessage,
+			[]byte(fmt.Sprintf("id: %d\nevent: %s\ndata: %s\n\n", msg.ID, typeName, eventData)),
+		)
+		if err != nil {
+			return errors.WithDetails(err, "message", "Failed to write message to WebSocket", "event", msg)
+		}
+		return nil
+	})
+
+	// Start ping ticker
+	pingTicker := time.NewTicker(30 * time.Second)
+	defer pingTicker.Stop()
+
+	for {
+		select {
+		case <-self.ctx.Done():
+			return
+		case <-pingTicker.C:
+			// Send ping to keep connection alive
+			err := conn.WriteMessage(websocket.PingMessage, nil)
+			if err != nil {
+				slog.Warn("Error sending ping to WebSocket client", "err", err)
+				return
+			}
+		}
+	}
+}
+
+func (self *WebSocketHandler) RegisterWs(router *mux.Router) {
+	router.HandleFunc("/ws", self.HandleWebSocket)
 }

@@ -65,7 +65,7 @@ func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
 	hwser, errHw := h.haClient.GetHardwareInfoWithResponse(h.ctx)
 	if errHw != nil || hwser == nil {
 		if !errors.Is(errHw, dto.ErrorNotFound) {
-			return nil, errors.WithDetails(errHw, "failed to get hardware info from HA Supervisor", "hwset", hwser)
+			return nil, errors.WithDetails(errHw, "message", "failed to get hardware info from HA Supervisor", "hwset", hwser)
 		}
 		slog.Debug("Hardware info not found, continuing with empty disk list")
 	}

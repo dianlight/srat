@@ -104,28 +104,25 @@ func (self *UpgradeService) run() error {
 		default:
 			self.updateLimiter.Do(func() {
 				slog.Debug("Version Checking...")
-				err := self.notifyClient(dto.UpdateProgress{
+				self.notifyClient(dto.UpdateProgress{
 					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING,
 				})
-				if err != nil {
-					slog.Error("Error emitting start check message", "err", err)
-				}
 				ass, err := self.GetUpgradeReleaseAsset(nil)
 				if err != nil && !errors.Is(err, dto.ErrorNoUpdateAvailable) {
 					slog.Error("Error checking for updates", "err", err)
 				}
 				if ass != nil {
-					err = self.notifyClient(dto.UpdateProgress{
+					self.notifyClient(dto.UpdateProgress{
 						ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
 						LastRelease:    ass.LastRelease,
 					})
 				} else {
-					err = self.notifyClient(dto.UpdateProgress{
+					self.notifyClient(dto.UpdateProgress{
 						ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE,
 					})
 				}
 				if err != nil {
-					slog.Error("Error emitting vrsion message", "err", err)
+					slog.Warn("Error emitting version message", "err", err)
 				}
 			})
 			time.Sleep(self.updateLimiter.Interval / 10)
@@ -213,13 +210,8 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 	}
 }
 
-func (self *UpgradeService) notifyClient(data dto.UpdateProgress) error {
-	_, err := self.broadcaster.BroadcastMessage(data)
-	if err != nil {
-		slog.Error("Error broadcasting update message: %w", "err", err)
-		return errors.WithStack(err)
-	}
-	return nil
+func (self *UpgradeService) notifyClient(data dto.UpdateProgress) {
+	self.broadcaster.BroadcastMessage(data)
 }
 
 const progressReportThresholdPercentage = 5

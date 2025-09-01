@@ -113,25 +113,6 @@ func (self *HealthHanler) HealthStatusHandler(ctx context.Context, input *struct
 	return &struct{ Body bool }{Body: self.HealthPing.Alive}, nil
 }
 
-// EventEmitter broadcasts a health ping message using the broadcaster.
-// It increments the OutputEventsCount if the message is successfully broadcasted.
-// If an error occurs during broadcasting, it logs the error and wraps it before returning.
-//
-// Parameters:
-//   - data: dto.HealthPing containing the health ping message to be broadcasted.
-//
-// Returns:
-//   - error: An error if the broadcasting fails, otherwise nil.
-func (self *HealthHanler) EventEmitter(data dto.HealthPing) errors.E {
-	_, err := self.broadcaster.BroadcastMessage(data)
-	if err != nil {
-		slog.Error("Error broadcasting health message: %w", "err", err)
-		return errors.WithStack(err)
-	}
-	self.OutputEventsCount++
-	return nil
-}
-
 // checkSamba checks the status of the Samba process using the sambaService.
 // If the Samba process is running, it converts the process information to a
 // SambaProcessStatus DTO and updates the HealthPing.SambaProcessStatus field.
@@ -168,9 +149,10 @@ func (self *HealthHanler) run() error {
 			//			self.ProtectedMode = self.apictx.ProtectedMode
 			// Get Addon Stats
 			self.HealthPing.Uptime = time.Since(self.state.StartTime).Milliseconds()
+
 			stats, err := self.addonsService.GetStats()
 			if err != nil {
-				slog.Error("Error getting addon stats for health ping", "err", err)
+				slog.Warn("Error getting addon stats for health ping", "err", err)
 				self.HealthPing.AddonStats = nil // Clear stats on error
 			} else {
 				self.HealthPing.AddonStats = stats
@@ -178,7 +160,7 @@ func (self *HealthHanler) run() error {
 			self.checkSamba()
 			diskStats, err := self.diskStatsService.GetDiskStats()
 			if err != nil {
-				slog.Error("Error getting disk stats for health ping", "err", err)
+				slog.Warn("Error getting disk stats for health ping", "err", err)
 				self.HealthPing.DiskHealth = nil
 			} else {
 				self.HealthPing.DiskHealth = diskStats
@@ -187,14 +169,14 @@ func (self *HealthHanler) run() error {
 			}
 			netStats, err := self.networkStatsService.GetNetworkStats()
 			if err != nil {
-				slog.Error("Error getting network stats for health ping", "err", err)
+				slog.Warn("Error getting network stats for health ping", "err", err)
 				self.HealthPing.NetworkHealth = nil
 			} else {
 				self.HealthPing.NetworkHealth = netStats
 			}
 			sambaStatus, err := self.sambaService.GetSambaStatus()
 			if err != nil {
-				slog.Error("Error getting samba status for health ping", "err", err)
+				slog.Warn("Error getting samba status for health ping", "err", err)
 				self.HealthPing.SambaStatus = nil
 			} else {
 				self.HealthPing.SambaStatus = sambaStatus
@@ -207,12 +189,8 @@ func (self *HealthHanler) run() error {
 
 			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()
-			err = self.EventEmitter(self.HealthPing)
-			if err != nil {
-				slog.Error("Error emitting health message: %w", "err", err)
-			}
-			// default:
-			// slog.Debug("Richiesto aggiornamento per Healthy")
+			self.broadcaster.BroadcastMessage(self.HealthPing)
+
 		}
 	}
 }

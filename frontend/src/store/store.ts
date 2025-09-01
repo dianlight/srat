@@ -5,7 +5,7 @@ import { errorSlice } from "./errorSlice";
 import mdcMiddleware from "./mdcMiddleware";
 import { mdcSlice } from "./mdcSlice";
 import { sratApi } from "./sratApi";
-import { sseApi } from "./sseApi";
+import { sseApi, wsApi } from "./sseApi";
 
 export const store = configureStore({
 	reducer: {
@@ -14,6 +14,7 @@ export const store = configureStore({
 		mdc: mdcSlice.reducer,
 		[sratApi.reducerPath]: sratApi.reducer,
 		[sseApi.reducerPath]: sseApi.reducer,
+		[wsApi.reducerPath]: wsApi.reducer,
 	},
 	middleware: (getDefaultMiddleware) => {
 		// By default, put our MDC middleware before RTK Query so it can read outgoing args;
@@ -21,7 +22,8 @@ export const store = configureStore({
 		return getDefaultMiddleware()
 			.concat(mdcMiddleware)
 			.concat(sratApi.middleware)
-			.concat(sseApi.middleware);
+			.concat(sseApi.middleware)
+			.concat(wsApi.middleware);
 	},
 	devTools: process.env.NODE_ENV !== "production",
 });

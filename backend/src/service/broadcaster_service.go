@@ -2,25 +2,23 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync/atomic"
-	"time"
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/tlog"
-	"github.com/gorilla/websocket"
 	"github.com/teivah/broadcast"
 
 	"github.com/danielgtaylor/huma/v2/sse"
 )
 
 type BroadcasterServiceInterface interface {
-	BroadcastMessage(msg any) (any, error)
+	BroadcastMessage(msg any) any
 	ProcessHttpChannel(send sse.Sender)
-	ProcessWebSocketChannel(conn *websocket.Conn)
+	ProcessWebSocketChannel(send ws.Sender)
 }
 
 type BroadcasterService struct {
@@ -55,7 +53,7 @@ func NewBroadcasterService(
 	}
 }
 
-func (broker *BroadcasterService) BroadcastMessage(msg any) (any, error) {
+func (broker *BroadcasterService) BroadcastMessage(msg any) any {
 	if _, ok := msg.(dto.HealthPing); !ok {
 		tlog.Trace("Queued Message", "type", fmt.Sprintf("%T", msg), "msg", msg)
 	}
@@ -65,7 +63,7 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) (any, error) {
 	// Send to Home Assistant if in secure mode
 	go broker.sendToHomeAssistant(msg)
 
-	return msg, nil
+	return msg
 }
 
 func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
@@ -171,7 +169,7 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 // ProcessWebSocketChannel processes a WebSocket connection for real-time events.
 // It filters out Home Assistant-specific events that should not be sent to web clients
 // and only sends events that are registered with the WebSocket system.
-func (broker *BroadcasterService) ProcessWebSocketChannel(conn *websocket.Conn) {
+func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 	broker.ConnectedClients.Add(1)
 	defer broker.ConnectedClients.Add(-1)
 
@@ -181,30 +179,13 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(conn *websocket.Conn) 
 	slog.Debug("WebSocket Connected client", "actual clients", broker.ConnectedClients.Load())
 
 	// Send welcome message
-	welcomeMsg := broker.createWelcomeMessage()
-
-	welcomeData, err := json.Marshal(welcomeMsg)
-	if err != nil {
-		slog.Error("Failed to marshal welcome message", "error", err)
-		return
-	}
-
-	err = conn.WriteMessage(websocket.TextMessage, welcomeData)
-	if err != nil {
-		slog.Warn("Error sending welcome message to WebSocket client", "err", err)
-		return
-	}
-
-	// Handle ping/pong for connection health
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil
+	err := send(ws.Message{
+		ID:   0,
+		Data: broker.createWelcomeMessage(),
 	})
-
-	// Start ping ticker
-	pingTicker := time.NewTicker(30 * time.Second)
-	defer pingTicker.Stop()
+	if err != nil {
+		slog.Warn("Error sending welcome message to SSE client", "err", err)
+	}
 
 	for {
 		select {
@@ -217,24 +198,17 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(conn *websocket.Conn) 
 				continue
 			}
 
-			// Marshal the event data to JSON
-			eventData, err := json.Marshal(event)
+			err := send(ws.Message{
+				ID:   int(event.ID),
+				Data: event.Message,
+			})
 			if err != nil {
-				slog.Error("Failed to marshal event data", "error", err, "event", event)
-				continue
-			}
-
-			// Send the event data
-			err = conn.WriteMessage(websocket.TextMessage, eventData)
-			if err != nil {
-				slog.Warn("Error sending event to WebSocket client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
-				return
-			}
-		case <-pingTicker.C:
-			// Send ping to keep connection alive
-			err := conn.WriteMessage(websocket.PingMessage, nil)
-			if err != nil {
-				slog.Warn("Error sending ping to WebSocket client", "err", err)
+				/* 				if !strings.Contains(err.Error(), "broken pipe") &&
+				!strings.Contains(err.Error(), "context canceled") &&
+				!strings.Contains(err.Error(), "connection reset by peer") &&
+				!strings.Contains(err.Error(), "i/o timeout") {
+				*/slog.Warn("Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+				//				}
 				return
 			}
 		}

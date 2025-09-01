@@ -780,11 +780,7 @@ func (self *VolumeService) NotifyClient() {
 	}
 
 	slog.Debug("Broadcasting updated volumes data", "disk_count", len(*data))
-	_, broadcastErr := self.broascasting.BroadcastMessage(data)
-	if broadcastErr != nil {
-		// Log the error from broadcasting
-		slog.Error("Failed to broadcast volume data update", "err", broadcastErr)
-	}
+	self.broascasting.BroadcastMessage(data)
 }
 
 // HandleRemovedDisks checks for mount points in the database that reference devices

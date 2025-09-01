@@ -79,7 +79,7 @@ func (self *diskStatsService) run() error {
 		case <-time.After(time.Second * 10):
 			err := self.updateDiskStats()
 			if err != nil && !errors.Is(err, dto.ErrorNotFound) {
-				slog.Error("Failed to update disk stats", "error", err)
+				slog.Warn("Failed to update disk stats", "error", err)
 				continue
 			}
 		}
