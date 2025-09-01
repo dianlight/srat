@@ -4,6 +4,7 @@ tmp_dir = "../tmp"
 
 [build]
 args_bin = [
+  "-single-instance",
   "-db",
   "/tmp/testdb.db",
   "-port",
