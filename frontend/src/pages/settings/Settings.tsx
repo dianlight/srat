@@ -273,6 +273,7 @@ export function Settings() {
 									sx={{ display: "flex" }}
 									name="export_stats_to_ha"
 									label="Export Stats to HA"
+									labelPlacement="start"
 									control={control}
 									disabled={evdata?.hello?.read_only}
 								/>
@@ -362,6 +363,7 @@ export function Settings() {
 									sx={{ display: "flex" }}
 									name="local_master"
 									label="Local Master"
+									labelPlacement="start"
 									control={control}
 									disabled={evdata?.hello?.read_only}
 								/>
@@ -375,6 +377,7 @@ export function Settings() {
 								}}
 								id="compatibility_mode"
 								label="Compatibility Mode"
+								labelPlacement="start"
 								name="compatibility_mode"
 								control={control}
 								disabled={evdata?.hello?.read_only}
@@ -530,17 +533,15 @@ export function Settings() {
 									id="multi_channel"
 									label="Multi Channel Mode"
 									name="multi_channel"
+									labelPlacement="start"
 									control={control}
 									disabled={evdata?.hello?.read_only}
 								/>
 							</Tooltip>
 						</Grid>
 						<Grid size={{ xs: 12, md: 4 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step8`}>
-							<SwitchElement
-								switchProps={{
-									'aria-label': 'Bind All Interfaces',
-									size: "small",
-								}}
+							<CheckboxElement
+								size="small"
 								id="bind_all_interfaces"
 								label="Bind All Interfaces"
 								name="bind_all_interfaces"
