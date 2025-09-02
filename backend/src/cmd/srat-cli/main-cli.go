@@ -380,7 +380,7 @@ func main() {
 							err = upgrade_service.InstallUpdateLocal(&updch)
 							if err != nil {
 								if errors.Is(err, dto.ErrorNoUpdateAvailable) {
-									slog.Info("No local update found or directory missing.", "error", err)
+									slog.Info("No local update found or directory missing.")
 								} else {
 									slog.Error("Error during local update process", "err", err)
 								}
