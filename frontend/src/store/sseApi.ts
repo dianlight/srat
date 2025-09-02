@@ -136,13 +136,14 @@ export const wsApi = createApi({
                 _arg,
                 { updateCachedData, cacheDataLoaded, cacheEntryRemoved },
             ) {
-                //console.log("* Starting WebSocket connection");
-                // create a websocket connection when the cache subscription starts
-                const ws = new WebSocket(apiUrl.replace(/^http/, 'ws') + "/ws")
+                let ws: WebSocket = undefined as unknown as WebSocket;
                 try {
                     // wait for the initial query to resolve before proceeding
                     await cacheDataLoaded
 
+                    //console.log("* Starting WebSocket connection");
+                    // create a websocket connection when the cache subscription starts
+                    ws = new WebSocket(apiUrl.replace(/^http/, 'ws') + "/ws")
                     // when data is received from the socket connection to the server,
                     // if it is a message and for the appropriate channel,
                     // update our query result with the received message
@@ -180,11 +181,12 @@ export const wsApi = createApi({
                     // no-op in case `cacheEntryRemoved` resolves before `cacheDataLoaded`,
                     // in which case `cacheDataLoaded` will throw
                     console.error("* Error in WebSocket connection:", error);
+                } finally {
+                    // cacheEntryRemoved will resolve when the cache subscription is no longer active
+                    await cacheEntryRemoved;
+                    // perform cleanup steps once the `cacheEntryRemoved` promise resolves
+                    if (ws) ws.close();
                 }
-                // cacheEntryRemoved will resolve when the cache subscription is no longer active
-                await cacheEntryRemoved;
-                // perform cleanup steps once the `cacheEntryRemoved` promise resolves
-                ws.close();
             },
         }),
     }),
