@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/m1/go-generate-password/generator"
 	"github.com/xorcare/pointer"
@@ -46,6 +47,7 @@ func main() {
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
 	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	logLevelString = flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
+	protectedMode := flag.Bool("protected-mode", false, "Addon protected mode")
 
 	// set global logger with custom options
 	startCmd := flag.NewFlagSet("start", flag.ExitOnError)
@@ -164,8 +166,9 @@ func main() {
 	staticConfig.DockerNet = *dockerNetwork
 	staticConfig.UpdateFilePath = *updateFilePath
 	staticConfig.DatabasePath = *dbfile
-	staticConfig.SupervisorURL = *supervisorURL
 	staticConfig.SupervisorToken = *supervisorToken
+	staticConfig.ProtectedMode = *protectedMode
+	staticConfig.StartTime = time.Now()
 
 	appParams := appsetup.BaseAppParams{
 		Ctx:          apiCtx,
@@ -183,7 +186,7 @@ func main() {
 		fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
 			props_repo repository.PropertyRepositoryInterface,
-			share_service service.ShareServiceInterface,
+			share_repo repository.ExportedShareRepositoryInterface,
 			hardwareClient hardware.ClientWithResponsesInterface,
 			samba_user_repo repository.SambaUserRepositoryInterface,
 			volume_service service.VolumeServiceInterface,
@@ -226,7 +229,7 @@ func main() {
 					log.Fatalf("Cant create samba user %#+v", err)
 				}
 
-				err = firstTimeJSONImporter(config, mount_repo, props_repo, share_service, samba_user_repo, *_ha_mount_user_password_)
+				err = firstTimeJSONImporter(config, mount_repo, props_repo, share_repo, samba_user_repo, *_ha_mount_user_password_)
 				if err != nil {
 					log.Fatalf("Cant import json settings - %#+v", errors.WithStack(err))
 				}
@@ -448,7 +451,7 @@ func main() {
 func firstTimeJSONImporter(config config.Config,
 	mount_repository repository.MountPointPathRepositoryInterface,
 	props_repository repository.PropertyRepositoryInterface,
-	share_service service.ShareServiceInterface,
+	share_repository repository.ExportedShareRepositoryInterface,
 	users_repository repository.SambaUserRepositoryInterface,
 	_ha_mount_user_password_ string,
 ) (err error) {
@@ -481,7 +484,7 @@ func firstTimeJSONImporter(config config.Config,
 		//		slog.Debug("Share ", "id", share.MountPointData.ID)
 		(*shares)[i] = share
 	}
-	err = share_service.SaveAll(shares)
+	err = share_repository.SaveAll(shares)
 	if err != nil {
 		return errors.WithStack(err)
 	}

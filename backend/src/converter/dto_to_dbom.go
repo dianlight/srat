@@ -62,6 +62,14 @@ type DtoToDbomConverter interface {
 	// goverter:useZeroValueOnPointerInconsistency
 	ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error
 
+	// goverter:useUnderlyingTypeMethods
+	// goverter:useZeroValueOnPointerInconsistency
+	ExportedSharesToSharedResources(source *[]dbom.ExportedShare) (target *[]dto.SharedResource, err error)
+
+	// goverter:useUnderlyingTypeMethods
+	// goverter:useZeroValueOnPointerInconsistency
+	SharedResourcesToExportedShares(source *[]dto.SharedResource) (target *[]dbom.ExportedShare, err error)
+
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt

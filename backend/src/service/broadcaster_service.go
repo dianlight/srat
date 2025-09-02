@@ -203,12 +203,7 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 				Data: event.Message,
 			})
 			if err != nil {
-				/* 				if !strings.Contains(err.Error(), "broken pipe") &&
-				!strings.Contains(err.Error(), "context canceled") &&
-				!strings.Contains(err.Error(), "connection reset by peer") &&
-				!strings.Contains(err.Error(), "i/o timeout") {
-				*/slog.Warn("Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
-				//				}
+				tlog.Trace("Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
 				return
 			}
 		}

@@ -121,9 +121,6 @@ func (self *UpgradeService) run() error {
 						ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE,
 					})
 				}
-				if err != nil {
-					slog.Warn("Error emitting version message", "err", err)
-				}
 			})
 			time.Sleep(self.updateLimiter.Interval / 10)
 		}

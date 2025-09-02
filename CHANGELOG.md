@@ -25,11 +25,11 @@
   - Comprehensive color support with level-based coloring (TRACE=Gray, DEBUG=Cyan, INFO=Green, etc.)
   - Thread-safe configuration management
   - Backward compatibility maintained with existing code
+- Manage `local master` option (?)
 - Add Rollbar telemetry service for error tracking and monitoring
 
 #### **🚧 Work in progress**
 
-- [x] Manage `local master` option (?)
 - [x] Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
 - [x] Smart Control [#100](https://github.com/dianlight/srat/issues/100)
 - [x] HDD Spin down [#101](https://github.com/dianlight/srat/issues/101)
@@ -44,18 +44,12 @@
 - **SQLite concurrency lock (SQLITE_BUSY) resolved [#164](https://github.com/dianlight/srat/issues/164)**: Hardened database configuration to prevent intermittent "database is locked" errors when reading mount points under concurrent load. Changes include enabling WAL mode, setting `busy_timeout=5000ms`, using `synchronous=NORMAL`, and constraining the connection pool to a single open/idle connection. Added repository-level RWMutex guards and a concurrency stress test.
 
 #### **🚧 Work in progress**
-
-- [W] Addon protected mode check [#85](https://github.com/dianlight/srat/issues/85)
+- [x] Addon protected mode check [#85](https://github.com/dianlight/srat/issues/85)
 
 ### 🏗 Chore
 
 - Implement watchdog
 - Align UI elements to HA [#81](https://github.com/dianlight/srat/issues/81)
-- **Dependencies**: Updated Go dependencies including:
-  - Added `github.com/k0kubun/pp/v3` v3.5.0 for pretty printing
-  - Updated `github.com/samber/lo` to v1.51.0
-  - Added `github.com/samber/slog-common` v0.19.0 for enhanced logging functionality
-  - Added gohack replace directives for `samber/slog-http` and `jpillora/overseer` for development
 - Create the base documentation [#80](https://github.com/dianlight/srat/issues/80)
 - Display version from ADDON
 

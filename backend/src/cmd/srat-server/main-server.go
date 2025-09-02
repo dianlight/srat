@@ -46,6 +46,7 @@ var supervisorURL *string
 var supervisorToken *string
 var addonIpAddress *string
 var logLevelString *string
+var protectedMode *bool
 
 func main() {
 
@@ -56,6 +57,8 @@ func main() {
 	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
 	dockerNetwork = flag.String("docker-network", "", "Docker network")
+	protectedMode = flag.Bool("protected-mode", false, "Addon protected mode")
+
 	if !internal.Is_embed {
 		internal.Frontend = flag.String("frontend", "", "Frontend path - if missing the internal is used")
 		internal.TemplateFile = flag.String("template", "", "Template file")
@@ -146,6 +149,8 @@ func prog(state overseer.State) {
 	staticConfig.SupervisorToken = *supervisorToken
 	staticConfig.SupervisorURL = *supervisorURL
 	staticConfig.SecureMode = *secureMode // This is used to determine if the addon is running in HA mode or not
+	staticConfig.ProtectedMode = *protectedMode
+	staticConfig.StartTime = time.Now()
 
 	appParams := appsetup.BaseAppParams{
 		Ctx:          apiCtx,

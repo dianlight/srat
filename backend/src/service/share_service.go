@@ -14,8 +14,8 @@ import (
 )
 
 type ShareServiceInterface interface {
-	All() (*[]dbom.ExportedShare, errors.E)
-	SaveAll(*[]dbom.ExportedShare) errors.E
+	All() (*[]dto.SharedResource, errors.E)
+	SaveAll(*[]dto.SharedResource) errors.E
 	ListShares() ([]dto.SharedResource, errors.E)
 	GetShare(name string) (*dto.SharedResource, errors.E)
 	CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E)
@@ -35,6 +35,7 @@ type ShareService struct {
 	mount_repo          repository.MountPointPathRepositoryInterface
 	broadcaster         BroadcasterServiceInterface
 	sharesQueueMutex    *sync.RWMutex
+	dbomConv            converter.DtoToDbomConverterImpl
 }
 
 type ShareServiceParams struct {
@@ -52,15 +53,25 @@ func NewShareService(in ShareServiceParams) ShareServiceInterface {
 		mount_repo:          in.MountRepo,
 		broadcaster:         in.Broadcaster,
 		sharesQueueMutex:    &sync.RWMutex{},
+		dbomConv:            converter.DtoToDbomConverterImpl{},
 	}
 }
 
-func (s *ShareService) All() (*[]dbom.ExportedShare, errors.E) {
-	return s.exported_share_repo.All()
+func (s *ShareService) All() (*[]dto.SharedResource, errors.E) {
+	sh, errE := s.exported_share_repo.All()
+	if errE != nil {
+		return nil, errE
+	}
+	ret, err := s.dbomConv.ExportedSharesToSharedResources(sh)
+	return ret, errors.WithStack(err)
 }
 
-func (s *ShareService) SaveAll(shares *[]dbom.ExportedShare) errors.E {
-	return s.exported_share_repo.SaveAll(shares)
+func (s *ShareService) SaveAll(shares *[]dto.SharedResource) errors.E {
+	sh, err := s.dbomConv.SharedResourcesToExportedShares(shares)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return s.exported_share_repo.SaveAll(sh)
 }
 
 func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {

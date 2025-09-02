@@ -28,6 +28,7 @@ interface ActionableItemsListProps {
 	isLoading: boolean;
 	error: Error | null | undefined | {};
 	showIgnored?: boolean;
+	disabled?: boolean;
 }
 
 export function ActionableItemsList({
@@ -35,6 +36,7 @@ export function ActionableItemsList({
 	isLoading,
 	error,
 	showIgnored = false,
+	disabled = false,
 }: ActionableItemsListProps) {
 	const navigate = useNavigate();
 	const { isIssueIgnored, ignoreIssue, unignoreIssue } = useIgnoredIssues();
@@ -46,10 +48,12 @@ export function ActionableItemsList({
 	}));
 
 	const handleMount = (_partition: Partition) => {
+		if (disabled) return;
 		navigate("/", { state: { tabId: TabIDs.VOLUMES } as LocationState });
 	};
 
 	const handleCreateShare = (partition: Partition) => {
+		if (disabled) return;
 		const firstMountPointData = partition.mount_point_data?.[0];
 		if (firstMountPointData) {
 			navigate("/", {
@@ -88,7 +92,7 @@ export function ActionableItemsList({
 
 	return (
 		<>
-			<Typography variant="body2" sx={{ mb: 2 }}>
+			<Typography variant="body2" sx={{ mb: 2, opacity: disabled ? 0.6 : 1 }}>
 				You have volumes that are ready for use. Take action to make them
 				available to the system.
 			</Typography>
@@ -104,10 +108,15 @@ export function ActionableItemsList({
 					return (
 						<ListItem
 							key={id}
+							sx={{
+								opacity: disabled ? 0.6 : 1,
+								cursor: disabled ? 'not-allowed' : 'default',
+							}}
 							secondaryAction={
 								<ButtonGroup size="small">
 									<Button
 										variant="contained"
+										disabled={disabled}
 										onClick={() =>
 											action === "mount"
 												? handleMount(partition)
@@ -118,6 +127,7 @@ export function ActionableItemsList({
 									</Button>
 									<Button
 										variant="outlined"
+										disabled={disabled}
 										onClick={() => isIgnored ? unignoreIssue(id) : ignoreIssue(id)}
 										startIcon={isIgnored ? <VisibilityIcon /> : <VisibilityOffIcon />}
 									>

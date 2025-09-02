@@ -40,24 +40,27 @@ type SambaService struct {
 	dirtyservice       DirtyDataServiceInterface
 	supervisor_service SupervisorServiceInterface
 	share_service      ShareServiceInterface
+	share_repo         repository.ExportedShareRepositoryInterface
 	ha_ws_service      HaWsServiceInterface
 	prop_repo          repository.PropertyRepositoryInterface
 	samba_user_repo    repository.SambaUserRepositoryInterface
 	mount_client       mount.ClientWithResponsesInterface
 	cache              *cache.Cache
+	dbomConv           converter.DtoToDbomConverter
 }
 
 type SambaServiceParams struct {
 	fx.In
 
-	State           *dto.ContextState
-	Dirtyservice    DirtyDataServiceInterface
-	Share_service   ShareServiceInterface
-	Prop_repo       repository.PropertyRepositoryInterface
-	Samba_user_repo repository.SambaUserRepositoryInterface
-	HA_ws_service   HaWsServiceInterface
-	Mount_client    mount.ClientWithResponsesInterface `optional:"true"`
-	Su              SupervisorServiceInterface
+	State               *dto.ContextState
+	Dirtyservice        DirtyDataServiceInterface
+	Share_service       ShareServiceInterface
+	Prop_repo           repository.PropertyRepositoryInterface
+	Exported_share_repo repository.ExportedShareRepositoryInterface
+	Samba_user_repo     repository.SambaUserRepositoryInterface
+	HA_ws_service       HaWsServiceInterface
+	Mount_client        mount.ClientWithResponsesInterface `optional:"true"`
+	Su                  SupervisorServiceInterface
 }
 
 func NewSambaService(in SambaServiceParams) SambaServiceInterface {
@@ -66,12 +69,14 @@ func NewSambaService(in SambaServiceParams) SambaServiceInterface {
 	p.dirtyservice = in.Dirtyservice
 	p.share_service = in.Share_service
 	p.prop_repo = in.Prop_repo
+	p.share_repo = in.Exported_share_repo
 	p.samba_user_repo = in.Samba_user_repo
 	p.mount_client = in.Mount_client
 	p.supervisor_service = in.Su
 	p.cache = cache.New(1*time.Minute, 10*time.Minute)
 	in.Dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
 	p.ha_ws_service = in.HA_ws_service
+	p.dbomConv = &converter.DtoToDbomConverterImpl{}
 
 	p.ha_ws_service.SubscribeToHaEvents(func(ready bool) {
 		if !ready {
@@ -132,7 +137,7 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
-	shares, err := self.share_service.All()
+	shares, err := self.share_repo.All()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
@@ -329,6 +334,9 @@ func (self *SambaService) mountHaStorage() errors.E {
 	if self.state.HACoreReady && self.state.AddonIpAddress != "" {
 		for _, share := range *shares {
 			if share.Disabled != nil && *share.Disabled {
+				continue
+			}
+			if (share.Invalid != nil && *share.Invalid) || (share.MountPointData == nil || share.MountPointData.IsInvalid) {
 				continue
 			}
 			switch share.Usage {

@@ -57,7 +57,7 @@ type VolumeService struct {
 	fs_service        FilesystemServiceInterface
 	shareService      ShareServiceInterface
 	issueService      IssueServiceInterface
-	staticConfig      *dto.ContextState
+	state             *dto.ContextState
 	sfGroup           singleflight.Group
 	haService         HomeAssistantServiceInterface
 }
@@ -72,7 +72,7 @@ type VolumeServiceProps struct {
 	FilesystemService FilesystemServiceInterface
 	ShareService      ShareServiceInterface
 	IssueService      IssueServiceInterface
-	StaticConfig      *dto.ContextState
+	State             *dto.ContextState
 	HAService         HomeAssistantServiceInterface `optional:"true"`
 }
 
@@ -88,7 +88,7 @@ func NewVolumeService(
 		hardwareClient:    in.HardwareClient,
 		lsblk:             in.LsblkInterpreter,
 		fs_service:        in.FilesystemService,
-		staticConfig:      in.StaticConfig,
+		state:             in.State,
 		shareService:      in.ShareService,
 		issueService:      in.IssueService,
 		haService:         in.HAService,
@@ -112,7 +112,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		go ms.NotifyClient()
 	}()
 
-	if ms.staticConfig.ProtectedMode {
+	if ms.state.ProtectedMode {
 		return errors.WithDetails(dto.ErrorOperationNotPermittedInProtectedMode,
 			"Operation", "MountVolume",
 			"Detail", "Mount operation is not permitted when ProtectedMode is enabled.",
@@ -581,7 +581,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 		lsblkconv := converter.LsblkToDtoConverterImpl{}
 
 		// Use mock data in demo mode or when SRAT_MOCK is true
-		if self.staticConfig.SupervisorURL == "demo" || os.Getenv("SRAT_MOCK") == "true" {
+		if self.state.SupervisorURL == "demo" || os.Getenv("SRAT_MOCK") == "true" {
 			ret = append(ret, dto.Disk{
 				Id: pointer.String("DemoDisk"),
 				Partitions: &[]dto.Partition{
@@ -634,7 +634,9 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 							slog.Warn("Device not found in Lsblk", "device", *partition.Device)
 							continue
 						} else if errors.Is(errLsblk, lsblk.NoPermission) {
-							slog.Warn("No permission to access device in Lsblk", "device", *partition.Device, "device", *partition.Device)
+							if !self.state.ProtectedMode {
+								slog.Warn("No permission to access device in Lsblk", "device", *partition.Device, "device", *partition.Device)
+							}
 							continue
 						} else {
 							slog.Warn("Error getting info from device", "device", *partition.Device, "err", errLsblk)

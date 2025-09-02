@@ -9,6 +9,8 @@ import (
 
 // goverter:converter
 // goverter:output:file ./issue_to_dto_conv_gen.go
+// goverter:useZeroValueOnPointerInconsistency
+// goverter:skipCopySameType
 type IssueToDtoConverter interface {
 	// goverter:map CreatedAt Date | timeToTime
 	ToDto(source *dbom.Issue) *dto.Issue

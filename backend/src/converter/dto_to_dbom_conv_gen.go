@@ -54,6 +54,24 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 	target.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
 	return nil
 }
+func (c *DtoToDbomConverterImpl) ExportedSharesToSharedResources(source *[]dbom.ExportedShare) (*[]dto.SharedResource, error) {
+	var pDtoSharedResourceList *[]dto.SharedResource
+	if source != nil {
+		var dtoSharedResourceList []dto.SharedResource
+		if (*source) != nil {
+			dtoSharedResourceList = make([]dto.SharedResource, len((*source)))
+			for i := 0; i < len((*source)); i++ {
+				dtoSharedResource, err := c.exportedShareToSharedResource((*source)[i])
+				if err != nil {
+					return nil, err
+				}
+				dtoSharedResourceList[i] = dtoSharedResource
+			}
+		}
+		pDtoSharedResourceList = &dtoSharedResourceList
+	}
+	return pDtoSharedResourceList, nil
+}
 func (c *DtoToDbomConverterImpl) MountFlagsToMountDataFlags(source []dto.MountFlag) dbom.MounDataFlags {
 	var dbomMounDataFlags dbom.MounDataFlags
 	if source != nil {
@@ -214,6 +232,24 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 		target.MountPointDataPath = *pString
 	}
 	return nil
+}
+func (c *DtoToDbomConverterImpl) SharedResourcesToExportedShares(source *[]dto.SharedResource) (*[]dbom.ExportedShare, error) {
+	var pDbomExportedShareList *[]dbom.ExportedShare
+	if source != nil {
+		var dbomExportedShareList []dbom.ExportedShare
+		if (*source) != nil {
+			dbomExportedShareList = make([]dbom.ExportedShare, len((*source)))
+			for i := 0; i < len((*source)); i++ {
+				dbomExportedShare, err := c.sharedResourceToExportedShare((*source)[i])
+				if err != nil {
+					return nil, err
+				}
+				dbomExportedShareList[i] = dbomExportedShare
+			}
+		}
+		pDbomExportedShareList = &dbomExportedShareList
+	}
+	return pDbomExportedShareList, nil
 }
 func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.SambaUser) error {
 	if source.Username != "" {

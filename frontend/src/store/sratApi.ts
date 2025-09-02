@@ -838,8 +838,10 @@ export type Issue = {
   description: string;
   detailLink?: string;
   id: number;
+  ignored: boolean;
   repeating: number;
   resolutionLink?: string;
+  severity?: Severity;
   title: string;
 };
 export type ResolveIssueOutputBody = {
@@ -983,6 +985,12 @@ export type Disk = {
   size?: number;
   vendor?: string;
 };
+export enum Severity {
+  Error = "error",
+  Warning = "warning",
+  Info = "info",
+  Success = "success",
+}
 export enum Telemetry_mode {
   Ask = "Ask",
   All = "All",

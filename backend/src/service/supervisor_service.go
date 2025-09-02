@@ -9,7 +9,6 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/repository"
@@ -19,7 +18,7 @@ import (
 var _supervisor_api_mutex sync.Mutex
 
 type SupervisorServiceInterface interface {
-	NetworkMountShare(dbom.ExportedShare) errors.E
+	NetworkMountShare(dto.SharedResource) errors.E
 	NetworkUnmountShare(shareName string) errors.E
 	NetworkGetAllMounted() (mounts map[string]mount.Mount, err errors.E)
 }
@@ -78,7 +77,7 @@ func (self *SupervisorService) NetworkGetAllMounted() (mounts map[string]mount.M
 	return mounts, nil
 }
 
-func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) errors.E {
+func (self *SupervisorService) NetworkMountShare(share dto.SharedResource) errors.E {
 	if self.state.HACoreReady == false {
 		return errors.Errorf("HA Core is not ready")
 	}
@@ -87,7 +86,7 @@ func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) error
 	if err != nil {
 		return err
 	}
-	conv := converter.HaSupervisorToDbomImpl{}
+	conv := converter.HaSupervisorToDtoImpl{}
 
 	mountUsername := pointer.String("_ha_mount_user_")
 	pwd, err := self.prop_repo.Value("_ha_mount_user_password_", true)
@@ -100,7 +99,7 @@ func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) error
 	if !ok {
 		// new mount
 		rmount = mount.Mount{}
-		conv.ExportedShareToMount(share, &rmount)
+		conv.SharedResourceToMount(share, &rmount)
 		rmount.Username = mountUsername
 		rmount.Password = mountPassword
 		rmount.Server = &self.state.AddonIpAddress
@@ -116,7 +115,7 @@ func (self *SupervisorService) NetworkMountShare(share dbom.ExportedShare) error
 			return errors.Errorf("Error creating mount %s from ha_supervisor: %d \nReq:%#v\nResp:%#v", *rmount.Name, resp.StatusCode(), string(rjson), string(resp.Body))
 		}
 	} else if string(share.Usage) != string(*rmount.Usage) || *rmount.State != "active" {
-		conv.ExportedShareToMount(share, &rmount)
+		conv.SharedResourceToMount(share, &rmount)
 		rmount.Username = mountUsername
 		rmount.Password = mountPassword
 		resp, err := self.mount_client.UpdateMountWithResponse(self.apiContext, *rmount.Name, rmount)

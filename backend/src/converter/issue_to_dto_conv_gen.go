@@ -21,6 +21,8 @@ func (c *IssueToDtoConverterImpl) ToDbom(source *dto.Issue) *dbom.Issue {
 		dbomIssue.DetailLink = (*source).DetailLink
 		dbomIssue.ResolutionLink = (*source).ResolutionLink
 		dbomIssue.Repeating = (*source).Repeating
+		dbomIssue.Ignored = (*source).Ignored
+		dbomIssue.Severity = (*source).Severity
 		pDbomIssue = &dbomIssue
 	}
 	return pDbomIssue
@@ -36,6 +38,8 @@ func (c *IssueToDtoConverterImpl) ToDto(source *dbom.Issue) *dto.Issue {
 		dtoIssue.DetailLink = (*source).DetailLink
 		dtoIssue.ResolutionLink = (*source).ResolutionLink
 		dtoIssue.Repeating = (*source).Repeating
+		dtoIssue.Ignored = (*source).Ignored
+		dtoIssue.Severity = (*source).Severity
 		pDtoIssue = &dtoIssue
 	}
 	return pDtoIssue

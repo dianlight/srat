@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/tlog"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"gitlab.com/tozd/go/errors"
@@ -114,7 +115,7 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 			// Send ping to keep connection alive
 			err := conn.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
-				slog.Warn("Error sending ping to WebSocket client", "err", err)
+				tlog.Trace("Error sending ping to WebSocket client", "err", err)
 				return
 			}
 		}

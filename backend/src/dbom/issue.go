@@ -3,6 +3,7 @@ package dbom
 import (
 	"time"
 
+	"github.com/dianlight/srat/dto"
 	"gorm.io/gorm"
 )
 
@@ -17,4 +18,6 @@ type Issue struct {
 	DetailLink     string `gorm:"size:2048"`
 	ResolutionLink string `gorm:"size:2048"`
 	Repeating      uint   `gorm:"default:1"`
+	Ignored        bool   `gorm:"default:false"`
+	Severity       *dto.IssueSeverity
 }

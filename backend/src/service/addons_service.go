@@ -17,10 +17,6 @@ import (
 
 // AddonsServiceInterface defines the contract for addon-related operations.
 type AddonsServiceInterface interface {
-	// CheckProtectedMode checks if a given Home Assistant addon is marked as protected.
-	// It returns true if the addon is protected, false otherwise.
-	// An error is returned if the check cannot be performed (e.g., API error, addon not found).
-	CheckProtectedMode() (bool, errors.E)
 	// GetStats retrieves the resource usage statistics for the current addon.
 	// It returns an AddonStatsData object on success.
 	GetStats() (*addons.AddonStatsData, errors.E)
@@ -28,14 +24,12 @@ type AddonsServiceInterface interface {
 
 // AddonsService provides methods to interact with Home Assistant addons.
 type AddonsService struct {
-	ctx                context.Context
-	apictx             *dto.ContextState // Context state for the API, can be used for logging or passing additional information.
-	addonsClient       addons.ClientWithResponsesInterface
-	haWsService        HaWsServiceInterface
-	protectedModeCache *gocache.Cache
-	protectedModeMutex sync.Mutex
-	statsCache         *gocache.Cache
-	statsMutex         sync.Mutex
+	ctx          context.Context
+	apictx       *dto.ContextState // Context state for the API, can be used for logging or passing additional information.
+	addonsClient addons.ClientWithResponsesInterface
+	haWsService  HaWsServiceInterface
+	statsCache   *gocache.Cache
+	statsMutex   sync.Mutex
 }
 
 // AddonsServiceParams holds the dependencies for AddonsService.
@@ -48,12 +42,9 @@ type AddonsServiceParams struct {
 }
 
 const (
-	protectedModeCacheKey     = "protectedMode"
-	protectedModeCacheExpiry  = 24 * time.Hour
-	protectedModeCacheCleanup = 1 * time.Hour
-	statsCacheKey             = "addonStats"
-	statsCacheExpiry          = 30 * time.Second
-	statsCacheCleanup         = 1 * time.Minute
+	statsCacheKey     = "addonStats"
+	statsCacheExpiry  = 30 * time.Second
+	statsCacheCleanup = 1 * time.Minute
 )
 
 // NewAddonsService creates a new instance of AddonsService.
@@ -62,75 +53,13 @@ func NewAddonsService(lc fx.Lifecycle, params AddonsServiceParams) AddonsService
 		tlog.Debug("AddonsClient is not available for AddonsService. Operations requiring it will fail.")
 	}
 	p := &AddonsService{
-		ctx:                params.Ctx,
-		apictx:             params.Apictx,
-		addonsClient:       params.AddonsClient,
-		protectedModeCache: gocache.New(protectedModeCacheExpiry, protectedModeCacheCleanup),
-		statsCache:         gocache.New(statsCacheExpiry, statsCacheCleanup),
-		haWsService:        params.HaWsService,
+		ctx:          params.Ctx,
+		apictx:       params.Apictx,
+		addonsClient: params.AddonsClient,
+		statsCache:   gocache.New(statsCacheExpiry, statsCacheCleanup),
+		haWsService:  params.HaWsService,
 	}
-
-	p.haWsService.SubscribeToHaEvents(func(ready bool) {
-		if ready {
-			p.apictx.ProtectedMode, _ = p.CheckProtectedMode()
-		}
-	})
-
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			p.apictx.ProtectedMode, _ = p.CheckProtectedMode()
-			return nil
-		},
-	})
 	return p
-}
-
-// CheckProtectedMode implements the AddonsServiceInterface.
-func (s *AddonsService) CheckProtectedMode() (bool, errors.E) {
-	if !s.apictx.HACoreReady {
-		return true, nil // If HA Core is not ready, we cannot determine protected mode but assume to true
-	}
-
-	// Try to get from cache first
-	if protected, found := s.protectedModeCache.Get(protectedModeCacheKey); found {
-		if p, ok := protected.(bool); ok {
-			return p, nil
-		}
-	}
-
-	// If not in cache, acquire lock to fetch
-	s.protectedModeMutex.Lock()
-	defer s.protectedModeMutex.Unlock()
-
-	// Re-check cache after acquiring lock
-	if protected, found := s.protectedModeCache.Get(protectedModeCacheKey); found {
-		if p, ok := protected.(bool); ok {
-			return p, nil
-		}
-	}
-
-	if s.addonsClient == nil {
-		return false, errors.New("addons client is not initialized")
-	}
-
-	resp, err := s.addonsClient.GetSelfAddonInfoWithResponse(s.ctx)
-	if err != nil || resp == nil {
-		return false, errors.Wrapf(err, "failed to get addon info for '%s'", "self")
-	}
-
-	if resp.StatusCode() != http.StatusOK {
-		return false, errors.Errorf("failed to get addon info for '%s': status %d, body: %s", "self", resp.StatusCode(), string(resp.Body))
-	}
-
-	if resp.JSON200 == nil || resp.JSON200.Data.Protected == nil {
-		// If protected status is not explicitly provided, assume not protected or data is incomplete.
-		return false, errors.Errorf("protected status not available or data incomplete for addon '%s'", "self")
-	}
-
-	isProtected := *resp.JSON200.Data.Protected
-	s.protectedModeCache.Set(protectedModeCacheKey, isProtected, gocache.DefaultExpiration)
-
-	return isProtected, nil
 }
 
 // GetStats implements the AddonsServiceInterface.

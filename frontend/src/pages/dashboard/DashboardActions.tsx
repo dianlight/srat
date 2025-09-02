@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useVolume } from "../../hooks/volumeHook";
-import { useGetApiIssuesQuery, type Issue, type Partition } from "../../store/sratApi";
+import { Severity, useGetApiIssuesQuery, type Issue, type Partition } from "../../store/sratApi";
 import { ActionableItemsList } from "./components/ActionableItemsList";
 import IssueCard from "../../components/IssueCard";
 import { TabIDs } from "../../store/locationState";
@@ -111,22 +111,50 @@ export function DashboardActions() {
 				</Box>
 			</AccordionSummary>
 			<AccordionDetails>
-				{!is_inLoading && issues && Array.isArray(issues) &&
-					issues.map((issue) => (
+				{evdata?.hello?.protected_mode ? (
+					<>
 						<IssueCard
-							key={issue.id}
-							issue={issue}
-							onResolve={handleResolveIssue}
+							key="protected-mode"
+							issue={{
+								id: -1, // Use a unique ID for the protected mode issue
+								title: "Addon in Protected Mode",
+								description: "The addon is currently in protected mode. In this mode, no disks can be mounted to prevent unauthorized access. To disable protected mode, navigate to the addon settings in your Home Assistant interface and toggle the protected mode option off. Ensure you understand the security implications before disabling.",
+								severity: Severity.Error, // Assuming IssueCard supports severity for red styling
+								ignored: false, // Add other required fields if needed, e.g., timestamp, etc.
+								repeating: 0,
+								date: new Date().toLocaleString(),
+							}}
+							onResolve={() => { }} // No-op since resolution is manual via settings
+							showIgnored={false} // Protection mode issue should always be shown
+						/>
+						<ActionableItemsList
+							actionablePartitions={actionablePartitions}
+							isLoading={isLoading}
+							error={error}
+							showIgnored={showIgnored}
+							disabled={true} // Assuming ActionableItemsList accepts a disabled prop to disable interactions
+						/>
+					</>
+				) : (
+					<>
+						{!is_inLoading && issues && Array.isArray(issues) &&
+							issues.map((issue) => (
+								<IssueCard
+									key={issue.id}
+									issue={issue}
+									onResolve={handleResolveIssue}
+									showIgnored={showIgnored}
+								/>
+							))
+						}
+						<ActionableItemsList
+							actionablePartitions={actionablePartitions}
+							isLoading={isLoading}
+							error={error}
 							showIgnored={showIgnored}
 						/>
-					))
-				}
-				<ActionableItemsList
-					actionablePartitions={actionablePartitions}
-					isLoading={isLoading}
-					error={error}
-					showIgnored={showIgnored}
-				/>
+					</>
+				)}
 			</AccordionDetails>
 		</Accordion>
 	);
