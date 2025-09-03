@@ -124,7 +124,6 @@ export function DashboardActions() {
 								repeating: 0,
 								date: new Date().toLocaleString(),
 							}}
-							onResolve={() => { }} // No-op since resolution is manual via settings
 							showIgnored={false} // Protection mode issue should always be shown
 						/>
 						<ActionableItemsList

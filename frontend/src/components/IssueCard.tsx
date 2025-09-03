@@ -8,6 +8,7 @@ import {
   Box,
   Chip,
   IconButton,
+  useTheme,
 } from '@mui/material';
 import {
   Error as ErrorIcon,
@@ -21,44 +22,54 @@ import { useIgnoredIssues } from '../hooks/issueHooks';
 
 interface IssueCardProps {
   issue: Issue;
-  onResolve: (id: number) => void;
+  onResolve?: (id: number) => void;
   showIgnored?: boolean;
 }
 
-const getSeverityConfig = (severity: string) => {
+const getSeverityConfig = (severity: string, theme: any) => {
+  const isDark = theme.palette.mode === 'dark';
+
   switch (severity) {
     case 'error':
       return {
-        color: '#f44336',
-        backgroundColor: '#ffebee',
+        color: theme.palette.error.main,
+        backgroundColor: isDark
+          ? theme.palette.error.dark + '20'
+          : theme.palette.error.light + '40',
         icon: <ErrorIcon />,
         label: 'Error',
       };
     case 'warning':
       return {
-        color: '#ff9800',
-        backgroundColor: '#fff3e0',
+        color: theme.palette.warning.main,
+        backgroundColor: isDark
+          ? theme.palette.warning.dark + '20'
+          : theme.palette.warning.light + '40',
         icon: <WarningIcon />,
         label: 'Warning',
       };
     case 'info':
       return {
-        color: '#2196f3',
-        backgroundColor: '#e3f2fd',
+        color: theme.palette.info.main,
+        backgroundColor: isDark
+          ? theme.palette.info.dark + '20'
+          : theme.palette.info.light + '40',
         icon: <InfoIcon />,
         label: 'Info',
       };
     case 'success':
       return {
-        color: '#4caf50',
-        backgroundColor: '#e8f5e8',
+        color: theme.palette.success.main,
+        backgroundColor: isDark
+          ? theme.palette.success.dark + '20'
+          : theme.palette.success.light + '40',
         icon: <SuccessIcon />,
         label: 'Success',
       };
     default:
       return {
-        color: '#757575',
-        backgroundColor: '#f5f5f5',
+        color: theme.palette.text.secondary,
+        backgroundColor: isDark ? theme.palette.grey[800] : theme.palette.grey[100],
         icon: <InfoIcon />,
         label: 'Unknown',
       };
@@ -66,9 +77,10 @@ const getSeverityConfig = (severity: string) => {
 };
 
 const IssueCard: React.FC<IssueCardProps> = ({ issue, onResolve, showIgnored }) => {
+  const theme = useTheme();
   const { isIssueIgnored, ignoreIssue, unignoreIssue } = useIgnoredIssues();
   const isIgnored = isIssueIgnored(issue.id);
-  const severityConfig = getSeverityConfig(issue.severity || 'info');
+  const severityConfig = getSeverityConfig(issue.severity || 'info', theme);
 
   // When showIgnored is false, show only non-ignored items
   // When showIgnored is true, show all items
@@ -126,7 +138,7 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue, onResolve, showIgnored }) 
       </CardContent>
       <CardActions sx={{ justifyContent: 'space-between' }}>
         <Box>
-          {!issue.ignored && (
+          {!issue.ignored && onResolve && (
             <Button
               size="small"
               variant="contained"
@@ -137,13 +149,15 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue, onResolve, showIgnored }) 
             </Button>
           )}
         </Box>
-        <IconButton
-          size="small"
-          onClick={() => onResolve(issue.id)}
-          title="Dismiss"
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
+        {onResolve && (
+          <IconButton
+            size="small"
+            onClick={() => onResolve(issue.id)}
+            title="Dismiss"
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        )}
       </CardActions>
     </Card>
   );

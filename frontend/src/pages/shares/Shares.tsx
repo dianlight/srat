@@ -173,6 +173,12 @@ export function Shares() {
 
 		Object.entries(shares).forEach(([shareKey, shareProps]) => {
 			const usageGroup = shareProps.usage || Usage.None; // Default to 'none' if usage is undefined
+
+			// In protected mode, only show internal shares
+			if (evdata?.hello?.protected_mode && usageGroup !== Usage.Internal) {
+				return; // Skip non-internal shares in protected mode
+			}
+
 			if (!groups[usageGroup]) {
 				groups[usageGroup] = [];
 			}
@@ -188,7 +194,7 @@ export function Shares() {
 
 		// Sort the groups by usage type (key)
 		return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
-	}, [shares]);
+	}, [shares, evdata?.hello?.read_only]);
 
 	// localStorage key for expanded accordion
 	const localStorageKey = "srat_shares_expanded_accordion";
@@ -539,6 +545,7 @@ export function Shares() {
 														<ShareActions
 															shareKey={share}
 															shareProps={props}
+															protected_mode={evdata?.hello?.protected_mode || true}
 															read_only={evdata?.hello?.read_only || true}
 															onEdit={(shareKey, shareProps) => {
 																setSelected([shareKey, shareProps]);

@@ -24,6 +24,7 @@ interface ShareActionsProps {
 	shareKey: string;
 	shareProps: SharedResource;
 	read_only: boolean;
+	protected_mode: boolean;
 	onEdit: (shareKey: string, shareProps: SharedResource) => void;
 	onViewVolumeSettings: (shareProps: SharedResource) => void;
 	onDelete: (shareKey: string, shareProps: SharedResource) => void;
@@ -58,18 +59,17 @@ export function ShareActions({
 		setAnchorEl(null);
 	};
 
-	if (read_only) {
-		return null;
-	}
-
 	const actionItems = [];
 
-	actionItems.push({
-		key: "edit",
-		title: "Settings",
-		icon: <SettingsIcon />,
-		onClick: () => onEdit(shareKey, shareProps),
-	});
+
+	if (!read_only) {
+		actionItems.push({
+			key: "edit",
+			title: "Settings",
+			icon: <SettingsIcon />,
+			onClick: () => onEdit(shareKey, shareProps),
+		});
+	}
 
 	if (
 		!shareProps.mount_point_data?.invalid &&
@@ -100,7 +100,7 @@ export function ShareActions({
 			icon: <CheckCircleIcon />,
 			onClick: () => onEnable(shareKey, shareProps),
 		});
-	} else if (shareProps.usage !== Usage.Internal) {
+	} else {
 		actionItems.push({
 			key: "disable",
 			title: "Disable share",
