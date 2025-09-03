@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/repository"
@@ -46,7 +47,7 @@ type SambaService struct {
 	samba_user_repo    repository.SambaUserRepositoryInterface
 	mount_client       mount.ClientWithResponsesInterface
 	cache              *cache.Cache
-	dbomConv           converter.DtoToDbomConverter
+	dbomConv           converter.DtoToDbomConverterImpl
 }
 
 type SambaServiceParams struct {
@@ -76,7 +77,7 @@ func NewSambaService(in SambaServiceParams) SambaServiceInterface {
 	p.cache = cache.New(1*time.Minute, 10*time.Minute)
 	in.Dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
 	p.ha_ws_service = in.HA_ws_service
-	p.dbomConv = &converter.DtoToDbomConverterImpl{}
+	p.dbomConv = converter.DtoToDbomConverterImpl{}
 
 	p.ha_ws_service.SubscribeToHaEvents(func(ready bool) {
 		if !ready {
@@ -142,11 +143,35 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 		return tconfig, errors.WithStack(err)
 	}
 
+	sr, errS := self.dbomConv.ExportedSharesToSharedResources(shares)
+	if errS != nil {
+		return tconfig, errors.WithStack(errS)
+	}
+
+	nshare := make([]dbom.ExportedShare, 0, len(*sr))
+	for _, share := range *sr {
+		if share.Disabled != nil && *share.Disabled {
+			continue
+		}
+		if share.Invalid != nil && *share.Invalid {
+			continue
+		}
+		if share.MountPointData != nil && share.MountPointData.IsInvalid {
+			continue
+		}
+		dbs := dbom.ExportedShare{}
+		err = self.dbomConv.SharedResourceToExportedShare(share, &dbs)
+		if err != nil {
+			return tconfig, errors.WithStack(err)
+		}
+		nshare = append(nshare, dbs)
+	}
+
 	tconfig = config.Config{}
 	// set default values
 	defaults.SetDefaults(&tconfig)
 	// end
-	err = conv.DbomObjectsToConfig(properties, users, *shares, &tconfig)
+	err = conv.DbomObjectsToConfig(properties, users, nshare, &tconfig)
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}

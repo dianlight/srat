@@ -1,9 +1,6 @@
 package converter
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 )
@@ -122,22 +119,4 @@ func stringToExportedShare(source string) dbom.ExportedShare {
 	return dbom.ExportedShare{
 		Name: source,
 	}
-}
-
-// isPathDirNotExists checks if a given path string points to an existing directory.
-// It returns true if the path exists and is a directory, false otherwise.
-// An error is returned if there's an issue with os.Stat (other than os.IsNotExist).
-func isPathDirNotExists(path string) (bool, error) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// Path does not exist.
-			return true, nil
-		}
-		// Another error occurred while stating the path.
-		return true, fmt.Errorf("error stating path %s: %w", path, err)
-	}
-
-	// Path exists, check if it's a directory.
-	return !fi.IsDir(), nil
 }

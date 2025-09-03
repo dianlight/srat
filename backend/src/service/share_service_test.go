@@ -29,6 +29,7 @@ func TestShareServiceSuite(t *testing.T) {
 }
 
 func (suite *ShareServiceSuite) SetupTest() {
+
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },

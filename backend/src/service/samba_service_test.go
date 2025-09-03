@@ -4,12 +4,15 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/mount"
@@ -18,6 +21,7 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"github.com/snapcore/snapd/osutil"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -41,6 +45,45 @@ func TestSambaServiceSuite(t *testing.T) {
 }
 
 func (suite *SambaServiceSuite) SetupTest() {
+	data, err := os.ReadFile("../../test/data/mount_info.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	osutil.MockMountInfo(string(data))
+
+	fs := fstest.MapFS{
+		"homeassistant": {
+			Mode: os.ModeDir,
+		},
+		"media": {
+			Mode: os.ModeDir,
+		},
+		"backup": {
+			Mode: os.ModeDir,
+		},
+		"share": {
+			Mode: os.ModeDir,
+		},
+		"addons": {
+			Mode: os.ModeDir,
+		},
+		"addon_configs": {
+			Mode: os.ModeDir,
+		},
+		"mnt/EFI": {
+			Mode: os.ModeDir,
+		},
+		"mnt/LIBRARY": {
+			Mode: os.ModeDir,
+		},
+		"mnt/Updater": {
+			Mode: os.ModeDir,
+		},
+		"hello.txt": {
+			Data: []byte("hello, world"),
+		},
+	}
+	converter.MockFuncOsStat(fs.Stat)
 
 	//os.Setenv("HOSTNAME", "test-host")
 
@@ -147,7 +190,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			Name:               "CONFIG",
 			MountPointDataPath: "/homeassistant",
 			MountPointData: dbom.MountPointPath{
-				Path: "/homeassistant",
+				Path: "homeassistant",
 			},
 			Users: []dbom.SambaUser{
 				{
@@ -160,7 +203,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			Name:               "MEDIA",
 			MountPointDataPath: "/media",
 			MountPointData: dbom.MountPointPath{
-				Path: "/media",
+				Path: "media",
 			},
 			Users: []dbom.SambaUser{
 				{
@@ -174,7 +217,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			Name:               "BACKUP",
 			MountPointDataPath: "/backup",
 			MountPointData: dbom.MountPointPath{
-				Path: "/backup",
+				Path: "backup",
 			},
 			Users: []dbom.SambaUser{
 				{
@@ -187,7 +230,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			Name:               "SHARE",
 			MountPointDataPath: "/share",
 			MountPointData: dbom.MountPointPath{
-				Path: "/share",
+				Path: "share",
 			},
 			Users: []dbom.SambaUser{
 				{
@@ -201,7 +244,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			Name:               "ADDONS",
 			MountPointDataPath: "/addons",
 			MountPointData: dbom.MountPointPath{
-				Path: "/addons",
+				Path: "addons",
 			},
 			Users: []dbom.SambaUser{
 				{
@@ -215,7 +258,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			Name:               "ADDON_CONFIGS",
 			MountPointDataPath: "/addon_configs",
 			MountPointData: dbom.MountPointPath{
-				Path: "/addon_configs",
+				Path: "addon_configs",
 			},
 			Users: []dbom.SambaUser{
 				{
@@ -229,7 +272,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			Name:               "EFI",
 			MountPointDataPath: "/mnt/EFI",
 			MountPointData: dbom.MountPointPath{
-				Path: "/mnt/EFI",
+				Path: "mnt/EFI",
 			},
 			Users: []dbom.SambaUser{
 				{
@@ -249,7 +292,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			Name:               "LIBRARY",
 			MountPointDataPath: "/mnt/LIBRARY",
 			MountPointData: dbom.MountPointPath{
-				Path: "/mnt/LIBRARY",
+				Path: "mnt/LIBRARY",
 			},
 			Users: []dbom.SambaUser{
 				{
@@ -264,7 +307,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 			Name:               "UPDATER",
 			MountPointDataPath: "/mnt/Updater",
 			MountPointData: dbom.MountPointPath{
-				Path: "/mnt/Updater",
+				Path: "mnt/Updater",
 			},
 			Users: []dbom.SambaUser{
 				{
@@ -287,7 +330,7 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
 
 	var result = make(map[string]string)
-	//t.Log(fmt.Sprintf("%s", *stream))
+	//suite.T().Logf("%s", *stream)
 	for _, match := range re.FindAllStringSubmatch(string(*stream), -1) {
 		result[match[1]] = strings.TrimSpace(match[0])
 	}
