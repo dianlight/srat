@@ -1,5 +1,6 @@
 # Changelog
 
+
 ## [ 🚧 Unreleased ]
 
 ### ✨ Features
@@ -27,12 +28,9 @@
   - Backward compatibility maintained with existing code
 - Manage `local master` option (?)
 - Add Rollbar telemetry service for error tracking and monitoring
-
-#### **🚧 Work in progress**
-
-- [x] Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
-- [x] Smart Control [#100](https://github.com/dianlight/srat/issues/100)
-- [x] HDD Spin down [#101](https://github.com/dianlight/srat/issues/101)
+- Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
+- Smart Control [#100](https://github.com/dianlight/srat/issues/100)
+- HDD Spin down [#101](https://github.com/dianlight/srat/issues/101)
 
 ### 🐛 Bug Fixes
 
@@ -42,9 +40,7 @@
 - Fix dianlight/hassio-addons#447 [SambaNAS2] Unable to mount external drive
 - **Disk Stats Service**: Changed log level from `Error` to `Warn` for disk stats update failures to reduce log noise and better distinguish between critical errors and warnings
 - **SQLite concurrency lock (SQLITE_BUSY) resolved [#164](https://github.com/dianlight/srat/issues/164)**: Hardened database configuration to prevent intermittent "database is locked" errors when reading mount points under concurrent load. Changes include enabling WAL mode, setting `busy_timeout=5000ms`, using `synchronous=NORMAL`, and constraining the connection pool to a single open/idle connection. Added repository-level RWMutex guards and a concurrency stress test.
-
-#### **🚧 Work in progress**
-- [x] Addon protected mode check [#85](https://github.com/dianlight/srat/issues/85)
+- Addon protected mode check [#85](https://github.com/dianlight/srat/issues/85)
 
 ### 🏗 Chore
 
@@ -52,6 +48,8 @@
 - Align UI elements to HA [#81](https://github.com/dianlight/srat/issues/81)
 - Create the base documentation [#80](https://github.com/dianlight/srat/issues/80)
 - Display version from ADDON
+
+#### **🚧 Work in progress**
 
 ## 2025.06.1-dev.801 [ 🧪 Pre-release ]
 

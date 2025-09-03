@@ -3,13 +3,11 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-import Paper from "@mui/material/Paper";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
+import { TreeItem } from "@mui/x-tree-view/TreeItem";
+import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import Box from "@mui/material/Box";
 
 export interface PreviewDialogProps {
 	open: boolean;
@@ -27,6 +25,12 @@ export function PreviewDialog(props: PreviewDialogProps) {
 
 	return (
 		<Dialog
+			sx={{
+				"& .MuiDialogContent-root": {
+					p: 0,
+				},
+			}}
+			maxWidth="md"
 			open={open}
 			onClose={handleClose}
 			aria-labelledby="alert-dialog-title"
@@ -34,7 +38,7 @@ export function PreviewDialog(props: PreviewDialogProps) {
 		>
 			<DialogTitle id="alert-dialog-title">Debug: {props.title}</DialogTitle>
 			<DialogContent>
-				<ObjectTable object={props.objectToDisplay} key={0} />
+				<ObjectTree object={props.objectToDisplay} />
 			</DialogContent>
 			<DialogActions>
 				<Button onClick={handleClose} autoFocus>
@@ -45,77 +49,169 @@ export function PreviewDialog(props: PreviewDialogProps) {
 	);
 }
 
-function ObjectField(props: { value: any; id?: string; nkey?: string }) {
-	//console.log("ObjectField got", props.nkey, props.value, typeof props.value)
-	if (props.value === undefined || props.value === null || props.value === "") {
-		return <></>;
-	} else if (
-		typeof props.value === "string" ||
-		typeof props.value === "number"
-	) {
-		return (
-			<TableRow key={`${props.id}-${props.nkey}`}>
-				<TableCell>{props.nkey}</TableCell>
-				<TableCell align="right">{props.value}</TableCell>
-			</TableRow>
-		);
-	} else if (typeof props.value === "boolean") {
-		return (
-			<TableRow key={`${props.id}-${props.nkey}`}>
-				<TableCell>{props.nkey}</TableCell>
-				<TableCell align="right">{props.value ? "Yes" : "No"}</TableCell>
-			</TableRow>
-		);
-	} else if (Array.isArray(props.value)) {
-		return props.value.map((item, index) => (
-			<ObjectField
-				value={item}
-				key={`${props.id}.${index}`}
-				id={`${props.id}.${index}`}
-				nkey={props.nkey}
-			/>
-		));
-	} else if (typeof props.value === "object") {
-		return Object.getOwnPropertyNames(props.value).map((sel, index) => {
-			//console.log("ObjectField", sel, Object.getOwnPropertyDescriptor(props.value, sel)?.value)
-			return (
-				<ObjectField
-					value={Object.getOwnPropertyDescriptor(props.value, sel)?.value}
-					key={`${props.id}.${index}`}
-					id={`${props.id}.${index}`}
-					nkey={(props.nkey !== undefined ? `${props.nkey}.` : "") + sel}
-				/>
-			);
-		});
-	} else {
-		return (
-			<TableRow key={`unk.${props.id}`}>
-				<TableCell>Unknown type: {typeof props.value}</TableCell>
-			</TableRow>
-		);
-	}
+// Utility functions for privacy and security
+const SENSITIVE_KEYWORDS = [
+	'password', 'pass', 'pwd', 'secret', 'token', 'key', 'auth', 'credential',
+	'private', 'confidential', 'secure', 'api_key', 'apikey', 'access_token',
+	'refresh_token', 'jwt', 'bearer', 'authorization', 'salt', 'hash'
+];
+
+function isSensitiveField(label: string): boolean {
+	const lowerLabel = label.toLowerCase();
+	return SENSITIVE_KEYWORDS.some(keyword =>
+		lowerLabel.includes(keyword)
+	);
 }
 
-export function ObjectTable(props: {
+function censorValue(value: any): string {
+	if (typeof value === 'string') {
+		return '*'.repeat(Math.min(value.length, 8));
+	}
+	return '*'.repeat(8);
+}
+
+function ObjectTreeNode(props: { value: any; nodeId: string; label: string }) {
+	const { value, nodeId, label } = props;
+
+	if (value === undefined || value === null || value === "") {
+		return null;
+	}
+
+	const isSensitive = isSensitiveField(label);
+
+	if (typeof value === "string" || typeof value === "number") {
+		const displayValue = isSensitive ? censorValue(value) : value;
+		const valueColor = isSensitive ? 'error.main' : 'text.primary';
+
+		return (
+			<TreeItem
+				itemId={nodeId}
+				label={
+					<Box component="span">
+						<Box component="span" sx={{ color: 'primary.main', fontWeight: 'medium' }}>
+							{label}
+						</Box>
+						<Box component="span" sx={{ color: valueColor, fontFamily: isSensitive ? 'monospace' : 'inherit' }}>
+							: {displayValue}
+						</Box>
+						<Box component="span" sx={{ color: 'text.secondary', fontSize: '0.875em' }}>
+							{' '}({typeof value}{isSensitive ? ', censored' : ''})
+						</Box>
+					</Box>
+				}
+			/>
+		);
+	}
+
+	if (typeof value === "boolean") {
+		return (
+			<TreeItem
+				itemId={nodeId}
+				label={
+					<Box component="span">
+						<Box component="span" sx={{ color: 'primary.main', fontWeight: 'medium' }}>
+							{label}
+						</Box>
+						<Box component="span" sx={{ color: 'text.primary' }}>
+							: {value ? "Yes" : "No"}
+						</Box>
+						<Box component="span" sx={{ color: 'text.secondary', fontSize: '0.875em' }}>
+							{' '}(boolean)
+						</Box>
+					</Box>
+				}
+			/>
+		);
+	}
+
+	if (Array.isArray(value)) {
+		return (
+			<TreeItem
+				itemId={nodeId}
+				label={
+					<Box component="span">
+						<Box component="span" sx={{ color: 'primary.main', fontWeight: 'medium' }}>
+							{label}
+						</Box>
+						<Box component="span" sx={{ color: 'text.secondary', fontSize: '0.875em' }}>
+							{' '}(array[{value.length}])
+						</Box>
+					</Box>
+				}
+			>
+				{value.map((item, index) => (
+					<ObjectTreeNode
+						key={`${nodeId}.${index}`}
+						value={item}
+						nodeId={`${nodeId}.${index}`}
+						label={`[${index}]`}
+					/>
+				))}
+			</TreeItem>
+		);
+	}
+
+	if (typeof value === "object") {
+		const keys = Object.getOwnPropertyNames(value);
+		return (
+			<TreeItem
+				itemId={nodeId}
+				label={
+					<Box component="span">
+						<Box component="span" sx={{ color: 'primary.main', fontWeight: 'medium' }}>
+							{label}
+						</Box>
+						<Box component="span" sx={{ color: 'text.secondary', fontSize: '0.875em' }}>
+							{' '}(object)
+						</Box>
+					</Box>
+				}
+			>
+				{keys.map((key, index) => (
+					<ObjectTreeNode
+						key={`${nodeId}.${index}`}
+						value={Object.getOwnPropertyDescriptor(value, key)?.value}
+						nodeId={`${nodeId}.${index}`}
+						label={key}
+					/>
+				))}
+			</TreeItem>
+		);
+	}
+
+	return (
+		<TreeItem
+			itemId={nodeId}
+			label={
+				<Box component="span">
+					<Box component="span" sx={{ color: 'primary.main', fontWeight: 'medium' }}>
+						{label}
+					</Box>
+					<Box component="span" sx={{ color: 'text.secondary', fontSize: '0.875em' }}>
+						: Unknown type ({typeof value})
+					</Box>
+				</Box>
+			}
+		/>
+	);
+}
+
+export function ObjectTree(props: {
 	object: object | Array<any> | null | undefined;
 }) {
+	if (!props.object) {
+		return <Box p={2}>No data to display</Box>;
+	}
+
 	return (
-		<TableContainer component={Paper}>
-			<Table stickyHeader aria-label="Property table" size="small">
-				<TableHead>
-					<TableRow>
-						<TableCell>Property</TableCell>
-						<TableCell align="right">Value</TableCell>
-					</TableRow>
-				</TableHead>
-				<TableBody>
-					{props.object ? (
-						<ObjectField value={props.object || {}} id={"0"} />
-					) : (
-						<></>
-					)}
-				</TableBody>
-			</Table>
-		</TableContainer>
+		<SimpleTreeView
+			sx={{ flexGrow: 1, maxWidth: '100%', overflowY: 'auto', p: 1 }}
+		>
+			<ObjectTreeNode
+				value={props.object}
+				nodeId="root"
+				label="Root"
+			/>
+		</SimpleTreeView>
 	);
 }
