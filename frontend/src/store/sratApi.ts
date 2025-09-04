@@ -743,6 +743,7 @@ export type ProcessStatus = {
 export type SambaProcessStatus = {
   nmbd: ProcessStatus;
   smbd: ProcessStatus;
+  srat: ProcessStatus;
   wsdd2: ProcessStatus;
 };
 export type Value = {

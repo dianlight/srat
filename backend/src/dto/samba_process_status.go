@@ -20,5 +20,6 @@ type SambaProcessStatus struct {
 	Smbd  ProcessStatus `json:"smbd"`
 	Nmbd  ProcessStatus `json:"nmbd"`
 	Wsdd2 ProcessStatus `json:"wsdd2"`
-	//Avahi ProcessStatus `json:"avahi"`
+	Srat  ProcessStatus `json:"srat"`
+	// Hdidle ProcessStatus `json:"hdidle"`
 }

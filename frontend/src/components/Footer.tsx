@@ -65,6 +65,10 @@ export function Footer() {
 								{evdata?.heartbeat?.samba_process_status?.nmbd?.pid || "off"} |
 								wsdd2{" "}
 								{evdata?.heartbeat?.samba_process_status?.wsdd2?.pid || "off"}
+								| srat{" "}
+								{evdata?.heartbeat?.samba_process_status?.srat?.pid || "off"}
+								{/* | avahi{" "}
+								{evdata?.heartbeat?.samba_process_status?.avahi?.pid || "off"} */}
 							</Typography>
 						</Tooltip>
 					)}

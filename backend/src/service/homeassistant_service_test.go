@@ -126,7 +126,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntity() {
 			MemoryPercent: 0.3,
 		},
 		Wsdd2: dto.ProcessStatus{IsRunning: false},
-		//Avahi: dto.ProcessStatus{IsRunning: false},
+		Srat:  dto.ProcessStatus{IsRunning: false},
 	}
 
 	// Act - should not panic or return error when client is nil
@@ -158,7 +158,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntityDisa
 			MemoryPercent: 0.3,
 		},
 		Wsdd2: dto.ProcessStatus{IsRunning: false},
-		//Avahi: dto.ProcessStatus{IsRunning: false},
+		Srat:  dto.ProcessStatus{IsRunning: false},
 	}
 
 	// Act - should not panic or return error when client is nil

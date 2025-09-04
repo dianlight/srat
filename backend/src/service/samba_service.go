@@ -204,9 +204,9 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 		Wsdd2: dto.ProcessStatus{
 			Pid: -1,
 		},
-		//Avahi: dto.ProcessStatus{
-		//	Pid: -1,
-		//},
+		Srat: dto.ProcessStatus{
+			Pid: int32(os.Getpid()),
+		},
 	}
 	var conv converter.ProcessToDtoImpl
 	var allProcess, err = process.Processes()
@@ -226,8 +226,8 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 			conv.ProcessToProcessStatus(p, &spc.Nmbd)
 		case "wsdd2":
 			conv.ProcessToProcessStatus(p, &spc.Wsdd2)
-			//case "avahi-daemon":
-			//	conv.ProcessToProcessStatus(p, &spc.Avahi)
+		case "srat-server":
+			conv.ProcessToProcessStatus(p, &spc.Srat)
 		}
 	}
 	return &spc, nil

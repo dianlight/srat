@@ -691,12 +691,15 @@ components:
           $ref: "#/components/schemas/ProcessStatus"
         smbd:
           $ref: "#/components/schemas/ProcessStatus"
+        srat:
+          $ref: "#/components/schemas/ProcessStatus"
         wsdd2:
           $ref: "#/components/schemas/ProcessStatus"
       required:
         - smbd
         - nmbd
         - wsdd2
+        - srat
       type: object
     SambaServerID:
       additionalProperties: false
@@ -1417,8 +1420,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -1562,8 +1565,8 @@ paths:
     put:
       operationId: put-api-restart
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -2042,8 +2045,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -2692,8 +2695,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3236,8 +3239,8 @@ paths:
             default: false
             description: Lazy umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
