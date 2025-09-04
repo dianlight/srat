@@ -35,7 +35,7 @@ require (
 	github.com/rollbar/rollbar-go v1.4.8
 	github.com/samber/slog-formatter v1.2.0
 	github.com/samber/slog-http v1.8.1
-	github.com/samber/slog-multi v1.4.1
+	github.com/samber/slog-multi v1.5.0
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
@@ -156,7 +156,7 @@ require (
 	github.com/lmittmann/tint v1.1.2
 	github.com/ovechkin-dm/mockio/v2 v2.0.3
 	github.com/rs/cors v1.11.1
-	github.com/snapcore/snapd v0.0.0-20250901131804-e0a18705bcdb
+	github.com/snapcore/snapd v0.0.0-20250904190018-d68050ab984a
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.15.0
 	github.com/xorcare/pointer v1.2.2
@@ -164,7 +164,7 @@ require (
 	go.uber.org/fx v1.24.0
 	golang.org/x/time v0.12.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/gorm v1.30.2
+	gorm.io/gorm v1.30.3
 	moul.io/banner v1.0.1
 )
 
@@ -177,5 +177,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
