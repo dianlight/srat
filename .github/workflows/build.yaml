@@ -207,7 +207,7 @@ jobs:
         # CRITICAL IMPROVEMENT: This step is now safer.
         # It will ONLY run if the tag already exists AND it's a dev build (version contains '.dev').
         # This prevents accidentally moving a final release tag.
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         if: |
           github.event_name != 'pull_request' &&
           steps.checkTag.outputs.exists == 'true' &&
@@ -223,7 +223,7 @@ jobs:
             })
 
       - name: Create tag ${{ needs.setversion.outputs.version }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         if: ${{ github.event_name != 'pull_request' && steps.checkTag.outputs.exists == 'false' }}
         with:
           script: |
