@@ -3,9 +3,9 @@ index 2fd1451..cf80af7 100644
 --- a/proc_master.go
 +++ b/proc_master.go
 @@ -22,7 +22,7 @@ import (
-
+ 
  var tmpBinPath = filepath.Join(os.TempDir(), "overseer-"+token()+extension())
-
+ 
 -//a overseer master process
 +// a overseer master process
  type master struct {
@@ -23,7 +23,7 @@ index 2fd1451..cf80af7 100644
 @@ -176,7 +176,7 @@ func (mp *master) retreiveFileDescriptors() error {
  	return nil
  }
-
+ 
 -//fetchLoop is run in a goroutine
 +// fetchLoop is run in a goroutine
  func (mp *master) fetchLoop() {
@@ -41,7 +41,7 @@ index 2fd1451..cf80af7 100644
 @@ -331,7 +331,7 @@ func (mp *master) triggerRestart() {
  	}
  }
-
+ 
 -//not a real fork
 +// not a real fork
  func (mp *master) forkLoop() error {
@@ -53,7 +53,7 @@ index 4f64e14..ba655a5 100644
 +++ b/proc_slave.go
 @@ -103,7 +103,7 @@ func (sp *slave) initFileDescriptors() error {
  }
-
+ 
  func (sp *slave) watchSignal() {
 -	signals := make(chan os.Signal)
 +	signals := make(chan os.Signal, 1)
