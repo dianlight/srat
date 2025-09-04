@@ -26,7 +26,7 @@ import { type Partition } from "../../../store/sratApi";
 
 interface PartitionActionsProps {
 	partition: Partition;
-	read_only: boolean;
+	protected_mode: boolean;
 	onToggleAutomount: (partition: Partition) => void;
 	onMount: (partition: Partition) => void;
 	onViewSettings: (partition: Partition) => void;
@@ -37,7 +37,7 @@ interface PartitionActionsProps {
 
 export function PartitionActions({
 	partition,
-	read_only,
+	protected_mode,
 	onToggleAutomount,
 	onMount,
 	onViewSettings,
@@ -80,12 +80,13 @@ export function PartitionActions({
 	const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
 
 	if (
-		read_only ||
+		protected_mode ||
 		//partition.system ||
 		partition.name?.startsWith("hassos-") ||
 		(partition.host_mount_point_data &&
 			partition.host_mount_point_data.length > 0)
 	) {
+		console.log("Partition is read-only or system partition", protected_mode, partition);
 		return null;
 	}
 

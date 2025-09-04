@@ -33,6 +33,7 @@ import {
 	Telemetry_mode,
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/sseApi";
+import { Padding } from "@mui/icons-material";
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
@@ -190,13 +191,15 @@ export function Settings() {
 				spacing={2}
 				sx={[
 					(theme) => ({
-
 						backgroundColor: theme.vars?.palette.background.default,
 					}),
 					(theme) =>
 						theme.applyStyles('dark', {
 							backgroundColor: theme.vars?.palette.grey[900],
 						}),
+					(theme) => ({
+						padding: theme.spacing(2),
+					}),
 				]}
 				data-tutor={`reactour__tab${TabIDs.SETTINGS}__step0`}
 			>

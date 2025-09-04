@@ -616,7 +616,7 @@ export function Volumes() {
 																	secondaryAction={
 																		<PartitionActions
 																			partition={partition}
-																			read_only={evdata?.hello?.read_only || true}
+																			protected_mode={evdata?.hello?.protected_mode === true}
 																			onToggleAutomount={
 																				handleToggleAutomount
 																			}
