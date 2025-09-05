@@ -32,6 +32,7 @@ if (values.overwite && values.overwite?.trim() !== "TEST_INTERNAL") {
 	newVersion = semver.inc(
 		packageJson.version,
 		values.releaseType as semver.ReleaseType,
+		true,
 		values.identifier,
 	);
 }
