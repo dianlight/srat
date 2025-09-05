@@ -34,19 +34,6 @@ jobs:
         with:
           fetch-depth: 0 # fetch-depth: 0 is required for git commands to see all history/tags
 
-#      - name: Install GitHub CLI
-#        shell: bash
-#        if: ${{ env.ACT && runner.os == 'Linux' }}
-#        run: |
-#          (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
-#            && sudo mkdir -p -m 755 /etc/apt/keyrings \
-#            && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-#            && cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-#            && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-#            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-#            && sudo apt update \
-#            && sudo apt install gh -y
-
       - name: Calculate version
         id: calculate_version
         run: |
@@ -211,7 +198,7 @@ jobs:
         if: |
           github.event_name != 'pull_request' &&
           steps.checkTag.outputs.exists == 'true' &&
-          contains(needs.setversion.outputs.version, '.dev')
+          contains(needs.setversion.outputs.version, '-dev')
         with:
           script: |
             github.rest.git.updateRef({
