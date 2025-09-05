@@ -49,13 +49,13 @@ repos:
         stages: [post-commit]
         pass_filenames: true
 
-      - id: update-frontend-package-version
-        name: Update frontend package.json version from git tag
-        stages: [pre-commit]
-        entry: ./scripts/update-frontend-version.sh
-        language: system
-        files: '^frontend/package\.json$'
-        pass_filenames: false
+      #- id: update-frontend-package-version
+      #  name: Update frontend package.json version from git tag
+      #  stages: [pre-commit]
+      #  entry: ./scripts/update-frontend-version.sh
+      #  language: system
+      #  files: '^frontend/package\.json$'
+      #  pass_filenames: false
 
       - id: validate-links-format
         name: Validate link formats
