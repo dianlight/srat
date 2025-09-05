@@ -154,28 +154,39 @@ function ObjectTreeNode(props: { value: any; nodeId: string; label: string }) {
 	if (typeof value === "object") {
 		const keys = Object.getOwnPropertyNames(value);
 		return (
-			<TreeItem
-				itemId={nodeId}
-				label={
-					<Box component="span">
-						<Box component="span" sx={{ color: 'primary.main', fontWeight: 'medium' }}>
-							{label}
-						</Box>
-						<Box component="span" sx={{ color: 'text.secondary', fontSize: '0.875em' }}>
-							{' '}(object)
-						</Box>
-					</Box>
-				}
-			>
-				{keys.map((key, index) => (
+			<>
+				{nodeId === "root" ? keys.map((key, index) => (
 					<ObjectTreeNode
 						key={`${nodeId}.${index}`}
 						value={Object.getOwnPropertyDescriptor(value, key)?.value}
 						nodeId={`${nodeId}.${index}`}
 						label={key}
 					/>
-				))}
-			</TreeItem>
+				)) : (
+					<TreeItem
+						itemId={nodeId}
+						label={
+							<Box component="span">
+								<Box component="span" sx={{ color: 'primary.main', fontWeight: 'medium' }}>
+									{label}
+								</Box>
+								<Box component="span" sx={{ color: 'text.secondary', fontSize: '0.875em' }}>
+									{' '}(object)
+								</Box>
+							</Box>
+						}
+					>
+						{keys.map((key, index) => (
+							<ObjectTreeNode
+								key={`${nodeId}.${index}`}
+								value={Object.getOwnPropertyDescriptor(value, key)?.value}
+								nodeId={`${nodeId}.${index}`}
+								label={key}
+							/>
+						))}
+					</TreeItem>
+				)}
+			</>
 		);
 	}
 

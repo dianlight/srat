@@ -996,22 +996,66 @@ components:
     SmartInfo:
       additionalProperties: false
       properties:
+        disk_type:
+          enum:
+            - SATA
+            - NVMe
+            - SCSI
+            - Unknown
+          type: string
+        others:
+          additionalProperties:
+            $ref: "#/components/schemas/SmartRangeValue"
+          type: object
         power_cycle_count:
-          format: int64
-          minimum: 0
-          type: integer
+          $ref: "#/components/schemas/SmartRangeValue"
         power_on_hours:
-          format: int64
-          minimum: 0
-          type: integer
+          $ref: "#/components/schemas/SmartRangeValue"
         temperature:
-          format: int64
-          minimum: 0
-          type: integer
+          $ref: "#/components/schemas/SmartTempValue"
       required:
         - temperature
         - power_on_hours
         - power_cycle_count
+      type: object
+    SmartRangeValue:
+      additionalProperties: false
+      properties:
+        code:
+          format: int64
+          type: integer
+        min:
+          format: int64
+          type: integer
+        thresholds:
+          format: int64
+          type: integer
+        value:
+          format: int64
+          type: integer
+        worst:
+          format: int64
+          type: integer
+      required:
+        - value
+      type: object
+    SmartTempValue:
+      additionalProperties: false
+      properties:
+        max:
+          format: int64
+          type: integer
+        min:
+          format: int64
+          type: integer
+        overtemp_counter:
+          format: int64
+          type: integer
+        value:
+          format: int64
+          type: integer
+      required:
+        - value
       type: object
     SmbConf:
       additionalProperties: false
@@ -2460,8 +2504,8 @@ paths:
     get:
       operationId: list-api-shares
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2785,8 +2829,8 @@ paths:
     get:
       operationId: get-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2917,8 +2961,8 @@ paths:
     post:
       operationId: post-api-user
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -2978,8 +3022,8 @@ paths:
             maxLength: 30
             minimum: 1
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -3239,8 +3283,8 @@ paths:
             default: false
             description: Lazy umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3389,8 +3433,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -3438,8 +3482,8 @@ paths:
     get:
       operationId: list-api-volumes
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:

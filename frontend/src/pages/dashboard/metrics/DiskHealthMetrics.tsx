@@ -22,6 +22,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import type { DiskHealth, DiskIoStats } from "../../../store/sratApi";
 import { filesize } from "filesize";
+import { PreviewDialog } from "../../../components/PreviewDialog";
 
 const MAX_HISTORY_LENGTH = 10;
 
@@ -31,6 +32,7 @@ export function DiskHealthMetrics({
 	diskHealth: DiskHealth | undefined;
 }) {
 	const theme = useTheme();
+	const [selectedIoStats, setSelectedIoStats] = useState<DiskIoStats | null>(null);
 
 	const [diskIoHistory, setDiskIoHistory] = useState<Record<string, {
 		read_iops: number[];
@@ -85,7 +87,7 @@ export function DiskHealthMetrics({
 				);
 				newHistory[deviceName].temperature = updateHistory(
 					newHistory[deviceName].temperature,
-					io.smart_data?.temperature ?? 0,
+					io.smart_data?.temperature?.value ?? 0,
 				);
 			});
 			return newHistory;
@@ -93,6 +95,12 @@ export function DiskHealthMetrics({
 	}, [diskHealth]);
 	return (
 		<>
+			<PreviewDialog
+				objectToDisplay={selectedIoStats}
+				onClose={() => setSelectedIoStats(null)}
+				open={!!selectedIoStats}
+				title={`Detailed I/O Stats - ${selectedIoStats?.device_description} (${selectedIoStats?.device_name})`}
+			/>
 			<TableContainer component={Paper}>
 				<Table aria-label="disk health table" size="small">
 					<TableHead>
@@ -103,13 +111,13 @@ export function DiskHealthMetrics({
 							<TableCell align="right">Writes IOP/s</TableCell>
 							<TableCell align="right">Read Latency (ms)</TableCell>
 							<TableCell align="right">Write Latency (ms)</TableCell>
-							<TableCell align="right">Temperature (°C)</TableCell>
+							<TableCell align="right">Temperature (°C / Max °C)</TableCell>
 						</TableRow>
 					</TableHead>
 					<TableBody>
 						{diskHealth?.per_disk_io?.map((io) => (
 							<TableRow key={io.device_name}>
-								<TableCell component="th" scope="row">
+								<TableCell component="th" scope="row" sx={{ cursor: "pointer" }} onClick={() => setSelectedIoStats(io)}>
 									{io.device_description}
 								</TableCell>
 								<TableCell component="th" scope="row">
@@ -247,7 +255,7 @@ export function DiskHealthMetrics({
 											variant="body2"
 											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
 										>
-											{io.smart_data?.temperature ? `${io.smart_data.temperature}°C` : "N/A"}
+											{io.smart_data?.temperature?.value ? `${io.smart_data.temperature.value}°C` : "N/A"} / {io.smart_data?.temperature?.max ? `${io.smart_data.temperature.max}°C` : "N/A"}
 										</Typography>
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.temperature?.length || 0) > 1 ? (
