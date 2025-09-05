@@ -25,7 +25,6 @@ func main() {
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	output := flag.String("out", "./docs/", "Output directory where create openapi.* files")
 	mockMode := flag.Bool("mock", true, "Use mock data for generation")
-	internal.Banner("srat-openapi")
 
 	// Set mock mode for OpenAPI generation
 	if *mockMode {
@@ -37,6 +36,8 @@ func main() {
 	}
 
 	flag.Parse()
+
+	internal.Banner("srat-openapi")
 
 	err := tlog.SetLevelFromString(*logLevelString)
 	if err != nil {

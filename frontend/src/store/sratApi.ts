@@ -673,10 +673,27 @@ export type GlobalDiskStats = {
   total_read_latency_ms: number;
   total_write_latency_ms: number;
 };
+export type SmartRangeValue = {
+  code?: number;
+  min?: number;
+  thresholds?: number;
+  value: number;
+  worst?: number;
+};
+export type SmartTempValue = {
+  max?: number;
+  min?: number;
+  overtemp_counter?: number;
+  value: number;
+};
 export type SmartInfo = {
-  power_cycle_count: number;
-  power_on_hours: number;
-  temperature: number;
+  disk_type?: Disk_type;
+  others?: {
+    [key: string]: SmartRangeValue;
+  };
+  power_cycle_count: SmartRangeValue;
+  power_on_hours: SmartRangeValue;
+  temperature: SmartTempValue;
 };
 export type DiskIoStats = {
   device_description: string;
@@ -986,6 +1003,12 @@ export type Disk = {
   size?: number;
   vendor?: string;
 };
+export enum Disk_type {
+  Sata = "SATA",
+  NvMe = "NVMe",
+  Scsi = "SCSI",
+  Unknown = "Unknown",
+}
 export enum Severity {
   Error = "error",
   Warning = "warning",

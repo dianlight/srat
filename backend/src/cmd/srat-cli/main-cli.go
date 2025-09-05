@@ -102,6 +102,11 @@ func main() {
 
 	flag.Parse()
 
+	err := tlog.SetLevelFromString(*logLevelString)
+	if err != nil {
+		log.Fatalf("Invalid log level: %s", *logLevelString)
+	}
+
 	if !*silentMode {
 		internal.Banner("srat-cli")
 	}
@@ -137,11 +142,6 @@ func main() {
 		slog.Error("Unknwon command", "command", command)
 		flag.Usage()
 		os.Exit(1)
-	}
-
-	err := tlog.SetLevelFromString(*logLevelString)
-	if err != nil {
-		log.Fatalf("Invalid log level: %s", *logLevelString)
 	}
 
 	slog.Debug("Startup Options", "Flags", os.Args)

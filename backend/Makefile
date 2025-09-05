@@ -84,6 +84,12 @@ gosec:
 # Alias
 security: gosec
 
+.PHONY: dev_version
+.ONESHELL:
+dev_version:
+	mkdir ./tmp > /dev/null 2>&1 || :
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug -ha-url $(SUPERVISOR_URL) version
+
 .PHONY: dev_cli
 .ONESHELL:
 dev_cli:

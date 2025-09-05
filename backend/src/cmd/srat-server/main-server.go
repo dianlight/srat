@@ -70,16 +70,16 @@ func main() {
 	updateFilePath = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
 	addonIpAddress = flag.String("ip-address", "127.0.0.1", "Addon IP address // $(bashio::addon.ip_address)")
 
-	flag.Usage = func() {
-		internal.Banner("srat")
-		flag.PrintDefaults()
-	}
-
 	flag.Parse()
 
 	err := tlog.SetLevelFromString(*logLevelString)
 	if err != nil {
 		log.Fatalf("Invalid log level: %s", *logLevelString)
+	}
+
+	flag.Usage = func() {
+		internal.Banner("srat")
+		flag.PrintDefaults()
 	}
 
 	if *singleInstance {
