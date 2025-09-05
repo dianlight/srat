@@ -75,7 +75,7 @@ jobs:
 
           # Determine which pre-releases to delete
           if [ "$num_prereleases" -gt "$KEEP_COUNT" ]; then
-            releases_to_delete="${prerelease_tags[@]:KEEP_COUNT}"
+            releases_to_delete=("${prerelease_tags[@]:$KEEP_COUNT}")
             echo "Identified the following pre-releases for deletion (keeping latest $KEEP_COUNT):"
             echo "$releases_to_delete"
             echo ""
@@ -90,3 +90,4 @@ jobs:
           else
             echo "No old pre-releases to delete (found $num_prereleases, keeping $KEEP_COUNT)."
           fi
+
