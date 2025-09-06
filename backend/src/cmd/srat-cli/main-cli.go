@@ -107,6 +107,15 @@ func main() {
 		log.Fatalf("Invalid log level: %s", *logLevelString)
 	}
 
+	// Test Logger
+	/*
+		tlog.Trace("Trace log")
+		tlog.Debug("Debug log")
+		tlog.Info("Info log")
+		tlog.Warn("Warn log")
+		tlog.Error("Error log")
+	*/
+
 	if !*silentMode {
 		internal.Banner("srat-cli")
 	}
