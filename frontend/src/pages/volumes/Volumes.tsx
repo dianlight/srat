@@ -153,7 +153,7 @@ export function Volumes() {
 		// Ensure device is included in submitData if required by API
 		const submitData: MountPointData = {
 			...data,
-			device: selected.device,
+			device: selected.device_path,
 		};
 		//console.log("Submitting Mount Data:", submitData);
 
@@ -231,7 +231,7 @@ export function Volumes() {
 
 		confirm({
 			title: `Unmount ${displayName}?`,
-			description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${displayName} (${partition.device}) mounted at ${mountData.path}?`,
+			description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${displayName} (${partition.legacy_device_name}) mounted at ${mountData.path}?`,
 			confirmationText: force ? "Force Unmount" : "Unmount",
 			cancellationText: "Cancel",
 			confirmationButtonProps: { color: force ? "error" : "primary" },
@@ -713,9 +713,9 @@ export function Volumes() {
 																						variant="outlined"
 																					/>
 																				)}
-																				{partition.device && (
+																				{partition.legacy_device_name && (
 																					<Chip
-																						label={`Dev: ${partition.device}`}
+																						label={`Dev: ${partition.legacy_device_name}`}
 																						size="small"
 																						variant="outlined"
 																					/>

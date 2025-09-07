@@ -22,31 +22,31 @@ type ConfigToDbomConverter interface {
 	// goverter:context users
 	ShareToExportedShareNoMountPointPath(source config.Share, target *dbom.ExportedShare, users *dbom.SambaUsers) error
 
-	// goverter:update target
-	// goverter:ignore Flags DeviceId
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt IsToMountAtStartup
-	// goverter:ignore Data Shares
-	// goverter:map FS FSType
-	// goverter:map Path Device | PathToSource
-	// goverter:map Path Type | pathToType
-	ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error
+	// g.overter:update target
+	// g.overter:ignore Flags
+	// g.overter:ignore CreatedAt UpdatedAt DeletedAt IsToMountAtStartup
+	// g.overter:ignore Data Shares
+	// g.overter:map FS FSType
+	// g.overter:map Path Device | PathToSource
+	// g.overter:map Path Type | pathToType
+	// ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error
 
 	// goverter:update target
 	// goverter:map MountPointData.Path Path
 	// goverter:map MountPointData.FSType FS
 	ExportedShareToShare(source dbom.ExportedShare, target *config.Share) error
 
-	// goverter:update target
-	// goverter:ignore IsAdmin
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt  RwShares RoShares
-	UserToUSambaUser(source config.User, target *dbom.SambaUser) error
+	// g.overter:update target
+	// g.overter:ignore IsAdmin
+	// g.overter:ignore CreatedAt UpdatedAt DeletedAt  RwShares RoShares
+	//UserToUSambaUser(source config.User, target *dbom.SambaUser) error
 
 	// goverter:update target
 	SambaUserToUser(source dbom.SambaUser, target *config.User) error
 
-	// goverter:update target
-	// goverter:ignore IsAdmin CreatedAt UpdatedAt DeletedAt RwShares RoShares
-	ConfigToSambaUser(source config.Config, target *dbom.SambaUser) error
+	// g.overter:update target
+	// g.overter:ignore IsAdmin CreatedAt UpdatedAt DeletedAt RwShares RoShares
+	//ConfigToSambaUser(source config.Config, target *dbom.SambaUser) error
 }
 
 // goverter:context users

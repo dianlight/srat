@@ -12,7 +12,7 @@ import (
 
 type SmartServiceSuite struct {
 	suite.Suite
-	service SmartService
+	service SmartServiceInterface
 }
 
 func (suite *SmartServiceSuite) SetupTest() {

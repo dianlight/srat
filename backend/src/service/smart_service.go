@@ -20,7 +20,7 @@ const (
 	smartCacheCleanup   = 10 * time.Minute
 )
 
-type SmartService interface {
+type SmartServiceInterface interface {
 	GetSmartInfo(deviceName string) (*dto.SmartInfo, errors.E)
 }
 
@@ -29,7 +29,7 @@ type smartService struct {
 	mutex sync.Mutex
 }
 
-func NewSmartService() SmartService {
+func NewSmartService() SmartServiceInterface {
 	return &smartService{
 		cache: gocache.New(smartCacheExpiry, smartCacheCleanup),
 	}

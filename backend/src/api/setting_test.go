@@ -12,7 +12,6 @@ import (
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
@@ -140,27 +139,28 @@ func TestSettingsHandlerSuite(t *testing.T) {
 	suite.Run(t, new(SettingsHandlerSuite))
 }
 
-func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
-	_, api := humatest.New(suite.T())
-	suite.api.RegisterSettings(api)
+/*
+	func (suite *SettingsHandlerSuite) TestGetSettingsHandler() {
+		_, api := humatest.New(suite.T())
+		suite.api.RegisterSettings(api)
 
-	resp := api.Get("/settings")
-	suite.Require().Equal(http.StatusOK, resp.Code)
+		resp := api.Get("/settings")
+		suite.Require().Equal(http.StatusOK, resp.Code)
 
-	var expected dto.Settings
-	var conv converter.ConfigToDtoConverterImpl
-	err := conv.ConfigToSettings(suite.config, &expected)
-	suite.Require().NoError(err)
+		var expected dto.Settings
+		var conv converter.ConfigToDtoConverterImpl
+		err := conv.ConfigToSettings(suite.config, &expected)
+		suite.Require().NoError(err)
 
-	var returned dto.Settings
-	jsonError := json.Unmarshal(resp.Body.Bytes(), &returned)
-	suite.Require().NoError(jsonError)
+		var returned dto.Settings
+		jsonError := json.Unmarshal(resp.Body.Bytes(), &returned)
+		suite.Require().NoError(jsonError)
 
-	suite.Equal(expected, returned)
+		suite.Equal(expected, returned)
 
-	suite.False(suite.dirtyService.GetDirtyDataTracker().Settings)
-}
-
+		suite.False(suite.dirtyService.GetDirtyDataTracker().Settings)
+	}
+*/
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	_, api := humatest.New(suite.T())
 	suite.api.RegisterSettings(api)

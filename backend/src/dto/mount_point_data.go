@@ -10,7 +10,8 @@ type MountPointData struct {
 	FSType             *string             `json:"fstype,omitempty"`
 	Flags              *MountFlags         `json:"flags,omitempty"`
 	CustomFlags        *MountFlags         `json:"custom_flags,omitempty"`
-	Device             string              `json:"device,omitempty" read-only:"true"` // Source Device source of the filesystem (e.g. /dev/sda1).
+	DeviceId           string              `json:"device_id,omitempty" read-only:"true"` // Source Device source of the filesystem (e.g. /dev/sda1).
+	Partition          *Partition          `json:"partition,omitempty" read-only:"true"` // Partition object ephemeral
 	IsMounted          bool                `json:"is_mounted,omitempty" read-only:"true"`
 	IsInvalid          bool                `json:"invalid,omitempty" read-only:"true"`
 	IsToMountAtStartup *bool               `json:"is_to_mount_at_startup,omitempty"`              // If true, mount point should be mounted at startup.

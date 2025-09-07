@@ -152,13 +152,13 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.Shared
 	return nil
 }
 
-func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) errors.E {
+func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource, disks []dto.Disk) errors.E {
 	err := c.ExportedShareToSharedResourceNoMountPointData(source, target)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	target.MountPointData = &dto.MountPointData{}
-	err = c.MountPointPathToMountPointData(source.MountPointData, target.MountPointData)
+	err = c.MountPointPathToMountPointData(source.MountPointData, target.MountPointData, disks)
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -2,8 +2,14 @@ package dto
 
 // Disk defines model for  Disk.
 type Disk struct {
+	// Device Special device file for the drive (e.g. sda).
+	LegacyDeviceName *string `json:"legacy_device_name,omitempty"`
+
 	// Device Special device file for the drive (e.g. /dev/sda).
-	Device *string `json:"device,omitempty"`
+	LegacyDevicePath *string `json:"legacy_device_path,omitempty"`
+
+	// Device Special device file for the drive (e.g. /dev/disk/by-id/).
+	DevicePath *string `json:"device_path,omitempty"`
 
 	// ConnectionBus Physical connection bus of the drive (USB, etc.).
 	ConnectionBus *string `json:"connection_bus,omitempty"`
@@ -40,18 +46,27 @@ type Disk struct {
 
 	// Vendor Drive vendor.
 	Vendor *string `json:"vendor,omitempty"`
+
+	// S.M.A.R.T. info, if available.
+	SmartInfo *SmartInfo `json:"smart_info,omitempty" readonly:"true"`
 }
 
 // Partition defines model for Filesystem/Partition.
 type Partition struct {
 	// Device Special device file for the filesystem (e.g. /dev/sda1).
-	Device *string `json:"device,omitempty"`
+	LegacyDevicePath *string `json:"legacy_device_path,omitempty"`
+
+	// Device Special device file for the filesystem (e.g. sda1).
+	LegacyDeviceName *string `json:"legacy_device_name,omitempty"`
+
+	// Device Special device file for the filesystem (e.g. /dev/disk/by-id/).
+	DevicePath *string `json:"device_path,omitempty"`
 
 	// Id Unique and persistent id for filesystem.
 	Id *string `json:"id,omitempty"`
 
-	// MountPoints List of paths where the filesystem is mounted on host.
-	// MountPoints *[]string `json:"mount_points,omitempty"`
+	// FsType Filesystem type (e.g. ext4, ntfs, etc.).
+	FsType *string `json:"fs_type,omitempty"`
 
 	// Name Name of the filesystem (if known).
 	Name *string `json:"name,omitempty"`

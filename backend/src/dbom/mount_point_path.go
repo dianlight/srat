@@ -12,8 +12,7 @@ import (
 type MountPointPath struct {
 	Path               string `gorm:"primarykey"`
 	Type               string `gorm:"not null;default:null"`
-	DeviceId           uint64
-	Device             string
+	DeviceId           string `gorm:"not null;default:null;index"` // Device ID (e.g., from /dev/disk/by-id/) associated with this mount point.
 	FSType             string
 	Flags              *MounDataFlags `gorm:"not null;default:''"`
 	Data               *MounDataFlags `gorm:"not null;default:''"`

@@ -18,13 +18,6 @@ func (c *MountToDbomImpl) MountToMountPointPath(source *mount.MountPoint, target
 		if source.Device != "" {
 			target.Type = pathToType(source.Device)
 		}
-		if source.Device != "" {
-			xstring, err := removeDevPrefix(source.Device)
-			if err != nil {
-				return err
-			}
-			target.Device = xstring
-		}
 		if source.FSType != "" {
 			target.FSType = source.FSType
 		}

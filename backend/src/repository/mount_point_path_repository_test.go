@@ -70,8 +70,9 @@ func (suite *MountPointPathRepositorySuite) TearDownTest() {
 func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveWithoutData() {
 
 	testMountPoint := dbom.MountPointPath{
-		Path: "/addons",
-		Type: "ADDON",
+		Path:     "/addons",
+		Type:     "ADDON",
+		DeviceId: "sda1",
 	}
 
 	err := suite.mount_repo.Save(&testMountPoint)
@@ -83,9 +84,9 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveWithoutData() 
 func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 
 	testMountPoint := dbom.MountPointPath{
-		Path:   "/mnt/test",
-		Device: "test_drive",
-		FSType: "ext4",
+		Path:     "/mnt/test",
+		DeviceId: "test_drive",
+		FSType:   "ext4",
 		Flags: &dbom.MounDataFlags{
 			dbom.MounDataFlag{Name: "noatime", NeedsValue: false},
 			dbom.MounDataFlag{Name: "ro", NeedsValue: false},
@@ -114,7 +115,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 	suite.Require().NoError(err)
 	suite.Require().NotNil(foundMountPoint)
 	suite.Equal(testMountPoint.Path, foundMountPoint.Path)
-	suite.Equal(testMountPoint.Device, foundMountPoint.Device)
+	suite.Equal(testMountPoint.DeviceId, foundMountPoint.DeviceId)
 	suite.Equal(testMountPoint.FSType, foundMountPoint.FSType)
 
 	suite.Len(*foundMountPoint.Flags, 2)
@@ -126,12 +127,12 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSave() {
 func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveNilFlags() {
 
 	testMountPoint := dbom.MountPointPath{
-		Path:   "/mnt/test",
-		Device: "test_drive",
-		FSType: "ext4",
-		Flags:  &dbom.MounDataFlags{},
-		Type:   "ADDON",
-		Data:   &dbom.MounDataFlags{},
+		Path:     "/mnt/test",
+		DeviceId: "test_drive",
+		FSType:   "ext4",
+		Flags:    &dbom.MounDataFlags{},
+		Type:     "ADDON",
+		Data:     &dbom.MounDataFlags{},
 	}
 
 	err := suite.mount_repo.Save(&testMountPoint)
@@ -147,7 +148,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveNilFlags() {
 	suite.Require().NoError(err)
 	suite.Require().NotNil(foundMountPoint)
 	suite.Equal(testMountPoint.Path, foundMountPoint.Path)
-	suite.Equal(testMountPoint.Device, foundMountPoint.Device)
+	suite.Equal(testMountPoint.DeviceId, foundMountPoint.DeviceId)
 	suite.Equal(testMountPoint.FSType, foundMountPoint.FSType)
 
 	suite.Empty(testMountPoint.Flags)
@@ -159,9 +160,9 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveNilFlags() {
 func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveAndUpdateFlagsToNil() {
 
 	testMountPoint := dbom.MountPointPath{
-		Path:   "/mnt/test",
-		Device: "test_drive",
-		FSType: "ext4",
+		Path:     "/mnt/test",
+		DeviceId: "test_drive",
+		FSType:   "ext4",
 		Flags: &dbom.MounDataFlags{
 			dbom.MounDataFlag{Name: "noatime", NeedsValue: false},
 			dbom.MounDataFlag{Name: "ro", NeedsValue: false},
@@ -207,7 +208,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataSaveAndUpdateFlags
 	suite.Require().NoError(err)
 	suite.Require().NotNil(foundMountPoint)
 	suite.Equal(testMountPoint.Path, foundMountPoint.Path)
-	suite.Equal(testMountPoint.Device, foundMountPoint.Device)
+	suite.Equal(testMountPoint.DeviceId, foundMountPoint.DeviceId)
 	suite.Equal(testMountPoint.FSType, foundMountPoint.FSType)
 
 	suite.Len(*foundMountPoint.Flags, 2)
@@ -222,28 +223,26 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 		{
 			Path: "/mnt/test1",
 			//Label:  "Test 1",
-			Device: "test1",
-			FSType: "ext4",
+			DeviceId: "test1",
+			FSType:   "ext4",
 			Flags: &dbom.MounDataFlags{
 				dbom.MounDataFlag{Name: "noatime", NeedsValue: false},
 				dbom.MounDataFlag{Name: "rw", NeedsValue: false},
 			},
 			//Data:     "rw,noatime",
-			DeviceId: 12345,
-			Type:     "ADDON",
+			Type: "ADDON",
 		},
 		{
 			Path: "/mnt/test2",
 			//Label:  "Test 2",
-			Device: "test2",
-			FSType: "ntfs",
+			DeviceId: "test2",
+			FSType:   "ntfs",
 			Flags: &dbom.MounDataFlags{
 				dbom.MounDataFlag{Name: "noexec", NeedsValue: false},
 				dbom.MounDataFlag{Name: "ro", NeedsValue: false},
 			},
 			//Data:     "bind",
-			DeviceId: 12346,
-			Type:     "ADDON",
+			Type: "ADDON",
 		},
 	}
 
@@ -265,7 +264,7 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 	for i, mp := range mountPoints {
 		suite.Equal(expectedMountPoints[i].Path, mp.Path)
 		//assert.Equal(t, expectedMountPoints[i].Label, mp.Label)
-		suite.Equal(expectedMountPoints[i].Device, mp.Device)
+		suite.Equal(expectedMountPoints[i].DeviceId, mp.DeviceId)
 		suite.Equal(expectedMountPoints[i].FSType, mp.FSType)
 		suite.Equal(expectedMountPoints[i].Flags, mp.Flags)
 		//assert.Equal(t, expectedMountPoints[i].Data, mp.Data)
@@ -275,10 +274,10 @@ func (suite *MountPointPathRepositorySuite) TestMountPointDataAll() {
 func (suite *MountPointPathRepositorySuite) TestConcurrentSaveAndAllNoBusy() {
 	// Seed with an initial record
 	mp := dbom.MountPointPath{
-		Path:   "/mnt/concurrent",
-		Device: "concurrent0",
-		FSType: "ext4",
-		Type:   "ADDON",
+		Path:     "/mnt/concurrent",
+		DeviceId: "concurrent0",
+		FSType:   "ext4",
+		Type:     "ADDON",
 	}
 	err := suite.mount_repo.Save(&mp)
 	suite.Require().NoError(err)
@@ -299,7 +298,7 @@ func (suite *MountPointPathRepositorySuite) TestConcurrentSaveAndAllNoBusy() {
 			default:
 			}
 			i++
-			mp.Device = fmt.Sprintf("concurrent%d", i)
+			mp.DeviceId = fmt.Sprintf("concurrent%d", i)
 			_ = suite.mount_repo.Save(&mp) // ignore error to keep pressure; any error would fail later on read/assert
 		}
 	}()

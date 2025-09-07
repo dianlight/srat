@@ -28,11 +28,11 @@ type diskStatsService struct {
 	lastStats         map[string]*blockdevice.IOStats // lastStats stores the last collected disk I/O statistics.
 	currentDiskHealth *dto.DiskHealth
 	updateMutex       *sync.Mutex
-	smartService      SmartService
+	smartService      SmartServiceInterface
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
-func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartService) DiskStatsService {
+func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartServiceInterface) DiskStatsService {
 	var fs blockdevice.FS
 	var err error
 
@@ -110,24 +110,24 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 	}
 
 	for _, disk := range *disks {
-		if disk.Device == nil {
+		if disk.DevicePath == nil {
 			slog.Debug("Skipping disk with nil device", "diskID", disk.Id)
 			continue
 		}
-		stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.Device)
+		stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.DevicePath)
 
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if s.lastStats[*disk.Device] != nil {
+		if s.lastStats[*disk.DevicePath] != nil {
 
 			dstat := dto.DiskIOStats{
-				DeviceName:        *disk.Device,
+				DeviceName:        *disk.LegacyDeviceName,
 				DeviceDescription: *disk.Id,
-				ReadIOPS:          (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Device].ReadIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
-				WriteIOPS:         (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Device].WriteIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
-				ReadLatency:       (float64(stats.ReadTicks) - float64(s.lastStats[*disk.Device].ReadTicks)) / (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Device].ReadIOs)),
-				WriteLatency:      (float64(stats.WriteTicks) - float64(s.lastStats[*disk.Device].WriteTicks)) / (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Device].WriteIOs)),
+				ReadIOPS:          (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Id].ReadIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
+				WriteIOPS:         (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Id].WriteIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
+				ReadLatency:       (float64(stats.ReadTicks) - float64(s.lastStats[*disk.Id].ReadTicks)) / (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Id].ReadIOs)),
+				WriteLatency:      (float64(stats.WriteTicks) - float64(s.lastStats[*disk.Id].WriteTicks)) / (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Id].WriteIOs)),
 			}
 			if dstat.ReadIOPS < 0 || math.IsNaN(dstat.ReadIOPS) {
 				dstat.ReadIOPS = 0
@@ -150,18 +150,19 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 			if dstat.WriteIOPS > 0 {
 				s.currentDiskHealth.Global.TotalWriteLatency += dstat.WriteLatency
 			}
-			s.lastStats[*disk.Device] = &stats
+			s.lastStats[*disk.Id] = &stats
 
 			// --- Smart data population ---
-
-			smartStats, err := s.smartService.GetSmartInfo("/dev/" + *disk.Device)
-			if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-				slog.Warn("Error getting SMART stats", "disk", *disk.Device, "err", err)
-			} else {
-				s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStats
-			}
+			/*
+				smartStats, err := s.smartService.GetSmartInfo("/dev/" + *disk.Device)
+				if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
+					slog.Warn("Error getting SMART stats", "disk", *disk.Device, "err", err)
+				} else {
+					s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStats
+				}
+			*/
 		} else {
-			s.lastStats[*disk.Device] = &stats
+			s.lastStats[*disk.Id] = &stats
 		}
 
 		// --- PerPartitionInfo population ---
@@ -204,17 +205,17 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 						}
 						info := dto.PerPartitionInfo{
 							MountPoint:    mp.Path,
-							Device:        mp.Device,
+							Device:        mp.DeviceId,
 							FSType:        fstype,
 							FreeSpace:     freeSpace,
 							TotalSpace:    totalSpace,
 							FsckNeeded:    fsckNeeded,
 							FsckSupported: fsckSupported,
 						}
-						if s.currentDiskHealth.PerPartitionInfo[*disk.Device] == nil {
-							s.currentDiskHealth.PerPartitionInfo[*disk.Device] = make([]dto.PerPartitionInfo, 0)
+						if s.currentDiskHealth.PerPartitionInfo[*disk.Id] == nil {
+							s.currentDiskHealth.PerPartitionInfo[*disk.Id] = make([]dto.PerPartitionInfo, 0)
 						}
-						s.currentDiskHealth.PerPartitionInfo[*disk.Device] = append(s.currentDiskHealth.PerPartitionInfo[*disk.Device], info)
+						s.currentDiskHealth.PerPartitionInfo[*disk.Id] = append(s.currentDiskHealth.PerPartitionInfo[*disk.Id], info)
 					}
 				}
 			}

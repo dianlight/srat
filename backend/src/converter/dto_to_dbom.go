@@ -28,6 +28,7 @@ type DtoToDbomConverter interface {
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
 	// goverter:map Path IsInvalid | isPathDirNotExists
+	// goverter:ignore Partition
 	// goverter:map Data CustomFlags
 	// goverter:ignore InvalidError Warnings
 	// goverter:map Path IsWriteSupported | FSTypeIsWriteSupported
@@ -46,8 +47,6 @@ type DtoToDbomConverter interface {
 	mountDataFlagToMountFlag(source dbom.MounDataFlag) (dest dto.MountFlag, err error)
 
 	MountFlagsToMountDataFlags(source []dto.MountFlag) (dest dbom.MounDataFlags)
-
-	//
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	userToSambaUser(source dto.User) (dbom.SambaUser, error)
@@ -78,7 +77,6 @@ type DtoToDbomConverter interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
-	// goverter:ignore DeviceId
 	// goverter:map Flags Flags
 	// goverter:map CustomFlags Data
 	// goverter:useUnderlyingTypeMethods
@@ -98,7 +96,9 @@ type DtoToDbomConverter interface {
 	// goverter:map Path DiskLabel | DiskLabelFromPath
 	// goverter:map Path DiskSerial | DiskSerialFromPath
 	// goverter:map Path DiskSize | DiskSizeFromPath
-	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error
+	// goverter:map DeviceId Partition | partitionFromDeviceId
+	// goverter:context disks
+	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData, disks []dto.Disk) error
 
 	// goverter:update target
 	// goverter:ignore _
@@ -119,4 +119,16 @@ func stringToExportedShare(source string) dbom.ExportedShare {
 	return dbom.ExportedShare{
 		Name: source,
 	}
+}
+
+// goverter:context disks
+func partitionFromDeviceId(source string, disks []dto.Disk) *dto.Partition {
+	for _, d := range disks {
+		for _, p := range *d.Partitions {
+			if p.Id != nil && *p.Id == source {
+				return &p
+			}
+		}
+	}
+	return nil
 }

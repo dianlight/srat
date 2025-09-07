@@ -188,17 +188,17 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntities() {
 
 	disks := &[]dto.Disk{
 		{
-			Id:        &diskId,
-			Device:    &devicePath,
-			Size:      &diskSize,
-			Model:     &diskModel,
-			Vendor:    &diskVendor,
-			Removable: &removable,
+			Id:         &diskId,
+			DevicePath: &devicePath,
+			Size:       &diskSize,
+			Model:      &diskModel,
+			Vendor:     &diskVendor,
+			Removable:  &removable,
 			Partitions: &[]dto.Partition{
 				{
-					Id:     &partitionId,
-					Device: &partitionDevice,
-					Size:   &partitionSize,
+					Id:         &partitionId,
+					DevicePath: &partitionDevice,
+					Size:       &partitionSize,
 					MountPointData: &[]dto.MountPointData{
 						{
 							Path:      mountPath,
@@ -238,17 +238,17 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntitiesDisabled() {
 
 	disks := &[]dto.Disk{
 		{
-			Id:        &diskId,
-			Device:    &devicePath,
-			Size:      &diskSize,
-			Model:     &diskModel,
-			Vendor:    &diskVendor,
-			Removable: &removable,
+			Id:         &diskId,
+			DevicePath: &devicePath,
+			Size:       &diskSize,
+			Model:      &diskModel,
+			Vendor:     &diskVendor,
+			Removable:  &removable,
 			Partitions: &[]dto.Partition{
 				{
-					Id:     &partitionId,
-					Device: &partitionDevice,
-					Size:   &partitionSize,
+					Id:         &partitionId,
+					DevicePath: &partitionDevice,
+					Size:       &partitionSize,
 					MountPointData: &[]dto.MountPointData{
 						{
 							Path:      mountPath,
@@ -298,8 +298,8 @@ func (suite *HomeAssistantServiceTestSuite) TestSanitizeEntityId() {
 
 	disks := &[]dto.Disk{
 		{
-			Id:     &diskId,
-			Device: &devicePath,
+			Id:         &diskId,
+			DevicePath: &devicePath,
 		},
 	}
 

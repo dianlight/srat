@@ -44,7 +44,7 @@ export function ActionableItemsList({
 	const itemsWithIds = actionablePartitions.map(({ partition, action }) => ({
 		partition,
 		action,
-		id: `partition-${partition.id || partition.device}-${action}`,
+		id: `partition-${partition.id}-${action}`,
 	}));
 
 	const handleMount = (_partition: Partition) => {
@@ -138,7 +138,7 @@ export function ActionableItemsList({
 						>
 							<ListItemText
 								primary={decodeEscapeSequence(
-									partition.name || partition.device || "Unknown Partition",
+									partition.name || partition.id || "Unknown Partition",
 								)}
 								secondary={
 									action === "mount"

@@ -981,9 +981,11 @@ export type UpdateProgress = {
   update_process_state?: Update_process_state;
 };
 export type Partition = {
-  device?: string;
+  device_path?: string;
   host_mount_point_data?: MountPointData[];
   id?: string;
+  legacy_device_name?: string;
+  legacy_device_path?: string;
   mount_point_data?: MountPointData[];
   name?: string;
   size?: number;
@@ -991,9 +993,11 @@ export type Partition = {
 };
 export type Disk = {
   connection_bus?: string;
-  device?: string;
+  device_path?: string;
   ejectable?: boolean;
   id?: string;
+  legacy_device_name?: string;
+  legacy_device_path?: string;
   model?: string;
   partitions?: Partition[];
   removable?: boolean;
@@ -1001,6 +1005,7 @@ export type Disk = {
   seat?: string;
   serial?: string;
   size?: number;
+  smart_info?: SmartInfo;
   vendor?: string;
 };
 export enum Disk_type {

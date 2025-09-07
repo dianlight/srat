@@ -27,22 +27,25 @@ type HardwareServiceInterface interface {
 }
 
 type hardwareService struct {
-	ctx      context.Context
-	haClient hardware.ClientWithResponsesInterface
-	conv     converter.HaHardwareToDtoImpl
-	cache    *cache.Cache
+	ctx          context.Context
+	haClient     hardware.ClientWithResponsesInterface
+	conv         converter.HaHardwareToDtoImpl
+	smartService SmartServiceInterface
+	cache        *cache.Cache
 }
 
 func NewHardwareService(
 	lc fx.Lifecycle,
 	ctx context.Context,
 	haClient hardware.ClientWithResponsesInterface,
+	smartServiceInstance SmartServiceInterface,
 ) HardwareServiceInterface {
 	return &hardwareService{
-		ctx:      ctx,
-		haClient: haClient,
-		conv:     converter.HaHardwareToDtoImpl{},
-		cache:    cache.New(30*time.Minute, 10*time.Minute),
+		ctx:          ctx,
+		haClient:     haClient,
+		conv:         converter.HaHardwareToDtoImpl{},
+		smartService: smartServiceInstance,
+		cache:        cache.New(30*time.Minute, 10*time.Minute),
 	}
 }
 
@@ -93,46 +96,66 @@ func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
 			continue
 		}
 
-		ret = append(ret, diskDto)
-	}
-
-	if hwser.JSON200.Data.Devices != nil {
-		tlog.Trace("Processing Devices from HA Supervisor", "device_count", len(*hwser.JSON200.Data.Devices))
-		for diskIdx := range ret {
-			disk := &ret[diskIdx]
-			if disk.Partitions == nil {
-				continue
-			}
-			for partIdx := range *disk.Partitions {
-				partition := &(*disk.Partitions)[partIdx]
-
-				if partition.Device == nil || *partition.Device == "" {
-					tlog.Debug("Skipping partition with nil or empty device path", "disk_id", disk.Id, "partition_index", partIdx)
+		// Find corresponding Device entries for Disk and its Partitions
+		if hwser.JSON200.Data.Devices != nil {
+			for deviceIdx := range *hwser.JSON200.Data.Devices {
+				device := &(*hwser.JSON200.Data.Devices)[deviceIdx]
+				if device.DevPath == nil || *device.DevPath == "" {
+					tlog.Debug("Skipping device with nil or empty name", "drive_index", i, "drive_id", drive.Id, "device_index", deviceIdx)
 					continue
 				}
-				for deviceIdx := range *hwser.JSON200.Data.Devices {
-					device := &(*hwser.JSON200.Data.Devices)[deviceIdx]
-					if device.DevPath == nil || *device.DevPath == "" {
-						tlog.Debug("Skipping device with nil or empty name", "disk_id", disk.Id, "partition_index", partIdx, "device_index", deviceIdx)
-						continue
-					}
 
-					if (*device.DevPath == *partition.Device) && device.Attributes != nil {
-						if (partition.Name == nil || *partition.Name == "") && device.Attributes.PARTNAME != nil {
-							partition.Name = device.Attributes.PARTNAME
+				// Match Disk
+				if diskDto.LegacyDeviceName != nil && *diskDto.LegacyDeviceName != "" && *device.Name == *diskDto.LegacyDeviceName {
+					diskDto.LegacyDevicePath = device.DevPath
+					diskDto.DevicePath = device.ById
+					smartInfo, errSmart := h.smartService.GetSmartInfo(*diskDto.DevicePath)
+					if errSmart != nil {
+						if errors.Is(errSmart, dto.ErrorSMARTNotSupported) {
+							tlog.Trace("SMART not supported for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id)
+						} else {
+							tlog.Warn("Error retrieving SMART info for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id, "err", errSmart)
+						}
+					} else if smartInfo != nil {
+						diskDto.SmartInfo = smartInfo
+					}
+					continue
+				}
+
+				// Match Partitions
+				if diskDto.Partitions != nil {
+					for partIdx := range *diskDto.Partitions {
+						partition := &(*diskDto.Partitions)[partIdx]
+						if partition.LegacyDeviceName == nil || *partition.LegacyDeviceName == "" {
+							tlog.Debug("Skipping partition with nil or empty legacy device name", "disk_id", diskDto.Id, "partition_index", partIdx)
 							continue
 						}
-
+						if *device.Name == *partition.LegacyDeviceName {
+							partition.LegacyDevicePath = device.DevPath
+							partition.DevicePath = device.ById
+							if device.Attributes != nil {
+								if device.Attributes.PARTNAME != nil {
+									partition.Name = device.Attributes.PARTNAME
+								} else if device.Attributes.IDFSLABEL != nil {
+									partition.Name = device.Attributes.IDFSLABEL
+								} else if device.Attributes.IDPARTENTRYNAME != nil {
+									partition.Name = device.Attributes.IDPARTENTRYNAME
+								}
+								if device.Attributes.IDFSTYPE != nil {
+									partition.FsType = device.Attributes.IDFSTYPE
+								}
+							}
+							partition.System = pointer.Bool(strings.HasPrefix(*partition.Name, "hassos-"))
+							break
+						}
 					}
-				}
-				if partition.Name != nil && strings.HasPrefix(*partition.Name, "hassos-") {
-					partition.System = pointer.Bool(true)
 				}
 			}
 		}
+		ret = append(ret, diskDto)
 	}
-	return ret, nil
 
+	return ret, nil
 }
 
 // InvalidateHardwareInfo clears the cached hardware info so the next call

@@ -12,7 +12,7 @@ type HaHardwareToDtoImpl struct{}
 
 func (c *HaHardwareToDtoImpl) DriveToDisk(source hardware.Drive, target *dto.Disk) error {
 	if source != (hardware.Drive{}) {
-		target.Device = extractDevice(source)
+		target.LegacyDeviceName = extractDevice(source)
 	}
 	if source.ConnectionBus != nil {
 		target.ConnectionBus = source.ConnectionBus
@@ -59,7 +59,10 @@ func (c *HaHardwareToDtoImpl) DriveToDisk(source hardware.Drive, target *dto.Dis
 func (c *HaHardwareToDtoImpl) FilesystemToPartition(source hardware.Filesystem, target *dto.Partition) error {
 	if source.Device != nil {
 		xstring := *source.Device
-		target.Device = &xstring
+		target.LegacyDevicePath = &xstring
+	}
+	if source.Device != nil {
+		target.LegacyDeviceName = trimDevPrefix(source.Device)
 	}
 	if source.Id != nil {
 		xstring2 := *source.Id
@@ -86,8 +89,9 @@ func (c *HaHardwareToDtoImpl) filesystemToPartition(source hardware.Filesystem) 
 	var dtoPartition dto.Partition
 	if source.Device != nil {
 		xstring := *source.Device
-		dtoPartition.Device = &xstring
+		dtoPartition.LegacyDevicePath = &xstring
 	}
+	dtoPartition.LegacyDeviceName = trimDevPrefix(source.Device)
 	if source.Id != nil {
 		xstring2 := *source.Id
 		dtoPartition.Id = &xstring2

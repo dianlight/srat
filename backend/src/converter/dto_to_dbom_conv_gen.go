@@ -89,8 +89,8 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 	if source.Type != "" {
 		target.Type = source.Type
 	}
-	if source.Device != "" {
-		target.Device = source.Device
+	if source.DeviceId != "" {
+		target.DeviceId = source.DeviceId
 	}
 	if source.FSType != nil {
 		target.FSType = *source.FSType
@@ -112,7 +112,7 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 	}
 	return nil
 }
-func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData) error {
+func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData, context []dto.Disk) error {
 	if source.Path != "" {
 		target.DiskLabel = DiskLabelFromPath(source.Path)
 	}
@@ -145,8 +145,11 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 		return err
 	}
 	target.CustomFlags = pDtoMountFlags2
-	if source.Device != "" {
-		target.Device = source.Device
+	if source.DeviceId != "" {
+		target.DeviceId = source.DeviceId
+	}
+	if source.DeviceId != "" {
+		target.Partition = partitionFromDeviceId(source.DeviceId, context)
 	}
 	if source.Path != "" {
 		xbool, err := osutil.IsMounted(source.Path)
@@ -386,7 +389,6 @@ func (c *DtoToDbomConverterImpl) mountPointDataToMountPointPath(source dto.Mount
 	var dbomMountPointPath dbom.MountPointPath
 	dbomMountPointPath.Path = source.Path
 	dbomMountPointPath.Type = source.Type
-	dbomMountPointPath.Device = source.Device
 	if source.FSType != nil {
 		dbomMountPointPath.FSType = *source.FSType
 	}
@@ -425,7 +427,7 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 		return dtoMountPointData, err
 	}
 	dtoMountPointData.CustomFlags = pDtoMountFlags2
-	dtoMountPointData.Device = source.Device
+	dtoMountPointData.DeviceId = source.DeviceId
 	xbool, err := osutil.IsMounted(source.Path)
 	if err != nil {
 		return dtoMountPointData, err

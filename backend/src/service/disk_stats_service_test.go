@@ -19,7 +19,7 @@ type DiskStatsServiceSuite struct {
 	suite.Suite
 	ctrl       *matchers.MockController
 	volumeMock VolumeServiceInterface
-	smartMock  SmartService
+	smartMock  SmartServiceInterface
 	ds         *diskStatsService
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -38,7 +38,7 @@ func (suite *DiskStatsServiceSuite) SetupTest() {
 
 	// create mocks
 	suite.volumeMock = mock.Mock[VolumeServiceInterface](suite.ctrl)
-	suite.smartMock = mock.Mock[SmartService](suite.ctrl)
+	suite.smartMock = mock.Mock[SmartServiceInterface](suite.ctrl)
 
 	// instantiate diskStatsService under test with mocks
 	suite.ds = &diskStatsService{
@@ -103,9 +103,9 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 		},
 	}
 	d := dto.Disk{
-		Id:         &diskID,
-		Device:     nil, // important: should be skipped
-		Partitions: &partitions,
+		Id:               &diskID,
+		LegacyDeviceName: nil, // important: should be skipped
+		Partitions:       &partitions,
 	}
 	disks := []dto.Disk{d}
 
