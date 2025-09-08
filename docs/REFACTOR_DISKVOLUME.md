@@ -52,9 +52,9 @@ This refactor modernizes the disk volume handling in SRAT by replacing the custo
 - Made `SmartService` an interface for better testability
 
 ## Migration
-- [ ] Add migration script to migrate DB table to for DeviceId and DevicePath
-- [ ] Update existing mount point records to use new device fields
-- [ ] Test mount/unmount operations with new device identification
+- [X] Add migration script to migrate DB table to for DeviceId and DevicePath
+- [X] Update existing mount point records to use new device fields
+- [X] Test mount/unmount operations with new device identification
 - [ ] Verify SMART data retrieval works correctly
 - [ ] Update any external integrations that depend on old device fields
 

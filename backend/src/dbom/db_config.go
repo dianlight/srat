@@ -182,6 +182,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 	}
 
 	if err := goose.Up(sqlDB, "migrations"); err != nil {
+		slog.Error("Failed to apply migrations", "error", err, "path", v.ApiCtx.DatabasePath)
 		panic(err)
 	}
 

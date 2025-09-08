@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pressly/goose/v3"
 )
@@ -71,6 +72,11 @@ func getMountPointPatha(db *sql.DB) ([]string, []string, error) {
 	var paths, devices []string
 	rows, err := db.Query("SELECT path, device FROM mount_point_paths")
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil, nil
+		} else if strings.Contains(err.Error(), "no such column: device") {
+			return nil, nil, nil
+		}
 		return nil, nil, err
 	}
 	defer rows.Close()
