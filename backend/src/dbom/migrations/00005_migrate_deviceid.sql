@@ -5,4 +5,4 @@ CREATE INDEX IF NOT EXISTS `idx_mount_point_paths_device_id` ON `mount_point_pat
 
 -- +goose down
 DROP INDEX `idx_mount_point_paths_device_id` ON `mount_point_paths`;
-ALTER TABLE `mount_point_paths` ADD COLUMN `device` VARCHAR(255) NULL;
+--ALTER TABLE `mount_point_paths` ADD COLUMN `device` VARCHAR(255) NULL;
