@@ -45,9 +45,6 @@ components:
         DEVTYPE:
           type: string
           description: Dreiver type
-        PARTNAME:
-          type: string
-          description: Partition Name
         SUBSYSTEM:
           type: string
           description: Subsystem of the attribute.

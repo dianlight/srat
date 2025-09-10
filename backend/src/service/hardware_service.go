@@ -134,9 +134,7 @@ func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
 							partition.LegacyDevicePath = device.DevPath
 							partition.DevicePath = device.ById
 							if device.Attributes != nil {
-								if device.Attributes.PARTNAME != nil {
-									partition.Name = device.Attributes.PARTNAME
-								} else if device.Attributes.IDFSLABEL != nil {
+								if device.Attributes.IDFSLABEL != nil {
 									partition.Name = device.Attributes.IDFSLABEL
 								} else if device.Attributes.IDPARTENTRYNAME != nil {
 									partition.Name = device.Attributes.IDPARTENTRYNAME

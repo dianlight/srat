@@ -64,9 +64,6 @@ type Attributes struct {
 	// IDTYPE Type of the attribute.
 	IDTYPE *string `json:"ID_TYPE,omitempty"`
 
-	// PARTNAME Partition Name
-	PARTNAME *string `json:"PARTNAME,omitempty"`
-
 	// SUBSYSTEM Subsystem of the attribute.
 	SUBSYSTEM            *string                `json:"SUBSYSTEM,omitempty"`
 	AdditionalProperties map[string]interface{} `json:"-"`
@@ -303,14 +300,6 @@ func (a *Attributes) UnmarshalJSON(b []byte) error {
 		delete(object, "ID_TYPE")
 	}
 
-	if raw, found := object["PARTNAME"]; found {
-		err = json.Unmarshal(raw, &a.PARTNAME)
-		if err != nil {
-			return fmt.Errorf("error reading 'PARTNAME': %w", err)
-		}
-		delete(object, "PARTNAME")
-	}
-
 	if raw, found := object["SUBSYSTEM"]; found {
 		err = json.Unmarshal(raw, &a.SUBSYSTEM)
 		if err != nil {
@@ -440,13 +429,6 @@ func (a Attributes) MarshalJSON() ([]byte, error) {
 		object["ID_TYPE"], err = json.Marshal(a.IDTYPE)
 		if err != nil {
 			return nil, fmt.Errorf("error marshaling 'ID_TYPE': %w", err)
-		}
-	}
-
-	if a.PARTNAME != nil {
-		object["PARTNAME"], err = json.Marshal(a.PARTNAME)
-		if err != nil {
-			return nil, fmt.Errorf("error marshaling 'PARTNAME': %w", err)
 		}
 	}
 
