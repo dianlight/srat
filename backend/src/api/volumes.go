@@ -115,7 +115,7 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 
 	err = self.vservice.UnmountVolume(mountPath, input.Force, input.Lazy && !input.Force)
 	if err != nil {
-		return nil, huma.Error406NotAcceptable(fmt.Sprintf("%v", err.Details()["Detail"]), err)
+		return nil, huma.Error406NotAcceptable(fmt.Sprintf("%#v", err.Details()["Detail"]), err)
 	}
 
 	self.dirtyservice.SetDirtyVolumes()
