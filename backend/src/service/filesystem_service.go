@@ -72,6 +72,7 @@ var (
 		{Name: "nosuid", Description: "Do not permit set-user-id or set-group-id bits to take effect."},
 		{Name: "remount", Description: "Attempt to remount an already-mounted filesystem."},
 		{Name: "defaults", Description: "Use default options: rw, suid, dev, exec, auto, nouser, async."},
+		{Name: "relatime", Description: "Update inode access times relative to modify or change time."},
 	}
 
 	// defaultFsSpecificMountFlags maps filesystem types to their specific mount flags.

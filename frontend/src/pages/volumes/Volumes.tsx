@@ -153,7 +153,7 @@ export function Volumes() {
 		// Ensure device is included in submitData if required by API
 		const submitData: MountPointData = {
 			...data,
-			device: selected.device_path,
+			device_id: selected.id,
 		};
 		//console.log("Submitting Mount Data:", submitData);
 
@@ -432,7 +432,7 @@ export function Volumes() {
 					selected
 						? (selected as Disk).model // If it has a model, it's likely a Disk
 							? `Disk: ${(selected as Disk).model}`
-							: `Partition: ${decodeEscapeSequence((selected as Partition).name || "Unknown")}` // Otherwise, assume Partition
+							: `Partition: ${decodeEscapeSequence((selected as Partition).name || (selected as Partition).id || "Unknown")}` // Otherwise, assume Partition
 						: "Details"
 				}
 				objectToDisplay={selected}
@@ -602,7 +602,7 @@ export function Volumes() {
 														);
 
 													const partitionNameDecoded = decodeEscapeSequence(
-														partition.name || "Unnamed Partition",
+														partition.name || partition.id || "Unnamed Partition",
 													);
 
 													return (
@@ -708,7 +708,7 @@ export function Volumes() {
 																					)}
 																				{partition.id && (
 																					<Chip
-																						label={`UUID: ${partition.id}`}
+																						label={`ID: ${partition.id}`}
 																						size="small"
 																						variant="outlined"
 																					/>

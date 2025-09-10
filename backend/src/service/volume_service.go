@@ -423,14 +423,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 	err = errors.WithStack(mount.Unmount(path, force, lazy))
 	if err != nil {
 		slog.Error("Failed to unmount volume", "path", path, "err", err)
-		// Check if it's already unmounted
-		ok, checkErr := osutil.IsMounted(path)
-		if checkErr == nil && !ok {
-			slog.Warn("Unmount command failed, but volume is already unmounted.", "path", path)
-			// Proceed to update DB state as unmounted
-		} else {
-			return errors.WithDetails(dto.ErrorUnmountFail, "Detail", "Unmount command failed", "Path", path, "Error", err)
-		}
+		return errors.WithDetails(dto.ErrorUnmountFail, "Detail", err.Error(), "Path", path, "Error", err)
 	} else {
 		slog.Info("Successfully unmounted volume", "path", path, "device", dbom_mount_data.DeviceId)
 		/*
@@ -595,15 +588,15 @@ func (self *VolumeService) udevEventHandler() {
 // Disk and Partition are readed from hardware client and enriched with mount point data localhost
 // Also syncs mount point data with database records and save new and remove old
 func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
-	slog.Debug("Requesting GetVolumesData via singleflight...")
+	tlog.Trace("Requesting GetVolumesData via singleflight...")
 
 	const sfKey = "GetVolumesData"
 
-	v, err, shared := self.sfGroup.Do(sfKey, func() (interface{}, error) {
+	v, err, _ := self.sfGroup.Do(sfKey, func() (interface{}, error) {
 		self.volumesQueueMutex.Lock()
 		defer self.volumesQueueMutex.Unlock()
 
-		slog.Debug("Executing GetVolumesData core logic (singleflight)...")
+		tlog.Trace("Executing GetVolumesData core logic (singleflight)...")
 
 		ret := []dto.Disk{}
 		dbconv := converter.DtoToDbomConverterImpl{}
@@ -666,12 +659,14 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 					slog.Error("Failed to get local mount points", "err", err)
 					continue
 				}
+				//slog.Debug("Prtstatus entries found", "count", len(prtstatus))
 				for _, prtstate := range prtstatus {
-					slog.Debug("Checking partition", "part_device", prtstate.Device, "part_mountpoint", prtstate.Mountpoint, "db_device", *part.Id, "legacy_device", part.LegacyDeviceName)
-					if part.LegacyDeviceName != nil &&
-						prtstate.Device == *part.LegacyDeviceName &&
+					//slog.Debug("Check", "legacy_device", *part.LegacyDevicePath, "part_device", prtstate.Device, "part_mountpoint", prtstate.Mountpoint, "db_device", *part.Id)
+					if part.LegacyDevicePath != nil &&
+						(prtstate.Device == *part.LegacyDevicePath || prtstate.Device == *part.DevicePath) &&
 						prtstate.Mountpoint != "" {
 						// Local mountpoint for partition found
+						tlog.Trace("Checking partition", "part_device", prtstate.Device, "part_mountpoint", prtstate.Mountpoint, "db_device", *part.Id, "legacy_device", *part.LegacyDeviceName)
 						mountPoint := dto.MountPointData{}
 						if mountPointPath, ok := existingDBmountPoints[*part.Id]; ok {
 							// Existing mount point in DB, update details
@@ -735,9 +730,9 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 
 		// Save mountPointDataToSave
 		if len(mountPointDataToSave) > 0 {
-			slog.Debug("Saving updated mount points to DB", "count", len(mountPointDataToSave))
+			tlog.Trace("Saving updated mount points to DB", "count", len(mountPointDataToSave))
 			for _, mp := range mountPointDataToSave {
-				slog.Info("Saving mount point to DB", "path", mp.Path, "device_id", mp.DeviceId)
+				tlog.Trace("Saving mount point to DB", "path", mp.Path, "device_id", mp.DeviceId)
 				err = self.mount_repo.Save(&mp)
 				if err != nil {
 					slog.Error("Failed to save mount point to DB", "path", mp.Path, "device_id", mp.DeviceId, "err", err)
@@ -747,9 +742,9 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 
 		// Remove mountPointDataToDelete
 		if len(existingDBmountPoints) > 0 {
-			slog.Debug("Cleaning up mount points in DB that no longer exist on system", "count", len(existingDBmountPoints))
+			tlog.Trace("Cleaning up mount points in DB that no longer exist on system", "count", len(existingDBmountPoints))
 			for _, mp := range existingDBmountPoints {
-				slog.Info("Removing stale mount point from DB", "path", mp.Path, "device_id", mp.DeviceId)
+				tlog.Trace("Removing stale mount point from DB", "path", mp.Path, "device_id", mp.DeviceId)
 				err = self.mount_repo.Delete(mp.Path)
 				if err != nil {
 					slog.Error("Failed to delete stale mount point from DB", "path", mp.Path, "device_id", mp.DeviceId, "err", err)
@@ -774,7 +769,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 				// Don't return error here, as the main operation succeeded
 			}
 		*/
-		slog.Debug("Finished getting and syncing volumes data (core logic).")
+		//slog.Debug("Finished getting and syncing volumes data (core logic).")
 		return &ret, nil
 	})
 
@@ -782,8 +777,6 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 		//slog.Error("Singleflight execution of GetVolumesData failed", "err", err, "shared", shared)
 		return nil, errors.WithStack(err)
 	}
-
-	slog.Debug("Singleflight execution of GetVolumesData successful", "shared", shared)
 
 	result, ok := v.(*[]dto.Disk)
 	if !ok {

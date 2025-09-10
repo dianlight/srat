@@ -118,14 +118,14 @@ async function build(): Promise<BuildOutput | undefined> {
 					}
 				});
 			}),
-			port: 3000,
+			port: 3080,
 			idleTimeout: 60, // Set idle timeout to 60 seconds (configurable)
 			development: {
 				console: true,
 				hmr: true,
 			},
 		});
-		console.log("Serving http://localhost:3000/index.html");
+		console.log("Serving http://localhost:3080/index.html");
 	} else if (values.watch) {
 		console.log(`Build Watch ${import.meta.dir}/src -> ${values.outDir}`);
 		async function rebuild(event: string, filename: string | null) {

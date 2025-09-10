@@ -909,11 +909,23 @@ export type JsonPatchOp = {
   /** The value to set */
   value?: any;
 };
+export type Partition = {
+  device_path?: string;
+  fs_type?: string;
+  host_mount_point_data?: MountPointData[];
+  id?: string;
+  legacy_device_name?: string;
+  legacy_device_path?: string;
+  mount_point_data?: MountPointData[];
+  name?: string;
+  size?: number;
+  system?: boolean;
+};
 export type MountPointData = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   custom_flags?: MountFlag[];
-  device?: string;
+  device_id?: string;
   disk_label?: string;
   disk_serial?: string;
   disk_size?: number;
@@ -924,6 +936,7 @@ export type MountPointData = {
   is_mounted?: boolean;
   is_to_mount_at_startup?: boolean;
   is_write_supported?: boolean;
+  partition?: Partition;
   path: string;
   path_hash?: string;
   shares?: SharedResource[] | null;
@@ -979,17 +992,6 @@ export type UpdateProgress = {
   last_release?: string;
   progress?: number;
   update_process_state?: Update_process_state;
-};
-export type Partition = {
-  device_path?: string;
-  host_mount_point_data?: MountPointData[];
-  id?: string;
-  legacy_device_name?: string;
-  legacy_device_path?: string;
-  mount_point_data?: MountPointData[];
-  name?: string;
-  size?: number;
-  system?: boolean;
 };
 export type Disk = {
   connection_bus?: string;

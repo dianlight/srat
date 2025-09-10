@@ -80,7 +80,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 
 			reset({
 				path: existingMountData?.path || `/mnt/${sanitizedName}`,
-				fstype: existingMountData?.fstype || undefined, // Use existing or let backend detect
+				fstype: existingMountData?.fstype || props.objectToEdit?.fs_type || undefined, // Use existing or let backend detect
 				flags: existingMountData?.flags || [], // Keep numeric flags if needed internally
 				custom_flags: existingMountData?.custom_flags || [], // Keep numeric flags if needed internally
 				custom_flags_values: [], // Will be populated by `replace` below
@@ -157,7 +157,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 	}
 
 	const partitionNameDecoded = decodeEscapeSequence(
-		props.objectToEdit?.name || "Unnamed Partition",
+		props.objectToEdit?.name || props.objectToEdit?.id || "Unnamed Partition",
 	);
 	const partitionId = props.objectToEdit?.id || "N/A";
 
@@ -231,8 +231,9 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 									/>
 								</Grid>
 								<Grid size={{ xs: 12, sm: 6 }}>
+									<p>{JSON.stringify(watch("flags"), null, 2)}</p>
 									{!fsLoading &&
-										((filesystems as FilesystemType[])[0]?.mountFlags || [])
+										((filesystems as FilesystemType[]).find(fs => fs.name === watch("fstype"))?.mountFlags || [])
 											.length > 0 && (
 											<AutocompleteElement
 												multiple
@@ -241,8 +242,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 												options={
 													fsLoading
 														? []
-														: (filesystems as FilesystemType[])[0]
-															?.mountFlags || []
+														: (filesystems as FilesystemType[]).find(fs => fs.name === watch("fstype"))?.mountFlags || []
 												} // Use string keys for options
 												control={control}
 												autocompleteProps={{
@@ -250,7 +250,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 													size: "small",
 													limitTags: 5,
 													getOptionLabel: (option) =>
-														(option as MountFlag).name,
+														(option as MountFlag)?.name || 'unknown', // Ensure label is just the name
 													renderOption: (props, option) => (
 														<li {...props} >
 															<Tooltip
