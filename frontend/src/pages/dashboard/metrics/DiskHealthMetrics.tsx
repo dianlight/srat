@@ -20,7 +20,7 @@ import {
 	SparklinesSpots,
 } from "react-sparklines";
 import { useEffect, useRef, useState } from "react";
-import type { DiskHealth, DiskIoStats } from "../../../store/sratApi";
+import type { DiskHealth, DiskIoStats, Partition, PerPartitionInfo } from "../../../store/sratApi";
 import { filesize } from "filesize";
 import { PreviewDialog } from "../../../components/PreviewDialog";
 
@@ -32,7 +32,7 @@ export function DiskHealthMetrics({
 	diskHealth: DiskHealth | undefined;
 }) {
 	const theme = useTheme();
-	const [selectedIoStats, setSelectedIoStats] = useState<DiskIoStats | null>(null);
+	const [selectedIoStats, setSelectedIoStats] = useState<DiskIoStats | PerPartitionInfo | null>(null);
 
 	const [diskIoHistory, setDiskIoHistory] = useState<Record<string, {
 		read_iops: number[];
@@ -93,13 +93,20 @@ export function DiskHealthMetrics({
 			return newHistory;
 		});
 	}, [diskHealth]);
+	const isDiskIoStats = (obj: any): obj is DiskIoStats =>
+		!!obj && typeof obj === "object" && "device_name" in obj && "device_description" in obj;
+
 	return (
 		<>
 			<PreviewDialog
 				objectToDisplay={selectedIoStats}
 				onClose={() => setSelectedIoStats(null)}
 				open={!!selectedIoStats}
-				title={`Detailed I/O Stats - ${selectedIoStats?.device_description} (${selectedIoStats?.device_name})`}
+				title={
+					isDiskIoStats(selectedIoStats)
+						? `Detailed I/O Stats - ${selectedIoStats.device_description} (${selectedIoStats.device_name})`
+						: `Detailed Partition Stats - ${selectedIoStats?.name ?? selectedIoStats?.device ?? ""}`
+				}
 			/>
 			<TableContainer component={Paper}>
 				<Table aria-label="disk health table" size="small">
@@ -288,7 +295,7 @@ export function DiskHealthMetrics({
 						<Grid size={{ xs: 12, sm: 6, md: 4 }} key={diskName}>
 							<Card>
 								<CardContent>
-									<Typography variant="h6" component="div">
+									<Typography variant="h6" component="div" >
 										{
 											diskHealth?.per_disk_io?.find(
 												(io) => io.device_name === diskName,
@@ -318,13 +325,14 @@ export function DiskHealthMetrics({
 													key={partition.device}
 													style={{ marginTop: "16px" }}
 												>
-													<Typography variant="subtitle2">
-														{partition.mount_point || partition.device}
+													<Typography variant="subtitle2" sx={{ cursor: "pointer" }} onClick={() => setSelectedIoStats(partition)}>
+														{partition.name || partition.device}
 													</Typography>
 													<LinearProgress
 														variant="determinate"
 														value={usagePercentage}
 														sx={{ height: 10, borderRadius: 5 }}
+														color={freeSpace > 0 ? (usagePercentage > 90 ? "error" : "primary") : "inherit"}
 													/>
 													<Typography variant="body2" color="text.secondary">
 														{freeSpace > 0 &&

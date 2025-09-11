@@ -128,6 +128,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 				WriteIOPS:         (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Id].WriteIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
 				ReadLatency:       (float64(stats.ReadTicks) - float64(s.lastStats[*disk.Id].ReadTicks)) / (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Id].ReadIOs)),
 				WriteLatency:      (float64(stats.WriteTicks) - float64(s.lastStats[*disk.Id].WriteTicks)) / (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Id].WriteIOs)),
+				SmartData:         disk.SmartInfo,
 			}
 			if dstat.ReadIOPS < 0 || math.IsNaN(dstat.ReadIOPS) {
 				dstat.ReadIOPS = 0
@@ -168,57 +169,73 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 		// --- PerPartitionInfo population ---
 		if disk.Partitions != nil {
 			for _, part := range *disk.Partitions {
-				if part.MountPointData != nil {
-					for _, mp := range *part.MountPointData {
-						// Fill PerPartitionInfo
-						var fstype string
-						if mp.FSType != nil {
-							fstype = *mp.FSType
-						}
-						// Determine fsck support (simple heuristic)
-						fsckSupported := false
-						switch fstype {
-						case "ext2", "ext3", "ext4", "xfs", "btrfs", "f2fs", "vfat", "exfat", "ntfs":
-							fsckSupported = true
-						}
-						// Heuristic: fsck needed if not mounted, or if fstype supports fsck and not clean (not implemented: always false)
-						fsckNeeded := false // TODO: implement real check for dirty/needs fsck
-						// Use partition size if available
-						var totalSpace, freeSpace uint64
-						if part.Size != nil {
-							// Prevent integer overflow/underflow converting int -> uint64
-							if *part.Size > 0 {
-								totalSpace = uint64(*part.Size)
-							} else {
-								totalSpace = 0
-							}
-						}
 
-						var stat syscall.Statfs_t
-						if err := syscall.Statfs(mp.Path, &stat); err == nil {
-							// Guard against negative block size before converting to uint64
-							if stat.Bsize > 0 {
-								bsize := uint64(stat.Bsize)
-								freeSpace = stat.Bfree * bsize
-								totalSpace = stat.Blocks * bsize
-							}
-						}
-						info := dto.PerPartitionInfo{
-							MountPoint:    mp.Path,
-							Device:        mp.DeviceId,
-							FSType:        fstype,
-							FreeSpace:     freeSpace,
-							TotalSpace:    totalSpace,
-							FsckNeeded:    fsckNeeded,
-							FsckSupported: fsckSupported,
-						}
-						if s.currentDiskHealth.PerPartitionInfo[*disk.Id] == nil {
-							s.currentDiskHealth.PerPartitionInfo[*disk.Id] = make([]dto.PerPartitionInfo, 0)
-						}
-						s.currentDiskHealth.PerPartitionInfo[*disk.Id] = append(s.currentDiskHealth.PerPartitionInfo[*disk.Id], info)
+				// Fill PerPartitionInfo
+				var fstype, name string
+				if part.FsType != nil {
+					fstype = *part.FsType
+				}
+				if part.Name != nil {
+					name = *part.Name
+				} else if part.LegacyDeviceName != nil {
+					name = *part.LegacyDeviceName
+				} else if part.Id != nil {
+					name = *part.Id
+				} else {
+					name = "unknown"
+				}
+				// Determine fsck support (simple heuristic)
+				fsckSupported := false
+				switch fstype {
+				case "ext2", "ext3", "ext4", "xfs", "btrfs", "f2fs", "vfat", "exfat", "ntfs":
+					fsckSupported = true
+				}
+				// Heuristic: fsck needed if not mounted, or if fstype supports fsck and not clean (not implemented: always false)
+				fsckNeeded := false // TODO: implement real check for dirty/needs fsck
+				// Use partition size if available
+				// Get free space using syscall.Statfs
+				var totalSpace, freeSpace uint64
+				mountPoint := ""
+				if part.Size != nil {
+					// Prevent integer overflow/underflow converting int -> uint64
+					if *part.Size > 0 {
+						totalSpace = uint64(*part.Size)
+					} else {
+						totalSpace = 0
 					}
 				}
+				if part.MountPointData != nil && (*part.MountPointData)[0].Path != "" {
+					// Use first mount point if multiple (shouldn't normally happen)
+					mp := (*part.MountPointData)[0]
+
+					mountPoint = mp.Path
+
+					var stat syscall.Statfs_t
+					if err := syscall.Statfs(mp.Path, &stat); err == nil {
+						// Guard against negative block size before converting to uint64
+						if stat.Bsize > 0 {
+							bsize := uint64(stat.Bsize)
+							freeSpace = stat.Bfree * bsize
+							totalSpace = stat.Blocks * bsize
+						}
+					}
+				}
+				info := dto.PerPartitionInfo{
+					Name:          name,
+					MountPoint:    mountPoint,
+					Device:        *part.Id,
+					FSType:        fstype,
+					FreeSpace:     freeSpace,
+					TotalSpace:    totalSpace,
+					FsckNeeded:    fsckNeeded,
+					FsckSupported: fsckSupported,
+				}
+				if s.currentDiskHealth.PerPartitionInfo[*disk.Id] == nil {
+					s.currentDiskHealth.PerPartitionInfo[*disk.Id] = make([]dto.PerPartitionInfo, 0)
+				}
+				s.currentDiskHealth.PerPartitionInfo[*disk.Id] = append(s.currentDiskHealth.PerPartitionInfo[*disk.Id], info)
 			}
+
 		}
 	}
 	s.lastUpdateTime = time.Now()

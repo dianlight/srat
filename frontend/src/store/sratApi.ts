@@ -711,6 +711,7 @@ export type PerPartitionInfo = {
   fsck_supported: boolean;
   fstype: string;
   mount_point: string;
+  name?: string;
   total_space_bytes: number;
 };
 export type DiskHealth = {
