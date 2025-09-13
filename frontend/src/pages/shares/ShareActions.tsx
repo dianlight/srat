@@ -62,7 +62,7 @@ export function ShareActions({
 	const actionItems = [];
 
 
-	if (!read_only) {
+	if (!read_only && shareProps.usage !== Usage.Internal) {
 		actionItems.push({
 			key: "edit",
 			title: "Settings",

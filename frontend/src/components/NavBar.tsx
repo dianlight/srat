@@ -460,7 +460,7 @@ export function NavBar(props: {
 											<ListItem>
 												<ListItemText
 													primary="Protected Mode"
-													secondary={evdata?.hello?.protected_mode ? "Enabled" : "Disabled"}
+													secondary={evdata?.hello?.protected_mode === true ? "Enabled" : "Disabled"}
 												/>
 											</ListItem>
 										</List>

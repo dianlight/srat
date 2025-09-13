@@ -545,8 +545,8 @@ export function Shares() {
 														<ShareActions
 															shareKey={share}
 															shareProps={props}
-															protected_mode={evdata?.hello?.protected_mode || true}
-															read_only={evdata?.hello?.read_only || true}
+															protected_mode={evdata?.hello?.protected_mode === true}
+															read_only={evdata?.hello?.read_only === true}
 															onEdit={(shareKey, shareProps) => {
 																setSelected([shareKey, shareProps]);
 																setShowEdit(true);

@@ -82,18 +82,39 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 			// Removed initial values from here, will be handled by useEffect + reset
 		);
 	const isDisabled = watch("disabled");
+	const [availablePartitions, setAvailablePartition] = useState<MountPointData[]>([]);
+
+	useEffect(() => {
+		if (volumes) {
+			const newAvailablePartitions = volumes
+				?.flatMap((disk) => disk.partitions)
+				?.filter(Boolean)
+				.filter(
+					(partition) =>
+						!(partition?.system && partition?.host_mount_point_data && partition?.host_mount_point_data.length > 0)
+				)
+				.filter((partition) => partition?.mount_point_data)
+				.flatMap(
+					(partition) => partition?.mount_point_data,
+				)
+				.filter(
+					(mp) => mp?.path !== "",
+				) as MountPointData[] || [];
+			setAvailablePartition(newAvailablePartitions);
+			console.log("Available partitions updated:", newAvailablePartitions);
+		}
+	}, [volumes]);
 
 	useEffect(() => {
 		if (props.open) {
 			const adminUser = Array.isArray(users)
 				? users.find((u) => u.is_admin)
 				: undefined;
-
 			if (props.objectToEdit) {
 				// Covers editing existing share OR new share with prefill
-				const isNewShareCreation = props.objectToEdit.org_name === "";
+				const isNewShareCreation = props.objectToEdit.org_name === undefined;
 				reset({
-					org_name: props.objectToEdit.org_name ?? "", // Key to determine if new/edit
+					org_name: props.objectToEdit.org_name, // Key to determine if new/edit
 					name: props.objectToEdit.name || "",
 					mount_point_data: props.objectToEdit.mount_point_data, // This is the preselection
 					// If it's a new share creation and no users are pre-filled, default to admin.
@@ -129,7 +150,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 			} else {
 				// Completely new share, no prefill (e.g., user clicked "+" button directly)
 				reset({
-					org_name: "",
+					org_name: undefined,
 					name: "",
 					users: adminUser ? [adminUser] : [], // Default to admin user if available
 					ro_users: [],
@@ -145,7 +166,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 		} else {
 			reset({
 				// Reset to a clean state when dialog is not open
-				org_name: "",
+				org_name: undefined,
 				name: "",
 				users: [],
 				ro_users: [],
@@ -247,66 +268,81 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 						justifyContent: "space-between",
 					}}
 				>
-					<Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
-						{!(editName || props.objectToEdit?.org_name === "") && (
+					<Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 'auto' }}>
+						{!(editName || props.objectToEdit?.org_name === undefined) && (
+							<Box sx={{ display: "flex", alignItems: "center", flexGrow: 'inherit' }}>
+								<>
+									<IconButton onClick={() => setEditName(true)}>
+										<ModeEditIcon fontSize="small" />
+									</IconButton>
+									{props.objectToEdit?.name}
+								</>
+							</Box>
+						)}
+						{(editName || props.objectToEdit?.org_name === undefined) && (
+							<TextFieldElement
+								sx={{ display: "flex", flexGrow: 'inherit' }}
+								name="name"
+								label="Share Name"
+								required
+								size="small"
+								disabled={isDisabled}
+								rules={{
+									required: "Share name is required",
+									pattern: {
+										// Allows letters, numbers, and underscores
+										value: /^[a-zA-Z0-9_]+$/,
+										message:
+											"Share name can only contain letters, numbers, and underscores (_)",
+									},
+									maxLength: {
+										value: 80, // A common practical limit, adjust if your backend has a different rule
+										message: "Share name cannot exceed 80 characters",
+									},
+								}}
+								control={control}
+								slotProps={{
+									input: {
+										endAdornment: (
+											<InputAdornment position="end">
+												<Tooltip title={cycleCasingTooltipTitle}>
+													<IconButton
+														aria-label="cycle share name casing"
+														onClick={handleCycleCasing}
+														edge="end"
+													>
+														<CasingIconToDisplay />
+													</IconButton>
+												</Tooltip>
+											</InputAdornment>
+										),
+									},
+								}}
+							/>
+						)}
+
+						{/* Show the enable/disable switch only if it's an existing share */}
+						{props.objectToEdit?.org_name !== undefined && (
 							<>
-								<IconButton onClick={() => setEditName(true)}>
-									<ModeEditIcon fontSize="small" />
-								</IconButton>
-								{props.objectToEdit?.name}
+								<SwitchElement
+									switchProps={{
+										size: "small",
+									}}
+									slotProps={{
+										typography: {
+											fontSize: "0.875rem",
+										},
+									}}
+									control={control}
+
+									name="disabled"
+									color="primary"
+									label={isDisabled ? "Disabled" : "Enabled"}
+									sx={{ mr: 0 }}
+								/>
 							</>
 						)}
-					</Box>
-					{props.objectToEdit?.org_name !== "" && (
-						<SwitchElement
-							control={control}
-							name="disabled"
-							color="primary"
-							label={isDisabled ? "Disabled" : "Enabled"}
-							sx={{ mr: 0 }}
-						/>
-					)}
-					{(editName || props.objectToEdit?.org_name === "") && (
-						<TextFieldElement
-							sx={{ display: "flex" }}
-							name="name"
-							label="Share Name"
-							required
-							size="small"
-							disabled={isDisabled}
-							rules={{
-								required: "Share name is required",
-								pattern: {
-									// Allows letters, numbers, and underscores
-									value: /^[a-zA-Z0-9_]+$/,
-									message:
-										"Share name can only contain letters, numbers, and underscores (_)",
-								},
-								maxLength: {
-									value: 80, // A common practical limit, adjust if your backend has a different rule
-									message: "Share name cannot exceed 80 characters",
-								},
-							}}
-							control={control}
-							slotProps={{
-								input: {
-									endAdornment: (
-										<InputAdornment position="end">
-											<Tooltip title={cycleCasingTooltipTitle}>
-												<IconButton
-													aria-label="cycle share name casing"
-													onClick={handleCycleCasing}
-													edge="end"
-												>
-													<CasingIconToDisplay />
-												</IconButton>
-											</Tooltip>
-										</InputAdornment>
-									),
-								},
-							}}
-						/>
-					)}
+					</Stack>
 				</DialogTitle>
 				<DialogContent>
 					<Stack spacing={2}>
@@ -319,60 +355,24 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 							noValidate
 						>
 							<Grid container spacing={2}>
-								{props.objectToEdit?.usage !== Usage.Internal && (
-									<Grid size={6}>
-										<SelectElement
-											sx={{ display: "flex" }}
-											size="small"
-											label="Usage"
-											name="usage"
-											disabled={isDisabled}
-											options={Object.keys(Usage)
-												.filter(
-													(usage) =>
-														usage.toLowerCase() !== Usage.Internal,
-												)
-												.map((usage) => {
-													return { id: usage.toLowerCase(), label: usage };
-												})}
-											required
-											control={control}
-										/>
-									</Grid>
-								)}
-								{props.objectToEdit?.usage !== Usage.Internal && (
-									<>
-										<Grid size={6}>
+								<Grid size={8}>
+									{availablePartitions.length > 0 && (
+										<>
 											<AutocompleteElement
 												label="Volume"
 												name="mount_point_data"
-												options={
-													(volumes
-														?.flatMap((disk) => disk.partitions)
-														?.filter(Boolean)
-														.filter(
-															(partition) =>
-																!(partition?.system && partition?.host_mount_point_data && partition?.host_mount_point_data.length > 0)
-														)
-														.flatMap(
-															(partition) => partition?.mount_point_data,
-														)
-														.filter(
-															(mp) => mp?.path !== "",
-														) as MountPointData[]) ||
-													([] as MountPointData[])
-												}
+												options={availablePartitions}
 												control={control}
 												required
 												loading={vlLoading}
 												autocompleteProps={{
 													disabled: isDisabled,
 													size: "small",
-													renderValue: (value) => {
+													renderValue: (value: MountPointData) => {
 														//return ((value as MountPointData).path) || "--";
 														return <Typography variant="body2">
-															{(value as MountPointData).disk_label || "--"} <sup>{(value as MountPointData).is_write_supported ? "" : (<Typography variant="supper" color="error">Read-Only</Typography>)}</sup>
-														</Typography>
+															{value.disk_label || value.device_id} <sup>{value.is_write_supported ? "" : (<Typography variant="supper" color="error">Read-Only</Typography>)}</sup>
+														</Typography>;
 
 													},
 													getOptionLabel: (option) =>
@@ -382,7 +382,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 													renderOption: (props, option) => (
 														<li {...props}>
 															<Typography variant="body2">
-																{option.disk_label} <sup>{option.is_write_supported ? "" : (<Typography variant="supper" color="error">Read-Only</Typography>)}</sup>
+																{option.disk_label || option.device_id} <sup>{option.is_write_supported ? "" : (<Typography variant="supper" color="error">Read-Only</Typography>)}</sup>
 															</Typography>
 														</li>
 													),
@@ -422,183 +422,222 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 													},
 												}}
 											/>
-										</Grid>
-										<Grid size={12}>
-											<Controller
-												name="veto_files"
-												control={control}
-												defaultValue={[]}
-												rules={{
-													validate: (chips: string[] | undefined) => {
-														if (
-															!chips ||
-															chips == null ||
-															chips.length === 0
-														)
-															return true; // Allow empty list
-														for (const chip of chips) {
-															if (!isValidVetoFileEntry(chip)) {
-																return `Invalid entry: "${chip}". Veto file entries cannot be empty, contain '/' or null characters.`;
-															}
-														}
-														return true;
+										</>
+									)}
+								</Grid>
+								{props.objectToEdit?.usage !== Usage.Internal && (
+									<Grid size={4}>
+										<SelectElement
+											sx={{ display: "flex" }}
+											size="small"
+											label="Usage"
+											name="usage"
+											disabled={isDisabled}
+											options={Object.keys(Usage)
+												.filter(
+													(usage) =>
+														usage.toLowerCase() !== Usage.Internal,
+												)
+												.map((usage) => {
+													return { id: usage.toLowerCase(), label: usage };
+												})}
+											required
+											control={control}
+										/>
+									</Grid>
+								)}
+
+								<Grid size={12}>
+									<Controller
+										name="veto_files"
+										control={control}
+										defaultValue={[]}
+										rules={{
+											validate: (chips: string[] | undefined) => {
+												if (
+													!chips ||
+													chips == null ||
+													chips.length === 0
+												)
+													return true; // Allow empty list
+												for (const chip of chips) {
+													if (!isValidVetoFileEntry(chip)) {
+														return `Invalid entry: "${chip}". Veto file entries cannot be empty, contain '/' or null characters.`;
+													}
+												}
+												return true;
+											},
+										}}
+										render={({ field, fieldState: { error } }) => (
+											<MuiChipsInput
+												{...field}
+												disabled={isDisabled}
+												size="small"
+												fullWidth
+												hideClearAll
+												label="Veto Files"
+												validate={(chipValue) =>
+													typeof chipValue === "string" &&
+													isValidVetoFileEntry(chipValue)
+												}
+												error={!!error}
+												helperText={
+													error
+														? error.message
+														: "List of files/patterns to hide (e.g., ._* Thumbs.db). Entries cannot contain '/'."
+												}
+												renderChip={(Component, key, props) => {
+													const isDefault =
+														default_json.veto_files?.includes(
+															props.label as string,
+														);
+													return (
+														<Component
+															key={key}
+															{...props}
+															sx={{
+																color: isDefault
+																	? "text.secondary"
+																	: "text.primary",
+															}}
+															size="small"
+														/>
+													);
+												}}
+												slotProps={{
+													input: {
+														endAdornment: (
+															<InputAdornment
+																position="end"
+																sx={{ pr: 1 }}
+															>
+																<Tooltip title="Add suggested default Veto files">
+																	<span>
+																		<IconButton
+																			disabled={isDisabled}
+																			aria-label="add suggested default veto files"
+																			onClick={() => {
+																				const currentVetoFiles:
+																					string[] =
+																					getValues(
+																						"veto_files",
+																					) || [];
+																				const defaultVetoFiles:
+																					string[] =
+																					default_json.veto_files ||
+																					[];
+																				const newVetoFilesToAdd =
+																					defaultVetoFiles.filter(
+																						(defaultFile) =>
+																							!currentVetoFiles.includes(
+																								defaultFile,
+																							),
+																					);
+																				setValue(
+																					"veto_files",
+																					[
+																						...currentVetoFiles,
+																						...newVetoFilesToAdd,
+																					],
+																					{
+																						shouldDirty: true,
+																						shouldValidate: true,
+																					},
+																				);
+																			}}
+																			edge="end"
+																		>
+																			<PlaylistAddIcon />
+																		</IconButton>
+																	</span>
+																</Tooltip>
+															</InputAdornment>
+														),
 													},
 												}}
-												render={({ field, fieldState: { error } }) => (
-													<MuiChipsInput
-														{...field}
-														disabled={isDisabled}
-														size="small"
-														hideClearAll
-														label="Veto Files"
-														validate={(chipValue) =>
-															typeof chipValue === "string" &&
-															isValidVetoFileEntry(chipValue)
-														}
-														error={!!error}
-														helperText={
-															error
-																? error.message
-																: "List of files/patterns to hide (e.g., ._* Thumbs.db). Entries cannot contain '/'."
-														}
-														renderChip={(Component, key, props) => {
-															const isDefault =
-																default_json.veto_files?.includes(
-																	props.label as string,
-																);
-															return (
-																<Component
-																	key={key}
-																	{...props}
-																	sx={{
-																		color: isDefault
-																			? "text.secondary"
-																			: "text.primary",
-																	}}
-																	size="small"
-																/>
-															);
-														}}
-														slotProps={{
-															input: {
-																endAdornment: (
-																	<InputAdornment
-																		position="end"
-																		sx={{ pr: 1 }}
-																	>
-																		<Tooltip title="Add suggested default Veto files">
-																			<span>
-																				<IconButton
-																					disabled={isDisabled}
-																					aria-label="add suggested default veto files"
-																					onClick={() => {
-																						const currentVetoFiles:
-																							string[] =
-																							getValues(
-																								"veto_files",
-																							) || [];
-																						const defaultVetoFiles:
-																							string[] =
-																							default_json.veto_files ||
-																							[];
-																						const newVetoFilesToAdd =
-																							defaultVetoFiles.filter(
-																								(defaultFile) =>
-																									!currentVetoFiles.includes(
-																										defaultFile,
-																									),
-																							);
-																						setValue(
-																							"veto_files",
-																							[
-																								...currentVetoFiles,
-																								...newVetoFilesToAdd,
-																							],
-																							{
-																								shouldDirty: true,
-																								shouldValidate: true,
-																							},
-																						);
-																					}}
-																					edge="end"
-																				>
-																					<PlaylistAddIcon />
-																				</IconButton>
-																			</span>
-																		</Tooltip>
-																	</InputAdornment>
-																),
-															},
-														}}
-													/>
-												)}
 											/>
-										</Grid>
-										{watch("mount_point_data")?.is_write_supported && (
-											<Grid size={6}>
-												<Tooltip
-													title={`Time Machine is ${watch("mount_point_data")?.time_machine_support} for the current volume!`}
-												>
-													<span>
-														<CheckboxElement
-															size="small"
-															label="Support Timemachine Backups"
-															labelProps={{
-																slotProps: {
-																	typography: {
-																		color: watch("mount_point_data")?.time_machine_support !== Time_machine_support.Supported ? "error" : "default"
-																	},
-																},
-															}}
-															name="timemachine"
-															disabled={isDisabled || watch("mount_point_data")?.time_machine_support === Time_machine_support.Unsupported}
-															control={control}
-														/>
-													</span>
-												</Tooltip>
-											</Grid>
 										)}
-										{watch("timemachine") && (
-											<Grid size={6}>
-												<TextFieldElement
-													size="small"
-													label="Time Machine Max Size (e.g., 100G, 5T, MAX)"
-													name="timemachine_max_size"
-													sx={{ display: "flex" }}
-													disabled={isDisabled}
-													control={control}
-													rules={{
-														pattern: {
-															value: /^(MAX|\d+[KMGTP]?)$/i,
-															message: "Invalid format. Use MAX or a number followed by K, M, G, T, P (e.g., 100G, 5T).",
+									/>
+								</Grid>
+								{watch("mount_point_data")?.is_write_supported && (
+									<Grid size={6}>
+										<Tooltip
+											title={`Time Machine is ${watch("mount_point_data")?.time_machine_support} for the current volume!`}
+										>
+											<span>
+												<SwitchElement
+													switchProps={{
+														size: "small",
+														color: watch("mount_point_data")?.time_machine_support !== Time_machine_support.Supported ? "error" : "primary"
+													}}
+													label="Support Timemachine Backups"
+													slotProps={{
+														typography: {
+															fontSize: "0.875rem",
+															color: watch("mount_point_data")?.time_machine_support !== Time_machine_support.Supported ? "error" : "default"
 														},
 													}}
-												/>
-											</Grid>
-										)}
-										{watch("mount_point_data")?.is_write_supported && (
-											<Grid size={6}>
-												<CheckboxElement
-													size="small"
-													label="Support Recycle Bin"
-													name="recycle_bin_enabled"
-													disabled={isDisabled}
+													name="timemachine"
+													disabled={isDisabled || watch("mount_point_data")?.time_machine_support === Time_machine_support.Unsupported}
 													control={control}
 												/>
-											</Grid>
-										)}
-										<Grid size={6}>
-											<CheckboxElement
-												size="small"
-												label="Guest Access"
-												name="guest_ok"
-												disabled={isDisabled}
-												control={control}
-											/>
-										</Grid>
-									</>
+											</span>
+										</Tooltip>
+									</Grid>
+								)}
+								{watch("timemachine") && (
+									<Grid size={6}>
+										<TextFieldElement
+											size="small"
+											label="Time Machine Max Size (e.g., 100G, 5T, MAX)"
+											name="timemachine_max_size"
+											sx={{ display: "flex" }}
+											disabled={isDisabled}
+											control={control}
+											rules={{
+												pattern: {
+													value: /^(MAX|\d+[KMGTP]?)$/i,
+													message: "Invalid format. Use MAX or a number followed by K, M, G, T, P (e.g., 100G, 5T).",
+												},
+											}}
+										/>
+									</Grid>
 								)}
 								{watch("mount_point_data")?.is_write_supported && (
+									<Grid size={6}>
+										<SwitchElement
+											switchProps={{
+												size: "small",
+											}}
+											slotProps={{
+												typography: {
+													fontSize: "0.875rem",
+												},
+											}}
+											label="Support Recycle Bin"
+											name="recycle_bin_enabled"
+											disabled={isDisabled}
+											control={control}
+										/>
+									</Grid>
+								)}
+								<Grid size={12}>
+									<SwitchElement
+										switchProps={{
+											size: "small",
+										}}
+										slotProps={{
+											typography: {
+												fontSize: "0.875rem",
+											},
+										}}
+										label="Guest Access"
+										name="guest_ok"
+										disabled={isDisabled}
+										control={control}
+									/>
+								</Grid>
+								{!watch("guest_ok") && (
 									<Grid size={6}>
 										{!usLoading && ((users as User[]) || []).length > 0 && (
 											<AutocompleteElement
@@ -609,7 +648,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 												control={control}
 												loading={usLoading}
 												autocompleteProps={{
-													disabled: isDisabled,
+													disabled: isDisabled || watch("mount_point_data")?.is_write_supported === false,
 													size: "small",
 													limitTags: 5,
 													getOptionKey: (option) =>
@@ -675,7 +714,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 									</Grid>
 								)}
 								<Grid size={6}>
-									{!usLoading && ((users as User[]) || []).length > 0 && (
+									{!usLoading && ((users as User[]) || []).length > 0 && !watch("guest_ok") && (
 										<AutocompleteElement
 											multiple
 											name="ro_users"
@@ -773,7 +812,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 					)}
 					<Button onClick={() => handleCloseSubmit()}>Cancel</Button>
 					<Button type="submit" form="editshareform" variant="contained">
-						{props.objectToEdit?.org_name === "" ? "Create" : "Apply"}
+						{props.objectToEdit?.org_name === undefined ? "Create" : "Apply"}
 					</Button>
 				</DialogActions>
 			</Dialog>
