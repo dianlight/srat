@@ -153,6 +153,7 @@ func TimeMachineSupportFromFS(fsType string) *dto.TimeMachineSupport {
 }
 
 func FSTypeIsWriteSupported(path string) *bool {
+	slog.Debug("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
 	return pointer.Bool(osutil.IsWritable(path))
 
 }

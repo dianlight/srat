@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -128,9 +127,9 @@ func prog(state overseer.State) {
 		log.Println("Read only mode")
 	}
 
-	if !strings.Contains(*dbfile, "?") {
-		*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
-	}
+	//if !strings.Contains(*dbfile, "?") {
+	//	*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
+	//}
 
 	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	// apiCancel is called at the end of Run() by FX lifecycle or explicitly if Run errors

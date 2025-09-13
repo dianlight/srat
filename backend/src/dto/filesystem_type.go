@@ -56,72 +56,89 @@ func MountFlagsMap() map[string]uintptr {
 }
 
 func (self *MountFlags) Scan(value interface{}) error {
-	for nflag, flags := range MountFlagsMap() {
-		switch value := value.(type) {
-		case int:
+	switch value := value.(type) {
+	case int:
+		for nflag, flags := range MountFlagsMap() {
 			if value&int(flags) != 0 {
 				self.Add(MountFlag{
 					Name:       nflag,
 					NeedsValue: false,
 				})
 			}
-		case uintptr:
+		}
+	case uintptr:
+		for nflag, flags := range MountFlagsMap() {
 			if value&uintptr(flags) != 0 {
 				self.Add(MountFlag{
 					Name:       nflag,
 					NeedsValue: false,
 				})
 			}
-		case int64:
+		}
+	case int64:
+		for nflag, flags := range MountFlagsMap() {
 			if value&int64(flags) != 0 {
 				self.Add(MountFlag{
 					Name:       nflag,
 					NeedsValue: false,
 				})
 			}
-		case []string:
-			svalue := value
-			for _, flag := range svalue {
-				if flag == nflag {
-					self.Add(MountFlag{
-						Name:       nflag,
-						NeedsValue: false,
-					})
-				} else if strings.HasPrefix(flag, nflag+"=") {
-					// Extract the value after the '='
-					parts := strings.SplitN(flag, "=", 2)
-					if len(parts) == 2 {
-						self.Add(MountFlag{
-							Name:       nflag,
-							NeedsValue: true,
-							FlagValue:  parts[1],
-						})
-					}
-				}
-			}
-		case string:
-			svalue := value
-			for _, flag := range strings.Split(svalue, ",") {
-				if flag == nflag {
-					self.Add(MountFlag{
-						Name:       nflag,
-						NeedsValue: false,
-					})
-				} else if strings.HasPrefix(flag, nflag+"=") {
-					// Extract the value after the '='
-					parts := strings.SplitN(flag, "=", 2)
-					if len(parts) == 2 {
-						self.Add(MountFlag{
-							Name:       nflag,
-							NeedsValue: true,
-							FlagValue:  parts[1],
-						})
-					}
-				}
-			}
-		default:
-			return fmt.Errorf("invalid value type for MountFlags: %T", value)
 		}
+	case []string:
+		for _, flag := range value {
+			if !strings.Contains(flag, "=") {
+				self.Add(MountFlag{
+					Name:       flag,
+					NeedsValue: false,
+				})
+			} else {
+				// Extract the value after the '='
+				parts := strings.SplitN(flag, "=", 2)
+				if len(parts) == 2 {
+					self.Add(MountFlag{
+						Name:       parts[0],
+						NeedsValue: true,
+						FlagValue:  parts[1],
+					})
+				}
+			}
+		}
+	case string:
+		for _, flag := range strings.Split(value, ",") {
+			if !strings.Contains(flag, "=") {
+				self.Add(MountFlag{
+					Name:       flag,
+					NeedsValue: false,
+				})
+			} else {
+				// Extract the value after the '='
+				parts := strings.SplitN(flag, "=", 2)
+				if len(parts) == 2 {
+					self.Add(MountFlag{
+						Name:       parts[0],
+						NeedsValue: true,
+						FlagValue:  parts[1],
+					})
+				}
+			}
+		}
+	case map[string]string:
+		for k, v := range value {
+			if v == "" {
+				self.Add(MountFlag{
+					Name:       k,
+					NeedsValue: false,
+				})
+			} else {
+				self.Add(MountFlag{
+					Name:       k,
+					NeedsValue: true,
+					FlagValue:  v,
+				})
+			}
+		}
+	default:
+		return fmt.Errorf("invalid value type for MountFlags: %T", value)
 	}
 	return nil
 }

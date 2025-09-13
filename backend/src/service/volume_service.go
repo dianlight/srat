@@ -18,7 +18,7 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tlog"
 	"github.com/pilebones/go-udev/netlink"
-	psutil_disk "github.com/shirou/gopsutil/v4/disk"
+	"github.com/prometheus/procfs"
 	"github.com/shomali11/util/xhashes"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
@@ -44,25 +44,25 @@ type VolumeServiceInterface interface {
 	DismissAutomountNotification(mountPath string, notificationType string)
 	CheckUnmountedAutomountPartitions() errors.E
 	// Test only
-	MockSetPsutilGetPartitions(f func(all bool) ([]psutil_disk.PartitionStat, error))
+	MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error))
 	CreateBlockDevice(device string) error
 }
 
 type VolumeService struct {
-	ctx                 context.Context
-	volumesQueueMutex   sync.RWMutex
-	broascasting        BroadcasterServiceInterface
-	mount_repo          repository.MountPointPathRepositoryInterface
-	hardwareClient      HardwareServiceInterface
-	fs_service          FilesystemServiceInterface
-	shareService        ShareServiceInterface
-	issueService        IssueServiceInterface
-	state               *dto.ContextState
-	sfGroup             singleflight.Group
-	haService           HomeAssistantServiceInterface
-	convDto             converter.DtoToDbomConverterImpl
-	convMDto            converter.MountToDbomImpl
-	psutilGetPartitions func(all bool) ([]psutil_disk.PartitionStat, error)
+	ctx               context.Context
+	volumesQueueMutex sync.RWMutex
+	broascasting      BroadcasterServiceInterface
+	mount_repo        repository.MountPointPathRepositoryInterface
+	hardwareClient    HardwareServiceInterface
+	fs_service        FilesystemServiceInterface
+	shareService      ShareServiceInterface
+	issueService      IssueServiceInterface
+	state             *dto.ContextState
+	sfGroup           singleflight.Group
+	haService         HomeAssistantServiceInterface
+	convDto           converter.DtoToDbomConverterImpl
+	convMDto          converter.MountToDbomImpl
+	procfsGetMounts   func() ([]*procfs.MountInfo, error)
 }
 
 type VolumeServiceProps struct {
@@ -83,19 +83,19 @@ func NewVolumeService(
 	in VolumeServiceProps,
 ) VolumeServiceInterface {
 	p := &VolumeService{
-		ctx:                 in.Ctx,
-		broascasting:        in.Broadcaster,
-		volumesQueueMutex:   sync.RWMutex{},
-		mount_repo:          in.MountPointRepo,
-		hardwareClient:      in.HardwareClient,
-		fs_service:          in.FilesystemService,
-		state:               in.State,
-		shareService:        in.ShareService,
-		issueService:        in.IssueService,
-		haService:           in.HAService,
-		convDto:             converter.DtoToDbomConverterImpl{},
-		convMDto:            converter.MountToDbomImpl{},
-		psutilGetPartitions: psutil_disk.Partitions,
+		ctx:               in.Ctx,
+		broascasting:      in.Broadcaster,
+		volumesQueueMutex: sync.RWMutex{},
+		mount_repo:        in.MountPointRepo,
+		hardwareClient:    in.HardwareClient,
+		fs_service:        in.FilesystemService,
+		state:             in.State,
+		shareService:      in.ShareService,
+		issueService:      in.IssueService,
+		haService:         in.HAService,
+		convDto:           converter.DtoToDbomConverterImpl{},
+		convMDto:          converter.MountToDbomImpl{},
+		procfsGetMounts:   procfs.GetMounts,
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -364,7 +364,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		if err != nil {
 			// Critical: Mount succeeded but DB save failed. State is inconsistent.
 			// Attempt to unmount?
-			slog.Error("CRITICAL: Mount succeeded but failed to save state to DB. Attempting unmount.", "device", md.DeviceId, "path", dbom_mount_data.Path, "save_error", err)
+			slog.Error("CRITICAL: Mount succeeded but failed to save state to DB. Attempting unmount.", "device", md.DeviceId, "data", dbom_mount_data, "mp", mp, "save_error", err)
 			unmountErr := mount.Unmount(dbom_mount_data.Path, true, false) // Force unmount
 			if unmountErr != nil {
 				slog.Error("Failed to auto-unmount after DB save failure", "path", dbom_mount_data.Path, "unmount_error", unmountErr)
@@ -654,19 +654,19 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 					continue
 				}
 
-				prtstatus, err := self.psutilGetPartitions(false)
+				mountInfos, err := self.procfsGetMounts()
 				if err != nil {
 					slog.Error("Failed to get local mount points", "err", err)
 					continue
 				}
 				//slog.Debug("Prtstatus entries found", "count", len(prtstatus))
-				for _, prtstate := range prtstatus {
+				for _, prtstate := range mountInfos {
 					//slog.Debug("Check", "legacy_device", *part.LegacyDevicePath, "part_device", prtstate.Device, "part_mountpoint", prtstate.Mountpoint, "db_device", *part.Id)
-					if part.LegacyDevicePath != nil &&
-						(prtstate.Device == *part.LegacyDevicePath || prtstate.Device == *part.DevicePath) &&
-						prtstate.Mountpoint != "" {
+					if part.LegacyDevicePath != nil && part.DevicePath != nil &&
+						(prtstate.Source == *part.LegacyDevicePath || prtstate.Source == *part.DevicePath) &&
+						prtstate.MountPoint != "" {
 						// Local mountpoint for partition found
-						tlog.Trace("Checking partition", "part_device", prtstate.Device, "part_mountpoint", prtstate.Mountpoint, "db_device", *part.Id, "legacy_device", *part.LegacyDeviceName)
+						tlog.Trace("Checking partition", "part_device", prtstate.Source, "part_mountpoint", prtstate.MountPoint, "db_device", *part.Id, "legacy_device", *part.LegacyDeviceName)
 						mountPoint := dto.MountPointData{}
 						if mountPointPath, ok := existingDBmountPoints[*part.Id]; ok {
 							// Existing mount point in DB, update details
@@ -675,12 +675,15 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 								slog.Error("Failed to convert mount point data", "err", errConv)
 							}
 						}
-						mountPoint.Path = prtstate.Mountpoint
+						//slog.Debug("Opts found for mount point", "mountPoint", mountPoint, "opts", prtstate.Options, "fstype", prtstate.FSType, "superOpts", prtstate.SuperOptions)
+						mountPoint.Path = prtstate.MountPoint
 						mountPoint.DeviceId = *part.Id
 						mountPoint.IsMounted = true
 						mountPoint.Flags = &dto.MountFlags{}
-						mountPoint.Flags.Scan(prtstate.Opts)
-						mountPoint.FSType = &prtstate.Fstype
+						mountPoint.Flags.Scan(prtstate.Options)
+						mountPoint.CustomFlags = &dto.MountFlags{}
+						mountPoint.CustomFlags.Scan(prtstate.SuperOptions)
+						mountPoint.FSType = &prtstate.FSType
 						mountPoint.Type = "ADDON"
 						mountPoint.Partition = &part
 						if (*disk.Partitions)[pidx].MountPointData == nil {
@@ -688,6 +691,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 						}
 						*(*disk.Partitions)[pidx].MountPointData = append(*(*disk.Partitions)[pidx].MountPointData, mountPoint)
 						delete(existingDBmountPoints, *part.Id)
+						slog.Debug("Added mount point data to partition", "device_id", *part.Id, "prtstate", prtstate, "mountpoint", mountPoint)
 
 						mountPointPath := &dbom.MountPointPath{}
 						errConv := self.convDto.MountPointDataToMountPointPath(mountPoint, mountPointPath)
@@ -1251,6 +1255,6 @@ func (self *VolumeService) CheckUnmountedAutomountPartitions() errors.E {
 	return nil
 }
 
-func (ms *VolumeService) MockSetPsutilGetPartitions(f func(all bool) ([]psutil_disk.PartitionStat, error)) {
-	ms.psutilGetPartitions = f
+func (ms *VolumeService) MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error)) {
+	ms.procfsGetMounts = f
 }

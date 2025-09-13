@@ -16,7 +16,7 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
-	psutil_disk "github.com/shirou/gopsutil/v4/disk"
+	"github.com/prometheus/procfs"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/stretchr/testify/suite"
 	"github.com/u-root/u-root/pkg/mount/loop"
@@ -76,10 +76,10 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
-	suite.volumeService.MockSetPsutilGetPartitions(func(all bool) ([]psutil_disk.PartitionStat, error) {
-		return []psutil_disk.PartitionStat{
-			{Device: "sda1", Mountpoint: "/mnt/test1", Fstype: "ext4", Opts: []string{"noatime"}},
-			{Device: "sdb1", Mountpoint: "/mnt/test2", Fstype: "xfs", Opts: []string{"nodiratime"}},
+	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) {
+		return []*procfs.MountInfo{
+			{MountID: 1217, ParentID: 819, MajorMinorVer: "0:52", Root: "/", Source: "/dev/sda1", MountPoint: "/mnt/test1", FSType: "ext4", Options: map[string]string{"noatime": ""}, SuperOptions: map[string]string{}},
+			{MountID: 1218, ParentID: 820, MajorMinorVer: "0:53", Root: "/", Source: "/dev/sdb1", MountPoint: "/mnt/test2", FSType: "xfs", Options: map[string]string{"nodiratime": ""}, SuperOptions: map[string]string{}},
 		}, nil
 	})
 	suite.app.RequireStart()
@@ -101,7 +101,7 @@ func (suite *VolumeServiceTestSuite) TearDownTest() {
 
 // --- MountVolume Tests ---
 
-func (suite *VolumeServiceTestSuite) TestMountVolume_Success() {
+func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	device, err := loop.FindDevice()
 	suite.Require().NoError(err, "Error finding loop device")
 	err = suite.volumeService.CreateBlockDevice(device)
@@ -232,32 +232,6 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_PathEmpty() {
 	suite.Equal("Mount point path is empty", details["Message"])
 }
 
-// --- UnmountVolume Tests ---
-
-func (suite *VolumeServiceTestSuite) TestUnmountVolume_Success() {
-	mountPath := "/mnt/test1"
-	dbomMountData := &dbom.MountPointPath{Path: mountPath, DeviceId: "sda1"}
-
-	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(1))
-
-	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
-		mp, ok := args[0].(*dbom.MountPointPath)
-		if !ok {
-			suite.T().Errorf("Expected argument to be of type *dbom.MountPointPath, got %T", args[0])
-		}
-		suite.Equal(mountPath, mp.Path)
-		return []any{nil}
-	})).Verify(matchers.AtLeastOnce())
-
-	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(
-		[]dto.Disk{}, nil)
-
-	//suite.mockBroadcaster.On("BroadcastMessage", mock.AnythingOfType("*[]dto.Disk")).Return(nil, nil).Once()
-
-	err := suite.volumeService.UnmountVolume(mountPath, false, false)
-	suite.Nil(err, "Expected no error on successful unmount")
-}
-
 func (suite *VolumeServiceTestSuite) TestUnmountVolume_RepoFindByPathError() {
 	mountPath := "/mnt/test1"
 	expectedErr := errors.New("database error")
@@ -290,6 +264,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 					Name:             pointer.String("RootFS"),
 					LegacyDevicePath: pointer.String("/dev/sda1"),
 					LegacyDeviceName: pointer.String("sda1"),
+					DevicePath:       pointer.String("/dev/disk/by-id/virtio-disk1-part1"),
 					Size:             pointer.Int(50),
 					HostMountPointData: &[]dto.MountPointData{{
 						Path: mountPath1,
@@ -309,6 +284,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 					Name:             pointer.String("DataFs"),
 					LegacyDevicePath: pointer.String("/dev/sdb1"),
 					LegacyDeviceName: pointer.String("sdb1"),
+					DevicePath:       pointer.String("/dev/disk/by-id/virtio-disk2-part1"),
 					Size:             pointer.Int(50),
 					HostMountPointData: &[]dto.MountPointData{{
 						Path: mountPath2,
@@ -442,6 +418,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 					Size:             pointer.Int(50),
 					LegacyDevicePath: pointer.String("/dev/sda1"),
 					LegacyDeviceName: pointer.String("sda1"),
+					DevicePath:       pointer.String("/dev/disk/by-id/virtio-disk1-part1"),
 					HostMountPointData: &[]dto.MountPointData{{
 						Path: mountPath1,
 					}},
@@ -474,29 +451,6 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 }
 
 // --- NotifyClient Tests ---
-
-// NotifyClient is tested implicitly via Mount/Unmount success tests.
-// We can add specific tests if its internal logic becomes more complex.
-
-func (suite *VolumeServiceTestSuite) TestNotifyClient_GetVolumesDataError() {
-	//expectedErr := errors.New("failed to get volumes")
-
-	// This test requires triggering NotifyClient directly or via another method.
-	// Let's simulate it being called after an Unmount, but GetVolumesData fails.
-
-	mountPath := "/mnt/notifyerr"
-	dbomMountData := &dbom.MountPointPath{Path: mountPath, DeviceId: "sda1"}
-
-	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(1))
-	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.Times(1))
-
-	// Trigger Unmount which calls NotifyClient
-	err := suite.volumeService.UnmountVolume(mountPath, false, false)
-	suite.Require().NoError(err) // Unmount itself should succeed
-
-	// Assertions on mocks are checked in TearDownTest
-	suite.T().Log("Tested implicitly: NotifyClient logs error and doesn't broadcast if GetVolumesData fails.")
-}
 
 // --- UpdateMountPointSettings Tests ---
 func (suite *VolumeServiceTestSuite) TestUpdateMountPointSettings_Success() {

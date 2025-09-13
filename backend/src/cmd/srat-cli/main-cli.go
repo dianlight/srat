@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -158,9 +157,9 @@ func main() {
 		log.Fatalf("Missing samba config! %s", *smbConfigFile)
 	}
 
-	if !strings.Contains(*dbfile, "?") {
-		*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
-	}
+	//if !strings.Contains(*dbfile, "?") {
+	//	*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
+	//}
 
 	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	defer apiCancel() // Ensure context is cancelled on exit
