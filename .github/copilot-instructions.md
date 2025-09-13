@@ -2,159 +2,131 @@
 
 This file highlights the must-know, discoverable rules and workflows for productive changes in this repo. Keep it short and actionable.
 
-- Languages: Go backend (Go 1.25), TypeScript React frontend (Bun runtime). See `backend/go.mod` and `frontend/package.json`/`bun.lockb`.
-- Builds: backend via `backend/Makefile` (root `make` proxies many targets). Frontend uses Bun: `cd frontend && bun install && bun run build`.
-- Pre-commit and hooks: repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
+- **Languages**: Go backend (Go 1.25), TypeScript React frontend (Bun runtime). See `backend/go.mod` and `frontend/package.json`/`bun.lockb`.
+- **Builds**: Root `Makefile` proxies to `backend/Makefile`. Frontend uses Bun: `cd frontend && bun install && bun run build`.
+- **Pre-commit**: Repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
 
-Key patterns and where to find them
+## Architecture Overview
 
-- API handlers: `backend/src/api/*` — handlers use constructor `NewXHandler` and `RegisterXHandler(api huma.API)`.
-- Services: `backend/src/service/*` — each service has an interface and an implementation wired via FX (`fx.In` param structs).
-- Repositories/DB: `backend/src/repository/*` and `backend/src/dbom/*` — GORM models live in `dbom`, converters in `converter/` and `goverter`-generated files.
-- DTOs: `backend/src/dto` define domain errors (see `dto/error_code.go`) and request/response shapes.
-- Logging: `backend/src/tlog` — use `tlog` helpers for structured logs and sensitive-data masking.
+SRAT is a Samba administration tool with a Go REST API backend and React frontend, designed to run within Home Assistant. Key architectural patterns:
 
-Testing and mocks
+- **Backend**: Clean architecture with API handlers → Services → Repositories → Database (GORM/SQLite)
+- **Frontend**: React + TypeScript + Material-UI + RTK Query for API state management
+- **Communication**: REST API with Server-Sent Events (SSE) for real-time updates
+- **Database**: SQLite with GORM ORM, embedded in production binary
+- **Dependency Injection**: Uber FX throughout backend for service wiring
 
-- Tests use `testify/suite` and `mockio/v2` for mocks. Test packages are named `{pkg}_test` and suites follow `XHandlerSuite` pattern. See `backend/src/api/*.go` and `*_test.go` for examples.
-- HTTP handler tests often use `humatest.New` to create a test API and `autopatch.AutoPatch(api)` for PATCH endpoints.
+## Key Patterns & Where to Find Them
 
-Dev and quality gates
+### Backend Patterns
 
-- Run documentation checks: `make docs-validate` (root). Docs and examples are in `docs/`.
-- Security: `make security` runs `gosec` (backend). CI expects gosec/pass for commits.
-- Formatting: use `gofmt` for Go; frontend uses Biome/biome config (see `biome.json`).
+- **API Handlers**: `backend/src/api/*` — Use constructor `NewXHandler` and `RegisterXHandler(api huma.API)`. Handlers use Huma framework for REST API.
+- **Services**: `backend/src/service/*` — Each service has an interface and implementation wired via FX (`fx.In` param structs). Services coordinate business logic.
+- **Repositories**: `backend/src/repository/*` and `backend/src/dbom/*` — GORM models in `dbom`, repositories handle data access with mutex protection.
+- **DTOs**: `backend/src/dto` — Define domain objects, error codes (see `dto/error_code.go`), and request/response shapes.
+- **Converters**: `backend/src/converter/*` — Goverter-generated converters for DTO↔DBOM transformations. Run `go generate` after changes.
+- **Logging**: `backend/src/tlog` — Custom logging with sensitive data masking, structured logs, and terminal color support.
 
-Quick examples
+### Frontend Patterns
 
-- Start backend dev build: `cd backend && make run` (see `backend/Makefile`).
-- Run backend unit tests: `cd backend && go test ./...`.
-- Build all: `make ALL` (root Makefile).
+- **Components**: `frontend/src/components/` — Reusable React components with Material-UI
+- **Pages**: `frontend/src/pages/` — Route-based page components
+- **Store**: `frontend/src/store/` — RTK Query for API calls, Redux slices for local state
+- **Hooks**: `frontend/src/hooks/` — Custom React hooks for shared logic
+- **API Integration**: Auto-generated RTK Query hooks from OpenAPI spec (see `frontend/src/store/sratApi.ts`)
 
-Integration notes for agents
+## Development Workflows
 
-- Many constructors and handlers are wired via Uber FX — when changing signatures, update providers and `fx.Populate` calls in tests.
-- Converters are generated (`*gen.go`) — if you change DTO/dbom shapes, regenerate converters or update `converter/*` accordingly.
-- Sensitive secrets (Rollbar) are optional and guarded; don't hardcode secrets — use env or config flags the project expects.
+### Backend Development
+- **Start dev server**: `cd backend && make dev` (uses Air for hot reload)
+- **Build**: `cd backend && make build` (production) or `make test_build` (debug symbols)
+- **Test**: `cd backend && make test` (runs with `-p 1` for deterministic output)
+- **Format**: `cd backend && make format` (includes gofmt, testifylint, govet)
+- **Generate**: `cd backend && make gen` (goverter converters + OpenAPI docs)
 
-Files to open first
+### Frontend Development
+- **Start dev server**: `cd frontend && bun run dev` (hot reload with live reload)
+- **Build**: `cd frontend && bun run build` (outputs to `../backend/src/web/static`)
+- **Watch mode**: `cd frontend && bun run gowatch` (builds directly to backend static dir)
+- **Generate API**: `cd frontend && bun run gen` (RTK Query from OpenAPI spec)
+- **Lint**: `cd frontend && bun run lint` (Biome formatter/linter)
 
-- `backend/Makefile`, `backend/src/api/*`, `backend/src/service/*`, `backend/src/dto/error_code.go`, `backend/src/converter/*`.
-- `frontend/src/pages/` and `frontend/src/components/` for UI changes.
+### Full Stack Development
+- **Prepare environment**: `make prepare` (installs pre-commit + dependencies)
+- **Build all**: `make ALL` (multi-arch: amd64, armv7, aarch64)
+- **Clean**: `make clean`
 
-If uncertain, run these checks before PR
+## Testing Patterns
 
-- `pre-commit run --all-files`
-- `make docs-validate`
-- `make security`
+### Backend Testing
+- **Framework**: `testify/suite` with `mockio/v2` for mocks
+- **Test Structure**: `{package}_test` with `{HandlerName}HandlerSuite` structs
+- **Setup**: Use `fxtest.New()` to build dependency graph, `fx.Populate()` to inject mocks
+- **HTTP Tests**: `humatest.New()` for API testing, `autopatch.AutoPatch(api)` for PATCH endpoints
+- **Mock Pattern**: `mock.When(service.Method(...)).ThenReturn(...)` then `mock.Verify(..., matchers.Times(1)).Method()`
+- **State Verification**: Always check `dirtyService.SetDirty*()` calls when data is modified
+
+### Test Examples
+```go
+// HTTP handler test
+func (suite *ShareHandlerSuite) TestCreateShareSuccess() {
+    mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(expectedShare, nil)
+    _, api := humatest.New(suite.T())
+    suite.handler.RegisterShareHandler(api)
+    resp := api.Post("/share", input)
+    suite.Equal(http.StatusCreated, resp.Code)
+    mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+}
+```
+
+## Quality Gates & Validation
+
+### Pre-commit Hooks
+- **Security**: `gosec` scans Go code (high severity/confidence only)
+- **Dependencies**: Remove/restore `go.mod` replace directives
+- **Documentation**: Link format validation, CHANGELOG format checks
+- **Install**: `pre-commit install && pre-commit install --hook-type pre-push`
+
+### Documentation
+- **Validation**: `make docs-validate` (markdownlint, link checks, spellcheck)
+- **Auto-fix**: `make docs-fix` (formatting fixes)
+- **OpenAPI**: Auto-generated from Go code, served at `/docs`
+
+### Security
+- **Backend**: `make security` runs `gosec` (exclude generated code)
+- **Frontend**: Bun handles dependency security
+- **Include in PR**: Security scan results in "Quality Gates" section
+
+## Integration Points
+
+### External Dependencies
+- **Database**: SQLite with WAL mode, busy timeout, foreign keys
+- **Home Assistant**: Integration via supervisor API, addon configuration
+- **Samba**: Configuration generation and service management
+- **Telemetry**: Optional Rollbar integration with user consent
+
+### Cross-Component Communication
+- **Dirty State**: `dirtyService.SetDirty*()` methods mark data as changed
+- **Notifications**: Services call `NotifyClient()` for real-time updates via SSE
+- **Error Handling**: Custom error codes in `dto/error_code.go`, wrapped with `errors.Wrap()`
+- **Context**: Request context passed through all layers for cancellation/tracing
+
+## Files to Open First
+
+- **Backend entry**: `backend/Makefile`, `backend/src/api/*`, `backend/src/service/*`
+- **Frontend entry**: `frontend/src/App.tsx`, `frontend/src/store/sratApi.ts`
+- **Architecture**: `backend/src/dto/error_code.go`, `backend/src/converter/*`
+- **Build system**: Root `Makefile`, `frontend/bun.build.ts`
+
+## Common Gotchas
+
+- **FX Wiring**: When changing service interfaces, update all `fx.Provide()` calls and test `fx.Populate()`
+- **Converters**: After DTO/DBOM changes, run `go generate` to regenerate goverter code
+- **Patches**: External dependencies are patched via `gohack` — see `backend/Makefile` patch targets
+- **Multi-arch**: Always test builds on target architectures, especially ARM variants
+- **Embedded Assets**: Frontend builds to `backend/src/web/static` for embedding in binary
+- **Database Paths**: Use `--db` flag; app validates filesystem permissions
+
+If uncertain, run: `pre-commit run --all-files`, `make docs-validate`, `make security`
 
 If this file misses anything important, tell me which area (build, tests, DI, logging, frontend) and I will expand with concrete examples.
-
-1. **Mock Dependencies**: Use `mockio/v2` for mocking services and repositories.
-2. **Test Paths**: Test both success and error paths.
-3. **Verify State**: Check that `dirtyService.SetDirty*()` methods are called when data is modified.
-4. **Meaningful Names**: Use the pattern `Test{Method}{Scenario}` (e.g., `TestCreateShareSuccess`).
-5. **Use Assertions**: Prefer `testify/assert` or `testify/require` (e.g., `suite.Equal(...)`).
-
-### Test Suite Structure
-
-- **Package**: `{package}_test`
-- **Suite Struct**: Name it `{HandlerName}HandlerSuite`. It must embed `suite.Suite` and contain fields for the handler, mock services, `fxtest.App`, and a `context`.
-
-### SetupTest / TearDownTest Methods
-
-- **`SetupTest`**: Use `fxtest.New` to build the dependency graph. Provide all mocks, real services, configuration, and context. Use `fx.Populate` to inject dependencies into the suite fields. Set up mock expectations using `mock.When(...)`.
-- **`TearDownTest`**: Clean up resources. Cancel the context and wait for any `WaitGroup` to finish, then call `suite.app.RequireStop()`.
-
-### HTTP Test Pattern (`humatest`)
-
-1. **Initialize**: `_, api := humatest.New(suite.T())`
-2. **Register Handler**: `suite.handler.RegisterSomething(api)`
-3. **Enable AutoPatch**: If testing a `PATCH` endpoint, call `autopatch.AutoPatch(api)`.
-4. **Make Request**: `resp := api.Get("/endpoint")`
-5. **Assert Status**: `suite.Require().Equal(http.StatusOK, resp.Code)`
-6. **Assert Body**: Unmarshal the response and assert its contents.
-
-### Direct Handler Test Pattern
-
-1. **Prepare Input**: Create the required input DTO.
-2. **Configure Mock**: `mock.When(suite.mockService.Method(...)).ThenReturn(...)`
-3. **Execute**: Call the handler method directly: `result, err := suite.handler.Method(ctx, input)`
-4. **Assert**: Check the error and the result.
-5. **Verify Mock**: `mock.Verify(suite.mockService, matchers.Times(1)).Method()`
-
-### Error Handling Tests
-
-- Configure the mock to return a specific error.
-- Execute the handler method.
-- Assert that an error is returned (`suite.Error(err)`).
-- If applicable, check for a specific `huma.StatusError` and status code.
-
-### Test Runner
-
-- Always include the test runner function:
-
-  ```go
-  func TestHandlerNameSuite(t *testing.T) {
-      suite.Run(t, new(HandlerNameSuite))
-  }
-  ```
-
-### Test Data
-
-- Place test configuration data in `backend/test/data/`.
-- Reference files using relative paths (e.g., `"../../test/data/config.json"`).
-
-## 5. Documentation
-
-### General Markdown Rules
-
-- **Update `CHANGELOG.md`** for all significant changes.
-- Use proper heading hierarchy and consistent formatting.
-- Include fenced code blocks with language identifiers.
-- Keep all documentation, examples, and links current and valid.
-
-### Package Documentation and Examples (Go)
-
-When adding or changing features, update the corresponding documentation.
-
-1. **READMEs**: Update package `README.md` files with new features, API documentation, usage examples, and best practices.
-2. **API Reference (GoDoc)**: Ensure all public functions, types, and constants are fully documented. Include examples for complex APIs.
-3. **Examples**: Update or create runnable example programs that demonstrate new features, error handling, and best practices.
-
-### API Documentation (OpenAPI)
-
-- Update OpenAPI specs when API endpoints change.
-- Include clear request/response examples.
-- Document all error codes and their meanings.
-
-### Implementation Docs
-
-- Update `docs/implementation/*.md` files when architectural decisions change.
-- Document the reasoning behind technical choices.
-
-## 6. Quality & Security
-
-### Quality Gates
-
-- **Before Merge**: All code must be formatted, and all documentation must be spell-checked with valid links and tested examples.
-- **Review**: Documentation and breaking changes require maintainer review. New features must be documented.
-
-### Security Scans (gosec)
-
-- Run `gosec` on the backend codebase to detect common security issues before submitting changes.
-- **How to run**: `make security` from the repo root.
-- Include the result in the "Quality Gates" section of your PR summary: `Security (gosec): PASS`.
-
-## 7. Build & Deployment
-
-### Build Conventions
-
-1. **Binary Structure**: Follow the established output structure.
-   - `backend/dist/${ARCH}/`: Production builds (stripped, optimized).
-   - `backend/tmp/`: Development/test builds (with debug symbols).
-2. **Binary Naming**: Use the convention `srat-server`, `srat-cli`, etc.
-3. **Makefile**: Use the `Makefile` targets for building. When adding a new binary, update the `Makefile` accordingly.
-4. **Multi-architecture**: Ensure builds work for `amd64` (x86_64), `armv7`, and `arm64` (aarch64).
-5. **Build Flags**: Use `-ldflags="-s -w"` for production and `-gcflags=all="-N -l"` for development. Always inject the version information.
-6. **Asset Embedding**: Frontend assets are embedded into the production binary using the `embedallowed` build tag.
