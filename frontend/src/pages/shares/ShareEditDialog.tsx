@@ -101,7 +101,6 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 					(mp) => mp?.path !== "",
 				) as MountPointData[] || [];
 			setAvailablePartition(newAvailablePartitions);
-			console.log("Available partitions updated:", newAvailablePartitions);
 		}
 	}, [volumes]);
 

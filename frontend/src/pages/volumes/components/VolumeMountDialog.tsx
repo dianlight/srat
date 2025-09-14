@@ -17,6 +17,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import {
 	AutocompleteElement,
 	CheckboxElement,
+	SwitchElement,
 	TextFieldElement,
 	useFieldArray,
 	useForm,
@@ -108,6 +109,10 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 							setUnsupportedCustomFlags((prev) => [...prev, flag]);
 						}
 					});
+				} else {
+					// FSType not found in current list, consider all flags unsupported
+					setUnsupportedFlags(existingMountData?.flags || []);
+					setUnsupportedCustomFlags(existingMountData?.custom_flags || []);
 				}
 			}
 
@@ -131,6 +136,9 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 				valueFlags.filter((v) => v.needsValue).map((flag) => ({ ...flag })),
 			); // Ensure we pass new objects to replace
 		} else if (!props.open) {
+			setUnsupportedCustomFlags([]);
+			setUnsupportedFlags([]);
+			setMounting(false);
 			reset({
 				path: "",
 				fstype: "",
@@ -290,7 +298,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 													getOptionLabel: (option) =>
 														(option as MountFlag).name, // Ensure label is just the name
 													renderOption: (props, option) => (
-														<li {...props} >
+														<li  {...props} key={props.key} >
 															<Tooltip
 																title={(option as MountFlag).description || ""}
 															>
@@ -466,8 +474,11 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 										</Typography>
 									)}
 								</Grid>
+								<Grid size={{ xs: 12 }}>
+									<Divider />
+								</Grid>
 								{fields.map((field, index) => (
-									<Grid size={{ xs: 12, sm: 6 }} key={field.id}>
+									<Grid size={{ xs: 12, sm: 6 }} key={field.id + "_edit_"}>
 										<TextFieldElement
 											size="small"
 											name={`custom_flags_values.${index}.value`}
@@ -492,12 +503,19 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 									</Grid>
 								))}
 								<Grid size={{ xs: 12 }}>
-									<CheckboxElement
+									<SwitchElement
+										switchProps={{
+											size: "small",
+										}}
+										slotProps={{
+											typography: {
+												fontSize: "0.875rem",
+											},
+										}}
 										name="is_to_mount_at_startup"
 										label="Mount at startup"
 										control={control}
 										disabled={props.readOnlyView}
-										size="small"
 									/>
 								</Grid>
 							</Grid>
