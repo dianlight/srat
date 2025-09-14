@@ -141,7 +141,7 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue, onResolve, showIgnored }) 
           {!issue.ignored && onResolve && (
             <Button
               size="small"
-              variant="contained"
+              variant="outlined"
               sx={{ backgroundColor: severityConfig.color }}
               onClick={() => onResolve(issue.id)}
             >

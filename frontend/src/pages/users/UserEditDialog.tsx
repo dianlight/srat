@@ -36,11 +36,11 @@ export function UserEditDialog(props: {
 		},
 		values: props.objectToEdit?.doCreate
 			? {
-					username: "",
-					password: "",
-					is_admin: false,
-					doCreate: true,
-			  }
+				username: "",
+				password: "",
+				is_admin: false,
+				doCreate: true,
+			}
 			: props.objectToEdit,
 	});
 
@@ -80,10 +80,10 @@ export function UserEditDialog(props: {
 												? props.objectToEdit.is_admin
 													? {}
 													: {
-															input: {
-																readOnly: true,
-															},
-													  }
+														input: {
+															readOnly: true,
+														},
+													}
 												: {}
 										}
 									/>
@@ -113,11 +113,13 @@ export function UserEditDialog(props: {
 					</Stack>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => handleCloseSubmit()}>Cancel</Button>
+					<Button onClick={() => handleCloseSubmit()} variant="outlined" color="secondary">Cancel</Button>
 					<Button
 						type="submit"
 						form="editshareform"
 						data-tutor={`reactour__tab${TabIDs.USERS}__step6`}
+						variant="outlined"
+						color="success"
 					>
 						{props.objectToEdit?.doCreate ? "Create" : "Apply"}
 					</Button>

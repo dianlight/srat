@@ -525,21 +525,22 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 						{props.readOnlyView ? (
 							<Button
 								onClick={handleCancel}
-								color="primary"
-								variant="contained"
+								color="secondary"
+								variant="outlined"
 							>
 								Close
 							</Button>
 						) : (
 							<>
-								<Button onClick={handleCancel} color="secondary">
+								<Button onClick={handleCancel} color="secondary" variant="outlined">
 									Cancel
 								</Button>
 								<Button
 									type="submit"
 									form="mountvolumeform"
 									disabled={mounting}
-									variant="contained"
+									variant="outlined"
+									color="success"
 								>
 									Mount
 								</Button>{" "}

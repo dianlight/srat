@@ -41,7 +41,7 @@ export function PreviewDialog(props: PreviewDialogProps) {
 				<ObjectTree object={props.objectToDisplay} />
 			</DialogContent>
 			<DialogActions>
-				<Button onClick={handleClose} autoFocus>
+				<Button onClick={handleClose} autoFocus variant="outlined" color="secondary">
 					Close
 				</Button>
 			</DialogActions>

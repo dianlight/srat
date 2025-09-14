@@ -809,8 +809,8 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 							Delete
 						</Button>
 					)}
-					<Button onClick={() => handleCloseSubmit()}>Cancel</Button>
-					<Button type="submit" form="editshareform" variant="contained">
+					<Button onClick={() => handleCloseSubmit()} variant="outlined" color="secondary">Cancel</Button>
+					<Button type="submit" form="editshareform" variant="outlined" color="success">
 						{props.objectToEdit?.org_name === undefined ? "Create" : "Apply"}
 					</Button>
 				</DialogActions>

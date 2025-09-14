@@ -115,7 +115,8 @@ export function ActionableItemsList({
 							secondaryAction={
 								<ButtonGroup size="small">
 									<Button
-										variant="contained"
+										variant="outlined"
+										color="success"
 										disabled={disabled}
 										onClick={() =>
 											action === "mount"
