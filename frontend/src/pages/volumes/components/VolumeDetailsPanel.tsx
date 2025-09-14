@@ -7,17 +7,22 @@ import ComputerIcon from "@mui/icons-material/Computer";
 import UsbIcon from "@mui/icons-material/Usb";
 import SdStorageIcon from "@mui/icons-material/SdStorage";
 import EjectIcon from "@mui/icons-material/Eject";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SettingsIcon from "@mui/icons-material/Settings";
 import {
     Box,
     Card,
     CardContent,
     CardHeader,
     Chip,
+    Collapse,
     Grid,
+    IconButton,
     Stack,
     Typography,
 } from "@mui/material";
 import { filesize } from "filesize";
+import { useState } from "react";
 import { type Disk, type Partition, type SharedResource, Usage, Time_machine_support } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
 
@@ -32,6 +37,8 @@ export function VolumeDetailsPanel({
     partition,
     share,
 }: VolumeDetailsPanelProps) {
+    const [diskInfoExpanded, setDiskInfoExpanded] = useState(false);
+
     if (!disk || !partition) {
         return (
             <Box
@@ -76,80 +83,114 @@ export function VolumeDetailsPanel({
                     <CardHeader
                         title="Disk Information"
                         avatar={renderDiskIcon(disk)}
+                        action={
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                {!diskInfoExpanded && (
+                                    <Stack direction="row" spacing={1} sx={{ mr: 1 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {disk.model || "Unknown"}
+                                        </Typography>
+                                        {disk.size != null && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                • {filesize(disk.size, { round: 1 })}
+                                            </Typography>
+                                        )}
+                                        {disk.connection_bus && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                • {disk.connection_bus}
+                                            </Typography>
+                                        )}
+                                    </Stack>
+                                )}
+                                <IconButton
+                                    onClick={() => setDiskInfoExpanded(!diskInfoExpanded)}
+                                    aria-expanded={diskInfoExpanded}
+                                    aria-label="show more"
+                                    sx={{
+                                        transform: diskInfoExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                                        transition: "transform 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+                                    }}
+                                >
+                                    <ExpandMoreIcon />
+                                </IconButton>
+                            </Box>
+                        }
                     />
-                    <CardContent>
-                        <Grid container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Model
-                                </Typography>
-                                <Typography variant="body2">
-                                    {disk.model || "Unknown"}
-                                </Typography>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Vendor
-                                </Typography>
-                                <Typography variant="body2">
-                                    {disk.vendor || "N/A"}
-                                </Typography>
-                            </Grid>
-                            {disk.size != null && (
+                    <Collapse in={diskInfoExpanded} timeout="auto" unmountOnExit>
+                        <CardContent>
+                            <Grid container spacing={2}>
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <Typography variant="subtitle2" color="text.secondary">
-                                        Size
+                                        Model
                                     </Typography>
                                     <Typography variant="body2">
-                                        {filesize(disk.size, { round: 1 })}
+                                        {disk.model || "Unknown"}
                                     </Typography>
                                 </Grid>
-                            )}
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Connection
-                                </Typography>
-                                <Typography variant="body2">
-                                    {disk.connection_bus || "N/A"}
-                                </Typography>
-                            </Grid>
-                            {disk.serial && (
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <Typography variant="subtitle2" color="text.secondary">
-                                        Serial
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-                                        {disk.serial}
-                                    </Typography>
-                                </Grid>
-                            )}
-                            {disk.revision && (
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <Typography variant="subtitle2" color="text.secondary">
-                                        Revision
+                                        Vendor
                                     </Typography>
                                     <Typography variant="body2">
-                                        {disk.revision}
+                                        {disk.vendor || "N/A"}
                                     </Typography>
                                 </Grid>
-                            )}
-                            <Grid size={{ xs: 12 }}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    Properties
-                                </Typography>
-                                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 0.5 }}>
-                                    {disk.removable && (
-                                        <Chip label="Removable" size="small" variant="outlined" />
-                                    )}
-                                    <Chip
-                                        label={`${disk.partitions?.length || 0} Partition(s)`}
-                                        size="small"
-                                        variant="outlined"
-                                    />
-                                </Stack>
+                                {disk.size != null && (
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            Size
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {filesize(disk.size, { round: 1 })}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <Typography variant="subtitle2" color="text.secondary">
+                                        Connection
+                                    </Typography>
+                                    <Typography variant="body2">
+                                        {disk.connection_bus || "N/A"}
+                                    </Typography>
+                                </Grid>
+                                {disk.serial && (
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            Serial
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                                            {disk.serial}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                {disk.revision && (
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            Revision
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {disk.revision}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                <Grid size={{ xs: 12 }}>
+                                    <Typography variant="subtitle2" color="text.secondary">
+                                        Properties
+                                    </Typography>
+                                    <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 0.5 }}>
+                                        {disk.removable && (
+                                            <Chip label="Removable" size="small" variant="outlined" />
+                                        )}
+                                        <Chip
+                                            label={`${disk.partitions?.length || 0} Partition(s)`}
+                                            size="small"
+                                            variant="outlined"
+                                        />
+                                    </Stack>
+                                </Grid>
                             </Grid>
-                        </Grid>
-                    </CardContent>
+                        </CardContent>
+                    </Collapse>
                 </Card>
 
                 {/* Partition Information Card */}
@@ -317,6 +358,95 @@ export function VolumeDetailsPanel({
                         </Grid>
                     </CardContent>
                 </Card>
+
+                {/* Mount Settings Card */}
+                {isMounted && mountData && (
+                    <Card>
+                        <CardHeader
+                            title="Mount Settings"
+                            avatar={<SettingsIcon color="primary" />}
+                        />
+                        <CardContent>
+                            <Grid container spacing={2}>
+                                {/* File System Type */}
+                                {mountData.fstype && (
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            File System Type
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {mountData.fstype}
+                                        </Typography>
+                                    </Grid>
+                                )}
+
+                                {/* Mount at Startup */}
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <Typography variant="subtitle2" color="text.secondary">
+                                        Mount at Startup
+                                    </Typography>
+                                    <Chip
+                                        label={mountData.is_to_mount_at_startup ? "Enabled" : "Disabled"}
+                                        color={mountData.is_to_mount_at_startup ? "success" : "default"}
+                                        size="small"
+                                    />
+                                </Grid>
+
+                                {/* Mount Flags */}
+                                {mountData.flags && mountData.flags.length > 0 && (
+                                    <Grid size={{ xs: 12 }}>
+                                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                            Mount Flags
+                                        </Typography>
+                                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                                            {mountData.flags.map((flag, index) => (
+                                                <Chip
+                                                    key={index}
+                                                    label={flag.value ? `${flag.name}=${flag.value}` : flag.name}
+                                                    size="small"
+                                                    variant="outlined"
+                                                    color="primary"
+                                                />
+                                            ))}
+                                        </Stack>
+                                    </Grid>
+                                )}
+
+                                {/* Custom/Filesystem-specific Mount Flags */}
+                                {mountData.custom_flags && mountData.custom_flags.length > 0 && (
+                                    <Grid size={{ xs: 12 }}>
+                                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                            Filesystem-specific Mount Flags
+                                        </Typography>
+                                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                                            {mountData.custom_flags.map((flag, index) => (
+                                                <Chip
+                                                    key={index}
+                                                    label={flag.value ? `${flag.name}=${flag.value}` : flag.name}
+                                                    size="small"
+                                                    variant="outlined"
+                                                    color="secondary"
+                                                />
+                                            ))}
+                                        </Stack>
+                                    </Grid>
+                                )}
+
+                                {/* Write Support Status */}
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <Typography variant="subtitle2" color="text.secondary">
+                                        Write Support
+                                    </Typography>
+                                    <Chip
+                                        label={mountData.is_write_supported ? "Read/Write" : "Read-Only"}
+                                        color={mountData.is_write_supported ? "success" : "warning"}
+                                        size="small"
+                                    />
+                                </Grid>
+                            </Grid>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Share Information Card */}
                 {mountData?.shares && mountData.shares.length > 0 ? (
