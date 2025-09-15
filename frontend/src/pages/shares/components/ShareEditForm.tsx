@@ -112,7 +112,10 @@ export function ShareEditForm({
             recycle_bin_enabled: (shareData?.recycle_bin_enabled || false),
             guest_ok: shareData?.guest_ok || false,
             timemachine_max_size: shareData?.timemachine_max_size ||
-                (shareData?.mount_point_data?.disk_size ? filesize(shareData?.mount_point_data?.disk_size) : "MAX"),
+                (shareData?.mount_point_data?.disk_size ? filesize(shareData?.mount_point_data?.disk_size, {
+                    round: 0,
+
+                }) : "MAX"),
             usage: shareData?.usage || Usage.None,
             veto_files: shareData?.veto_files || [],
             disabled: shareData?.disabled,
@@ -444,7 +447,7 @@ export function ShareEditForm({
                                 control={control}
                                 rules={{
                                     pattern: {
-                                        value: /^(MAX|\d+[KMGTP]?)$/i,
+                                        value: /^(MAX|\d+\s*[KMGTP]B{0,1}?)$/i,
                                         message: "Invalid format. Use MAX or a number followed by K, M, G, T, P (e.g., 100G, 5T).",
                                     },
                                 }}

@@ -243,7 +243,7 @@ export function ShareDetailsPanel({
                     ) : (
                         <CardContent>
                             <Grid container spacing={2}>
-                                <Grid size={{ xs: 12 }}>
+                                <Grid size={{ md: 6, sm: 12 }}>
                                     <Typography variant="subtitle2" color="text.secondary">
                                         Share Name
                                     </Typography>
@@ -253,7 +253,7 @@ export function ShareDetailsPanel({
                                 </Grid>
 
                                 {/* Share Properties */}
-                                <Grid size={{ xs: 12 }}>
+                                <Grid size={{ xs: 6, sm: 12 }}>
                                     <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                                         {share.usage && share.usage !== Usage.Internal && (
                                             <Chip
@@ -297,7 +297,7 @@ export function ShareDetailsPanel({
 
                                 {/* Users */}
                                 {share.users && share.users.length > 0 && (
-                                    <Grid size={{ xs: 12 }}>
+                                    <Grid size={{ md: 6, sm: 12 }}>
                                         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                             Read/Write Users
                                         </Typography>
@@ -318,7 +318,7 @@ export function ShareDetailsPanel({
 
                                 {/* Read-Only Users */}
                                 {share.ro_users && share.ro_users.length > 0 && (
-                                    <Grid size={{ xs: 12 }}>
+                                    <Grid size={{ md: 6, sm: 12 }}>
                                         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                             Read-Only Users
                                         </Typography>
@@ -339,7 +339,7 @@ export function ShareDetailsPanel({
 
                                 {/* Veto Files */}
                                 {share.veto_files && share.veto_files.length > 0 && (
-                                    <Grid size={{ xs: 12 }}>
+                                    <Grid size={{ md: 6, sm: 12 }}>
                                         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                             Veto Files
                                         </Typography>
@@ -358,7 +358,7 @@ export function ShareDetailsPanel({
 
                                 {/* Time Machine Settings */}
                                 {share.timemachine && share.timemachine_max_size && (
-                                    <Grid size={{ xs: 12 }}>
+                                    <Grid size={{ md: 6, sm: 12 }}>
                                         <Typography variant="subtitle2" color="text.secondary">
                                             Time Machine Max Size
                                         </Typography>
