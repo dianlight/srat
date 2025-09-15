@@ -18,11 +18,13 @@ import {
     Collapse,
     Grid,
     IconButton,
+    Paper,
     Stack,
     Typography,
 } from "@mui/material";
 import { filesize } from "filesize";
 import { useState } from "react";
+import { PreviewDialog } from "../../../components/PreviewDialog";
 import { type Disk, type Partition, type SharedResource, Usage, Time_machine_support } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
 
@@ -38,6 +40,19 @@ export function VolumeDetailsPanel({
     share,
 }: VolumeDetailsPanelProps) {
     const [diskInfoExpanded, setDiskInfoExpanded] = useState(false);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewObject, setPreviewObject] = useState<any | null>(null);
+    const [previewTitle, setPreviewTitle] = useState<string>("Preview");
+
+    const openPreviewFor = (obj: any, title?: string) => {
+        setPreviewObject(obj);
+        setPreviewTitle(title ?? "Preview");
+        setPreviewOpen(true);
+    };
+    const closePreview = () => {
+        setPreviewOpen(false);
+        setPreviewObject(null);
+    };
 
     if (!disk || !partition) {
         return (
@@ -73,6 +88,7 @@ export function VolumeDetailsPanel({
     };
 
     const mountData = partition.mount_point_data?.[0];
+    const allShares = partition.mount_point_data?.flatMap((mpd) => mpd.shares).filter(Boolean) || [];
     const isMounted = mountData?.is_mounted;
 
     return (
@@ -82,7 +98,11 @@ export function VolumeDetailsPanel({
                 <Card>
                     <CardHeader
                         title="Disk Information"
-                        avatar={renderDiskIcon(disk)}
+                        avatar={
+                            <IconButton onClick={() => openPreviewFor(disk, `Disk: ${disk.model || disk.serial || disk.id || "Unknown"}`)} aria-label="disk preview" size="small">
+                                {renderDiskIcon(disk)}
+                            </IconButton>
+                        }
                         action={
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                 {!diskInfoExpanded && (
@@ -197,7 +217,11 @@ export function VolumeDetailsPanel({
                 <Card>
                     <CardHeader
                         title="Partition Information"
-                        avatar={<StorageIcon color="primary" />}
+                        avatar={
+                            <IconButton onClick={() => openPreviewFor(partition, `Partition: ${decodeEscapeSequence(partition.name || partition.id || "Unnamed")}`)} aria-label="partition preview" size="small">
+                                <StorageIcon color="primary" />
+                            </IconButton>
+                        }
                     />
                     <CardContent>
                         <Grid container spacing={2}>
@@ -276,14 +300,25 @@ export function VolumeDetailsPanel({
                             {/* Mount Information */}
                             {isMounted && mountData && (
                                 <>
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <Typography variant="subtitle2" color="text.secondary">
-                                            Mount Path
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-                                            {mountData.path || "N/A"}
-                                        </Typography>
-                                    </Grid>
+                                    {/* Host Mount Information */}
+                                    {partition.mount_point_data && partition.mount_point_data.length > 0 && (
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                            <Typography variant="subtitle2" color="text.secondary">
+                                                Mount Point{partition.mount_point_data.length > 1 ? "s" : ""}
+                                            </Typography>
+                                            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 0.5 }}>
+                                                {partition.mount_point_data.map((mpd, index) => (
+                                                    <Chip
+                                                        key={index}
+                                                        label={mpd.path}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        sx={{ fontFamily: "monospace" }}
+                                                    />
+                                                ))}
+                                            </Stack>
+                                        </Grid>
+                                    )}
                                     {mountData.disk_label && (
                                         <Grid size={{ xs: 12, sm: 6 }}>
                                             <Typography variant="subtitle2" color="text.secondary">
@@ -340,7 +375,7 @@ export function VolumeDetailsPanel({
                             {partition.host_mount_point_data && partition.host_mount_point_data.length > 0 && (
                                 <Grid size={{ xs: 12 }}>
                                     <Typography variant="subtitle2" color="text.secondary">
-                                        Host Mount Points
+                                        Host Mount Point{partition.host_mount_point_data.length > 1 ? "s" : ""}
                                     </Typography>
                                     <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 0.5 }}>
                                         {partition.host_mount_point_data.map((hmpd, index) => (
@@ -360,11 +395,15 @@ export function VolumeDetailsPanel({
                 </Card>
 
                 {/* Mount Settings Card */}
-                {isMounted && mountData && (
+                {isMounted && mountData && partition.mount_point_data?.length == 1 && (
                     <Card>
                         <CardHeader
                             title="Mount Settings"
-                            avatar={<SettingsIcon color="primary" />}
+                            avatar={
+                                <IconButton onClick={() => openPreviewFor(mountData, `Mount Settings: ${mountData.path || ""}`)} aria-label="mount settings preview" size="small">
+                                    <SettingsIcon color="primary" />
+                                </IconButton>
+                            }
                         />
                         <CardContent>
                             <Grid container spacing={2}>
@@ -452,67 +491,81 @@ export function VolumeDetailsPanel({
                 {mountData?.shares && mountData.shares.length > 0 ? (
                     <Card>
                         <CardHeader
-                            title="Related Share"
-                            avatar={<FolderSpecialIcon color="primary" />}
+                            title={`Related Share${allShares?.length === 1 ? "" : "s"} (${allShares?.length})`}
+                            avatar={
+                                <IconButton onClick={() => openPreviewFor(allShares, `Related Shares (${allShares.length})`)} aria-label="shares preview" size="small">
+                                    <FolderSpecialIcon color="primary" />
+                                </IconButton>
+                            }
                         />
                         <CardContent>
-                            {mountData.shares.map((share, index) => (
-                                <Box key={index}>
-                                    <Grid container spacing={2}>
+                            <Grid container spacing={2}>
+                                {partition.mount_point_data?.flatMap((mpd) => mpd.shares).filter(Boolean).map((share, index) => (
+                                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
                                         <Grid size={{ xs: 12 }}>
                                             <Typography variant="subtitle2" color="text.secondary">
                                                 Share Name
                                             </Typography>
-                                            <Typography variant="h6">
-                                                {share.name}
-                                            </Typography>
+                                            <Stack direction="row" alignItems="center" spacing={1}>
+                                                <Typography variant="h6">
+                                                    {share?.name}
+                                                </Typography>
+                                                <IconButton onClick={() => openPreviewFor(share, `Share: ${share?.name}`)} size="small" aria-label={`preview share ${share?.name}`}>
+                                                    <VisibilityIcon />
+                                                </IconButton>
+                                            </Stack>
                                         </Grid>
 
                                         {/* Share Properties */}
                                         <Grid size={{ xs: 12 }}>
                                             <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
-                                                {share.usage && share.usage !== Usage.Internal && (
+                                                {share?.usage && share?.usage !== Usage.Internal && (
                                                     <Chip
                                                         icon={<FolderSpecialIcon />}
                                                         label={`Usage: ${share.usage}`}
                                                         variant="outlined"
                                                         color="primary"
+                                                        size="small"
                                                     />
                                                 )}
-                                                {share.timemachine && (
+                                                {share?.timemachine && (
                                                     <Chip
                                                         icon={<BackupIcon />}
                                                         label="Time Machine"
                                                         variant="outlined"
                                                         color="secondary"
+                                                        size="small"
                                                     />
                                                 )}
-                                                {share.recycle_bin_enabled && (
+                                                {share?.recycle_bin_enabled && (
                                                     <Chip
                                                         label="Recycle Bin"
                                                         variant="outlined"
                                                         color="info"
+                                                        size="small"
                                                     />
                                                 )}
-                                                {share.guest_ok && (
+                                                {share?.guest_ok && (
                                                     <Chip
                                                         label="Guest Access"
                                                         variant="outlined"
                                                         color="warning"
+                                                        size="small"
                                                     />
                                                 )}
-                                                {share.disabled && (
+                                                {share?.disabled && (
                                                     <Chip
                                                         label="Disabled"
                                                         variant="outlined"
                                                         color="error"
+                                                        size="small"
                                                     />
                                                 )}
                                             </Stack>
                                         </Grid>
 
                                         {/* Users */}
-                                        {share.users && share.users.length > 0 && (
+                                        {share?.users && share?.users.length > 0 && (
                                             <Grid size={{ xs: 12 }}>
                                                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                                     Read/Write Users
@@ -533,7 +586,7 @@ export function VolumeDetailsPanel({
                                         )}
 
                                         {/* Read-Only Users */}
-                                        {share.ro_users && share.ro_users.length > 0 && (
+                                        {share?.ro_users && share?.ro_users.length > 0 && (
                                             <Grid size={{ xs: 12 }}>
                                                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                                     Read-Only Users
@@ -552,10 +605,10 @@ export function VolumeDetailsPanel({
                                                 </Stack>
                                             </Grid>
                                         )}
+                                        {index < (mountData.shares?.length || 0) - 1 && <Box sx={{ my: 2 }} />}
                                     </Grid>
-                                    {index < (mountData.shares?.length || 0) - 1 && <Box sx={{ my: 2 }} />}
-                                </Box>
-                            ))}
+                                ))}
+                            </Grid>
                         </CardContent>
                     </Card>
                 ) : isMounted && mountData?.path?.startsWith("/mnt/") ? (
@@ -582,6 +635,14 @@ export function VolumeDetailsPanel({
                     </Card>
                 ) : null}
             </Stack>
+
+            {/* Preview dialog for disk object */}
+            <PreviewDialog
+                open={previewOpen}
+                onClose={closePreview}
+                title={previewTitle}
+                objectToDisplay={previewObject}
+            />
         </Box>
     );
 }
