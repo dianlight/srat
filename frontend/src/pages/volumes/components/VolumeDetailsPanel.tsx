@@ -502,109 +502,112 @@ export function VolumeDetailsPanel({
                             <Grid container spacing={2}>
                                 {partition.mount_point_data?.flatMap((mpd) => mpd.shares).filter(Boolean).map((share, index) => (
                                     <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
-                                        <Grid size={{ xs: 12 }}>
-                                            <Typography variant="subtitle2" color="text.secondary">
-                                                Share Name
-                                            </Typography>
-                                            <Stack direction="row" alignItems="center" spacing={1}>
-                                                <Typography variant="h6">
-                                                    {share?.name}
-                                                </Typography>
-                                                <IconButton onClick={() => openPreviewFor(share, `Share: ${share?.name}`)} size="small" aria-label={`preview share ${share?.name}`}>
-                                                    <VisibilityIcon />
-                                                </IconButton>
-                                            </Stack>
-                                        </Grid>
+                                        <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                            <CardHeader
+                                                title={share?.name || "Unnamed Share"}
+                                                avatar={
+                                                    <IconButton onClick={() => openPreviewFor(share, `Share: ${share?.name}`)} aria-label="share preview" size="small">
+                                                        <FolderSpecialIcon color="primary" />
+                                                    </IconButton>
+                                                }
+                                                action={
+                                                    <IconButton onClick={() => openPreviewFor(share, `Share: ${share?.name}`)} size="small" aria-label={`preview share ${share?.name}`}>
+                                                        <VisibilityIcon />
+                                                    </IconButton>
+                                                }
+                                            />
+                                            <CardContent sx={{ flex: 1 }}>
+                                                <Stack spacing={2}>
+                                                    {/* Share Properties */}
+                                                    <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                                                        {share?.usage && share?.usage !== Usage.Internal && (
+                                                            <Chip
+                                                                icon={<FolderSpecialIcon />}
+                                                                label={`Usage: ${share.usage}`}
+                                                                variant="outlined"
+                                                                color="primary"
+                                                                size="small"
+                                                            />
+                                                        )}
+                                                        {share?.timemachine && (
+                                                            <Chip
+                                                                icon={<BackupIcon />}
+                                                                label="Time Machine"
+                                                                variant="outlined"
+                                                                color="secondary"
+                                                                size="small"
+                                                            />
+                                                        )}
+                                                        {share?.recycle_bin_enabled && (
+                                                            <Chip
+                                                                label="Recycle Bin"
+                                                                variant="outlined"
+                                                                color="info"
+                                                                size="small"
+                                                            />
+                                                        )}
+                                                        {share?.guest_ok && (
+                                                            <Chip
+                                                                label="Guest Access"
+                                                                variant="outlined"
+                                                                color="warning"
+                                                                size="small"
+                                                            />
+                                                        )}
+                                                        {share?.disabled && (
+                                                            <Chip
+                                                                label="Disabled"
+                                                                variant="outlined"
+                                                                color="error"
+                                                                size="small"
+                                                            />
+                                                        )}
+                                                    </Stack>
 
-                                        {/* Share Properties */}
-                                        <Grid size={{ xs: 12 }}>
-                                            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
-                                                {share?.usage && share?.usage !== Usage.Internal && (
-                                                    <Chip
-                                                        icon={<FolderSpecialIcon />}
-                                                        label={`Usage: ${share.usage}`}
-                                                        variant="outlined"
-                                                        color="primary"
-                                                        size="small"
-                                                    />
-                                                )}
-                                                {share?.timemachine && (
-                                                    <Chip
-                                                        icon={<BackupIcon />}
-                                                        label="Time Machine"
-                                                        variant="outlined"
-                                                        color="secondary"
-                                                        size="small"
-                                                    />
-                                                )}
-                                                {share?.recycle_bin_enabled && (
-                                                    <Chip
-                                                        label="Recycle Bin"
-                                                        variant="outlined"
-                                                        color="info"
-                                                        size="small"
-                                                    />
-                                                )}
-                                                {share?.guest_ok && (
-                                                    <Chip
-                                                        label="Guest Access"
-                                                        variant="outlined"
-                                                        color="warning"
-                                                        size="small"
-                                                    />
-                                                )}
-                                                {share?.disabled && (
-                                                    <Chip
-                                                        label="Disabled"
-                                                        variant="outlined"
-                                                        color="error"
-                                                        size="small"
-                                                    />
-                                                )}
-                                            </Stack>
-                                        </Grid>
+                                                    {/* Users */}
+                                                    {share?.users && share?.users.length > 0 && (
+                                                        <Box>
+                                                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                                                Read/Write Users
+                                                            </Typography>
+                                                            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                                                                {share.users.map((user) => (
+                                                                    <Chip
+                                                                        key={user.username}
+                                                                        icon={<EditIcon />}
+                                                                        label={user.username}
+                                                                        variant="outlined"
+                                                                        color={user.is_admin ? "warning" : "default"}
+                                                                        size="small"
+                                                                    />
+                                                                ))}
+                                                            </Stack>
+                                                        </Box>
+                                                    )}
 
-                                        {/* Users */}
-                                        {share?.users && share?.users.length > 0 && (
-                                            <Grid size={{ xs: 12 }}>
-                                                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                                                    Read/Write Users
-                                                </Typography>
-                                                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
-                                                    {share.users.map((user) => (
-                                                        <Chip
-                                                            key={user.username}
-                                                            icon={<EditIcon />}
-                                                            label={user.username}
-                                                            variant="outlined"
-                                                            color={user.is_admin ? "warning" : "default"}
-                                                            size="small"
-                                                        />
-                                                    ))}
+                                                    {/* Read-Only Users */}
+                                                    {share?.ro_users && share?.ro_users.length > 0 && (
+                                                        <Box>
+                                                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                                                Read-Only Users
+                                                            </Typography>
+                                                            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                                                                {share.ro_users.map((user) => (
+                                                                    <Chip
+                                                                        key={user.username}
+                                                                        icon={<VisibilityIcon />}
+                                                                        label={user.username}
+                                                                        variant="outlined"
+                                                                        color={user.is_admin ? "warning" : "default"}
+                                                                        size="small"
+                                                                    />
+                                                                ))}
+                                                            </Stack>
+                                                        </Box>
+                                                    )}
                                                 </Stack>
-                                            </Grid>
-                                        )}
-
-                                        {/* Read-Only Users */}
-                                        {share?.ro_users && share?.ro_users.length > 0 && (
-                                            <Grid size={{ xs: 12 }}>
-                                                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                                                    Read-Only Users
-                                                </Typography>
-                                                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
-                                                    {share.ro_users.map((user) => (
-                                                        <Chip
-                                                            key={user.username}
-                                                            icon={<VisibilityIcon />}
-                                                            label={user.username}
-                                                            variant="outlined"
-                                                            color={user.is_admin ? "warning" : "default"}
-                                                            size="small"
-                                                        />
-                                                    ))}
-                                                </Stack>
-                                            </Grid>
-                                        )}
+                                            </CardContent>
+                                        </Card>
                                         {index < (mountData.shares?.length || 0) - 1 && <Box sx={{ my: 2 }} />}
                                     </Grid>
                                 ))}
