@@ -84,7 +84,7 @@
     "dev": "bun tsc --noEmit && bun --hot run bun.build.ts -w -s ./out",
     "dev:remote": "bun tsc --noEmit && bun --hot run bun.build.ts -w -s ./out -c http://192.168.0.68:3000/",
     "gen": "rtk-query-codegen-openapi api.config.js",
-    "lint": "bunx biome check --write"
+    "lint": "bun tsc --noEmit && bunx biome check --write"
   },
   "patchedDependencies": {},
   "scarfSettings": {
