@@ -145,42 +145,6 @@ export function Shares() {
 		setShowEdit(false); // Reset edit mode when selecting a new share
 	};
 
-	/*
-	// Calculate if a new share can be created
-	const canCreateNewShare = useMemo(() => {
-		if (vlLoading || isLoading || !volumes || !shares) {
-			return false; // Disable if data is loading or not available
-		}
-
-		const usedPathHashes = new Set(
-			Object.values(shares)
-				.map((share) => share.mount_point_data?.path_hash)
-				.filter(
-					(hash): hash is string => typeof hash === "string" && hash !== "",
-				),
-		);
-
-		for (const disk of volumes) {
-			if (disk.partitions) {
-				for (const partition of disk.partitions) {
-					if (partition.mount_point_data) {
-						for (const mpd of partition.mount_point_data) {
-							if (
-								mpd?.is_mounted &&
-								mpd.path &&
-								mpd.path_hash &&
-								!usedPathHashes.has(mpd.path_hash)
-							) {
-								return true; // Found an available, unshared, mounted mount point
-							}
-						}
-					}
-				}
-			}
-		}
-		return false; // No suitable mount points found
-	}, [volumes, shares, vlLoading, isLoading]);
-*/
 	function onSubmitDeleteShare(shareName: string, shareData: SharedResource) {
 		console.log("Delete", shareName, shareData);
 		if (!shareName || !shareData) return;
@@ -258,7 +222,7 @@ export function Shares() {
 	}
 
 	return (
-		<InView data-tutor={`reactour__tab${TabIDs.SHARES}__step0`}>
+		<>
 			<PreviewDialog
 				title={selectedShare?.name || ""}
 				objectToDisplay={selectedShare}
@@ -288,7 +252,7 @@ export function Shares() {
 			/>
 
 			{/* Main Layout Grid */}
-			<Grid container spacing={2} sx={{ minHeight: "calc(100vh - 200px)" }}>
+			<Grid container spacing={2} sx={{ minHeight: "calc(100vh - 200px)" }} data-tutor={`reactour__tab${TabIDs.SHARES}__step0`}>
 				{/* Left Panel - Tree View */}
 				<Grid size={{ xs: 12, md: 4, lg: 3 }}>
 					<Paper sx={{ height: "100%", p: 1 }} data-tutor={`reactour__tab${TabIDs.SHARES}__step3`}>
@@ -362,21 +326,19 @@ export function Shares() {
 								isEditing={showEdit}
 							>
 								{/* Embedded Edit Form */}
-								{showEdit && (
-									<ShareEditForm
-										shareData={{
-											...selectedShare,
-											org_name: selectedShare.name || "",
-										}}
-										shares={shares}
-										onSubmit={(data) => {
-											onSubmitEditShare(data);
-											setShowEdit(false);
-										}}
-										onDelete={onSubmitDeleteShare}
-										disabled={evdata?.hello?.read_only === true}
-									/>
-								)}
+								<ShareEditForm
+									shareData={{
+										...selectedShare,
+										org_name: selectedShare.name || "",
+									}}
+									shares={shares}
+									onSubmit={(data) => {
+										onSubmitEditShare(data);
+										setShowEdit(false);
+									}}
+									onDelete={onSubmitDeleteShare}
+									disabled={evdata?.hello?.read_only === true}
+								/>
 							</ShareDetailsPanel>
 						) : (
 							<Box
@@ -396,6 +358,6 @@ export function Shares() {
 					</Paper>
 				</Grid>
 			</Grid>
-		</InView>
+		</>
 	);
 }

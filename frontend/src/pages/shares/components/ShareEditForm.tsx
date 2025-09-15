@@ -15,7 +15,7 @@ import {
     Typography,
 } from "@mui/material";
 import { MuiChipsInput } from "mui-chips-input";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
     AutocompleteElement,
@@ -71,8 +71,15 @@ export function ShareEditForm({
         error: usError,
     } = useGetApiUsersQuery();
     const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume();
-    const [editName, setEditName] = useState(false);
+    const [editName, setEditName] = useState(shareData?.org_name === undefined);
     const [activeCasingIndex, setActiveCasingIndex] = useState(0);
+
+    const adminUser = useMemo(() => {
+        return Array.isArray(users)
+            ? users.find((u) => u.is_admin)
+            : undefined;
+    }, [users])
+
     const {
         control,
         handleSubmit,
@@ -81,7 +88,36 @@ export function ShareEditForm({
         reset,
         setValue,
         getValues,
-    } = useForm<ShareEditProps>();
+    } = useForm<ShareEditProps>({
+        defaultValues: {
+            org_name: shareData?.org_name,
+            name: shareData?.name || "",
+            mount_point_data: shareData?.mount_point_data,
+            users:
+                shareData?.mount_point_data?.is_write_supported ?
+                    ((shareData.org_name === undefined) &&
+                        (!shareData?.users ||
+                            shareData.users.length === 0) &&
+                        adminUser
+                        ? [adminUser]
+                        : shareData.users || []) : [],
+            ro_users: shareData?.mount_point_data?.is_write_supported ?
+                (shareData?.ro_users || []) : ((shareData?.org_name === undefined) &&
+                    (!shareData?.ro_users ||
+                        shareData.ro_users.length === 0) &&
+                    adminUser
+                    ? [adminUser]
+                    : shareData?.ro_users || []),
+            timemachine: shareData?.mount_point_data?.time_machine_support === Time_machine_support.Unsupported ? false : (shareData?.timemachine || false),
+            recycle_bin_enabled: (shareData?.recycle_bin_enabled || false),
+            guest_ok: shareData?.guest_ok || false,
+            timemachine_max_size: shareData?.timemachine_max_size ||
+                (shareData?.mount_point_data?.disk_size ? filesize(shareData?.mount_point_data?.disk_size) : "MAX"),
+            usage: shareData?.usage || Usage.None,
+            veto_files: shareData?.veto_files || [],
+            disabled: shareData?.disabled,
+        }
+    });
     const isDisabled = watch("disabled") || disabled;
     const [availablePartitions, setAvailablePartition] = useState<MountPointData[]>([]);
 
@@ -105,60 +141,8 @@ export function ShareEditForm({
         }
     }, [volumes]);
 
-    useEffect(() => {
-        const adminUser = Array.isArray(users)
-            ? users.find((u) => u.is_admin)
-            : undefined;
 
-        if (shareData) {
-            // Editing existing share OR new share with prefill
-            const isNewShareCreation = shareData.org_name === undefined;
-            reset({
-                org_name: shareData.org_name,
-                name: shareData.name || "",
-                mount_point_data: shareData.mount_point_data,
-                users:
-                    shareData.mount_point_data?.is_write_supported ?
-                        (isNewShareCreation &&
-                            (!shareData.users ||
-                                shareData.users.length === 0) &&
-                            adminUser
-                            ? [adminUser]
-                            : shareData.users || []) : [],
-                ro_users: shareData.mount_point_data?.is_write_supported ?
-                    (shareData.ro_users || []) : (isNewShareCreation &&
-                        (!shareData.ro_users ||
-                            shareData.ro_users.length === 0) &&
-                        adminUser
-                        ? [adminUser]
-                        : shareData.ro_users || []),
-                timemachine: shareData.mount_point_data?.time_machine_support === Time_machine_support.Unsupported ? false : (shareData.timemachine || false),
-                recycle_bin_enabled: (shareData.recycle_bin_enabled || false),
-                guest_ok: shareData.guest_ok || false,
-                timemachine_max_size: shareData.timemachine_max_size ||
-                    (shareData.mount_point_data?.disk_size ? filesize(shareData.mount_point_data?.disk_size) : "MAX"),
-                usage: shareData.usage || Usage.None,
-                veto_files: shareData.veto_files || [],
-                disabled: shareData.disabled,
-            });
-            setEditName(isNewShareCreation);
-            setActiveCasingIndex(0);
-        } else {
-            // Completely new share, no prefill
-            reset({
-                org_name: undefined,
-                name: "",
-                users: adminUser ? [adminUser] : [],
-                ro_users: [],
-                timemachine: false,
-                usage: Usage.None,
-                veto_files: [],
-                disabled: false,
-            });
-            setEditName(true);
-            setActiveCasingIndex(0);
-        }
-    }, [shareData, reset, users]);
+    //setEditName(shareData?.org_name === undefined);
 
     // Effect to auto-populate share name if empty when a volume is selected
     const selectedMountPointData = watch("mount_point_data");
@@ -523,7 +507,7 @@ export function ShareEditForm({
                                         getOptionLabel: (option) =>
                                             (option as User).username || "",
                                         renderOption: (props, option) => (
-                                            <li {...props}>
+                                            <li {...props} key={props.key}>
                                                 <Typography
                                                     variant="body2"
                                                     color={option.is_admin ? "warning" : "default"}
@@ -596,7 +580,7 @@ export function ShareEditForm({
                                         getOptionLabel: (option) =>
                                             (option as User).username || "",
                                         renderOption: (props, option) => (
-                                            <li {...props}>
+                                            <li {...props} key={props.key + "@ro"}>
                                                 <Typography
                                                     variant="body2"
                                                     color={option.is_admin ? "warning" : "default"}
@@ -631,7 +615,7 @@ export function ShareEditForm({
                                                                 ? "warning"
                                                                 : "default"
                                                         }
-                                                        key={key}
+                                                        key={key + "@ro"}
                                                         variant="outlined"
                                                         label={
                                                             (option as User)?.username || "unknown"
@@ -758,6 +742,7 @@ export function ShareEditForm({
         return (
             <>
                 {renderNameHeader()}
+                <br />
                 {renderFormContent()}
             </>
         );

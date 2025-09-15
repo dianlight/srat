@@ -55,7 +55,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 				</DialogTitle>
 				<DialogContent>
 					<DialogContentText sx={{ mb: 2 }}>
-						Please enter or modify share properties.
+						Please enter share properties.
 					</DialogContentText>
 					<ShareEditForm
 						shareData={props.objectToEdit}
