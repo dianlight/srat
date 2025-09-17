@@ -34,6 +34,9 @@ interface SharesTreeViewProps {
     onShareSelect: (shareKey: string, share: SharedResource) => void;
     protectedMode?: boolean;
     readOnly?: boolean;
+    // Controlled expanded items and change callback (required)
+    expandedItems: string[];
+    onExpandedItemsChange: (items: string[]) => void;
 }
 
 export function SharesTreeView({
@@ -42,6 +45,8 @@ export function SharesTreeView({
     onShareSelect,
     protectedMode = false,
     readOnly = false,
+    expandedItems,
+    onExpandedItemsChange,
 }: SharesTreeViewProps) {
     const theme = useTheme();
     const dispatch = useAppDispatch();
@@ -235,6 +240,16 @@ export function SharesTreeView({
         <Box sx={{ height: "100%", overflow: "auto" }}>
             <SimpleTreeView
                 selectedItems={selectedShareKey || ""}
+                expandedItems={expandedItems}
+                onExpandedItemsChange={(_, items) => {
+                    // SimpleTreeView may emit different shapes; normalize to string[] when possible
+                    if (!items) return;
+                    if (Array.isArray(items)) {
+                        onExpandedItemsChange(items as string[]);
+                    } else if ((items as any)?.items && Array.isArray((items as any).items)) {
+                        onExpandedItemsChange((items as any).items as string[]);
+                    }
+                }}
             >
                 {groupedAndSortedShares.map(([usageGroup, sharesInGroup]) => (
                     <TreeItem

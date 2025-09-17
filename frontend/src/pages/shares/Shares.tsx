@@ -42,8 +42,18 @@ export function Shares() {
 	const navigate = useNavigate();
 	const { shares, isLoading, error } = useShare();
 	const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume();
-	const [selectedShareKey, setSelectedShareKey] = useState<string | undefined>(undefined);
+	const [selectedShareKey, setSelectedShareKey] = useState<string | undefined>(() => localStorage.getItem("shares.selectedShareKey") || undefined);
 	const [selectedShare, setSelectedShare] = useState<SharedResource | null>(null);
+	const [expandedGroups, setExpandedGroups] = useState<string[]>(() => {
+		try {
+			const savedExpanded = localStorage.getItem("shares.expandedGroups");
+			if (savedExpanded) {
+				const parsed = JSON.parse(savedExpanded);
+				if (Array.isArray(parsed)) return parsed as string[];
+			}
+		} catch { }
+		return [];
+	});
 	const [showPreview, setShowPreview] = useState<boolean>(false);
 	const [showEdit, setShowEdit] = useState<boolean>(false);
 	const [initialNewShareData, setInitialNewShareData] = useState<
@@ -89,6 +99,57 @@ export function Shares() {
 		}
 		return false; // No suitable mount points found
 	}, [volumes, shares, vlLoading, isLoading]);
+
+	// Persist selection and expanded groups to localStorage
+	useEffect(() => {
+		try {
+			if (selectedShareKey) {
+				localStorage.setItem("shares.selectedShareKey", selectedShareKey);
+			} else {
+				localStorage.removeItem("shares.selectedShareKey");
+			}
+		} catch (err) {
+			console.warn("Could not persist selectedShareKey", err);
+		}
+	}, [selectedShareKey]);
+
+	useEffect(() => {
+		try {
+			if (expandedGroups.length > 0) {
+				localStorage.setItem("shares.expandedGroups", JSON.stringify(expandedGroups));
+			} else {
+				localStorage.removeItem("shares.expandedGroups");
+			}
+		} catch (err) {
+			console.warn("Could not persist expandedGroups", err);
+		}
+	}, [expandedGroups]);
+
+	// When shares data is available and there's a selectedShareKey (restored or new), find and select it so details show
+	useEffect(() => {
+		if (!shares || Object.keys(shares).length === 0) return;
+		if (!selectedShareKey) return;
+
+		// Try to locate the share corresponding to selectedShareKey
+		const shareEntry = Object.entries(shares).find(([key, _]) => key === selectedShareKey);
+
+		if (shareEntry) {
+			const [key, shareData] = shareEntry;
+			setSelectedShare(shareData);
+
+			// Ensure the containing group is expanded
+			const usageGroup = shareData.usage || Usage.None;
+			const groupId = `group-${usageGroup}`;
+			setExpandedGroups((prev) => {
+				if (prev.includes(groupId)) return prev;
+				return [...prev, groupId];
+			});
+		} else {
+			// If share not found, clear selection and remove from localStorage
+			setSelectedShare(null);
+			setSelectedShareKey(undefined);
+		}
+	}, [shares, selectedShareKey]);
 
 	// Effect to handle navigation state for opening a specific share dialog
 	useEffect(() => {
@@ -143,6 +204,14 @@ export function Shares() {
 		setSelectedShareKey(shareKey);
 		setSelectedShare(share);
 		setShowEdit(false); // Reset edit mode when selecting a new share
+
+		// Ensure the containing group is expanded and persisted
+		const usageGroup = share.usage || Usage.None;
+		const groupId = `group-${usageGroup}`;
+		setExpandedGroups((prev) => {
+			if (prev.includes(groupId)) return prev;
+			return [...prev, groupId];
+		});
 	};
 
 	function onSubmitDeleteShare(shareName: string, shareData: SharedResource) {
@@ -308,6 +377,8 @@ export function Shares() {
 							onShareSelect={handleShareSelect}
 							protectedMode={evdata?.hello?.protected_mode === true}
 							readOnly={evdata?.hello?.read_only === true}
+							expandedItems={expandedGroups}
+							onExpandedItemsChange={setExpandedGroups}
 						/>
 					</Paper>
 				</Grid>
