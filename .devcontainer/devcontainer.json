@@ -93,7 +93,9 @@
 				"golang.go",
 				"oorzc.mind-map",
 				"google.geminicodeassist",
-				"GitHub.remotehub"
+				"GitHub.remotehub",
+				"codezombiech.gitignore",
+				"oven.bun-vscode"
 			]
 		}
 	},
