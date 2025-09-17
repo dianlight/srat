@@ -40,15 +40,15 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@fontsource/roboto": "^5.2.7",
+    "@fontsource/roboto": "^5.2.8",
     "@fortawesome/free-brands-svg-icons": "^7.0.1",
     "@fortawesome/free-regular-svg-icons": "^7.0.1",
     "@fortawesome/free-solid-svg-icons": "^7.0.1",
     "@fortawesome/react-fontawesome": "^3.0.2",
     "@mui/icons-material": "^7.3.2",
     "@mui/material": "^7.3.2",
-    "@mui/x-charts": "^8.11.2",
-    "@mui/x-tree-view": "^8.11.2",
+    "@mui/x-charts": "^8.11.3",
+    "@mui/x-tree-view": "^8.11.3",
     "@reactour/tour": "^3.8.0",
     "@reduxjs/toolkit": "^2.9.0",
     "@rollbar/react": "^1.0.0",
@@ -75,7 +75,7 @@
     "rollbar": "3.0.0-beta.1",
     "semver": "^7.7.2",
     "ts-react-json-table": "^0.1.5",
-    "uuid": "^11.1.0"
+    "uuid": "^13.0.0"
   },
   "scripts": {
     "nextversion": "bun run version.ts -i alpha",
