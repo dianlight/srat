@@ -35,6 +35,9 @@ interface VolumesTreeViewProps {
     disks?: Disk[];
     selectedPartitionId?: string;
     hideSystemPartitions?: boolean;
+    // Controlled expanded items and change callback (required)
+    expandedItems: string[];
+    onExpandedItemsChange: (items: string[]) => void;
     onPartitionSelect: (disk: Disk, partition: Partition) => void;
     onToggleAutomount: (partition: Partition) => void;
     onMount: (partition: Partition) => void;
@@ -50,6 +53,8 @@ export function VolumesTreeView({
     disks,
     selectedPartitionId,
     hideSystemPartitions = true,
+    expandedItems,
+    onExpandedItemsChange,
     onPartitionSelect,
     onToggleAutomount,
     onMount,
@@ -417,7 +422,16 @@ export function VolumesTreeView({
         <Box sx={{ height: "100%", overflow: "auto" }}>
             <SimpleTreeView
                 selectedItems={selectedPartitionId || ""}
-                defaultExpandedItems={filteredDisks.map((disk, idx) => disk.id || `disk-${idx}`)}
+                expandedItems={expandedItems}
+                onExpandedItemsChange={(_, items) => {
+                    // SimpleTreeView may emit different shapes; normalize to string[] when possible
+                    if (!items) return;
+                    if (Array.isArray(items)) {
+                        onExpandedItemsChange(items as string[]);
+                    } else if ((items as any)?.items && Array.isArray((items as any).items)) {
+                        onExpandedItemsChange((items as any).items as string[]);
+                    }
+                }}
             >
                 {filteredDisks.map((disk, diskIdx) => renderDiskItem(disk, diskIdx))}
             </SimpleTreeView>

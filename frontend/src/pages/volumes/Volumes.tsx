@@ -27,7 +27,7 @@ import { decodeEscapeSequence } from "./utils";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { useGetServerEventsQuery } from "../../store/sseApi";
 
-export function Volumes() {
+export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
 	const [showPreview, setShowPreview] = useState<boolean>(false);
 	const [showMount, setShowMount] = useState<boolean>(false);
@@ -35,11 +35,24 @@ export function Volumes() {
 	const location = useLocation();
 
 	const navigate = useNavigate();
-	const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(true); // Default to hide system partitions
-	const { disks, isLoading, error } = useVolume();
+	const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(localStorage.getItem("volumes.hideSystemPartitions") === "true"); // Default to hide system partitions
+	const volumeHook = useVolume();
+	const disks = initialDisks ?? volumeHook.disks;
+	const isLoading = initialDisks ? false : volumeHook.isLoading;
+	const error = initialDisks ? null : volumeHook.error;
 	const [selectedDisk, setSelectedDisk] = useState<Disk | undefined>(undefined);
 	const [selectedPartition, setSelectedPartition] = useState<Partition | undefined>(undefined);
-	const [selectedPartitionId, setSelectedPartitionId] = useState<string | undefined>(undefined);
+	const [selectedPartitionId, setSelectedPartitionId] = useState<string | undefined>(() => localStorage.getItem("volumes.selectedPartitionId") || undefined);
+	const [expandedDisks, setExpandedDisks] = useState<string[]>(() => {
+		try {
+			const savedExpanded = localStorage.getItem("volumes.expandedDisks");
+			if (savedExpanded) {
+				const parsed = JSON.parse(savedExpanded);
+				if (Array.isArray(parsed)) return parsed as string[];
+			}
+		} catch { }
+		return [];
+	});
 	const confirm = useConfirm();
 	const [mountVolume, _mountVolumeResult] = usePostApiVolumeByMountPathHashMountMutation();
 	const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeByMountPathHashMountMutation();
@@ -53,7 +66,46 @@ export function Volumes() {
 		const partIdx = disk.partitions?.indexOf(partition) || 0;
 		const partitionId = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
 		setSelectedPartitionId(partitionId);
+		// Ensure the containing disk is expanded and persisted
+		const diskIdentifier = disk.id || `disk-${diskIdx}`;
+		setExpandedDisks((prev) => {
+			if (prev.includes(diskIdentifier)) return prev;
+			return [...prev, diskIdentifier];
+		});
 	};
+
+	// Persist selection and expanded disks to localStorage
+	useEffect(() => {
+		try {
+			if (selectedPartitionId) {
+				localStorage.setItem("volumes.selectedPartitionId", selectedPartitionId);
+			} else {
+				localStorage.removeItem("volumes.selectedPartitionId");
+			}
+		} catch (err) {
+			console.warn("Could not persist selectedPartitionId", err);
+		}
+	}, [selectedPartitionId]);
+
+	useEffect(() => {
+		try {
+			if (expandedDisks.length > 0) {
+				localStorage.setItem("volumes.expandedDisks", JSON.stringify(expandedDisks));
+			} else {
+				localStorage.removeItem("volumes.expandedDisks");
+			}
+		} catch (err) {
+			console.warn("Could not persist expandedDisks", err);
+		}
+	}, [expandedDisks]);
+
+	useEffect(() => {
+		try {
+			localStorage.setItem("volumes.hideSystemPartitions", hideSystemPartitions ? "true" : "false");
+		} catch (err) {
+			console.warn("Could not persist hideSystemPartitions", err);
+		}
+	}, [hideSystemPartitions]);
 
 	// Effect to handle navigation state for opening mount settings for a specific volume
 	useEffect(() => {
@@ -104,6 +156,32 @@ export function Volumes() {
 		navigate,
 		location.pathname,
 	]);
+
+	// When disks data is available and there's a selectedPartitionId (restored or new), find and select it so details show
+	useEffect(() => {
+		if (!disks || disks.length === 0) return;
+		if (!selectedPartitionId) return;
+
+		// Try to locate the partition corresponding to selectedPartitionId
+		for (const disk of disks) {
+			if (!disk.partitions) continue;
+			for (const partition of disk.partitions) {
+				const diskIdx = disks.indexOf(disk);
+				const partIdx = disk.partitions.indexOf(partition);
+				const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
+				if (partitionIdentifier === selectedPartitionId) {
+					setSelectedDisk(disk);
+					setSelectedPartition(partition);
+					return;
+				}
+			}
+		}
+
+		// If not found, clear selection
+		setSelectedPartition(undefined);
+		setSelectedDisk(undefined);
+		setSelectedPartitionId(undefined);
+	}, [disks, selectedPartitionId]);
 
 	function onSubmitMountVolume(data?: MountPointData) {
 		console.trace("Mount Request Data:", data);
@@ -404,6 +482,8 @@ export function Volumes() {
 							<VolumesTreeView
 								disks={disks}
 								selectedPartitionId={selectedPartitionId}
+								expandedItems={expandedDisks}
+								onExpandedItemsChange={setExpandedDisks}
 								hideSystemPartitions={hideSystemPartitions}
 								onPartitionSelect={handlePartitionSelect}
 								onToggleAutomount={handleToggleAutomount}
