@@ -166,11 +166,11 @@ describe("Footer Component", () => {
         // Check that footer renders with all essential content
         expect(container.textContent?.includes("Version")).toBeTruthy();
         expect(container.textContent?.includes("Copyright")).toBeTruthy();
-        
+
         // Check that the footer has proper HTML structure
         const footerElement = container.querySelector('footer');
         expect(footerElement).toBeTruthy();
-        
+
         // Check that Stack component is rendered (indicates proper layout)
         const stackElement = container.querySelector('[class*="MuiStack"]');
         expect(stackElement).toBeTruthy();
