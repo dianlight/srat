@@ -5,13 +5,17 @@
 
 import { Window } from "happy-dom";
 import { configureStore } from "@reduxjs/toolkit";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import '@testing-library/jest-dom'
+
+GlobalRegistrator.register();
 
 // Install DOM globals immediately when this module is imported
 const win = new Window();
 (globalThis as any).window = win as any;
 (globalThis as any).document = win.document as any;
 (globalThis as any).HTMLElement = win.HTMLElement as any;
-(globalThis as any).localStorage = win.localStorage as any;
+//(globalThis as any).localStorage = win.localStorage as any;
 
 // Ensure APIURL is set so modules that compute API url at import time behave
 if (typeof process !== "undefined") {
