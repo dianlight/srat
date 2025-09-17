@@ -24,7 +24,9 @@ import {
 } from "@mui/material";
 import { filesize } from "filesize";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { PreviewDialog } from "../../../components/PreviewDialog";
+import { type LocationState, TabIDs } from "../../../store/locationState";
 import { type Disk, type Partition, type SharedResource, Usage, Time_machine_support } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
 
@@ -39,6 +41,7 @@ export function VolumeDetailsPanel({
     partition,
     share,
 }: VolumeDetailsPanelProps) {
+    const navigate = useNavigate();
     const [diskInfoExpanded, setDiskInfoExpanded] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewObject, setPreviewObject] = useState<any | null>(null);
@@ -52,6 +55,15 @@ export function VolumeDetailsPanel({
     const closePreview = () => {
         setPreviewOpen(false);
         setPreviewObject(null);
+    };
+
+    const navigateToShare = (share: SharedResource) => {
+        if (share?.name) {
+            // Navigate to the shares page and pass the share name as state
+            navigate("/", {
+                state: { tabId: TabIDs.SHARES, shareName: share.name } as LocationState,
+            });
+        }
     };
 
     if (!disk || !partition) {
@@ -511,7 +523,7 @@ export function VolumeDetailsPanel({
                                                     </IconButton>
                                                 }
                                                 action={
-                                                    <IconButton onClick={() => openPreviewFor(share, `Share: ${share?.name}`)} size="small" aria-label={`preview share ${share?.name}`}>
+                                                    <IconButton onClick={() => share && navigateToShare(share)} size="small" aria-label={`go to share ${share?.name}`}>
                                                         <VisibilityIcon />
                                                     </IconButton>
                                                 }
