@@ -96,7 +96,39 @@
 				"GitHub.remotehub",
 				"codezombiech.gitignore",
 				"oven.bun-vscode"
-			]
+			],
+			"mcp": {
+				"servers": {
+					"playwright": {
+						"command": "bunx",
+						"args": [
+							"-y",
+							"@microsoft/mcp-server-playwright"
+						]
+					},
+					"deepwiki": {
+						"type": "http",
+						"url": "https://mcp.deepwiki.com/sse"
+					},
+					"browsermcp": {
+						"command": "bunx",
+						"args": [
+							"@browsermcp/mcp@latest"
+						]
+					},
+					"context7": {
+						"type": "stdio",
+						"command": "bunx",
+						"args": [
+							"-y",
+							"@upstash/context7-mcp@latest"
+						]
+					},
+					"github": {
+						"url": "https://api.githubcopilot.com/mcp/"
+					}
+				}
+			}
 		}
 	},
 	"features": {
