@@ -51,6 +51,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 - **Watch mode**: `cd frontend && bun run gowatch` (builds directly to backend static dir)
 - **Generate API**: `cd frontend && bun run gen` (RTK Query from OpenAPI spec)
 - **Lint**: `cd frontend && bun run lint` (Biome formatter/linter)
+- **Test**: `cd frontend && bun test` (runs all tests with bun:test)
 
 ### Full Stack Development
 - **Prepare environment**: `make prepare` (installs pre-commit + dependencies)
@@ -67,9 +68,20 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 - **Mock Pattern**: `mock.When(service.Method(...)).ThenReturn(...)` then `mock.Verify(..., matchers.Times(1)).Method()`
 - **State Verification**: Always check `dirtyService.SetDirty*()` calls when data is modified
 
+### Frontend Testing
+- **Framework**: `bun:test` with `happy-dom` for DOM simulation
+- **Testing Libraries**: `@testing-library/react` for component testing, `@testing-library/jest-dom` for assertions
+- **Test Structure**: Place tests in `__tests__` directories alongside components/pages
+- **File Naming**: Use `.test.tsx` extension for test files
+- **Setup**: Import test utilities from `bun:test`: `describe`, `it`, `expect`, `beforeEach`
+- **DOM Setup**: Use `happy-dom` for DOM globals, custom localStorage shim for storage tests
+- **Store Testing**: Use `createTestStore()` helper from `frontend/test/setup.ts` for Redux store
+- **Component Testing**: Dynamic imports for React components to avoid module loading issues
+- **Async Testing**: Use `screen.findByText()` for waiting on async renders
+
 ### Test Examples
 ```go
-// HTTP handler test
+// Backend HTTP handler test
 func (suite *ShareHandlerSuite) TestCreateShareSuccess() {
     mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(expectedShare, nil)
     _, api := humatest.New(suite.T())
@@ -78,6 +90,50 @@ func (suite *ShareHandlerSuite) TestCreateShareSuccess() {
     suite.Equal(http.StatusCreated, resp.Code)
     mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
 }
+```
+
+```tsx
+// Frontend localStorage test
+import { describe, it, expect, beforeEach } from "bun:test";
+
+describe("Component localStorage functionality", () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    it("saves and restores data to localStorage", () => {
+        const testData = "test-value";
+        localStorage.setItem("component.data", testData);
+        expect(localStorage.getItem("component.data")).toBe(testData);
+    });
+});
+```
+
+```tsx
+// Frontend component test with React Testing Library
+import { describe, it, expect, beforeEach } from "bun:test";
+import { createTestStore } from "../../../test/setup";
+
+describe("Component rendering", () => {
+    it("renders component with initial data", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { MyComponent } = await import("../MyComponent");
+        const store = await createTestStore();
+
+        render(
+            React.createElement(
+                Provider,
+                { store },
+                React.createElement(MyComponent, { prop: "value" })
+            )
+        );
+
+        const element = await screen.findByText("Expected Text");
+        expect(element).toBeTruthy();
+    });
+});
 ```
 
 ## Quality Gates & Validation
@@ -127,6 +183,87 @@ func (suite *ShareHandlerSuite) TestCreateShareSuccess() {
 - **Multi-arch**: Always test builds on target architectures, especially ARM variants
 - **Embedded Assets**: Frontend builds to `backend/src/web/static` for embedding in binary
 - **Database Paths**: Use `--db` flag; app validates filesystem permissions
+
+## Frontend Testing Rules
+
+**MANDATORY patterns for all frontend tests:**
+
+### File Structure & Naming
+- Tests MUST be in `__tests__` directories alongside the component/page being tested
+- Test files MUST use `.test.tsx` extension
+- Component tests go in `src/pages/[page]/__tests__/` or `src/components/[component]/__tests__/`
+
+### Required Imports & Setup
+- ALWAYS import from `bun:test`: `import { describe, it, expect, beforeEach } from "bun:test";`
+- For localStorage tests: Include the minimal localStorage shim (see existing tests for exact code)
+- For component tests: Use `createTestStore()` helper from `../../../test/setup` (adjust path as needed)
+- For React components: Use dynamic imports to avoid module loading issues
+
+### Testing Library Standards
+- Use `@testing-library/react` for component rendering: `const { render, screen } = await import("@testing-library/react");`
+- Use `@testing-library/jest-dom` assertions: `expect(element).toBeTruthy();`
+- For async rendering: Use `await screen.findByText()` not `getByText()`
+- Always use `React.createElement()` syntax, not JSX, in test files
+
+### localStorage Testing Pattern
+```tsx
+// REQUIRED localStorage shim for every localStorage test
+if (!(globalThis as any).localStorage) {
+    const _store: Record<string, string> = {};
+    (globalThis as any).localStorage = {
+        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
+        setItem: (k: string, v: string) => { _store[k] = String(v); },
+        removeItem: (k: string) => { delete _store[k]; },
+        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
+    };
+}
+
+describe("Component localStorage functionality", () => {
+    beforeEach(() => {
+        localStorage.clear(); // ALWAYS clear before each test
+    });
+    // ... tests
+});
+```
+
+### Component Testing Pattern
+```tsx
+describe("Component rendering", () => {
+    it("renders component with data", async () => {
+        // REQUIRED: Dynamic imports after globals are set
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ComponentName } = await import("../ComponentName");
+        const store = await createTestStore();
+
+        // REQUIRED: Use React.createElement, not JSX
+        render(
+            React.createElement(
+                Provider,
+                { store },
+                React.createElement(ComponentName as any, { props })
+            )
+        );
+
+        // REQUIRED: Use findByText for async, toBeTruthy() for assertions
+        const element = await screen.findByText("Expected Text");
+        expect(element).toBeTruthy();
+    });
+});
+```
+
+### Redux Store Integration
+- ALWAYS use `createTestStore()` for tests that need Redux state
+- Import store helper: `import { createTestStore } from "../../../test/setup";` (adjust path)
+- Wrap components with Redux Provider using `React.createElement(Provider, { store }, ...)`
+
+### Async Testing Requirements
+- Use `await screen.findByText()` for elements that appear after rendering
+- Use `beforeEach(() => { localStorage.clear(); })` for localStorage tests
+- Dynamic imports MUST be used for React components and testing utilities
+
+**NON-NEGOTIABLE:** All frontend tests must follow these exact patterns. No exceptions for import style, file structure, or testing utilities.
 
 If uncertain, run: `pre-commit run --all-files`, `make docs-validate`, `make security`
 
