@@ -177,7 +177,6 @@ jobs:
           cd ..
 
       - name: Test Frontend ${{ needs.setversion.outputs.version }} (not yet implemented)
-        if: false
         run: |
           cd frontend
           sudo -E PATH="$PATH" bun test
