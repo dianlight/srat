@@ -15,7 +15,7 @@ describe("ErrorBoundary Component", () => {
     beforeEach(() => {
         localStorage.clear();
         // Reset any global state or mocks
-        console.error = () => {};
+        console.error = () => { };
     });
 
     it("renders children when there is no error", async () => {
@@ -50,7 +50,7 @@ describe("ErrorBoundary Component", () => {
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
         const theme = createTheme();
-        
+
         // Component that always throws an error
         const ThrowError = () => {
             throw new Error("Test error message");
@@ -81,7 +81,7 @@ describe("ErrorBoundary Component", () => {
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
         const theme = createTheme();
-        
+
         // Component that throws a specific error
         const ThrowSpecificError = () => {
             throw new Error("Specific test error");
@@ -110,7 +110,7 @@ describe("ErrorBoundary Component", () => {
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
         const theme = createTheme();
-        
+
         const ThrowError = () => {
             throw new Error("Test error");
         };
@@ -138,7 +138,7 @@ describe("ErrorBoundary Component", () => {
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
         const theme = createTheme();
-        
+
         // Mock window.location.reload
         const originalReload = window.location.reload;
         let reloadCalled = false;
@@ -178,7 +178,7 @@ describe("ErrorBoundary Component", () => {
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
         const theme = createTheme();
-        
+
         // Mock console.error to track calls
         const consoleLogs: any[] = [];
         console.error = (...args: any[]) => {
@@ -212,7 +212,7 @@ describe("ErrorBoundary Component", () => {
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
         const theme = createTheme();
-        
+
         const ThrowError = () => {
             throw new Error("Test error");
         };
@@ -232,7 +232,7 @@ describe("ErrorBoundary Component", () => {
         // Check that the Alert component with error severity is rendered
         const alertElement = container.querySelector('[role="alert"]');
         expect(alertElement).toBeTruthy();
-        
+
         // Check for BugReportIcon
         const bugIcon = container.querySelector('[data-testid="BugReportIcon"]');
         expect(bugIcon).toBeTruthy();
