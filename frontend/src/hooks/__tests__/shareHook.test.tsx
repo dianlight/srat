@@ -41,7 +41,7 @@ describe("useShare Hook", () => {
         expect(result.current).toHaveProperty('shares');
         expect(result.current).toHaveProperty('isLoading');
         expect(result.current).toHaveProperty('error');
-        
+
         // Initial state should have empty shares array
         expect(Array.isArray(result.current.shares)).toBe(true);
         expect(result.current.shares.length).toBe(0);

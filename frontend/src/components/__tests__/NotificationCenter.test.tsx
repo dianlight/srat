@@ -37,7 +37,7 @@ describe("NotificationCenter Component", () => {
         // Check that the notification button is rendered
         const notificationButtons = container.querySelectorAll('button');
         expect(notificationButtons.length).toBeGreaterThanOrEqual(1);
-        
+
         // Look for notification icon
         const notificationIcons = container.querySelectorAll('[data-testid="NotificationsIcon"]');
         expect(notificationIcons.length).toBeGreaterThanOrEqual(0);
@@ -63,7 +63,7 @@ describe("NotificationCenter Component", () => {
         const notificationButton = container.querySelector('button');
         if (notificationButton) {
             fireEvent.click(notificationButton);
-            
+
             // Check if popover opened (look for notifications text)
             expect(container).toBeTruthy();
         }
@@ -110,14 +110,14 @@ describe("NotificationCenter Component", () => {
         const notificationButton = container.querySelector('button');
         if (notificationButton) {
             fireEvent.click(notificationButton);
-            
+
             // Look for toggle switch
             const switches = container.querySelectorAll('input[type="checkbox"]');
             if (switches.length > 0) {
                 fireEvent.click(switches[0]);
             }
         }
-        
+
         expect(container).toBeTruthy();
     });
 
@@ -141,7 +141,7 @@ describe("NotificationCenter Component", () => {
         const notificationButton = container.querySelector('button');
         if (notificationButton) {
             fireEvent.click(notificationButton);
-            
+
             // Check for notification list container
             const stacks = container.querySelectorAll('[class*="MuiStack"]');
             expect(stacks.length).toBeGreaterThanOrEqual(0);
@@ -168,11 +168,11 @@ describe("NotificationCenter Component", () => {
         const notificationButton = container.querySelector('button');
         if (notificationButton) {
             fireEvent.click(notificationButton);
-            
+
             // Look for action buttons (clear, mark as read)
             const actionButtons = container.querySelectorAll('button');
             expect(actionButtons.length).toBeGreaterThanOrEqual(1);
-            
+
             // Try to click action buttons if they exist
             if (actionButtons.length > 2) {
                 fireEvent.click(actionButtons[2]); // Try clicking clear or mark as read
@@ -202,7 +202,7 @@ describe("NotificationCenter Component", () => {
             fireEvent.mouseEnter(notificationButton);
             fireEvent.mouseLeave(notificationButton);
         }
-        
+
         expect(container).toBeTruthy();
     });
 
@@ -290,7 +290,7 @@ describe("NotificationCenter Component", () => {
             // Clicking outside or pressing escape should close popover
             fireEvent.keyDown(document, { key: 'Escape' });
         }
-        
+
         expect(container).toBeTruthy();
     });
 
@@ -314,7 +314,7 @@ describe("NotificationCenter Component", () => {
         const notificationButton = container.querySelector('button');
         if (notificationButton) {
             fireEvent.click(notificationButton);
-            
+
             // Look for disabled buttons (when no notifications)
             const disabledButtons = container.querySelectorAll('button[disabled]');
             expect(disabledButtons.length).toBeGreaterThanOrEqual(0);

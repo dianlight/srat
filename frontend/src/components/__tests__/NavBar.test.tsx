@@ -16,7 +16,7 @@ describe("NavBar Component", () => {
         localStorage.clear();
         // Clear DOM before each test
         document.body.innerHTML = '';
-        
+
         // Reset any mocks
         (window as any).open = () => null;
     });
@@ -40,15 +40,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -56,7 +57,7 @@ describe("NavBar Component", () => {
 
         // Check that the component renders without errors (the AppBar might not have banner role in all contexts)
         expect(container).toBeTruthy();
-        
+
         // Look for any element that indicates the navbar rendered
         const navElements = container.querySelectorAll('[class*="AppBar"], [class*="Toolbar"], nav, header');
         expect(navElements.length).toBeGreaterThanOrEqual(0);
@@ -81,15 +82,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -97,7 +99,7 @@ describe("NavBar Component", () => {
 
         // Check that the component renders without errors
         expect(container).toBeTruthy();
-        
+
         // Look for any elements that might contain a logo (id, class, or img elements)
         const logoElements = container.querySelectorAll('#logo-container, [class*="logo"], img');
         expect(logoElements.length).toBeGreaterThanOrEqual(0);
@@ -129,15 +131,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -147,7 +150,7 @@ describe("NavBar Component", () => {
         const tabs = container.querySelectorAll('[role="tab"]');
         if (tabs.length > 1) {
             fireEvent.click(tabs[1]);
-            
+
             // Check that localStorage is updated
             const storedTab = localStorage.getItem("srat_tab");
             expect(storedTab).toBe("1");
@@ -173,15 +176,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -211,15 +215,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -227,14 +232,14 @@ describe("NavBar Component", () => {
 
         // Find theme switch button (look for mode icons)
         const themeButtons = container.querySelectorAll('button');
-        const themeButton = Array.from(themeButtons).find(button => 
+        const themeButton = Array.from(themeButtons).find(button =>
             button.querySelector('[data-testid="LightModeIcon"], [data-testid="DarkModeIcon"], [data-testid="AutoModeIcon"]')
         );
-        
+
         if (themeButton) {
             fireEvent.click(themeButton);
         }
-        
+
         expect(true).toBeTruthy(); // Test that no errors occurred
     });
 
@@ -257,15 +262,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -302,15 +308,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -318,10 +325,10 @@ describe("NavBar Component", () => {
 
         // Find github icon/button (look for img elements with github in src)
         const githubButtons = container.querySelectorAll('img');
-        const githubButton = Array.from(githubButtons).find(img => 
+        const githubButton = Array.from(githubButtons).find(img =>
             img.src && img.src.includes('github')
         );
-        
+
         if (githubButton && githubButton.parentElement) {
             fireEvent.click(githubButton.parentElement);
         }
@@ -349,15 +356,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -365,7 +373,7 @@ describe("NavBar Component", () => {
 
         // Check that the component rendered without errors
         expect(container).toBeTruthy();
-        
+
         // Check that localStorage value persists
         expect(localStorage.getItem("srat_tab")).toBe("1");
     });
@@ -389,15 +397,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "Test error message",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "Test error message",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -425,15 +434,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -462,15 +472,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
@@ -500,15 +511,16 @@ describe("NavBar Component", () => {
                 null,
                 React.createElement(
                     Provider,
-                    { store, children: 
-                        React.createElement(
-                            ThemeProvider,
-                            { theme },
-                            React.createElement(NavBar as any, {
-                                error: "",
-                                bodyRef: mockBodyRef
-                            })
-                        )
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
                     }
                 )
             )
