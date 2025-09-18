@@ -5,6 +5,7 @@ This file highlights the must-know, discoverable rules and workflows for product
 - **Languages**: Go backend (Go 1.25), TypeScript React frontend (Bun runtime). See `backend/go.mod` and `frontend/package.json`/`bun.lockb`.
 - **Builds**: Root `Makefile` proxies to `backend/Makefile`. Frontend uses Bun: `cd frontend && bun install && bun run build`.
 - **Pre-commit**: Repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
+- **Tests**: Backend uses `testify/suite` with `mockio/v2`. Frontend uses `bun:test` with `@testing-library/react`. See below for patterns.
 
 ## Architecture Overview
 
@@ -12,7 +13,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 
 - **Backend**: Clean architecture with API handlers → Services → Repositories → Database (GORM/SQLite)
 - **Frontend**: React + TypeScript + Material-UI + RTK Query for API state management
-- **Communication**: REST API with Server-Sent Events (SSE) for real-time updates
+- **Communication**: REST API with Server-Sent Events (SSE) or WebSockets for real-time updates
 - **Database**: SQLite with GORM ORM, embedded in production binary
 - **Dependency Injection**: Uber FX throughout backend for service wiring
 
@@ -47,6 +48,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 
 ### Frontend Development
 - **Start dev server**: `cd frontend && bun run dev` (hot reload with live reload)
+- **Start remote dev server**: `cd frontend && bun run dev:remote` (for testing with remote backend)
 - **Build**: `cd frontend && bun run build` (outputs to `../backend/src/web/static`)
 - **Watch mode**: `cd frontend && bun run gowatch` (builds directly to backend static dir)
 - **Generate API**: `cd frontend && bun run gen` (RTK Query from OpenAPI spec)
@@ -265,6 +267,32 @@ describe("Component rendering", () => {
 
 **NON-NEGOTIABLE:** All frontend tests must follow these exact patterns. No exceptions for import style, file structure, or testing utilities.
 
+## Final Checklist Before Consider a Changes as Done
+
+Ensure all relevant pre-commit hooks pass locally before pushing changes. This includes formatting, linting, security scans, and documentation validation.
+
 If uncertain, run: `pre-commit run --all-files`, `make docs-validate`, `make security`
 
 If this file misses anything important, tell me which area (build, tests, DI, logging, frontend) and I will expand with concrete examples.
+
+All backend and frontend changes must also follow the established patterns in existing tests or introduce new patterns that are well-documented, covered by tests, and justified.
+
+Always prioritize maintainability and clarity in tests.
+
+Always ensure tests are deterministic and can run in CI environments without special setup.
+
+Update documentation to reflect any new patterns, changes in workflows or architecture.
+
+The goal is to maintain high code quality, consistency, and ease of onboarding for future contributors.
+
+Dead code or commented-out code should be removed, not left in the codebase.
+
+When in doubt, ask for clarification on the intended pattern or best practice before proceeding with changes.
+
+Update CHANGELOG.md and relevant documentation files for any new features, bug fixes, or breaking changes.
+
+Check for open issues related to your changes and reference them in your commit messages or PR descriptions.
+
+## END OF COPILOT INSTRUCTIONS
+
+
