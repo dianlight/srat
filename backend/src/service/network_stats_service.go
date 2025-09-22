@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"sync"
 	"time"
 
@@ -162,11 +163,29 @@ func (s *networkStatsService) updateNetworkStats() error {
 					speed = *nc.Speed
 				}
 
+				// Get IP and netmask
+				var ip, netmask string
+				if iface, err := net.InterfaceByName(nicName); err == nil {
+					if addrs, err := iface.Addrs(); err == nil {
+						for _, addr := range addrs {
+							if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+								if ipnet.IP.To4() != nil {
+									ip = ipnet.IP.String()
+									netmask = net.IP(ipnet.Mask).String()
+									break // Take the first IPv4 address
+								}
+							}
+						}
+					}
+				}
+
 				dstat := dto.NicIOStats{
 					DeviceName:      nicName,
 					DeviceMaxSpeed:  speed,
 					InboundTraffic:  (float64(netDev.RxBytes) - float64(lastNetDev.RxBytes)) / time.Since(s.lastUpdateTime).Seconds(),
 					OutboundTraffic: (float64(netDev.TxBytes) - float64(lastNetDev.TxBytes)) / time.Since(s.lastUpdateTime).Seconds(),
+					IP:              ip,
+					Netmask:         netmask,
 				}
 				s.currentNetHealth.PerNicIO = append(s.currentNetHealth.PerNicIO, dstat)
 				s.currentNetHealth.Global.TotalInboundTraffic += dstat.InboundTraffic

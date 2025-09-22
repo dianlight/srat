@@ -12,6 +12,8 @@ type NicIOStats struct {
 	DeviceMaxSpeed  int64   `json:"deviceMaxSpeed"`
 	InboundTraffic  float64 `json:"inboundTraffic"`
 	OutboundTraffic float64 `json:"outboundTraffic"`
+	IP              string  `json:"ip,omitempty"`
+	Netmask         string  `json:"netmask,omitempty"`
 }
 
 // GlobalNicStats represents the global network statistics for the system.

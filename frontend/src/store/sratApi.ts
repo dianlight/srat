@@ -741,6 +741,8 @@ export type NicIoStats = {
   deviceMaxSpeed: number;
   deviceName: string;
   inboundTraffic: number;
+  ip?: string;
+  netmask?: string;
   outboundTraffic: number;
 };
 export type NetworkStats = {

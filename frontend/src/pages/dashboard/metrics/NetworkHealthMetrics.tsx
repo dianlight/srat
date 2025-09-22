@@ -81,6 +81,8 @@ export function NetworkHealthMetrics({
 				<TableHead>
 					<TableRow>
 						<TableCell>Device</TableCell>
+						<TableCell align="right">IP</TableCell>
+						<TableCell align="right">Netmask</TableCell>
 						<TableCell align="right">Inbound Traffic (B/s)</TableCell>
 						<TableCell align="right">Outbound Traffic (B/s)</TableCell>
 					</TableRow>
@@ -90,6 +92,12 @@ export function NetworkHealthMetrics({
 						<TableRow key={nic.deviceName}>
 							<TableCell component="th" scope="row">
 								{nic.deviceName}
+							</TableCell>
+							<TableCell align="right">
+								{nic.ip || "-"}
+							</TableCell>
+							<TableCell align="right">
+								{nic.netmask || "-"}
 							</TableCell>
 							<TableCell align="right" sx={{ minWidth: 150 }}>
 								<Box
