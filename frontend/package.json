@@ -52,17 +52,17 @@
     "@reduxjs/toolkit": "^2.9.0",
     "@rollbar/react": "^1.0.0",
     "emittery": "^1.2.0",
-    "filesize": "^11.0.2",
+    "filesize": "^11.0.13",
     "humanize-duration": "^3.33.1",
     "js-sha1": "^0.7.0",
     "lodash.debounce": "^4.0.8",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^7.0.1",
     "normalize-url": "^8.1.0",
-    "openapi-explorer": "^2.2.774",
+    "openapi-explorer": "^2.2.776",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-hook-form": "^7.62.0",
+    "react-hook-form": "^7.63.0",
     "react-hook-form-mui": "^8.0.0",
     "react-intersection-observer": "^9.16.0",
     "react-redux": "^9.2.0",
@@ -70,7 +70,7 @@
     "react-sparklines": "^1.7.0",
     "react-syntax-highlighter": "^15.6.6",
     "react-toastify": "^11.0.5",
-    "rollbar": "3.0.0-beta.1",
+    "rollbar": "3.0.0-beta.3",
     "semver": "^7.7.2",
     "ts-react-json-table": "^0.1.5",
     "uuid": "^13.0.0"
@@ -102,9 +102,9 @@
     "tree-sitter",
     "tree-sitter-json"
   ],
-  "packageManager": "bun@1.2.21",
+  "packageManager": "bun@1.2.22",
   "engines": {
-    "bun": ">=1.2.13"
+    "bun": ">=1.2.22"
   },
   "bugs": {
     "url": "https://github.com/dianlight/srat/issues"
