@@ -85,7 +85,7 @@ func TestMountFlags_Scan_InvalidType(t *testing.T) {
 	err := mf.Scan(value)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid value type for MountFlags: float64")
-	assert.Len(t, mf, 0)
+	assert.Empty(t, mf)
 }
 
 func TestMountFlags_Scan_Int_NoMatchingFlags(t *testing.T) {
@@ -93,7 +93,7 @@ func TestMountFlags_Scan_Int_NoMatchingFlags(t *testing.T) {
 	value := int(0) // No flags set
 	err := mf.Scan(value)
 	assert.NoError(t, err)
-	assert.Len(t, mf, 0)
+	assert.Empty(t, mf)
 }
 
 func TestMountFlags_Scan_SliceString_UnknownFlagWithValue(t *testing.T) {

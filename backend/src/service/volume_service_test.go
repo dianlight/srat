@@ -167,7 +167,7 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	err = suite.volumeService.MountVolume(&mountData)
 
 	// --- Assert ---
-	suite.Require().Nil(err, "Expected no error on successful mount")
+	suite.Require().NoError(err, "Expected no error on successful mount")
 	suite.NotEmpty(*mountData.Flags)
 	suite.Contains(*mountData.Flags, dto.MountFlag{Name: "noatime", Description: "", NeedsValue: false, FlagValue: "", ValueDescription: "", ValueValidationRegex: ""})
 
