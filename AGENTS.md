@@ -7,12 +7,14 @@ This document provides an overview of the agents and automated systems used in t
 The SRAT project utilizes various coding agents and tools to assist with development, testing, and maintenance:
 
 ### GitHub Copilot
+
 - **Purpose**: AI-powered code generation and assistance
 - **Usage**: Integrated into VS Code for real-time code suggestions, refactoring, and documentation
 - **Configuration**: See `.github/copilot-instructions.md` for project-specific guidelines
 - **Languages Supported**: Go (backend), TypeScript/React (frontend)
 
 ### Pre-commit Hooks
+
 - **Purpose**: Automated code quality checks before commits
 - **Tools Included**:
   - `gosec`: Security scanning for Go code
@@ -22,6 +24,7 @@ The SRAT project utilizes various coding agents and tools to assist with develop
 - **Installation**: Run `pre-commit install` in the repository root
 
 ### Build Agents
+
 - **Purpose**: Automated building and testing
 - **Backend**: Uses `make` targets in `backend/Makefile` with Air for hot reload
 - **Frontend**: Bun-based build system with watch mode
@@ -30,6 +33,7 @@ The SRAT project utilizes various coding agents and tools to assist with develop
 ## Service Agents
 
 ### Backend Services
+
 The Go backend implements several service agents for Samba administration:
 
 - **Share Service**: Manages Samba shares configuration
@@ -39,6 +43,7 @@ The Go backend implements several service agents for Samba administration:
 - **Dirty State Service**: Tracks data changes for real-time updates
 
 ### Frontend Agents
+
 - **RTK Query**: Manages API state and caching
 - **Material-UI**: Component library for consistent UI
 - **SSE Client**: Handles Server-Sent Events for real-time notifications
@@ -46,11 +51,13 @@ The Go backend implements several service agents for Samba administration:
 ## Development Workflow Agents
 
 ### Testing Agents
+
 - **Backend**: `testify/suite` with `mockio/v2` for unit and integration tests
 - **Frontend**: Jest/React Testing Library for component tests
 - **HTTP Testing**: `humatest` for API endpoint validation
 
 ### Documentation Agents
+
 - **OpenAPI Generation**: Auto-generated from Go code using Huma framework
 - **Markdown Validation**: `markdownlint` and link checking
 - **Changelog**: Automated CHANGELOG.md updates
@@ -58,6 +65,7 @@ The Go backend implements several service agents for Samba administration:
 ## Deployment Agents
 
 ### Home Assistant Integration
+
 - **Addon Configuration**: JSON-based configuration for Home Assistant supervisor
 - **Database**: Embedded SQLite with GORM ORM
 - **Service Management**: Oversees Samba service lifecycle

@@ -40,6 +40,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 ## Development Workflows
 
 ### Backend Development
+
 - **Start dev server**: `cd backend && make dev` (uses Air for hot reload)
 - **Build**: `cd backend && make build` (production) or `make test_build` (debug symbols)
 - **Test**: `cd backend && make test` (runs with `-p 1` for deterministic output)
@@ -47,6 +48,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 - **Generate**: `cd backend && make gen` (goverter converters + OpenAPI docs)
 
 ### Frontend Development
+
 - **Start dev server**: `cd frontend && bun run dev` (hot reload with live reload)
 - **Start remote dev server**: `cd frontend && bun run dev:remote` (for testing with remote backend)
 - **Build**: `cd frontend && bun run build` (outputs to `../backend/src/web/static`)
@@ -56,6 +58,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 - **Test**: `cd frontend && bun test` (runs all tests with bun:test)
 
 ### Full Stack Development
+
 - **Prepare environment**: `make prepare` (installs pre-commit + dependencies)
 - **Build all**: `make ALL` (multi-arch: amd64, armv7, aarch64)
 - **Clean**: `make clean`
@@ -63,6 +66,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 ## Testing Patterns
 
 ### Backend Testing
+
 - **Framework**: `testify/suite` with `mockio/v2` for mocks
 - **Test Structure**: `{package}_test` with `{HandlerName}HandlerSuite` structs
 - **Setup**: Use `fxtest.New()` to build dependency graph, `fx.Populate()` to inject mocks
@@ -71,6 +75,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 - **State Verification**: Always check `dirtyService.SetDirty*()` calls when data is modified
 
 ### Frontend Testing
+
 - **Framework**: `bun:test` with `happy-dom` for DOM simulation
 - **Testing Libraries**: `@testing-library/react` for component testing, `@testing-library/jest-dom` for assertions
 - **Test Structure**: Place tests in `__tests__` directories alongside components/pages
@@ -82,6 +87,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 - **Async Testing**: Use `screen.findByText()` for waiting on async renders
 
 ### Test Examples
+
 ```go
 // Backend HTTP handler test
 func (suite *ShareHandlerSuite) TestCreateShareSuccess() {
@@ -90,7 +96,11 @@ func (suite *ShareHandlerSuite) TestCreateShareSuccess() {
     suite.handler.RegisterShareHandler(api)
     resp := api.Post("/share", input)
     suite.Equal(http.StatusCreated, resp.Code)
-    mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+        mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+}
+```
+
+```tsx
 }
 ```
 
@@ -108,6 +118,10 @@ describe("Component localStorage functionality", () => {
         localStorage.setItem("component.data", testData);
         expect(localStorage.getItem("component.data")).toBe(testData);
     });
+}
+```
+
+```tsx
 });
 ```
 
@@ -141,17 +155,20 @@ describe("Component rendering", () => {
 ## Quality Gates & Validation
 
 ### Pre-commit Hooks
+
 - **Security**: `gosec` scans Go code (high severity/confidence only)
 - **Dependencies**: Remove/restore `go.mod` replace directives
 - **Documentation**: Link format validation, CHANGELOG format checks
 - **Install**: `pre-commit install && pre-commit install --hook-type pre-push`
 
 ### Documentation
+
 - **Validation**: `make docs-validate` (markdownlint, link checks, spellcheck)
 - **Auto-fix**: `make docs-fix` (formatting fixes)
 - **OpenAPI**: Auto-generated from Go code, served at `/docs`
 
 ### Security
+
 - **Backend**: `make security` runs `gosec` (exclude generated code)
 - **Frontend**: Bun handles dependency security
 - **Include in PR**: Security scan results in "Quality Gates" section
@@ -159,12 +176,14 @@ describe("Component rendering", () => {
 ## Integration Points
 
 ### External Dependencies
+
 - **Database**: SQLite with WAL mode, busy timeout, foreign keys
 - **Home Assistant**: Integration via supervisor API, addon configuration
 - **Samba**: Configuration generation and service management
 - **Telemetry**: Optional Rollbar integration with user consent
 
 ### Cross-Component Communication
+
 - **Dirty State**: `dirtyService.SetDirty*()` methods mark data as changed
 - **Notifications**: Services call `NotifyClient()` for real-time updates via SSE
 - **Error Handling**: Custom error codes in `dto/error_code.go`, wrapped with `errors.Wrap()`
@@ -191,23 +210,27 @@ describe("Component rendering", () => {
 **MANDATORY patterns for all frontend tests:**
 
 ### File Structure & Naming
+
 - Tests MUST be in `__tests__` directories alongside the component/page being tested
 - Test files MUST use `.test.tsx` extension
 - Component tests go in `src/pages/[page]/__tests__/` or `src/components/[component]/__tests__/`
 
 ### Required Imports & Setup
+
 - ALWAYS import from `bun:test`: `import { describe, it, expect, beforeEach } from "bun:test";`
 - For localStorage tests: Include the minimal localStorage shim (see existing tests for exact code)
 - For component tests: Use `createTestStore()` helper from `../../../test/setup` (adjust path as needed)
 - For React components: Use dynamic imports to avoid module loading issues
 
 ### Testing Library Standards
+
 - Use `@testing-library/react` for component rendering: `const { render, screen } = await import("@testing-library/react");`
 - Use `@testing-library/jest-dom` assertions: `expect(element).toBeTruthy();`
 - For async rendering: Use `await screen.findByText()` not `getByText()`
 - Always use `React.createElement()` syntax, not JSX, in test files
 
 ### localStorage Testing Pattern
+
 ```tsx
 // REQUIRED localStorage shim for every localStorage test
 if (!(globalThis as any).localStorage) {
@@ -229,6 +252,7 @@ describe("Component localStorage functionality", () => {
 ```
 
 ### Component Testing Pattern
+
 ```tsx
 describe("Component rendering", () => {
     it("renders component with data", async () => {
@@ -256,11 +280,13 @@ describe("Component rendering", () => {
 ```
 
 ### Redux Store Integration
+
 - ALWAYS use `createTestStore()` for tests that need Redux state
 - Import store helper: `import { createTestStore } from "../../../test/setup";` (adjust path)
 - Wrap components with Redux Provider using `React.createElement(Provider, { store }, ...)`
 
 ### Async Testing Requirements
+
 - Use `await screen.findByText()` for elements that appear after rendering
 - Use `beforeEach(() => { localStorage.clear(); })` for localStorage tests
 - Dynamic imports MUST be used for React components and testing utilities
@@ -294,5 +320,3 @@ Update CHANGELOG.md and relevant documentation files for any new features, bug f
 Check for open issues related to your changes and reference them in your commit messages or PR descriptions.
 
 ## END OF COPILOT INSTRUCTIONS
-
-
