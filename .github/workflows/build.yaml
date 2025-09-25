@@ -179,7 +179,7 @@ jobs:
       - name: Test Frontend ${{ needs.setversion.outputs.version }} (not yet implemented)
         run: |
           cd frontend
-          sudo -E PATH="$PATH" bun test
+          bun test
           cd ..
 
       - name: Check if tag ${{ needs.setversion.outputs.version }} exists
