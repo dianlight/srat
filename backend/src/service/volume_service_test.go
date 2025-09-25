@@ -103,6 +103,10 @@ func (suite *VolumeServiceTestSuite) TearDownTest() {
 
 func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	device, err := loop.FindDevice()
+	if err != nil {
+		suite.T().Skip("No loop device available, skipping test")
+		return
+	}
 	suite.Require().NoError(err, "Error finding loop device")
 	err = suite.volumeService.CreateBlockDevice(device)
 	suite.Require().NoError(err, "Error creating block device")
