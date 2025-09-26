@@ -282,8 +282,8 @@ func (s *HomeAssistantService) sendDiskEntity(disk dto.Disk) error {
 		"friendly_name": fmt.Sprintf("SRAT Disk %s", getStringOrDefault(disk.Id, "unknown")),
 	}
 
-	if disk.Device != nil {
-		attributes["device"] = *disk.Device
+	if disk.LegacyDeviceName != nil {
+		attributes["device"] = *disk.LegacyDeviceName
 	}
 	if disk.Model != nil {
 		attributes["model"] = *disk.Model
@@ -340,7 +340,7 @@ func (s *HomeAssistantService) sendPartitionEntity(partition dto.Partition, disk
 	entityId := fmt.Sprintf("sensor.srat_partition_%s", sanitizeEntityId(*partition.Id))
 
 	diskName := getStringOrDefault(disk.Id, "unknown")
-	partitionName := getStringOrDefault(partition.Name, getStringOrDefault(partition.Device, "unknown"))
+	partitionName := getStringOrDefault(partition.Name, getStringOrDefault(partition.Id, "unknown"))
 
 	attributes := map[string]interface{}{
 		"icon":          "mdi:folder",
@@ -348,8 +348,8 @@ func (s *HomeAssistantService) sendPartitionEntity(partition dto.Partition, disk
 		"disk_id":       diskName,
 	}
 
-	if partition.Device != nil {
-		attributes["device"] = *partition.Device
+	if partition.LegacyDeviceName != nil {
+		attributes["device"] = *partition.LegacyDeviceName
 	}
 	if partition.Name != nil {
 		attributes["name"] = *partition.Name

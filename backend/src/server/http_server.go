@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/tlog"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/rs/cors"
@@ -28,7 +29,7 @@ func NewHTTPServer(
 	sloghttp.SpanIDKey = "X-Span-Id"
 	sloghttp.TraceIDKey = "X-Trace-Id"
 	handler := sloghttp.NewWithConfig(slog.Default(), sloghttp.Config{
-		DefaultLevel:       slog.LevelDebug,
+		DefaultLevel:       tlog.LevelTrace,
 		WithRequestBody:    true,
 		WithRequestHeader:  true,
 		WithResponseBody:   true,

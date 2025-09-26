@@ -40,8 +40,8 @@ export const useRollbarTelemetry = () => {
 				},
 				{
 					type: "occurrence",
-					level: ["error"],
-					//				samplingRatio: 0.5,
+					level: ["error", "critical"],
+					//samplingRatio: 0.5,
 				},
 			],
 		},
@@ -102,8 +102,8 @@ export const useRollbarTelemetry = () => {
 					},
 					person: evdata?.hello.machine_id
 						? {
-								id: evdata.hello.machine_id,
-							}
+							id: evdata.hello.machine_id,
+						}
 						: undefined,
 				},
 				enabled: enableRollbar,

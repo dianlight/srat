@@ -112,7 +112,7 @@ func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
 			slog.Warn("Failed to send samba process status entity to Home Assistant", "error", err)
 		}
 	default:
-		slog.Debug("Skipping Home Assistant entity update for unsupported message type", "type", fmt.Sprintf("%T", msg), "msg", msg)
+		tlog.Trace("Skipping Home Assistant entity update for unsupported message type", "type", fmt.Sprintf("%T", msg), "msg", msg)
 	}
 }
 

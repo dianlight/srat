@@ -18,6 +18,7 @@ type MountPointPathRepository struct {
 
 type MountPointPathRepositoryInterface interface {
 	All() ([]dbom.MountPointPath, errors.E)
+	AllByDeviceId() (map[string]dbom.MountPointPath, errors.E)
 	Save(mp *dbom.MountPointPath) errors.E
 	FindByPath(path string) (*dbom.MountPointPath, errors.E)
 	FindByDevice(device string) (*dbom.MountPointPath, errors.E)
@@ -35,11 +36,6 @@ func NewMountPointPathRepository(db *gorm.DB) MountPointPathRepositoryInterface 
 func (r *MountPointPathRepository) Save(mp *dbom.MountPointPath) errors.E {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-
-	// Normalize device path: ensure it's stored without /dev/ prefix
-	// This is consistent with FindByDevice logic.
-	// Ideally, this normalization should be in dbom.MountPointPath.BeforeSave hook.
-	mp.Device = strings.TrimPrefix(mp.Device, "/dev/")
 
 	return errors.WithStack(r.db.Transaction(func(tx *gorm.DB) error {
 		// Check if record exists to decide between Create and Update
@@ -91,6 +87,20 @@ func (r *MountPointPathRepository) All() (Data []dbom.MountPointPath, Error erro
 	var mps []dbom.MountPointPath
 	err := r.db.Find(&mps).Error
 	return mps, errors.WithStack(err)
+}
+
+func (r *MountPointPathRepository) AllByDeviceId() (map[string]dbom.MountPointPath, errors.E) {
+	all, err := r.All()
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]dbom.MountPointPath, len(all))
+	for _, mp := range all {
+		if mp.DeviceId != "" {
+			result[mp.DeviceId] = mp
+		}
+	}
+	return result, nil
 }
 
 func (r *MountPointPathRepository) Exists(path string) (bool, errors.E) {

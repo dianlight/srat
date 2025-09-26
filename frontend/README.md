@@ -72,3 +72,7 @@ export function ErrorTelemetryBinder() {
     - Page: `src/pages/dashboard/Dashboard.tsx`
     - Specific components: `src/pages/dashboard/DashboardWidget.tsx`, `src/pages/dashboard/ChartPanel.tsx`, etc.
     - Do **not** place dashboard-specific components in `src/components/`.
+
+## Test Setup Enforcement
+
+All test files must import the shared test setup (`import '../../../../test/setup'`). This is enforced by the `test:prepare` script, which runs automatically before linting (see `package.json` lint script). If any test file is missing the setup import, lint will fail. To fix, run `bun run test:fix`.

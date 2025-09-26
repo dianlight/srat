@@ -8,17 +8,14 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/m1/go-generate-password/generator"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/converter"
-	"github.com/dianlight/srat/dbom" // Keep for firstTimeJSONImporter
+	"github.com/dianlight/srat/converter" // Keep for firstTimeJSONImporter
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/internal"
@@ -102,6 +99,20 @@ func main() {
 
 	flag.Parse()
 
+	err := tlog.SetLevelFromString(*logLevelString)
+	if err != nil {
+		log.Fatalf("Invalid log level: %s", *logLevelString)
+	}
+
+	// Test Logger
+	/*
+		tlog.Trace("Trace log")
+		tlog.Debug("Debug log")
+		tlog.Info("Info log")
+		tlog.Warn("Warn log")
+		tlog.Error("Error log")
+	*/
+
 	if !*silentMode {
 		internal.Banner("srat-cli")
 	}
@@ -139,11 +150,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := tlog.SetLevelFromString(*logLevelString)
-	if err != nil {
-		log.Fatalf("Invalid log level: %s", *logLevelString)
-	}
-
 	slog.Debug("Startup Options", "Flags", os.Args)
 	//	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
 
@@ -151,9 +157,9 @@ func main() {
 		log.Fatalf("Missing samba config! %s", *smbConfigFile)
 	}
 
-	if !strings.Contains(*dbfile, "?") {
-		*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
-	}
+	//if !strings.Contains(*dbfile, "?") {
+	//	*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
+	//}
 
 	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	defer apiCancel() // Ensure context is cancelled on exit
@@ -228,11 +234,12 @@ func main() {
 				if err != nil {
 					log.Fatalf("Cant create samba user %#+v", err)
 				}
-
-				err = firstTimeJSONImporter(config, mount_repo, props_repo, share_repo, samba_user_repo, *_ha_mount_user_password_)
-				if err != nil {
-					log.Fatalf("Cant import json settings - %#+v", errors.WithStack(err))
-				}
+				/*
+					err = firstTimeJSONImporter(config, mount_repo, props_repo, share_repo, samba_user_repo, *_ha_mount_user_password_)
+					if err != nil {
+						log.Fatalf("Cant import json settings - %#+v", errors.WithStack(err))
+					}
+				*/
 
 			}
 		}),
@@ -304,7 +311,7 @@ func main() {
 									slog.Info("Automounting share", "path", mnt.Path)
 									conv := converter.DtoToDbomConverterImpl{}
 									mpd := dto.MountPointData{}
-									conv.MountPointPathToMountPointData(mnt, &mpd)
+									conv.MountPointPathToMountPointData(mnt, &mpd, nil)
 									err := volume_service.MountVolume(&mpd)
 									if err != nil {
 										if errors.Is(err, dto.ErrorAlreadyMounted) {
@@ -315,7 +322,7 @@ func main() {
 										} else {
 											slog.Error("Error automounting share", "path", mnt.Path, "err", err)
 											// Create a persistent notification about the automount failure
-											volume_service.CreateAutomountFailureNotification(mnt.Path, mnt.Device, err)
+											volume_service.CreateAutomountFailureNotification(mnt.Path, mnt.DeviceId, err)
 										}
 									} else {
 										slog.Debug("Share automounted", "path", mnt.Path)
@@ -448,6 +455,7 @@ func main() {
 	// os.Exit(0) is implicit if main returns
 }
 
+/*
 func firstTimeJSONImporter(config config.Config,
 	mount_repository repository.MountPointPathRepositoryInterface,
 	props_repository repository.PropertyRepositoryInterface,
@@ -490,3 +498,4 @@ func firstTimeJSONImporter(config config.Config,
 	}
 	return nil
 }
+*/

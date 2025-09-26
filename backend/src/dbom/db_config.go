@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	_ "github.com/dianlight/srat/dbom/migrations"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/tlog"
 	"github.com/glebarez/sqlite"
@@ -181,6 +182,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 	}
 
 	if err := goose.Up(sqlDB, "migrations"); err != nil {
+		slog.Error("Failed to apply migrations", "error", err, "path", v.ApiCtx.DatabasePath)
 		panic(err)
 	}
 

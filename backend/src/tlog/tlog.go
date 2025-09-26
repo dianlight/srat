@@ -462,6 +462,7 @@ func SetLevelFromString(levelStr string) error {
 	mu.Lock()
 	defer mu.Unlock()
 	programLevel.Set(level)
+	initializeLogger() // Reinitialize logger with new level
 	return nil
 }
 

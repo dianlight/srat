@@ -21,20 +21,24 @@ type HaHardwareToDto interface {
 	// goverter:map Filesystems Partitions
 	// goverter:useUnderlyingTypeMethods
 	// goverter:skipCopySameType
-	// goverter:map . Device | extractDevice
+	// goverter:map . LegacyDeviceName | extractDevice
+	// goverter:ignore SmartInfo DevicePath LegacyDevicePath
 	DriveToDisk(source hardware.Drive, target *dto.Disk) error
 
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore MountPointData
+	// goverter:ignore MountPointData  DevicePath FsType
+	// goverter:map Device LegacyDevicePath
+	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
 	filesystemToPartition(source hardware.Filesystem) dto.Partition
 
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore MountPointData
-	// goverter:map . MountPointData | mountPointsToMountPointDatas
+	// goverter:ignore MountPointData  DevicePath FsType
+	// goverter:map Device LegacyDevicePath
+	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
 	FilesystemToPartition(source hardware.Filesystem, target *dto.Partition) error
 }
@@ -51,7 +55,7 @@ func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointD
 	for _, s := range *source.MountPoints {
 		mountPointDatas = append(mountPointDatas, dto.MountPointData{
 			Path:        s,
-			Device:      *source.Device,
+			DeviceId:    *source.Id,
 			FSType:      &fstype,
 			Flags:       nil,
 			CustomFlags: nil,
@@ -73,5 +77,13 @@ func extractDevice(source hardware.Drive) *string {
 	originalDevice := *(*source.Filesystems)[0].Device
 	trimmedDevice := deviceRegexp.ReplaceAllString(originalDevice, "")
 	trimmedDevice = strings.TrimPrefix(trimmedDevice, "/dev/")
+	return &trimmedDevice
+}
+
+func trimDevPrefix(source *string) *string {
+	if source == nil {
+		return nil
+	}
+	trimmedDevice := strings.TrimPrefix(*source, "/dev/")
 	return &trimmedDevice
 }

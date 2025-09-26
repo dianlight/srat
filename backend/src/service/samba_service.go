@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"log/slog"
@@ -205,7 +206,7 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 			Pid: -1,
 		},
 		Srat: dto.ProcessStatus{
-			Pid: int32(os.Getpid()),
+			Pid: -1,
 		},
 	}
 	var conv converter.ProcessToDtoImpl
@@ -234,6 +235,7 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 }
 
 func (self *SambaService) WriteSambaConfig() errors.E {
+	tlog.Trace("Writing Samba configuration file", "file", self.state.SambaConfigFile)
 	stream, errE := self.CreateConfigStream()
 	if errE != nil {
 		return errors.WithStack(errE)
@@ -248,9 +250,13 @@ func (self *SambaService) WriteSambaConfig() errors.E {
 }
 
 func (self *SambaService) TestSambaConfig() errors.E {
+	tlog.Trace("Testing Samba configuration file", "file", self.state.SambaConfigFile)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Check samba configuration with exec testparm -s
-	cmd := exec.Command("testparm", "-s", self.state.SambaConfigFile)
+	cmd := exec.CommandContext(ctx, "testparm", "-s", self.state.SambaConfigFile)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return errors.Errorf("Error executing testparm: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
@@ -259,61 +265,74 @@ func (self *SambaService) TestSambaConfig() errors.E {
 }
 
 func (self *SambaService) RestartSambaService() errors.E {
+	tlog.Trace("Restarting Samba service")
 	process, err := self.GetSambaProcess()
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	// Exec smbcontrol smbd reload-config
 	if process != nil {
-		if e := self.umountHaStorage(); e != nil {
-			slog.Error("Error unmounting HA storage", "error", e)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if process.Smbd.Pid != -1 {
+			if e := self.umountHaStorage(); e != nil {
+				slog.Error("Error unmounting HA storage", "error", e)
+			}
+			slog.Info("Reloading smbd configuration...")
+			cmdSmbdReload := exec.CommandContext(ctx, "smbcontrol", "smbd", "reload-config")
+			outSmbd, err := cmdSmbdReload.CombinedOutput()
+			if err != nil {
+				if strings.Contains(string(outSmbd), "Can't find pid for destination") {
+					slog.Warn("Samba process (smbd) not found, skipping reload command.")
+				} else {
+					slog.Error("Error reloading smbd config", "error", err, "output", string(outSmbd))
+				}
+			}
+			defer func() {
+				// Remount network shares on ha_core
+				// This logic might be better placed after confirming all local services are stable
+				// or if it's specifically tied to smbd/nmbd reloads.
+				e := self.mountHaStorage()
+				if e != nil {
+					slog.Error("Error mounting HA storage", "error", e)
+				}
+			}()
 		}
-		slog.Info("Reloading smbd configuration...")
-		cmdSmbdReload := exec.Command("smbcontrol", "smbd", "reload-config")
-		outSmbd, err := cmdSmbdReload.CombinedOutput()
-		if err != nil {
-			if strings.Contains(string(outSmbd), "Can't find pid for destination") {
-				slog.Warn("Samba process (smbd) not found, skipping reload command.")
-			} else {
-				slog.Error("Error reloading smbd config", "error", err, "output", string(outSmbd))
+
+		if process.Nmbd.Pid != -1 {
+			slog.Info("Reloading nmbd configuration...")
+			cmdNmbdReload := exec.CommandContext(ctx, "smbcontrol", "nmbd", "reload-config")
+			outNmbd, err := cmdNmbdReload.CombinedOutput()
+			if err != nil {
+				if strings.Contains(string(outNmbd), "Can't find pid for destination") {
+					slog.Warn("Samba process (nmbd) not found, skipping reload command.")
+				} else {
+					slog.Error("Error reloading nmbd config", "error", err, "output", string(outNmbd))
+				}
 			}
 		}
 
-		slog.Info("Reloading nmbd configuration...")
-		cmdNmbdReload := exec.Command("smbcontrol", "nmbd", "reload-config")
-		outNmbd, err := cmdNmbdReload.CombinedOutput()
-		if err != nil {
-			if strings.Contains(string(outNmbd), "Can't find pid for destination") {
-				slog.Warn("Samba process (nmbd) not found, skipping reload command.")
-			} else {
-				slog.Error("Error reloading nmbd config", "error", err, "output", string(outNmbd))
-			}
-		}
+		if process.Wsdd2.Pid != -1 {
+			// Restart wsdd2 service using s6
+			wsdd2ServicePath := "/run/s6-rc/servicedirs/wsdd2"
+			if _, statErr := os.Stat(wsdd2ServicePath); statErr == nil {
+				slog.Info("Restarting wsdd2 service...")
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
 
-		// Remount network shares on ha_core
-		// This logic might be better placed after confirming all local services are stable
-		// or if it's specifically tied to smbd/nmbd reloads.
-		e := self.mountHaStorage()
-		if e != nil {
-			slog.Error("Error mounting HA storage", "error", e)
+				cmdWsdd2Restart := exec.CommandContext(ctx, "s6-svc", "-r", wsdd2ServicePath)
+				outWsdd2, cmdErr := cmdWsdd2Restart.CombinedOutput()
+				if cmdErr != nil {
+					return errors.Errorf("Error restarting wsdd2 service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outWsdd2)})
+				}
+			} else if os.IsNotExist(statErr) {
+				tlog.Warn("wsdd2 service path not found, skipping restart.", "path", wsdd2ServicePath)
+			} else {
+				tlog.Error("Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
+			}
 		}
 	} else {
 		slog.Warn("Samba process (smbd) not found, skipping reload commands.")
-	}
-
-	// Restart wsdd2 service using s6
-	wsdd2ServicePath := "/run/s6-rc/servicedirs/wsdd2"
-	if _, statErr := os.Stat(wsdd2ServicePath); statErr == nil {
-		slog.Info("Restarting wsdd2 service...")
-		cmdWsdd2Restart := exec.Command("s6-svc", "-r", wsdd2ServicePath)
-		outWsdd2, cmdErr := cmdWsdd2Restart.CombinedOutput()
-		if cmdErr != nil {
-			return errors.Errorf("Error restarting wsdd2 service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outWsdd2)})
-		}
-	} else if os.IsNotExist(statErr) {
-		tlog.Warn("wsdd2 service path not found, skipping restart.", "path", wsdd2ServicePath)
-	} else {
-		tlog.Error("Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
 	}
 	return nil
 }

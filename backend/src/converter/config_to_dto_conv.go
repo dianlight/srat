@@ -2,12 +2,7 @@
 
 package converter
 
-import (
-	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/dto"
-	"gitlab.com/tozd/go/errors"
-)
-
+/*
 func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, settings *dto.Settings, users *[]dto.User, shares *[]dto.SharedResource) error {
 	err := c.ConfigToSettings(source, settings)
 	if err != nil {
@@ -39,7 +34,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 	}
 	return nil
 }
-
+*/
 /*
 	func (c *ConfigToDtoConverterImpl) DtoObjectsToConfig(settings dto.Settings, users []dto.User, shares []dto.SharedResource, target *config.Config) error {
 		err := c.SettingsToConfig(settings, target, c)
@@ -70,6 +65,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToDtoObjects(source config.Config, sett
 		return nil
 	}
 */
+/*
 func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, target *dto.SharedResource, context []dto.User) error {
 	err := c.ShareToSharedResourceNoMountPointData(source, target, context)
 	if err != nil {
@@ -83,3 +79,4 @@ func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, ta
 	target.MountPointData = &mountPointData
 	return nil
 }
+*/

@@ -66,7 +66,10 @@
     "myapp",
     "elif",
     "gosec",
-    "pipx"
+    "pipx",
+    "armv7",
+    "DBOMs",
+    "psutil"
   ],
   "flagWords": [],
   "ignorePaths": [

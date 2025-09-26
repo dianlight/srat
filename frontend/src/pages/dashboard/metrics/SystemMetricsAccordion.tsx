@@ -301,7 +301,7 @@ export function SystemMetricsAccordion({
 		return (
 			<MetricCard
 				title="Server Uptime"
-				value={health?.uptime ? humanizeDuration(health.uptime) : "N/A"}
+				value={health?.uptime ? humanizeDuration(health.uptime, { round: true }) : "N/A"}
 				isLoading={isLoading}
 				error={!!error || !health?.uptime}
 			/>

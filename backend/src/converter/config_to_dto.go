@@ -22,24 +22,24 @@ import (
 // goverter:update:ignoreZeroValueField
 // goverter:default:update
 type ConfigToDtoConverter interface {
-	// goverter:update target
-	// goverter:ignore Invalid MountPointData IsHAMounted _ HaStatus
-	// goverter:context users
-	ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
+	// g.overter:update target
+	// g.overter:ignore Invalid MountPointData IsHAMounted _ HaStatus
+	// g.overter:context users
+	//ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
 
-	// goverter:update target
-	// goverter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Shares IsToMountAtStartup
-	// goverter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
-	// goverter:map Path Device | PathToSource
-	// goverter:map Path Type | pathToType
-	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
-	// goverter:map FS FSType
-	// goverter:map Path IsWriteSupported | FSTypeIsWriteSupported
-	// goverter:map FS TimeMachineSupport | TimeMachineSupportFromFS
-	// goverter:map Path DiskLabel | DiskLabelFromPath
-	// goverter:map Path DiskSerial | DiskSerialFromPath
-	// goverter:map Path DiskSize | DiskSizeFromPath
-	ShareToMountPointData(source config.Share, target *dto.MountPointData) error
+	// g.overter:update target
+	// g.overter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Shares IsToMountAtStartup
+	// g.overter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
+	// g.overter:map Path DeviceId | PathToSource
+	// g.overter:map Path Type | pathToType
+	// g.overter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
+	// g.overter:map FS FSType
+	// g.overter:map Path IsWriteSupported | FSTypeIsWriteSupported
+	// g.overter:map FS TimeMachineSupport | TimeMachineSupportFromFS
+	// g.overter:map Path DiskLabel | DiskLabelFromPath
+	// g.overter:map Path DiskSerial | DiskSerialFromPath
+	// g.overter:map Path DiskSize | DiskSizeFromPath
+	//ShareToMountPointData(source config.Share, target *dto.MountPointData) error
 
 	// goverter:update target
 	// goverter:map MountPointData.Path Path
@@ -47,19 +47,19 @@ type ConfigToDtoConverter interface {
 	// goverter:context users
 	SharedResourceToShare(source dto.SharedResource, target *config.Share) error
 
-	// goverter:update target
-	// goverter:ignore IsAdmin _  RwShares RoShares
-	OtherUserToUser(source config.User, target *dto.User) error
+	// g:overter:update target
+	// g:overter:ignore IsAdmin _  RwShares RoShares
+	//OtherUserToUser(source config.User, target *dto.User) error
 
 	// goverter:update target
 	UserToOtherUser(source dto.User, target *config.User) error
 
-	// goverter:update target
-	// goverter:update:ignoreZeroValueField no
-	// goverter:map UpdateChannel UpdateChannel | github.com/dianlight/srat/dto:ParseUpdateChannel
-	// goverter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
-	// goverter:ignore ExportStatsToHA
-	ConfigToSettings(source config.Config, target *dto.Settings) error
+	// g.overter:update target
+	// g.overter:update:ignoreZeroValueField no
+	// g.overter:map UpdateChannel UpdateChannel | github.com/dianlight/srat/dto:ParseUpdateChannel
+	// g.overter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
+	// g.overter:ignore ExportStatsToHA
+	//ConfigToSettings(source config.Config, target *dto.Settings) error
 
 	// g.overter:update target
 	// g.overter:ignore CurrentFile
@@ -70,9 +70,9 @@ type ConfigToDtoConverter interface {
 	// g.overter:context conv
 	//SettingsToConfig(source dto.Settings, target *config.Config, conv ConfigToDtoConverter) error
 
-	// goverter:update target
-	// goverter:ignore IsAdmin _  RwShares RoShares
-	ConfigToUser(source config.Config, target *dto.User) error
+	// g.overter:update target
+	// g.overter:ignore IsAdmin _  RwShares RoShares
+	//ConfigToUser(source config.Config, target *dto.User) error
 }
 
 // goverter:context users
@@ -96,7 +96,6 @@ func PathToSource(path string) string {
 		return ""
 	}
 	for _, m := range info {
-
 		after, _ := strings.CutPrefix(m.MountSource, "/dev/")
 		if m.MountDir == path {
 			return after
@@ -154,6 +153,7 @@ func TimeMachineSupportFromFS(fsType string) *dto.TimeMachineSupport {
 }
 
 func FSTypeIsWriteSupported(path string) *bool {
+	slog.Debug("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
 	return pointer.Bool(osutil.IsWritable(path))
 
 }

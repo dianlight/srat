@@ -90,10 +90,10 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Save() {
 	share := &dbom.ExportedShare{
 		Name: "test_share",
 		MountPointData: dbom.MountPointPath{
-			Path:   "/mnt/test_share",
-			Device: "test_source",
-			FSType: "ext4",
-			Type:   "ADDON",
+			Path:     "/mnt/test_share",
+			DeviceId: "test_source",
+			FSType:   "ext4",
+			Type:     "ADDON",
 			Data: &dbom.MounDataFlags{
 				{Name: "noatime", NeedsValue: false},
 			},
@@ -120,19 +120,19 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_SaveAll(
 		{
 			Name: "test_share1",
 			MountPointData: dbom.MountPointPath{
-				Path:   "/mnt/test_share1",
-				Device: "test_source1",
-				FSType: "ext4",
-				Type:   "ADDON",
+				Path:     "/mnt/test_share1",
+				DeviceId: "test_source1",
+				FSType:   "ext4",
+				Type:     "ADDON",
 			},
 		},
 		{
 			Name: "test_share2",
 			MountPointData: dbom.MountPointPath{
-				Path:   "/mnt/test_share2",
-				Device: "test_source2",
-				FSType: "ntfs",
-				Type:   "ADDON",
+				Path:     "/mnt/test_share2",
+				DeviceId: "test_source2",
+				FSType:   "ntfs",
+				Type:     "ADDON",
 			},
 		},
 	}
@@ -153,10 +153,10 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_FindByNa
 	share := &dbom.ExportedShare{
 		Name: "find_me",
 		MountPointData: dbom.MountPointPath{
-			Path:   "/mnt/find_me",
-			Device: "find_source",
-			FSType: "ext4",
-			Type:   "ADDON",
+			Path:     "/mnt/find_me",
+			DeviceId: "find_source",
+			FSType:   "ext4",
+			Type:     "ADDON",
 		},
 		Users: []dbom.SambaUser{
 			{Username: "user1a", Password: "pass1"},
@@ -202,10 +202,10 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 		{
 			Name: "all_share1",
 			MountPointData: dbom.MountPointPath{
-				Path:   "/mnt/all_share1",
-				Device: "all_source1",
-				FSType: "ext4",
-				Type:   "ADDON",
+				Path:     "/mnt/all_share1",
+				DeviceId: "all_source1",
+				FSType:   "ext4",
+				Type:     "ADDON",
 			},
 			Users:   []dbom.SambaUser{},
 			RoUsers: []dbom.SambaUser{},
@@ -213,10 +213,10 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 		{
 			Name: "all_share2",
 			MountPointData: dbom.MountPointPath{
-				Path:   "/mnt/all_share2",
-				Device: "all_source2",
-				FSType: "ntfs",
-				Type:   "ADDON",
+				Path:     "/mnt/all_share2",
+				DeviceId: "all_source2",
+				FSType:   "ntfs",
+				Type:     "ADDON",
 			},
 			Users:   []dbom.SambaUser{},
 			RoUsers: []dbom.SambaUser{},
@@ -243,10 +243,10 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_Delete()
 	share := &dbom.ExportedShare{
 		Name: "delete_me",
 		MountPointData: dbom.MountPointPath{
-			Path:   "/mnt/delete_me",
-			Device: "delete_source",
-			FSType: "ext4",
-			Type:   "ADDON",
+			Path:     "/mnt/delete_me",
+			DeviceId: "delete_source",
+			FSType:   "ext4",
+			Type:     "ADDON",
 		},
 	}
 	err := suite.export_share_repo.Save(share)
@@ -272,10 +272,10 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_UpdateNa
 	share := &dbom.ExportedShare{
 		Name: "old_name",
 		MountPointData: dbom.MountPointPath{
-			Path:   "/mnt/old_name",
-			Device: "old_source",
-			FSType: "ext4",
-			Type:   "ADDON",
+			Path:     "/mnt/old_name",
+			DeviceId: "old_source",
+			FSType:   "ext4",
+			Type:     "ADDON",
 		},
 	}
 	err := suite.export_share_repo.Save(share)

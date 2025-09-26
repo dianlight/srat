@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -70,16 +69,16 @@ func main() {
 	updateFilePath = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
 	addonIpAddress = flag.String("ip-address", "127.0.0.1", "Addon IP address // $(bashio::addon.ip_address)")
 
-	flag.Usage = func() {
-		internal.Banner("srat")
-		flag.PrintDefaults()
-	}
-
 	flag.Parse()
 
 	err := tlog.SetLevelFromString(*logLevelString)
 	if err != nil {
 		log.Fatalf("Invalid log level: %s", *logLevelString)
+	}
+
+	flag.Usage = func() {
+		internal.Banner("srat")
+		flag.PrintDefaults()
 	}
 
 	if *singleInstance {
@@ -128,9 +127,9 @@ func prog(state overseer.State) {
 		log.Println("Read only mode")
 	}
 
-	if !strings.Contains(*dbfile, "?") {
-		*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
-	}
+	//if !strings.Contains(*dbfile, "?") {
+	//	*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
+	//}
 
 	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	// apiCancel is called at the end of Run() by FX lifecycle or explicitly if Run errors

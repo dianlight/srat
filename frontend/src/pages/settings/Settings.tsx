@@ -587,6 +587,8 @@ export function Settings() {
 						type="submit"
 						form="settingsform"
 						disabled={!formState.isDirty}
+						variant="outlined"
+						color="success"
 					>
 						Apply
 					</Button>

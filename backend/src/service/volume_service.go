@@ -4,26 +4,24 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"regexp"
 	"strconv"
-	"strings"
 	"sync"
+	"syscall"
 
 	"fmt"
 	"os/exec"
-	"regexp"
-	"syscall"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tlog"
 	"github.com/pilebones/go-udev/netlink"
+	"github.com/prometheus/procfs"
 	"github.com/shomali11/util/xhashes"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
-	"github.com/u-root/u-root/pkg/mount/loop"
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -39,12 +37,15 @@ type VolumeServiceInterface interface {
 	EjectDisk(diskID string) error
 	UpdateMountPointSettings(path string, settingsUpdate dto.MountPointData) (*dto.MountPointData, errors.E)
 	PatchMountPointSettings(path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
-	HandleRemovedDisks(currentDisks *[]dto.Disk) error
+	//HandleRemovedDisks(currentDisks *[]dto.Disk) error
 	NotifyClient()
 	CreateAutomountFailureNotification(mountPath, device string, err errors.E)
 	CreateUnmountedPartitionNotification(mountPath, device string)
 	DismissAutomountNotification(mountPath string, notificationType string)
 	CheckUnmountedAutomountPartitions() errors.E
+	// Test only
+	MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error))
+	CreateBlockDevice(device string) error
 }
 
 type VolumeService struct {
@@ -53,13 +54,15 @@ type VolumeService struct {
 	broascasting      BroadcasterServiceInterface
 	mount_repo        repository.MountPointPathRepositoryInterface
 	hardwareClient    HardwareServiceInterface
-	lsblk             lsblk.LSBLKInterpreterInterface
 	fs_service        FilesystemServiceInterface
 	shareService      ShareServiceInterface
 	issueService      IssueServiceInterface
 	state             *dto.ContextState
 	sfGroup           singleflight.Group
 	haService         HomeAssistantServiceInterface
+	convDto           converter.DtoToDbomConverterImpl
+	convMDto          converter.MountToDbomImpl
+	procfsGetMounts   func() ([]*procfs.MountInfo, error)
 }
 
 type VolumeServiceProps struct {
@@ -68,7 +71,6 @@ type VolumeServiceProps struct {
 	Broadcaster       BroadcasterServiceInterface
 	MountPointRepo    repository.MountPointPathRepositoryInterface
 	HardwareClient    HardwareServiceInterface `optional:"true"`
-	LsblkInterpreter  lsblk.LSBLKInterpreterInterface
 	FilesystemService FilesystemServiceInterface
 	ShareService      ShareServiceInterface
 	IssueService      IssueServiceInterface
@@ -86,12 +88,14 @@ func NewVolumeService(
 		volumesQueueMutex: sync.RWMutex{},
 		mount_repo:        in.MountPointRepo,
 		hardwareClient:    in.HardwareClient,
-		lsblk:             in.LsblkInterpreter,
 		fs_service:        in.FilesystemService,
 		state:             in.State,
 		shareService:      in.ShareService,
 		issueService:      in.IssueService,
 		haService:         in.HAService,
+		convDto:           converter.DtoToDbomConverterImpl{},
+		convMDto:          converter.MountToDbomImpl{},
+		procfsGetMounts:   procfs.GetMounts,
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -121,153 +125,177 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 
 	if md.Path == "" {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
-			"Device", md.Device,
+			"DeviceId", md.DeviceId,
 			"Path", md.Path,
 			"Message", "Mount point path is empty",
 		)
 	}
-	if md.Device == "" {
+	if md.DeviceId == "" {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
-			"Device", md.Device,
+			"DeviceId", md.DeviceId,
 			"Path", md.Path,
 			"Message", "Source device name is empty in request",
 		)
 	}
 
-	dbom_mount_data, err := ms.mount_repo.FindByPath(md.Path)
-	if err != nil {
-		// If not found, create a new one based on input
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			dbom_mount_data = &dbom.MountPointPath{}
-		} else {
-			return errors.WithStack(err) // Other DB error
+	if md.Partition == nil {
+		// Populate partition from disk
+		disks, err := ms.hardwareClient.GetHardwareInfo()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		for _, disk := range disks {
+			for _, part := range *disk.Partitions {
+				if *part.Id == md.DeviceId {
+					md.Partition = &part
+					break
+				}
+			}
 		}
 	}
 
-	var conv converter.DtoToDbomConverterImpl
-	errS := conv.MountPointDataToMountPointPath(*md, dbom_mount_data)
-	if errS != nil {
-		return errors.WithStack(errS)
-	}
-
-	if dbom_mount_data.Device == "" {
+	if md.Partition == nil || md.Partition.DevicePath == nil || *md.Partition.DevicePath == "" {
 		return errors.WithDetails(dto.ErrorDeviceNotFound,
-			"Device", dbom_mount_data.Device,
-			"Path", dbom_mount_data.Path,
-			"Message", "Source device name is empty in request/DB record",
+			"DeviceId", md.DeviceId,
+			"Path", md.Path,
+			"Message", "Source device does not exist on the system",
 		)
 	}
 
-	if dbom_mount_data.Path == "" {
-		return errors.WithDetails(dto.ErrorInvalidParameter,
-			"Device", dbom_mount_data.Device,
-			"Path", dbom_mount_data.Path,
-			"Message", "Mount point path is empty",
-		)
-	}
-
-	// --- Start Device Existence Check ---
-	var real_device string
-	deviceName := dbom_mount_data.Device
-	fullDevicePath := "/dev/" + deviceName
-
-	// Check 1: Does the raw device name exist (e.g., a loop device path)?
-	fi, errStatRaw := os.Stat(deviceName)
-	if errStatRaw == nil {
-		real_device = deviceName // Raw name exists
-		if fi.Mode().IsRegular() {
-			slog.Debug("Device found using raw name", "device", real_device)
-			loopd, err := loop.FindDevice()
-			if err != nil {
-				return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error finding loop device", "Device", real_device, "Error", err)
+	/*
+		dbom_mount_data, err := ms.mount_repo.FindByPath(md.Path)
+		if err != nil {
+			// If not found, create a new one based on input
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				dbom_mount_data = &dbom.MountPointPath{}
+			} else {
+				return errors.WithStack(err) // Other DB error
 			}
-
-			err = ms.createBlockDevice(loopd)
-			if err != nil {
-				slog.Error("Error setting loop device", "device", real_device, "loop_device", loopd, "err", err)
-			}
-
-			err = loop.SetFile(loopd, deviceName)
-			if err != nil {
-				slog.Error("Error setting loop device", "device", real_device, "loop_device", loopd, "err", err)
-				return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error setting loop device", "Device", real_device, "Error", err)
-			}
-			real_device = loopd // Update the device to the loop device
-			dbom_mount_data.Device = loopd
-			dbom_mount_data.Flags.Add(dbom.MounDataFlag{
-				Name: "ro",
-			})
 		}
-		slog.Debug("Device found using raw name", "device", real_device, "type", fi.Mode().Type())
-	} else if os.IsNotExist(errStatRaw) {
-		// Check 2: Does the /dev/ path exist?
-		_, errStatFull := os.Stat(fullDevicePath)
-		if errStatFull == nil {
-			real_device = fullDevicePath // /dev/ path exists
-			slog.Debug("Device found using full path", "device", real_device)
-		} else if os.IsNotExist(errStatFull) {
-			// Neither exists
-			slog.Error("Device not found", "raw_path", deviceName, "full_path", fullDevicePath)
+
+		errS := ms.convDto.MountPointDataToMountPointPath(*md, dbom_mount_data)
+		if errS != nil {
+			return errors.WithStack(errS)
+		}
+
+		if dbom_mount_data.DeviceId == "" {
 			return errors.WithDetails(dto.ErrorDeviceNotFound,
-				"Device", deviceName,
-				"CheckedPaths", []string{deviceName, fullDevicePath},
-				"Message", "Source device does not exist on the system",
-			)
-		} else {
-			// Some other error checking the full path (e.g., permissions)
-			slog.Error("Error checking device existence (full path)", "path", fullDevicePath, "err", errStatFull)
-			return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking device existence",
-				"Path", fullDevicePath, "Error", errStatFull,
+				"Device", dbom_mount_data.DeviceId,
+				"Path", dbom_mount_data.Path,
+				"Message", "Source device name is empty in request/DB record",
 			)
 		}
-	} else {
-		// Some other error checking the raw path (e.g., permissions)
-		slog.Error("Error checking device existence (raw path)", "path", deviceName, "err", errStatRaw)
-		return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking device existence",
-			"Path", deviceName, "Error", errStatRaw,
-		)
-	}
-	// --- End Device Existence Check ---
 
-	ok, errS := osutil.IsMounted(dbom_mount_data.Path)
+		if dbom_mount_data.Path == "" {
+			return errors.WithDetails(dto.ErrorInvalidParameter,
+				"Device", dbom_mount_data.DeviceId,
+				"Path", dbom_mount_data.Path,
+				"Message", "Mount point path is empty",
+			)
+		}
+	*/
+	/*
+		// --- Start Device Existence Check ---
+		var real_device string
+		// Check 1: Does the raw device name exist (e.g., a loop device path)?
+		fi, errStatRaw := os.Stat(*md.Partition.DevicePath)
+		if errStatRaw == nil {
+			real_device = *md.Partition.DevicePath // Raw name exists
+			if fi.Mode().IsRegular() {
+				slog.Debug("Device found using raw name", "device", real_device)
+				loopd, err := loop.FindDevice()
+				if err != nil {
+					return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error finding loop device", "Device", real_device, "Error", err)
+				}
+
+				err = ms.createBlockDevice(loopd)
+				if err != nil {
+					slog.Error("Error setting loop device", "device", real_device, "loop_device", loopd, "err", err)
+				}
+
+				err = loop.SetFile(loopd, deviceName)
+				if err != nil {
+					slog.Error("Error setting loop device", "device", real_device, "loop_device", loopd, "err", err)
+					return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error setting loop device", "Device", real_device, "Error", err)
+				}
+				real_device = loopd // Update the device to the loop device
+				dbom_mount_data.Device = loopd
+				dbom_mount_data.Flags.Add(dbom.MounDataFlag{
+					Name: "ro",
+				})
+			}
+			slog.Debug("Device found using raw name", "device", real_device, "type", fi.Mode().Type())
+		} else if os.IsNotExist(errStatRaw) {
+			// Check 2: Does the /dev/ path exist?
+			_, errStatFull := os.Stat(fullDevicePath)
+			if errStatFull == nil {
+				real_device = fullDevicePath // /dev/ path exists
+				slog.Debug("Device found using full path", "device", real_device)
+			} else if os.IsNotExist(errStatFull) {
+				// Neither exists
+				slog.Error("Device not found", "raw_path", deviceName, "full_path", fullDevicePath)
+				return errors.WithDetails(dto.ErrorDeviceNotFound,
+					"Device", deviceName,
+					"CheckedPaths", []string{deviceName, fullDevicePath},
+					"Message", "Source device does not exist on the system",
+				)
+			} else {
+				// Some other error checking the full path (e.g., permissions)
+				slog.Error("Error checking device existence (full path)", "path", fullDevicePath, "err", errStatFull)
+				return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking device existence",
+					"Path", fullDevicePath, "Error", errStatFull,
+				)
+			}
+		} else {
+			// Some other error checking the raw path (e.g., permissions)
+			slog.Error("Error checking device existence (raw path)", "path", deviceName, "err", errStatRaw)
+			return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking device existence",
+				"Path", deviceName, "Error", errStatRaw,
+			)
+		}
+		// --- End Device Existence Check ---
+	*/
+
+	ok, errS := osutil.IsMounted(md.Path)
 	if errS != nil {
 		// Note: IsMounted might fail if the path doesn't exist yet, which is fine before mounting.
 		// Consider if this check needs refinement based on expected state.
 		// For now, we proceed assuming an error here might be ignorable if ok is false.
 		if ok { // Only return error if it claims to be mounted but check failed
 			//slog.Error("Error checking if path is mounted", "path", dbom_mount_data.Path, "err", errS)
-			return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking mount status", "Path", dbom_mount_data.Path, "Error", err)
+			return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking mount status", "Path", md.Path, "Error", errS)
 		}
-		slog.Debug("osutil.IsMounted check failed, but path not mounted, proceeding", "path", dbom_mount_data.Path, "err", errS)
+		slog.Debug("osutil.IsMounted check failed, but path not mounted, proceeding", "path", md.Path, "err", errS)
 		ok = false // Ensure ok is false if IsMounted errored
 	}
 
 	if ok {
-		slog.Warn("Volume already mounted according to OS check", "device", real_device, "path", dbom_mount_data.Path)
+		slog.Warn("Volume already mounted according to OS check", "device", md.DeviceId, "path", md.Path)
 		return errors.WithDetails(dto.ErrorAlreadyMounted,
-			"Device", real_device,
-			"Path", dbom_mount_data.Path,
+			"Device", md.DeviceId,
+			"Path", md.Path,
 			"Message", "Volume is already mounted",
 		)
 	}
 
 	// Rename logic if path is already mounted (even if DB state was inconsistent)
-	orgPath := dbom_mount_data.Path
+	orgPath := md.Path
 	if ok { // Only rename if osutil.IsMounted returned true
 		slog.Info("Attempting to rename mount path due to conflict", "original_path", orgPath)
 		for i := 1; ; i++ {
-			dbom_mount_data.Path = orgPath + "_(" + strconv.Itoa(i) + ")"
-			okCheck, errCheck := osutil.IsMounted(dbom_mount_data.Path)
+			md.Path = orgPath + "_(" + strconv.Itoa(i) + ")"
+			okCheck, errCheck := osutil.IsMounted(md.Path)
 			if errCheck != nil {
 				// Similar to above, error might be okay if path doesn't exist yet
 				if okCheck {
-					slog.Error("Error checking renamed path mount status", "path", dbom_mount_data.Path, "err", errCheck)
-					return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking renamed mount status", "Path", dbom_mount_data.Path, "Error", errCheck)
+					slog.Error("Error checking renamed path mount status", "path", md.Path, "err", errCheck)
+					return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking renamed mount status", "Path", md.Path, "Error", errCheck)
 				}
 				okCheck = false // Treat error as not mounted
 			}
 			if !okCheck {
-				slog.Info("Found available renamed path", "new_path", dbom_mount_data.Path)
+				slog.Info("Found available renamed path", "new_path", md.Path)
 				break // Found an unused path
 			}
 			if i > 100 { // Safety break
@@ -277,49 +305,47 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		}
 	}
 
-	conv.MountPointPathToMountPointData(*dbom_mount_data, md)
-
 	flags, data, err := ms.fs_service.MountFlagsToSyscallFlagAndData(*md.Flags)
 	if err != nil {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
-			"Device", real_device,
+			"Device", md.DeviceId,
 			"Path", md.Path,
 			"Message", "Invalid Flags",
 			"Error", err,
 		)
 	}
 
-	slog.Debug("Attempting to mount volume", "device", real_device, "path", dbom_mount_data.Path, "fstype", dbom_mount_data.FSType, "flags", flags, "data", data)
+	slog.Debug("Attempting to mount volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", flags, "data", data)
 
 	var mp *mount.MountPoint
 	// Ensure secure directory permissions when creating mount point
-	mountFunc := func() error { return os.MkdirAll(dbom_mount_data.Path, 0o750) }
+	mountFunc := func() error { return os.MkdirAll(md.Path, 0o750) }
 
-	if dbom_mount_data.FSType == "" {
+	if md.FSType == nil || *md.FSType == "" {
 		// Use TryMount if FSType is not specified
-		mp, errS = mount.TryMount(real_device, dbom_mount_data.Path, data, flags, mountFunc)
+		mp, errS = mount.TryMount(*md.Partition.DevicePath, md.Path, data, flags, mountFunc)
 	} else {
 		// Use Mount if FSType is specified
-		mp, errS = mount.Mount(real_device, dbom_mount_data.Path, dbom_mount_data.FSType, data, flags, mountFunc)
+		mp, errS = mount.Mount(*md.Partition.DevicePath, md.Path, *md.FSType, data, flags, mountFunc)
 	}
 
 	if errS != nil {
-		slog.Error("Failed to mount volume", "device", real_device, "fstype", dbom_mount_data.FSType, "path", dbom_mount_data.Path, "flags", flags, "err", errS, "mountpoint_details", mp)
+		slog.Error("Failed to mount volume", "device", md.DeviceId, "fstype", md.FSType, "path", md.Path, "flags", flags, "err", errS, "mountpoint_details", mp)
 		// Attempt to clean up directory if we created it and mount failed? Optional.
-		// os.Remove(dbom_mount_data.Path)
+		// os.Remove(md.Path)
 		return errors.WithDetails(dto.ErrorMountFail,
 			"Detail", "Mount command failed",
-			"Device", real_device,
-			"Path", dbom_mount_data.Path,
-			"FSType", dbom_mount_data.FSType,
+			"Device", md.DeviceId,
+			"Path", md.Path,
+			"FSType", md.FSType,
 			"Flags", flags,
 			"Error", errS,
 		)
 	} else {
-		slog.Info("Successfully mounted volume", "device", real_device, "path", dbom_mount_data.Path, "fstype", dbom_mount_data.FSType, "flags", mp.Flags, "data", mp.Data)
-		var convm converter.MountToDbomImpl
+		slog.Info("Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", mp.Flags, "data", mp.Data)
+		dbom_mount_data := &dbom.MountPointPath{}
 		// Update dbom_mount_data with details from the actual mount point if available
-		errS = convm.MountToMountPointPath(mp, dbom_mount_data)
+		errS = ms.convMDto.MountToMountPointPath(mp, dbom_mount_data)
 		if errS != nil {
 			// Log error but proceed, as mount succeeded
 			slog.Warn("Failed to convert mount details back to DBOM", "err", errS)
@@ -330,34 +356,32 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		if errE != nil {
 			slog.Warn("Failed to convert mount flags back to DTO", "err", errE)
 		} else {
-			*dbom_mount_data.Flags = conv.MountFlagsToMountDataFlags(mflags)
+			fl := ms.convDto.MountFlagsToMountDataFlags(mflags)
+			dbom_mount_data.Flags = &fl
 		}
-		// Use the validated real_device path in the DB record
-		dbom_mount_data.Device = real_device // Store the original name, not the /dev/ path potentially
 
 		err = ms.mount_repo.Save(dbom_mount_data)
 		if err != nil {
 			// Critical: Mount succeeded but DB save failed. State is inconsistent.
 			// Attempt to unmount?
-			slog.Error("CRITICAL: Mount succeeded but failed to save state to DB. Attempting unmount.", "device", real_device, "path", dbom_mount_data.Path, "save_error", err)
+			slog.Error("CRITICAL: Mount succeeded but failed to save state to DB. Attempting unmount.", "device", md.DeviceId, "data", dbom_mount_data, "mp", mp, "save_error", err)
 			unmountErr := mount.Unmount(dbom_mount_data.Path, true, false) // Force unmount
 			if unmountErr != nil {
 				slog.Error("Failed to auto-unmount after DB save failure", "path", dbom_mount_data.Path, "unmount_error", unmountErr)
 				// Return original save error, but add context
 				return errors.WithDetails(dto.ErrorDatabaseError, "Detail", "Failed to save mount state after successful mount, and auto-unmount failed",
-					"Device", real_device, "Path", dbom_mount_data.Path, "Error", err, "UnmountError", unmountErr.Error())
+					"Device", dbom_mount_data.DeviceId, "Path", dbom_mount_data.Path, "Error", err, "UnmountError", unmountErr.Error())
 
 			}
 			// Return original save error
 			return errors.WithDetails(dto.ErrorDatabaseError, "Detail", "Failed to save mount state after successful mount. Volume has been unmounted.",
-				"Device", real_device, "Path", dbom_mount_data.Path, "Error", err)
+				"Device", dbom_mount_data.DeviceId, "Path", dbom_mount_data.Path, "Error", err)
 		}
-		conv.MountPointPathToMountPointData(*dbom_mount_data, md)
 	}
 
 	// Dismiss any existing failure notifications since the mount was successful
-	ms.DismissAutomountNotification(dbom_mount_data.Path, "automount_failure")
-	ms.DismissAutomountNotification(dbom_mount_data.Path, "unmounted_partition")
+	ms.DismissAutomountNotification(md.DeviceId, "automount_failure")
+	ms.DismissAutomountNotification(md.DeviceId, "unmounted_partition")
 
 	return nil
 }
@@ -399,26 +423,21 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 	err = errors.WithStack(mount.Unmount(path, force, lazy))
 	if err != nil {
 		slog.Error("Failed to unmount volume", "path", path, "err", err)
-		// Check if it's already unmounted
-		ok, checkErr := osutil.IsMounted(path)
-		if checkErr == nil && !ok {
-			slog.Warn("Unmount command failed, but volume is already unmounted.", "path", path)
-			// Proceed to update DB state as unmounted
-		} else {
-			return errors.WithDetails(dto.ErrorUnmountFail, "Detail", "Unmount command failed", "Path", path, "Error", err)
-		}
+		return errors.WithDetails(dto.ErrorUnmountFail, "Detail", err.Error(), "Path", path, "Error", err)
 	} else {
-		slog.Info("Successfully unmounted volume", "path", path, "device", dbom_mount_data.Device)
-		if strings.HasPrefix(dbom_mount_data.Device, "/dev/loop") {
-			// If the device is a loop device, remove the loop device
-			err = errors.WithStack(loop.ClearFile(dbom_mount_data.Device))
-			if err != nil {
-				slog.Error("Failed to remove loop device", "device", dbom_mount_data.Device, "err", err)
-				// Log but don't return error, as unmount succeeded
-			} else {
-				slog.Debug("Successfully removed loop device", "device", dbom_mount_data.Device)
+		slog.Info("Successfully unmounted volume", "path", path, "device", dbom_mount_data.DeviceId)
+		/*
+			if strings.HasPrefix(dbom_mount_data.Device, "/dev/loop") {
+				// If the device is a loop device, remove the loop device
+				err = errors.WithStack(loop.ClearFile(dbom_mount_data.Device))
+				if err != nil {
+					slog.Error("Failed to remove loop device", "device", dbom_mount_data.Device, "err", err)
+					// Log but don't return error, as unmount succeeded
+				} else {
+					slog.Debug("Successfully removed loop device", "device", dbom_mount_data.Device)
+				}
 			}
-		}
+		*/
 		err = errors.WithStack(os.Remove(dbom_mount_data.Path)) // Remove the mount point directory
 		if err != nil {
 			slog.Error("Failed to remove mount point directory", "path", dbom_mount_data.Path, "err", err)
@@ -439,7 +458,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 
 		// If this partition was marked for automount but is now unmounted, create a notification
 		if dbom_mount_data.IsToMountAtStartup != nil && *dbom_mount_data.IsToMountAtStartup {
-			ms.CreateUnmountedPartitionNotification(dbom_mount_data.Path, dbom_mount_data.Device)
+			ms.CreateUnmountedPartitionNotification(dbom_mount_data.Path, dbom_mount_data.DeviceId)
 		}
 	}
 	return nil
@@ -565,20 +584,22 @@ func (self *VolumeService) udevEventHandler() {
 	}
 }
 
+// GetVolumesData retrieves the list of volumes with caching and concurrency control
+// Disk and Partition are readed from hardware client and enriched with mount point data localhost
+// Also syncs mount point data with database records and save new and remove old
 func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
-	slog.Debug("Requesting GetVolumesData via singleflight...")
+	tlog.Trace("Requesting GetVolumesData via singleflight...")
 
 	const sfKey = "GetVolumesData"
 
-	v, err, shared := self.sfGroup.Do(sfKey, func() (interface{}, error) {
+	v, err, _ := self.sfGroup.Do(sfKey, func() (interface{}, error) {
 		self.volumesQueueMutex.Lock()
 		defer self.volumesQueueMutex.Unlock()
 
-		slog.Debug("Executing GetVolumesData core logic (singleflight)...")
+		tlog.Trace("Executing GetVolumesData core logic (singleflight)...")
 
 		ret := []dto.Disk{}
 		dbconv := converter.DtoToDbomConverterImpl{}
-		lsblkconv := converter.LsblkToDtoConverterImpl{}
 
 		// Use mock data in demo mode or when SRAT_MOCK is true
 		if self.state.SupervisorURL == "demo" || os.Getenv("SRAT_MOCK") == "true" {
@@ -586,9 +607,9 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 				Id: pointer.String("DemoDisk"),
 				Partitions: &[]dto.Partition{
 					{
-						Id:     pointer.String("DemoPartition"),
-						Device: pointer.String("/dev/bogus"),
-						System: pointer.Bool(false),
+						Id:         pointer.String("DemoPartition"),
+						DevicePath: pointer.String("/dev/bogus"),
+						System:     pointer.Bool(false),
 						MountPointData: &[]dto.MountPointData{
 							{
 								Path:      "/mnt/bogus",
@@ -608,106 +629,83 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 			return &ret, nil
 		}
 
+		// Get Host Hardware ( only PartitionMountHostData)
 		ret, errHw := self.hardwareClient.GetHardwareInfo()
 		if errHw != nil {
 			return nil, errHw
 		}
 
-		slog.Debug("Syncing mount point data with database", "disk_count", len(ret))
-		for diskIdx := range ret {
-			disk := &ret[diskIdx]
+		// Get all mount points from the database
+		existingDBmountPoints, err := self.mount_repo.AllByDeviceId()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get all mount points from database")
+		}
+
+		// Add AddonMountPointsData and check from DB (Save New and Update Old )
+		mountPointDataToSave := make([]dbom.MountPointPath, 0)
+		//mountPointDataToDelete := make([]dbom.MountPointPath, 0)
+		for idx, disk := range ret {
 			if disk.Partitions == nil {
 				continue
 			}
-			for partIdx := range *disk.Partitions {
-				partition := &(*disk.Partitions)[partIdx]
-
-				if partition.Device == nil || *partition.Device == "" {
-					slog.Debug("Skipping partition with nil or empty device path", "disk_id", disk.Id, "partition_index", partIdx)
+			for pidx, part := range *disk.Partitions {
+				if part.Id == nil || *part.Id == "" {
+					slog.Debug("Skipping partition with nil or empty device id", "disk_id", disk.Id, "partition_index", pidx)
 					continue
 				}
 
-				if partition.MountPointData == nil || len(*partition.MountPointData) == 0 {
-					info, errLsblk := self.lsblk.GetInfoFromDevice(*partition.Device)
-					if errLsblk != nil {
-						if errors.Is(errLsblk, lsblk.DeviceNotFound) {
-							slog.Warn("Device not found in Lsblk", "device", *partition.Device)
-							continue
-						} else if errors.Is(errLsblk, lsblk.NoPermission) {
-							if !self.state.ProtectedMode {
-								slog.Warn("No permission to access device in Lsblk", "device", *partition.Device, "device", *partition.Device)
+				mountInfos, err := self.procfsGetMounts()
+				if err != nil {
+					slog.Error("Failed to get local mount points", "err", err)
+					continue
+				}
+				//slog.Debug("Prtstatus entries found", "count", len(prtstatus))
+				for _, prtstate := range mountInfos {
+					//slog.Debug("Check", "legacy_device", *part.LegacyDevicePath, "part_device", prtstate.Device, "part_mountpoint", prtstate.Mountpoint, "db_device", *part.Id)
+					if part.LegacyDevicePath != nil && part.DevicePath != nil &&
+						(prtstate.Source == *part.LegacyDevicePath || prtstate.Source == *part.DevicePath) &&
+						prtstate.MountPoint != "" {
+						// Local mountpoint for partition found
+						tlog.Trace("Checking partition", "part_device", prtstate.Source, "part_mountpoint", prtstate.MountPoint, "db_device", *part.Id, "legacy_device", *part.LegacyDeviceName)
+						mountPoint := dto.MountPointData{}
+						if mountPointPath, ok := existingDBmountPoints[*part.Id]; ok {
+							// Existing mount point in DB, update details
+							errConv := dbconv.MountPointPathToMountPointData(mountPointPath, &mountPoint, nil)
+							if errConv != nil {
+								slog.Error("Failed to convert mount point data", "err", errConv)
 							}
-							continue
-						} else {
-							slog.Warn("Error getting info from device", "device", *partition.Device, "err", errLsblk)
-							continue
 						}
-					}
-					mountPointDto := &dto.MountPointData{}
-					errConvLsblk := lsblkconv.LsblkInfoToMountPointData(info, mountPointDto)
-					if errConvLsblk != nil {
-						slog.Warn("Error converting Lsblk info to MountPointData", "device", *partition.Device, "err", errConvLsblk)
-						continue
-					}
-					partition.MountPointData = &[]dto.MountPointData{*mountPointDto}
-				}
-
-				for mpIdx := range *partition.MountPointData {
-					mountPointDto := &(*partition.MountPointData)[mpIdx]
-
-					mountPointPathDB, errRepoFind := self.mount_repo.FindByPath(mountPointDto.Path)
-					if errRepoFind != nil && !errors.Is(errRepoFind, gorm.ErrRecordNotFound) {
-						slog.Warn("Error searching for mount point in DB", "path", mountPointDto.Path, "err", errRepoFind)
-						mountPointDto.IsInvalid = true
-						invalidError := errors.Wrap(errRepoFind, "DB find error").Error()
-						mountPointDto.InvalidError = &invalidError
-						continue
-					}
-
-					isNewRecord := errors.Is(errRepoFind, gorm.ErrRecordNotFound)
-					if isNewRecord {
-						mountPointPathDB = &dbom.MountPointPath{}
-						slog.Debug("Mount point not found in DB, will create new record", "path", mountPointDto.Path)
-					} else {
-						slog.Debug("Found existing mount point in DB", "path", mountPointDto.Path)
-					}
-
-					errConvDtoToDbom := dbconv.MountPointDataToMountPointPath(*mountPointDto, mountPointPathDB)
-					if errConvDtoToDbom != nil {
-						slog.Warn("Error converting DTO mount point data to DBOM", "path", mountPointDto.Path, "err", errConvDtoToDbom)
-						mountPointDto.IsInvalid = true
-						invalidError := errors.Wrap(errConvDtoToDbom, "DTO to DBOM conversion error").Error()
-						mountPointDto.InvalidError = &invalidError
-						continue
-					}
-
-					if mountPointPathDB.Type == "ADDON" {
-						errRepoSave := self.mount_repo.Save(mountPointPathDB)
-						if errRepoSave != nil {
-							slog.Warn("Error saving mount point data to DB", "path", mountPointPathDB.Path, "data", mountPointPathDB, "err", errRepoSave)
-							mountPointDto.IsInvalid = true
-							invalidError := errors.Wrap(errRepoSave, "DB save error").Error()
-							mountPointDto.InvalidError = &invalidError
-							continue
+						//slog.Debug("Opts found for mount point", "mountPoint", mountPoint, "opts", prtstate.Options, "fstype", prtstate.FSType, "superOpts", prtstate.SuperOptions)
+						mountPoint.Path = prtstate.MountPoint
+						mountPoint.DeviceId = *part.Id
+						mountPoint.IsMounted = true
+						mountPoint.Flags = &dto.MountFlags{}
+						mountPoint.Flags.Scan(prtstate.Options)
+						mountPoint.CustomFlags = &dto.MountFlags{}
+						mountPoint.CustomFlags.Scan(prtstate.SuperOptions)
+						mountPoint.FSType = &prtstate.FSType
+						mountPoint.Type = "ADDON"
+						mountPoint.Partition = &part
+						if (*disk.Partitions)[pidx].MountPointData == nil {
+							(*disk.Partitions)[pidx].MountPointData = &[]dto.MountPointData{}
 						}
-					}
+						*(*disk.Partitions)[pidx].MountPointData = append(*(*disk.Partitions)[pidx].MountPointData, mountPoint)
+						delete(existingDBmountPoints, *part.Id)
+						slog.Debug("Added mount point data to partition", "device_id", *part.Id, "prtstate", prtstate, "mountpoint", mountPoint)
 
-					errConvDbomToDto := dbconv.MountPointPathToMountPointData(*mountPointPathDB, mountPointDto)
-					if errConvDbomToDto != nil {
-						slog.Error("Error converting DBOM mount point data back to DTO", "path", mountPointPathDB.Path, "err", errConvDbomToDto)
-						mountPointDto.IsInvalid = true
-						invalidError := errors.Wrap(errConvDbomToDto, "DBOM to DTO conversion error").Error()
-						mountPointDto.InvalidError = &invalidError
-						continue
+						mountPointPath := &dbom.MountPointPath{}
+						errConv := self.convDto.MountPointDataToMountPointPath(mountPoint, mountPointPath)
+						if errConv != nil {
+							slog.Error("Failed to convert mount point data for saving", "err", errConv)
+						}
+						mountPointDataToSave = append(mountPointDataToSave, *mountPointPath)
 					}
-					slog.Debug("Successfully synced mount point with DB", "path", mountPointDto.Path, "is_mounted", mountPointDto.IsMounted)
-
-					(*partition.MountPointData)[mpIdx] = *mountPointDto
 				}
-
 			}
+			ret[idx] = disk
 		}
 
+		// Populate existing Shares
 		for i, disk := range ret {
 			for j, volume := range *disk.Partitions {
 				if volume.MountPointData == nil {
@@ -734,23 +732,48 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 			}
 		}
 
-		// Check for removed disks and handle cleanup
-		slog.Debug("Checking for removed disks and performing cleanup...")
-		err := self.HandleRemovedDisks(&ret)
-		if err != nil {
-			slog.Error("Error handling removed disks", "err", err)
-			// Don't return error here, as the main operation succeeded
+		// Save mountPointDataToSave
+		if len(mountPointDataToSave) > 0 {
+			tlog.Trace("Saving updated mount points to DB", "count", len(mountPointDataToSave))
+			for _, mp := range mountPointDataToSave {
+				tlog.Trace("Saving mount point to DB", "path", mp.Path, "device_id", mp.DeviceId)
+				err = self.mount_repo.Save(&mp)
+				if err != nil {
+					slog.Error("Failed to save mount point to DB", "path", mp.Path, "device_id", mp.DeviceId, "err", err)
+				}
+			}
 		}
 
-		// Check for unmounted partitions marked for automount
-		slog.Debug("Checking for unmounted automount partitions...")
-		err = self.CheckUnmountedAutomountPartitions()
-		if err != nil {
-			slog.Error("Error checking unmounted automount partitions", "err", err)
-			// Don't return error here, as the main operation succeeded
+		// Remove mountPointDataToDelete
+		if len(existingDBmountPoints) > 0 {
+			tlog.Trace("Cleaning up mount points in DB that no longer exist on system", "count", len(existingDBmountPoints))
+			for _, mp := range existingDBmountPoints {
+				tlog.Trace("Removing stale mount point from DB", "path", mp.Path, "device_id", mp.DeviceId)
+				err = self.mount_repo.Delete(mp.Path)
+				if err != nil {
+					slog.Error("Failed to delete stale mount point from DB", "path", mp.Path, "device_id", mp.DeviceId, "err", err)
+				}
+			}
 		}
 
-		slog.Debug("Finished getting and syncing volumes data (core logic).")
+		/*
+			// Check for removed disks and handle cleanup
+			slog.Debug("Checking for removed disks and performing cleanup...")
+			err := self.HandleRemovedDisks(&ret)
+			if err != nil {
+				slog.Error("Error handling removed disks", "err", err)
+				// Don't return error here, as the main operation succeeded
+			}
+
+			// Check for unmounted partitions marked for automount
+			slog.Debug("Checking for unmounted automount partitions...")
+			err = self.CheckUnmountedAutomountPartitions()
+			if err != nil {
+				slog.Error("Error checking unmounted automount partitions", "err", err)
+				// Don't return error here, as the main operation succeeded
+			}
+		*/
+		//slog.Debug("Finished getting and syncing volumes data (core logic).")
 		return &ret, nil
 	})
 
@@ -758,8 +781,6 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 		//slog.Error("Singleflight execution of GetVolumesData failed", "err", err, "shared", shared)
 		return nil, errors.WithStack(err)
 	}
-
-	slog.Debug("Singleflight execution of GetVolumesData successful", "shared", shared)
 
 	result, ok := v.(*[]dto.Disk)
 	if !ok {
@@ -785,142 +806,143 @@ func (self *VolumeService) NotifyClient() {
 	self.broascasting.BroadcastMessage(data)
 }
 
+/*
 // HandleRemovedDisks checks for mount points in the database that reference devices
 // that no longer exist in the current volume data and performs cleanup
-func (self *VolumeService) HandleRemovedDisks(currentDisks *[]dto.Disk) error {
-	// Get all mount points from the database
-	allMountPoints, err := self.mount_repo.All()
-	if err != nil {
-		return errors.Wrap(err, "failed to get all mount points from database")
-	}
 
-	// Create a map of currently available devices from the volume data
-	availableDevices := make(map[string]bool)
-	if currentDisks != nil {
-		for _, disk := range *currentDisks {
-			if disk.Partitions != nil {
-				for _, partition := range *disk.Partitions {
-					if partition.Device != nil && *partition.Device != "" {
-						// Store both with and without /dev/ prefix for compatibility
-						device := strings.TrimPrefix(*partition.Device, "/dev/")
-						availableDevices[device] = true
-						availableDevices["/dev/"+device] = true
-						availableDevices[*partition.Device] = true
+	func (self *VolumeService) HandleRemovedDisks(currentDisks *[]dto.Disk) error {
+		// Get all mount points from the database
+		allMountPoints, err := self.mount_repo.All()
+		if err != nil {
+			return errors.Wrap(err, "failed to get all mount points from database")
+		}
+
+		// Create a map of currently available devices from the volume data
+		availableDevices := make(map[string]bool)
+		if currentDisks != nil {
+			for _, disk := range *currentDisks {
+				if disk.Partitions != nil {
+					for _, partition := range *disk.Partitions {
+						if partition.DevicePath != nil && *partition.DevicePath != "" {
+							availableDevices[*partition.Id] = true
+							availableDevices[*partition.LegacyDevicePath] = true
+							availableDevices[*partition.DevicePath] = true
+						}
 					}
 				}
 			}
 		}
-	}
 
-	// Check each mount point to see if its device still exists
-	for _, mountPoint := range allMountPoints {
-		if mountPoint.Device == "" || !strings.HasPrefix(mountPoint.Path, "/mnt") {
-			continue // Skip mount points without device information or are not in /mnt subpath
-		}
-
-		// Check if the device is still available
-		deviceExists := availableDevices[mountPoint.Device] ||
-			availableDevices["/dev/"+mountPoint.Device] ||
-			availableDevices[strings.TrimPrefix(mountPoint.Device, "/dev/")]
-
-		if !deviceExists {
-			slog.Debug("Detected removed disk, performing cleanup",
-				"device", mountPoint.Device,
-				"mount_path", mountPoint.Path)
-
-			// Check if the path is currently mounted according to the OS
-			isMounted, mountCheckErr := osutil.IsMounted(mountPoint.Path)
-			if mountCheckErr != nil {
-				slog.Warn("Failed to check mount status for removed disk cleanup",
-					"path", mountPoint.Path,
-					"device", mountPoint.Device,
-					"err", mountCheckErr)
-				isMounted = false // Assume not mounted if we can't check
+		// Check each mount point to see if its device still exists
+		for _, mountPoint := range allMountPoints {
+			if mountPoint.DeviceId == "" || !strings.HasPrefix(mountPoint.Path, "/mnt") {
+				continue // Skip mount points without device information or are not in /mnt subpath
 			}
 
-			// Disable any shares for this mount point
-			if len(mountPoint.Shares) > 0 {
-				slog.Debug("Disabling shares for removed disk",
-					"device", mountPoint.Device,
-					"mount_path", mountPoint.Path,
-					"share_count", len(mountPoint.Shares))
+			// Check if the device is still available
+			deviceExists := availableDevices[mountPoint.Device] ||
+				availableDevices["/dev/"+mountPoint.Device] ||
+				availableDevices[strings.TrimPrefix(mountPoint.Device, "/dev/")]
 
-				_, shareErr := self.shareService.DisableShareFromPath(mountPoint.Path)
-				if shareErr != nil && !errors.Is(shareErr, dto.ErrorShareNotFound) {
-					slog.Error("Failed to disable share for removed disk",
-						"path", mountPoint.Path,
-						"device", mountPoint.Device,
-						"err", shareErr)
-				}
-			}
-
-			// If the path is still mounted, perform a lazy unmount
-			if isMounted {
-				slog.Debug("Performing lazy unmount for removed disk",
-					"device", mountPoint.Device,
+			if !deviceExists {
+				slog.Debug("Detected removed disk, performing cleanup",
+					"device", mountPoint.DeviceId,
 					"mount_path", mountPoint.Path)
 
-				unmountErr := mount.Unmount(mountPoint.Path, false, true) // lazy=true, force=false
-				if unmountErr != nil {
-					slog.Error("Failed to lazy unmount removed disk",
+				// Check if the path is currently mounted according to the OS
+				isMounted, mountCheckErr := osutil.IsMounted(mountPoint.Path)
+				if mountCheckErr != nil {
+					slog.Warn("Failed to check mount status for removed disk cleanup",
 						"path", mountPoint.Path,
 						"device", mountPoint.Device,
-						"err", unmountErr)
+						"err", mountCheckErr)
+					isMounted = false // Assume not mounted if we can't check
+				}
 
-					// Try force unmount as fallback
-					slog.Debug("Attempting force unmount as fallback",
+				// Disable any shares for this mount point
+				if len(mountPoint.Shares) > 0 {
+					slog.Debug("Disabling shares for removed disk",
 						"device", mountPoint.Device,
+						"mount_path", mountPoint.Path,
+						"share_count", len(mountPoint.Shares))
+
+					_, shareErr := self.shareService.DisableShareFromPath(mountPoint.Path)
+					if shareErr != nil && !errors.Is(shareErr, dto.ErrorShareNotFound) {
+						slog.Error("Failed to disable share for removed disk",
+							"path", mountPoint.Path,
+							"device", mountPoint.Device,
+							"err", shareErr)
+					}
+				}
+
+				// If the path is still mounted, perform a lazy unmount
+				if isMounted {
+					slog.Debug("Performing lazy unmount for removed disk",
+						"device", mountPoint.DeviceId,
 						"mount_path", mountPoint.Path)
 
-					forceUnmountErr := mount.Unmount(mountPoint.Path, true, true) // force=true, lazy=true
-					if forceUnmountErr != nil {
-						slog.Error("Failed to force unmount removed disk",
+					unmountErr := mount.Unmount(mountPoint.Path, false, true) // lazy=true, force=false
+					if unmountErr != nil {
+						slog.Error("Failed to lazy unmount removed disk",
 							"path", mountPoint.Path,
-							"device", mountPoint.Device,
-							"err", forceUnmountErr)
+							"device", mountPoint.DeviceId,
+							"err", unmountErr)
+
+						// Try force unmount as fallback
+						slog.Debug("Attempting force unmount as fallback",
+							"device", mountPoint.DeviceId,
+							"mount_path", mountPoint.Path)
+
+						forceUnmountErr := mount.Unmount(mountPoint.Path, true, true) // force=true, lazy=true
+						if forceUnmountErr != nil {
+							slog.Error("Failed to force unmount removed disk",
+								"path", mountPoint.Path,
+								"device", mountPoint.DeviceId,
+								"err", forceUnmountErr)
+						}
+					}
+
+					// Clean up the mount point directory if unmount succeeded
+					if unmountErr == nil {
+						removeErr := os.Remove(mountPoint.Path)
+						if removeErr != nil {
+							slog.Warn("Failed to remove mount point directory for removed disk",
+								"path", mountPoint.Path,
+								"device", mountPoint.DeviceId,
+								"err", removeErr)
+						} else {
+							slog.Debug("Removed mount point directory for removed disk",
+								"path", mountPoint.Path,
+								"device", mountPoint.DeviceId)
+						}
 					}
 				}
 
-				// Clean up the mount point directory if unmount succeeded
-				if unmountErr == nil {
-					removeErr := os.Remove(mountPoint.Path)
-					if removeErr != nil {
-						slog.Warn("Failed to remove mount point directory for removed disk",
-							"path", mountPoint.Path,
-							"device", mountPoint.Device,
-							"err", removeErr)
-					} else {
-						slog.Debug("Removed mount point directory for removed disk",
-							"path", mountPoint.Path,
-							"device", mountPoint.Device)
-					}
+				// Create an issue to notify about the removed disk
+				issue := &dto.Issue{
+					Title:       fmt.Sprintf("Disk removed: %s", mountPoint.DeviceId),
+					Description: fmt.Sprintf("The disk %s mounted at %s was physically removed from the system. Associated shares have been disabled and the volume has been unmounted.", mountPoint.DeviceId, mountPoint.Path),
+					DetailLink:  fmt.Sprintf("/storage/volumes?device=%s", mountPoint.DeviceId),
 				}
-			}
 
-			// Create an issue to notify about the removed disk
-			issue := &dto.Issue{
-				Title:       fmt.Sprintf("Disk removed: %s", mountPoint.Device),
-				Description: fmt.Sprintf("The disk %s mounted at %s was physically removed from the system. Associated shares have been disabled and the volume has been unmounted.", mountPoint.Device, mountPoint.Path),
-				DetailLink:  fmt.Sprintf("/storage/volumes?device=%s", mountPoint.Device),
-			}
+				if createIssueErr := self.issueService.Create(issue); createIssueErr != nil {
+					slog.Error("Failed to create issue for removed disk",
+						"device", mountPoint.DeviceId,
+						"path", mountPoint.Path,
+						"err", createIssueErr)
+				}
 
-			if createIssueErr := self.issueService.Create(issue); createIssueErr != nil {
-				slog.Error("Failed to create issue for removed disk",
-					"device", mountPoint.Device,
-					"path", mountPoint.Path,
-					"err", createIssueErr)
+				slog.Info("Completed cleanup for removed disk",
+					"device", mountPoint.DeviceId,
+					"mount_path", mountPoint.Path)
 			}
-
-			slog.Info("Completed cleanup for removed disk",
-				"device", mountPoint.Device,
-				"mount_path", mountPoint.Path)
 		}
+
+		return nil
 	}
+*/
 
-	return nil
-}
-
-func (self *VolumeService) createBlockDevice(device string) error {
+func (self *VolumeService) CreateBlockDevice(device string) error {
 	// Controlla se il dispositivo esiste già
 	if _, err := os.Stat(device); !os.IsNotExist(err) {
 		slog.Warn("Loop device already exists", "device", device)
@@ -928,7 +950,7 @@ func (self *VolumeService) createBlockDevice(device string) error {
 	}
 
 	// Estrai i numeri major e minor dal nome del dispositivo
-	major, minor, err := extractMajorMinor(device)
+	major, minor, err := self.extractMajorMinor(device)
 	if err != nil {
 		return errors.Errorf("errore durante l'estrazione dei numeri major e minor: %v", err)
 	}
@@ -943,7 +965,7 @@ func (self *VolumeService) createBlockDevice(device string) error {
 	return nil
 }
 
-func extractMajorMinor(device string) (int, int, error) {
+func (self *VolumeService) extractMajorMinor(device string) (int, int, error) {
 	re := regexp.MustCompile(`/dev/loop(\d+)`)
 	matches := re.FindStringSubmatch(device)
 	if len(matches) != 2 {
@@ -1066,7 +1088,7 @@ func (ms *VolumeService) UpdateMountPointSettings(path string, updates dto.Mount
 	}
 
 	updatedDto := dto.MountPointData{}
-	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &updatedDto); convErr != nil {
+	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &updatedDto, nil); convErr != nil {
 		return nil, errors.WithStack(convErr)
 	}
 	return &updatedDto, nil
@@ -1125,7 +1147,7 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 	}
 
 	currentDto := dto.MountPointData{}
-	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &currentDto); convErr != nil {
+	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &currentDto, nil); convErr != nil {
 		return nil, errors.WithStack(convErr)
 	}
 	return &currentDto, nil
@@ -1159,37 +1181,37 @@ func (self *VolumeService) CreateAutomountFailureNotification(mountPath, device 
 }
 
 // CreateUnmountedPartitionNotification creates a persistent notification for unmounted partitions that are marked for automount
-func (self *VolumeService) CreateUnmountedPartitionNotification(mountPath, device string) {
+func (self *VolumeService) CreateUnmountedPartitionNotification(deviceId, legacyDevice string) {
 	if self.haService == nil {
 		slog.Debug("Home Assistant service not available, skipping unmounted partition notification")
 		return
 	}
 
-	notificationID := fmt.Sprintf("srat_unmounted_partition_%s", xhashes.SHA1(mountPath))
+	notificationID := fmt.Sprintf("srat_unmounted_partition_%s", xhashes.SHA1(deviceId))
 	title := "Unmounted Partition with Automount Enabled"
-	message := fmt.Sprintf("Partition '%s' (device: %s) is configured for automount but is currently unmounted. This may indicate a device issue or the device is not connected.", mountPath, device)
+	message := fmt.Sprintf("Partition '%s' (device: %s) is configured for automount but is currently unmounted. This may indicate a device issue or the device is not connected.", deviceId, legacyDevice)
 
 	notifyErr := self.haService.CreatePersistentNotification(notificationID, title, message)
 	if notifyErr != nil {
-		slog.Error("Failed to create unmounted partition notification", "mount_path", mountPath, "device", device, "err", notifyErr)
+		slog.Error("Failed to create unmounted partition notification", "mount_path", deviceId, "device", legacyDevice, "err", notifyErr)
 	} else {
-		tlog.Trace("Created unmounted partition notification", "mount_path", mountPath, "device", device, "notification_id", notificationID)
+		tlog.Trace("Created unmounted partition notification", "mount_path", deviceId, "device", legacyDevice, "notification_id", notificationID)
 	}
 }
 
 // DismissAutomountNotification dismisses an automount-related notification
-func (self *VolumeService) DismissAutomountNotification(mountPath string, notificationType string) {
+func (self *VolumeService) DismissAutomountNotification(deviceId string, notificationType string) {
 	if self.haService == nil {
 		return
 	}
 
-	notificationID := fmt.Sprintf("srat_%s_%s", notificationType, xhashes.SHA1(mountPath))
+	notificationID := fmt.Sprintf("srat_%s_%s", notificationType, xhashes.SHA1(deviceId))
 
 	notifyErr := self.haService.DismissPersistentNotification(notificationID)
 	if notifyErr != nil {
-		slog.Warn("Failed to dismiss automount notification", "mount_path", mountPath, "notification_type", notificationType, "err", notifyErr)
+		slog.Warn("Failed to dismiss automount notification", "mount_path", deviceId, "notification_type", notificationType, "err", notifyErr)
 	} else {
-		slog.Debug("Dismissed automount notification", "mount_path", mountPath, "notification_type", notificationType, "notification_id", notificationID)
+		slog.Debug("Dismissed automount notification", "mount_path", deviceId, "notification_type", notificationType, "notification_id", notificationID)
 	}
 }
 
@@ -1212,23 +1234,27 @@ func (self *VolumeService) CheckUnmountedAutomountPartitions() errors.E {
 		if mountCheckErr != nil {
 			slog.Warn("Failed to check mount status for automount partition",
 				"path", mountPoint.Path,
-				"device", mountPoint.Device,
+				"device", mountPoint.DeviceId,
 				"err", mountCheckErr)
 			continue
 		}
 
 		if !isMounted {
 			tlog.Trace("Found unmounted partition marked for automount",
-				"device", mountPoint.Device,
+				"device", mountPoint.DeviceId,
 				"mount_path", mountPoint.Path)
 
 			// Create a notification for the unmounted partition
-			self.CreateUnmountedPartitionNotification(mountPoint.Path, mountPoint.Device)
+			self.CreateUnmountedPartitionNotification(mountPoint.DeviceId, mountPoint.FSType)
 		} else {
 			// If it's mounted, dismiss any existing unmounted partition notifications
-			self.DismissAutomountNotification(mountPoint.Path, "unmounted_partition")
+			self.DismissAutomountNotification(mountPoint.DeviceId, "unmounted_partition")
 		}
 	}
 
 	return nil
+}
+
+func (ms *VolumeService) MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error)) {
+	ms.procfsGetMounts = f
 }

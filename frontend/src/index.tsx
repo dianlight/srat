@@ -21,7 +21,6 @@ import { ErrorBoundaryWrapper } from "./components/ErrorBoundaryWrapper";
 import { ConsoleErrorToRollbar } from "./components/ConsoleErrorToRollbar";
 import { store } from "./store/store.ts";
 import { TourProvider, } from '@reactour/tour'
-import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock'
 
 declare module '@mui/material/styles' {
 	interface TypographyVariants {
@@ -66,20 +65,15 @@ const theme = createTheme({
 });
 
 const disableBody = (target: any) => {
-	if (!target) {
-		console.warn("No target element provided for disabling body scroll");
-		target = document.body; // Default to body if no target is provided
-	}
+	// Use CSS-based scroll prevention instead of aria-hidden to avoid accessibility issues
 	console.debug("Disabling body scroll", target);
-	disableBodyScroll(target);
+	document.body.style.overflow = 'hidden';
+	document.body.style.paddingRight = '0px'; // Prevent layout shift
 };
 const enableBody = (target: any) => {
-	if (!target) {
-		console.warn("No target element provided for enabling body scroll");
-		target = document.body; // Default to body if no target is provided
-	}
 	console.debug("Enabling body scroll", target);
-	enableBodyScroll(target);
+	document.body.style.overflow = '';
+	document.body.style.paddingRight = '';
 }
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);

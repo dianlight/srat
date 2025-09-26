@@ -169,7 +169,7 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
             <DialogActions sx={{ p: 2 }}>
                 <Button
                     onClick={handleSubmit}
-                    variant="contained"
+                    variant="outlined"
                     disabled={isSubmitting}
                     fullWidth
                 >

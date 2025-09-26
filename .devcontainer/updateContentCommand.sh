@@ -6,7 +6,7 @@ apk add --no-cache git make lsblk eudev gcc musl-dev linux-headers samba ethtool
  git-bash-completion git-prompt graphviz
 apk add --no-cache --update-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community go "go~=1.25"
 #bun
-curl -fsSL https://bun.sh/install | bash -s "bun-v1.2.15"
+curl -fsSL https://bun.sh/install | bash -s "bun-v1.2.22"
 
 make -C .. prepare || :
 
@@ -19,3 +19,7 @@ sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/gemini)" ||:
 bun add -g biome ||:
 bun pm -g trust --all ||:
 sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/biome)" ||:
+
+#test device
+mkdir -p /dev/disk/by-id
+ln -s ../../vdb1 /dev/disk/by-id/1234-5678

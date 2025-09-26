@@ -1,7 +1,9 @@
 package service
 
 import (
+	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,8 +20,8 @@ const (
 	smartCacheCleanup   = 10 * time.Minute
 )
 
-type SmartService interface {
-	GetSmartInfo(deviceName string) (*dto.SmartInfo, error)
+type SmartServiceInterface interface {
+	GetSmartInfo(deviceName string) (*dto.SmartInfo, errors.E)
 }
 
 type smartService struct {
@@ -27,13 +29,13 @@ type smartService struct {
 	mutex sync.Mutex
 }
 
-func NewSmartService() SmartService {
+func NewSmartService() SmartServiceInterface {
 	return &smartService{
 		cache: gocache.New(smartCacheExpiry, smartCacheCleanup),
 	}
 }
 
-func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, error) {
+func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E) {
 	cacheKey := smartCacheKeyPrefix + devicePath
 	// Try to get from cache first
 	if cachedInfo, found := s.cache.Get(cacheKey); found {
@@ -69,6 +71,9 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, error) {
 
 	dev, err := smart.Open(devicePath)
 	if err != nil {
+		if strings.Contains(err.Error(), "unknown drive type") || strings.Contains(err.Error(), "not a valid device") {
+			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "unsupported device")
+		}
 		return nil, errors.Wrapf(err, "failed to open device %s", devicePath)
 	}
 	defer dev.Close()
@@ -79,9 +84,98 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, error) {
 	}
 
 	ret := &dto.SmartInfo{
-		Temperature:     attrs.Temperature,
-		PowerOnHours:    attrs.PowerOnHours,
-		PowerCycleCount: attrs.PowerCycles,
+		Temperature: dto.SmartTempValue{
+			Value: int(attrs.Temperature),
+		},
+		PowerOnHours: dto.SmartRangeValue{
+			Value: int(attrs.PowerOnHours),
+		},
+		PowerCycleCount: dto.SmartRangeValue{
+			Value: int(attrs.PowerCycles),
+		},
+	}
+
+	switch sm := dev.(type) {
+	case *smart.SataDevice:
+		ret.DiskType = "SATA"
+		data, err := sm.ReadSMARTData()
+		if err != nil {
+			slog.Warn("SMART: failed to read SMART data", "device", devicePath, "error", err)
+			break
+		}
+		if attr, ok := data.Attrs[uint8(dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.Code)]; ok {
+			if temp, min, max, overtempCounter, errs := attr.ParseAsTemperature(); errs == nil {
+				ret.Temperature.Value = temp
+				ret.Temperature.Min = min
+				ret.Temperature.Max = max
+				ret.Temperature.OvertempCounter = overtempCounter
+			}
+		}
+		if attr, ok := data.Attrs[uint8(dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code)]; ok {
+			ret.PowerCycleCount.Value = int(attr.Current)
+			ret.PowerCycleCount.Worst = int(attr.Worst)
+		}
+		if attr, ok := data.Attrs[uint8(dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code)]; ok {
+			ret.PowerOnHours.Value = int(attr.Current)
+			ret.PowerOnHours.Worst = int(attr.Worst)
+		}
+		others := make(map[string]dto.SmartRangeValue)
+		for code, attr := range data.Attrs {
+			if attr.Name == "" || code == uint8(dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.Code) ||
+				code == uint8(dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code) ||
+				code == uint8(dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code) {
+				continue
+			}
+			others[attr.Name] = dto.SmartRangeValue{
+				Code:  int(code),
+				Value: int(attr.Current),
+				Worst: int(attr.Worst),
+			}
+		}
+		if len(others) > 0 {
+			ret.Additional = others
+		}
+
+		// Read thresholds if available
+		thdata, err := sm.ReadSMARTThresholds()
+		if err != nil {
+			slog.Warn("SMART: failed to read SMART thresholds", "device", devicePath, "error", err)
+			break
+		}
+		if attr, ok := thdata.Thresholds[uint8(dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code)]; ok {
+			ret.PowerCycleCount.Thresholds = int(attr)
+		}
+		if attr, ok := thdata.Thresholds[uint8(dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code)]; ok {
+			ret.PowerOnHours.Thresholds = int(attr)
+		}
+		for code, attr := range ret.Additional {
+			if thattr, ok := thdata.Thresholds[uint8(attr.Code)]; ok {
+				val := ret.Additional[code]
+				val.Thresholds = int(thattr)
+				ret.Additional[code] = val
+			}
+		}
+	case *smart.ScsiDevice:
+		ret.DiskType = "SCSI"
+	case *smart.NVMeDevice:
+		ret.DiskType = "NVMe"
+		nvmsmart, err := sm.ReadSMART()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to read SMART data from NVMe device %s", devicePath)
+		}
+		ret.Temperature.OvertempCounter = int(nvmsmart.WarningTempTime)
+		others := make(map[string]dto.SmartRangeValue)
+		others["AvailableSpare"] = dto.SmartRangeValue{
+			Value:      int(nvmsmart.AvailSpare),
+			Thresholds: int(nvmsmart.SpareThresh),
+		}
+		others["PercentageUsed"] = dto.SmartRangeValue{
+			Value: int(nvmsmart.PercentUsed),
+		}
+		others["CriticalWarning"] = dto.SmartRangeValue{
+			Value: int(nvmsmart.CritWarning),
+		}
+		ret.Additional = others
 	}
 
 	s.cache.Set(cacheKey, ret, gocache.DefaultExpiration)

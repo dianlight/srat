@@ -45,9 +45,6 @@ components:
         DEVTYPE:
           type: string
           description: Dreiver type
-        PARTNAME:
-          type: string
-          description: Partition Name
         SUBSYSTEM:
           type: string
           description: Subsystem of the attribute.
@@ -75,12 +72,18 @@ components:
         ID_FS_UUID_ENC:
           type: string
           description: Encoded UUID of the filesystem.
+        ID_FS_LABEL:
+          type: string
+          description: Label of the filesystem.
         ID_FS_LABEL_ENC:
           type: string
           description: Encoded label of the filesystem.
         ID_PART_ENTRY_SCHEME:
           type: string
           description: Partition entry scheme.
+        ID_PART_ENTRY_NAME: 
+          type: string
+          description: Partition entry name.
         ID_PART_ENTRY_NUMBER:
           type: string
           description: Partition entry number.

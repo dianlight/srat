@@ -12,15 +12,6 @@ import (
 
 type ConfigToDbomConverterImpl struct{}
 
-func (c *ConfigToDbomConverterImpl) ConfigToSambaUser(source config.Config, target *dbom.SambaUser) error {
-	if source.Username != "" {
-		target.Username = source.Username
-	}
-	if source.Password != "" {
-		target.Password = source.Password
-	}
-	return nil
-}
 func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedShare, target *config.Share) error {
 	if source.Name != "" {
 		target.Name = source.Name
@@ -122,30 +113,6 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 	}
 	if source.Path != "" {
 		target.MountPointDataPath = source.Path
-	}
-	return nil
-}
-func (c *ConfigToDbomConverterImpl) ShareToMountPointPath(source config.Share, target *dbom.MountPointPath) error {
-	if source.Path != "" {
-		target.Path = source.Path
-	}
-	if source.Path != "" {
-		target.Type = pathToType(source.Path)
-	}
-	if source.Path != "" {
-		target.Device = PathToSource(source.Path)
-	}
-	if source.FS != "" {
-		target.FSType = source.FS
-	}
-	return nil
-}
-func (c *ConfigToDbomConverterImpl) UserToUSambaUser(source config.User, target *dbom.SambaUser) error {
-	if source.Username != "" {
-		target.Username = source.Username
-	}
-	if source.Password != "" {
-		target.Password = source.Password
 	}
 	return nil
 }

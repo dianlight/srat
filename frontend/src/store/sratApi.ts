@@ -673,10 +673,27 @@ export type GlobalDiskStats = {
   total_read_latency_ms: number;
   total_write_latency_ms: number;
 };
+export type SmartRangeValue = {
+  code?: number;
+  min?: number;
+  thresholds?: number;
+  value: number;
+  worst?: number;
+};
+export type SmartTempValue = {
+  max?: number;
+  min?: number;
+  overtemp_counter?: number;
+  value: number;
+};
 export type SmartInfo = {
-  power_cycle_count: number;
-  power_on_hours: number;
-  temperature: number;
+  disk_type?: Disk_type;
+  others?: {
+    [key: string]: SmartRangeValue;
+  };
+  power_cycle_count: SmartRangeValue;
+  power_on_hours: SmartRangeValue;
+  temperature: SmartTempValue;
 };
 export type DiskIoStats = {
   device_description: string;
@@ -694,6 +711,7 @@ export type PerPartitionInfo = {
   fsck_supported: boolean;
   fstype: string;
   mount_point: string;
+  name?: string;
   total_space_bytes: number;
 };
 export type DiskHealth = {
@@ -723,6 +741,8 @@ export type NicIoStats = {
   deviceMaxSpeed: number;
   deviceName: string;
   inboundTraffic: number;
+  ip?: string;
+  netmask?: string;
   outboundTraffic: number;
 };
 export type NetworkStats = {
@@ -892,11 +912,23 @@ export type JsonPatchOp = {
   /** The value to set */
   value?: any;
 };
+export type Partition = {
+  device_path?: string;
+  fs_type?: string;
+  host_mount_point_data?: MountPointData[];
+  id?: string;
+  legacy_device_name?: string;
+  legacy_device_path?: string;
+  mount_point_data?: MountPointData[];
+  name?: string;
+  size?: number;
+  system?: boolean;
+};
 export type MountPointData = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   custom_flags?: MountFlag[];
-  device?: string;
+  device_id?: string;
   disk_label?: string;
   disk_serial?: string;
   disk_size?: number;
@@ -907,6 +939,7 @@ export type MountPointData = {
   is_mounted?: boolean;
   is_to_mount_at_startup?: boolean;
   is_write_supported?: boolean;
+  partition?: Partition;
   path: string;
   path_hash?: string;
   shares?: SharedResource[] | null;
@@ -963,20 +996,13 @@ export type UpdateProgress = {
   progress?: number;
   update_process_state?: Update_process_state;
 };
-export type Partition = {
-  device?: string;
-  host_mount_point_data?: MountPointData[];
-  id?: string;
-  mount_point_data?: MountPointData[];
-  name?: string;
-  size?: number;
-  system?: boolean;
-};
 export type Disk = {
   connection_bus?: string;
-  device?: string;
+  device_path?: string;
   ejectable?: boolean;
   id?: string;
+  legacy_device_name?: string;
+  legacy_device_path?: string;
   model?: string;
   partitions?: Partition[];
   removable?: boolean;
@@ -984,8 +1010,15 @@ export type Disk = {
   seat?: string;
   serial?: string;
   size?: number;
+  smart_info?: SmartInfo;
   vendor?: string;
 };
+export enum Disk_type {
+  Sata = "SATA",
+  NvMe = "NVMe",
+  Scsi = "SCSI",
+  Unknown = "Unknown",
+}
 export enum Severity {
   Error = "error",
   Warning = "warning",

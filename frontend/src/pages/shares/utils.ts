@@ -20,7 +20,7 @@ export function getPathBaseName(path: string): string {
 export function sanitizeAndUppercaseShareName(name: string): string {
 	if (!name) return "";
 	// Replace invalid characters (/:*?"<>|) and whitespace with an underscore, then convert to uppercase
-	return name.replace(/[/:*?"<>|\s]+/g, "_").toUpperCase();
+	return name.replace(/[/:*?"-<>|\s]+/g, "_").toUpperCase();
 }
 
 // --- Veto File Entry Validation Helper ---
@@ -68,7 +68,7 @@ export const toCamelCase = (str: string): string => {
 export const toKebabCase = (str: string): string => {
 	const words = splitWords(str);
 	if (words.length === 0) return "";
-	return words.map((word) => word.toLowerCase()).join("-");
+	return words.map((word) => word.toLowerCase()).join("_");
 };
 
 const casingStyleToIconMap: Record<
@@ -77,7 +77,7 @@ const casingStyleToIconMap: Record<
 > = {
 	[CasingStyle.UPPERCASE]: KeyboardCapslockIcon,
 	[CasingStyle.LOWERCASE]: TextDecreaseIcon,
-	[CasingStyle.CAMELCASE]: DataObjectIcon, // Assuming DataObjectIcon is suitable for camelCase
+	[CasingStyle.CAMELCASE]: DataObjectIcon,
 	[CasingStyle.KEBABCASE]: RemoveIcon,
 };
 

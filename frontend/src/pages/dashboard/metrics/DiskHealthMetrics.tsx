@@ -20,8 +20,9 @@ import {
 	SparklinesSpots,
 } from "react-sparklines";
 import { useEffect, useRef, useState } from "react";
-import type { DiskHealth, DiskIoStats } from "../../../store/sratApi";
+import type { DiskHealth, DiskIoStats, Partition, PerPartitionInfo } from "../../../store/sratApi";
 import { filesize } from "filesize";
+import { PreviewDialog } from "../../../components/PreviewDialog";
 
 const MAX_HISTORY_LENGTH = 10;
 
@@ -31,6 +32,7 @@ export function DiskHealthMetrics({
 	diskHealth: DiskHealth | undefined;
 }) {
 	const theme = useTheme();
+	const [selectedIoStats, setSelectedIoStats] = useState<DiskIoStats | PerPartitionInfo | null>(null);
 
 	const [diskIoHistory, setDiskIoHistory] = useState<Record<string, {
 		read_iops: number[];
@@ -85,14 +87,27 @@ export function DiskHealthMetrics({
 				);
 				newHistory[deviceName].temperature = updateHistory(
 					newHistory[deviceName].temperature,
-					io.smart_data?.temperature ?? 0,
+					io.smart_data?.temperature?.value ?? 0,
 				);
 			});
 			return newHistory;
 		});
 	}, [diskHealth]);
+	const isDiskIoStats = (obj: any): obj is DiskIoStats =>
+		!!obj && typeof obj === "object" && "device_name" in obj && "device_description" in obj;
+
 	return (
 		<>
+			<PreviewDialog
+				objectToDisplay={selectedIoStats}
+				onClose={() => setSelectedIoStats(null)}
+				open={!!selectedIoStats}
+				title={
+					isDiskIoStats(selectedIoStats)
+						? `Detailed I/O Stats - ${selectedIoStats.device_description} (${selectedIoStats.device_name})`
+						: `Detailed Partition Stats - ${selectedIoStats?.name ?? selectedIoStats?.device ?? ""}`
+				}
+			/>
 			<TableContainer component={Paper}>
 				<Table aria-label="disk health table" size="small">
 					<TableHead>
@@ -103,13 +118,13 @@ export function DiskHealthMetrics({
 							<TableCell align="right">Writes IOP/s</TableCell>
 							<TableCell align="right">Read Latency (ms)</TableCell>
 							<TableCell align="right">Write Latency (ms)</TableCell>
-							<TableCell align="right">Temperature (°C)</TableCell>
+							<TableCell align="right">Temperature (°C / Max °C)</TableCell>
 						</TableRow>
 					</TableHead>
 					<TableBody>
 						{diskHealth?.per_disk_io?.map((io) => (
 							<TableRow key={io.device_name}>
-								<TableCell component="th" scope="row">
+								<TableCell component="th" scope="row" sx={{ cursor: "pointer" }} onClick={() => setSelectedIoStats(io)}>
 									{io.device_description}
 								</TableCell>
 								<TableCell component="th" scope="row">
@@ -247,7 +262,7 @@ export function DiskHealthMetrics({
 											variant="body2"
 											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
 										>
-											{io.smart_data?.temperature ? `${io.smart_data.temperature}°C` : "N/A"}
+											{io.smart_data?.temperature?.value ? `${io.smart_data.temperature.value}°C` : "N/A"} / {io.smart_data?.temperature?.max ? `${io.smart_data.temperature.max}°C` : "N/A"}
 										</Typography>
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.temperature?.length || 0) > 1 ? (
@@ -280,7 +295,7 @@ export function DiskHealthMetrics({
 						<Grid size={{ xs: 12, sm: 6, md: 4 }} key={diskName}>
 							<Card>
 								<CardContent>
-									<Typography variant="h6" component="div">
+									<Typography variant="h6" component="div" >
 										{
 											diskHealth?.per_disk_io?.find(
 												(io) => io.device_name === diskName,
@@ -310,13 +325,14 @@ export function DiskHealthMetrics({
 													key={partition.device}
 													style={{ marginTop: "16px" }}
 												>
-													<Typography variant="subtitle2">
-														{partition.mount_point || partition.device}
+													<Typography variant="subtitle2" sx={{ cursor: "pointer" }} onClick={() => setSelectedIoStats(partition)}>
+														{partition.name || partition.device}
 													</Typography>
 													<LinearProgress
 														variant="determinate"
 														value={usagePercentage}
 														sx={{ height: 10, borderRadius: 5 }}
+														color={freeSpace > 0 ? (usagePercentage > 90 ? "error" : "primary") : "inherit"}
 													/>
 													<Typography variant="body2" color="text.secondary">
 														{freeSpace > 0 &&

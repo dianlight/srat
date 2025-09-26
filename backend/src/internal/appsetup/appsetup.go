@@ -18,7 +18,6 @@ import (
 	"github.com/dianlight/srat/homeassistant/root"
 	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/dianlight/srat/internal"
-	"github.com/dianlight/srat/lsblk"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/tlog"
@@ -62,7 +61,6 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 				Transport: rateLimiter,
 			})
 		},
-		lsblk.NewLSBKInterpreter,
 		service.NewAddonsService,
 		service.NewHomeAssistantService,
 		service.NewBroadcasterService,

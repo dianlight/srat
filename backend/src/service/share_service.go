@@ -83,7 +83,7 @@ func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
 	var dtoShares []dto.SharedResource
 	for _, share := range *shares {
 		var dtoShare dto.SharedResource
-		err := conv.ExportedShareToSharedResource(share, &dtoShare)
+		err := conv.ExportedShareToSharedResource(share, &dtoShare, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to convert share")
 		}
@@ -110,7 +110,7 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 	}
 	var conv converter.DtoToDbomConverterImpl
 	var dtoShare dto.SharedResource
-	err = conv.ExportedShareToSharedResource(*share, &dtoShare)
+	err = conv.ExportedShareToSharedResource(*share, &dtoShare, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
@@ -159,7 +159,7 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 
 	var dtoShare dto.SharedResource
 	var convOut converter.DtoToDbomConverterImpl
-	err = convOut.ExportedShareToSharedResource(dbShare, &dtoShare)
+	err = convOut.ExportedShareToSharedResource(dbShare, &dtoShare, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
@@ -201,7 +201,7 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 	}
 
 	var createdDtoShare dto.SharedResource
-	if err := conv.ExportedShareToSharedResource(*dbShare, &createdDtoShare); err != nil {
+	if err := conv.ExportedShareToSharedResource(*dbShare, &createdDtoShare, nil); err != nil {
 		return nil, errors.Wrapf(err, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
 	}
 
@@ -223,7 +223,7 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 
 	var dtoShare dto.SharedResource
 	var convOut converter.DtoToDbomConverterImpl
-	err = convOut.ExportedShareToSharedResource(*dbShare, &dtoShare)
+	err = convOut.ExportedShareToSharedResource(*dbShare, &dtoShare, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
@@ -273,7 +273,7 @@ func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, error
 
 	var conv converter.DtoToDbomConverterImpl
 	var dtoShare dto.SharedResource
-	err = conv.ExportedShareToSharedResource(*share, &dtoShare)
+	err = conv.ExportedShareToSharedResource(*share, &dtoShare, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
@@ -295,7 +295,7 @@ func (s *ShareService) DisableShareFromPath(path string) (*dto.SharedResource, e
 
 	var conv converter.DtoToDbomConverterImpl
 	var dtoShare dto.SharedResource
-	err = conv.ExportedShareToSharedResource(*share, &dtoShare)
+	err = conv.ExportedShareToSharedResource(*share, &dtoShare, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
@@ -318,7 +318,7 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 	}
 	var conv converter.DtoToDbomConverterImpl
 	var dtoShare dto.SharedResource
-	err = conv.ExportedShareToSharedResource(*share, &dtoShare)
+	err = conv.ExportedShareToSharedResource(*share, &dtoShare, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}

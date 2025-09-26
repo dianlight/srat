@@ -2,159 +2,321 @@
 
 This file highlights the must-know, discoverable rules and workflows for productive changes in this repo. Keep it short and actionable.
 
-- Languages: Go backend (Go 1.25), TypeScript React frontend (Bun runtime). See `backend/go.mod` and `frontend/package.json`/`bun.lockb`.
-- Builds: backend via `backend/Makefile` (root `make` proxies many targets). Frontend uses Bun: `cd frontend && bun install && bun run build`.
-- Pre-commit and hooks: repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
+- **Languages**: Go backend (Go 1.25), TypeScript React frontend (Bun runtime). See `backend/go.mod` and `frontend/package.json`/`bun.lockb`.
+- **Builds**: Root `Makefile` proxies to `backend/Makefile`. Frontend uses Bun: `cd frontend && bun install && bun run build`.
+- **Pre-commit**: Repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
+- **Tests**: Backend uses `testify/suite` with `mockio/v2`. Frontend uses `bun:test` with `@testing-library/react`. See below for patterns.
 
-Key patterns and where to find them
+## Architecture Overview
 
-- API handlers: `backend/src/api/*` — handlers use constructor `NewXHandler` and `RegisterXHandler(api huma.API)`.
-- Services: `backend/src/service/*` — each service has an interface and an implementation wired via FX (`fx.In` param structs).
-- Repositories/DB: `backend/src/repository/*` and `backend/src/dbom/*` — GORM models live in `dbom`, converters in `converter/` and `goverter`-generated files.
-- DTOs: `backend/src/dto` define domain errors (see `dto/error_code.go`) and request/response shapes.
-- Logging: `backend/src/tlog` — use `tlog` helpers for structured logs and sensitive-data masking.
+SRAT is a Samba administration tool with a Go REST API backend and React frontend, designed to run within Home Assistant. Key architectural patterns:
 
-Testing and mocks
+- **Backend**: Clean architecture with API handlers → Services → Repositories → Database (GORM/SQLite)
+- **Frontend**: React + TypeScript + Material-UI + RTK Query for API state management
+- **Communication**: REST API with Server-Sent Events (SSE) or WebSockets for real-time updates
+- **Database**: SQLite with GORM ORM, embedded in production binary
+- **Dependency Injection**: Uber FX throughout backend for service wiring
 
-- Tests use `testify/suite` and `mockio/v2` for mocks. Test packages are named `{pkg}_test` and suites follow `XHandlerSuite` pattern. See `backend/src/api/*.go` and `*_test.go` for examples.
-- HTTP handler tests often use `humatest.New` to create a test API and `autopatch.AutoPatch(api)` for PATCH endpoints.
+## Key Patterns & Where to Find Them
 
-Dev and quality gates
+### Backend Patterns
 
-- Run documentation checks: `make docs-validate` (root). Docs and examples are in `docs/`.
-- Security: `make security` runs `gosec` (backend). CI expects gosec/pass for commits.
-- Formatting: use `gofmt` for Go; frontend uses Biome/biome config (see `biome.json`).
+- **API Handlers**: `backend/src/api/*` — Use constructor `NewXHandler` and `RegisterXHandler(api huma.API)`. Handlers use Huma framework for REST API.
+- **Services**: `backend/src/service/*` — Each service has an interface and implementation wired via FX (`fx.In` param structs). Services coordinate business logic.
+- **Repositories**: `backend/src/repository/*` and `backend/src/dbom/*` — GORM models in `dbom`, repositories handle data access with mutex protection.
+- **DTOs**: `backend/src/dto` — Define domain objects, error codes (see `dto/error_code.go`), and request/response shapes.
+- **Converters**: `backend/src/converter/*` — Goverter-generated converters for DTO↔DBOM transformations. Run `go generate` after changes.
+- **Logging**: `backend/src/tlog` — Custom logging with sensitive data masking, structured logs, and terminal color support.
 
-Quick examples
+### Frontend Patterns
 
-- Start backend dev build: `cd backend && make run` (see `backend/Makefile`).
-- Run backend unit tests: `cd backend && go test ./...`.
-- Build all: `make ALL` (root Makefile).
+- **Components**: `frontend/src/components/` — Reusable React components with Material-UI
+- **Pages**: `frontend/src/pages/` — Route-based page components
+- **Store**: `frontend/src/store/` — RTK Query for API calls, Redux slices for local state
+- **Hooks**: `frontend/src/hooks/` — Custom React hooks for shared logic
+- **API Integration**: Auto-generated RTK Query hooks from OpenAPI spec (see `frontend/src/store/sratApi.ts`)
+- **MUI Grid**: Use modern Grid syntax with `size` prop (e.g., `<Grid size={{ xs: 12, sm: 6 }}>`) — Grid2 is now promoted as the default Grid in MUI v7.3.2+
 
-Integration notes for agents
+## Development Workflows
 
-- Many constructors and handlers are wired via Uber FX — when changing signatures, update providers and `fx.Populate` calls in tests.
-- Converters are generated (`*gen.go`) — if you change DTO/dbom shapes, regenerate converters or update `converter/*` accordingly.
-- Sensitive secrets (Rollbar) are optional and guarded; don't hardcode secrets — use env or config flags the project expects.
+### Backend Development
 
-Files to open first
+- **Start dev server**: `cd backend && make dev` (uses Air for hot reload)
+- **Build**: `cd backend && make build` (production) or `make test_build` (debug symbols)
+- **Test**: `cd backend && make test` (runs with `-p 1` for deterministic output)
+- **Format**: `cd backend && make format` (includes gofmt, testifylint, govet)
+- **Generate**: `cd backend && make gen` (goverter converters + OpenAPI docs)
 
-- `backend/Makefile`, `backend/src/api/*`, `backend/src/service/*`, `backend/src/dto/error_code.go`, `backend/src/converter/*`.
-- `frontend/src/pages/` and `frontend/src/components/` for UI changes.
+### Frontend Development
 
-If uncertain, run these checks before PR
+- **Start dev server**: `cd frontend && bun run dev` (hot reload with live reload)
+- **Start remote dev server**: `cd frontend && bun run dev:remote` (for testing with remote backend)
+- **Build**: `cd frontend && bun run build` (outputs to `../backend/src/web/static`)
+- **Watch mode**: `cd frontend && bun run gowatch` (builds directly to backend static dir)
+- **Generate API**: `cd frontend && bun run gen` (RTK Query from OpenAPI spec)
+- **Lint**: `cd frontend && bun run lint` (Biome formatter/linter)
+- **Test**: `cd frontend && bun test` (runs all tests with bun:test)
 
-- `pre-commit run --all-files`
-- `make docs-validate`
-- `make security`
+### Full Stack Development
+
+- **Prepare environment**: `make prepare` (installs pre-commit + dependencies)
+- **Build all**: `make ALL` (multi-arch: amd64, armv7, aarch64)
+- **Clean**: `make clean`
+
+## Testing Patterns
+
+### Backend Testing
+
+- **Framework**: `testify/suite` with `mockio/v2` for mocks
+- **Test Structure**: `{package}_test` with `{HandlerName}HandlerSuite` structs
+- **Setup**: Use `fxtest.New()` to build dependency graph, `fx.Populate()` to inject mocks
+- **HTTP Tests**: `humatest.New()` for API testing, `autopatch.AutoPatch(api)` for PATCH endpoints
+- **Mock Pattern**: `mock.When(service.Method(...)).ThenReturn(...)` then `mock.Verify(..., matchers.Times(1)).Method()`
+- **State Verification**: Always check `dirtyService.SetDirty*()` calls when data is modified
+
+### Frontend Testing
+
+- **Framework**: `bun:test` with `happy-dom` for DOM simulation
+- **Testing Libraries**: `@testing-library/react` for component testing, `@testing-library/jest-dom` for assertions
+- **Test Structure**: Place tests in `__tests__` directories alongside components/pages
+- **File Naming**: Use `.test.tsx` extension for test files
+- **Setup**: Import test utilities from `bun:test`: `describe`, `it`, `expect`, `beforeEach`
+- **DOM Setup**: Use `happy-dom` for DOM globals, custom localStorage shim for storage tests
+- **Store Testing**: Use `createTestStore()` helper from `frontend/test/setup.ts` for Redux store
+- **Component Testing**: Dynamic imports for React components to avoid module loading issues
+- **Async Testing**: Use `screen.findByText()` for waiting on async renders
+
+### Test Examples
+
+```go
+// Backend HTTP handler test
+func (suite *ShareHandlerSuite) TestCreateShareSuccess() {
+    mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(expectedShare, nil)
+    _, api := humatest.New(suite.T())
+    suite.handler.RegisterShareHandler(api)
+    resp := api.Post("/share", input)
+    suite.Equal(http.StatusCreated, resp.Code)
+        mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+}
+```
+
+```tsx
+}
+```
+
+```tsx
+// Frontend localStorage test
+import { describe, it, expect, beforeEach } from "bun:test";
+
+describe("Component localStorage functionality", () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    it("saves and restores data to localStorage", () => {
+        const testData = "test-value";
+        localStorage.setItem("component.data", testData);
+        expect(localStorage.getItem("component.data")).toBe(testData);
+    });
+}
+```
+
+```tsx
+});
+```
+
+```tsx
+// Frontend component test with React Testing Library
+import { describe, it, expect, beforeEach } from "bun:test";
+import { createTestStore } from "../../../test/setup";
+
+describe("Component rendering", () => {
+    it("renders component with initial data", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { MyComponent } = await import("../MyComponent");
+        const store = await createTestStore();
+
+        render(
+            React.createElement(
+                Provider,
+                { store },
+                React.createElement(MyComponent, { prop: "value" })
+            )
+        );
+
+        const element = await screen.findByText("Expected Text");
+        expect(element).toBeTruthy();
+    });
+});
+```
+
+## Quality Gates & Validation
+
+### Pre-commit Hooks
+
+- **Security**: `gosec` scans Go code (high severity/confidence only)
+- **Dependencies**: Remove/restore `go.mod` replace directives
+- **Documentation**: Link format validation, CHANGELOG format checks
+- **Install**: `pre-commit install && pre-commit install --hook-type pre-push`
+
+### Documentation
+
+- **Validation**: `make docs-validate` (markdownlint, link checks, spellcheck)
+- **Auto-fix**: `make docs-fix` (formatting fixes)
+- **OpenAPI**: Auto-generated from Go code, served at `/docs`
+
+### Security
+
+- **Backend**: `make security` runs `gosec` (exclude generated code)
+- **Frontend**: Bun handles dependency security
+- **Include in PR**: Security scan results in "Quality Gates" section
+
+## Integration Points
+
+### External Dependencies
+
+- **Database**: SQLite with WAL mode, busy timeout, foreign keys
+- **Home Assistant**: Integration via supervisor API, addon configuration
+- **Samba**: Configuration generation and service management
+- **Telemetry**: Optional Rollbar integration with user consent
+
+### Cross-Component Communication
+
+- **Dirty State**: `dirtyService.SetDirty*()` methods mark data as changed
+- **Notifications**: Services call `NotifyClient()` for real-time updates via SSE
+- **Error Handling**: Custom error codes in `dto/error_code.go`, wrapped with `errors.Wrap()`
+- **Context**: Request context passed through all layers for cancellation/tracing
+
+## Files to Open First
+
+- **Backend entry**: `backend/Makefile`, `backend/src/api/*`, `backend/src/service/*`
+- **Frontend entry**: `frontend/src/App.tsx`, `frontend/src/store/sratApi.ts`
+- **Architecture**: `backend/src/dto/error_code.go`, `backend/src/converter/*`
+- **Build system**: Root `Makefile`, `frontend/bun.build.ts`
+
+## Common Gotchas
+
+- **FX Wiring**: When changing service interfaces, update all `fx.Provide()` calls and test `fx.Populate()`
+- **Converters**: After DTO/DBOM changes, run `go generate` to regenerate goverter code
+- **Patches**: External dependencies are patched via `gohack` — see `backend/Makefile` patch targets
+- **Multi-arch**: Always test builds on target architectures, especially ARM variants
+- **Embedded Assets**: Frontend builds to `backend/src/web/static` for embedding in binary
+- **Database Paths**: Use `--db` flag; app validates filesystem permissions
+
+## Frontend Testing Rules
+
+**MANDATORY patterns for all frontend tests:**
+
+### File Structure & Naming
+
+- Tests MUST be in `__tests__` directories alongside the component/page being tested
+- Test files MUST use `.test.tsx` extension
+- Component tests go in `src/pages/[page]/__tests__/` or `src/components/[component]/__tests__/`
+
+### Required Imports & Setup
+
+- ALWAYS import from `bun:test`: `import { describe, it, expect, beforeEach } from "bun:test";`
+- For localStorage tests: Include the minimal localStorage shim (see existing tests for exact code)
+- For component tests: Use `createTestStore()` helper from `../../../test/setup` (adjust path as needed)
+- For React components: Use dynamic imports to avoid module loading issues
+
+### Testing Library Standards
+
+- Use `@testing-library/react` for component rendering: `const { render, screen } = await import("@testing-library/react");`
+- Use `@testing-library/jest-dom` assertions: `expect(element).toBeTruthy();`
+- For async rendering: Use `await screen.findByText()` not `getByText()`
+- Always use `React.createElement()` syntax, not JSX, in test files
+
+### localStorage Testing Pattern
+
+```tsx
+// REQUIRED localStorage shim for every localStorage test
+if (!(globalThis as any).localStorage) {
+    const _store: Record<string, string> = {};
+    (globalThis as any).localStorage = {
+        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
+        setItem: (k: string, v: string) => { _store[k] = String(v); },
+        removeItem: (k: string) => { delete _store[k]; },
+        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
+    };
+}
+
+describe("Component localStorage functionality", () => {
+    beforeEach(() => {
+        localStorage.clear(); // ALWAYS clear before each test
+    });
+    // ... tests
+});
+```
+
+### Component Testing Pattern
+
+```tsx
+describe("Component rendering", () => {
+    it("renders component with data", async () => {
+        // REQUIRED: Dynamic imports after globals are set
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ComponentName } = await import("../ComponentName");
+        const store = await createTestStore();
+
+        // REQUIRED: Use React.createElement, not JSX
+        render(
+            React.createElement(
+                Provider,
+                { store },
+                React.createElement(ComponentName as any, { props })
+            )
+        );
+
+        // REQUIRED: Use findByText for async, toBeTruthy() for assertions
+        const element = await screen.findByText("Expected Text");
+        expect(element).toBeTruthy();
+    });
+});
+```
+
+### Redux Store Integration
+
+- ALWAYS use `createTestStore()` for tests that need Redux state
+- Import store helper: `import { createTestStore } from "../../../test/setup";` (adjust path)
+- Wrap components with Redux Provider using `React.createElement(Provider, { store }, ...)`
+
+### Async Testing Requirements
+
+- Use `await screen.findByText()` for elements that appear after rendering
+- Use `beforeEach(() => { localStorage.clear(); })` for localStorage tests
+- Dynamic imports MUST be used for React components and testing utilities
+
+**NON-NEGOTIABLE:** All frontend tests must follow these exact patterns. No exceptions for import style, file structure, or testing utilities.
+
+## Final Checklist Before Consider a Changes as Done
+
+Ensure all relevant pre-commit hooks pass locally before pushing changes. This includes formatting, linting, security scans, and documentation validation.
+
+If uncertain, run: `pre-commit run --all-files`, `make docs-validate`, `make security`
 
 If this file misses anything important, tell me which area (build, tests, DI, logging, frontend) and I will expand with concrete examples.
 
-1. **Mock Dependencies**: Use `mockio/v2` for mocking services and repositories.
-2. **Test Paths**: Test both success and error paths.
-3. **Verify State**: Check that `dirtyService.SetDirty*()` methods are called when data is modified.
-4. **Meaningful Names**: Use the pattern `Test{Method}{Scenario}` (e.g., `TestCreateShareSuccess`).
-5. **Use Assertions**: Prefer `testify/assert` or `testify/require` (e.g., `suite.Equal(...)`).
+All backend and frontend changes must also follow the established patterns in existing tests or introduce new patterns that are well-documented, covered by tests, and justified.
 
-### Test Suite Structure
+Always prioritize maintainability and clarity in tests.
 
-- **Package**: `{package}_test`
-- **Suite Struct**: Name it `{HandlerName}HandlerSuite`. It must embed `suite.Suite` and contain fields for the handler, mock services, `fxtest.App`, and a `context`.
+Always ensure tests are deterministic and can run in CI environments without special setup.
 
-### SetupTest / TearDownTest Methods
+Update documentation to reflect any new patterns, changes in workflows or architecture.
 
-- **`SetupTest`**: Use `fxtest.New` to build the dependency graph. Provide all mocks, real services, configuration, and context. Use `fx.Populate` to inject dependencies into the suite fields. Set up mock expectations using `mock.When(...)`.
-- **`TearDownTest`**: Clean up resources. Cancel the context and wait for any `WaitGroup` to finish, then call `suite.app.RequireStop()`.
+The goal is to maintain high code quality, consistency, and ease of onboarding for future contributors.
 
-### HTTP Test Pattern (`humatest`)
+Dead code or commented-out code should be removed, not left in the codebase.
 
-1. **Initialize**: `_, api := humatest.New(suite.T())`
-2. **Register Handler**: `suite.handler.RegisterSomething(api)`
-3. **Enable AutoPatch**: If testing a `PATCH` endpoint, call `autopatch.AutoPatch(api)`.
-4. **Make Request**: `resp := api.Get("/endpoint")`
-5. **Assert Status**: `suite.Require().Equal(http.StatusOK, resp.Code)`
-6. **Assert Body**: Unmarshal the response and assert its contents.
+When in doubt, ask for clarification on the intended pattern or best practice before proceeding with changes.
 
-### Direct Handler Test Pattern
+Update CHANGELOG.md and relevant documentation files for any new features, bug fixes, or breaking changes.
 
-1. **Prepare Input**: Create the required input DTO.
-2. **Configure Mock**: `mock.When(suite.mockService.Method(...)).ThenReturn(...)`
-3. **Execute**: Call the handler method directly: `result, err := suite.handler.Method(ctx, input)`
-4. **Assert**: Check the error and the result.
-5. **Verify Mock**: `mock.Verify(suite.mockService, matchers.Times(1)).Method()`
+Check for open issues related to your changes and reference them in your commit messages or PR descriptions.
 
-### Error Handling Tests
-
-- Configure the mock to return a specific error.
-- Execute the handler method.
-- Assert that an error is returned (`suite.Error(err)`).
-- If applicable, check for a specific `huma.StatusError` and status code.
-
-### Test Runner
-
-- Always include the test runner function:
-
-  ```go
-  func TestHandlerNameSuite(t *testing.T) {
-      suite.Run(t, new(HandlerNameSuite))
-  }
-  ```
-
-### Test Data
-
-- Place test configuration data in `backend/test/data/`.
-- Reference files using relative paths (e.g., `"../../test/data/config.json"`).
-
-## 5. Documentation
-
-### General Markdown Rules
-
-- **Update `CHANGELOG.md`** for all significant changes.
-- Use proper heading hierarchy and consistent formatting.
-- Include fenced code blocks with language identifiers.
-- Keep all documentation, examples, and links current and valid.
-
-### Package Documentation and Examples (Go)
-
-When adding or changing features, update the corresponding documentation.
-
-1. **READMEs**: Update package `README.md` files with new features, API documentation, usage examples, and best practices.
-2. **API Reference (GoDoc)**: Ensure all public functions, types, and constants are fully documented. Include examples for complex APIs.
-3. **Examples**: Update or create runnable example programs that demonstrate new features, error handling, and best practices.
-
-### API Documentation (OpenAPI)
-
-- Update OpenAPI specs when API endpoints change.
-- Include clear request/response examples.
-- Document all error codes and their meanings.
-
-### Implementation Docs
-
-- Update `docs/implementation/*.md` files when architectural decisions change.
-- Document the reasoning behind technical choices.
-
-## 6. Quality & Security
-
-### Quality Gates
-
-- **Before Merge**: All code must be formatted, and all documentation must be spell-checked with valid links and tested examples.
-- **Review**: Documentation and breaking changes require maintainer review. New features must be documented.
-
-### Security Scans (gosec)
-
-- Run `gosec` on the backend codebase to detect common security issues before submitting changes.
-- **How to run**: `make security` from the repo root.
-- Include the result in the "Quality Gates" section of your PR summary: `Security (gosec): PASS`.
-
-## 7. Build & Deployment
-
-### Build Conventions
-
-1. **Binary Structure**: Follow the established output structure.
-   - `backend/dist/${ARCH}/`: Production builds (stripped, optimized).
-   - `backend/tmp/`: Development/test builds (with debug symbols).
-2. **Binary Naming**: Use the convention `srat-server`, `srat-cli`, etc.
-3. **Makefile**: Use the `Makefile` targets for building. When adding a new binary, update the `Makefile` accordingly.
-4. **Multi-architecture**: Ensure builds work for `amd64` (x86_64), `armv7`, and `arm64` (aarch64).
-5. **Build Flags**: Use `-ldflags="-s -w"` for production and `-gcflags=all="-N -l"` for development. Always inject the version information.
-6. **Asset Embedding**: Frontend assets are embedded into the production binary using the `embedallowed` build tag.
+## END OF COPILOT INSTRUCTIONS

@@ -1,31 +1,14 @@
-import ComputerIcon from "@mui/icons-material/Computer";
-import CreditScoreIcon from "@mui/icons-material/CreditScore";
-import EjectIcon from "@mui/icons-material/Eject";
-import ExpandMore from "@mui/icons-material/ExpandMore";
-import SdStorageIcon from "@mui/icons-material/SdStorage";
-import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
-import StorageIcon from "@mui/icons-material/Storage";
-import UsbIcon from "@mui/icons-material/Usb";
 import {
-	Accordion,
-	AccordionDetails,
-	AccordionSummary,
-	Avatar,
-	Chip,
-	Divider,
+	Box,
 	FormControlLabel,
-	ListItem,
-	ListItemAvatar,
-	ListItemButton,
-	ListItemText,
+	Grid,
+	Paper,
 	Stack,
 	Switch,
 	Typography,
 } from "@mui/material";
-import List from "@mui/material/List";
-import { filesize } from "filesize";
 import { useConfirm } from "material-ui-confirm";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
@@ -39,14 +22,12 @@ import {
 	usePatchApiVolumeByMountPathHashSettingsMutation,
 	usePostApiVolumeByMountPathHashMountMutation,
 } from "../../store/sratApi";
-import { PartitionActions } from "./components/PartitionActions";
-import { VolumeMountDialog } from "./components/VolumeMountDialog";
-import { useVolumeAccordion } from "./hooks/useVolumeAccordion";
+import { VolumesTreeView, VolumeDetailsPanel, VolumeMountDialog } from "./components";
 import { decodeEscapeSequence } from "./utils";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { useGetServerEventsQuery } from "../../store/sseApi";
 
-export function Volumes() {
+export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
 	const [showPreview, setShowPreview] = useState<boolean>(false);
 	const [showMount, setShowMount] = useState<boolean>(false);
@@ -54,25 +35,77 @@ export function Volumes() {
 	const location = useLocation();
 
 	const navigate = useNavigate();
-	const [hideSystemPartitions, setHideSystemPartitions] =
-		useState<boolean>(true); // Default to hide system partitions
-	const { disks, isLoading, error } = useVolume();
-	const [selected, setSelected] = useState<Partition | Disk | undefined>(
-		undefined,
-	); // Can hold a disk or partition
+	const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(localStorage.getItem("volumes.hideSystemPartitions") === "true"); // Default to hide system partitions
+	const volumeHook = useVolume();
+	const disks = initialDisks ?? volumeHook.disks;
+	const isLoading = initialDisks ? false : volumeHook.isLoading;
+	const error = initialDisks ? null : volumeHook.error;
+	const [selectedDisk, setSelectedDisk] = useState<Disk | undefined>(undefined);
+	const [selectedPartition, setSelectedPartition] = useState<Partition | undefined>(undefined);
+	const [selectedPartitionId, setSelectedPartitionId] = useState<string | undefined>(() => localStorage.getItem("volumes.selectedPartitionId") || undefined);
+	const [expandedDisks, setExpandedDisks] = useState<string[]>(() => {
+		try {
+			const savedExpanded = localStorage.getItem("volumes.expandedDisks");
+			if (savedExpanded) {
+				const parsed = JSON.parse(savedExpanded);
+				if (Array.isArray(parsed)) return parsed as string[];
+			}
+		} catch { }
+		return [];
+	});
 	const confirm = useConfirm();
-	const [mountVolume, _mountVolumeResult] =
-		usePostApiVolumeByMountPathHashMountMutation();
-	const [umountVolume, _umountVolumeResult] =
-		useDeleteApiVolumeByMountPathHashMountMutation();
+	const [mountVolume, _mountVolumeResult] = usePostApiVolumeByMountPathHashMountMutation();
+	const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeByMountPathHashMountMutation();
 	const [patchMountSettings] = usePatchApiVolumeByMountPathHashSettingsMutation();
 
-	const {
-		expandedAccordion,
-		handleAccordionChange,
-		isDiskRendered,
-		setExpandedAccordion,
-	} = useVolumeAccordion(disks, isLoading, hideSystemPartitions);
+	// Handle partition selection
+	const handlePartitionSelect = (disk: Disk, partition: Partition) => {
+		setSelectedDisk(disk);
+		setSelectedPartition(partition);
+		const diskIdx = disks?.indexOf(disk) || 0;
+		const partIdx = disk.partitions?.indexOf(partition) || 0;
+		const partitionId = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
+		setSelectedPartitionId(partitionId);
+		// Ensure the containing disk is expanded and persisted
+		const diskIdentifier = disk.id || `disk-${diskIdx}`;
+		setExpandedDisks((prev) => {
+			if (prev.includes(diskIdentifier)) return prev;
+			return [...prev, diskIdentifier];
+		});
+	};
+
+	// Persist selection and expanded disks to localStorage
+	useEffect(() => {
+		try {
+			if (selectedPartitionId) {
+				localStorage.setItem("volumes.selectedPartitionId", selectedPartitionId);
+			} else {
+				localStorage.removeItem("volumes.selectedPartitionId");
+			}
+		} catch (err) {
+			console.warn("Could not persist selectedPartitionId", err);
+		}
+	}, [selectedPartitionId]);
+
+	useEffect(() => {
+		try {
+			if (expandedDisks.length > 0) {
+				localStorage.setItem("volumes.expandedDisks", JSON.stringify(expandedDisks));
+			} else {
+				localStorage.removeItem("volumes.expandedDisks");
+			}
+		} catch (err) {
+			console.warn("Could not persist expandedDisks", err);
+		}
+	}, [expandedDisks]);
+
+	useEffect(() => {
+		try {
+			localStorage.setItem("volumes.hideSystemPartitions", hideSystemPartitions ? "true" : "false");
+		} catch (err) {
+			console.warn("Could not persist hideSystemPartitions", err);
+		}
+	}, [hideSystemPartitions]);
 
 	// Effect to handle navigation state for opening mount settings for a specific volume
 	useEffect(() => {
@@ -87,19 +120,18 @@ export function Volumes() {
 			disks.length > 0
 		) {
 			let foundPartition: Partition | undefined;
-			let foundDiskIdentifier: string | undefined;
+			let foundDisk: Disk | undefined;
 
 			for (const disk of disks) {
 				if (disk.partitions) {
 					for (const partition of disk.partitions) {
-						const diskIdx = disks.indexOf(disk);
 						if (
 							partition.mount_point_data?.some(
 								(mpd) => mpd.path_hash === mountPathHashFromState,
 							)
 						) {
 							foundPartition = partition;
-							foundDiskIdentifier = disk.id || `disk-${diskIdx}`;
+							foundDisk = disk;
 							break;
 						}
 					}
@@ -107,15 +139,9 @@ export function Volumes() {
 				if (foundPartition) break;
 			}
 
-			if (foundPartition && foundDiskIdentifier) {
-				setSelected(foundPartition);
+			if (foundPartition && foundDisk) {
+				handlePartitionSelect(foundDisk, foundPartition);
 				setShowMountSettings(true);
-				const targetDisk = disks.find(
-					(d, idx) => (d.id || `disk-${idx}`) === foundDiskIdentifier,
-				);
-				if (targetDisk && isDiskRendered(targetDisk, hideSystemPartitions)) {
-					setExpandedAccordion(foundDiskIdentifier);
-				}
 				navigate(location.pathname, { replace: true, state: {} });
 			} else {
 				console.warn(
@@ -128,23 +154,42 @@ export function Volumes() {
 		disks,
 		location.state,
 		navigate,
-		hideSystemPartitions,
-		isDiskRendered,
 		location.pathname,
-		setExpandedAccordion,
 	]);
+
+	// When disks data is available and there's a selectedPartitionId (restored or new), find and select it so details show
+	useEffect(() => {
+		if (!disks || disks.length === 0) return;
+		if (!selectedPartitionId) return;
+
+		// Try to locate the partition corresponding to selectedPartitionId
+		for (const disk of disks) {
+			if (!disk.partitions) continue;
+			for (const partition of disk.partitions) {
+				const diskIdx = disks.indexOf(disk);
+				const partIdx = disk.partitions.indexOf(partition);
+				const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
+				if (partitionIdentifier === selectedPartitionId) {
+					setSelectedDisk(disk);
+					setSelectedPartition(partition);
+					return;
+				}
+			}
+		}
+
+		// If not found, clear selection
+		setSelectedPartition(undefined);
+		setSelectedDisk(undefined);
+		setSelectedPartitionId(undefined);
+	}, [disks, selectedPartitionId]);
 
 	function onSubmitMountVolume(data?: MountPointData) {
 		console.trace("Mount Request Data:", data);
-		// Type guard to check if selected is a Partition
-		const isPartition = (item: any): item is Partition =>
-			item && !(item as Disk).partitions;
 
-		if (!selected || !isPartition(selected) || !data || !data.path) {
+		if (!selectedPartition || !data || !data.path) {
 			toast.error("Cannot mount: Invalid selection or missing data.");
 			console.error("Mount validation failed:", {
-				selected,
-				isPartition: isPartition(selected),
+				selectedPartition,
 				data,
 			});
 			return;
@@ -153,9 +198,8 @@ export function Volumes() {
 		// Ensure device is included in submitData if required by API
 		const submitData: MountPointData = {
 			...data,
-			device: selected.device,
+			device_id: selectedPartition.id,
 		};
-		//console.log("Submitting Mount Data:", submitData);
 
 		mountVolume({
 			mountPathHash: data.path_hash || "",
@@ -164,7 +208,7 @@ export function Volumes() {
 			.unwrap()
 			.then((res) => {
 				toast.info(
-					`Volume ${(res as MountPointData).path || selected.name} mounted successfully.`,
+					`Volume ${(res as MountPointData).path || selectedPartition.name} mounted successfully.`,
 				);
 			})
 			.catch((err) => {
@@ -181,7 +225,9 @@ export function Volumes() {
 				});
 			})
 			.finally(() => {
-				setSelected(undefined); // Clear selection after successful mount
+				setSelectedPartition(undefined); // Clear selection after successful mount
+				setSelectedDisk(undefined);
+				setSelectedPartitionId(undefined);
 				setShowMount(false); // Close the mount dialog
 			});
 	}
@@ -231,7 +277,7 @@ export function Volumes() {
 
 		confirm({
 			title: `Unmount ${displayName}?`,
-			description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${displayName} (${partition.device}) mounted at ${mountData.path}?`,
+			description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${displayName} (${partition.legacy_device_name}) mounted at ${mountData.path}?`,
 			confirmationText: force ? "Force Unmount" : "Unmount",
 			cancellationText: "Cancel",
 			confirmationButtonProps: { color: force ? "error" : "primary" },
@@ -252,8 +298,10 @@ export function Volumes() {
 					.then(() => {
 						toast.info(`Volume ${displayName} unmounted successfully.`);
 						// Optionally clear selection if the unmounted item was selected
-						if (selected?.id === partition.id) {
-							setSelected(undefined);
+						if (selectedPartition?.id === partition.id) {
+							setSelectedPartition(undefined);
+							setSelectedDisk(undefined);
+							setSelectedPartitionId(undefined);
 						}
 					})
 					.catch((err) => {
@@ -306,30 +354,15 @@ export function Volumes() {
 
 	useEffect(() => {
 		const handleVolumesStep3 = () => {
-			// find first disk and expand it
-			if (disks && disks.length > 0) {
-				const firstDisk = disks[0];
-				const diskIdentifier = firstDisk.id || `disk-0`;
-				setExpandedAccordion(diskIdentifier);
-			}
+			// find first disk and expand it - this will be handled by the tree view default expansion
 		};
 
 		const handleVolumesStep4 = () => {
-			// find first disk and expand it
-			if (disks && disks.length > 0) {
-				const firstDisk = disks[0];
-				const diskIdentifier = firstDisk.id || `disk-0`;
-				setExpandedAccordion(diskIdentifier);
-			}
+			// find first disk and expand it - this will be handled by the tree view default expansion
 		};
 
 		const handleVolumesStep5 = () => {
-			// find first disk and expand it
-			if (disks && disks.length > 0) {
-				const firstDisk = disks[0];
-				const diskIdentifier = firstDisk.id || `disk-0`;
-				setExpandedAccordion(diskIdentifier);
-			}
+			// find first disk and expand it - this will be handled by the tree view default expansion
 		};
 
 		TourEvents.on(TourEventTypes.VOLUMES_STEP_3, handleVolumesStep3);
@@ -341,7 +374,7 @@ export function Volumes() {
 			TourEvents.off(TourEventTypes.VOLUMES_STEP_4, handleVolumesStep4);
 			TourEvents.off(TourEventTypes.VOLUMES_STEP_5, handleVolumesStep5);
 		};
-	}, [disks, setExpandedAccordion]);
+	}, []);
 
 	// Handle loading and error states
 	if (isLoading) {
@@ -358,60 +391,21 @@ export function Volumes() {
 		);
 	}
 
-	// Helper function to render disk icon
-	const renderDiskIcon = (disk: Disk) => {
-		switch (disk.connection_bus?.toLowerCase()) {
-			case "usb":
-				return <UsbIcon />;
-			case "sdio":
-			case "mmc":
-				return <SdStorageIcon />;
-		}
-		if (disk.removable) {
-			return <EjectIcon />;
-		}
-		// Add more specific icons based on bus or type if needed
-		// e.g., if (disk.type === 'nvme') return <MemoryIcon />;
-		return <ComputerIcon />;
-	};
-
-	// Helper function to render partition icon
-	const renderPartitionIcon = (partition: Partition) => {
-		const isToMountAtStartup =
-			partition.mount_point_data?.[0]?.is_to_mount_at_startup === true;
-		const iconColorProp = isToMountAtStartup
-			? { color: "primary" as const }
-			: {};
-
-		if (partition.name === "hassos-data") {
-			return <CreditScoreIcon fontSize="small" {...iconColorProp} />;
-		}
-		if (
-			partition.system ||
-			partition.name?.startsWith("hassos-") ||
-			(partition.host_mount_point_data &&
-				partition.host_mount_point_data.length > 0)
-		) {
-			return <SettingsSuggestIcon fontSize="small" {...iconColorProp} />;
-		}
-		return <StorageIcon fontSize="small" {...iconColorProp} />;
-	};
+	// Get the related share for the selected partition
+	const selectedShare = selectedPartition?.mount_point_data?.[0]?.shares?.[0];
 
 	return (
 		<>
 			<VolumeMountDialog
-				// Type guard to ensure we only pass Partitions to the mount dialog
-				objectToEdit={
-					selected && !(selected as Disk).partitions
-						? (selected as Partition)
-						: undefined
-				}
+				objectToEdit={selectedPartition}
 				open={showMount || showMountSettings}
 				readOnlyView={showMountSettings}
 				onClose={(data) => {
 					if (showMountSettings) {
 						// If it was open for viewing settings
-						setSelected(undefined);
+						setSelectedPartition(undefined);
+						setSelectedDisk(undefined);
+						setSelectedPartitionId(undefined);
 						setShowMountSettings(false);
 					} else if (showMount) {
 						// If it was open for mounting
@@ -419,7 +413,9 @@ export function Volumes() {
 							onSubmitMountVolume(data);
 						} else {
 							// Cancelled mount dialog or no data returned
-							setSelected(undefined);
+							setSelectedPartition(undefined);
+							setSelectedDisk(undefined);
+							setSelectedPartitionId(undefined);
 							setShowMount(false);
 						}
 					}
@@ -427,340 +423,99 @@ export function Volumes() {
 			/>
 			{/* PreviewDialog can show details for both disks and partitions */}
 			<PreviewDialog
-				// Improved title logic using type guards
 				title={
-					selected
-						? (selected as Disk).model // If it has a model, it's likely a Disk
-							? `Disk: ${(selected as Disk).model}`
-							: `Partition: ${decodeEscapeSequence((selected as Partition).name || "Unknown")}` // Otherwise, assume Partition
-						: "Details"
+					selectedDisk && selectedPartition
+						? `Partition: ${decodeEscapeSequence(selectedPartition.name || selectedPartition.id || "Unknown")}`
+						: selectedDisk
+							? `Disk: ${selectedDisk.model}`
+							: "Details"
 				}
-				objectToDisplay={selected}
+				objectToDisplay={selectedPartition || selectedDisk}
 				open={showPreview}
 				onClose={() => {
-					setSelected(undefined);
+					setSelectedPartition(undefined);
+					setSelectedDisk(undefined);
+					setSelectedPartitionId(undefined);
 					setShowPreview(false);
 				}}
 			/>
-			<br />
-			<Stack direction="row" justifyContent="flex-start" sx={{ pl: 2, mb: 1 }} data-tutor={`reactour__tab${TabIDs.VOLUMES}__step2`}>
-				<FormControlLabel
-					control={
-						<Switch
-							checked={hideSystemPartitions}
-							onChange={(e) => setHideSystemPartitions(e.target.checked)}
-							name="hideSystemPartitions"
-							size="small"
+
+			{/* Main Layout Grid */}
+			<Grid container spacing={2} sx={{ minHeight: "calc(100vh - 200px)" }}>
+				{/* Left Panel - Tree View */}
+				<Grid size={{ xs: 12, md: 4, lg: 3 }}>
+					<Paper sx={{ height: "100%", p: 1 }} data-tutor={`reactour__tab${TabIDs.VOLUMES}__step3`}>
+						<Stack
+							direction="row"
+							justifyContent="space-between"
+							alignItems="center"
+							sx={{ mb: 2, px: 2 }}
+						>
+							<Typography variant="h6">
+								Volumes
+							</Typography>
+						</Stack>
+
+						<Stack direction="row" justifyContent="flex-start" sx={{ pl: 2, mb: 1 }} data-tutor={`reactour__tab${TabIDs.VOLUMES}__step2`}>
+							<FormControlLabel
+								control={
+									<Switch
+										checked={hideSystemPartitions}
+										onChange={(e) => setHideSystemPartitions(e.target.checked)}
+										name="hideSystemPartitions"
+										size="small"
+									/>
+								}
+								label={
+									<Typography variant="body2">Hide system partitions</Typography>
+								}
+							/>
+						</Stack>
+
+						{isLoading ? (
+							<Typography>Loading volumes...</Typography>
+						) : error ? (
+							<Typography color="error">
+								Error loading volume information. Please try again later.
+							</Typography>
+						) : (
+							<VolumesTreeView
+								disks={disks}
+								selectedPartitionId={selectedPartitionId}
+								expandedItems={expandedDisks}
+								onExpandedItemsChange={setExpandedDisks}
+								hideSystemPartitions={hideSystemPartitions}
+								onPartitionSelect={handlePartitionSelect}
+								onToggleAutomount={handleToggleAutomount}
+								onMount={(partition) => {
+									setSelectedPartition(partition);
+									setShowMount(true);
+								}}
+								onViewSettings={(partition) => {
+									setSelectedPartition(partition);
+									setShowMountSettings(true);
+								}}
+								onUnmount={onSubmitUmountVolume}
+								onCreateShare={handleCreateShare}
+								onGoToShare={handleGoToShare}
+								protectedMode={evdata?.hello?.protected_mode === true}
+								readOnly={evdata?.hello?.read_only === true}
+							/>
+						)}
+					</Paper>
+				</Grid>
+
+				{/* Right Panel - Details */}
+				<Grid size={{ xs: 12, md: 8, lg: 9 }}>
+					<Paper sx={{ height: "100%", overflow: "hidden" }}>
+						<VolumeDetailsPanel
+							disk={selectedDisk}
+							partition={selectedPartition}
+							share={selectedShare}
 						/>
-					}
-					label={
-						<Typography variant="body2">Hide system partitions</Typography>
-					}
-				/>
-			</Stack>
-			<List dense={true} data-tutor={`reactour__tab${TabIDs.VOLUMES}__step0`}>
-				<Divider />
-				{/* Iterate over disks */}
-				{disks &&
-					disks.map((disk, diskIdx) => {
-						const diskIdentifier = disk.id || `disk-${diskIdx}`;
-
-						const filteredPartitions =
-							disk.partitions?.filter(
-								(partition) =>
-									!(
-										hideSystemPartitions &&
-										(partition.system &&
-											(partition.name?.startsWith("hassos-") ||
-												(partition.host_mount_point_data &&
-													partition.host_mount_point_data.length >
-													0)))
-									),
-							) || [];
-
-						if (!isDiskRendered(disk, hideSystemPartitions)) {
-							return null; // Don't render this disk if all its partitions are hidden by the toggle
-						}
-
-						return (
-							<Fragment key={diskIdentifier}>
-								<Accordion
-									data-tutor={`reactour__tab${TabIDs.VOLUMES}__step3`}
-									expanded={expandedAccordion === diskIdentifier}
-									onChange={handleAccordionChange(diskIdentifier)}
-									sx={{
-										boxShadow: "none",
-										"&:before": { display: "none" },
-										"&.Mui-expanded": { margin: "0" },
-										backgroundColor: "transparent",
-									}}
-									disableGutters
-								>
-									<AccordionSummary
-										expandIcon={<ExpandMore />}
-										aria-controls={`${diskIdentifier}-content`}
-										id={`${diskIdentifier}-header`}
-										sx={{
-											"& .MuiAccordionSummary-content": {
-												alignItems: "flex-start",
-												width: "calc(100% - 32px)",
-											}, // Adjust width for expand icon
-											py: 0, // Remove padding if ListItem handles it
-										}}
-									>
-										<ListItem
-											sx={{ pl: 0, py: 1, width: "100%" }}
-											disablePadding
-											component="div"
-										>
-											<ListItemAvatar sx={{ pt: 1, cursor: "pointer" }}>
-												<Avatar
-													onClick={(e) => {
-														e.stopPropagation();
-														setSelected(disk);
-														setShowPreview(true);
-													}}
-												>
-													{renderDiskIcon(disk)}
-												</Avatar>
-											</ListItemAvatar>
-											<ListItemText
-												sx={{ cursor: "pointer", overflowWrap: "break-word" }}
-												primary={`Disk: ${disk.model?.toUpperCase() || `Disk ${diskIdx + 1}`}`}
-												disableTypography
-												secondary={
-													<Stack spacing={0.5} sx={{ pt: 0.5 }}>
-														<Typography variant="caption" component="div">
-															{`${disk.partitions?.length || 0} partition(s)`}
-														</Typography>
-														<Stack
-															direction="row"
-															spacing={1}
-															flexWrap="wrap"
-															alignItems="center"
-															sx={{ display: { xs: "none", sm: "flex" } }}
-														>
-															{disk.size != null && (
-																<Chip
-																	label={`Size: ${filesize(disk.size, { round: 1 })}`}
-																	size="small"
-																	variant="outlined"
-																/>
-															)}
-															{disk.vendor && (
-																<Chip
-																	label={`Vendor: ${disk.vendor}`}
-																	size="small"
-																	variant="outlined"
-																/>
-															)}
-															{disk.serial && (
-																<Chip
-																	label={`Serial: ${disk.serial}`}
-																	size="small"
-																	variant="outlined"
-																/>
-															)}
-															{disk.connection_bus && (
-																<Chip
-																	label={`Bus: ${disk.connection_bus}`}
-																	size="small"
-																	variant="outlined"
-																/>
-															)}
-															{disk.revision && (
-																<Chip
-																	label={`Rev: ${disk.revision}`}
-																	size="small"
-																	variant="outlined"
-																/>
-															)}
-														</Stack>
-													</Stack>
-												}
-											/>
-										</ListItem>
-									</AccordionSummary>
-									<AccordionDetails sx={{ p: 0 }}>
-										{/* Collapsible Section for Partitions */}
-										{disk.partitions && disk.partitions.length > 0 && (
-											<List
-												component="div"
-												disablePadding
-												dense={true}
-												sx={{ pl: 4 }}
-												data-tutor={`reactour__tab${TabIDs.VOLUMES}__step4`}
-											>
-												{filteredPartitions.map((partition, partIdx) => {
-													const partitionIdentifier =
-														partition.id || `${diskIdentifier}-part-${partIdx}`;
-													const isMounted =
-														partition.mount_point_data &&
-														partition.mount_point_data.length > 0 &&
-														partition.mount_point_data.some(
-															(mpd) => mpd.is_mounted,
-														);
-
-													const partitionNameDecoded = decodeEscapeSequence(
-														partition.name || "Unnamed Partition",
-													);
-
-													return (
-														<Fragment key={partitionIdentifier}>
-															<ListItemButton
-																sx={{ pl: 1, alignItems: "flex-start" }} // Align items top
-																data-tutor={`reactour__tab${TabIDs.VOLUMES}__step5`}
-															>
-																<ListItem
-																	disablePadding
-																	secondaryAction={
-																		<PartitionActions
-																			partition={partition}
-																			protected_mode={evdata?.hello?.protected_mode === true}
-																			onToggleAutomount={
-																				handleToggleAutomount
-																			}
-																			onMount={(p) => {
-																				setSelected(p);
-																				setShowMount(true);
-																			}}
-																			onViewSettings={(p) => {
-																				setSelected(p);
-																				setShowMountSettings(true);
-																			}}
-																			onUnmount={onSubmitUmountVolume}
-																			onCreateShare={handleCreateShare}
-																			onGoToShare={handleGoToShare}
-																		/>
-																	}
-																>
-																	<ListItemAvatar
-																		sx={{ minWidth: "auto", pr: 1.5, pt: 0.5 }}
-																	>
-																		{" "}
-																		{/* Align avatar */}
-																		<Avatar
-																			sx={{ width: 32, height: 32 }}
-																			onClick={() => {
-																				setSelected(partition);
-																				setShowPreview(true);
-																			}}
-																		>
-																			{renderPartitionIcon(partition)}
-																		</Avatar>
-																	</ListItemAvatar>
-																	<ListItemText
-																		primary={partitionNameDecoded}
-																		disableTypography
-																		secondary={
-																			<Stack
-																				spacing={1}
-																				direction="row"
-																				flexWrap="wrap"
-																				alignItems="center"
-																				sx={{
-																					pt: 0.5,
-																					display: {
-																						xs: "none",
-																						sm: "flex",
-																					},
-																				}}
-																			>
-																				{partition.size != null && (
-																					<Chip
-																						label={`Size: ${filesize(partition.size, { round: 0 })}`}
-																						size="small"
-																						variant="outlined"
-																					/>
-																				)}
-																				{partition.mount_point_data?.[0]
-																					?.fstype && (
-																						<Chip
-																							label={`Type: ${partition.mount_point_data[0].fstype}`}
-																							size="small"
-																							variant="outlined"
-																						/>
-																					)}
-																				{isMounted && partition.mount_point_data?.some(mp => mp.is_write_supported) && (
-																					<Chip
-																						label={`Mount: ${partition.mount_point_data?.filter(mp => mp.is_write_supported).map((mpd) => mpd.path).join(" ")}`}
-																						size="small"
-																						variant="outlined"
-																						color="success"
-																					/>
-																				)}
-																				{isMounted && partition.mount_point_data?.some(mp => !mp.is_write_supported) && (
-																					<Chip
-																						label={`RO Mount: ${partition.mount_point_data?.filter(mp => !mp.is_write_supported).map((mpd) => mpd.path).join(" ")}`}
-																						size="small"
-																						variant="outlined"
-																						color="secondary"
-																					/>
-																				)}
-																				{partition.host_mount_point_data &&
-																					partition.host_mount_point_data
-																						.length > 0 && (
-																						<Chip
-																							label={`Host: ${partition.host_mount_point_data.map((mpd) => mpd.path).join(" ")}`}
-																							size="small"
-																							variant="outlined"
-																						/>
-																					)}
-																				{partition.id && (
-																					<Chip
-																						label={`UUID: ${partition.id}`}
-																						size="small"
-																						variant="outlined"
-																					/>
-																				)}
-																				{partition.device && (
-																					<Chip
-																						label={`Dev: ${partition.device}`}
-																						size="small"
-																						variant="outlined"
-																					/>
-																				)}
-																			</Stack>
-																		}
-																	/>
-																</ListItem>
-															</ListItemButton>
-															{partIdx < filteredPartitions.length - 1 && (
-																<Divider
-																	variant="inset"
-																	component="li"
-																	sx={{ ml: 4 }}
-																/>
-															)}
-														</Fragment>
-													);
-												})}
-												{expandedAccordion === diskIdentifier &&
-													disk.partitions &&
-													disk.partitions.length > 0 &&
-													filteredPartitions.length === 0 &&
-													hideSystemPartitions && (
-														<ListItem dense sx={{ pl: 1 }}>
-															<ListItemText
-																secondary="System partitions are hidden."
-																slotProps={{
-																	secondary: {
-																		variant: "caption",
-																		fontStyle: "italic",
-																	},
-																}}
-															/>
-														</ListItem>
-													)}
-											</List>
-										)}
-									</AccordionDetails>
-								</Accordion>
-								<Divider /> {/* This Divider separates the Accordions */}
-							</Fragment>
-						);
-					})}
-			</List>
+					</Paper>
+				</Grid>
+			</Grid>
 		</>
 	);
 }

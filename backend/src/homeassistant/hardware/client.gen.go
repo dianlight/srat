@@ -28,6 +28,9 @@ type Attributes struct {
 	// IDBUS Bus identifier.
 	IDBUS *string `json:"ID_BUS,omitempty"`
 
+	// IDFSLABEL Label of the filesystem.
+	IDFSLABEL *string `json:"ID_FS_LABEL,omitempty"`
+
 	// IDFSLABELENC Encoded label of the filesystem.
 	IDFSLABELENC *string `json:"ID_FS_LABEL_ENC,omitempty"`
 
@@ -43,6 +46,9 @@ type Attributes struct {
 	// IDMODELENC Encoded model identifier.
 	IDMODELENC *string `json:"ID_MODEL_ENC,omitempty"`
 
+	// IDPARTENTRYNAME Partition entry name.
+	IDPARTENTRYNAME *string `json:"ID_PART_ENTRY_NAME,omitempty"`
+
 	// IDPARTENTRYNUMBER Partition entry number.
 	IDPARTENTRYNUMBER *string `json:"ID_PART_ENTRY_NUMBER,omitempty"`
 
@@ -57,9 +63,6 @@ type Attributes struct {
 
 	// IDTYPE Type of the attribute.
 	IDTYPE *string `json:"ID_TYPE,omitempty"`
-
-	// PARTNAME Partition Name
-	PARTNAME *string `json:"PARTNAME,omitempty"`
 
 	// SUBSYSTEM Subsystem of the attribute.
 	SUBSYSTEM            *string                `json:"SUBSYSTEM,omitempty"`
@@ -201,6 +204,14 @@ func (a *Attributes) UnmarshalJSON(b []byte) error {
 		delete(object, "ID_BUS")
 	}
 
+	if raw, found := object["ID_FS_LABEL"]; found {
+		err = json.Unmarshal(raw, &a.IDFSLABEL)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_FS_LABEL': %w", err)
+		}
+		delete(object, "ID_FS_LABEL")
+	}
+
 	if raw, found := object["ID_FS_LABEL_ENC"]; found {
 		err = json.Unmarshal(raw, &a.IDFSLABELENC)
 		if err != nil {
@@ -241,6 +252,14 @@ func (a *Attributes) UnmarshalJSON(b []byte) error {
 		delete(object, "ID_MODEL_ENC")
 	}
 
+	if raw, found := object["ID_PART_ENTRY_NAME"]; found {
+		err = json.Unmarshal(raw, &a.IDPARTENTRYNAME)
+		if err != nil {
+			return fmt.Errorf("error reading 'ID_PART_ENTRY_NAME': %w", err)
+		}
+		delete(object, "ID_PART_ENTRY_NAME")
+	}
+
 	if raw, found := object["ID_PART_ENTRY_NUMBER"]; found {
 		err = json.Unmarshal(raw, &a.IDPARTENTRYNUMBER)
 		if err != nil {
@@ -279,14 +298,6 @@ func (a *Attributes) UnmarshalJSON(b []byte) error {
 			return fmt.Errorf("error reading 'ID_TYPE': %w", err)
 		}
 		delete(object, "ID_TYPE")
-	}
-
-	if raw, found := object["PARTNAME"]; found {
-		err = json.Unmarshal(raw, &a.PARTNAME)
-		if err != nil {
-			return fmt.Errorf("error reading 'PARTNAME': %w", err)
-		}
-		delete(object, "PARTNAME")
 	}
 
 	if raw, found := object["SUBSYSTEM"]; found {
@@ -337,6 +348,13 @@ func (a Attributes) MarshalJSON() ([]byte, error) {
 		}
 	}
 
+	if a.IDFSLABEL != nil {
+		object["ID_FS_LABEL"], err = json.Marshal(a.IDFSLABEL)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_FS_LABEL': %w", err)
+		}
+	}
+
 	if a.IDFSLABELENC != nil {
 		object["ID_FS_LABEL_ENC"], err = json.Marshal(a.IDFSLABELENC)
 		if err != nil {
@@ -372,6 +390,13 @@ func (a Attributes) MarshalJSON() ([]byte, error) {
 		}
 	}
 
+	if a.IDPARTENTRYNAME != nil {
+		object["ID_PART_ENTRY_NAME"], err = json.Marshal(a.IDPARTENTRYNAME)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ID_PART_ENTRY_NAME': %w", err)
+		}
+	}
+
 	if a.IDPARTENTRYNUMBER != nil {
 		object["ID_PART_ENTRY_NUMBER"], err = json.Marshal(a.IDPARTENTRYNUMBER)
 		if err != nil {
@@ -404,13 +429,6 @@ func (a Attributes) MarshalJSON() ([]byte, error) {
 		object["ID_TYPE"], err = json.Marshal(a.IDTYPE)
 		if err != nil {
 			return nil, fmt.Errorf("error marshaling 'ID_TYPE': %w", err)
-		}
-	}
-
-	if a.PARTNAME != nil {
-		object["PARTNAME"], err = json.Marshal(a.PARTNAME)
-		if err != nil {
-			return nil, fmt.Errorf("error marshaling 'PARTNAME': %w", err)
 		}
 	}
 
