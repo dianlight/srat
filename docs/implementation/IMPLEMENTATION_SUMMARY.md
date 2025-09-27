@@ -1,7 +1,29 @@
 # SRAT Home Assistant Integration - Implementation Summary
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Overview](#overview)
+- [Files Created/Modified](#files-createdmodified)
+  - [New Files:](#new-files)
+  - [Modified Files:](#modified-files)
+- [Key Features Implemented](#key-features-implemented)
+  - [Entity Types Created:](#entity-types-created)
+  - [Integration Points:](#integration-points)
+  - [Core Functionality:](#core-functionality)
+- [Technical Implementation Details](#technical-implementation-details)
+  - [Dependency Injection:](#dependency-injection)
+  - [Broadcasting Architecture:](#broadcasting-architecture)
+  - [API Client Integration:](#api-client-integration)
+  - [Entity Management:](#entity-management)
+- [Configuration](#configuration)
+- [Testing](#testing)
+- [Error Handling](#error-handling)
+- [Performance Considerations](#performance-considerations)
+- [Future Enhancements](#future-enhancements)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Overview
 

@@ -4,8 +4,34 @@ This document contains development notes, useful packages, and technical referen
 
 ## Table of Contents
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Go Packages](#go-packages)
+  - [Home Assistant Integration](#home-assistant-integration)
+  - [System Monitoring & Hardware](#system-monitoring--hardware)
+- [File System Requirements](#file-system-requirements)
+  - [Minimal Size for Loopback Disks](#minimal-size-for-loopback-disks)
+- [Development Guidelines](#development-guidelines)
+  - [Code Organization](#code-organization)
+  - [API Development](#api-development)
+  - [Configuration Management](#configuration-management)
+- [Testing Guidelines](#testing-guidelines)
+  - [Test Structure](#test-structure)
+    - [Required Imports](#required-imports)
+    - [Test Suite Structure](#test-suite-structure)
+    - [Test Data Location](#test-data-location)
+  - [Mock Guidelines](#mock-guidelines)
+- [Project Structure Rules](#project-structure-rules)
+  - [Documentation Organization](#documentation-organization)
+  - [File Naming Conventions](#file-naming-conventions)
+  - [Import Organization](#import-organization)
+  - [Error Handling](#error-handling)
+- [Implementation Status](#implementation-status)
+- [Additional Resources](#additional-resources)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Go Packages
 

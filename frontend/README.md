@@ -1,7 +1,18 @@
 # srat-frontend
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Console Error Callback Registry](#console-error-callback-registry)
+  - [API](#api)
+  - [Behavior](#behavior)
+  - [Usage (Imperative)](#usage-imperative)
+  - [Usage (React Hook)](#usage-react-hook)
+  - [Frontend Component Organization Rules](#frontend-component-organization-rules)
+- [Test Setup Enforcement](#test-setup-enforcement)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 To install dependencies:
 

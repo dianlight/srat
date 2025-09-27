@@ -1,7 +1,24 @@
 # Home Assistant Integration
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Entities Created](#entities-created)
+  - [Volume Status Entity](#volume-status-entity)
+  - [Disk Entities](#disk-entities)
+  - [Partition Entities](#partition-entities)
+  - [Samba Status Entity](#samba-status-entity)
+  - [Samba Process Status Entity](#samba-process-status-entity)
+- [How It Works](#how-it-works)
+- [Configuration](#configuration)
+- [Usage Example](#usage-example)
+- [Example Home Assistant Dashboard](#example-home-assistant-dashboard)
+- [Troubleshooting](#troubleshooting)
+- [Limitations](#limitations)
+- [Entity IDs](#entity-ids)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 When SRAT has a configured Home Assistant Core API client, it will automatically create and update Home Assistant entities via the Core State API.
 

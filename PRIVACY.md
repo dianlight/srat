@@ -1,7 +1,35 @@
 # Privacy Policy
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Overview](#overview)
+- [Data Collection](#data-collection)
+  - [Telemetry and Error Reporting](#telemetry-and-error-reporting)
+  - [What Data We Collect](#what-data-we-collect)
+    - [Error Information (Errors and All modes)](#error-information-errors-and-all-modes)
+    - [Usage Analytics (All mode only)](#usage-analytics-all-mode-only)
+  - [What Data We DO NOT Collect](#what-data-we-do-not-collect)
+- [How We Use Your Data](#how-we-use-your-data)
+- [Data Transmission and Storage](#data-transmission-and-storage)
+- [Your Control and Choices](#your-control-and-choices)
+  - [Telemetry Configuration](#telemetry-configuration)
+  - [Data Subject Rights](#data-subject-rights)
+- [Third-Party Services](#third-party-services)
+  - [Rollbar](#rollbar)
+- [Technical Implementation](#technical-implementation)
+  - [Data Security](#data-security)
+  - [Internet Connectivity](#internet-connectivity)
+- [Children's Privacy](#childrens-privacy)
+- [Changes to This Privacy Policy](#changes-to-this-privacy-policy)
+- [Data Retention](#data-retention)
+- [Geographic Considerations](#geographic-considerations)
+- [Contact Information](#contact-information)
+- [Compliance](#compliance)
+- [Summary](#summary)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 **Effective Date:** August 6, 2025
 **Last Updated:** August 6, 2025

@@ -1,7 +1,19 @@
 # TLog Package Examples
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Files](#files)
+- [Running the Examples](#running-the-examples)
+  - [Main Demonstration Program](#main-demonstration-program)
+  - [Example Tests](#example-tests)
+  - [Logger Demo Functions](#logger-demo-functions)
+- [Building](#building)
+- [Dependencies](#dependencies)
+- [Features Demonstrated](#features-demonstrated)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 This directory contains examples demonstrating how to use the `tlog` package.
 

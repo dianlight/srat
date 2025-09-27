@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Changelog](#changelog)
+  - [&#91; 🚧 Unreleased &#93;](#--unreleased-)
+    - [✨ Features](#-features)
+    - [🐛 Bug Fixes](#-bug-fixes)
+    - [🏗 Chore](#-chore)
+      - [**🚧 Work in progress**](#-work-in-progress)
+  - [2025.06.1-dev.801 &#91; 🧪 Pre-release &#93;](#2025061-dev801---pre-release-)
+    - [✨ Features](#-features-1)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Changelog
 
 ## [ 🚧 Unreleased ]

@@ -1,3 +1,25 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Agents](#agents)
+  - [Coding Agents](#coding-agents)
+    - [GitHub Copilot](#github-copilot)
+    - [Pre-commit Hooks](#pre-commit-hooks)
+    - [Build Agents](#build-agents)
+  - [Service Agents](#service-agents)
+    - [Backend Services](#backend-services)
+    - [Frontend Agents](#frontend-agents)
+  - [Development Workflow Agents](#development-workflow-agents)
+    - [Testing Agents](#testing-agents)
+    - [Documentation Agents](#documentation-agents)
+  - [Deployment Agents](#deployment-agents)
+    - [Home Assistant Integration](#home-assistant-integration)
+  - [Security Agents](#security-agents)
+  - [Monitoring and Telemetry](#monitoring-and-telemetry)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Agents
 
 This document provides an overview of the agents and automated systems used in the SRAT project development and operation.

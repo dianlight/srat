@@ -1,7 +1,46 @@
 # Bun as Node.js Alternative - Enhancement Summary
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Overview](#overview)
+- [Key Changes](#key-changes)
+  - [1. Runtime Detection Logic](#1-runtime-detection-logic)
+- [Before](#before)
+- [After](#after)
+- [2. Enhanced Dependency Checking](#2-enhanced-dependency-checking)
+  - [`make docs-check`](#make-docs-check)
+    - [Example Output](#example-output)
+  - [3. Updated Help and Documentation](#3-updated-help-and-documentation)
+    - [Script Help (`--help`)](#script-help---help)
+    - [Make Help (`make docs-help`)](#make-help-make-docs-help)
+- [Benefits](#benefits)
+  - [1. Simplified Dependencies](#1-simplified-dependencies)
+  - [2. Performance Improvements](#2-performance-improvements)
+  - [3. Developer Experience](#3-developer-experience)
+  - [4. Project Alignment](#4-project-alignment)
+- [Compatibility Matrix](#compatibility-matrix)
+- [Real-World Scenarios](#real-world-scenarios)
+  - [Scenario 1: New Developer Setup](#scenario-1-new-developer-setup)
+  - [Scenario 2: Existing Node.js Environment](#scenario-2-existing-nodejs-environment)
+  - [Scenario 3: Mixed Environment](#scenario-3-mixed-environment)
+- [Implementation Details](#implementation-details)
+  - [Detection Priority](#detection-priority)
+  - [Variable Tracking](#variable-tracking)
+  - [Error Handling](#error-handling)
+- [Testing Results](#testing-results)
+  - [Environment: bun-only](#environment-bun-only)
+  - [Environment: Node.js + npm](#environment-nodejs--npm)
+- [Future Considerations](#future-considerations)
+  - [Potential Enhancements](#potential-enhancements)
+  - [Migration Path](#migration-path)
+- [Documentation Updates](#documentation-updates)
+  - [Files Updated](#files-updated)
+  - [New Documentation](#new-documentation)
+- [Conclusion](#conclusion)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Overview
 

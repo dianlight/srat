@@ -1,7 +1,37 @@
 # Enhanced Bun Compatibility - Make Targets Update
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Summary](#summary)
+- [New Make Targets](#new-make-targets)
+  - [`make docs-check`](#make-docs-check)
+  - [`make docs-help`](#make-docs-help)
+  - [Enhanced Existing Targets](#enhanced-existing-targets)
+    - [`make docs-validate`](#make-docs-validate)
+    - [`make docs-fix`](#make-docs-fix)
+    - [`make docs-install`](#make-docs-install)
+- [Updated Documentation](#updated-documentation)
+  - [README.md Development Section](#readmemd-development-section)
+  - [Documentation Guidelines](#documentation-guidelines)
+  - [Setup Summary Document](#setup-summary-document)
+  - [BUN Compatibility Document](#bun-compatibility-document)
+- [Workflow Improvements](#workflow-improvements)
+  - [Developer Experience](#developer-experience)
+- [Error Handling](#error-handling)
+  - [Package Manager Integration](#package-manager-integration)
+- [Testing Results](#testing-results)
+  - [`make docs-check`](#make-docs-check-1)
+- [Benefits](#benefits)
+  - [User Experience](#user-experience)
+  - [Developer Productivity](#developer-productivity)
+  - [CI/CD Integration](#cicd-integration)
+  - [Project Consistency](#project-consistency)
+- [Implementation Details](#implementation-details)
+  - [Make Target Structure](#make-target-structure)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Summary
 

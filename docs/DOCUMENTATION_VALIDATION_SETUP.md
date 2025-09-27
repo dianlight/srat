@@ -1,7 +1,42 @@
 # Documentation Validation Setup - Implementation Summary
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [🎯 What Was Created](#-what-was-created)
+  - [1. GitHub Copilot Rules (`.github/copilot-rules.md`)](#1-github-copilot-rules-githubcopilot-rulesmd)
+  - [2. Documentation Validation Workflow (`.github/workflows/documentation.yml`)](#2-documentation-validation-workflow-githubworkflowsdocumentationyml)
+  - [3. Pre-commit Hooks Configuration (Updated `.pre-commit-config.yaml`)](#3-pre-commit-hooks-configuration-updated-pre-commit-configyaml)
+  - [4. Configuration Files](#4-configuration-files)
+  - [5. Validation Script (`scripts/validate-docs.sh`)](#5-validation-script-scriptsvalidate-docssh)
+  - [6. Makefile Targets (Updated `Makefile`)](#6-makefile-targets-updated-makefile)
+  - [7. GitHub Templates](#7-github-templates)
+  - [8. Documentation Guidelines (`docs/DOCUMENTATION_GUIDELINES.md`)](#8-documentation-guidelines-docsdocumentation_guidelinesmd)
+- [🚀 How to Use](#-how-to-use)
+  - [For Developers](#for-developers)
+  - [For Maintainers](#for-maintainers)
+  - [For GitHub Copilot](#for-github-copilot)
+- [🎨 Features and Benefits](#-features-and-benefits)
+  - [Automated Quality Assurance](#automated-quality-assurance)
+  - [Developer Experience](#developer-experience)
+  - [Maintainer Benefits](#maintainer-benefits)
+  - [Project Quality](#project-quality)
+- [📊 Validation Checks](#-validation-checks)
+  - [Automated Checks](#automated-checks)
+  - [Manual Review Points](#manual-review-points)
+- [🔧 Customization](#-customization)
+  - [Adding New Validation Rules](#adding-new-validation-rules)
+  - [Configuring Tools](#configuring-tools)
+  - [Project-Specific Rules](#project-specific-rules)
+- [🎯 Next Steps](#-next-steps)
+  - [Immediate Actions](#immediate-actions)
+  - [Future Enhancements](#future-enhancements)
+  - [Monitoring and Maintenance](#monitoring-and-maintenance)
+- [📚 Resources and References](#-resources-and-references)
+- [🤝 Contributing](#-contributing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 This document summarizes the comprehensive documentation validation system implemented for the SRAT project.
 

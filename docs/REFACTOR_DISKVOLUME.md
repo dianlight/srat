@@ -1,7 +1,21 @@
 # REFACTOR_VOLUME_CONTROL.md
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Overview](#overview)
+- [Key Changes](#key-changes)
+  - [1. Device Field Standardization](#1-device-field-standardization)
+  - [2. Removal of lsblk Package](#2-removal-of-lsblk-package)
+  - [3. Volume Service Refactoring](#3-volume-service-refactoring)
+  - [4. Hardware Service Enhancements](#4-hardware-service-enhancements)
+  - [5. Database Schema Changes](#5-database-schema-changes)
+  - [6. Frontend Updates](#6-frontend-updates)
+  - [7. Service Layer Changes](#7-service-layer-changes)
+- [Migration](#migration)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Overview
 

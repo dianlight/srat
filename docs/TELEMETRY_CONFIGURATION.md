@@ -1,7 +1,38 @@
 # Telemetry Configuration Guide
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Overview](#overview)
+- [Environment Variables](#environment-variables)
+  - [Backend (Go)](#backend-go)
+  - [Frontend (TypeScript)](#frontend-typescript)
+- [Version Management](#version-management)
+  - [Backend](#backend)
+  - [Frontend](#frontend)
+- [Environment Detection](#environment-detection)
+  - [Automatic Environment Detection](#automatic-environment-detection)
+  - [Manual Override](#manual-override)
+- [Build-time Configuration](#build-time-configuration)
+  - [Local Development](#local-development)
+  - [CI/CD (GitHub Actions)](#cicd-github-actions)
+  - [Docker Builds](#docker-builds)
+- [Token Types](#token-types)
+  - [Unified Rollbar Token](#unified-rollbar-token)
+- [Security Considerations](#security-considerations)
+- [Fallback Behavior](#fallback-behavior)
+- [Testing Configuration](#testing-configuration)
+- [Example Configurations](#example-configurations)
+  - [Development Setup](#development-setup)
+  - [Production CI/CD](#production-cicd)
+  - [Staging Environment](#staging-environment)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+  - [Debug Steps](#debug-steps)
+- [Frontend integration notes](#frontend-integration-notes)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 This document explains how to configure Rollbar telemetry tokens, environment, and version information for the SRAT project at build time.
 

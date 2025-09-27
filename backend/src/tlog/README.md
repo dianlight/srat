@@ -1,7 +1,56 @@
 # TLog Package
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Features](#features)
+- [Log Levels](#log-levels)
+- [Basic Usage](#basic-usage)
+  - [Simple Logging](#simple-logging)
+  - [Context-Aware Logging](#context-aware-logging)
+- [Level Management](#level-management)
+  - [Setting Log Levels](#setting-log-levels)
+  - [Getting Current Level](#getting-current-level)
+  - [Supported Level Strings](#supported-level-strings)
+- [Advanced Usage](#advanced-usage)
+  - [Event Callbacks](#event-callbacks)
+    - [Registering Callbacks](#registering-callbacks)
+    - [LogEvent Structure](#logevent-structure)
+    - [Managing Callbacks](#managing-callbacks)
+    - [Callback Safety Features](#callback-safety-features)
+    - [Example: Monitoring Integration](#example-monitoring-integration)
+    - [Graceful Shutdown](#graceful-shutdown)
+  - [Custom Logger Instances](#custom-logger-instances)
+  - [Error Handling](#error-handling)
+- [Thread Safety](#thread-safety)
+- [Configuration](#configuration)
+- [Best Practices](#best-practices)
+- [Migration from Previous Version](#migration-from-previous-version)
+- [API Reference](#api-reference)
+  - [Callback Functions](#callback-functions)
+  - [LogCallback Type](#logcallback-type)
+- [Enhanced Formatting & Colors](#enhanced-formatting--colors)
+  - [Formatter Configuration](#formatter-configuration)
+    - [FormatterConfig Structure](#formatterconfig-structure)
+    - [Configuration Functions](#configuration-functions)
+  - [Advanced Formatters](#advanced-formatters)
+    - [Built-in Formatters](#built-in-formatters)
+  - [Color-Enhanced Printing](#color-enhanced-printing)
+  - [Enhanced Context Support](#enhanced-context-support)
+  - [Sensitive Data Protection](#sensitive-data-protection)
+  - [Enhanced Error Formatting](#enhanced-error-formatting)
+  - [Tozd Error Formatting with Tree Stack Traces](#tozd-error-formatting-with-tree-stack-traces)
+    - [Example Usage](#example-usage)
+    - [Output Examples](#output-examples)
+    - [Features](#features-1)
+  - [Time Format Options](#time-format-options)
+  - [Color Levels](#color-levels)
+- [Enhanced Logger Creation](#enhanced-logger-creation)
+  - [Logger with Custom Configuration](#logger-with-custom-configuration)
+  - [Logger Methods](#logger-methods)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 The `tlog` package provides an enhanced logging system built on top of Go's `log/slog` package with additional custom log levels and improved functionality.
 

@@ -1,7 +1,28 @@
 # Migration to @rollbar/react
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Overview](#overview)
+- [Changes Made](#changes-made)
+  - [1. Package Updates](#1-package-updates)
+  - [2. Service Layer Changes](#2-service-layer-changes)
+  - [3. New Hook Implementation](#3-new-hook-implementation)
+  - [4. Error Boundary Updates](#4-error-boundary-updates)
+  - [5. App-Level Integration](#5-app-level-integration)
+  - [6. Hook Updates](#6-hook-updates)
+- [Benefits](#benefits)
+- [Usage Examples](#usage-examples)
+  - [Basic Error Reporting](#basic-error-reporting)
+  - [Using Rollbar Directly](#using-rollbar-directly)
+- [Configuration](#configuration)
+- [Telemetry Modes](#telemetry-modes)
+- [Migration Verification](#migration-verification)
+- [Breaking Changes](#breaking-changes)
+- [Future Enhancements](#future-enhancements)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 This document outlines the migration from the regular `rollbar` package to `@rollbar/react` in the SRAT frontend.
 

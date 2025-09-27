@@ -1,7 +1,41 @@
 # Bun Compatibility for Documentation Validation
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Summary](#summary)
+- [Changes Made](#changes-made)
+  - [1. Updated Validation Script (`scripts/validate-docs.sh`)](#1-updated-validation-script-scriptsvalidate-docssh)
+    - [Dependency Detection](#dependency-detection)
+    - [Package Installation](#package-installation)
+    - [Auto-fix Feature](#auto-fix-feature)
+    - [Help Documentation](#help-documentation)
+  - [2. Updated Makefile (`Makefile`)](#2-updated-makefile-makefile)
+    - [`docs-install` Target](#docs-install-target)
+    - [Additional Documentation Targets](#additional-documentation-targets)
+  - [3. Updated GitHub Workflow (`.github/workflows/documentation.yml`)](#3-updated-github-workflow-githubworkflowsdocumentationyml)
+    - [Package Manager Setup](#package-manager-setup)
+  - [4. Updated Documentation](#4-updated-documentation)
+    - [Documentation Guidelines (`docs/DOCUMENTATION_GUIDELINES.md`)](#documentation-guidelines-docsdocumentation_guidelinesmd)
+    - [Setup Summary (`docs/DOCUMENTATION_VALIDATION_SETUP.md`)](#setup-summary-docsdocumentation_validation_setupmd)
+- [Benefits](#benefits)
+  - [Performance](#performance)
+  - [Developer Experience](#developer-experience)
+  - [CI/CD Improvements](#cicd-improvements)
+- [Usage Examples](#usage-examples)
+  - [Local Development](#local-development)
+  - [Manual Package Manager Selection](#manual-package-manager-selection)
+- [Compatibility Matrix](#compatibility-matrix)
+- [Implementation Details](#implementation-details)
+  - [Detection Logic](#detection-logic)
+  - [Installation Strategy](#installation-strategy)
+  - [GitHub Actions Integration](#github-actions-integration)
+- [Future Considerations](#future-considerations)
+  - [Potential Enhancements](#potential-enhancements)
+  - [Monitoring Points](#monitoring-points)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Summary
 

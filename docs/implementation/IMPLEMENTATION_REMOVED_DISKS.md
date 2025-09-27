@@ -1,7 +1,20 @@
 # Summary of Implementation: Handle Removed Disks Feature
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Summary of Implementation: Handle Removed Disks Feature](#summary-of-implementation-handle-removed-disks-feature)
+  - [Key Features:](#key-features)
+  - [Implementation Details:](#implementation-details)
+    - [New Method: `HandleRemovedDisks`](#new-method-handleremoveddisks)
+    - [How It Works:](#how-it-works)
+    - [Error Handling:](#error-handling)
+    - [Safety Features:](#safety-features)
+  - [Usage:](#usage)
+  - [Benefits:](#benefits)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Summary of Implementation: Handle Removed Disks Feature
 

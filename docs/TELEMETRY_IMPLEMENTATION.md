@@ -1,7 +1,34 @@
 # Rollbar Telemetry Implementation
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Backend Environment Variables](#backend-environment-variables)
+- [Overview](#overview)
+- [Features Implemented](#features-implemented)
+  - [Backend (Go)](#backend-go)
+  - [Frontend (React/TypeScript)](#frontend-reacttypescript)
+    - [Frontend usage examples](#frontend-usage-examples)
+- [User Experience](#user-experience)
+  - [First Launch](#first-launch)
+  - [Settings Page](#settings-page)
+  - [Error Handling](#error-handling)
+- [Configuration](#configuration)
+  - [Backend Environment Variables](#backend-environment-variables-1)
+  - [Frontend Configuration](#frontend-configuration)
+- [Privacy Compliance](#privacy-compliance)
+- [Migration Path](#migration-path)
+- [Security Considerations](#security-considerations)
+- [Dependencies Added](#dependencies-added)
+  - [Backend](#backend)
+  - [Frontend](#frontend)
+- [Files Created/Modified](#files-createdmodified)
+  - [Backend](#backend-1)
+  - [Frontend](#frontend-1)
+- [Testing](#testing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 This document describes the implementation of Rollbar telemetry and error reporting with configurable privacy modes.
 

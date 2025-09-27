@@ -1,7 +1,15 @@
 # Implementation Documentation
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Available Documents](#available-documents)
+- [Purpose](#purpose)
+- [Contributing](#contributing)
+- [Related Documentation](#related-documentation)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 This directory contains detailed implementation documentation for the SRAT project.
 

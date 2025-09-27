@@ -1,7 +1,21 @@
 # Documentation Guidelines for SRAT Project
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Overview](#overview)
+- [Documentation Structure](#documentation-structure)
+  - [Core Documentation Files](#core-documentation-files)
+  - [Documentation Standards](#documentation-standards)
+    - [Formatting Requirements](#formatting-requirements)
+    - [Content Requirements](#content-requirements)
+    - [Style Guidelines](#style-guidelines)
+- [Validation Tools](#validation-tools)
+  - [Automated Checks](#automated-checks)
+  - [Running Validation Locally](#running-validation-locally)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 This document provides guidelines for contributing to and maintaining documentation in the SRAT project.
 

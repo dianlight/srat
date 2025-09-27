@@ -1,7 +1,36 @@
 # Implementation: Persistent Notifications for Automount Partitions
 
-<!-- START doctoc -->
-<!-- END doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Overview](#overview)
+- [Features Implemented](#features-implemented)
+  - [1. **Automount Failure Notifications**](#1-automount-failure-notifications)
+  - [2. **Unmounted Partition Notifications**](#2-unmounted-partition-notifications)
+  - [3. **Automatic Notification Management**](#3-automatic-notification-management)
+- [Technical Implementation](#technical-implementation)
+  - [Modified Files](#modified-files)
+    - [1. **Home Assistant Core API** (`backend/src/homeassistant/core_api.yaml`)](#1-home-assistant-core-api-backendsrchomeassistantcore_apiyaml)
+    - [2. **Home Assistant Service** (`backend/src/service/homeassistant_service.go`)](#2-home-assistant-service-backendsrcservicehomeassistant_servicego)
+    - [3. **Volume Service** (`backend/src/service/volume_service.go`)](#3-volume-service-backendsrcservicevolume_servicego)
+    - [4. **CLI Application** (`backend/src/cmd/srat-cli/main-cli.go`)](#4-cli-application-backendsrccmdsrat-climain-cligo)
+  - [Notification Types](#notification-types)
+    - [Automount Failure Notifications](#automount-failure-notifications)
+    - [Unmounted Partition Notifications](#unmounted-partition-notifications)
+  - [Workflow Integration](#workflow-integration)
+    - [During System Startup](#during-system-startup)
+    - [During Regular Operation](#during-regular-operation)
+    - [When Devices Are Removed](#when-devices-are-removed)
+- [Usage Examples](#usage-examples)
+  - [Home Assistant Notifications](#home-assistant-notifications)
+  - [API Integration](#api-integration)
+- [Benefits](#benefits)
+- [Configuration](#configuration)
+- [Error Handling](#error-handling)
+- [Future Enhancements](#future-enhancements)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Overview
 
