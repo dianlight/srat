@@ -1,0 +1,149 @@
+name: Lock and clean up closed issues
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # daily at 00:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write           # for deleting branches
+  issues: write             # for commenting/locking issues
+  pull-requests: write      # list PRs, etc.
+
+concurrency:
+  group: lock-threads
+
+jobs:
+  prelock-housekeeping:
+    name: Pre-lock housekeeping
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gather inactive closed issues (15+ days) and clean related branches
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Find closed issues updated before 15 days ago and not locked
+            // We use the search API for performance and parity with lock-threads
+            const fifteenDaysAgo = new Date(Date.now() - 15*24*60*60*1000).toISOString().split('T')[0];
+            const q = `repo:${owner}/${repo} is:issue is:closed is:unlocked updated:<${fifteenDaysAgo}`;
+
+            /**
+             * Iterate through search results with pagination
+             */
+            const issues = [];
+            for await (const res of github.paginate.iterator(github.rest.search.issuesAndPullRequests, { q, per_page: 50 })) {
+              for (const item of res.data) {
+                // Ensure it's an issue (not PR) and belongs to this repo
+                if (!item.pull_request) {
+                  issues.push(item);
+                }
+              }
+            }
+
+            core.info(`Found ${issues.length} closed, inactive issues to review for branch cleanup.`);
+
+            // Utility: comment helper
+            async function ensureComment(issue_number, body) {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+            // For each issue, find linked PRs via timeline events and issue body references
+            for (const issue of issues) {
+              const issue_number = issue.number;
+              let linkedPRs = [];
+
+              // 1) Use timeline events to find cross-referenced PRs
+              try {
+                const timeline = await github.paginate(github.rest.issues.listEventsForTimeline, {
+                  owner,
+                  repo,
+                  issue_number,
+                  per_page: 100,
+                  mediaType: { previews: ['mockingbird'] },
+                });
+                for (const ev of timeline) {
+                  // Types that may reference a PR: cross-referenced, referenced, closed_by
+                  if (ev.event === 'cross-referenced' && ev.source && ev.source.issue && ev.source.issue.pull_request) {
+                    linkedPRs.push(ev.source.issue.number);
+                  }
+                  if (ev.event === 'closed' && ev.commit_id == null && ev.actor) {
+                    // skip, not a PR link
+                  }
+                }
+              } catch (e) {
+                core.warning(`timeline fetch failed for #${issue_number}: ${e.message}`);
+              }
+
+              // 2) Heuristic: parse body for #123 patterns
+              const body = issue.body || '';
+              const prNums = [...body.matchAll(/#(\d+)/g)].map(m => Number(m[1]))
+                .filter(n => Number.isInteger(n));
+              for (const n of prNums) {
+                try {
+                  const pr = await github.rest.pulls.get({ owner, repo, pull_number: n });
+                  if (pr && pr.data) linkedPRs.push(n);
+                } catch (_) { /* ignore */ }
+              }
+
+              // De-duplicate
+              linkedPRs = Array.from(new Set(linkedPRs));
+
+              if (linkedPRs.length === 0) {
+                core.info(`#${issue_number}: no linked PRs found.`);
+                continue;
+              }
+
+              // For each linked PR, if merged and head repo is same, try to delete the branch. If not merged, comment refs.
+              const comments = [];
+              for (const prNumber of linkedPRs) {
+                try {
+                  const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+                  const refInfo = `PR #${pr.number} (${pr.state}${pr.merged_at ? ', merged' : ''}) from ${pr.head?.label || pr.head?.ref}`;
+
+                  if (pr.merged_at && pr.head && pr.head.repo && pr.head.repo.full_name === `${owner}/${repo}`) {
+                    const branch = pr.head.ref;
+                    // Don't try to delete default branch
+                    const { data: repoInfo } = await github.rest.repos.get({ owner, repo });
+                    if (branch && branch !== repoInfo.default_branch) {
+                      try {
+                        await github.rest.git.deleteRef({ owner, repo, ref: `heads/${branch}` });
+                        comments.push(`- Deleted merged branch '${branch}' linked via ${refInfo}`);
+                      } catch (err) {
+                        comments.push(`- Could not delete branch '${branch}' linked via ${refInfo}: ${err.message}`);
+                      }
+                    } else {
+                      comments.push(`- Skipped deleting default branch linked via ${refInfo}`);
+                    }
+                  } else {
+                    // Not merged or from fork; leave a note
+                    const branchLabel = pr.head?.label || pr.head?.ref || 'unknown';
+                    comments.push(`- Linked ${refInfo} (no branch deletion)`);
+                  }
+                } catch (err) {
+                  core.warning(`#${issue_number}: failed to inspect PR #${prNumber}: ${err.message}`);
+                }
+              }
+
+              if (comments.length > 0) {
+                await ensureComment(issue_number, `Automated housekeeping prior to locking:\n${comments.join('\n')}`);
+              }
+            }
+
+  lock-threads:
+    name: Lock closed inactive issues
+    needs: prelock-housekeeping
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dessant/lock-threads@v5
+        with:
+          github-token: ${{ github.token }}
+          issue-inactive-days: '15'
+          process-only: 'issues'
+          issue-lock-reason: 'resolved'
+          # Keep comment minimal to avoid duplicate messaging from housekeeping
+          issue-comment: >
+            Locking as there has been no activity for 15 days after closure. If you have a follow-up, please open a new issue and reference this one.
