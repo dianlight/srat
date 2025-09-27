@@ -1,5 +1,8 @@
 # Implementation: Persistent Notifications for Automount Partitions
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 ## Overview
 
 This implementation adds persistent notifications through Home Assistant's `/api/services/` endpoint to notify users about unmounted partitions or errors when mounting partitions on startup that are marked for automount.

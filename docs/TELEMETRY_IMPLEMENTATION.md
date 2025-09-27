@@ -1,5 +1,8 @@
 # Rollbar Telemetry Implementation
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 This document describes the implementation of Rollbar telemetry and error reporting with configurable privacy modes.
 
 ## Backend Environment Variables

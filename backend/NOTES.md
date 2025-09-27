@@ -1,14 +1,13 @@
 # Backend Development Notes
 
+
 This document contains development notes, useful packages, and technical references for the SRAT backend development.
 
 ## Table of Contents
 
-- [Go Packages](#go-packages)
-- [File System Requirements](#file-system-requirements)
-- [Development Guidelines](#development-guidelines)
-- [Testing Guidelines](#testing-guidelines)
-- [Project Structure Rules](#project-structure-rules)
+
+<!-- START doctoc -->
+<!-- END doctoc -->
 
 ## Go Packages
 

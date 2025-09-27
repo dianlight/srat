@@ -1,5 +1,8 @@
 # TLog Package - Logger Struct Usage
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 The tlog package now includes a `Logger` struct that wraps `*slog.Logger` with additional tlog functionality.
 
 ## Basic Usage

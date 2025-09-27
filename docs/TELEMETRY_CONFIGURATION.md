@@ -1,5 +1,8 @@
 # Telemetry Configuration Guide
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 This document explains how to configure Rollbar telemetry tokens, environment, and version information for the SRAT project at build time.
 
 ## Overview

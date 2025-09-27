@@ -1,5 +1,8 @@
 # Backend
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 ## Security scanning
 
 Run gosec to scan the backend codebase:

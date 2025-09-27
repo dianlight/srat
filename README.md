@@ -11,6 +11,10 @@ SRAT (SambaNAS REST Administration Tool) is a new system designed to provide a s
 
 Currently under development and in an alpha state, SRAT is set to become the preferred system for configuring and using this addon, eventually "retiring" the YAML configuration.
 
+
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 ## Key Features
 
 - **Modern Web UI**: React-based frontend with TypeScript support

@@ -1,5 +1,8 @@
 # Home Assistant Integration
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 When SRAT has a configured Home Assistant Core API client, it will automatically create and update Home Assistant entities via the Core State API.
 
 ## Entities Created

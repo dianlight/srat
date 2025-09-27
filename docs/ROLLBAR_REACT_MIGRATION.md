@@ -1,5 +1,8 @@
 # Migration to @rollbar/react
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 This document outlines the migration from the regular `rollbar` package to `@rollbar/react` in the SRAT frontend.
 
 ## Overview

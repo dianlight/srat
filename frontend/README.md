@@ -1,5 +1,8 @@
 # srat-frontend
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 To install dependencies:
 
 ```bash

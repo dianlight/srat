@@ -1,5 +1,8 @@
 # Documentation Guidelines for SRAT Project
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 This document provides guidelines for contributing to and maintaining documentation in the SRAT project.
 
 ## Overview

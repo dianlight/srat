@@ -1,5 +1,8 @@
 # REFACTOR_VOLUME_CONTROL.md
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 ## Overview
 
 This refactor modernizes the disk volume handling in SRAT by replacing the custom `lsblk` package with standard system utilities and improving device identification. The main goals are to:

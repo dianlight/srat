@@ -1,6 +1,7 @@
 # Bun as Node.js Alternative - Enhancement Summary
 
-[[*TOC*]]
+<!-- START doctoc -->
+<!-- END doctoc -->
 
 ## Overview
 

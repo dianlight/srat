@@ -1,5 +1,8 @@
 # Bun Compatibility for Documentation Validation
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 ## Summary
 
 Added comprehensive bun support to the documentation validation system, making it compatible with both bun and npm package managers. **Enhanced to support bun as a complete Node.js replacement**, allowing developers to use bun as both JavaScript runtime and package manager.

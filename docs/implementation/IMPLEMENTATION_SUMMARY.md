@@ -1,5 +1,8 @@
 # SRAT Home Assistant Integration - Implementation Summary
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 ## Overview
 
 This implementation adds automatic Home Assistant integration to SRAT when a Home Assistant Core API client is configured. The system creates and updates Home Assistant entities via the Core State API for disk management, partition status, and Samba service monitoring.

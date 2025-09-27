@@ -1,5 +1,8 @@
 # Enhanced Bun Compatibility - Make Targets Update
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 ## Summary
 
 Enhanced the documentation validation system with improved `make` targets that fully support bun package manager detection and provide better user experience.

@@ -1,5 +1,8 @@
 # Documentation Validation Setup - Implementation Summary
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 This document summarizes the comprehensive documentation validation system implemented for the SRAT project.
 
 ## 🎯 What Was Created

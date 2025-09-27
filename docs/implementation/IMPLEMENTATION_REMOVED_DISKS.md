@@ -1,5 +1,8 @@
 # Summary of Implementation: Handle Removed Disks Feature
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 ## Summary of Implementation: Handle Removed Disks Feature
 
 I have successfully implemented the functionality to handle mounted disks that are physically removed from the system. Here's what the implementation does:

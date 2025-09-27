@@ -1,5 +1,8 @@
 # TLog Package Examples
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 This directory contains examples demonstrating how to use the `tlog` package.
 
 ## Files

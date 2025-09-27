@@ -1,5 +1,8 @@
 # PPROF USE DOCUMENTATION
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 ## Build with pprof
 
 Using build tags pprof the srat-server also expose standard pprof endpoints

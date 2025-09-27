@@ -2,32 +2,10 @@
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Key Enhancements](#key-enhancements)
-  - [Enhanced Formatting with samber/slog-formatter](#1-enhanced-formatting-with-samberslog-formatter)
-  - [Comprehensive Color Support](#2-comprehensive-color-support)
-  - [Advanced Configuration System](#3-advanced-configuration-system)
-  - [New Public API Functions](#4-new-public-api-functions)
-    - [Configuration Functions](#configuration-functions)
-    - [Color Printing Functions](#color-printing-functions)
-  - [Enhanced Logger Creation](#5-enhanced-logger-creation)
-- [Technical Implementation Details](#technical-implementation-details)
-  - [Libraries Used](#libraries-used)
-  - [Architecture Improvements](#architecture-improvements)
-  - [Terminal Detection Logic](#terminal-detection-logic)
-- [Security Features](#security-features)
-  - [Sensitive Data Protection](#sensitive-data-protection)
-- [Performance Considerations](#performance-considerations)
-- [Testing Coverage](#testing-coverage)
-  - [New Test Coverage Added](#new-test-coverage-added)
-- [Example Usage](#example-usage)
-  - [Basic Enhanced Logging](#basic-enhanced-logging)
-  - [Custom Configuration](#custom-configuration)
-- [Migration Guide](#migration-guide)
-  - [For Existing Users](#for-existing-users)
-  - [To Enable New Features](#to-enable-new-features)
-- [Future Extensibility](#future-extensibility)
-- [Conclusion](#conclusion)
+
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 
 ## Overview
 

@@ -32,11 +32,28 @@ on:
     - cron: '0 8 * * 1'
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
+  generate-toc:
+    runs-on: ubuntu-latest
+    name: Generate Table of Contents
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate TOC for Markdown files
+        uses: technote-space/toc-generator@v4
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PATHS: '**/*.md'
+
   docs-validate:
+    needs: generate-toc
     runs-on: ubuntu-latest
     name: Documentation Validation
     steps:

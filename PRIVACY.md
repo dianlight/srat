@@ -1,5 +1,8 @@
 # Privacy Policy
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 **Effective Date:** August 6, 2025
 **Last Updated:** August 6, 2025
 

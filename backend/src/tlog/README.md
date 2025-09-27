@@ -1,5 +1,8 @@
 # TLog Package
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 The `tlog` package provides an enhanced logging system built on top of Go's `log/slog` package with additional custom log levels and improved functionality.
 
 ## Features

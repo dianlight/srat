@@ -1,5 +1,8 @@
 # Implementation Documentation
 
+<!-- START doctoc -->
+<!-- END doctoc -->
+
 This directory contains detailed implementation documentation for the SRAT project.
 
 ## Available Documents
