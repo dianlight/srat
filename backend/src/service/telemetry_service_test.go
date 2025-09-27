@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jarcoal/httpmock"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -305,6 +306,66 @@ func (suite *TelemetryServiceSuite) TestReportError_ErrorsE_JSONContainsCustomAn
 			if frames, ok := first["frames"].([]interface{}); ok {
 				suite.NotEmpty(frames)
 				suite.Contains(frames[0].(map[string]interface{})["filename"], "/service/telemetry_service_test.go")
+			}
+		}
+	}
+}
+
+func (suite *TelemetryServiceSuite) TestTlogErrorCallbackIncludesOriginalStack() {
+	// Arrange: enable telemetry callbacks and capture rollbar payloads
+	suite.stubRollbarConnectivityOK()
+	suite.stubRollbarItemPost(true)
+	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS))
+	suite.resetHTTPCalls()
+
+	// Emit a tlog error with an attached stack-carrying error
+	logErr := errors.Errorf("callback failure")
+	tlog.Error("rolling error", "error", logErr)
+
+	// Wait for asynchronous logging and rollbar dispatch
+	suite.Eventually(func() bool {
+		rollbar.Wait()
+		return suite.lastRollbarBody != ""
+	}, 2*time.Second, 20*time.Millisecond)
+
+	// Validate payload contains stack information pointing to this test file
+	suite.NotEmpty(suite.lastRollbarBody)
+	var payload map[string]interface{}
+	suite.Require().NoError(json.Unmarshal([]byte(suite.lastRollbarBody), &payload))
+
+	data, _ := payload["data"].(map[string]interface{})
+	suite.Require().NotNil(data)
+	suite.Equal("error", data["level"])
+
+	body, _ := data["body"].(map[string]interface{})
+	suite.Require().NotNil(body)
+
+	assertFrames := func(frames []interface{}) {
+		suite.NotEmpty(frames)
+		firstFrame, _ := frames[0].(map[string]interface{})
+		suite.Require().NotNil(firstFrame)
+		filename, _ := firstFrame["filename"].(string)
+		suite.Contains(filename, "/service/telemetry_service_test.go")
+	}
+
+	if trace, ok := body["trace"].(map[string]interface{}); ok {
+		if exception, ok := trace["exception"].(map[string]interface{}); ok {
+			if msg, ok := exception["message"].(string); ok {
+				suite.Contains(msg, "callback failure")
+			}
+		}
+		if frames, ok := trace["frames"].([]interface{}); ok {
+			assertFrames(frames)
+		}
+	} else if traceChain, ok := body["trace_chain"].([]interface{}); ok && len(traceChain) > 0 {
+		if first, ok := traceChain[0].(map[string]interface{}); ok {
+			if exception, ok := first["exception"].(map[string]interface{}); ok {
+				if msg, ok := exception["message"].(string); ok {
+					suite.Contains(msg, "callback failure")
+				}
+			}
+			if frames, ok := first["frames"].([]interface{}); ok {
+				assertFrames(frames)
 			}
 		}
 	}

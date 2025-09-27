@@ -194,7 +194,7 @@ func createBaseHandler(level slog.Level) slog.Handler {
 	color.NoColor = !isTerminal || !config.EnableColors
 
 	// Create base tint handler with context extraction
-	handler := tint.NewHandler(os.Stderr, &tint.Options{
+	tintHandler := tint.NewHandler(os.Stderr, &tint.Options{
 		Level:      level,
 		TimeFormat: config.TimeFormat,
 		NoColor:    !isTerminal || !config.EnableColors,
@@ -227,8 +227,9 @@ func createBaseHandler(level slog.Level) slog.Handler {
 		},
 	})
 
-	// Composite The final Handler
-	handler = slogmulti.Fanout(handler, NewEventHandler())
+	eventHandler := NewEventHandler()
+
+	formattedTintHandler := slog.Handler(tintHandler)
 
 	// If formatting is enabled, wrap with slog-formatter
 	if config.EnableFormatting {
@@ -277,11 +278,11 @@ func createBaseHandler(level slog.Level) slog.Handler {
 
 		// Apply formatters if any exist
 		if len(formatters) > 0 {
-			handler = slogformatter.NewFormatterHandler(formatters...)(handler)
+			formattedTintHandler = slogformatter.NewFormatterHandler(formatters...)(tintHandler)
 		}
 	}
 
-	return handler
+	return slogmulti.Fanout(formattedTintHandler, eventHandler)
 }
 
 var defaultLogger *Logger
