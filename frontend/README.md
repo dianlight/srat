@@ -9,13 +9,19 @@ To install dependencies:
 bun install
 ```
 
-To run:
+To start the dev server with hot reload:
 
 ```bash
-bun run index.ts
+bun run dev
 ```
 
-This project was created using `bun init` in bun v1.1.34. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+To build the production bundle (outputs to `../backend/src/web/static`):
+
+```bash
+bun run build
+```
+
+Note: This project uses Bun as the JavaScript runtime and package manager. See `bun.build.ts` for the build pipeline.
 
 ## Console Error Callback Registry
 
@@ -79,3 +85,15 @@ export function ErrorTelemetryBinder() {
 ## Test Setup Enforcement
 
 All test files must import the shared test setup (`import '../../../../test/setup'`). This is enforced by the `test:prepare` script, which runs automatically before linting (see `package.json` lint script). If any test file is missing the setup import, lint will fail. To fix, run `bun run test:fix`.
+
+Run tests locally:
+
+```bash
+bun test
+```
+
+Run linter and typecheck:
+
+```bash
+bun run lint
+```

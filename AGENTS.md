@@ -53,7 +53,7 @@ The Go backend implements several service agents for Samba administration:
 ### Testing Agents
 
 - **Backend**: `testify/suite` with `mockio/v2` for unit and integration tests
-- **Frontend**: Jest/React Testing Library for component tests
+- **Frontend**: bun:test + React Testing Library for component tests
 - **HTTP Testing**: `humatest` for API endpoint validation
 
 ### Documentation Agents

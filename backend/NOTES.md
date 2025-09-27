@@ -1,10 +1,8 @@
 # Backend Development Notes
 
-
 This document contains development notes, useful packages, and technical references for the SRAT backend development.
 
 ## Table of Contents
-
 
 <!-- START doctoc -->
 <!-- END doctoc -->
