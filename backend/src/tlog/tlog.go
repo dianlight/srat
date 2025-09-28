@@ -228,6 +228,7 @@ func createBaseHandler(level slog.Level) slog.Handler {
 	})
 
 	eventHandler := NewEventHandler()
+	callbackHandler := slog.Handler(eventHandler)
 
 	formattedTintHandler := slog.Handler(tintHandler)
 
@@ -278,11 +279,13 @@ func createBaseHandler(level slog.Level) slog.Handler {
 
 		// Apply formatters if any exist
 		if len(formatters) > 0 {
-			formattedTintHandler = slogformatter.NewFormatterHandler(formatters...)(tintHandler)
+			formatterHandler := slogformatter.NewFormatterHandler(formatters...)
+			formattedTintHandler = formatterHandler(tintHandler)
+			callbackHandler = formatterHandler(callbackHandler)
 		}
 	}
 
-	return slogmulti.Fanout(formattedTintHandler, eventHandler)
+	return slogmulti.Fanout(formattedTintHandler, callbackHandler)
 }
 
 var defaultLogger *Logger

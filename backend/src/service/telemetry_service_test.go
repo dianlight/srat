@@ -335,7 +335,7 @@ func (suite *TelemetryServiceSuite) TestTlogErrorCallbackIncludesOriginalStack()
 
 	data, _ := payload["data"].(map[string]interface{})
 	suite.Require().NotNil(data)
-	suite.Equal("error", data["level"])
+	suite.Equal("error", data["level"], "log level ERROR expected", " got %#v", data)
 
 	body, _ := data["body"].(map[string]interface{})
 	suite.Require().NotNil(body)
