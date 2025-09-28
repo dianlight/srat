@@ -5,6 +5,9 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -29,6 +32,8 @@ type diskStatsService struct {
 	currentDiskHealth *dto.DiskHealth
 	updateMutex       *sync.Mutex
 	smartService      SmartServiceInterface
+	readFile          func(string) ([]byte, error)
+	sysFsBasePath     string
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
@@ -52,6 +57,8 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 		updateMutex:    &sync.Mutex{},
 		lastStats:      make(map[string]*blockdevice.IOStats),
 		smartService:   SmartService,
+		readFile:       os.ReadFile,
+		sysFsBasePath:  "/sys/fs",
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -184,14 +191,8 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 				} else {
 					name = "unknown"
 				}
-				// Determine fsck support (simple heuristic)
-				fsckSupported := false
-				switch fstype {
-				case "ext2", "ext3", "ext4", "xfs", "btrfs", "f2fs", "vfat", "exfat", "ntfs":
-					fsckSupported = true
-				}
-				// Heuristic: fsck needed if not mounted, or if fstype supports fsck and not clean (not implemented: always false)
-				fsckNeeded := false // TODO: implement real check for dirty/needs fsck
+				fsckSupported := s.isFsckSupported(fstype)
+				fsckNeeded := s.determineFsckNeeded(&part, fstype, fsckSupported)
 				// Use partition size if available
 				// Get free space using syscall.Statfs
 				var totalSpace, freeSpace uint64
@@ -250,4 +251,202 @@ func (s *diskStatsService) GetDiskStats() (*dto.DiskHealth, errors.E) {
 		return nil, errors.New("disk stats not initialized")
 	}
 	return s.currentDiskHealth, nil
+}
+
+func (s *diskStatsService) isFsckSupported(fstype string) bool {
+	switch strings.ToLower(fstype) {
+	case "ext2", "ext3", "ext4", "xfs", "btrfs", "f2fs", "vfat", "exfat", "ntfs", "ntfs3":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *diskStatsService) determineFsckNeeded(part *dto.Partition, fstype string, fsckSupported bool) bool {
+	if part == nil || !fsckSupported {
+		return false
+	}
+
+	mounted, hasMountInfo := partitionMountState(part)
+	if hasMountInfo && !mounted {
+		return true
+	}
+
+	if partitionHasDirtyIndicators(part) {
+		return true
+	}
+
+	if s.hasPendingFsState(part, fstype) {
+		return true
+	}
+
+	return false
+}
+
+func partitionMountState(part *dto.Partition) (isMounted bool, hasInfo bool) {
+	checkMounts := func(mounts *[]dto.MountPointData) {
+		if mounts == nil {
+			return
+		}
+		if len(*mounts) > 0 {
+			hasInfo = true
+		}
+		for _, mp := range *mounts {
+			if mp.IsMounted {
+				isMounted = true
+			}
+			if mp.Path != "" || mp.IsToMountAtStartup != nil {
+				hasInfo = true
+			}
+		}
+	}
+
+	checkMounts(part.MountPointData)
+	checkMounts(part.HostMountPointData)
+
+	return isMounted, hasInfo
+}
+
+func partitionHasDirtyIndicators(part *dto.Partition) bool {
+	hasIndicator := func(mounts *[]dto.MountPointData) bool {
+		if mounts == nil {
+			return false
+		}
+		for _, mp := range *mounts {
+			if mp.InvalidError != nil && containsDirtyKeyword(*mp.InvalidError) {
+				return true
+			}
+			if mp.Warnings != nil && containsDirtyKeyword(*mp.Warnings) {
+				return true
+			}
+		}
+		return false
+	}
+
+	return hasIndicator(part.MountPointData) || hasIndicator(part.HostMountPointData)
+}
+
+func containsDirtyKeyword(value string) bool {
+	lower := strings.ToLower(value)
+	keywords := []string{"fsck", "dirty", "recover", "inconsist", "corrupt"}
+	for _, keyword := range keywords {
+		if strings.Contains(lower, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *diskStatsService) hasPendingFsState(part *dto.Partition, fstype string) bool {
+	device := normalizeDeviceName(part)
+	if device == "" {
+		return false
+	}
+
+	switch strings.ToLower(fstype) {
+	case "ext2", "ext3", "ext4":
+		if s.checkSysfsState("ext4", device, []string{"needs_recovery", "error", "not clean"}) {
+			return true
+		}
+		base := filepath.Join(s.sysFsBasePath, "ext4", device)
+		if s.checkSysfsBool(filepath.Join(base, "needs_recovery")) {
+			return true
+		}
+		if s.checkSysfsNonZero(filepath.Join(base, "errors_count")) {
+			return true
+		}
+	case "xfs":
+		if s.checkSysfsState("xfs", device, []string{"dirty", "recover"}) {
+			return true
+		}
+		base := filepath.Join(s.sysFsBasePath, "xfs", device)
+		if s.checkSysfsNonZero(filepath.Join(base, "errors")) {
+			return true
+		}
+	case "f2fs":
+		if s.checkSysfsState("f2fs", device, []string{"dirty", "corrupt", "invalid"}) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s *diskStatsService) checkSysfsState(fsDir, device string, keywords []string) bool {
+	statePath := filepath.Join(s.sysFsBasePath, fsDir, device, "state")
+	content, err := s.readTrimmed(statePath)
+	if err != nil {
+		return false
+	}
+	lower := strings.ToLower(content)
+	for _, keyword := range keywords {
+		if strings.Contains(lower, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *diskStatsService) checkSysfsBool(path string) bool {
+	content, err := s.readTrimmed(path)
+	if err != nil {
+		return false
+	}
+	if content == "" {
+		return false
+	}
+	switch strings.ToLower(content) {
+	case "0", "false", "clean":
+		return false
+	default:
+		return true
+	}
+}
+
+func (s *diskStatsService) checkSysfsNonZero(path string) bool {
+	content, err := s.readTrimmed(path)
+	if err != nil {
+		return false
+	}
+	if content == "" {
+		return false
+	}
+	if val, err := strconv.ParseUint(content, 10, 64); err == nil {
+		return val > 0
+	}
+	return true
+}
+
+func (s *diskStatsService) readTrimmed(path string) (string, error) {
+	if s.readFile == nil {
+		return "", os.ErrInvalid
+	}
+	data, err := s.readFile(path)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+func normalizeDeviceName(part *dto.Partition) string {
+	if part == nil {
+		return ""
+	}
+	if part.LegacyDeviceName != nil && *part.LegacyDeviceName != "" {
+		return sanitizeDeviceName(*part.LegacyDeviceName)
+	}
+	if part.LegacyDevicePath != nil && *part.LegacyDevicePath != "" {
+		return sanitizeDeviceName(filepath.Base(*part.LegacyDevicePath))
+	}
+	if part.DevicePath != nil && *part.DevicePath != "" {
+		return sanitizeDeviceName(filepath.Base(*part.DevicePath))
+	}
+	return ""
+}
+
+func sanitizeDeviceName(name string) string {
+	trimmed := strings.TrimSpace(name)
+	trimmed = strings.TrimPrefix(trimmed, "/dev/")
+	trimmed = strings.ReplaceAll(trimmed, "/", "!")
+	return trimmed
 }

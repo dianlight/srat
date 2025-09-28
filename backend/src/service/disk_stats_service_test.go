@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -49,6 +51,8 @@ func (suite *DiskStatsServiceSuite) SetupTest() {
 		updateMutex:    &sync.Mutex{},
 		lastStats:      make(map[string]*blockdevice.IOStats),
 		smartService:   suite.smartMock,
+		readFile:       os.ReadFile,
+		sysFsBasePath:  "/sys/fs",
 	}
 }
 
@@ -127,4 +131,86 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 
 	// Verify mock call
 	mock.Verify(suite.volumeMock, matchers.Times(1)).GetVolumesData()
+}
+
+func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_UnmountedConfiguredPartition() {
+	fsType := "ext4"
+	deviceID := "sda1"
+	mountPath := "/mnt/data"
+	mountData := []dto.MountPointData{
+		{
+			Path:      mountPath,
+			IsMounted: false,
+		},
+	}
+
+	partition := dto.Partition{
+		Id:               &deviceID,
+		LegacyDeviceName: &deviceID,
+		FsType:           &fsType,
+		MountPointData:   &mountData,
+	}
+
+	needed := suite.ds.determineFsckNeeded(&partition, fsType, true)
+	suite.True(needed)
+}
+
+func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_ExtFilesystemDirtyState() {
+	fsType := "ext4"
+	deviceID := "sdb1"
+	mountData := []dto.MountPointData{
+		{
+			Path:      "/data",
+			IsMounted: true,
+		},
+	}
+
+	partition := dto.Partition{
+		Id:               &deviceID,
+		LegacyDeviceName: &deviceID,
+		FsType:           &fsType,
+		MountPointData:   &mountData,
+	}
+
+	tempDir := suite.T().TempDir()
+	prevBase := suite.ds.sysFsBasePath
+	suite.ds.sysFsBasePath = tempDir
+	defer func() { suite.ds.sysFsBasePath = prevBase }()
+
+	extDir := filepath.Join(tempDir, "ext4", deviceID)
+	suite.Require().NoError(os.MkdirAll(extDir, 0o755))
+	suite.Require().NoError(os.WriteFile(filepath.Join(extDir, "state"), []byte("needs_recovery"), 0o644))
+
+	needed := suite.ds.determineFsckNeeded(&partition, fsType, true)
+	suite.True(needed)
+}
+
+func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_CleanMountedPartition() {
+	fsType := "ext4"
+	deviceID := "sdc1"
+	mountData := []dto.MountPointData{
+		{
+			Path:      "/data",
+			IsMounted: true,
+		},
+	}
+
+	partition := dto.Partition{
+		Id:               &deviceID,
+		LegacyDeviceName: &deviceID,
+		FsType:           &fsType,
+		MountPointData:   &mountData,
+	}
+
+	tempDir := suite.T().TempDir()
+	prevBase := suite.ds.sysFsBasePath
+	suite.ds.sysFsBasePath = tempDir
+	defer func() { suite.ds.sysFsBasePath = prevBase }()
+
+	extDir := filepath.Join(tempDir, "ext4", deviceID)
+	suite.Require().NoError(os.MkdirAll(extDir, 0o755))
+	suite.Require().NoError(os.WriteFile(filepath.Join(extDir, "state"), []byte("clean"), 0o644))
+
+	needed := suite.ds.determineFsckNeeded(&partition, fsType, true)
+	suite.False(needed)
 }
