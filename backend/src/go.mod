@@ -18,6 +18,7 @@ require (
 )
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/anatol/smart.go v0.0.0-20241126061019-f03d79b340d2
 	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/fatih/color v1.18.0
@@ -45,7 +46,6 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
-	github.com/DATA-DOG/go-sqlmock v1.5.0 // indirect
 	github.com/air-verse/air v1.63.0 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
 	github.com/bep/golibsass v1.2.0 // indirect
