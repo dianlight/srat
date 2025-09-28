@@ -25,6 +25,10 @@ if (typeof process !== "undefined") {
     (globalThis as any).process = { env: { APIURL: "http://localhost:8080" } };
 }
 
+// Ensure React Testing Library is evaluated before any test runs so that
+// it can register its automatic cleanup hooks with Bun's afterEach.
+await import("@testing-library/react");
+
 // Create the store after the above globals are set. Do dynamic imports to
 // avoid loading modules (that inspect window/process.env at module import)
 // before we've set up the test environment.

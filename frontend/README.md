@@ -103,6 +103,8 @@ Run tests locally:
 bun test
 ```
 
+> **Note**: Bun 1.2.23 rejects registering lifecycle hooks from inside a running test. We preload `@testing-library/react` in `test/setup.ts` so its automatic cleanup attaches to `afterEach` before any spec runs. If you reorganize the shared setup, keep that top-level import in place or the suite will fail with "Cannot call afterEach() inside a test" errors.
+
 Run linter and typecheck:
 
 ```bash
