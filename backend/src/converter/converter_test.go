@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -104,4 +105,41 @@ func TestIsPathDirNotExistsReturnsWrappedError(t *testing.T) {
 	assert.True(t, exists)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, sentinel)
+}
+
+func TestExportedShareToStringRoundTrip(t *testing.T) {
+	share := dbom.ExportedShare{Name: "media"}
+	assert.Equal(t, "media", exportedShareToString(share))
+
+	converted := stringToExportedShare("media")
+	assert.Equal(t, share.Name, converted.Name)
+}
+
+func TestPartitionFromDeviceId(t *testing.T) {
+	id := "disk-1"
+	partitions := []dto.Partition{{Id: &id}}
+	disks := []dto.Disk{{Partitions: &partitions}}
+
+	result := partitionFromDeviceId(id, disks)
+	if assert.NotNil(t, result) {
+		assert.Equal(t, id, *result.Id)
+	}
+}
+
+func TestPartitionFromDeviceIdNotFound(t *testing.T) {
+	disks := []dto.Disk{}
+	result := partitionFromDeviceId("missing", disks)
+	assert.Nil(t, result)
+}
+
+func TestTimeMachineSupportFromFS(t *testing.T) {
+	if support := TimeMachineSupportFromFS("ext4"); assert.NotNil(t, support) {
+		assert.Equal(t, dto.TimeMachineSupports.SUPPORTED, *support)
+	}
+	if experimental := TimeMachineSupportFromFS("ntfs"); assert.NotNil(t, experimental) {
+		assert.Equal(t, dto.TimeMachineSupports.EXPERIMENTAL, *experimental)
+	}
+	if unknown := TimeMachineSupportFromFS("customfs"); assert.NotNil(t, unknown) {
+		assert.Equal(t, dto.TimeMachineSupports.UNKNOWN, *unknown)
+	}
 }

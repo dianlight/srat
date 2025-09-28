@@ -64,6 +64,40 @@ func TestCLIStartRequiresOutputFlag(t *testing.T) {
 	}
 }
 
+func TestNormalizeUpgradeChannel(t *testing.T) {
+	got, err := normalizeUpgradeChannel("release")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "release" {
+		t.Fatalf("unexpected channel: got %q", got)
+	}
+}
+
+func TestNormalizeUpgradeChannelError(t *testing.T) {
+	_, err := normalizeUpgradeChannel("beta")
+	if err == nil {
+		t.Fatalf("expected error for invalid channel")
+	}
+	if !strings.Contains(err.Error(), "invalid upgrade channel") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestFormatVersionMessage(t *testing.T) {
+	short := formatVersionMessage(true)
+	if short != config.Version+"\n" {
+		t.Fatalf("unexpected short version message: %q", short)
+	}
+	long := formatVersionMessage(false)
+	if !strings.Contains(long, config.Version) {
+		t.Fatalf("expected version in long output: %q", long)
+	}
+	if !strings.HasSuffix(long, "\n") {
+		t.Fatalf("expected trailing newline in long output")
+	}
+}
+
 func packageDir(t *testing.T) string {
 	t.Helper()
 

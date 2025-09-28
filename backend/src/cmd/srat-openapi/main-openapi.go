@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -20,22 +21,36 @@ import (
 	"go.uber.org/fx"
 )
 
+func openAPIFilenames(dir string) (string, string) {
+	if dir == "" {
+		return "/openapi.yaml", "/openapi.json"
+	}
+	cleaned := filepath.Clean(dir)
+	return filepath.Join(cleaned, "openapi.yaml"), filepath.Join(cleaned, "openapi.json")
+}
+
+func applyMockEnv(enabled bool) {
+	if enabled {
+		os.Setenv("SRAT_MOCK", "true")
+	} else {
+		os.Unsetenv("SRAT_MOCK")
+	}
+}
+
 func main() {
 	// set global logger with custom options
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	output := flag.String("out", "./docs/", "Output directory where create openapi.* files")
 	mockMode := flag.Bool("mock", true, "Use mock data for generation")
 
-	// Set mock mode for OpenAPI generation
-	if *mockMode {
-		os.Setenv("SRAT_MOCK", "true")
-	}
-
 	flag.Usage = func() {
 		flag.PrintDefaults()
 	}
 
 	flag.Parse()
+	applyMockEnv(*mockMode)
+
+	yamlPath, jsonPath := openAPIFilenames(*output)
 
 	internal.Banner("srat-openapi")
 
@@ -89,7 +104,7 @@ func main() {
 				if err != nil {
 					slog.Error("Unable to generate YAML", "error", err)
 				}
-				err = os.WriteFile(*output+"/openapi.yaml", yaml, 0o600)
+				err = os.WriteFile(yamlPath, yaml, 0o600)
 				if err != nil {
 					slog.Error("Unable to write YAML", "error", err)
 				}
@@ -97,7 +112,7 @@ func main() {
 				if err != nil {
 					slog.Error("Unable to generate JSON", "error", err)
 				}
-				err = os.WriteFile(*output+"/openapi.json", json, 0o600)
+				err = os.WriteFile(jsonPath, json, 0o600)
 				if err != nil {
 					slog.Error("Unable to write JSON", "error", err)
 				}

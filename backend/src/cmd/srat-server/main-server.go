@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -46,6 +47,13 @@ var supervisorToken *string
 var addonIpAddress *string
 var logLevelString *string
 var protectedMode *bool
+
+func validateSambaConfig(path string) error {
+	if strings.TrimSpace(path) == "" {
+		return fmt.Errorf("missing samba config")
+	}
+	return nil
+}
 
 func main() {
 
@@ -119,7 +127,7 @@ func prog(state overseer.State) {
 	slog.Debug("Startup Options", "Flags", os.Args)
 	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
 
-	if *smbConfigFile == "" {
+	if err := validateSambaConfig(*smbConfigFile); err != nil {
 		log.Fatalf("Missing samba config! %s", *smbConfigFile)
 	}
 

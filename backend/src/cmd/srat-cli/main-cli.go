@@ -38,6 +38,24 @@ var supervisorURL *string
 var supervisorToken *string
 var logLevelString *string
 
+func normalizeUpgradeChannel(channel string) (string, error) {
+	switch channel {
+	case "release", "prerelease", "develop":
+		return channel, nil
+	case "":
+		return "", fmt.Errorf("upgrade channel cannot be empty")
+	default:
+		return "", fmt.Errorf("invalid upgrade channel: %s", channel)
+	}
+}
+
+func formatVersionMessage(short bool) string {
+	if short {
+		return fmt.Sprintf("%s\n", config.Version)
+	}
+	return fmt.Sprintf("Version: %s (%s) - %s\n", config.Version, config.CommitHash, config.BuildTimestamp)
+}
+
 func main() {
 	silentMode := flag.Bool("silent", false, "Silent Mode. Remove unecessary banner")
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
@@ -131,18 +149,16 @@ func main() {
 		stopCmd.Parse(flag.Args()[1:])
 	case "upgrade":
 		upgradeCmd.Parse(flag.Args()[1:])
-		if *upgradeChannel != "release" && *upgradeChannel != "prerelease" && *upgradeChannel != "develop" {
+		normalizedUpgradeChannel, normalizeErr := normalizeUpgradeChannel(*upgradeChannel)
+		if normalizeErr != nil {
 			slog.Error("Invalid upgrade channel", "channel", *upgradeChannel)
 			upgradeCmd.PrintDefaults()
 			os.Exit(1)
 		}
+		*upgradeChannel = normalizedUpgradeChannel
 	case "version":
 		versionCmd.Parse(flag.Args()[1:])
-		if *shortVersion {
-			fmt.Printf("%s\n", config.Version)
-		} else {
-			fmt.Printf("Version: %s (%s) - %s\n", config.Version, config.CommitHash, config.BuildTimestamp)
-		}
+		fmt.Print(formatVersionMessage(*shortVersion))
 		os.Exit(0)
 	default:
 		slog.Error("Unknwon command", "command", command)

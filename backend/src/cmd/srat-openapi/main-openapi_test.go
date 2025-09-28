@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -75,5 +76,33 @@ func TestOpenAPIGenerationCreatesFiles(t *testing.T) {
 	version, ok := payload["openapi"].(string)
 	if !ok || version == "" {
 		t.Fatalf("generated openapi.json missing openapi version field: %v", payload["openapi"])
+	}
+}
+
+func TestOpenAPIFilenames(t *testing.T) {
+	yamlPath, jsonPath := openAPIFilenames("./docs/")
+	if !strings.HasSuffix(yamlPath, "docs/openapi.yaml") {
+		t.Fatalf("unexpected yaml path: %s", yamlPath)
+	}
+	if !strings.HasSuffix(jsonPath, "docs/openapi.json") {
+		t.Fatalf("unexpected json path: %s", jsonPath)
+	}
+
+	emptyYaml, emptyJSON := openAPIFilenames("")
+	if emptyYaml != "/openapi.yaml" || emptyJSON != "/openapi.json" {
+		t.Fatalf("unexpected paths for empty dir: %s %s", emptyYaml, emptyJSON)
+	}
+}
+
+func TestApplyMockEnv(t *testing.T) {
+	t.Setenv("SRAT_MOCK", "")
+	applyMockEnv(false)
+	if value := os.Getenv("SRAT_MOCK"); value != "" {
+		t.Fatalf("expected SRAT_MOCK to be unset, got %q", value)
+	}
+
+	applyMockEnv(true)
+	if value := os.Getenv("SRAT_MOCK"); value != "true" {
+		t.Fatalf("expected SRAT_MOCK to be true, got %q", value)
 	}
 }

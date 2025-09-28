@@ -34,6 +34,18 @@ func TestServerRequiresSambaConfigFlag(t *testing.T) {
 	}
 }
 
+func TestValidateSambaConfig(t *testing.T) {
+	if err := validateSambaConfig("/tmp/smb.conf"); err != nil {
+		t.Fatalf("expected valid path, got %v", err)
+	}
+}
+
+func TestValidateSambaConfigEmpty(t *testing.T) {
+	if err := validateSambaConfig("   "); err == nil {
+		t.Fatalf("expected error for empty path")
+	}
+}
+
 func packageDir(t *testing.T) string {
 	t.Helper()
 
