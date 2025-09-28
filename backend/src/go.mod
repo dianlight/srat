@@ -18,7 +18,7 @@ require (
 )
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/anatol/smart.go v0.0.0-20241126061019-f03d79b340d2
 	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/fatih/color v1.18.0
@@ -150,7 +150,7 @@ require (
 require (
 	github.com/glebarez/sqlite v1.11.0
 	github.com/lmittmann/tint v1.1.2
-	github.com/moby/sys/mountinfo v0.7.1
+	github.com/moby/sys/mountinfo v0.7.2
 	github.com/ovechkin-dm/mockio/v2 v2.0.3
 	github.com/rs/cors v1.11.1
 	github.com/thoas/go-funk v0.9.3
