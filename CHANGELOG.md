@@ -59,6 +59,7 @@
 ### 🏗 Chore
 
 - Implement watchdog
+- Replace snapd osutil dependency with internal mount utilities based on moby/sys/mountinfo
 - Align UI elements to HA [#81](https://github.com/dianlight/srat/issues/81)
 - Create the base documentation [#80](https://github.com/dianlight/srat/issues/80)
 - Display version from ADDON

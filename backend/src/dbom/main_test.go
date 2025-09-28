@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/snapcore/snapd/osutil"
+	"github.com/dianlight/srat/internal/osutil"
 )
 
 func TestMain(m *testing.M) {

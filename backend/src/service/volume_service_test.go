@@ -12,12 +12,12 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/prometheus/procfs"
-	"github.com/snapcore/snapd/osutil"
 	"github.com/stretchr/testify/suite"
 	"github.com/u-root/u-root/pkg/mount/loop"
 	"github.com/xorcare/pointer"

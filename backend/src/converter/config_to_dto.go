@@ -7,8 +7,8 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/shirou/gopsutil/v4/disk"
-	osutil "github.com/snapcore/snapd/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/xorcare/pointer"
 )
@@ -29,7 +29,7 @@ type ConfigToDtoConverter interface {
 
 	// g.overter:update target
 	// g.overter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Shares IsToMountAtStartup
-	// g.overter:map Path IsMounted | github.com/snapcore/snapd/osutil:IsMounted
+	// g.overter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
 	// g.overter:map Path DeviceId | PathToSource
 	// g.overter:map Path Type | pathToType
 	// g.overter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1

@@ -6,8 +6,8 @@ package converter
 import (
 	dbom "github.com/dianlight/srat/dbom"
 	dto "github.com/dianlight/srat/dto"
+	osutil "github.com/dianlight/srat/internal/osutil"
 	xhashes "github.com/shomali11/util/xhashes"
-	osutil "github.com/snapcore/snapd/osutil"
 	datatypes "gorm.io/datatypes"
 )
 
