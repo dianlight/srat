@@ -12,6 +12,11 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+var (
+	readDirFunc      = os.ReadDir
+	evalSymlinksFunc = filepath.EvalSymlinks
+)
+
 func init() {
 	goose.AddMigrationNoTxContext(Up00004, Down00004)
 }
@@ -35,12 +40,12 @@ func Up00004(ctx context.Context, db *sql.DB) error {
 		// Update mount_point_paths set device_id = 'by-id-1234-5678' where path = path
 
 		deviceID := ""
-		entries, err := os.ReadDir("/dev/disk/by-id/")
+		entries, err := readDirFunc("/dev/disk/by-id/")
 		if err == nil {
 			for _, entry := range entries {
 				if entry.Type()&os.ModeSymlink != 0 {
 					linkPath := filepath.Join("/dev/disk/by-id/", entry.Name())
-					resolved, err := filepath.EvalSymlinks(linkPath)
+					resolved, err := evalSymlinksFunc(linkPath)
 					if err != nil {
 						continue
 					}
