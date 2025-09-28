@@ -13,21 +13,27 @@ import (
 )
 
 func stackTraceFormatter(frames *runtime.Frames) string {
-	//	if multiLine {
-	//		return slog.String("stacktrace", frames.String())
-	//	}
-	// TODO: Support multi-line stack trace formatting if needed in the future.
-
 	var stackLines []string
 
 	for {
 		frame, more := frames.Next()
-		stackLines = append(stackLines, fmt.Sprintf("%s:%s: %s\n", color.GreenString(frame.File), color.BlueString(fmt.Sprintf("%d", frame.Line)), color.HiWhiteString(frame.Function)))
+		stackLines = append(stackLines, fmt.Sprintf("%s:%s: %s", color.GreenString(frame.File), color.BlueString(fmt.Sprintf("%d", frame.Line)), color.HiWhiteString(frame.Function)))
 		if !more {
 			break
 		}
 	}
-	return strings.Join(stackLines, " ")
+
+	if isMultilineStacktraceEnabled() {
+		return strings.Join(stackLines, "\n")
+	}
+
+	return strings.Join(stackLines, " -> ")
+}
+
+func isMultilineStacktraceEnabled() bool {
+	formatterConfigMu.RLock()
+	defer formatterConfigMu.RUnlock()
+	return formatterConfig.MultilineStacktrace
 }
 
 // ErrorFormatter transforms a go error into a readable error.
@@ -46,7 +52,6 @@ func stackTraceFormatter(frames *runtime.Frames) string {
 //	}
 func ErrorFormatter(fieldName string) slogformatter.Formatter {
 	return slogformatter.FormatByFieldType(fieldName, func(err error) slog.Value {
-		//stack := stacktrace()
 		var pcs []uintptr = make([]uintptr, 50)
 		runtime.Callers(9, pcs[:])
 		stack := runtime.CallersFrames(pcs)
@@ -65,16 +70,16 @@ func ErrorFormatter(fieldName string) slogformatter.Formatter {
 var reStacktrace = regexp.MustCompile(`log/slog.*\n|tlog/tlog.*\n`)
 
 func stacktrace() string {
-	stackInfo := make([]byte, 1024*1024)
+    stackInfo := make([]byte, 1024*1024)
 
-	if stackSize := runtime.Stack(stackInfo, false); stackSize > 0 {
-		traceLines := reStacktrace.Split(string(stackInfo[:stackSize]), -1)
-		if len(traceLines) > 0 {
-			return traceLines[len(traceLines)-1]
-		}
-	}
+    if stackSize := runtime.Stack(stackInfo, false); stackSize > 0 {
+        traceLines := reStacktrace.Split(string(stackInfo[:stackSize]), -1)
+        if len(traceLines) > 0 {
+            return traceLines[len(traceLines)-1]
+        }
+    }
 
-	return ""
+    return ""
 }
 */
 

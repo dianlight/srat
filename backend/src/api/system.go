@@ -16,15 +16,21 @@ import (
 )
 
 type SystemHanler struct {
-	fs_service   service.FilesystemServiceInterface
-	host_service service.HostServiceInterface
+	fs_service      service.FilesystemServiceInterface
+	host_service    service.HostServiceInterface
+	filesystemsPath string
 }
 
 func NewSystemHanler(fs_service service.FilesystemServiceInterface, host_service service.HostServiceInterface) *SystemHanler {
 	p := new(SystemHanler)
 	p.fs_service = fs_service
 	p.host_service = host_service
+	p.filesystemsPath = "/proc/filesystems"
 	return p
+}
+
+func (self *SystemHanler) SetFilesystemsPath(path string) {
+	self.filesystemsPath = path
 }
 
 func (self *SystemHanler) RegisterSystemHanler(api huma.API) {
@@ -109,23 +115,42 @@ func (handler *SystemHanler) readLinesOffsetN(filename string, offset uint, n in
 
 // Source: https://github.com/shirou/gopsutil
 func (handler *SystemHanler) getFileSystems() ([]string, error) {
-	// TODO: Missing fuse3 fs
-	filename := "/proc/filesystems"
+	filename := handler.filesystemsPath
 	lines, err := handler.readLinesOffsetN(filename, 0, -1)
 	if err != nil {
 		return nil, err
 	}
 	var ret []string
+	seen := make(map[string]struct{})
+	allowedNodev := map[string]struct{}{
+		"zfs":     {},
+		"fuse":    {},
+		"fuse3":   {},
+		"fuseblk": {},
+	}
 	for _, line := range lines {
-		if !strings.HasPrefix(line, "nodev") {
-			ret = append(ret, strings.TrimSpace(line))
+		cleaned := strings.TrimSpace(line)
+		if cleaned == "" {
 			continue
 		}
-		t := strings.Split(line, "\t")
-		if len(t) != 2 || t[1] != "zfs" {
+		if !strings.HasPrefix(cleaned, "nodev") {
+			if _, exists := seen[cleaned]; !exists {
+				ret = append(ret, cleaned)
+				seen[cleaned] = struct{}{}
+			}
 			continue
 		}
-		ret = append(ret, strings.TrimSpace(t[1]))
+		fields := strings.Fields(cleaned)
+		if len(fields) != 2 {
+			continue
+		}
+		fsType := strings.TrimSpace(fields[1])
+		if _, ok := allowedNodev[fsType]; ok {
+			if _, exists := seen[fsType]; !exists {
+				ret = append(ret, fsType)
+				seen[fsType] = struct{}{}
+			}
+		}
 	}
 
 	return ret, nil

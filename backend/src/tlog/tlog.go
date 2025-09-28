@@ -71,18 +71,20 @@ var levelColorNumbers = map[string]uint8{
 
 // FormatterConfig holds configuration for log formatting
 type FormatterConfig struct {
-	EnableColors      bool
-	EnableFormatting  bool
-	HideSensitiveData bool
-	TimeFormat        string
+	EnableColors        bool
+	EnableFormatting    bool
+	HideSensitiveData   bool
+	TimeFormat          string
+	MultilineStacktrace bool
 }
 
 // defaultFormatterConfig provides default configuration
 var defaultFormatterConfig = FormatterConfig{
-	EnableColors:      true, // Will be disabled automatically if terminal doesn't support colors
-	EnableFormatting:  true,
-	HideSensitiveData: false,
-	TimeFormat:        time.RFC3339,
+	EnableColors:        true, // Will be disabled automatically if terminal doesn't support colors
+	EnableFormatting:    true,
+	HideSensitiveData:   false,
+	TimeFormat:          time.RFC3339,
+	MultilineStacktrace: false,
 }
 
 var (
@@ -536,6 +538,24 @@ func IsColorsEnabled() bool {
 	formatterConfigMu.RLock()
 	defer formatterConfigMu.RUnlock()
 	return formatterConfig.EnableColors && isTerminalSupported()
+}
+
+// EnableMultilineStacktrace toggles multi-line stack trace formatting.
+func EnableMultilineStacktrace(enabled bool) {
+	formatterConfigMu.Lock()
+	formatterConfig.MultilineStacktrace = enabled
+	formatterConfigMu.Unlock()
+
+	mu.Lock()
+	defer mu.Unlock()
+	initializeLogger()
+}
+
+// IsMultilineStacktraceEnabled returns true if multi-line stack traces are enabled.
+func IsMultilineStacktraceEnabled() bool {
+	formatterConfigMu.RLock()
+	defer formatterConfigMu.RUnlock()
+	return formatterConfig.MultilineStacktrace
 }
 
 // EnableSensitiveDataHiding enables or disables hiding of sensitive data (PII)

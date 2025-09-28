@@ -135,6 +135,40 @@ func (suite *TozdErrorFormatterSuite) TestErrorWithStackTrace() {
 	suite.True(hasStacktrace)
 }
 
+func (suite *TozdErrorFormatterSuite) TestStacktraceMultilineToggle() {
+	originalConfig := GetFormatterConfig()
+	defer SetFormatterConfig(originalConfig)
+
+	EnableColors(false)
+	EnableMultilineStacktrace(false)
+
+	formatter := TozdErrorFormatter()
+	err := errors.WithStack(errors.New("toggle stack"))
+
+	value, changed := formatter(nil, slog.Attr{Key: "error", Value: slog.AnyValue(err)})
+	suite.True(changed)
+
+	singleLine := extractStacktrace(value.Group())
+	suite.NotContains(singleLine, "\n")
+
+	EnableMultilineStacktrace(true)
+
+	value, changed = formatter(nil, slog.Attr{Key: "error", Value: slog.AnyValue(err)})
+	suite.True(changed)
+
+	multiLine := extractStacktrace(value.Group())
+	suite.Contains(multiLine, "\n")
+}
+
+func extractStacktrace(attrs []slog.Attr) string {
+	for _, attr := range attrs {
+		if attr.Key == "stacktrace" {
+			return attr.Value.String()
+		}
+	}
+	return ""
+}
+
 func (suite *TozdErrorFormatterSuite) TestErrorWithCause() {
 	formatter := TozdErrorFormatter()
 

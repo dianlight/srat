@@ -4,14 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
+	"github.com/shirou/gopsutil/v4/net"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -92,6 +96,61 @@ func (suite *SystemHandlerSuite) TestGetHostnameHandler_ServiceError() {
 	// suite.Contains(errResp.Detail, "failed to get hostname from service")
 }
 
-// TODO: Add tests for GetNICsHandler and GetFSHandler if they were not previously tested or if their behavior changes.
-// For GetNICsHandler, you'd mock ghw.Network() or use a test fixture.
-// For GetFSHandler, you'd mock suite.mockFsService.GetStandardMountFlags() and suite.mockFsService.GetFilesystemSpecificMountFlags().
+func (suite *SystemHandlerSuite) TestGetNICsHandler_ReturnsInterfaces() {
+	expected, err := net.InterfacesWithContext(suite.ctx)
+	suite.Require().NoError(err)
+
+	resp := suite.testAPI.Get("/nics")
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result []net.InterfaceStat
+	err = json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.Len(result, len(expected))
+}
+
+func (suite *SystemHandlerSuite) TestGetFSHandler_IncludesFuse3() {
+	tempFile, err := os.CreateTemp(suite.T().TempDir(), "filesystems-*")
+	suite.Require().NoError(err)
+	defer tempFile.Close()
+
+	contents := strings.Join([]string{
+		"nodev\tsysfs",
+		"nodev\tfuse",
+		"\text4",
+		"\txfs",
+		"nodev\tzfs",
+		"nodev\tfuse3",
+	}, "\n")
+	suite.Require().NoError(os.WriteFile(tempFile.Name(), []byte(contents), 0o644))
+
+	suite.systemHandler.SetFilesystemsPath(tempFile.Name())
+
+	standardFlags := []dto.MountFlag{{Name: "rw"}}
+	mock.When(suite.mockFsService.GetStandardMountFlags()).ThenReturn(standardFlags, nil)
+
+	for _, fsType := range []string{"ext4", "xfs", "zfs", "fuse", "fuse3"} {
+		mock.When(suite.mockFsService.GetFilesystemSpecificMountFlags(fsType)).ThenReturn([]dto.MountFlag{}, nil)
+	}
+
+	resp := suite.testAPI.Get("/filesystems")
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result []dto.FilesystemType
+	err = json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.Len(result, 5)
+
+	names := make([]string, len(result))
+	for i, fsType := range result {
+		names[i] = fsType.Name
+		suite.Len(fsType.MountFlags, len(standardFlags))
+		for idx, flag := range fsType.MountFlags {
+			suite.Equal(standardFlags[idx], flag)
+		}
+	}
+
+	suite.Contains(names, "fuse3")
+	suite.Contains(names, "fuse")
+	suite.NotContains(names, "sysfs")
+}
