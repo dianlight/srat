@@ -56,3 +56,68 @@ func packageDir(t *testing.T) string {
 
 	return filepath.Clean(cwd)
 }
+
+func TestBuildServerContextState(t *testing.T) {
+	now := time.Unix(1700000000, 0)
+	opts := serverContextOptions{
+		AddonIPAddress:  "192.168.1.2",
+		ReadOnlyMode:    true,
+		ProtectedMode:   true,
+		SecureMode:      true,
+		UpdateFilePath:  "/tmp/update.bin",
+		SambaConfigFile: "/etc/samba/smb.conf",
+		Template:        []byte("template"),
+		DockerInterface: "eth0",
+		DockerNetwork:   "bridge",
+		DatabasePath:    ":memory:",
+		SupervisorToken: "token",
+		SupervisorURL:   "http://supervisor.local",
+		Heartbeat:       10,
+		StartTime:       now,
+	}
+
+	state := buildServerContextState(opts)
+
+	if state.AddonIpAddress != opts.AddonIPAddress {
+		t.Fatalf("unexpected AddonIpAddress: %q", state.AddonIpAddress)
+	}
+	if state.ReadOnlyMode != opts.ReadOnlyMode {
+		t.Fatalf("unexpected ReadOnlyMode: %v", state.ReadOnlyMode)
+	}
+	if state.ProtectedMode != opts.ProtectedMode {
+		t.Fatalf("unexpected ProtectedMode: %v", state.ProtectedMode)
+	}
+	if state.SecureMode != opts.SecureMode {
+		t.Fatalf("unexpected SecureMode: %v", state.SecureMode)
+	}
+	if state.UpdateFilePath != opts.UpdateFilePath {
+		t.Fatalf("unexpected UpdateFilePath: %q", state.UpdateFilePath)
+	}
+	if state.SambaConfigFile != opts.SambaConfigFile {
+		t.Fatalf("unexpected SambaConfigFile: %q", state.SambaConfigFile)
+	}
+	if string(state.Template) != string(opts.Template) {
+		t.Fatalf("unexpected template data")
+	}
+	if state.DockerInterface != opts.DockerInterface {
+		t.Fatalf("unexpected DockerInterface: %q", state.DockerInterface)
+	}
+	if state.DockerNet != opts.DockerNetwork {
+		t.Fatalf("unexpected DockerNet: %q", state.DockerNet)
+	}
+	if state.DatabasePath != opts.DatabasePath {
+		t.Fatalf("unexpected DatabasePath: %q", state.DatabasePath)
+	}
+	if state.SupervisorToken != opts.SupervisorToken {
+		t.Fatalf("unexpected SupervisorToken: %q", state.SupervisorToken)
+	}
+	if state.SupervisorURL != opts.SupervisorURL {
+		t.Fatalf("unexpected SupervisorURL: %q", state.SupervisorURL)
+	}
+	if state.Heartbeat != opts.Heartbeat {
+		t.Fatalf("unexpected Heartbeat: %d", state.Heartbeat)
+	}
+	if !state.StartTime.Equal(opts.StartTime) {
+		t.Fatalf("unexpected StartTime: %v", state.StartTime)
+	}
+}

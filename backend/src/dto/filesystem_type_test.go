@@ -105,3 +105,28 @@ func TestMountFlags_Scan_SliceString_UnknownFlagWithValue(t *testing.T) {
 	assert.Contains(t, mf, MountFlag{Name: "unknown", NeedsValue: true, FlagValue: "val"})
 	assert.Contains(t, mf, MountFlag{Name: "ro", NeedsValue: false})
 }
+
+func TestMountFlags_UintptrValue(t *testing.T) {
+	mf := MountFlags{
+		{Name: "ro"},
+		{Name: "nosuid"},
+	}
+	value, err := mf.UintPtrValue()
+	assert.NoError(t, err)
+	assert.Equal(t, uintptr(syscall.MS_RDONLY|syscall.MS_NOSUID), value)
+}
+
+func TestMountFlags_UintptrValueUnknownFlag(t *testing.T) {
+	mf := MountFlags{{Name: "unknown"}}
+	_, err := mf.UintPtrValue()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown flag")
+}
+
+func TestMountFlags_StringValue(t *testing.T) {
+	mf := MountFlags{
+		{Name: "ro"},
+		{Name: "uid", NeedsValue: true, FlagValue: "1000"},
+	}
+	assert.Equal(t, "ro,uid=1000", mf.StringValue())
+}

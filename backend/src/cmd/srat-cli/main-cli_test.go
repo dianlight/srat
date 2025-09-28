@@ -65,12 +65,36 @@ func TestCLIStartRequiresOutputFlag(t *testing.T) {
 }
 
 func TestNormalizeUpgradeChannel(t *testing.T) {
-	got, err := normalizeUpgradeChannel("release")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "release", input: "release", expected: "release"},
+		{name: "prerelease", input: "prerelease", expected: "prerelease"},
+		{name: "develop", input: "develop", expected: "develop"},
 	}
-	if got != "release" {
-		t.Fatalf("unexpected channel: got %q", got)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := normalizeUpgradeChannel(tc.input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.expected {
+				t.Fatalf("unexpected channel: got %q want %q", got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestNormalizeUpgradeChannelEmpty(t *testing.T) {
+	_, err := normalizeUpgradeChannel("")
+	if err == nil {
+		t.Fatalf("expected error for empty channel")
+	}
+	if !strings.Contains(err.Error(), "upgrade channel cannot be empty") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -107,4 +131,88 @@ func packageDir(t *testing.T) string {
 	}
 
 	return filepath.Clean(cwd)
+}
+
+func TestBuildCLIContextState(t *testing.T) {
+	now := time.Unix(1700000000, 0)
+	opts := cliContextOptions{
+		SupervisorURL:   "http://supervisor.local",
+		SambaConfigFile: "/tmp/smb.conf",
+		Template:        []byte("template"),
+		DockerInterface: "eth0",
+		DockerNetwork:   "bridge",
+		UpdateFilePath:  "/tmp/update",
+		DatabasePath:    ":memory:",
+		SupervisorToken: "token",
+		ProtectedMode:   true,
+		StartTime:       now,
+	}
+
+	state := buildCLIContextState(opts)
+
+	if state.SupervisorURL != opts.SupervisorURL {
+		t.Fatalf("unexpected SupervisorURL: %q", state.SupervisorURL)
+	}
+	if state.SambaConfigFile != opts.SambaConfigFile {
+		t.Fatalf("unexpected SambaConfigFile: %q", state.SambaConfigFile)
+	}
+	if string(state.Template) != string(opts.Template) {
+		t.Fatalf("unexpected template data")
+	}
+	if state.DockerInterface != opts.DockerInterface {
+		t.Fatalf("unexpected DockerInterface: %q", state.DockerInterface)
+	}
+	if state.DockerNet != opts.DockerNetwork {
+		t.Fatalf("unexpected DockerNet: %q", state.DockerNet)
+	}
+	if state.UpdateFilePath != opts.UpdateFilePath {
+		t.Fatalf("unexpected UpdateFilePath: %q", state.UpdateFilePath)
+	}
+	if state.DatabasePath != opts.DatabasePath {
+		t.Fatalf("unexpected DatabasePath: %q", state.DatabasePath)
+	}
+	if state.SupervisorToken != opts.SupervisorToken {
+		t.Fatalf("unexpected SupervisorToken: %q", state.SupervisorToken)
+	}
+	if state.ProtectedMode != opts.ProtectedMode {
+		t.Fatalf("unexpected ProtectedMode: %v", state.ProtectedMode)
+	}
+	if !state.StartTime.Equal(opts.StartTime) {
+		t.Fatalf("unexpected StartTime: %v", state.StartTime)
+	}
+}
+
+func TestParseCommandValid(t *testing.T) {
+	for _, cmd := range []string{"start", "stop", "upgrade", "version"} {
+		cmd := cmd
+		t.Run(cmd, func(t *testing.T) {
+			result, err := parseCommand([]string{cmd})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if result != cmd {
+				t.Fatalf("unexpected result: %q", result)
+			}
+		})
+	}
+}
+
+func TestParseCommandMissing(t *testing.T) {
+	_, err := parseCommand(nil)
+	if err == nil {
+		t.Fatalf("expected error for missing command")
+	}
+	if !strings.Contains(err.Error(), "expected 'start','stop','upgrade' or 'version' subcommands") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestParseCommandUnknown(t *testing.T) {
+	_, err := parseCommand([]string{"invalid"})
+	if err == nil {
+		t.Fatalf("expected error for unknown command")
+	}
+	if !strings.Contains(err.Error(), "unknown command") {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }

@@ -56,6 +56,46 @@ func formatVersionMessage(short bool) string {
 	return fmt.Sprintf("Version: %s (%s) - %s\n", config.Version, config.CommitHash, config.BuildTimestamp)
 }
 
+type cliContextOptions struct {
+	SupervisorURL   string
+	SambaConfigFile string
+	Template        []byte
+	DockerInterface string
+	DockerNetwork   string
+	UpdateFilePath  string
+	DatabasePath    string
+	SupervisorToken string
+	ProtectedMode   bool
+	StartTime       time.Time
+}
+
+func buildCLIContextState(opts cliContextOptions) dto.ContextState {
+	return dto.ContextState{
+		SupervisorURL:   opts.SupervisorURL,
+		SambaConfigFile: opts.SambaConfigFile,
+		Template:        opts.Template,
+		DockerInterface: opts.DockerInterface,
+		DockerNet:       opts.DockerNetwork,
+		UpdateFilePath:  opts.UpdateFilePath,
+		DatabasePath:    opts.DatabasePath,
+		SupervisorToken: opts.SupervisorToken,
+		ProtectedMode:   opts.ProtectedMode,
+		StartTime:       opts.StartTime,
+	}
+}
+
+func parseCommand(args []string) (string, error) {
+	if len(args) < 1 {
+		return "", fmt.Errorf("expected 'start','stop','upgrade' or 'version' subcommands")
+	}
+	switch args[0] {
+	case "start", "stop", "upgrade", "version":
+		return args[0], nil
+	default:
+		return "", fmt.Errorf("unknown command: %s", args[0])
+	}
+}
+
 func main() {
 	silentMode := flag.Bool("silent", false, "Silent Mode. Remove unecessary banner")
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
@@ -135,13 +175,12 @@ func main() {
 		internal.Banner("srat-cli")
 	}
 
-	if len(flag.Args()) < 1 {
-		slog.Error("Expected 'start','stop' or 'version' subcommands")
+	command, cmdErr := parseCommand(flag.Args())
+	if cmdErr != nil {
+		slog.Error(cmdErr.Error())
 		flag.Usage()
 		os.Exit(1)
 	}
-
-	command := flag.Args()[0]
 	switch command {
 	case "start":
 		startCmd.Parse(flag.Args()[1:])
@@ -161,7 +200,7 @@ func main() {
 		fmt.Print(formatVersionMessage(*shortVersion))
 		os.Exit(0)
 	default:
-		slog.Error("Unknwon command", "command", command)
+		slog.Error("unknown command", "command", command)
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -180,17 +219,18 @@ func main() {
 	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	defer apiCancel() // Ensure context is cancelled on exit
 
-	staticConfig := dto.ContextState{}
-	staticConfig.SupervisorURL = *supervisorURL
-	staticConfig.SambaConfigFile = *smbConfigFile
-	staticConfig.Template = internal.GetTemplateData()
-	staticConfig.DockerInterface = *dockerInterface
-	staticConfig.DockerNet = *dockerNetwork
-	staticConfig.UpdateFilePath = *updateFilePath
-	staticConfig.DatabasePath = *dbfile
-	staticConfig.SupervisorToken = *supervisorToken
-	staticConfig.ProtectedMode = *protectedMode
-	staticConfig.StartTime = time.Now()
+	staticConfig := buildCLIContextState(cliContextOptions{
+		SupervisorURL:   *supervisorURL,
+		SambaConfigFile: *smbConfigFile,
+		Template:        internal.GetTemplateData(),
+		DockerInterface: *dockerInterface,
+		DockerNetwork:   *dockerNetwork,
+		UpdateFilePath:  *updateFilePath,
+		DatabasePath:    *dbfile,
+		SupervisorToken: *supervisorToken,
+		ProtectedMode:   *protectedMode,
+		StartTime:       time.Now(),
+	})
 
 	appParams := appsetup.BaseAppParams{
 		Ctx:          apiCtx,

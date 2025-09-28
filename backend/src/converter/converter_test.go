@@ -143,3 +143,57 @@ func TestTimeMachineSupportFromFS(t *testing.T) {
 		assert.Equal(t, dto.TimeMachineSupports.UNKNOWN, *unknown)
 	}
 }
+
+func TestDtoToDbomConverter_MountPointDataToMountPointPath(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+	fstype := "ext4"
+	startup := true
+	flags := dto.MountFlags{{Name: "ro"}, {Name: "uid", NeedsValue: true, FlagValue: "1000"}}
+	custom := dto.MountFlags{{Name: "gid", NeedsValue: true, FlagValue: "1000"}}
+	shareName := "media"
+	mountData := dto.MountPointData{
+		Path:               "/mnt/test",
+		Type:               "ADDON",
+		DeviceId:           "dev-1",
+		FSType:             &fstype,
+		Flags:              &flags,
+		CustomFlags:        &custom,
+		IsToMountAtStartup: &startup,
+		Shares:             []dto.SharedResource{{Name: shareName}},
+	}
+
+	var target dbom.MountPointPath
+	require.NoError(t, conv.MountPointDataToMountPointPath(mountData, &target))
+
+	assert.Equal(t, mountData.Path, target.Path)
+	assert.Equal(t, mountData.Type, target.Type)
+	assert.Equal(t, mountData.DeviceId, target.DeviceId)
+	if assert.NotNil(t, target.Flags) {
+		require.Len(t, *target.Flags, len(flags))
+		assert.Equal(t, flags[0].Name, (*target.Flags)[0].Name)
+	}
+	if assert.NotNil(t, target.Data) {
+		require.Len(t, *target.Data, len(custom))
+		assert.Equal(t, custom[0].Name, (*target.Data)[0].Name)
+	}
+	if assert.NotNil(t, target.IsToMountAtStartup) {
+		assert.Equal(t, startup, *target.IsToMountAtStartup)
+	}
+	if assert.Len(t, target.Shares, 1) {
+		assert.Equal(t, shareName, target.Shares[0].Name)
+	}
+}
+
+func TestDtoToDbomConverter_MountFlagsToMountDataFlags(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+	flags := []dto.MountFlag{
+		{Name: "ro"},
+		{Name: "uid", NeedsValue: true, FlagValue: "1000"},
+	}
+	converted := conv.MountFlagsToMountDataFlags(flags)
+	require.Len(t, converted, len(flags))
+	assert.Equal(t, flags[0].Name, converted[0].Name)
+	assert.False(t, converted[0].NeedsValue)
+	assert.True(t, converted[1].NeedsValue)
+	assert.Equal(t, flags[1].FlagValue, converted[1].FlagValue)
+}

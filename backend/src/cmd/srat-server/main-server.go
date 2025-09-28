@@ -55,6 +55,42 @@ func validateSambaConfig(path string) error {
 	return nil
 }
 
+type serverContextOptions struct {
+	AddonIPAddress  string
+	ReadOnlyMode    bool
+	ProtectedMode   bool
+	SecureMode      bool
+	UpdateFilePath  string
+	SambaConfigFile string
+	Template        []byte
+	DockerInterface string
+	DockerNetwork   string
+	DatabasePath    string
+	SupervisorToken string
+	SupervisorURL   string
+	Heartbeat       int
+	StartTime       time.Time
+}
+
+func buildServerContextState(opts serverContextOptions) dto.ContextState {
+	return dto.ContextState{
+		AddonIpAddress:  opts.AddonIPAddress,
+		ReadOnlyMode:    opts.ReadOnlyMode,
+		ProtectedMode:   opts.ProtectedMode,
+		SecureMode:      opts.SecureMode,
+		UpdateFilePath:  opts.UpdateFilePath,
+		SambaConfigFile: opts.SambaConfigFile,
+		Template:        opts.Template,
+		DockerInterface: opts.DockerInterface,
+		DockerNet:       opts.DockerNetwork,
+		Heartbeat:       opts.Heartbeat,
+		SupervisorURL:   opts.SupervisorURL,
+		SupervisorToken: opts.SupervisorToken,
+		DatabasePath:    opts.DatabasePath,
+		StartTime:       opts.StartTime,
+	}
+}
+
 func main() {
 
 	http_port = flag.Int("port", 8080, "Http Port on listen to")
@@ -142,22 +178,22 @@ func prog(state overseer.State) {
 	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 	// apiCancel is called at the end of Run() by FX lifecycle or explicitly if Run errors
 
-	staticConfig := dto.ContextState{}
-	staticConfig.Heartbeat = 5 // Default heartbeat
-	staticConfig.AddonIpAddress = *addonIpAddress
-	staticConfig.SupervisorURL = *supervisorURL
-	staticConfig.UpdateFilePath = *updateFilePath
-	staticConfig.ReadOnlyMode = *roMode
-	staticConfig.SambaConfigFile = *smbConfigFile
-	staticConfig.Template = internal.GetTemplateData() // This might be better provided via FX if GetTemplateData has side effects or is costly
-	staticConfig.DockerInterface = *dockerInterface
-	staticConfig.DockerNet = *dockerNetwork
-	staticConfig.DatabasePath = *dbfile
-	staticConfig.SupervisorToken = *supervisorToken
-	staticConfig.SupervisorURL = *supervisorURL
-	staticConfig.SecureMode = *secureMode // This is used to determine if the addon is running in HA mode or not
-	staticConfig.ProtectedMode = *protectedMode
-	staticConfig.StartTime = time.Now()
+	staticConfig := buildServerContextState(serverContextOptions{
+		AddonIPAddress:  *addonIpAddress,
+		ReadOnlyMode:    *roMode,
+		ProtectedMode:   *protectedMode,
+		SecureMode:      *secureMode,
+		UpdateFilePath:  *updateFilePath,
+		SambaConfigFile: *smbConfigFile,
+		Template:        internal.GetTemplateData(),
+		DockerInterface: *dockerInterface,
+		DockerNetwork:   *dockerNetwork,
+		DatabasePath:    *dbfile,
+		SupervisorToken: *supervisorToken,
+		SupervisorURL:   *supervisorURL,
+		Heartbeat:       5,
+		StartTime:       time.Now(),
+	})
 
 	appParams := appsetup.BaseAppParams{
 		Ctx:          apiCtx,
