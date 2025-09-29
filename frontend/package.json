@@ -23,11 +23,11 @@
     "@testing-library/jest-dom": "6.8.0",
     "@testing-library/react": "16.3.0",
     "@testing-library/user-event": "14.6.1",
-    "@types/bun": "1.2.22",
+    "@types/bun": "1.2.23",
     "@types/humanize-duration": "3.27.4",
     "@types/js-sha1": "0.6.3",
     "@types/lodash.debounce": "4.0.9",
-    "@types/react": "19.1.14",
+    "@types/react": "19.1.15",
     "@types/react-dom": "19.1.9",
     "@types/react-sparklines": "1.7.5",
     "@types/react-syntax-highlighter": "15.5.13",
@@ -103,7 +103,7 @@
     "tree-sitter",
     "tree-sitter-json"
   ],
-  "packageManager": "bun@1.2.22",
+  "packageManager": "bun@1.2.23",
   "engines": {
     "bun": ">=1.2.22"
   },
