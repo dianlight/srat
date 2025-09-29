@@ -1,3 +1,4 @@
+import "../../../test/setup";
 import { describe, it, expect, beforeEach } from "bun:test";
 
 describe("IssueCard Component", () => {

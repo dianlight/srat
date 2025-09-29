@@ -1,3 +1,4 @@
+import "../../../../test/setup";
 // Shared test setup (DOM globals, APIURL, and store helper)
 import { describe, it, expect, beforeEach } from "bun:test";
 
