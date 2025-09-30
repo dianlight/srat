@@ -264,6 +264,28 @@ func (suite *FilesystemServiceTestSuite) TestGetFilesystemSpecificMountFlags() {
 		}
 	}
 	suite.True(foundContext, "zfs specific flag 'context' not found")
+
+	// Test with xfs
+	xfsFlags, err := suite.fsService.GetFilesystemSpecificMountFlags("xfs")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(xfsFlags)
+	suite.NotEmpty(xfsFlags, "Expected specific flags for xfs")
+
+	var foundInode64, foundAllocsize bool
+	for _, flag := range xfsFlags {
+		if flag.Name == "inode64" {
+			foundInode64 = true
+			suite.False(flag.NeedsValue, "xfs inode64 flag should not need a value")
+		}
+		if flag.Name == "allocsize" {
+			foundAllocsize = true
+			suite.True(flag.NeedsValue, "xfs allocsize flag should need a value")
+			suite.Equal("Size in bytes optionally with K, M, or G suffix (e.g., 1G)", flag.ValueDescription)
+			suite.Equal(`^[0-9]+([kKmMgG])?$`, flag.ValueValidationRegex)
+		}
+	}
+	suite.True(foundInode64, "xfs specific flag 'inode64' not found")
+	suite.True(foundAllocsize, "xfs specific flag 'allocsize' not found")
 }
 
 func (suite *FilesystemServiceTestSuite) TestGetMountFlagsAndData() {
