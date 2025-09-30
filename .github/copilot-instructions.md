@@ -65,6 +65,11 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 
 ## Testing Patterns
 
+- **Code coverage**: Backend uses `cd backend && make test`. Frontend uses `cd frontend && bun test --coverage`.
+- **Test data**: Use `backend/test/data/` dirs for static test files
+- **Minimal coverage**: Backend enforces 5% coverage. Frontend enforces 80% functions coverage.
+- **New tests**: All new features/bug fixes must include tests covering positive and negative cases. Minimal functions coverage is 90% for frontend tests and 6% for backend tests.
+
 ### Backend Testing
 
 - **Framework**: `testify/suite` with `mockio/v2` for mocks
