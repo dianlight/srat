@@ -28,6 +28,13 @@ import {
 import { useAppDispatch } from "../../../store/store";
 import type { Shared } from "react-redux";
 
+interface SharesTreeViewTestOverrides {
+    dispatch?: (action: unknown) => void;
+    confirm?: (options: Parameters<ReturnType<typeof useConfirm>>[0]) => Promise<any>;
+    enableShare?: (params: { shareName: string }) => Promise<any>;
+    disableShare?: (params: { shareName: string }) => Promise<any>;
+}
+
 interface SharesTreeViewProps {
     shares?: Record<string, SharedResource> | SharedResource[];
     selectedShareKey?: string;
@@ -37,6 +44,7 @@ interface SharesTreeViewProps {
     // Controlled expanded items and change callback (required)
     expandedItems: string[];
     onExpandedItemsChange: (items: string[]) => void;
+    testOverrides?: SharesTreeViewTestOverrides;
 }
 
 export function SharesTreeView({
@@ -47,12 +55,19 @@ export function SharesTreeView({
     readOnly = false,
     expandedItems,
     onExpandedItemsChange,
+    testOverrides,
 }: SharesTreeViewProps) {
     const theme = useTheme();
-    const dispatch = useAppDispatch();
-    const confirm = useConfirm();
-    const [enableShare] = usePutApiShareByShareNameEnableMutation();
-    const [disableShare] = usePutApiShareByShareNameDisableMutation();
+    const dispatch = testOverrides?.dispatch ?? useAppDispatch();
+    const confirm = testOverrides?.confirm ?? useConfirm();
+    const [enableShareMutation] = usePutApiShareByShareNameEnableMutation();
+    const [disableShareMutation] = usePutApiShareByShareNameDisableMutation();
+    const enableShare =
+        testOverrides?.enableShare ??
+        ((params: { shareName: string }) => enableShareMutation(params).unwrap());
+    const disableShare =
+        testOverrides?.disableShare ??
+        ((params: { shareName: string }) => disableShareMutation(params).unwrap());
 
     const groupedAndSortedShares = useMemo(() => {
         if (!shares) {
@@ -106,7 +121,7 @@ export function SharesTreeView({
                         "I understand that disabling the share will retain its configurations but prevent access to it.",
                 });
 
-                await disableShare({ shareName }).unwrap();
+                await disableShare({ shareName });
             } catch (error: any) {
                 if (error.confirmed === false) {
                     return; // User cancelled
@@ -116,7 +131,7 @@ export function SharesTreeView({
         } else {
             // Currently disabled, enable it
             try {
-                await enableShare({ shareName }).unwrap();
+                await enableShare({ shareName });
             } catch (error) {
                 dispatch(addMessage(JSON.stringify(error)));
             }
@@ -216,6 +231,8 @@ export function SharesTreeView({
                         {!readOnly && (
                             <Tooltip title={isDisabled ? "Enable share" : "Disable share"}>
                                 <IconButton
+                                    aria-label={isDisabled ? "enable share" : "disable share"}
+                                    data-testid={`share-toggle-${shareKey}`}
                                     size="small"
                                     onClick={(e) => handleToggleShare(e, shareKey, shareProps)}
                                     sx={{

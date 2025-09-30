@@ -54,6 +54,10 @@ interface ShareEditFormProps {
     disabled?: boolean;
     showActions?: boolean; // Control whether to show form actions (buttons)
     variant?: 'card' | 'plain'; // Control the wrapper (card vs plain content)
+    testOverrides?: {
+        useGetApiUsersQuery?: typeof useGetApiUsersQuery;
+        useVolume?: typeof useVolume;
+    };
 }
 
 export function ShareEditForm({
@@ -64,13 +68,16 @@ export function ShareEditForm({
     disabled = false,
     showActions = true,
     variant = 'card',
+    testOverrides,
 }: ShareEditFormProps) {
+    const useUsersQuery = testOverrides?.useGetApiUsersQuery ?? useGetApiUsersQuery;
+    const useVolumeHook = testOverrides?.useVolume ?? useVolume;
     const {
         data: users,
         isLoading: usLoading,
         error: usError,
-    } = useGetApiUsersQuery();
-    const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume();
+    } = useUsersQuery();
+    const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolumeHook();
     const [editName, setEditName] = useState(shareData?.org_name === undefined);
     const [activeCasingIndex, setActiveCasingIndex] = useState(0);
 
