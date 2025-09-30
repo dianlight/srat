@@ -32,7 +32,7 @@
     "source.action.useSortedKeys.biome": "explicit",
     "source.fixAll.biome": "explicit",
   },
-  "chat.agent.maxRequests": 100,
+  "chat.agent.maxRequests": 1000,
   "geminicodeassist.agentYoloMode": true,
   "geminicodeassist.updateChannel": "Default",
   "github.copilot.chat.byok.ollamaEndpoint": "",
