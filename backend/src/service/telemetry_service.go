@@ -73,6 +73,9 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 		if config.Version == "0.0.0-dev.0" || strings.Contains(config.Version, "-dev.") {
 			environment = "development"
 			errorSessionLimiter = rate.Sometimes{First: 2}
+		} else if strings.Contains(config.Version, "-rc.") {
+			environment = "prerelease"
+			errorSessionLimiter = rate.Sometimes{First: 5}
 		} else {
 			environment = "production"
 		}

@@ -19,7 +19,15 @@ ARCH ?= $(shell arch)
 
 # Telemetry configuration from environment variables
 ROLLBAR_CLIENT_ACCESS_TOKEN?=""
-ROLLBAR_ENVIRONMENT?="development"
+# Auto-determine ROLLBAR_ENVIRONMENT based on VERSION
+ROLLBAR_ENVIRONMENT?=$(shell \
+	if echo $(VERSION) | grep -q "\-dev\."; then \
+		echo "development"; \
+	elif echo $(VERSION) | grep -q "\-rc\."; then \
+		echo "prerelease"; \
+	else \
+		echo "production"; \
+	fi)
 
 all: PREREQUISITE build
 

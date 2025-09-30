@@ -14,10 +14,13 @@ jobs:
     outputs:
       environment: ${{ steps.setenv.outputs.environment }}
     steps:
-      - name: Set environment variable
+      - name: Set environment variable based on version
         id: setenv
         run: |
-          if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+          VERSION="${{ github.event.release.tag_name }}"
+          if [[ "$VERSION" == *"-dev."* ]]; then
+            echo "environment=development" >> $GITHUB_OUTPUT
+          elif [[ "$VERSION" == *"-rc."* ]]; then
             echo "environment=prerelease" >> $GITHUB_OUTPUT
           else
             echo "environment=production" >> $GITHUB_OUTPUT

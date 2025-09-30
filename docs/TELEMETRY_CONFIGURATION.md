@@ -47,7 +47,7 @@ The SRAT telemetry system uses Rollbar for error reporting and analytics. Config
 | Variable                      | Required | Description                                  | Default                    |
 | ----------------------------- | -------- | -------------------------------------------- | -------------------------- |
 | `ROLLBAR_CLIENT_ACCESS_TOKEN` | No       | Rollbar access token (set at build time)     | `""` (disabled)            |
-| `ROLLBAR_ENVIRONMENT`         | No       | Rollbar environment name (set at build time) | Auto-detected from version |
+| `ROLLBAR_ENVIRONMENT`         | No       | Rollbar environment name (set at build time) | Auto-detected from version (`development`, `prerelease`, or `production`) |
 
 **Note**: Backend telemetry configuration is set at **build time** via ldflags, not runtime environment variables.
 
@@ -84,9 +84,10 @@ The frontend version comes from `package.json` and can be updated by the `script
 
 ### Automatic Environment Detection
 
-If `ROLLBAR_ENVIRONMENT` is not set at build time, the environment is automatically determined:
+If `ROLLBAR_ENVIRONMENT` is not set at build time, the environment is automatically determined based on semantic versioning:
 
 - **Development**: Version contains `-dev.` suffix or equals `0.0.0-dev.0`
+- **Prerelease**: Version contains `-rc.` suffix (release candidates)
 - **Production**: All other versions
 
 ### Manual Override
@@ -214,6 +215,13 @@ env:
   ROLLBAR_ENVIRONMENT: "production"
 ```
 
+### Prerelease Environment
+
+```bash
+export ROLLBAR_CLIENT_ACCESS_TOKEN="prerelease_rollbar_token_def456"
+export ROLLBAR_ENVIRONMENT="prerelease"
+```
+
 ### Staging Environment
 
 ```bash
@@ -231,6 +239,24 @@ export ROLLBAR_ENVIRONMENT="staging"
 4. **Wrong environment detected**: Set `ROLLBAR_ENVIRONMENT` explicitly at build time
 
 ### Debug Steps
+
+1. Check environment variables are set before building
+2. Verify tokens are valid in Rollbar dashboard
+3. Rebuild with proper environment variables set
+4. Check browser network tab for Rollbar API calls
+5. Review server logs for telemetry service messages
+6. Ensure internet connectivity for Rollbar API
+
+### Version-based Environment Examples
+
+| Version Example | Detected Environment | Description |
+|----------------|---------------------|-------------|
+| `1.0.0` | `production` | Standard release |
+| `1.0.0-dev.1` | `development` | Development build |
+| `1.0.0-rc.1` | `prerelease` | Release candidate |
+| `2.1.3-dev.abc123` | `development` | Development with commit hash |
+| `2.1.3-rc.2` | `prerelease` | Second release candidate |
+| `0.0.0-dev.0` | `development` | Default development version |
 
 ## Frontend integration notes
 
