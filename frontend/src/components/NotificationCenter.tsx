@@ -162,7 +162,7 @@ export function NotificationCenter() {
 														aria-label="close"
 														color="inherit"
 														size="small"
-														onClick={() => {}}
+														onClick={() => { }}
 													>
 														<CloseIcon fontSize="inherit" />
 													</IconButton>
@@ -174,7 +174,7 @@ export function NotificationCenter() {
 															aria-label="close"
 															color="inherit"
 															size="small"
-															onClick={() => {}}
+															onClick={() => { }}
 														>
 															<CheckIcon fontSize="inherit" />
 														</IconButton>
@@ -216,27 +216,31 @@ export function NotificationCenter() {
 						<Toolbar variant="dense" disableGutters>
 							<Box sx={{ flexGrow: 1, display: { xs: "flex", md: "flex" } }}>
 								<Tooltip title="Clear notifications" arrow>
-									<IconButton
-										color="inherit"
-										onClick={clear}
-										disabled={
-											notifications.filter((n) => !n.read || showRead)
-												.length === 0
-										}
-									>
-										<FontAwesomeSvgIcon icon={faTrashCan} />
-									</IconButton>
+									<Box component="span" sx={{ display: "inline-flex" }}>
+										<IconButton
+											color="inherit"
+											onClick={clear}
+											disabled={
+												notifications.filter((n) => !n.read || showRead)
+													.length === 0
+											}
+										>
+											<FontAwesomeSvgIcon icon={faTrashCan} />
+										</IconButton>
+									</Box>
 								</Tooltip>
 							</Box>
 							<Box sx={{ flexGrow: 0 }}>
 								<Tooltip title="Mark all read" arrow>
-									<IconButton
-										color="inherit"
-										onClick={markAllAsRead}
-										disabled={notifications.filter((n) => !n.read).length === 0}
-									>
-										<FontAwesomeSvgIcon icon={faCheckDouble} />
-									</IconButton>
+									<Box component="span" sx={{ display: "inline-flex" }}>
+										<IconButton
+											color="inherit"
+											onClick={markAllAsRead}
+											disabled={notifications.filter((n) => !n.read).length === 0}
+										>
+											<FontAwesomeSvgIcon icon={faCheckDouble} />
+										</IconButton>
+									</Box>
 								</Tooltip>
 							</Box>
 						</Toolbar>
