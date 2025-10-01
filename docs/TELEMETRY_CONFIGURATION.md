@@ -26,10 +26,12 @@
 - [Example Configurations](#example-configurations)
   - [Development Setup](#development-setup)
   - [Production CI/CD](#production-cicd)
+  - [Prerelease Environment](#prerelease-environment)
   - [Staging Environment](#staging-environment)
 - [Troubleshooting](#troubleshooting)
   - [Common Issues](#common-issues)
   - [Debug Steps](#debug-steps)
+  - [Version-based Environment Examples](#version-based-environment-examples)
 - [Frontend integration notes](#frontend-integration-notes)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
