@@ -53,7 +53,7 @@ describe("ShareDetailsPanel", () => {
         const toggle = screen.getByLabelText(/show more/i);
         fireEvent.click(toggle);
 
-        expect(screen.getByText("/mnt/data")).toBeTruthy();
+        expect(await screen.findByText("/mnt/data")).toBeTruthy();
 
         const editIcons = screen.getAllByTestId("EditIcon");
         const primaryEditButton = editIcons[0].closest("button");
