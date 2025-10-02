@@ -12,7 +12,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.25.8
+	github.com/shirou/gopsutil/v4 v4.25.9
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.36.0
 )
@@ -135,7 +135,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.42.0 // indirect
-	golang.org/x/exp v0.0.0-20250911091902-df9299821621
+	golang.org/x/exp v0.0.0-20251002181428-27f1f14c8bb9
 	golang.org/x/mod v0.28.0 // indirect
 	golang.org/x/sync v0.17.0
 	golang.org/x/text v0.29.0 // indirect
