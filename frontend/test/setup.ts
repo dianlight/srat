@@ -17,6 +17,17 @@ const win = new Window();
 (globalThis as any).HTMLElement = win.HTMLElement as any;
 //(globalThis as any).localStorage = win.localStorage as any;
 
+// Mock fetch globally to prevent network calls during tests
+(globalThis as any).fetch = async () => {
+    return {
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+        text: async () => '',
+        headers: new Map(),
+    };
+};
+
 // Ensure APIURL is set so modules that compute API url at import time behave
 if (typeof process !== "undefined") {
     process.env = process.env || {};

@@ -1,5 +1,6 @@
 import "../../../../test/setup";
 import { describe, it, expect } from "bun:test";
+import { act } from "@testing-library/react";
 
 describe("ShareDetailsPanel", () => {
     const buildShare = async () => {
@@ -32,20 +33,23 @@ describe("ShareDetailsPanel", () => {
     it("renders share information and triggers toggle actions", async () => {
         const React = await import("react");
         const { render, screen, fireEvent } = await import("@testing-library/react");
-        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel");
+        // @ts-expect-error - Query param ensures fresh module instance for mocks
+        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-test");
 
         const share = await buildShare();
 
         let editClicks = 0;
         const onEditClick = () => { editClicks += 1; };
 
-        render(
-            React.createElement(ShareDetailsPanel as any, {
-                share,
-                shareKey: "documents",
-                onEditClick,
-            })
-        );
+        await act(async () => {
+            render(
+                React.createElement(ShareDetailsPanel as any, {
+                    share,
+                    shareKey: "documents",
+                    onEditClick,
+                })
+            );
+        });
 
         expect(await screen.findByText("Documents")).toBeTruthy();
         expect(screen.getByText(/Mount Point Information/)).toBeTruthy();
@@ -64,18 +68,21 @@ describe("ShareDetailsPanel", () => {
     it("renders embedded form when editing", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
-        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel");
+        // @ts-expect-error - Query param ensures fresh module instance for mocks
+        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-test");
         const share = await buildShare();
 
-        render(
-            React.createElement(ShareDetailsPanel as any, {
-                share,
-                shareKey: "documents",
-                isEditing: true,
-                onCancelEdit: () => { },
-                children: React.createElement("div", { role: "form" }, "embedded form"),
-            })
-        );
+        await act(async () => {
+            render(
+                React.createElement(ShareDetailsPanel as any, {
+                    share,
+                    shareKey: "documents",
+                    isEditing: true,
+                    onCancelEdit: () => { },
+                    children: React.createElement("div", { role: "form" }, "embedded form"),
+                })
+            );
+        });
 
         expect(await screen.findByRole("form")).toBeTruthy();
     });
