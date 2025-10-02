@@ -33,7 +33,8 @@ describe("ShareDetailsPanel", () => {
     it("renders share information and triggers toggle actions", async () => {
         const React = await import("react");
         const { render, screen, fireEvent } = await import("@testing-library/react");
-        const { ShareDetailsPanel } = await import("../components");
+        // @ts-expect-error - Query param ensures fresh module instance for mocks
+        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-test");
 
         const share = await buildShare();
 
@@ -67,7 +68,8 @@ describe("ShareDetailsPanel", () => {
     it("renders embedded form when editing", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
-        const { ShareDetailsPanel } = await import("../components");
+        // @ts-expect-error - Query param ensures fresh module instance for mocks
+        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-test");
         const share = await buildShare();
 
         await act(async () => {
