@@ -149,8 +149,6 @@ static: $(FRONTEND_DIRS)/node_modules
 patch:
 	go tool -C $(SRC_DIRS) gohack undo
 	rm -rf ${HOME}/gohack
-	go tool -C $(SRC_DIRS) gohack get -vcs github.com/samber/slog-http
-	git -C ${HOME}/gohack/github.com/samber/slog-http apply $(ROOT_DIR)/patches/slog-http.patch
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/zarldev/goenums
 	git -C ${HOME}/gohack/github.com/zarldev/goenums apply $(ROOT_DIR)/patches/goenums.patch
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/jpillora/overseer
@@ -161,7 +159,6 @@ gen_patch:
 	mkdir patches > /dev/null 2>&1 || :
 	cd ${HOME}/gohack/github.com/zarldev/goenums; git diff > $(ROOT_DIR)/patches/goenums.patch
 	cd ${HOME}/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
-	cd ${HOME}/gohack/github.com/samber/slog-http; git diff > $(ROOT_DIR)/patches/slog-http.patch
 
  /mnt/remote/config.db3: mount_remote
 	[ -f /mnt/remote/config.db3 ] || echo "No remote mount found use make mount_remote"

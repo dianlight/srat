@@ -1,5 +1,6 @@
 import "../../../../test/setup";
 import { describe, it, expect } from "bun:test";
+import { act } from "@testing-library/react";
 
 describe("ShareDetailsPanel", () => {
     const buildShare = async () => {
@@ -39,13 +40,15 @@ describe("ShareDetailsPanel", () => {
         let editClicks = 0;
         const onEditClick = () => { editClicks += 1; };
 
-        render(
-            React.createElement(ShareDetailsPanel as any, {
-                share,
-                shareKey: "documents",
-                onEditClick,
-            })
-        );
+        await act(async () => {
+            render(
+                React.createElement(ShareDetailsPanel as any, {
+                    share,
+                    shareKey: "documents",
+                    onEditClick,
+                })
+            );
+        });
 
         expect(await screen.findByText("Documents")).toBeTruthy();
         expect(screen.getByText(/Mount Point Information/)).toBeTruthy();
@@ -67,15 +70,17 @@ describe("ShareDetailsPanel", () => {
         const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel");
         const share = await buildShare();
 
-        render(
-            React.createElement(ShareDetailsPanel as any, {
-                share,
-                shareKey: "documents",
-                isEditing: true,
-                onCancelEdit: () => { },
-                children: React.createElement("div", { role: "form" }, "embedded form"),
-            })
-        );
+        await act(async () => {
+            render(
+                React.createElement(ShareDetailsPanel as any, {
+                    share,
+                    shareKey: "documents",
+                    isEditing: true,
+                    onCancelEdit: () => { },
+                    children: React.createElement("div", { role: "form" }, "embedded form"),
+                })
+            );
+        });
 
         expect(await screen.findByRole("form")).toBeTruthy();
     });
