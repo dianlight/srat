@@ -25,7 +25,6 @@ Currently under development and in an alpha state, SRAT is set to become the pre
 - [Usage](#usage)
 - [Database](#database)
 - [Sponsor](#sponsor)
-- [Testing and Coverage](#testing-and-coverage)
 - [License](#license)
 - [Development: pre-commit hooks](#development-pre-commit-hooks)
 
