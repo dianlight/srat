@@ -64,4 +64,8 @@ jobs:
           git config --local user.name "GitHub Action"
           git add README.md
           git commit -m "🎯 test: update coverage badges [skip ci]"
+          
+          # Pull latest changes to minimize fast-forward errors
+          git pull --rebase origin main
+          
           git push
