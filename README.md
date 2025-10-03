@@ -7,6 +7,10 @@
 [![GitHub](https://img.shields.io/github/license/dianlight/srat)](https://img.shields.io/github/license/dianlight/srat)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
+[![Backend Unit Test Coverage](https://img.shields.io/badge/Backend_Unit_Tests-37.0%25-orange?logo=go)](https://github.com/dianlight/srat "Backend Go unit test coverage")
+[![Frontend Unit Test Coverage](https://img.shields.io/badge/Frontend_Unit_Tests-70.57%25-green?logo=typescript)](https://github.com/dianlight/srat "Frontend TypeScript unit test coverage")
+[![Global Unit Test Coverage](https://img.shields.io/badge/Global_Unit_Tests-50.4%25-yellow)](https://github.com/dianlight/srat "Overall unit test coverage (weighted average)")
+
 SRAT (SambaNAS REST Administration Tool) is a new system designed to provide a simplified user interface for configuring SAMBA. It has been developed to work within Home Assistant, specifically for this addon, but can also be used in other contexts.
 
 Currently under development and in an alpha state, SRAT is set to become the preferred system for configuring and using this addon, eventually "retiring" the YAML configuration.
@@ -21,6 +25,7 @@ Currently under development and in an alpha state, SRAT is set to become the pre
 - [Usage](#usage)
 - [Database](#database)
 - [Sponsor](#sponsor)
+- [Testing and Coverage](#testing-and-coverage)
 - [License](#license)
 - [Development: pre-commit hooks](#development-pre-commit-hooks)
 
@@ -242,6 +247,44 @@ cd frontend && bun run build
 # Build all architectures
 make ALL
 ```
+
+## Testing and Coverage
+
+SRAT maintains high test coverage across both backend and frontend. The coverage badges at the top of this README are automatically updated.
+
+### Running Tests
+
+```shell
+# Run backend tests with individual package coverage
+cd backend && make test
+
+# Run frontend tests with coverage
+cd frontend && bun test --coverage
+
+# Update coverage badges in README
+bash scripts/update-coverage-badges.sh
+```
+
+### Coverage Metrics
+
+The project tracks three coverage metrics:
+
+- **Backend Coverage**: Go package coverage (individual package basis)
+- **Frontend Coverage**: TypeScript/React component coverage (line coverage)
+- **Global Coverage**: Weighted average (60% backend, 40% frontend)
+
+Coverage badge colors:
+- 🟢 Green (≥80%): Excellent
+- 🟢 Light Green (≥60%): Good
+- 🟡 Yellow (≥40%): Acceptable
+- 🟠 Orange (≥20%): Needs improvement
+- 🔴 Red (<20%): Critical
+
+### Coverage Goals
+
+- Minimum backend package coverage: 2%
+- Minimum frontend function coverage: 90%
+- Target global coverage: 60%+
 
 # Contribute
 [(Back to top)](#table-of-contents)
