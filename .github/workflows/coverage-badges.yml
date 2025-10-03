@@ -1,0 +1,67 @@
+name: Update Coverage Badges
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "backend/src/**/*.go"
+      - "backend/src/**/*_test.go"
+      - "frontend/src/**/*.ts"
+      - "frontend/src/**/*.tsx"
+      - "frontend/src/**/*.test.ts"
+      - "frontend/src/**/*.test.tsx"
+      - ".github/workflows/coverage-badges.yml"
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  update-badges:
+    runs-on: ubuntu-latest
+    name: Update Coverage Badges in README
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Go
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: 'backend/src/go.mod'
+          cache-dependency-path: 'backend/src/go.sum'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          bun install
+
+      - name: Update coverage badges
+        run: |
+          bash scripts/update-coverage-badges.sh
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet README.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes to README.md"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "README.md has been updated"
+          fi
+
+      - name: Commit and push if changed
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "🎯 test: update coverage badges [skip ci]"
+          git push
