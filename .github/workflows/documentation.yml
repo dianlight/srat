@@ -6,12 +6,6 @@ on:
     paths:
       - "**/*.md"
       - ".github/workflows/documentation.yml"
-      - ".github/copilot-rules.md"
-      - ".github/copilot-instructions.md"
-      - "docs/**"
-      - "README.md"
-      - "CHANGELOG.md"
-      - "docs/implementation/IMPLEMENTATION_*.md"
       - "scripts/validate-docs.sh"
       - "Makefile"
   pull_request:
@@ -19,12 +13,6 @@ on:
     paths:
       - "**/*.md"
       - ".github/workflows/documentation.yml"
-      - ".github/copilot-rules.md"
-      - ".github/copilot-instructions.md"
-      - "docs/**"
-      - "README.md"
-      - "CHANGELOG.md"
-      - "docs/implementation/IMPLEMENTATION_*.md"
       - "scripts/validate-docs.sh"
       - "Makefile"
   schedule:

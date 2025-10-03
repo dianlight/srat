@@ -62,10 +62,16 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          
+          # Stash any unrelated changes that might exist (including the README change)
+          git stash --include-untracked || true
+          
+          # Pull latest changes first
+          git pull --rebase origin main
+          
+          # Unstash and commit the changes
+          git stash pop || true
           git add README.md
           git commit -m "🎯 test: update coverage badges [skip ci]"
-          
-          # Pull latest changes to minimize fast-forward errors
-          git pull --rebase origin main
           
           git push

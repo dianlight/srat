@@ -10,6 +10,17 @@ name: build
 on:
   push:
     branches: ["main"]
+    paths:
+      - '**.go'
+      - '**.ts'
+      - '**.tsx'
+      - '**/go.mod'
+      - '**/go.sum'
+      - '**/package.json'
+      - '**/bun.lockb'
+      - '**/Makefile'
+      - 'bun.build.ts'
+      - '.github/workflows/build.yaml'
   release:
     types: ["published"]
   pull_request:
