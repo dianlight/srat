@@ -34,7 +34,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 - **Pages**: `frontend/src/pages/` — Route-based page components
 - **Store**: `frontend/src/store/` — RTK Query for API calls, Redux slices for local state
 - **Hooks**: `frontend/src/hooks/` — Custom React hooks for shared logic
-- **API Integration**: Auto-generated RTK Query hooks from OpenAPI spec (see `frontend/src/store/sratApi.ts`)
+- **API Integration**: Auto-generated RTK Query hooks from OpenAPI spec (see `frontend/src/store/sratApi.ts`). Never make change on `frontend/src/store/sratApi.ts` directly; update Go code and run `cd frontend && bun run gen`.
 - **MUI Grid**: Use modern Grid syntax with `size` prop (e.g., `<Grid size={{ xs: 12, sm: 6 }}>`) — Grid2 is now promoted as the default Grid in MUI v7.3.2+
 
 ## Development Workflows
