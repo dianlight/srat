@@ -255,13 +255,13 @@ export function VolumeDetailsPanel({
                                     </Typography>
                                 </Grid>
                             )}
-                            {mountData?.fstype && (
+                            {(mountData?.fstype || partition.fs_type) && (
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <Typography variant="subtitle2" color="text.secondary">
                                         File System
                                     </Typography>
                                     <Typography variant="body2">
-                                        {mountData.fstype}
+                                        {mountData?.fstype ?? partition.fs_type}
                                     </Typography>
                                 </Grid>
                             )}
@@ -420,13 +420,13 @@ export function VolumeDetailsPanel({
                         <CardContent>
                             <Grid container spacing={2}>
                                 {/* File System Type */}
-                                {mountData.fstype && (
+                                {(mountData.fstype || partition.fs_type) && (
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <Typography variant="subtitle2" color="text.secondary">
                                             File System Type
                                         </Typography>
                                         <Typography variant="body2">
-                                            {mountData.fstype}
+                                            {mountData.fstype ?? partition.fs_type}
                                         </Typography>
                                     </Grid>
                                 )}
