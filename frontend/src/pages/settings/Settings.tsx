@@ -554,8 +554,14 @@ export function Settings() {
 										</Typography>
 										<Typography variant="body2">
 											This parameter enables SMB over QUIC transport protocol for improved
-											performance and security. Requires kernel QUIC module support.
+											performance and security. Requires Samba 4.23+ and either QUIC kernel
+											module or libngtcp2 library support.
 										</Typography>
+										{capabilities && 'supports_quic' in capabilities && !capabilities.supports_quic && 'unsupported_reason' in capabilities && capabilities.unsupported_reason && (
+											<Typography variant="body2" sx={{ mt: 1, color: 'warning.light' }}>
+												<strong>Not available:</strong> {capabilities.unsupported_reason}
+											</Typography>
+										)}
 									</>
 								}
 							>
@@ -572,9 +578,9 @@ export function Settings() {
 									disabled={evdata?.hello?.read_only || isCapabilitiesLoading || !(capabilities && 'supports_quic' in capabilities && capabilities.supports_quic)}
 								/>
 							</Tooltip>
-							{capabilities && 'supports_quic' in capabilities && !capabilities.supports_quic && !isCapabilitiesLoading && (
-								<Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-									System does not support QUIC kernel module
+							{capabilities && 'supports_quic' in capabilities && !capabilities.supports_quic && !isCapabilitiesLoading && 'unsupported_reason' in capabilities && capabilities.unsupported_reason && (
+								<Typography variant="caption" color="warning.main" sx={{ mt: 0.5, display: 'block' }}>
+									{capabilities.unsupported_reason}
 								</Typography>
 							)}
 						</Grid>

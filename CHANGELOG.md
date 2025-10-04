@@ -6,11 +6,21 @@
 
 ### ✨ Features
 
-- **SMB over QUIC Support [#227](https://github.com/dianlight/srat/issues/227)**: Added support for SMB over QUIC transport protocol for improved performance and security. The feature includes:
-  - New `smb_over_quic` setting in backend with automatic detection of kernel QUIC module support
-  - System capabilities API endpoint to check QUIC availability
-  - UI switch in Settings page (disabled if system doesn't support QUIC)
-  - Automatic Samba configuration updates when QUIC is enabled (mandatory encryption, port 443)
+- **SMB over QUIC Support [#227](https://github.com/dianlight/srat/issues/227)**: Added comprehensive support for SMB over QUIC transport protocol with intelligent system detection:
+  - **Samba Version Check**: Requires Samba 4.23.0 or later for QUIC support
+  - **Dual Transport Detection**: Automatically detects either QUIC kernel module (`quic`, `net_quic`) OR libngtcp2 library availability
+  - **Enhanced System Capabilities API**: `/api/capabilities` now reports detailed QUIC support status including:
+    - Overall QUIC support status
+    - Kernel module availability
+    - libngtcp2 library detection
+    - Samba version and sufficiency
+    - Detailed unsupported reason when unavailable
+  - **Smart UI Integration**: Settings page switch with:
+    - Automatic disable when requirements not met
+    - Tooltip showing specific missing requirements
+    - Warning message explaining why QUIC is unavailable
+  - **Automatic Samba Configuration**: When enabled, applies mandatory encryption, port 443, and disables Unix extensions
+  - **Comprehensive Documentation**: Detailed troubleshooting for Samba upgrades, kernel module loading, and libngtcp2 installation
 - **Auto-Update Service**: Implemented a backend service for automatic updates from GitHub releases, with support for multiple channels and local development builds.
 - **Telemetry Configuration**: Added UI in Settings to configure telemetry modes, dependent on internet connectivity.
 - Manage `recycle bin`option for share

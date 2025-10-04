@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -171,6 +173,91 @@ func IsKernelModuleLoaded(moduleName string) (bool, error) {
 
 	if err := scanner.Err(); err != nil {
 		return false, err
+	}
+
+	return false, nil
+}
+
+// IsLibraryAvailable checks if a shared library is available on the system.
+// It uses ldconfig to check for the library.
+func IsLibraryAvailable(libraryName string) (bool, error) {
+	// Try using ldconfig -p to list all cached libraries
+	cmd := exec.Command("ldconfig", "-p")
+	output, err := cmd.Output()
+	if err != nil {
+		// If ldconfig fails, try pkg-config as fallback
+		return isLibraryAvailableViaPkgConfig(libraryName)
+	}
+
+	// Search for the library in ldconfig output
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, libraryName) {
+			return true, nil
+		}
+	}
+
+	return false, scanner.Err()
+}
+
+// isLibraryAvailableViaPkgConfig checks library availability using pkg-config
+func isLibraryAvailableViaPkgConfig(libraryName string) (bool, error) {
+	// Remove lib prefix and .so suffix if present
+	pkgName := strings.TrimPrefix(libraryName, "lib")
+	pkgName = strings.TrimSuffix(pkgName, ".so")
+	
+	cmd := exec.Command("pkg-config", "--exists", pkgName)
+	err := cmd.Run()
+	return err == nil, nil
+}
+
+// GetSambaVersion retrieves the installed Samba version.
+// Returns version string (e.g., "4.23.0") or empty string if not found.
+func GetSambaVersion() (string, error) {
+	cmd := exec.Command("smbd", "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	// Parse version from output like "Version 4.23.0"
+	versionLine := strings.TrimSpace(string(output))
+	parts := strings.Fields(versionLine)
+	if len(parts) >= 2 && strings.ToLower(parts[0]) == "version" {
+		return parts[1], nil
+	}
+
+	return "", nil
+}
+
+// IsSambaVersionSufficient checks if Samba version meets minimum requirement.
+// Returns true if version >= 4.23.0
+func IsSambaVersionSufficient() (bool, error) {
+	version, err := GetSambaVersion()
+	if err != nil || version == "" {
+		return false, err
+	}
+
+	// Parse version string
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return false, nil
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false, err
+	}
+
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false, err
+	}
+
+	// Check if version >= 4.23
+	if major > 4 || (major == 4 && minor >= 23) {
+		return true, nil
 	}
 
 	return false, nil

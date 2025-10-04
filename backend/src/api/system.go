@@ -219,6 +219,23 @@ func (handler *SystemHanler) GetHostnameHandler(ctx context.Context, input *stru
 //   - An error if there is any issue checking the capabilities.
 func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.SystemCapabilities }, error) {
 	capabilities := dto.SystemCapabilities{}
+	var reasons []string
+	
+	// Check Samba version
+	sambaVersionSufficient, err := osutil.IsSambaVersionSufficient()
+	if err != nil {
+		slog.Warn("Failed to check Samba version", "error", err)
+		capabilities.SambaVersion = "unknown"
+		capabilities.SambaVersionSufficient = false
+		reasons = append(reasons, "Samba version could not be determined")
+	} else {
+		version, _ := osutil.GetSambaVersion()
+		capabilities.SambaVersion = version
+		capabilities.SambaVersionSufficient = sambaVersionSufficient
+		if !sambaVersionSufficient {
+			reasons = append(reasons, "Samba version must be >= 4.23.0")
+		}
+	}
 	
 	// Check if QUIC kernel module is loaded
 	// The quic module might be named differently on different systems
@@ -226,20 +243,42 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 	quicLoaded, err := osutil.IsKernelModuleLoaded("quic")
 	if err != nil {
 		slog.Warn("Failed to check QUIC kernel module", "error", err)
-		capabilities.SupportsQUIC = false
+		capabilities.HasKernelModule = false
 	} else {
-		capabilities.SupportsQUIC = quicLoaded
+		capabilities.HasKernelModule = quicLoaded
 	}
 	
 	// If "quic" module not found, try "net_quic"
-	if !capabilities.SupportsQUIC {
+	if !capabilities.HasKernelModule {
 		netQuicLoaded, err := osutil.IsKernelModuleLoaded("net_quic")
 		if err != nil {
 			slog.Warn("Failed to check net_quic kernel module", "error", err)
 		} else {
-			capabilities.SupportsQUIC = netQuicLoaded
+			capabilities.HasKernelModule = netQuicLoaded
 		}
+	}
+	
+	// Check for libngtcp2 library
+	hasLibngtcp2, err := osutil.IsLibraryAvailable("libngtcp2")
+	if err != nil {
+		slog.Warn("Failed to check libngtcp2 library", "error", err)
+		capabilities.HasLibngtcp2 = false
+	} else {
+		capabilities.HasLibngtcp2 = hasLibngtcp2
+	}
+	
+	// QUIC is supported if Samba version is sufficient AND (kernel module OR libngtcp2)
+	hasTransport := capabilities.HasKernelModule || capabilities.HasLibngtcp2
+	if !hasTransport {
+		reasons = append(reasons, "QUIC kernel module or libngtcp2 library not available")
+	}
+	
+	capabilities.SupportsQUIC = capabilities.SambaVersionSufficient && hasTransport
+	
+	if !capabilities.SupportsQUIC && len(reasons) > 0 {
+		capabilities.UnsupportedReason = strings.Join(reasons, "; ")
 	}
 	
 	return &struct{ Body dto.SystemCapabilities }{Body: capabilities}, nil
 }
+

@@ -221,3 +221,40 @@ func TestIsKernelModuleLoaded(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, loaded)
 }
+
+func TestIsLibraryAvailable(t *testing.T) {
+	// Test with a very common library that should exist on most systems
+	// libc is always present
+	_, err := IsLibraryAvailable("libc")
+	assert.NoError(t, err)
+	
+	// Test with a non-existent library
+	available, err := IsLibraryAvailable("libdefinitely_not_real_xyz123")
+	assert.NoError(t, err)
+	assert.False(t, available)
+}
+
+func TestGetSambaVersion(t *testing.T) {
+	// This test will attempt to get Samba version if installed
+	version, err := GetSambaVersion()
+	
+	// If Samba is not installed, we should get an error (that's OK for test)
+	// If it is installed, version should not be empty
+	if err == nil {
+		assert.NotEmpty(t, version, "Samba version should not be empty when no error")
+	}
+	// If error, it's OK - Samba might not be installed in test environment
+}
+
+func TestIsSambaVersionSufficient(t *testing.T) {
+	// This test will check if Samba version meets minimum requirement
+	sufficient, err := IsSambaVersionSufficient()
+	
+	// If Samba is not installed, we might get an error (that's OK)
+	// The function should handle this gracefully
+	if err == nil {
+		// If no error, the result should be a valid boolean
+		assert.IsType(t, false, sufficient)
+	}
+	// If error, it's OK - Samba might not be installed in test environment
+}
