@@ -347,7 +347,7 @@ export function NavBar(props: {
 	return (
 		<>
 			<AppBar position="static">
-				<Container maxWidth="xl">
+				<Container maxWidth={false}>
 					<Toolbar
 						disableGutters
 						sx={{

@@ -52,7 +52,7 @@ export function App() {
 		<>
 			{/* Update Rollbar person information when machine_id becomes available */}
 			<Container
-				maxWidth="lg"
+				maxWidth={false}
 				disableGutters={true}
 				sx={{
 					minHeight: "100vh",
