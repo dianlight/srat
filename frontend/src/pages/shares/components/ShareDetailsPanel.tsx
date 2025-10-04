@@ -23,6 +23,7 @@ import { filesize } from "filesize";
 import { useState } from "react";
 import { type SharedResource, Time_machine_support, Usage } from "../../../store/sratApi";
 import type { ShareEditProps } from "../types";
+import { PreviewDialog } from "../../../components/PreviewDialog";
 
 interface ShareDetailsPanelProps {
     share?: SharedResource;
@@ -46,6 +47,7 @@ export function ShareDetailsPanel({
     children,
 }: ShareDetailsPanelProps) {
     const [mountPointExpanded, setMountPointExpanded] = useState(false);
+    const [showMountPointPreview, setShowMountPointPreview] = useState(false);
     if (!share || !shareKey) {
         return (
             <Box
@@ -98,7 +100,16 @@ export function ShareDetailsPanel({
                                 )}
                             </Box>
                         }
-                        avatar={<StorageIcon color="primary" />}
+                        avatar={
+                            <Tooltip title="View mount point details">
+                                <IconButton
+                                    onClick={() => setShowMountPointPreview(true)}
+                                    size="small"
+                                >
+                                    <StorageIcon color="primary" />
+                                </IconButton>
+                            </Tooltip>
+                        }
                         action={
                             <IconButton
                                 onClick={() => setMountPointExpanded(!mountPointExpanded)}
@@ -372,6 +383,14 @@ export function ShareDetailsPanel({
                     )}
                 </Card>
             </Stack>
+
+            {/* Mount Point Preview Dialog */}
+            <PreviewDialog
+                title={`Mount Point: ${mountData?.path || 'N/A'}`}
+                objectToDisplay={mountData}
+                open={showMountPointPreview}
+                onClose={() => setShowMountPointPreview(false)}
+            />
         </Box>
     );
 }
