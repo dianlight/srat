@@ -228,7 +228,7 @@ export function SharesTreeView({
                             </Box>
                         </Box>
 
-                        {!readOnly && (
+                        {!readOnly && shareProps.mount_point_data && (
                             <Tooltip title={isDisabled ? "Enable share" : "Disable share"}>
                                 <IconButton
                                     aria-label={isDisabled ? "enable share" : "disable share"}
