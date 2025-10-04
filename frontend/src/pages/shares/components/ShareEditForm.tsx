@@ -221,65 +221,67 @@ export function ShareEditForm({
                 noValidate
             >
                 <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 8 }}>
-                        {availablePartitions.length > 0 && (
-                            <AutocompleteElement
-                                label="Volume"
-                                name="mount_point_data"
-                                options={availablePartitions}
-                                control={control}
-                                required
-                                loading={vlLoading}
-                                autocompleteProps={{
-                                    disabled: isDisabled,
-                                    size: "small",
-                                    renderValue: (value: MountPointData) => {
-                                        return <Typography variant="body2">
-                                            {value.disk_label || value.device_id} <sup>{value.is_write_supported ? "" : (<Typography variant="caption" color="error">Read-Only</Typography>)}</sup>
-                                        </Typography>;
-                                    },
-                                    getOptionLabel: (option) =>
-                                        (option as MountPointData)?.disk_label || "",
-                                    getOptionKey: (option) =>
-                                        (option as MountPointData)?.path_hash || "",
-                                    renderOption: (props, option) => (
-                                        <li {...props}>
-                                            <Typography variant="body2">
-                                                {option.disk_label || option.device_id} <sup>{option.is_write_supported ? "" : (<Typography variant="caption" color="error">Read-Only</Typography>)}</sup>
-                                            </Typography>
-                                        </li>
-                                    ),
-                                    isOptionEqualToValue(option, value) {
-                                        if (!value || !option) return false;
-                                        return option.path_hash === value?.path_hash;
-                                    },
-                                    getOptionDisabled: (option) => {
-                                        if (!shares || !option.path_hash) {
-                                            return false;
-                                        }
-
-                                        const currentEditingShareName = shareData?.org_name;
-
-                                        for (const existingShare of Object.values(shares)) {
-                                            if (
-                                                existingShare.mount_point_data?.path_hash ===
-                                                option.path_hash
-                                            ) {
-                                                if (
-                                                    currentEditingShareName &&
-                                                    existingShare.name === currentEditingShareName
-                                                ) {
-                                                    return false;
-                                                }
-                                                return true;
+                    {shareData?.usage !== Usage.Internal && (
+                        <Grid size={{ xs: 12, md: 8 }}>
+                            {availablePartitions.length > 0 && (
+                                <AutocompleteElement
+                                    label="Volume"
+                                    name="mount_point_data"
+                                    options={availablePartitions}
+                                    control={control}
+                                    required
+                                    loading={vlLoading}
+                                    autocompleteProps={{
+                                        disabled: isDisabled,
+                                        size: "small",
+                                        renderValue: (value: MountPointData) => {
+                                            return <Typography variant="body2">
+                                                {value.disk_label || value.device_id} <sup>{value.is_write_supported ? "" : (<Typography variant="caption" color="error">Read-Only</Typography>)}</sup>
+                                            </Typography>;
+                                        },
+                                        getOptionLabel: (option) =>
+                                            (option as MountPointData)?.disk_label || "",
+                                        getOptionKey: (option) =>
+                                            (option as MountPointData)?.path_hash || "",
+                                        renderOption: (props, option) => (
+                                            <li {...props}>
+                                                <Typography variant="body2">
+                                                    {option.disk_label || option.device_id} <sup>{option.is_write_supported ? "" : (<Typography variant="caption" color="error">Read-Only</Typography>)}</sup>
+                                                </Typography>
+                                            </li>
+                                        ),
+                                        isOptionEqualToValue(option, value) {
+                                            if (!value || !option) return false;
+                                            return option.path_hash === value?.path_hash;
+                                        },
+                                        getOptionDisabled: (option) => {
+                                            if (!shares || !option.path_hash) {
+                                                return false;
                                             }
-                                        }
-                                        return false;
-                                    },
-                                }}
-                            />
-                        )}
-                    </Grid>
+
+                                            const currentEditingShareName = shareData?.org_name;
+
+                                            for (const existingShare of Object.values(shares)) {
+                                                if (
+                                                    existingShare.mount_point_data?.path_hash ===
+                                                    option.path_hash
+                                                ) {
+                                                    if (
+                                                        currentEditingShareName &&
+                                                        existingShare.name === currentEditingShareName
+                                                    ) {
+                                                        return false;
+                                                    }
+                                                    return true;
+                                                }
+                                            }
+                                            return false;
+                                        },
+                                    }}
+                                />
+                            )}
+                        </Grid>
+                    )}
                     {shareData?.usage !== Usage.Internal && (
                         <Grid size={{ xs: 12, md: 4 }}>
                             <SelectElement
@@ -680,9 +682,17 @@ export function ShareEditForm({
         <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: "auto" }}>
             {!(editName || shareData?.org_name === undefined) && (
                 <Box sx={{ display: "flex", alignItems: "center", flexGrow: "inherit" }}>
-                    <IconButton onClick={() => setEditName(true)} size="small">
-                        <ModeEditIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title={shareData?.usage === Usage.Internal ? "Cannot edit name of internal shares" : "Edit share name"}>
+                        <span>
+                            <IconButton
+                                onClick={() => setEditName(true)}
+                                size="small"
+                                disabled={shareData?.usage === Usage.Internal}
+                            >
+                                <ModeEditIcon fontSize="small" />
+                            </IconButton>
+                        </span>
+                    </Tooltip>
                     <Typography variant="h6">{shareData?.name}</Typography>
                 </Box>
             )}
