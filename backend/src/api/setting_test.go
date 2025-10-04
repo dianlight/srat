@@ -188,7 +188,35 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	if err != nil {
 		suite.T().Fatalf("Failed to load properties: %v", err)
 	}
-	//if err := properties.SetValue("Workgroup", "WORKGROUP"); err != nil {
-	//	suite.T().Fatalf("Failed to add workgroup property: %v", err)
-	//}
+}
+
+func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithSMBoverQUIC() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+	autopatch.AutoPatch(api)
+
+	// Test with SMBoverQUIC enabled
+	smbOverQuicEnabled := true
+	glc := dto.Settings{
+		Workgroup:   "testworkgroup",
+		SMBoverQUIC: &smbOverQuicEnabled,
+	}
+
+	rr := api.Patch("/settings", glc)
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	var res dto.Settings
+	err := json.Unmarshal(rr.Body.Bytes(), &res)
+	suite.Require().NoError(err, "Body %#v", rr.Body.String())
+
+	suite.Equal(glc.Workgroup, res.Workgroup)
+	suite.NotNil(res.SMBoverQUIC)
+	suite.Equal(smbOverQuicEnabled, *res.SMBoverQUIC)
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Settings)
+
+	// Restore original state
+	_, err = suite.mockPropertyRepository.All(false)
+	if err != nil {
+		suite.T().Fatalf("Failed to load properties: %v", err)
+	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service"
 	"github.com/jpillora/overseer"
 	"github.com/shirou/gopsutil/v4/net"
@@ -38,6 +39,7 @@ func (self *SystemHanler) RegisterSystemHanler(api huma.API) {
 	huma.Get(api, "/nics", self.GetNICsHandler, huma.OperationTags("system"))
 	huma.Get(api, "/hostname", self.GetHostnameHandler, huma.OperationTags("system"))
 	huma.Get(api, "/filesystems", self.GetFSHandler, huma.OperationTags("system"))
+	huma.Get(api, "/capabilities", self.GetCapabilitiesHandler, huma.OperationTags("system"))
 }
 
 // RestartHandler handles the request to restart the server.
@@ -203,4 +205,41 @@ func (handler *SystemHanler) GetHostnameHandler(ctx context.Context, input *stru
 		return nil, err // Error is already descriptive from the service
 	}
 	return &struct{ Body string }{Body: hostname}, nil
+}
+
+// GetCapabilitiesHandler retrieves the system capabilities.
+// It checks for various system features like QUIC support.
+//
+// Parameters:
+//   - ctx: The context for the request.
+//   - input: An empty struct as input.
+//
+// Returns:
+//   - A struct containing the system capabilities in the Body field.
+//   - An error if there is any issue checking the capabilities.
+func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.SystemCapabilities }, error) {
+	capabilities := dto.SystemCapabilities{}
+	
+	// Check if QUIC kernel module is loaded
+	// The quic module might be named differently on different systems
+	// Common names: quic, net_quic, or built into the kernel
+	quicLoaded, err := osutil.IsKernelModuleLoaded("quic")
+	if err != nil {
+		slog.Warn("Failed to check QUIC kernel module", "error", err)
+		capabilities.SupportsQUIC = false
+	} else {
+		capabilities.SupportsQUIC = quicLoaded
+	}
+	
+	// If "quic" module not found, try "net_quic"
+	if !capabilities.SupportsQUIC {
+		netQuicLoaded, err := osutil.IsKernelModuleLoaded("net_quic")
+		if err != nil {
+			slog.Warn("Failed to check net_quic kernel module", "error", err)
+		} else {
+			capabilities.SupportsQUIC = netQuicLoaded
+		}
+	}
+	
+	return &struct{ Body dto.SystemCapabilities }{Body: capabilities}, nil
 }

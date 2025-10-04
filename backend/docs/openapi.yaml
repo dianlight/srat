@@ -941,6 +941,9 @@ components:
             - "null"
         multi_channel:
           type: boolean
+        smb_over_quic:
+          default: true
+          type: boolean
         telemetry_mode:
           enum:
             - Ask
@@ -1091,6 +1094,21 @@ components:
           type: string
       required:
         - data
+      type: object
+    SystemCapabilities:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SystemCapabilities.json
+          format: uri
+          readOnly: true
+          type: string
+        supports_quic:
+          type: boolean
+      required:
+        - supports_quic
       type: object
     UpdateProgress:
       additionalProperties: false
@@ -1245,6 +1263,49 @@ info:
   version: 1.0.0
 openapi: 3.1.0
 paths:
+  /api/capabilities:
+    get:
+      operationId: get-api-capabilities
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemCapabilities"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API capabilities
+      tags:
+        - system
   /api/filesystems:
     get:
       operationId: list-api-filesystems
@@ -1793,8 +1854,8 @@ paths:
     get:
       operationId: get-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -1886,6 +1947,9 @@ paths:
                   type: array
                 multi_channel:
                   type: boolean
+                smb_over_quic:
+                  default: true
+                  type: boolean
                 telemetry_mode:
                   enum:
                     - Ask
@@ -1941,6 +2005,9 @@ paths:
                     type: string
                   type: array
                 multi_channel:
+                  type: boolean
+                smb_over_quic:
+                  default: true
                   type: boolean
                 telemetry_mode:
                   enum:
@@ -2524,8 +2591,8 @@ paths:
     get:
       operationId: list-api-shares
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2716,8 +2783,8 @@ paths:
     get:
       operationId: get-api-status
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2849,8 +2916,8 @@ paths:
     get:
       operationId: get-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2981,8 +3048,8 @@ paths:
     post:
       operationId: post-api-user
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -3453,8 +3520,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:

@@ -20,6 +20,13 @@
    server multi channel support = yes
    {{- end }}
 
+   {{if .smb_over_quic -}}
+   # SMB over QUIC settings
+   server smb3 encryption = mandatory
+   smb3 unix extensions = no
+   smb ports = 443
+   {{- end }}
+
    unix extensions = no
    vfs objects = acl_xattr catia fruit streams_xattr recycle
    fruit:aapl = yes

@@ -205,3 +205,19 @@ func TestMountInfoDeviceNumbers(t *testing.T) {
 	assert.Equal(t, 98, entries[1].DevMajor)
 	assert.Equal(t, 1, entries[1].DevMinor)
 }
+
+func TestIsKernelModuleLoaded(t *testing.T) {
+	// Note: This test will check actual kernel modules on the system.
+	// We test with a module that is very likely to be loaded (like 'loop')
+	// and one that is unlikely to exist.
+	
+	// Test with a common module (may not be loaded on all systems)
+	// We just verify the function doesn't error
+	_, err := IsKernelModuleLoaded("loop")
+	assert.NoError(t, err)
+	
+	// Test with a non-existent module
+	loaded, err := IsKernelModuleLoaded("definitely_not_a_real_module_xyz123")
+	assert.NoError(t, err)
+	assert.False(t, loaded)
+}

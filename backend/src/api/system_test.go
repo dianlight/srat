@@ -154,3 +154,18 @@ func (suite *SystemHandlerSuite) TestGetFSHandler_IncludesFuse3() {
 	suite.Contains(names, "fuse")
 	suite.NotContains(names, "sysfs")
 }
+
+func (suite *SystemHandlerSuite) TestGetCapabilitiesHandler_Success() {
+	// This test checks that the endpoint returns successfully
+	// QUIC support detection depends on the actual system state
+	resp := suite.testAPI.Get("/capabilities")
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result dto.SystemCapabilities
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	
+	// We can't assert the actual value of SupportsQUIC as it depends on the system
+	// but we can verify the field exists and is a boolean
+	suite.IsType(false, result.SupportsQUIC)
+}

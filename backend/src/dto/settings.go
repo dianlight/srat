@@ -14,4 +14,5 @@ type Settings struct {
 	TelemetryMode     TelemetryMode `json:"telemetry_mode,omitempty" enum:"Ask,All,Errors,Disabled"`
 	LocalMaster       *bool         `json:"local_master,omitempty" default:"true"`
 	ExportStatsToHA   *bool         `json:"export_stats_to_ha,omitempty" default:"true"`
+	SMBoverQUIC       *bool         `json:"smb_over_quic,omitempty" default:"true"`
 }

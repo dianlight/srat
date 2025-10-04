@@ -1,7 +1,9 @@
 package osutil
 
 import (
+	"bufio"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -146,4 +148,30 @@ func IsMounted(path string) (bool, error) {
 // IsWritable returns true when the current user has write access to the path.
 func IsWritable(path string) bool {
 	return unix.Access(path, unix.W_OK) == nil
+}
+
+// IsKernelModuleLoaded checks if a kernel module is currently loaded.
+// It reads /proc/modules to determine if the module exists.
+func IsKernelModuleLoaded(moduleName string) (bool, error) {
+	file, err := os.Open("/proc/modules")
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Module format: modulename size refcount dependencies state offset
+		fields := strings.Fields(line)
+		if len(fields) > 0 && fields[0] == moduleName {
+			return true, nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return false, err
+	}
+
+	return false, nil
 }
