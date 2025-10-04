@@ -4,6 +4,7 @@ import {
 	AccordionDetails,
 	AccordionSummary,
 	Typography,
+	Box,
 } from "@mui/material";
 import type { SambaStatus } from "../../../store/sratApi";
 import { SambaStatusMetrics } from "./SambaStatusMetrics";
@@ -23,7 +24,6 @@ export function SambaStatusMetricsAccordion({
 	return (
 		<Accordion
 			data-tutor={`reactour__tab${TabIDs.DASHBOARD}__step8`}
-
 			expanded={expanded}
 			onChange={onChange}
 			id="samba-status-details"
@@ -33,7 +33,21 @@ export function SambaStatusMetricsAccordion({
 				aria-controls="panel-samba-metrics-content"
 				id="panel-samba-metrics-header"
 			>
-				<Typography variant="h6">Samba Status</Typography>
+				<Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
+					<Typography variant="h6" component="div">
+						Samba Status{` ${sambaStatus?.version ? `(v${sambaStatus.version})` : ""}`}
+					</Typography>
+					{!expanded && sambaStatus && (
+						<Box sx={{ display: "flex", gap: 2 }}>
+							<Typography variant="body2" color="text.secondary">
+								Sessions: {Object.keys(sambaStatus.sessions || {}).length}
+							</Typography>
+							<Typography variant="body2" color="text.secondary">
+								Tcons: {Object.keys(sambaStatus.tcons || {}).length}
+							</Typography>
+						</Box>
+					)}
+				</Box>
 			</AccordionSummary>
 			<AccordionDetails>
 				<SambaStatusMetrics sambaStatus={sambaStatus} />
