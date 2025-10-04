@@ -86,4 +86,40 @@ describe("ShareDetailsPanel", () => {
 
         expect(await screen.findByRole("form")).toBeTruthy();
     });
+
+    it("opens PreviewDialog when StorageIcon is clicked", async () => {
+        const React = await import("react");
+        const { render, screen, fireEvent } = await import("@testing-library/react");
+        // @ts-expect-error - Query param ensures fresh module instance for mocks
+        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-preview-test");
+
+        const share = await buildShare();
+
+        await act(async () => {
+            render(
+                React.createElement(ShareDetailsPanel as any, {
+                    share,
+                    shareKey: "documents",
+                })
+            );
+        });
+
+        // Find the StorageIcon button with the aria-label (from Tooltip title)
+        const storageIconButton = screen.getByLabelText("View mount point details");
+        expect(storageIconButton).toBeTruthy();
+
+        // Click on the StorageIcon to open PreviewDialog
+        await act(async () => {
+            fireEvent.click(storageIconButton);
+        });
+
+        // PreviewDialog should now be visible with the mount point path in the title
+        expect(await screen.findByText(/Mount Point: \/mnt\/data/)).toBeTruthy();
+
+        // Find and click the Close button in the dialog
+        const closeButton = screen.getByRole("button", { name: /close/i });
+        await act(async () => {
+            fireEvent.click(closeButton);
+        });
+    });
 });
