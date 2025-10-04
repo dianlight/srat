@@ -11,9 +11,9 @@ curl -fsSL https://bun.sh/install | bash -s "bun-v1.2.22"
 make -C .. prepare || :
 
 #gemini
-bun add -g @google/gemini-cli ||:
-bun pm -g trust --all ||:
-sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/gemini)" ||:
+#bun add -g @google/gemini-cli ||:
+#bun pm -g trust --all ||:
+#sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/gemini)" ||:
 
 #biome
 bun add -g biome ||:
