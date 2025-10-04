@@ -220,7 +220,7 @@ func (handler *SystemHanler) GetHostnameHandler(ctx context.Context, input *stru
 func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.SystemCapabilities }, error) {
 	capabilities := dto.SystemCapabilities{}
 	var reasons []string
-	
+
 	// Check Samba version
 	sambaVersionSufficient, err := osutil.IsSambaVersionSufficient()
 	if err != nil {
@@ -236,7 +236,7 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 			reasons = append(reasons, "Samba version must be >= 4.23.0")
 		}
 	}
-	
+
 	// Check if QUIC kernel module is loaded
 	// The quic module might be named differently on different systems
 	// Common names: quic, net_quic, or built into the kernel
@@ -247,7 +247,7 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 	} else {
 		capabilities.HasKernelModule = quicLoaded
 	}
-	
+
 	// If "quic" module not found, try "net_quic"
 	if !capabilities.HasKernelModule {
 		netQuicLoaded, err := osutil.IsKernelModuleLoaded("net_quic")
@@ -257,7 +257,7 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 			capabilities.HasKernelModule = netQuicLoaded
 		}
 	}
-	
+
 	// Check for libngtcp2 library
 	hasLibngtcp2, err := osutil.IsLibraryAvailable("libngtcp2")
 	if err != nil {
@@ -266,19 +266,18 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 	} else {
 		capabilities.HasLibngtcp2 = hasLibngtcp2
 	}
-	
+
 	// QUIC is supported if Samba version is sufficient AND (kernel module OR libngtcp2)
 	hasTransport := capabilities.HasKernelModule || capabilities.HasLibngtcp2
 	if !hasTransport {
 		reasons = append(reasons, "QUIC kernel module or libngtcp2 library not available")
 	}
-	
+
 	capabilities.SupportsQUIC = capabilities.SambaVersionSufficient && hasTransport
-	
+
 	if !capabilities.SupportsQUIC && len(reasons) > 0 {
 		capabilities.UnsupportedReason = strings.Join(reasons, "; ")
 	}
-	
+
 	return &struct{ Body dto.SystemCapabilities }{Body: capabilities}, nil
 }
-
