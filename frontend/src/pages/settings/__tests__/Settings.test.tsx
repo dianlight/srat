@@ -81,6 +81,7 @@ describe("Settings", () => {
             useGetApiUpdateChannelsQuery,
             useGetApiTelemetryModesQuery,
             useGetApiTelemetryInternetConnectionQuery,
+            useGetApiCapabilitiesQuery,
             usePutApiSettingsMutation,
             Telemetry_mode
         } = await import("../../../store/sratApi");
@@ -91,6 +92,7 @@ describe("Settings", () => {
         expect(typeof useGetApiUpdateChannelsQuery).toBe("function");
         expect(typeof useGetApiTelemetryModesQuery).toBe("function");
         expect(typeof useGetApiTelemetryInternetConnectionQuery).toBe("function");
+        expect(typeof useGetApiCapabilitiesQuery).toBe("function");
         expect(typeof usePutApiSettingsMutation).toBe("function");
         expect(Telemetry_mode).toBeTruthy();
     });

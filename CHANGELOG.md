@@ -6,6 +6,11 @@
 
 ### ✨ Features
 
+- **SMB over QUIC Support [#227](https://github.com/dianlight/srat/issues/227)**: Added support for SMB over QUIC transport protocol for improved performance and security. The feature includes:
+  - New `smb_over_quic` setting in backend with automatic detection of kernel QUIC module support
+  - System capabilities API endpoint to check QUIC availability
+  - UI switch in Settings page (disabled if system doesn't support QUIC)
+  - Automatic Samba configuration updates when QUIC is enabled (mandatory encryption, port 443)
 - **Auto-Update Service**: Implemented a backend service for automatic updates from GitHub releases, with support for multiple channels and local development builds.
 - **Telemetry Configuration**: Added UI in Settings to configure telemetry modes, dependent on internet connectivity.
 - Manage `recycle bin`option for share

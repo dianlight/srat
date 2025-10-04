@@ -55,6 +55,14 @@ Use my addon SambaNAS2
 
 SRAT can be used to manage Samba shares, users, and configuration via a modern web UI or REST API. For usage instructions, see the documentation in the `docs/` folder or access the API documentation at `/docs` when running the backend server.
 
+### Feature Documentation
+
+- [SMB over QUIC](docs/SMB_OVER_QUIC.md) - Enhanced performance and security with QUIC transport protocol
+- [Telemetry Configuration](docs/TELEMETRY_CONFIGURATION.md) - Configure error reporting and monitoring
+- [Home Assistant Integration](docs/HOME_ASSISTANT_INTEGRATION.md) - Integration with Home Assistant
+
+### Installation
+
 The installation of this add-on is pretty straightforward and not different in
 comparison to installing any other Home Assistant add-on.
 

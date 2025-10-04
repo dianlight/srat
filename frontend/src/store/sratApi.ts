@@ -31,6 +31,13 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/hostname` }),
         providesTags: ["system"],
       }),
+      getApiCapabilities: build.query<
+        GetApiCapabilitiesApiResponse,
+        GetApiCapabilitiesApiArg
+      >({
+        query: () => ({ url: `/api/capabilities` }),
+        providesTags: ["system"],
+      }),
       getApiIssues: build.query<GetApiIssuesApiResponse, GetApiIssuesApiArg>({
         query: () => ({ url: `/api/issues` }),
         providesTags: ["Issues"],
@@ -363,6 +370,10 @@ export type GetApiHostnameApiResponse = /** status 200 OK */
   | string
   | /** status default Error */ ErrorModel;
 export type GetApiHostnameApiArg = void;
+export type GetApiCapabilitiesApiResponse = /** status 200 OK */
+  | SystemCapabilities
+  | /** status default Error */ ErrorModel;
+export type GetApiCapabilitiesApiArg = void;
 export type GetApiIssuesApiResponse =
   | /** status 200 OK */ (Issue[] | null)
   | /** status default Error */ ErrorModel;
@@ -898,9 +909,13 @@ export type Settings = {
   log_level?: string;
   mountoptions?: string[] | null;
   multi_channel?: boolean;
+  smb_over_quic?: boolean;
   telemetry_mode?: Telemetry_mode;
   update_channel?: Update_channel;
   workgroup?: string;
+};
+export type SystemCapabilities = {
+  supports_quic: boolean;
 };
 export type JsonPatchOp = {
   /** JSON Pointer for the source of a move or copy */
@@ -1086,6 +1101,7 @@ export const {
   useGetApiFilesystemsQuery,
   useGetApiHealthQuery,
   useGetApiHostnameQuery,
+  useGetApiCapabilitiesQuery,
   useGetApiIssuesQuery,
   usePostApiIssuesMutation,
   useDeleteApiIssuesByIdMutation,

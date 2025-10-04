@@ -29,6 +29,7 @@ import {
 	useGetApiUpdateChannelsQuery,
 	useGetApiTelemetryModesQuery,
 	useGetApiTelemetryInternetConnectionQuery,
+	useGetApiCapabilitiesQuery,
 	usePutApiSettingsMutation,
 	Telemetry_mode,
 } from "../../store/sratApi";
@@ -94,6 +95,8 @@ export function Settings() {
 		useGetApiTelemetryModesQuery();
 	const { data: internetConnection, isLoading: isInternetLoading } =
 		useGetApiTelemetryInternetConnectionQuery();
+	const { data: capabilities, isLoading: isCapabilitiesLoading } =
+		useGetApiCapabilitiesQuery();
 
 	const {
 		control,
@@ -541,6 +544,39 @@ export function Settings() {
 									disabled={evdata?.hello?.read_only}
 								/>
 							</Tooltip>
+						</Grid>
+						<Grid size={{ xs: 12, md: 2 }}>
+							<Tooltip
+								title={
+									<>
+										<Typography variant="h6" component="div">
+											Enable SMB over QUIC
+										</Typography>
+										<Typography variant="body2">
+											This parameter enables SMB over QUIC transport protocol for improved
+											performance and security. Requires kernel QUIC module support.
+										</Typography>
+									</>
+								}
+							>
+								<SwitchElement
+									switchProps={{
+										"aria-label": "SMB over QUIC",
+										size: "small",
+									}}
+									id="smb_over_quic"
+									label="SMB over QUIC"
+									name="smb_over_quic"
+									labelPlacement="start"
+									control={control}
+									disabled={evdata?.hello?.read_only || isCapabilitiesLoading || !(capabilities && 'supports_quic' in capabilities && capabilities.supports_quic)}
+								/>
+							</Tooltip>
+							{capabilities && 'supports_quic' in capabilities && !capabilities.supports_quic && !isCapabilitiesLoading && (
+								<Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+									System does not support QUIC kernel module
+								</Typography>
+							)}
 						</Grid>
 						<Grid size={{ xs: 12, md: 4 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step8`}>
 							<CheckboxElement
