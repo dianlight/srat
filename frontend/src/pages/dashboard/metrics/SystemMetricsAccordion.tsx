@@ -298,10 +298,19 @@ export function SystemMetricsAccordion({
 
 	const renderUptimeMetric = () => {
 		if (!metricVisibility.uptime.visible) return null;
+		const uptimeSeconds = health?.uptime ?? 0;
+		const fiveMinutesInSeconds = 5 * 60;
+		const uptimeValue = health?.uptime
+			? humanizeDuration(health.uptime, {
+				round: true,
+				largest: uptimeSeconds > fiveMinutesInSeconds ? 2 : undefined,
+				units: uptimeSeconds > fiveMinutesInSeconds ? ['y', 'mo', 'd', 'h', 'm'] : undefined
+			})
+			: "N/A";
 		return (
 			<MetricCard
 				title="Server Uptime"
-				value={health?.uptime ? humanizeDuration(health.uptime, { round: true }) : "N/A"}
+				value={uptimeValue}
 				isLoading={isLoading}
 				error={!!error || !health?.uptime}
 			/>
