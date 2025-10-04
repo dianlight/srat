@@ -22,6 +22,8 @@ Currently under development and in an alpha state, SRAT is set to become the pre
 - [Key Features](#key-features)
 - [Installation](#installation)
 - [Usage](#usage)
+  - [Feature Documentation](#feature-documentation)
+  - [Installation](#installation-1)
 - [Database](#database)
 - [Sponsor](#sponsor)
 - [License](#license)
