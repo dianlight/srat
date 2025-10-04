@@ -5,7 +5,7 @@
    {{- else -}}
    local master = yes
    {{- end }}
-
+   server smb transports = tcp{{if .smb_over_quic -}}, quic{{- end }}
    {{ if .compatibility_mode -}}
    client min protocol = NT1
    server min protocol = NT1
@@ -23,8 +23,12 @@
    {{if .smb_over_quic -}}
    # SMB over QUIC settings
    server smb3 encryption = mandatory
-   smb3 unix extensions = no
-   smb ports = 443
+   smb3 unix extensions = yes
+   tls enable = yes 
+   tls keyfile = /config/server.key
+   tls certfile = /config/server.cert
+   #tls trust system cas = yes
+   #tls verify peer = no_check
    {{- end }}
 
    unix extensions = no
