@@ -15,5 +15,4 @@ export interface LocationState {
 	shareName?: string;
 	newShareData?: MountPointData;
 	mountPathHashToView?: string;
-	openMountSettings?: boolean;
 }

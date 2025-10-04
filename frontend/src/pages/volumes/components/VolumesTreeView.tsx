@@ -12,7 +12,6 @@ import StorageIcon from "@mui/icons-material/Storage";
 import UsbIcon from "@mui/icons-material/Usb";
 import UpdateIcon from "@mui/icons-material/Update";
 import UpdateDisabledIcon from "@mui/icons-material/UpdateDisabled";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import AddIcon from "@mui/icons-material/Add";
 import ShareIcon from "@mui/icons-material/Share";
 import {
@@ -41,7 +40,6 @@ interface VolumesTreeViewProps {
     onPartitionSelect: (disk: Disk, partition: Partition) => void;
     onToggleAutomount: (partition: Partition) => void;
     onMount: (partition: Partition) => void;
-    onViewSettings: (partition: Partition) => void;
     onUnmount: (partition: Partition, force: boolean) => void;
     onCreateShare: (partition: Partition) => void;
     onGoToShare: (partition: Partition) => void;
@@ -58,7 +56,6 @@ export function VolumesTreeView({
     onPartitionSelect,
     onToggleAutomount,
     onMount,
-    onViewSettings,
     onUnmount,
     onCreateShare,
     onGoToShare,
@@ -193,15 +190,6 @@ export function VolumesTreeView({
                 },
             });
         } else {
-            actions.push({
-                key: "view-settings",
-                title: "View Mount Settings",
-                icon: <VisibilityIcon fontSize="small" />,
-                onClick: (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    onViewSettings(partition);
-                },
-            });
             if (!hasShares) {
                 actions.push({
                     key: "unmount",

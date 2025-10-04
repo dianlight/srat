@@ -31,7 +31,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
 	const [showPreview, setShowPreview] = useState<boolean>(false);
 	const [showMount, setShowMount] = useState<boolean>(false);
-	const [showMountSettings, setShowMountSettings] = useState<boolean>(false); // For viewing mount settings
 	const location = useLocation();
 
 	const navigate = useNavigate();
@@ -111,11 +110,9 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	useEffect(() => {
 		const state = location.state as LocationState | undefined;
 		const mountPathHashFromState = state?.mountPathHashToView;
-		const shouldOpenMountSettings = state?.openMountSettings;
 
 		if (
 			mountPathHashFromState &&
-			shouldOpenMountSettings &&
 			Array.isArray(disks) &&
 			disks.length > 0
 		) {
@@ -141,7 +138,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 
 			if (foundPartition && foundDisk) {
 				handlePartitionSelect(foundDisk, foundPartition);
-				setShowMountSettings(true);
 				navigate(location.pathname, { replace: true, state: {} });
 			} else {
 				console.warn(
@@ -398,16 +394,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 		<>
 			<VolumeMountDialog
 				objectToEdit={selectedPartition}
-				open={showMount || showMountSettings}
-				readOnlyView={showMountSettings}
+				open={showMount}
+				readOnlyView={false}
 				onClose={(data) => {
-					if (showMountSettings) {
-						// If it was open for viewing settings
-						setSelectedPartition(undefined);
-						setSelectedDisk(undefined);
-						setSelectedPartitionId(undefined);
-						setShowMountSettings(false);
-					} else if (showMount) {
+					if (showMount) {
 						// If it was open for mounting
 						if (data) {
 							onSubmitMountVolume(data);
@@ -490,10 +480,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 								onMount={(partition) => {
 									setSelectedPartition(partition);
 									setShowMount(true);
-								}}
-								onViewSettings={(partition) => {
-									setSelectedPartition(partition);
-									setShowMountSettings(true);
 								}}
 								onUnmount={onSubmitUmountVolume}
 								onCreateShare={handleCreateShare}

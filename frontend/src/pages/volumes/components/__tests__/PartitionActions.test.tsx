@@ -38,7 +38,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -60,7 +59,6 @@ describe("PartitionActions component", () => {
                 protected_mode: true,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -83,7 +81,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -108,7 +105,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -139,7 +135,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -173,7 +168,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -208,7 +202,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -242,7 +235,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -276,7 +268,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -287,39 +278,6 @@ describe("PartitionActions component", () => {
 
         const disableButton = screen.queryByLabelText(/disable mount at startup/i) || await screen.findByText(/disable mount at startup/i);
         expect(disableButton).toBeTruthy();
-    });
-
-    it("renders view settings action for mounted partition", async () => {
-        const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
-        const { PartitionActions } = await import("../PartitionActions");
-
-        const partition = buildPartition({
-            mount_point_data: [
-                {
-                    path: "/mnt/test",
-                    is_mounted: true,
-                },
-            ],
-        });
-
-        render(
-            React.createElement(PartitionActions as any, {
-                partition,
-                protected_mode: false,
-                onToggleAutomount: () => { },
-                onMount: () => { },
-                onViewSettings: () => { },
-                onUnmount: () => { },
-                onCreateShare: () => { },
-                onGoToShare: () => { },
-            })
-        );
-
-        await openMenuIfNeeded(screen, fireEvent);
-
-        const viewButton = screen.queryByLabelText(/view mount settings/i) || await screen.findByText(/view mount settings/i);
-        expect(viewButton).toBeTruthy();
     });
 
     it("renders create share action for mounted partition under /mnt/", async () => {
@@ -343,7 +301,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -377,7 +334,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -415,7 +371,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount,
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -461,7 +416,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount,
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -508,7 +462,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount,
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare: () => { },
@@ -526,51 +479,6 @@ describe("PartitionActions component", () => {
         }
 
         expect(toggleCalled).toBe(true);
-    });
-
-    it("calls onViewSettings when view settings button is clicked", async () => {
-        const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
-        const { PartitionActions } = await import("../PartitionActions");
-
-        const partition = buildPartition({
-            mount_point_data: [
-                {
-                    path: "/mnt/test",
-                    is_mounted: true,
-                },
-            ],
-        });
-
-        let viewCalled = false;
-        const onViewSettings = () => {
-            viewCalled = true;
-        };
-
-        render(
-            React.createElement(PartitionActions as any, {
-                partition,
-                protected_mode: false,
-                onToggleAutomount: () => { },
-                onMount: () => { },
-                onViewSettings,
-                onUnmount: () => { },
-                onCreateShare: () => { },
-                onGoToShare: () => { },
-            })
-        );
-
-        await openMenuIfNeeded(screen, fireEvent);
-
-        const viewButton = screen.queryByLabelText(/view mount settings/i);
-        if (viewButton) {
-            fireEvent.click(viewButton);
-        } else {
-            const menuItem = await screen.findByText(/view mount settings/i);
-            fireEvent.click(menuItem);
-        }
-
-        expect(viewCalled).toBe(true);
     });
 
     it("calls onCreateShare when create share button is clicked", async () => {
@@ -599,7 +507,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare,
                 onGoToShare: () => { },
@@ -645,7 +552,6 @@ describe("PartitionActions component", () => {
                 protected_mode: false,
                 onToggleAutomount: () => { },
                 onMount: () => { },
-                onViewSettings: () => { },
                 onUnmount: () => { },
                 onCreateShare: () => { },
                 onGoToShare,

@@ -8,7 +8,6 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ShareIcon from "@mui/icons-material/Share";
 import UpdateIcon from "@mui/icons-material/Update";
 import UpdateDisabledIcon from "@mui/icons-material/UpdateDisabled";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
 	IconButton,
 	ListItemIcon,
@@ -29,7 +28,6 @@ interface PartitionActionsProps {
 	protected_mode: boolean;
 	onToggleAutomount: (partition: Partition) => void;
 	onMount: (partition: Partition) => void;
-	onViewSettings: (partition: Partition) => void;
 	onUnmount: (partition: Partition, force: boolean) => void;
 	onCreateShare: (partition: Partition) => void;
 	onGoToShare: (partition: Partition) => void;
@@ -40,7 +38,6 @@ export function PartitionActions({
 	protected_mode,
 	onToggleAutomount,
 	onMount,
-	onViewSettings,
 	onUnmount,
 	onCreateShare,
 	onGoToShare,
@@ -122,12 +119,6 @@ export function PartitionActions({
 	}
 
 	if (isMounted) {
-		actionItems.push({
-			key: "view-settings",
-			title: "View Mount Settings",
-			icon: <VisibilityIcon fontSize="small" />,
-			onClick: () => onViewSettings(partition),
-		});
 		if (!hasShares) {
 			actionItems.push({
 				key: "unmount",
