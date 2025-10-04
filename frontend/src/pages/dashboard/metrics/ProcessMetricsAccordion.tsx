@@ -4,6 +4,7 @@ import {
 	AccordionDetails,
 	AccordionSummary,
 	Typography,
+	Box,
 } from "@mui/material";
 import { ProcessMetrics } from "./ProcessMetrics";
 import type { ProcessStatus } from "./types";
@@ -26,6 +27,23 @@ export function ProcessMetricsAccordion({
 	expanded,
 	onChange,
 }: ProcessMetricsAccordionProps) {
+	// Aggregate metrics for collapsed view
+	const aggregate = (() => {
+		if (!processData || processData.length === 0) {
+			return { cpu: 0, memory: 0, connections: 0 };
+		}
+		let cpu = 0;
+		let memory = 0;
+		let connections = 0;
+		for (const p of processData) {
+			if (typeof p.cpu === "number" && !isNaN(p.cpu)) cpu += p.cpu;
+			if (typeof p.memory === "number" && !isNaN(p.memory)) memory += p.memory;
+			if (typeof p.connections === "number" && !isNaN(p.connections))
+				connections += p.connections;
+		}
+		return { cpu, memory, connections };
+	})();
+
 	return (
 		<Accordion
 			expanded={expanded}
@@ -38,7 +56,22 @@ export function ProcessMetricsAccordion({
 				aria-controls="panel-process-metrics-content"
 				id="panel-process-metrics-header"
 			>
-				<Typography variant="h6">Process Metrics</Typography>
+				<Box sx={{ display: "flex", alignItems: "center", width: "100%", justifyContent: "space-between" }}>
+					<Typography variant="h6">Process Metrics</Typography>
+					{!expanded && (
+						<Box sx={{ display: "flex", gap: 2 }}>
+							<Typography variant="body2" color="text.secondary">
+								CPU: {aggregate.cpu.toFixed(1)}%
+							</Typography>
+							<Typography variant="body2" color="text.secondary">
+								Mem: {aggregate.memory.toFixed(1)}%
+							</Typography>
+							<Typography variant="body2" color="text.secondary">
+								Conns: {aggregate.connections}
+							</Typography>
+						</Box>
+					)}
+				</Box>
 			</AccordionSummary>
 			<AccordionDetails>
 				<ProcessMetrics
