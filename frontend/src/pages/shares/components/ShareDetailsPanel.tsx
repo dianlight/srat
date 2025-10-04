@@ -69,10 +69,50 @@ export function ShareDetailsPanel({
     const mountData = share.mount_point_data;
 
     return (
-        <Box sx={{ height: "100%", overflow: "auto", p: 2 }}>
+        <Box
+            sx={{
+                height: "100%",
+                overflow: "auto",
+                p: 2,
+                opacity: share.disabled ? 0.6 : 1,
+                pointerEvents: share.disabled ? "none" : "auto",
+                filter: share.disabled ? "grayscale(50%)" : "none",
+                transition: "opacity 0.3s, filter 0.3s"
+            }}
+        >
             <Stack spacing={3}>
                 {/* Mount Point Information Card */}
-                <Card>
+                <Card sx={{ position: "relative" }}>
+                    {share.disabled && (
+                        <Box
+                            sx={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                backgroundColor: "rgba(0, 0, 0, 0.05)",
+                                zIndex: 1,
+                                pointerEvents: "none",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Chip
+                                label="Share Disabled"
+                                color="error"
+                                variant="filled"
+                                size="small"
+                                sx={{
+                                    position: "absolute",
+                                    top: 8,
+                                    right: 8,
+                                    fontWeight: "bold",
+                                }}
+                            />
+                        </Box>
+                    )}
                     <CardHeader
                         title={
                             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
@@ -232,7 +272,21 @@ export function ShareDetailsPanel({
                 </Card>
 
                 {/* Share Information Card */}
-                <Card>
+                <Card sx={{ position: "relative" }}>
+                    {share.disabled && (
+                        <Box
+                            sx={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                backgroundColor: "rgba(0, 0, 0, 0.05)",
+                                zIndex: 1,
+                                pointerEvents: "none",
+                            }}
+                        />
+                    )}
                     <CardHeader
                         title="Share Configuration"
                         avatar={
