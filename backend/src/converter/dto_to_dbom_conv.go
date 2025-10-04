@@ -157,10 +157,18 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.Expor
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	target.MountPointData = &dto.MountPointData{}
-	err = c.MountPointPathToMountPointData(source.MountPointData, target.MountPointData, disks)
-	if err != nil {
-		return errors.WithStack(err)
+	
+	// Only create MountPointData if the path is not empty
+	if source.MountPointData.Path != "" {
+		target.MountPointData = &dto.MountPointData{}
+		err = c.MountPointPathToMountPointData(source.MountPointData, target.MountPointData, disks)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	} else {
+		// If path is empty, set MountPointData to nil
+		target.MountPointData = nil
 	}
+	
 	return nil
 }

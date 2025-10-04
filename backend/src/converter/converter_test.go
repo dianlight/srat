@@ -197,3 +197,67 @@ func TestDtoToDbomConverter_MountFlagsToMountDataFlags(t *testing.T) {
 	assert.True(t, converted[1].NeedsValue)
 	assert.Equal(t, flags[1].FlagValue, converted[1].FlagValue)
 }
+
+func TestDtoToDbomConverter_ExportedShareToSharedResource_WithEmptyPath(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+	
+	// Test case 1: Share with empty path
+	sourceWithEmptyPath := dbom.ExportedShare{
+		Name:  "UPDATER",
+		Users: []dbom.SambaUser{{Username: "homeassistant"}},
+		MountPointData: dbom.MountPointPath{
+			Path:     "", // Empty path
+			Type:     "ADDON",
+			DeviceId: "sdb2",
+		},
+	}
+	
+	var targetWithEmptyPath dto.SharedResource
+	err := conv.ExportedShareToSharedResource(sourceWithEmptyPath, &targetWithEmptyPath, nil)
+	
+	require.NoError(t, err)
+	assert.Equal(t, "UPDATER", targetWithEmptyPath.Name)
+	assert.Nil(t, targetWithEmptyPath.MountPointData, "MountPointData should be nil when path is empty")
+	
+	// Test case 2: Share with valid path
+	fstype := "ext4"
+	sourceWithValidPath := dbom.ExportedShare{
+		Name:  "valid-share",
+		Users: []dbom.SambaUser{{Username: "testuser"}},
+		MountPointData: dbom.MountPointPath{
+			Path:     "/mnt/valid-share",
+			Type:     "ADDON",
+			DeviceId: "sda1",
+			FSType:   fstype,
+		},
+	}
+	
+	var targetWithValidPath dto.SharedResource
+	err = conv.ExportedShareToSharedResource(sourceWithValidPath, &targetWithValidPath, nil)
+	
+	require.NoError(t, err)
+	assert.Equal(t, "valid-share", targetWithValidPath.Name)
+	require.NotNil(t, targetWithValidPath.MountPointData, "MountPointData should not be nil when path is valid")
+	assert.Equal(t, "/mnt/valid-share", targetWithValidPath.MountPointData.Path)
+	assert.Equal(t, "ADDON", targetWithValidPath.MountPointData.Type)
+	assert.Equal(t, "sda1", targetWithValidPath.MountPointData.DeviceId)
+}
+
+func TestDtoToDbomConverter_ExportedShareToSharedResource_WithNilPath(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+	
+	// Test case: Share with no MountPointData path (zero value)
+	source := dbom.ExportedShare{
+		Name:           "no-mount-share",
+		Users:          []dbom.SambaUser{{Username: "testuser"}},
+		MountPointData: dbom.MountPointPath{}, // Zero value, path is ""
+	}
+	
+	var target dto.SharedResource
+	err := conv.ExportedShareToSharedResource(source, &target, nil)
+	
+	require.NoError(t, err)
+	assert.Equal(t, "no-mount-share", target.Name)
+	assert.Nil(t, target.MountPointData, "MountPointData should be nil when path is empty string")
+}
+

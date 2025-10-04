@@ -259,6 +259,148 @@ func (suite *ShareHandlerSuite) TestListSharesSuccess() {
 	suite.Equal(expectedShares, result)
 }
 
+func (suite *ShareHandlerSuite) TestListSharesWithDisabledShareWithoutMountPoint() {
+	disabled := true
+	expectedShares := []dto.SharedResource{
+		{
+			Name: "valid-share",
+			Users: []dto.User{
+				{
+					Username: "testuser",
+					Password: "testpass",
+					IsAdmin:  true,
+				},
+			},
+			Disabled:       pointer.Bool(false),
+			MountPointData: &dto.MountPointData{
+				Path:               "/mnt/valid-share",
+				PathHash:           "validhash123",
+				Type:               "ADDON",
+				FSType:             pointer.String("ext4"),
+				DeviceId:           "sda1",
+				IsMounted:          true,
+				IsToMountAtStartup: pointer.Bool(true),
+			},
+		},
+		{
+			Name: "invalid-share-no-mount",
+			Users: []dto.User{
+				{
+					Username: "testuser2",
+					Password: "testpass2",
+					IsAdmin:  false,
+				},
+			},
+			Disabled:       &disabled,
+			MountPointData: nil, // No mount point data - should be disabled
+		},
+	}
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.ListShares()).ThenReturn(expectedShares, nil)
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request
+	resp := api.Get("/shares")
+	suite.Require().Equal(http.StatusOK, resp.Code)
+
+	// Parse response
+	var result []dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	// Assert
+	suite.Require().Len(result, 2, "Expected 2 shares in response")
+
+	// Verify first share (valid)
+	suite.Equal("valid-share", result[0].Name)
+	suite.NotNil(result[0].MountPointData, "Valid share should have mount point data")
+	suite.False(*result[0].Disabled, "Valid share should not be disabled")
+
+	// Verify second share (invalid - no mount point)
+	suite.Equal("invalid-share-no-mount", result[1].Name)
+	suite.Nil(result[1].MountPointData, "Invalid share should have nil mount point data")
+	suite.NotNil(result[1].Disabled, "Invalid share should have Disabled field set")
+	suite.True(*result[1].Disabled, "Share without mount point data should be disabled")
+}
+
+func (suite *ShareHandlerSuite) TestListSharesWithEmptyPathInMountPoint() {
+	disabled := true
+	expectedShares := []dto.SharedResource{
+		{
+			Name: "valid-share-with-path",
+			Users: []dto.User{
+				{
+					Username: "testuser",
+					Password: "testpass",
+					IsAdmin:  true,
+				},
+			},
+			Disabled:       pointer.Bool(false),
+			MountPointData: &dto.MountPointData{
+				Path:               "/mnt/valid-share",
+				PathHash:           "validhash123",
+				Type:               "ADDON",
+				FSType:             pointer.String("ext4"),
+				DeviceId:           "sda1",
+				IsMounted:          true,
+				IsToMountAtStartup: pointer.Bool(true),
+			},
+		},
+		{
+			Name: "UPDATER",
+			Users: []dto.User{
+				{
+					Username: "homeassistant",
+					Password: "changeme!",
+					IsAdmin:  true,
+					RwShares: []string{"addon_configs", "config", "addons", "ssl", "share", "backup", "media", "EFI"},
+				},
+			},
+			RoUsers:        []dto.User{},
+			TimeMachine:    pointer.Bool(false),
+			Usage:          "none",
+			VetoFiles:      []string{},
+			Disabled:       &disabled,
+			MountPointData: nil, // Empty path should result in nil MountPointData
+		},
+	}
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.ListShares()).ThenReturn(expectedShares, nil)
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request
+	resp := api.Get("/shares")
+	suite.Require().Equal(http.StatusOK, resp.Code)
+
+	// Parse response
+	var result []dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	// Assert
+	suite.Require().Len(result, 2, "Expected 2 shares in response")
+
+	// Verify first share (valid with path)
+	suite.Equal("valid-share-with-path", result[0].Name)
+	suite.NotNil(result[0].MountPointData, "Valid share should have mount point data")
+	suite.Equal("/mnt/valid-share", result[0].MountPointData.Path)
+	suite.False(*result[0].Disabled, "Valid share should not be disabled")
+
+	// Verify second share (UPDATER with empty path - should have nil mount_point_data)
+	suite.Equal("UPDATER", result[1].Name)
+	suite.Nil(result[1].MountPointData, "Share with empty path should have nil mount point data")
+	suite.NotNil(result[1].Disabled, "Share with empty path should have Disabled field set")
+	suite.True(*result[1].Disabled, "Share with empty path should be disabled")
+}
+
 func (suite *ShareHandlerSuite) TestGetShareSuccess() {
 	shareName := "test-share"
 	expectedShare := &dto.SharedResource{Name: shareName}
