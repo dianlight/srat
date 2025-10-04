@@ -166,6 +166,17 @@ func (suite *SystemHandlerSuite) TestGetCapabilitiesHandler_Success() {
 	suite.Require().NoError(err)
 	
 	// We can't assert the actual value of SupportsQUIC as it depends on the system
-	// but we can verify the field exists and is a boolean
+	// but we can verify all fields exist and have correct types
 	suite.IsType(false, result.SupportsQUIC)
+	suite.IsType(false, result.HasKernelModule)
+	suite.IsType(false, result.HasLibngtcp2)
+	suite.IsType("", result.SambaVersion)
+	suite.IsType(false, result.SambaVersionSufficient)
+	// UnsupportedReason is optional
+	
+	// If QUIC is not supported, there should be a reason
+	if !result.SupportsQUIC {
+		suite.NotEmpty(result.UnsupportedReason)
+	}
 }
+
