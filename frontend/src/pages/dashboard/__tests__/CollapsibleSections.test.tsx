@@ -33,8 +33,8 @@ describe("Dashboard Collapsible Sections", () => {
         const processMetricsHeaders = screen.getAllByText("Process Metrics");
         expect(processMetricsHeaders.length).toBeGreaterThan(0);
 
-        // Should be expandable (look for expand icon or button) - use getAllByRole since there may be multiple instances
-        const processMetricsButtons = screen.getAllByRole("button", { name: "Process Metrics" });
+        // Should be expandable (look for expand icon or button) - button name includes status metrics
+        const processMetricsButtons = screen.getAllByRole("button", { name: /Process Metrics/ });
         expect(processMetricsButtons.length).toBeGreaterThan(0);
     });
 
@@ -132,8 +132,8 @@ describe("Dashboard Collapsible Sections", () => {
         const sambaStatusHeaders = screen.getAllByText("Samba Status");
         expect(sambaStatusHeaders.length).toBeGreaterThan(0);
 
-        // Should be expandable - use getAllByRole since there may be multiple instances
-        const sambaStatusButtons = screen.getAllByRole("button", { name: "Samba Status" });
+        // Should be expandable - button name includes session/tcon counts
+        const sambaStatusButtons = screen.getAllByRole("button", { name: /Samba Status/ });
         expect(sambaStatusButtons.length).toBeGreaterThan(0);
     });
 
@@ -161,8 +161,8 @@ describe("Dashboard Collapsible Sections", () => {
             )
         );
 
-        // Find and click the first Process Metrics button - use getAllByRole since there may be multiple instances
-        const processMetricsButtons = screen.getAllByRole("button", { name: "Process Metrics" });
+        // Find and click the first Process Metrics button - button name includes status metrics
+        const processMetricsButtons = screen.getAllByRole("button", { name: /Process Metrics/ });
         expect(processMetricsButtons.length).toBeGreaterThan(0);
         fireEvent.click(processMetricsButtons[0]);
 
@@ -230,8 +230,8 @@ describe("Dashboard Collapsible Sections", () => {
             )
         );
 
-        // Find and click the first Samba Status button - use getAllByRole since there may be multiple instances
-        const sambaStatusButtons = screen.getAllByRole("button", { name: "Samba Status" });
+        // Find and click the first Samba Status button - button name includes session/tcon counts
+        const sambaStatusButtons = screen.getAllByRole("button", { name: /Samba Status/ });
         expect(sambaStatusButtons.length).toBeGreaterThan(0);
         fireEvent.click(sambaStatusButtons[0]);
 
