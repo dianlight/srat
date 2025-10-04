@@ -23,3 +23,7 @@ sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/biome)" ||:
 #test device
 mkdir -p /dev/disk/by-id
 ln -s ../../vdb1 /dev/disk/by-id/1234-5678
+
+#workarund for @rtk-query/codegen-openapi that don't work with bun
+apk add --no-cache nodejs npm
+npm install -g @rtk-query/codegen-openapi ||:

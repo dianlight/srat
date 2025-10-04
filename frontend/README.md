@@ -32,6 +32,8 @@ To build the production bundle (outputs to `../backend/src/web/static`):
 bun run build
 ```
 
+**Note about API code generation:** The `bun run gen` command (RTK Query codegen from OpenAPI) currently fails due to a TypeScript version mismatch issue in `@rtk-query/codegen-openapi`. This is a [documented issue](https://github.com/reduxjs/redux-toolkit/issues/2425) in the Redux Toolkit repository. For now the workaround is to install `@rtk-query/codegen-openapi` globally with npm and run with node not bun.
+
 Note: This project uses Bun as the JavaScript runtime and package manager. See `bun.build.ts` for the build pipeline.
 
 ## Console Error Callback Registry

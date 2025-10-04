@@ -175,6 +175,8 @@ make prepare
 make docs-install
 ```
 
+## Known Issues
+
 ## Enhanced Logging System
 
 SRAT includes a comprehensive logging system with the `tlog` package. For detailed information about logging capabilities, see [backend/src/tlog/README.md](./backend/src/tlog/README.md).

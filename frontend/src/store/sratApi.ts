@@ -13,6 +13,13 @@ const injectedRtkApi = api
   })
   .injectEndpoints({
     endpoints: (build) => ({
+      getApiCapabilities: build.query<
+        GetApiCapabilitiesApiResponse,
+        GetApiCapabilitiesApiArg
+      >({
+        query: () => ({ url: `/api/capabilities` }),
+        providesTags: ["system"],
+      }),
       getApiFilesystems: build.query<
         GetApiFilesystemsApiResponse,
         GetApiFilesystemsApiArg
@@ -29,13 +36,6 @@ const injectedRtkApi = api
         GetApiHostnameApiArg
       >({
         query: () => ({ url: `/api/hostname` }),
-        providesTags: ["system"],
-      }),
-      getApiCapabilities: build.query<
-        GetApiCapabilitiesApiResponse,
-        GetApiCapabilitiesApiArg
-      >({
-        query: () => ({ url: `/api/capabilities` }),
         providesTags: ["system"],
       }),
       getApiIssues: build.query<GetApiIssuesApiResponse, GetApiIssuesApiArg>({
@@ -358,6 +358,10 @@ const injectedRtkApi = api
     overrideExisting: false,
   });
 export { injectedRtkApi as sratApi };
+export type GetApiCapabilitiesApiResponse = /** status 200 OK */
+  | SystemCapabilities
+  | /** status default Error */ ErrorModel;
+export type GetApiCapabilitiesApiArg = void;
 export type GetApiFilesystemsApiResponse =
   | /** status 200 OK */ (FilesystemType[] | null)
   | /** status default Error */ ErrorModel;
@@ -370,10 +374,6 @@ export type GetApiHostnameApiResponse = /** status 200 OK */
   | string
   | /** status default Error */ ErrorModel;
 export type GetApiHostnameApiArg = void;
-export type GetApiCapabilitiesApiResponse = /** status 200 OK */
-  | SystemCapabilities
-  | /** status default Error */ ErrorModel;
-export type GetApiCapabilitiesApiArg = void;
 export type GetApiIssuesApiResponse =
   | /** status 200 OK */ (Issue[] | null)
   | /** status default Error */ ErrorModel;
@@ -485,52 +485,52 @@ export type GetApiSharesApiResponse =
 export type GetApiSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
-    | {
-      data: HealthPing;
-      /** The event name. */
-      event: "heartbeat";
-      /** The event ID. */
-      id?: number;
-      /** The retry time in milliseconds. */
-      retry?: number;
-    }
-    | {
-      data: Welcome;
-      /** The event name. */
-      event: "hello";
-      /** The event ID. */
-      id?: number;
-      /** The retry time in milliseconds. */
-      retry?: number;
-    }
-    | {
-      data: SharedResource[] | null;
-      /** The event name. */
-      event: "share";
-      /** The event ID. */
-      id?: number;
-      /** The retry time in milliseconds. */
-      retry?: number;
-    }
-    | {
-      data: UpdateProgress;
-      /** The event name. */
-      event: "updating";
-      /** The event ID. */
-      id?: number;
-      /** The retry time in milliseconds. */
-      retry?: number;
-    }
-    | {
-      data: Disk[] | null;
-      /** The event name. */
-      event: "volumes";
-      /** The event ID. */
-      id?: number;
-      /** The retry time in milliseconds. */
-      retry?: number;
-    }
-  )[]
+      | {
+          data: HealthPing;
+          /** The event name. */
+          event: "heartbeat";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: Welcome;
+          /** The event name. */
+          event: "hello";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: SharedResource[] | null;
+          /** The event name. */
+          event: "share";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: UpdateProgress;
+          /** The event name. */
+          event: "updating";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: Disk[] | null;
+          /** The event name. */
+          event: "volumes";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+    )[]
   | /** status default Error */ ErrorModel;
 export type SseApiArg = void;
 export type GetApiStatusApiResponse = /** status 200 OK */
@@ -625,19 +625,21 @@ export type GetApiVolumesApiResponse =
   | /** status 200 OK */ (Disk[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiVolumesApiArg = void;
-export type MountFlag = {
-  description?: string;
-  name: string;
-  needsValue?: boolean;
-  value?: string;
-  value_description?: string;
-  value_validation_regex?: string;
-};
-export type FilesystemType = {
-  customMountFlags: MountFlag[] | null;
-  mountFlags: MountFlag[] | null;
-  name: string;
-  type: string;
+export type SystemCapabilities = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  /** Whether QUIC kernel module is loaded */
+  has_kernel_module: boolean;
+  /** Whether libngtcp2 library is available */
+  has_libngtcp2: boolean;
+  /** Installed Samba version */
+  samba_version: string;
+  /** Whether Samba version >= 4.23.0 */
+  samba_version_sufficient: boolean;
+  /** Whether SMB over QUIC is supported */
+  supports_quic: boolean;
+  /** Reason why QUIC is not supported */
+  unsupported_reason?: string;
 };
 export type ErrorDetail = {
   /** Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -662,6 +664,20 @@ export type ErrorModel = {
   title?: string;
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
+};
+export type MountFlag = {
+  description?: string;
+  name: string;
+  needsValue?: boolean;
+  value?: string;
+  value_description?: string;
+  value_validation_regex?: string;
+};
+export type FilesystemType = {
+  customMountFlags: MountFlag[] | null;
+  mountFlags: MountFlag[] | null;
+  name: string;
+  type: string;
 };
 export type AddonStatsData = {
   blk_read?: number;
@@ -914,14 +930,6 @@ export type Settings = {
   update_channel?: Update_channel;
   workgroup?: string;
 };
-export type SystemCapabilities = {
-  supports_quic: boolean;
-  has_kernel_module: boolean;
-  has_libngtcp2: boolean;
-  samba_version: string;
-  samba_version_sufficient: boolean;
-  unsupported_reason?: string;
-};
 export type JsonPatchOp = {
   /** JSON Pointer for the source of a move or copy */
   from?: string;
@@ -1103,10 +1111,10 @@ export enum Update_process_state {
   Error = "Error",
 }
 export const {
+  useGetApiCapabilitiesQuery,
   useGetApiFilesystemsQuery,
   useGetApiHealthQuery,
   useGetApiHostnameQuery,
-  useGetApiCapabilitiesQuery,
   useGetApiIssuesQuery,
   usePostApiIssuesMutation,
   useDeleteApiIssuesByIdMutation,
