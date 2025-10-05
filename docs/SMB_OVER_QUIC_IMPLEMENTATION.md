@@ -20,14 +20,12 @@ All components have been successfully implemented, enhanced, and tested.
    - Enhanced DTO to report detailed system capabilities:
      - `SupportsQUIC`: Overall QUIC support status
      - `HasKernelModule`: QUIC kernel module detection
-     - `HasLibngtcp2`: libngtcp2 library detection
      - `SambaVersion`: Installed Samba version string
      - `SambaVersionSufficient`: Whether version >= 4.23.0
      - `UnsupportedReason`: Detailed explanation when unsupported
 
 3. **System Utilities** (`backend/src/internal/osutil/osutil.go`)
    - **Kernel Module Detection**: `IsKernelModuleLoaded(moduleName string)` reads `/proc/modules`
-   - **Library Detection**: `IsLibraryAvailable(libraryName string)` checks via `ldconfig` and `pkg-config` fallback
    - **Samba Version Detection**: `GetSambaVersion()` parses `smbd --version` output
    - **Version Validation**: `IsSambaVersionSufficient()` checks for Samba >= 4.23.0
    - Comprehensive tests for all utility functions
@@ -35,7 +33,7 @@ All components have been successfully implemented, enhanced, and tested.
 4. **System API Handler** (`backend/src/api/system.go`)
    - Enhanced `GET /api/capabilities` endpoint with:
      - Samba version checking (requires 4.23.0+)
-     - Dual transport detection (kernel module OR libngtcp2)
+     - Kernel module detection (checks both `quic` and `net_quic` modules)
      - Detailed failure reasons when requirements not met
      - Structured logging for troubleshooting
 
@@ -61,14 +59,14 @@ All components have been successfully implemented, enhanced, and tested.
 
 2. **Settings UI** (`frontend/src/pages/settings/Settings.tsx`)
    - Enhanced SMB over QUIC switch with detailed status:
-     - Shows specific requirements (Samba 4.23+, kernel module or libngtcp2)
+     - Shows specific requirements (Samba 4.23+, QUIC kernel module)
      - Displays unsupported reason in tooltip with warning color
      - Shows inline warning message below switch with detailed reason
      - Type-safe capability checking throughout
    - Switch is disabled when:
      - System is read-only
      - Capabilities are loading
-     - Any requirement is not met (version or transport)
+     - Any requirement is not met (version or kernel module)
 
 3. **Tests** (`frontend/src/pages/settings/__tests__/Settings.test.tsx`)
    - Test coverage for API hook imports
@@ -79,12 +77,11 @@ All components have been successfully implemented, enhanced, and tested.
 1. **Feature Documentation** (`docs/SMB_OVER_QUIC.md`)
    - Comprehensive guide covering:
      - Samba 4.23+ version requirement
-     - Dual transport support (kernel module OR libngtcp2)
+     - Kernel module support (checks both `quic` and `net_quic` modules)
      - Enhanced system requirements section
      - Detailed troubleshooting for:
        - Samba version upgrades
        - Kernel module loading and persistence
-       - libngtcp2 installation from packages or source
      - Enhanced API reference with all capability fields
      - Client setup (Windows/Linux)
      - Security considerations
@@ -92,7 +89,7 @@ All components have been successfully implemented, enhanced, and tested.
 2. **CHANGELOG** (`CHANGELOG.md`)
    - Enhanced feature entry with:
      - Samba version requirement
-     - Dual transport detection
+     - Kernel module detection
      - Detailed capability reporting
      - Smart UI integration details
 
@@ -107,7 +104,7 @@ All components have been successfully implemented, enhanced, and tested.
 QUIC is enabled ONLY when ALL requirements are met:
 
 1. **Samba Version**: >= 4.23.0
-2. **Transport**: EITHER kernel module (`quic` or `net_quic`) OR libngtcp2 library
+2. **Kernel Module**: QUIC kernel module (`quic` or `net_quic`) must be loaded
 
 ### Detection Flow
 
@@ -115,9 +112,8 @@ QUIC is enabled ONLY when ALL requirements are met:
 GetCapabilitiesHandler:
   1. Check Samba version (GetSambaVersion, IsSambaVersionSufficient)
   2. Check for QUIC kernel module (IsKernelModuleLoaded "quic" or "net_quic")
-  3. Check for libngtcp2 library (IsLibraryAvailable "libngtcp2")
-  4. Combine: supports_quic = (samba >= 4.23) AND (kernel_module OR libngtcp2)
-  5. Generate detailed reason if unsupported
+  3. Combine: supports_quic = (samba >= 4.23) AND kernel_module
+  4. Generate detailed reason if unsupported
 ```
 
 ## Known Issues & Workarounds
@@ -158,7 +154,7 @@ bun gen          # ⚠️ Fails (known issue, workaround applied)
 - ✅ Frontend tests pass (267 tests, 69.92% function coverage)
 - ✅ OpenAPI documentation generated successfully
 - ✅ Code follows established patterns and conventions
-- ✅ New utility functions tested (kernel module, library, Samba version)
+- ✅ New utility functions tested (kernel module, Samba version)
 
 ## Database Schema
 
@@ -177,8 +173,8 @@ The `smb_over_quic` setting is stored in the `properties` table via GORM's prope
 
 The enhanced SMB over QUIC feature is **fully implemented and ready for use**:
 
-- ✅ **Intelligent Detection**: Checks Samba version AND transport availability
-- ✅ **Dual Transport Support**: Works with kernel module OR libngtcp2 library
+- ✅ **Intelligent Detection**: Checks Samba version AND kernel module availability
+- ✅ **Kernel Module Support**: Works with both `quic` and `net_quic` kernel modules
 - ✅ **Detailed Reporting**: Shows exactly what requirements are missing
 - ✅ **Smart UI**: Clear messaging about why QUIC is unavailable
 - ✅ **Comprehensive Documentation**: Complete setup and troubleshooting guide

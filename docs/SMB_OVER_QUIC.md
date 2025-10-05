@@ -19,17 +19,12 @@ SMB over QUIC requires **Samba 4.23.0 or later**. SRAT automatically detects you
 
 ### Transport Support
 
-SMB over QUIC requires one of the following transport implementations:
+SMB over QUIC requires the QUIC kernel module to be loaded:
 
-1. **QUIC Kernel Module** (preferred)
-   - `quic` kernel module
-   - `net_quic` kernel module
+- `quic` kernel module
+- `net_quic` kernel module (alternative name on some systems)
 
-2. **libngtcp2 Library** (alternative)
-   - System-installed libngtcp2 shared library
-   - Automatically detected via `ldconfig` or `pkg-config`
-
-SRAT will check for both options and enable QUIC support if either is available along with a sufficient Samba version.
+SRAT will check for both module names and enable QUIC support if either is available along with a sufficient Samba version.
 
 ### Checking QUIC Support
 
@@ -49,7 +44,6 @@ You can check if your system supports QUIC by:
    {
      "supports_quic": true,
      "has_kernel_module": true,
-     "has_libngtcp2": false,
      "samba_version": "4.23.1",
      "samba_version_sufficient": true,
      "unsupported_reason": ""
@@ -61,10 +55,9 @@ You can check if your system supports QUIC by:
    {
      "supports_quic": false,
      "has_kernel_module": false,
-     "has_libngtcp2": false,
      "samba_version": "4.20.0",
      "samba_version_sufficient": false,
-     "unsupported_reason": "Samba version must be >= 4.23.0; QUIC kernel module or libngtcp2 library not available"
+     "unsupported_reason": "Samba version must be >= 4.23.0; QUIC kernel module (quic or net_quic) not loaded"
    }
    ```
 
@@ -80,13 +73,6 @@ You can check if your system supports QUIC by:
    lsmod | grep quic
    # or
    cat /proc/modules | grep quic
-   ```
-   
-   Check for libngtcp2 library:
-   ```bash
-   ldconfig -p | grep libngtcp2
-   # or
-   pkg-config --exists libngtcp2 && echo "libngtcp2 found"
    ```
 
 ## Configuration
@@ -165,11 +151,11 @@ If your Samba version is less than 4.23.0:
 
 3. **Build from Source**: If your distribution doesn't provide Samba 4.23+, you may need to build from source. See [Samba Build Documentation](https://wiki.samba.org/index.php/Build_Samba_from_Source).
 
-#### QUIC Transport Not Available
+#### QUIC Kernel Module Not Available
 
-If neither QUIC kernel module nor libngtcp2 is available:
+If the QUIC kernel module is not available:
 
-**Option 1: Load QUIC Kernel Module**
+**Load QUIC Kernel Module**
 
 1. **Check Kernel Version**: QUIC support requires a relatively recent kernel:
    ```bash
@@ -188,36 +174,9 @@ If neither QUIC kernel module nor libngtcp2 is available:
    echo "quic" | sudo tee /etc/modules-load.d/quic.conf
    ```
 
-**Option 2: Install libngtcp2**
-
-1. **Check Available Packages**: Depending on your distribution:
-   
-   - **Ubuntu/Debian**:
-     ```bash
-     sudo apt search libngtcp2
-     sudo apt install libngtcp2-dev
-     ```
-   
-   - **Red Hat/CentOS/Fedora**:
-     ```bash
-     sudo dnf search libngtcp2
-     sudo dnf install libngtcp2-devel
-     ```
-
-2. **Build from Source** (if not packaged):
+4. **Verify Module is Loaded**:
    ```bash
-   git clone https://github.com/ngtcp2/ngtcp2.git
-   cd ngtcp2
-   autoreconf -i
-   ./configure
-   make
-   sudo make install
-   sudo ldconfig
-   ```
-
-3. **Verify Installation**:
-   ```bash
-   ldconfig -p | grep libngtcp2
+   lsmod | grep quic
    ```
 
 ### Connection Issues
@@ -279,7 +238,6 @@ QUIC uses port 443 (HTTPS port) for SMB traffic. This can:
 {
   "supports_quic": true,
   "has_kernel_module": true,
-  "has_libngtcp2": false,
   "samba_version": "4.23.1",
   "samba_version_sufficient": true,
   "unsupported_reason": ""
@@ -287,9 +245,8 @@ QUIC uses port 443 (HTTPS port) for SMB traffic. This can:
 ```
 
 **Fields**:
-- `supports_quic`: Overall QUIC support status (requires Samba 4.23+ AND (kernel module OR libngtcp2))
+- `supports_quic`: Overall QUIC support status (requires Samba 4.23+ AND kernel module)
 - `has_kernel_module`: Whether QUIC kernel module (`quic` or `net_quic`) is loaded
-- `has_libngtcp2`: Whether libngtcp2 library is available on the system
 - `samba_version`: Installed Samba version string
 - `samba_version_sufficient`: Whether Samba version >= 4.23.0
 - `unsupported_reason`: Human-readable explanation when `supports_quic` is false (optional)

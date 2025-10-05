@@ -258,22 +258,12 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 		}
 	}
 
-	// Check for libngtcp2 library
-	hasLibngtcp2, err := osutil.IsLibraryAvailable("libngtcp2")
-	if err != nil {
-		slog.Warn("Failed to check libngtcp2 library", "error", err)
-		capabilities.HasLibngtcp2 = false
-	} else {
-		capabilities.HasLibngtcp2 = hasLibngtcp2
+	// QUIC is supported if Samba version is sufficient AND kernel module is loaded
+	if !capabilities.HasKernelModule {
+		reasons = append(reasons, "QUIC kernel module (quic or net_quic) not loaded")
 	}
 
-	// QUIC is supported if Samba version is sufficient AND (kernel module OR libngtcp2)
-	hasTransport := capabilities.HasKernelModule || capabilities.HasLibngtcp2
-	if !hasTransport {
-		reasons = append(reasons, "QUIC kernel module or libngtcp2 library not available")
-	}
-
-	capabilities.SupportsQUIC = capabilities.SambaVersionSufficient && hasTransport
+	capabilities.SupportsQUIC = capabilities.SambaVersionSufficient && capabilities.HasKernelModule
 
 	if !capabilities.SupportsQUIC && len(reasons) > 0 {
 		capabilities.UnsupportedReason = strings.Join(reasons, "; ")

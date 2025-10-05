@@ -554,8 +554,8 @@ export function Settings() {
 										</Typography>
 										<Typography variant="body2">
 											This parameter enables SMB over QUIC transport protocol for improved
-											performance and security. Requires Samba 4.23+ and either QUIC kernel
-											module or libngtcp2 library support.
+											performance and security. Requires Samba 4.23+ and QUIC kernel
+											module support.
 										</Typography>
 										{capabilities && 'supports_quic' in capabilities && !capabilities.supports_quic && 'unsupported_reason' in capabilities && capabilities.unsupported_reason && (
 											<Typography variant="body2" sx={{ mt: 1, color: 'warning.light' }}>

@@ -141,16 +141,16 @@ func TestConvertInfosEmpty(t *testing.T) {
 func TestMockMountInfoRestore(t *testing.T) {
 	// Set initial mock
 	restore1 := MockMountInfo("first")
-	
+
 	// Set second mock
 	restore2 := MockMountInfo("second")
-	
+
 	// Restore to first
 	restore2()
-	
+
 	// Restore to original
 	restore1()
-	
+
 	assert.True(t, true) // Test completes without panic
 }
 
@@ -158,7 +158,7 @@ func TestIsMountedMultipleMounts(t *testing.T) {
 	mountInfo := `36 35 98:0 / /mnt/a rw - ext4 /dev/sda1 rw
 37 35 98:1 / /mnt/b rw - ext4 /dev/sda2 rw
 38 35 98:2 / /mnt/c rw - xfs /dev/sdb1 rw`
-	
+
 	restore := MockMountInfo(mountInfo)
 	t.Cleanup(restore)
 
@@ -210,34 +210,22 @@ func TestIsKernelModuleLoaded(t *testing.T) {
 	// Note: This test will check actual kernel modules on the system.
 	// We test with a module that is very likely to be loaded (like 'loop')
 	// and one that is unlikely to exist.
-	
+
 	// Test with a common module (may not be loaded on all systems)
 	// We just verify the function doesn't error
 	_, err := IsKernelModuleLoaded("loop")
 	assert.NoError(t, err)
-	
+
 	// Test with a non-existent module
 	loaded, err := IsKernelModuleLoaded("definitely_not_a_real_module_xyz123")
 	assert.NoError(t, err)
 	assert.False(t, loaded)
 }
 
-func TestIsLibraryAvailable(t *testing.T) {
-	// Test with a very common library that should exist on most systems
-	// libc is always present
-	_, err := IsLibraryAvailable("libc")
-	assert.NoError(t, err)
-	
-	// Test with a non-existent library
-	available, err := IsLibraryAvailable("libdefinitely_not_real_xyz123")
-	assert.NoError(t, err)
-	assert.False(t, available)
-}
-
 func TestGetSambaVersion(t *testing.T) {
 	// This test will attempt to get Samba version if installed
 	version, err := GetSambaVersion()
-	
+
 	// If Samba is not installed, we should get an error (that's OK for test)
 	// If it is installed, version should not be empty
 	if err == nil {
@@ -249,7 +237,7 @@ func TestGetSambaVersion(t *testing.T) {
 func TestIsSambaVersionSufficient(t *testing.T) {
 	// This test will check if Samba version meets minimum requirement
 	sufficient, err := IsSambaVersionSufficient()
-	
+
 	// If Samba is not installed, we might get an error (that's OK)
 	// The function should handle this gracefully
 	if err == nil {

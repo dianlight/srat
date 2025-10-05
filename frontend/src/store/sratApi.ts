@@ -485,52 +485,52 @@ export type GetApiSharesApiResponse =
 export type GetApiSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
-      | {
-          data: HealthPing;
-          /** The event name. */
-          event: "heartbeat";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: Welcome;
-          /** The event name. */
-          event: "hello";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: SharedResource[] | null;
-          /** The event name. */
-          event: "share";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: UpdateProgress;
-          /** The event name. */
-          event: "updating";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: Disk[] | null;
-          /** The event name. */
-          event: "volumes";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-    )[]
+    | {
+      data: HealthPing;
+      /** The event name. */
+      event: "heartbeat";
+      /** The event ID. */
+      id?: number;
+      /** The retry time in milliseconds. */
+      retry?: number;
+    }
+    | {
+      data: Welcome;
+      /** The event name. */
+      event: "hello";
+      /** The event ID. */
+      id?: number;
+      /** The retry time in milliseconds. */
+      retry?: number;
+    }
+    | {
+      data: SharedResource[] | null;
+      /** The event name. */
+      event: "share";
+      /** The event ID. */
+      id?: number;
+      /** The retry time in milliseconds. */
+      retry?: number;
+    }
+    | {
+      data: UpdateProgress;
+      /** The event name. */
+      event: "updating";
+      /** The event ID. */
+      id?: number;
+      /** The retry time in milliseconds. */
+      retry?: number;
+    }
+    | {
+      data: Disk[] | null;
+      /** The event name. */
+      event: "volumes";
+      /** The event ID. */
+      id?: number;
+      /** The retry time in milliseconds. */
+      retry?: number;
+    }
+  )[]
   | /** status default Error */ ErrorModel;
 export type SseApiArg = void;
 export type GetApiStatusApiResponse = /** status 200 OK */
@@ -630,8 +630,6 @@ export type SystemCapabilities = {
   $schema?: string;
   /** Whether QUIC kernel module is loaded */
   has_kernel_module: boolean;
-  /** Whether libngtcp2 library is available */
-  has_libngtcp2: boolean;
   /** Installed Samba version */
   samba_version: string;
   /** Whether Samba version >= 4.23.0 */

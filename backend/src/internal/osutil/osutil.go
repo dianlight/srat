@@ -178,40 +178,6 @@ func IsKernelModuleLoaded(moduleName string) (bool, error) {
 	return false, nil
 }
 
-// IsLibraryAvailable checks if a shared library is available on the system.
-// It uses ldconfig to check for the library.
-func IsLibraryAvailable(libraryName string) (bool, error) {
-	// Try using ldconfig -p to list all cached libraries
-	cmd := exec.Command("ldconfig", "-p")
-	output, err := cmd.Output()
-	if err != nil {
-		// If ldconfig fails, try pkg-config as fallback
-		return isLibraryAvailableViaPkgConfig(libraryName)
-	}
-
-	// Search for the library in ldconfig output
-	scanner := bufio.NewScanner(strings.NewReader(string(output)))
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, libraryName) {
-			return true, nil
-		}
-	}
-
-	return false, scanner.Err()
-}
-
-// isLibraryAvailableViaPkgConfig checks library availability using pkg-config
-func isLibraryAvailableViaPkgConfig(libraryName string) (bool, error) {
-	// Remove lib prefix and .so suffix if present
-	pkgName := strings.TrimPrefix(libraryName, "lib")
-	pkgName = strings.TrimSuffix(pkgName, ".so")
-	
-	cmd := exec.Command("pkg-config", "--exists", pkgName)
-	err := cmd.Run()
-	return err == nil, nil
-}
-
 // GetSambaVersion retrieves the installed Samba version.
 // Returns version string (e.g., "4.23.0") or empty string if not found.
 func GetSambaVersion() (string, error) {

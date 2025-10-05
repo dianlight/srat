@@ -1108,9 +1108,6 @@ components:
         has_kernel_module:
           description: Whether QUIC kernel module is loaded
           type: boolean
-        has_libngtcp2:
-          description: Whether libngtcp2 library is available
-          type: boolean
         samba_version:
           description: Installed Samba version
           type: string
@@ -1126,7 +1123,6 @@ components:
       required:
         - supports_quic
         - has_kernel_module
-        - has_libngtcp2
         - samba_version
         - samba_version_sufficient
       type: object
@@ -1420,8 +1416,8 @@ paths:
     get:
       operationId: get-api-hostname
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -1831,8 +1827,8 @@ paths:
     get:
       operationId: get-api-samba-status
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3330,8 +3326,8 @@ paths:
           schema:
             description: The ID of the disk to eject (e.g., sda, sdb)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content

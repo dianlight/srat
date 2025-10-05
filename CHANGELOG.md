@@ -8,11 +8,10 @@
 
 - **SMB over QUIC Support [#227](https://github.com/dianlight/srat/issues/227)**: Added comprehensive support for SMB over QUIC transport protocol with intelligent system detection:
   - **Samba Version Check**: Requires Samba 4.23.0 or later for QUIC support
-  - **Dual Transport Detection**: Automatically detects either QUIC kernel module (`quic`, `net_quic`) OR libngtcp2 library availability
+  - **Kernel Module Detection**: Automatically detects QUIC kernel module (`quic` or `net_quic`) availability
   - **Enhanced System Capabilities API**: `/api/capabilities` now reports detailed QUIC support status including:
     - Overall QUIC support status
     - Kernel module availability
-    - libngtcp2 library detection
     - Samba version and sufficiency
     - Detailed unsupported reason when unavailable
   - **Smart UI Integration**: Settings page switch with:
@@ -20,7 +19,7 @@
     - Tooltip showing specific missing requirements
     - Warning message explaining why QUIC is unavailable
   - **Automatic Samba Configuration**: When enabled, applies mandatory encryption, port 443, and disables Unix extensions
-  - **Comprehensive Documentation**: Detailed troubleshooting for Samba upgrades, kernel module loading, and libngtcp2 installation
+  - **Comprehensive Documentation**: Detailed troubleshooting for Samba upgrades and kernel module loading
 - **Auto-Update Service**: Implemented a backend service for automatic updates from GitHub releases, with support for multiple channels and local development builds.
 - **Telemetry Configuration**: Added UI in Settings to configure telemetry modes, dependent on internet connectivity.
 - Manage `recycle bin`option for share
