@@ -1,3 +1,39 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [SMB over QUIC](#smb-over-quic)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [System Requirements](#system-requirements)
+    - [Samba Version](#samba-version)
+    - [Transport Support](#transport-support)
+    - [Checking QUIC Support](#checking-quic-support)
+  - [Configuration](#configuration)
+    - [Enabling SMB over QUIC](#enabling-smb-over-quic)
+    - [Automatic Configuration Changes](#automatic-configuration-changes)
+    - [Disabling SMB over QUIC](#disabling-smb-over-quic)
+  - [Client Configuration](#client-configuration)
+    - [Windows Clients](#windows-clients)
+    - [Linux Clients](#linux-clients)
+  - [Troubleshooting](#troubleshooting)
+    - [Requirements Not Met](#requirements-not-met)
+      - [Samba Version Too Old](#samba-version-too-old)
+      - [QUIC Transport Not Available](#quic-transport-not-available)
+    - [Connection Issues](#connection-issues)
+    - [Performance Issues](#performance-issues)
+  - [Security Considerations](#security-considerations)
+    - [Mandatory Encryption](#mandatory-encryption)
+    - [Port Usage](#port-usage)
+  - [API Reference](#api-reference)
+    - [Get System Capabilities](#get-system-capabilities)
+    - [Get Settings](#get-settings)
+    - [Update Settings](#update-settings)
+  - [References](#references)
+  - [Related Issues](#related-issues)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # SMB over QUIC
 
 ## Overview

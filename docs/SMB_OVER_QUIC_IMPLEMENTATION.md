@@ -1,3 +1,29 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [SMB over QUIC Implementation - Summary](#smb-over-quic-implementation---summary)
+  - [Issue Reference](#issue-reference)
+  - [Implementation Status: ✅ COMPLETE (Enhanced)](#implementation-status--complete-enhanced)
+  - [What Was Implemented](#what-was-implemented)
+    - [Backend Components](#backend-components)
+    - [Frontend Components](#frontend-components)
+    - [Documentation](#documentation)
+  - [Enhanced Detection Logic](#enhanced-detection-logic)
+    - [Requirements for QUIC Support](#requirements-for-quic-support)
+    - [Detection Flow](#detection-flow)
+  - [Known Issues & Workarounds](#known-issues--workarounds)
+    - [RTK Query Code Generator](#rtk-query-code-generator)
+  - [Verification](#verification)
+    - [Backend](#backend)
+    - [Frontend](#frontend)
+  - [Testing Summary](#testing-summary)
+  - [Database Schema](#database-schema)
+  - [Future Improvements](#future-improvements)
+  - [Conclusion](#conclusion)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # SMB over QUIC Implementation - Summary
 
 ## Issue Reference
