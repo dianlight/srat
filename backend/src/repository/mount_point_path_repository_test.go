@@ -324,3 +324,105 @@ func (suite *MountPointPathRepositorySuite) TestConcurrentSaveAndAllNoBusy() {
 
 	suite.Require().NoError(readErr)
 }
+
+func (suite *MountPointPathRepositorySuite) TestFindByDevice() {
+	// Setup test data
+	mp := dbom.MountPointPath{
+		Path:     "/mnt/device-test",
+		DeviceId: "sdb1",
+		FSType:   "ext4",
+		Type:     "ADDON",
+	}
+	err := suite.mount_repo.Save(&mp)
+	suite.Require().NoError(err)
+
+	// Test finding by device ID (exact match)
+	found, err := suite.mount_repo.FindByDevice("sdb1")
+	suite.Require().NoError(err)
+	suite.Equal("/mnt/device-test", found.Path)
+	suite.Equal("sdb1", found.DeviceId)
+
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+}
+
+func (suite *MountPointPathRepositorySuite) TestAllByDeviceId() {
+	// Setup test data
+	mp1 := dbom.MountPointPath{
+		Path:     "/mnt/test1",
+		DeviceId: "sda1",
+		FSType:   "ext4",
+		Type:     "ADDON",
+	}
+	mp2 := dbom.MountPointPath{
+		Path:     "/mnt/test2",
+		DeviceId: "sdb1",
+		FSType:   "ntfs",
+		Type:     "ADDON",
+	}
+
+	err := suite.mount_repo.Save(&mp1)
+	suite.Require().NoError(err)
+	err = suite.mount_repo.Save(&mp2)
+	suite.Require().NoError(err)
+
+	// Get all mount points mapped by device ID
+	mpMap, err := suite.mount_repo.AllByDeviceId()
+	suite.Require().NoError(err)
+	suite.Len(mpMap, 2)
+	suite.Contains(mpMap, "sda1")
+	suite.Contains(mpMap, "sdb1")
+	suite.Equal("/mnt/test1", mpMap["sda1"].Path)
+	suite.Equal("/mnt/test2", mpMap["sdb1"].Path)
+
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+}
+
+func (suite *MountPointPathRepositorySuite) TestExists() {
+	// Setup test data
+	mp := dbom.MountPointPath{
+		Path:     "/mnt/exists-test",
+		DeviceId: "sdc1",
+		FSType:   "ext4",
+		Type:     "ADDON",
+	}
+	err := suite.mount_repo.Save(&mp)
+	suite.Require().NoError(err)
+
+	// Test path that exists
+	exists, err := suite.mount_repo.Exists("/mnt/exists-test")
+	suite.Require().NoError(err)
+	suite.True(exists)
+
+	// Test path that doesn't exist
+	exists, err = suite.mount_repo.Exists("/mnt/nonexistent")
+	suite.Require().NoError(err)
+	suite.False(exists)
+
+	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
+}
+
+func (suite *MountPointPathRepositorySuite) TestDelete() {
+	// Setup test data
+	mp := dbom.MountPointPath{
+		Path:     "/mnt/delete-test",
+		DeviceId: "sdd1",
+		FSType:   "ext4",
+		Type:     "ADDON",
+	}
+	err := suite.mount_repo.Save(&mp)
+	suite.Require().NoError(err)
+
+	// Verify it exists
+	exists, err := suite.mount_repo.Exists("/mnt/delete-test")
+	suite.Require().NoError(err)
+	suite.True(exists)
+
+	// Delete it
+	err = suite.mount_repo.Delete("/mnt/delete-test")
+	suite.Require().NoError(err)
+
+	// Verify it no longer exists
+	exists, err = suite.mount_repo.Exists("/mnt/delete-test")
+	suite.Require().NoError(err)
+	suite.False(exists)
+}

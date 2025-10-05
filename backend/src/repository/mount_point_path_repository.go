@@ -2,7 +2,6 @@ package repository
 
 import (
 	"log/slog"
-	"strings"
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
@@ -76,9 +75,8 @@ func (r *MountPointPathRepository) FindByDevice(device string) (*dbom.MountPoint
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 	var mp dbom.MountPointPath
-	// Ensure we search for the base device name, without "/dev/" prefix
-	normalizedDevice := strings.TrimPrefix(device, "/dev/")
-	err := r.db.Where("device = ?", normalizedDevice).First(&mp).Error
+	// Ensure we search for the device id (can include /dev/disk/by-id/ or similar)
+	err := r.db.Where("device_id = ?", device).First(&mp).Error
 	return &mp, errors.WithStack(err)
 }
 func (r *MountPointPathRepository) All() (Data []dbom.MountPointPath, Error errors.E) {

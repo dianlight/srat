@@ -271,7 +271,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithDisabledShareWithoutMountPoint
 					IsAdmin:  true,
 				},
 			},
-			Disabled:       pointer.Bool(false),
+			Disabled: pointer.Bool(false),
 			MountPointData: &dto.MountPointData{
 				Path:               "/mnt/valid-share",
 				PathHash:           "validhash123",
@@ -339,7 +339,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithEmptyPathInMountPoint() {
 					IsAdmin:  true,
 				},
 			},
-			Disabled:       pointer.Bool(false),
+			Disabled: pointer.Bool(false),
 			MountPointData: &dto.MountPointData{
 				Path:               "/mnt/valid-share",
 				PathHash:           "validhash123",
@@ -470,6 +470,135 @@ func (suite *ShareHandlerSuite) TestDeleteShareNotFound() {
 
 	// Make HTTP request
 	resp := api.Delete("/share/" + shareName)
+	suite.Require().Equal(http.StatusNotFound, resp.Code)
+}
+
+func (suite *ShareHandlerSuite) TestUpdateShareSuccess() {
+	shareName := "test-share"
+	input := dto.SharedResource{Name: shareName, Usage: "backup"}
+	expectedShare := &dto.SharedResource{Name: shareName, Usage: "backup"}
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.UpdateShare(mock.Equal(shareName), mock.Any[dto.SharedResource]())).ThenReturn(expectedShare, nil)
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request - use PUT, not PATCH
+	resp := api.Put("/share/"+shareName, input)
+	suite.Require().Equal(http.StatusOK, resp.Code)
+
+	// Parse response
+	var result dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	// Assert
+	suite.Equal(expectedShare.Name, result.Name)
+	suite.Equal(expectedShare.Usage, result.Usage)
+
+	// Verify that SetDirtyShares was called
+	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+}
+
+func (suite *ShareHandlerSuite) TestUpdateShareNotFound() {
+	shareName := "nonexistent-share"
+	input := dto.SharedResource{Name: shareName}
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.UpdateShare(mock.Equal(shareName), mock.Any[dto.SharedResource]())).ThenReturn(nil, errors.WithStack(dto.ErrorShareNotFound))
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request - use PUT, not PATCH
+	resp := api.Put("/share/"+shareName, input)
+	suite.Require().Equal(http.StatusNotFound, resp.Code)
+}
+
+func (suite *ShareHandlerSuite) TestDisableShareSuccess() {
+	shareName := "test-share"
+	disabledShare := &dto.SharedResource{Name: shareName, Disabled: pointer.Bool(true)}
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.DisableShare(shareName)).ThenReturn(disabledShare, nil)
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request - use PUT, not POST
+	resp := api.Put("/share/"+shareName+"/disable", struct{}{})
+	suite.Require().Equal(http.StatusOK, resp.Code)
+
+	// Parse response - DisableShare returns Body, not empty
+	var result dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.Equal(shareName, result.Name)
+	suite.NotNil(result.Disabled)
+	suite.True(*result.Disabled)
+
+	// Verify that SetDirtyShares was called
+	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+}
+
+func (suite *ShareHandlerSuite) TestDisableShareNotFound() {
+	shareName := "nonexistent-share"
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.DisableShare(shareName)).ThenReturn(nil, errors.WithStack(dto.ErrorShareNotFound))
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request - use PUT, not POST
+	resp := api.Put("/share/"+shareName+"/disable", struct{}{})
+	suite.Require().Equal(http.StatusNotFound, resp.Code)
+}
+
+func (suite *ShareHandlerSuite) TestEnableShareSuccess() {
+	shareName := "test-share"
+	enabledShare := &dto.SharedResource{Name: shareName, Disabled: pointer.Bool(false)}
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.EnableShare(shareName)).ThenReturn(enabledShare, nil)
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request - use PUT, not POST
+	resp := api.Put("/share/"+shareName+"/enable", struct{}{})
+	suite.Require().Equal(http.StatusOK, resp.Code)
+
+	// Parse response - EnableShare returns Body, not empty
+	var result dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.Equal(shareName, result.Name)
+	suite.NotNil(result.Disabled)
+	suite.False(*result.Disabled)
+
+	// Verify that SetDirtyShares was called
+	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+}
+
+func (suite *ShareHandlerSuite) TestEnableShareNotFound() {
+	shareName := "nonexistent-share"
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.EnableShare(shareName)).ThenReturn(nil, errors.WithStack(dto.ErrorShareNotFound))
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request - use PUT, not POST
+	resp := api.Put("/share/"+shareName+"/enable", struct{}{})
 	suite.Require().Equal(http.StatusNotFound, resp.Code)
 }
 

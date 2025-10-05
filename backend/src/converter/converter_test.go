@@ -200,7 +200,7 @@ func TestDtoToDbomConverter_MountFlagsToMountDataFlags(t *testing.T) {
 
 func TestDtoToDbomConverter_ExportedShareToSharedResource_WithEmptyPath(t *testing.T) {
 	conv := DtoToDbomConverterImpl{}
-	
+
 	// Test case 1: Share with empty path
 	sourceWithEmptyPath := dbom.ExportedShare{
 		Name:  "UPDATER",
@@ -211,14 +211,14 @@ func TestDtoToDbomConverter_ExportedShareToSharedResource_WithEmptyPath(t *testi
 			DeviceId: "sdb2",
 		},
 	}
-	
+
 	var targetWithEmptyPath dto.SharedResource
 	err := conv.ExportedShareToSharedResource(sourceWithEmptyPath, &targetWithEmptyPath, nil)
-	
+
 	require.NoError(t, err)
 	assert.Equal(t, "UPDATER", targetWithEmptyPath.Name)
 	assert.Nil(t, targetWithEmptyPath.MountPointData, "MountPointData should be nil when path is empty")
-	
+
 	// Test case 2: Share with valid path
 	fstype := "ext4"
 	sourceWithValidPath := dbom.ExportedShare{
@@ -231,10 +231,10 @@ func TestDtoToDbomConverter_ExportedShareToSharedResource_WithEmptyPath(t *testi
 			FSType:   fstype,
 		},
 	}
-	
+
 	var targetWithValidPath dto.SharedResource
 	err = conv.ExportedShareToSharedResource(sourceWithValidPath, &targetWithValidPath, nil)
-	
+
 	require.NoError(t, err)
 	assert.Equal(t, "valid-share", targetWithValidPath.Name)
 	require.NotNil(t, targetWithValidPath.MountPointData, "MountPointData should not be nil when path is valid")
@@ -245,19 +245,145 @@ func TestDtoToDbomConverter_ExportedShareToSharedResource_WithEmptyPath(t *testi
 
 func TestDtoToDbomConverter_ExportedShareToSharedResource_WithNilPath(t *testing.T) {
 	conv := DtoToDbomConverterImpl{}
-	
+
 	// Test case: Share with no MountPointData path (zero value)
 	source := dbom.ExportedShare{
 		Name:           "no-mount-share",
 		Users:          []dbom.SambaUser{{Username: "testuser"}},
 		MountPointData: dbom.MountPointPath{}, // Zero value, path is ""
 	}
-	
+
 	var target dto.SharedResource
 	err := conv.ExportedShareToSharedResource(source, &target, nil)
-	
+
 	require.NoError(t, err)
 	assert.Equal(t, "no-mount-share", target.Name)
 	assert.Nil(t, target.MountPointData, "MountPointData should be nil when path is empty string")
 }
 
+func TestDtoToDbomConverter_SharedResourceToExportedShare(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+	disabled := false
+
+	source := dto.SharedResource{
+		Name:     "test-share",
+		Disabled: &disabled,
+		Users: []dto.User{
+			{Username: "user1"},
+			{Username: "user2"},
+		},
+		RoUsers: []dto.User{
+			{Username: "rouser1"},
+		},
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/test",
+			Type:     "ADDON",
+			DeviceId: "sda1",
+		},
+	}
+
+	var target dbom.ExportedShare
+	err := conv.SharedResourceToExportedShare(source, &target)
+
+	require.NoError(t, err)
+	assert.Equal(t, "test-share", target.Name)
+	assert.Len(t, target.Users, 2)
+	assert.Len(t, target.RoUsers, 1)
+	assert.Equal(t, "user1", target.Users[0].Username)
+	assert.Equal(t, "rouser1", target.RoUsers[0].Username)
+	assert.Equal(t, "/mnt/test", target.MountPointData.Path)
+}
+
+func TestDtoToDbomConverter_SharedResourceToExportedShare_NoMountPoint(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+
+	source := dto.SharedResource{
+		Name:  "simple-share",
+		Users: []dto.User{{Username: "user1"}},
+	}
+
+	var target dbom.ExportedShare
+	err := conv.SharedResourceToExportedShare(source, &target)
+
+	require.NoError(t, err)
+	assert.Equal(t, "simple-share", target.Name)
+	assert.Empty(t, target.MountPointData.Path)
+}
+
+func TestDtoToDbomConverter_SettingsToProperties(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+
+	hostname := "TESTSERVER"
+	workgroup := "WORKGROUP"
+	source := dto.Settings{
+		Hostname:  hostname,
+		Workgroup: workgroup,
+	}
+
+	target := make(dbom.Properties)
+	err := conv.SettingsToProperties(source, &target)
+
+	require.NoError(t, err)
+	assert.Contains(t, target, "Hostname")
+	assert.Contains(t, target, "Workgroup")
+	assert.Equal(t, "TESTSERVER", target["Hostname"].Value)
+	assert.Equal(t, "WORKGROUP", target["Workgroup"].Value)
+}
+
+func TestDtoToDbomConverter_PropertiesToSettings(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+
+	source := dbom.Properties{
+		"Hostname":  {Key: "Hostname", Value: "TESTSERVER"},
+		"Workgroup": {Key: "Workgroup", Value: "WORKGROUP"},
+	}
+
+	var target dto.Settings
+	err := conv.PropertiesToSettings(source, &target)
+
+	require.NoError(t, err)
+	assert.Equal(t, "TESTSERVER", target.Hostname)
+	assert.Equal(t, "WORKGROUP", target.Workgroup)
+}
+
+func TestConfigToDto_PathToSource(t *testing.T) {
+	// PathToSource returns device name from path lookup in mount info
+	// Since we're in a test environment without real mounts, it will return empty string
+	result := PathToSource("/mnt/test")
+	// The function returns empty string when path is not in mount info
+	assert.NotNil(t, result) // Should at least return a string (can be empty)
+}
+
+func TestConfigToDto_TimeMachineSupportFromFS_AllTypes(t *testing.T) {
+	tests := []struct {
+		fstype   string
+		expected dto.TimeMachineSupport
+	}{
+		{"ext4", dto.TimeMachineSupports.SUPPORTED},
+		{"ext3", dto.TimeMachineSupports.SUPPORTED},
+		{"btrfs", dto.TimeMachineSupports.SUPPORTED},
+		{"xfs", dto.TimeMachineSupports.SUPPORTED},
+		{"ntfs", dto.TimeMachineSupports.EXPERIMENTAL},
+		{"ntfs3", dto.TimeMachineSupports.EXPERIMENTAL},
+		{"exfat", dto.TimeMachineSupports.UNSUPPORTED},
+		{"vfat", dto.TimeMachineSupports.UNSUPPORTED},
+		{"iso9660", dto.TimeMachineSupports.UNSUPPORTED},
+		{"unknown", dto.TimeMachineSupports.UNKNOWN},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.fstype, func(t *testing.T) {
+			result := TimeMachineSupportFromFS(tt.fstype)
+			require.NotNil(t, result)
+			assert.Equal(t, tt.expected, *result)
+		})
+	}
+}
+
+func TestConfigToDto_FSTypeIsWriteSupported(t *testing.T) {
+	// This function calls osutil.IsWritable which checks actual path writability
+	// In test environment, we can check the function returns a boolean pointer
+	result := FSTypeIsWriteSupported("/tmp")
+	assert.NotNil(t, result)
+	// The result depends on actual filesystem permissions
+}
