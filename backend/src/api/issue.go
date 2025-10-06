@@ -45,8 +45,10 @@ type ResolveIssueInput struct {
 }
 
 // ResolveIssueOutput defines the output for resolving an issue.
+// ResolveIssueOutput defines the output for resolving an issue.
+// Returning a struct with a Status field allows explicit 204 No Content.
 type ResolveIssueOutput struct {
-	Body struct{}
+	Status int `json:"-"`
 }
 
 // UpdateIssueInput defines the input for updating an issue.
@@ -102,7 +104,7 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 			tlog.Error("failed to resolve issue", err)
 			return nil, huma.Error500InternalServerError("failed to resolve issue", err)
 		}
-		return &ResolveIssueOutput{}, nil
+		return &ResolveIssueOutput{Status: http.StatusNoContent}, nil
 	})
 
 	huma.Register(api, huma.Operation{

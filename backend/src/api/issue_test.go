@@ -121,8 +121,7 @@ func (suite *IssueHandlerSuite) TestResolveIssueSuccess() {
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterIssueHandler(apiInst)
 	resp := apiInst.Delete("/issues/1")
-	// Handler returns a body struct so huma defaults to 200 OK
-	suite.Require().Equal(http.StatusOK, resp.Code)
+	suite.Require().Equal(http.StatusNoContent, resp.Code)
 	mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Resolve(uint(1))
 }
 
@@ -169,4 +168,16 @@ func (suite *IssueHandlerSuite) TestUpdateIssueError() {
 	})
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 	mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Update(mock.Any[*dto.Issue]())
+}
+
+// TestCreateIssueValidationError ensures missing required fields trigger 422 before hitting service layer
+func (suite *IssueHandlerSuite) TestCreateIssueValidationError() {
+	// No mock expectation: validation should intercept
+	_, apiInst := humatest.New(suite.T())
+	suite.handler.RegisterIssueHandler(apiInst)
+	// Omitting required fields like id, date, repeating, ignored
+	resp := apiInst.Post("/issues", map[string]any{"title": "T"})
+	suite.Require().Equal(http.StatusUnprocessableEntity, resp.Code)
+	// Ensure Create was never invoked
+	mock.Verify(suite.mockIssueSvc, matchers.Times(0)).Create(mock.Any[*dto.Issue]())
 }
