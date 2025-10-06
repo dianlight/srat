@@ -19,7 +19,7 @@
   - [Troubleshooting](#troubleshooting)
     - [Requirements Not Met](#requirements-not-met)
       - [Samba Version Too Old](#samba-version-too-old)
-      - [QUIC Transport Not Available](#quic-transport-not-available)
+      - [QUIC Kernel Module Not Available](#quic-kernel-module-not-available)
     - [Connection Issues](#connection-issues)
     - [Performance Issues](#performance-issues)
   - [Security Considerations](#security-considerations)
