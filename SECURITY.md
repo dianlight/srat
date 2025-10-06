@@ -2,6 +2,7 @@
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents**
 
 - [Supported Versions](#supported-versions)
@@ -24,8 +25,8 @@ currently being supported with security updates.
 We take security seriously. If you discover a vulnerability, please follow these steps:
 
 1. Do not open a public issue. Instead, report privately via GitHub Security Advisories:
-	- Navigate to the repository Security tab → Report a vulnerability
-	- Or go directly: https://github.com/dianlight/srat/security/advisories/new
+   - Navigate to the repository Security tab → Report a vulnerability
+   - Or go directly: https://github.com/dianlight/srat/security/advisories/new
 2. Provide a clear description with reproduction steps, affected versions, and impact.
 3. If possible, include a minimal proof of concept. Avoid sharing sensitive data.
 

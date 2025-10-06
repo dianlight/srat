@@ -136,24 +136,24 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { createTestStore } from "../../../test/setup";
 
 describe("Component rendering", () => {
-    it("renders component with initial data", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MyComponent } = await import("../MyComponent");
-        const store = await createTestStore();
+  it("renders component with initial data", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { MyComponent } = await import("../MyComponent");
+    const store = await createTestStore();
 
-        render(
-            React.createElement(
-                Provider,
-                { store },
-                React.createElement(MyComponent, { prop: "value" })
-            )
-        );
+    render(
+      React.createElement(
+        Provider,
+        { store },
+        React.createElement(MyComponent, { prop: "value" }),
+      ),
+    );
 
-        const element = await screen.findByText("Expected Text");
-        expect(element).toBeTruthy();
-    });
+    const element = await screen.findByText("Expected Text");
+    expect(element).toBeTruthy();
+  });
 });
 ```
 
@@ -239,20 +239,26 @@ describe("Component rendering", () => {
 ```tsx
 // REQUIRED localStorage shim for every localStorage test
 if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => { _store[k] = String(v); },
-        removeItem: (k: string) => { delete _store[k]; },
-        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
-    };
+  const _store: Record<string, string> = {};
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
+    setItem: (k: string, v: string) => {
+      _store[k] = String(v);
+    },
+    removeItem: (k: string) => {
+      delete _store[k];
+    },
+    clear: () => {
+      for (const k of Object.keys(_store)) delete _store[k];
+    },
+  };
 }
 
 describe("Component localStorage functionality", () => {
-    beforeEach(() => {
-        localStorage.clear(); // ALWAYS clear before each test
-    });
-    // ... tests
+  beforeEach(() => {
+    localStorage.clear(); // ALWAYS clear before each test
+  });
+  // ... tests
 });
 ```
 
@@ -260,27 +266,27 @@ describe("Component localStorage functionality", () => {
 
 ```tsx
 describe("Component rendering", () => {
-    it("renders component with data", async () => {
-        // REQUIRED: Dynamic imports after globals are set
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { ComponentName } = await import("../ComponentName");
-        const store = await createTestStore();
+  it("renders component with data", async () => {
+    // REQUIRED: Dynamic imports after globals are set
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { ComponentName } = await import("../ComponentName");
+    const store = await createTestStore();
 
-        // REQUIRED: Use React.createElement, not JSX
-        render(
-            React.createElement(
-                Provider,
-                { store },
-                React.createElement(ComponentName as any, { props })
-            )
-        );
+    // REQUIRED: Use React.createElement, not JSX
+    render(
+      React.createElement(
+        Provider,
+        { store },
+        React.createElement(ComponentName as any, { props }),
+      ),
+    );
 
-        // REQUIRED: Use findByText for async, toBeTruthy() for assertions
-        const element = await screen.findByText("Expected Text");
-        expect(element).toBeTruthy();
-    });
+    // REQUIRED: Use findByText for async, toBeTruthy() for assertions
+    const element = await screen.findByText("Expected Text");
+    expect(element).toBeTruthy();
+  });
 });
 ```
 

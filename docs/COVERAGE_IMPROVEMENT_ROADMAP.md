@@ -12,18 +12,18 @@ This document provides a detailed roadmap for achieving 60% minimum test coverag
 
 ### Packages Already Meeting 60% Threshold ✅
 
-| Package | Coverage | Status |
-|---------|----------|--------|
-| `internal` | 88.6% | Excellent |
-| `tempio` | 85.7% | Excellent |
-| `tlog` | 83.9% | Excellent |
-| `internal/appsetup` | 80.0% | Excellent |
-| `internal/osutil` | 77.4% | Excellent |
-| `unixsamba` | 75.1% | Good |
-| `config` | 71.1% | Good |
-| `repository` | 71.0% | Good |
-| `dbom/migrations` | 63.8% | Good |
-| `homeassistant/websocket` | 60.9% | Good |
+| Package                   | Coverage | Status    |
+| ------------------------- | -------- | --------- |
+| `internal`                | 88.6%    | Excellent |
+| `tempio`                  | 85.7%    | Excellent |
+| `tlog`                    | 83.9%    | Excellent |
+| `internal/appsetup`       | 80.0%    | Excellent |
+| `internal/osutil`         | 77.4%    | Excellent |
+| `unixsamba`               | 75.1%    | Good      |
+| `config`                  | 71.1%    | Good      |
+| `repository`              | 71.0%    | Good      |
+| `dbom/migrations`         | 63.8%    | Good      |
+| `homeassistant/websocket` | 60.9%    | Good      |
 
 **These packages require no immediate action.**
 
@@ -31,36 +31,36 @@ This document provides a detailed roadmap for achieving 60% minimum test coverag
 
 #### Tier 1: High Priority (Close to target, high impact)
 
-| Package | Current | Target | Gap | Effort | Impact |
-|---------|---------|--------|-----|--------|--------|
-| `api` | 48.1% | 60% | 11.9% | Medium | High |
-| `server` | 33.8% | 60% | 26.2% | Medium | High |
-| `service` | 33.6% | 60% | 26.4% | High | High |
+| Package   | Current | Target | Gap   | Effort | Impact |
+| --------- | ------- | ------ | ----- | ------ | ------ |
+| `api`     | 48.1%   | 60%    | 11.9% | Medium | High   |
+| `server`  | 33.8%   | 60%    | 26.2% | Medium | High   |
+| `service` | 33.6%   | 60%    | 26.4% | High   | High   |
 
 #### Tier 2: Medium Priority (Core business logic)
 
-| Package | Current | Target | Gap | Effort | Impact |
-|---------|---------|--------|-----|--------|--------|
-| `homeassistant/mount` | 36.8% | 60% | 23.2% | Medium | Medium |
-| `homeassistant/core_api` | 45.0% | 60% | 15.0% | Low | Medium |
-| `converter` | 27.2% | 60% | 32.8% | Low | Medium |
-| `homeassistant/host` | 27.3% | 60% | 32.7% | Medium | Medium |
-| `homeassistant/core` | 25.8% | 60% | 34.2% | Medium | Medium |
+| Package                  | Current | Target | Gap   | Effort | Impact |
+| ------------------------ | ------- | ------ | ----- | ------ | ------ |
+| `homeassistant/mount`    | 36.8%   | 60%    | 23.2% | Medium | Medium |
+| `homeassistant/core_api` | 45.0%   | 60%    | 15.0% | Low    | Medium |
+| `converter`              | 27.2%   | 60%    | 32.8% | Low    | Medium |
+| `homeassistant/host`     | 27.3%   | 60%    | 32.7% | Medium | Medium |
+| `homeassistant/core`     | 25.8%   | 60%    | 34.2% | Medium | Medium |
 
 #### Tier 3: Low Priority (Supporting packages)
 
-| Package | Current | Target | Gap | Effort | Impact |
-|---------|---------|--------|-----|--------|--------|
-| `homeassistant/ingress` | 20.8% | 60% | 39.2% | Medium | Low |
-| `homeassistant/root` | 19.6% | 60% | 40.4% | Medium | Low |
-| `dto` | 19.1% | 60% | 40.9% | Medium | Medium |
-| `dbom` | 19.0% | 60% | 41.0% | Medium | Medium |
-| `cmd/srat-openapi` | 17.9% | 60% | 42.1% | Low | Low |
-| `homeassistant/hardware` | 16.3% | 60% | 43.7% | Medium | Low |
-| `homeassistant/addons` | 13.2% | 60% | 46.8% | Medium | Low |
-| `homeassistant/resolution` | 13.7% | 60% | 46.3% | Medium | Low |
-| `cmd/srat-cli` | 5.7% | 60% | 54.3% | High | Low |
-| `cmd/srat-server` | 5.4% | 60% | 54.6% | High | Low |
+| Package                    | Current | Target | Gap   | Effort | Impact |
+| -------------------------- | ------- | ------ | ----- | ------ | ------ |
+| `homeassistant/ingress`    | 20.8%   | 60%    | 39.2% | Medium | Low    |
+| `homeassistant/root`       | 19.6%   | 60%    | 40.4% | Medium | Low    |
+| `dto`                      | 19.1%   | 60%    | 40.9% | Medium | Medium |
+| `dbom`                     | 19.0%   | 60%    | 41.0% | Medium | Medium |
+| `cmd/srat-openapi`         | 17.9%   | 60%    | 42.1% | Low    | Low    |
+| `homeassistant/hardware`   | 16.3%   | 60%    | 43.7% | Medium | Low    |
+| `homeassistant/addons`     | 13.2%   | 60%    | 46.8% | Medium | Low    |
+| `homeassistant/resolution` | 13.7%   | 60%    | 46.3% | Medium | Low    |
+| `cmd/srat-cli`             | 5.7%    | 60%    | 54.3% | High   | Low    |
+| `cmd/srat-server`          | 5.4%    | 60%    | 54.6% | High   | Low    |
 
 ## Implementation Phases
 
@@ -71,6 +71,7 @@ This document provides a detailed roadmap for achieving 60% minimum test coverag
 #### 1. API Package (48.1% → 60%)
 
 **Files needing tests:**
+
 - [ ] `issue.go` - Issue CRUD operations
 - [ ] `telemetry.go` - Telemetry configuration endpoints
 - [ ] `upgrade.go` - System upgrade handlers
@@ -79,6 +80,7 @@ This document provides a detailed roadmap for achieving 60% minimum test coverag
 - [ ] `ws.go` - WebSocket connection handlers
 
 **Test Pattern to Follow:**
+
 ```go
 // Use fx-based dependency injection like shares_test.go
 suite.app = fxtest.New(suite.T(),
@@ -97,6 +99,7 @@ suite.app = fxtest.New(suite.T(),
 #### 2. Server Package (33.8% → 60%)
 
 **Areas needing tests:**
+
 - [ ] Server initialization with different configurations
 - [ ] Middleware chain execution
 - [ ] WebSocket connection lifecycle
@@ -110,12 +113,14 @@ suite.app = fxtest.New(suite.T(),
 #### 3. Service Package (33.6% → 60%)
 
 **Priority services to test:**
+
 - [ ] Filesystem service - mount/unmount operations
 - [ ] Share service - share creation, modification, deletion
 - [ ] User service - user management operations
 - [ ] System service - system information and control
 
 **Strategy:**
+
 - Focus on untested service methods
 - Test error conditions and edge cases
 - Test service interactions
@@ -160,15 +165,17 @@ suite.app = fxtest.New(suite.T(),
 
 ### Phase 3: Home Assistant Integration (2-3 weeks)
 
-**Target: Improve homeassistant/* packages**
+**Target: Improve homeassistant/\* packages**
 
 All homeassistant packages follow similar patterns:
+
 - Mock HTTP responses from supervisor
 - Test error handling for network failures
 - Test response parsing
 - Test authentication flows
 
 **Packages:**
+
 - `homeassistant/mount` (36.8%)
 - `homeassistant/core_api` (45.0%)
 - `homeassistant/host` (27.3%)
@@ -191,6 +198,7 @@ All homeassistant packages follow similar patterns:
 - `cmd/srat-openapi` (17.9%)
 
 **Strategy:**
+
 - Focus on flag validation and command parsing
 - Add integration tests for critical commands
 - Accept lower coverage for main entry points
@@ -292,22 +300,26 @@ cd backend && make test | grep "Total coverage"
 ### Success Criteria
 
 **Phase 1 Complete:**
+
 - API package ≥ 60%
 - Server package ≥ 60%
 - Service package ≥ 60%
 - Overall backend coverage ≥ 42%
 
 **Phase 2 Complete:**
+
 - Converter package ≥ 60%
 - DBOM package ≥ 60%
 - DTO package ≥ 60%
 - Overall backend coverage ≥ 48%
 
 **Phase 3 Complete:**
-- All homeassistant/* packages ≥ 60% (except already passing)
+
+- All homeassistant/\* packages ≥ 60% (except already passing)
 - Overall backend coverage ≥ 55%
 
 **Final Goal:**
+
 - All core packages ≥ 60%
 - Overall backend coverage ≥ 60%
 
@@ -323,12 +335,12 @@ cd backend && make test | grep "Total coverage"
 
 ## Timeline Estimate
 
-| Phase | Duration | Cumulative | Target Coverage |
-|-------|----------|------------|-----------------|
-| Phase 1: Quick Wins | 1-2 weeks | 1-2 weeks | 42% |
-| Phase 2: Core Logic | 2-3 weeks | 3-5 weeks | 48% |
-| Phase 3: HA Integration | 2-3 weeks | 5-8 weeks | 55% |
-| Phase 4: CLI (Optional) | 2-3 weeks | 7-11 weeks | 60%+ |
+| Phase                   | Duration  | Cumulative | Target Coverage |
+| ----------------------- | --------- | ---------- | --------------- |
+| Phase 1: Quick Wins     | 1-2 weeks | 1-2 weeks  | 42%             |
+| Phase 2: Core Logic     | 2-3 weeks | 3-5 weeks  | 48%             |
+| Phase 3: HA Integration | 2-3 weeks | 5-8 weeks  | 55%             |
+| Phase 4: CLI (Optional) | 2-3 weeks | 7-11 weeks | 60%+            |
 
 **Recommended Approach:** Focus on Phases 1-3 first to achieve meaningful coverage improvement where it matters most.
 
@@ -355,7 +367,7 @@ cd backend && make test | grep "Total coverage"
 
 ## Notes
 
-- **cmd/* packages**: Low priority due to difficulty in testing entry points. The business logic they call is tested elsewhere.
+- **cmd/\* packages**: Low priority due to difficulty in testing entry points. The business logic they call is tested elsewhere.
 - **Auto-generated code**: Converter package uses goverter; tests focus on edge cases and integration rather than generated code itself.
 - **Mocking complexity**: Some packages require extensive mocking setup. Refer to existing tests for patterns.
 - **CI Integration**: Pre-commit hooks and GitHub Actions should enforce minimum coverage thresholds once targets are met.

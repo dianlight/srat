@@ -3,6 +3,10 @@
   "version": "0.2",
   "language": "en",
   "words": [
+    "QUIC",
+    "DBOM",
+    "dbom",
+    "srat",
     "GORM",
     "PPROF",
     "SRAT",
@@ -22,6 +26,7 @@
     "tcon",
     "nmbd",
     "gohack",
+    "goverter",
     "microtask",
     "navendu",
     "pottekkat",
@@ -69,7 +74,12 @@
     "pipx",
     "armv7",
     "DBOMs",
-    "psutil"
+    "psutil",
+    "coverprofile",
+    "codegen",
+    "osutil",
+    "reconnections",
+    "xychart"
   ],
   "flagWords": [],
   "ignorePaths": [

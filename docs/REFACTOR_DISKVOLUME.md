@@ -2,6 +2,7 @@
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents**
 
 - [Overview](#overview)
@@ -20,6 +21,7 @@
 ## Overview
 
 This refactor modernizes the disk volume handling in SRAT by replacing the custom `lsblk` package with standard system utilities and improving device identification. The main goals are to:
+
 - Remove dependency on custom lsblk implementation
 - Use `psutil` for partition information
 - Standardize device fields across DTOs and DBOMs
@@ -78,8 +80,8 @@ This refactor modernizes the disk volume handling in SRAT by replacing the custo
 
 ## Migration
 
-- [X] Add migration script to migrate DB table to for DeviceId and DevicePath
-- [X] Update existing mount point records to use new device fields
-- [X] Test mount/unmount operations with new device identification
+- [x] Add migration script to migrate DB table to for DeviceId and DevicePath
+- [x] Update existing mount point records to use new device fields
+- [x] Test mount/unmount operations with new device identification
 - [ ] Verify SMART data retrieval works correctly
 - [ ] Update any external integrations that depend on old device fields

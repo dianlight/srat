@@ -2,6 +2,7 @@
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents**
 
 - [Overview](#overview)
@@ -46,9 +47,9 @@ The SRAT telemetry system uses Rollbar for error reporting and analytics. Config
 
 ### Backend (Go)
 
-| Variable                      | Required | Description                                  | Default                    |
-| ----------------------------- | -------- | -------------------------------------------- | -------------------------- |
-| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No       | Rollbar access token (set at build time)     | `""` (disabled)            |
+| Variable                      | Required | Description                                  | Default                                                                   |
+| ----------------------------- | -------- | -------------------------------------------- | ------------------------------------------------------------------------- |
+| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No       | Rollbar access token (set at build time)     | `""` (disabled)                                                           |
 | `ROLLBAR_ENVIRONMENT`         | No       | Rollbar environment name (set at build time) | Auto-detected from version (`development`, `prerelease`, or `production`) |
 
 **Note**: Backend telemetry configuration is set at **build time** via ldflags, not runtime environment variables.
@@ -251,14 +252,14 @@ export ROLLBAR_ENVIRONMENT="staging"
 
 ### Version-based Environment Examples
 
-| Version Example | Detected Environment | Description |
-|----------------|---------------------|-------------|
-| `1.0.0` | `production` | Standard release |
-| `1.0.0-dev.1` | `development` | Development build |
-| `1.0.0-rc.1` | `prerelease` | Release candidate |
-| `2.1.3-dev.abc123` | `development` | Development with commit hash |
-| `2.1.3-rc.2` | `prerelease` | Second release candidate |
-| `0.0.0-dev.0` | `development` | Default development version |
+| Version Example    | Detected Environment | Description                  |
+| ------------------ | -------------------- | ---------------------------- |
+| `1.0.0`            | `production`         | Standard release             |
+| `1.0.0-dev.1`      | `development`        | Development build            |
+| `1.0.0-rc.1`       | `prerelease`         | Release candidate            |
+| `2.1.3-dev.abc123` | `development`        | Development with commit hash |
+| `2.1.3-rc.2`       | `prerelease`         | Second release candidate     |
+| `0.0.0-dev.0`      | `development`        | Default development version  |
 
 ## Frontend integration notes
 

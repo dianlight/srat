@@ -1,5 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents**
 
 - [SMB over QUIC](#smb-over-quic)
@@ -71,11 +72,13 @@ You can check if your system supports QUIC by:
    - Disabled with a detailed message explaining what requirements are missing if not supported
 
 2. **Via API**: Call the `/api/capabilities` endpoint:
+
    ```bash
    curl http://your-srat-instance/api/capabilities
    ```
-   
+
    Response:
+
    ```json
    {
      "supports_quic": true,
@@ -85,8 +88,9 @@ You can check if your system supports QUIC by:
      "unsupported_reason": ""
    }
    ```
-   
+
    If QUIC is not supported, the response will indicate why:
+
    ```json
    {
      "supports_quic": false,
@@ -97,14 +101,16 @@ You can check if your system supports QUIC by:
    }
    ```
 
-3. **Via Command Line**: 
-   
+3. **Via Command Line**:
+
    Check Samba version:
+
    ```bash
    smbd --version
    ```
-   
+
    Check if kernel module is loaded:
+
    ```bash
    lsmod | grep quic
    # or
@@ -168,19 +174,21 @@ If SRAT reports that QUIC is not supported, check which requirement is missing:
 If your Samba version is less than 4.23.0:
 
 1. **Check Current Version**:
+
    ```bash
    smbd --version
    ```
 
 2. **Upgrade Samba**: Depending on your distribution:
-   
    - **Ubuntu/Debian**:
+
      ```bash
      sudo apt update
      sudo apt install samba
      ```
-   
+
    - **Red Hat/CentOS/Fedora**:
+
      ```bash
      sudo dnf upgrade samba
      ```
@@ -194,11 +202,13 @@ If the QUIC kernel module is not available:
 **Load QUIC Kernel Module**
 
 1. **Check Kernel Version**: QUIC support requires a relatively recent kernel:
+
    ```bash
    uname -r
    ```
 
 2. **Load QUIC Module**:
+
    ```bash
    sudo modprobe quic
    # or
@@ -206,11 +216,13 @@ If the QUIC kernel module is not available:
    ```
 
 3. **Make Persistent**: Add to `/etc/modules` or `/etc/modules-load.d/`:
+
    ```bash
    echo "quic" | sudo tee /etc/modules-load.d/quic.conf
    ```
 
 4. **Verify Module is Loaded**:
+
    ```bash
    lsmod | grep quic
    ```
@@ -220,13 +232,15 @@ If the QUIC kernel module is not available:
 If you're having trouble connecting after enabling QUIC:
 
 1. **Firewall**: Ensure port 443 is open for QUIC traffic:
+
    ```bash
    sudo ufw allow 443/udp
    ```
-   
+
    Note: QUIC uses UDP, not TCP!
 
 2. **Check Samba Status**: Verify Samba is running and using the correct configuration:
+
    ```bash
    sudo systemctl status smbd
    ```
@@ -270,6 +284,7 @@ QUIC uses port 443 (HTTPS port) for SMB traffic. This can:
 **Endpoint**: `GET /api/capabilities`
 
 **Response**:
+
 ```json
 {
   "supports_quic": true,
@@ -281,6 +296,7 @@ QUIC uses port 443 (HTTPS port) for SMB traffic. This can:
 ```
 
 **Fields**:
+
 - `supports_quic`: Overall QUIC support status (requires Samba 4.23+ AND kernel module)
 - `has_kernel_module`: Whether QUIC kernel module (`quic` or `net_quic`) is loaded
 - `samba_version`: Installed Samba version string
@@ -292,6 +308,7 @@ QUIC uses port 443 (HTTPS port) for SMB traffic. This can:
 **Endpoint**: `GET /api/settings`
 
 **Response** (excerpt):
+
 ```json
 {
   "smb_over_quic": true,
@@ -304,6 +321,7 @@ QUIC uses port 443 (HTTPS port) for SMB traffic. This can:
 **Endpoint**: `PATCH /api/settings`
 
 **Request**:
+
 ```json
 {
   "smb_over_quic": true

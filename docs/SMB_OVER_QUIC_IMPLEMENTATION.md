@@ -1,5 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents**
 
 - [SMB over QUIC Implementation - Summary](#smb-over-quic-implementation---summary)
@@ -27,6 +28,7 @@
 # SMB over QUIC Implementation - Summary
 
 ## Issue Reference
+
 - **Issue**: #227
 - **Feature**: SMB over QUIC transport protocol support with enhanced detection
 
@@ -134,7 +136,7 @@ QUIC is enabled ONLY when ALL requirements are met:
 
 ### Detection Flow
 
-```
+```txt
 GetCapabilitiesHandler:
   1. Check Samba version (GetSambaVersion, IsSambaVersionSufficient)
   2. Check for QUIC kernel module (IsKernelModuleLoaded "quic" or "net_quic")
@@ -157,6 +159,7 @@ GetCapabilitiesHandler:
 ## Verification
 
 ### Backend
+
 ```bash
 cd /workspaces/srat/backend
 make test_build  # ✅ Builds successfully
@@ -165,6 +168,7 @@ make gen         # ✅ Generates OpenAPI docs
 ```
 
 ### Frontend
+
 ```bash
 cd /workspaces/srat/frontend
 bun run build    # ✅ Builds successfully
