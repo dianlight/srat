@@ -30,12 +30,21 @@ func (suite *UpgradeHandlerSuite) TestUpdateHandlerStartsBackgroundFlow() {
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterUpgradeHanler(apiInst)
 
+	// Set testDone hook for deterministic synchronization instead of sleeping.
+	done := make(chan struct{})
+	suite.handler.SetTestDoneHook(done)
+
 	resp := apiInst.Put("/update", struct{}{})
 	suite.Require().Equal(http.StatusOK, resp.Code)
 	suite.Contains(resp.Body.String(), "v9.9.9")
 
-	// Give background goroutine a moment to run the download/install steps
-	time.Sleep(100 * time.Millisecond)
+	// Wait for background goroutine to signal completion (with timeout)
+	select {
+	case <-done:
+		// ok
+	case <-time.After(2 * time.Second):
+		suite.T().Fatal("timeout waiting for update background goroutine to finish")
+	}
 
 	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset(mock.Any[*dto.UpdateChannel]())
 	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).DownloadAndExtractBinaryAsset(mock.Any[dto.BinaryAsset]())

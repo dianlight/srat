@@ -22,6 +22,17 @@ type UpgradeHanler struct {
 	broadcaster service.BroadcasterServiceInterface
 	progress    dto.UpdateProgress
 	//pw          *utility.ProgressWriter
+	// testDone is a test-only hook that, if non-nil, will be closed when the
+	// background update goroutine finishes (either success or failure). Tests
+	// can set this channel to synchronize deterministically.
+	testDone chan struct{}
+}
+
+// SetTestDoneHook sets the testDone channel used by tests to wait for the
+// background update goroutine to finish. It's provided to avoid importing
+// package internals from tests while still allowing deterministic signaling.
+func (handler *UpgradeHanler) SetTestDoneHook(ch chan struct{}) {
+	handler.testDone = ch
 }
 
 func NewUpgradeHanler(ctx context.Context, apictx *dto.ContextState, upgader service.UpgradeServiceInterface, broadcaster service.BroadcasterServiceInterface) *UpgradeHanler {
@@ -92,6 +103,10 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 		if err != nil {
 			slog.Error("Error installing update package", "err", err)
 			return
+		}
+		// If a test has set the testDone channel, signal completion.
+		if handler.testDone != nil {
+			close(handler.testDone)
 		}
 	}()
 
