@@ -207,7 +207,7 @@ xychart-beta
     title "Backend Test Coverage Over Time"
     x-axis [2025-10-06]
     y-axis "Coverage %" 0 --> 100
-    line [34.3]
+    line [36.5]
 ```
 
 ### Frontend Coverage Over Time
@@ -229,7 +229,7 @@ xychart-beta
     title "Global Test Coverage Over Time"
     x-axis [2025-10-06]
     y-axis "Coverage %" 0 --> 100
-    line [48.7]
+    line [50.0]
 ```
 
 ## Coverage Improvement Goals
