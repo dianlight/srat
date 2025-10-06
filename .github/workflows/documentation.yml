@@ -40,32 +40,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET_PATHS: '**/*.md'
 
-  docs-validate:
-    needs: generate-toc
-    runs-on: ubuntu-latest
-    name: Documentation Validation
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-
-      - name: Setup bun
-        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
-        with:
-          bun-version: latest
-
-      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6
-      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
-        with:
-          extra_args: --files $(find . -name "*.md" | grep -v "node_modules")
-
-      - name: Run documentation validation
-        run: make docs-validate
-
   auto-fix:
     runs-on: ubuntu-latest
     name: Auto-fix Documentation Issues
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-    needs: [docs-validate]
+    needs: [generate-toc]
     steps:
       - name: Checkout repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -95,4 +73,26 @@ jobs:
             git add .
             git commit -m "📚 docs: auto-fix documentation formatting and linting issues"
             git push
-          fi
+          fi          
+
+  docs-validate:
+    runs-on: ubuntu-latest
+    name: Documentation Validation
+    needs: [auto-fix, generate-toc]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+        with:
+          extra_args: --files $(find . -name "*.md" | grep -v "node_modules")
+
+      - name: Run documentation validation
+        run: make docs-validate
+
