@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/config"
@@ -32,6 +33,9 @@ func (suite *UpgradeHandlerSuite) TestUpdateHandlerStartsBackgroundFlow() {
 	resp := apiInst.Put("/update", struct{}{})
 	suite.Require().Equal(http.StatusOK, resp.Code)
 	suite.Contains(resp.Body.String(), "v9.9.9")
+
+	// Give background goroutine a moment to run the download/install steps
+	time.Sleep(100 * time.Millisecond)
 
 	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset(mock.Any[*dto.UpdateChannel]())
 	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).DownloadAndExtractBinaryAsset(mock.Any[dto.BinaryAsset]())
