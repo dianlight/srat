@@ -317,6 +317,8 @@ func (suite *TelemetryServiceSuite) TestTlogErrorCallbackIncludesOriginalStack()
 	suite.stubRollbarItemPost(true)
 	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS))
 	suite.resetHTTPCalls()
+	// Flush any pending rollbar events from previous tests
+	rollbar.Wait()
 
 	// Emit a tlog error with an attached stack-carrying error
 	logErr := errors.Errorf("callback failure")
