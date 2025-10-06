@@ -1,3 +1,36 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Test Coverage](#test-coverage)
+  - [Current Coverage](#current-coverage)
+  - [Coverage Thresholds](#coverage-thresholds)
+  - [Backend Testing](#backend-testing)
+    - [Framework & Tools](#framework--tools)
+    - [Test Structure](#test-structure)
+    - [Running Backend Tests](#running-backend-tests)
+    - [Coverage Details](#coverage-details)
+  - [Frontend Testing](#frontend-testing)
+    - [Framework & Tools](#framework--tools-1)
+    - [Test Structure](#test-structure-1)
+    - [Running Frontend Tests](#running-frontend-tests)
+    - [Coverage Details](#coverage-details-1)
+  - [Global Coverage](#global-coverage)
+  - [Coverage History](#coverage-history)
+    - [Backend Coverage Over Time](#backend-coverage-over-time)
+    - [Frontend Coverage Over Time](#frontend-coverage-over-time)
+    - [Global Coverage Over Time](#global-coverage-over-time)
+  - [Coverage Improvement Goals](#coverage-improvement-goals)
+    - [Short-term Goals (Next Release)](#short-term-goals-next-release)
+    - [Long-term Goals (6 months)](#long-term-goals-6-months)
+  - [Best Practices](#best-practices)
+    - [Backend Testing Best Practices](#backend-testing-best-practices)
+    - [Frontend Testing Best Practices](#frontend-testing-best-practices)
+  - [Updating Coverage Data](#updating-coverage-data)
+  - [Resources](#resources)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Test Coverage
 
 This document provides an overview of the test coverage for the SRAT project, including both backend (Go) and frontend (TypeScript/React) components.
