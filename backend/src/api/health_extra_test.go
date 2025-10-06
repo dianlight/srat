@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/dianlight/srat/api"
@@ -15,7 +16,7 @@ func TestHealthHandlers_simple(t *testing.T) {
 	h := api.HealthHanler{}
 	h.HealthPing = dto.HealthPing{Alive: true}
 
-	ping, err := h.HealthCheckHandler(nil, &struct{}{})
+	ping, err := h.HealthCheckHandler(context.Background(), &struct{}{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -23,7 +24,7 @@ func TestHealthHandlers_simple(t *testing.T) {
 		t.Fatalf("expected Alive=true")
 	}
 
-	status, err := h.HealthStatusHandler(nil, &struct{}{})
+	status, err := h.HealthStatusHandler(context.Background(), &struct{}{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
