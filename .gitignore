@@ -10,3 +10,4 @@ backend/tmp/
 config/
 !backend/src/config/
 .env.example
+backend/src/coverage.out

@@ -62,7 +62,8 @@ clean: clean_examples
 
 .PHONY: test
 test: $(ALL_SRCS)
-	go -C $(SRC_DIRS) tool gotest -p 1 -failfast  -timeout 120s -tags embedallowed_no  -cover ./...
+	go -C $(SRC_DIRS) tool gotest -p 1 -failfast  -timeout 120s -tags embedallowed_no  -coverprofile=coverage.out -cover ./... && \
+	go -C $(SRC_DIRS) tool cover -func=coverage.out | grep total: | awk '{print "Total coverage: " $$3}'
 
 .PHONY: test_ci
 test_ci: $(ALL_SRCS)
