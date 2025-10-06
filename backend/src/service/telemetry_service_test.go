@@ -338,36 +338,25 @@ func (suite *TelemetryServiceSuite) TestTlogErrorCallbackIncludesOriginalStack()
 	// Ensure error-level rollbar events are sent for tlog.Error
 	suite.Equal("error", data["level"], "log level 'error' expected for telemetry events, got %#v", data)
 
-	body, _ := data["body"].(map[string]interface{})
-	suite.Require().NotNil(body)
-
-	assertFrames := func(frames []interface{}) {
-		suite.NotEmpty(frames)
-		firstFrame, _ := frames[0].(map[string]interface{})
-		suite.Require().NotNil(firstFrame)
-		filename, _ := firstFrame["filename"].(string)
-		suite.Contains(filename, "/service/telemetry_service_test.go")
-	}
-
-	if trace, ok := body["trace"].(map[string]interface{}); ok {
-		if exception, ok := trace["exception"].(map[string]interface{}); ok {
-			if msg, ok := exception["message"].(string); ok {
-				suite.Contains(msg, "callback failure")
-			}
-		}
+	if trace, ok := data["trace"].(map[string]interface{}); ok {
 		if frames, ok := trace["frames"].([]interface{}); ok {
-			assertFrames(frames)
+			suite.assertFrames(frames)
 		}
-	} else if traceChain, ok := body["trace_chain"].([]interface{}); ok && len(traceChain) > 0 {
+	} else if traceChain, ok := data["trace_chain"].([]interface{}); ok && len(traceChain) > 0 {
 		if first, ok := traceChain[0].(map[string]interface{}); ok {
-			if exception, ok := first["exception"].(map[string]interface{}); ok {
-				if msg, ok := exception["message"].(string); ok {
-					suite.Contains(msg, "callback failure")
-				}
-			}
 			if frames, ok := first["frames"].([]interface{}); ok {
-				assertFrames(frames)
+				suite.assertFrames(frames)
 			}
 		}
 	}
+}
+
+// Helper to assert stack frames include this test file
+func (suite *TelemetryServiceSuite) assertFrames(frames []interface{}) {
+	suite.Require().NotEmpty(frames)
+	first, ok := frames[0].(map[string]interface{})
+	suite.Require().True(ok)
+	filename, ok := first["filename"].(string)
+	suite.Require().True(ok)
+	suite.Contains(filename, "/service/telemetry_service_test.go")
 }

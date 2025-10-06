@@ -186,12 +186,6 @@ func (suite *FilesystemServiceTestSuite) TestSyscallFlagToMountFlag() {
 	}
 }
 
-func (suite *FilesystemServiceTestSuite) SetupTest() {
-	suite.ctx = context.Background()
-	suite.fsService = service.NewFilesystemService(suite.ctx)
-	suite.Require().NotNil(suite.fsService, "FilesystemService should be initialized")
-}
-
 func (suite *FilesystemServiceTestSuite) TestGetStandardMountFlags() {
 	stdFlags, err := suite.fsService.GetStandardMountFlags()
 	suite.Require().NoError(err)
@@ -414,4 +408,73 @@ func (suite *FilesystemServiceTestSuite) TestGetMountFlagsAndData() {
 			}
 		})
 	}
+}
+
+func (suite *FilesystemServiceTestSuite) TestMountFlagsToSyscallFlagAndData() {
+	testCases := []struct {
+		name            string
+		inputFlags      []dto.MountFlag
+		expectedSyscall uintptr
+		expectedData    string
+		expectError     bool
+	}{
+		{
+			name:            "No flags",
+			inputFlags:      []dto.MountFlag{},
+			expectedSyscall: 0,
+			expectedData:    "",
+		},
+		{
+			name: "Boolean flag ro",
+			inputFlags: []dto.MountFlag{
+				{Name: "ro", NeedsValue: false},
+			},
+			expectedSyscall: syscall.MS_RDONLY,
+			expectedData:    "",
+		},
+		{
+			name: "Value flag uid",
+			inputFlags: []dto.MountFlag{
+				{Name: "uid", FlagValue: "1000", NeedsValue: true},
+			},
+			expectedSyscall: 0,
+			expectedData:    "uid=1000",
+		},
+		{
+			name: "Mixed flags",
+			inputFlags: []dto.MountFlag{
+				{Name: "sync", NeedsValue: false},
+				{Name: "uid", FlagValue: "1000", NeedsValue: true},
+				{Name: "unknown", NeedsValue: false},
+			},
+			expectedSyscall: syscall.MS_SYNCHRONOUS,
+			expectedData:    "uid=1000",
+		},
+		{
+			name: "Invalid value on bool flag",
+			inputFlags: []dto.MountFlag{
+				{Name: "ro", NeedsValue: false, FlagValue: "invalid"},
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.T().Run(tc.name, func(t *testing.T) {
+			sysFlag, data, err := suite.fsService.MountFlagsToSyscallFlagAndData(tc.inputFlags)
+			if tc.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedSyscall, sysFlag, "syscall flag mismatch")
+				assert.Equal(t, tc.expectedData, data, "data string mismatch")
+			}
+		})
+	}
+}
+
+func (suite *FilesystemServiceTestSuite) SetupTest() {
+	suite.ctx = context.Background()
+	suite.fsService = service.NewFilesystemService(suite.ctx)
+	suite.Require().NotNil(suite.fsService, "FilesystemService should be initialized")
 }
