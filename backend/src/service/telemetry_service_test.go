@@ -335,7 +335,8 @@ func (suite *TelemetryServiceSuite) TestTlogErrorCallbackIncludesOriginalStack()
 
 	data, _ := payload["data"].(map[string]interface{})
 	suite.Require().NotNil(data)
-	suite.Equal("error", data["level"], "log level ERROR expected", " got %#v", data)
+	// Ensure error-level rollbar events are sent for tlog.Error
+	suite.Equal("error", data["level"], "log level 'error' expected for telemetry events, got %#v", data)
 
 	body, _ := data["body"].(map[string]interface{})
 	suite.Require().NotNil(body)

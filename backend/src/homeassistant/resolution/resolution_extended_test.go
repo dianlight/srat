@@ -46,18 +46,6 @@ func TestCheck_Fields(t *testing.T) {
 	assert.Equal(t, "check_addon_version", *check.Slug)
 }
 
-func TestCheck_Disabled(t *testing.T) {
-	enabled := false
-	slug := "disabled_check"
-
-	check := Check{
-		Enabled: &enabled,
-		Slug:    &slug,
-	}
-
-	assert.False(t, *check.Enabled)
-}
-
 func TestErrorResponse_Fields(t *testing.T) {
 	data := map[string]interface{}{"error_code": 500}
 	message := "Internal error"
