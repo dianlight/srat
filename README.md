@@ -262,6 +262,8 @@ make ALL
 
 SRAT maintains high test coverage across both backend and frontend. The coverage badges at the top of this README are automatically updated.
 
+📊 **[View Detailed Coverage Report & History →](docs/TEST_COVERAGE.md)**
+
 ### Running Tests
 
 ```shell
@@ -271,7 +273,7 @@ cd backend && make test
 # Run frontend tests with coverage
 cd frontend && bun test --coverage
 
-# Update coverage badges in README
+# Update coverage badges in README and TEST_COVERAGE.md
 bash scripts/update-coverage-badges.sh
 ```
 
