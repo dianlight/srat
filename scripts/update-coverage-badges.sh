@@ -18,20 +18,13 @@ echo "Repository root: $REPO_ROOT"
 # Get backend coverage
 echo "🔧 Running backend tests..."
 cd "$REPO_ROOT/backend"
-BACKEND_OUTPUT=$(make test 2>&1 | grep "coverage:")
-# Calculate average backend coverage
-BACKEND_COVERAGE=$(echo "$BACKEND_OUTPUT" | awk '{
-    if ($5 ~ /\[no/) next;
-    gsub(/%/, "", $5);
-    sum += $5;
-    count++;
-}
-END {
-    if (count > 0)
-        printf "%.1f", sum/count;
-    else
-        print "0.0";
-}')
+BACKEND_OUTPUT=$(make test 2>&1 | grep "Total coverage:" | tail -1)
+# Extract coverage percentage from "Total coverage: XX.X%" format
+BACKEND_COVERAGE=$(echo "$BACKEND_OUTPUT" | awk '{gsub(/%/, "", $3); print $3}')
+# If empty or invalid, default to 0.0
+if [ -z "$BACKEND_COVERAGE" ] || ! [[ "$BACKEND_COVERAGE" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+    BACKEND_COVERAGE="0.0"
+fi
 cd "$REPO_ROOT"
 
 # Get frontend coverage
