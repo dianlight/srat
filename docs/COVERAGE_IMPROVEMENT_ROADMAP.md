@@ -1,3 +1,43 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Backend Test Coverage Improvement Roadmap](#backend-test-coverage-improvement-roadmap)
+  - [Current Status (2025-10-06)](#current-status-2025-10-06)
+  - [Executive Summary](#executive-summary)
+    - [Packages Already Meeting 60% Threshold ✅](#packages-already-meeting-60-threshold-)
+    - [Priority Packages Requiring Improvement](#priority-packages-requiring-improvement)
+      - [Tier 1: High Priority (Close to target, high impact)](#tier-1-high-priority-close-to-target-high-impact)
+      - [Tier 2: Medium Priority (Core business logic)](#tier-2-medium-priority-core-business-logic)
+      - [Tier 3: Low Priority (Supporting packages)](#tier-3-low-priority-supporting-packages)
+  - [Implementation Phases](#implementation-phases)
+    - [Phase 1: Quick Wins (1-2 weeks)](#phase-1-quick-wins-1-2-weeks)
+      - [1. API Package (48.1% → 60%)](#1-api-package-481-%E2%86%92-60)
+      - [2. Server Package (33.8% → 60%)](#2-server-package-338-%E2%86%92-60)
+      - [3. Service Package (33.6% → 60%)](#3-service-package-336-%E2%86%92-60)
+    - [Phase 2: Core Business Logic (2-3 weeks)](#phase-2-core-business-logic-2-3-weeks)
+      - [4. Converter Package (27.2% → 60%)](#4-converter-package-272-%E2%86%92-60)
+      - [5. DBOM Package (19.0% → 60%)](#5-dbom-package-190-%E2%86%92-60)
+      - [6. DTO Package (19.1% → 60%)](#6-dto-package-191-%E2%86%92-60)
+    - [Phase 3: Home Assistant Integration (2-3 weeks)](#phase-3-home-assistant-integration-2-3-weeks)
+    - [Phase 4: CLI and Entry Points (Optional)](#phase-4-cli-and-entry-points-optional)
+  - [Testing Best Practices](#testing-best-practices)
+    - [1. FX-Based Dependency Injection](#1-fx-based-dependency-injection)
+    - [2. Mock Pattern](#2-mock-pattern)
+    - [3. Test Both Paths](#3-test-both-paths)
+    - [4. Verify State Changes](#4-verify-state-changes)
+    - [5. Cleanup](#5-cleanup)
+  - [Measuring Progress](#measuring-progress)
+    - [Running Coverage Reports](#running-coverage-reports)
+    - [Coverage Tracking](#coverage-tracking)
+    - [Success Criteria](#success-criteria)
+  - [Resources](#resources)
+  - [Timeline Estimate](#timeline-estimate)
+  - [Next Steps](#next-steps)
+  - [Notes](#notes)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Backend Test Coverage Improvement Roadmap
 
 This document provides a detailed roadmap for achieving 60% minimum test coverage across all backend packages.
