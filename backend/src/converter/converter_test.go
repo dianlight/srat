@@ -8,6 +8,9 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/google/go-github/v75/github"
+	"github.com/shirou/gopsutil/v4/net"
+	"github.com/shirou/gopsutil/v4/process"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -386,4 +389,224 @@ func TestConfigToDto_FSTypeIsWriteSupported(t *testing.T) {
 	result := FSTypeIsWriteSupported("/tmp")
 	assert.NotNil(t, result)
 	// The result depends on actual filesystem permissions
+}
+
+// GitHub to DTO converter tests
+func TestGitHubToDto_ReleaseAssetToBinaryAsset(t *testing.T) {
+	conv := GitHubToDtoImpl{}
+	
+	name := "srat-v1.0.0.tar.gz"
+	size := int(1024)
+	id := int64(12345)
+	url := "https://github.com/releases/download"
+	
+	source := &github.ReleaseAsset{
+		Name:               &name,
+		Size:               &size,
+		ID:                 &id,
+		BrowserDownloadURL: &url,
+	}
+	
+	var target dto.BinaryAsset
+	err := conv.ReleaseAssetToBinaryAsset(source, &target)
+	
+	require.NoError(t, err)
+	assert.Equal(t, "srat-v1.0.0.tar.gz", target.Name)
+	assert.Equal(t, 1024, target.Size)
+	assert.Equal(t, int64(12345), target.ID)
+	assert.Equal(t, "https://github.com/releases/download", target.BrowserDownloadURL)
+}
+
+func TestGitHubToDto_ReleaseAssetToBinaryAsset_NilSource(t *testing.T) {
+	conv := GitHubToDtoImpl{}
+	
+	var target dto.BinaryAsset
+	err := conv.ReleaseAssetToBinaryAsset(nil, &target)
+	
+	require.NoError(t, err)
+	assert.Empty(t, target.Name)
+	assert.Zero(t, target.Size)
+}
+
+func TestGitHubToDto_RepositoryReleaseToReleaseAsset(t *testing.T) {
+	conv := GitHubToDtoImpl{}
+	
+	tagName := "v1.0.0"
+	source := &github.RepositoryRelease{
+		TagName: &tagName,
+	}
+	
+	var target dto.ReleaseAsset
+	err := conv.RepositoryReleaseToReleaseAsset(source, &target)
+	
+	require.NoError(t, err)
+	// This converter currently doesn't populate any fields
+}
+
+// Issue converter tests
+func TestTimeToTime(t *testing.T) {
+	now := time.Now()
+	result := timeToTime(now)
+	assert.Equal(t, now, result)
+}
+
+func TestIssueToDtoConverter_ToDto(t *testing.T) {
+	conv := IssueToDtoConverterImpl{}
+	
+	now := time.Now()
+	source := &dbom.Issue{
+		Title:       "Test Issue",
+		Description: "Test Description",
+		CreatedAt:   now,
+	}
+	
+	result := conv.ToDto(source)
+	
+	require.NotNil(t, result)
+	assert.Equal(t, "Test Issue", result.Title)
+	assert.Equal(t, "Test Description", result.Description)
+	assert.Equal(t, now, result.Date)
+}
+
+func TestIssueToDtoConverter_ToDbom(t *testing.T) {
+	conv := IssueToDtoConverterImpl{}
+	
+	now := time.Now()
+	source := &dto.Issue{
+		Title:       "Test Issue",
+		Description: "Test Description",
+		Date:        now,
+	}
+	
+	result := conv.ToDbom(source)
+	
+	require.NotNil(t, result)
+	assert.Equal(t, "Test Issue", result.Title)
+	assert.Equal(t, "Test Description", result.Description)
+	assert.Equal(t, now, result.CreatedAt)
+}
+
+// ConfigToDto converter tests
+func TestStringToDtoUser_ExistingUser(t *testing.T) {
+	users := []dto.User{
+		{Username: "alice"},
+		{Username: "bob"},
+	}
+	
+	result, err := StringToDtoUser("alice", users)
+	
+	require.NoError(t, err)
+	assert.Equal(t, "alice", result.Username)
+}
+
+func TestStringToDtoUser_NonExistingUser(t *testing.T) {
+	users := []dto.User{
+		{Username: "alice"},
+	}
+	
+	result, err := StringToDtoUser("bob", users)
+	
+	require.Error(t, err)
+	assert.Equal(t, "bob", result.Username)
+	assert.Contains(t, err.Error(), "User not found")
+}
+
+func TestDtoUserToString(t *testing.T) {
+	user := dto.User{Username: "testuser"}
+	
+	result := DtoUserToString(user)
+	
+	assert.Equal(t, "testuser", result)
+}
+
+// ProcessToDto converter tests
+func TestInt64ToTime(t *testing.T) {
+	// Test with milliseconds timestamp
+	timestamp := int64(1609459200000) // 2021-01-01 00:00:00 UTC in milliseconds
+	
+	result, err := int64ToTime(timestamp)
+	
+	require.NoError(t, err)
+	assert.Equal(t, int64(1609459200), result.Unix())
+}
+
+func TestSliceToLen_OpenFilesStat(t *testing.T) {
+	files := []process.OpenFilesStat{
+		{Path: "/path/1"},
+		{Path: "/path/2"},
+	}
+	
+	length, err := sliceToLen(files)
+	
+	require.NoError(t, err)
+	assert.Equal(t, 2, length)
+}
+
+func TestSliceToLen_ConnectionStat(t *testing.T) {
+	connections := []net.ConnectionStat{
+		{Fd: 1},
+		{Fd: 2},
+		{Fd: 3},
+	}
+	
+	length, err := sliceToLen(connections)
+	
+	require.NoError(t, err)
+	assert.Equal(t, 3, length)
+}
+
+func TestSliceToLen_UnsupportedType(t *testing.T) {
+	unsupported := []string{"test"}
+	
+	length, err := sliceToLen(unsupported)
+	
+	require.NoError(t, err)
+	assert.Equal(t, 0, length)
+}
+
+// HaSupervisorToDbom converter tests
+func TestHAMountUsageToMountUsage(t *testing.T) {
+	tests := []struct {
+		name     string
+		usage    dto.HAMountUsage
+		expected string
+	}{
+		{"None", dto.UsageAsNone, "none"},
+		{"Backup", dto.UsageAsBackup, "backup"},
+		{"Media", dto.UsageAsMedia, "media"},
+		{"Share", dto.UsageAsShare, "share"},
+		{"Internal", dto.UsageAsInternal, "internal"},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := hAMountUsageToMountUsage(tt.usage)
+			
+			require.NotNil(t, result)
+			assert.Equal(t, tt.expected, string(*result))
+		})
+	}
+}
+
+// HaHardwareToDto converter tests
+func TestTrimDevPrefix_WithPrefix(t *testing.T) {
+	input := "/dev/sda1"
+	result := trimDevPrefix(&input)
+	
+	require.NotNil(t, result)
+	assert.Equal(t, "sda1", *result)
+}
+
+func TestTrimDevPrefix_WithoutPrefix(t *testing.T) {
+	input := "sda1"
+	result := trimDevPrefix(&input)
+	
+	require.NotNil(t, result)
+	assert.Equal(t, "sda1", *result)
+}
+
+func TestTrimDevPrefix_Nil(t *testing.T) {
+	result := trimDevPrefix(nil)
+	
+	assert.Nil(t, result)
 }
