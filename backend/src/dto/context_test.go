@@ -81,3 +81,25 @@ func TestDataDirtyTrackerAllTrue(t *testing.T) {
 	assert.True(t, tracker.Volumes)
 	assert.True(t, tracker.Settings)
 }
+
+func TestHealthPing(t *testing.T) {
+	tracker := dto.DataDirtyTracker{
+		Shares: true,
+		Users:  false,
+	}
+	
+	healthPing := dto.HealthPing{
+		Alive:       true,
+		AliveTime:   123456789,
+		LastError:   "no error",
+		Dirty:       tracker,
+		Uptime:      3600,
+	}
+
+	assert.True(t, healthPing.Alive)
+	assert.Equal(t, int64(123456789), healthPing.AliveTime)
+	assert.Equal(t, "no error", healthPing.LastError)
+	assert.True(t, healthPing.Dirty.Shares)
+	assert.False(t, healthPing.Dirty.Users)
+	assert.Equal(t, int64(3600), healthPing.Uptime)
+}
