@@ -60,7 +60,7 @@ This document provides an overview of the test coverage for the SRAT project, in
 | Frontend (TypeScript) | 70.30%   | 🟢 Green  |
 | Global (Weighted)     | 48.7%    | 🟡 Yellow |
 
-*Last updated: 2025-10-06*
+*Last updated: 2025-10-07*
 
 ## Backend Package-Level Coverage
 
@@ -205,9 +205,9 @@ The following graphs show the evolution of test coverage over time.
 %%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#4CAF50','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff'}}}%%
 xychart-beta
     title "Backend Test Coverage Over Time"
-    x-axis [2025-10-06]
+    x-axis [2025-10-06, 2025-10-07]
     y-axis "Coverage %" 0 --> 100
-    line [36.5]
+    line [, 36.5]
 ```
 
 ### Frontend Coverage Over Time
@@ -216,9 +216,9 @@ xychart-beta
 %%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#4CAF50','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff'}}}%%
 xychart-beta
     title "Frontend Test Coverage Over Time"
-    x-axis [2025-10-06]
+    x-axis [2025-10-06, 2025-10-07]
     y-axis "Coverage %" 0 --> 100
-    line [70.30]
+    line [, 70.30]
 ```
 
 ### Global Coverage Over Time
@@ -227,9 +227,9 @@ xychart-beta
 %%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#4CAF50','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff'}}}%%
 xychart-beta
     title "Global Test Coverage Over Time"
-    x-axis [2025-10-06]
+    x-axis [2025-10-06, 2025-10-07]
     y-axis "Coverage %" 0 --> 100
-    line [50.0]
+    line [, 50.0]
 ```
 
 ## Coverage Improvement Goals
