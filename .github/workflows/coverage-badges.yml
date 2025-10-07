@@ -25,22 +25,24 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+          
+      - name: Setup go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version-file: 'backend/src/go.mod'
-          cache-dependency-path: 'backend/src/go.sum'
+          cache-dependency-path: "**/*.sum"
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+      - uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
         with:
-          bun-version: latest
+          bun-version-file: frontend/package.json
 
-      - name: Install frontend dependencies
+      - name: Prepare env
         run: |
-          cd frontend
+          cd backend
+          make patch
+          cd ../frontend
           bun install
+          cd ..
 
       - name: Update coverage badges
         run: |
