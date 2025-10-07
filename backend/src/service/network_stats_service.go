@@ -156,7 +156,11 @@ func (s *networkStatsService) updateNetworkStats() error {
 
 				nc, err := s.sysfs.NetClassByIface(nicName)
 				if err != nil {
-					slog.Error("Failed to get sysfs for network interface", "interface", nicName, "error", err)
+					// Interface may have been removed between /proc/net/dev read and sysfs access
+					// This is common with virtual interfaces (veth). Skip silently.
+					slog.Debug("Network interface no longer accessible, skipping", "interface", nicName, "error", err)
+					delete(s.lastStats, nicName) // Clean up old stats for removed interface
+					continue
 				}
 				speed := int64(0)
 				if nc != nil && nc.Speed != nil {
