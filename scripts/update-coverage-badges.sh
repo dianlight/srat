@@ -167,64 +167,54 @@ if [ -f "$TEST_COVERAGE_FILE" ]; then
         local dates=$(echo "$x_line" | sed 's/.*\[\(.*\)\].*/\1/')
         # Extract values array content between brackets
         local values=$(echo "$y_line" | sed 's/.*\[\(.*\)\].*/\1/')
-        
+
+        # Remove empty entries and trim whitespace
+        local date_array=()
+        local value_array=()
+        for d in ${dates//,/ }; do
+            d=$(echo "$d" | xargs)
+            if [ -n "$d" ]; then date_array+=("$d"); fi
+        done
+        for v in ${values//,/ }; do
+            v=$(echo "$v" | xargs)
+            if [ -n "$v" ]; then value_array+=("$v"); fi
+        done
+
         # Check if current date already exists
-        if echo "$dates" | grep -q "$CURRENT_DATE"; then
-            # Update existing date's value
-            local date_array=(${dates//,/ })
-            local value_array=(${values//,/ })
-            local new_values=""
-            local new_dates=""
-            
-            for i in "${!date_array[@]}"; do
-                local clean_date=$(echo "${date_array[$i]}" | tr -d ' ')
-                if [ "$clean_date" = "$CURRENT_DATE" ]; then
-                    new_values+="${new_value}"
-                else
-                    new_values+="${value_array[$i]}"
-                fi
-                new_dates+="${date_array[$i]}"
-                
-                if [ $i -lt $((${#date_array[@]} - 1)) ]; then
-                    new_values+=", "
-                    new_dates+=", "
-                fi
-            done
-            
-            # Replace the lines
-            sed -i.bak "/title \"${chart_title}\"/,/line \[/ {
-                s|x-axis \[.*\]|x-axis [${new_dates}]|
-                s|line \[.*\]|line [${new_values}]|
-            }" "$TEST_COVERAGE_FILE"
-        else
-            # Append new date and value (keep only last 30 entries)
-            local date_array=(${dates//,/ })
-            local value_array=(${values//,/ })
-            
-            # Add new entry
+        local found=0
+        for i in "${!date_array[@]}"; do
+            if [ "${date_array[$i]}" = "$CURRENT_DATE" ]; then
+                value_array[$i]="$new_value"
+                found=1
+                break
+            fi
+        done
+        if [ $found -eq 0 ]; then
             date_array+=("$CURRENT_DATE")
             value_array+=("$new_value")
-            
-            # Keep only last 30 entries
-            if [ ${#date_array[@]} -gt 30 ]; then
-                date_array=("${date_array[@]: -30}")
-                value_array=("${value_array[@]: -30}")
-            fi
-            
-            # Build new arrays as strings
-            local new_dates="${date_array[0]}"
-            local new_values="${value_array[0]}"
-            for i in $(seq 1 $((${#date_array[@]} - 1))); do
-                new_dates+=", ${date_array[$i]}"
-                new_values+=", ${value_array[$i]}"
-            done
-            
-            # Replace the lines
-            sed -i.bak "/title \"${chart_title}\"/,/line \[/ {
-                s|x-axis \[.*\]|x-axis [${new_dates}]|
-                s|line \[.*\]|line [${new_values}]|
-            }" "$TEST_COVERAGE_FILE"
         fi
+
+        # Keep only last 30 entries
+        if [ ${#date_array[@]} -gt 30 ]; then
+            date_array=("${date_array[@]: -30}")
+            value_array=("${value_array[@]: -30}")
+        fi
+
+        # Build new arrays as strings (no leading/trailing commas, no empty values)
+        local new_dates=""
+        local new_values=""
+        for i in "${!date_array[@]}"; do
+            if [ -n "$new_dates" ]; then new_dates+=", "; fi
+            if [ -n "$new_values" ]; then new_values+=", "; fi
+            new_dates+="${date_array[$i]}"
+            new_values+="${value_array[$i]}"
+        done
+
+        # Replace the lines
+        sed -i.bak "/title \"${chart_title}\"/,/line \[/ {
+            s|x-axis \[.*\]|x-axis [${new_dates}]|
+            s|line \[.*\]|line [${new_values}]|
+        }" "$TEST_COVERAGE_FILE"
     }
     
     # Update each chart

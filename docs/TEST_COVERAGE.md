@@ -202,34 +202,34 @@ The following graphs show the evolution of test coverage over time.
 ### Backend Coverage Over Time
 
 ```mermaid
-%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#4CAF50','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff'}}}%%
+%%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
-    title "Backend Test Coverage Over Time"
-    x-axis [2025-10-06, 2025-10-07]
-    y-axis "Coverage %" 0 --> 100
-    line [, 38.7]
+  title "Backend Test Coverage Over Time"
+  x-axis [2025-10-06, 2025-10-07]
+  y-axis "Coverage %" 0 --> 100
+  line [0,38.7]
 ```
 
 ### Frontend Coverage Over Time
 
 ```mermaid
-%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#4CAF50','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff'}}}%%
+%%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
-    title "Frontend Test Coverage Over Time"
-    x-axis [2025-10-06, 2025-10-07]
-    y-axis "Coverage %" 0 --> 100
-    line [, 71.89]
+  title "Frontend Test Coverage Over Time"
+  x-axis [2025-10-06, 2025-10-07]
+  y-axis "Coverage %" 0 --> 100
+  line [0,71.89]
 ```
 
 ### Global Coverage Over Time
 
 ```mermaid
-%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#4CAF50','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff'}}}%%
+%%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
-    title "Global Test Coverage Over Time"
-    x-axis [2025-10-06, 2025-10-07]
-    y-axis "Coverage %" 0 --> 100
-    line [, 52.0]
+  title "Global Test Coverage Over Time"
+  x-axis [2025-10-06, 2025-10-07]
+  y-axis "Coverage %" 0 --> 100
+  line [0,52.0]
 ```
 
 ## Coverage Improvement Goals
