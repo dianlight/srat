@@ -17,17 +17,25 @@ Currently under development and in an alpha state, SRAT is set to become the pre
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
 
 - [Installation](#installation)
+  - [Local Development](#local-development)
 - [Usage](#usage)
+  - [Feature Documentation](#feature-documentation)
 - [Database](#database)
 - [Sponsor](#sponsor)
 - [Known Issues](#known-issues)
 - [Enhanced Logging System](#enhanced-logging-system)
+  - [Key Logging Features](#key-logging-features)
+  - [Quick Logging Examples](#quick-logging-examples)
 - [Documentation Validation](#documentation-validation)
 - [Security scanning](#security-scanning)
 - [Building the Project](#building-the-project)
 - [Testing and Coverage](#testing-and-coverage)
+  - [Running Tests](#running-tests)
+  - [Coverage Metrics](#coverage-metrics)
+  - [Coverage Goals](#coverage-goals)
 - [Contribute](#contribute)
 - [License](#license)
 - [Development: pre-commit hooks](#development-pre-commit-hooks)
