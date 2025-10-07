@@ -131,3 +131,92 @@ func (suite *IssueServiceSuite) TestCreateCreateError() {
 	mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
 	mock.Verify(suite.issueRepo, matchers.Times(1)).Create(mock.Any[*dbom.Issue]())
 }
+
+func (suite *IssueServiceSuite) TestResolveSuccess() {
+	// Arrange
+	mock.When(suite.issueRepo.Delete(uint(1))).ThenReturn(nil)
+
+	// Act
+	err := suite.issueService.Resolve(1)
+
+	// Assert
+	suite.NoError(err)
+	mock.Verify(suite.issueRepo, matchers.Times(1)).Delete(uint(1))
+}
+
+func (suite *IssueServiceSuite) TestResolveError() {
+	// Arrange
+	mockErr := errors.New("delete failed")
+	mock.When(suite.issueRepo.Delete(uint(999))).ThenReturn(mockErr)
+
+	// Act
+	err := suite.issueService.Resolve(999)
+
+	// Assert
+	suite.Error(err)
+	mock.Verify(suite.issueRepo, matchers.Times(1)).Delete(uint(999))
+}
+
+func (suite *IssueServiceSuite) TestFindOpenSuccess() {
+	// Arrange
+	openIssues := []*dbom.Issue{
+		{ID: 1, Title: "Issue 1"},
+		{ID: 2, Title: "Issue 2"},
+	}
+	mock.When(suite.issueRepo.FindOpen()).ThenReturn(openIssues, nil)
+
+	// Act
+	issues, err := suite.issueService.FindOpen()
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(issues)
+	suite.Len(issues, 2)
+	mock.Verify(suite.issueRepo, matchers.Times(1)).FindOpen()
+}
+
+func (suite *IssueServiceSuite) TestFindOpenError() {
+	// Arrange
+	mockErr := errors.New("database error")
+	mock.When(suite.issueRepo.FindOpen()).ThenReturn(nil, mockErr)
+
+	// Act
+	issues, err := suite.issueService.FindOpen()
+
+	// Assert
+	suite.Error(err)
+	suite.Nil(issues)
+	mock.Verify(suite.issueRepo, matchers.Times(1)).FindOpen()
+}
+
+func (suite *IssueServiceSuite) TestUpdateSuccess() {
+	// Arrange
+	issue := &dto.Issue{Title: "Updated", Description: "Updated description"}
+	mock.When(suite.issueRepo.Update(mock.Any[*dbom.Issue]())).ThenReturn(nil)
+
+	// Act
+	result, err := suite.issueService.Update(issue)
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(result)
+	mock.Verify(suite.issueRepo, matchers.Times(1)).Update(mock.Any[*dbom.Issue]())
+}
+
+func (suite *IssueServiceSuite) TestUpdateError() {
+	// Arrange
+	issue := &dto.Issue{Title: "Updated", Description: "Updated description"}
+	mockErr := errors.New("update failed")
+	mock.When(suite.issueRepo.Update(mock.Any[*dbom.Issue]())).ThenReturn(mockErr)
+
+	// Act
+	result, err := suite.issueService.Update(issue)
+
+	// Assert
+	suite.Error(err)
+	suite.Nil(result)
+	mock.Verify(suite.issueRepo, matchers.Times(1)).Update(mock.Any[*dbom.Issue]())
+}
+
+
+
