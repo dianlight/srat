@@ -16,46 +16,83 @@ NC='\033[0m' # No Color
 echo "📊 Calculating test coverage..."
 echo "Repository root: $REPO_ROOT"
 
-# Run backend tests and capture coverage or error
+# Run backend tests and capture full output (do not exit on test failure here)
 echo "🔧 Running backend tests..."
 cd "$REPO_ROOT/backend"
 BACKEND_ERROR=false
-if BACKEND_OUTPUT=$(make test 2>&1 | grep "Total coverage:" | tail -1); then
-    # Extract coverage percentage from "Total coverage: XX.X%" format
-    BACKEND_COVERAGE=$(echo "$BACKEND_OUTPUT" | awk '{gsub(/%/, "", $3); print $3}')
-    # Validate coverage
+set +e
+BACKEND_FULL_OUTPUT=$(make test 2>&1)
+BACKEND_EXIT_CODE=$?
+set -e
+
+echo "---- Backend test output start ----"
+echo "$BACKEND_FULL_OUTPUT"
+echo "---- Backend test output end ----"
+
+# Try to extract coverage from a line like: "Total coverage: XX.X%"
+BACKEND_COVERAGE_LINE=$(echo "$BACKEND_FULL_OUTPUT" | grep "Total coverage:" | tail -1 || true)
+if [ -n "$BACKEND_COVERAGE_LINE" ]; then
+    BACKEND_COVERAGE=$(echo "$BACKEND_COVERAGE_LINE" | awk '{gsub(/%/, "", $3); print $3}')
+    # Normalize/validate
     if [ -z "$BACKEND_COVERAGE" ] || ! [[ "$BACKEND_COVERAGE" =~ ^[0-9]+\.?[0-9]*$ ]]; then
         BACKEND_COVERAGE="0.0"
     fi
-    echo -e "${GREEN}Backend Coverage: ${BACKEND_COVERAGE}%${NC}"
 else
-    echo -e "${RED}Error running backend tests:${NC}" >&2
-    echo "$BACKEND_OUTPUT" >&2
     BACKEND_ERROR=true
     BACKEND_COVERAGE="0.0"
 fi
+if [ $BACKEND_EXIT_CODE -ne 0 ]; then
+    BACKEND_ERROR=true
+fi
+echo -e "${GREEN}Backend Coverage: ${BACKEND_COVERAGE}%${NC}"
 cd "$REPO_ROOT"
 
-# Run frontend tests and capture coverage or error
+# Run frontend tests and capture full output (do not exit on test failure here)
 echo "🎨 Running frontend tests..."
 cd "$REPO_ROOT/frontend"
 FRONTEND_ERROR=false
-if FRONTEND_OUTPUT=$(bun test --coverage 2>&1 | grep "All files" | tail -1); then
-    # Extract first percentage (lines coverage)
-    FRONTEND_COVERAGE=$(echo "$FRONTEND_OUTPUT" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}')
-    echo -e "${GREEN}Frontend Coverage: ${FRONTEND_COVERAGE}%${NC}"
+set +e
+FRONTEND_FULL_OUTPUT=$(bun test --coverage 2>&1)
+FRONTEND_EXIT_CODE=$?
+set -e
+
+echo "---- Frontend test output start ----"
+echo "$FRONTEND_FULL_OUTPUT"
+echo "---- Frontend test output end ----"
+
+# Try to extract lines coverage from a table row that contains "All files"
+FRONTEND_COVERAGE_LINE=$(echo "$FRONTEND_FULL_OUTPUT" | grep "All files" | tail -1 || true)
+if [ -n "$FRONTEND_COVERAGE_LINE" ]; then
+    # Extract second column and strip spaces and percent sign
+    FRONTEND_COVERAGE=$(echo "$FRONTEND_COVERAGE_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/%/, "", $2); print $2}')
+    if [ -z "$FRONTEND_COVERAGE" ] || ! [[ "$FRONTEND_COVERAGE" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+        FRONTEND_COVERAGE="0.0"
+    fi
 else
-    echo -e "${RED}Error running frontend tests:${NC}" >&2
-    echo "$FRONTEND_OUTPUT" >&2
     FRONTEND_ERROR=true
     FRONTEND_COVERAGE="0.0"
 fi
+if [ $FRONTEND_EXIT_CODE -ne 0 ]; then
+    FRONTEND_ERROR=true
+fi
+echo -e "${GREEN}Frontend Coverage: ${FRONTEND_COVERAGE}%${NC}"
 cd "$REPO_ROOT"
 
 # Calculate global coverage (weighted average: 60% backend, 40% frontend)
 GLOBAL_COVERAGE=$(awk "BEGIN {printf \"%.1f\", ($BACKEND_COVERAGE * 0.6) + ($FRONTEND_COVERAGE * 0.4)}")
 
+
 echo -e "${GREEN}Global Coverage: ${GLOBAL_COVERAGE}%${NC}"
+
+# If any coverage is 0.0 then skip updating files to avoid accidental overwrites
+if [ "$BACKEND_COVERAGE" = "0.0" ] || [ "$FRONTEND_COVERAGE" = "0.0" ]; then
+    echo -e "${YELLOW}One or more coverage values are 0.0 — skipping README.md and TEST_COVERAGE.md updates.${NC}"
+    echo "Updated badges (skipped):"
+    echo "  - Backend: ${BACKEND_COVERAGE}%"
+    echo "  - Frontend: ${FRONTEND_COVERAGE}%"
+    echo "  - Global: ${GLOBAL_COVERAGE}%"
+    exit 0
+fi
 
 # Determine badge colors based on coverage thresholds
 get_color() {
