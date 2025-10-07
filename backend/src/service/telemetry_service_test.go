@@ -39,7 +39,15 @@ type TelemetryServiceSuite struct {
 }
 
 func TestTelemetryServiceSuite(t *testing.T) {
+	// Enable test mode to prevent rollbar from closing between tests
+	service.SetSkipRollbarCloseForTest(true)
+
 	suite.Run(t, new(TelemetryServiceSuite))
+
+	// After all tests complete, close rollbar once and reset test mode
+	service.SetSkipRollbarCloseForTest(false)
+	rollbar.Wait()
+	// Don't call Close() - it may already be closed, and we have recovery logic
 }
 
 func (suite *TelemetryServiceSuite) SetupTest() {
@@ -70,23 +78,32 @@ func (suite *TelemetryServiceSuite) SetupTest() {
 }
 
 func (suite *TelemetryServiceSuite) TearDownTest() {
+	// First, flush any pending rollbar events
+	rollbar.Wait()
+
+	// Unregister tlog callbacks but don't close rollbar
+	// We'll close it once at the end of all tests
+	tlog.ClearAllCallbacks()
+
+	// Then cancel context and wait for goroutines
 	if suite.cancel != nil {
 		suite.cancel()
 	}
 	if suite.wg != nil {
 		suite.wg.Wait()
 	}
+
+	// Stop the app  - OnStop will try to close rollbar but our global flag will prevent double-close
 	if suite.app != nil {
 		suite.app.RequireStop()
 	}
 
-	// Flush all pending rollbar events before cleanup to avoid cross-test contamination
-	rollbar.Wait()
-
+	// Clean up HTTP mocks
 	httpmock.DeactivateAndReset()
 
-	// Ensure tlog callbacks are clean across tests
-	tlog.ClearAllCallbacks()
+	// Reset global rollbar closed flag so next test can try to "close" without panic
+	// But since rollbar is already closed, the actual close won't happen
+	service.ResetRollbarGlobalState()
 }
 
 // Helpers

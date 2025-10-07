@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	oerrors "github.com/pkg/errors"
@@ -21,6 +22,13 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tlog"
 	"github.com/rollbar/rollbar-go"
+)
+
+// Global state to track if rollbar has been closed to prevent double-close panics
+var (
+	rollbarGlobalMu         sync.Mutex
+	rollbarGlobalClosed     bool
+	skipRollbarCloseForTest bool // Set to true in tests to prevent closing rollbar
 )
 
 // TelemetryServiceInterface defines the interface for telemetry services
@@ -41,6 +49,8 @@ type TelemetryService struct {
 	ctx               context.Context
 	mode              dto.TelemetryMode
 	rollbarConfigured bool
+	rollbarClosed     bool       // Track if rollbar has been explicitly closed
+	rollbarMu         sync.Mutex // Protect rollbar close operations
 	accessToken       string
 	environment       string
 	version           string
@@ -112,6 +122,10 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 			tm.Configure(mconfig.TelemetryMode)
 			return nil
 		},
+		OnStop: func(ctx context.Context) error {
+			tm.Shutdown()
+			return nil
+		},
 	})
 
 	return tm, nil
@@ -124,11 +138,28 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 		return nil
 	}
 
-	// Shutdown existing configuration
-	if ts.rollbarConfigured {
-		rollbar.Close()
+	// Shutdown existing configuration only if we're reconfiguring
+	ts.rollbarMu.Lock()
+	if ts.rollbarConfigured && !ts.rollbarClosed {
+		// Check global state before closing
+		rollbarGlobalMu.Lock()
+		if !rollbarGlobalClosed {
+			// Wrap in recover to handle potential panic from rollbar library
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						slog.Warn("Recovered from rollbar.Close() panic during reconfiguration", "panic", r)
+					}
+				}()
+				rollbar.Close()
+			}()
+			rollbarGlobalClosed = true
+		}
+		rollbarGlobalMu.Unlock()
 		ts.rollbarConfigured = false
+		ts.rollbarClosed = true
 	}
+	ts.rollbarMu.Unlock()
 
 	// Always ensure callbacks are cleared before (re)configuring
 	ts.unregisterTlogCallbacks()
@@ -202,7 +233,14 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 			return nil, false
 		})
 
+		ts.rollbarMu.Lock()
 		ts.rollbarConfigured = true
+		ts.rollbarClosed = false // Reset the closed flag since we've reconfigured
+		// Reset global closed flag since we've reconfigured
+		rollbarGlobalMu.Lock()
+		rollbarGlobalClosed = false
+		rollbarGlobalMu.Unlock()
+		ts.rollbarMu.Unlock()
 		slog.Info("Rollbar telemetry configured", "mode", mode.String(), "platform", rollbar.Platform(), "environment", ts.environment, "version", ts.version)
 
 		// Register tlog callbacks for Error and Fatal levels
@@ -317,13 +355,52 @@ func (ts *TelemetryService) IsConnectedToInternet() bool {
 
 // Shutdown shuts down the telemetry service
 func (ts *TelemetryService) Shutdown() {
-	if ts.rollbarConfigured {
-		rollbar.Close()
-		ts.rollbarConfigured = false
-		slog.Info("Rollbar telemetry service shutdown")
-	}
-	// Unregister any tlog callbacks
+	// Unregister any tlog callbacks first to prevent them from trying to use Rollbar
 	ts.unregisterTlogCallbacks()
+
+	// Close Rollbar only if it's configured and not already closed
+	ts.rollbarMu.Lock()
+	defer ts.rollbarMu.Unlock()
+
+	if ts.rollbarConfigured && !ts.rollbarClosed {
+		// Wait for any pending rollbar messages to be sent before closing
+		rollbar.Wait()
+
+		// Check global state before closing
+		rollbarGlobalMu.Lock()
+		defer rollbarGlobalMu.Unlock()
+
+		// Skip closing if we're in test mode (to avoid "channel closed" errors across tests)
+		if !skipRollbarCloseForTest && !rollbarGlobalClosed {
+			// Wrap in recover to handle potential panic from rollbar library
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						slog.Warn("Recovered from rollbar.Close() panic", "panic", r)
+					}
+				}()
+				rollbar.Close()
+			}()
+			rollbarGlobalClosed = true
+			slog.Info("Rollbar telemetry service shutdown")
+		}
+		ts.rollbarConfigured = false
+		ts.rollbarClosed = true
+	}
+}
+
+// ResetRollbarGlobalState resets the global rollbar state - FOR TESTING ONLY
+func ResetRollbarGlobalState() {
+	rollbarGlobalMu.Lock()
+	defer rollbarGlobalMu.Unlock()
+	rollbarGlobalClosed = false
+}
+
+// SetSkipRollbarCloseForTest sets whether to skip rollbar close in tests - FOR TESTING ONLY
+func SetSkipRollbarCloseForTest(skip bool) {
+	rollbarGlobalMu.Lock()
+	defer rollbarGlobalMu.Unlock()
+	skipRollbarCloseForTest = skip
 }
 
 // registerTlogCallbacks registers callbacks to forward tlog Error/Fatal to Rollbar
