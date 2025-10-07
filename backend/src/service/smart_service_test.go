@@ -2,6 +2,7 @@ package service
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
@@ -65,7 +66,14 @@ func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
 	suite.Nil(info)
 	suite.True(errors.Is(err, dto.ErrorSMARTNotSupported))
 	details := errors.Details(err)
-	suite.Equal("not readable", details["reason"])
+	reason := details["reason"].(string)
+	// Depending on environment (permissions enforcement), we may get either:
+	// - "not readable" if the file truly cannot be opened
+	// - "unsupported device" if the file can be opened but smart.Open fails (e.g., running as root)
+	hasNotReadable := strings.Contains(reason, "not readable")
+	hasUnsupportedDevice := strings.Contains(reason, "unsupported device")
+	suite.True(hasNotReadable || hasUnsupportedDevice,
+		"Expected reason to be either 'not readable' or 'unsupported device', got: %s", reason)
 }
 
 func TestSmartServiceSuite(t *testing.T) {
