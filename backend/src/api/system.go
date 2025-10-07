@@ -79,7 +79,15 @@ func (handler *SystemHanler) GetNICsHandler(ctx context.Context, input *struct{}
 		return nil, err
 	}
 
-	return &struct{ Body net.InterfaceStatList }{Body: nics}, nil
+	// Filter out veth* (virtual ethernet) interfaces used by containers
+	filteredNics := make(net.InterfaceStatList, 0, len(nics))
+	for _, nic := range nics {
+		if !strings.HasPrefix(nic.Name, "veth") {
+			filteredNics = append(filteredNics, nic)
+		}
+	}
+
+	return &struct{ Body net.InterfaceStatList }{Body: filteredNics}, nil
 }
 
 // ReadLinesOffsetN reads contents from file and splits them by new line.

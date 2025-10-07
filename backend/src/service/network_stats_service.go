@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,6 +117,10 @@ func (s *networkStatsService) updateNetworkStats() error {
 			if nicName == "lo" {
 				continue
 			}
+			// Skip virtual ethernet (veth) interfaces used by containers
+			if strings.HasPrefix(nicName, "veth") {
+				continue
+			}
 			nicSlice = append(nicSlice, nicName)
 		}
 	} else {
@@ -148,6 +153,12 @@ func (s *networkStatsService) updateNetworkStats() error {
 		nicName, ok := nic.(string)
 		if !ok {
 			slog.Warn("Skipping non-string value in interfaces list", "value", nic)
+			continue
+		}
+
+		// Skip virtual ethernet (veth) interfaces used by containers
+		if strings.HasPrefix(nicName, "veth") {
+			slog.Debug("Skipping veth interface", "interface", nicName)
 			continue
 		}
 

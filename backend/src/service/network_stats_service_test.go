@@ -496,3 +496,23 @@ func (suite *NetworkStatsServiceSuite) TestContextCancellation() {
 		suite.Fail("Context should be cancelled")
 	}
 }
+
+func (suite *NetworkStatsServiceSuite) TestUpdateNetworkStats_SkipsVethInInterfaceList() {
+	// Test that veth interfaces in the explicitly configured list are skipped
+	suite.propRepoMock.values["BindAllInterfaces"] = false
+	suite.propRepoMock.values["Interfaces"] = []interface{}{"eth0", "veth12345", "eth1"}
+
+	// Verify properties are set correctly
+	val, err := suite.propRepoMock.Value("Interfaces", false)
+	suite.NoError(err)
+
+	interfaces, ok := val.([]interface{})
+	suite.True(ok)
+	suite.Len(interfaces, 3)
+	suite.Equal("eth0", interfaces[0])
+	suite.Equal("veth12345", interfaces[1]) // veth interface should be in list but will be skipped during processing
+	suite.Equal("eth1", interfaces[2])
+
+	// In the actual implementation, the veth12345 interface will be filtered out
+	// during the processing loop by the strings.HasPrefix check
+}

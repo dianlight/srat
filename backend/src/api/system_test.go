@@ -109,6 +109,21 @@ func (suite *SystemHandlerSuite) TestGetNICsHandler_ReturnsInterfaces() {
 	suite.Len(result, len(expected))
 }
 
+func (suite *SystemHandlerSuite) TestGetNICsHandler_FiltersVethInterfaces() {
+	// Test that veth* interfaces are filtered from the response
+	resp := suite.testAPI.Get("/nics")
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result []net.InterfaceStat
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	// Verify no veth interfaces are in the result
+	for _, nic := range result {
+		suite.NotContains(nic.Name, "veth", "veth interfaces should be filtered out")
+	}
+}
+
 func (suite *SystemHandlerSuite) TestGetFSHandler_IncludesFuse3() {
 	tempFile, err := os.CreateTemp(suite.T().TempDir(), "filesystems-*")
 	suite.Require().NoError(err)
