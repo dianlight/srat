@@ -79,6 +79,10 @@ func (suite *TelemetryServiceSuite) TearDownTest() {
 	if suite.app != nil {
 		suite.app.RequireStop()
 	}
+
+	// Flush all pending rollbar events before cleanup to avoid cross-test contamination
+	rollbar.Wait()
+
 	httpmock.DeactivateAndReset()
 
 	// Ensure tlog callbacks are clean across tests
@@ -319,15 +323,30 @@ func (suite *TelemetryServiceSuite) TestTlogErrorCallbackIncludesOriginalStack()
 	suite.resetHTTPCalls()
 	// Flush any pending rollbar events from previous tests
 	rollbar.Wait()
+	suite.lastRollbarBody = "" // Ensure clean start
 
 	// Emit a tlog error with an attached stack-carrying error
 	logErr := errors.Errorf("callback failure")
 	tlog.Error("rolling error", "error", logErr)
 
-	// Wait for asynchronous logging and rollbar dispatch
+	// Wait for asynchronous logging and rollbar dispatch, specifically for an error-level event
 	suite.Eventually(func() bool {
 		rollbar.Wait()
-		return suite.lastRollbarBody != ""
+		if suite.lastRollbarBody == "" {
+			return false
+		}
+		// Parse and check if this is the error-level event we're expecting
+		var payload map[string]interface{}
+		if err := json.Unmarshal([]byte(suite.lastRollbarBody), &payload); err != nil {
+			return false
+		}
+		data, ok := payload["data"].(map[string]interface{})
+		if !ok {
+			return false
+		}
+		// Only accept error-level events, ignore info-level events from previous tests
+		level, _ := data["level"].(string)
+		return level == "error"
 	}, 2*time.Second, 20*time.Millisecond)
 
 	// Validate payload contains stack information pointing to this test file
