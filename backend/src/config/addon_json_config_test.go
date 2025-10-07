@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/config"
@@ -179,7 +180,14 @@ func TestLoadConfigWithNonReadableFile(t *testing.T) {
 	config := &config.Config{}
 	err = config.LoadConfig(tempFile.Name())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unexpected end of JSON input")
+	// Depending on environment (permissions enforcement), we may get either:
+	// - "permission denied" if the file truly cannot be read
+	// - "unexpected end of JSON input" if the empty file can be read (e.g., running as root)
+	errMsg := err.Error()
+	hasPermissionError := strings.Contains(errMsg, "permission denied")
+	hasJSONError := strings.Contains(errMsg, "unexpected end of JSON input")
+	assert.True(t, hasPermissionError || hasJSONError,
+		"Expected error to contain either 'permission denied' or 'unexpected end of JSON input', got: %s", errMsg)
 }
 func TestLoadConfigWithValidFile(t *testing.T) {
 	// Create a temporary file with a valid config
