@@ -17,19 +17,20 @@ Currently under development and in an alpha state, SRAT is set to become the pre
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**
 
-- [Key Features](#key-features)
 - [Installation](#installation)
-  - Automatic color support with terminal detection
-  - Sensitive data protection (passwords, tokens, API keys automatically masked)
-  - Enhanced error formatting with tree-structured stack traces
-  - Context-aware logging with request tracking
-  - Thread-safe operations and asynchronous callback system
-- **Docker Integration**: Seamless integration with Home Assistant addons
-- **Real-time Updates**: Server-sent events for live configuration updates
-- **Frontend Error Callbacks**: Async `console.error` callback registry + React hook to capture errors without affecting render cycles
-- **Optional Telemetry**: Rollbar-based error reporting with user consent and modes (Ask / All / Errors / Disabled)
+- [Usage](#usage)
+- [Database](#database)
+- [Sponsor](#sponsor)
+- [Known Issues](#known-issues)
+- [Enhanced Logging System](#enhanced-logging-system)
+- [Documentation Validation](#documentation-validation)
+- [Security scanning](#security-scanning)
+- [Building the Project](#building-the-project)
+- [Testing and Coverage](#testing-and-coverage)
+- [Contribute](#contribute)
+- [License](#license)
+- [Development: pre-commit hooks](#development-pre-commit-hooks)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -54,7 +55,7 @@ or
 
 ### Local Development
 
-Refer to the [Quick Start](#quick-start) section above for local development setup.
+For local development setup, follow the instructions below for backend and frontend development.
 
 ## Usage
 
@@ -135,6 +136,7 @@ make docs-help
 ```
 
 The validation includes:
+
 - Markdown linting and formatting
 - Link checking
 - Spell checking
@@ -196,6 +198,7 @@ The project tracks three coverage metrics:
 - **Global Coverage**: Weighted average (60% backend, 40% frontend)
 
 Coverage badge colors:
+
 - 🟢 Green (≥80%): Excellent
 - 🟢 Light Green (≥60%): Good
 - 🟡 Yellow (≥40%): Acceptable
@@ -208,13 +211,11 @@ Coverage badge colors:
 - Minimum frontend function coverage: 90%
 - Target global coverage: 60%+
 
-# Contribute
-[(Back to top)](#table-of-contents)
+## Contribute
 
 You can use this section to highlight how people can contribute to your project.
 
 You can add information on how they can open issues or how they can sponsor the project.
-
 
 ## License
 
