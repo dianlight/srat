@@ -46,6 +46,7 @@
 		"PATH": "${containerEnv:HOME}/.bun/bin:${containerEnv:PATH}",
 		"SUPERVISOR_URL": "http://${containerEnv:HOMEASSISTANT_IP}/",
 		"SUPERVISOR_TOKEN": "${containerEnv:SUPERVISOR_TOKEN}",
+		"GH_TOKEN": "${containerEnv:GITHUB_TOKEN}",
 		"HOMEASSISTANT_IP": "${containerEnv:HOMEASSISTANT_IP}",
 		"ROLLBAR_MCP_ACCESS_TOKEN": "${containerEnv:ROLLBAR_MCP_ACCESS_TOKEN}",
 		"ROLLBAR_CLIENT_ACCESS_TOKEN": "${containerEnv:ROLLBAR_CLIENT_ACCESS_TOKEN}",
@@ -95,7 +96,8 @@
 				"google.geminicodeassist",
 				"GitHub.remotehub",
 				"codezombiech.gitignore",
-				"oven.bun-vscode"
+				"oven.bun-vscode",
+				"SanjulaGanepola.github-local-actions"
 			],
 			"mcp": {
 				"servers": {

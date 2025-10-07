@@ -30,3 +30,6 @@ npm install -g @rtk-query/codegen-openapi ||:
 
 #enable nix
 echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf ||:
+
+#Use of act
+gh extension install https://github.com/nektos/gh-act ||:

@@ -36,5 +36,6 @@
   "geminicodeassist.agentYoloMode": true,
   "geminicodeassist.updateChannel": "Default",
   "github.copilot.chat.byok.ollamaEndpoint": "",
-  "github.copilot.chat.codesearch.enabled": true
+  "github.copilot.chat.codesearch.enabled": true,
+  "githubLocalActions.actCommand": "gh act"
 }
