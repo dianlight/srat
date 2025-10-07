@@ -97,7 +97,8 @@
 				"GitHub.remotehub",
 				"codezombiech.gitignore",
 				"oven.bun-vscode",
-				"SanjulaGanepola.github-local-actions"
+				"SanjulaGanepola.github-local-actions",
+				"bierner.markdown-mermaid"
 			],
 			"mcp": {
 				"servers": {
