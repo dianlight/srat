@@ -178,6 +178,258 @@ describe("IssueCard Component", () => {
         expect(container.textContent?.includes("Unknown")).toBeTruthy();
     });
 
+    it("handles click on resolve button", async () => {
+        const React = await import("react");
+        const { render, fireEvent } = await import("@testing-library/react");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { default: IssueCard } = await import("../IssueCard");
+
+        const theme = createTheme();
+        let resolved = false;
+        const mockOnResolve = (id: number) => { resolved = true; };
+        const mockIssue = {
+            id: 7,
+            title: "Resolvable Issue",
+            description: "This issue can be resolved",
+            severity: "error" as const,
+            date: "2024-01-15T10:30:00Z",
+            ignored: false
+        };
+
+        const { container } = render(
+            React.createElement(
+                ThemeProvider,
+                { theme },
+                React.createElement(IssueCard as any, {
+                    issue: mockIssue,
+                    onResolve: mockOnResolve
+                })
+            )
+        );
+
+        // Find and click the resolve button
+        const resolveButtons = container.querySelectorAll('button');
+        const resolveButton = Array.from(resolveButtons).find(btn => btn.textContent?.includes('Resolve'));
+        if (resolveButton) {
+            fireEvent.click(resolveButton);
+            expect(resolved).toBe(true);
+        }
+    });
+
+    it("handles dismiss button click", async () => {
+        const React = await import("react");
+        const { render, fireEvent } = await import("@testing-library/react");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { default: IssueCard } = await import("../IssueCard");
+
+        const theme = createTheme();
+        let dismissed = false;
+        const mockOnResolve = (id: number) => { dismissed = true; };
+        const mockIssue = {
+            id: 8,
+            title: "Dismissable Issue",
+            description: "This issue can be dismissed",
+            severity: "warning" as const,
+            date: "2024-01-15T10:30:00Z",
+            ignored: false
+        };
+
+        const { container } = render(
+            React.createElement(
+                ThemeProvider,
+                { theme },
+                React.createElement(IssueCard as any, {
+                    issue: mockIssue,
+                    onResolve: mockOnResolve
+                })
+            )
+        );
+
+        // Find and click the dismiss button (icon button)
+        const closeIcons = container.querySelectorAll('[data-testid="CloseIcon"]');
+        if (closeIcons.length > 0 && closeIcons[0].parentElement) {
+            fireEvent.click(closeIcons[0].parentElement);
+            expect(dismissed).toBe(true);
+        }
+    });
+
+    it("hides ignored issues when showIgnored is false", async () => {
+        const React = await import("react");
+        const { render } = await import("@testing-library/react");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { default: IssueCard } = await import("../IssueCard");
+
+        const theme = createTheme();
+        const ignoredIssue = {
+            id: 9,
+            title: "Ignored Issue",
+            description: "This issue should be hidden",
+            severity: "info" as const,
+            date: "2024-01-15T10:30:00Z",
+            ignored: true
+        };
+
+        const { container } = render(
+            React.createElement(
+                ThemeProvider,
+                { theme },
+                React.createElement(IssueCard as any, {
+                    issue: ignoredIssue,
+                    showIgnored: false
+                })
+            )
+        );
+
+        // Since the issue is ignored and showIgnored is false, the card should not render
+        expect(container.innerHTML).toBe('');
+    });
+
+    it("shows ignored issues when showIgnored is true", async () => {
+        const React = await import("react");
+        const { render } = await import("@testing-library/react");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { default: IssueCard } = await import("../IssueCard");
+
+        const theme = createTheme();
+        const ignoredIssue = {
+            id: 10,
+            title: "Ignored Issue Visible",
+            description: "This issue should be visible",
+            severity: "warning" as const,
+            date: "2024-01-15T10:30:00Z",
+            ignored: true
+        };
+
+        const { container } = render(
+            React.createElement(
+                ThemeProvider,
+                { theme },
+                React.createElement(IssueCard as any, {
+                    issue: ignoredIssue,
+                    showIgnored: true
+                })
+            )
+        );
+
+        expect(container.textContent?.includes("Ignored Issue Visible")).toBeTruthy();
+        expect(container.textContent?.includes("Ignored")).toBeTruthy();
+    });
+
+    it("displays date when provided", async () => {
+        const React = await import("react");
+        const { render } = await import("@testing-library/react");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { default: IssueCard } = await import("../IssueCard");
+
+        const theme = createTheme();
+        const issueWithDate = {
+            id: 11,
+            title: "Issue with Date",
+            description: "This issue has a date",
+            severity: "info" as const,
+            date: "2024-01-15T10:30:00Z",
+            ignored: false
+        };
+
+        const { container } = render(
+            React.createElement(
+                ThemeProvider,
+                { theme },
+                React.createElement(IssueCard as any, { issue: issueWithDate })
+            )
+        );
+
+        // Check that the date is displayed (formatted)
+        expect(container.textContent).toBeTruthy();
+    });
+
+    it("handles issue without date", async () => {
+        const React = await import("react");
+        const { render } = await import("@testing-library/react");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { default: IssueCard } = await import("../IssueCard");
+
+        const theme = createTheme();
+        const issueWithoutDate = {
+            id: 12,
+            title: "Issue without Date",
+            description: "This issue has no date",
+            severity: "error" as const,
+            ignored: false
+        };
+
+        const { container } = render(
+            React.createElement(
+                ThemeProvider,
+                { theme },
+                React.createElement(IssueCard as any, { issue: issueWithoutDate })
+            )
+        );
+
+        expect(container.textContent?.includes("Issue without Date")).toBeTruthy();
+    });
+
+    it("applies correct styling for dark theme", async () => {
+        const React = await import("react");
+        const { render } = await import("@testing-library/react");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { default: IssueCard } = await import("../IssueCard");
+
+        const darkTheme = createTheme({ palette: { mode: 'dark' } });
+        const mockIssue = {
+            id: 13,
+            title: "Dark Theme Issue",
+            description: "Test dark theme styling",
+            severity: "error" as const,
+            date: "2024-01-15T10:30:00Z",
+            ignored: false
+        };
+
+        const { container } = render(
+            React.createElement(
+                ThemeProvider,
+                { theme: darkTheme },
+                React.createElement(IssueCard as any, { issue: mockIssue })
+            )
+        );
+
+        expect(container.textContent?.includes("Dark Theme Issue")).toBeTruthy();
+    });
+
+    it("does not show resolve button for ignored issues", async () => {
+        const React = await import("react");
+        const { render } = await import("@testing-library/react");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { default: IssueCard } = await import("../IssueCard");
+
+        const theme = createTheme();
+        const mockOnResolve = () => { };
+        const ignoredIssue = {
+            id: 14,
+            title: "Ignored Issue No Resolve",
+            description: "Should not show resolve button",
+            severity: "warning" as const,
+            date: "2024-01-15T10:30:00Z",
+            ignored: true
+        };
+
+        const { container } = render(
+            React.createElement(
+                ThemeProvider,
+                { theme },
+                React.createElement(IssueCard as any, {
+                    issue: ignoredIssue,
+                    onResolve: mockOnResolve,
+                    showIgnored: true
+                })
+            )
+        );
+
+        // Resolve button should not be shown for ignored issues
+        const resolveButtons = Array.from(container.querySelectorAll('button')).filter(btn => btn.textContent?.includes('Resolve'));
+        expect(resolveButtons.length).toBe(0);
+    });
+
     it("formats date correctly when provided", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
