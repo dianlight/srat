@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/google/go-github/v75/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -386,4 +387,99 @@ func TestConfigToDto_FSTypeIsWriteSupported(t *testing.T) {
 	result := FSTypeIsWriteSupported("/tmp")
 	assert.NotNil(t, result)
 	// The result depends on actual filesystem permissions
+}
+
+// GitHub to DTO converter tests
+func TestGitHubToDto_ReleaseAssetToBinaryAsset(t *testing.T) {
+	conv := GitHubToDtoImpl{}
+	
+	name := "srat-v1.0.0.tar.gz"
+	size := int(1024)
+	id := int64(12345)
+	url := "https://github.com/releases/download"
+	
+	source := &github.ReleaseAsset{
+		Name:               &name,
+		Size:               &size,
+		ID:                 &id,
+		BrowserDownloadURL: &url,
+	}
+	
+	var target dto.BinaryAsset
+	err := conv.ReleaseAssetToBinaryAsset(source, &target)
+	
+	require.NoError(t, err)
+	assert.Equal(t, "srat-v1.0.0.tar.gz", target.Name)
+	assert.Equal(t, 1024, target.Size)
+	assert.Equal(t, int64(12345), target.ID)
+	assert.Equal(t, "https://github.com/releases/download", target.BrowserDownloadURL)
+}
+
+func TestGitHubToDto_ReleaseAssetToBinaryAsset_NilSource(t *testing.T) {
+	conv := GitHubToDtoImpl{}
+	
+	var target dto.BinaryAsset
+	err := conv.ReleaseAssetToBinaryAsset(nil, &target)
+	
+	require.NoError(t, err)
+	assert.Empty(t, target.Name)
+	assert.Zero(t, target.Size)
+}
+
+func TestGitHubToDto_RepositoryReleaseToReleaseAsset(t *testing.T) {
+	conv := GitHubToDtoImpl{}
+	
+	tagName := "v1.0.0"
+	source := &github.RepositoryRelease{
+		TagName: &tagName,
+	}
+	
+	var target dto.ReleaseAsset
+	err := conv.RepositoryReleaseToReleaseAsset(source, &target)
+	
+	require.NoError(t, err)
+	// This converter currently doesn't populate any fields
+}
+
+// Issue converter tests
+func TestTimeToTime(t *testing.T) {
+	now := time.Now()
+	result := timeToTime(now)
+	assert.Equal(t, now, result)
+}
+
+func TestIssueToDtoConverter_ToDto(t *testing.T) {
+	conv := IssueToDtoConverterImpl{}
+	
+	now := time.Now()
+	source := &dbom.Issue{
+		Title:       "Test Issue",
+		Description: "Test Description",
+		CreatedAt:   now,
+	}
+	
+	result := conv.ToDto(source)
+	
+	require.NotNil(t, result)
+	assert.Equal(t, "Test Issue", result.Title)
+	assert.Equal(t, "Test Description", result.Description)
+	assert.Equal(t, now, result.Date)
+}
+
+func TestIssueToDtoConverter_ToDbom(t *testing.T) {
+	conv := IssueToDtoConverterImpl{}
+	
+	now := time.Now()
+	source := &dto.Issue{
+		Title:       "Test Issue",
+		Description: "Test Description",
+		Date:        now,
+	}
+	
+	result := conv.ToDbom(source)
+	
+	require.NotNil(t, result)
+	assert.Equal(t, "Test Issue", result.Title)
+	assert.Equal(t, "Test Description", result.Description)
+	assert.Equal(t, now, result.CreatedAt)
 }

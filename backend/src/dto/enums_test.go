@@ -552,3 +552,155 @@ func TestUpdateProcessState_Scan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, dto.UpdateProcessStates.UPDATESTATUSINSTALLING, state)
 }
+
+// SmartAttributeCode tests
+func TestSmartAttributeCode_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		attr     dto.SmartAttributeCode
+		expected string
+	}{
+		{"Undefined", dto.SmartAttributeCodes.SMARTATTRIBUTEUNDEFINED, "Undefined"},
+		{"Temperature", dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS, "Temperature"},
+		{"PowerOnHours", dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS, "PowerOnHours"},
+		{"PowerCycleCount", dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT, "PowerCycleCount"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.attr.String())
+		})
+	}
+}
+
+func TestSmartAttributeCode_Fields(t *testing.T) {
+	tests := []struct {
+		name         string
+		attr         dto.SmartAttributeCode
+		expectedCode int
+		expectedType string
+	}{
+		{"Undefined", dto.SmartAttributeCodes.SMARTATTRIBUTEUNDEFINED, 0, "Unknown"},
+		{"Temperature", dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS, 194, "Old_age"},
+		{"PowerOnHours", dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS, 9, "Old_age"},
+		{"PowerCycleCount", dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT, 12, "Old_age"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedCode, tt.attr.Code)
+			assert.Equal(t, tt.expectedType, tt.attr.Type)
+		})
+	}
+}
+
+func TestSmartAttributeCode_IsValid(t *testing.T) {
+	assert.True(t, dto.SmartAttributeCodes.SMARTATTRIBUTEUNDEFINED.IsValid())
+	assert.True(t, dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.IsValid())
+	assert.True(t, dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.IsValid())
+	assert.True(t, dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.IsValid())
+}
+
+func TestSmartAttributeCode_MarshalJSON(t *testing.T) {
+	attr := dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS
+	data, err := json.Marshal(attr)
+	assert.NoError(t, err)
+	assert.Equal(t, `"Temperature"`, string(data))
+}
+
+func TestSmartAttributeCode_UnmarshalJSON(t *testing.T) {
+	var attr dto.SmartAttributeCode
+	err := json.Unmarshal([]byte(`"PowerOnHours"`), &attr)
+	assert.NoError(t, err)
+	assert.Equal(t, dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS, attr)
+}
+
+func TestSmartAttributeCode_ParseSmartAttributeCode(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    interface{}
+		expected dto.SmartAttributeCode
+		hasError bool
+	}{
+		{"String Undefined", "Undefined", dto.SmartAttributeCodes.SMARTATTRIBUTEUNDEFINED, false},
+		{"String Temperature", "Temperature", dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS, false},
+		{"Bytes", []byte("PowerCycleCount"), dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT, false},
+		{"SmartAttributeCode type", dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS, dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := dto.ParseSmartAttributeCode(tt.input)
+			if tt.hasError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestSmartAttributeCode_MarshalText(t *testing.T) {
+	attr := dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT
+	data, err := attr.MarshalText()
+	assert.NoError(t, err)
+	assert.Equal(t, `"PowerCycleCount"`, string(data))
+}
+
+func TestSmartAttributeCode_UnmarshalText(t *testing.T) {
+	var attr dto.SmartAttributeCode
+	err := attr.UnmarshalText([]byte("Temperature"))
+	assert.NoError(t, err)
+	assert.Equal(t, dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS, attr)
+}
+
+func TestSmartAttributeCode_MarshalBinary(t *testing.T) {
+	attr := dto.SmartAttributeCodes.SMARTATTRIBUTEUNDEFINED
+	data, err := attr.MarshalBinary()
+	assert.NoError(t, err)
+	assert.Equal(t, `"Undefined"`, string(data))
+}
+
+func TestSmartAttributeCode_UnmarshalBinary(t *testing.T) {
+	var attr dto.SmartAttributeCode
+	err := attr.UnmarshalBinary([]byte("PowerOnHours"))
+	assert.NoError(t, err)
+	assert.Equal(t, dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS, attr)
+}
+
+func TestSmartAttributeCode_Value(t *testing.T) {
+	attr := dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS
+	val, err := attr.Value()
+	assert.NoError(t, err)
+	assert.Equal(t, "Temperature", val)
+}
+
+func TestSmartAttributeCode_All(t *testing.T) {
+	count := 0
+	for range dto.SmartAttributeCodes.All() {
+		count++
+	}
+	assert.Equal(t, 4, count)
+}
+
+func TestSmartAttributeCode_MarshalYAML(t *testing.T) {
+	attr := dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS
+	data, err := attr.MarshalYAML()
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("PowerOnHours"), data)
+}
+
+func TestSmartAttributeCode_UnmarshalYAML(t *testing.T) {
+	var attr dto.SmartAttributeCode
+	err := attr.UnmarshalYAML([]byte("PowerCycleCount"))
+	assert.NoError(t, err)
+	assert.Equal(t, dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT, attr)
+}
+
+func TestSmartAttributeCode_Scan(t *testing.T) {
+	var attr dto.SmartAttributeCode
+	err := attr.Scan("Temperature")
+	assert.NoError(t, err)
+	assert.Equal(t, dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS, attr)
+}
