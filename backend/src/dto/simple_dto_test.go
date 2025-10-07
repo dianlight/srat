@@ -218,3 +218,107 @@ server string = {{ .ServerString }}
 	assert.Greater(t, len(ctx.Template), 0)
 	assert.Contains(t, string(ctx.Template), "{{ .Workgroup }}")
 }
+
+// DataDirtyTracker Tests
+func TestDataDirtyTracker_AllClean(t *testing.T) {
+	tracker := dto.DataDirtyTracker{
+		Shares:   false,
+		Users:    false,
+		Volumes:  false,
+		Settings: false,
+	}
+
+	assert.False(t, tracker.Shares)
+	assert.False(t, tracker.Users)
+	assert.False(t, tracker.Volumes)
+	assert.False(t, tracker.Settings)
+}
+
+func TestDataDirtyTracker_AllDirty(t *testing.T) {
+	tracker := dto.DataDirtyTracker{
+		Shares:   true,
+		Users:    true,
+		Volumes:  true,
+		Settings: true,
+	}
+
+	assert.True(t, tracker.Shares)
+	assert.True(t, tracker.Users)
+	assert.True(t, tracker.Volumes)
+	assert.True(t, tracker.Settings)
+}
+
+func TestDataDirtyTracker_PartialDirty(t *testing.T) {
+	tracker := dto.DataDirtyTracker{
+		Shares:   true,
+		Users:    false,
+		Volumes:  true,
+		Settings: false,
+	}
+
+	assert.True(t, tracker.Shares)
+	assert.False(t, tracker.Users)
+	assert.True(t, tracker.Volumes)
+	assert.False(t, tracker.Settings)
+}
+
+// NetworkStats Tests
+func TestNetworkStats_Empty(t *testing.T) {
+	stats := dto.NetworkStats{}
+
+	assert.Empty(t, stats.PerNicIO)
+	assert.Zero(t, stats.Global.TotalInboundTraffic)
+	assert.Zero(t, stats.Global.TotalOutboundTraffic)
+}
+
+func TestNetworkStats_WithData(t *testing.T) {
+	stats := dto.NetworkStats{
+		PerNicIO: []dto.NicIOStats{
+			{
+				DeviceName:      "eth0",
+				DeviceMaxSpeed:  1000000000,
+				InboundTraffic:  1024.5,
+				OutboundTraffic: 512.3,
+				IP:              "192.168.1.100",
+				Netmask:         "255.255.255.0",
+			},
+		},
+		Global: dto.GlobalNicStats{
+			TotalInboundTraffic:  2048.7,
+			TotalOutboundTraffic: 1024.6,
+		},
+	}
+
+	assert.Len(t, stats.PerNicIO, 1)
+	assert.Equal(t, "eth0", stats.PerNicIO[0].DeviceName)
+	assert.Equal(t, int64(1000000000), stats.PerNicIO[0].DeviceMaxSpeed)
+	assert.Equal(t, 1024.5, stats.PerNicIO[0].InboundTraffic)
+	assert.Equal(t, 512.3, stats.PerNicIO[0].OutboundTraffic)
+	assert.Equal(t, "192.168.1.100", stats.PerNicIO[0].IP)
+	assert.Equal(t, "255.255.255.0", stats.PerNicIO[0].Netmask)
+	assert.Equal(t, 2048.7, stats.Global.TotalInboundTraffic)
+	assert.Equal(t, 1024.6, stats.Global.TotalOutboundTraffic)
+}
+
+// HealthPing Tests
+func TestHealthPing_Alive(t *testing.T) {
+	ping := dto.HealthPing{
+		Alive:     true,
+		AliveTime: 1234567890,
+		Uptime:    3600,
+	}
+
+	assert.True(t, ping.Alive)
+	assert.Equal(t, int64(1234567890), ping.AliveTime)
+	assert.Equal(t, int64(3600), ping.Uptime)
+}
+
+func TestHealthPing_WithError(t *testing.T) {
+	ping := dto.HealthPing{
+		Alive:     false,
+		LastError: "Connection timeout",
+	}
+
+	assert.False(t, ping.Alive)
+	assert.Equal(t, "Connection timeout", ping.LastError)
+}

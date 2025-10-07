@@ -248,3 +248,307 @@ func TestTimeMachineSupport_UnmarshalJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, dto.TimeMachineSupports.EXPERIMENTAL, support)
 }
+
+// EventType tests
+func TestEventType_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		event    dto.EventType
+		expected string
+	}{
+		{"Hello", dto.EventTypes.EVENTHELLO, "hello"},
+		{"Updating", dto.EventTypes.EVENTUPDATING, "updating"},
+		{"Volumes", dto.EventTypes.EVENTVOLUMES, "volumes"},
+		{"Heartbeat", dto.EventTypes.EVENTHEARTBEAT, "heartbeat"},
+		{"Share", dto.EventTypes.EVENTSHARE, "share"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.event.String())
+		})
+	}
+}
+
+func TestEventType_IsValid(t *testing.T) {
+	assert.True(t, dto.EventTypes.EVENTHELLO.IsValid())
+	assert.True(t, dto.EventTypes.EVENTUPDATING.IsValid())
+	assert.True(t, dto.EventTypes.EVENTVOLUMES.IsValid())
+	assert.True(t, dto.EventTypes.EVENTHEARTBEAT.IsValid())
+	assert.True(t, dto.EventTypes.EVENTSHARE.IsValid())
+}
+
+func TestEventType_MarshalJSON(t *testing.T) {
+	event := dto.EventTypes.EVENTHELLO
+	data, err := json.Marshal(event)
+	assert.NoError(t, err)
+	assert.Equal(t, `"hello"`, string(data))
+}
+
+func TestEventType_UnmarshalJSON(t *testing.T) {
+	var event dto.EventType
+	err := json.Unmarshal([]byte(`"updating"`), &event)
+	assert.NoError(t, err)
+	assert.Equal(t, dto.EventTypes.EVENTUPDATING, event)
+}
+
+func TestEventType_ParseEventType(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    interface{}
+		expected dto.EventType
+		hasError bool
+	}{
+		{"String hello", "hello", dto.EventTypes.EVENTHELLO, false},
+		{"String updating", "updating", dto.EventTypes.EVENTUPDATING, false},
+		{"Bytes", []byte("volumes"), dto.EventTypes.EVENTVOLUMES, false},
+		{"EventType type", dto.EventTypes.EVENTSHARE, dto.EventTypes.EVENTSHARE, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := dto.ParseEventType(tt.input)
+			if tt.hasError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestEventType_MarshalText(t *testing.T) {
+	event := dto.EventTypes.EVENTVOLUMES
+	data, err := event.MarshalText()
+	assert.NoError(t, err)
+	assert.Equal(t, `"volumes"`, string(data))
+}
+
+func TestEventType_UnmarshalText(t *testing.T) {
+	var event dto.EventType
+	err := event.UnmarshalText([]byte("heartbeat"))
+	assert.NoError(t, err)
+	assert.Equal(t, dto.EventTypes.EVENTHEARTBEAT, event)
+}
+
+func TestEventType_MarshalBinary(t *testing.T) {
+	event := dto.EventTypes.EVENTSHARE
+	data, err := event.MarshalBinary()
+	assert.NoError(t, err)
+	assert.Equal(t, `"share"`, string(data))
+}
+
+func TestEventType_UnmarshalBinary(t *testing.T) {
+	var event dto.EventType
+	err := event.UnmarshalBinary([]byte("hello"))
+	assert.NoError(t, err)
+	assert.Equal(t, dto.EventTypes.EVENTHELLO, event)
+}
+
+func TestEventType_Value(t *testing.T) {
+	event := dto.EventTypes.EVENTUPDATING
+	val, err := event.Value()
+	assert.NoError(t, err)
+	assert.Equal(t, "updating", val)
+}
+
+func TestEventType_All(t *testing.T) {
+	count := 0
+	for range dto.EventTypes.All() {
+		count++
+	}
+	assert.Equal(t, 5, count)
+}
+
+func TestEventType_MarshalYAML(t *testing.T) {
+	event := dto.EventTypes.EVENTHELLO
+	data, err := event.MarshalYAML()
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("hello"), data)
+}
+
+func TestEventType_UnmarshalYAML(t *testing.T) {
+	var event dto.EventType
+	err := event.UnmarshalYAML([]byte("share"))
+	assert.NoError(t, err)
+	assert.Equal(t, dto.EventTypes.EVENTSHARE, event)
+}
+
+func TestEventType_Scan(t *testing.T) {
+	var event dto.EventType
+	err := event.Scan("volumes")
+	assert.NoError(t, err)
+	assert.Equal(t, dto.EventTypes.EVENTVOLUMES, event)
+}
+
+// UpdateProcessState tests
+func TestUpdateProcessState_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		state    dto.UpdateProcessState
+		expected string
+	}{
+		{"Idle", dto.UpdateProcessStates.UPDATESTATUSIDLE, "UpdateStatusIdle"},
+		{"Checking", dto.UpdateProcessStates.UPDATESTATUSCHECKING, "UpdateStatusChecking"},
+		{"NoUpgrade", dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE, "UpdateStatusNoUpgrde"},
+		{"Available", dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, "UpdateStatusUpgradeAvailable"},
+		{"Downloading", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, "UpdateStatusDownloading"},
+		{"Downloaded", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE, "UpdateStatusDownloadComplete"},
+		{"Extracting", dto.UpdateProcessStates.UPDATESTATUSEXTRACTING, "UpdateStatusExtracting"},
+		{"Extracted", dto.UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE, "UpdateStatusExtractComplete"},
+		{"Installing", dto.UpdateProcessStates.UPDATESTATUSINSTALLING, "UpdateStatusInstalling"},
+		{"NeedRestart", dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE, "NeedRestart"},
+		{"Error", dto.UpdateProcessStates.UPDATESTATUSERROR, "UpdateStatusError"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.state.String())
+		})
+	}
+}
+
+func TestUpdateProcessState_Name(t *testing.T) {
+	tests := []struct {
+		name     string
+		state    dto.UpdateProcessState
+		expected string
+	}{
+		{"Idle", dto.UpdateProcessStates.UPDATESTATUSIDLE, "Idle"},
+		{"Checking", dto.UpdateProcessStates.UPDATESTATUSCHECKING, "Checking"},
+		{"NoUpgrade", dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE, "NoUpgrade"},
+		{"Available", dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, "Available"},
+		{"Downloading", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, "Downloading"},
+		{"Downloaded", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE, "Downloaded"},
+		{"Extracting", dto.UpdateProcessStates.UPDATESTATUSEXTRACTING, "Extractiong"},
+		{"Extracted", dto.UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE, "Extracted"},
+		{"Installing", dto.UpdateProcessStates.UPDATESTATUSINSTALLING, "Installing"},
+		{"NeedRestart", dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE, "(Ready for restart)"},
+		{"Error", dto.UpdateProcessStates.UPDATESTATUSERROR, "Error"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.state.Name)
+		})
+	}
+}
+
+func TestUpdateProcessState_IsValid(t *testing.T) {
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSIDLE.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSCHECKING.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSEXTRACTING.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSINSTALLING.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSERROR.IsValid())
+}
+
+func TestUpdateProcessState_MarshalJSON(t *testing.T) {
+	state := dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING
+	data, err := json.Marshal(state)
+	assert.NoError(t, err)
+	assert.Equal(t, `"UpdateStatusDownloading"`, string(data))
+}
+
+func TestUpdateProcessState_UnmarshalJSON(t *testing.T) {
+	var state dto.UpdateProcessState
+	err := json.Unmarshal([]byte(`"UpdateStatusInstalling"`), &state)
+	assert.NoError(t, err)
+	assert.Equal(t, dto.UpdateProcessStates.UPDATESTATUSINSTALLING, state)
+}
+
+func TestUpdateProcessState_ParseUpdateProcessState(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    interface{}
+		expected dto.UpdateProcessState
+		hasError bool
+	}{
+		{"String Idle", "UpdateStatusIdle", dto.UpdateProcessStates.UPDATESTATUSIDLE, false},
+		{"String Checking", "UpdateStatusChecking", dto.UpdateProcessStates.UPDATESTATUSCHECKING, false},
+		{"Bytes", []byte("UpdateStatusError"), dto.UpdateProcessStates.UPDATESTATUSERROR, false},
+		{"UpdateProcessState type", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := dto.ParseUpdateProcessState(tt.input)
+			if tt.hasError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestUpdateProcessState_MarshalText(t *testing.T) {
+	state := dto.UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE
+	data, err := state.MarshalText()
+	assert.NoError(t, err)
+	assert.Equal(t, `"UpdateStatusExtractComplete"`, string(data))
+}
+
+func TestUpdateProcessState_UnmarshalText(t *testing.T) {
+	var state dto.UpdateProcessState
+	err := state.UnmarshalText([]byte("UpdateStatusUpgradeAvailable"))
+	assert.NoError(t, err)
+	assert.Equal(t, dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, state)
+}
+
+func TestUpdateProcessState_MarshalBinary(t *testing.T) {
+	state := dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE
+	data, err := state.MarshalBinary()
+	assert.NoError(t, err)
+	assert.Equal(t, `"UpdateStatusNoUpgrde"`, string(data))
+}
+
+func TestUpdateProcessState_UnmarshalBinary(t *testing.T) {
+	var state dto.UpdateProcessState
+	err := state.UnmarshalBinary([]byte("NeedRestart"))
+	assert.NoError(t, err)
+	assert.Equal(t, dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE, state)
+}
+
+func TestUpdateProcessState_Value(t *testing.T) {
+	state := dto.UpdateProcessStates.UPDATESTATUSCHECKING
+	val, err := state.Value()
+	assert.NoError(t, err)
+	assert.Equal(t, "UpdateStatusChecking", val)
+}
+
+func TestUpdateProcessState_All(t *testing.T) {
+	count := 0
+	for range dto.UpdateProcessStates.All() {
+		count++
+	}
+	assert.Equal(t, 11, count)
+}
+
+func TestUpdateProcessState_MarshalYAML(t *testing.T) {
+	state := dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE
+	data, err := state.MarshalYAML()
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("UpdateStatusDownloadComplete"), data)
+}
+
+func TestUpdateProcessState_UnmarshalYAML(t *testing.T) {
+	var state dto.UpdateProcessState
+	err := state.UnmarshalYAML([]byte("UpdateStatusExtracting"))
+	assert.NoError(t, err)
+	assert.Equal(t, dto.UpdateProcessStates.UPDATESTATUSEXTRACTING, state)
+}
+
+func TestUpdateProcessState_Scan(t *testing.T) {
+	var state dto.UpdateProcessState
+	err := state.Scan("UpdateStatusInstalling")
+	assert.NoError(t, err)
+	assert.Equal(t, dto.UpdateProcessStates.UPDATESTATUSINSTALLING, state)
+}
