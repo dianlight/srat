@@ -281,11 +281,53 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Should handle empty data gracefully
+        // Component should handle empty/null data gracefully
         expect(container).toBeTruthy();
     });
 
-    it("maintains component structure with proper wrapping", async () => {
+    it("handles colorScheme mode changes", async () => {
+        const React = await import("react");
+        const { render } = await import("@testing-library/react");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { Provider } = await import("react-redux");
+        const { SmbConf } = await import("../SmbConf");
+        const { createTestStore } = await import("../../../test/setup");
+
+        const theme = createTheme();
+        const store = await createTestStore();
+
+        const { container, rerender } = render(
+            React.createElement(
+                Provider,
+                {
+                    store, children: React.createElement(
+                        ThemeProvider,
+                        { theme, children: React.createElement(SmbConf as any) }
+                    )
+                }
+            )
+        );
+
+        expect(container).toBeTruthy();
+
+        // Rerender with dark theme
+        const darkTheme = createTheme({ palette: { mode: 'dark' } });
+        rerender(
+            React.createElement(
+                Provider,
+                {
+                    store, children: React.createElement(
+                        ThemeProvider,
+                        { theme: darkTheme, children: React.createElement(SmbConf as any) }
+                    )
+                }
+            )
+        );
+
+        expect(container).toBeTruthy();
+    });
+
+    it("applies custom styling to syntax highlighter", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
@@ -308,8 +350,7 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Check that the component maintains its structure
-        expect(container.children.length).toBeGreaterThanOrEqual(1);
-        expect(container).toBeTruthy();
+        // SyntaxHighlighter should be in the DOM
+        expect(container.querySelector('pre, code')).toBeTruthy();
     });
 });
