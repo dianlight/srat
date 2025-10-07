@@ -158,3 +158,25 @@ func TestExportedShareMultipleUsers(t *testing.T) {
 	assert.False(t, share.Users[0].IsAdmin)
 	assert.True(t, share.Users[2].IsAdmin)
 }
+
+func TestExportedShareBeforeSave_ValidName(t *testing.T) {
+	share := ExportedShare{
+		Name: "valid-share",
+	}
+
+	// Mock GORM DB (nil is acceptable for this test as we only check name validation)
+	err := share.BeforeSave(nil)
+	assert.NoError(t, err)
+}
+
+func TestExportedShareBeforeSave_EmptyName(t *testing.T) {
+	share := ExportedShare{
+		Name: "",
+	}
+
+	// Mock GORM DB
+	err := share.BeforeSave(nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid name")
+}
+
