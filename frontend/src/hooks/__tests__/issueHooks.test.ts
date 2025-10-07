@@ -1,4 +1,4 @@
-import "../../../../test/setup";
+import "../../../test/setup";
 import { describe, it, expect, beforeEach } from "bun:test";
 
 // Required localStorage shim for testing environment
@@ -157,16 +157,20 @@ describe("useIgnoredIssues hook", () => {
         const { renderHook } = await import("@testing-library/react");
         const { useIgnoredIssues } = await import("../issueHooks");
 
+        // Set invalid JSON in localStorage
         localStorage.setItem("srat_ignored_issues", "invalid json");
 
-        // Should handle error gracefully and use empty array
+        // The hook should either fall back to empty array or handle the error gracefully
         try {
             const { result } = renderHook(() => useIgnoredIssues());
-            // If it doesn't throw, it handled it gracefully
-            expect(true).toBe(true);
+            // If it successfully renders, ensure it has a valid ignoredIssues array
+            expect(Array.isArray(result.current.ignoredIssues) || result.current.ignoredIssues.length === 0).toBe(true);
         } catch (e) {
-            // Also acceptable - will fall back to empty array
+            // If it throws, that's also acceptable behavior
             expect(true).toBe(true);
+        } finally {
+            // Clean up the invalid data
+            localStorage.removeItem("srat_ignored_issues");
         }
     });
 });

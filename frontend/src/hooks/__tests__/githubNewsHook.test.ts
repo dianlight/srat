@@ -1,4 +1,4 @@
-import "../../../../test/setup";
+import "../../../test/setup";
 import { describe, it, expect, beforeEach, mock } from "bun:test";
 
 describe("useGithubNews hook", () => {
