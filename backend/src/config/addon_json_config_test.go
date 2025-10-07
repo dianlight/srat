@@ -179,7 +179,7 @@ func TestLoadConfigWithNonReadableFile(t *testing.T) {
 	config := &config.Config{}
 	err = config.LoadConfig(tempFile.Name())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unexpected end of JSON input")
+	assert.Contains(t, err.Error(), "permission denied")
 }
 func TestLoadConfigWithValidFile(t *testing.T) {
 	// Create a temporary file with a valid config

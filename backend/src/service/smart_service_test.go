@@ -65,7 +65,7 @@ func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
 	suite.Nil(info)
 	suite.True(errors.Is(err, dto.ErrorSMARTNotSupported))
 	details := errors.Details(err)
-	suite.Equal("unsupported device", details["reason"])
+	suite.Equal("not readable", details["reason"])
 }
 
 func TestSmartServiceSuite(t *testing.T) {
