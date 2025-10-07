@@ -80,7 +80,7 @@ jobs:
             echo "$releases_to_delete"
             echo ""
 
-            for tag in $releases_to_delete; do
+            for tag in "${releases_to_delete[@]}"; do
               echo "Deleting pre-release: $tag"
               gh release delete "$tag" --repo "$REPO" --yes || {
                 echo "Warning: Failed to delete release $tag. It might not exist or there was a permission issue."
