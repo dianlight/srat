@@ -128,4 +128,45 @@ describe("mdcSlice", () => {
         expect(defaultReducer.default).toBeTruthy();
         expect(typeof defaultReducer.default).toBe("function");
     });
+
+    it("makeUUID generates valid UUID format", async () => {
+        const { mdcSlice } = await import("../mdcSlice");
+        const state = mdcSlice.getInitialState();
+
+        // UUID format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        expect(uuidRegex.test(state.spanId!)).toBe(true);
+        expect(uuidRegex.test(state.traceId!)).toBe(true);
+    });
+
+    it("handles setAllData with null values", async () => {
+        const { mdcSlice } = await import("../mdcSlice");
+        const reducer = mdcSlice.reducer;
+        const initialState = mdcSlice.getInitialState();
+
+        const newData = {
+            spanId: null,
+            traceId: null
+        };
+
+        const setAllData = mdcSlice.actions.setAllData;
+        const newState = reducer(initialState, setAllData(newData));
+
+        expect(newState.spanId).toBeNull();
+        expect(newState.traceId).toBeNull();
+    });
+
+    it("preserves state immutability", async () => {
+        const { mdcSlice, setSpanId } = await import("../mdcSlice");
+        const reducer = mdcSlice.reducer;
+        const initialState = mdcSlice.getInitialState();
+        const originalSpanId = initialState.spanId;
+
+        const newState = reducer(initialState, setSpanId("modified-span"));
+
+        // Original state should not be modified
+        expect(initialState.spanId).toBe(originalSpanId);
+        expect(newState.spanId).toBe("modified-span");
+    });
 });
