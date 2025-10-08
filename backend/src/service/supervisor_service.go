@@ -110,6 +110,27 @@ func (self *SupervisorService) NetworkMountShare(share dto.SharedResource) error
 			return errors.Errorf("Error creating mount %s from ha_supervisor: %w", share.Name, err)
 		}
 		if resp.StatusCode() != 200 {
+			// If we get a 400 error, it might be because a stale systemd unit exists
+			// Try to remove it and retry the mount creation
+			if resp.StatusCode() == 400 {
+				// Attempt to remove the potentially stale mount
+				removeResp, removeErr := self.mount_client.RemoveMountWithResponse(self.apiContext, share.Name)
+				if removeErr == nil && removeResp.StatusCode() == 200 {
+					// Successfully removed, retry creation
+					retryResp, retryErr := self.mount_client.CreateMountWithResponse(self.apiContext, rmount)
+					if retryErr != nil {
+						return errors.Errorf("Error creating mount %s from ha_supervisor after retry: %w", share.Name, retryErr)
+					}
+					if retryResp.StatusCode() == 200 {
+						// Success on retry
+						return nil
+					}
+					// Retry also failed
+					rjson, _ := json.Marshal(rmount)
+					return errors.Errorf("Error creating mount %s from ha_supervisor after removing stale mount: %d \nReq:%#v\nResp:%#v", *rmount.Name, retryResp.StatusCode(), string(rjson), string(retryResp.Body))
+				}
+			}
+			// Original error or retry strategy didn't work
 			rjson, _ := json.Marshal(rmount)
 			//slog.Error("Error creating mount from ha_supervisor", "share", share, "req", string(rjson), "resp", string(resp.Body))
 			return errors.Errorf("Error creating mount %s from ha_supervisor: %d \nReq:%#v\nResp:%#v", *rmount.Name, resp.StatusCode(), string(rjson), string(resp.Body))

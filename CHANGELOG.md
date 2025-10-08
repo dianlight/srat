@@ -49,6 +49,8 @@
 
 ### 🐛 Bug Fixes
 
+- **Mount Creation Retry Logic [#221](https://github.com/dianlight/srat/issues/221)**: Fixed "Error creating mount from ha_supervisor: 400" when systemd unit already exists or has a fragment file. The supervisor service now automatically attempts to remove stale mounts and retry creation when encountering a 400 error during mount creation.
+
 - `enable`/`disable` share functionality is not working as expected.
 - Renaming the admin user does not correctly create the new user or rename the existing one; issues persist until a full addon reboot.
 - Fix dianlight/hassio-addons#448 [SambaNAS2] Unable to create share for mounted volume

@@ -214,3 +214,203 @@ func (suite *SupervisorServiceSuite) TestNetworkGetAllMounted_ErrorFromClient() 
 	suite.Error(err)
 	suite.Nil(mounts)
 }
+
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_CreateSuccess() {
+	// Setup mock responses
+	getMountsResponse := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{},
+			},
+		},
+	}
+
+	createMountResponse := &mount.CreateMountResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok"}`),
+	}
+
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).ThenReturn(createMountResponse, nil)
+	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+
+	// Execute
+	testShare := dto.SharedResource{
+		Name:  "test-share",
+		Usage: "media",
+	}
+	err := suite.supervisorService.NetworkMountShare(testShare)
+
+	// Assert
+	suite.NoError(err)
+	mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+}
+
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetrySuccess() {
+	// Setup mock responses - first create fails with 400, then remove succeeds, then create succeeds
+	getMountsResponse := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{},
+			},
+		},
+	}
+
+	createMountResponse400 := &mount.CreateMountResponse{
+		HTTPResponse: &http.Response{StatusCode: 400},
+		Body:         []byte(`{"result":"error","message":"Could not mount bind_test-share due to: Unit mnt-data-supervisor-media-test-share.mount was already loaded or has a fragment file."}`),
+	}
+
+	removeMountResponse := &mount.RemoveMountResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok"}`),
+	}
+
+	createMountResponse200 := &mount.CreateMountResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok"}`),
+	}
+
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
+	// First create call returns 400
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).
+		ThenReturn(createMountResponse400, nil).
+		ThenReturn(createMountResponse200, nil) // Second call succeeds
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(removeMountResponse, nil)
+	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+
+	// Execute
+	testShare := dto.SharedResource{
+		Name:  "test-share",
+		Usage: "media",
+	}
+	err := suite.supervisorService.NetworkMountShare(testShare)
+
+	// Assert
+	suite.NoError(err)
+	mock.Verify(suite.mountClient, matchers.Times(2)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+}
+
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetryFail() {
+	// Setup mock responses - create fails with 400, remove succeeds, but retry also fails
+	getMountsResponse := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{},
+			},
+		},
+	}
+
+	createMountResponse400 := &mount.CreateMountResponse{
+		HTTPResponse: &http.Response{StatusCode: 400},
+		Body:         []byte(`{"result":"error","message":"Could not mount"}`),
+	}
+
+	removeMountResponse := &mount.RemoveMountResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok"}`),
+	}
+
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).ThenReturn(createMountResponse400, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(removeMountResponse, nil)
+	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+
+	// Execute
+	testShare := dto.SharedResource{
+		Name:  "test-share",
+		Usage: "media",
+	}
+	err := suite.supervisorService.NetworkMountShare(testShare)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "after removing stale mount")
+	mock.Verify(suite.mountClient, matchers.Times(2)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+}
+
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRemoveFail() {
+	// Setup mock responses - create fails with 400, remove also fails
+	getMountsResponse := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{},
+			},
+		},
+	}
+
+	createMountResponse400 := &mount.CreateMountResponse{
+		HTTPResponse: &http.Response{StatusCode: 400},
+		Body:         []byte(`{"result":"error","message":"Could not mount"}`),
+	}
+
+	removeMountResponse500 := &mount.RemoveMountResponse{
+		HTTPResponse: &http.Response{StatusCode: 500},
+		Body:         []byte(`{"result":"error"}`),
+	}
+
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).ThenReturn(createMountResponse400, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(removeMountResponse500, nil)
+	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+
+	// Execute
+	testShare := dto.SharedResource{
+		Name:  "test-share",
+		Usage: "media",
+	}
+	err := suite.supervisorService.NetworkMountShare(testShare)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "Error creating mount")
+	// Only one create attempt since remove failed
+	mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+}
