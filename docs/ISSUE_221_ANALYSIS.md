@@ -1,3 +1,29 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Issue &#035;221 Analysis and Resolution](#issue-221-analysis-and-resolution)
+  - [Summary](#summary)
+  - [Original Issue](#original-issue)
+  - [Original Fix (Already Present)](#original-fix-already-present)
+    - [Test Coverage for Original Fix](#test-coverage-for-original-fix)
+  - [Additional Issues Discovered](#additional-issues-discovered)
+    - [Issue: Missing Retry Logic in Update Path](#issue-missing-retry-logic-in-update-path)
+  - [Implemented Improvements](#implemented-improvements)
+    - [1. Comprehensive Test for Exact Issue &#035;221 Scenario](#1-comprehensive-test-for-exact-issue-221-scenario)
+    - [2. Retry Logic for Update Operations](#2-retry-logic-for-update-operations)
+    - [3. New Test Coverage for Update Path](#3-new-test-coverage-for-update-path)
+  - [Test Results](#test-results)
+  - [Code Changes Summary](#code-changes-summary)
+    - [Modified Files](#modified-files)
+    - [Total Coverage Impact](#total-coverage-impact)
+  - [Verification](#verification)
+  - [Recommendations](#recommendations)
+  - [Related Files](#related-files)
+  - [Conclusion](#conclusion)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Issue #221 Analysis and Resolution
 
 ## Summary
