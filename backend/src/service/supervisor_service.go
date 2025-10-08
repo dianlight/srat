@@ -144,7 +144,35 @@ func (self *SupervisorService) NetworkMountShare(share dto.SharedResource) error
 			return errors.Errorf("Error updating mount %s from ha_supervisor: %w", *rmount.Name, err)
 		}
 		if resp.StatusCode() != 200 {
-			return errors.Errorf("Error updating mount %s from ha_supervisor: %d %#v", *rmount.Name, resp.StatusCode(), string(resp.Body))
+			// If we get a 400 error, it might be because the systemd unit is in a stale state
+			// Try to remove it and recreate the mount (similar to create path)
+			if resp.StatusCode() == 400 {
+				// Attempt to remove the potentially stale mount
+				removeResp, removeErr := self.mount_client.RemoveMountWithResponse(self.apiContext, share.Name)
+				if removeErr == nil && removeResp.StatusCode() == 200 {
+					// Successfully removed, retry by creating a new mount
+					newMount := mount.Mount{}
+					conv.SharedResourceToMount(share, &newMount)
+					newMount.Username = mountUsername
+					newMount.Password = mountPassword
+					newMount.Server = &self.state.AddonIpAddress
+					newMount.Type = pointer.Any(mount.MountType("cifs")).(*mount.MountType)
+
+					retryResp, retryErr := self.mount_client.CreateMountWithResponse(self.apiContext, newMount)
+					if retryErr != nil {
+						return errors.Errorf("Error recreating mount %s from ha_supervisor after update failure: %w", share.Name, retryErr)
+					}
+					if retryResp.StatusCode() == 200 {
+						// Success on retry
+						return nil
+					}
+					// Retry also failed
+					rjson, _ := json.Marshal(newMount)
+					return errors.Errorf("Error recreating mount %s from ha_supervisor after removing stale mount: %d \nReq:%#v\nResp:%#v", share.Name, retryResp.StatusCode(), string(rjson), string(retryResp.Body))
+				}
+			}
+			// Original error or retry strategy didn't work
+			return errors.Errorf("Error updating mount %s from ha_supervisor: %d %#v", share.Name, resp.StatusCode(), string(resp.Body))
 		}
 	}
 	return nil

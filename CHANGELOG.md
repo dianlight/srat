@@ -49,7 +49,11 @@
 
 ### 🐛 Bug Fixes
 
-- **Mount Creation Retry Logic [#221](https://github.com/dianlight/srat/issues/221)**: Fixed "Error creating mount from ha_supervisor: 400" when systemd unit already exists or has a fragment file. The supervisor service now automatically attempts to remove stale mounts and retry creation when encountering a 400 error during mount creation.
+- **Mount Creation and Update Retry Logic [#221](https://github.com/dianlight/srat/issues/221)**: Fixed "Error creating mount from ha_supervisor: 400" when systemd unit already exists or has a fragment file. The supervisor service now automatically attempts to remove stale mounts and retry creation/update when encountering a 400 error. Extended fix includes:
+  - Retry logic for both create and update operations
+  - Comprehensive test coverage for all edge cases
+  - Handles stale systemd units in all mount scenarios
+  - See `/docs/ISSUE_221_ANALYSIS.md` for detailed analysis
 
 - `enable`/`disable` share functionality is not working as expected.
 - Renaming the admin user does not correctly create the new user or rename the existing one; issues persist until a full addon reboot.
