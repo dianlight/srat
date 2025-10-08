@@ -9,90 +9,90 @@ import (
 
 func TestErrorCodes(t *testing.T) {
 	tests := []struct {
-		name          string
-		err           error
-		expectedMsg   string
+		name        string
+		err         error
+		expectedMsg string
 	}{
 		{
-			name:          "ErrorNotFound",
-			err:           ErrorNotFound,
-			expectedMsg:   "Not Found",
+			name:        "ErrorNotFound",
+			err:         ErrorNotFound,
+			expectedMsg: "Not Found",
 		},
 		{
-			name:          "ErrorMountFail",
-			err:           ErrorMountFail,
-			expectedMsg:   "Mount Fail",
+			name:        "ErrorMountFail",
+			err:         ErrorMountFail,
+			expectedMsg: "Mount Fail",
 		},
 		{
-			name:          "ErrorUnmountFail",
-			err:           ErrorUnmountFail,
-			expectedMsg:   "Umount Fail",
+			name:        "ErrorUnmountFail",
+			err:         ErrorUnmountFail,
+			expectedMsg: "Umount Fail",
 		},
 		{
-			name:          "ErrorDeviceNotFound",
-			err:           ErrorDeviceNotFound,
-			expectedMsg:   "Device not found",
+			name:        "ErrorDeviceNotFound",
+			err:         ErrorDeviceNotFound,
+			expectedMsg: "Device not found",
 		},
 		{
-			name:          "ErrorInvalidParameter",
-			err:           ErrorInvalidParameter,
-			expectedMsg:   "Invalid parameter",
+			name:        "ErrorInvalidParameter",
+			err:         ErrorInvalidParameter,
+			expectedMsg: "Invalid parameter",
 		},
 		{
-			name:          "ErrorDatabaseError",
-			err:           ErrorDatabaseError,
-			expectedMsg:   "Database error",
+			name:        "ErrorDatabaseError",
+			err:         ErrorDatabaseError,
+			expectedMsg: "Database error",
 		},
 		{
-			name:          "ErrorShareNotFound",
-			err:           ErrorShareNotFound,
-			expectedMsg:   "Share not found",
+			name:        "ErrorShareNotFound",
+			err:         ErrorShareNotFound,
+			expectedMsg: "Share not found",
 		},
 		{
-			name:          "ErrorShareAlreadyExists",
-			err:           ErrorShareAlreadyExists,
-			expectedMsg:   "Share already exists",
+			name:        "ErrorShareAlreadyExists",
+			err:         ErrorShareAlreadyExists,
+			expectedMsg: "Share already exists",
 		},
 		{
-			name:          "ErrorAlreadyMounted",
-			err:           ErrorAlreadyMounted,
-			expectedMsg:   "Already mounted",
+			name:        "ErrorAlreadyMounted",
+			err:         ErrorAlreadyMounted,
+			expectedMsg: "Already mounted",
 		},
 		{
-			name:          "ErrorUserAlreadyExists",
-			err:           ErrorUserAlreadyExists,
-			expectedMsg:   "User already exists",
+			name:        "ErrorUserAlreadyExists",
+			err:         ErrorUserAlreadyExists,
+			expectedMsg: "User already exists",
 		},
 		{
-			name:          "ErrorUserNotFound",
-			err:           ErrorUserNotFound,
-			expectedMsg:   "User not found",
+			name:        "ErrorUserNotFound",
+			err:         ErrorUserNotFound,
+			expectedMsg: "User not found",
 		},
 		{
-			name:          "ErrorNoUpdateAvailable",
-			err:           ErrorNoUpdateAvailable,
-			expectedMsg:   "No update available for the specified channel and architecture",
+			name:        "ErrorNoUpdateAvailable",
+			err:         ErrorNoUpdateAvailable,
+			expectedMsg: "No update available for the specified channel and architecture",
 		},
 		{
-			name:          "ErrorSMARTNotSupported",
-			err:           ErrorSMARTNotSupported,
-			expectedMsg:   "SMART not supported for this device",
+			name:        "ErrorSMARTNotSupported",
+			err:         ErrorSMARTNotSupported,
+			expectedMsg: "SMART not supported for this device",
 		},
 		{
-			name:          "ErrorOperationNotPermittedInProtectedMode",
-			err:           ErrorOperationNotPermittedInProtectedMode,
-			expectedMsg:   "Operation not permitted in Protected mode",
+			name:        "ErrorOperationNotPermittedInProtectedMode",
+			err:         ErrorOperationNotPermittedInProtectedMode,
+			expectedMsg: "Operation not permitted in Protected mode",
 		},
 		{
-			name:          "ErrorInvalidStateForOperation",
-			err:           ErrorInvalidStateForOperation,
-			expectedMsg:   "Invalid state for operation",
+			name:        "ErrorInvalidStateForOperation",
+			err:         ErrorInvalidStateForOperation,
+			expectedMsg: "Invalid state for operation",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NotNil(t, tt.err)
+			assert.Error(t, tt.err)
 			assert.Contains(t, tt.err.Error(), tt.expectedMsg)
 		})
 	}

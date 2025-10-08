@@ -219,5 +219,5 @@ func TestPropertyRepository_EmptyDatabase(t *testing.T) {
 	// Get all from empty database
 	props, err := repo.All(false)
 	require.NoError(t, err)
-	assert.Len(t, props, 0)
+	assert.Empty(t, props)
 }

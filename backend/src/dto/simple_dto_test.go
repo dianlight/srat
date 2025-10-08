@@ -215,7 +215,7 @@ server string = {{ .ServerString }}
 	}
 
 	assert.NotNil(t, ctx.Template)
-	assert.Greater(t, len(ctx.Template), 0)
+	assert.NotEmpty(t, ctx.Template)
 	assert.Contains(t, string(ctx.Template), "{{ .Workgroup }}")
 }
 

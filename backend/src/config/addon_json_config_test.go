@@ -225,25 +225,25 @@ func TestBuildVersion(t *testing.T) {
 	origVersion := config.Version
 	origCommit := config.CommitHash
 	origTimestamp := config.BuildTimestamp
-	
+
 	// Restore original values after test
 	defer func() {
 		config.Version = origVersion
 		config.CommitHash = origCommit
 		config.BuildTimestamp = origTimestamp
 	}()
-	
+
 	// Test with default values
 	result := config.BuildVersion()
 	assert.Contains(t, result, config.Version)
 	assert.Contains(t, result, config.CommitHash)
 	assert.Contains(t, result, config.BuildTimestamp)
-	
+
 	// Test with custom values
 	config.Version = "1.2.3"
 	config.CommitHash = "abc123"
 	config.BuildTimestamp = "2025-01-01T00:00:00Z"
-	
+
 	result = config.BuildVersion()
 	expected := "1.2.3 (abc123 2025-01-01T00:00:00Z)"
 	assert.Equal(t, expected, result)

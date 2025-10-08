@@ -39,7 +39,7 @@ func TestIssueDefaults(t *testing.T) {
 	}
 
 	assert.Equal(t, "Default Issue", issue.Title)
-	assert.Equal(t, "", issue.Description)
+	assert.Empty(t, issue.Description)
 	assert.Equal(t, uint(0), issue.Repeating)
 	assert.False(t, issue.Ignored)
 	assert.Nil(t, issue.Severity)

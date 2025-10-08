@@ -55,8 +55,8 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_Success() {
 		HTTPResponse: &http.Response{StatusCode: 200},
 		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
 		JSON200: &struct {
-			Data   *hardware.HardwareInfo                  `json:"data,omitempty"`
-			Result *hardware.GetHardwareInfo200Result      `json:"result,omitempty"`
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
 		}{
 			Data: &hardware.HardwareInfo{
 				Drives: &[]hardware.Drive{
@@ -92,8 +92,8 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_EmptyDrives() {
 		HTTPResponse: &http.Response{StatusCode: 200},
 		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
 		JSON200: &struct {
-			Data   *hardware.HardwareInfo                  `json:"data,omitempty"`
-			Result *hardware.GetHardwareInfo200Result      `json:"result,omitempty"`
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
 		}{
 			Data: &hardware.HardwareInfo{
 				Drives:  &[]hardware.Drive{},
@@ -110,7 +110,7 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_EmptyDrives() {
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(disks)
-	suite.Len(disks, 0)
+	suite.Empty(disks)
 }
 
 func (suite *HardwareServiceSuite) TestGetHardwareInfo_ErrorResponse() {
@@ -136,8 +136,8 @@ func (suite *HardwareServiceSuite) TestInvalidateHardwareInfo() {
 		HTTPResponse: &http.Response{StatusCode: 200},
 		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
 		JSON200: &struct {
-			Data   *hardware.HardwareInfo                  `json:"data,omitempty"`
-			Result *hardware.GetHardwareInfo200Result      `json:"result,omitempty"`
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
 		}{
 			Data: &hardware.HardwareInfo{
 				Drives:  &[]hardware.Drive{},
@@ -181,8 +181,8 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_SkipsDrivesWithoutFilesys
 		HTTPResponse: &http.Response{StatusCode: 200},
 		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
 		JSON200: &struct {
-			Data   *hardware.HardwareInfo                  `json:"data,omitempty"`
-			Result *hardware.GetHardwareInfo200Result      `json:"result,omitempty"`
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
 		}{
 			Data: &hardware.HardwareInfo{
 				Drives: &[]hardware.Drive{
@@ -208,6 +208,5 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_SkipsDrivesWithoutFilesys
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(disks)
-	suite.Len(disks, 0) // Should skip drives without filesystems
+	suite.Empty(disks) // Should skip drives without filesystems
 }
-

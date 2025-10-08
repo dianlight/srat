@@ -108,4 +108,3 @@ func TestMountPointPathWithValidCharacters(t *testing.T) {
 		})
 	}
 }
-

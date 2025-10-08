@@ -96,13 +96,13 @@ func (suite *SupervisorServiceSuite) TestNetworkGetAllMounted_Success() {
 		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
 		JSON200: &struct {
 			Data *struct {
-				DefaultBackupMount *string      `json:"default_backup_mount,omitempty"`
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
 				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
 			} `json:"data,omitempty"`
 			Result *mount.GetMounts200Result `json:"result,omitempty"`
 		}{
 			Data: &struct {
-				DefaultBackupMount *string      `json:"default_backup_mount,omitempty"`
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
 				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
 			}{
 				Mounts: &[]mount.Mount{
@@ -214,4 +214,3 @@ func (suite *SupervisorServiceSuite) TestNetworkGetAllMounted_ErrorFromClient() 
 	suite.Error(err)
 	suite.Nil(mounts)
 }
-

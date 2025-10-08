@@ -25,7 +25,7 @@ func TestNewHumaAPI(t *testing.T) {
 		),
 		fx.Populate(&api),
 	)
-	
+
 	app.RequireStart()
 	assert.NotNil(t, api)
 	app.RequireStop()
@@ -36,7 +36,7 @@ func TestAsHumaRoute(t *testing.T) {
 	result := server.AsHumaRoute(func() server.HumaRoute {
 		return &TestHumaRoute{}
 	})
-	
+
 	assert.NotNil(t, result)
 }
 
@@ -53,7 +53,7 @@ func TestNewHumaAPIWithRoutes(t *testing.T) {
 		),
 		fx.Populate(&api),
 	)
-	
+
 	app.RequireStart()
 	assert.NotNil(t, api)
 	app.RequireStop()

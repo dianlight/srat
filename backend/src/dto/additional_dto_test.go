@@ -375,7 +375,7 @@ func TestWelcome_AllFields(t *testing.T) {
 	assert.NotNil(t, welcome.MachineId)
 	assert.Equal(t, "abc123", *welcome.MachineId)
 	assert.True(t, welcome.SecureMode)
-	assert.Greater(t, welcome.StartTime, int64(0))
+	assert.Positive(t, welcome.StartTime)
 }
 
 func TestWelcome_NilMachineID(t *testing.T) {
@@ -420,7 +420,7 @@ func TestHealthPing_AllFields(t *testing.T) {
 	}
 
 	assert.True(t, health.Alive)
-	assert.Greater(t, health.AliveTime, int64(0))
+	assert.Positive(t, health.AliveTime)
 	assert.True(t, health.SambaProcessStatus.Smbd.IsRunning)
 	assert.Empty(t, health.LastError)
 	assert.True(t, health.Dirty.Shares)

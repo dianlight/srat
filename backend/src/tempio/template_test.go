@@ -211,4 +211,3 @@ func TestRenderTemplateBufferWithExecuteError(t *testing.T) {
 	_, err := RenderTemplateBuffer(&data, template)
 	require.Error(t, err)
 }
-

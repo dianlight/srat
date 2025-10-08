@@ -23,7 +23,7 @@ func TestLoadMountInfoWithMock(t *testing.T) {
 	assert.Equal(t, "ext4", root.FsType)
 	assert.Equal(t, "/dev/root", root.MountSource)
 	require.Contains(t, root.MountOptions, "rw")
-	assert.Equal(t, "", root.MountOptions["rw"])
+	assert.Empty(t, root.MountOptions["rw"])
 	require.Contains(t, root.MountOptions, "nosuid")
 
 	data := entries[1]
@@ -54,8 +54,8 @@ func TestIsMounted(t *testing.T) {
 
 func TestParseHelpers(t *testing.T) {
 	opts := parseOptions("rw,noatime,uid=1000")
-	assert.Equal(t, "", opts["rw"])
-	assert.Equal(t, "", opts["noatime"])
+	assert.Empty(t, opts["rw"])
+	assert.Empty(t, opts["noatime"])
 	assert.Equal(t, "1000", opts["uid"])
 
 	optional := parseOptional("shared:5 master:1")
@@ -95,15 +95,15 @@ func TestParseOptionsEmpty(t *testing.T) {
 func TestParseOptionsSingleValue(t *testing.T) {
 	opts := parseOptions("rw")
 	assert.Len(t, opts, 1)
-	assert.Equal(t, "", opts["rw"])
+	assert.Empty(t, opts["rw"])
 }
 
 func TestParseOptionsMultipleValues(t *testing.T) {
 	opts := parseOptions("rw,nosuid,nodev,uid=1000,gid=100")
 	assert.Len(t, opts, 5)
-	assert.Equal(t, "", opts["rw"])
-	assert.Equal(t, "", opts["nosuid"])
-	assert.Equal(t, "", opts["nodev"])
+	assert.Empty(t, opts["rw"])
+	assert.Empty(t, opts["nosuid"])
+	assert.Empty(t, opts["nodev"])
 	assert.Equal(t, "1000", opts["uid"])
 	assert.Equal(t, "100", opts["gid"])
 }

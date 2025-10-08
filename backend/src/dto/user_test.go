@@ -145,9 +145,9 @@ func TestUserMultipleShares(t *testing.T) {
 		IsAdmin:  false,
 	}
 
-	assert.Equal(t, 5, len(user.RwShares))
-	assert.Equal(t, 2, len(user.RoShares))
-	
+	assert.Len(t, user.RwShares, 5)
+	assert.Len(t, user.RoShares, 2)
+
 	// Verify all shares are present
 	for i := 1; i <= 5; i++ {
 		assert.Contains(t, user.RwShares, "share"+string(rune('0'+i)))

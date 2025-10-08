@@ -217,6 +217,3 @@ func (suite *IssueServiceSuite) TestUpdateError() {
 	suite.Nil(result)
 	mock.Verify(suite.issueRepo, matchers.Times(1)).Update(mock.Any[*dbom.Issue]())
 }
-
-
-

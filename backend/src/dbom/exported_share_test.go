@@ -179,4 +179,3 @@ func TestExportedShareBeforeSave_EmptyName(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid name")
 }
-

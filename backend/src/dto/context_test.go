@@ -87,13 +87,13 @@ func TestHealthPing(t *testing.T) {
 		Shares: true,
 		Users:  false,
 	}
-	
+
 	healthPing := dto.HealthPing{
-		Alive:       true,
-		AliveTime:   123456789,
-		LastError:   "no error",
-		Dirty:       tracker,
-		Uptime:      3600,
+		Alive:     true,
+		AliveTime: 123456789,
+		LastError: "no error",
+		Dirty:     tracker,
+		Uptime:    3600,
 	}
 
 	assert.True(t, healthPing.Alive)
