@@ -116,10 +116,17 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		go ms.NotifyClient()
 	}()
 
+	// Early validation of required fields
 	if ms.state.ProtectedMode {
 		return errors.WithDetails(dto.ErrorOperationNotPermittedInProtectedMode,
 			"Operation", "MountVolume",
 			"Detail", "Mount operation is not permitted when ProtectedMode is enabled.",
+		)
+	}
+
+	if md == nil {
+		return errors.WithDetails(dto.ErrorInvalidParameter,
+			"Message", "MountPointData is nil",
 		)
 	}
 
@@ -130,6 +137,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"Message", "Mount point path is empty",
 		)
 	}
+
 	if md.DeviceId == "" {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
 			"DeviceId", md.DeviceId,
@@ -138,6 +146,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
+	// Validate Partition data
 	if md.Partition == nil {
 		// Populate partition from disk
 		disks, err := ms.hardwareClient.GetHardwareInfo()
@@ -155,7 +164,15 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		}
 	}
 
-	if md.Partition == nil || md.Partition.DevicePath == nil || *md.Partition.DevicePath == "" {
+	if md.Partition == nil {
+		return errors.WithDetails(dto.ErrorDeviceNotFound,
+			"DeviceId", md.DeviceId,
+			"Path", md.Path,
+			"Message", "Source device does not exist on the system",
+		)
+	}
+
+	if md.Partition.DevicePath == nil || *md.Partition.DevicePath == "" {
 		return errors.WithDetails(dto.ErrorDeviceNotFound,
 			"DeviceId", md.DeviceId,
 			"Path", md.Path,
@@ -305,6 +322,12 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		}
 	}
 
+	// Initialize flags if nil to avoid nil pointer dereference
+	if md.Flags == nil {
+		md.Flags = &dto.MountFlags{}
+		slog.Debug("Initialized nil Flags to empty MountFlags", "device", md.DeviceId, "path", md.Path)
+	}
+
 	flags, data, err := ms.fs_service.MountFlagsToSyscallFlagAndData(*md.Flags)
 	if err != nil {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
@@ -321,6 +344,15 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 	// Ensure secure directory permissions when creating mount point
 	mountFunc := func() error { return os.MkdirAll(md.Path, 0o750) }
 
+	// Final validation before mount - ensure DevicePath is not nil
+	if md.Partition.DevicePath == nil || *md.Partition.DevicePath == "" {
+		return errors.WithDetails(dto.ErrorDeviceNotFound,
+			"DeviceId", md.DeviceId,
+			"Path", md.Path,
+			"Message", "Device path is nil or empty, cannot mount",
+		)
+	}
+
 	if md.FSType == nil || *md.FSType == "" {
 		// Use TryMount if FSType is not specified
 		mp, errS = mount.TryMount(*md.Partition.DevicePath, md.Path, data, flags, mountFunc)
@@ -330,16 +362,45 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 	}
 
 	if errS != nil {
-		slog.Error("Failed to mount volume", "device", md.DeviceId, "fstype", md.FSType, "path", md.Path, "flags", flags, "err", errS, "mountpoint_details", mp)
-		// Attempt to clean up directory if we created it and mount failed? Optional.
-		// os.Remove(md.Path)
+		// Provide detailed error message with all context
+		devicePath := ""
+		if md.Partition != nil && md.Partition.DevicePath != nil {
+			devicePath = *md.Partition.DevicePath
+		}
+		fsTypeStr := "auto"
+		if md.FSType != nil {
+			fsTypeStr = *md.FSType
+		}
+
+		slog.Error("Failed to mount volume",
+			"device_id", md.DeviceId,
+			"device_path", devicePath,
+			"fstype", fsTypeStr,
+			"mount_path", md.Path,
+			"flags", flags,
+			"data", data,
+			"mount_error", errS,
+			"mountpoint_details", mp)
+
+		// Attempt to clean up directory if we created it and mount failed
+		if _, statErr := os.Stat(md.Path); statErr == nil {
+			// Directory exists, try to remove it
+			if removeErr := os.Remove(md.Path); removeErr != nil {
+				slog.Warn("Failed to cleanup mount directory after mount failure",
+					"path", md.Path,
+					"cleanup_error", removeErr)
+			}
+		}
+
 		return errors.WithDetails(dto.ErrorMountFail,
-			"Detail", "Mount command failed",
-			"Device", md.DeviceId,
-			"Path", md.Path,
-			"FSType", md.FSType,
+			"Detail", fmt.Sprintf("Mount command failed: %v", errS),
+			"DeviceId", md.DeviceId,
+			"DevicePath", devicePath,
+			"MountPath", md.Path,
+			"FSType", fsTypeStr,
 			"Flags", flags,
-			"Error", errS,
+			"Data", data,
+			"Error", errS.Error(),
 		)
 	} else {
 		slog.Info("Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", mp.Flags, "data", mp.Data)
