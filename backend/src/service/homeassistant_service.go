@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/core_api"
@@ -24,10 +26,12 @@ type HomeAssistantServiceInterface interface {
 }
 
 type HomeAssistantService struct {
-	ctx        context.Context
-	state      *dto.ContextState
-	coreClient core_api.ClientWithResponsesInterface
-	propRepo   repository.PropertyRepositoryInterface
+	ctx                     context.Context
+	state                   *dto.ContextState
+	coreClient              core_api.ClientWithResponsesInterface
+	propRepo                repository.PropertyRepositoryInterface
+	notificationTracker     map[string]string // Maps notificationID to last sent date
+	notificationTrackerLock sync.RWMutex
 }
 
 type HomeAssistantServiceParams struct {
@@ -40,10 +44,11 @@ type HomeAssistantServiceParams struct {
 
 func NewHomeAssistantService(params HomeAssistantServiceParams) HomeAssistantServiceInterface {
 	return &HomeAssistantService{
-		ctx:        params.Ctx,
-		state:      params.State,
-		coreClient: params.CoreClient,
-		propRepo:   params.PropRepo,
+		ctx:                 params.Ctx,
+		state:               params.State,
+		coreClient:          params.CoreClient,
+		propRepo:            params.PropRepo,
+		notificationTracker: make(map[string]string),
 	}
 }
 
@@ -585,20 +590,37 @@ func (s *HomeAssistantService) CreatePersistentNotification(notificationID, titl
 		return nil
 	}
 
+	// Check if notification was already sent today
+	today := time.Now().Format("2006-01-02")
+
+	s.notificationTrackerLock.RLock()
+	lastSent, exists := s.notificationTracker[notificationID]
+	s.notificationTrackerLock.RUnlock()
+
+	if exists && lastSent == today {
+		slog.Debug("Skipping notification - already sent today", "notification_id", notificationID, "date", today)
+		return nil
+	}
+
 	serviceData := core_api.ServiceData{
 		NotificationId: &notificationID,
 		Title:          &title,
 		Message:        &message,
 	}
 
-	resp, err := s.coreClient.CallServiceWithResponse(s.ctx, "persistent_notification", "create", serviceData)
-	if err != nil {
-		return errors.Wrap(err, "failed to call persistent_notification.create service")
+	resp, err2 := s.coreClient.CallServiceWithResponse(s.ctx, "persistent_notification", "create", serviceData)
+	if err2 != nil {
+		return errors.Wrap(err2, "failed to call persistent_notification.create service")
 	}
 
 	if resp.HTTPResponse.StatusCode < 200 || resp.HTTPResponse.StatusCode >= 300 {
 		return errors.Errorf("failed to create persistent notification: HTTP %d", resp.HTTPResponse.StatusCode)
 	}
+
+	// Track that notification was sent today
+	s.notificationTrackerLock.Lock()
+	s.notificationTracker[notificationID] = today
+	s.notificationTrackerLock.Unlock()
 
 	slog.Debug("Created persistent notification in Home Assistant", "notification_id", notificationID, "title", title)
 	return nil
@@ -622,6 +644,11 @@ func (s *HomeAssistantService) DismissPersistentNotification(notificationID stri
 	if resp.HTTPResponse.StatusCode < 200 || resp.HTTPResponse.StatusCode >= 300 {
 		return errors.Errorf("failed to dismiss persistent notification: HTTP %d", resp.HTTPResponse.StatusCode)
 	}
+
+	// Clear tracking to allow recreation on the same day
+	s.notificationTrackerLock.Lock()
+	delete(s.notificationTracker, notificationID)
+	s.notificationTrackerLock.Unlock()
 
 	slog.Debug("Dismissed persistent notification in Home Assistant", "notification_id", notificationID)
 	return nil
