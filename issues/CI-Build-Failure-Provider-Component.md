@@ -1,3 +1,16 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [CI Build Failure Issue](#ci-build-failure-issue)
+  - [Description](#description)
+  - [Affected Test Files](#affected-test-files)
+  - [Error Details](#error-details)
+  - [Proposed Fix](#proposed-fix)
+  - [Next Steps](#next-steps)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## CI Build Failure Issue
 
 ### Description
