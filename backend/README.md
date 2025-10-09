@@ -6,6 +6,8 @@
 
 - [CLI Commands](#cli-commands)
   - [Database Requirements](#database-requirements)
+    - [Examples](#examples)
+  - [OpenAPI Generation](#openapi-generation)
 - [Security scanning](#security-scanning)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
