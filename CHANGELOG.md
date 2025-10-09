@@ -4,6 +4,10 @@
 
 ## [ 🚧 Unreleased ]
 
+### 🔄 Breaking Changes
+
+- **Rollbar v3.0.0-beta.4 Migration**: Updated Rollbar session replay configuration from `recorder` to `replay` to align with Rollbar.js v3.0.0-beta.4. This is an internal configuration change that does not affect end users.
+
 ### ✨ Features
 
 - **Reduced Database Dependencies [#208](https://github.com/dianlight/srat/issues/208)**: Optimized CLI command database requirements:
