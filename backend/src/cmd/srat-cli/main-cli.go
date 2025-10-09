@@ -238,14 +238,34 @@ func main() {
 		StaticConfig: &staticConfig,
 	}
 
-	// New FX
-	app := fx.New(
-		appsetup.NewFXLoggerOption(),
-		appsetup.ProvideCoreDependencies(appParams),
-		appsetup.ProvideHAClientDependencies(appParams), // CLI needs HA clients
-		appsetup.ProvideFrontendOption(),                // For template data, etc.
-		appsetup.ProvideCyclicDependencyWorkaroundOption(),
-		fx.Invoke(func(
+	// Determine if we need database access based on command
+	// Only version command doesn't need DB
+	// upgrade command needs DB but can use in-memory DB (default flag value)
+	needsDB := command != "version"
+
+	// Build FX options based on command requirements
+	var fxOptions []fx.Option
+	fxOptions = append(fxOptions, appsetup.NewFXLoggerOption())
+
+	if needsDB {
+		// Commands that need database access (start, stop, upgrade)
+		fxOptions = append(fxOptions,
+			appsetup.ProvideCoreDependencies(appParams),
+			appsetup.ProvideHAClientDependencies(appParams),
+			appsetup.ProvideFrontendOption(),
+			appsetup.ProvideCyclicDependencyWorkaroundOption(),
+		)
+	} else {
+		// Commands that don't need database (version only)
+		fxOptions = append(fxOptions,
+			appsetup.ProvideCoreDependenciesWithoutDB(appParams),
+		)
+	}
+
+	// Add command-specific invocations
+	// First Invoke: JSON migration (only for start command)
+	if command == "start" {
+		fxOptions = append(fxOptions, fx.Invoke(func(
 			mount_repo repository.MountPointPathRepositoryInterface,
 			props_repo repository.PropertyRepositoryInterface,
 			share_repo repository.ExportedShareRepositoryInterface,
@@ -298,8 +318,12 @@ func main() {
 				*/
 
 			}
-		}),
-		fx.Invoke(func(
+		}))
+	}
+
+	// Second Invoke: Main command logic
+	if needsDB {
+		fxOptions = append(fxOptions, fx.Invoke(func(
 			lc fx.Lifecycle,
 			mount_repo repository.MountPointPathRepositoryInterface,
 			props_repo repository.PropertyRepositoryInterface,
@@ -435,15 +459,10 @@ func main() {
 							slog.Error("Error parsing upgrade channel", "err", ett)
 							return nil
 						}
-						ett = props_repo.SetValue("UpdateChannel", updch)
-						if ett != nil {
-							slog.Error("Error setting upgrade channel", "err", ett)
-							return nil
-						}
 
 						if updch == dto.UpdateChannels.DEVELOP {
 							slog.Info("Attempting local update for DEVELOP channel.")
-							err = upgrade_service.InstallUpdateLocal(&updch)
+							err := upgrade_service.InstallUpdateLocal(&updch)
 							if err != nil {
 								if errors.Is(err, dto.ErrorNoUpdateAvailable) {
 									slog.Info("No local update found or directory missing.")
@@ -454,12 +473,6 @@ func main() {
 								slog.Info("Local update installed successfully. Please restart the application.")
 							}
 						} else {
-							err = props_repo.SetValue("UpdateChannel", updch)
-							if err != nil {
-								slog.Error("Error setting upgrade channel", "err", err)
-								return nil
-							}
-
 							asset, err := upgrade_service.GetUpgradeReleaseAsset(&updch)
 							if err != nil {
 								if errors.Is(err, dto.ErrorNoUpdateAvailable) {
@@ -472,7 +485,6 @@ func main() {
 								updatePkg, errDownload := upgrade_service.DownloadAndExtractBinaryAsset(asset.ArchAsset)
 								if errDownload != nil {
 									slog.Error("Error downloading or extracting update", "err", errDownload)
-									// os.RemoveAll(updatePkg.TempDirPath) // Ensure cleanup on error if updatePkg is not nil
 								} else {
 									slog.Info("Update downloaded and extracted successfully", "temp_dir", updatePkg.TempDirPath)
 									if updatePkg.CurrentExecutablePath != nil {
@@ -498,8 +510,14 @@ func main() {
 				},
 			})
 
-		}),
-	)
+		}))
+	} else {
+		// Commands that don't need database (version only)
+		// Version command exits early, so this block is actually not used
+	}
+
+	// Create FX app with all options
+	app := fx.New(fxOptions...)
 
 	if err := app.Err(); err != nil { // Check for errors from Provide functions
 		log.Fatalf("Error during FX setup: %v", err)

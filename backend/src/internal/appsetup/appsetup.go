@@ -89,6 +89,16 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 	)
 }
 
+// ProvideCoreDependenciesWithoutDB provides FX options for core services without database dependencies.
+// This is useful for commands that truly don't need database access (e.g., version only).
+func ProvideCoreDependenciesWithoutDB(params BaseAppParams) fx.Option {
+	return fx.Provide(
+		func() *slog.Logger { return slog.Default() },
+		func() (context.Context, context.CancelFunc) { return params.Ctx, params.CancelFn },
+		func() *dto.ContextState { return params.StaticConfig },
+	)
+}
+
 // ProvideHAClientDependencies provides FX options for Home Assistant API clients.
 func ProvideHAClientDependencies(params BaseAppParams) fx.Option {
 	return fx.Provide(
