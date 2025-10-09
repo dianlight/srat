@@ -7,7 +7,7 @@
 [![GitHub](https://img.shields.io/github/license/dianlight/srat)](https://img.shields.io/github/license/dianlight/srat)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
-[![Backend Unit Test Coverage](https://img.shields.io/badge/Backend_Unit_Tests-40.4%25-yellow?logo=go)](docs/TEST_COVERAGE.md "Backend Go unit test coverage")
+[![Backend Unit Test Coverage](https://img.shields.io/badge/Backend_Unit_Tests-40.5%25-yellow?logo=go)](docs/TEST_COVERAGE.md "Backend Go unit test coverage")
 [![Frontend Unit Test Coverage](https://img.shields.io/badge/Frontend_Unit_Tests-74.83%25-green?logo=typescript)](docs/TEST_COVERAGE.md "Frontend TypeScript unit test coverage")
 [![Global Unit Test Coverage](https://img.shields.io/badge/Global_Unit_Tests-54.2%25-yellow)](docs/TEST_COVERAGE.md "Overall unit test coverage (weighted average)")
 
