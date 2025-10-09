@@ -6,6 +6,12 @@
 
 ### ✨ Features
 
+- **Reduced Database Dependencies [#issue-number](https://github.com/dianlight/srat/issues/issue-number)**: Optimized CLI command database requirements:
+  - **version command**: No database needed - runs without any DB initialization
+  - **upgrade command**: Uses in-memory database by default - no file path required  
+  - **start/stop commands**: Continue to require persistent database file
+  - Improved startup performance for version checks
+  - Simplified command-line usage for common operations
 - **SMB over QUIC Support [#227](https://github.com/dianlight/srat/issues/227)**: Added comprehensive support for SMB over QUIC transport protocol with intelligent system detection:
   - **Samba Version Check**: Requires Samba 4.23.0 or later for QUIC support
   - **Kernel Module Detection**: Automatically detects QUIC kernel module (`quic` or `net_quic`) availability
