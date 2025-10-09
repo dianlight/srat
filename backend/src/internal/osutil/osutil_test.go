@@ -246,3 +246,50 @@ func TestIsSambaVersionSufficient(t *testing.T) {
 	}
 	// If error, it's OK - Samba might not be installed in test environment
 }
+
+func TestGenerateSecurePassword(t *testing.T) {
+	// Test basic generation
+	password, err := GenerateSecurePassword()
+	require.NoError(t, err)
+	assert.NotEmpty(t, password, "Generated password should not be empty")
+
+	// Password should be base64-encoded string (no padding, URL-safe)
+	// 16 bytes = 22 characters in base64 without padding
+	assert.Len(t, password, 22, "Password should be 22 characters long")
+
+	// Test uniqueness - generate multiple passwords and ensure they're different
+	passwords := make(map[string]bool)
+	for i := 0; i < 100; i++ {
+		pwd, err := GenerateSecurePassword()
+		require.NoError(t, err)
+		passwords[pwd] = true
+	}
+	assert.Len(t, passwords, 100, "All 100 generated passwords should be unique")
+}
+
+func TestGenerateSecurePasswordCharacterSet(t *testing.T) {
+	// Generate a password and verify it only contains valid base64 URL-safe characters
+	// Valid characters: A-Z, a-z, 0-9, -, _
+	password, err := GenerateSecurePassword()
+	require.NoError(t, err)
+
+	for _, char := range password {
+		assert.True(t,
+			(char >= 'A' && char <= 'Z') ||
+				(char >= 'a' && char <= 'z') ||
+				(char >= '0' && char <= '9') ||
+				char == '-' || char == '_',
+			"Password should only contain base64 URL-safe characters, found: %c", char)
+	}
+}
+
+func TestGenerateSecurePasswordNoSpecialChars(t *testing.T) {
+	// Verify no padding or special characters that might cause issues
+	password, err := GenerateSecurePassword()
+	require.NoError(t, err)
+
+	// Should not contain padding (=) or standard base64 special chars (+, /)
+	assert.NotContains(t, password, "=", "Password should not contain padding")
+	assert.NotContains(t, password, "+", "Password should not contain +")
+	assert.NotContains(t, password, "/", "Password should not contain /")
+}

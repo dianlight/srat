@@ -28,7 +28,6 @@ require (
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/k0kubun/pp/v3 v3.5.0
 	github.com/lonegunmanb/go-defaults v1.4.0
-	github.com/m1/go-generate-password v0.2.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/procfs v0.17.0
@@ -173,3 +172,7 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
+
+replace github.com/zarldev/goenums => /home/runner/gohack/github.com/zarldev/goenums
+
+replace github.com/jpillora/overseer => /home/runner/gohack/github.com/jpillora/overseer

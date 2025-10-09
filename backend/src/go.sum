@@ -252,8 +252,6 @@ github.com/lonegunmanb/go-defaults v1.4.0 h1:Lf/wnb28dYqoUdpRTL+e+bFkW79ThpSH7Aw
 github.com/lonegunmanb/go-defaults v1.4.0/go.mod h1:TwYUNCQyY/Qz5UzoH5Nlj7YPIT4EkgNANrPN8U9h9MU=
 github.com/lufia/plan9stats v0.0.0-20250827001030-24949be3fa54 h1:mFWunSatvkQQDhpdyuFAYwyAan3hzCuma+Pz8sqvOfg=
 github.com/lufia/plan9stats v0.0.0-20250827001030-24949be3fa54/go.mod h1:autxFIvghDt3jPTLoqZ9OZ7s9qTGNAWmYCjVFWPX/zg=
-github.com/m1/go-generate-password v0.2.0 h1:T4IJy8tzv9Svjn7obm+tNmfcWd31WYeTgNxH2BhliyM=
-github.com/m1/go-generate-password v0.2.0/go.mod h1:QLABVln3jsxIksMUjRv4UXi6f+1cQ3rnfj28nADpCgk=
 github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0=
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/makeworld-the-better-one/dither/v2 v2.4.0 h1:Az/dYXiTcwcRSe59Hzw4RI1rSnAZns+1msaCXetrMFE=
