@@ -2,6 +2,8 @@ package osutil
 
 import (
 	"bufio"
+	"crypto/rand"
+	"encoding/base64"
 	"io"
 	"os"
 	"os/exec"
@@ -227,4 +229,21 @@ func IsSambaVersionSufficient() (bool, error) {
 	}
 
 	return false, nil
+}
+
+// GenerateSecurePassword generates a cryptographically secure random password.
+// It uses crypto/rand to generate random bytes and encodes them in base64.
+// The resulting password will be approximately 22 characters long (16 bytes * 4/3).
+func GenerateSecurePassword() (string, error) {
+	// Generate 16 random bytes (128 bits of entropy)
+	randomBytes := make([]byte, 16)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return "", err
+	}
+
+	// Encode to base64 for a safe password string
+	// Using RawURLEncoding to avoid padding and make it URL-safe
+	password := base64.RawURLEncoding.EncodeToString(randomBytes)
+	return password, nil
 }

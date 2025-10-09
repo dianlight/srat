@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/m1/go-generate-password/generator"
 	"gitlab.com/tozd/go/errors"
 
 	"github.com/dianlight/srat/config"
@@ -20,6 +19,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/internal/appsetup"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/templates"
@@ -273,16 +273,12 @@ func main() {
 						log.Fatalf("Cant load default config from buffer %#+v", err)
 					}
 				}
-				pwdgen, err := generator.NewWithDefault()
-				if err != nil {
-					log.Fatalf("Cant generate password %#+v", err)
-				}
-				_ha_mount_user_password_, err := pwdgen.Generate()
+				_ha_mount_user_password_, err := osutil.GenerateSecurePassword()
 				if err != nil {
 					log.Fatalf("Cant generate password %#+v", err)
 				}
 
-				err = unixsamba.CreateSambaUser("_ha_mount_user_", *_ha_mount_user_password_, unixsamba.UserOptions{
+				err = unixsamba.CreateSambaUser("_ha_mount_user_", _ha_mount_user_password_, unixsamba.UserOptions{
 					CreateHome:    false,
 					SystemAccount: false,
 					Shell:         "/sbin/nologin",
