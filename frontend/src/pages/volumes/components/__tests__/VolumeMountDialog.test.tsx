@@ -31,11 +31,10 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(VolumeMountDialog as any, {
+                { store, children: React.createElement(VolumeMountDialog as any, {
                     open: true,
                     onClose: mockClose
-                })
+                }) }
             )
         );
 
@@ -57,11 +56,10 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(VolumeMountDialog as any, {
+                { store, children: React.createElement(VolumeMountDialog as any, {
                     open: false,
                     onClose: mockClose
-                })
+                }) }
             )
         );
 
@@ -81,11 +79,10 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(VolumeMountDialog as any, {
+                { store, children: React.createElement(VolumeMountDialog as any, {
                     open: true,
                     onClose: mockClose
-                })
+                }) }
             )
         );
 
@@ -118,12 +115,11 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(VolumeMountDialog as any, {
+                { store, children: React.createElement(VolumeMountDialog as any, {
                     open: true,
                     onClose: mockClose,
                     objectToEdit: mockPartition
-                })
+                }) }
             )
         );
 
@@ -143,12 +139,11 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(VolumeMountDialog as any, {
+                { store, children: React.createElement(VolumeMountDialog as any, {
                     open: true,
                     onClose: mockClose,
                     readOnlyView: true
-                })
+                }) }
             )
         );
 
@@ -168,11 +163,10 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(VolumeMountDialog as any, {
+                { store, children: React.createElement(VolumeMountDialog as any, {
                     open: true,
                     onClose: mockClose
-                })
+                }) }
             )
         );
 
@@ -194,11 +188,10 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(VolumeMountDialog as any, {
+                { store, children: React.createElement(VolumeMountDialog as any, {
                     open: true,
                     onClose: mockClose
-                })
+                }) }
             )
         );
 
@@ -220,11 +213,10 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(VolumeMountDialog as any, {
+                { store, children: React.createElement(VolumeMountDialog as any, {
                     open: true,
                     onClose: mockClose
-                })
+                }) }
             )
         );
 
@@ -245,11 +237,10 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(VolumeMountDialog as any, {
+                { store, children: React.createElement(VolumeMountDialog as any, {
                     open: true,
                     onClose: mockClose
-                })
+                }) }
             )
         );
 
@@ -271,11 +262,10 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(VolumeMountDialog as any, {
+                { store, children: React.createElement(VolumeMountDialog as any, {
                     open: true,
                     onClose: mockClose
-                })
+                }) }
             )
         );
 
