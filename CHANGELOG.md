@@ -65,6 +65,7 @@
 
 ### 🏗 Chore
 
+- **Dependency Cleanup [#16](https://github.com/dianlight/srat/issues/16)**: Removed abandoned `github.com/m1/go-generate-password` dependency (last updated April 2022) and replaced with custom implementation using Go's standard `crypto/rand` library. The new `GenerateSecurePassword()` function provides cryptographically secure random passwords with no external dependencies.
 - Implement watchdog
 - Replace snapd osutil dependency with internal mount utilities based on moby/sys/mountinfo <!-- cspell:disable-line -->
 - Align UI elements to HA [#81](https://github.com/dianlight/srat/issues/81)
