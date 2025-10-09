@@ -14,7 +14,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
@@ -31,7 +31,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
@@ -47,7 +47,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
@@ -63,7 +63,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
@@ -80,7 +80,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
@@ -96,7 +96,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
@@ -115,7 +115,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
@@ -132,7 +132,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
@@ -148,7 +148,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
@@ -163,7 +163,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
@@ -178,7 +178,7 @@ describe("useHealth hook", () => {
         const { useHealth } = await import("../healthHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useHealth(), { wrapper });
 
