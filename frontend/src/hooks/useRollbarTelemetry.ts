@@ -30,7 +30,7 @@ export const useRollbarTelemetry = () => {
 		codeVersion: packageJson.version,
 		captureUncaught: true,
 		captureUnhandledRejections: true,
-		recorder: {
+		replay: {
 			enabled: false,
 			triggers: [
 				{
@@ -78,7 +78,7 @@ export const useRollbarTelemetry = () => {
 				codeVersion: packageJson.version,
 				captureUncaught: true,
 				captureUnhandledRejections: true,
-				recorder: {
+				replay: {
 					enabled: enableRollbar,
 					triggers: [
 						{
