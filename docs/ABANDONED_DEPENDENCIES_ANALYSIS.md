@@ -1,3 +1,32 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Abandoned Dependencies Analysis and Resolution](#abandoned-dependencies-analysis-and-resolution)
+  - [Executive Summary](#executive-summary)
+  - [Identified Dependencies](#identified-dependencies)
+    - [1. ✅ RESOLVED: github.com/m1/go-generate-password](#1--resolved-githubcomm1go-generate-password)
+      - [Analysis](#analysis)
+      - [Decision: Replace with Custom Implementation](#decision-replace-with-custom-implementation)
+      - [Implementation](#implementation)
+      - [Testing](#testing)
+      - [Changes Made](#changes-made)
+      - [Impact Assessment](#impact-assessment)
+    - [2. ✅ KEEP: gitlab.com/tozd/go/errors](#2--keep-gitlabcomtozdgoerrors)
+      - [Analysis](#analysis-1)
+      - [Decision: Keep](#decision-keep)
+      - [Impact of Keeping](#impact-of-keeping)
+  - [Summary](#summary)
+    - [Actions Taken](#actions-taken)
+    - [Metrics](#metrics)
+    - [Verification](#verification)
+  - [Recommendations](#recommendations)
+    - [For Future Dependency Management](#for-future-dependency-management)
+    - [For This Issue](#for-this-issue)
+  - [References](#references)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Abandoned Dependencies Analysis and Resolution
 
 **Issue:** [#16](https://github.com/dianlight/srat/issues/16) - Dependency Dashboard  
