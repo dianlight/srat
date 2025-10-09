@@ -6,7 +6,7 @@
 
 ### ✨ Features
 
-- **Reduced Database Dependencies [#issue-number](https://github.com/dianlight/srat/issues/issue-number)**: Optimized CLI command database requirements:
+- **Reduced Database Dependencies [#208](https://github.com/dianlight/srat/issues/208)**: Optimized CLI command database requirements:
   - **version command**: No database needed - runs without any DB initialization
   - **upgrade command**: Uses in-memory database by default - no file path required  
   - **start/stop commands**: Continue to require persistent database file
