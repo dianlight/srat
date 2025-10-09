@@ -30,8 +30,7 @@ describe("DashboardMetrics Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(DashboardMetrics as any)
+                { store, children: React.createElement(DashboardMetrics as any) }
             )
         );
 
@@ -50,8 +49,7 @@ describe("DashboardMetrics Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(DashboardMetrics as any)
+                { store, children: React.createElement(DashboardMetrics as any) }
             )
         );
 
@@ -72,8 +70,7 @@ describe("DashboardMetrics Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(DashboardMetrics as any)
+                { store, children: React.createElement(DashboardMetrics as any) }
             )
         );
 
@@ -94,8 +91,7 @@ describe("DashboardMetrics Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(DashboardMetrics as any)
+                { store, children: React.createElement(DashboardMetrics as any) }
             )
         );
 
@@ -116,8 +112,7 @@ describe("DashboardMetrics Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(DashboardMetrics as any)
+                { store, children: React.createElement(DashboardMetrics as any) }
             )
         );
 
@@ -136,8 +131,7 @@ describe("DashboardMetrics Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(DashboardMetrics as any)
+                { store, children: React.createElement(DashboardMetrics as any) }
             )
         );
 
@@ -156,8 +150,7 @@ describe("DashboardMetrics Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(DashboardMetrics as any)
+                { store, children: React.createElement(DashboardMetrics as any) }
             )
         );
 
@@ -176,8 +169,7 @@ describe("DashboardMetrics Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(DashboardMetrics as any)
+                { store, children: React.createElement(DashboardMetrics as any) }
             )
         );
 
@@ -196,8 +188,7 @@ describe("DashboardMetrics Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(DashboardMetrics as any)
+                { store, children: React.createElement(DashboardMetrics as any) }
             )
         );
 
@@ -216,8 +207,7 @@ describe("DashboardMetrics Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store },
-                React.createElement(DashboardMetrics as any)
+                { store, children: React.createElement(DashboardMetrics as any) }
             )
         );
 

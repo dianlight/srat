@@ -19,7 +19,7 @@ describe("useTelemetryModal hook", () => {
         const { useTelemetryModal } = await import("../useTelemetryModal");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useTelemetryModal(), { wrapper });
 
@@ -34,7 +34,7 @@ describe("useTelemetryModal hook", () => {
         const { useTelemetryModal } = await import("../useTelemetryModal");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useTelemetryModal(), { wrapper });
 
@@ -49,7 +49,7 @@ describe("useTelemetryModal hook", () => {
         const { useTelemetryModal } = await import("../useTelemetryModal");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useTelemetryModal(), { wrapper });
 
@@ -68,7 +68,7 @@ describe("useTelemetryModal hook", () => {
         const { useTelemetryModal } = await import("../useTelemetryModal");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useTelemetryModal(), { wrapper });
 
@@ -85,7 +85,7 @@ describe("useTelemetryModal hook", () => {
         const { useTelemetryModal } = await import("../useTelemetryModal");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useTelemetryModal(), { wrapper });
 
@@ -101,7 +101,7 @@ describe("useTelemetryModal hook", () => {
         const { useTelemetryModal } = await import("../useTelemetryModal");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useTelemetryModal(), { wrapper });
 
@@ -117,7 +117,7 @@ describe("useTelemetryModal hook", () => {
         const { useTelemetryModal } = await import("../useTelemetryModal");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useTelemetryModal(), { wrapper });
 

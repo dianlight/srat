@@ -14,7 +14,7 @@ require (
 	github.com/pilebones/go-udev v0.9.1
 	github.com/shirou/gopsutil/v4 v4.25.9
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/sys v0.36.0
+	golang.org/x/sys v0.37.0
 )
 
 require (
@@ -158,7 +158,7 @@ require (
 	github.com/xorcare/pointer v1.2.2
 	gitlab.com/tozd/go/errors v0.10.0
 	go.uber.org/fx v1.24.0
-	golang.org/x/time v0.13.0
+	golang.org/x/time v0.14.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/gorm v1.31.0
 	moul.io/banner v1.0.1

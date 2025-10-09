@@ -14,7 +14,7 @@ describe("useVolume hook", () => {
         const { useVolume } = await import("../volumeHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useVolume(), { wrapper });
 
@@ -30,7 +30,7 @@ describe("useVolume hook", () => {
         const { useVolume } = await import("../volumeHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useVolume(), { wrapper });
 
@@ -46,7 +46,7 @@ describe("useVolume hook", () => {
         const { useVolume } = await import("../volumeHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useVolume(), { wrapper });
 
@@ -62,7 +62,7 @@ describe("useVolume hook", () => {
         const { useVolume } = await import("../volumeHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useVolume(), { wrapper });
 
@@ -79,7 +79,7 @@ describe("useVolume hook", () => {
         const { useVolume } = await import("../volumeHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useVolume(), { wrapper });
 
@@ -95,7 +95,7 @@ describe("useVolume hook", () => {
         const { useVolume } = await import("../volumeHook");
 
         const store = await createTestStore();
-        const wrapper = ({ children }: any) => React.createElement(Provider, { store }, children);
+        const wrapper = ({ children }: any) => React.createElement(Provider, { store, children });
 
         const { result } = renderHook(() => useVolume(), { wrapper });
 
