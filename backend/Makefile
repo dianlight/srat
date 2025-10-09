@@ -97,16 +97,18 @@ security: gosec
 .ONESHELL:
 dev_version:
 	mkdir ./tmp > /dev/null 2>&1 || :
-	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug -ha-url $(SUPERVISOR_URL) version
+	# version command doesn't need -db flag
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug version
 
 .PHONY: dev_cli
 .ONESHELL:
 dev_cli:
 	mkdir ./tmp > /dev/null 2>&1 || :
-	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug -ha-url $(SUPERVISOR_URL) version && \
-	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug -ha-url $(SUPERVISOR_URL) upgrade -channel prerelease && \
-	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug -ha-url $(SUPERVISOR_URL) start -opt ../test/data/options.json -conf ../test/data/config.json -out ../tmp/samba.conf && \
-	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug -ha-url $(SUPERVISOR_URL) stop
+	# version doesn't need -db, upgrade uses in-memory DB by default
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug version && \
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug upgrade -channel prerelease && \
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug start -opt ../test/data/options.json -conf ../test/data/config.json -out ../tmp/samba.conf && \
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug stop
 
 .PHONY: dev
 dev:
