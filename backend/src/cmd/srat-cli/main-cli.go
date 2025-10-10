@@ -251,10 +251,18 @@ func main() {
 		// Commands that need database access (start, stop, upgrade)
 		fxOptions = append(fxOptions,
 			appsetup.ProvideCoreDependencies(appParams),
-			appsetup.ProvideHAClientDependencies(appParams),
 			appsetup.ProvideFrontendOption(),
 			appsetup.ProvideCyclicDependencyWorkaroundOption(),
 		)
+
+		// Only include HA client dependencies for start and stop commands
+		// Upgrade command doesn't need websocket client
+		switch command {
+		case "start", "stop":
+			fxOptions = append(fxOptions, appsetup.ProvideHAClientDependencies(appParams))
+		case "upgrade":
+			fxOptions = append(fxOptions, appsetup.ProvideHAClientDependenciesWithoutWebSocket(appParams))
+		}
 	} else {
 		// Commands that don't need database (version only)
 		fxOptions = append(fxOptions,
