@@ -1,5 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
 
 - [Test Coverage](#test-coverage)
   - [Current Coverage](#current-coverage)
@@ -25,14 +26,14 @@
     - [Long-term Goals (6 months)](#long-term-goals-6-months)
   - [Package-Specific Improvement Strategies](#package-specific-improvement-strategies)
     - [High Priority Packages (Close to 60%)](#high-priority-packages-close-to-60)
-      - [`api` Package (48.1% → 60% target)](#api-package-481--60-target)
-      - [`server` Package (33.8% → 60% target)](#server-package-338--60-target)
-      - [`service` Package (33.6% → 60% target)](#service-package-336--60-target)
+      - [`api` Package (48.1% → 60% target)](#api-package-481-%E2%86%92-60-target)
+      - [`server` Package (33.8% → 60% target)](#server-package-338-%E2%86%92-60-target)
+      - [`service` Package (33.6% → 60% target)](#service-package-336-%E2%86%92-60-target)
     - [Medium Priority Packages](#medium-priority-packages)
-      - [`converter` Package (27.2% → 60% target)](#converter-package-272--60-target)
-      - [`dbom` Package (19.0% → 60% target)](#dbom-package-190--60-target)
-      - [`dto` Package (19.1% → 60% target)](#dto-package-191--60-target)
-      - [`homeassistant/*` Packages (various → 60% target)](#homeassistant-packages-various--60-target)
+      - [`converter` Package (27.2% → 60% target)](#converter-package-272-%E2%86%92-60-target)
+      - [`dbom` Package (19.0% → 60% target)](#dbom-package-190-%E2%86%92-60-target)
+      - [`dto` Package (19.1% → 60% target)](#dto-package-191-%E2%86%92-60-target)
+      - [`homeassistant/*` Packages (various → 60% target)](#homeassistant-packages-various-%E2%86%92-60-target)
     - [Low Priority Packages (defer improvement)](#low-priority-packages-defer-improvement)
       - [`cmd/*` Packages (5-18% coverage)](#cmd-packages-5-18-coverage)
   - [Test Implementation Guidelines](#test-implementation-guidelines)
