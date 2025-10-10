@@ -79,7 +79,10 @@
     "codegen",
     "osutil",
     "reconnections",
-    "xychart"
+    "xychart",
+    "pwdgen",
+    "Fatalf",
+    "unixsamba"
   ],
   "flagWords": [],
   "ignorePaths": [

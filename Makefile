@@ -20,6 +20,9 @@ prepare:
 	$(MAKE) -C $(BACKEND_DIRS) PREREQUISITE
 	cd $(FRONTEND_DIRS); bun install
 
+.PHONY: docs
+docs:  docs-fix docs-validate	
+
 .PHONY: docs-validate
 docs-validate:
 	@echo "Running documentation validation..."
