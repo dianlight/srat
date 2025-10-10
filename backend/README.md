@@ -2,6 +2,7 @@
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents**
 
 - [CLI Commands](#cli-commands)
@@ -20,12 +21,12 @@ The SRAT CLI (`srat-cli`) provides several commands for managing the Samba admin
 
 Different commands have different database requirements:
 
-| Command | Database Required | Default DB Path | Notes |
-|---------|------------------|-----------------|-------|
-| `version` | **No** | N/A | Outputs version information without any DB access |
-| `upgrade` | Yes (in-memory) | `file::memory:` | Uses in-memory database by default, no file needed |
-| `start` | Yes (file) | Must specify with `-db` | Requires persistent database file |
-| `stop` | Yes (file) | Must specify with `-db` | Requires persistent database file |
+| Command   | Database Required | Default DB Path         | Notes                                              |
+| --------- | ----------------- | ----------------------- | -------------------------------------------------- |
+| `version` | **No**            | N/A                     | Outputs version information without any DB access  |
+| `upgrade` | Yes (in-memory)   | `file::memory:`         | Uses in-memory database by default, no file needed |
+| `start`   | Yes (file)        | Must specify with `-db` | Requires persistent database file                  |
+| `stop`    | Yes (file)        | Must specify with `-db` | Requires persistent database file                  |
 
 #### Examples
 

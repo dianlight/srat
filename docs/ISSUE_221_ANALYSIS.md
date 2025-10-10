@@ -1,5 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents**
 
 - [Issue &#035;221 Analysis and Resolution](#issue-221-analysis-and-resolution)
@@ -47,6 +48,7 @@ The fix was implemented in `backend/src/service/supervisor_service.go` (lines 10
 ### Test Coverage for Original Fix
 
 Three existing tests validated the fix:
+
 1. `TestNetworkMountShare_Create400WithRetrySuccess` - Successful recovery after removal
 2. `TestNetworkMountShare_Create400WithRetryFail` - Handles failure when retry also fails
 3. `TestNetworkMountShare_Create400WithRemoveFail` - Handles failure when removal fails
@@ -59,7 +61,8 @@ Three existing tests validated the fix:
 
 **Impact**: If a mount exists in the supervisor API but the underlying systemd unit is corrupted, updating the mount could fail with a 400 error without any retry mechanism.
 
-**Scenario**: 
+**Scenario**:
+
 1. Mount exists in GetAllMounted response
 2. Systemd unit is in a bad state
 3. Update operation returns 400 error
@@ -80,12 +83,14 @@ Three existing tests validated the fix:
 **Implementation**: Added retry logic to the update path (lines 146-175 in `supervisor_service.go`)
 
 When an update fails with 400 error:
+
 1. Attempt to remove the stale mount
 2. If removal succeeds, create a new mount with updated configuration
 3. If creation succeeds, return success
 4. Otherwise, return detailed error information
 
 **Key Changes**:
+
 - Used `share.Name` instead of dereferencing potentially nil pointers
 - Mirror the same retry strategy as the create path
 - Proper error handling and logging
@@ -93,6 +98,7 @@ When an update fails with 400 error:
 ### 3. New Test Coverage for Update Path
 
 **Tests Added**:
+
 - `TestNetworkMountShare_Update400_NoRetryLogic` - Verifies update with retry succeeds
 - `TestNetworkMountShare_Update400_WithRetryLogic` - Validates the complete retry flow for updates
 
@@ -100,7 +106,7 @@ When an update fails with 400 error:
 
 All tests pass successfully:
 
-```
+```text
 ✅ TestNetworkMountShare_Create400WithRemoveFail
 ✅ TestNetworkMountShare_Create400WithRetryFail
 ✅ TestNetworkMountShare_Create400WithRetrySuccess

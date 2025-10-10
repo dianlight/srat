@@ -2,6 +2,7 @@
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents**
 
 - [Supported Versions](#supported-versions)
@@ -16,8 +17,8 @@ currently being supported with security updates.
 
 | Version    | Supported          |
 | ---------- | ------------------ |
-| 2025.9.x   | :white_check_mark: |
-| < 2025.9.0 | :x:                |
+| 2025.10.x   | :white_check_mark: |
+| < 2025.10.0 | :x:                |
 
 ## Reporting a Vulnerability
 
