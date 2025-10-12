@@ -1,3 +1,43 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [COPILOT: SRAT repository — quick orientation for coding agents](#copilot-srat-repository--quick-orientation-for-coding-agents)
+- [Architecture Overview](#architecture-overview)
+- [Key Patterns & Where to Find Them](#key-patterns--where-to-find-them)
+  - [Backend Patterns](#backend-patterns)
+  - [Frontend Patterns](#frontend-patterns)
+- [Development Workflows](#development-workflows)
+  - [Backend Development](#backend-development)
+  - [Frontend Development](#frontend-development)
+  - [Full Stack Development](#full-stack-development)
+- [Testing Patterns](#testing-patterns)
+  - [Backend Testing](#backend-testing)
+  - [Frontend Testing](#frontend-testing)
+  - [Test Examples](#test-examples)
+- [Quality Gates & Validation](#quality-gates--validation)
+  - [Pre-commit Hooks](#pre-commit-hooks)
+  - [Documentation](#documentation)
+  - [Security](#security)
+- [Integration Points](#integration-points)
+  - [External Dependencies](#external-dependencies)
+  - [Cross-Component Communication](#cross-component-communication)
+- [Files to Open First](#files-to-open-first)
+- [Common Gotchas](#common-gotchas)
+- [Frontend Testing Rules](#frontend-testing-rules)
+  - [File Structure & Naming](#file-structure--naming)
+  - [Required Imports & Setup](#required-imports--setup)
+  - [Testing Library Standards](#testing-library-standards)
+  - [localStorage Testing Pattern](#localstorage-testing-pattern)
+  - [Component Testing Pattern](#component-testing-pattern)
+  - [Redux Store Integration](#redux-store-integration)
+  - [Async Testing Requirements](#async-testing-requirements)
+- [Final Checklist Before Consider a Changes as Done](#final-checklist-before-consider-a-changes-as-done)
+- [END OF COPILOT INSTRUCTIONS](#end-of-copilot-instructions)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## COPILOT: SRAT repository — quick orientation for coding agents
 
 This file highlights the must-know, discoverable rules and workflows for productive changes in this repo. Keep it short and actionable.
