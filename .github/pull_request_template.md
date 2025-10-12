@@ -1,23 +1,4 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Pull Request](#pull-request)
-  - [Description](#description)
-  - [Type of Change](#type-of-change)
-  - [Changes Made](#changes-made)
-  - [Testing](#testing)
-  - [Documentation](#documentation)
-  - [Documentation Validation](#documentation-validation)
-  - [Breaking Changes](#breaking-changes)
-  - [Related Issues](#related-issues)
-  - [Screenshots/Examples](#screenshotsexamples)
-  - [Checklist](#checklist)
-  - [Reviewer Notes](#reviewer-notes)
-    - [For Maintainers](#for-maintainers)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DOCTOC SKIP -->
 
 # Pull Request
 

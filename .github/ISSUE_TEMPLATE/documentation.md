@@ -1,18 +1,4 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Documentation Update Request](#documentation-update-request)
-  - [Type of Documentation Update](#type-of-documentation-update)
-  - [Files Affected](#files-affected)
-  - [Description](#description)
-  - [Current State](#current-state)
-  - [Desired State](#desired-state)
-  - [Additional Context](#additional-context)
-  - [Validation Checklist](#validation-checklist)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DOCTOC SKIP -->
 
 ---
 
