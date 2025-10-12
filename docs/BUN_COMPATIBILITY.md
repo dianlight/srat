@@ -3,8 +3,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-**Table of Contents**
-
 - [Summary](#summary)
 - [Changes Made](#changes-made)
   - [1. Updated Validation Script (`scripts/validate-docs.sh`)](#1-updated-validation-script-scriptsvalidate-docssh)
