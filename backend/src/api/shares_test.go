@@ -602,6 +602,440 @@ func (suite *ShareHandlerSuite) TestEnableShareNotFound() {
 	suite.Require().Equal(http.StatusNotFound, resp.Code)
 }
 
+// TestListSharesWithVolumeMountedRW tests shares with mounted volumes that are read-write
+func (suite *ShareHandlerSuite) TestListSharesWithVolumeMountedRW() {
+	isWriteSupported := true
+	isMounted := true
+	expectedShares := []dto.SharedResource{
+		{
+			Name: "share-mounted-rw-active",
+			Users: []dto.User{
+				{
+					Username: "testuser",
+					Password: "testpass",
+					RwShares: []string{"share-mounted-rw-active"},
+				},
+			},
+			Disabled: pointer.Bool(false),
+			MountPointData: &dto.MountPointData{
+				Path:             "/mnt/share-mounted-rw-active",
+				PathHash:         "hash1",
+				Type:             "ADDON",
+				FSType:           pointer.String("ext4"),
+				DeviceId:         "sda1",
+				IsMounted:        true,
+				IsWriteSupported: &isWriteSupported,
+			},
+		},
+		{
+			Name: "share-mounted-rw-inactive",
+			Users: []dto.User{
+				{
+					Username: "testuser2",
+					Password: "testpass2",
+					RwShares: []string{"share-mounted-rw-inactive"},
+				},
+			},
+			Disabled: pointer.Bool(true),
+			MountPointData: &dto.MountPointData{
+				Path:             "/mnt/share-mounted-rw-inactive",
+				PathHash:         "hash2",
+				Type:             "ADDON",
+				FSType:           pointer.String("ext4"),
+				DeviceId:         "sda2",
+				IsMounted:        isMounted,
+				IsWriteSupported: &isWriteSupported,
+			},
+		},
+	}
+
+	mock.When(suite.mockShareService.ListShares()).ThenReturn(expectedShares, nil)
+
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Get("/shares")
+	suite.Require().Equal(http.StatusOK, resp.Code)
+
+	var result []dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	suite.Require().Len(result, 2)
+
+	// First share: mounted rw, active
+	suite.Equal("share-mounted-rw-active", result[0].Name)
+	suite.False(*result[0].Disabled)
+	suite.True(result[0].MountPointData.IsMounted)
+	suite.True(*result[0].MountPointData.IsWriteSupported)
+	suite.Require().Len(result[0].Users, 1)
+	suite.Contains(result[0].Users[0].RwShares, "share-mounted-rw-active")
+
+	// Second share: mounted rw, inactive (DB says disabled)
+	suite.Equal("share-mounted-rw-inactive", result[1].Name)
+	suite.True(*result[1].Disabled)
+	suite.True(result[1].MountPointData.IsMounted)
+	suite.True(*result[1].MountPointData.IsWriteSupported)
+}
+
+// TestListSharesWithVolumeMountedRO tests shares with mounted read-only volumes
+func (suite *ShareHandlerSuite) TestListSharesWithVolumeMountedRO() {
+	isWriteSupported := false
+	isMounted := true
+	expectedShares := []dto.SharedResource{
+		{
+			Name: "share-mounted-ro-active",
+			Users: []dto.User{
+				{
+					Username: "testuser",
+					Password: "testpass",
+					RwShares: []string{}, // Should be empty for RO mount
+				},
+			},
+			RoUsers: []dto.User{
+				{
+					Username: "testuser",
+					Password: "testpass",
+				},
+			},
+			Disabled: pointer.Bool(false),
+			MountPointData: &dto.MountPointData{
+				Path:             "/mnt/share-mounted-ro-active",
+				PathHash:         "hash3",
+				Type:             "ADDON",
+				FSType:           pointer.String("ext4"),
+				DeviceId:         "sda3",
+				IsMounted:        isMounted,
+				IsWriteSupported: &isWriteSupported,
+			},
+		},
+		{
+			Name: "share-mounted-ro-inactive",
+			Users: []dto.User{
+				{
+					Username: "testuser2",
+					Password: "testpass2",
+					RwShares: []string{}, // Should be empty for RO mount
+				},
+			},
+			RoUsers: []dto.User{
+				{
+					Username: "testuser2",
+					Password: "testpass2",
+				},
+			},
+			Disabled: pointer.Bool(true),
+			MountPointData: &dto.MountPointData{
+				Path:             "/mnt/share-mounted-ro-inactive",
+				PathHash:         "hash4",
+				Type:             "ADDON",
+				FSType:           pointer.String("ext4"),
+				DeviceId:         "sda4",
+				IsMounted:        isMounted,
+				IsWriteSupported: &isWriteSupported,
+			},
+		},
+	}
+
+	mock.When(suite.mockShareService.ListShares()).ThenReturn(expectedShares, nil)
+
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Get("/shares")
+	suite.Require().Equal(http.StatusOK, resp.Code)
+
+	var result []dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	suite.Require().Len(result, 2)
+
+	// First share: mounted ro, active
+	suite.Equal("share-mounted-ro-active", result[0].Name)
+	suite.False(*result[0].Disabled)
+	suite.True(result[0].MountPointData.IsMounted)
+	suite.False(*result[0].MountPointData.IsWriteSupported)
+	suite.Empty(result[0].Users[0].RwShares, "RO mount should have no RW users")
+	suite.Require().Len(result[0].RoUsers, 1)
+
+	// Second share: mounted ro, inactive
+	suite.Equal("share-mounted-ro-inactive", result[1].Name)
+	suite.True(*result[1].Disabled)
+	suite.True(result[1].MountPointData.IsMounted)
+	suite.False(*result[1].MountPointData.IsWriteSupported)
+	suite.Empty(result[1].Users[0].RwShares, "RO mount should have no RW users")
+}
+
+// TestListSharesWithVolumeNotMounted tests shares where volume is not mounted
+func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotMounted() {
+	isWriteSupported := true
+	expectedShares := []dto.SharedResource{
+		{
+			Name: "share-not-mounted-was-active",
+			Users: []dto.User{
+				{
+					Username: "testuser",
+					Password: "testpass",
+					RwShares: []string{"share-not-mounted-was-active"},
+				},
+			},
+			Disabled: pointer.Bool(true), // Should be disabled if not mounted
+			Invalid:  pointer.Bool(true), // Should be marked as invalid/anomaly
+			MountPointData: &dto.MountPointData{
+				Path:             "/mnt/share-not-mounted",
+				PathHash:         "hash5",
+				Type:             "ADDON",
+				FSType:           pointer.String("ext4"),
+				DeviceId:         "sda5",
+				IsMounted:        false, // Not mounted
+				IsWriteSupported: &isWriteSupported,
+			},
+		},
+	}
+
+	mock.When(suite.mockShareService.ListShares()).ThenReturn(expectedShares, nil)
+
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Get("/shares")
+	suite.Require().Equal(http.StatusOK, resp.Code)
+
+	var result []dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	suite.Require().Len(result, 1)
+
+	// Share with volume not mounted: should be disabled and marked as anomaly
+	suite.Equal("share-not-mounted-was-active", result[0].Name)
+	suite.NotNil(result[0].Disabled)
+	suite.True(*result[0].Disabled, "Share should be disabled when volume is not mounted")
+	suite.NotNil(result[0].Invalid)
+	suite.True(*result[0].Invalid, "Share should be marked as invalid/anomaly when volume is not mounted")
+	suite.False(result[0].MountPointData.IsMounted)
+}
+
+// TestListSharesWithVolumeNotExists tests shares where volume doesn't exist
+func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotExists() {
+	expectedShares := []dto.SharedResource{
+		{
+			Name: "share-no-volume",
+			Users: []dto.User{
+				{
+					Username: "testuser",
+					Password: "testpass",
+					RwShares: []string{"share-no-volume"},
+				},
+			},
+			Disabled: pointer.Bool(true), // Should be disabled
+			Invalid:  pointer.Bool(true), // Should be marked as invalid/anomaly
+			MountPointData: &dto.MountPointData{ // Volume doesn't exist but has placeholder data
+				Path:      "/mnt/nonexistent",
+				PathHash:  "hash6",
+				Type:      "ADDON",
+				IsMounted: false,
+				IsInvalid: true, // Mark mount point itself as invalid
+			},
+		},
+	}
+
+	mock.When(suite.mockShareService.ListShares()).ThenReturn(expectedShares, nil)
+
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Get("/shares")
+	suite.Require().Equal(http.StatusOK, resp.Code)
+
+	var result []dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	suite.Require().Len(result, 1)
+
+	// Share with non-existent volume: should be disabled and marked as anomaly
+	suite.Equal("share-no-volume", result[0].Name)
+	suite.NotNil(result[0].Disabled)
+	suite.True(*result[0].Disabled, "Share should be disabled when volume doesn't exist")
+	suite.NotNil(result[0].Invalid)
+	suite.True(*result[0].Invalid, "Share should be marked as invalid/anomaly when volume doesn't exist")
+	suite.True(result[0].MountPointData.IsInvalid, "Mount point should be marked as invalid")
+	suite.False(result[0].MountPointData.IsMounted)
+}
+
+// TestGetShareWithVolumeStates tests individual share retrieval with different volume states
+func (suite *ShareHandlerSuite) TestGetShareWithVolumeNotMounted() {
+	shareName := "share-not-mounted"
+	isWriteSupported := true
+	expectedShare := &dto.SharedResource{
+		Name: shareName,
+		Users: []dto.User{
+			{
+				Username: "testuser",
+				Password: "testpass",
+				RwShares: []string{shareName},
+			},
+		},
+		Disabled: pointer.Bool(true),
+		Invalid:  pointer.Bool(true),
+		MountPointData: &dto.MountPointData{
+			Path:             "/mnt/share-not-mounted",
+			PathHash:         "hash7",
+			Type:             "ADDON",
+			FSType:           pointer.String("ext4"),
+			DeviceId:         "sda7",
+			IsMounted:        false,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	mock.When(suite.mockShareService.GetShare(shareName)).ThenReturn(expectedShare, nil)
+
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Get("/share/" + shareName)
+	suite.Require().Equal(http.StatusOK, resp.Code)
+
+	var result dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	suite.Equal(shareName, result.Name)
+	suite.NotNil(result.Disabled)
+	suite.True(*result.Disabled)
+	suite.NotNil(result.Invalid)
+	suite.True(*result.Invalid)
+	suite.False(result.MountPointData.IsMounted)
+}
+
+// TestCreateShareWithVolumeValidation tests share creation with volume validation
+func (suite *ShareHandlerSuite) TestCreateShareWithMountedRWVolume() {
+	isWriteSupported := true
+	input := dto.SharedResource{
+		Name: "new-share",
+		Users: []dto.User{
+			{
+				Username: "testuser",
+				Password: "testpass",
+				RwShares: []string{"new-share"},
+			},
+		},
+		MountPointData: &dto.MountPointData{
+			Path:             "/mnt/new-share",
+			PathHash:         "hash8",
+			Type:             "ADDON",
+			FSType:           pointer.String("ext4"),
+			DeviceId:         "sda8",
+			IsMounted:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+	expectedShare := &dto.SharedResource{
+		Name:     "new-share",
+		Disabled: pointer.Bool(false),
+		Users: []dto.User{
+			{
+				Username: "testuser",
+				Password: "testpass",
+				RwShares: []string{"new-share"},
+			},
+		},
+		MountPointData: &dto.MountPointData{
+			Path:             "/mnt/new-share",
+			PathHash:         "hash8",
+			Type:             "ADDON",
+			FSType:           pointer.String("ext4"),
+			DeviceId:         "sda8",
+			IsMounted:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(expectedShare, nil)
+
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Post("/share", input)
+	suite.Require().Equal(http.StatusCreated, resp.Code)
+
+	var result dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	suite.Equal(expectedShare.Name, result.Name)
+	suite.False(*result.Disabled)
+	suite.True(result.MountPointData.IsMounted)
+	suite.True(*result.MountPointData.IsWriteSupported)
+
+	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+}
+
+// TestCreateShareWithROVolumeNoRWUsers tests that RO volumes cannot have RW users
+func (suite *ShareHandlerSuite) TestCreateShareWithROVolumeHasOnlyROUsers() {
+	isWriteSupported := false
+	input := dto.SharedResource{
+		Name: "ro-share",
+		RoUsers: []dto.User{
+			{
+				Username: "testuser",
+				Password: "testpass",
+			},
+		},
+		MountPointData: &dto.MountPointData{
+			Path:             "/mnt/ro-share",
+			PathHash:         "hash9",
+			Type:             "ADDON",
+			FSType:           pointer.String("ext4"),
+			DeviceId:         "sda9",
+			IsMounted:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+	expectedShare := &dto.SharedResource{
+		Name:     "ro-share",
+		Disabled: pointer.Bool(false),
+		RoUsers: []dto.User{
+			{
+				Username: "testuser",
+				Password: "testpass",
+			},
+		},
+		Users: []dto.User{}, // No RW users for RO volume
+		MountPointData: &dto.MountPointData{
+			Path:             "/mnt/ro-share",
+			PathHash:         "hash9",
+			Type:             "ADDON",
+			FSType:           pointer.String("ext4"),
+			DeviceId:         "sda9",
+			IsMounted:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(expectedShare, nil)
+
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Post("/share", input)
+	suite.Require().Equal(http.StatusCreated, resp.Code)
+
+	var result dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	suite.Equal(expectedShare.Name, result.Name)
+	suite.False(*result.Disabled)
+	suite.True(result.MountPointData.IsMounted)
+	suite.False(*result.MountPointData.IsWriteSupported)
+	suite.Empty(result.Users, "RO volume should not have RW users")
+	suite.Require().Len(result.RoUsers, 1)
+}
+
 func TestShareHandlerSuite(t *testing.T) {
 	suite.Run(t, new(ShareHandlerSuite))
 }
