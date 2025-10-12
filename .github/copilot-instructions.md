@@ -1,8 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
 - [COPILOT: SRAT repository — quick orientation for coding agents](#copilot-srat-repository--quick-orientation-for-coding-agents)
 - [Architecture Overview](#architecture-overview)
 - [Key Patterns & Where to Find Them](#key-patterns--where-to-find-them)

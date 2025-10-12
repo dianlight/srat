@@ -1,3 +1,32 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Share Volume Verification](#share-volume-verification)
+  - [Overview](#overview)
+  - [Volume States and Share Behavior](#volume-states-and-share-behavior)
+    - [1. Volume Mounted and Read-Write (RW)](#1-volume-mounted-and-read-write-rw)
+    - [2. Volume Mounted and Read-Only (RO)](#2-volume-mounted-and-read-only-ro)
+    - [3. Volume Not Mounted](#3-volume-not-mounted)
+    - [4. Volume Does Not Exist](#4-volume-does-not-exist)
+  - [Special Cases](#special-cases)
+    - [No Mount Point Data](#no-mount-point-data)
+    - [Home Assistant Mount Status](#home-assistant-mount-status)
+  - [API Response Fields](#api-response-fields)
+  - [Verification Logic](#verification-logic)
+  - [Testing](#testing)
+    - [API Tests (`backend/src/api/shares_test.go`)](#api-tests-backendsrcapishares_testgo)
+    - [Service Tests (`backend/src/service/share_service_test.go`)](#service-tests-backendsrcserviceshare_service_testgo)
+  - [Troubleshooting](#troubleshooting)
+    - [Share Marked as Invalid](#share-marked-as-invalid)
+    - [RW Permissions Removed](#rw-permissions-removed)
+    - [Share Disabled Unexpectedly](#share-disabled-unexpectedly)
+  - [Related Files](#related-files)
+  - [Future Enhancements](#future-enhancements)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Share Volume Verification
 
 This document describes how SRAT verifies shares with associated volumes and handles different volume states.
@@ -11,11 +40,13 @@ SRAT automatically verifies the state of volumes associated with shares and mark
 ### 1. Volume Mounted and Read-Write (RW)
 
 **Behavior:**
+
 - Share can be active or inactive as per the database `disabled` value
 - Read-write users are allowed and preserved
 - Share operates normally
 
 **Example:**
+
 ```json
 {
   "name": "data-share",
@@ -38,12 +69,14 @@ SRAT automatically verifies the state of volumes associated with shares and mark
 ### 2. Volume Mounted and Read-Only (RO)
 
 **Behavior:**
+
 - Share can be active or inactive as per the database `disabled` value
 - Read-write users are **automatically converted to read-only users**
 - Any RW permissions for this share are removed from user configurations
 - Share operates in read-only mode
 
 **Example:**
+
 ```json
 {
   "name": "backup-share",
@@ -68,12 +101,14 @@ SRAT automatically verifies the state of volumes associated with shares and mark
 ### 3. Volume Not Mounted
 
 **Behavior:**
+
 - Share is **automatically disabled** (`disabled` = `true`)
 - Share is **marked as invalid** (`invalid` = `true`) - indicates an anomaly
 - Warning logged: "Share volume is not mounted"
 - Share will not appear in Samba configuration until volume is remounted
 
 **Example:**
+
 ```json
 {
   "name": "unmounted-share",
@@ -87,6 +122,7 @@ SRAT automatically verifies the state of volumes associated with shares and mark
 ```
 
 **Resolution:**
+
 1. Mount the volume
 2. Re-enable the share if needed
 3. The `invalid` flag will be cleared automatically on next verification
@@ -94,6 +130,7 @@ SRAT automatically verifies the state of volumes associated with shares and mark
 ### 4. Volume Does Not Exist
 
 **Behavior:**
+
 - Share is **automatically disabled** (`disabled` = `true`)
 - Share is **marked as invalid** (`invalid` = `true`) - indicates an anomaly
 - Mount point marked as invalid (`mount_point_data.invalid` = `true`)
@@ -101,6 +138,7 @@ SRAT automatically verifies the state of volumes associated with shares and mark
 - Share will not appear in Samba configuration
 
 **Example:**
+
 ```json
 {
   "name": "missing-volume-share",
@@ -115,6 +153,7 @@ SRAT automatically verifies the state of volumes associated with shares and mark
 ```
 
 **Resolution:**
+
 1. Create/connect the volume
 2. Ensure the volume is properly recognized by the system
 3. Re-enable the share
@@ -125,10 +164,12 @@ SRAT automatically verifies the state of volumes associated with shares and mark
 ### No Mount Point Data
 
 **Behavior:**
+
 - Share without `mount_point_data` or with empty `path` is automatically disabled and marked invalid
 - Warning logged: "Share has no valid MountPointData"
 
 **Example:**
+
 ```json
 {
   "name": "invalid-share",
@@ -143,20 +184,21 @@ SRAT automatically verifies the state of volumes associated with shares and mark
 For shares with `usage` other than `internal` or `none`:
 
 **Behavior:**
+
 - If `is_ha_mounted` = `false`, share is disabled and marked invalid
 - Internal shares (`usage: "internal"`) ignore Home Assistant mount status
 - Warning logged: "Share mount point is not mounted in Home Assistant"
 
 ## API Response Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `disabled` | boolean | Whether the share is active in Samba configuration |
-| `invalid` | boolean | Whether the share has anomalies (volume issues) |
-| `mount_point_data.is_mounted` | boolean | Whether the volume is currently mounted |
-| `mount_point_data.is_write_supported` | boolean | Whether the volume supports write operations |
-| `mount_point_data.invalid` | boolean | Whether the mount point itself is invalid |
-| `is_ha_mounted` | boolean | Whether Home Assistant recognizes the mount |
+| Field                                 | Type    | Description                                        |
+| ------------------------------------- | ------- | -------------------------------------------------- |
+| `disabled`                            | boolean | Whether the share is active in Samba configuration |
+| `invalid`                             | boolean | Whether the share has anomalies (volume issues)    |
+| `mount_point_data.is_mounted`         | boolean | Whether the volume is currently mounted            |
+| `mount_point_data.is_write_supported` | boolean | Whether the volume supports write operations       |
+| `mount_point_data.invalid`            | boolean | Whether the mount point itself is invalid          |
+| `is_ha_mounted`                       | boolean | Whether Home Assistant recognizes the mount        |
 
 ## Verification Logic
 
@@ -174,6 +216,7 @@ The `VerifyShare` method in `ShareService` performs the following checks in orde
 Comprehensive tests cover all volume states:
 
 ### API Tests (`backend/src/api/shares_test.go`)
+
 - `TestListSharesWithVolumeMountedRW`: Tests RW mounted volumes
 - `TestListSharesWithVolumeMountedRO`: Tests RO mounted volumes
 - `TestListSharesWithVolumeNotMounted`: Tests unmounted volumes
@@ -183,6 +226,7 @@ Comprehensive tests cover all volume states:
 - `TestCreateShareWithROVolumeHasOnlyROUsers`: Tests RO volume user restrictions
 
 ### Service Tests (`backend/src/service/share_service_test.go`)
+
 - `TestVerifyShareWithMountedRWVolume`: Verifies RW volume handling
 - `TestVerifyShareWithMountedROVolume`: Verifies RO volume and user conversion
 - `TestVerifyShareWithNotMountedVolume`: Verifies unmounted volume anomaly detection
