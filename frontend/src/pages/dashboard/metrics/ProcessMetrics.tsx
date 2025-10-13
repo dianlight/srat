@@ -10,12 +10,7 @@ import {
 	Typography,
 	useTheme,
 } from "@mui/material";
-import {
-	Sparklines,
-	SparklinesBars,
-	SparklinesLine,
-	SparklinesSpots,
-} from "react-sparklines";
+import { SparkLineChart } from "@mui/x-charts/SparkLineChart";
 import type { ProcessStatus } from "./types";
 
 const MAX_HISTORY_LENGTH = 10;
@@ -88,17 +83,13 @@ export function ProcessMetrics({
 										</Typography>
 										<Box sx={{ width: 50, height: 20 }}>
 											{(cpuHistory[process.name]?.length || 0) > 1 ? (
-												<Sparklines
+												<SparkLineChart
 													data={cpuHistory[process.name]}
-													limit={MAX_HISTORY_LENGTH}
 													width={60}
 													height={20}
-													min={0}
-													max={100}
-												>
-													<SparklinesLine color={theme.palette.primary.main} />
-													<SparklinesSpots />
-												</Sparklines>
+													color={theme.palette.primary.main}
+													showTooltip
+												/>
 											) : null}
 										</Box>
 									</Box>
@@ -121,17 +112,13 @@ export function ProcessMetrics({
 										</Typography>
 										<Box sx={{ width: 50, height: 20 }}>
 											{(memoryHistory[process.name]?.length || 0) > 1 ? (
-												<Sparklines
+												<SparkLineChart
 													data={memoryHistory[process.name]}
-													limit={MAX_HISTORY_LENGTH}
 													width={60}
 													height={20}
-													min={0}
-													max={100}
-												>
-													<SparklinesLine color={theme.palette.success.main} />
-													<SparklinesSpots />
-												</Sparklines>
+													color={theme.palette.success.main}
+													showTooltip
+												/>
 											) : null}
 										</Box>
 									</Box>
@@ -152,20 +139,14 @@ export function ProcessMetrics({
 										</Typography>
 										<Box sx={{ width: 50, height: 20 }}>
 											{(connectionsHistory[process.name]?.length || 0) > 1 ? (
-												<Sparklines
+												<SparkLineChart
 													data={connectionsHistory[process.name]}
-													limit={MAX_HISTORY_LENGTH}
 													width={60}
 													height={20}
-													min={0}
-												>
-													<SparklinesBars
-														style={{ fill: "#41c3f9", fillOpacity: ".25" }}
-													/>
-													<SparklinesLine
-														color={theme.palette.secondary.main}
-													/>
-												</Sparklines>
+													plotType="bar"
+													color={theme.palette.secondary.main}
+													showTooltip
+												/>
 											) : null}
 										</Box>
 									</Box>

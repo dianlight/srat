@@ -78,7 +78,7 @@ const enableBody = (target: any) => {
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 root.render(
-	<RollbarProvider>
+	<RollbarProvider config={{}} >
 		<ErrorBoundaryWrapper>
 			<ThemeProvider theme={theme} noSsr>
 				<CssBaseline />

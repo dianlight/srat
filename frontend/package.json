@@ -27,7 +27,6 @@
     "@types/js-sha1": "0.6.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.1",
-    "@types/react-sparklines": "1.7.5",
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
     "bun-html-live-reload": "1.0.4"
@@ -65,7 +64,6 @@
     "react-intersection-observer": "^9.16.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.3",
-    "react-sparklines": "^1.7.0",
     "react-syntax-highlighter": "^15.6.6",
     "react-toastify": "^11.0.5",
     "rollbar": "3.0.0-beta.4",
