@@ -23,7 +23,6 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/gorilla/websocket v1.5.3
-	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/k0kubun/pp/v3 v3.5.0
 	github.com/lonegunmanb/go-defaults v1.4.0
@@ -171,7 +170,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-replace github.com/zarldev/goenums => /home/runner/gohack/github.com/zarldev/goenums
-
-replace github.com/jpillora/overseer => /home/runner/gohack/github.com/jpillora/overseer
