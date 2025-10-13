@@ -191,7 +191,7 @@ hdidleService.Stop()
 - **Context-aware**: Respects context cancellation for graceful shutdown
 - **Resource efficient**: Polls at configurable intervals based on shortest idle time
 - **Logging**: Uses structured logging (tlog) with sensitive data masking
-- **Testing**: Comprehensive test suite with 100% coverage of core functionality
+- **Testing**: Comprehensive test suite with 24 tests covering all service methods and edge cases
 
 ## Dependencies
 
