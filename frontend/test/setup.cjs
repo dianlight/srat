@@ -2,7 +2,11 @@
 // Mirrors the TypeScript test setup so the Node wrapper can preload test globals
 const { Window } = require('happy-dom');
 
-const win = new Window();
+const win = new Window({
+    settings: {
+        enableJavaScriptEvaluation: true
+    }
+});
 global.window = win;
 global.document = win.document;
 global.HTMLElement = win.HTMLElement;
