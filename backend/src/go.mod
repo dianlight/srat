@@ -43,7 +43,9 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
+	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96 // indirect
 	github.com/air-verse/air v1.63.0 // indirect
+	github.com/benmcclelland/sgio v0.0.0-20180629175614-f710aebf64c1 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
 	github.com/bep/golibsass v1.2.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
