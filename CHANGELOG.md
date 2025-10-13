@@ -10,13 +10,12 @@
 
 ### ✨ Features
 
-- **Native Bun Hot-Reloading**: Replaced external `bun-html-live-reload` library with native long-polling HMR implementation:
+- **Native Bun Hot-Reloading**: Removed external `bun-html-live-reload` library and configured Bun's native development server with HMR:
   - Removed dependency on `bun-html-live-reload` package
-  - Implemented HTTP long-polling for live reload functionality using `/__hmr` endpoint
-  - Leverages Bun's `--hot` flag for build script auto-reload
-  - Improved error handling and logging for hot reload builds
-  - Simplified development server setup using Bun's native capabilities
-  - Maintains full hot-reload functionality with lighter dependency footprint and no WebSocket overhead
+  - Enabled Bun's native HMR via `development: { console: true, hmr: true }` configuration
+  - Leverages Bun's `--hot` flag for build script auto-reload on source changes
+  - Simplified development server setup using Bun's built-in capabilities
+  - Reduced dependency footprint with native implementation
 - **Reduced Database Dependencies [#208](https://github.com/dianlight/srat/issues/208)**: Optimized CLI command database requirements:
   - **version command**: No database needed - runs without any DB initialization
   - **upgrade command**: Uses in-memory database by default - no file path required

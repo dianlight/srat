@@ -81,9 +81,6 @@ async function build(): Promise<BuildOutput | undefined> {
 	} else if (values.serve) {
 		console.log(`Serving ${values.outDir}`);
 
-		// Track last build time for live reload
-		let lastBuildTime = Date.now();
-
 		// Initial build
 		await Bun.build(buildConfig);
 
@@ -99,9 +96,6 @@ async function build(): Promise<BuildOutput | undefined> {
 					for (const message of result.logs) {
 						console.error(message);
 					}
-				} else {
-					lastBuildTime = Date.now();
-					console.log("Build successful, clients will reload");
 				}
 			} catch (error) {
 				console.error("Hot reload: build error", error);
@@ -111,43 +105,6 @@ async function build(): Promise<BuildOutput | undefined> {
 		Bun.serve({
 			fetch: async (request, server) => {
 				const url = new URL(request.url);
-
-				// Server-Sent Events endpoint for live reload
-				if (url.pathname === "/__hmr") {
-					const clientBuildTime = parseInt(url.searchParams.get("t") || "0");
-					if (clientBuildTime < lastBuildTime) {
-						return new Response("reload", {
-							headers: {
-								"Content-Type": "text/plain",
-								"Cache-Control": "no-cache",
-							},
-						});
-					}
-					// Long-polling: wait for changes
-					return new Promise((resolve) => {
-						const checkInterval = setInterval(() => {
-							if (clientBuildTime < lastBuildTime) {
-								clearInterval(checkInterval);
-								resolve(new Response("reload", {
-									headers: {
-										"Content-Type": "text/plain",
-										"Cache-Control": "no-cache",
-									},
-								}));
-							}
-						}, 100);
-						// Timeout after 30 seconds
-						setTimeout(() => {
-							clearInterval(checkInterval);
-							resolve(new Response("ok", {
-								headers: {
-									"Content-Type": "text/plain",
-									"Cache-Control": "no-cache",
-								},
-							}));
-						}, 30000);
-					});
-				}
 
 				// DevTools endpoint
 				if (
@@ -171,38 +128,6 @@ async function build(): Promise<BuildOutput | undefined> {
 				const afile = Bun.file(tpath);
 				console.log(`Request ${request.mode} ${url.pathname} ==> ${tpath} ${await afile.exists()} [${afile.size}]`);
 
-				// Inject live reload script into HTML files
-				if (afile.type.startsWith("text/html") && await afile.exists()) {
-					const html = await afile.text();
-					const injectedHtml = html.replace(
-						"</body>",
-						`<script>
-							(function() {
-								let buildTime = Date.now();
-								function checkForUpdates() {
-									fetch("/__hmr?t=" + buildTime)
-										.then(r => r.text())
-										.then(msg => {
-											if (msg === "reload") {
-												location.reload();
-											} else {
-												// Continue polling
-												setTimeout(checkForUpdates, 1000);
-											}
-										})
-										.catch(() => setTimeout(checkForUpdates, 5000));
-								}
-								checkForUpdates();
-							})();
-						</script></body>`
-					);
-					return new Response(injectedHtml, {
-						headers: {
-							"Content-Type": "text/html",
-						}
-					});
-				}
-
 				return new Response(await afile.arrayBuffer(), {
 					headers: {
 						"Content-Type": afile.type,
@@ -211,7 +136,10 @@ async function build(): Promise<BuildOutput | undefined> {
 			},
 			port: 3080,
 			idleTimeout: 60,
-			development: true,
+			development: {
+				console: true,
+				hmr: true,
+			},
 		});
 		console.log("Serving http://localhost:3080/index.html");
 	} else if (values.watch) {
