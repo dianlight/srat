@@ -29,7 +29,7 @@
 # Abandoned Dependencies Analysis and Resolution
 
 **Issue:** [#16](https://github.com/dianlight/srat/issues/16) - Dependency Dashboard  
-**Date:** October 9, 2025  
+**Date:** October 13, 2025  
 **Status:** ✅ Resolved
 
 ## Executive Summary
@@ -161,7 +161,7 @@ Added comprehensive test coverage in `internal/osutil/osutil_test.go`:
 
 **Status:** Actively Maintained  
 **Version:** v0.10.0  
-**Last Updated:** September 8, 2024 (4 months ago)
+**Last Updated:** September 8, 2024 (approximately 13 months ago)
 
 #### Analysis
 
@@ -173,8 +173,8 @@ Added comprehensive test coverage in `internal/osutil/osutil_test.go`:
 
 **Rationale:**
 
-- **Recent Updates:** Last updated only 4 months ago
-- **Active Maintenance:** Regular commits and releases
+- **Recent Updates:** Last updated approximately 13 months ago (September 2024)
+- **Active Maintenance:** Regular commits and releases, project appears maintained
 - **Extensive Usage:** Used 76 times throughout the codebase
 - **Unique Value:** Provides features not available in standard library:
   - Stack trace support
@@ -220,10 +220,10 @@ $ go list -m -json gitlab.com/tozd/go/errors
 
 ### Actions Taken
 
-| Dependency                           | Status                | Action      | Rationale                                              |
-| ------------------------------------ | --------------------- | ----------- | ------------------------------------------------------ |
-| `github.com/m1/go-generate-password` | Abandoned (3.5 years) | ✅ Replaced | Simple functionality, single usage, easily replaceable |
-| `gitlab.com/tozd/go/errors`          | Active (4 months)     | ✅ Kept     | Actively maintained, extensive usage, unique value     |
+| Dependency                           | Status                 | Action      | Rationale                                              |
+| ------------------------------------ | ---------------------- | ----------- | ------------------------------------------------------ |
+| `github.com/m1/go-generate-password` | Abandoned (3.5 years)  | ✅ Replaced | Simple functionality, single usage, easily replaceable |
+| `gitlab.com/tozd/go/errors`          | Active (13 months ago) | ✅ Kept     | Actively maintained, extensive usage, unique value     |
 
 ### Metrics
 
