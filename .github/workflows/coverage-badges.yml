@@ -47,6 +47,7 @@ jobs:
       - name: Update coverage badges
         run: |
           bash scripts/update-coverage-badges.sh
+          make docs
 
       - name: Check for changes
         id: check_changes

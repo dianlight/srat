@@ -2,7 +2,6 @@
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**
 
 - [🎯 What Was Created](#-what-was-created)
   - [1. GitHub Copilot Rules (`.github/copilot-rules.md`)](#1-github-copilot-rules-githubcopilot-rulesmd)

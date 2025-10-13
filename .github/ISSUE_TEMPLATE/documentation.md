@@ -1,9 +1,13 @@
+<!-- DOCTOC SKIP -->
+
 ---
+
 name: Documentation Update
 about: Request or report documentation changes needed
 title: "docs: "
 labels: ["documentation", "needs-review"]
 assignees: ""
+
 ---
 
 ## Documentation Update Request

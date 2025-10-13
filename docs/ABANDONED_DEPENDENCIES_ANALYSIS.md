@@ -1,6 +1,5 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**
 
 - [Abandoned Dependencies Analysis and Resolution](#abandoned-dependencies-analysis-and-resolution)
   - [Executive Summary](#executive-summary)
@@ -50,6 +49,7 @@ This document describes the analysis and resolution of potentially abandoned dep
 - **Usage Location:** Single usage in `backend/src/cmd/srat-cli/main-cli.go`
 - **Purpose:** Generate random password for Home Assistant mount user (`_ha_mount_user_`)
 - **Usage Pattern:**
+
   ```go
   pwdgen, err := generator.NewWithDefault()
   _ha_mount_user_password_, err := pwdgen.Generate()
@@ -58,6 +58,7 @@ This document describes the analysis and resolution of potentially abandoned dep
 #### Decision: Replace with Custom Implementation
 
 **Rationale:**
+
 - Package has not been updated since 2022
 - Simple functionality that can be easily replicated
 - Only used once in the entire codebase
@@ -88,6 +89,7 @@ func GenerateSecurePassword() (string, error) {
 ```
 
 **Key Features:**
+
 - Uses `crypto/rand` for cryptographically secure random generation
 - 128 bits of entropy (16 random bytes)
 - Base64 URL-safe encoding (no padding, no special characters like `+` or `/`)
@@ -104,6 +106,7 @@ Added comprehensive test coverage in `internal/osutil/osutil_test.go`:
 4. **Uniqueness Test:** Generates 100 passwords and verifies all are unique
 
 **Test Results:**
+
 - ✅ All tests pass
 - ✅ Coverage for osutil package: 70.7%
 - ✅ Overall coverage increased: 40.4% → 40.5%
@@ -111,6 +114,7 @@ Added comprehensive test coverage in `internal/osutil/osutil_test.go`:
 #### Changes Made
 
 **Files Modified:**
+
 1. `backend/src/internal/osutil/osutil.go` - Added `GenerateSecurePassword()` function
 2. `backend/src/internal/osutil/osutil_test.go` - Added 4 comprehensive tests
 3. `backend/src/cmd/srat-cli/main-cli.go` - Updated to use new function
@@ -118,6 +122,7 @@ Added comprehensive test coverage in `internal/osutil/osutil_test.go`:
 5. `backend/src/go.sum` - Updated checksums
 
 **Code Changes:**
+
 ```diff
 - "github.com/m1/go-generate-password/generator"
 + "github.com/dianlight/srat/internal/osutil"
@@ -136,6 +141,7 @@ Added comprehensive test coverage in `internal/osutil/osutil_test.go`:
 #### Impact Assessment
 
 ✅ **Positive Impact:**
+
 - Reduced external dependencies
 - Improved security (uses cryptographically secure random generation)
 - Better maintainability (code under our control)
@@ -143,6 +149,7 @@ Added comprehensive test coverage in `internal/osutil/osutil_test.go`:
 - Added comprehensive test coverage
 
 ❌ **No Negative Impact:**
+
 - Functionality maintained
 - Password quality equivalent or better
 - No breaking changes
@@ -165,6 +172,7 @@ Added comprehensive test coverage in `internal/osutil/osutil_test.go`:
 #### Decision: Keep
 
 **Rationale:**
+
 - **Recent Updates:** Last updated only 4 months ago
 - **Active Maintenance:** Regular commits and releases
 - **Extensive Usage:** Used 76 times throughout the codebase
@@ -176,6 +184,7 @@ Added comprehensive test coverage in `internal/osutil/osutil_test.go`:
   - Enhanced debugging capabilities
 
 **Evidence of Active Maintenance:**
+
 ```bash
 $ go list -m -json gitlab.com/tozd/go/errors
 "Version": "v0.10.0",
@@ -183,6 +192,7 @@ $ go list -m -json gitlab.com/tozd/go/errors
 ```
 
 **Key Features Used:**
+
 - `errors.WithStack()` - Add stack traces to errors
 - `errors.WithDetails()` - Add structured details to errors
 - `errors.Wrap()` - Wrap errors with additional context
@@ -192,12 +202,14 @@ $ go list -m -json gitlab.com/tozd/go/errors
 #### Impact of Keeping
 
 ✅ **Positive:**
+
 - Maintains comprehensive error handling capabilities
 - Preserves debugging information
 - No disruption to existing error handling patterns
 - Continues to receive updates and bug fixes
 
 ❌ **No Negative Impact:**
+
 - Package is actively maintained
 - No security concerns
 - Not abandoned
@@ -208,19 +220,21 @@ $ go list -m -json gitlab.com/tozd/go/errors
 
 ### Actions Taken
 
-| Dependency | Status | Action | Rationale |
-|------------|--------|--------|-----------|
+| Dependency                           | Status                | Action      | Rationale                                              |
+| ------------------------------------ | --------------------- | ----------- | ------------------------------------------------------ |
 | `github.com/m1/go-generate-password` | Abandoned (3.5 years) | ✅ Replaced | Simple functionality, single usage, easily replaceable |
-| `gitlab.com/tozd/go/errors` | Active (4 months) | ✅ Kept | Actively maintained, extensive usage, unique value |
+| `gitlab.com/tozd/go/errors`          | Active (4 months)     | ✅ Kept     | Actively maintained, extensive usage, unique value     |
 
 ### Metrics
 
 **Before:**
+
 - External dependencies: X
 - Total coverage: 40.4%
 - Osutil coverage: 69.9%
 
 **After:**
+
 - External dependencies: X-1 (removed 1 abandoned dependency)
 - Total coverage: 40.5% (↑ 0.1%)
 - Osutil coverage: 70.7% (↑ 0.8%)
@@ -228,6 +242,7 @@ $ go list -m -json gitlab.com/tozd/go/errors
 ### Verification
 
 All changes have been verified through:
+
 - ✅ Unit tests (all passing)
 - ✅ Build verification (successful)
 - ✅ Code formatting (following repository standards)

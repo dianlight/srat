@@ -2,7 +2,6 @@
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**
 
 - [Supported Versions](#supported-versions)
 - [Reporting a Vulnerability](#reporting-a-vulnerability)
@@ -14,10 +13,10 @@
 Use this section to tell people about which versions of your project are
 currently being supported with security updates.
 
-| Version    | Supported          |
-| ---------- | ------------------ |
-| 2025.9.x   | :white_check_mark: |
-| < 2025.9.0 | :x:                |
+| Version     | Supported          |
+| ----------- | ------------------ |
+| 2025.10.x   | :white_check_mark: |
+| < 2025.10.0 | :x:                |
 
 ## Reporting a Vulnerability
 

@@ -89,6 +89,16 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 	)
 }
 
+// ProvideCoreDependenciesWithoutDB provides FX options for core services without database dependencies.
+// This is useful for commands that truly don't need database access (e.g., version only).
+func ProvideCoreDependenciesWithoutDB(params BaseAppParams) fx.Option {
+	return fx.Provide(
+		func() *slog.Logger { return slog.Default() },
+		func() (context.Context, context.CancelFunc) { return params.Ctx, params.CancelFn },
+		func() *dto.ContextState { return params.StaticConfig },
+	)
+}
+
 // ProvideHAClientDependencies provides FX options for Home Assistant API clients.
 func ProvideHAClientDependencies(params BaseAppParams) fx.Option {
 	return fx.Provide(
@@ -122,6 +132,40 @@ func ProvideHAClientDependencies(params BaseAppParams) fx.Option {
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (websocket.ClientInterface, error) {
 			return websocket.NewClient(strings.Replace(params.StaticConfig.SupervisorURL, "http", "ws", 1), params.StaticConfig.SupervisorToken), nil
 		},
+	)
+}
+
+// ProvideHAClientDependenciesWithoutWebSocket provides FX options for Home Assistant API clients excluding the websocket client.
+func ProvideHAClientDependenciesWithoutWebSocket(params BaseAppParams) fx.Option {
+	return fx.Provide(
+		func() (*securityprovider.SecurityProviderBearerToken, error) {
+			return securityprovider.NewSecurityProviderBearerToken(params.StaticConfig.SupervisorToken)
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (ingress.ClientWithResponsesInterface, error) {
+			return ingress.NewClientWithResponses(params.StaticConfig.SupervisorURL, ingress.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (hardware.ClientWithResponsesInterface, error) {
+			return hardware.NewClientWithResponses(params.StaticConfig.SupervisorURL, hardware.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (mount.ClientWithResponsesInterface, error) {
+			return mount.NewClientWithResponses(params.StaticConfig.SupervisorURL, mount.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (host.ClientWithResponsesInterface, error) {
+			return host.NewClientWithResponses(params.StaticConfig.SupervisorURL, host.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (addons.ClientWithResponsesInterface, error) {
+			return addons.NewClientWithResponses(params.StaticConfig.SupervisorURL, addons.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (resolution.ClientWithResponsesInterface, error) {
+			return resolution.NewClientWithResponses(params.StaticConfig.SupervisorURL, resolution.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (core_api.ClientWithResponsesInterface, error) {
+			return core_api.NewClientWithResponses(params.StaticConfig.SupervisorURL, core_api.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (root.ClientWithResponsesInterface, error) {
+			return root.NewClientWithResponses(params.StaticConfig.SupervisorURL, root.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		// Note: websocket client is intentionally excluded
 	)
 }
 

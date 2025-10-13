@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
+	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
@@ -346,33 +347,83 @@ func (s *ShareService) NotifyClient() {
 }
 
 // VerifyShare checks the validity of a share and disables it if invalid
+// It handles the following scenarios:
+// 1. Volume mounted and RW -> share active or not active as DB value and RW
+// 2. Volume mounted and RO -> share active or not active as DB value and RO. No RW users
+// 3. Volume not mounted -> share is not active and marked as anomaly (Invalid=true)
+// 4. Volume not exists -> share is not active and marked as anomaly (Invalid=true)
 func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 	if share == nil {
 		return errors.New("share cannot be nil")
 	}
 
-	// Check if MountPointData exists and has a valid path
+	// Case 4: Check if MountPointData exists and has a valid path
 	if share.MountPointData == nil || share.MountPointData.Path == "" {
 		slog.Warn("Share has no valid MountPointData", "share", share.Name)
-		_, err := s.DisableShare(share.Name)
-		if err != nil {
-			return errors.Wrapf(err, "failed to disable invalid share '%s'", share.Name)
-		}
+		share.Invalid = pointer.Bool(true)
+		share.Disabled = pointer.Bool(true)
 		return nil
 	}
 
-	// Check if mount is active in Home Assistant
+	// Case 4: Volume doesn't exist (marked as invalid in mount point)
+	if share.MountPointData.IsInvalid {
+		slog.Warn("Share volume does not exist",
+			"share", share.Name,
+			"path", share.MountPointData.Path)
+		share.Invalid = pointer.Bool(true)
+		share.Disabled = pointer.Bool(true)
+		return nil
+	}
+
+	// Case 3: Volume exists but is not mounted
+	if !share.MountPointData.IsMounted {
+		slog.Warn("Share volume is not mounted",
+			"share", share.Name,
+			"path", share.MountPointData.Path)
+		share.Invalid = pointer.Bool(true)
+		share.Disabled = pointer.Bool(true)
+		return nil
+	}
+
+	// Cases 1 & 2: Volume is mounted - validate write support vs user permissions
+	if share.MountPointData.IsWriteSupported != nil {
+		if !*share.MountPointData.IsWriteSupported {
+			// Case 2: Read-only volume - ensure no RW users
+			for i := range share.Users {
+				if len(share.Users[i].RwShares) > 0 {
+					// Filter out this share from RW shares
+					var newRwShares []string
+					for _, rwShare := range share.Users[i].RwShares {
+						if rwShare != share.Name {
+							newRwShares = append(newRwShares, rwShare)
+						}
+					}
+					share.Users[i].RwShares = newRwShares
+					slog.Info("Removed RW permission from user on RO volume",
+						"share", share.Name,
+						"user", share.Users[i].Username,
+						"path", share.MountPointData.Path)
+				}
+			}
+		}
+		// Case 1: RW volume - share state depends on DB disabled value (already set)
+	}
+
+	// Check if mount is active in Home Assistant (for non-internal shares)
 	if share.Usage != "internal" && share.Usage != "none" {
 		if share.IsHAMounted != nil && !*share.IsHAMounted {
 			slog.Warn("Share mount point is not mounted in Home Assistant",
 				"share", share.Name,
 				"status", share.HaStatus)
-			_, err := s.DisableShare(share.Name)
-			if err != nil {
-				return errors.Wrapf(err, "failed to disable share '%s' with invalid mount point", share.Name)
-			}
+			share.Invalid = pointer.Bool(true)
+			share.Disabled = pointer.Bool(true)
 			return nil
 		}
+	}
+
+	// Share is valid
+	if share.Invalid == nil || !*share.Invalid {
+		share.Invalid = pointer.Bool(false)
 	}
 
 	return nil

@@ -1,52 +1,4 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**
-
-- [Test Coverage](#test-coverage)
-  - [Current Coverage](#current-coverage)
-  - [Backend Package-Level Coverage](#backend-package-level-coverage)
-  - [Coverage Thresholds](#coverage-thresholds)
-  - [Backend Testing](#backend-testing)
-    - [Framework & Tools](#framework--tools)
-    - [Test Structure](#test-structure)
-    - [Running Backend Tests](#running-backend-tests)
-    - [Coverage Details](#coverage-details)
-  - [Frontend Testing](#frontend-testing)
-    - [Framework & Tools](#framework--tools-1)
-    - [Test Structure](#test-structure-1)
-    - [Running Frontend Tests](#running-frontend-tests)
-    - [Coverage Details](#coverage-details-1)
-  - [Global Coverage](#global-coverage)
-  - [Coverage History](#coverage-history)
-    - [Backend Coverage Over Time](#backend-coverage-over-time)
-    - [Frontend Coverage Over Time](#frontend-coverage-over-time)
-    - [Global Coverage Over Time](#global-coverage-over-time)
-  - [Coverage Improvement Goals](#coverage-improvement-goals)
-    - [Short-term Goals (Next Release)](#short-term-goals-next-release)
-    - [Long-term Goals (6 months)](#long-term-goals-6-months)
-  - [Package-Specific Improvement Strategies](#package-specific-improvement-strategies)
-    - [High Priority Packages (Close to 60%)](#high-priority-packages-close-to-60)
-      - [`api` Package (48.1% → 60% target)](#api-package-481-%E2%86%92-60-target)
-      - [`server` Package (33.8% → 60% target)](#server-package-338-%E2%86%92-60-target)
-      - [`service` Package (33.6% → 60% target)](#service-package-336-%E2%86%92-60-target)
-    - [Medium Priority Packages](#medium-priority-packages)
-      - [`converter` Package (27.2% → 60% target)](#converter-package-272-%E2%86%92-60-target)
-      - [`dbom` Package (19.0% → 60% target)](#dbom-package-190-%E2%86%92-60-target)
-      - [`dto` Package (19.1% → 60% target)](#dto-package-191-%E2%86%92-60-target)
-      - [`homeassistant/*` Packages (various → 60% target)](#homeassistant-packages-various-%E2%86%92-60-target)
-    - [Low Priority Packages (defer improvement)](#low-priority-packages-defer-improvement)
-      - [`cmd/*` Packages (5-18% coverage)](#cmd-packages-5-18-coverage)
-  - [Test Implementation Guidelines](#test-implementation-guidelines)
-    - [API Handler Test Pattern](#api-handler-test-pattern)
-    - [Service Test Pattern](#service-test-pattern)
-    - [Key Testing Principles](#key-testing-principles)
-  - [Best Practices](#best-practices)
-    - [Backend Testing Best Practices](#backend-testing-best-practices)
-    - [Frontend Testing Best Practices](#frontend-testing-best-practices)
-  - [Updating Coverage Data](#updating-coverage-data)
-  - [Resources](#resources)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DOCTOC SKIP -->
 
 # Test Coverage
 
@@ -60,7 +12,7 @@ This document provides an overview of the test coverage for the SRAT project, in
 | Frontend (TypeScript) | 70.30%   | 🟢 Green  |
 | Global (Weighted)     | 48.7%    | 🟡 Yellow |
 
-*Last updated: 2025-10-07*
+*Last updated: 2025-10-11*
 
 ## Backend Package-Level Coverage
 
@@ -205,9 +157,9 @@ The following graphs show the evolution of test coverage over time.
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Backend Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11]
   y-axis "Coverage %" 0 --> 100
-  line [0,38.7]
+  line [41.0, , ]
 ```
 
 ### Frontend Coverage Over Time
@@ -216,9 +168,9 @@ xychart-beta
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Frontend Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11]
   y-axis "Coverage %" 0 --> 100
-  line [0,71.89]
+  line [74.23, , ]
 ```
 
 ### Global Coverage Over Time
@@ -227,9 +179,9 @@ xychart-beta
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Global Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11]
   y-axis "Coverage %" 0 --> 100
-  line [0,52.0]
+  line [54.3, , ]
 ```
 
 ## Coverage Improvement Goals
