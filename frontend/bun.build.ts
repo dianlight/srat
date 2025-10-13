@@ -2,8 +2,8 @@
 
 import { watch } from "node:fs";
 import { parseArgs } from "node:util";
-import { withHtmlLiveReload, reloadClients } from "bun-html-live-reload";
-import { type BuildConfig, type BuildOutput, Glob, type Serve, $ } from "bun";
+import type { BuildConfig, BuildOutput, ServerWebSocket } from "bun";
+import { Glob, $ } from "bun";
 import path from "node:path";
 
 const { values, positionals } = parseArgs({
@@ -81,20 +81,54 @@ async function build(): Promise<BuildOutput | undefined> {
 	} else if (values.serve) {
 		console.log(`Serving ${values.outDir}`);
 
-		Bun.build(buildConfig);
+		// Track connected clients for live reload
+		const clients = new Set<ServerWebSocket>();
 
+		// Initial build
+		await Bun.build(buildConfig);
+
+		// Watch for file changes
 		watch(path.join(import.meta.dir, "src"), {
 			recursive: true
 		}).on("change", async (event, filename) => {
 			console.log(`Change file: ${filename}`);
-			//await $`rm -r  ${import.meta.dir}/${values.outDir}`;
-			await Bun.build(buildConfig);
-			reloadClients();
+			try {
+				const result = await Bun.build(buildConfig);
+				if (!result.success) {
+					console.error("Build failed during hot reload");
+					for (const message of result.logs) {
+						console.error(message);
+					}
+					return;
+				}
+				console.log("Hot reload: build successful, notifying clients");
+				// Notify all connected clients to reload
+				for (const client of clients) {
+					try {
+						client.send("reload");
+					} catch (e) {
+						clients.delete(client);
+					}
+				}
+			} catch (error) {
+				console.error("Hot reload: build error", error);
+			}
 		});
 
 		Bun.serve({
-			fetch: withHtmlLiveReload(async (request) => {
+			fetch: async (request, server) => {
 				const url = new URL(request.url);
+
+				// WebSocket endpoint for live reload
+				if (url.pathname === "/__live_reload") {
+					const upgraded = server.upgrade(request);
+					if (!upgraded) {
+						return new Response("WebSocket upgrade failed", { status: 500 });
+					}
+					return undefined;
+				}
+
+				// DevTools endpoint
 				if (
 					url.pathname === "/.well-known/appspecific/com.chrome.devtools.json"
 				) {
@@ -105,25 +139,56 @@ async function build(): Promise<BuildOutput | undefined> {
 						},
 					});
 				}
+
+				// Serve index.html for root
 				if (url.pathname === "/") {
 					url.pathname = "/index.html";
 				}
+
 				console.log(`Values ${import.meta.dir} ${values.outDir} ${url.pathname}`);
 				const tpath = path.normalize(path.join(import.meta.dir, values.outDir!, url.pathname));
-				const afile = Bun.file(tpath)
+				const afile = Bun.file(tpath);
 				console.log(`Request ${request.mode} ${url.pathname} ==> ${tpath} ${await afile.exists()} [${afile.size}]`);
+
+				// Inject live reload script into HTML files
+				if (afile.type.startsWith("text/html") && await afile.exists()) {
+					const html = await afile.text();
+					const injectedHtml = html.replace(
+						"</body>",
+						`<script>
+							(function() {
+								const ws = new WebSocket("ws://" + location.host + "/__live_reload");
+								ws.onmessage = () => location.reload();
+								ws.onerror = () => setTimeout(() => location.reload(), 1000);
+							})();
+						</script></body>`
+					);
+					return new Response(injectedHtml, {
+						headers: {
+							"Content-Type": "text/html",
+						}
+					});
+				}
+
 				return new Response(await afile.arrayBuffer(), {
 					headers: {
 						"Content-Type": afile.type,
 					}
 				});
-			}),
-			port: 3080,
-			idleTimeout: 60, // Set idle timeout to 60 seconds (configurable)
-			development: {
-				console: true,
-				hmr: true,
 			},
+			websocket: {
+				open(ws) {
+					clients.add(ws);
+				},
+				close(ws) {
+					clients.delete(ws);
+				},
+				message() {
+					// No incoming messages expected
+				},
+			},
+			port: 3080,
+			idleTimeout: 60,
 		});
 		console.log("Serving http://localhost:3080/index.html");
 	} else if (values.watch) {
