@@ -236,7 +236,7 @@ $ go list -m -json gitlab.com/tozd/go/errors
 **After:**
 
 - External dependencies: X-1 (removed 1 abandoned dependency)
-- Total coverage: 40.5% (↑ 0.1%)
+- Total coverage: 40.7% (↑ 0.3%)
 - Osutil coverage: 70.7% (↑ 0.8%)
 
 ### Verification
