@@ -8,7 +8,6 @@ import (
 	"os"
 	"slices"
 
-	"github.com/jinzhu/copier"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -193,7 +192,13 @@ func (in *Config) MigrateConfig() error {
 			share.Name = shareName
 			i := slices.IndexFunc(in.ACL, func(a OptionsAcl) bool { return a.Share == shareName })
 			if i > -1 {
-				copier.Copy(&share, &in.ACL[i])
+				// Copy common fields from ACL to Share
+				acl := in.ACL[i]
+				share.Disabled = acl.Disabled
+				share.Users = acl.Users
+				share.RoUsers = acl.RoUsers
+				share.TimeMachine = acl.TimeMachine
+				share.Usage = acl.Usage
 				in.ACL = slices.Delete(in.ACL, i, i+1)
 			}
 			if len(share.Users) == 0 {

@@ -13,12 +13,9 @@ import {
 	type SxProps,
 	type Theme,
 } from "@mui/material";
-import {
-	Sparklines,
-	SparklinesBars,
-	SparklinesLine,
-	SparklinesSpots,
-} from "react-sparklines";
+import { SparkLineChart } from "@mui/x-charts/SparkLineChart";
+
+const MAX_HISTORY_LENGTH = 10;
 
 export interface MetricCardProps {
 	title: string;
@@ -62,21 +59,31 @@ export function MetricCard({
 			return "";
 		}
 
+		const chartData = history.slice(-MAX_HISTORY_LENGTH);
+
 		if (historyType === "bar") {
 			return (
-				<Sparklines data={history} limit={10} width={100} height={40}>
-					<SparklinesBars
-						style={{ fill: theme.palette.info.main, fillOpacity: ".5" }}
-					/>
-				</Sparklines>
+				<SparkLineChart
+					data={chartData}
+					width={100}
+					height={40}
+					plotType="bar"
+					color={theme.palette.info.main}
+					showTooltip
+					showHighlight
+				/>
 			);
 		}
 
 		return (
-			<Sparklines data={history} limit={10} width={100} height={40}>
-				<SparklinesLine color={theme.palette.primary.main} />
-				<SparklinesSpots />
-			</Sparklines>
+			<SparkLineChart
+				data={chartData}
+				width={100}
+				height={40}
+				color={theme.palette.primary.main}
+				showTooltip
+				showHighlight
+			/>
 		);
 	};
 

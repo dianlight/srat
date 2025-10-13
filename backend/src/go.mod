@@ -7,7 +7,6 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v75 v75.0.0
 	github.com/gorilla/mux v1.8.1
-	github.com/jinzhu/copier v0.4.0
 	github.com/jpillora/overseer v1.1.6
 	github.com/mattn/go-isatty v0.0.20
 	github.com/oapi-codegen/runtime v1.1.2
@@ -24,7 +23,6 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/gorilla/websocket v1.5.3
-	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/k0kubun/pp/v3 v3.5.0
 	github.com/lonegunmanb/go-defaults v1.4.0
@@ -172,5 +170,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
