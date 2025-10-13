@@ -73,20 +73,19 @@ func Example_withCallback() {
 
 // TestSmartServiceCallbackIntegration verifies callback integration
 func TestSmartServiceCallbackIntegration(t *testing.T) {
-	// This test demonstrates that callbacks can be registered
-	// In practice, callbacks are triggered when GetHealthStatus detects failures
+	// This test verifies that the tlog callback registration mechanism works
+	// In production, GetHealthStatus triggers callbacks when detecting failures
 
-	callbackCalled := false
 	callbackID := tlog.RegisterCallback(slog.LevelWarn, func(event tlog.LogEvent) {
-		callbackCalled = true
+		// Callback will be called asynchronously when WARN-level logs occur
+		// In production, this would handle SMART pre-failure alerts
 	})
 	defer tlog.UnregisterCallback(slog.LevelWarn, callbackID)
 
-	// Trigger a warning to test the callback system
-	tlog.Warn("Test SMART warning", "device", "/dev/test")
+	// Verify that callback registration succeeded
+	assert.NotEmpty(t, callbackID, "Callback ID should be generated")
 
-	// Note: In real usage, GetHealthStatus would trigger this automatically
-	// when it detects failing attributes
-	assert.True(t, callbackCalled || !callbackCalled, "Callback system is functional")
+	// In production use, GetHealthStatus() automatically triggers this callback
+	// when it detects failing SMART attributes via tlog.Warn()
 }
 
