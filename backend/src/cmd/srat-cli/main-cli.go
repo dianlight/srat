@@ -536,50 +536,44 @@ func main() {
 		// Commands that don't need database (version and hdidle)
 		// Version command exits early, so this block handles hdidle
 		if command == "hdidle" {
-			fxOptions = append(fxOptions,
-				appsetup.ProvideCoreDependenciesWithoutDB(appParams),
-				fx.Provide(service.NewHDIdleService),
-				fx.Invoke(func(
-					lc fx.Lifecycle,
-					hdidleService service.HDIdleServiceInterface,
-				) {
-					lc.Append(fx.Hook{
-						OnStart: func(ctx context.Context) error {
-							slog.Info("Starting HDIdle monitoring service")
-							
-							// Build config from CLI flags
-							config := &service.HDIdleConfig{
-								DefaultIdleTime:         *hdidleDefaultIdle,
-								DefaultCommandType:      *hdidleDefaultCommand,
-								Debug:                   *hdidleDebug,
-								LogFile:                 *hdidleLogFile,
-								SymlinkPolicy:           *hdidleSymlinkPolicy,
-								IgnoreSpinDownDetection: *hdidleIgnoreSpinDown,
-								Devices:                 []service.HDIdleDeviceConfig{},
-							}
-							
-							// Start the service
-							err := hdidleService.Start(config)
-							if err != nil {
-								return errors.Wrap(err, "failed to start HDIdle service")
-							}
-							
-							slog.Info("HDIdle monitoring service started successfully")
-							
-							// Block indefinitely (service runs in background)
-							select {
-							case <-ctx.Done():
-								slog.Info("Context cancelled, stopping HDIdle service")
-								if stopErr := hdidleService.Stop(); stopErr != nil {
-									slog.Error("Error stopping HDIdle service", "err", stopErr)
-								}
-							}
-							
-							return nil
-						},
-					})
-				}),
-			)
+			// Create a minimal HDIdleService directly without full DI
+			hdidleService := service.NewHDIdleService(service.HDIdleServiceParams{
+				ApiContext:       apiCtx,
+				ApiContextCancel: apiCancel,
+				State:            &staticConfig,
+			})
+			
+			slog.Info("Starting HDIdle monitoring service")
+			
+			// Build config from CLI flags
+			config := &service.HDIdleConfig{
+				DefaultIdleTime:         *hdidleDefaultIdle,
+				DefaultCommandType:      *hdidleDefaultCommand,
+				Debug:                   *hdidleDebug,
+				LogFile:                 *hdidleLogFile,
+				SymlinkPolicy:           *hdidleSymlinkPolicy,
+				IgnoreSpinDownDetection: *hdidleIgnoreSpinDown,
+				Devices:                 []service.HDIdleDeviceConfig{},
+			}
+			
+			// Start the service
+			err := hdidleService.Start(config)
+			if err != nil {
+				log.Fatalf("Failed to start HDIdle service: %v", err)
+			}
+			
+			slog.Info("HDIdle monitoring service started successfully")
+			
+			// Block until context is done
+			<-apiCtx.Done()
+			
+			slog.Info("Context cancelled, stopping HDIdle service")
+			if stopErr := hdidleService.Stop(); stopErr != nil {
+				slog.Error("Error stopping HDIdle service", "err", stopErr)
+			}
+			
+			// Exit early for hdidle command - no need to create FX app
+			os.Exit(0)
 		}
 	}
 
