@@ -164,7 +164,10 @@ describe("useIgnoredIssues hook", () => {
         try {
             const { result } = renderHook(() => useIgnoredIssues());
             // If it successfully renders, ensure it has a valid ignoredIssues array
-            expect(Array.isArray(result.current.ignoredIssues) || result.current.ignoredIssues.length === 0).toBe(true);
+            expect(Array.isArray(result.current.ignoredIssues)).toBe(true);
+            if (Array.isArray(result.current.ignoredIssues)) {
+                expect(result.current.ignoredIssues.length).toBeGreaterThanOrEqual(0);
+            }
         } catch (e) {
             // If it throws, that's also acceptable behavior
             expect(true).toBe(true);

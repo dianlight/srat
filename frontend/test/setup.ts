@@ -11,7 +11,12 @@ import '@testing-library/jest-dom'
 GlobalRegistrator.register();
 
 // Install DOM globals immediately when this module is imported
-const win = new Window();
+const win = new Window({
+    settings: {
+        enableJavaScriptEvaluation: true,
+        suppressCodeGenerationFromStringsWarning: true
+    }
+});
 (globalThis as any).window = win as any;
 (globalThis as any).document = win.document as any;
 (globalThis as any).HTMLElement = win.HTMLElement as any;
