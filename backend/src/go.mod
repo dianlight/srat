@@ -7,7 +7,6 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v75 v75.0.0
 	github.com/gorilla/mux v1.8.1
-	github.com/jinzhu/copier v0.4.0
 	github.com/jpillora/overseer v1.1.6
 	github.com/mattn/go-isatty v0.0.20
 	github.com/oapi-codegen/runtime v1.1.2
@@ -173,4 +172,6 @@ tool (
 	github.com/zarldev/goenums
 )
 
+replace github.com/zarldev/goenums => /home/runner/gohack/github.com/zarldev/goenums
 
+replace github.com/jpillora/overseer => /home/runner/gohack/github.com/jpillora/overseer
