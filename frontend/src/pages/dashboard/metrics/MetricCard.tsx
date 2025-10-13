@@ -15,6 +15,8 @@ import {
 } from "@mui/material";
 import { SparkLineChart } from "@mui/x-charts/SparkLineChart";
 
+const MAX_HISTORY_LENGTH = 10;
+
 export interface MetricCardProps {
 	title: string;
 	subheader?: string;
@@ -57,7 +59,7 @@ export function MetricCard({
 			return "";
 		}
 
-		const chartData = history.slice(-10);
+		const chartData = history.slice(-MAX_HISTORY_LENGTH);
 
 		if (historyType === "bar") {
 			return (
@@ -66,7 +68,7 @@ export function MetricCard({
 					width={100}
 					height={40}
 					plotType="bar"
-					colors={[theme.palette.info.main]}
+					color={theme.palette.info.main}
 					showTooltip
 					showHighlight
 				/>
@@ -78,7 +80,7 @@ export function MetricCard({
 				data={chartData}
 				width={100}
 				height={40}
-				colors={[theme.palette.primary.main]}
+				color={theme.palette.primary.main}
 				showTooltip
 				showHighlight
 			/>

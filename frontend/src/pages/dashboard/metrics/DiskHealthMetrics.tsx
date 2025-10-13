@@ -146,7 +146,7 @@ export function DiskHealthMetrics({
 													data={diskIoHistory[io.device_name].read_iops}
 													width={60}
 													height={20}
-													colors={[theme.palette.primary.main]}
+													color={theme.palette.primary.main}
 													showTooltip
 												/>
 											) : null}
@@ -173,7 +173,7 @@ export function DiskHealthMetrics({
 													data={diskIoHistory[io.device_name].write_iops}
 													width={60}
 													height={20}
-													colors={[theme.palette.primary.main]}
+													color={theme.palette.primary.main}
 													showTooltip
 												/>
 											) : null}
@@ -200,7 +200,7 @@ export function DiskHealthMetrics({
 													data={diskIoHistory[io.device_name].read_latency_ms}
 													width={60}
 													height={20}
-													colors={[theme.palette.primary.main]}
+													color={theme.palette.primary.main}
 													showTooltip
 												/>
 											) : null}
@@ -227,7 +227,7 @@ export function DiskHealthMetrics({
 													data={diskIoHistory[io.device_name].write_latency_ms}
 													width={60}
 													height={20}
-													colors={[theme.palette.primary.main]}
+													color={theme.palette.primary.main}
 													showTooltip
 												/>
 											) : null}
@@ -254,7 +254,7 @@ export function DiskHealthMetrics({
 													data={diskIoHistory[io.device_name].temperature}
 													width={60}
 													height={20}
-													colors={[theme.palette.primary.main]}
+													color={theme.palette.primary.main}
 													showTooltip
 												/>
 											) : null}

@@ -115,7 +115,7 @@ export function NetworkHealthMetrics({
 												data={networkTrafficHistory[nic.deviceName].inbound}
 												width={60}
 												height={20}
-												colors={[theme.palette.primary.main]}
+												color={theme.palette.primary.main}
 												showTooltip
 											/>
 										) : null}
@@ -142,7 +142,7 @@ export function NetworkHealthMetrics({
 												data={networkTrafficHistory[nic.deviceName].outbound}
 												width={60}
 												height={20}
-												colors={[theme.palette.primary.main]}
+												color={theme.palette.primary.main}
 												showTooltip
 											/>
 										) : null}

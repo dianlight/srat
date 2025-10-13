@@ -87,7 +87,7 @@ export function ProcessMetrics({
 													data={cpuHistory[process.name]}
 													width={60}
 													height={20}
-													colors={[theme.palette.primary.main]}
+													color={theme.palette.primary.main}
 													showTooltip
 												/>
 											) : null}
@@ -116,7 +116,7 @@ export function ProcessMetrics({
 													data={memoryHistory[process.name]}
 													width={60}
 													height={20}
-													colors={[theme.palette.success.main]}
+													color={theme.palette.success.main}
 													showTooltip
 												/>
 											) : null}
@@ -144,7 +144,7 @@ export function ProcessMetrics({
 													width={60}
 													height={20}
 													plotType="bar"
-													colors={[theme.palette.secondary.main]}
+													color={theme.palette.secondary.main}
 													showTooltip
 												/>
 											) : null}
