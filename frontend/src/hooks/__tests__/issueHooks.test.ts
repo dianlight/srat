@@ -75,111 +75,111 @@ describe("useIgnoredIssues hook", () => {
 		expect(result.current.ignoredIssues).toEqual([1, 3]);
 	});
 
-	it("checks if issue is ignored", async () => {
-		const React = await import("react");
-		const { renderHook } = await import("@testing-library/react");
-		const { useIgnoredIssues } = await import("../issueHooks");
+    it("checks if issue is ignored", async () => {
+        const React = await import("react");
+        const { renderHook } = await import("@testing-library/react");
+        const { useIgnoredIssues } = await import("../issueHooks");
 
-		localStorage.setItem("srat_ignored_issues", JSON.stringify([1, 2, 3]));
+        localStorage.setItem("srat_ignored_issues", JSON.stringify([1, 2, 3]));
 
-		const { result } = renderHook(() => useIgnoredIssues());
+        const { result } = renderHook(() => useIgnoredIssues());
 
-		expect(result.current.isIssueIgnored(2)).toBe(true);
-		expect(result.current.isIssueIgnored(99)).toBe(false);
-	});
+        expect(result.current.isIssueIgnored(2)).toBe(true);
+        expect(result.current.isIssueIgnored(99)).toBe(false);
+    });
 
-	it("persists changes to localStorage", async () => {
-		const React = await import("react");
-		const { renderHook, act, waitFor } = await import("@testing-library/react");
-		const { useIgnoredIssues } = await import("../issueHooks");
+    it("persists changes to localStorage", async () => {
+        const React = await import("react");
+        const { renderHook, act, waitFor } = await import("@testing-library/react");
+        const { useIgnoredIssues } = await import("../issueHooks");
 
-		const { result } = renderHook(() => useIgnoredIssues());
+        const { result } = renderHook(() => useIgnoredIssues());
 
-		act(() => {
-			result.current.ignoreIssue(7);
-		});
+        act(() => {
+            result.current.ignoreIssue(7);
+        });
 
-		await waitFor(() => {
-			const stored = localStorage.getItem("srat_ignored_issues");
-			expect(stored).toBeTruthy();
-			if (stored) {
-				const parsed = JSON.parse(stored);
-				expect(parsed).toContain(7);
-			}
-		});
-	});
+        await waitFor(() => {
+            const stored = localStorage.getItem("srat_ignored_issues");
+            expect(stored).toBeTruthy();
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                expect(parsed).toContain(7);
+            }
+        });
+    });
 
-	it("handles string IDs", async () => {
-		const React = await import("react");
-		const { renderHook, act } = await import("@testing-library/react");
-		const { useIgnoredIssues } = await import("../issueHooks");
+    it("handles string IDs", async () => {
+        const React = await import("react");
+        const { renderHook, act } = await import("@testing-library/react");
+        const { useIgnoredIssues } = await import("../issueHooks");
 
-		const { result } = renderHook(() => useIgnoredIssues());
+        const { result } = renderHook(() => useIgnoredIssues());
 
-		act(() => {
-			result.current.ignoreIssue("issue-123");
-		});
+        act(() => {
+            result.current.ignoreIssue("issue-123");
+        });
 
-		expect(result.current.ignoredIssues).toContain("issue-123");
-		expect(result.current.isIssueIgnored("issue-123")).toBe(true);
-	});
+        expect(result.current.ignoredIssues).toContain("issue-123");
+        expect(result.current.isIssueIgnored("issue-123")).toBe(true);
+    });
 
-	it("handles mixed numeric and string IDs", async () => {
-		const React = await import("react");
-		const { renderHook, act } = await import("@testing-library/react");
-		const { useIgnoredIssues } = await import("../issueHooks");
+    it("handles mixed numeric and string IDs", async () => {
+        const React = await import("react");
+        const { renderHook, act } = await import("@testing-library/react");
+        const { useIgnoredIssues } = await import("../issueHooks");
 
-		const { result } = renderHook(() => useIgnoredIssues());
+        const { result } = renderHook(() => useIgnoredIssues());
 
-		act(() => {
-			result.current.ignoreIssue(1);
-			result.current.ignoreIssue("str-2");
-			result.current.ignoreIssue(3);
-		});
+        act(() => {
+            result.current.ignoreIssue(1);
+            result.current.ignoreIssue("str-2");
+            result.current.ignoreIssue(3);
+        });
 
-		expect(result.current.ignoredIssues).toEqual([1, "str-2", 3]);
-		expect(result.current.isIssueIgnored(1)).toBe(true);
-		expect(result.current.isIssueIgnored("str-2")).toBe(true);
-	});
+        expect(result.current.ignoredIssues).toEqual([1, "str-2", 3]);
+        expect(result.current.isIssueIgnored(1)).toBe(true);
+        expect(result.current.isIssueIgnored("str-2")).toBe(true);
+    });
 
-	it("does not add duplicate issues", async () => {
-		const React = await import("react");
-		const { renderHook, act } = await import("@testing-library/react");
-		const { useIgnoredIssues } = await import("../issueHooks");
+    it("does not add duplicate issues", async () => {
+        const React = await import("react");
+        const { renderHook, act } = await import("@testing-library/react");
+        const { useIgnoredIssues } = await import("../issueHooks");
 
-		const { result } = renderHook(() => useIgnoredIssues());
+        const { result } = renderHook(() => useIgnoredIssues());
 
-		act(() => {
-			result.current.ignoreIssue(5);
-			result.current.ignoreIssue(5);
-		});
+        act(() => {
+            result.current.ignoreIssue(5);
+            result.current.ignoreIssue(5);
+        });
 
-		const count = result.current.ignoredIssues.filter((id) => id === 5).length;
-		expect(count).toBeGreaterThan(0);
-	});
+        const count = result.current.ignoredIssues.filter(id => id === 5).length;
+        expect(count).toBeGreaterThan(0);
+    });
 
-	it("handles invalid localStorage data gracefully", async () => {
-		const React = await import("react");
-		const { renderHook } = await import("@testing-library/react");
-		const { useIgnoredIssues } = await import("../issueHooks");
+    it("handles invalid localStorage data gracefully", async () => {
+        const React = await import("react");
+        const { renderHook } = await import("@testing-library/react");
+        const { useIgnoredIssues } = await import("../issueHooks");
 
-		// Set invalid JSON in localStorage
-		localStorage.setItem("srat_ignored_issues", "invalid json");
+        // Set invalid JSON in localStorage
+        localStorage.setItem("srat_ignored_issues", "invalid json");
 
-		// The hook should either fall back to empty array or handle the error gracefully
-		try {
-			const { result } = renderHook(() => useIgnoredIssues());
-			// If it successfully renders, ensure it has a valid ignoredIssues array
-			expect(
-				Array.isArray(result.current.ignoredIssues) ||
-					result.current.ignoredIssues.length === 0,
-			).toBe(true);
-		} catch (e) {
-			// If it throws, that's also acceptable behavior
-			expect(true).toBe(true);
-		} finally {
-			// Clean up the invalid data
-			localStorage.removeItem("srat_ignored_issues");
-		}
-	});
+        // The hook should either fall back to empty array or handle the error gracefully
+        try {
+            const { result } = renderHook(() => useIgnoredIssues());
+            // If it successfully renders, ensure it has a valid ignoredIssues array
+            expect(Array.isArray(result.current.ignoredIssues)).toBe(true);
+            if (Array.isArray(result.current.ignoredIssues)) {
+                expect(result.current.ignoredIssues.length).toBeGreaterThanOrEqual(0);
+            }
+        } catch (e) {
+            // If it throws, that's also acceptable behavior
+            expect(true).toBe(true);
+        } finally {
+            // Clean up the invalid data
+            localStorage.removeItem("srat_ignored_issues");
+        }
+    });
 });

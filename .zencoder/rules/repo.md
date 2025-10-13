@@ -99,7 +99,7 @@ cd backend/src && go test ./...
 **Language**: TypeScript/JavaScript
 **Version**: TypeScript 5.8.3
 **Build System**: Bun
-**Package Manager**: Bun (v1.2.20)
+**Package Manager**: Bun (v1.3.0)
 
 #### Dependencies
 
