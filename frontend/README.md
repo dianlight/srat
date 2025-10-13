@@ -35,6 +35,8 @@ bun run build
 
 Note: This project uses Bun as the JavaScript runtime and package manager. See `bun.build.ts` for the build pipeline.
 
+**Bun 1.3 Compatibility:** This project is fully compatible with Bun 1.3.0. The project has been tested with Bun 1.3.0 and all breaking changes have been reviewed. The project does not use any of the affected APIs (SQL client, YAML parser) that changed in Bun 1.3.
+
 ## Console Error Callback Registry
 
 The frontend provides a small utility to register callbacks executed asynchronously whenever `console.error` is called, and a React hook for ergonomic usage.
