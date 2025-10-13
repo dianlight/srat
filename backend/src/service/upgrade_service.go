@@ -420,7 +420,7 @@ func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinatio
 
 	// Perform the update using standard library functions
 	slog.Info("Applying update...", "target_executable", destinationFile, "source_new_executable", newExecutablePath)
-	
+
 	// Step 1: Open the new executable file
 	newExeFile, err := os.Open(newExecutablePath)
 	if err != nil {
