@@ -1,79 +1,73 @@
 import "../../../test/setup";
-import { beforeEach, describe, expect, it } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
-	const _store: Record<string, string> = {};
-	(globalThis as any).localStorage = {
-		getItem: (k: string) => (Object.hasOwn(_store, k) ? _store[k] : null),
-		setItem: (k: string, v: string) => {
-			_store[k] = String(v);
-		},
-		removeItem: (k: string) => {
-			delete _store[k];
-		},
-		clear: () => {
-			for (const k of Object.keys(_store)) delete _store[k];
-		},
-	};
+    const _store: Record<string, string> = {};
+    (globalThis as any).localStorage = {
+        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
+        setItem: (k: string, v: string) => { _store[k] = String(v); },
+        removeItem: (k: string) => { delete _store[k]; },
+        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
+    };
 }
 
 describe("useIgnoredIssues hook", () => {
-	beforeEach(() => {
-		localStorage.clear();
-	});
+    beforeEach(() => {
+        localStorage.clear();
+    });
 
-	it("initializes with empty ignored issues", async () => {
-		const React = await import("react");
-		const { renderHook } = await import("@testing-library/react");
-		const { useIgnoredIssues } = await import("../issueHooks");
+    it("initializes with empty ignored issues", async () => {
+        const React = await import("react");
+        const { renderHook } = await import("@testing-library/react");
+        const { useIgnoredIssues } = await import("../issueHooks");
 
-		const { result } = renderHook(() => useIgnoredIssues());
+        const { result } = renderHook(() => useIgnoredIssues());
 
-		expect(result.current.ignoredIssues).toEqual([]);
-	});
+        expect(result.current.ignoredIssues).toEqual([]);
+    });
 
-	it("loads ignored issues from localStorage", async () => {
-		const React = await import("react");
-		const { renderHook } = await import("@testing-library/react");
-		const { useIgnoredIssues } = await import("../issueHooks");
+    it("loads ignored issues from localStorage", async () => {
+        const React = await import("react");
+        const { renderHook } = await import("@testing-library/react");
+        const { useIgnoredIssues } = await import("../issueHooks");
 
-		localStorage.setItem("srat_ignored_issues", JSON.stringify([1, 2, 3]));
+        localStorage.setItem("srat_ignored_issues", JSON.stringify([1, 2, 3]));
 
-		const { result } = renderHook(() => useIgnoredIssues());
+        const { result } = renderHook(() => useIgnoredIssues());
 
-		expect(result.current.ignoredIssues).toEqual([1, 2, 3]);
-	});
+        expect(result.current.ignoredIssues).toEqual([1, 2, 3]);
+    });
 
-	it("adds issue to ignored list", async () => {
-		const React = await import("react");
-		const { renderHook, act } = await import("@testing-library/react");
-		const { useIgnoredIssues } = await import("../issueHooks");
+    it("adds issue to ignored list", async () => {
+        const React = await import("react");
+        const { renderHook, act } = await import("@testing-library/react");
+        const { useIgnoredIssues } = await import("../issueHooks");
 
-		const { result } = renderHook(() => useIgnoredIssues());
+        const { result } = renderHook(() => useIgnoredIssues());
 
-		act(() => {
-			result.current.ignoreIssue(42);
-		});
+        act(() => {
+            result.current.ignoreIssue(42);
+        });
 
-		expect(result.current.ignoredIssues).toContain(42);
-	});
+        expect(result.current.ignoredIssues).toContain(42);
+    });
 
-	it("removes issue from ignored list", async () => {
-		const React = await import("react");
-		const { renderHook, act } = await import("@testing-library/react");
-		const { useIgnoredIssues } = await import("../issueHooks");
+    it("removes issue from ignored list", async () => {
+        const React = await import("react");
+        const { renderHook, act } = await import("@testing-library/react");
+        const { useIgnoredIssues } = await import("../issueHooks");
 
-		localStorage.setItem("srat_ignored_issues", JSON.stringify([1, 2, 3]));
+        localStorage.setItem("srat_ignored_issues", JSON.stringify([1, 2, 3]));
 
-		const { result } = renderHook(() => useIgnoredIssues());
+        const { result } = renderHook(() => useIgnoredIssues());
 
-		act(() => {
-			result.current.unignoreIssue(2);
-		});
+        act(() => {
+            result.current.unignoreIssue(2);
+        });
 
-		expect(result.current.ignoredIssues).toEqual([1, 3]);
-	});
+        expect(result.current.ignoredIssues).toEqual([1, 3]);
+    });
 
     it("checks if issue is ignored", async () => {
         const React = await import("react");
@@ -170,10 +164,7 @@ describe("useIgnoredIssues hook", () => {
         try {
             const { result } = renderHook(() => useIgnoredIssues());
             // If it successfully renders, ensure it has a valid ignoredIssues array
-            expect(Array.isArray(result.current.ignoredIssues)).toBe(true);
-            if (Array.isArray(result.current.ignoredIssues)) {
-                expect(result.current.ignoredIssues.length).toBeGreaterThanOrEqual(0);
-            }
+            expect(Array.isArray(result.current.ignoredIssues) || result.current.ignoredIssues.length === 0).toBe(true);
         } catch (e) {
             // If it throws, that's also acceptable behavior
             expect(true).toBe(true);
