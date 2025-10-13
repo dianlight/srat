@@ -1,3 +1,17 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Redux DevTools Integration](#redux-devtools-integration)
+  - [Configuration](#configuration)
+  - [Using Redux DevTools](#using-redux-devtools)
+  - [Why No `@redux-devtools/extension` Package?](#why-no-redux-devtoolsextension-package)
+  - [Production Builds](#production-builds)
+  - [Testing](#testing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Redux DevTools Integration
 
 This project uses **Redux Toolkit**'s built-in Redux DevTools support through the `configureStore()` function.
@@ -21,6 +35,7 @@ export const store = configureStore({
    - [Edge Extension](https://microsoftedge.microsoft.com/addons/detail/redux-devtools/nnkgneoiohoecpdiaponcejilbhhikei)
 
 2. Start the development server:
+
    ```bash
    cd frontend
    bun run dev
