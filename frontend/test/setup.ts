@@ -13,7 +13,8 @@ GlobalRegistrator.register();
 // Install DOM globals immediately when this module is imported
 const win = new Window({
     settings: {
-        enableJavaScriptEvaluation: true
+        enableJavaScriptEvaluation: true,
+        suppressCodeGenerationFromStringsWarning: true
     }
 });
 (globalThis as any).window = win as any;

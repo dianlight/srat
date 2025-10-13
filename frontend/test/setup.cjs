@@ -4,7 +4,8 @@ const { Window } = require('happy-dom');
 
 const win = new Window({
     settings: {
-        enableJavaScriptEvaluation: true
+        enableJavaScriptEvaluation: true,
+        suppressCodeGenerationFromStringsWarning: true
     }
 });
 global.window = win;
