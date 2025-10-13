@@ -195,13 +195,18 @@ async function build(): Promise<BuildOutput | undefined> {
 		console.log(`Build Watch ${import.meta.dir}/src -> ${values.outDir}`);
 		async function rebuild(event: string, filename: string | null) {
 			console.log(`Detected ${event} in ${filename}`);
-			const glob = new Glob(`index-*`);
-
-			for await (const file of glob.scan(values.outDir)) {
-				console.log(`D ${values.outDir}/${file}`);
-				Bun.file(`${values.outDir}/${file}`)
-					.delete()
-					.catch((_err) => { });
+			
+			// Only clean up old index files if the output directory exists
+			try {
+				const glob = new Glob(`index-*`);
+				for await (const file of glob.scan(values.outDir)) {
+					console.log(`D ${values.outDir}/${file}`);
+					Bun.file(`${values.outDir}/${file}`)
+						.delete()
+						.catch((_err) => { });
+				}
+			} catch (err) {
+				// Directory might not exist yet on first build
 			}
 
 			Bun.build(buildConfig).then((result) => {
