@@ -11,6 +11,7 @@
 ### 🔧 Maintenance
 
 - **Dependency Cleanup**: Replaced deprecated `github.com/inconshreveable/go-update` library (last updated 2016) with standard Go library functions for binary updates. This reduces external dependencies and improves maintainability without affecting functionality.
+- **Redux DevTools Integration**: Removed unused `@redux-devtools/extension` package. Redux Toolkit's `configureStore()` provides built-in Redux DevTools support, making the separate extension package unnecessary. DevTools integration continues to work seamlessly in development mode.
 
 ### ✨ Features
 
