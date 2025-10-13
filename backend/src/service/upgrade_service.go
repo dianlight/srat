@@ -20,7 +20,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
 	"github.com/google/go-github/v75/github"
-	"github.com/inconshreveable/go-update"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"golang.org/x/time/rate"
@@ -419,6 +418,10 @@ func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinatio
 	slog.Info("Starting in-place update installation", "new_executable", newExecutablePath)
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLING, Progress: 0})
 
+	// Perform the update using standard library functions
+	slog.Info("Applying update...", "target_executable", destinationFile, "source_new_executable", newExecutablePath)
+
+	// Step 1: Open the new executable file
 	newExeFile, err := os.Open(newExecutablePath)
 	if err != nil {
 		errWrapped := errors.Wrapf(err, "failed to open new executable file: %s", newExecutablePath)
@@ -427,18 +430,65 @@ func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinatio
 	}
 	defer newExeFile.Close()
 
-	// Perform the update
-
-	slog.Info("Applying update...", "target_executable", destinationFile, "source_new_executable", newExecutablePath)
-	err = update.Apply(newExeFile, update.Options{
-		TargetPath:  destinationFile,
-		TargetMode:  0755,
-		OldSavePath: destinationFile + ".old",
-	})
+	// Step 2: Create a temporary file in the same directory as the target
+	// This ensures atomic rename works (must be on same filesystem)
+	targetDir := filepath.Dir(destinationFile)
+	tempFile, err := os.CreateTemp(targetDir, ".srat_update_*")
 	if err != nil {
-		// If err is update.ErrNotSupported, it means the OS doesn't support in-place updates of the running binary.
-		// Or it could be a permission error, etc.
-		errWrapped := errors.Wrapf(err, "failed to apply in-place update to %s from %s", destinationFile, newExecutablePath)
+		errWrapped := errors.Wrapf(err, "failed to create temporary file in %s", targetDir)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return errWrapped
+	}
+	tempPath := tempFile.Name()
+	defer func() {
+		// Clean up temp file if it still exists (error case)
+		if _, err := os.Stat(tempPath); err == nil {
+			os.Remove(tempPath)
+		}
+	}()
+
+	// Step 3: Copy the new binary to the temp file
+	_, err = io.Copy(tempFile, newExeFile)
+	tempFile.Close() // Close before chmod
+	if err != nil {
+		errWrapped := errors.Wrapf(err, "failed to copy new executable to temp file %s", tempPath)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return errWrapped
+	}
+
+	// Step 4: Make the temp file executable
+	err = os.Chmod(tempPath, 0755)
+	if err != nil {
+		errWrapped := errors.Wrapf(err, "failed to make temp file executable: %s", tempPath)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return errWrapped
+	}
+
+	// Step 5: Backup the old binary (if it exists)
+	oldSavePath := destinationFile + ".old"
+	if _, err := os.Stat(destinationFile); err == nil {
+		// Destination exists, back it up
+		// Remove any existing backup first
+		os.Remove(oldSavePath)
+		if err := os.Rename(destinationFile, oldSavePath); err != nil {
+			// Log warning but don't fail - backup is optional
+			slog.Warn("Failed to backup old executable", "destination", destinationFile, "backup", oldSavePath, "error", err)
+		} else {
+			slog.Info("Backed up old executable", "backup", oldSavePath)
+		}
+	}
+
+	// Step 6: Atomically rename temp file to destination
+	// This works even if the destination is currently running on Unix systems
+	err = os.Rename(tempPath, destinationFile)
+	if err != nil {
+		// Try to restore backup on error
+		if _, statErr := os.Stat(oldSavePath); statErr == nil {
+			if restoreErr := os.Rename(oldSavePath, destinationFile); restoreErr != nil {
+				slog.Error("Failed to restore backup after rename failure", "error", restoreErr)
+			}
+		}
+		errWrapped := errors.Wrapf(err, "failed to apply in-place update to %s from %s", destinationFile, tempPath)
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
 		return errWrapped
 	}

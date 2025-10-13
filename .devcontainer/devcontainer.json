@@ -1,6 +1,6 @@
 {
 	"name": "SRAT",
-	"image": "ghcr.io/hassio-addons/base:18.1.4",
+	"image": "ghcr.io/hassio-addons/base:18.2.0",
 	"runArgs": [
 		"--cap-add=SYS_PTRACE",
 		"--security-opt",
