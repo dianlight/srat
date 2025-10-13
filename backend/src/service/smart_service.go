@@ -22,6 +22,11 @@ const (
 
 type SmartServiceInterface interface {
 	GetSmartInfo(deviceName string) (*dto.SmartInfo, errors.E)
+	GetHealthStatus(devicePath string) (*dto.SmartHealthStatus, errors.E)
+	StartSelfTest(devicePath string, testType dto.SmartTestType) errors.E
+	GetTestStatus(devicePath string) (*dto.SmartTestStatus, errors.E)
+	EnableSMART(devicePath string) errors.E
+	DisableSMART(devicePath string) errors.E
 }
 
 type smartService struct {
@@ -181,4 +186,173 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 	s.cache.Set(cacheKey, ret, gocache.DefaultExpiration)
 
 	return ret, nil
+}
+
+// GetHealthStatus returns the health status of a device by evaluating SMART attributes
+func (s *smartService) GetHealthStatus(devicePath string) (*dto.SmartHealthStatus, errors.E) {
+	// Get SMART info first
+	smartInfo, err := s.GetSmartInfo(devicePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Open device to read thresholds
+	dev, stdErr := smart.Open(devicePath)
+	if stdErr != nil {
+		return nil, errors.Wrapf(stdErr, "failed to open device %s", devicePath)
+	}
+	defer dev.Close()
+
+	var thresholds map[uint8]uint8
+	var attrs map[uint8]interface{}
+
+	// Get thresholds for SATA devices
+	if sm, ok := dev.(*smart.SataDevice); ok {
+		thdata, stdErr := sm.ReadSMARTThresholds()
+		if stdErr == nil {
+			thresholds = thdata.Thresholds
+		}
+		data, stdErr := sm.ReadSMARTData()
+		if stdErr == nil {
+			attrs = make(map[uint8]interface{})
+			for k, v := range data.Attrs {
+				attrs[k] = v
+			}
+		}
+	}
+
+	health := checkSMARTHealth(smartInfo, thresholds, attrs)
+
+	// Check if device is about to fail and trigger callback
+	if !health.Passed {
+		tlog.Warn("SMART pre-failure detected", "device", devicePath,
+			"failing_attributes", health.FailingAttributes)
+	}
+
+	return health, nil
+}
+
+// StartSelfTest initiates a SMART self-test on the device
+func (s *smartService) StartSelfTest(devicePath string, testType dto.SmartTestType) errors.E {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	// Validate test type
+	var testByte byte
+	switch testType {
+	case dto.SmartTestTypeShort:
+		testByte = _SMART_SHORT_SELFTEST
+	case dto.SmartTestTypeLong:
+		testByte = _SMART_LONG_SELFTEST
+	case dto.SmartTestTypeConveyance:
+		testByte = _SMART_CONVEYANCE_SELFTEST
+	default:
+		return errors.WithDetails(dto.ErrorInvalidParameter, "test_type", testType)
+	}
+
+	// Open device
+	dev, stdErr := smart.Open(devicePath)
+	if stdErr != nil {
+		return errors.Wrapf(stdErr, "failed to open device %s", devicePath)
+	}
+	defer dev.Close()
+
+	// Only SATA devices support self-tests via this method
+	sm, ok := dev.(*smart.SataDevice)
+	if !ok {
+		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
+			"reason", "self-test only supported for SATA devices")
+	}
+
+	// Execute the test
+	if err := executeSMARTTest(sm, testByte); err != nil {
+		return errors.Wrap(err, "failed to start SMART self-test")
+	}
+
+	slog.Info("SMART self-test started", "device", devicePath, "type", testType)
+	return nil
+}
+
+// GetTestStatus returns the status of the currently running or last SMART self-test
+func (s *smartService) GetTestStatus(devicePath string) (*dto.SmartTestStatus, errors.E) {
+	// Open device
+	dev, stdErr := smart.Open(devicePath)
+	if stdErr != nil {
+		return nil, errors.Wrapf(stdErr, "failed to open device %s", devicePath)
+	}
+	defer dev.Close()
+
+	// Only SATA devices support self-test log reading
+	sm, ok := dev.(*smart.SataDevice)
+	if !ok {
+		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
+			"reason", "self-test status only supported for SATA devices")
+	}
+
+	// Read self-test log
+	log, stdErr := sm.ReadSMARTSelfTestLog()
+	if stdErr != nil {
+		return nil, errors.Wrapf(stdErr, "failed to read SMART self-test log")
+	}
+
+	status, err := parseSelfTestLog(log)
+	if err != nil {
+		return nil, err
+	}
+
+	return status, nil
+}
+
+// EnableSMART enables SMART functionality on the device
+func (s *smartService) EnableSMART(devicePath string) errors.E {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	// Open device
+	dev, stdErr := smart.Open(devicePath)
+	if stdErr != nil {
+		return errors.Wrapf(stdErr, "failed to open device %s", devicePath)
+	}
+	defer dev.Close()
+
+	// Only SATA devices support enable/disable
+	sm, ok := dev.(*smart.SataDevice)
+	if !ok {
+		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
+			"reason", "SMART enable/disable only supported for SATA devices")
+	}
+
+	if err := enableSMART(sm); err != nil {
+		return err
+	}
+
+	slog.Info("SMART enabled", "device", devicePath)
+	return nil
+}
+
+// DisableSMART disables SMART functionality on the device
+func (s *smartService) DisableSMART(devicePath string) errors.E {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	// Open device
+	dev, stdErr := smart.Open(devicePath)
+	if stdErr != nil {
+		return errors.Wrapf(stdErr, "failed to open device %s", devicePath)
+	}
+	defer dev.Close()
+
+	// Only SATA devices support enable/disable
+	sm, ok := dev.(*smart.SataDevice)
+	if !ok {
+		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
+			"reason", "SMART enable/disable only supported for SATA devices")
+	}
+
+	if err := disableSMART(sm); err != nil {
+		return err
+	}
+
+	slog.Info("SMART disabled", "device", devicePath)
+	return nil
 }

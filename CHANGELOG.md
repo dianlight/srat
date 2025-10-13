@@ -14,6 +14,16 @@
 
 ### ✨ Features
 
+- **Enhanced SMART Service [#234](https://github.com/dianlight/srat/issues/234)**: Implemented comprehensive SMART disk monitoring and control features:
+  - **Health Status Monitoring**: Added `GetHealthStatus()` method to evaluate disk health by comparing SMART attributes against thresholds
+  - **Self-Test Execution**: Added `StartSelfTest()` method to initiate short, long, or conveyance SMART self-tests on SATA devices
+  - **Test Status Monitoring**: Added `GetTestStatus()` method to retrieve current or last SMART self-test results
+  - **SMART Control**: Added `EnableSMART()` and `DisableSMART()` methods for controlling SMART functionality on SATA devices
+  - **Pre-Failure Alerts**: Integrated with tlog callback system to automatically log warnings when disk health checks detect failing attributes
+  - **Cross-Platform Support**: Linux-specific ioctl implementations with graceful fallback on other platforms
+  - **New DTOs**: Added `SmartTestType`, `SmartTestStatus`, and `SmartHealthStatus` types for SMART operations
+  - **Enhanced Error Handling**: Added `ErrorSMARTOperationFailed` and `ErrorSMARTTestInProgress` error codes
+  - Verified proper usage of `github.com/anatol/smart.go` library and extended functionality for disk management needs
 - **Reduced Database Dependencies [#208](https://github.com/dianlight/srat/issues/208)**: Optimized CLI command database requirements:
   - **version command**: No database needed - runs without any DB initialization
   - **upgrade command**: Uses in-memory database by default - no file path required

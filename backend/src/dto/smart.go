@@ -22,3 +22,27 @@ type SmartInfo struct {
 	PowerCycleCount SmartRangeValue            `json:"power_cycle_count"`
 	Additional      map[string]SmartRangeValue `json:"others,omitempty"`
 }
+
+// SmartTestType represents the type of SMART test to execute
+type SmartTestType string
+
+const (
+	SmartTestTypeShort      SmartTestType = "short"
+	SmartTestTypeLong       SmartTestType = "long"
+	SmartTestTypeConveyance SmartTestType = "conveyance"
+)
+
+// SmartTestStatus represents the status of a SMART test
+type SmartTestStatus struct {
+	Status          string `json:"status"`                     // "idle", "running", "completed", "failed"
+	TestType        string `json:"test_type"`                  // Type of test
+	PercentComplete int    `json:"percent_complete,omitempty"` // Percentage complete (0-100)
+	LBAOfFirstError string `json:"lba_of_first_error,omitempty"`
+}
+
+// SmartHealthStatus represents the overall health status of a disk
+type SmartHealthStatus struct {
+	Passed            bool     `json:"passed"`
+	FailingAttributes []string `json:"failing_attributes,omitempty"`
+	OverallStatus     string   `json:"overall_status"` // "healthy", "warning", "failing"
+}
