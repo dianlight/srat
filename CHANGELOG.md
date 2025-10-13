@@ -10,6 +10,12 @@
 
 ### ✨ Features
 
+- **Native Bun Hot-Reloading**: Replaced external `bun-html-live-reload` library with native WebSocket-based hot-reload implementation:
+  - Removed dependency on `bun-html-live-reload` package
+  - Implemented custom WebSocket server for live reload functionality
+  - Improved error handling and logging for hot reload builds
+  - Simplified development server setup using Bun's native capabilities
+  - Maintains full hot-reload functionality with lighter dependency footprint
 - **Reduced Database Dependencies [#208](https://github.com/dianlight/srat/issues/208)**: Optimized CLI command database requirements:
   - **version command**: No database needed - runs without any DB initialization
   - **upgrade command**: Uses in-memory database by default - no file path required
