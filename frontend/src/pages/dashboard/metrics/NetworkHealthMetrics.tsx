@@ -10,11 +10,7 @@ import {
 	Typography,
 	useTheme,
 } from "@mui/material";
-import {
-	Sparklines,
-	SparklinesLine,
-	SparklinesSpots,
-} from "react-sparklines";
+import { SparkLineChart } from "@mui/x-charts/SparkLineChart";
 import { useEffect, useMemo, useState } from "react";
 import type { NetworkStats } from "../../../store/sratApi";
 import { filesize } from "filesize";
@@ -115,16 +111,13 @@ export function NetworkHealthMetrics({
 									</Typography>
 									<Box sx={{ width: 50, height: 20 }}>
 										{(networkTrafficHistory[nic.deviceName]?.inbound?.length || 0) > 1 ? (
-											<Sparklines
+											<SparkLineChart
 												data={networkTrafficHistory[nic.deviceName].inbound}
-												limit={MAX_HISTORY_LENGTH}
 												width={60}
 												height={20}
-												min={0}
-											>
-												<SparklinesLine color={theme.palette.primary.main} />
-												<SparklinesSpots />
-											</Sparklines>
+												colors={[theme.palette.primary.main]}
+												showTooltip
+											/>
 										) : null}
 									</Box>
 								</Box>
@@ -145,16 +138,13 @@ export function NetworkHealthMetrics({
 									</Typography>
 									<Box sx={{ width: 50, height: 20 }}>
 										{(networkTrafficHistory[nic.deviceName]?.outbound?.length || 0) > 1 ? (
-											<Sparklines
+											<SparkLineChart
 												data={networkTrafficHistory[nic.deviceName].outbound}
-												limit={MAX_HISTORY_LENGTH}
 												width={60}
 												height={20}
-												min={0}
-											>
-												<SparklinesLine color={theme.palette.primary.main} />
-												<SparklinesSpots />
-											</Sparklines>
+												colors={[theme.palette.primary.main]}
+												showTooltip
+											/>
 										) : null}
 									</Box>
 								</Box>
