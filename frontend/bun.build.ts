@@ -2,7 +2,7 @@
 
 import { watch } from "node:fs";
 import { parseArgs } from "node:util";
-import type { BuildConfig, BuildOutput, ServerWebSocket } from "bun";
+import type { BuildConfig, BuildOutput } from "bun";
 import { Glob, $ } from "bun";
 import path from "node:path";
 
@@ -52,14 +52,14 @@ const buildConfig: BuildConfig = {
 	},
 	target: "browser",
 	sourcemap: "inline",
-	minify: values.watch ? false : true,
+	minify: values.watch || values.serve ? false : true,
 	plugins: [
 		//copy("src/index.html", "out/index.html")
 		//  html({})
 	],
 	define: {
 		"process.env.APIURL": APIURL,
-		"process.env.NODE_ENV": values.watch ? "'development'" : "'production'",
+		"process.env.NODE_ENV": values.watch || values.serve ? "'development'" : "'production'",
 		"process.env.ROLLBAR_CLIENT_ACCESS_TOKEN": `"${process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled'}"`,
 		"process.env.SERVER_EVENT_BACKEND": "'WS'", // SSE or WS
 	},
@@ -81,13 +81,13 @@ async function build(): Promise<BuildOutput | undefined> {
 	} else if (values.serve) {
 		console.log(`Serving ${values.outDir}`);
 
-		// Track connected clients for live reload
-		const clients = new Set<ServerWebSocket>();
+		// Track last build time for live reload
+		let lastBuildTime = Date.now();
 
 		// Initial build
 		await Bun.build(buildConfig);
 
-		// Watch for file changes
+		// Watch for file changes and rebuild
 		watch(path.join(import.meta.dir, "src"), {
 			recursive: true
 		}).on("change", async (event, filename) => {
@@ -99,16 +99,9 @@ async function build(): Promise<BuildOutput | undefined> {
 					for (const message of result.logs) {
 						console.error(message);
 					}
-					return;
-				}
-				console.log("Hot reload: build successful, notifying clients");
-				// Notify all connected clients to reload
-				for (const client of clients) {
-					try {
-						client.send("reload");
-					} catch (e) {
-						clients.delete(client);
-					}
+				} else {
+					lastBuildTime = Date.now();
+					console.log("Build successful, clients will reload");
 				}
 			} catch (error) {
 				console.error("Hot reload: build error", error);
@@ -119,13 +112,41 @@ async function build(): Promise<BuildOutput | undefined> {
 			fetch: async (request, server) => {
 				const url = new URL(request.url);
 
-				// WebSocket endpoint for live reload
-				if (url.pathname === "/__live_reload") {
-					const upgraded = server.upgrade(request);
-					if (!upgraded) {
-						return new Response("WebSocket upgrade failed", { status: 500 });
+				// Server-Sent Events endpoint for live reload
+				if (url.pathname === "/__hmr") {
+					const clientBuildTime = parseInt(url.searchParams.get("t") || "0");
+					if (clientBuildTime < lastBuildTime) {
+						return new Response("reload", {
+							headers: {
+								"Content-Type": "text/plain",
+								"Cache-Control": "no-cache",
+							},
+						});
 					}
-					return undefined;
+					// Long-polling: wait for changes
+					return new Promise((resolve) => {
+						const checkInterval = setInterval(() => {
+							if (clientBuildTime < lastBuildTime) {
+								clearInterval(checkInterval);
+								resolve(new Response("reload", {
+									headers: {
+										"Content-Type": "text/plain",
+										"Cache-Control": "no-cache",
+									},
+								}));
+							}
+						}, 100);
+						// Timeout after 30 seconds
+						setTimeout(() => {
+							clearInterval(checkInterval);
+							resolve(new Response("ok", {
+								headers: {
+									"Content-Type": "text/plain",
+									"Cache-Control": "no-cache",
+								},
+							}));
+						}, 30000);
+					});
 				}
 
 				// DevTools endpoint
@@ -157,9 +178,21 @@ async function build(): Promise<BuildOutput | undefined> {
 						"</body>",
 						`<script>
 							(function() {
-								const ws = new WebSocket("ws://" + location.host + "/__live_reload");
-								ws.onmessage = () => location.reload();
-								ws.onerror = () => setTimeout(() => location.reload(), 1000);
+								let buildTime = Date.now();
+								function checkForUpdates() {
+									fetch("/__hmr?t=" + buildTime)
+										.then(r => r.text())
+										.then(msg => {
+											if (msg === "reload") {
+												location.reload();
+											} else {
+												// Continue polling
+												setTimeout(checkForUpdates, 1000);
+											}
+										})
+										.catch(() => setTimeout(checkForUpdates, 5000));
+								}
+								checkForUpdates();
 							})();
 						</script></body>`
 					);
@@ -176,19 +209,9 @@ async function build(): Promise<BuildOutput | undefined> {
 					}
 				});
 			},
-			websocket: {
-				open(ws) {
-					clients.add(ws);
-				},
-				close(ws) {
-					clients.delete(ws);
-				},
-				message() {
-					// No incoming messages expected
-				},
-			},
 			port: 3080,
 			idleTimeout: 60,
+			development: true,
 		});
 		console.log("Serving http://localhost:3080/index.html");
 	} else if (values.watch) {
