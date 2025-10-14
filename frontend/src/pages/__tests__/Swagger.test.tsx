@@ -14,8 +14,6 @@ if (!(globalThis as any).localStorage) {
 describe("Swagger Component", () => {
     beforeEach(() => {
         localStorage.clear();
-        // Clear DOM before each test
-        document.body.innerHTML = '';
     });
 
     it("renders Swagger component with API documentation interface", async () => {
@@ -238,14 +236,14 @@ describe("Swagger Component", () => {
         expect(jsonLinks.length).toBeGreaterThan(0);
         const jsonHref = jsonLinks[0].getAttribute('href');
         expect(jsonHref).toContain('openapi.json');
-        expect(jsonHref).toContain('http://localhost:8080'); // Should be normalized URL
+        expect(jsonHref).toContain('http://localhost:3000'); // Should be normalized URL
 
         // Check that YAML link has proper href - use getAllByText since there may be multiple instances  
         const yamlLinks = screen.getAllByText("YAML");
         expect(yamlLinks.length).toBeGreaterThan(0);
         const yamlHref = yamlLinks[0].getAttribute('href');
         expect(yamlHref).toContain('openapi.yaml');
-        expect(yamlHref).toContain('http://localhost:8080'); // Should be normalized URL
+        expect(yamlHref).toContain('http://localhost:3000'); // Should be normalized URL
     });
 
     it("renders component structure correctly", async () => {

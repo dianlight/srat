@@ -15,12 +15,12 @@ const win = new Window({
     settings: {
         enableJavaScriptEvaluation: true,
         suppressCodeGenerationFromStringsWarning: true
-    }
+    },
+    url: "http://localhost:3000/"
 });
 (globalThis as any).window = win as any;
 (globalThis as any).document = win.document as any;
 (globalThis as any).HTMLElement = win.HTMLElement as any;
-//(globalThis as any).localStorage = win.localStorage as any;
 
 // Mock fetch globally to prevent network calls during tests
 (globalThis as any).fetch = async () => {
@@ -36,9 +36,9 @@ const win = new Window({
 // Ensure APIURL is set so modules that compute API url at import time behave
 if (typeof process !== "undefined") {
     process.env = process.env || {};
-    process.env.APIURL = process.env.APIURL || "http://localhost:8080";
+    process.env.API_URL = process.env.API_URL || "http://localhost:8080";
 } else {
-    (globalThis as any).process = { env: { APIURL: "http://localhost:8080" } };
+    (globalThis as any).process = { env: { API_URL: "http://localhost:8080" } };
 }
 
 // Ensure React Testing Library is evaluated before any test runs so that

@@ -1,54 +1,17 @@
 // Or from '@reduxjs/toolkit/query' if not using the auto-generated hooks
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { getApiUrl } from "../macro/Environment" with { type: 'macro' };
 import normalizeUrl from "normalize-url";
 
-let APIURL = process.env.APIURL;
-console.trace("Configuration APIURL", APIURL);
-async function testURL(url: string): Promise<boolean> {
-	url = normalizeUrl(url);
-	try {
-		const _parsedUrl = new URL(url);
-		return await fetch(url, { method: "GET" })
-			.then((response) => {
-				if (response.ok) {
-					console.log(`API URL is reachable: ${url}`);
-					return true;
-				} else {
-					console.error(`API URL is not reachable: ${url}`);
-					return false;
-				}
-			})
-			.catch((error) => {
-				console.error(`Error fetching API URL: ${error}`);
-				return false;
-			});
-	} catch (_e) {
-		return false;
-	}
-}
-
-if (APIURL === undefined || APIURL === "" || APIURL === "dynamic") {
-	APIURL = window.location.href.substring(
-		0,
-		window.location.href.lastIndexOf("/") + 1,
-	);
-	console.info(
-		`Dynamic APIURL provided, using generated: ${APIURL} from ${window.location.href}`,
-	);
-	if (!(await testURL(`${APIURL}/api/health`))) {
-		APIURL = "http://localhost:8080";
-		console.error(
-			"APIURL is not reachable, using default: http://localhost:8080",
-		);
-	}
-} else {
-	console.info("* API URL", `${APIURL}`, "Reachable: ", await testURL(APIURL));
-}
+export const apiUrl = normalizeUrl((getApiUrl() === "dynamic" ? window.location.href.substring(
+	0,
+	window.location.href.lastIndexOf("/") + 1
+) : getApiUrl()) + "/");
 
 // initialize an empty api service that we'll inject endpoints into later as needed
 export const emptySplitApi = createApi({
 	baseQuery: fetchBaseQuery({
-		baseUrl: APIURL,
+		baseUrl: apiUrl,
 		// Enrich outgoing requests with MDC headers when available in state
 		prepareHeaders: (headers, { getState }) => {
 			try {
@@ -68,10 +31,10 @@ export const emptySplitApi = createApi({
 					typeof globalThis.crypto?.randomUUID === "function"
 						? globalThis.crypto.randomUUID()
 						: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-								const r = (Math.random() * 16) | 0;
-								const v = c === "x" ? r : (r & 0x3) | 0x8;
-								return v.toString(16);
-							});
+							const r = (Math.random() * 16) | 0;
+							const v = c === "x" ? r : (r & 0x3) | 0x8;
+							return v.toString(16);
+						});
 				setIfMissing("X-Span-Id", spanId);
 				setIfMissing("X-Trace-Id", mdc?.traceId); // Don't touch need to identify a transaction
 			} catch (err) {
@@ -83,4 +46,5 @@ export const emptySplitApi = createApi({
 	endpoints: () => ({}),
 });
 
-export const apiUrl = normalizeUrl(`${APIURL}/`);
+
+console.debug("API URL is", apiUrl);

@@ -8,6 +8,7 @@ import type {
 	Welcome,
 } from "./sratApi";
 import { Supported_events } from "./sratApi";
+import { getServerEventBackend } from "../macro/Environment" with { type: 'macro' };
 
 export type EventData = {
 	[Supported_events.Heartbeat]: HealthPing;
@@ -200,4 +201,4 @@ export const wsApi = createApi({
 
 // Export the hook
 export const { useGetServerEventsQuery } =
-	process.env.SERVER_EVENT_BACKEND === "SSE" ? sseApi : wsApi;
+	getServerEventBackend() === "SSE" ? sseApi : wsApi;

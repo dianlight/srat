@@ -4,7 +4,7 @@ import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import JsonTable from "ts-react-json-table";
 import pkg from "../../package.json";
-import { getGitCommitHash } from "../macro/getGitCommitHash.ts" with {
+import { getGitCommitHash } from "../macro/GitCommitHash.ts" with {
 	type: "macro",
 };
 import { useGetServerEventsQuery } from "../store/sseApi.ts";
