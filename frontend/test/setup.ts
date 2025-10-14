@@ -15,12 +15,12 @@ const win = new Window({
     settings: {
         enableJavaScriptEvaluation: true,
         suppressCodeGenerationFromStringsWarning: true
-    }
+    },
+    url: "http://localhost:3000/"
 });
 (globalThis as any).window = win as any;
 (globalThis as any).document = win.document as any;
 (globalThis as any).HTMLElement = win.HTMLElement as any;
-//(globalThis as any).localStorage = win.localStorage as any;
 
 // Mock fetch globally to prevent network calls during tests
 (globalThis as any).fetch = async () => {
