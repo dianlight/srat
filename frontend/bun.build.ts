@@ -21,13 +21,6 @@ const { values, positionals } = parseArgs({
 			short: "s",
 			description: "Start the HTTP Server",
 		},
-		apiContextUrl: {
-			type: "string",
-			short: "c",
-			default: "'dynamic'",
-			description:
-				"Specify the URL of the API context (in watching mode) (default: dynamic)",
-		},
 		outDir: {
 			type: "string",
 			short: "o",
@@ -38,9 +31,6 @@ const { values, positionals } = parseArgs({
 	strict: true,
 	allowPositionals: true,
 });
-
-const APIURL = values.watch ? values.apiContextUrl || "" : "'dynamic'";
-console.log(`API URL: ${APIURL}`);
 
 const buildConfig: BuildConfig = {
 	entrypoints: ["src/index.html" /*, 'src/index.tsx' */],
@@ -58,12 +48,14 @@ const buildConfig: BuildConfig = {
 		//copy("src/index.html", "out/index.html")
 		//  html({})
 	],
+	/*
 	define: {
 		"process.env.APIURL": APIURL,
 		"process.env.NODE_ENV": values.watch || values.serve ? "'development'" : "'production'",
 		"process.env.ROLLBAR_CLIENT_ACCESS_TOKEN": `"${process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled'}"`,
 		"process.env.SERVER_EVENT_BACKEND": "'WS'", // SSE or WS
 	},
+	*/
 };
 
 async function build(): Promise<BuildOutput | undefined> {
@@ -81,30 +73,6 @@ async function build(): Promise<BuildOutput | undefined> {
 		});
 	} else if (values.serve) {
 		console.log(`Serving ${values.outDir}`);
-
-		// Initial build
-		//await Bun.build(buildConfig);
-
-		// Watch for file changes and rebuild
-		/*
-		watch(path.join(import.meta.dir, "src"), {
-			recursive: true
-		}).on("change", async (event, filename) => {
-			console.log(`Change file: ${filename}`);
-			try {
-				const result = await Bun.build(buildConfig);
-				if (!result.success) {
-					console.error("Build failed during hot reload");
-					for (const message of result.logs) {
-						console.error(message);
-					}
-				}
-			} catch (error) {
-				console.error("Hot reload: build error", error);
-			}
-		});
-		*/
-		//process.env.APIURL = APIURL.replace(/'/g, "");
 		Bun.serve({
 			routes:
 			{
@@ -168,8 +136,3 @@ async function build(): Promise<BuildOutput | undefined> {
 
 await build();
 console.log(`Build complete ✅ [:${values.watch ? "👁️:watching" : "🧻:build"}]`);
-
-/*
-if (values.watch) {
-}
-	*/
