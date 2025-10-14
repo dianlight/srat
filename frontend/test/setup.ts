@@ -36,9 +36,9 @@ const win = new Window({
 // Ensure APIURL is set so modules that compute API url at import time behave
 if (typeof process !== "undefined") {
     process.env = process.env || {};
-    process.env.APIURL = process.env.APIURL || "http://localhost:8080";
+    process.env.API_URL = process.env.API_URL || "http://localhost:8080";
 } else {
-    (globalThis as any).process = { env: { APIURL: "http://localhost:8080" } };
+    (globalThis as any).process = { env: { API_URL: "http://localhost:8080" } };
 }
 
 // Ensure React Testing Library is evaluated before any test runs so that
