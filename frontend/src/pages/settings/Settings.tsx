@@ -35,6 +35,7 @@ import {
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/sseApi";
 import { Padding } from "@mui/icons-material";
+import { getNodeEnv } from "../../macro/Environment" with { type: 'macro' };
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
@@ -223,7 +224,7 @@ export function Settings() {
 								loading={isChLoading}
 								autocompleteProps={{
 									size: "small",
-									disabled: evdata?.hello?.read_only || process.env.NODE_ENV === "production",
+									disabled: evdata?.hello?.read_only || getNodeEnv() === "production",
 									contentEditable: false, // Prevent manual input in production
 									disableClearable: true
 								}}

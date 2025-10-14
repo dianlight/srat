@@ -14,11 +14,7 @@ import {
 	Typography,
 	useTheme,
 } from "@mui/material";
-import {
-	Sparklines,
-	SparklinesLine,
-	SparklinesSpots,
-} from "react-sparklines";
+import { SparkLineChart } from "@mui/x-charts/SparkLineChart";
 import { useEffect, useRef, useState } from "react";
 import type { DiskHealth, DiskIoStats, Partition, PerPartitionInfo } from "../../../store/sratApi";
 import { filesize } from "filesize";
@@ -146,16 +142,13 @@ export function DiskHealthMetrics({
 										</Typography>
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.read_iops?.length || 0) > 1 ? (
-												<Sparklines
+												<SparkLineChart
 													data={diskIoHistory[io.device_name].read_iops}
-													limit={MAX_HISTORY_LENGTH}
 													width={60}
 													height={20}
-													min={0}
-												>
-													<SparklinesLine color={theme.palette.primary.main} />
-													<SparklinesSpots />
-												</Sparklines>
+													color={theme.palette.primary.main}
+													showTooltip
+												/>
 											) : null}
 										</Box>
 									</Box>
@@ -176,16 +169,13 @@ export function DiskHealthMetrics({
 										</Typography>
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.write_iops?.length || 0) > 1 ? (
-												<Sparklines
+												<SparkLineChart
 													data={diskIoHistory[io.device_name].write_iops}
-													limit={MAX_HISTORY_LENGTH}
 													width={60}
 													height={20}
-													min={0}
-												>
-													<SparklinesLine color={theme.palette.primary.main} />
-													<SparklinesSpots />
-												</Sparklines>
+													color={theme.palette.primary.main}
+													showTooltip
+												/>
 											) : null}
 										</Box>
 									</Box>
@@ -206,16 +196,13 @@ export function DiskHealthMetrics({
 										</Typography>
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.read_latency_ms?.length || 0) > 1 ? (
-												<Sparklines
+												<SparkLineChart
 													data={diskIoHistory[io.device_name].read_latency_ms}
-													limit={MAX_HISTORY_LENGTH}
 													width={60}
 													height={20}
-													min={0}
-												>
-													<SparklinesLine color={theme.palette.primary.main} />
-													<SparklinesSpots />
-												</Sparklines>
+													color={theme.palette.primary.main}
+													showTooltip
+												/>
 											) : null}
 										</Box>
 									</Box>
@@ -236,16 +223,13 @@ export function DiskHealthMetrics({
 										</Typography>
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.write_latency_ms?.length || 0) > 1 ? (
-												<Sparklines
+												<SparkLineChart
 													data={diskIoHistory[io.device_name].write_latency_ms}
-													limit={MAX_HISTORY_LENGTH}
 													width={60}
 													height={20}
-													min={0}
-												>
-													<SparklinesLine color={theme.palette.primary.main} />
-													<SparklinesSpots />
-												</Sparklines>
+													color={theme.palette.primary.main}
+													showTooltip
+												/>
 											) : null}
 										</Box>
 									</Box>
@@ -266,16 +250,13 @@ export function DiskHealthMetrics({
 										</Typography>
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.temperature?.length || 0) > 1 ? (
-												<Sparklines
+												<SparkLineChart
 													data={diskIoHistory[io.device_name].temperature}
-													limit={MAX_HISTORY_LENGTH}
 													width={60}
 													height={20}
-													min={0}
-												>
-													<SparklinesLine color={theme.palette.primary.main} />
-													<SparklinesSpots />
-												</Sparklines>
+													color={theme.palette.primary.main}
+													showTooltip
+												/>
 											) : null}
 										</Box>
 									</Box>
