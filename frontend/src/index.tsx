@@ -21,6 +21,8 @@ import { ErrorBoundaryWrapper } from "./components/ErrorBoundaryWrapper";
 import { ConsoleErrorToRollbar } from "./components/ConsoleErrorToRollbar";
 import { store } from "./store/store.ts";
 import { TourProvider, } from '@reactour/tour'
+import { get } from "react-hook-form";
+import { getApiUrl, getNodeEnv } from "./macro/Environment.ts" with { type: 'macro' };
 
 declare module '@mui/material/styles' {
 	interface TypographyVariants {
@@ -64,19 +66,33 @@ const theme = createTheme({
 	},
 });
 
+if (import.meta.hot) {
+	console.debug("✅ Hot Module Replacement (HMR) is enabled!");
+}
+
+if (getNodeEnv() === "development") {
+	console.debug("👷‍♂️ Running in development mode");
+} else if (getNodeEnv() === "remote") {
+	console.debug(`🌐 Running in remote mode: ${getApiUrl()}`);
+} else if (getNodeEnv() === "production") {
+	console.debug("🚀 Running in production mode");
+} else {
+	console.debug(`ℹ️ Running in unknown mode: ${getNodeEnv()}`);
+}
+
 const disableBody = (target: any) => {
 	// Use CSS-based scroll prevention instead of aria-hidden to avoid accessibility issues
-	console.debug("Disabling body scroll", target);
+	console.trace("Disabling body scroll", target);
 	document.body.style.overflow = 'hidden';
 	document.body.style.paddingRight = '0px'; // Prevent layout shift
 };
 const enableBody = (target: any) => {
-	console.debug("Enabling body scroll", target);
+	console.trace("Enabling body scroll", target);
 	document.body.style.overflow = '';
 	document.body.style.paddingRight = '';
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root")!);
+const root = import.meta.hot.data.root ??= ReactDOM.createRoot(document.getElementById("root")!);
 root.render(
 	<RollbarProvider config={{}} >
 		<ErrorBoundaryWrapper>

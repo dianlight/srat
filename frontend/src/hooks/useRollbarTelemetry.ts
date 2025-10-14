@@ -8,6 +8,8 @@ import {
 	useGetApiSettingsQuery,
 } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/sseApi";
+import { get } from "react-hook-form";
+import { getNodeEnv, getRollbarClientAccessToken } from "../macro/Environment" with { type: 'macro' };
 
 /**
  * Hook that provides Rollbar functionality with telemetry mode checking
@@ -25,8 +27,8 @@ export const useRollbarTelemetry = () => {
 	);
 	const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
 	const [rollbarConfig, setRollbarConfig] = useState<Rollbar.Configuration>({
-		accessToken: process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || "disabled",
-		environment: process.env.NODE_ENV || "development",
+		accessToken: getRollbarClientAccessToken() || "disabled",
+		environment: getNodeEnv() || "development",
 		codeVersion: packageJson.version,
 		captureUncaught: true,
 		captureUnhandledRejections: true,
@@ -66,7 +68,7 @@ export const useRollbarTelemetry = () => {
 	useEffect(() => {
 		if (!isLoading && !apiLoading && evdata?.hello && apiSettings) {
 			// Configure Telemetry
-			const accessToken = process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || "disabled";
+			const accessToken = getRollbarClientAccessToken();
 			const enableRollbar =
 				accessToken !== "disabled" &&
 				[Telemetry_mode.Errors, Telemetry_mode.All].includes(
@@ -74,7 +76,7 @@ export const useRollbarTelemetry = () => {
 				);
 			setRollbarConfig({
 				accessToken,
-				environment: process.env.NODE_ENV || "development",
+				environment: getNodeEnv(),
 				codeVersion: packageJson.version,
 				captureUncaught: true,
 				captureUnhandledRejections: true,

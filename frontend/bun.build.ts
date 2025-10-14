@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 import type { BuildConfig, BuildOutput } from "bun";
 import { Glob, $ } from "bun";
 import path from "node:path";
+import App from "./src/index.html";
 
 const { values, positionals } = parseArgs({
 	args: Bun.argv,
@@ -82,9 +83,10 @@ async function build(): Promise<BuildOutput | undefined> {
 		console.log(`Serving ${values.outDir}`);
 
 		// Initial build
-		await Bun.build(buildConfig);
+		//await Bun.build(buildConfig);
 
 		// Watch for file changes and rebuild
+		/*
 		watch(path.join(import.meta.dir, "src"), {
 			recursive: true
 		}).on("change", async (event, filename) => {
@@ -101,52 +103,28 @@ async function build(): Promise<BuildOutput | undefined> {
 				console.error("Hot reload: build error", error);
 			}
 		});
-
+		*/
+		//process.env.APIURL = APIURL.replace(/'/g, "");
 		Bun.serve({
-			fetch: async (request, server) => {
-				const url = new URL(request.url);
-
-				// DevTools endpoint
-				if (
-					url.pathname === "/.well-known/appspecific/com.chrome.devtools.json"
-				) {
-					const { getDevtoolData } = require("./src/devtool/server");
-					return new Response(JSON.stringify(getDevtoolData()), {
-						headers: {
-							"Content-Type": "application/json",
-						},
-					});
-				}
-
-				// Serve index.html for root
-				if (url.pathname === "/") {
-					url.pathname = "/index.html";
-				}
-
-				console.log(`Values ${import.meta.dir} ${values.outDir} ${url.pathname}`);
-				const tpath = path.normalize(path.join(import.meta.dir, values.outDir!, url.pathname));
-				const afile = Bun.file(tpath);
-				console.log(`Request ${request.mode} ${url.pathname} ==> ${tpath} ${await afile.exists()} [${afile.size}]`);
-
-				return new Response(await afile.arrayBuffer(), {
-					headers: {
-						"Content-Type": afile.type,
-					}
-				});
+			routes:
+			{
+				"/*": App,
 			},
 			port: 3080,
 			idleTimeout: 60,
 			development: {
+				chromeDevToolsAutomaticWorkspaceFolders: true,
 				console: true,
 				hmr: true,
 			},
+
 		});
 		console.log("Serving http://localhost:3080/index.html");
 	} else if (values.watch) {
 		console.log(`Build Watch ${import.meta.dir}/src -> ${values.outDir}`);
 		async function rebuild(event: string, filename: string | null) {
 			console.log(`Detected ${event} in ${filename}`);
-			
+
 			// Only clean up old index files if the output directory exists
 			try {
 				const glob = new Glob(`index-*`);
