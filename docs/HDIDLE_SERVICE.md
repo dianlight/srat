@@ -1,3 +1,26 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [HDIdle Service](#hdidle-service)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [CLI Usage](#cli-usage)
+    - [Options](#options)
+    - [Examples](#examples)
+  - [Service API](#service-api)
+    - [Interface](#interface)
+    - [Configuration](#configuration)
+    - [Example Usage](#example-usage)
+  - [How It Works](#how-it-works)
+  - [Implementation Details](#implementation-details)
+  - [Dependencies](#dependencies)
+  - [Notes](#notes)
+  - [Testing](#testing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # HDIdle Service
 
 The HDIdle service provides hard disk idle monitoring and automatic spin-down functionality for SRAT. It uses the [hd-idle](https://github.com/adelolmo/hd-idle) library as a module to replicate the functionality of running `hd-idle -a` (monitor all disks).
@@ -37,21 +60,25 @@ srat-cli hdidle [options]
 ### Examples
 
 **Monitor all disks with default settings (10 minute idle time):**
+
 ```bash
 srat-cli hdidle
 ```
 
 **Monitor with 5 minute idle time and debug logging:**
+
 ```bash
 srat-cli -loglevel debug hdidle -i 300 -debug
 ```
 
 **Monitor using ATA commands with retry symlink resolution:**
+
 ```bash
 srat-cli hdidle -c ata -s 1
 ```
 
 **Monitor with activity logging:**
+
 ```bash
 srat-cli hdidle -l /var/log/hdidle-activity.log
 ```
@@ -66,13 +93,13 @@ The HDIdle service can also be used programmatically:
 type HDIdleServiceInterface interface {
     // Start begins monitoring disk activity and spinning down idle disks
     Start(config *HDIdleConfig) error
-    
+
     // Stop halts the monitoring process
     Stop() error
-    
+
     // IsRunning returns true if the service is currently monitoring
     IsRunning() bool
-    
+
     // GetStatus returns current monitoring status and disk states
     GetStatus() (*HDIdleStatus, error)
 }
@@ -84,25 +111,25 @@ type HDIdleServiceInterface interface {
 type HDIdleConfig struct {
     // Devices to monitor with specific configurations
     Devices []HDIdleDeviceConfig
-    
+
     // Default idle time in seconds (default: 600)
     DefaultIdleTime int
-    
+
     // Default command type: "scsi" or "ata" (default: "scsi")
     DefaultCommandType string
-    
+
     // Default power condition (0-15) for SCSI devices (default: 0)
     DefaultPowerCondition uint8
-    
+
     // Enable debug logging
     Debug bool
-    
+
     // Log file path (empty = no file logging)
     LogFile string
-    
+
     // Symlink resolution policy: 0 = resolve once, 1 = retry
     SymlinkPolicy int
-    
+
     // Ignore spin down detection and force spin down
     IgnoreSpinDownDetection bool
 }
@@ -110,13 +137,13 @@ type HDIdleConfig struct {
 type HDIdleDeviceConfig struct {
     // Device name (e.g., "sda" or "/dev/disk/by-id/...")
     Name string
-    
+
     // Idle time in seconds (0 = use default)
     IdleTime int
-    
+
     // Command type: "scsi" or "ata" (empty = use default)
     CommandType string
-    
+
     // Power condition for SCSI devices (0-15)
     PowerCondition uint8
 }
@@ -158,7 +185,7 @@ if err := hdidleService.Start(config); err != nil {
 // Get current status
 status, _ := hdidleService.GetStatus()
 for _, disk := range status.Disks {
-    fmt.Printf("Disk %s: SpunDown=%v, LastIO=%v\n", 
+    fmt.Printf("Disk %s: SpunDown=%v, LastIO=%v\n",
         disk.Name, disk.SpunDown, disk.LastIOAt)
 }
 
@@ -209,12 +236,14 @@ hdidleService.Stop()
 ## Testing
 
 Run the test suite:
+
 ```bash
 cd backend/src
 go test -v ./service -run TestHDIdleServiceSuite
 ```
 
 All tests validate:
+
 - Configuration validation
 - Start/stop lifecycle
 - Multiple device configurations
