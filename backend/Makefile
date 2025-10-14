@@ -48,12 +48,11 @@ remote_build: $(SRC_DIRS) $(STATIC_DIRS)
 
 .PHONY: format
 format:
-	go tool -C $(SRC_DIRS)  gohack undo && \
+	make patch && \
 	go mod -C $(SRC_DIRS) tidy && \
 	go -C $(SRC_DIRS) vet ./... && \
 	go tool -C $(SRC_DIRS)  testifylint --fix ./...  && \
-	go -C $(SRC_DIRS) fmt ./... && \
-	make patch
+	go -C $(SRC_DIRS) fmt ./...
 
 .PHONY: clean
 clean: clean_examples
@@ -156,14 +155,17 @@ patch:
 	git -C ${HOME}/gohack/github.com/zarldev/goenums apply $(ROOT_DIR)/patches/goenums.patch
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/jpillora/overseer
 	git -C ${HOME}/gohack/github.com/jpillora/overseer apply $(ROOT_DIR)/patches/overseer.patch
+	go tool -C $(SRC_DIRS) gohack get -vcs github.com/anatol/smart.go
+	git -C ${HOME}/gohack/github.com/anatol/smart.go apply $(ROOT_DIR)/patches/smart.go.patch
 
 .PHONY: gen_patch
 gen_patch:
 	mkdir patches > /dev/null 2>&1 || :
 	cd ${HOME}/gohack/github.com/zarldev/goenums; git diff > $(ROOT_DIR)/patches/goenums.patch
 	cd ${HOME}/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
+	cd ${HOME}/gohack/github.com/anatol/smart.go; git diff > $(ROOT_DIR)/patches/smart.go.patch
 
- /mnt/remote/config.db3: mount_remote
+/mnt/remote/config.db3: mount_remote
 	[ -f /mnt/remote/config.db3 ] || echo "No remote mount found use make mount_remote"
 
 .PHONY: mount_remote

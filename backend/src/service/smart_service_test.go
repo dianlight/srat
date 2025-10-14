@@ -128,3 +128,9 @@ func (suite *SmartServiceSuite) TestGetTestStatusDeviceNotExist() {
 	suite.Error(err)
 	suite.Nil(status)
 }
+
+func (suite *SmartServiceSuite) TestAbortSelfTestDeviceNotExist() {
+	err := suite.service.AbortSelfTest("/dev/nonexistent")
+
+	suite.Error(err)
+}

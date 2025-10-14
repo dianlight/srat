@@ -8,6 +8,7 @@
   - [API Methods](#api-methods)
     - [GetHealthStatus(devicePath string)](#gethealthstatusdevicepath-string)
     - [StartSelfTest(devicePath string, testType SmartTestType)](#startselftestdevicepath-string-testtype-smarttesttype)
+    - [AbortSelfTest(devicePath string)](#abortselftestdevicepath-string)
     - [GetTestStatus(devicePath string)](#getteststatusdevicepath-string)
     - [EnableSMART(devicePath string) / DisableSMART(devicePath string)](#enablesmartdevicepath-string--disablesmartdevicepath-string)
   - [Pre-Failure Alert System](#pre-failure-alert-system)
@@ -33,7 +34,7 @@ This document describes the enhanced SMART service functionality for monitoring 
 The SMART service has been extended with comprehensive disk health monitoring and control capabilities:
 
 - **Health Status Monitoring**: Evaluate disk health by comparing SMART attributes against thresholds
-- **Self-Test Execution**: Initiate and monitor SMART self-tests (short, long, conveyance)
+- **Self-Test Execution**: Initiate, abort, and monitor SMART self-tests (short, long, conveyance)
 - **SMART Control**: Enable or disable SMART functionality on devices
 - **Pre-Failure Alerts**: Automatic warnings when disk attributes indicate potential failure
 
@@ -82,6 +83,20 @@ if err != nil {
     return err
 }
 log.Info("SMART self-test started")
+```
+
+### AbortSelfTest(devicePath string)
+
+Aborts a currently running SMART self-test on a SATA device.
+
+**Example:**
+
+```go
+err := smartService.AbortSelfTest("/dev/sda")
+if err != nil {
+    return err
+}
+log.Info("SMART self-test aborted")
 ```
 
 ### GetTestStatus(devicePath string)
@@ -239,9 +254,11 @@ func main() {
 
 ### Linux
 
-- Full support for all operations
-- Uses ioctl commands for direct device control
-- Requires appropriate permissions (typically root or disk group)
+- **Health Status Monitoring**: ✅ Fully supported
+- **Self-Test Execution**: ✅ Fully supported (start, abort, status monitoring)
+- **SMART Control**: ✅ Fully supported (enable/disable SMART functionality)
+- **Implementation**: Uses ioctl commands for direct device control via patched smart.go library
+- **Requirements**: Appropriate permissions (typically root or disk group)
 
 ### Other Platforms
 
@@ -260,15 +277,23 @@ The service uses specific error types for different failure scenarios:
 
 ## Limitations
 
-The current implementation provides the full API structure and health monitoring capabilities. Direct device control operations (enable/disable SMART, execute tests) are partially implemented with placeholders that return appropriate errors. This is because the underlying `github.com/anatol/smart.go` library doesn't expose the file descriptor needed for ioctl commands.
+### Linux
 
-To fully enable these operations, one of the following approaches is needed:
+All SMART operations are fully implemented and functional for Linux platforms using ioctl commands with direct device access.
 
-1. Fork and modify `anatol/smart.go` to expose file descriptors
-2. Use a different SMART library that provides control operations
-3. Implement direct device opening and ioctl calls without using smart.go for control operations
+### Other Platforms
 
-The health checking and test log reading functionality is fully operational using the existing library features.
+The current implementation provides full API structure and health monitoring capabilities for all platforms. However, direct device control operations (enable/disable SMART, execute/abort tests) are limited on non-Linux platforms and return appropriate error messages indicating platform limitations.
+
+The underlying `github.com/anatol/smart.go` library provides cross-platform support for basic SMART attribute reading, but direct device control operations require platform-specific ioctl implementations.
+
+**Platform-specific limitations:**
+
+- **macOS/Windows**: Direct device control operations not implemented (returns `ErrorSMARTNotSupported`)
+- **BSD variants**: May have limited support depending on specific implementation
+- **Embedded systems**: Depends on kernel ioctl support
+
+The health checking and test log reading functionality is fully operational across all supported platforms using the existing library features.
 
 ## Testing
 
@@ -291,9 +316,8 @@ Tests cover:
 
 Potential improvements for future versions:
 
-1. **Complete ioctl Implementation**: Full implementation of enable/disable/test execution with proper file descriptor handling
-2. **NVMe Support**: Extend self-test capabilities to NVMe devices
-3. **Real-time Monitoring**: WebSocket/SSE streaming of SMART attribute changes
-4. **Historical Tracking**: Store SMART data over time for trend analysis
-5. **Predictive Failure**: Machine learning-based failure prediction using historical data
-6. **Email Notifications**: Built-in email alerts for failing disks
+1. **NVMe Support**: Extend self-test capabilities to NVMe devices
+2. **Real-time Monitoring**: WebSocket/SSE streaming of SMART attribute changes
+3. **Historical Tracking**: Store SMART data over time for trend analysis
+4. **Predictive Failure**: Machine learning-based failure prediction using historical data
+5. **Email Notifications**: Built-in email alerts for failing disks

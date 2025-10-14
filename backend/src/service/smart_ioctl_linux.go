@@ -77,19 +77,44 @@ func ioctlSMARTCommand(fd int, feature byte, lbaLow byte) error {
 
 // enableSMART enables SMART on a SATA device
 func enableSMART(dev *smart.SataDevice) errors.E {
-	// We need to access the file descriptor - this requires reflection or a modified smart.go library
-	// For now, we'll return an error indicating the limitation
-	return errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "SMART enable requires direct device access")
+	fd := dev.FileDescriptor()
+	if fd < 0 {
+		return errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "invalid file descriptor")
+	}
+
+	if err := ioctlSMARTCommand(fd, _SMART_ENABLE_OPERATIONS, 0); err != nil {
+		return errors.Wrap(err, "failed to enable SMART")
+	}
+
+	return nil
 }
 
 // disableSMART disables SMART on a SATA device
 func disableSMART(dev *smart.SataDevice) errors.E {
-	return errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "SMART disable requires direct device access")
+	fd := dev.FileDescriptor()
+	if fd < 0 {
+		return errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "invalid file descriptor")
+	}
+
+	if err := ioctlSMARTCommand(fd, _SMART_DISABLE_OPERATIONS, 0); err != nil {
+		return errors.Wrap(err, "failed to disable SMART")
+	}
+
+	return nil
 }
 
 // executeSMARTTest starts a SMART self-test on a SATA device
 func executeSMARTTest(dev *smart.SataDevice, testType byte) errors.E {
-	return errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "SMART test execution requires direct device access")
+	fd := dev.FileDescriptor()
+	if fd < 0 {
+		return errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "invalid file descriptor")
+	}
+
+	if err := ioctlSMARTCommand(fd, _SMART_EXECUTE_OFFLINE_IMMEDIATE, testType); err != nil {
+		return errors.Wrap(err, "failed to execute SMART self-test")
+	}
+
+	return nil
 }
 
 // parseSelfTestLog parses the SMART self-test log to get test status

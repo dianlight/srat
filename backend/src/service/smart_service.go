@@ -24,6 +24,7 @@ type SmartServiceInterface interface {
 	GetSmartInfo(deviceName string) (*dto.SmartInfo, errors.E)
 	GetHealthStatus(devicePath string) (*dto.SmartHealthStatus, errors.E)
 	StartSelfTest(devicePath string, testType dto.SmartTestType) errors.E
+	AbortSelfTest(devicePath string) errors.E
 	GetTestStatus(devicePath string) (*dto.SmartTestStatus, errors.E)
 	EnableSMART(devicePath string) errors.E
 	DisableSMART(devicePath string) errors.E
@@ -270,6 +271,34 @@ func (s *smartService) StartSelfTest(devicePath string, testType dto.SmartTestTy
 	}
 
 	slog.Info("SMART self-test started", "device", devicePath, "type", testType)
+	return nil
+}
+
+// AbortSelfTest aborts the currently running SMART self-test on the device
+func (s *smartService) AbortSelfTest(devicePath string) errors.E {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	// Open device
+	dev, stdErr := smart.Open(devicePath)
+	if stdErr != nil {
+		return errors.Wrapf(stdErr, "failed to open device %s", devicePath)
+	}
+	defer dev.Close()
+
+	// Only SATA devices support self-test abort via this method
+	sm, ok := dev.(*smart.SataDevice)
+	if !ok {
+		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
+			"reason", "self-test abort only supported for SATA devices")
+	}
+
+	// Execute the abort command
+	if err := executeSMARTTest(sm, _SMART_ABORT_SELFTEST); err != nil {
+		return errors.Wrap(err, "failed to abort SMART self-test")
+	}
+
+	slog.Info("SMART self-test aborted", "device", devicePath)
 	return nil
 }
 

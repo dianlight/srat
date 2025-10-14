@@ -1,0 +1,72 @@
+diff --git a/nvme.go b/nvme.go
+index 36c2872..4ef32c9 100644
+--- a/nvme.go
++++ b/nvme.go
+@@ -1210,6 +1210,10 @@ func (d *NVMeDevice) Type() string {
+ 	return "nvme"
+ }
+ 
++func (d *NVMeDevice) FileDescriptor() int {
++	return d.fd
++}
++
+ func (d *NVMeDevice) ReadGenericAttributes() (*GenericAttributes, error) {
+ 	log, err := d.ReadSMART()
+ 	if err != nil {
+diff --git a/nvme_other.go b/nvme_other.go
+index f5fc7aa..3c262be 100644
+--- a/nvme_other.go
++++ b/nvme_other.go
+@@ -25,3 +25,7 @@ func (d *NVMeDevice) readControllerIdentifyData() (*NvmeIdentController, error)
+ func (d *NVMeDevice) readNamespaceIdentifyData(nsid int) (*NvmeIdentNamespace, error) {
+ 	return nil, ErrOSUnsupported
+ }
++
++func (d *NVMeDevice) FileDescriptor() int {
++	return -1
++}
+diff --git a/sata.go b/sata.go
+index 52e5996..8d447ef 100644
+--- a/sata.go
++++ b/sata.go
+@@ -554,6 +554,10 @@ func (d *SataDevice) Type() string {
+ 	return "sata"
+ }
+ 
++func (d *SataDevice) FileDescriptor() int {
++	return d.fd
++}
++
+ func (d *SataDevice) ReadGenericAttributes() (*GenericAttributes, error) {
+ 	page, err := d.ReadSMARTData()
+ 	if err != nil {
+diff --git a/scsi.go b/scsi.go
+index a7dfa08..31cfc20 100644
+--- a/scsi.go
++++ b/scsi.go
+@@ -10,6 +10,10 @@ func (d *ScsiDevice) Type() string {
+ 	return "scsi"
+ }
+ 
++func (d *ScsiDevice) FileDescriptor() int {
++	return d.fd
++}
++
+ const (
+ 	_SG_IO = 0x2285
+ 
+diff --git a/smart.go b/smart.go
+index bfcc88b..c1239c6 100644
+--- a/smart.go
++++ b/smart.go
+@@ -28,6 +28,10 @@ type Device interface {
+ 	// ReadGenericAttributes is an *experimental* API for quick access to the most common device SMART properties
+ 	// This API as well as content of GenericAttributes is subject for a change.
+ 	ReadGenericAttributes() (*GenericAttributes, error)
++
++	// FileDescriptor returns the underlying file descriptor for the device.
++	// This can be used for advanced operations that require direct access to the device file.
++	FileDescriptor() int
+ }
+ 
+ func Open(path string) (Device, error) {

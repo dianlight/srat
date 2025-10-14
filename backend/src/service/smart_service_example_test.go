@@ -88,4 +88,3 @@ func TestSmartServiceCallbackIntegration(t *testing.T) {
 	// In production use, GetHealthStatus() automatically triggers this callback
 	// when it detects failing SMART attributes via tlog.Warn()
 }
-
