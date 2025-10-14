@@ -68,6 +68,8 @@ import { VolumesSteps } from "../pages/volumes/VolumesTourStep";
 import { SettingsSteps } from "../pages/settings/SettingsTourStep";
 import { UsersSteps } from "../pages/users/UsersSteps";
 import { useGetServerEventsQuery } from "../store/sseApi";
+import { get } from "react-hook-form";
+import { getNodeEnv } from "../macro/Environment" with { type: 'macro' };
 
 // Define tab configurations
 interface TabConfig {
@@ -225,14 +227,14 @@ export function NavBar(props: {
 			(tab) =>
 				!(
 					tab.isDevelopmentOnly &&
-					process.env.NODE_ENV === "production" &&
+					getNodeEnv() === "production" &&
 					!pkg.version.match(/dev/)
 				),
 		).map((tab, index) => ({
 			...tab,
 			actualIndex: index,
 		}));
-	}, []); // process.env.NODE_ENV is a build-time constant
+	}, []);
 
 	const { data: evdata, error: everror, isLoading: evloading, fulfilledTimeStamp: evfulfilledTimeStamp } = useGetServerEventsQuery();
 
@@ -446,7 +448,7 @@ export function NavBar(props: {
 									</Tooltip>
 								)}
 								*/}
-							{process.env.NODE_ENV !== "production" && (
+							{getNodeEnv() !== "production" && (
 								<IconButton size="small">
 									<Tooltip title={
 										<List

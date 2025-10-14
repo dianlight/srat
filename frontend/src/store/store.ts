@@ -25,6 +25,9 @@ export const store = configureStore({
 			.concat(sseApi.middleware)
 			.concat(wsApi.middleware);
 	},
+	// Redux DevTools integration is built into configureStore by default
+	// No need for @redux-devtools/extension package - RTK handles it automatically
+	// DevTools will be enabled in development mode and disabled in production
 	devTools: process.env.NODE_ENV !== "production",
 });
 

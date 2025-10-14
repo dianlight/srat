@@ -11,9 +11,16 @@
 ### 🔧 Maintenance
 
 - **Dependency Cleanup**: Replaced deprecated `github.com/inconshreveable/go-update` library (last updated 2016) with standard Go library functions for binary updates. This reduces external dependencies and improves maintainability without affecting functionality.
+- **Redux DevTools Integration**: Removed unused `@redux-devtools/extension` package. Redux Toolkit's `configureStore()` provides built-in Redux DevTools support, making the separate extension package unnecessary. DevTools integration continues to work seamlessly in development mode.
 
 ### ✨ Features
 
+- **Native Bun Hot-Reloading**: Removed external `bun-html-live-reload` library and configured Bun's native development server with HMR:
+  - Removed dependency on `bun-html-live-reload` package
+  - Enabled Bun's native HMR via `development: { console: true, hmr: true }` configuration
+  - Leverages Bun's `--hot` flag for build script auto-reload on source changes
+  - Simplified development server setup using Bun's built-in capabilities
+  - Reduced dependency footprint with native implementation
 - **Reduced Database Dependencies [#208](https://github.com/dianlight/srat/issues/208)**: Optimized CLI command database requirements:
   - **version command**: No database needed - runs without any DB initialization
   - **upgrade command**: Uses in-memory database by default - no file path required

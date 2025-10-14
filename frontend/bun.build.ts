@@ -2,9 +2,10 @@
 
 import { watch } from "node:fs";
 import { parseArgs } from "node:util";
-import { withHtmlLiveReload, reloadClients } from "bun-html-live-reload";
-import { type BuildConfig, type BuildOutput, Glob, type Serve, $ } from "bun";
+import type { BuildConfig, BuildOutput } from "bun";
+import { Glob, $ } from "bun";
 import path from "node:path";
+import App from "./src/index.html";
 
 const { values, positionals } = parseArgs({
 	args: Bun.argv,
@@ -20,13 +21,6 @@ const { values, positionals } = parseArgs({
 			short: "s",
 			description: "Start the HTTP Server",
 		},
-		apiContextUrl: {
-			type: "string",
-			short: "c",
-			default: "'dynamic'",
-			description:
-				"Specify the URL of the API context (in watching mode) (default: dynamic)",
-		},
 		outDir: {
 			type: "string",
 			short: "o",
@@ -37,9 +31,6 @@ const { values, positionals } = parseArgs({
 	strict: true,
 	allowPositionals: true,
 });
-
-const APIURL = values.watch ? values.apiContextUrl || "" : "'dynamic'";
-console.log(`API URL: ${APIURL}`);
 
 const buildConfig: BuildConfig = {
 	entrypoints: ["src/index.html" /*, 'src/index.tsx' */],
@@ -52,17 +43,19 @@ const buildConfig: BuildConfig = {
 	},
 	target: "browser",
 	sourcemap: "inline",
-	minify: values.watch ? false : true,
+	minify: values.watch || values.serve ? false : true,
 	plugins: [
 		//copy("src/index.html", "out/index.html")
 		//  html({})
 	],
+	/*
 	define: {
 		"process.env.APIURL": APIURL,
-		"process.env.NODE_ENV": values.watch ? "'development'" : "'production'",
+		"process.env.NODE_ENV": values.watch || values.serve ? "'development'" : "'production'",
 		"process.env.ROLLBAR_CLIENT_ACCESS_TOKEN": `"${process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled'}"`,
 		"process.env.SERVER_EVENT_BACKEND": "'WS'", // SSE or WS
 	},
+	*/
 };
 
 async function build(): Promise<BuildOutput | undefined> {
@@ -80,63 +73,37 @@ async function build(): Promise<BuildOutput | undefined> {
 		});
 	} else if (values.serve) {
 		console.log(`Serving ${values.outDir}`);
-
-		Bun.build(buildConfig);
-
-		watch(path.join(import.meta.dir, "src"), {
-			recursive: true
-		}).on("change", async (event, filename) => {
-			console.log(`Change file: ${filename}`);
-			//await $`rm -r  ${import.meta.dir}/${values.outDir}`;
-			await Bun.build(buildConfig);
-			reloadClients();
-		});
-
 		Bun.serve({
-			fetch: withHtmlLiveReload(async (request) => {
-				const url = new URL(request.url);
-				if (
-					url.pathname === "/.well-known/appspecific/com.chrome.devtools.json"
-				) {
-					const { getDevtoolData } = require("./src/devtool/server");
-					return new Response(JSON.stringify(getDevtoolData()), {
-						headers: {
-							"Content-Type": "application/json",
-						},
-					});
-				}
-				if (url.pathname === "/") {
-					url.pathname = "/index.html";
-				}
-				console.log(`Values ${import.meta.dir} ${values.outDir} ${url.pathname}`);
-				const tpath = path.normalize(path.join(import.meta.dir, values.outDir!, url.pathname));
-				const afile = Bun.file(tpath)
-				console.log(`Request ${request.mode} ${url.pathname} ==> ${tpath} ${await afile.exists()} [${afile.size}]`);
-				return new Response(await afile.arrayBuffer(), {
-					headers: {
-						"Content-Type": afile.type,
-					}
-				});
-			}),
+			routes:
+			{
+				"/*": App,
+			},
 			port: 3080,
-			idleTimeout: 60, // Set idle timeout to 60 seconds (configurable)
+			idleTimeout: 60,
 			development: {
+				chromeDevToolsAutomaticWorkspaceFolders: true,
 				console: true,
 				hmr: true,
 			},
+
 		});
 		console.log("Serving http://localhost:3080/index.html");
 	} else if (values.watch) {
 		console.log(`Build Watch ${import.meta.dir}/src -> ${values.outDir}`);
 		async function rebuild(event: string, filename: string | null) {
 			console.log(`Detected ${event} in ${filename}`);
-			const glob = new Glob(`index-*`);
 
-			for await (const file of glob.scan(values.outDir)) {
-				console.log(`D ${values.outDir}/${file}`);
-				Bun.file(`${values.outDir}/${file}`)
-					.delete()
-					.catch((_err) => { });
+			// Only clean up old index files if the output directory exists
+			try {
+				const glob = new Glob(`index-*`);
+				for await (const file of glob.scan(values.outDir)) {
+					console.log(`D ${values.outDir}/${file}`);
+					Bun.file(`${values.outDir}/${file}`)
+						.delete()
+						.catch((_err) => { });
+				}
+			} catch (err) {
+				// Directory might not exist yet on first build
 			}
 
 			Bun.build(buildConfig).then((result) => {
@@ -169,8 +136,3 @@ async function build(): Promise<BuildOutput | undefined> {
 
 await build();
 console.log(`Build complete ✅ [:${values.watch ? "👁️:watching" : "🧻:build"}]`);
-
-/*
-if (values.watch) {
-}
-	*/
