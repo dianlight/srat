@@ -98,8 +98,9 @@ describe("Volumes component", () => {
 
         // Find the hide system partitions switch
         const switches = container.querySelectorAll('input[type="checkbox"]');
-        if (switches.length > 0) {
-            fireEvent.click(switches[0]);
+        const firstSwitch = switches[0];
+        if (switches.length > 0 && firstSwitch) {
+            fireEvent.click(firstSwitch);
             // Check localStorage was updated
             expect(localStorage.getItem("volumes.hideSystemPartitions")).toBeTruthy();
         }
@@ -337,8 +338,9 @@ describe("Volumes component", () => {
 
         // Look for partition items that can be clicked
         const treeItems = container.querySelectorAll('[role="treeitem"]');
-        if (treeItems.length > 0) {
-            fireEvent.click(treeItems[0]);
+        const firstTreeItem = treeItems[0];
+        if (treeItems.length > 0 && firstTreeItem) {
+            fireEvent.click(firstTreeItem);
         }
 
         expect(container).toBeTruthy();
@@ -375,8 +377,9 @@ describe("Volumes component", () => {
 
         // Look for expandable tree items
         const expandButtons = container.querySelectorAll('[aria-label*="expand"]');
-        if (expandButtons.length > 0) {
-            fireEvent.click(expandButtons[0]);
+        const firstExpandButton = expandButtons[0];
+        if (expandButtons.length > 0 && firstExpandButton) {
+            fireEvent.click(firstExpandButton);
         }
 
         expect(container).toBeTruthy();

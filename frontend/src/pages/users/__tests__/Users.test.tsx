@@ -250,8 +250,9 @@ describe("Users component", () => {
 
         // Look for edit buttons
         const buttons = container.querySelectorAll('button[aria-label="edit"]');
-        if (buttons.length > 0) {
-            fireEvent.click(buttons[0]);
+        const firstButton = buttons[0];
+        if (buttons.length > 0 && firstButton) {
+            fireEvent.click(firstButton);
         }
 
         expect(container).toBeTruthy();

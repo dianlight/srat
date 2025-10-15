@@ -426,11 +426,15 @@ describe("PartitionActions component", () => {
 
         // Find the unmount action
         const unmountButtons = screen.queryAllByLabelText(/unmount partition/i);
-        if (unmountButtons.length > 0) {
-            fireEvent.click(unmountButtons[0]);
+        const firstUnmountButton = unmountButtons[0];
+        if (unmountButtons.length > 0 && firstUnmountButton) {
+            fireEvent.click(firstUnmountButton);
         } else {
             const menuItems = await screen.findAllByText(/unmount partition/i);
-            fireEvent.click(menuItems[0]);
+            const firstMenuItem = menuItems[0];
+            if (firstMenuItem) {
+                fireEvent.click(firstMenuItem);
+            }
         }
 
         expect(unmountCalled).toBe(true);

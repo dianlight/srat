@@ -90,8 +90,10 @@ describe("ShareEditForm component", () => {
         fireEvent.click(cycleButton);
         fireEvent.click(cycleButton);
 
-        const [addDefaults] = await screen.findAllByLabelText(/add suggested default veto files/i);
-        fireEvent.click(addDefaults);
+        const addDefaults = (await screen.findAllByLabelText(/add suggested default veto files/i))[0];
+        if (addDefaults) {
+            fireEvent.click(addDefaults);
+        }
 
         const submitButton = await screen.findByRole("button", { name: /create/i });
         fireEvent.click(submitButton);
