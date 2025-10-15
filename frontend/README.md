@@ -106,6 +106,34 @@ Run tests locally:
 bun test
 ```
 
+### Concurrent Testing (Bun v1.3+)
+
+Bun 1.3 introduces support for concurrent test execution, which can significantly speed up test runs. This feature is configured in `bunfig.toml` and can be enabled via CLI flag:
+
+```bash
+# Run tests with concurrent execution
+bun run test:concurrent
+# Or directly:
+bun test --concurrent
+```
+
+**Current Status**: Concurrent mode is disabled by default because some tests share global state (localStorage, DOM) which causes race conditions when tests run in parallel. 
+
+**To enable concurrent testing**:
+1. Uncomment `concurrent = true` in `bunfig.toml`
+2. Optionally adjust `maxConcurrency` to limit parallel test count (default: 20)
+
+**Performance**: 
+- Sequential mode: ~15s for 451 tests
+- Concurrent mode: Currently has test failures due to shared state
+
+**Future Work**: Tests need to be refactored to properly isolate state:
+- Use per-test localStorage instances instead of shared global
+- Ensure DOM cleanup between concurrent tests
+- Avoid module-scoped test state
+
+For more information, see the [Bun v1.3 concurrent testing blog post](https://bun.com/blog/bun-v1.3#concurrent-testing-with-bun-test).
+
 > **Note**: Bun 1.2.23 rejects registering lifecycle hooks from inside a running test. We preload `@testing-library/react` in `test/setup.ts` so its automatic cleanup attaches to `afterEach` before any spec runs. If you reorganize the shared setup, keep that top-level import in place or the suite will fail with "Cannot call afterEach() inside a test" errors.
 
 Run linter and typecheck:

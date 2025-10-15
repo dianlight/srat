@@ -81,6 +81,7 @@
     "dev:remote": "bun tsc --noEmit && NODE_ENV=remote API_URL=http://192.168.0.68:3000/ bun --hot run bun.build.ts -w -s ./out",
     "gen": "/usr/local/bin/rtk-query-codegen-openapi api.config.js",
     "test:coverage": "bun test --coverage",
+    "test:concurrent": "bun test --concurrent",
     "test:prepare": "bun ./scripts/add-test-setup.js",
     "test:fix": "bun ./scripts/add-test-setup.js --apply",
     "test:ci": "bun run test:prepare && bun test",

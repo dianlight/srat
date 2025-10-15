@@ -2,3 +2,8 @@
 coverage = true # Enable coverage collection
 coverageSkipTestFiles = true # Skip coverage for test files
 preload = "./test/setup.ts"
+# Concurrent testing configuration (Bun v1.3+)
+# Note: Concurrent mode is disabled by default until test isolation is improved
+# To enable: bun test --concurrent
+# concurrent = true # Uncomment to enable by default
+# maxConcurrency = 10 # Limit concurrent tests (default: 20)

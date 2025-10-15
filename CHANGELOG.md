@@ -15,6 +15,12 @@
 
 ### ✨ Features
 
+- **Concurrent Testing Support (Bun v1.3)**: Added configuration and documentation for Bun v1.3's concurrent test execution feature:
+  - Added `concurrent` and `maxConcurrency` configuration options to `bunfig.toml`
+  - New `test:concurrent` npm script for running tests in parallel
+  - Documentation in frontend README explaining usage, current status, and future work
+  - Currently disabled by default due to shared state in tests (sequential: ~15s, concurrent: ~24s with failures)
+  - Future optimization opportunity once test isolation is improved
 - **Native Bun Hot-Reloading**: Removed external `bun-html-live-reload` library and configured Bun's native development server with HMR:
   - Removed dependency on `bun-html-live-reload` package
   - Enabled Bun's native HMR via `development: { console: true, hmr: true }` configuration
