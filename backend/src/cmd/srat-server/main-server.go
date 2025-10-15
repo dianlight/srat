@@ -22,6 +22,7 @@ import (
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/repository"
@@ -222,6 +223,9 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewSystemHanler),
 			server.AsHumaRoute(api.NewIssueAPI),
 			server.AsHumaRoute(api.NewTelemetryHandler),
+			server.AsHumaRoute(api.NewHDIdleHandler),
+			repository.NewHDIdleConfigRepository,
+			service.NewHDIdleService,
 			server.NewMuxRouter,
 			server.NewHTTPServer,
 			server.NewHumaAPI,
@@ -256,6 +260,9 @@ func prog(state overseer.State) {
 			lc fx.Lifecycle,
 			props_repo repository.PropertyRepositoryInterface,
 			samba_service service.SambaServiceInterface,
+			hdidle_repo repository.HDIdleConfigRepositoryInterface,
+			hdidle_service service.HDIdleServiceInterface,
+			converter converter.DtoToDbomConverter,
 		) {
 			// Setting the actual LogLevel
 			err := props_repo.SetValue("LogLevel", *logLevelString)
@@ -272,6 +279,66 @@ func prog(state overseer.State) {
 						log.Fatalf("Cant apply samba config - %#+v", err)
 					}
 					slog.Info("******* Samba config applied! ********")
+
+					// Load and start HDIdle service if enabled
+					slog.Info("******* Loading HDIdle configuration ********")
+					hdidleConfig, hdidleErr := hdidle_repo.Get()
+					if hdidleErr != nil {
+						if !errors.Is(hdidleErr, dto.ErrorNotFound) {
+							slog.Warn("Failed to load HDIdle configuration", "error", hdidleErr)
+						} else {
+							slog.Debug("No HDIdle configuration found, skipping auto-start")
+						}
+					} else if hdidleConfig != nil && hdidleConfig.Enabled {
+						slog.Info("******* Starting HDIdle service ********")
+						// Convert config
+						hdidleDTO, convErr := converter.HDIdleConfigToHDIdleConfigDTO(*hdidleConfig)
+						if convErr != nil {
+							slog.Error("Failed to convert HDIdle configuration", "error", convErr)
+						} else {
+							// Convert to service config
+							devices := make([]service.HDIdleDeviceConfig, len(hdidleDTO.Devices))
+							for i, dev := range hdidleDTO.Devices {
+								devices[i] = service.HDIdleDeviceConfig{
+									Name:           dev.Name,
+									IdleTime:       dev.IdleTime,
+									CommandType:    dev.CommandType,
+									PowerCondition: dev.PowerCondition,
+								}
+							}
+
+							serviceConfig := service.HDIdleConfig{
+								Devices:                 devices,
+								DefaultIdleTime:         hdidleDTO.DefaultIdleTime,
+								DefaultCommandType:      hdidleDTO.DefaultCommandType,
+								DefaultPowerCondition:   hdidleDTO.DefaultPowerCondition,
+								Debug:                   hdidleDTO.Debug,
+								LogFile:                 hdidleDTO.LogFile,
+								SymlinkPolicy:           hdidleDTO.SymlinkPolicy,
+								IgnoreSpinDownDetection: hdidleDTO.IgnoreSpinDownDetection,
+							}
+
+							// Start service
+							if startErr := hdidle_service.Start(&serviceConfig); startErr != nil {
+								slog.Error("Failed to start HDIdle service", "error", startErr)
+							} else {
+								slog.Info("******* HDIdle service started successfully ********")
+							}
+						}
+					}
+
+					return nil
+				},
+				OnStop: func(ctx context.Context) error {
+					// Stop HDIdle service on shutdown
+					if hdidle_service.IsRunning() {
+						slog.Info("******* Stopping HDIdle service ********")
+						if err := hdidle_service.Stop(); err != nil {
+							slog.Error("Failed to stop HDIdle service", "error", err)
+						} else {
+							slog.Info("******* HDIdle service stopped ********")
+						}
+					}
 					return nil
 				},
 			})
