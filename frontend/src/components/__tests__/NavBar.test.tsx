@@ -148,8 +148,9 @@ describe("NavBar Component", () => {
 
         // Find tabs
         const tabs = container.querySelectorAll('[role="tab"]');
-        if (tabs.length > 1) {
-            fireEvent.click(tabs[1]);
+        const secondTab = tabs[1];
+        if (tabs.length > 1 && secondTab) {
+            fireEvent.click(secondTab);
 
             // Check that localStorage is updated
             const storedTab = localStorage.getItem("srat_tab");
@@ -575,8 +576,9 @@ describe("NavBar Component", () => {
 
             // Click outside to close (or find a menu item to click)
             const menuItems = document.querySelectorAll('[role="menuitem"]');
-            if (menuItems.length > 0) {
-                fireEvent.click(menuItems[0]);
+            const firstMenuItem = menuItems[0];
+            if (menuItems.length > 0 && firstMenuItem) {
+                fireEvent.click(firstMenuItem);
             }
         }
 
@@ -624,8 +626,9 @@ describe("NavBar Component", () => {
 
             // Find menu items and click one
             const menuItems = document.querySelectorAll('[role="menuitem"]');
-            if (menuItems.length > 1) {
-                fireEvent.click(menuItems[1]);
+            const secondMenuItem = menuItems[1];
+            if (menuItems.length > 1 && secondMenuItem) {
+                fireEvent.click(secondMenuItem);
 
                 // Check localStorage was updated
                 const storedTab = localStorage.getItem("srat_tab");

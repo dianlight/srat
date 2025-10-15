@@ -164,7 +164,10 @@ describe("Dashboard Collapsible Sections", () => {
         // Find and click the first Process Metrics button - button name includes status metrics
         const processMetricsButtons = screen.getAllByRole("button", { name: /Process Metrics/ });
         expect(processMetricsButtons.length).toBeGreaterThan(0);
-        fireEvent.click(processMetricsButtons[0]);
+        const firstProcessButton = processMetricsButtons[0];
+        if (firstProcessButton) {
+            fireEvent.click(firstProcessButton);
+        }
 
         // After expanding, should show process table content
         // The table should contain process names like smbd, nmbd, wsdd2, srat
@@ -199,7 +202,10 @@ describe("Dashboard Collapsible Sections", () => {
         // Find and click the first Disk Health button - use getAllByRole since there may be multiple instances
         const diskHealthButtons = screen.getAllByRole("button", { name: "Disk Health" });
         expect(diskHealthButtons.length).toBeGreaterThan(0);
-        fireEvent.click(diskHealthButtons[0]);
+        const firstDiskButton = diskHealthButtons[0];
+        if (firstDiskButton) {
+            fireEvent.click(firstDiskButton);
+        }
 
         // After expanding, should show disk health table content
         const tableElements = screen.getAllByRole("table");
@@ -233,7 +239,10 @@ describe("Dashboard Collapsible Sections", () => {
         // Find and click the first Samba Status button - button name includes session/tcon counts
         const sambaStatusButtons = screen.getAllByRole("button", { name: /Samba Status/ });
         expect(sambaStatusButtons.length).toBeGreaterThan(0);
-        fireEvent.click(sambaStatusButtons[0]);
+        const firstSambaButton = sambaStatusButtons[0];
+        if (firstSambaButton) {
+            fireEvent.click(firstSambaButton);
+        }
 
         // After expanding, should show samba sessions and tcons tables
         // Look for "Samba Sessions" header - use getAllByText since there may be multiple instances

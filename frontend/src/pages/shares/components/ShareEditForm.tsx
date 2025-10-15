@@ -208,9 +208,9 @@ export function ShareEditForm({
         );
     };
 
-    const nextCasingStyleName = casingCycleOrder[activeCasingIndex];
-    const cycleCasingTooltipTitle = `Cycle casing (Next: ${nextCasingStyleName.charAt(0).toUpperCase() + nextCasingStyleName.slice(1)
-        })`;
+    // activeCasingIndex is guaranteed to be a valid index due to modulo operation
+    const nextCasingStyleName = casingCycleOrder[activeCasingIndex]!;
+    const cycleCasingTooltipTitle = `Cycle casing (Next: ${nextCasingStyleName.charAt(0).toUpperCase() + nextCasingStyleName.slice(1)})`;
     const CasingIconToDisplay = getCasingIcon(nextCasingStyleName);
 
     const renderFormContent = () => (
