@@ -89,6 +89,16 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath)
 	}
 
+	// Check if SMART is enabled on SATA devices
+	smartEnabled := true
+	if satadev, ok := dev.(*smart.SataDevice); ok {
+		// Try to read SMART data to verify SMART is enabled
+		_, err := satadev.ReadSMARTData()
+		if err != nil {
+			smartEnabled = false
+		}
+	}
+
 	ret := &dto.SmartInfo{
 		Temperature: dto.SmartTempValue{
 			Value: int(attrs.Temperature),
@@ -99,6 +109,7 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 		PowerCycleCount: dto.SmartRangeValue{
 			Value: int(attrs.PowerCycles),
 		},
+		Enabled: smartEnabled,
 	}
 
 	switch sm := dev.(type) {

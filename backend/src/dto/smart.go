@@ -20,6 +20,7 @@ type SmartInfo struct {
 	Temperature     SmartTempValue             `json:"temperature"`
 	PowerOnHours    SmartRangeValue            `json:"power_on_hours"`
 	PowerCycleCount SmartRangeValue            `json:"power_cycle_count"`
+	Enabled         bool                       `json:"enabled"`
 	Additional      map[string]SmartRangeValue `json:"others,omitempty"`
 }
 

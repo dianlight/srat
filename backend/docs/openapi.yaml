@@ -1062,6 +1062,8 @@ components:
             - SCSI
             - Unknown
           type: string
+        enabled:
+          type: boolean
         others:
           additionalProperties:
             $ref: "#/components/schemas/SmartRangeValue"
@@ -1076,6 +1078,7 @@ components:
         - temperature
         - power_on_hours
         - power_cycle_count
+        - enabled
       type: object
     SmartRangeValue:
       additionalProperties: false
@@ -1392,8 +1395,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -1542,8 +1545,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -1874,8 +1877,8 @@ paths:
     get:
       operationId: get-issues
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2156,8 +2159,8 @@ paths:
     put:
       operationId: put-api-samba-apply
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -2195,8 +2198,8 @@ paths:
     get:
       operationId: get-api-samba-config
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2924,8 +2927,8 @@ paths:
             description: Name of the share to disable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3296,8 +3299,8 @@ paths:
     get:
       operationId: list-api-telemetry-modes
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3343,8 +3346,8 @@ paths:
     get:
       operationId: get-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3536,8 +3539,8 @@ paths:
             maxLength: 30
             minimum: 1
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3634,8 +3637,8 @@ paths:
     put:
       operationId: put-api-useradmin
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -3683,8 +3686,8 @@ paths:
     get:
       operationId: list-api-users
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3797,8 +3800,8 @@ paths:
             default: false
             description: Lazy umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content

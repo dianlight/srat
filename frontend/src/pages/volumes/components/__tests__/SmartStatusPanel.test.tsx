@@ -22,6 +22,18 @@ describe("SmartStatusPanel Component", () => {
         localStorage.clear();
     });
 
+    // Helper to expand the SMART panel
+    async function expandSmartPanel() {
+        const { screen } = await import("@testing-library/react");
+        const { fireEvent } = await import("@testing-library/react");
+        const expandButtons = await screen.findAllByRole("button");
+        // The expand button is usually the last one or has aria-expanded
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            fireEvent.click(expandBtn);
+        }
+    }
+
     it("should not render when smartInfo is undefined", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
@@ -40,7 +52,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should render SMART status when data is available", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, fireEvent } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -48,6 +60,7 @@ describe("SmartStatusPanel Component", () => {
             temperature: { value: 45, min: 20, max: 80 },
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
+            enabled: true,
         } as any;
 
         render(
@@ -62,6 +75,13 @@ describe("SmartStatusPanel Component", () => {
         const header = await screen.findByText("S.M.A.R.T. Status");
         expect(header).toBeTruthy();
 
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            fireEvent.click(expandBtn);
+        }
+
         // Should display temperature
         const tempText = await screen.findByText(/45°C/);
         expect(tempText).toBeTruthy();
@@ -73,7 +93,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should display health status as healthy", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, fireEvent } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -81,6 +101,7 @@ describe("SmartStatusPanel Component", () => {
             temperature: { value: 45, min: 20, max: 80 },
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
+            enabled: true,
         } as any;
 
         const mockHealthStatus = {
@@ -97,6 +118,13 @@ describe("SmartStatusPanel Component", () => {
             }),
         );
 
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            fireEvent.click(expandBtn);
+        }
+
         // Should display healthy status
         const healthChip = await screen.findByText("All attributes healthy");
         expect(healthChip).toBeTruthy();
@@ -104,7 +132,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should display failing attributes when health check fails", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, fireEvent } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -112,6 +140,7 @@ describe("SmartStatusPanel Component", () => {
             temperature: { value: 45, min: 20, max: 80 },
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
+            enabled: true,
         } as any;
 
         const mockHealthStatus = {
@@ -129,6 +158,13 @@ describe("SmartStatusPanel Component", () => {
             }),
         );
 
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            fireEvent.click(expandBtn);
+        }
+
         // Should display failing status
         const issuesText = await screen.findByText("Issues detected");
         expect(issuesText).toBeTruthy();
@@ -143,7 +179,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should display test status when running", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, fireEvent } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -151,6 +187,7 @@ describe("SmartStatusPanel Component", () => {
             temperature: { value: 45, min: 20, max: 80 },
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
+            enabled: true,
         } as any;
 
         const mockTestStatus = {
@@ -167,6 +204,13 @@ describe("SmartStatusPanel Component", () => {
                 isReadOnlyMode: false,
             }),
         );
+
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            fireEvent.click(expandBtn);
+        }
 
         // Should display running status
         const runningText = await screen.findByText("running");
@@ -179,7 +223,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should disable test actions when test is running", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, fireEvent } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -187,6 +231,7 @@ describe("SmartStatusPanel Component", () => {
             temperature: { value: 45, min: 20, max: 80 },
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
+            enabled: true,
         } as any;
 
         const mockTestStatus = {
@@ -204,6 +249,13 @@ describe("SmartStatusPanel Component", () => {
             }),
         );
 
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            fireEvent.click(expandBtn);
+        }
+
         // Start Test button should be disabled
         const startButton = (await screen.findByText("Start Test")) as HTMLButtonElement;
         expect(startButton.disabled).toBe(true);
@@ -211,7 +263,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should disable all actions in read-only mode", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, fireEvent } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -219,6 +271,7 @@ describe("SmartStatusPanel Component", () => {
             temperature: { value: 45, min: 20, max: 80 },
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
+            enabled: true,
         } as any;
 
         render(
@@ -228,6 +281,13 @@ describe("SmartStatusPanel Component", () => {
                 isReadOnlyMode: true,
             }),
         );
+
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            fireEvent.click(expandBtn);
+        }
 
         // All action buttons should be disabled
         const startButton = (await screen.findByText("Start Test")) as HTMLButtonElement;
@@ -249,6 +309,7 @@ describe("SmartStatusPanel Component", () => {
             temperature: { value: 45, min: 20, max: 80 },
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
+            enabled: true,
         } as any;
 
         render(
@@ -266,8 +327,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should call onStartTest when Start Test button is clicked", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -275,6 +335,7 @@ describe("SmartStatusPanel Component", () => {
             temperature: { value: 45, min: 20, max: 80 },
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
+            enabled: true,
         } as any;
 
         let startTestCalled = false;
@@ -290,6 +351,13 @@ describe("SmartStatusPanel Component", () => {
             }),
         );
 
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            fireEvent.click(expandBtn);
+        }
+
         // Click Start Test button
         const startButton = await screen.findByText("Start Test");
         fireEvent.click(startButton);
@@ -304,7 +372,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should display temperature range information", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, fireEvent } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -312,6 +380,7 @@ describe("SmartStatusPanel Component", () => {
             temperature: { value: 45, min: 20, max: 80, overtemp_counter: 0 },
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
+            enabled: true,
         } as any;
 
         render(
@@ -321,6 +390,13 @@ describe("SmartStatusPanel Component", () => {
                 isReadOnlyMode: false,
             }),
         );
+
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            fireEvent.click(expandBtn);
+        }
 
         // Should display temperature range
         const tempRange = await screen.findByText(/Min: 20°C \/ Max: 80°C/);

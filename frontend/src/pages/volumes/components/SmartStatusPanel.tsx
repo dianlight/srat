@@ -70,7 +70,7 @@ export function SmartStatusPanel({
     onAbortTest,
     isLoading = false,
 }: SmartStatusPanelProps) {
-    const [smartExpanded, setSmartExpanded] = useState(true);
+    const [smartExpanded, setSmartExpanded] = useState(false);
     const [showStartTestDialog, setShowStartTestDialog] = useState(false);
     const [selectedTestType, setSelectedTestType] = useState<SmartTestType>("short");
 
@@ -79,9 +79,10 @@ export function SmartStatusPanel({
     }
 
     const isTestRunning = testStatus?.status === "running";
-    const canStartTest = !isTestRunning && isSmartSupported && !isReadOnlyMode;
+    const canStartTest = !isTestRunning && isSmartSupported && !isReadOnlyMode && smartInfo?.enabled;
     const canAbortTest = isTestRunning && !isReadOnlyMode;
     const canToggleSmart = isSmartSupported && !isReadOnlyMode;
+    const isSmartEnabled = smartInfo?.enabled ?? false;
 
     const handleStartTest = () => {
         if (onStartTest) {
@@ -121,9 +122,12 @@ export function SmartStatusPanel({
             <CardHeader
                 title="S.M.A.R.T. Status"
                 avatar={
-                    <IconButton size="small" aria-label="smart preview">
-                        {getHealthIcon()}
-                    </IconButton>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                        <StorageIcon sx={{ fontSize: "1.5rem", color: "primary.main" }} />
+                        <IconButton size="small" aria-label="smart preview">
+                            {getHealthIcon()}
+                        </IconButton>
+                    </Stack>
                 }
                 action={
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -324,13 +328,15 @@ export function SmartStatusPanel({
                                     size="small"
                                     variant="outlined"
                                     onClick={onEnableSmart}
-                                    disabled={!canToggleSmart || isLoading}
+                                    disabled={!canToggleSmart || isLoading || isSmartEnabled}
                                     title={
                                         !isSmartSupported
                                             ? "SMART not supported"
                                             : isReadOnlyMode
                                                 ? "Read-only mode"
-                                                : "Enable SMART monitoring"
+                                                : isSmartEnabled
+                                                    ? "SMART already enabled"
+                                                    : "Enable SMART monitoring"
                                     }
                                 >
                                     Enable SMART
@@ -340,13 +346,15 @@ export function SmartStatusPanel({
                                     variant="outlined"
                                     color="error"
                                     onClick={onDisableSmart}
-                                    disabled={!canToggleSmart || isLoading}
+                                    disabled={!canToggleSmart || isLoading || !isSmartEnabled}
                                     title={
                                         !isSmartSupported
                                             ? "SMART not supported"
                                             : isReadOnlyMode
                                                 ? "Read-only mode"
-                                                : "Disable SMART monitoring"
+                                                : !isSmartEnabled
+                                                    ? "SMART already disabled"
+                                                    : "Disable SMART monitoring"
                                     }
                                 >
                                     Disable SMART

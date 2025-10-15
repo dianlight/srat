@@ -805,6 +805,7 @@ export type SmartInfo = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   disk_type?: Disk_type;
+  enabled: boolean;
   others?: {
     [key: string]: SmartRangeValue;
   };
