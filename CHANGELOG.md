@@ -20,11 +20,31 @@
   - **Self-Test Execution**: Added `StartSelfTest()` method to initiate short, long, or conveyance SMART self-tests on SATA devices
   - **Test Status Monitoring**: Added `GetTestStatus()` method to retrieve current or last SMART self-test results
   - **SMART Control**: Added `EnableSMART()` and `DisableSMART()` methods for controlling SMART functionality on SATA devices
+  - **SMART Enabled Status Tracking**: Added `Enabled` field to `SmartInfo` DTO to track whether SMART is currently active on the disk
   - **Pre-Failure Alerts**: Integrated with tlog callback system to automatically log warnings when disk health checks detect failing attributes
   - **Cross-Platform Support**: Linux-specific ioctl implementations with graceful fallback on other platforms
   - **New DTOs**: Added `SmartTestType`, `SmartTestStatus`, and `SmartHealthStatus` types for SMART operations
   - **Enhanced Error Handling**: Added `ErrorSMARTOperationFailed` and `ErrorSMARTTestInProgress` error codes
-  - Verified proper usage of `github.com/anatol/smart.go` library and extended functionality for disk management needs
+  - **REST API Endpoints**: Implemented 7 new REST endpoints for SMART operations:
+    - `GET /disk/{disk_id}/smart/info` - Retrieve SMART information
+    - `GET /disk/{disk_id}/smart/health` - Get disk health status
+    - `GET /disk/{disk_id}/smart/test` - Retrieve test status
+    - `POST /disk/{disk_id}/smart/test/start` - Start SMART self-test
+    - `POST /disk/{disk_id}/smart/test/abort` - Abort running test
+    - `POST /disk/{disk_id}/smart/enable` - Enable SMART
+    - `POST /disk/{disk_id}/smart/disable` - Disable SMART
+  - **Frontend Integration**: Added `SmartStatusPanel` component with:
+    - Temperature monitoring and thresholds
+    - Power statistics display
+    - Health status with failing attribute details
+    - Self-test status and progress tracking
+    - Action buttons with intelligent enable/disable logic based on SMART state
+    - Start test dialog with test type selection
+  - **Smart Button State Management**: Enable/Disable SMART buttons intelligently:
+    - "Enable SMART" button disabled when SMART is already active
+    - "Disable SMART" button disabled when SMART is not active
+    - Tooltips explain button disabled states
+  - **Verified proper usage of `github.com/anatol/smart.go` library and extended functionality for disk management needs
 - **Native Bun Hot-Reloading**: Removed external `bun-html-live-reload` library and configured Bun's native development server with HMR:
   - Removed dependency on `bun-html-live-reload` package
   - Enabled Bun's native HMR via `development: { console: true, hmr: true }` configuration
