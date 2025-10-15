@@ -38,6 +38,8 @@ The SMART service has been extended with comprehensive disk health monitoring an
 - **SMART Control**: Enable or disable SMART functionality on devices
 - **Pre-Failure Alerts**: Automatic warnings when disk attributes indicate potential failure
 
+**Implementation Note**: This service uses a **patched version** of `github.com/anatol/smart.go` that exposes file descriptors for direct device control. The patch is managed via `gohack` and applied automatically during the build process (`make patch`). See [Platform Support](#platform-support) and [Limitations](#limitations) sections for details.
+
 ## API Methods
 
 ### GetHealthStatus(devicePath string)
@@ -257,8 +259,28 @@ func main() {
 - **Health Status Monitoring**: ✅ Fully supported
 - **Self-Test Execution**: ✅ Fully supported (start, abort, status monitoring)
 - **SMART Control**: ✅ Fully supported (enable/disable SMART functionality)
-- **Implementation**: Uses ioctl commands for direct device control via patched smart.go library
+- **Implementation**: Uses ioctl commands for direct device control via patched `github.com/anatol/smart.go` library
 - **Requirements**: Appropriate permissions (typically root or disk group)
+
+**Library Patching:**
+
+The SMART service uses a patched version of `github.com/anatol/smart.go` to expose file descriptors needed for direct device control. The patch is managed via `gohack` and applied automatically during the build process:
+
+```bash
+cd backend
+make patch  # Applies all library patches including smart.go
+```
+
+The patch adds a `FileDescriptor()` method to the `Device` interface and all device implementations (SATA, NVMe, SCSI), enabling direct ioctl access for operations like:
+- Enabling/disabling SMART
+- Starting/aborting self-tests
+- Advanced device control
+
+**Patch Details:**
+- Location: `backend/patches/smart.go.patch`
+- Applied libraries: `github.com/anatol/smart.go`, `github.com/zarldev/goenums`, `github.com/jpillora/overseer`
+- Tool: `gohack` (manages local library modifications)
+- Automatic: Patches are applied during `make all` or `make patch`
 
 ### Other Platforms
 
@@ -277,15 +299,36 @@ The service uses specific error types for different failure scenarios:
 
 ## Limitations
 
+### Library Patching Requirement
+
+The SMART service implementation relies on a **patched version** of the `github.com/anatol/smart.go` library. The original library provides excellent read-only SMART access but does not expose file descriptors needed for direct device control operations.
+
+**What the patch provides:**
+- `FileDescriptor()` method added to the `Device` interface
+- Implementation in all device types (SataDevice, NVMeDevice, ScsiDevice)
+- Direct access to underlying file descriptors for ioctl operations
+
+**How to use:**
+```bash
+cd backend
+make patch  # Downloads libraries via gohack and applies patches
+make build  # Build with patched libraries
+```
+
+The patch is automatically applied when running `make all` and is required for the following operations:
+- EnableSMART/DisableSMART
+- StartSelfTest/AbortSelfTest
+- Any operation requiring direct ioctl access
+
 ### Linux
 
-All SMART operations are fully implemented and functional for Linux platforms using ioctl commands with direct device access.
+All SMART operations are fully implemented and functional for Linux platforms using ioctl commands with direct device access via the patched library.
 
 ### Other Platforms
 
 The current implementation provides full API structure and health monitoring capabilities for all platforms. However, direct device control operations (enable/disable SMART, execute/abort tests) are limited on non-Linux platforms and return appropriate error messages indicating platform limitations.
 
-The underlying `github.com/anatol/smart.go` library provides cross-platform support for basic SMART attribute reading, but direct device control operations require platform-specific ioctl implementations.
+The underlying `github.com/anatol/smart.go` library provides cross-platform support for basic SMART attribute reading. The patch extends this with file descriptor access, but the ioctl implementations remain platform-specific.
 
 **Platform-specific limitations:**
 

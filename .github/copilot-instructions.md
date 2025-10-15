@@ -84,6 +84,42 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 - **Test**: `cd backend && make test` (runs with `-p 1` for deterministic output)
 - **Format**: `cd backend && make format` (includes gofmt, testifylint, govet)
 - **Generate**: `cd backend && make gen` (goverter converters + OpenAPI docs)
+- **Patch Libraries**: `cd backend && make patch` (applies patches to external dependencies via gohack)
+
+### Library Patching with gohack
+
+SRAT uses **patched versions** of certain external Go libraries to enable additional functionality not available in the original packages. The patching is managed via `gohack` and applied automatically during builds.
+
+**Patched Libraries:**
+- `github.com/anatol/smart.go` — Adds `FileDescriptor()` method for direct device ioctl access
+- `github.com/zarldev/goenums` — Custom enum generation improvements
+- `github.com/jpillora/overseer` — Process management enhancements
+
+**Patch Workflow:**
+```bash
+cd backend
+make patch          # Download libraries via gohack and apply patches
+make gen_patch      # Generate new patch files from modified gohack libraries
+```
+
+**How it works:**
+1. `make patch` uses `gohack` to clone libraries to `~/gohack/github.com/...`
+2. Applies patch files from `backend/patches/*.patch` using `git apply`
+3. Go modules use `replace` directives (temporary, removed by pre-commit) to point to patched versions
+4. Build process uses patched libraries automatically
+
+**Adding a new patch:**
+1. Run `make patch` to get libraries in `~/gohack`
+2. Edit the library code in `~/gohack/github.com/...`
+3. Test your changes with `make build` or `make test`
+4. Run `make gen_patch` to generate `.patch` files in `backend/patches/`
+5. Commit the patch file to the repository
+
+**Important notes:**
+- Patches are **required** for SMART service operations (enable/disable, test execution)
+- Pre-commit hooks remove `replace` directives from `go.mod` to keep it clean
+- CI/CD applies patches before building
+- Never commit `replace` directives in `go.mod`
 
 ### Frontend Development
 
@@ -243,7 +279,9 @@ describe("Component rendering", () => {
 
 - **FX Wiring**: When changing service interfaces, update all `fx.Provide()` calls and test `fx.Populate()`
 - **Converters**: After DTO/DBOM changes, run `go generate` to regenerate goverter code
-- **Patches**: External dependencies are patched via `gohack` — see `backend/Makefile` patch targets
+- **Patches**: External dependencies are patched via `gohack` — see `backend/Makefile` patch targets. Run `make patch` after clean checkout or when patches are updated
+- **Patched Libraries**: Changes to `github.com/anatol/smart.go`, `github.com/zarldev/goenums`, or `github.com/jpillora/overseer` require updating patch files via `make gen_patch`
+- **Replace Directives**: **NEVER** commit `replace` directives in `go.mod` — pre-commit hooks remove them automatically. Patches are applied via `make patch` instead
 - **Multi-arch**: Always test builds on target architectures, especially ARM variants
 - **Embedded Assets**: Frontend builds to `backend/src/web/static` for embedding in binary
 - **Database Paths**: Use `--db` flag; app validates filesystem permissions
