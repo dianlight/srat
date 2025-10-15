@@ -1,6 +1,7 @@
 import { emptySplitApi as api } from "./emptyApi";
 export const addTagTypes = [
   "system",
+  "smart",
   "Issues",
   "samba",
   "share",
@@ -19,6 +20,74 @@ const injectedRtkApi = api
       >({
         query: () => ({ url: `/api/capabilities` }),
         providesTags: ["system"],
+      }),
+      postApiDiskByDiskIdSmartDisable: build.mutation<
+        PostApiDiskByDiskIdSmartDisableApiResponse,
+        PostApiDiskByDiskIdSmartDisableApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/smart/disable`,
+          method: "POST",
+        }),
+        invalidatesTags: ["smart"],
+      }),
+      postApiDiskByDiskIdSmartEnable: build.mutation<
+        PostApiDiskByDiskIdSmartEnableApiResponse,
+        PostApiDiskByDiskIdSmartEnableApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/smart/enable`,
+          method: "POST",
+        }),
+        invalidatesTags: ["smart"],
+      }),
+      getApiDiskByDiskIdSmartHealth: build.query<
+        GetApiDiskByDiskIdSmartHealthApiResponse,
+        GetApiDiskByDiskIdSmartHealthApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/smart/health`,
+        }),
+        providesTags: ["smart"],
+      }),
+      getApiDiskByDiskIdSmartInfo: build.query<
+        GetApiDiskByDiskIdSmartInfoApiResponse,
+        GetApiDiskByDiskIdSmartInfoApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/smart/info`,
+        }),
+        providesTags: ["smart"],
+      }),
+      getApiDiskByDiskIdSmartTest: build.query<
+        GetApiDiskByDiskIdSmartTestApiResponse,
+        GetApiDiskByDiskIdSmartTestApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/smart/test`,
+        }),
+        providesTags: ["smart"],
+      }),
+      postApiDiskByDiskIdSmartTestAbort: build.mutation<
+        PostApiDiskByDiskIdSmartTestAbortApiResponse,
+        PostApiDiskByDiskIdSmartTestAbortApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/smart/test/abort`,
+          method: "POST",
+        }),
+        invalidatesTags: ["smart"],
+      }),
+      postApiDiskByDiskIdSmartTestStart: build.mutation<
+        PostApiDiskByDiskIdSmartTestStartApiResponse,
+        PostApiDiskByDiskIdSmartTestStartApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/smart/test/start`,
+          method: "POST",
+          body: queryArg.postDiskByDiskIdSmartTestStartRequest,
+        }),
+        invalidatesTags: ["smart"],
       }),
       getApiFilesystems: build.query<
         GetApiFilesystemsApiResponse,
@@ -362,6 +431,56 @@ export type GetApiCapabilitiesApiResponse = /** status 200 OK */
   | SystemCapabilities
   | /** status default Error */ ErrorModel;
 export type GetApiCapabilitiesApiArg = void;
+export type PostApiDiskByDiskIdSmartDisableApiResponse = /** status 200 OK */
+  | string
+  | /** status default Error */ ErrorModel;
+export type PostApiDiskByDiskIdSmartDisableApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
+export type PostApiDiskByDiskIdSmartEnableApiResponse = /** status 200 OK */
+  | string
+  | /** status default Error */ ErrorModel;
+export type PostApiDiskByDiskIdSmartEnableApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
+export type GetApiDiskByDiskIdSmartHealthApiResponse = /** status 200 OK */
+  | SmartHealthStatus
+  | /** status default Error */ ErrorModel;
+export type GetApiDiskByDiskIdSmartHealthApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
+export type GetApiDiskByDiskIdSmartInfoApiResponse = /** status 200 OK */
+  | SmartInfo
+  | /** status default Error */ ErrorModel;
+export type GetApiDiskByDiskIdSmartInfoApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
+export type GetApiDiskByDiskIdSmartTestApiResponse = /** status 200 OK */
+  | SmartTestStatus
+  | /** status default Error */ ErrorModel;
+export type GetApiDiskByDiskIdSmartTestApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
+export type PostApiDiskByDiskIdSmartTestAbortApiResponse = /** status 200 OK */
+  | string
+  | /** status default Error */ ErrorModel;
+export type PostApiDiskByDiskIdSmartTestAbortApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
+export type PostApiDiskByDiskIdSmartTestStartApiResponse = /** status 200 OK */
+  | string
+  | /** status default Error */ ErrorModel;
+export type PostApiDiskByDiskIdSmartTestStartApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+  postDiskByDiskIdSmartTestStartRequest: PostDiskByDiskIdSmartTestStartRequest;
+};
 export type GetApiFilesystemsApiResponse =
   | /** status 200 OK */ (FilesystemType[] | null)
   | /** status default Error */ ErrorModel;
@@ -384,9 +503,8 @@ export type PostApiIssuesApiResponse = /** status 200 OK */
 export type PostApiIssuesApiArg = {
   issue: Issue;
 };
-export type DeleteApiIssuesByIdApiResponse = /** status 200 OK */
-  | ResolveIssueOutputBody
-  | /** status default Error */ ErrorModel;
+export type DeleteApiIssuesByIdApiResponse =
+  /** status default Error */ ErrorModel;
 export type DeleteApiIssuesByIdApiArg = {
   id: number;
 };
@@ -485,52 +603,52 @@ export type GetApiSharesApiResponse =
 export type GetApiSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
-    | {
-      data: HealthPing;
-      /** The event name. */
-      event: "heartbeat";
-      /** The event ID. */
-      id?: number;
-      /** The retry time in milliseconds. */
-      retry?: number;
-    }
-    | {
-      data: Welcome;
-      /** The event name. */
-      event: "hello";
-      /** The event ID. */
-      id?: number;
-      /** The retry time in milliseconds. */
-      retry?: number;
-    }
-    | {
-      data: SharedResource[] | null;
-      /** The event name. */
-      event: "share";
-      /** The event ID. */
-      id?: number;
-      /** The retry time in milliseconds. */
-      retry?: number;
-    }
-    | {
-      data: UpdateProgress;
-      /** The event name. */
-      event: "updating";
-      /** The event ID. */
-      id?: number;
-      /** The retry time in milliseconds. */
-      retry?: number;
-    }
-    | {
-      data: Disk[] | null;
-      /** The event name. */
-      event: "volumes";
-      /** The event ID. */
-      id?: number;
-      /** The retry time in milliseconds. */
-      retry?: number;
-    }
-  )[]
+      | {
+          data: HealthPing;
+          /** The event name. */
+          event: "heartbeat";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: Welcome;
+          /** The event name. */
+          event: "hello";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: SharedResource[] | null;
+          /** The event name. */
+          event: "share";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: UpdateProgress;
+          /** The event name. */
+          event: "updating";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: Disk[] | null;
+          /** The event name. */
+          event: "volumes";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+    )[]
   | /** status default Error */ ErrorModel;
 export type SseApiArg = void;
 export type GetApiStatusApiResponse = /** status 200 OK */
@@ -663,6 +781,51 @@ export type ErrorModel = {
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
 };
+export type SmartHealthStatus = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  failing_attributes?: string[] | null;
+  overall_status: string;
+  passed: boolean;
+};
+export type SmartRangeValue = {
+  code?: number;
+  min?: number;
+  thresholds?: number;
+  value: number;
+  worst?: number;
+};
+export type SmartTempValue = {
+  max?: number;
+  min?: number;
+  overtemp_counter?: number;
+  value: number;
+};
+export type SmartInfo = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  disk_type?: Disk_type;
+  others?: {
+    [key: string]: SmartRangeValue;
+  };
+  power_cycle_count: SmartRangeValue;
+  power_on_hours: SmartRangeValue;
+  temperature: SmartTempValue;
+};
+export type SmartTestStatus = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  lba_of_first_error?: string;
+  percent_complete?: number;
+  status: string;
+  test_type: string;
+};
+export type PostDiskByDiskIdSmartTestStartRequest = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  /** Type of test: short, long, or conveyance */
+  test_type: string;
+};
 export type MountFlag = {
   description?: string;
   name: string;
@@ -697,28 +860,6 @@ export type GlobalDiskStats = {
   total_iops: number;
   total_read_latency_ms: number;
   total_write_latency_ms: number;
-};
-export type SmartRangeValue = {
-  code?: number;
-  min?: number;
-  thresholds?: number;
-  value: number;
-  worst?: number;
-};
-export type SmartTempValue = {
-  max?: number;
-  min?: number;
-  overtemp_counter?: number;
-  value: number;
-};
-export type SmartInfo = {
-  disk_type?: Disk_type;
-  others?: {
-    [key: string]: SmartRangeValue;
-  };
-  power_cycle_count: SmartRangeValue;
-  power_on_hours: SmartRangeValue;
-  temperature: SmartTempValue;
 };
 export type DiskIoStats = {
   device_description: string;
@@ -889,10 +1030,6 @@ export type Issue = {
   resolutionLink?: string;
   severity?: Severity;
   title: string;
-};
-export type ResolveIssueOutputBody = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
 };
 export type InterfaceAddr = {
   addr: string;
@@ -1110,6 +1247,13 @@ export enum Update_process_state {
 }
 export const {
   useGetApiCapabilitiesQuery,
+  usePostApiDiskByDiskIdSmartDisableMutation,
+  usePostApiDiskByDiskIdSmartEnableMutation,
+  useGetApiDiskByDiskIdSmartHealthQuery,
+  useGetApiDiskByDiskIdSmartInfoQuery,
+  useGetApiDiskByDiskIdSmartTestQuery,
+  usePostApiDiskByDiskIdSmartTestAbortMutation,
+  usePostApiDiskByDiskIdSmartTestStartMutation,
   useGetApiFilesystemsQuery,
   useGetApiHealthQuery,
   useGetApiHostnameQuery,

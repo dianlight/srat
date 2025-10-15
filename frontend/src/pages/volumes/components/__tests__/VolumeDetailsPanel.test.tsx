@@ -11,6 +11,21 @@ if (!(globalThis as any).localStorage) {
     };
 }
 
+// Helper function to render with Redux Provider and Router
+async function renderWithProviders(element: any) {
+    const React = await import("react");
+    const { render } = await import("@testing-library/react");
+    const { BrowserRouter } = await import("react-router-dom");
+    const { Provider } = await import("react-redux");
+    const { createTestStore } = await import("../../../../../test/setup");
+    const store = await createTestStore();
+
+    const providerChildren = React.createElement(BrowserRouter, null, element);
+    return render(
+        React.createElement(Provider, { store, children: providerChildren })
+    );
+}
+
 describe("VolumeDetailsPanel Component", () => {
     beforeEach(() => {
         localStorage.clear();
@@ -20,17 +35,10 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("renders placeholder when no disk or partition selected", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { screen } = await import("@testing-library/react");
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
-        render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(VolumeDetailsPanel as any, {})
-            )
-        );
+        await renderWithProviders(React.createElement(VolumeDetailsPanel as any, {}));
 
         // Should display a placeholder message
         const placeholder = await screen.findByText(/Select a partition/i);
@@ -39,8 +47,6 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("renders disk and partition details", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { BrowserRouter } = await import("react-router-dom");
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
         const mockDisk = {
@@ -58,15 +64,11 @@ describe("VolumeDetailsPanel Component", () => {
             fstype: "ext4"
         };
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(VolumeDetailsPanel as any, {
-                    disk: mockDisk,
-                    partition: mockPartition
-                })
-            )
+        const { container } = await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition
+            })
         );
 
         expect(container).toBeTruthy();
@@ -74,8 +76,6 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("renders disk icon based on connection bus", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { BrowserRouter } = await import("react-router-dom");
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
         const mockDisk = {
@@ -91,15 +91,11 @@ describe("VolumeDetailsPanel Component", () => {
             name: "sda1"
         };
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(VolumeDetailsPanel as any, {
-                    disk: mockDisk,
-                    partition: mockPartition
-                })
-            )
+        const { container } = await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition
+            })
         );
 
         // Look for USB icon
@@ -109,8 +105,6 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("renders disk icon for SDIO/MMC connection", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { BrowserRouter } = await import("react-router-dom");
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
         const mockDisk = {
@@ -126,15 +120,11 @@ describe("VolumeDetailsPanel Component", () => {
             name: "mmcblk0p1"
         };
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(VolumeDetailsPanel as any, {
-                    disk: mockDisk,
-                    partition: mockPartition
-                })
-            )
+        const { container } = await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition
+            })
         );
 
         expect(container).toBeTruthy();
@@ -142,8 +132,6 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("renders eject icon for removable disks", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { BrowserRouter } = await import("react-router-dom");
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
         const mockDisk = {
@@ -158,15 +146,11 @@ describe("VolumeDetailsPanel Component", () => {
             name: "sdb1"
         };
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(VolumeDetailsPanel as any, {
-                    disk: mockDisk,
-                    partition: mockPartition
-                })
-            )
+        const { container } = await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition
+            })
         );
 
         expect(container).toBeTruthy();
@@ -174,8 +158,6 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("displays partition size information", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { BrowserRouter } = await import("react-router-dom");
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
         const mockDisk = {
@@ -190,15 +172,11 @@ describe("VolumeDetailsPanel Component", () => {
             size: 500000000
         };
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(VolumeDetailsPanel as any, {
-                    disk: mockDisk,
-                    partition: mockPartition
-                })
-            )
+        const { container } = await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition
+            })
         );
 
         // Check for size information in the container
@@ -207,8 +185,6 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("renders shared resource information when provided", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { BrowserRouter } = await import("react-router-dom");
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
         const mockDisk = {
@@ -226,16 +202,12 @@ describe("VolumeDetailsPanel Component", () => {
             path: "/mnt/share"
         };
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(VolumeDetailsPanel as any, {
-                    disk: mockDisk,
-                    partition: mockPartition,
-                    share: mockShare
-                })
-            )
+        const { container } = await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition,
+                share: mockShare
+            })
         );
 
         expect(container).toBeTruthy();
@@ -243,8 +215,7 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("handles disk info expansion toggle", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { fireEvent } = await import("@testing-library/react");
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
         const mockDisk = {
@@ -258,15 +229,11 @@ describe("VolumeDetailsPanel Component", () => {
             name: "sda1"
         };
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(VolumeDetailsPanel as any, {
-                    disk: mockDisk,
-                    partition: mockPartition
-                })
-            )
+        const { container } = await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition
+            })
         );
 
         // Look for expand button
@@ -283,8 +250,6 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("renders preview dialog when object is selected", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { BrowserRouter } = await import("react-router-dom");
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
         const mockDisk = {
@@ -297,15 +262,11 @@ describe("VolumeDetailsPanel Component", () => {
             name: "sda1"
         };
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(VolumeDetailsPanel as any, {
-                    disk: mockDisk,
-                    partition: mockPartition
-                })
-            )
+        const { container } = await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition
+            })
         );
 
         // Check that PreviewDialog component is present
@@ -314,8 +275,6 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("navigates to shares page when share is clicked", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { BrowserRouter } = await import("react-router-dom");
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
         const mockDisk = {
@@ -333,16 +292,12 @@ describe("VolumeDetailsPanel Component", () => {
             path: "/mnt/share"
         };
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(VolumeDetailsPanel as any, {
-                    disk: mockDisk,
-                    partition: mockPartition,
-                    share: mockShare
-                })
-            )
+        const { container } = await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition,
+                share: mockShare
+            })
         );
 
         expect(container).toBeTruthy();
