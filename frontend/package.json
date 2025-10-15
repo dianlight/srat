@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.6",
-    "@happy-dom/global-registrator": "20.0.0",
+    "@happy-dom/global-registrator": "20.0.2",
     "@hookform/devtools": "4.4.0",
     "@rtk-query/codegen-openapi": "2.0.0",
     "@testing-library/jest-dom": "6.9.1",
