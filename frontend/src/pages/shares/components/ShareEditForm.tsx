@@ -1,4 +1,3 @@
-import KeyboardCapslockIcon from "@mui/icons-material/KeyboardCapslock";
 import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import {
@@ -209,11 +208,10 @@ export function ShareEditForm({
         );
     };
 
-    const nextCasingStyleName = casingCycleOrder[activeCasingIndex];
-    const cycleCasingTooltipTitle = nextCasingStyleName
-        ? `Cycle casing (Next: ${nextCasingStyleName.charAt(0).toUpperCase() + nextCasingStyleName.slice(1)})`
-        : "Cycle casing";
-    const CasingIconToDisplay = nextCasingStyleName ? getCasingIcon(nextCasingStyleName) : KeyboardCapslockIcon;
+    // activeCasingIndex is guaranteed to be a valid index due to modulo operation
+    const nextCasingStyleName = casingCycleOrder[activeCasingIndex]!;
+    const cycleCasingTooltipTitle = `Cycle casing (Next: ${nextCasingStyleName.charAt(0).toUpperCase() + nextCasingStyleName.slice(1)})`;
+    const CasingIconToDisplay = getCasingIcon(nextCasingStyleName);
 
     const renderFormContent = () => (
         <>
