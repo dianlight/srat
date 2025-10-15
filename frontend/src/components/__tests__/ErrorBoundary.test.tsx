@@ -164,7 +164,10 @@ describe("ErrorBoundary Component", () => {
         );
 
         const reloadButtons = screen.getAllByText("Reload Page");
-        fireEvent.click(reloadButtons[0]);
+        const firstButton = reloadButtons[0];
+        if (firstButton) {
+            fireEvent.click(firstButton);
+        }
 
         expect(reloadCalled).toBe(true);
 

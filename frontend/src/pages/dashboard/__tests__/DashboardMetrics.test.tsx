@@ -213,8 +213,9 @@ describe("DashboardMetrics Component", () => {
 
         // Find expand buttons and test clicking
         const expandButtons = container.querySelectorAll('[data-testid="ExpandMoreIcon"]');
-        if (expandButtons.length > 0) {
-            const button = expandButtons[0].closest('button');
+        const firstExpandButton = expandButtons[0];
+        if (expandButtons.length > 0 && firstExpandButton) {
+            const button = firstExpandButton.closest('button');
             if (button) {
                 fireEvent.click(button);
             }

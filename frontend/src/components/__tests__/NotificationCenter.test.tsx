@@ -114,8 +114,9 @@ describe("NotificationCenter Component", () => {
 
             // Look for toggle switch
             const switches = container.querySelectorAll('input[type="checkbox"]');
-            if (switches.length > 0) {
-                fireEvent.click(switches[0]);
+            const firstSwitch = switches[0];
+            if (switches.length > 0 && firstSwitch) {
+                fireEvent.click(firstSwitch);
             }
         }
 
@@ -175,8 +176,9 @@ describe("NotificationCenter Component", () => {
             expect(actionButtons.length).toBeGreaterThanOrEqual(1);
 
             // Try to click action buttons if they exist
-            if (actionButtons.length > 2) {
-                fireEvent.click(actionButtons[2]); // Try clicking clear or mark as read
+            const thirdButton = actionButtons[2];
+            if (actionButtons.length > 2 && thirdButton) {
+                fireEvent.click(thirdButton); // Try clicking clear or mark as read
             }
         }
     });
