@@ -125,7 +125,7 @@ bun test --concurrent
 
 **Performance**: 
 - Sequential mode: ~15s for 451 tests
-- Concurrent mode: Currently has test failures due to shared state
+- Concurrent mode: ~24s with 408 tests pass, 43 fail (race conditions due to shared state)
 
 **Future Work**: Tests need to be refactored to properly isolate state:
 - Use per-test localStorage instances instead of shared global
