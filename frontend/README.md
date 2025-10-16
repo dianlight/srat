@@ -10,6 +10,7 @@
   - [Usage (React Hook)](#usage-react-hook)
   - [Frontend Component Organization Rules](#frontend-component-organization-rules)
 - [Test Setup Enforcement](#test-setup-enforcement)
+  - [Concurrent Testing (Bun v1.3+)](#concurrent-testing-bun-v13)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -117,17 +118,20 @@ bun run test:concurrent
 bun test --concurrent
 ```
 
-**Current Status**: Concurrent mode is disabled by default because some tests share global state (localStorage, DOM) which causes race conditions when tests run in parallel. 
+**Current Status**: Concurrent mode is disabled by default because some tests share global state (localStorage, DOM) which causes race conditions when tests run in parallel.
 
 **To enable concurrent testing**:
+
 1. Uncomment `concurrent = true` in `bunfig.toml`
 2. Optionally adjust `maxConcurrency` to limit parallel test count (default: 20)
 
-**Performance**: 
+**Performance**:
+
 - Sequential mode: ~15s for 451 tests
 - Concurrent mode: ~24s with 408 tests passing, 43 failing (race conditions due to shared state)
 
 **Future Work**: Tests need to be refactored to properly isolate state:
+
 - Use per-test localStorage instances instead of shared global
 - Ensure DOM cleanup between concurrent tests
 - Avoid module-scoped test state
