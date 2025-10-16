@@ -10,18 +10,18 @@ import (
 )
 
 // enableSMART enables SMART on a SATA device (not supported on non-Linux platforms)
-func enableSMART(dev *smart.SataDevice) errors.E {
-	return errors.WithDetails(dto.ErrorSMARTNotSupported, "reason", "SMART enable not supported on this platform")
+func enableSMART(dev *smart.SataDevice, devicePath string) errors.E {
+	return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "SMART enable not supported on this platform")
 }
 
 // disableSMART disables SMART on a SATA device (not supported on non-Linux platforms)
-func disableSMART(dev *smart.SataDevice) errors.E {
-	return errors.WithDetails(dto.ErrorSMARTNotSupported, "reason", "SMART disable not supported on this platform")
+func disableSMART(dev *smart.SataDevice, devicePath string) errors.E {
+	return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "SMART disable not supported on this platform")
 }
 
 // executeSMARTTest starts a SMART self-test (not supported on non-Linux platforms)
-func executeSMARTTest(dev *smart.SataDevice, testType byte) errors.E {
-	return errors.WithDetails(dto.ErrorSMARTNotSupported, "reason", "SMART test execution not supported on this platform")
+func executeSMARTTest(dev *smart.SataDevice, testType byte, devicePath string) errors.E {
+	return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "SMART test execution not supported on this platform")
 }
 
 // parseSelfTestLog parses the SMART self-test log (not supported on non-Linux platforms)

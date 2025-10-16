@@ -294,7 +294,7 @@ func (s *smartService) StartSelfTest(devicePath string, testType dto.SmartTestTy
 	}
 
 	// Execute the test
-	if err := executeSMARTTest(sm, testByte); err != nil {
+	if err := executeSMARTTest(sm, testByte, devicePath); err != nil {
 		return errors.Wrap(err, "failed to start SMART self-test")
 	}
 
@@ -327,7 +327,7 @@ func (s *smartService) AbortSelfTest(devicePath string) errors.E {
 	}
 
 	// Execute the abort command
-	if err := executeSMARTTest(sm, _SMART_ABORT_SELFTEST); err != nil {
+	if err := executeSMARTTest(sm, _SMART_ABORT_SELFTEST, devicePath); err != nil {
 		return errors.Wrap(err, "failed to abort SMART self-test")
 	}
 
@@ -394,7 +394,7 @@ func (s *smartService) EnableSMART(devicePath string) errors.E {
 			"reason", "SMART enable/disable only supported for SATA devices")
 	}
 
-	if err := enableSMART(sm); err != nil {
+	if err := enableSMART(sm, devicePath); err != nil {
 		return err
 	}
 
@@ -426,7 +426,7 @@ func (s *smartService) DisableSMART(devicePath string) errors.E {
 			"reason", "SMART enable/disable only supported for SATA devices")
 	}
 
-	if err := disableSMART(sm); err != nil {
+	if err := disableSMART(sm, devicePath); err != nil {
 		return err
 	}
 

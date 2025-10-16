@@ -2,6 +2,8 @@ package service
 
 import (
 	"encoding/binary"
+	"os"
+	"strings"
 	"unsafe"
 
 	"github.com/anatol/smart.go"
@@ -27,62 +29,90 @@ const (
 	_SMART_ABORT_SELFTEST      = 0x7f
 )
 
-// ioctlSMARTCommand executes a SMART command via ioctl
-func ioctlSMARTCommand(fd int, feature byte, lbaLow byte) error {
-	// ATA pass-through command structure
-	type ataPassthru struct {
-		protocol      uint8
-		flags         uint8
-		features      uint8
-		sectorCount   uint8
-		lbaLow        uint8
-		lbaMid        uint8
-		lbaHigh       uint8
-		device        uint8
-		command       uint8
-		reserved      uint8
-		control       uint8
-		timeout       uint32
-		_             uint32
-		bufferPointer uintptr
-		bufferLength  uint32
+// getDevicePathForIOCTL converts a symlink device path to the actual device name
+// For example: /dev/disk/by-id/ata-KINGSTON... -> /dev/sda
+func getDevicePathForIOCTL(devicePath string) (string, error) {
+	// If it's already a simple device path like /dev/sda, use it directly
+	if strings.HasPrefix(devicePath, "/dev/sd") || strings.HasPrefix(devicePath, "/dev/nvme") {
+		return devicePath, nil
 	}
 
-	cmd := ataPassthru{
-		protocol:    4, // Non-data protocol
-		flags:       0,
-		features:    feature,
-		sectorCount: 0,
-		lbaLow:      lbaLow,
-		lbaMid:      0x4f, // SMART signature
-		lbaHigh:     0xc2, // SMART signature
-		device:      0xa0,
-		command:     _ATA_SMART,
-		timeout:     10000, // 10 seconds
+	// For symlinks like /dev/disk/by-id/..., resolve to the actual device
+	realPath, err := os.Readlink(devicePath)
+	if err != nil {
+		// If readlink fails, try to use the path as-is
+		return devicePath, nil
 	}
+
+	// Readlink may return a relative path, make it absolute
+	if !strings.HasPrefix(realPath, "/") {
+		realPath = "/dev/" + realPath
+	}
+
+	return realPath, nil
+}
+
+// ioctlSMARTCommand executes a SMART command via ioctl using HDIO_DRIVE_CMD
+// It opens the device directly to ensure proper permissions and access
+func ioctlSMARTCommand(devicePath string, feature byte, lbaLow byte) error {
+	// Get the actual device path (resolve symlinks)
+	actualPath, err := getDevicePathForIOCTL(devicePath)
+	if err != nil {
+		return errors.Wrap(err, "failed to resolve device path")
+	}
+
+	// Open the device with read/write access
+	// SMART commands require write access to the device
+	fd, err := os.OpenFile(actualPath, os.O_RDWR, 0)
+	if err != nil {
+		if os.IsPermission(err) {
+			return errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "permission denied opening device for SMART operations")
+		}
+		return errors.Wrapf(err, "failed to open device %s for SMART operations", actualPath)
+	}
+	defer fd.Close()
+
+	// Get the file descriptor
+	fileFD := int(fd.Fd())
+
+	// Create a buffer for the HDIO_DRIVE_CMD ioctl
+	// The structure expected by kernel is: unsigned char args[4+512]
+	var cmdBuffer [516]byte
+
+	// Set up the 4-byte ATA command
+	// Format: [0] = command (0xB0), [1] = feature, [2] = lba_low, [3] = 0x4f (SMART signature)
+	cmdBuffer[0] = _ATA_SMART // ATA command 0xB0
+	cmdBuffer[1] = feature    // Features register
+	cmdBuffer[2] = lbaLow     // Sector count or LBA Low (depends on command)
+	cmdBuffer[3] = 0x4f       // SMART signature byte (LBA Mid for SMART operations)
+
+	// HDIO_DRIVE_CMD ioctl number
+	// Defined as: _IOC(_IOC_READ | _IOC_WRITE, 'h', 31, 4)
+	// Which evaluates to 0x0000031f on most systems
+	const HDIO_DRIVE_CMD = 0x0000031f
 
 	_, _, errno := unix.Syscall(
 		unix.SYS_IOCTL,
-		uintptr(fd),
-		uintptr(0xc0289304), // HDIO_DRIVE_CMD
-		uintptr(unsafe.Pointer(&cmd)),
+		uintptr(fileFD),
+		uintptr(HDIO_DRIVE_CMD),
+		uintptr(unsafe.Pointer(&cmdBuffer[0])),
 	)
 
 	if errno != 0 {
-		return errors.Errorf("ioctl failed: %v", errno)
+		// Common errno values for SMART commands:
+		// EACCES (13): Permission denied
+		// EIO (5): Input/output error - device doesn't support SMART or device error
+		// EOPNOTSUPP (95): Operation not supported
+		// ENODEV (19): No such device
+		return errors.Errorf("SMART ioctl command failed on %s: errno=%d", actualPath, errno)
 	}
 
 	return nil
 }
 
 // enableSMART enables SMART on a SATA device
-func enableSMART(dev *smart.SataDevice) errors.E {
-	fd := dev.FileDescriptor()
-	if fd < 0 {
-		return errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "invalid file descriptor")
-	}
-
-	if err := ioctlSMARTCommand(fd, _SMART_ENABLE_OPERATIONS, 0); err != nil {
+func enableSMART(dev *smart.SataDevice, devicePath string) errors.E {
+	if err := ioctlSMARTCommand(devicePath, _SMART_ENABLE_OPERATIONS, 0); err != nil {
 		return errors.Wrap(err, "failed to enable SMART")
 	}
 
@@ -90,13 +120,8 @@ func enableSMART(dev *smart.SataDevice) errors.E {
 }
 
 // disableSMART disables SMART on a SATA device
-func disableSMART(dev *smart.SataDevice) errors.E {
-	fd := dev.FileDescriptor()
-	if fd < 0 {
-		return errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "invalid file descriptor")
-	}
-
-	if err := ioctlSMARTCommand(fd, _SMART_DISABLE_OPERATIONS, 0); err != nil {
+func disableSMART(dev *smart.SataDevice, devicePath string) errors.E {
+	if err := ioctlSMARTCommand(devicePath, _SMART_DISABLE_OPERATIONS, 0); err != nil {
 		return errors.Wrap(err, "failed to disable SMART")
 	}
 
@@ -104,13 +129,8 @@ func disableSMART(dev *smart.SataDevice) errors.E {
 }
 
 // executeSMARTTest starts a SMART self-test on a SATA device
-func executeSMARTTest(dev *smart.SataDevice, testType byte) errors.E {
-	fd := dev.FileDescriptor()
-	if fd < 0 {
-		return errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "invalid file descriptor")
-	}
-
-	if err := ioctlSMARTCommand(fd, _SMART_EXECUTE_OFFLINE_IMMEDIATE, testType); err != nil {
+func executeSMARTTest(dev *smart.SataDevice, testType byte, devicePath string) errors.E {
+	if err := ioctlSMARTCommand(devicePath, _SMART_EXECUTE_OFFLINE_IMMEDIATE, testType); err != nil {
 		return errors.Wrap(err, "failed to execute SMART self-test")
 	}
 

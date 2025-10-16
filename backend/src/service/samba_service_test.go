@@ -323,7 +323,7 @@ func (suite *SambaServiceSuite) compareConfigSections(generatedConfig *[]byte, t
 		result[match[1]] = strings.TrimSpace(match[0])
 	}
 
-	suite.Equal(len(expectedSections), len(result), "Test: %s - Expected %d sections, got %d", testName, len(expectedSections), len(result))
+	suite.Len(result, len(expectedSections), "Test: %s - Expected %d sections, got %d", testName, len(expectedSections), len(result))
 
 	for sectionName, expectedSection := range expectedSections {
 		actualSection, ok := result[sectionName]
