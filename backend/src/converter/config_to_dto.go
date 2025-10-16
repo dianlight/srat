@@ -8,6 +8,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
+	"github.com/dianlight/srat/tlog"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/xorcare/pointer"
@@ -153,7 +154,7 @@ func TimeMachineSupportFromFS(fsType string) *dto.TimeMachineSupport {
 }
 
 func FSTypeIsWriteSupported(path string) *bool {
-	slog.Debug("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
+	tlog.Trace("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
 	return pointer.Bool(osutil.IsWritable(path))
 
 }

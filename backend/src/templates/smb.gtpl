@@ -5,7 +5,9 @@
    {{- else -}}
    local master = yes
    {{- end }}
+   {{if versionAtLeast .samba_version 4 23 -}}
    server smb transports = tcp{{if .smb_over_quic -}}, quic{{- end }}
+   {{- end }}
    {{ if .compatibility_mode -}}
    client min protocol = NT1
    server min protocol = NT1
@@ -21,7 +23,8 @@
    {{- end }}
 
    {{if .smb_over_quic -}}
-   # SMB over QUIC settings
+   # SMB over QUIC settings (requires Samba 4.23.0+)
+   {{if versionAtLeast .samba_version 4 23 -}}
    server smb3 encryption = mandatory
    smb3 unix extensions = yes
    tls enable = yes 
@@ -29,6 +32,10 @@
    tls certfile = /config/server.cert
    #tls trust system cas = yes
    #tls verify peer = no_check
+   {{- else -}}
+   # WARNING: SMB over QUIC requires Samba 4.23.0+. Current version: {{ .samba_version }}
+   # Falling back to standard SMB3 configuration
+   {{- end }}
    {{- end }}
 
    unix extensions = no
@@ -38,7 +45,10 @@
 
    fruit:resource = file
    fruit:veto_appledouble = no
+   {{if versionAtLeast .samba_version 4 22 -}}
+   {{- else -}}
    fruit:posix_rename = yes
+   {{- end }}
    fruit:wipe_intentionally_left_blank_rfork = yes
    fruit:zero_file_id = yes
    fruit:delete_empty_adfiles = yes

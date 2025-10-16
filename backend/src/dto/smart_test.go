@@ -135,3 +135,45 @@ func TestSmartInfo_EmptyAdditional(t *testing.T) {
 	assert.NotNil(t, smart.Additional)
 	assert.Empty(t, smart.Additional)
 }
+
+func TestSmartTestType_Values(t *testing.T) {
+	assert.Equal(t, dto.SmartTestTypeShort, dto.SmartTestType("short"))
+	assert.Equal(t, dto.SmartTestTypeLong, dto.SmartTestType("long"))
+	assert.Equal(t, dto.SmartTestTypeConveyance, dto.SmartTestType("conveyance"))
+}
+
+func TestSmartTestStatus_Fields(t *testing.T) {
+	status := dto.SmartTestStatus{
+		Status:          "running",
+		TestType:        "short",
+		PercentComplete: 50,
+	}
+
+	assert.Equal(t, "running", status.Status)
+	assert.Equal(t, "short", status.TestType)
+	assert.Equal(t, 50, status.PercentComplete)
+}
+
+func TestSmartHealthStatus_Healthy(t *testing.T) {
+	health := dto.SmartHealthStatus{
+		Passed:        true,
+		OverallStatus: "healthy",
+	}
+
+	assert.True(t, health.Passed)
+	assert.Equal(t, "healthy", health.OverallStatus)
+	assert.Nil(t, health.FailingAttributes)
+}
+
+func TestSmartHealthStatus_Failing(t *testing.T) {
+	health := dto.SmartHealthStatus{
+		Passed:            false,
+		FailingAttributes: []string{"Reallocated_Sector_Ct", "Current_Pending_Sector"},
+		OverallStatus:     "failing",
+	}
+
+	assert.False(t, health.Passed)
+	assert.Equal(t, "failing", health.OverallStatus)
+	assert.Len(t, health.FailingAttributes, 2)
+	assert.Contains(t, health.FailingAttributes, "Reallocated_Sector_Ct")
+}
