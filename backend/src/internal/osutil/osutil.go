@@ -34,6 +34,8 @@ type MountInfoEntry struct {
 var (
 	overrideMu        sync.RWMutex
 	mountInfoOverride mountInfoSource
+	versionOverride   string
+	versionOverrideMu sync.RWMutex
 )
 
 type mountInfoSource func() (io.ReadCloser, error)
@@ -44,6 +46,21 @@ func MockMountInfo(content string) (restore func()) {
 	return setMountInfoSource(func() (io.ReadCloser, error) {
 		return io.NopCloser(strings.NewReader(content)), nil
 	})
+}
+
+// MockSambaVersion replaces the Samba version for testing purposes until the
+// returned restore function is called.
+func MockSambaVersion(version string) (restore func()) {
+	versionOverrideMu.Lock()
+	previousVersion := versionOverride
+	versionOverride = version
+	versionOverrideMu.Unlock()
+
+	return func() {
+		versionOverrideMu.Lock()
+		versionOverride = previousVersion
+		versionOverrideMu.Unlock()
+	}
 }
 
 func setMountInfoSource(fn mountInfoSource) (restore func()) {
@@ -183,6 +200,14 @@ func IsKernelModuleLoaded(moduleName string) (bool, error) {
 // GetSambaVersion retrieves the installed Samba version.
 // Returns version string (e.g., "4.23.0") or empty string if not found.
 func GetSambaVersion() (string, error) {
+	// Check if version is mocked (for testing)
+	versionOverrideMu.RLock()
+	if versionOverride != "" {
+		defer versionOverrideMu.RUnlock()
+		return versionOverride, nil
+	}
+	versionOverrideMu.RUnlock()
+
 	cmd := exec.Command("smbd", "--version")
 	output, err := cmd.Output()
 	if err != nil {
@@ -225,6 +250,37 @@ func IsSambaVersionSufficient() (bool, error) {
 
 	// Check if version >= 4.23
 	if major > 4 || (major == 4 && minor >= 23) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// IsSambaVersionAtLeast checks if the installed Samba version meets the specified minimum version.
+// Example: IsSambaVersionAtLeast(4, 21) returns true if version >= 4.21.0
+func IsSambaVersionAtLeast(majorRequired, minorRequired int) (bool, error) {
+	version, err := GetSambaVersion()
+	if err != nil || version == "" {
+		return false, err
+	}
+
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return false, nil
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false, err
+	}
+
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false, err
+	}
+
+	// Check if version >= required
+	if major > majorRequired || (major == majorRequired && minor >= minorRequired) {
 		return true, nil
 	}
 

@@ -15,6 +15,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/mount"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tempio"
 	"github.com/dianlight/srat/tlog"
@@ -133,6 +134,13 @@ func (self *SambaService) CreateConfigStream() (data *[]byte, err errors.E) {
 	config.DockerInterface = self.state.DockerInterface
 	config.DockerNet = self.state.DockerNet
 	config_2 := config.ConfigToMap()
+
+	// Add Samba version information to the template context
+	sambaVersion, _ := osutil.GetSambaVersion()
+	isSambaVersionSufficient, _ := osutil.IsSambaVersionSufficient()
+	(*config_2)["samba_version"] = sambaVersion
+	(*config_2)["samba_version_sufficient"] = isSambaVersionSufficient
+
 	datar, err := tempio.RenderTemplateBuffer(config_2, self.state.Template)
 	return &datar, errors.WithStack(err)
 }

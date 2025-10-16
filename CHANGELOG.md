@@ -14,6 +14,18 @@
 
 ### 🔧 Maintenance
 
+- **Samba Version-Aware Configuration**: Implemented comprehensive Samba version checking in smb.conf template generation:
+  - Added `GetSambaVersion()` and `IsSambaVersionAtLeast()` utilities in `osutil` package
+  - Template context now includes `samba_version` and `samba_version_sufficient` variables
+  - Added template functions: `versionAtLeast()` and `versionBetween()` for conditional configuration
+  - Conditional includes for version-specific options:
+    - **Samba 4.23+**: `server smb transports` with QUIC support
+    - **Samba 4.21-4.22**: Legacy transport configuration (no QUIC)
+    - **Samba < 4.22**: Include `fruit:posix_rename` option
+    - **Samba 4.22+**: Exclude `fruit:posix_rename` (removed due to Windows client issues)
+  - Fallback to conservative defaults when version cannot be determined
+  - Added detailed documentation: `docs/SAMBA_VERSION_CHECKS.md`
+  - Prevents configuration errors across different Samba versions (4.21, 4.22, 4.23+)
 - **Dependency Cleanup**: Replaced deprecated `github.com/inconshreveable/go-update` library (last updated 2016) with standard Go library functions for binary updates. This reduces external dependencies and improves maintainability without affecting functionality.
 - **Redux DevTools Integration**: Removed unused `@redux-devtools/extension` package. Redux Toolkit's `configureStore()` provides built-in Redux DevTools support, making the separate extension package unnecessary. DevTools integration continues to work seamlessly in development mode.
 
