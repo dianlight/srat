@@ -247,8 +247,9 @@ describe("IssueCard Component", () => {
 
         // Find and click the dismiss button (icon button)
         const closeIcons = container.querySelectorAll('[data-testid="CloseIcon"]');
-        if (closeIcons.length > 0 && closeIcons[0].parentElement) {
-            fireEvent.click(closeIcons[0].parentElement);
+        const firstIcon = closeIcons[0];
+        if (closeIcons.length > 0 && firstIcon?.parentElement) {
+            fireEvent.click(firstIcon.parentElement);
             expect(dismissed).toBe(true);
         }
     });

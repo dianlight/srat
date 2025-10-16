@@ -66,10 +66,10 @@ describe("ShareActions component", () => {
         const deleteButton = (await screen.findAllByRole("button", { name: /delete share/i }))[0];
         const disableButton = (await screen.findAllByRole("button", { name: /disable share/i }))[0];
 
-        fireEvent.click(settingsButton);
-        fireEvent.click(viewVolumeButton);
-        fireEvent.click(deleteButton);
-        fireEvent.click(disableButton);
+        if (settingsButton) fireEvent.click(settingsButton);
+        if (viewVolumeButton) fireEvent.click(viewVolumeButton);
+        if (deleteButton) fireEvent.click(deleteButton);
+        if (disableButton) fireEvent.click(disableButton);
 
         expect(editCalls).toBe(1);
         expect(viewCalls).toBe(1);
