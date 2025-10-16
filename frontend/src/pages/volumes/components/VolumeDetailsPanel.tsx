@@ -26,7 +26,7 @@ import { filesize } from "filesize";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { PreviewDialog } from "../../../components/PreviewDialog";
-import { HDIdleDiskSettings } from "../../../components/HDIdleDiskSettings";
+import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
 import { type LocationState, TabIDs } from "../../../store/locationState";
 import { type Disk, type Partition, type SharedResource, Usage, Time_machine_support } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";

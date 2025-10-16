@@ -36,7 +36,7 @@ import {
 import { useGetServerEventsQuery } from "../../store/sseApi";
 import { Padding } from "@mui/icons-material";
 import { getNodeEnv } from "../../macro/Environment" with { type: 'macro' };
-import { HDIdleGeneralSettings } from "../../components/HDIdleGeneralSettings";
+import { HDIdleGeneralSettings } from "./HDIdleGeneralSettings";
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
