@@ -85,8 +85,9 @@ describe("VolumesTreeView Component", () => {
 
         // Try clicking a tree item
         const treeItems = container.querySelectorAll('[role="treeitem"]');
-        if (treeItems.length > 0) {
-            fireEvent.click(treeItems[0]);
+        const firstTreeItem = treeItems[0];
+        if (treeItems.length > 0 && firstTreeItem) {
+            fireEvent.click(firstTreeItem);
         }
 
         expect(container).toBeTruthy();
@@ -156,8 +157,9 @@ describe("VolumesTreeView Component", () => {
 
         // Look for expand/collapse buttons
         const expandIcons = container.querySelectorAll('[data-testid*="Expand"]');
-        if (expandIcons.length > 0) {
-            const button = expandIcons[0].closest('button');
+        const firstExpandIcon = expandIcons[0];
+        if (expandIcons.length > 0 && firstExpandIcon) {
+            const button = firstExpandIcon.closest('button');
             if (button) {
                 fireEvent.click(button);
             }

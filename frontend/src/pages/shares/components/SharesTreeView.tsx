@@ -92,9 +92,12 @@ export function SharesTreeView({
 
         // Sort shares within each group by name
         for (const usageGroup in groups) {
-            groups[usageGroup].sort((a, b) =>
-                (a[1].name || "").localeCompare(b[1].name || ""),
-            );
+            const group = groups[usageGroup];
+            if (group) {
+                group.sort((a, b) =>
+                    (a[1].name || "").localeCompare(b[1].name || ""),
+                );
+            }
         }
 
         // Sort the groups by usage type (key)

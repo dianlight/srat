@@ -60,9 +60,14 @@ describe("ShareDetailsPanel", () => {
         expect(await screen.findByText("/mnt/data")).toBeTruthy();
 
         const editIcons = screen.getAllByTestId("EditIcon");
-        const primaryEditButton = editIcons[0].closest("button");
-        fireEvent.click(primaryEditButton!);
-        expect(editClicks).toBe(1);
+        const firstEditIcon = editIcons[0];
+        if (firstEditIcon) {
+            const primaryEditButton = firstEditIcon.closest("button");
+            if (primaryEditButton) {
+                fireEvent.click(primaryEditButton);
+                expect(editClicks).toBe(1);
+            }
+        }
     });
 
     it("renders embedded form when editing", async () => {

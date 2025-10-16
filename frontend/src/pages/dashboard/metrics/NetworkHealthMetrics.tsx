@@ -112,7 +112,7 @@ export function NetworkHealthMetrics({
 									<Box sx={{ width: 50, height: 20 }}>
 										{(networkTrafficHistory[nic.deviceName]?.inbound?.length || 0) > 1 ? (
 											<SparkLineChart
-												data={networkTrafficHistory[nic.deviceName].inbound}
+												data={networkTrafficHistory[nic.deviceName]?.inbound ?? []}
 												width={60}
 												height={20}
 												color={theme.palette.primary.main}
@@ -139,7 +139,7 @@ export function NetworkHealthMetrics({
 									<Box sx={{ width: 50, height: 20 }}>
 										{(networkTrafficHistory[nic.deviceName]?.outbound?.length || 0) > 1 ? (
 											<SparkLineChart
-												data={networkTrafficHistory[nic.deviceName].outbound}
+												data={networkTrafficHistory[nic.deviceName]?.outbound ?? []}
 												width={60}
 												height={20}
 												color={theme.palette.primary.main}

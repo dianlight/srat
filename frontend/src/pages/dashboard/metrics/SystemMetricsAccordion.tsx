@@ -190,10 +190,14 @@ export function SystemMetricsAccordion({
 
 	const handleToggleMetric = (metricName: string) => {
 		//console.debug("Toggling metric visibility:", metricName, metricVisibility[metricName]);
-		setMetricVisibility((prev) => ({
-			...prev,
-			[metricName]: { ...prev[metricName], visible: !prev[metricName].visible },
-		}));
+		setMetricVisibility((prev) => {
+			const prevMetric = prev[metricName];
+			if (!prevMetric) return prev;
+			return {
+				...prev,
+				[metricName]: { ...prevMetric, visible: !prevMetric.visible },
+			};
+		});
 	};
 
 	useEffect(() => {
@@ -297,7 +301,7 @@ export function SystemMetricsAccordion({
 	}, [health, isLoading, error]);
 
 	const renderUptimeMetric = () => {
-		if (!metricVisibility.uptime.visible) return null;
+		if (!metricVisibility.uptime?.visible) return null;
 		const uptimeSeconds = health?.uptime ?? 0;
 		const fiveMinutesInSeconds = 5 * 60;
 		const uptimeValue = health?.uptime
@@ -318,7 +322,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderAddonCpuMetric = () => {
-		if (!metricVisibility.addonCpu.visible) return null;
+		if (!metricVisibility.addonCpu?.visible) return null;
 		return (
 			<MetricCard
 				title="Addon CPU"
@@ -333,7 +337,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderAddonMemoryMetric = () => {
-		if (!metricVisibility.addonMemory.visible) return null;
+		if (!metricVisibility.addonMemory?.visible) return null;
 		const { memory_percent, memory_usage, memory_limit } =
 			health?.addon_stats || {};
 		return (
@@ -354,7 +358,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderAddonDiskIoMetric = () => {
-		if (!metricVisibility.addonDiskIo.visible) return null;
+		if (!metricVisibility.addonDiskIo?.visible) return null;
 		const readRate =
 			addonDiskReadRateHistory.length > 0
 				? addonDiskReadRateHistory[addonDiskReadRateHistory.length - 1]
@@ -371,7 +375,7 @@ export function SystemMetricsAccordion({
 			<MetricCard
 				title="Addon Disk I/O"
 				subheader="per second"
-				value={`${filesize(readRate + writeRate)}/s`}
+				value={`${filesize((readRate ?? 0) + (writeRate ?? 0))}/s`}
 				history={totalHistory}
 				isLoading={isLoading}
 				error={!!error || !health?.addon_stats}
@@ -380,17 +384,17 @@ export function SystemMetricsAccordion({
 				onDetailClick={onDetailClick}
 			>
 				<Typography variant="body2">
-					Read: {filesize(readRate)}/s
+					Read: {filesize(readRate ?? 0)}/s
 				</Typography>
 				<Typography variant="body2">
-					Write: {filesize(writeRate)}/s
+					Write: {filesize(writeRate ?? 0)}/s
 				</Typography>
 			</MetricCard>
 		);
 	};
 
 	const renderAddonNetworkMetric = () => {
-		if (!metricVisibility.addonNetwork.visible) return null;
+		if (!metricVisibility.addonNetwork?.visible) return null;
 		const rxRate =
 			addonNetworkRxRateHistory.length > 0
 				? addonNetworkRxRateHistory[addonNetworkRxRateHistory.length - 1]
@@ -407,7 +411,7 @@ export function SystemMetricsAccordion({
 			<MetricCard
 				title="Addon Network I/O"
 				subheader="per second"
-				value={`${filesize(rxRate + txRate)}/s`}
+				value={`${filesize((rxRate ?? 0) + (txRate ?? 0))}/s`}
 				history={totalHistory}
 				isLoading={isLoading}
 				error={!!error || !health?.addon_stats}
@@ -416,15 +420,15 @@ export function SystemMetricsAccordion({
 				onDetailClick={onDetailClick}
 			>
 				<Typography variant="body2">
-					Received: {filesize(rxRate)}/s
+					Received: {filesize(rxRate ?? 0)}/s
 				</Typography>
-				<Typography variant="body2">Sent: {filesize(txRate)}/s</Typography>
+				<Typography variant="body2">Sent: {filesize(txRate ?? 0)}/s</Typography>
 			</MetricCard>
 		);
 	};
 
 	const renderGlobalDiskIoMetric = () => {
-		if (!metricVisibility.globalDiskIo.visible) return null;
+		if (!metricVisibility.globalDiskIo?.visible) return null;
 		const { total_read_latency_ms, total_write_latency_ms } =
 			health?.disk_health?.global || {};
 		return (
@@ -447,7 +451,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderGlobalNetworkIoMetric = () => {
-		if (!metricVisibility.globalNetworkIo.visible) return null;
+		if (!metricVisibility.globalNetworkIo?.visible) return null;
 		const { totalInboundTraffic, totalOutboundTraffic } =
 			health?.network_health?.global || {};
 		const totalTraffic =
@@ -473,7 +477,7 @@ export function SystemMetricsAccordion({
 	};
 
 	const renderSambaSessionsMetric = () => {
-		if (!metricVisibility.sambaSessions.visible) return null;
+		if (!metricVisibility.sambaSessions?.visible) return null;
 		const sessionCount = Object.keys(
 			health?.samba_status?.sessions || {},
 		).length;
@@ -553,42 +557,42 @@ export function SystemMetricsAccordion({
 			</AccordionSummary>
 			<AccordionDetails>
 				<Grid container spacing={3} sx={{ mb: 4 }}>
-					{metricVisibility.uptime.visible && (
+					{metricVisibility.uptime?.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderUptimeMetric()}
 						</Grid>
 					)}
-					{metricVisibility.addonCpu.visible && (
+					{metricVisibility.addonCpu?.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderAddonCpuMetric()}
 						</Grid>
 					)}
-					{metricVisibility.addonMemory.visible && (
+					{metricVisibility.addonMemory?.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderAddonMemoryMetric()}
 						</Grid>
 					)}
-					{metricVisibility.addonDiskIo.visible && (
+					{metricVisibility.addonDiskIo?.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderAddonDiskIoMetric()}
 						</Grid>
 					)}
-					{metricVisibility.addonNetwork.visible && (
+					{metricVisibility.addonNetwork?.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderAddonNetworkMetric()}
 						</Grid>
 					)}
-					{metricVisibility.globalDiskIo.visible && (
+					{metricVisibility.globalDiskIo?.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderGlobalDiskIoMetric()}
 						</Grid>
 					)}
-					{metricVisibility.globalNetworkIo.visible && (
+					{metricVisibility.globalNetworkIo?.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderGlobalNetworkIoMetric()}
 						</Grid>
 					)}
-					{metricVisibility.sambaSessions.visible && (
+					{metricVisibility.sambaSessions?.visible && (
 						<Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
 							{renderSambaSessionsMetric()}
 						</Grid>

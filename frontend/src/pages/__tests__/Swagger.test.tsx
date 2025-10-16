@@ -106,7 +106,10 @@ describe("Swagger Component", () => {
         // Check that API Documentation title appears - use getAllByText since there may be multiple instances
         const titleElements = screen.getAllByText("API Documentation");
         expect(titleElements.length).toBeGreaterThan(0);
-        expect(titleElements[0].tagName.toLowerCase()).toBe("h1");
+        const firstTitle = titleElements[0];
+        if (firstTitle) {
+            expect(firstTitle.tagName.toLowerCase()).toBe("h1");
+        }
     });
 
     it("renders JSON and YAML download links", async () => {
@@ -137,12 +140,18 @@ describe("Swagger Component", () => {
         // Check that JSON link appears - use getAllByText since there may be multiple instances
         const jsonLinks = screen.getAllByText("JSON");
         expect(jsonLinks.length).toBeGreaterThan(0);
-        expect(jsonLinks[0].tagName.toLowerCase()).toBe("a");
+        const firstJson = jsonLinks[0];
+        if (firstJson) {
+            expect(firstJson.tagName.toLowerCase()).toBe("a");
+        }
 
         // Check that YAML link appears - use getAllByText since there may be multiple instances  
         const yamlLinks = screen.getAllByText("YAML");
         expect(yamlLinks.length).toBeGreaterThan(0);
-        expect(yamlLinks[0].tagName.toLowerCase()).toBe("a");
+        const firstYaml = yamlLinks[0];
+        if (firstYaml) {
+            expect(firstYaml.tagName.toLowerCase()).toBe("a");
+        }
     });
 
     it("configures openapi-explorer with correct spec-url attribute", async () => {
@@ -234,16 +243,22 @@ describe("Swagger Component", () => {
         // Check that JSON link has proper href - use getAllByText since there may be multiple instances
         const jsonLinks = screen.getAllByText("JSON");
         expect(jsonLinks.length).toBeGreaterThan(0);
-        const jsonHref = jsonLinks[0].getAttribute('href');
-        expect(jsonHref).toContain('openapi.json');
-        expect(jsonHref).toContain('http://localhost:3000'); // Should be normalized URL
+        const firstJsonLink = jsonLinks[0];
+        if (firstJsonLink) {
+            const jsonHref = firstJsonLink.getAttribute('href');
+            expect(jsonHref).toContain('openapi.json');
+            expect(jsonHref).toContain('http://localhost:3000'); // Should be normalized URL
+        }
 
         // Check that YAML link has proper href - use getAllByText since there may be multiple instances  
         const yamlLinks = screen.getAllByText("YAML");
         expect(yamlLinks.length).toBeGreaterThan(0);
-        const yamlHref = yamlLinks[0].getAttribute('href');
-        expect(yamlHref).toContain('openapi.yaml');
-        expect(yamlHref).toContain('http://localhost:3000'); // Should be normalized URL
+        const firstYamlLink = yamlLinks[0];
+        if (firstYamlLink) {
+            const yamlHref = firstYamlLink.getAttribute('href');
+            expect(yamlHref).toContain('openapi.yaml');
+            expect(yamlHref).toContain('http://localhost:3000'); // Should be normalized URL
+        }
     });
 
     it("renders component structure correctly", async () => {

@@ -143,7 +143,7 @@ export function DiskHealthMetrics({
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.read_iops?.length || 0) > 1 ? (
 												<SparkLineChart
-													data={diskIoHistory[io.device_name].read_iops}
+													data={diskIoHistory[io.device_name]?.read_iops ?? []}
 													width={60}
 													height={20}
 													color={theme.palette.primary.main}
@@ -170,7 +170,7 @@ export function DiskHealthMetrics({
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.write_iops?.length || 0) > 1 ? (
 												<SparkLineChart
-													data={diskIoHistory[io.device_name].write_iops}
+													data={diskIoHistory[io.device_name]?.write_iops ?? []}
 													width={60}
 													height={20}
 													color={theme.palette.primary.main}
@@ -197,7 +197,7 @@ export function DiskHealthMetrics({
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.read_latency_ms?.length || 0) > 1 ? (
 												<SparkLineChart
-													data={diskIoHistory[io.device_name].read_latency_ms}
+													data={diskIoHistory[io.device_name]?.read_latency_ms ?? []}
 													width={60}
 													height={20}
 													color={theme.palette.primary.main}
@@ -224,7 +224,7 @@ export function DiskHealthMetrics({
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.write_latency_ms?.length || 0) > 1 ? (
 												<SparkLineChart
-													data={diskIoHistory[io.device_name].write_latency_ms}
+													data={diskIoHistory[io.device_name]?.write_latency_ms ?? []}
 													width={60}
 													height={20}
 													color={theme.palette.primary.main}
@@ -251,7 +251,7 @@ export function DiskHealthMetrics({
 										<Box sx={{ width: 50, height: 20 }}>
 											{(diskIoHistory[io.device_name]?.temperature?.length || 0) > 1 ? (
 												<SparkLineChart
-													data={diskIoHistory[io.device_name].temperature}
+													data={diskIoHistory[io.device_name]?.temperature ?? []}
 													width={60}
 													height={20}
 													color={theme.palette.primary.main}

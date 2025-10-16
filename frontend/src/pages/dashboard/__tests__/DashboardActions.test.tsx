@@ -51,10 +51,11 @@ describe("DashboardActions component", () => {
     it("handles show ignored toggle", async () => {
         const { container, fireEvent } = await renderDashboardActions();
         const switches = container.querySelectorAll('input[type="checkbox"]');
-        if (switches.length > 0) {
-            const initialChecked = (switches[0] as HTMLInputElement).checked;
-            fireEvent.click(switches[0]);
-            const newChecked = (switches[0] as HTMLInputElement).checked;
+        const firstSwitch = switches[0];
+        if (switches.length > 0 && firstSwitch) {
+            const initialChecked = (firstSwitch as HTMLInputElement).checked;
+            fireEvent.click(firstSwitch);
+            const newChecked = (firstSwitch as HTMLInputElement).checked;
             expect(newChecked).not.toBe(initialChecked);
         }
     });
@@ -118,8 +119,9 @@ describe("DashboardActions component", () => {
     it("handles switch click without propagating to accordion", async () => {
         const { container, fireEvent } = await renderDashboardActions();
         const switches = container.querySelectorAll('input[type="checkbox"]');
-        if (switches.length > 0) {
-            fireEvent.click(switches[0]);
+        const firstSwitch = switches[0];
+        if (switches.length > 0 && firstSwitch) {
+            fireEvent.click(firstSwitch);
         }
         expect(container).toBeTruthy();
     });
