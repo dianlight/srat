@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v75 v75.0.0
+	github.com/google/go-github/v76 v76.0.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jpillora/overseer v1.1.6
 	github.com/mattn/go-isatty v0.0.20

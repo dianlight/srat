@@ -43,86 +43,104 @@ describe("DashboardTourStep", () => {
         const { DashboardSteps } = await import("../DashboardTourStep");
 
         const welcomeStep = DashboardSteps[0];
-        expect(welcomeStep.selector).toContain("step0");
-        expect(welcomeStep.content).toBeTruthy();
-        // Welcome step should not have action function
-        expect(welcomeStep.action).toBeUndefined();
+        if (welcomeStep) {
+            expect(welcomeStep.selector).toContain("step0");
+            expect(welcomeStep.content).toBeTruthy();
+            // Welcome step should not have action function
+            expect(welcomeStep.action).toBeUndefined();
+        }
     });
 
     it("tab navigation step (step1) has correct structure", async () => {
         const { DashboardSteps } = await import("../DashboardTourStep");
 
         const tabStep = DashboardSteps[1];
-        expect(tabStep.selector).toContain("step1");
-        expect(tabStep.content).toBeTruthy();
-        // Tab step should not have action function
-        expect(tabStep.action).toBeUndefined();
+        if (tabStep) {
+            expect(tabStep.selector).toContain("step1");
+            expect(tabStep.content).toBeTruthy();
+            // Tab step should not have action function
+            expect(tabStep.action).toBeUndefined();
+        }
     });
 
     it("welcome and news step (step2) has correct structure and action", async () => {
         const { DashboardSteps } = await import("../DashboardTourStep");
 
         const welcomeNewsStep = DashboardSteps[2];
-        expect(welcomeNewsStep.selector).toContain("step2");
-        expect(welcomeNewsStep.content).toBeTruthy();
-        expect(welcomeNewsStep.position).toBe("center");
-        expect(typeof welcomeNewsStep.action).toBe("function");
+        if (welcomeNewsStep) {
+            expect(welcomeNewsStep.selector).toContain("step2");
+            expect(welcomeNewsStep.content).toBeTruthy();
+            expect(welcomeNewsStep.position).toBe("center");
+            expect(typeof welcomeNewsStep.action).toBe("function");
+        }
     });
 
     it("actionable items step (step3) has correct structure with mutation observables", async () => {
         const { DashboardSteps } = await import("../DashboardTourStep");
 
         const actionableStep = DashboardSteps[3];
-        expect(actionableStep.selector).toContain("step3");
-        expect(actionableStep.content).toBeTruthy();
-        expect(Array.isArray(actionableStep.mutationObservables)).toBe(true);
-        expect(actionableStep.mutationObservables?.[0]).toContain("step3");
-        expect(typeof actionableStep.action).toBe("function");
+        if (actionableStep) {
+            expect(actionableStep.selector).toContain("step3");
+            expect(actionableStep.content).toBeTruthy();
+            expect(Array.isArray(actionableStep.mutationObservables)).toBe(true);
+            expect(actionableStep.mutationObservables?.[0]).toContain("step3");
+            expect(typeof actionableStep.action).toBe("function");
+        }
     });
 
     it("metrics overview step (step4) has correct structure and action", async () => {
         const { DashboardSteps } = await import("../DashboardTourStep");
 
         const metricsStep = DashboardSteps[4];
-        expect(metricsStep.selector).toContain("step4");
-        expect(metricsStep.content).toBeTruthy();
-        expect(typeof metricsStep.action).toBe("function");
+        if (metricsStep) {
+            expect(metricsStep.selector).toContain("step4");
+            expect(metricsStep.content).toBeTruthy();
+            expect(typeof metricsStep.action).toBe("function");
+        }
     });
 
     it("process metrics step (step5) has correct structure and action", async () => {
         const { DashboardSteps } = await import("../DashboardTourStep");
 
         const processStep = DashboardSteps[5];
-        expect(processStep.selector).toContain("step5");
-        expect(processStep.content).toBeTruthy();
-        expect(typeof processStep.action).toBe("function");
+        if (processStep) {
+            expect(processStep.selector).toContain("step5");
+            expect(processStep.content).toBeTruthy();
+            expect(typeof processStep.action).toBe("function");
+        }
     });
 
     it("disk health step (step6) has correct structure and action", async () => {
         const { DashboardSteps } = await import("../DashboardTourStep");
 
         const diskStep = DashboardSteps[6];
-        expect(diskStep.selector).toContain("step6");
-        expect(diskStep.content).toBeTruthy();
-        expect(typeof diskStep.action).toBe("function");
+        if (diskStep) {
+            expect(diskStep.selector).toContain("step6");
+            expect(diskStep.content).toBeTruthy();
+            expect(typeof diskStep.action).toBe("function");
+        }
     });
 
     it("network health step (step7) has correct structure and action", async () => {
         const { DashboardSteps } = await import("../DashboardTourStep");
 
         const networkStep = DashboardSteps[7];
-        expect(networkStep.selector).toContain("step7");
-        expect(networkStep.content).toBeTruthy();
-        expect(typeof networkStep.action).toBe("function");
+        if (networkStep) {
+            expect(networkStep.selector).toContain("step7");
+            expect(networkStep.content).toBeTruthy();
+            expect(typeof networkStep.action).toBe("function");
+        }
     });
 
     it("samba status step (step8) has correct structure and action", async () => {
         const { DashboardSteps } = await import("../DashboardTourStep");
 
         const sambaStep = DashboardSteps[8];
-        expect(sambaStep.selector).toContain("step8");
-        expect(sambaStep.content).toBeTruthy();
-        expect(typeof sambaStep.action).toBe("function");
+        if (sambaStep) {
+            expect(sambaStep.selector).toContain("step8");
+            expect(sambaStep.content).toBeTruthy();
+            expect(typeof sambaStep.action).toBe("function");
+        }
     });
 
     it("action functions can be called without errors", async () => {

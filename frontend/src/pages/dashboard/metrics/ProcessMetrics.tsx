@@ -84,7 +84,7 @@ export function ProcessMetrics({
 										<Box sx={{ width: 50, height: 20 }}>
 											{(cpuHistory[process.name]?.length || 0) > 1 ? (
 												<SparkLineChart
-													data={cpuHistory[process.name]}
+													data={cpuHistory[process.name] ?? []}
 													width={60}
 													height={20}
 													color={theme.palette.primary.main}
@@ -113,7 +113,7 @@ export function ProcessMetrics({
 										<Box sx={{ width: 50, height: 20 }}>
 											{(memoryHistory[process.name]?.length || 0) > 1 ? (
 												<SparkLineChart
-													data={memoryHistory[process.name]}
+													data={memoryHistory[process.name] ?? []}
 													width={60}
 													height={20}
 													color={theme.palette.success.main}
@@ -140,7 +140,7 @@ export function ProcessMetrics({
 										<Box sx={{ width: 50, height: 20 }}>
 											{(connectionsHistory[process.name]?.length || 0) > 1 ? (
 												<SparkLineChart
-													data={connectionsHistory[process.name]}
+													data={connectionsHistory[process.name] ?? []}
 													width={60}
 													height={20}
 													plotType="bar"
