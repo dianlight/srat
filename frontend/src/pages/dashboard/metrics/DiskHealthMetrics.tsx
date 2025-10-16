@@ -115,6 +115,8 @@ export function DiskHealthMetrics({
 							<TableCell align="right">Read Latency (ms)</TableCell>
 							<TableCell align="right">Write Latency (ms)</TableCell>
 							<TableCell align="right">Temperature (°C / Max °C)</TableCell>
+							<TableCell align="right">Power On Hours</TableCell>
+							<TableCell align="right">Power Cycles</TableCell>
 						</TableRow>
 					</TableHead>
 					<TableBody>
@@ -260,6 +262,16 @@ export function DiskHealthMetrics({
 											) : null}
 										</Box>
 									</Box>
+								</TableCell>
+								<TableCell align="right">
+									<Typography variant="body2">
+										{io.smart_data?.power_on_hours?.value?.toLocaleString() ?? "N/A"}
+									</Typography>
+								</TableCell>
+								<TableCell align="right">
+									<Typography variant="body2">
+										{io.smart_data?.power_cycle_count?.value?.toLocaleString() ?? "N/A"}
+									</Typography>
 								</TableCell>
 							</TableRow>
 						))}

@@ -18,7 +18,6 @@ import {
     Select,
     MenuItem,
 } from "@mui/material";
-import StorageIcon from "@mui/icons-material/Storage";
 import ThermostatIcon from "@mui/icons-material/Thermostat";
 import HealthAndSafetyIcon from "@mui/icons-material/HealthAndSafety";
 import ErrorIcon from "@mui/icons-material/Error";
@@ -122,12 +121,13 @@ export function SmartStatusPanel({
             <CardHeader
                 title="S.M.A.R.T. Status"
                 avatar={
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <StorageIcon sx={{ fontSize: "1.5rem", color: "primary.main" }} />
-                        <IconButton size="small" aria-label="smart preview">
-                            {getHealthIcon()}
-                        </IconButton>
-                    </Stack>
+                    <IconButton 
+                        size="small" 
+                        aria-label="smart preview"
+                        sx={{ pointerEvents: 'none' }}
+                    >
+                        {getHealthIcon() || <HealthAndSafetyIcon color="primary" />}
+                    </IconButton>
                 }
                 action={
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
