@@ -171,6 +171,3 @@ tool (
 	github.com/zarldev/goenums
 )
 
-replace github.com/zarldev/goenums => /home/runner/gohack/github.com/zarldev/goenums
-
-replace github.com/jpillora/overseer => /home/runner/gohack/github.com/jpillora/overseer
