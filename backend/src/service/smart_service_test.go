@@ -80,19 +80,9 @@ func TestSmartServiceSuite(t *testing.T) {
 	suite.Run(t, new(SmartServiceSuite))
 }
 
-func (suite *SmartServiceSuite) TestGetHealthStatusCacheHit() {
-	// Setup: Manually set cache for smart info
-	expectedInfo := &dto.SmartInfo{
-		DiskType:        "SATA",
-		PowerCycleCount: dto.SmartRangeValue{Value: 100, Thresholds: 10},
-		PowerOnHours:    dto.SmartRangeValue{Value: 1000, Thresholds: 0},
-	}
-	cacheKey := smartCacheKeyPrefix + "/dev/sda"
-	suite.service.(*smartService).cache.Set(cacheKey, expectedInfo, gocache.DefaultExpiration)
-
-	// Note: GetHealthStatus will try to open the device to read thresholds
-	// This will fail since /dev/sda doesn't exist in test environment
-	health, err := suite.service.GetHealthStatus("/dev/sda")
+func (suite *SmartServiceSuite) TestGetHealthStatusDeviceNotExist() {
+	// Execute with non-existent device
+	health, err := suite.service.GetHealthStatus("/dev/nonexistent")
 
 	// Expect error since device doesn't exist
 	suite.Error(err)
