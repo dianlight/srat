@@ -103,10 +103,19 @@ func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, errors.E) {
 		return nil, errors.Errorf("Error executing smbstatus: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
 	}
 
+	// Validate that output is valid JSON before unmarshaling
+	outStr := strings.TrimSpace(string(out))
+	if outStr == "" {
+		return nil, errors.New("smbstatus returned empty output")
+	}
+	if outStr[0] != '{' && outStr[0] != '[' {
+		return nil, errors.Errorf("smbstatus returned non-JSON output: %s", outStr)
+	}
+
 	var status dto.SambaStatus
 	err = json.Unmarshal(out, &status)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Errorf("failed to parse smbstatus output as JSON: %w (output: %s)", err, outStr)
 	}
 
 	self.cache.Set("samba_status", &status, cache.DefaultExpiration)
