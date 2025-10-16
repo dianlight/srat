@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -640,7 +641,24 @@ func (self *VolumeService) udevEventHandler() {
 				}
 			}
 		case err := <-errorChan:
-			slog.Error("Error received from Udev monitor", "err", err)
+			// Parse errors from malformed uevents are expected and should not be treated as critical
+			// These can occur from kernel/driver events with non-standard formatting
+			if err != nil && strings.Contains(err.Error(), "unable to parse uevent") {
+				// Extract more context if available
+				errMsg := err.Error()
+				if strings.Contains(errMsg, "invalid env data") {
+					slog.Debug("Ignoring malformed uevent with invalid env data",
+						"err", err,
+						"detail", "This can occur when kernel sends events with non-standard formatting")
+				} else {
+					slog.Debug("Failed to parse uevent, skipping",
+						"err", err,
+						"detail", "Event format not recognized or incompatible")
+				}
+			} else {
+				// Other errors (connection issues, etc.) are more serious
+				slog.Error("Error received from Udev monitor", "err", err)
+			}
 		}
 	}
 }
