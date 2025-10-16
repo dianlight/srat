@@ -36,6 +36,7 @@ import {
 import { useGetServerEventsQuery } from "../../store/sseApi";
 import { Padding } from "@mui/icons-material";
 import { getNodeEnv } from "../../macro/Environment" with { type: 'macro' };
+import { HDIdleGeneralSettings } from "../../components/HDIdleGeneralSettings";
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
@@ -122,6 +123,7 @@ export function Settings() {
 	} = useGetApiHostnameQuery();
 
 	const bindAllWatch = watch("bind_all_interfaces");
+	const hdidleEnabledWatch = watch("hdidle_enabled");
 
 
 	function handleCommit(data: Settings) {
@@ -612,7 +614,15 @@ export function Settings() {
 							/>
 						</Grid>
 					</Grid>
-				</form>
+
+					{/* HDIdle Disk Spin-Down Settings Section */}
+					<HDIdleGeneralSettings
+						control={control}
+						isEnabled={hdidleEnabledWatch ?? false}
+						readOnly={evdata?.hello?.read_only}
+					/>
+				</Grid>
+			</form>
 				<Divider />
 				<Stack
 					direction="row"

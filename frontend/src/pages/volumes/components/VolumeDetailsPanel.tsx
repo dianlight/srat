@@ -26,9 +26,11 @@ import { filesize } from "filesize";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { PreviewDialog } from "../../../components/PreviewDialog";
+import { HDIdleDiskSettings } from "../../../components/HDIdleDiskSettings";
 import { type LocationState, TabIDs } from "../../../store/locationState";
 import { type Disk, type Partition, type SharedResource, Usage, Time_machine_support } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
+import { useForm } from "react-hook-form-mui";
 
 interface VolumeDetailsPanelProps {
     disk?: Disk;
@@ -46,6 +48,14 @@ export function VolumeDetailsPanel({
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewObject, setPreviewObject] = useState<any | null>(null);
     const [previewTitle, setPreviewTitle] = useState<string>("Preview");
+    
+    // Form control for HDIdle disk settings
+    const { control } = useForm({
+        defaultValues: {
+            // Initialize with disk-specific HDIdle settings
+            // These would be populated from the API in a real implementation
+        },
+    });
 
     const openPreviewFor = (obj: any, title?: string) => {
         setPreviewObject(obj);
@@ -650,6 +660,13 @@ export function VolumeDetailsPanel({
                     </Card>
                 ) : null}
             </Stack>
+
+            {/* HDIdle Disk-Specific Settings */}
+            {disk && (
+                <Box sx={{ mt: 2 }}>
+                    <HDIdleDiskSettings disk={disk} control={control} readOnly={false} />
+                </Box>
+            )}
 
             {/* Preview dialog for disk object */}
             <PreviewDialog
