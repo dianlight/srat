@@ -177,6 +177,10 @@ func checkSMARTStatus(dev *smart.SataDevice, devicePath string) (bool, errors.E)
 	)
 
 	if errno != 0 {
+		// Check for specific error codes that indicate SMART is not supported/enabled
+		if errno == 5 { // EIO - Input/output error, often means device doesn't support SMART
+			return false, nil
+		}
 		// SMART not supported or command failed
 		return false, errors.Errorf("SMART status check failed on %s: errno=%d", actualPath, errno)
 	}
