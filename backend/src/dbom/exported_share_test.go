@@ -51,6 +51,7 @@ func TestExportedShareBooleanFields(t *testing.T) {
 		GuestOk:     false,
 	}
 
+	assert.Equal(t, "boolean-test", share.Name)
 	assert.NotNil(t, share.Disabled)
 	assert.True(t, *share.Disabled)
 	assert.True(t, share.TimeMachine)
@@ -80,6 +81,7 @@ func TestExportedShareTimeMachine(t *testing.T) {
 
 	assert.True(t, share.TimeMachine)
 	assert.Equal(t, "2TB", share.TimeMachineMaxSize)
+	assert.Equal(t, "timemachine-share", share.Name)
 }
 
 func TestExportedShareUsageTypes(t *testing.T) {
@@ -92,6 +94,7 @@ func TestExportedShareUsageTypes(t *testing.T) {
 				Usage: usage,
 			}
 			assert.Equal(t, usage, share.Usage)
+			assert.Equal(t, "usage-test", share.Name)
 		})
 	}
 }

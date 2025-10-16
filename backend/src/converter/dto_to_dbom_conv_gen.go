@@ -72,6 +72,70 @@ func (c *DtoToDbomConverterImpl) ExportedSharesToSharedResources(source *[]dbom.
 	}
 	return pDtoSharedResourceList, nil
 }
+func (c *DtoToDbomConverterImpl) HDIdleConfigDTOToHDIdleConfig(source dto.HDIdleConfigDTO) (dbom.HDIdleConfig, error) {
+	var dbomHDIdleConfig dbom.HDIdleConfig
+	dbomHDIdleConfig.ID = source.ID
+	dbomHDIdleConfig.Enabled = source.Enabled
+	dbomHDIdleConfig.DefaultIdleTime = source.DefaultIdleTime
+	dbomHDIdleConfig.DefaultCommandType = source.DefaultCommandType
+	dbomHDIdleConfig.DefaultPowerCondition = source.DefaultPowerCondition
+	dbomHDIdleConfig.Debug = source.Debug
+	dbomHDIdleConfig.LogFile = source.LogFile
+	dbomHDIdleConfig.SymlinkPolicy = source.SymlinkPolicy
+	dbomHDIdleConfig.IgnoreSpinDownDetection = source.IgnoreSpinDownDetection
+	if source.Devices != nil {
+		dbomHDIdleConfig.Devices = make([]dbom.HDIdleDevice, len(source.Devices))
+		for i := 0; i < len(source.Devices); i++ {
+			dbomHDIdleDevice, err := c.HDIdleDeviceDTOToHDIdleDevice(source.Devices[i])
+			if err != nil {
+				return dbomHDIdleConfig, err
+			}
+			dbomHDIdleConfig.Devices[i] = dbomHDIdleDevice
+		}
+	}
+	return dbomHDIdleConfig, nil
+}
+func (c *DtoToDbomConverterImpl) HDIdleConfigToHDIdleConfigDTO(source dbom.HDIdleConfig) (dto.HDIdleConfigDTO, error) {
+	var dtoHDIdleConfigDTO dto.HDIdleConfigDTO
+	dtoHDIdleConfigDTO.ID = source.ID
+	dtoHDIdleConfigDTO.Enabled = source.Enabled
+	dtoHDIdleConfigDTO.DefaultIdleTime = source.DefaultIdleTime
+	dtoHDIdleConfigDTO.DefaultCommandType = source.DefaultCommandType
+	dtoHDIdleConfigDTO.DefaultPowerCondition = source.DefaultPowerCondition
+	dtoHDIdleConfigDTO.Debug = source.Debug
+	dtoHDIdleConfigDTO.LogFile = source.LogFile
+	dtoHDIdleConfigDTO.SymlinkPolicy = source.SymlinkPolicy
+	dtoHDIdleConfigDTO.IgnoreSpinDownDetection = source.IgnoreSpinDownDetection
+	if source.Devices != nil {
+		dtoHDIdleConfigDTO.Devices = make([]dto.HDIdleDeviceDTO, len(source.Devices))
+		for i := 0; i < len(source.Devices); i++ {
+			dtoHDIdleDeviceDTO, err := c.HDIdleDeviceToHDIdleDeviceDTO(source.Devices[i])
+			if err != nil {
+				return dtoHDIdleConfigDTO, err
+			}
+			dtoHDIdleConfigDTO.Devices[i] = dtoHDIdleDeviceDTO
+		}
+	}
+	return dtoHDIdleConfigDTO, nil
+}
+func (c *DtoToDbomConverterImpl) HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdleDeviceDTO) (dbom.HDIdleDevice, error) {
+	var dbomHDIdleDevice dbom.HDIdleDevice
+	dbomHDIdleDevice.ID = source.ID
+	dbomHDIdleDevice.Name = source.Name
+	dbomHDIdleDevice.IdleTime = source.IdleTime
+	dbomHDIdleDevice.CommandType = source.CommandType
+	dbomHDIdleDevice.PowerCondition = source.PowerCondition
+	return dbomHDIdleDevice, nil
+}
+func (c *DtoToDbomConverterImpl) HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDeviceDTO, error) {
+	var dtoHDIdleDeviceDTO dto.HDIdleDeviceDTO
+	dtoHDIdleDeviceDTO.ID = source.ID
+	dtoHDIdleDeviceDTO.Name = source.Name
+	dtoHDIdleDeviceDTO.IdleTime = source.IdleTime
+	dtoHDIdleDeviceDTO.CommandType = source.CommandType
+	dtoHDIdleDeviceDTO.PowerCondition = source.PowerCondition
+	return dtoHDIdleDeviceDTO, nil
+}
 func (c *DtoToDbomConverterImpl) MountFlagsToMountDataFlags(source []dto.MountFlag) dbom.MounDataFlags {
 	var dbomMounDataFlags dbom.MounDataFlags
 	if source != nil {

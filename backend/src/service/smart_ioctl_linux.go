@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/binary"
 	"os"
+	"path/filepath"
 	"strings"
 	"unsafe"
 
@@ -37,16 +38,11 @@ func getDevicePathForIOCTL(devicePath string) (string, error) {
 		return devicePath, nil
 	}
 
-	// For symlinks like /dev/disk/by-id/..., resolve to the actual device
-	realPath, err := os.Readlink(devicePath)
+	// For symlinks like /dev/disk/by-id/..., resolve the entire symlink chain
+	realPath, err := filepath.EvalSymlinks(devicePath)
 	if err != nil {
-		// If readlink fails, try to use the path as-is
+		// If symlink resolution fails, try to use the path as-is
 		return devicePath, nil
-	}
-
-	// Readlink may return a relative path, make it absolute
-	if !strings.HasPrefix(realPath, "/") {
-		realPath = "/dev/" + realPath
 	}
 
 	return realPath, nil
@@ -135,6 +131,61 @@ func executeSMARTTest(dev *smart.SataDevice, testType byte, devicePath string) e
 	}
 
 	return nil
+}
+
+// checkSMARTStatus queries whether SMART is enabled on a SATA device
+// Returns error if SMART is not supported or if the query fails
+func checkSMARTStatus(dev *smart.SataDevice, devicePath string) (bool, errors.E) {
+	// Get the actual device path (resolve symlinks)
+	actualPath, err := getDevicePathForIOCTL(devicePath)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to resolve device path")
+	}
+
+	// Open the device with read-only access (status check doesn't need write access)
+	fd, err := os.OpenFile(actualPath, os.O_RDONLY, 0)
+	if err != nil {
+		if os.IsPermission(err) {
+			return false, errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "permission denied opening device for SMART status check")
+		}
+		return false, errors.Wrapf(err, "failed to open device %s for SMART status check", actualPath)
+	}
+	defer fd.Close()
+
+	// Get the file descriptor
+	fileFD := int(fd.Fd())
+
+	// Create a buffer for the HDIO_DRIVE_CMD ioctl
+	// The structure expected by kernel is: unsigned char args[4+512]
+	var cmdBuffer [516]byte
+
+	// Set up the 4-byte ATA command for status check
+	// Format: [0] = command (0xB0), [1] = feature (0xDA), [2] = 0, [3] = 0x4f (SMART signature)
+	cmdBuffer[0] = _ATA_SMART           // ATA command 0xB0
+	cmdBuffer[1] = _SMART_RETURN_STATUS // Feature: 0xDA for status check
+	cmdBuffer[2] = 0                    // LBA Low: 0
+	cmdBuffer[3] = 0x4f                 // SMART signature byte (LBA Mid for SMART operations)
+
+	// HDIO_DRIVE_CMD ioctl number
+	const HDIO_DRIVE_CMD = 0x0000031f
+
+	_, _, errno := unix.Syscall(
+		unix.SYS_IOCTL,
+		uintptr(fileFD),
+		uintptr(HDIO_DRIVE_CMD),
+		uintptr(unsafe.Pointer(&cmdBuffer[0])),
+	)
+
+	if errno != 0 {
+		// SMART not supported or command failed
+		return false, errors.Errorf("SMART status check failed on %s: errno=%d", actualPath, errno)
+	}
+
+	// If command succeeds, SMART is enabled
+	// The returned status bytes in cmdBuffer[4] indicate SMART status
+	// cmdBuffer[4] = LBA Low (returns 0xf1 if SMART failed, 0x2c if passed)
+	// For a simple check, if the ioctl succeeds, SMART is supported and enabled
+	return true, nil
 }
 
 // parseSelfTestLog parses the SMART self-test log to get test status

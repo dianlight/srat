@@ -263,8 +263,8 @@ func prog(state overseer.State) {
 			samba_service service.SambaServiceInterface,
 			hdidle_repo repository.HDIdleConfigRepositoryInterface,
 			hdidle_service service.HDIdleServiceInterface,
-			converter converter.DtoToDbomConverter,
 		) {
+			converter := &converter.DtoToDbomConverterImpl{}
 			// Setting the actual LogLevel
 			err := props_repo.SetValue("LogLevel", *logLevelString)
 			if err != nil {

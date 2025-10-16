@@ -20,14 +20,14 @@ type HDIdleConfig struct {
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
 	DeletedAt               gorm.DeletedAt `gorm:"index"`
-	Devices                 []HDIdleDevice `gorm:"foreignKey:ConfigID;constraint:OnDelete:CASCADE"`
+	Devices                 []HDIdleDevice `gorm:"foreignKey:ID;constraint:OnDelete:CASCADE"`
 }
 
 // HDIdleDevice represents per-device configuration
 type HDIdleDevice struct {
-	ID             uint   `gorm:"primaryKey"`
-	ConfigID       uint   `gorm:"index"`
-	Name           string `gorm:"not null"` // e.g., "sda" or "/dev/disk/by-id/..."
+	ID uint `gorm:"primaryKey"`
+	//	ConfigID       uint   `gorm:"index"`
+	Name           string `gorm:"not null"`  // e.g., "sda" or "/dev/disk/by-id/..."
 	IdleTime       int    `gorm:"default:0"` // 0 = use default
 	CommandType    string `gorm:"default:"`  // empty = use default
 	PowerCondition uint8  `gorm:"default:0"`

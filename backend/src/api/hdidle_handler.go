@@ -14,9 +14,9 @@ import (
 )
 
 type HDIdleHandler struct {
-	repo            repository.HDIdleConfigRepositoryInterface
-	hdidleService   service.HDIdleServiceInterface
-	converter       converter.DtoToDbomConverter
+	repo             repository.HDIdleConfigRepositoryInterface
+	hdidleService    service.HDIdleServiceInterface
+	converter        converter.DtoToDbomConverter
 	broadcastService service.BroadcasterServiceInterface
 }
 
@@ -24,7 +24,6 @@ type HDIdleHandlerParams struct {
 	fx.In
 	Repo             repository.HDIdleConfigRepositoryInterface
 	HDIdleService    service.HDIdleServiceInterface
-	Converter        converter.DtoToDbomConverter
 	BroadcastService service.BroadcasterServiceInterface
 }
 
@@ -32,7 +31,7 @@ func NewHDIdleHandler(params HDIdleHandlerParams) *HDIdleHandler {
 	return &HDIdleHandler{
 		repo:             params.Repo,
 		hdidleService:    params.HDIdleService,
-		converter:        params.Converter,
+		converter:        &converter.DtoToDbomConverterImpl{},
 		broadcastService: params.BroadcastService,
 	}
 }
@@ -201,8 +200,8 @@ func (h *HDIdleHandler) deleteConfig(ctx context.Context, input *struct{}) (*Del
 
 type GetHDIdleStatusOutput struct {
 	Body struct {
-		Running     bool                   `json:"running"`
-		MonitoredAt string                 `json:"monitored_at,omitempty"`
+		Running     bool                       `json:"running"`
+		MonitoredAt string                     `json:"monitored_at,omitempty"`
 		Disks       []service.HDIdleDiskStatus `json:"disks,omitempty"`
 	}
 }

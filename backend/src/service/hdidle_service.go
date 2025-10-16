@@ -17,11 +17,11 @@ import (
 )
 
 const (
-	scsiCommand           = "scsi"
-	ataCommand            = "ata"
-	defaultIdleTime       = 600 * time.Second
-	symlinkResolveOnce    = 0
-	symlinkResolveRetry   = 1
+	scsiCommand        = "scsi"
+	ataCommand         = "ata"
+	defaultIdleTime    = 600 * time.Second
+	symlinkResolveOnce = 0
+	//symlinkResolveRetry   = 1
 	defaultPoolMultiplier = 10
 )
 
@@ -94,14 +94,14 @@ type HDIdleService struct {
 	apiContext       context.Context
 	apiContextCancel context.CancelFunc
 	state            *dto.ContextState
-	
+
 	// Internal state
-	mu               sync.RWMutex
-	running          bool
-	stopChan         chan struct{}
-	config           *internalConfig
-	diskStats        []diskState
-	lastNow          time.Time
+	mu        sync.RWMutex
+	running   bool
+	stopChan  chan struct{}
+	config    *internalConfig
+	diskStats []diskState
+	lastNow   time.Time
 }
 
 type internalConfig struct {
@@ -362,7 +362,7 @@ func (s *HDIdleService) monitorLoop() {
 	}
 	interval := s.calculatePoolInterval(s.config)
 	s.mu.RUnlock()
-	
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 

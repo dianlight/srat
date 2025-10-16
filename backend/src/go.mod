@@ -18,6 +18,7 @@ require (
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
 	github.com/anatol/smart.go v0.0.0-20241126061019-f03d79b340d2
 	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/fatih/color v1.18.0
@@ -43,7 +44,6 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
-	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96 // indirect
 	github.com/air-verse/air v1.63.0 // indirect
 	github.com/benmcclelland/sgio v0.0.0-20180629175614-f710aebf64c1 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
