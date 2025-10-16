@@ -41,6 +41,22 @@ func NewSmartService() SmartServiceInterface {
 	}
 }
 
+// checkDeviceExists verifies that the device path exists and is readable
+func checkDeviceExists(devicePath string) errors.E {
+	file, err := os.OpenFile(devicePath, os.O_RDONLY, 0)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "does not exist")
+		}
+		if os.IsPermission(err) {
+			return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "not readable")
+		}
+		return errors.Wrapf(err, "error checking device path '%s'", devicePath)
+	}
+	file.Close()
+	return nil
+}
+
 func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E) {
 	cacheKey := smartCacheKeyPrefix + devicePath
 	// Try to get from cache first
@@ -60,20 +76,11 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 			return info, nil
 		}
 	}
-	// Check if the device path exists and is readable before attempting to open it with smart.go
-	file, err := os.OpenFile(devicePath, os.O_RDONLY, 0)
-	if err != nil {
-		if os.IsNotExist(err) {
-			tlog.Trace("SMART: device path does not exist on filesystem, skipping.", "device", devicePath)
-			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "does not exist")
-		}
-		if os.IsPermission(err) {
-			tlog.Trace("SMART: device path is not readable, skipping.", "device", devicePath, "error", err)
-			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "not readable")
-		}
-		return nil, errors.Wrapf(err, "error checking device path '%s'", devicePath)
+
+	// Check if the device exists before attempting to open it
+	if err := checkDeviceExists(devicePath); err != nil {
+		return nil, err
 	}
-	file.Close() // We just wanted to check if we can open it.
 
 	dev, err := smart.Open(devicePath)
 	if err != nil {
@@ -202,9 +209,14 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 
 // GetHealthStatus returns the health status of a device by evaluating SMART attributes
 func (s *smartService) GetHealthStatus(devicePath string) (*dto.SmartHealthStatus, errors.E) {
-	// Get SMART info first
+	// Get SMART info first (may return cached data)
 	smartInfo, err := s.GetSmartInfo(devicePath)
 	if err != nil {
+		return nil, err
+	}
+
+	// Check if device still exists before opening (in case cached data is stale)
+	if err := checkDeviceExists(devicePath); err != nil {
 		return nil, err
 	}
 
@@ -262,6 +274,11 @@ func (s *smartService) StartSelfTest(devicePath string, testType dto.SmartTestTy
 		return errors.WithDetails(dto.ErrorInvalidParameter, "test_type", testType)
 	}
 
+	// Check if device exists before opening
+	if err := checkDeviceExists(devicePath); err != nil {
+		return err
+	}
+
 	// Open device
 	dev, stdErr := smart.Open(devicePath)
 	if stdErr != nil {
@@ -290,6 +307,11 @@ func (s *smartService) AbortSelfTest(devicePath string) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	// Check if device exists before opening
+	if err := checkDeviceExists(devicePath); err != nil {
+		return err
+	}
+
 	// Open device
 	dev, stdErr := smart.Open(devicePath)
 	if stdErr != nil {
@@ -315,6 +337,11 @@ func (s *smartService) AbortSelfTest(devicePath string) errors.E {
 
 // GetTestStatus returns the status of the currently running or last SMART self-test
 func (s *smartService) GetTestStatus(devicePath string) (*dto.SmartTestStatus, errors.E) {
+	// Check if device exists before opening
+	if err := checkDeviceExists(devicePath); err != nil {
+		return nil, err
+	}
+
 	// Open device
 	dev, stdErr := smart.Open(devicePath)
 	if stdErr != nil {
@@ -348,6 +375,11 @@ func (s *smartService) EnableSMART(devicePath string) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	// Check if device exists before opening
+	if err := checkDeviceExists(devicePath); err != nil {
+		return err
+	}
+
 	// Open device
 	dev, stdErr := smart.Open(devicePath)
 	if stdErr != nil {
@@ -374,6 +406,11 @@ func (s *smartService) EnableSMART(devicePath string) errors.E {
 func (s *smartService) DisableSMART(devicePath string) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	// Check if device exists before opening
+	if err := checkDeviceExists(devicePath); err != nil {
+		return err
+	}
 
 	// Open device
 	dev, stdErr := smart.Open(devicePath)

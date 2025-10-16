@@ -170,3 +170,9 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
+
+replace github.com/zarldev/goenums => /home/runner/gohack/github.com/zarldev/goenums
+
+replace github.com/jpillora/overseer => /home/runner/gohack/github.com/jpillora/overseer
+
+replace github.com/anatol/smart.go => /home/runner/gohack/github.com/anatol/smart.go
