@@ -221,7 +221,7 @@ export function ShareEditForm({
                 noValidate
             >
                 <Grid container spacing={2}>
-                    {shareData?.usage !== Usage.Internal && (
+                    {watch("usage") !== Usage.Internal && (
                         <Grid size={{ xs: 12, md: 8 }}>
                             {availablePartitions.length > 0 && (
                                 <AutocompleteElement
@@ -282,7 +282,7 @@ export function ShareEditForm({
                             )}
                         </Grid>
                     )}
-                    {shareData?.usage !== Usage.Internal && (
+                    {watch("usage") !== Usage.Internal && (
                         <Grid size={{ xs: 12, md: 4 }}>
                             <SelectElement
                                 sx={{ display: "flex" }}

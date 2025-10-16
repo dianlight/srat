@@ -79,3 +79,48 @@ func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
 func TestSmartServiceSuite(t *testing.T) {
 	suite.Run(t, new(SmartServiceSuite))
 }
+
+func (suite *SmartServiceSuite) TestGetHealthStatusDeviceNotExist() {
+	// Execute with non-existent device
+	health, err := suite.service.GetHealthStatus("/dev/nonexistent")
+
+	// Expect error since device doesn't exist
+	suite.Error(err)
+	suite.Nil(health)
+}
+
+func (suite *SmartServiceSuite) TestStartSelfTestInvalidType() {
+	err := suite.service.StartSelfTest("/dev/sda", dto.SmartTestType("invalid"))
+
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorInvalidParameter))
+}
+
+func (suite *SmartServiceSuite) TestStartSelfTestDeviceNotExist() {
+	err := suite.service.StartSelfTest("/dev/nonexistent", dto.SmartTestTypeShort)
+
+	suite.Error(err)
+}
+
+func (suite *SmartServiceSuite) TestEnableDisableSMARTDeviceNotExist() {
+	// Test EnableSMART
+	err := suite.service.EnableSMART("/dev/nonexistent")
+	suite.Error(err)
+
+	// Test DisableSMART
+	err = suite.service.DisableSMART("/dev/nonexistent")
+	suite.Error(err)
+}
+
+func (suite *SmartServiceSuite) TestGetTestStatusDeviceNotExist() {
+	status, err := suite.service.GetTestStatus("/dev/nonexistent")
+
+	suite.Error(err)
+	suite.Nil(status)
+}
+
+func (suite *SmartServiceSuite) TestAbortSelfTestDeviceNotExist() {
+	err := suite.service.AbortSelfTest("/dev/nonexistent")
+
+	suite.Error(err)
+}

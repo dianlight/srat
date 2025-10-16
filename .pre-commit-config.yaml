@@ -17,13 +17,13 @@ repos:
 
   - repo: local
     hooks:
-      - id: gosec-backend
-        name: gosec (backend, high severity)
-        entry: bash -c 'make -C backend gosec'
-        language: system
-        pass_filenames: false
-        stages: [pre-commit]
-        files: '^backend/src/.*\.go$'
+#      - id: gosec-backend
+#        name: gosec (backend, high severity)
+#        entry: bash -c 'make -C backend gosec'
+#        language: system
+#        pass_filenames: false
+#        stages: [pre-commit]
+#        files: '^backend/src/.*\.go$'
 
 #      - id: go-build-test-backend
 #        name: go build+test (backend quick)

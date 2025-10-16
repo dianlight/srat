@@ -636,6 +636,22 @@ components:
         - fsck_needed
         - fsck_supported
       type: object
+    Post-disk-by-disk-id-smart-test-startRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Post-disk-by-disk-id-smart-test-startRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        test_type:
+          description: "Type of test: short, long, or conveyance"
+          type: string
+      required:
+        - test_type
+      type: object
     ProcessStatus:
       additionalProperties: false
       properties:
@@ -1005,9 +1021,40 @@ components:
             type: string
           type: array
       type: object
+    SmartHealthStatus:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SmartHealthStatus.json
+          format: uri
+          readOnly: true
+          type: string
+        failing_attributes:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        overall_status:
+          type: string
+        passed:
+          type: boolean
+      required:
+        - passed
+        - overall_status
+      type: object
     SmartInfo:
       additionalProperties: false
       properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SmartInfo.json
+          format: uri
+          readOnly: true
+          type: string
         disk_type:
           enum:
             - SATA
@@ -1015,6 +1062,8 @@ components:
             - SCSI
             - Unknown
           type: string
+        enabled:
+          type: boolean
         others:
           additionalProperties:
             $ref: "#/components/schemas/SmartRangeValue"
@@ -1029,6 +1078,7 @@ components:
         - temperature
         - power_on_hours
         - power_cycle_count
+        - enabled
       type: object
     SmartRangeValue:
       additionalProperties: false
@@ -1068,6 +1118,29 @@ components:
           type: integer
       required:
         - value
+      type: object
+    SmartTestStatus:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SmartTestStatus.json
+          format: uri
+          readOnly: true
+          type: string
+        lba_of_first_error:
+          type: string
+        percent_complete:
+          format: int64
+          type: integer
+        status:
+          type: string
+        test_type:
+          type: string
+      required:
+        - status
+        - test_type
       type: object
     SmbConf:
       additionalProperties: false
@@ -1311,6 +1384,362 @@ paths:
       summary: Get API capabilities
       tags:
         - system
+  /api/disk/{disk_id}/smart/disable:
+    post:
+      operationId: post-api-disk-by-disk-id-smart-disable
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API disk by disk ID smart disable
+      tags:
+        - smart
+  /api/disk/{disk_id}/smart/enable:
+    post:
+      operationId: post-api-disk-by-disk-id-smart-enable
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API disk by disk ID smart enable
+      tags:
+        - smart
+  /api/disk/{disk_id}/smart/health:
+    get:
+      operationId: get-api-disk-by-disk-id-smart-health
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmartHealthStatus"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API disk by disk ID smart health
+      tags:
+        - smart
+  /api/disk/{disk_id}/smart/info:
+    get:
+      operationId: get-api-disk-by-disk-id-smart-info
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmartInfo"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API disk by disk ID smart info
+      tags:
+        - smart
+  /api/disk/{disk_id}/smart/test:
+    get:
+      operationId: get-api-disk-by-disk-id-smart-test
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmartTestStatus"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API disk by disk ID smart test
+      tags:
+        - smart
+  /api/disk/{disk_id}/smart/test/abort:
+    post:
+      operationId: post-api-disk-by-disk-id-smart-test-abort
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API disk by disk ID smart test abort
+      tags:
+        - smart
+  /api/disk/{disk_id}/smart/test/start:
+    post:
+      operationId: post-api-disk-by-disk-id-smart-test-start
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Post-disk-by-disk-id-smart-test-startRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API disk by disk ID smart test start
+      tags:
+        - smart
   /api/filesystems:
     get:
       operationId: list-api-filesystems
@@ -1691,8 +2120,8 @@ paths:
     put:
       operationId: put-api-restart
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -2639,8 +3068,8 @@ paths:
     get:
       operationId: sse
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3002,8 +3431,8 @@ paths:
     get:
       operationId: list-api-update-channels
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3110,8 +3539,8 @@ paths:
             maxLength: 30
             minimum: 1
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content

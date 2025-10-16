@@ -14,11 +14,53 @@
 
 ### 🔧 Maintenance
 
+- **Samba Version-Aware Configuration**: Implemented comprehensive Samba version checking in smb.conf template generation:
+  - Added `GetSambaVersion()` and `IsSambaVersionAtLeast()` utilities in `osutil` package
+  - Template context now includes `samba_version` and `samba_version_sufficient` variables
+  - Added template functions: `versionAtLeast()` and `versionBetween()` for conditional configuration
+  - Conditional includes for version-specific options:
+    - **Samba 4.23+**: `server smb transports` with QUIC support
+    - **Samba 4.21-4.22**: Legacy transport configuration (no QUIC)
+    - **Samba < 4.22**: Include `fruit:posix_rename` option
+    - **Samba 4.22+**: Exclude `fruit:posix_rename` (removed due to Windows client issues)
+  - Fallback to conservative defaults when version cannot be determined
+  - Added detailed documentation: `docs/SAMBA_VERSION_CHECKS.md`
+  - Prevents configuration errors across different Samba versions (4.21, 4.22, 4.23+)
 - **Dependency Cleanup**: Replaced deprecated `github.com/inconshreveable/go-update` library (last updated 2016) with standard Go library functions for binary updates. This reduces external dependencies and improves maintainability without affecting functionality.
 - **Redux DevTools Integration**: Removed unused `@redux-devtools/extension` package. Redux Toolkit's `configureStore()` provides built-in Redux DevTools support, making the separate extension package unnecessary. DevTools integration continues to work seamlessly in development mode.
 
 ### ✨ Features
 
+- **Enhanced SMART Service [#234](https://github.com/dianlight/srat/issues/234)**: Implemented comprehensive SMART disk monitoring and control features:
+  - **Health Status Monitoring**: Added `GetHealthStatus()` method to evaluate disk health by comparing SMART attributes against thresholds
+  - **Self-Test Execution**: Added `StartSelfTest()` method to initiate short, long, or conveyance SMART self-tests on SATA devices
+  - **Test Status Monitoring**: Added `GetTestStatus()` method to retrieve current or last SMART self-test results
+  - **SMART Control**: Added `EnableSMART()` and `DisableSMART()` methods for controlling SMART functionality on SATA devices
+  - **SMART Enabled Status Tracking**: Added `Enabled` field to `SmartInfo` DTO to track whether SMART is currently active on the disk
+  - **Pre-Failure Alerts**: Integrated with tlog callback system to automatically log warnings when disk health checks detect failing attributes
+  - **Cross-Platform Support**: Linux-specific ioctl implementations with graceful fallback on other platforms
+  - **New DTOs**: Added `SmartTestType`, `SmartTestStatus`, and `SmartHealthStatus` types for SMART operations
+  - **Enhanced Error Handling**: Added `ErrorSMARTOperationFailed` and `ErrorSMARTTestInProgress` error codes
+  - **REST API Endpoints**: Implemented 7 new REST endpoints for SMART operations:
+    - `GET /disk/{disk_id}/smart/info` - Retrieve SMART information
+    - `GET /disk/{disk_id}/smart/health` - Get disk health status
+    - `GET /disk/{disk_id}/smart/test` - Retrieve test status
+    - `POST /disk/{disk_id}/smart/test/start` - Start SMART self-test
+    - `POST /disk/{disk_id}/smart/test/abort` - Abort running test
+    - `POST /disk/{disk_id}/smart/enable` - Enable SMART
+    - `POST /disk/{disk_id}/smart/disable` - Disable SMART
+  - **Frontend Integration**: Added `SmartStatusPanel` component with:
+    - Temperature monitoring and thresholds
+    - Power statistics display
+    - Health status with failing attribute details
+    - Self-test status and progress tracking
+    - Action buttons with intelligent enable/disable logic based on SMART state
+    - Start test dialog with test type selection
+  - **Smart Button State Management**: Enable/Disable SMART buttons intelligently:
+    - "Enable SMART" button disabled when SMART is already active
+    - "Disable SMART" button disabled when SMART is not active
+    - Tooltips explain button disabled states
+  - \*\*Verified proper usage of `github.com/anatol/smart.go` library and extended functionality for disk management needs
 - **Native Bun Hot-Reloading**: Removed external `bun-html-live-reload` library and configured Bun's native development server with HMR:
   - Removed dependency on `bun-html-live-reload` package
   - Enabled Bun's native HMR via `development: { console: true, hmr: true }` configuration

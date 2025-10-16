@@ -17,3 +17,5 @@ var ErrorNoUpdateAvailable = errors.Base("No update available for the specified 
 var ErrorSMARTNotSupported = errors.Base("SMART not supported for this device")
 var ErrorOperationNotPermittedInProtectedMode = errors.Base("Operation not permitted in Protected mode")
 var ErrorInvalidStateForOperation = errors.Base("Invalid state for operation")
+var ErrorSMARTOperationFailed = errors.Base("SMART operation failed")
+var ErrorSMARTTestInProgress = errors.Base("SMART test already in progress")

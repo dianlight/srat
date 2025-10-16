@@ -84,6 +84,7 @@ func main() {
 			server.AsHumaRoute(api.NewHealthHandler),
 			server.AsHumaRoute(api.NewShareHandler),
 			server.AsHumaRoute(api.NewVolumeHandler),
+			server.AsHumaRoute(api.NewSmartHandler),
 			server.AsHumaRoute(api.NewSettingsHanler),
 			server.AsHumaRoute(api.NewUserHandler),
 			server.AsHumaRoute(api.NewSambaHanler),

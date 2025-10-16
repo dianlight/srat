@@ -770,7 +770,7 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 						}
 						*(*disk.Partitions)[pidx].MountPointData = append(*(*disk.Partitions)[pidx].MountPointData, mountPoint)
 						delete(existingDBmountPoints, *part.Id)
-						slog.Debug("Added mount point data to partition", "device_id", *part.Id, "prtstate", prtstate, "mountpoint", mountPoint)
+						tlog.Trace("Added mount point data to partition", "device_id", *part.Id, "prtstate", prtstate, "mountpoint", mountPoint)
 
 						mountPointPath := &dbom.MountPointPath{}
 						errConv := self.convDto.MountPointDataToMountPointPath(mountPoint, mountPointPath)

@@ -15,6 +15,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/mount"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tempio"
 	"github.com/dianlight/srat/tlog"
@@ -103,10 +104,19 @@ func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, errors.E) {
 		return nil, errors.Errorf("Error executing smbstatus: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
 	}
 
+	// Validate that output is valid JSON before unmarshaling
+	outStr := strings.TrimSpace(string(out))
+	if outStr == "" {
+		return nil, errors.New("smbstatus returned empty output")
+	}
+	if outStr[0] != '{' && outStr[0] != '[' {
+		return nil, errors.Errorf("smbstatus returned non-JSON output: %s", outStr)
+	}
+
 	var status dto.SambaStatus
 	err = json.Unmarshal(out, &status)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Errorf("failed to parse smbstatus output as JSON: %w (output: %s)", err, outStr)
 	}
 
 	self.cache.Set("samba_status", &status, cache.DefaultExpiration)
@@ -124,6 +134,13 @@ func (self *SambaService) CreateConfigStream() (data *[]byte, err errors.E) {
 	config.DockerInterface = self.state.DockerInterface
 	config.DockerNet = self.state.DockerNet
 	config_2 := config.ConfigToMap()
+
+	// Add Samba version information to the template context
+	sambaVersion, _ := osutil.GetSambaVersion()
+	isSambaVersionSufficient, _ := osutil.IsSambaVersionSufficient()
+	(*config_2)["samba_version"] = sambaVersion
+	(*config_2)["samba_version_sufficient"] = isSambaVersionSufficient
+
 	datar, err := tempio.RenderTemplateBuffer(config_2, self.state.Template)
 	return &datar, errors.WithStack(err)
 }

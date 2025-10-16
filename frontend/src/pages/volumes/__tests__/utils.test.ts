@@ -1,3 +1,4 @@
+import '../../../../test/setup';
 import { describe, it, expect } from "bun:test";
 
 describe("volumes utils", () => {
