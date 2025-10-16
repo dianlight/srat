@@ -60,7 +60,7 @@
     - "Enable SMART" button disabled when SMART is already active
     - "Disable SMART" button disabled when SMART is not active
     - Tooltips explain button disabled states
-  - **Verified proper usage of `github.com/anatol/smart.go` library and extended functionality for disk management needs
+  - \*\*Verified proper usage of `github.com/anatol/smart.go` library and extended functionality for disk management needs
 - **Native Bun Hot-Reloading**: Removed external `bun-html-live-reload` library and configured Bun's native development server with HMR:
   - Removed dependency on `bun-html-live-reload` package
   - Enabled Bun's native HMR via `development: { console: true, hmr: true }` configuration

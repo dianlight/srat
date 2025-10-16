@@ -82,7 +82,13 @@
     "xychart",
     "pwdgen",
     "Fatalf",
-    "unixsamba"
+    "unixsamba",
+    "keytab",
+    "testparm",
+    "tempio",
+    "Errorf",
+    "strconv",
+    "Himmelblaud",
   ],
   "flagWords": [],
   "ignorePaths": [

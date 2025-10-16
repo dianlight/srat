@@ -50,17 +50,17 @@ func TestVersionAtLeast(t *testing.T) {
 		// Exact match
 		{"4.23.0 >= 4.23", "4.23.0", 4, 23, true},
 		{"4.21.0 >= 4.23", "4.21.0", 4, 23, false},
-		
+
 		// Higher version
 		{"4.25.0 >= 4.23", "4.25.0", 4, 23, true},
-		
+
 		// Lower version
 		{"4.20.0 >= 4.23", "4.20.0", 4, 23, false},
-		
+
 		// Same major, different minor
 		{"4.22.5 >= 4.23", "4.22.5", 4, 23, false},
 		{"4.23.5 >= 4.23", "4.23.5", 4, 23, true},
-		
+
 		// Invalid versions
 		{"invalid >= 4.23", "invalid", 4, 23, false},
 		{"empty >= 4.23", "", 4, 23, false},
@@ -157,11 +157,11 @@ func TestVersionBetweenFunc(t *testing.T) {
 		{"4.22.0", 4, 21, 4, 23, true},
 		{"4.23.0", 4, 21, 4, 23, true},
 		{"4.21.0", 4, 21, 4, 23, true},
-		
+
 		// Outside range
 		{"4.20.0", 4, 21, 4, 23, false},
 		{"4.24.0", 4, 21, 4, 23, false},
-		
+
 		// Boundary
 		{"4.21.0", 4, 21, 4, 21, true},
 		{"4.22.0", 4, 21, 4, 21, false},
@@ -195,20 +195,20 @@ func TestCreateConfigStreamWithVersionInfo(t *testing.T) {
 	// 1. Version information is added to template context
 	// 2. Template renders correctly with version checks
 	// 3. No configuration errors occur
-	
+
 	// Note: This requires mocking the database and repository interfaces
 	// Example structure:
 	/*
 	suite := &SambaServiceSuite{}
 	suite.SetupTest()
-	
+
 	stream, err := suite.sambaService.CreateConfigStream()
 	if err != nil {
 		t.Fatalf("CreateConfigStream failed: %v", err)
 	}
-	
+
 	config := string(*stream)
-	
+
 	// Verify version-appropriate options are present/absent
 	if strings.Contains(config, "server smb transports") {
 		// Should only be present in 4.23+
@@ -269,11 +269,13 @@ grep "WARNING\|ERROR" /etc/samba/smb.conf
 ### Scenario 1: Samba 4.21.x
 
 **Expected Behavior:**
+
 - `server smb transports` NOT present
 - `fruit:posix_rename = yes` IS present
 - QUIC options NOT present
 
 **Verification:**
+
 ```bash
 testparm -s /etc/samba/smb.conf | grep -E "(smb transports|posix_rename|tls enable)"
 # Should show only posix_rename
@@ -282,11 +284,13 @@ testparm -s /etc/samba/smb.conf | grep -E "(smb transports|posix_rename|tls enab
 ### Scenario 2: Samba 4.22.x
 
 **Expected Behavior:**
+
 - `server smb transports` NOT present
 - `fruit:posix_rename` NOT present
 - QUIC options NOT present (even if enabled in settings)
 
 **Verification:**
+
 ```bash
 testparm -s /etc/samba/smb.conf | grep -i "posix_rename"
 # Should return nothing
@@ -295,11 +299,13 @@ testparm -s /etc/samba/smb.conf | grep -i "posix_rename"
 ### Scenario 3: Samba 4.23.x
 
 **Expected Behavior:**
+
 - `server smb transports = tcp` OR `server smb transports = tcp, quic` present
 - `fruit:posix_rename` NOT present
 - QUIC options (tls enable, etc.) present if enabled
 
 **Verification:**
+
 ```bash
 testparm -s /etc/samba/smb.conf | grep "server smb transports"
 # Should show version-appropriate transports
@@ -337,10 +343,10 @@ import (
 func main() {
 	version := "4.23.0"
 	parts := strings.Split(version, ".")
-	
+
 	major, _ := strconv.Atoi(parts[0])
 	minor, _ := strconv.Atoi(parts[1])
-	
+
 	fmt.Printf("Version %s parsed as: Major=%d, Minor=%d\n", version, major, minor)
 	fmt.Printf("Is >= 4.23? %v\n", major > 4 || (major == 4 && minor >= 23))
 }
@@ -361,27 +367,35 @@ func main() {
 ## Troubleshooting
 
 ### Issue: "smbd: command not found"
+
 **Solution:** Samba must be installed. Install with:
+
 ```bash
 apt-get install samba  # Debian/Ubuntu
 apk add samba          # Alpine
 ```
 
 ### Issue: Version shows as empty
+
 **Solution:** Check that smbd is in PATH and returns version:
+
 ```bash
 which smbd
 /usr/bin/smbd --version
 ```
 
 ### Issue: Template syntax error
+
 **Solution:** Validate template syntax:
+
 ```bash
 go test ./tempio -v
 ```
 
 ### Issue: Configuration option "unknown"
+
 **Solution:** Check Samba version and update template checks as needed:
+
 ```bash
 testparm -s /etc/samba/smb.conf 2>&1 | grep -i "unknown"
 ```
@@ -390,4 +404,4 @@ testparm -s /etc/samba/smb.conf 2>&1 | grep -i "unknown"
 
 - [Implementation Guide](./IMPLEMENTATION_SAMBA_VERSION_CHECKS.md)
 - [Samba Version Checks Documentation](./SAMBA_VERSION_CHECKS.md)
-- [Samba Release Notes](https://wiki.samba.org/index.php/Samba_Features_added/changed_(by_release))
+- [Samba Release Notes](<https://wiki.samba.org/index.php/Samba_Features_added/changed_(by_release)>)

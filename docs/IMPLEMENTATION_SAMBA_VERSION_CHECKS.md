@@ -9,6 +9,7 @@ I have successfully implemented comprehensive Samba version checking in SRAT to 
 ### 1. Backend Infrastructure
 
 #### `backend/src/internal/osutil/osutil.go`
+
 - **Added**: `IsSambaVersionAtLeast(majorRequired, minorRequired)` function
 - **Purpose**: Generic version comparison utility
 - **Supports**: Flexible version checking for any Samba major.minor combination
@@ -17,6 +18,7 @@ I have successfully implemented comprehensive Samba version checking in SRAT to 
   - `IsSambaVersionSufficient()` - Checks if version >= 4.23.0
 
 #### `backend/src/service/samba_service.go`
+
 - **Updated**: `CreateConfigStream()` method
 - **Changes**:
   - Added import of `osutil` package
@@ -25,6 +27,7 @@ I have successfully implemented comprehensive Samba version checking in SRAT to 
 - **Benefits**: Template can now make version-aware decisions
 
 #### `backend/src/tempio/template.go`
+
 - **Added**: Custom template functions:
   - `versionAtLeast(versionStr, majorRequired, minorRequired)` - Check minimum version
   - `versionBetween(versionStr, minMajor, minMinor, maxMajor, maxMinor)` - Check version range
@@ -34,27 +37,33 @@ I have successfully implemented comprehensive Samba version checking in SRAT to 
 ### 2. Template Configuration
 
 #### `backend/src/templates/smb.gtpl`
+
 - **Updated**: Global section configuration
 - **Key Changes**:
 
 1. **SMB Transports (Samba 4.23+)**
+
    ```go
    {{if versionAtLeast .samba_version 4 23 -}}
    server smb transports = tcp{{if .smb_over_quic -}}, quic{{- end }}
    {{- end }}
    ```
+
    - Reason: Option introduced in Samba 4.23; earlier versions would reject it
 
 2. **Fruit posix_rename (Samba < 4.22)**
+
    ```go
    {{if versionAtLeast .samba_version 4 22 -}}
    {{- else -}}
    fruit:posix_rename = yes
    {{- end }}
    ```
+
    - Reason: Option removed in Samba 4.22 due to Windows client issues
 
 3. **QUIC Configuration Guard (Samba 4.23+)**
+
    ```go
    {{if .smb_over_quic -}}
    {{if versionAtLeast .samba_version 4 23 -}}
@@ -66,12 +75,15 @@ I have successfully implemented comprehensive Samba version checking in SRAT to 
    # WARNING: SMB over QUIC requires Samba 4.23.0+...
    {{- end }}
    ```
+
    - Reason: SMB over QUIC with TLS only available in 4.23+
 
 ### 3. Documentation
 
 #### `docs/SAMBA_VERSION_CHECKS.md` (NEW)
+
 Comprehensive guide including:
+
 - Architecture overview of version checking system
 - Backend components explanation
 - Template functions documentation
@@ -84,6 +96,7 @@ Comprehensive guide including:
 - Reference tables and links
 
 #### `CHANGELOG.md`
+
 - Added detailed maintenance section documenting all changes
 - Version check implementation details
 - Feature highlights and benefits
@@ -91,16 +104,19 @@ Comprehensive guide including:
 ## Samba Version Coverage
 
 ### 4.21.0 (September 2024)
+
 - **New Parameters**: TLS options, keytab sync, DNS hostname
 - **Modified**: User/group validation hardened
 - **Supported**: Standard SMB3 features
 
 ### 4.22.0 (March 2025)
+
 - **New Parameters**: Directory leases, Himmelblaud support
 - **Removed**: `fruit:posix_rename`, `cldap port` → **Template excludes posix_rename**
 - **Supported**: Most features except QUIC
 
 ### 4.23.0+ (September 2025)
+
 - **New Parameters**: SMB transports, profiling, Varlink
 - **Features**: QUIC support, Unix Extensions by default
 - **Supported**: All SRAT features including QUIC
@@ -109,7 +125,7 @@ Comprehensive guide including:
 
 ### Runtime Flow
 
-```
+```txt
 1. Samba service starts
    ↓
 2. CreateConfigStream() called
@@ -130,6 +146,7 @@ Comprehensive guide including:
 ### Template Decision Logic
 
 Each version check follows this pattern:
+
 ```go
 {{if versionAtLeast .samba_version 4 23 -}}
   // Include option only available in 4.23+
@@ -137,6 +154,7 @@ Each version check follows this pattern:
 ```
 
 Or for removed options:
+
 ```go
 {{if versionAtLeast .samba_version 4 22 -}}
   // Skip option (removed in 4.22)
@@ -172,6 +190,7 @@ grep WARNING /etc/samba/smb.conf
 ### Automated Testing
 
 Create tests for:
+
 - Version detection with different Samba versions
 - Template rendering with mock version strings
 - QUIC options only present in 4.23+
@@ -183,11 +202,13 @@ Create tests for:
 
 1. Add new parameters to documentation
 2. Update template with version checks:
+
    ```go
    {{if versionAtLeast .samba_version 4 24 -}}
    new_4_24_option = value
    {{- end }}
    ```
+
 3. Update `SAMBA_VERSION_CHECKS.md`
 4. Test on actual Samba 4.24 installation
 5. Update CHANGELOG

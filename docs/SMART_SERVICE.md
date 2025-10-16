@@ -272,15 +272,18 @@ make patch  # Applies all library patches including smart.go
 ```
 
 Multiple patches are applied to smart.go in alphabetical order:
+
 1. `smart.go-#010.patch` - Fix for SATA power_hours parsing (from wuxingzhong/smart.go)
 2. `smart.go-srat#999.patch` - Adds `FileDescriptor()` method to Device interface
 
 These patches enable:
+
 - Correct power-on hours calculation using duration parsing
 - Direct ioctl access for operations like enabling/disabling SMART and starting/aborting self-tests
 - Advanced device control
 
 **Patch Details:**
+
 - Location: `backend/patches/smart.go-*.patch`
 - Applied libraries: `github.com/anatol/smart.go`, `github.com/zarldev/goenums`, `github.com/jpillora/overseer`
 - Tool: `gohack` (manages local library modifications)
@@ -308,11 +311,13 @@ The service uses specific error types for different failure scenarios:
 The SMART service implementation relies on a **patched version** of the `github.com/anatol/smart.go` library. The original library provides excellent read-only SMART access but does not expose file descriptors needed for direct device control operations.
 
 **What the patch provides:**
+
 - `FileDescriptor()` method added to the `Device` interface
 - Implementation in all device types (SataDevice, NVMeDevice, ScsiDevice)
 - Direct access to underlying file descriptors for ioctl operations
 
 **How to use:**
+
 ```bash
 cd backend
 make patch  # Downloads libraries via gohack and applies patches
@@ -320,6 +325,7 @@ make build  # Build with patched libraries
 ```
 
 The patch is automatically applied when running `make all` and is required for the following operations:
+
 - EnableSMART/DisableSMART
 - StartSelfTest/AbortSelfTest
 - Any operation requiring direct ioctl access

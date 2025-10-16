@@ -35,6 +35,7 @@ isSambaVersionSufficient, _ := osutil.IsSambaVersionSufficient()
 ```
 
 This makes version information available as template variables:
+
 - `{{ .samba_version }}` - The detected Samba version string
 - `{{ .samba_version_sufficient }}` - Boolean flag for Samba >= 4.23.0
 
@@ -43,11 +44,13 @@ This makes version information available as template variables:
 Custom template functions for version comparison:
 
 **`versionAtLeast(versionStr, majorRequired, minorRequired)`**
+
 - Checks if a version string meets or exceeds the required major.minor version
 - Returns: `bool`
 - Usage: `{{ if versionAtLeast .samba_version 4 23 }}...{{ end }}`
 
 **`versionBetween(versionStr, minMajor, minMinor, maxMajor, maxMinor)`**
+
 - Checks if a version is within a specified range (inclusive)
 - Returns: `bool`
 - Usage: `{{ if versionBetween .samba_version 4 21 4 22 }}...{{ end }}`
@@ -67,6 +70,7 @@ server smb transports = tcp{{if .smb_over_quic -}}, quic{{- end }}
 ### Samba 4.21.0
 
 **New Parameters:**
+
 - `client ldap sasl wrapping` (new values: `starttls`, `ldaps`)
 - `dns hostname`
 - `sync machine password to keytab`
@@ -75,6 +79,7 @@ server smb transports = tcp{{if .smb_over_quic -}}, quic{{- end }}
 - `tls ca directories` (TLS option)
 
 **Modified Parameters:**
+
 - `valid users` - Hardening: non-existing users now cause errors on communication failure
 - `invalid users` - Hardening: non-existing users now cause errors on communication failure
 - `read list` - Hardening: non-existing users now cause errors on communication failure
@@ -83,11 +88,13 @@ server smb transports = tcp{{if .smb_over_quic -}}, quic{{- end }}
 - `hide files` - Now supports per-user and per-group specifications
 
 **Removed Parameters:**
+
 - `client use spnego principal` (removed)
 
 ### Samba 4.22.0
 
 **New Parameters:**
+
 - `smb3 directory leases` - Enable/disable SMB3 directory leases (default: auto)
 - `client netlogon ping protocol` - Protocol for netlogon pings (default: cldap)
 - `vfs mkdir use tmp name` - Use temporary names for mkdir operations
@@ -100,18 +107,21 @@ server smb transports = tcp{{if .smb_over_quic -}}, quic{{- end }}
 - `server support krb5 netlogon` (Experimental)
 
 **Removed Parameters:**
+
 - `fruit:posix_rename` - Removed (causes issues with Windows clients)
 - `cldap port` - Removed (runs on fixed UDP 389)
 
 ### Samba 4.23.0
 
 **New Parameters:**
+
 - `server smb transports` - Specifies SMB transports (tcp, nbt, quic)
 - `client smb transports` - Client-side SMB transports
 - `smbd profiling share` - Per-share profiling statistics
 - `winbind varlink service` - Varlink service for winbind
 
 **Behavioral Changes:**
+
 - SMB3 Unix Extensions enabled by default
 - Modern write time update logic (immediate updates instead of delayed)
 - Directory leases auto-tuned based on clustering config
@@ -121,6 +131,7 @@ server smb transports = tcp{{if .smb_over_quic -}}, quic{{- end }}
 ### Critical Changes in smb.gtpl
 
 **1. SMB Transports (Samba 4.23+)**
+
 ```go
 {{if versionAtLeast .samba_version 4 23 -}}
 server smb transports = tcp{{if .smb_over_quic -}}, quic{{- end }}
@@ -130,6 +141,7 @@ server smb transports = tcp{{if .smb_over_quic -}}, quic{{- end }}
 Reason: The `server smb transports` option was introduced in Samba 4.23. Earlier versions would reject this configuration, and SMB over QUIC is not supported below 4.23.
 
 **2. Fruit posix_rename (Samba < 4.22)**
+
 ```go
 {{if versionAtLeast .samba_version 4 22 -}}
 {{- else -}}
@@ -140,6 +152,7 @@ fruit:posix_rename = yes
 Reason: This option was removed in Samba 4.22 due to issues with Windows clients. If you're on 4.22+, this line is excluded.
 
 **3. QUIC Configuration (Samba 4.23+)**
+
 ```go
 {{if .smb_over_quic -}}
 {{if versionAtLeast .samba_version 4 23 -}}
@@ -158,23 +171,27 @@ Reason: SMB over QUIC with TLS configuration is only available in Samba 4.23+. T
 ## Configuration Behavior by Samba Version
 
 ### Samba 4.20.x (Not Explicitly Supported)
+
 - Uses legacy configuration style
 - No version checks apply
 - Limited to standard SMB3 features
 
 ### Samba 4.21.x
+
 - Enhanced user/group validation
 - TLS channel binding support for LDAP
 - Keytab synchronization available
 - Still uses standard SMB transports
 
 ### Samba 4.22.x
+
 - Directory leases support
 - Himmelblaud authentication available (experimental)
 - `fruit:posix_rename` removed - **template excludes this option**
 - Enhanced VFS options
 
 ### Samba 4.23.x+ (Current Stable)
+
 - Full SMB3 Unix Extensions by default
 - SMB over QUIC support
 - New transport configuration options
@@ -187,6 +204,7 @@ Reason: SMB over QUIC with TLS configuration is only available in Samba 4.23+. T
 ### Template Rendering Errors
 
 If version information cannot be determined:
+
 - `{{ .samba_version }}` will be empty or "0.0.0"
 - `versionAtLeast()` will return `false` for any comparison
 - Configuration will fall back to conservative defaults
@@ -194,12 +212,14 @@ If version information cannot be determined:
 ### Safe Defaults
 
 SRAT uses a "safe by default" approach:
+
 - If version cannot be determined, version-specific options are excluded
 - Fallback to widely-compatible options
 - Comments in template warn about version mismatches
 
 Example:
-```
+
+```txt
 # WARNING: SMB over QUIC requires Samba 4.23.0+. Current version: <unknown>
 # Falling back to standard SMB3 configuration
 ```
@@ -215,6 +235,7 @@ curl http://localhost:8000/health
 ```
 
 Response:
+
 ```json
 {
   "samba_version": "4.23.0",
@@ -231,7 +252,8 @@ smbd --version
 ```
 
 Output:
-```
+
+```txt
 Version 4.23.0
 ```
 
@@ -253,11 +275,13 @@ When updating SRAT for a new Samba release:
 
 1. **Identify new/removed/changed parameters** from Samba release notes
 2. **Update smb.gtpl** with version-conditional blocks:
+
    ```go
    {{if versionAtLeast .samba_version 4 24 -}}
    new_option = value
    {{- end }}
    ```
+
 3. **Update osutil.go** if new comparison functions are needed
 4. **Document in CHANGELOG.md** which Samba versions are supported
 5. **Test with all supported Samba versions** (4.21, 4.22, 4.23+)
@@ -277,7 +301,7 @@ curl -X POST http://localhost:8000/samba/config
 
 ## Related Documentation
 
-- [Samba Release Notes](https://wiki.samba.org/index.php/Samba_Features_added/changed_(by_release))
+- [Samba Release Notes](<https://wiki.samba.org/index.php/Samba_Features_added/changed_(by_release)>)
 - [SMB over QUIC Implementation](./SMB_OVER_QUIC_IMPLEMENTATION.md)
 - [SRAT Backend Architecture](../README.md)
 
@@ -285,11 +309,11 @@ curl -X POST http://localhost:8000/samba/config
 
 ### Samba Feature Timeline
 
-| Version | Release Date | Key Features |
-|---------|-------------|--------------|
-| 4.21.0  | Sept 2024   | Enhanced validation, TLS improvements |
-| 4.22.0  | March 2025  | Directory leases, Himmelblaud support |
-| 4.23.0  | Sept 2025   | SMB over QUIC, Unix Extensions by default |
+| Version | Release Date | Key Features                              |
+| ------- | ------------ | ----------------------------------------- |
+| 4.21.0  | Sept 2024    | Enhanced validation, TLS improvements     |
+| 4.22.0  | March 2025   | Directory leases, Himmelblaud support     |
+| 4.23.0  | Sept 2025    | SMB over QUIC, Unix Extensions by default |
 
 ### Configuration Files
 

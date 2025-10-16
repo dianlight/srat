@@ -2,7 +2,7 @@
 
 ## Component Hierarchy
 
-```
+```txt
 Volumes Page
 └── VolumeDetailsPanel
     ├── Disk Information Card
@@ -25,7 +25,7 @@ Volumes Page
 
 ## Data Flow
 
-```
+```txt
 ┌─────────────────────────────────────────────────────────────────┐
 │                     VolumeDetailsPanel                           │
 ├─────────────────────────────────────────────────────────────────┤
@@ -86,7 +86,7 @@ Volumes Page
 
 ## State Management Flow
 
-```
+```txt
 User Action (Click Button)
         │
         ▼
@@ -111,7 +111,8 @@ Component Re-renders with:
 ## API Integration Points
 
 ### Current State (Placeholder)
-```
+
+```txt
 useSmartOperations Hook
 ├─ startSelfTest()
 │  └─ console.log + toast (simulated)
@@ -124,7 +125,8 @@ useSmartOperations Hook
 ```
 
 ### Future State (After Backend Implementation)
-```
+
+```txt
 useSmartOperations Hook
 ├─ startSelfTest()
 │  └─ RTK Query: usePostDiskSmartTestStartMutation()
@@ -139,6 +141,7 @@ useSmartOperations Hook
 ## Type Definitions
 
 ### SmartInfo (from Backend)
+
 ```typescript
 interface SmartInfo {
   disk_type: "SATA" | "NVMe" | "SCSI" | "Unknown";
@@ -165,6 +168,7 @@ interface SmartRangeValue {
 ```
 
 ### SmartHealthStatus (Local)
+
 ```typescript
 interface SmartHealthStatus {
   passed: boolean;
@@ -174,6 +178,7 @@ interface SmartHealthStatus {
 ```
 
 ### SmartTestStatus (Local)
+
 ```typescript
 interface SmartTestStatus {
   status: "idle" | "running" | "completed" | "failed";
@@ -184,6 +189,7 @@ interface SmartTestStatus {
 ```
 
 ### SmartTestType
+
 ```typescript
 type SmartTestType = "short" | "long" | "conveyance";
 ```
@@ -191,7 +197,8 @@ type SmartTestType = "short" | "long" | "conveyance";
 ## User Interactions
 
 ### View SMART Information
-```
+
+```txt
 User opens Volumes page
     ↓
 User selects disk with SMART support
@@ -206,7 +213,8 @@ SmartStatusPanel displays:
 ```
 
 ### Start Self-Test
-```
+
+```txt
 User clicks "Start Test" button
     ↓
 Test Type Dialog opens
@@ -228,7 +236,8 @@ Progress bar shows test progress
 ```
 
 ### Abort Self-Test
-```
+
+```txt
 User clicks "Abort Test" button
     ↓
 Hook: onAbortTest()
@@ -243,7 +252,8 @@ Test status returns to "idle"
 ```
 
 ### Enable/Disable SMART
-```
+
+```txt
 User clicks "Enable SMART" or "Disable SMART"
     ↓
 Hook: onEnableSmart() or onDisableSmart()
@@ -257,7 +267,7 @@ UI updates to reflect new SMART state
 
 ## Disabled State Logic
 
-```
+```txt
 ┌─ Is smartInfo undefined?
 │  └─ YES → Component returns null (not rendered)
 │
@@ -276,7 +286,7 @@ UI updates to reflect new SMART state
 
 ## Error Handling
 
-```
+```txt
 User Action
     ↓
 Try/Catch in Hook
@@ -291,7 +301,7 @@ Try/Catch in Hook
 
 ## Testing Architecture
 
-```
+```txt
 SmartStatusPanel.test.tsx
 ├─ Test Suite: SmartStatusPanel Component
 ├─ Setup
@@ -326,7 +336,7 @@ SmartStatusPanel.test.tsx
 
 ## Future Enhancements Diagram
 
-```
+```txt
 Current Implementation
     │
     ├─→ Real-time Updates (SSE/WebSocket)
