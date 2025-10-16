@@ -4,6 +4,10 @@
 
 ## [ 🚧 Unreleased ]
 
+### 🐛 Bug Fixes
+
+- **Udev Event Parsing Error Handling**: Improved handling of malformed udev events to prevent spurious error reports to Rollbar. Malformed events with invalid environment data are now logged at debug level instead of error level, reducing noise in error tracking while maintaining visibility for legitimate errors.
+
 ### 🔄 Breaking Changes
 
 - **Rollbar v3.0.0-beta.4 Migration**: Updated Rollbar session replay configuration from `recorder` to `replay` to align with Rollbar.js v3.0.0-beta.4. This is an internal configuration change that does not affect end users.
