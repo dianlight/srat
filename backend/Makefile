@@ -156,14 +156,17 @@ patch:
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/jpillora/overseer
 	git -C ${HOME}/gohack/github.com/jpillora/overseer apply $(ROOT_DIR)/patches/overseer.patch
 	go tool -C $(SRC_DIRS) gohack get -vcs github.com/anatol/smart.go
-	git -C ${HOME}/gohack/github.com/anatol/smart.go apply $(ROOT_DIR)/patches/smart.go.patch
+	for patch in $(ROOT_DIR)/patches/smart.go-*; do \
+		echo "Applying $$patch..."; \
+		git -C ${HOME}/gohack/github.com/anatol/smart.go apply $$patch; \
+	done
 
 .PHONY: gen_patch
 gen_patch:
 	mkdir patches > /dev/null 2>&1 || :
 	cd ${HOME}/gohack/github.com/zarldev/goenums; git diff > $(ROOT_DIR)/patches/goenums.patch
 	cd ${HOME}/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
-	cd ${HOME}/gohack/github.com/anatol/smart.go; git diff > $(ROOT_DIR)/patches/smart.go.patch
+	cd ${HOME}/gohack/github.com/anatol/smart.go; git diff > $(ROOT_DIR)/patches/smart.go-srat#999.patch
 
 /mnt/remote/config.db3: mount_remote
 	[ -f /mnt/remote/config.db3 ] || echo "No remote mount found use make mount_remote"

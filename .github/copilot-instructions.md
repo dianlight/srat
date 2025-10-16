@@ -91,7 +91,9 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 SRAT uses **patched versions** of certain external Go libraries to enable additional functionality not available in the original packages. The patching is managed via `gohack` and applied automatically during builds.
 
 **Patched Libraries:**
-- `github.com/anatol/smart.go` — Adds `FileDescriptor()` method for direct device ioctl access
+- `github.com/anatol/smart.go` — Multiple patches applied in order:
+  - `smart.go-#010.patch` - Fix for SATA power_hours parsing (from wuxingzhong/smart.go)
+  - `smart.go-srat#999.patch` - Adds `FileDescriptor()` method for direct device ioctl access
 - `github.com/zarldev/goenums` — Custom enum generation improvements
 - `github.com/jpillora/overseer` — Process management enhancements
 
@@ -105,18 +107,22 @@ make gen_patch      # Generate new patch files from modified gohack libraries
 **How it works:**
 1. `make patch` uses `gohack` to clone libraries to `~/gohack/github.com/...`
 2. Applies patch files from `backend/patches/*.patch` using `git apply`
-3. Go modules use `replace` directives (temporary, removed by pre-commit) to point to patched versions
-4. Build process uses patched libraries automatically
+3. For smart.go, applies multiple patches in alphabetical order: `smart.go-*`
+4. Go modules use `replace` directives (temporary, removed by pre-commit) to point to patched versions
+5. Build process uses patched libraries automatically
 
 **Adding a new patch:**
 1. Run `make patch` to get libraries in `~/gohack`
 2. Edit the library code in `~/gohack/github.com/...`
 3. Test your changes with `make build` or `make test`
 4. Run `make gen_patch` to generate `.patch` files in `backend/patches/`
-5. Commit the patch file to the repository
+5. For smart.go, use naming pattern `smart.go-<priority>.patch` (e.g., `smart.go-#010.patch`, `smart.go-srat#999.patch`)
+6. Commit the patch file to the repository
 
 **Important notes:**
 - Patches are **required** for SMART service operations (enable/disable, test execution)
+- Multiple patches can be applied to the same library (e.g., smart.go has multiple patches)
+- Patches are applied in alphabetical order by filename
 - Pre-commit hooks remove `replace` directives from `go.mod` to keep it clean
 - CI/CD applies patches before building
 - Never commit `replace` directives in `go.mod`

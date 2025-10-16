@@ -264,20 +264,24 @@ func main() {
 
 **Library Patching:**
 
-The SMART service uses a patched version of `github.com/anatol/smart.go` to expose file descriptors needed for direct device control. The patch is managed via `gohack` and applied automatically during the build process:
+The SMART service uses a patched version of `github.com/anatol/smart.go` to expose file descriptors needed for direct device control. The patches are managed via `gohack` and applied automatically during the build process:
 
 ```bash
 cd backend
 make patch  # Applies all library patches including smart.go
 ```
 
-The patch adds a `FileDescriptor()` method to the `Device` interface and all device implementations (SATA, NVMe, SCSI), enabling direct ioctl access for operations like:
-- Enabling/disabling SMART
-- Starting/aborting self-tests
+Multiple patches are applied to smart.go in alphabetical order:
+1. `smart.go-#010.patch` - Fix for SATA power_hours parsing (from wuxingzhong/smart.go)
+2. `smart.go-srat#999.patch` - Adds `FileDescriptor()` method to Device interface
+
+These patches enable:
+- Correct power-on hours calculation using duration parsing
+- Direct ioctl access for operations like enabling/disabling SMART and starting/aborting self-tests
 - Advanced device control
 
 **Patch Details:**
-- Location: `backend/patches/smart.go.patch`
+- Location: `backend/patches/smart.go-*.patch`
 - Applied libraries: `github.com/anatol/smart.go`, `github.com/zarldev/goenums`, `github.com/jpillora/overseer`
 - Tool: `gohack` (manages local library modifications)
 - Automatic: Patches are applied during `make all` or `make patch`
