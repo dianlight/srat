@@ -110,8 +110,9 @@ const categories: { [key: string]: { [key: string]: string[] } | string[] } = {
 		'Access Control': ['allow_hosts'],
 	},
 	'Update': ['update_channel'],
-	'Telemetry': ['telemetry_mode', 'export_stats_to_ha'],
-	'HDIdle': ['hdidle_enabled', 'hdidle_default_idle_time', 'hdidle_default_command_type', 'hdidle_log_file', 'hdidle_debug', 'hdidle_ignore_spin_down_detection'],
+	'Telemetry': ['telemetry_mode'],
+	'HomeAssistant': ['export_stats_to_ha'],
+	'Power': ['hdidle_enabled', 'hdidle_default_idle_time', 'hdidle_default_command_type', 'hdidle_log_file', 'hdidle_debug', 'hdidle_ignore_spin_down_detection'],
 };
 
 // Build tree structure dynamically from categories
@@ -263,18 +264,6 @@ export function Settings() {
 			itemId={node.id}
 			label={node.label}
 			onClick={() => node.settingName && setSelectedSetting(node.settingName)}
-			sx={{
-				'& .MuiTreeItem-content': {
-					padding: '4px 8px',
-					borderRadius: '4px',
-					'&:hover': {
-						backgroundColor: 'action.hover',
-					},
-					'&.Mui-selected': {
-						backgroundColor: 'action.selected',
-					},
-				},
-			}}
 		>
 			{node.children?.map(renderTree)}
 		</TreeItem>
@@ -900,7 +889,7 @@ export function Settings() {
 
 	return (
 		<InView>
-			<Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+			<Box sx={{ height: 'max', display: 'flex', flexDirection: 'column' }}>
 				{/* Search Bar */}
 				<Paper sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
 					<TextField
@@ -943,7 +932,7 @@ export function Settings() {
 					</Paper>
 
 					{/* Right Panel - Settings */}
-					<Box sx={{ flex: 1, p: 3, overflow: 'auto' }}>
+					<Paper sx={{ flex: 1, p: 3, overflow: 'auto' }}>
 						<form
 							id="settingsform"
 							onSubmit={handleSubmit(handleCommit)}
@@ -970,7 +959,7 @@ export function Settings() {
 								</Box>
 							)}
 						</form>
-					</Box>
+					</Paper>
 				</Box>
 
 				{/* Bottom Button Bar */}
