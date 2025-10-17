@@ -36,7 +36,6 @@ import {
 import { useGetServerEventsQuery } from "../../store/sseApi";
 import { Padding } from "@mui/icons-material";
 import { getNodeEnv } from "../../macro/Environment" with { type: 'macro' };
-import { HDIdleGeneralSettings } from "./HDIdleGeneralSettings";
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
@@ -81,6 +80,16 @@ const HOSTNAME_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 // Allows alphanumeric characters and hyphens. Cannot start or end with a hyphen. Length 1-15.
 const WORKGROUP_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,13}[a-zA-Z0-9])?$/;
 
+// Extended Settings type to include HDIdle fields for the form
+interface ExtendedSettings extends Settings {
+	hdidle_enabled?: boolean;
+	hdidle_default_idle_time?: number;
+	hdidle_default_command_type?: string;
+	hdidle_log_file?: string;
+	hdidle_debug?: boolean;
+	hdidle_ignore_spin_down_detection?: boolean;
+}
+
 export function Settings() {
 	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
 
@@ -111,7 +120,7 @@ export function Settings() {
 		subscribe,
 	} = useForm({
 		mode: "onBlur",
-		values: globalConfig as Settings,
+		values: globalConfig as ExtendedSettings,
 		disabled: evdata?.hello?.read_only,
 	});
 	const [update, _updateResponse] = usePutApiSettingsMutation();
@@ -123,16 +132,15 @@ export function Settings() {
 	} = useGetApiHostnameQuery();
 
 	const bindAllWatch = watch("bind_all_interfaces");
-	const hdidleEnabledWatch = watch("hdidle_enabled");
 
 
-	function handleCommit(data: Settings) {
+	function handleCommit(data: ExtendedSettings) {
 		console.log(data);
 		update({ settings: data })
 			.unwrap()
 			.then((res) => {
 				//console.log(res)
-				reset(res as Settings);
+				reset(res as ExtendedSettings);
 			})
 			.catch((err) => {
 				console.error(err);
@@ -616,13 +624,135 @@ export function Settings() {
 					</Grid>
 
 					{/* HDIdle Disk Spin-Down Settings Section */}
-					<HDIdleGeneralSettings
-						control={control}
-						isEnabled={hdidleEnabledWatch ?? false}
-						readOnly={evdata?.hello?.read_only}
-					/>
-				</Grid>
-			</form>
+					<Grid size={12}>
+						<Divider sx={{ my: 2 }} />
+						<Typography variant="h6" gutterBottom>
+							HDIdle Disk Spin-Down Settings
+						</Typography>
+						<Typography variant="body2" color="text.secondary" gutterBottom>
+							Configure automatic disk spin-down to save power when disks are idle.
+						</Typography>
+					</Grid>
+
+					<Grid size={{ xs: 12 }}>
+						<Tooltip
+							title={
+								<>
+									<Typography variant="h6" component="div">
+										Enable HDIdle Service
+									</Typography>
+									<Typography variant="body2">
+										Automatically spin down idle disks after a configured timeout to reduce
+										power consumption and extend disk lifespan.
+									</Typography>
+								</>
+							}
+						>
+							<SwitchElement
+								name="hdidle_enabled"
+								label="Enable Automatic Disk Spin-Down"
+								control={control}
+								disabled={evdata?.hello?.read_only}
+								switchProps={{
+									"aria-label": "Enable HDIdle",
+									size: "small",
+								}}
+								labelPlacement="start"
+							/>
+						</Tooltip>
+					</Grid>
+
+					<Grid size={{ xs: 12, md: 4 }}>
+						<TextFieldElement
+							name="hdidle_default_idle_time"
+							label="Default Idle Time (seconds)"
+							type="number"
+							control={control}
+							required
+							disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
+							inputProps={{ min: 60 }}
+							size="small"
+						/>
+						<Typography variant="caption" color="text.secondary">
+							Time before spinning down idle disks (minimum: 60 seconds)
+						</Typography>
+					</Grid>
+
+					<Grid size={{ xs: 12, md: 4 }}>
+						<Tooltip
+							title={
+								<>
+									<Typography variant="body2">
+										<strong>SCSI:</strong> For most modern SATA/SAS drives
+									</Typography>
+									<Typography variant="body2">
+										<strong>ATA:</strong> For legacy ATA/IDE drives
+									</Typography>
+								</>
+							}
+						>
+							<AutocompleteElement
+								name="hdidle_default_command_type"
+								label="Default Command Type"
+								control={control}
+								options={["scsi", "ata"]}
+								autocompleteProps={{
+									size: "small",
+									disabled: !control._formValues?.hdidle_enabled || evdata?.hello?.read_only,
+									disableClearable: true,
+								}}
+							/>
+						</Tooltip>
+					</Grid>
+
+					<Grid size={{ xs: 12, md: 4 }}>
+						<TextFieldElement
+							name="hdidle_log_file"
+							label="Log File Path (optional)"
+							control={control}
+							disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
+							size="small"
+							placeholder="/var/log/hdidle.log"
+						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Tooltip
+							title={
+								<Typography variant="body2">
+									Enable detailed logging for troubleshooting disk spin-down issues
+								</Typography>
+							}
+						>
+							<CheckboxElement
+								name="hdidle_debug"
+								label="Enable Debug Logging"
+								control={control}
+								disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
+								size="small"
+							/>
+						</Tooltip>
+					</Grid>
+
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Tooltip
+							title={
+								<Typography variant="body2">
+									Force spin down even if disk reports it's already spun down
+								</Typography>
+							}
+						>
+							<CheckboxElement
+								name="hdidle_ignore_spin_down_detection"
+								label="Ignore Spin Down Detection"
+								control={control}
+								disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
+								size="small"
+							/>
+						</Tooltip>
+					</Grid>
+					<Divider />
+				</form>
 				<Divider />
 				<Stack
 					direction="row"
