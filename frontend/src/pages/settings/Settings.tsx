@@ -627,7 +627,7 @@ export function Settings() {
 					<Grid size={12}>
 						<Divider sx={{ my: 2 }} />
 						<Typography variant="h6" gutterBottom>
-							HDIdle Disk Spin-Down Settings
+							Disk Spin-Down Settings
 						</Typography>
 						<Typography variant="body2" color="text.secondary" gutterBottom>
 							Configure automatic disk spin-down to save power when disks are idle.
@@ -670,7 +670,18 @@ export function Settings() {
 							control={control}
 							required
 							disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
-							inputProps={{ min: 60 }}
+							slotProps={{
+								htmlInput: {
+									min: 60,
+								},
+								input: {
+									endAdornment: (
+										<InputAdornment position="end">
+											seconds
+										</InputAdornment>
+									),
+								},
+							}}
 							size="small"
 						/>
 						<Typography variant="caption" color="text.secondary">
@@ -751,7 +762,6 @@ export function Settings() {
 							/>
 						</Tooltip>
 					</Grid>
-					<Divider />
 				</form>
 				<Divider />
 				<Stack
