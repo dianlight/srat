@@ -240,6 +240,15 @@ export function VolumeDetailsPanel({
                     </Collapse>
                 </Card>
 
+                {/* HDIdle Disk-Specific Settings */}
+                {disk && (
+                    <HDIdleDiskSettings
+                        disk={disk}
+                        control={control}
+                        readOnly={false}
+                    />
+                )}
+
                 {/* S.M.A.R.T. Status Card */}
                 <SmartStatusPanel
                     smartInfo={disk.smart_info}
@@ -678,13 +687,6 @@ export function VolumeDetailsPanel({
                     </Card>
                 ) : null}
             </Stack>
-
-            {/* HDIdle Disk-Specific Settings */}
-            {disk && (
-                <Box sx={{ mt: 2 }}>
-                    <HDIdleDiskSettings disk={disk} control={control} readOnly={false} />
-                </Box>
-            )}
 
             {/* Preview dialog for disk object */}
             <PreviewDialog
