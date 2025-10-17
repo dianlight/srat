@@ -142,8 +142,9 @@ func checkSMARTStatus(dev *smart.SataDevice, devicePath string) (bool, errors.E)
 		return false, errors.Wrap(err, "failed to resolve device path")
 	}
 
-	// Open the device with read-only access (status check doesn't need write access)
-	fd, err := os.OpenFile(actualPath, os.O_RDONLY, 0)
+	// Open the device with read/write access
+	// SMART commands may require write access even for status checks
+	fd, err := os.OpenFile(actualPath, os.O_RDWR, 0)
 	if err != nil {
 		if os.IsPermission(err) {
 			return false, errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "permission denied opening device for SMART status check")
@@ -178,7 +179,7 @@ func checkSMARTStatus(dev *smart.SataDevice, devicePath string) (bool, errors.E)
 
 	if errno != 0 {
 		// Check for specific error codes that indicate SMART is not supported/enabled
-		if errno == 5 { // EIO - Input/output error, often means device doesn't support SMART
+		if errno == unix.EIO || errno == unix.EOPNOTSUPP || errno == unix.ENOTTY || errno == unix.EINVAL {
 			return false, nil
 		}
 		// SMART not supported or command failed
