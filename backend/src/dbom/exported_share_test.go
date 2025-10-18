@@ -105,6 +105,7 @@ func TestExportedShareMountPointData(t *testing.T) {
 		MountPointDataPath: "/mnt/data",
 	}
 
+	assert.Equal(t, "mounted-share", share.Name)
 	assert.Equal(t, "/mnt/data", share.MountPointDataPath)
 }
 
@@ -114,6 +115,7 @@ func TestExportedShareEmptyVetoFiles(t *testing.T) {
 		VetoFiles: datatypes.JSONSlice[string]{},
 	}
 
+	assert.Equal(t, "no-veto", share.Name)
 	assert.NotNil(t, share.VetoFiles)
 	assert.Empty(t, share.VetoFiles)
 }
@@ -124,6 +126,7 @@ func TestExportedShareRecycleBinDefault(t *testing.T) {
 		RecycleBin: false,
 	}
 
+	assert.Equal(t, "recycle-test", share.Name)
 	assert.False(t, share.RecycleBin)
 }
 
@@ -133,6 +136,7 @@ func TestExportedShareGuestOkDefault(t *testing.T) {
 		GuestOk: false,
 	}
 
+	assert.Equal(t, "guest-test", share.Name)
 	assert.False(t, share.GuestOk)
 }
 
@@ -154,6 +158,7 @@ func TestExportedShareMultipleUsers(t *testing.T) {
 		RoUsers: roUsers,
 	}
 
+	assert.Equal(t, "multi-user", share.Name)
 	assert.Len(t, share.Users, 3)
 	assert.Len(t, share.RoUsers, 2)
 

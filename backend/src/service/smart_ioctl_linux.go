@@ -107,7 +107,7 @@ func ioctlSMARTCommand(devicePath string, feature byte, lbaLow byte) error {
 }
 
 // enableSMART enables SMART on a SATA device
-func enableSMART(dev *smart.SataDevice, devicePath string) errors.E {
+func enableSMART(_ *smart.SataDevice, devicePath string) errors.E {
 	if err := ioctlSMARTCommand(devicePath, _SMART_ENABLE_OPERATIONS, 0); err != nil {
 		return errors.Wrap(err, "failed to enable SMART")
 	}
@@ -116,7 +116,7 @@ func enableSMART(dev *smart.SataDevice, devicePath string) errors.E {
 }
 
 // disableSMART disables SMART on a SATA device
-func disableSMART(dev *smart.SataDevice, devicePath string) errors.E {
+func disableSMART(_ *smart.SataDevice, devicePath string) errors.E {
 	if err := ioctlSMARTCommand(devicePath, _SMART_DISABLE_OPERATIONS, 0); err != nil {
 		return errors.Wrap(err, "failed to disable SMART")
 	}
@@ -125,7 +125,7 @@ func disableSMART(dev *smart.SataDevice, devicePath string) errors.E {
 }
 
 // executeSMARTTest starts a SMART self-test on a SATA device
-func executeSMARTTest(dev *smart.SataDevice, testType byte, devicePath string) errors.E {
+func executeSMARTTest(_ *smart.SataDevice, testType byte, devicePath string) errors.E {
 	if err := ioctlSMARTCommand(devicePath, _SMART_EXECUTE_OFFLINE_IMMEDIATE, testType); err != nil {
 		return errors.Wrap(err, "failed to execute SMART self-test")
 	}
@@ -135,7 +135,7 @@ func executeSMARTTest(dev *smart.SataDevice, testType byte, devicePath string) e
 
 // checkSMARTStatus queries whether SMART is enabled on a SATA device
 // Returns error if SMART is not supported or if the query fails
-func checkSMARTStatus(dev *smart.SataDevice, devicePath string) (bool, errors.E) {
+func checkSMARTStatus(_ *smart.SataDevice, devicePath string) (bool, errors.E) {
 	// Get the actual device path (resolve symlinks)
 	actualPath, err := getDevicePathForIOCTL(devicePath)
 	if err != nil {
@@ -194,7 +194,7 @@ func checkSMARTStatus(dev *smart.SataDevice, devicePath string) (bool, errors.E)
 }
 
 // parseSelfTestLog parses the SMART self-test log to get test status
-func parseSelfTestLog(log interface{}) (*dto.SmartTestStatus, errors.E) {
+func parseSelfTestLog(_ interface{}) (*dto.SmartTestStatus, errors.E) {
 	// This would parse the actual self-test log from smart.go
 	// For now, return a basic implementation
 	return &dto.SmartTestStatus{
@@ -204,7 +204,7 @@ func parseSelfTestLog(log interface{}) (*dto.SmartTestStatus, errors.E) {
 }
 
 // checkSMARTHealth evaluates SMART attributes to determine disk health
-func checkSMARTHealth(smartInfo *dto.SmartInfo, thresholds map[uint8]uint8, attrs map[uint8]interface{}) *dto.SmartHealthStatus {
+func checkSMARTHealth(smartInfo *dto.SmartInfo, _ map[uint8]uint8, _ map[uint8]interface{}) *dto.SmartHealthStatus {
 	health := &dto.SmartHealthStatus{
 		Passed:        true,
 		OverallStatus: "healthy",

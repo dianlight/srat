@@ -124,14 +124,6 @@ func main() {
 	upgradeCmd := flag.NewFlagSet("upgrade", flag.ExitOnError)
 	upgradeChannel := upgradeCmd.String("channel", "release", "Upgrade channel (release, prerelease, develop)")
 
-	hdidleCmd := flag.NewFlagSet("hdidle", flag.ExitOnError)
-	hdidleDebug := hdidleCmd.Bool("debug", false, "Enable debug logging")
-	hdidleDefaultIdle := hdidleCmd.Int("i", 600, "Default idle time in seconds before spinning down disks")
-	hdidleDefaultCommand := hdidleCmd.String("c", "scsi", "Default command type (scsi or ata)")
-	hdidleLogFile := hdidleCmd.String("l", "", "Log file path")
-	hdidleSymlinkPolicy := hdidleCmd.Int("s", 0, "Symlink resolution policy (0=once, 1=retry)")
-	hdidleIgnoreSpinDown := hdidleCmd.Bool("I", false, "Ignore spin down detection")
-
 	updateFilePath := flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
 
 	flag.Usage = func() {
@@ -146,8 +138,6 @@ func main() {
 		versionCmd.PrintDefaults()
 		fmt.Println("Command upgrade:")
 		upgradeCmd.PrintDefaults()
-		fmt.Println("Command hdidle:")
-		hdidleCmd.PrintDefaults()
 	}
 	startCmd.Usage = func() {
 		fmt.Println("Usage:")
@@ -164,10 +154,6 @@ func main() {
 	upgradeCmd.Usage = func() {
 		fmt.Println("Usage:")
 		upgradeCmd.PrintDefaults()
-	}
-	hdidleCmd.Usage = func() {
-		fmt.Println("Usage:")
-		hdidleCmd.PrintDefaults()
 	}
 
 	flag.Parse()
@@ -210,8 +196,6 @@ func main() {
 			os.Exit(1)
 		}
 		*upgradeChannel = normalizedUpgradeChannel
-	case "hdidle":
-		hdidleCmd.Parse(flag.Args()[1:])
 	case "version":
 		versionCmd.Parse(flag.Args()[1:])
 		fmt.Print(formatVersionMessage(*shortVersion))
@@ -535,46 +519,6 @@ func main() {
 	} else {
 		// Commands that don't need database (version and hdidle)
 		// Version command exits early, so this block handles hdidle
-		if command == "hdidle" {
-			// Create a minimal HDIdleService directly without full DI
-			hdidleService := service.NewHDIdleService(service.HDIdleServiceParams{
-				ApiContext:       apiCtx,
-				ApiContextCancel: apiCancel,
-				State:            &staticConfig,
-			})
-
-			slog.Info("Starting HDIdle monitoring service")
-
-			// Build config from CLI flags
-			config := &service.HDIdleConfig{
-				DefaultIdleTime:         *hdidleDefaultIdle,
-				DefaultCommandType:      *hdidleDefaultCommand,
-				Debug:                   *hdidleDebug,
-				LogFile:                 *hdidleLogFile,
-				SymlinkPolicy:           *hdidleSymlinkPolicy,
-				IgnoreSpinDownDetection: *hdidleIgnoreSpinDown,
-				Devices:                 []service.HDIdleDeviceConfig{},
-			}
-
-			// Start the service
-			err := hdidleService.Start(config)
-			if err != nil {
-				log.Fatalf("Failed to start HDIdle service: %v", err)
-			}
-
-			slog.Info("HDIdle monitoring service started successfully")
-
-			// Block until context is done
-			<-apiCtx.Done()
-
-			slog.Info("Context cancelled, stopping HDIdle service")
-			if stopErr := hdidleService.Stop(); stopErr != nil {
-				slog.Error("Error stopping HDIdle service", "err", stopErr)
-			}
-
-			// Exit early for hdidle command - no need to create FX app
-			os.Exit(0)
-		}
 	}
 
 	// Create FX app with all options

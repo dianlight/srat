@@ -104,6 +104,8 @@ func TestSharedResourceReadOnlyUsers(t *testing.T) {
 	assert.Len(t, resource.RoUsers, 2)
 	assert.Equal(t, "readwrite1", resource.Users[0].Username)
 	assert.Equal(t, "readonly1", resource.RoUsers[0].Username)
+	assert.Equal(t, "readonly2", resource.RoUsers[1].Username)
+	assert.Equal(t, "mixed-access", resource.Name)
 }
 
 func TestSharedResourceMountPointData(t *testing.T) {
@@ -122,6 +124,7 @@ func TestSharedResourceMountPointData(t *testing.T) {
 	assert.Equal(t, "/mnt/test", resource.MountPointData.Path)
 	assert.Equal(t, "/dev/sda1", resource.MountPointData.DeviceId)
 	assert.Equal(t, "HOST", resource.MountPointData.Type)
+	assert.Equal(t, "mounted-share", resource.Name)
 }
 
 func TestSharedResourceUsageTypes(t *testing.T) {
@@ -134,6 +137,7 @@ func TestSharedResourceUsageTypes(t *testing.T) {
 				Usage: usage,
 			}
 			assert.Equal(t, usage, resource.Usage)
+			assert.Equal(t, "test-share", resource.Name)
 		})
 	}
 }
@@ -168,6 +172,7 @@ func TestSharedResourcePointerFields(t *testing.T) {
 	assert.True(t, *resource.IsHAMounted)
 	assert.NotNil(t, resource.Invalid)
 	assert.False(t, *resource.Invalid)
+	assert.Equal(t, "pointer-test", resource.Name)
 }
 
 // Helper functions

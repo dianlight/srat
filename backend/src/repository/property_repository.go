@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
@@ -32,13 +33,14 @@ func NewPropertyRepositoryRepository(db *gorm.DB) PropertyRepositoryInterface {
 
 func (self *PropertyRepository) All(include_internal bool) (dbom.Properties, errors.E) {
 	var props []dbom.Property
-	err := self.db.Model(&dbom.Property{}).Find(&props, "internal = ? or internal = false", include_internal).Error
+	err := self.db.Model(&dbom.Property{}).Find(&props, "internal = ?", include_internal).Error
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	var propss dbom.Properties
 	propss = make(dbom.Properties, len(props))
 	for _, prop := range props {
+		slog.Error("Here", "d", prop)
 		propss[prop.Key] = prop
 	}
 	return propss, nil

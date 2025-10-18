@@ -22,6 +22,7 @@ func TestPropertyCreation(t *testing.T) {
 	assert.Equal(t, "test-value", prop.Value)
 	assert.False(t, prop.Internal)
 	assert.False(t, prop.CreatedAt.IsZero())
+	assert.False(t, prop.UpdatedAt.IsZero())
 }
 
 func TestPropertyInternalFlag(t *testing.T) {
@@ -39,6 +40,10 @@ func TestPropertyInternalFlag(t *testing.T) {
 
 	assert.True(t, internalProp.Internal)
 	assert.False(t, externalProp.Internal)
+	assert.Equal(t, "internal-key", internalProp.Key)
+	assert.Equal(t, "external-key", externalProp.Key)
+	assert.Equal(t, "internal-value", internalProp.Value)
+	assert.Equal(t, "external-value", externalProp.Value)
 }
 
 func TestPropertyValueTypes(t *testing.T) {
@@ -183,4 +188,6 @@ func TestPropertyDefaultInternal(t *testing.T) {
 
 	// Internal should be false by default in Go (zero value for bool)
 	assert.False(t, prop.Internal)
+	assert.Equal(t, "default-test", prop.Key)
+	assert.Equal(t, "value", prop.Value)
 }

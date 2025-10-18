@@ -168,7 +168,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 	}
 
 	// Migrate the schema
-	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{}, &Issue{}, &HDIdleConfig{}, &HDIdleDevice{})
+	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{}, &Issue{}, &HDIdleDevice{})
 	if errE = errors.WithStack(err); errE != nil {
 		slog.Error("Failed to migrate database", "error", errE, "path", v.ApiCtx.DatabasePath)
 		return replaceDatabase(lc, v)

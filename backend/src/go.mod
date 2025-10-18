@@ -39,6 +39,8 @@ require (
 	github.com/teivah/broadcast v0.1.0
 	gorm.io/datatypes v1.2.7
 	gorm.io/driver/sqlite v1.6.0
+	gorm.io/gen v0.3.27
+	gorm.io/plugin/dbresolver v1.6.2
 )
 
 require (
@@ -80,6 +82,7 @@ require (
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/errgo.v2 v2.1.0 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
+	gorm.io/hints v1.1.2 // indirect
 )
 
 require (
@@ -137,7 +140,7 @@ require (
 	golang.org/x/exp v0.0.0-20251009144603-d2f985daa21b
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/sync v0.17.0
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/libc v1.66.9 // indirect
@@ -172,6 +175,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
-

@@ -48,12 +48,12 @@ func NewSmartHandler(
 // Parameters:
 // - api: The huma.API instance to register the handlers with.
 func (h *SmartHandler) RegisterSmartHandlers(api huma.API) {
-	huma.Get(api, "/disk/{disk_id}/smart/info", h.GetSmartInfo, huma.OperationTags("smart"))
-	huma.Get(api, "/disk/{disk_id}/smart/health", h.GetSmartHealth, huma.OperationTags("smart"))
-	huma.Get(api, "/disk/{disk_id}/smart/test", h.GetSmartTestStatus, huma.OperationTags("smart"))
-	huma.Post(api, "/disk/{disk_id}/smart/test/start", h.StartSmartTest, huma.OperationTags("smart"))
-	huma.Post(api, "/disk/{disk_id}/smart/test/abort", h.AbortSmartTest, huma.OperationTags("smart"))
-	huma.Post(api, "/disk/{disk_id}/smart/enable", h.EnableSmart, huma.OperationTags("smart"))
+	huma.Get(api, "/disk/{disk_id}/smart/info", h.GetSmartInfo, huma.OperationTags("disk"))
+	huma.Get(api, "/disk/{disk_id}/smart/health", h.GetSmartHealth, huma.OperationTags("disk"))
+	huma.Get(api, "/disk/{disk_id}/smart/test", h.GetSmartTestStatus, huma.OperationTags("disk"))
+	huma.Post(api, "/disk/{disk_id}/smart/test/start", h.StartSmartTest, huma.OperationTags("disk"))
+	huma.Post(api, "/disk/{disk_id}/smart/test/abort", h.AbortSmartTest, huma.OperationTags("disk"))
+	huma.Post(api, "/disk/{disk_id}/smart/enable", h.EnableSmart, huma.OperationTags("disk"))
 	huma.Post(api, "/disk/{disk_id}/smart/disable", h.DisableSmart, huma.OperationTags("smart"))
 }
 

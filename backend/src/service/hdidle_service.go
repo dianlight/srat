@@ -11,50 +11,31 @@ import (
 	"github.com/adelolmo/hd-idle/sgio"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
+	"gorm.io/gorm"
 
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tlog"
 )
 
 const (
-	scsiCommand        = "scsi"
-	ataCommand         = "ata"
-	defaultIdleTime    = 600 * time.Second
-	symlinkResolveOnce = 0
-	//symlinkResolveRetry   = 1
 	defaultPoolMultiplier = 10
 )
 
 // HDIdleServiceInterface provides methods for managing hard disk idle monitoring
 type HDIdleServiceInterface interface {
 	// Start begins monitoring disk activity and spinning down idle disks
-	Start(config *HDIdleConfig) error
+	Start() errors.E
 	// Stop halts the monitoring process
-	Stop() error
+	Stop() errors.E
 	// IsRunning returns true if the service is currently monitoring
 	IsRunning() bool
 	// GetStatus returns current monitoring status and disk states
-	GetStatus() (*HDIdleStatus, error)
-}
-
-// HDIdleConfig represents configuration for hd-idle monitoring
-type HDIdleConfig struct {
-	// Devices to monitor with specific configurations
-	Devices []HDIdleDeviceConfig
-	// Default idle time in seconds before spinning down (default: 600)
-	DefaultIdleTime int
-	// Default command type: "scsi" or "ata" (default: "scsi")
-	DefaultCommandType string
-	// Default power condition (0-15) for SCSI devices (default: 0)
-	DefaultPowerCondition uint8
-	// Enable debug logging
-	Debug bool
-	// Log file path (empty = no file logging)
-	LogFile string
-	// Symlink resolution policy: 0 = resolve once, 1 = retry resolution
-	SymlinkPolicy int
-	// Ignore spin down detection and force spin down
-	IgnoreSpinDownDetection bool
+	GetStatus() (*HDIdleStatus, errors.E)
+	GetDeviceStatus(path string) (*HDIdleDiskStatus, errors.E)
+	GetDeviceConfig(path string) (*dto.HDIdleDeviceDTO, errors.E)
+	SaveDeviceConfig(device dto.HDIdleDeviceDTO) errors.E
 }
 
 // HDIdleDeviceConfig represents per-device configuration
@@ -64,7 +45,7 @@ type HDIdleDeviceConfig struct {
 	// Idle time in seconds before spinning down (0 = use default)
 	IdleTime int
 	// Command type: "scsi" or "ata" (empty = use default)
-	CommandType string
+	CommandType *dto.HdidleCommand
 	// Power condition for SCSI devices (0-15)
 	PowerCondition uint8
 }
@@ -85,15 +66,17 @@ type HDIdleDiskStatus struct {
 	SpinDownAt     time.Time
 	SpinUpAt       time.Time
 	IdleTime       time.Duration
-	CommandType    string
+	CommandType    dto.HdidleCommand
 	PowerCondition uint8
 }
 
-// HDIdleService implements HDIdleServiceInterface
-type HDIdleService struct {
+// hDIdleService implements HDIdleServiceInterface
+type hDIdleService struct {
 	apiContext       context.Context
 	apiContextCancel context.CancelFunc
 	state            *dto.ContextState
+	hdidlerepo       repository.HDIdleDeviceRepositoryInterface
+	settingService   SettingServiceInterface
 
 	// Internal state
 	mu        sync.RWMutex
@@ -102,16 +85,14 @@ type HDIdleService struct {
 	config    *internalConfig
 	diskStats []diskState
 	lastNow   time.Time
+	converter converter.DtoToDbomConverterImpl
 }
 
 type internalConfig struct {
 	Devices               []deviceConfig
 	DefaultIdle           time.Duration
-	DefaultCommandType    string
+	DefaultCommandType    dto.HdidleCommand
 	DefaultPowerCondition uint8
-	Debug                 bool
-	LogFile               string
-	SymlinkPolicy         int
 	IgnoreSpinDown        bool
 	SkewTime              time.Duration
 	NameMap               map[string]string
@@ -121,7 +102,7 @@ type deviceConfig struct {
 	Name           string
 	GivenName      string
 	Idle           time.Duration
-	CommandType    string
+	CommandType    dto.HdidleCommand
 	PowerCondition uint8
 }
 
@@ -129,7 +110,7 @@ type diskState struct {
 	Name           string
 	GivenName      string
 	IdleTime       time.Duration
-	CommandType    string
+	CommandType    dto.HdidleCommand
 	PowerCondition uint8
 	Reads          uint64
 	Writes         uint64
@@ -146,20 +127,28 @@ type HDIdleServiceParams struct {
 	ApiContext       context.Context
 	ApiContextCancel context.CancelFunc
 	State            *dto.ContextState
+	Hdidlerepo       repository.HDIdleDeviceRepositoryInterface
+	SettingService   SettingServiceInterface
 }
 
 // NewHDIdleService creates a new HDIdleService instance
-func NewHDIdleService(in HDIdleServiceParams) HDIdleServiceInterface {
-	return &HDIdleService{
+func NewHDIdleService(lc fx.Lifecycle, in HDIdleServiceParams) HDIdleServiceInterface {
+
+	hdidle_service := &hDIdleService{
 		apiContext:       in.ApiContext,
 		apiContextCancel: in.ApiContextCancel,
 		state:            in.State,
 		running:          false,
+		hdidlerepo:       in.Hdidlerepo,
+		settingService:   in.SettingService,
+		converter:        converter.DtoToDbomConverterImpl{},
 	}
+
+	return hdidle_service
 }
 
 // Start begins monitoring disk activity
-func (s *HDIdleService) Start(config *HDIdleConfig) error {
+func (s *hDIdleService) Start() errors.E {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -167,20 +156,16 @@ func (s *HDIdleService) Start(config *HDIdleConfig) error {
 		return errors.New("HDIdle service is already running")
 	}
 
-	// Validate configuration
-	if err := s.validateConfig(config); err != nil {
-		return errors.Wrap(err, "invalid configuration")
-	}
-
 	// Convert to internal config
-	intConfig := s.convertConfig(config)
+	intConfig, err := s.convertConfig()
+	if err != nil {
+		return err
+	}
 	s.config = intConfig
 	s.diskStats = []diskState{}
 	s.stopChan = make(chan struct{})
 	s.running = true
 	s.lastNow = time.Now()
-
-	tlog.Info("Starting HDIdle service", "config", s.formatConfig())
 
 	// Start monitoring in background
 	go s.monitorLoop()
@@ -189,7 +174,7 @@ func (s *HDIdleService) Start(config *HDIdleConfig) error {
 }
 
 // Stop halts the monitoring process
-func (s *HDIdleService) Stop() error {
+func (s *hDIdleService) Stop() errors.E {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -207,14 +192,14 @@ func (s *HDIdleService) Stop() error {
 }
 
 // IsRunning returns true if the service is currently monitoring
-func (s *HDIdleService) IsRunning() bool {
+func (s *hDIdleService) IsRunning() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.running
 }
 
 // GetStatus returns current monitoring status and disk states
-func (s *HDIdleService) GetStatus() (*HDIdleStatus, error) {
+func (s *hDIdleService) GetStatus() (*HDIdleStatus, errors.E) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -245,58 +230,94 @@ func (s *HDIdleService) GetStatus() (*HDIdleStatus, error) {
 	return status, nil
 }
 
-// validateConfig validates the configuration
-func (s *HDIdleService) validateConfig(config *HDIdleConfig) error {
-	if config == nil {
-		return errors.New("config is nil")
+func (s *hDIdleService) GetDeviceStatus(path string) (*HDIdleDiskStatus, errors.E) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if !s.running {
+		return &HDIdleDiskStatus{}, nil
 	}
 
-	if config.DefaultCommandType != "" && config.DefaultCommandType != scsiCommand && config.DefaultCommandType != ataCommand {
-		return errors.Errorf("invalid default command type: %s (must be 'scsi' or 'ata')", config.DefaultCommandType)
-	}
-
-	for _, dev := range config.Devices {
-		if dev.Name == "" {
-			return errors.New("device name cannot be empty")
+	// Find disk state by given name or resolved name
+	for _, ds := range s.diskStats {
+		if ds.GivenName == path || ds.Name == path {
+			return &HDIdleDiskStatus{
+				Name:           ds.Name,
+				GivenName:      ds.GivenName,
+				SpunDown:       ds.SpunDown,
+				LastIOAt:       ds.LastIOAt,
+				SpinDownAt:     ds.SpinDownAt,
+				SpinUpAt:       ds.SpinUpAt,
+				IdleTime:       ds.IdleTime,
+				CommandType:    ds.CommandType,
+				PowerCondition: ds.PowerCondition,
+			}, nil
 		}
-		if dev.CommandType != "" && dev.CommandType != scsiCommand && dev.CommandType != ataCommand {
-			return errors.Errorf("invalid command type for device %s: %s", dev.Name, dev.CommandType)
-		}
 	}
 
+	return &HDIdleDiskStatus{}, errors.Errorf("disk %s not found", path)
+}
+
+func (s *hDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDeviceDTO, errors.E) {
+	device, err := s.hdidlerepo.LoadByPath(path)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return &dto.HDIdleDeviceDTO{DevicePath: path}, nil
+		}
+		return nil, err
+	}
+
+	if device == nil {
+		return nil, errors.Errorf("device %s not found", path)
+	}
+
+	dtoDevice, errN := s.converter.HDIdleDeviceToHDIdleDeviceDTO(*device)
+	if errN != nil {
+		return nil, errors.WithStack(errN)
+	}
+	return &dtoDevice, nil
+}
+func (s *hDIdleService) SaveDeviceConfig(device dto.HDIdleDeviceDTO) errors.E {
+	dbDevice, err := s.converter.HDIdleDeviceDTOToHDIdleDevice(device)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	errE := s.hdidlerepo.Update(&dbDevice)
+	if errE != nil {
+		return errE
+	}
 	return nil
 }
 
 // convertConfig converts external config to internal config
-func (s *HDIdleService) convertConfig(config *HDIdleConfig) *internalConfig {
+func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
+
+	settings, err := s.settingService.Load()
+	if err != nil {
+		return nil, err
+	}
+
 	intConfig := &internalConfig{
 		Devices:               []deviceConfig{},
-		DefaultIdle:           time.Duration(config.DefaultIdleTime) * time.Second,
-		DefaultCommandType:    config.DefaultCommandType,
-		DefaultPowerCondition: config.DefaultPowerCondition,
-		Debug:                 config.Debug,
-		LogFile:               config.LogFile,
-		SymlinkPolicy:         config.SymlinkPolicy,
-		IgnoreSpinDown:        config.IgnoreSpinDownDetection,
+		DefaultIdle:           time.Duration((*settings).HDIdleDefaultIdleTime) * time.Second,
+		DefaultCommandType:    (*settings).HDIdleDefaultCommandType,
+		DefaultPowerCondition: (*settings).HDIdleDefaultPowerCondition,
+		IgnoreSpinDown:        settings.HDIdleIgnoreSpinDownDetection != nil && *settings.HDIdleIgnoreSpinDownDetection,
 		NameMap:               make(map[string]string),
 	}
 
-	// Set defaults if not specified
-	if intConfig.DefaultIdle == 0 {
-		intConfig.DefaultIdle = defaultIdleTime
-	}
-	if intConfig.DefaultCommandType == "" {
-		intConfig.DefaultCommandType = scsiCommand
+	devices, err := s.hdidlerepo.LoadAll()
+	if err != nil {
+		tlog.Error("Failed to load HDIdle devices from repository", "error", err)
+		return nil, errors.Wrap(err, "failed to load HDIdle devices")
 	}
 
 	// Convert devices
-	for _, dev := range config.Devices {
-		deviceRealPath, err := io.RealPath(dev.Name)
+	for _, dev := range devices {
+		deviceRealPath, err := io.RealPath(dev.DevicePath)
 		if err != nil {
 			deviceRealPath = ""
-			if config.Debug {
-				tlog.Warn("Unable to resolve symlink", "device", dev.Name, "error", err)
-			}
 		}
 
 		idle := time.Duration(dev.IdleTime) * time.Second
@@ -305,21 +326,21 @@ func (s *HDIdleService) convertConfig(config *HDIdleConfig) *internalConfig {
 		}
 
 		cmdType := dev.CommandType
-		if cmdType == "" {
-			cmdType = intConfig.DefaultCommandType
+		if cmdType == nil {
+			cmdType = &intConfig.DefaultCommandType
 		}
 
 		devConfig := deviceConfig{
 			Name:           deviceRealPath,
-			GivenName:      dev.Name,
+			GivenName:      dev.DevicePath,
 			Idle:           idle,
-			CommandType:    cmdType,
+			CommandType:    *cmdType,
 			PowerCondition: dev.PowerCondition,
 		}
 
 		intConfig.Devices = append(intConfig.Devices, devConfig)
 		if deviceRealPath != "" {
-			intConfig.NameMap[deviceRealPath] = dev.Name
+			intConfig.NameMap[deviceRealPath] = dev.DevicePath
 		}
 	}
 
@@ -327,11 +348,12 @@ func (s *HDIdleService) convertConfig(config *HDIdleConfig) *internalConfig {
 	interval := s.calculatePoolInterval(intConfig)
 	intConfig.SkewTime = interval * 3
 
-	return intConfig
+	return intConfig, nil
 }
 
 // calculatePoolInterval determines the polling interval
-func (s *HDIdleService) calculatePoolInterval(config *internalConfig) time.Duration {
+func (s *hDIdleService) calculatePoolInterval(config *internalConfig) time.Duration {
+	defaultIdleTime := config.DefaultIdle
 	if len(config.Devices) == 0 {
 		return defaultIdleTime / defaultPoolMultiplier
 	}
@@ -354,7 +376,7 @@ func (s *HDIdleService) calculatePoolInterval(config *internalConfig) time.Durat
 }
 
 // monitorLoop is the main monitoring loop
-func (s *HDIdleService) monitorLoop() {
+func (s *hDIdleService) monitorLoop() {
 	s.mu.RLock()
 	if s.config == nil {
 		s.mu.RUnlock()
@@ -379,7 +401,7 @@ func (s *HDIdleService) monitorLoop() {
 }
 
 // observeDiskActivity observes disk activity and spins down idle disks
-func (s *HDIdleService) observeDiskActivity() {
+func (s *hDIdleService) observeDiskActivity() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -402,10 +424,7 @@ func (s *HDIdleService) observeDiskActivity() {
 }
 
 // resolveSymlinks resolves device symlinks based on policy
-func (s *HDIdleService) resolveSymlinks() {
-	if s.config.SymlinkPolicy == symlinkResolveOnce {
-		return
-	}
+func (s *hDIdleService) resolveSymlinks() {
 
 	for i := range s.config.Devices {
 		device := &s.config.Devices[i]
@@ -413,16 +432,13 @@ func (s *HDIdleService) resolveSymlinks() {
 			realPath, err := io.RealPath(device.GivenName)
 			if err == nil {
 				device.Name = realPath
-				s.logToFile(fmt.Sprintf("symlink %s resolved to %s", device.GivenName, realPath))
-			} else if s.config.Debug {
-				tlog.Warn("Cannot resolve symlink", "device", device.GivenName, "error", err)
 			}
 		}
 	}
 }
 
 // updateDiskState updates the state of a disk based on current activity
-func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now time.Time) {
+func (s *hDIdleService) updateDiskState(name string, reads, writes uint64, now time.Time) {
 	// Find existing disk state
 	dsi := s.findDiskStateIndex(name)
 	if dsi < 0 {
@@ -440,7 +456,6 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 		ds.SpinUpAt = now
 		ds.LastIOAt = now
 		ds.SpunDown = false
-		s.logSpinupAfterSleep(ds.Name)
 	}
 
 	// Check if disk had activity
@@ -475,7 +490,6 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 			// Disk just spun up
 			givenName := s.resolveDeviceGivenName(ds.Name)
 			tlog.Info("Spinup", "disk", givenName)
-			s.logSpinup(ds, now, givenName)
 			ds.SpinUpAt = now
 		}
 
@@ -484,24 +498,10 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 		ds.LastIOAt = now
 		ds.SpunDown = false
 	}
-
-	// Debug logging
-	if s.config.Debug {
-		idleDuration := now.Sub(ds.LastIOAt)
-		tlog.Debug("Disk state",
-			"disk", ds.Name,
-			"command", ds.CommandType,
-			"spunDown", ds.SpunDown,
-			"reads", ds.Reads,
-			"writes", ds.Writes,
-			"idleTime", ds.IdleTime.Seconds(),
-			"idleDuration", idleDuration.Seconds(),
-		)
-	}
 }
 
 // findDiskStateIndex finds the index of a disk in the state array
-func (s *HDIdleService) findDiskStateIndex(diskName string) int {
+func (s *hDIdleService) findDiskStateIndex(diskName string) int {
 	for i, stats := range s.diskStats {
 		if stats.Name == diskName {
 			return i
@@ -511,7 +511,7 @@ func (s *HDIdleService) findDiskStateIndex(diskName string) int {
 }
 
 // initDiskState initializes a new disk state
-func (s *HDIdleService) initDiskState(name string, reads, writes uint64, now time.Time) diskState {
+func (s *hDIdleService) initDiskState(name string, reads, writes uint64, now time.Time) diskState {
 	idle := s.config.DefaultIdle
 	command := s.config.DefaultCommandType
 	powerCondition := s.config.DefaultPowerCondition
@@ -541,7 +541,7 @@ func (s *HDIdleService) initDiskState(name string, reads, writes uint64, now tim
 }
 
 // resolveDeviceGivenName resolves the given name for a device
-func (s *HDIdleService) resolveDeviceGivenName(name string) string {
+func (s *hDIdleService) resolveDeviceGivenName(name string) string {
 	if givenName, ok := s.config.NameMap[name]; ok {
 		return givenName
 	}
@@ -549,54 +549,19 @@ func (s *HDIdleService) resolveDeviceGivenName(name string) string {
 }
 
 // spindownDisk spins down a disk using the appropriate command
-func (s *HDIdleService) spindownDisk(device, command string, powerCondition uint8) error {
+func (s *hDIdleService) spindownDisk(device string, command dto.HdidleCommand, powerCondition uint8) errors.E {
 	switch command {
-	case scsiCommand:
+	case dto.HdidleCommands.SCSICOMMAND:
 		if err := sgio.StartStopScsiDevice(device, powerCondition); err != nil {
 			return errors.Errorf("cannot spindown scsi disk %s: %w", device, err)
 		}
 		return nil
-	case ataCommand:
-		if err := sgio.StopAtaDevice(device, s.config.Debug); err != nil {
+	case dto.HdidleCommands.ATACOMMAND:
+		if err := sgio.StopAtaDevice(device, false); err != nil {
 			return errors.Errorf("cannot spindown ata disk %s: %w", device, err)
 		}
 		return nil
 	default:
 		return errors.Errorf("unknown command type: %s", command)
 	}
-}
-
-// logSpinup logs a disk spinup event
-func (s *HDIdleService) logSpinup(ds *diskState, now time.Time, givenName string) {
-	text := fmt.Sprintf("date: %s, time: %s, disk: %s, running: %d, stopped: %d",
-		now.Format("2006-01-02"), now.Format("15:04:05"), givenName,
-		int(ds.SpinDownAt.Sub(ds.SpinUpAt).Seconds()), int(now.Sub(ds.SpinDownAt).Seconds()))
-	s.logToFile(text)
-}
-
-// logSpinupAfterSleep logs a disk spinup after system sleep
-func (s *HDIdleService) logSpinupAfterSleep(name string) {
-	now := time.Now()
-	text := fmt.Sprintf("date: %s, time: %s, disk: %s, assuming disk spun up after long sleep",
-		now.Format("2006-01-02"), now.Format("15:04:05"), name)
-	s.logToFile(text)
-}
-
-// logToFile writes a message to the log file
-func (s *HDIdleService) logToFile(text string) {
-	// Implementation intentionally minimal - use tlog for logging
-	// This is kept for compatibility with hd-idle behavior
-	if s.config.LogFile != "" {
-		tlog.Debug("HDIdle log", "message", text)
-	}
-}
-
-// formatConfig formats the config for logging
-func (s *HDIdleService) formatConfig() string {
-	if s.config == nil {
-		return "nil"
-	}
-	return fmt.Sprintf("symlinkPolicy=%d, defaultIdle=%vs, defaultCommand=%s, defaultPowerCondition=%v, debug=%t, devices=%d, ignoreSpinDown=%t",
-		s.config.SymlinkPolicy, s.config.DefaultIdle.Seconds(), s.config.DefaultCommandType,
-		s.config.DefaultPowerCondition, s.config.Debug, len(s.config.Devices), s.config.IgnoreSpinDown)
 }

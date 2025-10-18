@@ -19,12 +19,7 @@ import (
 type DtoToDbomConverter interface {
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
-	HDIdleConfigDTOToHDIdleConfig(source dto.HDIdleConfigDTO) (dbom.HDIdleConfig, error)
-
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdleDeviceDTO) (dbom.HDIdleDevice, error)
-
-	HDIdleConfigToHDIdleConfigDTO(source dbom.HDIdleConfig) (dto.HDIdleConfigDTO, error)
 
 	HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDeviceDTO, error)
 
