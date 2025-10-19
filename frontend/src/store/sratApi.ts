@@ -834,7 +834,7 @@ export type ErrorDetail = {
   /** Error message text */
   message?: string;
   /** The value at the given location */
-  value?: any;
+  value?: unknown;
 };
 export type ErrorModel = {
   /** A URL to the JSON Schema for this object. */
@@ -868,7 +868,7 @@ export type JsonPatchOp = {
   /** JSON Pointer to the field being operated on, or the destination of a move/copy operation */
   path: string;
   /** The value to set */
-  value?: any;
+  value?: unknown;
 };
 export type HdIdleDiskStatus = {
   /** A URL to the JSON Schema for this object. */
@@ -1216,7 +1216,7 @@ export type User = {
   ro_shares?: string[] | null;
   rw_shares?: string[] | null;
   username: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 export type SharedResource = {
   /** A URL to the JSON Schema for this object. */
@@ -1235,7 +1235,7 @@ export type SharedResource = {
   usage?: Usage;
   users?: User[] | null;
   veto_files?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 };
 export type Welcome = {
   active_clients: number;
