@@ -19,6 +19,7 @@ import {
     usePutApiSettingsMutation,
     useGetApiSettingsQuery,
     Telemetry_mode,
+    type Settings,
 } from '../store/sratApi';
 
 interface TelemetryModalProps {
@@ -51,7 +52,7 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
                 settings: {
                     ...settings,
                     telemetry_mode: selectedMode,
-                },
+                } as Settings,
             }).unwrap();
 
             onClose();

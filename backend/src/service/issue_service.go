@@ -4,7 +4,6 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
-	"go.uber.org/fx"
 )
 
 // IssueService handles business logic for issues.
@@ -71,6 +70,3 @@ func (s *IssueService) FindOpen() ([]*dto.Issue, error) {
 	}
 	return s.converter.ToDtoList(dboms), nil
 }
-
-// Fx provides the issue service as a dependency.
-var Fx = fx.Provide(NewIssueService)

@@ -26,8 +26,10 @@ export const useTelemetryModal = () => {
 		}
 
 		// Type guard to ensure settings is a Settings object and not an error
-		const isValidSettings = (data: any): data is Settings => {
-			return data && typeof data === "object" && "telemetry_mode" in data;
+		const isValidSettings = (data: unknown): data is Settings => {
+			return (
+				data !== null && typeof data === "object" && "telemetry_mode" in data
+			);
 		};
 
 		// Only show modal if:

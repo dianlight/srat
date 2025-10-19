@@ -1,7 +1,21 @@
 import "../../../../../test/setup";
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
 
 describe("PartitionActions component", () => {
+    const createMatchMedia = (matches: boolean) => () => ({
+        matches,
+        addListener: () => { },
+        removeListener: () => { },
+        addEventListener: () => { },
+        removeEventListener: () => { },
+        dispatchEvent: () => false,
+        onchange: null,
+        media: "",
+    }) as any;
+
+    beforeEach(() => {
+        (window as any).matchMedia = createMatchMedia(false); // Force desktop mode
+    });
     const buildPartition = (overrides?: Partial<any>) => ({
         name: "sda1",
         mount_point_data: [
@@ -117,7 +131,7 @@ describe("PartitionActions component", () => {
 
     it("renders mount action for unmounted partition", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -129,7 +143,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -143,14 +157,18 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        // Check for either button label or menu item text
-        const mountAction = screen.queryByLabelText(/mount partition/i) || await screen.findByText(/mount partition/i);
-        expect(mountAction).toBeTruthy();
+        // Check that there's exactly one mount partition button within the container
+        const mountButtons = within(container).getAllByLabelText("mount partition");
+        expect(mountButtons).toHaveLength(1);
+
+        // Check that there's exactly one enable mount at startup button within the container
+        const enableButtons = within(container).getAllByLabelText("enable mount at startup");
+        expect(enableButtons).toHaveLength(1);
     });
 
     it("renders unmount action for mounted partition", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -162,7 +180,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -176,15 +194,14 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        // Check for unmount action (either button or menu item)
-        const unmountAction = screen.queryAllByLabelText(/unmount partition/i);
-        const unmountText = screen.queryAllByText(/unmount partition/i);
-        expect(unmountAction.length > 0 || unmountText.length > 0).toBe(true);
+        // Check for unmount action within the container (menu items render in portal)
+        const unmountButtons = within(container).getAllByLabelText("unmount partition");
+        expect(unmountButtons).toHaveLength(1);
     });
 
     it("renders force unmount action for mounted partition", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -196,7 +213,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -210,13 +227,13 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        const forceUnmountAction = screen.queryByLabelText(/force unmount partition/i) || await screen.findByText(/force unmount partition/i);
-        expect(forceUnmountAction).toBeTruthy();
+        const forceUnmountButtons = within(container).getAllByLabelText("force unmount partition");
+        expect(forceUnmountButtons).toHaveLength(1);
     });
 
     it("renders enable automount action when not enabled", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -229,7 +246,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -243,13 +260,13 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        const enableButton = screen.queryByLabelText(/enable mount at startup/i) || await screen.findByText(/enable mount at startup/i);
-        expect(enableButton).toBeTruthy();
+        const enableButtons = within(container).getAllByLabelText("enable mount at startup");
+        expect(enableButtons).toHaveLength(1);
     });
 
     it("renders disable automount action when enabled", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -262,7 +279,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -276,13 +293,13 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        const disableButton = screen.queryByLabelText(/disable mount at startup/i) || await screen.findByText(/disable mount at startup/i);
-        expect(disableButton).toBeTruthy();
+        const disableButtons = within(container).getAllByLabelText("disable mount at startup");
+        expect(disableButtons).toHaveLength(1);
     });
 
     it("renders create share action for mounted partition under /mnt/", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -295,7 +312,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -309,13 +326,13 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        const createShareButton = screen.queryByLabelText(/create share/i) || await screen.findByText(/create share/i);
-        expect(createShareButton).toBeTruthy();
+        const createShareButtons = within(container).getAllByLabelText("create share");
+        expect(createShareButtons).toHaveLength(1);
     });
 
     it("renders go to share action for partition with shares", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -328,7 +345,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -342,13 +359,13 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        const goToShareButton = screen.queryByLabelText(/go to share/i) || await screen.findByText(/go to share/i);
-        expect(goToShareButton).toBeTruthy();
+        const goToShareButtons = within(container).getAllByLabelText("go to share");
+        expect(goToShareButtons).toHaveLength(1);
     });
 
     it("calls onMount when mount button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -365,7 +382,7 @@ describe("PartitionActions component", () => {
             mountCalled = true;
         };
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -379,21 +396,17 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        // Find the mount action (button or menu item)
-        const mountAction = screen.queryByLabelText(/mount partition/i);
-        if (mountAction) {
-            fireEvent.click(mountAction);
-        } else {
-            const menuItem = await screen.findByText(/mount partition/i);
-            fireEvent.click(menuItem);
-        }
+        // Find the mount action within the container
+        const mountButtons = within(container).getAllByLabelText("mount partition");
+        expect(mountButtons).toHaveLength(1);
+        fireEvent.click(mountButtons[0]!);
 
         expect(mountCalled).toBe(true);
     });
 
     it("calls onUnmount when unmount button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -410,7 +423,7 @@ describe("PartitionActions component", () => {
             unmountCalled = true;
         };
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -424,25 +437,17 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        // Find the unmount action
-        const unmountButtons = screen.queryAllByLabelText(/unmount partition/i);
-        const firstUnmountButton = unmountButtons[0];
-        if (unmountButtons.length > 0 && firstUnmountButton) {
-            fireEvent.click(firstUnmountButton);
-        } else {
-            const menuItems = await screen.findAllByText(/unmount partition/i);
-            const firstMenuItem = menuItems[0];
-            if (firstMenuItem) {
-                fireEvent.click(firstMenuItem);
-            }
-        }
+        // Find the unmount action within the container
+        const unmountButtons = within(container).getAllByLabelText("unmount partition");
+        expect(unmountButtons).toHaveLength(1);
+        fireEvent.click(unmountButtons[0]!);
 
         expect(unmountCalled).toBe(true);
     });
 
     it("calls onToggleAutomount when automount button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -460,7 +465,7 @@ describe("PartitionActions component", () => {
             toggleCalled = true;
         };
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -474,20 +479,16 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        const toggleButton = screen.queryByLabelText(/enable mount at startup/i);
-        if (toggleButton) {
-            fireEvent.click(toggleButton);
-        } else {
-            const menuItem = await screen.findByText(/enable mount at startup/i);
-            fireEvent.click(menuItem);
-        }
+        const toggleButtons = within(container).getAllByLabelText("enable mount at startup");
+        expect(toggleButtons).toHaveLength(1);
+        fireEvent.click(toggleButtons[0]!);
 
         expect(toggleCalled).toBe(true);
     });
 
     it("calls onCreateShare when create share button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -505,7 +506,7 @@ describe("PartitionActions component", () => {
             createShareCalled = true;
         };
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -519,20 +520,16 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        const createShareButton = screen.queryByLabelText(/create share/i);
-        if (createShareButton) {
-            fireEvent.click(createShareButton);
-        } else {
-            const menuItem = await screen.findByText(/create share/i);
-            fireEvent.click(menuItem);
-        }
+        const createShareButtons = within(container).getAllByLabelText("create share");
+        expect(createShareButtons).toHaveLength(1);
+        fireEvent.click(createShareButtons[0]!);
 
         expect(createShareCalled).toBe(true);
     });
 
     it("calls onGoToShare when go to share button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         const partition = buildPartition({
@@ -550,7 +547,7 @@ describe("PartitionActions component", () => {
             goToShareCalled = true;
         };
 
-        render(
+        const { container } = render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -564,13 +561,9 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, fireEvent);
 
-        const goToShareButton = screen.queryByLabelText(/go to share/i);
-        if (goToShareButton) {
-            fireEvent.click(goToShareButton);
-        } else {
-            const menuItem = await screen.findByText(/go to share/i);
-            fireEvent.click(menuItem);
-        }
+        const goToShareButtons = within(container).getAllByLabelText("go to share");
+        expect(goToShareButtons).toHaveLength(1);
+        fireEvent.click(goToShareButtons[0]!);
 
         expect(goToShareCalled).toBe(true);
     });

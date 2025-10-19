@@ -358,7 +358,7 @@ func TestEventType_All(t *testing.T) {
 	for range dto.EventTypes.All() {
 		count++
 	}
-	assert.Equal(t, 5, count)
+	assert.Equal(t, 6, count)
 }
 
 func TestEventType_MarshalYAML(t *testing.T) {

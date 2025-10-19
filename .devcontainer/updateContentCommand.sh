@@ -25,8 +25,8 @@ mkdir -p /dev/disk/by-id
 ln -s ../../vdb1 /dev/disk/by-id/1234-5678
 
 #workarund for @rtk-query/codegen-openapi that don't work with bun
-apk add --no-cache nodejs npm
-npm install -g @rtk-query/codegen-openapi ||:
+#apk add --no-cache nodejs npm
+#npm install -g @rtk-query/codegen-openapi ||:
 
 #enable nix
 echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf ||:

@@ -1,6 +1,7 @@
 import { emptySplitApi as api } from "./emptyApi";
 export const addTagTypes = [
   "system",
+  "disk",
   "smart",
   "Issues",
   "samba",
@@ -21,6 +22,46 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/capabilities` }),
         providesTags: ["system"],
       }),
+      getApiDiskByDiskIdHdidleConfig: build.query<
+        GetApiDiskByDiskIdHdidleConfigApiResponse,
+        GetApiDiskByDiskIdHdidleConfigApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/hdidle/config`,
+        }),
+        providesTags: ["disk"],
+      }),
+      patchApiDiskByDiskIdHdidleConfig: build.mutation<
+        PatchApiDiskByDiskIdHdidleConfigApiResponse,
+        PatchApiDiskByDiskIdHdidleConfigApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/hdidle/config`,
+          method: "PATCH",
+          body: queryArg.body,
+        }),
+        invalidatesTags: ["disk"],
+      }),
+      putApiDiskByDiskIdHdidleConfig: build.mutation<
+        PutApiDiskByDiskIdHdidleConfigApiResponse,
+        PutApiDiskByDiskIdHdidleConfigApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/hdidle/config`,
+          method: "PUT",
+          body: queryArg.hdIdleDeviceDto,
+        }),
+        invalidatesTags: ["disk"],
+      }),
+      getApiDiskByDiskIdHdidleInfo: build.query<
+        GetApiDiskByDiskIdHdidleInfoApiResponse,
+        GetApiDiskByDiskIdHdidleInfoApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/hdidle/info`,
+        }),
+        providesTags: ["disk"],
+      }),
       postApiDiskByDiskIdSmartDisable: build.mutation<
         PostApiDiskByDiskIdSmartDisableApiResponse,
         PostApiDiskByDiskIdSmartDisableApiArg
@@ -39,7 +80,7 @@ const injectedRtkApi = api
           url: `/api/disk/${queryArg.diskId}/smart/enable`,
           method: "POST",
         }),
-        invalidatesTags: ["smart"],
+        invalidatesTags: ["disk"],
       }),
       getApiDiskByDiskIdSmartHealth: build.query<
         GetApiDiskByDiskIdSmartHealthApiResponse,
@@ -48,7 +89,7 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/api/disk/${queryArg.diskId}/smart/health`,
         }),
-        providesTags: ["smart"],
+        providesTags: ["disk"],
       }),
       getApiDiskByDiskIdSmartInfo: build.query<
         GetApiDiskByDiskIdSmartInfoApiResponse,
@@ -57,7 +98,7 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/api/disk/${queryArg.diskId}/smart/info`,
         }),
-        providesTags: ["smart"],
+        providesTags: ["disk"],
       }),
       getApiDiskByDiskIdSmartTest: build.query<
         GetApiDiskByDiskIdSmartTestApiResponse,
@@ -66,7 +107,7 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/api/disk/${queryArg.diskId}/smart/test`,
         }),
-        providesTags: ["smart"],
+        providesTags: ["disk"],
       }),
       postApiDiskByDiskIdSmartTestAbort: build.mutation<
         PostApiDiskByDiskIdSmartTestAbortApiResponse,
@@ -76,7 +117,7 @@ const injectedRtkApi = api
           url: `/api/disk/${queryArg.diskId}/smart/test/abort`,
           method: "POST",
         }),
-        invalidatesTags: ["smart"],
+        invalidatesTags: ["disk"],
       }),
       postApiDiskByDiskIdSmartTestStart: build.mutation<
         PostApiDiskByDiskIdSmartTestStartApiResponse,
@@ -87,7 +128,7 @@ const injectedRtkApi = api
           method: "POST",
           body: queryArg.postDiskByDiskIdSmartTestStartRequest,
         }),
-        invalidatesTags: ["smart"],
+        invalidatesTags: ["disk"],
       }),
       getApiFilesystems: build.query<
         GetApiFilesystemsApiResponse,
@@ -431,6 +472,36 @@ export type GetApiCapabilitiesApiResponse = /** status 200 OK */
   | SystemCapabilities
   | /** status default Error */ ErrorModel;
 export type GetApiCapabilitiesApiArg = void;
+export type GetApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
+  | HdIdleDeviceDto
+  | /** status default Error */ ErrorModel;
+export type GetApiDiskByDiskIdHdidleConfigApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
+export type PatchApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
+  | HdIdleDeviceDto
+  | /** status default Error */ ErrorModel;
+export type PatchApiDiskByDiskIdHdidleConfigApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+  body: JsonPatchOp[] | null;
+};
+export type PutApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
+  | HdIdleDeviceDto
+  | /** status default Error */ ErrorModel;
+export type PutApiDiskByDiskIdHdidleConfigApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+  hdIdleDeviceDto: HdIdleDeviceDto;
+};
+export type GetApiDiskByDiskIdHdidleInfoApiResponse = /** status 200 OK */
+  | HdIdleDiskStatus
+  | /** status default Error */ ErrorModel;
+export type GetApiDiskByDiskIdHdidleInfoApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
 export type PostApiDiskByDiskIdSmartDisableApiResponse = /** status 200 OK */
   | string
   | /** status default Error */ ErrorModel;
@@ -763,7 +834,7 @@ export type ErrorDetail = {
   /** Error message text */
   message?: string;
   /** The value at the given location */
-  value?: any;
+  value?: unknown;
 };
 export type ErrorModel = {
   /** A URL to the JSON Schema for this object. */
@@ -780,6 +851,37 @@ export type ErrorModel = {
   title?: string;
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
+};
+export type HdIdleDeviceDto = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  command_type?: Command_type;
+  device_path: string;
+  idle_time: number;
+  power_condition: number;
+};
+export type JsonPatchOp = {
+  /** JSON Pointer for the source of a move or copy */
+  from?: string;
+  /** Operation name */
+  op: Op;
+  /** JSON Pointer to the field being operated on, or the destination of a move/copy operation */
+  path: string;
+  /** The value to set */
+  value?: unknown;
+};
+export type HdIdleDiskStatus = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  CommandType: string;
+  GivenName: string;
+  IdleTime: number;
+  LastIOAt: string;
+  Name: string;
+  PowerCondition: number;
+  SpinDownAt: string;
+  SpinUpAt: string;
+  SpunDown: boolean;
 };
 export type SmartHealthStatus = {
   /** A URL to the JSON Schema for this object. */
@@ -1055,6 +1157,11 @@ export type Settings = {
   bind_all_interfaces?: boolean;
   compatibility_mode?: boolean;
   export_stats_to_ha?: boolean;
+  hdidle_default_command_type: Hdidle_default_command_type;
+  hdidle_default_idle_time: number;
+  hdidle_default_power_condition: number;
+  hdidle_enabled?: boolean;
+  hdidle_ignore_spin_down_detection?: boolean;
   hostname?: string;
   interfaces?: string[];
   local_master?: boolean;
@@ -1065,16 +1172,6 @@ export type Settings = {
   telemetry_mode?: Telemetry_mode;
   update_channel?: Update_channel;
   workgroup?: string;
-};
-export type JsonPatchOp = {
-  /** JSON Pointer for the source of a move or copy */
-  from?: string;
-  /** Operation name */
-  op: Op;
-  /** JSON Pointer to the field being operated on, or the destination of a move/copy operation */
-  path: string;
-  /** The value to set */
-  value?: any;
 };
 export type Partition = {
   device_path?: string;
@@ -1119,7 +1216,7 @@ export type User = {
   ro_shares?: string[] | null;
   rw_shares?: string[] | null;
   username: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 export type SharedResource = {
   /** A URL to the JSON Schema for this object. */
@@ -1138,7 +1235,7 @@ export type SharedResource = {
   usage?: Usage;
   users?: User[] | null;
   veto_files?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 };
 export type Welcome = {
   active_clients: number;
@@ -1177,6 +1274,18 @@ export type Disk = {
   smart_info?: SmartInfo;
   vendor?: string;
 };
+export enum Command_type {
+  Scsi = "scsi",
+  Ata = "ata",
+}
+export enum Op {
+  Add = "add",
+  Remove = "remove",
+  Replace = "replace",
+  Move = "move",
+  Copy = "copy",
+  Test = "test",
+}
 export enum Disk_type {
   Sata = "SATA",
   NvMe = "NVMe",
@@ -1189,6 +1298,10 @@ export enum Severity {
   Info = "info",
   Success = "success",
 }
+export enum Hdidle_default_command_type {
+  Scsi = "scsi",
+  Ata = "ata",
+}
 export enum Telemetry_mode {
   Ask = "Ask",
   All = "All",
@@ -1200,14 +1313,6 @@ export enum Update_channel {
   Develop = "Develop",
   Release = "Release",
   Prerelease = "Prerelease",
-}
-export enum Op {
-  Add = "add",
-  Remove = "remove",
-  Replace = "replace",
-  Move = "move",
-  Copy = "copy",
-  Test = "test",
 }
 export enum Time_machine_support {
   Unsupported = "unsupported",
@@ -1248,6 +1353,10 @@ export enum Update_process_state {
 }
 export const {
   useGetApiCapabilitiesQuery,
+  useGetApiDiskByDiskIdHdidleConfigQuery,
+  usePatchApiDiskByDiskIdHdidleConfigMutation,
+  usePutApiDiskByDiskIdHdidleConfigMutation,
+  useGetApiDiskByDiskIdHdidleInfoQuery,
   usePostApiDiskByDiskIdSmartDisableMutation,
   usePostApiDiskByDiskIdSmartEnableMutation,
   useGetApiDiskByDiskIdSmartHealthQuery,

@@ -86,10 +86,10 @@ func buildCLIContextState(opts cliContextOptions) dto.ContextState {
 
 func parseCommand(args []string) (string, error) {
 	if len(args) < 1 {
-		return "", fmt.Errorf("expected 'start','stop','upgrade' or 'version' subcommands")
+		return "", fmt.Errorf("expected 'start','stop','upgrade','hdidle' or 'version' subcommands")
 	}
 	switch args[0] {
-	case "start", "stop", "upgrade", "version":
+	case "start", "stop", "upgrade", "version", "hdidle":
 		return args[0], nil
 	default:
 		return "", fmt.Errorf("unknown command: %s", args[0])
@@ -123,6 +123,7 @@ func main() {
 
 	upgradeCmd := flag.NewFlagSet("upgrade", flag.ExitOnError)
 	upgradeChannel := upgradeCmd.String("channel", "release", "Upgrade channel (release, prerelease, develop)")
+
 	updateFilePath := flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
 
 	flag.Usage = func() {
@@ -239,9 +240,9 @@ func main() {
 	}
 
 	// Determine if we need database access based on command
-	// Only version command doesn't need DB
+	// Only version and hdidle commands don't need DB
 	// upgrade command needs DB but can use in-memory DB (default flag value)
-	needsDB := command != "version"
+	needsDB := command != "version" && command != "hdidle"
 
 	// Build FX options based on command requirements
 	var fxOptions []fx.Option
@@ -354,7 +355,18 @@ func main() {
 						slog.Info("******* Autocreating users ********")
 						_ha_mount_user_password_, err := props_repo.Value("_ha_mount_user_password_", true)
 						if err != nil {
-							log.Fatalf("Cant get password for _ha_mount_user_ user - %#+v", err)
+							slog.Warn("Cant get password for _ha_mount_user_ user", "err", err)
+							var errc error
+							_ha_mount_user_password_, errc = osutil.GenerateSecurePassword()
+							if errc != nil {
+								slog.Error("Cant generate password", "errc", errc)
+								_ha_mount_user_password_ = "changeme"
+							} else {
+								err = props_repo.SetValue("_ha_mount_user_password_", _ha_mount_user_password_.(string))
+								if err != nil {
+									slog.Warn("Cant set password for _ha_mount_user_ user", "err", err)
+								}
+							}
 						}
 						err = unixsamba.CreateSambaUser("_ha_mount_user_", _ha_mount_user_password_.(string), unixsamba.UserOptions{
 							CreateHome:    false,
@@ -516,8 +528,8 @@ func main() {
 
 		}))
 	} else {
-		// Commands that don't need database (version only)
-		// Version command exits early, so this block is actually not used
+		// Commands that don't need database (version and hdidle)
+		// Version command exits early, so this block handles hdidle
 	}
 
 	// Create FX app with all options

@@ -97,12 +97,14 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 	}
 
 	// Check if SMART is enabled on SATA devices
-	smartEnabled := true
+	smartEnabled := false
 	if satadev, ok := dev.(*smart.SataDevice); ok {
-		// Try to read SMART data to verify SMART is enabled
-		_, err := satadev.ReadSMARTData()
-		if err != nil {
-			smartEnabled = false
+		// Use checkSMARTStatus to verify SMART is enabled
+		if enabled, err := checkSMARTStatus(satadev, devicePath); err == nil {
+			smartEnabled = enabled
+		} else {
+			// Log detailed error but continue - SMART might be disabled
+			tlog.Warn("failed to check SMART status", "device", devicePath, "error", err)
 		}
 	}
 
@@ -229,19 +231,43 @@ func (s *smartService) GetHealthStatus(devicePath string) (*dto.SmartHealthStatu
 
 	var thresholds map[uint8]uint8
 	var attrs map[uint8]interface{}
+	var smartEnabled bool
 
-	// Get thresholds for SATA devices
+	// Get thresholds and check SMART status for SATA devices
 	if sm, ok := dev.(*smart.SataDevice); ok {
+		// Check if SMART is actually enabled
+		if enabled, err := checkSMARTStatus(sm, devicePath); err != nil {
+			tlog.Warn("failed to verify SMART enabled status", "device", devicePath, "error", err)
+			smartEnabled = false
+		} else {
+			smartEnabled = enabled
+		}
+
+		// If SMART is not enabled, return warning status
+		if !smartEnabled {
+			tlog.Warn("SMART is not enabled on device", "device", devicePath)
+			return &dto.SmartHealthStatus{
+				Passed:            false,
+				OverallStatus:     "warning",
+				FailingAttributes: []string{"SMART_not_enabled"},
+			}, nil
+		}
+
 		thdata, stdErr := sm.ReadSMARTThresholds()
 		if stdErr == nil {
 			thresholds = thdata.Thresholds
+		} else {
+			tlog.Warn("failed to read SMART thresholds", "device", devicePath, "error", stdErr)
 		}
+
 		data, stdErr := sm.ReadSMARTData()
 		if stdErr == nil {
 			attrs = make(map[uint8]interface{})
 			for k, v := range data.Attrs {
 				attrs[k] = v
 			}
+		} else {
+			tlog.Warn("failed to read SMART data", "device", devicePath, "error", stdErr)
 		}
 	}
 
@@ -394,11 +420,21 @@ func (s *smartService) EnableSMART(devicePath string) errors.E {
 			"reason", "SMART enable/disable only supported for SATA devices")
 	}
 
+	// Execute enable command
 	if err := enableSMART(sm, devicePath); err != nil {
 		return err
 	}
 
-	slog.Info("SMART enabled", "device", devicePath)
+	// Verify SMART is now enabled using checkSMARTStatus
+	if enabled, err := checkSMARTStatus(sm, devicePath); err != nil {
+		tlog.Warn("SMART enabled but verification failed", "device", devicePath, "error", err)
+		return errors.Wrap(err, "SMART enable succeeded but verification failed")
+	} else if !enabled {
+		return errors.WithDetails(dto.ErrorSMARTOperationFailed, "device", devicePath,
+			"reason", "SMART enable command executed but device reports disabled")
+	}
+
+	slog.Info("SMART enabled and verified", "device", devicePath)
 	return nil
 }
 
@@ -426,8 +462,18 @@ func (s *smartService) DisableSMART(devicePath string) errors.E {
 			"reason", "SMART enable/disable only supported for SATA devices")
 	}
 
+	// Execute disable command
 	if err := disableSMART(sm, devicePath); err != nil {
 		return err
+	}
+
+	// Verify SMART is now disabled using checkSMARTStatus
+	if enabled, err := checkSMARTStatus(sm, devicePath); err != nil {
+		tlog.Warn("SMART disabled but verification failed", "device", devicePath, "error", err)
+		// Note: Verification failure is informational only - disable command was successful
+		tlog.Info("SMART disable command executed (verification failed)", "device", devicePath)
+	} else if enabled {
+		tlog.Warn("SMART disable command executed but device still reports enabled", "device", devicePath)
 	}
 
 	slog.Info("SMART disabled", "device", devicePath)

@@ -1,0 +1,12 @@
+{
+    "servers": {
+        "mui-mcp": {
+            "type": "stdio",
+            "command": "bunx",
+            "args": [
+                "-y",
+                "@mui/mcp@latest"
+            ]
+        }
+    }
+}

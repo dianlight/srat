@@ -144,11 +144,11 @@ describe("ShareEditForm component", () => {
         const { overrides } = setupCommonOverrides();
 
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, within } = await import("@testing-library/react");
         const { Usage } = await import("../../../../store/sratApi");
         const { ShareEditForm } = await import("../ShareEditForm");
 
-        render(
+        const { container } = render(
             React.createElement(ShareEditForm as any, {
                 shareData: {
                     org_name: "InternalShare",
@@ -168,7 +168,7 @@ describe("ShareEditForm component", () => {
         );
 
         // Volume field should not be present for internal shares
-        const volumeLabels = screen.queryAllByText("Volume");
+        const volumeLabels = within(container).queryAllByText("Volume");
         expect(volumeLabels.length).toBe(0);
     });
 });

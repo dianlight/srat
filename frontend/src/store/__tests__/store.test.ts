@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import "/workspaces/srat/frontend/test/setup.ts";
+import { describe, expect, it } from "bun:test";
 
 describe("Redux Store Configuration", () => {
 	it("exports a configured store instance", async () => {
@@ -99,4 +100,3 @@ describe("Redux Store Configuration", () => {
 		expect(newState.errors.messages).toContain("Test error message");
 	});
 });
-

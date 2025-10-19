@@ -143,8 +143,8 @@ export function Users() {
 		});
 	}
 
-	TourEvents.on(TourEventTypes.USERS_STEP_3, (user) => {
-		setSelected(user);
+	TourEvents.on(TourEventTypes.USERS_STEP_3, () => {
+		setSelected({ username: "", password: "", doCreate: true });
 		setShowEdit(true);
 	});
 

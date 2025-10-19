@@ -1,19 +1,35 @@
 import type { Middleware } from "@reduxjs/toolkit";
 import { mdcSlice } from "./mdcSlice";
 
+// Types for RTK Query action metadata
+interface RTKQueryMeta {
+	meta?: {
+		arg?: {
+			originalArgs?: Record<string, unknown>;
+		};
+		baseQueryMeta?: {
+			response?: {
+				headers?: Headers | Record<string, string>;
+			};
+			headers?: Record<string, string>;
+		};
+	};
+}
+
 // Middleware to capture X-* IDs from outgoing RTK Query requests and incoming responses
 export const mdcMiddleware: Middleware = (storeApi) => (next) => (action) => {
 	// Before the request is processed: look at initiate actions' originalArgs to read headers
 	try {
-		const args = (action as any)?.meta?.arg?.originalArgs;
+		const meta = (action as RTKQueryMeta)?.meta;
+		const args = meta?.arg?.originalArgs;
 		if (
 			args &&
 			(args["X-Request-Id"] || args["X-Span-Id"] || args["X-Trace-Id"])
 		) {
 			storeApi.dispatch(
 				mdcSlice.actions.setAllData({
-					spanId: args["X-Span-Id"] ?? null,
-					traceId: args["X-Trace-Id"] ?? null,
+					spanId: (args["X-Span-Id"] as string | undefined) ?? null,
+					traceId: (args["X-Trace-Id"] as string | undefined) ?? null,
 				}),
 			);
 		}
@@ -25,7 +41,7 @@ export const mdcMiddleware: Middleware = (storeApi) => (next) => (action) => {
 
 	// After the request resolves: fulfilled/rejected actions include baseQueryMeta with response headers
 	try {
-		const baseQueryMeta = (action as any)?.meta?.baseQueryMeta;
+		const baseQueryMeta = (action as RTKQueryMeta)?.meta?.baseQueryMeta;
 		if (baseQueryMeta) {
 			const headers: Headers | Record<string, string> | undefined =
 				baseQueryMeta?.response?.headers ?? baseQueryMeta?.headers;
@@ -36,15 +52,15 @@ export const mdcMiddleware: Middleware = (storeApi) => (next) => (action) => {
 			if (headers) {
 				// Headers may be a Fetch Headers object or a plain object
 				const getHeader = (key: string): string | null => {
-					if (typeof (headers as any).get === "function") {
-						return ((headers as any).get(key) as string | null) ?? null;
+					if (typeof (headers as Headers).get === "function") {
+						return (headers as Headers).get(key) ?? null;
 					}
 					const h = headers as Record<string, string>;
 					const v =
 						h[key] ??
-						(h as any)[key.toLowerCase()] ??
-						(h as any)[key.toUpperCase()];
-					return (v as string | undefined) ?? null;
+						(h as Record<string, string>)[key.toLowerCase()] ??
+						(h as Record<string, string>)[key.toUpperCase()];
+					return v ?? null;
 				};
 
 				spanId = getHeader("X-Span-Id");

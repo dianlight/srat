@@ -16,7 +16,7 @@ describe("UserActions component", () => {
         let editCalls = 0;
         let deleteCalls = 0;
 
-        render(
+        const { container } = render(
             React.createElement(UserActions as any, {
                 user: buildUser(),
                 read_only: false,
@@ -25,10 +25,12 @@ describe("UserActions component", () => {
             })
         );
 
-        const editButton = await screen.findByRole("button", { name: /settings/i });
+        const editButton = container.querySelector('button[aria-label="settings"]') as HTMLButtonElement;
+        expect(editButton).toBeTruthy();
         fireEvent.click(editButton);
 
-        const deleteButton = await screen.findByRole("button", { name: /delete/i });
+        const deleteButton = container.querySelector('button[aria-label="delete"]') as HTMLButtonElement;
+        expect(deleteButton).toBeTruthy();
         fireEvent.click(deleteButton);
 
         expect(editCalls).toBe(1);
@@ -37,10 +39,10 @@ describe("UserActions component", () => {
 
     it("hides delete action for admin or read-only scenarios", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { UserActions } = await import("../UserActions");
 
-        const { rerender } = render(
+        const { container, rerender } = render(
             React.createElement(UserActions as any, {
                 user: buildUser({ is_admin: true }),
                 read_only: false,
@@ -49,8 +51,8 @@ describe("UserActions component", () => {
             })
         );
 
-        expect(await screen.findByRole("button", { name: /settings/i })).toBeTruthy();
-        expect(screen.queryByRole("button", { name: /delete/i })).toBeNull();
+        expect(container.querySelector('button[aria-label="settings"]')).toBeTruthy();
+        expect(container.querySelector('button[aria-label="delete"]')).toBeNull();
 
         rerender(
             React.createElement(UserActions as any, {
@@ -61,6 +63,6 @@ describe("UserActions component", () => {
             })
         );
 
-        expect(screen.queryAllByRole("button")).toHaveLength(0);
+        expect(container.querySelectorAll('button')).toHaveLength(0);
     });
 });

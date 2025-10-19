@@ -91,14 +91,14 @@ describe("SharesTreeView component", () => {
         const { overrides } = setupOverrides();
 
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, within } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
         // @ts-expect-error - Query param loads isolated module instance
         const { SharesTreeView } = await import("../SharesTreeView?shares-tree-protected");
         const store = await createTestStore();
 
-        render(
+        const { container } = render(
             React.createElement(
                 Provider as any,
                 { store },
@@ -127,22 +127,24 @@ describe("SharesTreeView component", () => {
             )
         );
 
-        expect(await screen.findByRole("tree")).toBeTruthy();
-        expect(screen.queryByText("Documents")).toBeNull();
+        const trees = within(container).queryAllByRole("tree");
+        expect(trees).toHaveLength(1);
+        expect(trees[0]).toBeTruthy();
+        expect(within(container).queryByText("Documents")).toBeNull();
     });
 
     it("does not disable share when confirmation is declined", async () => {
         const { overrides, tracking } = setupOverrides({ confirmResult: { confirmed: false } });
 
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
         // @ts-expect-error - Query param loads isolated module instance
         const { SharesTreeView } = await import("../SharesTreeView?shares-tree-cancel-toggle");
         const store = await createTestStore();
 
-        render(
+        const { container } = render(
             React.createElement(
                 Provider as any,
                 { store },
@@ -164,8 +166,9 @@ describe("SharesTreeView component", () => {
             )
         );
 
-        const toggle = await screen.findByTestId("share-toggle-doc");
-        fireEvent.click(toggle);
+        const toggles = await within(container).findAllByTestId("share-toggle-doc");
+        expect(toggles).toHaveLength(1);
+        fireEvent.click(toggles[0]!);
 
         expect(tracking.disableCalls.length).toBe(0);
     });
@@ -174,14 +177,14 @@ describe("SharesTreeView component", () => {
         const { overrides } = setupOverrides();
 
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, within } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
         // @ts-expect-error - Query param loads isolated module instance
         const { SharesTreeView } = await import("../SharesTreeView?shares-tree-readonly");
         const store = await createTestStore();
 
-        render(
+        const { container } = render(
             React.createElement(
                 Provider as any,
                 { store },
@@ -204,7 +207,9 @@ describe("SharesTreeView component", () => {
             )
         );
 
-        expect(await screen.findByText(/Documents/)).toBeTruthy();
-        expect(screen.queryByTestId("share-toggle-doc")).toBeNull();
+        const documents = await within(container).findAllByText(/Documents/);
+        expect(documents).toHaveLength(1);
+        expect(documents[0]).toBeTruthy();
+        expect(within(container).queryByTestId("share-toggle-doc")).toBeNull();
     });
 });

@@ -19,6 +19,11 @@ import (
 type DtoToDbomConverter interface {
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdleDeviceDTO) (dbom.HDIdleDevice, error)
+
+	HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDeviceDTO, error)
+
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:map MountPointData.Path MountPointDataPath
 	sharedResourceToExportedShare(source dto.SharedResource) (dbom.ExportedShare, error)
 

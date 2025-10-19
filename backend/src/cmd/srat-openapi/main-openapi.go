@@ -92,6 +92,7 @@ func main() {
 			server.AsHumaRoute(api.NewSystemHanler),
 			server.AsHumaRoute(api.NewIssueAPI),
 			server.AsHumaRoute(api.NewTelemetryHandler),
+			server.AsHumaRoute(api.NewHDIdleHandler),
 			api.NewWebSocketBroker,
 			server.NewMuxRouter,
 			server.NewHumaAPI,

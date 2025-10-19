@@ -7,7 +7,12 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["src/**/*.ts", "!src/store/sratApi.ts"]
+		"includes": [
+			"src/**/*.ts",
+			"!src/store/sratApi.ts",
+			"!src/**/__tests__",
+			"!src/**/*.test.*"
+		]
 	},
 	"formatter": {
 		"enabled": true,
