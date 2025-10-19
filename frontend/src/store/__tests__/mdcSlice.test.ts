@@ -138,8 +138,10 @@ describe("mdcSlice", () => {
 		const uuidRegex =
 			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-		expect(uuidRegex.test(state.spanId!)).toBe(true);
-		expect(uuidRegex.test(state.traceId!)).toBe(true);
+		expect(state.spanId).toBeTruthy();
+		expect(state.traceId).toBeTruthy();
+		expect(uuidRegex.test(state.spanId as string)).toBe(true);
+		expect(uuidRegex.test(state.traceId as string)).toBe(true);
 	});
 
 	it("handles setAllData with null values", async () => {

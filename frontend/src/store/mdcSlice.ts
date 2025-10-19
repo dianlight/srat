@@ -8,8 +8,9 @@ export interface MDCState {
 
 const makeUUID = (): string => {
 	if (typeof crypto !== "undefined") {
-		if (typeof (crypto as any).randomUUID === "function") {
-			return (crypto as any).randomUUID();
+		const webCrypto = crypto as typeof crypto & { randomUUID?: () => string };
+		if (typeof webCrypto.randomUUID === "function") {
+			return webCrypto.randomUUID();
 		}
 		if (typeof crypto.getRandomValues === "function") {
 			const bytes = new Uint8Array(16);

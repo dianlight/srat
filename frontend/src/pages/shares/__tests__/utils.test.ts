@@ -1,5 +1,6 @@
 import "../../../../test/setup";
 import { describe, expect, it } from "bun:test";
+import type { CasingStyle } from "../types";
 
 describe("shares utils", () => {
 	it("extracts base name from path variations", async () => {
@@ -48,7 +49,7 @@ describe("shares utils", () => {
 		}
 
 		// Test fallback for unknown style
-		const fallbackIcon = getCasingIcon("unknown" as any);
+		const fallbackIcon = getCasingIcon("unknown" as CasingStyle);
 		expect(
 			typeof fallbackIcon === "function" || typeof fallbackIcon === "object",
 		).toBe(true);
