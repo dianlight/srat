@@ -355,7 +355,18 @@ func main() {
 						slog.Info("******* Autocreating users ********")
 						_ha_mount_user_password_, err := props_repo.Value("_ha_mount_user_password_", true)
 						if err != nil {
-							log.Fatalf("Cant get password for _ha_mount_user_ user - %#+v", err)
+							slog.Warn("Cant get password for _ha_mount_user_ user", "err", err)
+							var errc error
+							_ha_mount_user_password_, errc = osutil.GenerateSecurePassword()
+							if errc != nil {
+								slog.Error("Cant generate password", "errc", errc)
+								_ha_mount_user_password_ = "changeme"
+							} else {
+								err = props_repo.SetValue("_ha_mount_user_password_", _ha_mount_user_password_.(string))
+								if err != nil {
+									slog.Warn("Cant set password for _ha_mount_user_ user", "err", err)
+								}
+							}
 						}
 						err = unixsamba.CreateSambaUser("_ha_mount_user_", _ha_mount_user_password_.(string), unixsamba.UserOptions{
 							CreateHome:    false,
