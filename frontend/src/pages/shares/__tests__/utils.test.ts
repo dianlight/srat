@@ -47,6 +47,7 @@ describe("shares utils", () => {
 			expect(typeof Icon === "function" || typeof Icon === "object").toBe(true);
 		}
 
+		// Test fallback for unknown style
 		const fallbackIcon = getCasingIcon("unknown" as any);
 		expect(
 			typeof fallbackIcon === "function" || typeof fallbackIcon === "object",

@@ -35,7 +35,7 @@ describe("volumes utils", () => {
 	it("decodeEscapeSequence handles non-string input", async () => {
 		const { decodeEscapeSequence } = await import("../utils");
 
-		const result = decodeEscapeSequence(null as any);
+		const result = decodeEscapeSequence(null);
 		expect(result).toBe("");
 	});
 

@@ -34,9 +34,9 @@ describe("metrics utils", () => {
 	it("handles non-string inputs", async () => {
 		const { decodeEscapeSequence } = await import("../utils");
 
-		expect(decodeEscapeSequence(null as any)).toBe("");
-		expect(decodeEscapeSequence(undefined as any)).toBe("");
-		expect(decodeEscapeSequence(123 as any)).toBe("");
+		expect(decodeEscapeSequence(null)).toBe("");
+		expect(decodeEscapeSequence(undefined)).toBe("");
+		expect(decodeEscapeSequence(123)).toBe("");
 	});
 
 	it("handles invalid escape sequences", async () => {

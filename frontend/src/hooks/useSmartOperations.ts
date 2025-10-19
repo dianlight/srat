@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { toast } from "react-toastify";
+import type { ErrorModel } from "../store/sratApi";
 import {
 	usePostApiDiskByDiskIdSmartDisableMutation,
 	usePostApiDiskByDiskIdSmartEnableMutation,
@@ -38,7 +39,7 @@ export function useSmartOperations(diskId?: string) {
 			} catch (error) {
 				const errorMessage =
 					error && typeof error === "object" && "data" in error
-						? (error.data as any)?.detail || "Failed to start self-test"
+						? (error.data as ErrorModel)?.detail || "Failed to start self-test"
 						: "Failed to start self-test";
 				console.error("Failed to start self-test:", error);
 				toast.error(errorMessage);
@@ -59,7 +60,7 @@ export function useSmartOperations(diskId?: string) {
 		} catch (error) {
 			const errorMessage =
 				error && typeof error === "object" && "data" in error
-					? (error.data as any)?.detail || "Failed to abort self-test"
+					? (error.data as ErrorModel)?.detail || "Failed to abort self-test"
 					: "Failed to abort self-test";
 			console.error("Failed to abort test:", error);
 			toast.error(errorMessage);
@@ -78,7 +79,7 @@ export function useSmartOperations(diskId?: string) {
 		} catch (error) {
 			const errorMessage =
 				error && typeof error === "object" && "data" in error
-					? (error.data as any)?.detail || "Failed to enable SMART"
+					? (error.data as ErrorModel)?.detail || "Failed to enable SMART"
 					: "Failed to enable SMART";
 			console.error("Failed to enable SMART:", error);
 			toast.error(errorMessage);
@@ -97,7 +98,7 @@ export function useSmartOperations(diskId?: string) {
 		} catch (error) {
 			const errorMessage =
 				error && typeof error === "object" && "data" in error
-					? (error.data as any)?.detail || "Failed to disable SMART"
+					? (error.data as ErrorModel)?.detail || "Failed to disable SMART"
 					: "Failed to disable SMART";
 			console.error("Failed to disable SMART:", error);
 			toast.error(errorMessage);

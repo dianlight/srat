@@ -62,11 +62,9 @@ describe("errorSlice", () => {
 	});
 
 	it("handles clearMessages action correctly", async () => {
-		const {
-			default: errorReducer,
-			addMessage,
-			clearMessages,
-		} = await import("../errorSlice");
+		const { default: errorReducer, clearMessages } = await import(
+			"../errorSlice"
+		);
 
 		// Start with state containing messages
 		let state = { messages: ["Error 1", "Error 2", "Error 3"] as string[] };
