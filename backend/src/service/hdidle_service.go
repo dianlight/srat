@@ -89,6 +89,7 @@ type hDIdleService struct {
 }
 
 type internalConfig struct {
+	Enabled               bool
 	Devices               []deviceConfig
 	DefaultIdle           time.Duration
 	DefaultCommandType    dto.HdidleCommand
@@ -168,7 +169,9 @@ func (s *hDIdleService) Start() errors.E {
 	s.lastNow = time.Now()
 
 	// Start monitoring in background
-	go s.monitorLoop()
+	if s.config.Enabled {
+		go s.monitorLoop()
+	}
 
 	return nil
 }
@@ -299,6 +302,7 @@ func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
 	}
 
 	intConfig := &internalConfig{
+		Enabled:               *(*settings).HDIdleEnabled,
 		Devices:               []deviceConfig{},
 		DefaultIdle:           time.Duration((*settings).HDIdleDefaultIdleTime) * time.Second,
 		DefaultCommandType:    (*settings).HDIdleDefaultCommandType,

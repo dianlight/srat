@@ -84,16 +84,6 @@ const HOSTNAME_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 // Allows alphanumeric characters and hyphens. Cannot start or end with a hyphen. Length 1-15.
 const WORKGROUP_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,13}[a-zA-Z0-9])?$/;
 
-// Extended Settings type to include HDIdle fields for the form
-interface ExtendedSettings extends Settings {
-	hdidle_enabled?: boolean;
-	hdidle_default_idle_time?: number;
-	hdidle_default_command_type?: string;
-	hdidle_log_file?: string;
-	hdidle_debug?: boolean;
-	hdidle_ignore_spin_down_detection?: boolean;
-}
-
 // Tree structure for settings
 interface SettingTreeNode {
 	id: string;
@@ -112,7 +102,7 @@ const categories: { [key: string]: { [key: string]: string[] } | string[] } = {
 	'Update': ['update_channel'],
 	'Telemetry': ['telemetry_mode'],
 	'HomeAssistant': ['export_stats_to_ha'],
-	'Power': ['hdidle_enabled', 'hdidle_default_idle_time', 'hdidle_default_command_type', 'hdidle_log_file', 'hdidle_debug', 'hdidle_ignore_spin_down_detection'],
+	'Power': ['hdidle_enabled', 'hdidle_default_idle_time', 'hdidle_default_command_type', 'hdidle_ignore_spin_down_detection'],
 };
 
 // Build tree structure dynamically from categories
@@ -216,7 +206,7 @@ export function Settings() {
 		subscribe,
 	} = useForm({
 		mode: "onBlur",
-		values: globalConfig as ExtendedSettings,
+		values: globalConfig as Settings,
 		disabled: evdata?.hello?.read_only,
 	});
 	const [update, _updateResponse] = usePutApiSettingsMutation();
@@ -230,13 +220,13 @@ export function Settings() {
 	const bindAllWatch = watch("bind_all_interfaces");
 
 
-	function handleCommit(data: ExtendedSettings) {
+	function handleCommit(data: Settings) {
 		console.log(data);
 		update({ settings: data })
 			.unwrap()
 			.then((res) => {
 				//console.log(res)
-				reset(res as ExtendedSettings);
+				reset(res as Settings);
 			})
 			.catch((err) => {
 				console.error(err);
@@ -802,37 +792,6 @@ export function Settings() {
 								disabled: !control._formValues?.hdidle_enabled || evdata?.hello?.read_only,
 								disableClearable: true,
 							}}
-							control={control}
-						/>
-					</Tooltip>
-				);
-
-			case 'hdidle_log_file':
-				return (
-					<TextFieldElement
-						name="hdidle_log_file"
-						label="Log File Path (optional)"
-						disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
-						size="small"
-						placeholder="/var/log/hdidle.log"
-						control={control}
-					/>
-				);
-
-			case 'hdidle_debug':
-				return (
-					<Tooltip
-						title={
-							<Typography variant="body2">
-								Enable detailed logging for troubleshooting disk spin-down issues
-							</Typography>
-						}
-					>
-						<CheckboxElement
-							name="hdidle_debug"
-							label="Enable Debug Logging"
-							disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
-							size="small"
 							control={control}
 						/>
 					</Tooltip>

@@ -15,6 +15,7 @@ type Settings struct {
 	LocalMaster                   *bool         `json:"local_master,omitempty" default:"true"`
 	ExportStatsToHA               *bool         `json:"export_stats_to_ha,omitempty" default:"true"`
 	SMBoverQUIC                   *bool         `json:"smb_over_quic,omitempty" default:"true"`
+	HDIdleEnabled                 *bool         `json:"hdidle_enabled,omitempty" default:"false"`
 	HDIdleDefaultIdleTime         int           `json:"hdidle_default_idle_time"` // seconds
 	HDIdleDefaultCommandType      HdidleCommand `json:"hdidle_default_command_type" enum:"scsi,ata"`
 	HDIdleDefaultPowerCondition   uint8         `json:"hdidle_default_power_condition"` // 0-15
