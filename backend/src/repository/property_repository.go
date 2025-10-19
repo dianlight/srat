@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"log/slog"
 	"sync"
 
 	"github.com/dianlight/srat/dbom"
@@ -40,7 +39,6 @@ func (self *PropertyRepository) All(include_internal bool) (dbom.Properties, err
 	var propss dbom.Properties
 	propss = make(dbom.Properties, len(props))
 	for _, prop := range props {
-		slog.Error("Here", "d", prop)
 		propss[prop.Key] = prop
 	}
 	return propss, nil
