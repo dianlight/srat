@@ -41,7 +41,7 @@ describe("useConsoleErrorCallback hook", () => {
 			"../useConsoleErrorCallback"
 		);
 
-		const testCallback = () => { };
+		const testCallback = () => {};
 		const { unmount } = renderHook(() => useConsoleErrorCallback(testCallback));
 
 		// Unmount should trigger cleanup
