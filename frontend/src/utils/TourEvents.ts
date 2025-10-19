@@ -3,13 +3,13 @@ import Emittery from "emittery";
 const emitter = new Emittery();
 
 export const TourEvents = {
-	on: (event: TourEventTypes, listener: (...args: any[]) => void) => {
+	on: (event: TourEventTypes, listener: (...args: unknown[]) => void) => {
 		emitter.on(event, listener);
 	},
-	off: (event: TourEventTypes, listener: (...args: any[]) => void) => {
+	off: (event: TourEventTypes, listener: (...args: unknown[]) => void) => {
 		emitter.off(event, listener);
 	},
-	emit: (event: TourEventTypes, ...args: any[]) => {
+	emit: (event: TourEventTypes, ...args: unknown[]) => {
 		emitter.emit(event, args);
 	},
 };

@@ -1,3 +1,4 @@
+import "/workspaces/srat/frontend/test/setup.ts";
 import { describe, it, expect, beforeEach } from "bun:test";
 
 // Required localStorage shim for testing environment

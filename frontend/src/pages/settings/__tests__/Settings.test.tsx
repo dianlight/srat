@@ -354,12 +354,12 @@ describe("Settings", () => {
         // Wait for the component to render
         await screen.findByText("Select a setting from the tree to configure");
 
-        // Network should be expanded by default, so Basic should be visible
-        const basicTreeItem = await screen.findByText("Basic");
-        expect(basicTreeItem).toBeTruthy();
+        // General category should be visible as a top-level item
+        const generalTreeItem = await screen.findByText("General");
+        expect(generalTreeItem).toBeTruthy();
 
-        // Click on the Basic tree item to select it
-        fireEvent.click(basicTreeItem);
+        // Click on the General tree item to select it
+        fireEvent.click(generalTreeItem);
 
         // Check that the 2 fields are rendered in the right panel
         const hostnameLabel = await screen.findByText("Hostname");
