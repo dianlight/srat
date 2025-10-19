@@ -224,7 +224,6 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewIssueAPI),
 			server.AsHumaRoute(api.NewTelemetryHandler),
 			server.AsHumaRoute(api.NewHDIdleHandler),
-			service.NewHDIdleService,
 			server.NewMuxRouter,
 			server.NewHTTPServer,
 			server.NewHumaAPI,
