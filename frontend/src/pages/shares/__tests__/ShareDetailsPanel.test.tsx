@@ -32,7 +32,7 @@ describe("ShareDetailsPanel", () => {
 
     it("renders share information and triggers toggle actions", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         // @ts-expect-error - Query param ensures fresh module instance for mocks
         const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-test");
 
@@ -41,8 +41,8 @@ describe("ShareDetailsPanel", () => {
         let editClicks = 0;
         const onEditClick = () => { editClicks += 1; };
 
-        await act(async () => {
-            render(
+        const { container } = await act(async () => {
+            return render(
                 React.createElement(ShareDetailsPanel as any, {
                     share,
                     shareKey: "documents",
@@ -54,7 +54,7 @@ describe("ShareDetailsPanel", () => {
         expect(await screen.findByText("Documents")).toBeTruthy();
         expect(screen.getByText(/Mount Point Information/)).toBeTruthy();
 
-        const toggle = screen.getByLabelText(/show more/i);
+        const toggle = within(container).getByLabelText(/show more/i);
         fireEvent.click(toggle);
 
         expect(await screen.findByText("/mnt/data")).toBeTruthy();
@@ -100,8 +100,8 @@ describe("ShareDetailsPanel", () => {
 
         const share = await buildShare();
 
-        await act(async () => {
-            render(
+        const { container } = await act(async () => {
+            return render(
                 React.createElement(ShareDetailsPanel as any, {
                     share,
                     shareKey: "documents",
@@ -110,7 +110,7 @@ describe("ShareDetailsPanel", () => {
         });
 
         // Find the StorageIcon button with the aria-label (from Tooltip title)
-        const storageIconButton = screen.getByLabelText("View mount point details");
+        const storageIconButton = container.querySelector('button[aria-label="View mount point details"]') as HTMLButtonElement;
         expect(storageIconButton).toBeTruthy();
 
         // Click on the StorageIcon to open PreviewDialog
@@ -137,8 +137,8 @@ describe("ShareDetailsPanel", () => {
         const share = await buildShare();
         share.disabled = true;
 
-        await act(async () => {
-            render(
+        const { container } = await act(async () => {
+            return render(
                 React.createElement(ShareDetailsPanel as any, {
                     share,
                     shareKey: "documents",
@@ -150,7 +150,7 @@ describe("ShareDetailsPanel", () => {
         expect(await screen.findByText("Share Disabled")).toBeTruthy();
 
         // Check that the main container has disabled styling
-        const container = screen.getByText("Mount Point Information").closest('[class*="MuiBox-root"]');
-        expect(container).toBeTruthy();
+        const mountPointInfo = container.querySelector('h6');
+        expect(mountPointInfo?.textContent).toBe("Mount Point Information");
     });
 });

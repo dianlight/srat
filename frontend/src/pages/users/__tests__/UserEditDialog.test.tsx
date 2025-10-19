@@ -41,12 +41,12 @@ describe("UserEditDialog component", () => {
 
     it("displays read-only username for existing non-admin user and handles cancel", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { UserEditDialog } = await import("../UserEditDialog");
 
         const onClose = mock(() => { });
 
-        render(
+        const { container } = render(
             React.createElement(UserEditDialog as any, {
                 open: true,
                 onClose,
@@ -58,13 +58,17 @@ describe("UserEditDialog component", () => {
             })
         );
 
-        const usernameInput = await screen.findByLabelText(/User Name/i);
-        expect((usernameInput as HTMLInputElement).readOnly).toBe(true);
-        expect(await screen.findByText("existing")).toBeTruthy();
+        // Wait for the dialog to be visible
+        await screen.findByText("existing");
 
+        // Find the username input by its value
+        const usernameInput = await screen.findByDisplayValue("existing");
+        expect(usernameInput).toBeTruthy();
+        expect((usernameInput as HTMLInputElement).readOnly).toBe(true);
+
+        // Find and click the Cancel button
         const cancelButton = await screen.findByRole("button", { name: /cancel/i });
         fireEvent.click(cancelButton);
-
         expect(onClose).toHaveBeenCalledWith(undefined);
     });
 });

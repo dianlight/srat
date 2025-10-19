@@ -224,7 +224,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should disable test actions when test is running", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -241,7 +241,7 @@ describe("SmartStatusPanel Component", () => {
             percent_complete: 50,
         } as any;
 
-        render(
+        const { container } = render(
             React.createElement(SmartStatusPanel, {
                 smartInfo: mockSmartInfo,
                 testStatus: mockTestStatus,
@@ -258,13 +258,14 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // Start Test button should be disabled
-        const startButton = (await screen.findByText("Start Test")) as HTMLButtonElement;
-        expect(startButton.disabled).toBe(true);
+        const startButtons = await within(container).findAllByText("Start Test");
+        expect(startButtons).toHaveLength(1);
+        expect((startButtons[0] as HTMLButtonElement).disabled).toBe(true);
     });
 
     it("should disable all actions in read-only mode", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -275,7 +276,7 @@ describe("SmartStatusPanel Component", () => {
             enabled: true,
         } as any;
 
-        render(
+        const { container } = render(
             React.createElement(SmartStatusPanel, {
                 smartInfo: mockSmartInfo,
                 isSmartSupported: true,
@@ -291,18 +292,22 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // All action buttons should be disabled
-        const startButton = (await screen.findByText("Start Test")) as HTMLButtonElement;
-        const enableButton = (await screen.findByText("Enable SMART")) as HTMLButtonElement;
-        const disableButton = (await screen.findByText("Disable SMART")) as HTMLButtonElement;
+        const startButtons = await within(container).findAllByText("Start Test");
+        expect(startButtons).toHaveLength(1);
+        expect((startButtons[0] as HTMLButtonElement).disabled).toBe(true);
 
-        expect(startButton.disabled).toBe(true);
-        expect(enableButton.disabled).toBe(true);
-        expect(disableButton.disabled).toBe(true);
+        const enableButtons = await within(container).findAllByText("Enable SMART");
+        expect(enableButtons).toHaveLength(1);
+        expect((enableButtons[0] as HTMLButtonElement).disabled).toBe(true);
+
+        const disableButtons = await within(container).findAllByText("Disable SMART");
+        expect(disableButtons).toHaveLength(1);
+        expect((disableButtons[0] as HTMLButtonElement).disabled).toBe(true);
     });
 
     it("should disable all actions when SMART is not supported", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, within } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -313,7 +318,7 @@ describe("SmartStatusPanel Component", () => {
             enabled: true,
         } as any;
 
-        render(
+        const { container } = render(
             React.createElement(SmartStatusPanel, {
                 smartInfo: mockSmartInfo,
                 isSmartSupported: false,
@@ -322,13 +327,13 @@ describe("SmartStatusPanel Component", () => {
         );
 
         // Component should not render when SMART is not supported
-        const header = screen.queryByText("S.M.A.R.T. Status");
+        const header = within(container).queryByText("S.M.A.R.T. Status");
         expect(header).toBeFalsy();
     });
 
     it("should call onStartTest when Start Test button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -341,7 +346,7 @@ describe("SmartStatusPanel Component", () => {
 
         let startTestCalled = false;
 
-        render(
+        const { container } = render(
             React.createElement(SmartStatusPanel, {
                 smartInfo: mockSmartInfo,
                 isSmartSupported: true,
@@ -360,8 +365,9 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // Click Start Test button
-        const startButton = await screen.findByText("Start Test");
-        fireEvent.click(startButton);
+        const startButtons = await within(container).findAllByText("Start Test");
+        expect(startButtons).toHaveLength(1);
+        fireEvent.click(startButtons[0]!);
 
         // Dialog should open
         const dialogTitle = await screen.findByText("Start SMART Self-Test");
@@ -373,7 +379,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should display temperature range information", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen, fireEvent, within } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
 
         const mockSmartInfo = {
@@ -384,7 +390,7 @@ describe("SmartStatusPanel Component", () => {
             enabled: true,
         } as any;
 
-        render(
+        const { container } = render(
             React.createElement(SmartStatusPanel, {
                 smartInfo: mockSmartInfo,
                 isSmartSupported: true,
@@ -400,7 +406,8 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // Should display temperature range
-        const tempRange = await screen.findByText(/Min: 20°C \/ Max: 80°C/);
-        expect(tempRange).toBeTruthy();
+        const tempRanges = await within(container).findAllByText(/Min: 20°C \/ Max: 80°C/);
+        expect(tempRanges).toHaveLength(1);
+        expect(tempRanges[0]).toBeTruthy();
     });
 });
