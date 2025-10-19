@@ -7,6 +7,7 @@ const config = {
 	"exportName": "sratApi",
 	"hooks": true,
 	"useEnumType": true,
+	"useUnknown": true,
 	"tag": true,
 	"mergeReadWriteOnly": true,
 	"includeDefault": true,
