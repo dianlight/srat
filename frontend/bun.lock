@@ -35,7 +35,7 @@
         "react-router-dom": "^7.9.3",
         "react-syntax-highlighter": "^15.6.6",
         "react-toastify": "^11.0.5",
-        "rollbar": "3.0.0-beta.4",
+        "rollbar": "3.0.0-rc.1",
         "semver": "^7.7.2",
         "ts-react-json-table": "^0.1.5",
         "uuid": "^13.0.0",
@@ -727,7 +727,7 @@
 
     "robust-predicates": ["robust-predicates@3.0.2", "", {}, "sha512-IXgzBWvWQwE6PrDI05OvmXUIruQTcoMDzRsOd5CDvHCVLcLHMTSYvOK5Cm46kWqlV3yAbuSpBZdJ5oP5OUoStg=="],
 
-    "rollbar": ["rollbar@3.0.0-beta.4", "", { "dependencies": { "@rrweb/record": "^2.0.0-alpha.18", "async": "~3.2.3", "error-stack-parser-es": "^1.0.5", "json-stringify-safe": "~5.0.0", "lru-cache": "~2.2.1", "request-ip": "~3.3.0", "source-map": "^0.5.7" } }, "sha512-2Y1lR5w3mbtLoxGFDFjS88LzJXFznywZihTr4lRfEUrlW5sAXS/INMyqkmfQxbiNECbERGKqltGXOlHevETRpQ=="],
+    "rollbar": ["rollbar@3.0.0-rc.1", "", { "dependencies": { "@rrweb/record": "^2.0.0-alpha.18", "async": "~3.2.3", "error-stack-parser-es": "^1.0.5", "json-stringify-safe": "~5.0.0", "lru-cache": "~2.2.1", "request-ip": "~3.3.0", "source-map": "^0.5.7" } }, "sha512-Sc3+ERQA0Nqm01rrh7qOws6XR2e+7jVa4360blLz6x9LwFHFxNLy2i2gZ3gIgJR/8BoQY8m+bht5NEyJMWpgrQ=="],
 
     "rrdom": ["rrdom@2.0.0-alpha.18", "", { "dependencies": { "rrweb-snapshot": "^2.0.0-alpha.18" } }, "sha512-fSFzFFxbqAViITyYVA4Z0o5G6p1nEqEr/N8vdgSKie9Rn0FJxDSNJgjV0yiCIzcDs0QR+hpvgFhpbdZ6JIr5Nw=="],
 
