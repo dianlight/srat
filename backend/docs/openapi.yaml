@@ -289,6 +289,80 @@ components:
         - totalInboundTraffic
         - totalOutboundTraffic
       type: object
+    HDIdleDeviceDTO:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/HDIdleDeviceDTO.json
+          format: uri
+          readOnly: true
+          type: string
+        command_type:
+          enum:
+            - scsi
+            - ata
+          type: string
+        device_path:
+          type: string
+        idle_time:
+          format: int64
+          type: integer
+        power_condition:
+          format: int32
+          minimum: 0
+          type: integer
+      required:
+        - device_path
+        - idle_time
+        - power_condition
+      type: object
+    HDIdleDiskStatus:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/HDIdleDiskStatus.json
+          format: uri
+          readOnly: true
+          type: string
+        CommandType:
+          type: string
+        GivenName:
+          type: string
+        IdleTime:
+          format: int64
+          type: integer
+        LastIOAt:
+          format: date-time
+          type: string
+        Name:
+          type: string
+        PowerCondition:
+          format: int32
+          minimum: 0
+          type: integer
+        SpinDownAt:
+          format: date-time
+          type: string
+        SpinUpAt:
+          format: date-time
+          type: string
+        SpunDown:
+          type: boolean
+      required:
+        - Name
+        - GivenName
+        - SpunDown
+        - LastIOAt
+        - SpinDownAt
+        - SpinUpAt
+        - IdleTime
+        - CommandType
+        - PowerCondition
+      type: object
     HealthPing:
       additionalProperties: false
       properties:
@@ -927,6 +1001,23 @@ components:
         export_stats_to_ha:
           default: true
           type: boolean
+        hdidle_default_command_type:
+          enum:
+            - scsi
+            - ata
+          type: string
+        hdidle_default_idle_time:
+          format: int64
+          type: integer
+        hdidle_default_power_condition:
+          format: int32
+          minimum: 0
+          type: integer
+        hdidle_enabled:
+          default: false
+          type: boolean
+        hdidle_ignore_spin_down_detection:
+          type: boolean
         hostname:
           type: string
         interfaces:
@@ -965,6 +1056,10 @@ components:
           type: string
         workgroup:
           type: string
+      required:
+        - hdidle_default_idle_time
+        - hdidle_default_command_type
+        - hdidle_default_power_condition
       type: object
     SharedResource:
       additionalProperties: true
@@ -1384,6 +1479,273 @@ paths:
       summary: Get API capabilities
       tags:
         - system
+  /api/disk/{disk_id}/hdidle/config:
+    get:
+      operationId: get-api-disk-by-disk-id-hdidle-config
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HDIdleDeviceDTO"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API disk by disk ID hdidle config
+      tags:
+        - disk
+    patch:
+      description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
+      operationId: patch-api-disk-by-disk-id-hdidle-config
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              items:
+                $ref: "#/components/schemas/JsonPatchOp"
+              type:
+                - array
+                - "null"
+          application/merge-patch+json:
+            schema:
+              additionalProperties: false
+              properties:
+                $schema:
+                  description: A URL to the JSON Schema for this object.
+                  examples:
+                    - https://example.com/schemas/HDIdleDeviceDTO.json
+                  format: uri
+                  readOnly: true
+                  type: string
+                command_type:
+                  enum:
+                    - scsi
+                    - ata
+                  type: string
+                device_path:
+                  type: string
+                idle_time:
+                  format: int64
+                  type: integer
+                power_condition:
+                  format: int32
+                  minimum: 0
+                  type: integer
+              type: object
+          application/merge-patch+shorthand:
+            schema:
+              additionalProperties: false
+              properties:
+                $schema:
+                  description: A URL to the JSON Schema for this object.
+                  examples:
+                    - https://example.com/schemas/HDIdleDeviceDTO.json
+                  format: uri
+                  readOnly: true
+                  type: string
+                command_type:
+                  enum:
+                    - scsi
+                    - ata
+                  type: string
+                device_path:
+                  type: string
+                idle_time:
+                  format: int64
+                  type: integer
+                power_condition:
+                  format: int32
+                  minimum: 0
+                  type: integer
+              type: object
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HDIdleDeviceDTO"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Patch api-disk-by-disk-id-hdidle-config
+      tags:
+        - disk
+    put:
+      operationId: put-api-disk-by-disk-id-hdidle-config
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HDIdleDeviceDTO"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HDIdleDeviceDTO"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Put API disk by disk ID hdidle config
+      tags:
+        - disk
+  /api/disk/{disk_id}/hdidle/info:
+    get:
+      operationId: get-api-disk-by-disk-id-hdidle-info
+      parameters:
+        - description: The disk ID or device path
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID or device path
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HDIdleDiskStatus"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API disk by disk ID hdidle info
+      tags:
+        - disk
   /api/disk/{disk_id}/smart/disable:
     post:
       operationId: post-api-disk-by-disk-id-smart-disable
@@ -1483,7 +1845,7 @@ paths:
               $ref: "#/components/headers/X-Trace-Id"
       summary: Post API disk by disk ID smart enable
       tags:
-        - smart
+        - disk
   /api/disk/{disk_id}/smart/health:
     get:
       operationId: get-api-disk-by-disk-id-smart-health
@@ -1533,7 +1895,7 @@ paths:
               $ref: "#/components/headers/X-Trace-Id"
       summary: Get API disk by disk ID smart health
       tags:
-        - smart
+        - disk
   /api/disk/{disk_id}/smart/info:
     get:
       operationId: get-api-disk-by-disk-id-smart-info
@@ -1583,7 +1945,7 @@ paths:
               $ref: "#/components/headers/X-Trace-Id"
       summary: Get API disk by disk ID smart info
       tags:
-        - smart
+        - disk
   /api/disk/{disk_id}/smart/test:
     get:
       operationId: get-api-disk-by-disk-id-smart-test
@@ -1633,7 +1995,7 @@ paths:
               $ref: "#/components/headers/X-Trace-Id"
       summary: Get API disk by disk ID smart test
       tags:
-        - smart
+        - disk
   /api/disk/{disk_id}/smart/test/abort:
     post:
       operationId: post-api-disk-by-disk-id-smart-test-abort
@@ -1683,7 +2045,7 @@ paths:
               $ref: "#/components/headers/X-Trace-Id"
       summary: Post API disk by disk ID smart test abort
       tags:
-        - smart
+        - disk
   /api/disk/{disk_id}/smart/test/start:
     post:
       operationId: post-api-disk-by-disk-id-smart-test-start
@@ -1739,7 +2101,7 @@ paths:
               $ref: "#/components/headers/X-Trace-Id"
       summary: Post API disk by disk ID smart test start
       tags:
-        - smart
+        - disk
   /api/filesystems:
     get:
       operationId: list-api-filesystems
@@ -1834,8 +2196,8 @@ paths:
     get:
       operationId: get-api-hostname
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -1979,8 +2341,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -2120,8 +2482,8 @@ paths:
     put:
       operationId: put-api-restart
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -2159,8 +2521,8 @@ paths:
     put:
       operationId: put-api-samba-apply
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -2241,8 +2603,8 @@ paths:
     get:
       operationId: get-api-samba-status
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2360,6 +2722,23 @@ paths:
                 export_stats_to_ha:
                   default: true
                   type: boolean
+                hdidle_default_command_type:
+                  enum:
+                    - scsi
+                    - ata
+                  type: string
+                hdidle_default_idle_time:
+                  format: int64
+                  type: integer
+                hdidle_default_power_condition:
+                  format: int32
+                  minimum: 0
+                  type: integer
+                hdidle_enabled:
+                  default: false
+                  type: boolean
+                hdidle_ignore_spin_down_detection:
+                  type: boolean
                 hostname:
                   type: string
                 interfaces:
@@ -2418,6 +2797,23 @@ paths:
                   type: boolean
                 export_stats_to_ha:
                   default: true
+                  type: boolean
+                hdidle_default_command_type:
+                  enum:
+                    - scsi
+                    - ata
+                  type: string
+                hdidle_default_idle_time:
+                  format: int64
+                  type: integer
+                hdidle_default_power_condition:
+                  format: int32
+                  minimum: 0
+                  type: integer
+                hdidle_enabled:
+                  default: false
+                  type: boolean
+                hdidle_ignore_spin_down_detection:
                   type: boolean
                 hostname:
                   type: string
@@ -2546,8 +2942,8 @@ paths:
     post:
       operationId: post-api-share
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -3068,8 +3464,8 @@ paths:
     get:
       operationId: sse
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3388,8 +3784,8 @@ paths:
     put:
       operationId: put-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3431,8 +3827,8 @@ paths:
     get:
       operationId: list-api-update-channels
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3539,8 +3935,8 @@ paths:
             maxLength: 30
             minimum: 1
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3686,8 +4082,8 @@ paths:
     get:
       operationId: list-api-users
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3897,8 +4293,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -3950,8 +4346,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -3999,8 +4395,8 @@ paths:
     get:
       operationId: list-api-volumes
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:

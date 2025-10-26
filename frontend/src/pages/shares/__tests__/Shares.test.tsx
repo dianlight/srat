@@ -229,11 +229,11 @@ describe("Shares page", () => {
         const React = await import("react");
         const { render, screen, fireEvent, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { configureStore } = await import("@reduxjs/toolkit");
+        const { createTestStore } = await import("../../../../test/setup");
         // @ts-expect-error - Query param ensures fresh module instance for mocks
         const { Shares } = await import("../Shares?shares-test");
 
-        const store = configureStore({ reducer: () => ({}) });
+        const store = await createTestStore();
 
         render(
             React.createElement(

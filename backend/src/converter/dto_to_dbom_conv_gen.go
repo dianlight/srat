@@ -72,6 +72,22 @@ func (c *DtoToDbomConverterImpl) ExportedSharesToSharedResources(source *[]dbom.
 	}
 	return pDtoSharedResourceList, nil
 }
+func (c *DtoToDbomConverterImpl) HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdleDeviceDTO) (dbom.HDIdleDevice, error) {
+	var dbomHDIdleDevice dbom.HDIdleDevice
+	dbomHDIdleDevice.DevicePath = source.DevicePath
+	dbomHDIdleDevice.IdleTime = source.IdleTime
+	dbomHDIdleDevice.CommandType = c.dtoHdidleCommandToPDtoHdidleCommand(source.CommandType)
+	dbomHDIdleDevice.PowerCondition = source.PowerCondition
+	return dbomHDIdleDevice, nil
+}
+func (c *DtoToDbomConverterImpl) HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDeviceDTO, error) {
+	var dtoHDIdleDeviceDTO dto.HDIdleDeviceDTO
+	dtoHDIdleDeviceDTO.DevicePath = source.DevicePath
+	dtoHDIdleDeviceDTO.IdleTime = source.IdleTime
+	dtoHDIdleDeviceDTO.CommandType = c.pDtoHdidleCommandToDtoHdidleCommand(source.CommandType)
+	dtoHDIdleDeviceDTO.PowerCondition = source.PowerCondition
+	return dtoHDIdleDeviceDTO, nil
+}
 func (c *DtoToDbomConverterImpl) MountFlagsToMountDataFlags(source []dto.MountFlag) dbom.MounDataFlags {
 	var dbomMounDataFlags dbom.MounDataFlags
 	if source != nil {
@@ -328,6 +344,9 @@ func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) d
 	}
 	return dtoUser
 }
+func (c *DtoToDbomConverterImpl) dtoHdidleCommandToPDtoHdidleCommand(source dto.HdidleCommand) *dto.HdidleCommand {
+	return &source
+}
 func (c *DtoToDbomConverterImpl) dtoMountFlagToDbomMounDataFlag(source dto.MountFlag) dbom.MounDataFlag {
 	var dbomMounDataFlag dbom.MounDataFlag
 	dbomMounDataFlag.Name = source.Name
@@ -463,6 +482,13 @@ func (c *DtoToDbomConverterImpl) pDbomMounDataFlagsToPDtoMountFlags(source *dbom
 		pDtoMountFlags = &dtoMountFlags
 	}
 	return pDtoMountFlags, nil
+}
+func (c *DtoToDbomConverterImpl) pDtoHdidleCommandToDtoHdidleCommand(source *dto.HdidleCommand) dto.HdidleCommand {
+	var dtoHdidleCommand dto.HdidleCommand
+	if source != nil {
+		dtoHdidleCommand = (*source)
+	}
+	return dtoHdidleCommand
 }
 func (c *DtoToDbomConverterImpl) pDtoMountFlagsToPDbomMounDataFlags(source *dto.MountFlags) *dbom.MounDataFlags {
 	var pDbomMounDataFlags *dbom.MounDataFlags

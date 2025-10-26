@@ -37,6 +37,10 @@ func TestSambaUserAdminFlag(t *testing.T) {
 		IsAdmin:  false,
 	}
 
+	assert.Equal(t, "admin", adminUser.Username)
+	assert.Equal(t, "user", regularUser.Username)
+	assert.Equal(t, "adminpass", adminUser.Password)
+	assert.Equal(t, "userpass", regularUser.Password)
 	assert.True(t, adminUser.IsAdmin)
 	assert.False(t, regularUser.IsAdmin)
 }
@@ -62,6 +66,9 @@ func TestSambaUserWithShares(t *testing.T) {
 	assert.Len(t, user.RoShares, 1)
 	assert.Equal(t, "share1", user.RwShares[0].Name)
 	assert.Equal(t, "readonly1", user.RoShares[0].Name)
+	assert.Equal(t, "share2", user.RwShares[1].Name)
+	assert.Equal(t, "shareuser", user.Username)
+	assert.Equal(t, "pass", user.Password)
 }
 
 func TestSambaUserEmptyShares(t *testing.T) {
@@ -72,6 +79,8 @@ func TestSambaUserEmptyShares(t *testing.T) {
 
 	assert.Empty(t, user.RwShares)
 	assert.Empty(t, user.RoShares)
+	assert.Equal(t, "noshares", user.Username)
+	assert.Equal(t, "pass", user.Password)
 }
 
 func TestSambaUserMultipleShares(t *testing.T) {
@@ -98,6 +107,10 @@ func TestSambaUserMultipleShares(t *testing.T) {
 	assert.Len(t, user.RwShares, 4)
 	assert.Len(t, user.RoShares, 2)
 	assert.Contains(t, []string{"documents", "media", "backup", "projects"}, user.RwShares[0].Name)
+	assert.Contains(t, []string{"public", "archives"}, user.RoShares[0].Name)
+	assert.Equal(t, "poweruser", user.Username)
+	assert.Equal(t, "pass123", user.Password)
+	assert.False(t, user.IsAdmin)
 }
 
 func TestSambaUserPasswordUpdate(t *testing.T) {
@@ -111,6 +124,7 @@ func TestSambaUserPasswordUpdate(t *testing.T) {
 	// Simulate password change
 	user.Password = "newpass"
 	assert.Equal(t, "newpass", user.Password)
+	assert.Equal(t, "testuser", user.Username)
 }
 
 func TestSambaUsersSlice(t *testing.T) {
@@ -133,6 +147,7 @@ func TestSambaUserEmptyPassword(t *testing.T) {
 	}
 
 	assert.Empty(t, user.Password)
+	assert.Equal(t, "nopass", user.Username)
 }
 
 func TestSambaUserTimestamps(t *testing.T) {
@@ -146,4 +161,6 @@ func TestSambaUserTimestamps(t *testing.T) {
 
 	assert.Equal(t, now.Unix(), user.CreatedAt.Unix())
 	assert.Equal(t, now.Unix(), user.UpdatedAt.Unix())
+	assert.Equal(t, "timestamptest", user.Username)
+	assert.Equal(t, "pass", user.Password)
 }

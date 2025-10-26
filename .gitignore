@@ -11,3 +11,6 @@ config/
 !backend/src/config/
 .env.example
 backend/src/coverage*.out
+backend/src/srat-cli
+backend/src/srat-server
+backend/src/srat-openapi

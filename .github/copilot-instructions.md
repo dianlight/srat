@@ -166,6 +166,7 @@ make gen_patch      # Generate new patch files from modified gohack libraries
 
 ### Frontend Testing
 
+- **Timeout**: Always run with timeout at last of 10sec `bun test --timeout 10000`. If a test need more of 10sec split the test in smaller tests
 - **Framework**: `bun:test` with `happy-dom` for DOM simulation
 - **Testing Libraries**: `@testing-library/react` for component testing, `@testing-library/jest-dom` for assertions
 - **Test Structure**: Place tests in `__tests__` directories alongside components/pages
@@ -175,6 +176,7 @@ make gen_patch      # Generate new patch files from modified gohack libraries
 - **Store Testing**: Use `createTestStore()` helper from `frontend/test/setup.ts` for Redux store
 - **Component Testing**: Dynamic imports for React components to avoid module loading issues
 - **Async Testing**: Use `screen.findByText()` for waiting on async renders
+- **Bun Test Cli Commands**: Always use only valid cli command with bun. Use `bun test --help` to check the command avability before use it.
 
 ### Test Examples
 

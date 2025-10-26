@@ -3,13 +3,15 @@ import { useEffect, useState } from "react";
 import type Rollbar from "rollbar";
 import packageJson from "../../package.json";
 import {
+	getNodeEnv,
+	getRollbarClientAccessToken,
+} from "../macro/Environment" with { type: "macro" };
+import {
 	type Settings,
 	Telemetry_mode,
 	useGetApiSettingsQuery,
 } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/sseApi";
-import { get } from "react-hook-form";
-import { getNodeEnv, getRollbarClientAccessToken } from "../macro/Environment" with { type: 'macro' };
 
 /**
  * Hook that provides Rollbar functionality with telemetry mode checking
@@ -104,8 +106,8 @@ export const useRollbarTelemetry = () => {
 					},
 					person: evdata?.hello.machine_id
 						? {
-							id: evdata.hello.machine_id,
-						}
+								id: evdata.hello.machine_id,
+							}
 						: undefined,
 				},
 				enabled: enableRollbar,

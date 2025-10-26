@@ -28,9 +28,11 @@ import { useNavigate } from "react-router";
 import { PreviewDialog } from "../../../components/PreviewDialog";
 import { SmartStatusPanel } from "./SmartStatusPanel";
 import { useSmartOperations } from "../../../hooks/useSmartOperations";
+import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
 import { type LocationState, TabIDs } from "../../../store/locationState";
 import { type Disk, type Partition, type SharedResource, Usage, Time_machine_support } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
+import { useForm } from "react-hook-form-mui";
 
 interface VolumeDetailsPanelProps {
     disk?: Disk;
@@ -48,6 +50,14 @@ export function VolumeDetailsPanel({
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewObject, setPreviewObject] = useState<any | null>(null);
     const [previewTitle, setPreviewTitle] = useState<string>("Preview");
+
+    // Form control for HDIdle disk settings
+    const { control } = useForm({
+        defaultValues: {
+            // Initialize with disk-specific HDIdle settings
+            // These would be populated from the API in a real implementation
+        },
+    });
 
     // Smart operations hook
     const { startSelfTest, abortSelfTest, enableSmart, disableSmart, isLoading: smartOperationLoading } = useSmartOperations(disk?.id);
@@ -229,6 +239,15 @@ export function VolumeDetailsPanel({
                         </CardContent>
                     </Collapse>
                 </Card>
+
+                {/* HDIdle Disk-Specific Settings */}
+                {disk && (
+                    <HDIdleDiskSettings
+                        disk={disk}
+                        control={control}
+                        readOnly={false}
+                    />
+                )}
 
                 {/* S.M.A.R.T. Status Card */}
                 <SmartStatusPanel

@@ -220,7 +220,7 @@ func TestBuildCLIContextState(t *testing.T) {
 // Manual testing shows: go run ./cmd/srat-cli -silent upgrade -channel release
 
 func TestParseCommandValid(t *testing.T) {
-	for _, cmd := range []string{"start", "stop", "upgrade", "version"} {
+	for _, cmd := range []string{"start", "stop", "upgrade", "version", "hdidle"} {
 		cmd := cmd
 		t.Run(cmd, func(t *testing.T) {
 			result, err := parseCommand([]string{cmd})
@@ -239,7 +239,7 @@ func TestParseCommandMissing(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for missing command")
 	}
-	if !strings.Contains(err.Error(), "expected 'start','stop','upgrade' or 'version' subcommands") {
+	if !strings.Contains(err.Error(), "expected 'start','stop','upgrade','hdidle' or 'version' subcommands") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

@@ -20,7 +20,7 @@ import {
 	useMediaQuery,
 } from "@mui/material";
 import Card from "@mui/material/Card";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Slide, ToastContainer } from "react-toastify";
 import { useNotificationCenter } from "react-toastify/addons/use-notification-center";
 import type { ErrorModel } from "../store/sratApi";
@@ -203,7 +203,7 @@ export function NotificationCenter() {
 												{notification.data.error.errors?.map(
 													(error, _index) => (
 														<Typography variant="body2" gutterBottom>
-															{error.message} {error.value} {error.location}
+															{error.message} {error.value as ReactNode} {error.location}
 														</Typography>
 													),
 												)}

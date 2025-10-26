@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/binary"
 	"os"
+	"path/filepath"
 	"strings"
 	"unsafe"
 
@@ -37,16 +38,11 @@ func getDevicePathForIOCTL(devicePath string) (string, error) {
 		return devicePath, nil
 	}
 
-	// For symlinks like /dev/disk/by-id/..., resolve to the actual device
-	realPath, err := os.Readlink(devicePath)
+	// For symlinks like /dev/disk/by-id/..., resolve the entire symlink chain
+	realPath, err := filepath.EvalSymlinks(devicePath)
 	if err != nil {
-		// If readlink fails, try to use the path as-is
+		// If symlink resolution fails, try to use the path as-is
 		return devicePath, nil
-	}
-
-	// Readlink may return a relative path, make it absolute
-	if !strings.HasPrefix(realPath, "/") {
-		realPath = "/dev/" + realPath
 	}
 
 	return realPath, nil
@@ -111,7 +107,7 @@ func ioctlSMARTCommand(devicePath string, feature byte, lbaLow byte) error {
 }
 
 // enableSMART enables SMART on a SATA device
-func enableSMART(dev *smart.SataDevice, devicePath string) errors.E {
+func enableSMART(_ *smart.SataDevice, devicePath string) errors.E {
 	if err := ioctlSMARTCommand(devicePath, _SMART_ENABLE_OPERATIONS, 0); err != nil {
 		return errors.Wrap(err, "failed to enable SMART")
 	}
@@ -120,7 +116,7 @@ func enableSMART(dev *smart.SataDevice, devicePath string) errors.E {
 }
 
 // disableSMART disables SMART on a SATA device
-func disableSMART(dev *smart.SataDevice, devicePath string) errors.E {
+func disableSMART(_ *smart.SataDevice, devicePath string) errors.E {
 	if err := ioctlSMARTCommand(devicePath, _SMART_DISABLE_OPERATIONS, 0); err != nil {
 		return errors.Wrap(err, "failed to disable SMART")
 	}
@@ -129,7 +125,7 @@ func disableSMART(dev *smart.SataDevice, devicePath string) errors.E {
 }
 
 // executeSMARTTest starts a SMART self-test on a SATA device
-func executeSMARTTest(dev *smart.SataDevice, testType byte, devicePath string) errors.E {
+func executeSMARTTest(_ *smart.SataDevice, testType byte, devicePath string) errors.E {
 	if err := ioctlSMARTCommand(devicePath, _SMART_EXECUTE_OFFLINE_IMMEDIATE, testType); err != nil {
 		return errors.Wrap(err, "failed to execute SMART self-test")
 	}
@@ -137,8 +133,68 @@ func executeSMARTTest(dev *smart.SataDevice, testType byte, devicePath string) e
 	return nil
 }
 
+// checkSMARTStatus queries whether SMART is enabled on a SATA device
+// Returns error if SMART is not supported or if the query fails
+func checkSMARTStatus(_ *smart.SataDevice, devicePath string) (bool, errors.E) {
+	// Get the actual device path (resolve symlinks)
+	actualPath, err := getDevicePathForIOCTL(devicePath)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to resolve device path")
+	}
+
+	// Open the device with read/write access
+	// SMART commands may require write access even for status checks
+	fd, err := os.OpenFile(actualPath, os.O_RDWR, 0)
+	if err != nil {
+		if os.IsPermission(err) {
+			return false, errors.WithDetails(dto.ErrorSMARTOperationFailed, "reason", "permission denied opening device for SMART status check")
+		}
+		return false, errors.Wrapf(err, "failed to open device %s for SMART status check", actualPath)
+	}
+	defer fd.Close()
+
+	// Get the file descriptor
+	fileFD := int(fd.Fd())
+
+	// Create a buffer for the HDIO_DRIVE_CMD ioctl
+	// The structure expected by kernel is: unsigned char args[4+512]
+	var cmdBuffer [516]byte
+
+	// Set up the 4-byte ATA command for status check
+	// Format: [0] = command (0xB0), [1] = feature (0xDA), [2] = 0, [3] = 0x4f (SMART signature)
+	cmdBuffer[0] = _ATA_SMART           // ATA command 0xB0
+	cmdBuffer[1] = _SMART_RETURN_STATUS // Feature: 0xDA for status check
+	cmdBuffer[2] = 0                    // LBA Low: 0
+	cmdBuffer[3] = 0x4f                 // SMART signature byte (LBA Mid for SMART operations)
+
+	// HDIO_DRIVE_CMD ioctl number
+	const HDIO_DRIVE_CMD = 0x0000031f
+
+	_, _, errno := unix.Syscall(
+		unix.SYS_IOCTL,
+		uintptr(fileFD),
+		uintptr(HDIO_DRIVE_CMD),
+		uintptr(unsafe.Pointer(&cmdBuffer[0])),
+	)
+
+	if errno != 0 {
+		// Check for specific error codes that indicate SMART is not supported/enabled
+		if errno == unix.EIO || errno == unix.EOPNOTSUPP || errno == unix.ENOTTY || errno == unix.EINVAL {
+			return false, nil
+		}
+		// SMART not supported or command failed
+		return false, errors.Errorf("SMART status check failed on %s: errno=%d", actualPath, errno)
+	}
+
+	// If command succeeds, SMART is enabled
+	// The returned status bytes in cmdBuffer[4] indicate SMART status
+	// cmdBuffer[4] = LBA Low (returns 0xf1 if SMART failed, 0x2c if passed)
+	// For a simple check, if the ioctl succeeds, SMART is supported and enabled
+	return true, nil
+}
+
 // parseSelfTestLog parses the SMART self-test log to get test status
-func parseSelfTestLog(log interface{}) (*dto.SmartTestStatus, errors.E) {
+func parseSelfTestLog(_ interface{}) (*dto.SmartTestStatus, errors.E) {
 	// This would parse the actual self-test log from smart.go
 	// For now, return a basic implementation
 	return &dto.SmartTestStatus{
@@ -148,7 +204,7 @@ func parseSelfTestLog(log interface{}) (*dto.SmartTestStatus, errors.E) {
 }
 
 // checkSMARTHealth evaluates SMART attributes to determine disk health
-func checkSMARTHealth(smartInfo *dto.SmartInfo, thresholds map[uint8]uint8, attrs map[uint8]interface{}) *dto.SmartHealthStatus {
+func checkSMARTHealth(smartInfo *dto.SmartInfo, _ map[uint8]uint8, _ map[uint8]interface{}) *dto.SmartHealthStatus {
 	health := &dto.SmartHealthStatus{
 		Passed:        true,
 		OverallStatus: "healthy",

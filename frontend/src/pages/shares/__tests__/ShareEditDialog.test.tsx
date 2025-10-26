@@ -6,7 +6,7 @@ describe("ShareEditDialog", () => {
         mock.restore();
     });
 
-    const setupMockForm = async (submitCallback?: (data: any) => void) => {
+    const setupMockForm = async (submitCallback?: (data: any) => void, testId = "mock-share-form") => {
         const React = await import("react");
         mock.module("../components/ShareEditForm", () => {
             return {
@@ -15,7 +15,7 @@ describe("ShareEditDialog", () => {
                         "button",
                         {
                             type: "button",
-                            "data-testid": "mock-share-form",
+                            "data-testid": testId,
                             onClick: () => {
                                 submitCallback?.({ name: "Submitted" });
                                 props.onSubmit({ name: "Submitted" });
@@ -77,7 +77,7 @@ describe("ShareEditDialog", () => {
         let received: any = null;
         await setupMockForm((data) => {
             received = data;
-        });
+        }, "submit-form-test");
 
         const React = await import("react");
         const { render, screen, fireEvent } = await import("@testing-library/react");
@@ -94,7 +94,8 @@ describe("ShareEditDialog", () => {
             })
         );
 
-        const submitButton = await screen.findByTestId("mock-share-form");
+        // Find the mock form button with unique test ID
+        const submitButton = await screen.findByTestId("submit-form-test");
         fireEvent.click(submitButton);
 
         expect(received).toBeTruthy();

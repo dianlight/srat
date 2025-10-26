@@ -86,6 +86,7 @@ func TestUserShares(t *testing.T) {
 	assert.Contains(t, user.RwShares, "backup")
 	assert.Contains(t, user.RoShares, "public")
 	assert.Contains(t, user.RoShares, "archives")
+	assert.Equal(t, "testuser", user.Username)
 }
 
 func TestUserEmptyShares(t *testing.T) {
@@ -95,6 +96,7 @@ func TestUserEmptyShares(t *testing.T) {
 
 	assert.Empty(t, user.RwShares)
 	assert.Empty(t, user.RoShares)
+	assert.Equal(t, "noshares", user.Username)
 }
 
 func TestUserAdminFlag(t *testing.T) {
@@ -109,6 +111,8 @@ func TestUserAdminFlag(t *testing.T) {
 
 	assert.True(t, adminUser.IsAdmin)
 	assert.False(t, regularUser.IsAdmin)
+	assert.Equal(t, "admin", adminUser.Username)
+	assert.Equal(t, "user", regularUser.Username)
 }
 
 func TestUserPasswordHandling(t *testing.T) {
@@ -119,12 +123,14 @@ func TestUserPasswordHandling(t *testing.T) {
 
 	assert.NotEmpty(t, user.Password)
 	assert.Equal(t, "securepassword123", user.Password)
+	assert.Equal(t, "testuser", user.Username)
 
 	// Test empty password (might be valid for external auth)
 	userNoPass := User{
 		Username: "nopassuser",
 	}
 	assert.Empty(t, userNoPass.Password)
+	assert.Equal(t, "nopassuser", userNoPass.Username)
 }
 
 func TestUserMaxLength(t *testing.T) {
@@ -147,6 +153,8 @@ func TestUserMultipleShares(t *testing.T) {
 
 	assert.Len(t, user.RwShares, 5)
 	assert.Len(t, user.RoShares, 2)
+	assert.False(t, user.IsAdmin)
+	assert.Equal(t, "poweruser", user.Username)
 
 	// Verify all shares are present
 	for i := 1; i <= 5; i++ {

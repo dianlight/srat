@@ -18,6 +18,7 @@ require (
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
 	github.com/anatol/smart.go v0.0.0-20241126061019-f03d79b340d2
 	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/fatih/color v1.18.0
@@ -38,12 +39,15 @@ require (
 	github.com/teivah/broadcast v0.1.0
 	gorm.io/datatypes v1.2.7
 	gorm.io/driver/sqlite v1.6.0
+	gorm.io/gen v0.3.27
+	gorm.io/plugin/dbresolver v1.6.2
 )
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
 	github.com/air-verse/air v1.63.0 // indirect
+	github.com/benmcclelland/sgio v0.0.0-20180629175614-f710aebf64c1 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
 	github.com/bep/golibsass v1.2.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
@@ -78,6 +82,7 @@ require (
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/errgo.v2 v2.1.0 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
+	gorm.io/hints v1.1.2 // indirect
 )
 
 require (
@@ -135,7 +140,7 @@ require (
 	golang.org/x/exp v0.0.0-20251009144603-d2f985daa21b
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/sync v0.17.0
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/libc v1.66.9 // indirect
@@ -170,6 +175,3 @@ tool (
 	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )
-
-
-

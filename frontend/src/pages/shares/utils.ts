@@ -73,7 +73,7 @@ export const toKebabCase = (str: string): string => {
 
 const casingStyleToIconMap: Record<
 	CasingStyle,
-	OverridableComponent<SvgIconTypeMap<{}, "svg">>
+	OverridableComponent<SvgIconTypeMap<Record<string, never>, "svg">>
 > = {
 	[CasingStyle.UPPERCASE]: KeyboardCapslockIcon,
 	[CasingStyle.LOWERCASE]: TextDecreaseIcon,
@@ -83,6 +83,6 @@ const casingStyleToIconMap: Record<
 
 export const getCasingIcon = (
 	style: CasingStyle,
-): OverridableComponent<SvgIconTypeMap<{}, "svg">> => {
+): OverridableComponent<SvgIconTypeMap<Record<string, never>, "svg">> => {
 	return casingStyleToIconMap[style] || KeyboardCapslockIcon; // Default to UPPERCASE icon if not found
 };

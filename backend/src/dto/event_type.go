@@ -4,9 +4,10 @@ package dto
 type eventType int
 
 const (
-	eventHello     eventType = iota // "hello"
-	eventUpdating                   // "updating"
-	eventVolumes                    // "volumes"
-	eventHeartbeat                  // "heartbeat"
-	eventShare                      // "share"
+	eventHello        eventType = iota // "hello"
+	eventUpdating                      // "updating"
+	eventVolumes                       // "volumes"
+	eventHeartbeat                     // "heartbeat"
+	eventShare                         // "share"
+	eventHDIdleConfig                  // "hdidle_config"
 )

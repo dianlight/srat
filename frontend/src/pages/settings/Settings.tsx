@@ -1,6 +1,7 @@
 import AutorenewIcon from "@mui/icons-material/Autorenew"; // Icon for fetching hostname
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd"; // Import an icon for the button
-import { CircularProgress, IconButton, Stack, Typography } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import { CircularProgress, IconButton, Stack, Typography, TextField, Box, Paper } from "@mui/material";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
@@ -15,7 +16,7 @@ import {
 	TextFieldElement,
 	useForm,
 } from "react-hook-form-mui";
-import { useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { InView } from "react-intersection-observer";
 import default_json from "../../json/default_config.json";
 import { TabIDs } from "../../store/locationState";
@@ -34,8 +35,11 @@ import {
 	Telemetry_mode,
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/sseApi";
-import { Padding } from "@mui/icons-material";
 import { getNodeEnv } from "../../macro/Environment" with { type: 'macro' };
+import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
+import { TreeItem } from "@mui/x-tree-view/TreeItem";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
@@ -80,7 +84,99 @@ const HOSTNAME_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 // Allows alphanumeric characters and hyphens. Cannot start or end with a hyphen. Length 1-15.
 const WORKGROUP_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,13}[a-zA-Z0-9])?$/;
 
+// Tree structure for settings
+interface SettingTreeNode {
+	id: string;
+	label: string;
+	children?: SettingTreeNode[];
+	settingName?: string;
+}
+
+// Define categories structure for dynamic tree building
+const categories: { [key: string]: { [key: string]: string[] } | string[] } = {
+	'General': ['hostname', 'workgroup', 'local_master', 'compatibility_mode'],
+	'Network': {
+		'Devices': ['bind_all_interfaces', 'interfaces', 'multi_channel', 'smb_over_quic'],
+		'Access Control': ['allow_hosts'],
+	},
+	'Update': ['update_channel'],
+	'Telemetry': ['telemetry_mode'],
+	'HomeAssistant': ['export_stats_to_ha'],
+	'Power': ['hdidle_enabled', 'hdidle_default_idle_time', 'hdidle_default_command_type', 'hdidle_ignore_spin_down_detection'],
+};
+
+// Build tree structure dynamically from categories
+const buildSettingsTree = (): SettingTreeNode[] => {
+	const tree: SettingTreeNode[] = [];
+
+	Object.entries(categories).forEach(([category, subCategories]) => {
+		if (Array.isArray(subCategories)) {
+			// For string arrays like General, create a single leaf node
+			const leafNode: SettingTreeNode = {
+				id: category.toLowerCase(),
+				label: category,
+				settingName: category.toLowerCase(),
+			};
+			tree.push(leafNode);
+		} else {
+			// For objects like Network, create parent node with leaf children
+			const categoryNode: SettingTreeNode = {
+				id: category.toLowerCase(),
+				label: category,
+				children: [],
+			};
+
+			Object.entries(subCategories).forEach(([subCategory, settings]) => {
+				const leafNode: SettingTreeNode = {
+					id: `${category.toLowerCase()}_${subCategory.toLowerCase().replace(/\s+/g, '_')}`,
+					label: subCategory,
+					settingName: subCategory.toLowerCase().replace(/\s+/g, '_'),
+				};
+				categoryNode.children?.push(leafNode);
+			});
+
+			tree.push(categoryNode);
+		}
+	});
+
+	return tree;
+};
+
 export function Settings() {
+	const [selectedSetting, setSelectedSetting] = useState<string | null>(null);
+	const [searchQuery, setSearchQuery] = useState<string>('');
+	const [expandedNodes, setExpandedNodes] = useState<string[]>(['network', 'update', 'telemetry', 'hdidle']);
+
+	const settingsTree = useMemo(() => buildSettingsTree(), []);
+
+	// Filter tree based on search query
+	const filteredTree = useMemo(() => {
+		if (!searchQuery.trim()) return settingsTree;
+
+		const filterNode = (node: SettingTreeNode): SettingTreeNode | null => {
+			const matchesSearch = node.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				(node.settingName && node.settingName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+			if (matchesSearch) return node;
+
+			if (node.children) {
+				const filteredChildren = node.children
+					.map(filterNode)
+					.filter((child): child is SettingTreeNode => child !== null);
+
+				if (filteredChildren.length > 0) {
+					return { ...node, children: filteredChildren };
+				}
+			}
+
+			return null;
+		};
+
+		return settingsTree
+			.map(filterNode)
+			.filter((node): node is SettingTreeNode => node !== null);
+	}, [settingsTree, searchQuery]);
+
 	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
 
 	const {
@@ -151,30 +247,592 @@ export function Settings() {
 		}
 	};
 
+	// Render tree node recursively
+	const renderTree = (node: SettingTreeNode) => (
+		<TreeItem
+			key={node.id}
+			itemId={node.id}
+			label={node.label}
+			onClick={() => node.settingName && setSelectedSetting(node.settingName)}
+		>
+			{node.children?.map(renderTree)}
+		</TreeItem>
+	);
+
+	// Render setting field based on setting name
+	const renderSettingField = (settingName: string) => {
+		const commonProps = {
+			control,
+			disabled: evdata?.hello?.read_only,
+		};
+
+		// Check if this is a composite category (leaf node with multiple fields)
+		for (const [category, subCategories] of Object.entries(categories)) {
+			if (Array.isArray(subCategories)) {
+				// If subCategories is a string array (like General), and settingName matches the category
+				if (settingName === category.toLowerCase()) {
+					// Render composite panel with all fields in the array
+					return (
+						<Stack spacing={3}>
+							{subCategories.map(field => renderSettingField(field))}
+						</Stack>
+					);
+				}
+			} else {
+				// If subCategories is an object (like Network), check subcategories
+				for (const [subCategory, settings] of Object.entries(subCategories)) {
+					const normalizedSubCategory = subCategory.toLowerCase().replace(/\s+/g, '_');
+					if (settingName === normalizedSubCategory && Array.isArray(settings) && settings.length > 1) {
+						// Render composite panel with all fields in the array
+						return (
+							<Stack spacing={3}>
+								{settings.map(field => renderSettingField(field))}
+							</Stack>
+						);
+					} else if (settingName === normalizedSubCategory && Array.isArray(settings) && settings.length === 1) {
+						// Single field category, render the field directly
+						return renderSettingField(settings[0] || '');
+					}
+				}
+			}
+		}
+
+		// Individual field rendering (existing logic)
+		switch (settingName) {
+
+			case 'update_channel':
+				return (
+					<AutocompleteElement
+						label="Update Channel"
+						name="update_channel"
+						loading={isChLoading}
+						autocompleteProps={{
+							size: "small",
+							disabled: evdata?.hello?.read_only || getNodeEnv() === "production",
+							contentEditable: false,
+							disableClearable: true
+						}}
+						options={(updateChannels as string[]) || []}
+						{...commonProps}
+					/>
+				);
+
+			case 'telemetry_mode':
+				return (
+					<>
+						<AutocompleteElement
+							label="Telemetry Mode"
+							name="telemetry_mode"
+							required
+							loading={isTelemetryLoading}
+							autocompleteProps={{
+								size: "small",
+								disabled: evdata?.hello?.read_only || isInternetLoading || !internetConnection,
+								contentEditable: false,
+								disableClearable: true,
+								autoComplete: false,
+							}}
+							textFieldProps={{
+								autoComplete: "off",
+							}}
+							options={
+								(telemetryModes as string[])?.filter(mode => mode !== Telemetry_mode.Ask) || []
+							}
+							{...commonProps}
+						/>
+						{!internetConnection && !isInternetLoading && (
+							<Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+								Internet connection required for telemetry settings
+							</Typography>
+						)}
+					</>
+				);
+
+			case 'export_stats_to_ha':
+				return (
+					<Tooltip
+						title={
+							<>
+								<Typography variant="h6" component="div">
+									Export stats to Home Assistant
+								</Typography>
+								<Typography variant="body2">
+									If enabled, the status of disks, volumes and the server will be transmitted to Home Assistant.
+								</Typography>
+							</>
+						}
+					>
+						<SwitchElement
+							switchProps={{
+								"aria-label": "Export Stats to HA",
+								size: "small",
+							}}
+							sx={{ display: "flex" }}
+							name="export_stats_to_ha"
+							label="Export Stats to HA"
+							labelPlacement="start"
+							{...commonProps}
+						/>
+					</Tooltip>
+				);
+
+			case 'hostname':
+				return (
+					<TextFieldElement
+						size="small"
+						sx={{ display: "flex" }}
+						name="hostname"
+						label="Hostname"
+						required
+						rules={{
+							required: "Hostname is required.",
+							pattern: {
+								value: HOSTNAME_REGEX,
+								message:
+									"Invalid hostname. Use alphanumeric characters and hyphens (not at start/end). Max 63 chars.",
+							},
+							maxLength: {
+								value: 63,
+								message: "Hostname cannot exceed 63 characters.",
+							},
+						}}
+						slotProps={{
+							input: {
+								endAdornment: (
+									<InputAdornment position="end">
+										<Tooltip title="Fetch current system hostname">
+											<span>
+												<IconButton
+													aria-label="fetch system hostname"
+													onClick={handleFetchHostname}
+													edge="end"
+													disabled={evdata?.hello?.read_only || isHostnameFetching}
+												>
+													{isHostnameFetching ? (
+														<CircularProgress size={20} />
+													) : (
+														<AutorenewIcon />
+													)}
+												</IconButton>
+											</span>
+										</Tooltip>
+									</InputAdornment>
+								),
+							},
+						}}
+						{...commonProps}
+					/>
+				);
+
+			case 'local_master':
+				return (
+					<Tooltip
+						title={
+							<>
+								<Typography variant="h6" component="div">
+									Enable Local Master
+								</Typography>
+								<Typography variant="body2">
+									This option allows nmbd(8) to try and become a local master
+									browser on a subnet. If set to no then nmbd will not
+									attempt to become a local master browser on a subnet and
+									will also lose in all browsing elections. By default this
+									value is set to yes. Setting this value to yes doesn't
+									mean that Samba will become the local master browser on a
+									subnet, just that nmbd will participate in elections for
+									local master browser.
+								</Typography>
+								<Typography variant="body2">
+									Setting this value to no will cause nmbd never to become a
+									local master browser.
+								</Typography>
+							</>
+						}
+					>
+						<SwitchElement
+							switchProps={{
+								"aria-label": "Local Master",
+								size: "small",
+							}}
+							sx={{ display: "flex" }}
+							name="local_master"
+							label="Local Master"
+							labelPlacement="start"
+							{...commonProps}
+						/>
+					</Tooltip>
+				);
+
+			case 'compatibility_mode':
+				return (
+					<SwitchElement
+						switchProps={{
+							'aria-label': 'Compatibility Mode',
+							size: "small",
+						}}
+						id="compatibility_mode"
+						label="Compatibility Mode"
+						labelPlacement="start"
+						name="compatibility_mode"
+						{...commonProps}
+					/>
+				);
+
+			case 'workgroup':
+				return (
+					<TextFieldElement
+						size="small"
+						sx={{ display: "flex" }}
+						name="workgroup"
+						label="Workgroup"
+						required
+						rules={{
+							required: "Workgroup is required.",
+							pattern: {
+								value: WORKGROUP_REGEX,
+								message:
+									"Invalid workgroup name. Use alphanumeric characters and hyphens (not at start/end). Max 15 chars.",
+							},
+							maxLength: {
+								value: 15,
+								message: "Workgroup name cannot exceed 15 characters.",
+							},
+						}}
+						{...commonProps}
+					/>
+				);
+
+			case 'allow_hosts':
+				return (
+					<Controller
+						name="allow_hosts"
+						control={control}
+						defaultValue={[]}
+						disabled={evdata?.hello?.read_only}
+						rules={{
+							required: "Allow Hosts cannot be empty.",
+							validate: (chips: string[] | undefined) => {
+								if (!chips || chips.length === 0) return true;
+
+								for (const chip of chips) {
+									if (
+										typeof chip !== "string" ||
+										!isValidIpAddressOrCidr(chip)
+									) {
+										return `Invalid entry: "${chip}". Only IPv4/IPv6 addresses or CIDR notation allowed.`;
+									}
+								}
+								return true;
+							},
+						}}
+						render={({ field, fieldState: { error } }) => (
+							<MuiChipsInput
+								{...field}
+								size="small"
+								label="Allow Hosts"
+								required
+								hideClearAll
+								validate={(chipValue) =>
+									typeof chipValue === "string" &&
+									isValidIpAddressOrCidr(chipValue)
+								}
+								error={!!error}
+								helperText={error ? error.message : undefined}
+								slotProps={{
+									input: {
+										endAdornment: (
+											<InputAdornment position="end" sx={{ pr: 1 }}>
+												{!evdata?.hello?.read_only && (
+													<Tooltip title="Add suggested default Allow Hosts">
+														<IconButton
+															aria-label="add suggested default allow hosts"
+															onClick={() => {
+																const currentAllowHosts: string[] =
+																	getValues("allow_hosts") || [];
+																const defaultAllowHosts: string[] =
+																	default_json.allow_hosts || [];
+																const validDefaultHosts =
+																	defaultAllowHosts.filter((host) =>
+																		isValidIpAddressOrCidr(host),
+																	);
+																const newAllowHostsToAdd =
+																	validDefaultHosts.filter(
+																		(defaultHost) =>
+																			!currentAllowHosts.includes(
+																				defaultHost,
+																			),
+																	);
+																setValue(
+																	"allow_hosts",
+																	[
+																		...currentAllowHosts,
+																		...newAllowHostsToAdd,
+																	],
+																	{
+																		shouldDirty: true,
+																		shouldValidate: true,
+																	},
+																);
+															}}
+															edge="end"
+														>
+															<PlaylistAddIcon />
+														</IconButton>
+													</Tooltip>
+												)}
+											</InputAdornment>
+										),
+									},
+								}}
+								renderChip={(Component, key, props) => {
+									const isDefault = default_json.allow_hosts?.includes(
+										props.label as string,
+									);
+									return (
+										<Component
+											key={key}
+											{...props}
+											sx={{
+												color: isDefault
+													? "text.secondary"
+													: "text.primary",
+											}}
+											size="small"
+										/>
+									);
+								}}
+							/>
+						)}
+					/>
+				);
+
+			case 'multi_channel':
+				return (
+					<Tooltip
+						title={
+							<>
+								<Typography variant="h6" component="div">
+									Enable Multi Channel Mode
+								</Typography>
+								<Typography variant="body2">
+									This boolean parameter controls whether smbd(8) will support
+									SMB3 multi-channel.
+								</Typography>
+							</>
+						}
+					>
+						<SwitchElement
+							switchProps={{
+								"aria-label": "Multi Channel Mode",
+								size: "small",
+							}}
+							id="multi_channel"
+							label="Multi Channel Mode"
+							name="multi_channel"
+							labelPlacement="start"
+							{...commonProps}
+						/>
+					</Tooltip>
+				);
+
+			case 'smb_over_quic':
+				return (
+					<>
+						<Tooltip
+							title={
+								<>
+									<Typography variant="h6" component="div">
+										Enable SMB over QUIC
+									</Typography>
+									<Typography variant="body2">
+										This parameter enables SMB over QUIC transport protocol for improved
+										performance and security. Requires Samba 4.23+ and QUIC kernel
+										module support.
+									</Typography>
+									{capabilities && 'supports_quic' in capabilities && !capabilities.supports_quic && 'unsupported_reason' in capabilities && capabilities.unsupported_reason && (
+										<Typography variant="body2" sx={{ mt: 1, color: 'warning.light' }}>
+											<strong>Not available:</strong> {capabilities.unsupported_reason}
+										</Typography>
+									)}
+								</>
+							}
+						>
+							<SwitchElement
+								switchProps={{
+									"aria-label": "SMB over QUIC",
+									size: "small",
+								}}
+								id="smb_over_quic"
+								label="SMB over QUIC"
+								name="smb_over_quic"
+								labelPlacement="start"
+								disabled={evdata?.hello?.read_only || isCapabilitiesLoading || !(capabilities && 'supports_quic' in capabilities && capabilities.supports_quic)}
+								control={control}
+							/>
+						</Tooltip>
+						{capabilities && 'supports_quic' in capabilities && !capabilities.supports_quic && !isCapabilitiesLoading && 'unsupported_reason' in capabilities && capabilities.unsupported_reason && (
+							<Typography variant="caption" color="warning.main" sx={{ mt: 0.5, display: 'block' }}>
+								{capabilities.unsupported_reason}
+							</Typography>
+						)}
+					</>
+				);
+
+			case 'bind_all_interfaces':
+				return (
+					<>
+						<CheckboxElement
+							size="small"
+							id="bind_all_interfaces"
+							label="Bind All Interfaces"
+							name="bind_all_interfaces"
+							{...commonProps}
+						/>
+						<AutocompleteElement
+							multiple
+							label="Interfaces"
+							name="interfaces"
+							options={
+								(nic as InterfaceStat[])
+									?.map((nc) => nc.name)
+									.filter((name) => name !== "lo" && name !== "hassio") || []
+							}
+							loading={inLoadinf}
+							autocompleteProps={{
+								size: "small",
+								disabled: bindAllWatch || evdata?.hello?.read_only,
+							}}
+							control={control}
+						/>
+					</>
+				);
+
+			case 'interfaces':
+				// This is handled in bind_all_interfaces case
+				return null;
+
+			case 'hdidle_enabled':
+				return (
+					<Tooltip
+						title={
+							<>
+								<Typography variant="h6" component="div">
+									Enable HDIdle Service
+								</Typography>
+								<Typography variant="body2">
+									Automatically spin down idle disks after a configured timeout to reduce
+									power consumption and extend disk lifespan.
+								</Typography>
+							</>
+						}
+					>
+						<SwitchElement
+							name="hdidle_enabled"
+							label="Enable Automatic Disk Spin-Down"
+							labelPlacement="start"
+							switchProps={{
+								"aria-label": "Enable HDIdle",
+								size: "small",
+							}}
+							{...commonProps}
+						/>
+					</Tooltip>
+				);
+
+			case 'hdidle_default_idle_time':
+				return (
+					<>
+						<TextFieldElement
+							name="hdidle_default_idle_time"
+							label="Default Idle Time (seconds)"
+							type="number"
+							required
+							disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
+							slotProps={{
+								htmlInput: {
+									min: 60,
+								},
+								input: {
+									endAdornment: (
+										<InputAdornment position="end">
+											seconds
+										</InputAdornment>
+									),
+								},
+							}}
+							size="small"
+							control={control}
+						/>
+						<Typography variant="caption" color="text.secondary">
+							Time before spinning down idle disks (minimum: 60 seconds)
+						</Typography>
+					</>
+				);
+
+			case 'hdidle_default_command_type':
+				return (
+					<Tooltip
+						title={
+							<>
+								<Typography variant="body2">
+									<strong>SCSI:</strong> For most modern SATA/SAS drives
+								</Typography>
+								<Typography variant="body2">
+									<strong>ATA:</strong> For legacy ATA/IDE drives
+								</Typography>
+							</>
+						}
+					>
+						<AutocompleteElement
+							name="hdidle_default_command_type"
+							label="Default Command Type"
+							options={["scsi", "ata"]}
+							autocompleteProps={{
+								size: "small",
+								disabled: !control._formValues?.hdidle_enabled || evdata?.hello?.read_only,
+								disableClearable: true,
+							}}
+							control={control}
+						/>
+					</Tooltip>
+				);
+
+			case 'hdidle_ignore_spin_down_detection':
+				return (
+					<Tooltip
+						title={
+							<Typography variant="body2">
+								Force spin down even if disk reports it's already spun down
+							</Typography>
+						}
+					>
+						<CheckboxElement
+							name="hdidle_ignore_spin_down_detection"
+							label="Ignore Spin Down Detection"
+							disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
+							size="small"
+							control={control}
+						/>
+					</Tooltip>
+				);
+
+			default:
+				return <Typography>Setting not found: {settingName}</Typography>;
+		}
+	};
+
 	// Tour event handlers
 	useEffect(() => {
 		const handleSettingsStep3 = () => {
-			// Focus on hostname field when step 3 is triggered
-			const hostnameField = document.querySelector('input[name="hostname"]') as HTMLInputElement;
-			if (hostnameField) {
-				hostnameField.focus();
-			}
+			setSelectedSetting('hostname');
 		};
 
 		const handleSettingsStep5 = () => {
-			// Focus on allow hosts field when step 5 is triggered
-			const allowHostsField = document.querySelector('input[placeholder*="Allow Hosts"]') as HTMLInputElement;
-			if (allowHostsField) {
-				allowHostsField.focus();
-			}
+			setSelectedSetting('allow_hosts');
 		};
 
 		const handleSettingsStep8 = () => {
-			// Focus on interfaces field when step 8 is triggered
-			const interfacesField = document.querySelector('input[placeholder*="Interfaces"]') as HTMLInputElement;
-			if (interfacesField) {
-				interfacesField.focus();
-			}
+			setSelectedSetting('interfaces');
 		};
 
 		TourEvents.on(TourEventTypes.SETTINGS_STEP_3, handleSettingsStep3);
@@ -190,454 +848,104 @@ export function Settings() {
 
 	return (
 		<InView>
-			<br />
-			<Stack
-				spacing={2}
-				sx={[
-					(theme) => ({
-						backgroundColor: theme.vars?.palette.background.default,
-					}),
-					(theme) =>
-						theme.applyStyles('dark', {
-							backgroundColor: theme.vars?.palette.grey[900],
-						}),
-					(theme) => ({
-						padding: theme.spacing(2),
-					}),
-				]}
-				data-tutor={`reactour__tab${TabIDs.SETTINGS}__step0`}
-			>
-				<Divider data-tutor={`reactour__tab${TabIDs.SETTINGS}__step2`} />
-				<form
-					id="settingsform"
-					onSubmit={handleSubmit(handleCommit)}
-					noValidate
-					autoComplete="off"
-				>
-					<Grid container spacing={2}>
-						<Grid
-							size={{ xs: 12, md: 4 }}
-							data-tutor={`reactour__tab${TabIDs.SETTINGS}__step2`}>
-							<AutocompleteElement
-								label="Update Channel"
-								name="update_channel"
-								loading={isChLoading}
-								autocompleteProps={{
-									size: "small",
-									disabled: evdata?.hello?.read_only || getNodeEnv() === "production",
-									contentEditable: false, // Prevent manual input in production
-									disableClearable: true
-								}}
-								options={(updateChannels as string[]) || []}
-								control={control}
-							/>
-						</Grid>
-						<Grid size={{ xs: 12, md: 4 }}>
-							<AutocompleteElement
-								label="Telemetry Mode"
-								name="telemetry_mode"
-								required
-								loading={isTelemetryLoading}
-								autocompleteProps={{
-									size: "small",
-									disabled: evdata?.hello?.read_only || isInternetLoading || !internetConnection,
-									contentEditable: false, // Prevent manual input in production
-									disableClearable: true,
-									autoComplete: false,
-								}}
-								textFieldProps={{
-									autoComplete: "off",
-								}}
-								options={
-									(telemetryModes as string[])?.filter(mode => mode !== Telemetry_mode.Ask) || []
-								}
-								control={control}
-							/>
-							{!internetConnection && !isInternetLoading && (
-								<Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-									Internet connection required for telemetry settings
-								</Typography>
-							)}
-						</Grid>
-						<Grid size={{ xs: 12, md: 4 }}>
-							<Tooltip
-								title={
-									<>
-										<Typography variant="h6" component="div">
-											Export stats to Home Assistant
-										</Typography>
-										<Typography variant="body2">
-											If enabled, the status of disks, volumes and the server will be transmitted to Home Assistant.
-										</Typography>
-									</>
-								}
-							>
-								<SwitchElement
-									switchProps={{
-										"aria-label": "Export Stats to HA",
-										size: "small",
-									}}
-									sx={{ display: "flex" }}
-									name="export_stats_to_ha"
-									label="Export Stats to HA"
-									labelPlacement="start"
-									control={control}
-									disabled={evdata?.hello?.read_only}
-								/>
-							</Tooltip>
-						</Grid>
+			<Box sx={{ height: 'max', display: 'flex', flexDirection: 'column' }}>
+				{/* Search Bar */}
+				<Paper sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+					<TextField
+						fullWidth
+						size="small"
+						placeholder="Search settings..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						slotProps={{
+							input: {
+								startAdornment: (
+									<InputAdornment position="start">
+										<SearchIcon />
+									</InputAdornment>
+								),
+							},
+						}}
+					/>
+				</Paper>
 
-						<Grid size={12}>
-							<Divider />
-						</Grid>
-						<Grid size={{ xs: 12, md: 4 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step3`}>
-							<TextFieldElement
-								size="small"
-								sx={{ display: "flex" }}
-								name="hostname"
-								label="Hostname"
-								required
-								control={control}
-								rules={{
-									required: "Hostname is required.",
-									pattern: {
-										value: HOSTNAME_REGEX,
-										message:
-											"Invalid hostname. Use alphanumeric characters and hyphens (not at start/end). Max 63 chars.",
-									},
-									maxLength: {
-										value: 63,
-										message: "Hostname cannot exceed 63 characters.",
-									},
-								}}
-								disabled={evdata?.hello?.read_only}
-								slotProps={{
-									input: {
-										endAdornment: (
-											<InputAdornment position="end">
-												<Tooltip title="Fetch current system hostname">
-													{/* Span needed for tooltip when IconButton is disabled */}
-													<span data-tutor={`reactour__tab${TabIDs.SETTINGS}__step4`}>
-														<IconButton
-															aria-label="fetch system hostname"
-															onClick={handleFetchHostname}
-															edge="end"
-															disabled={evdata?.hello?.read_only || isHostnameFetching}
-														>
-															{isHostnameFetching ? (
-																<CircularProgress size={20} />
-															) : (
-																<AutorenewIcon />
-															)}
-														</IconButton>
-													</span>
-												</Tooltip>
-											</InputAdornment>
-										),
-									},
-								}}
-							/>
-						</Grid>
-						<Grid size={{ xs: 12, md: 2 }}>
-							<Tooltip
-								title={
-									<>
-										<Typography variant="h6" component="div">
-											Enable Local Master
-										</Typography>
-										<Typography variant="body2">
-											This option allows nmbd(8) to try and become a local master
-											browser on a subnet. If set to no then nmbd will not
-											attempt to become a local master browser on a subnet and
-											will also lose in all browsing elections. By default this
-											value is set to yes. Setting this value to yes doesn't
-											mean that Samba will become the local master browser on a
-											subnet, just that nmbd will participate in elections for
-											local master browser.
-										</Typography>
-										<Typography variant="body2">
-											Setting this value to no will cause nmbd never to become a
-											local master browser.
-										</Typography>
-									</>
-								}
-							>
-								<SwitchElement
-									switchProps={{
-										"aria-label": "Local Master",
-										size: "small",
-									}}
-									sx={{ display: "flex" }}
-									name="local_master"
-									label="Local Master"
-									labelPlacement="start"
-									control={control}
-									disabled={evdata?.hello?.read_only}
-								/>
-							</Tooltip>
-						</Grid>
-						<Grid size={{ xs: 12, md: 2 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step7`}>
-							<SwitchElement
-								switchProps={{
-									'aria-label': 'Compatibility Mode',
-									size: "small",
-								}}
-								id="compatibility_mode"
-								label="Compatibility Mode"
-								labelPlacement="start"
-								name="compatibility_mode"
-								control={control}
-								disabled={evdata?.hello?.read_only}
-							/>
-						</Grid>
-						<Grid size={{ xs: 12, md: 4 }}>
-							<TextFieldElement
-								size="small"
-								sx={{ display: "flex" }}
-								name="workgroup"
-								label="Workgroup"
-								required
-								control={control}
-								rules={{
-									required: "Workgroup is required.",
-									pattern: {
-										value: WORKGROUP_REGEX,
-										message:
-											"Invalid workgroup name. Use alphanumeric characters and hyphens (not at start/end). Max 15 chars.",
-									},
-									maxLength: {
-										value: 15,
-										message: "Workgroup name cannot exceed 15 characters.",
-									},
-								}}
-								disabled={evdata?.hello?.read_only}
-							/>
-						</Grid>
-						<Grid size={{ xs: 12, md: 12 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step5`}>
-							<Controller
-								name="allow_hosts"
-								control={control}
-								defaultValue={[]}
-								disabled={evdata?.hello?.read_only}
-								rules={{
-									required: "Allow Hosts cannot be empty.",
-									validate: (chips: string[] | undefined) => {
-										if (!chips || chips.length === 0) return true; // Handled by 'required'
-
-										for (const chip of chips) {
-											// Ensure chip is a string before validation
-											if (
-												typeof chip !== "string" ||
-												!isValidIpAddressOrCidr(chip)
-											) {
-												return `Invalid entry: "${chip}". Only IPv4/IPv6 addresses or CIDR notation allowed.`;
-											}
-										}
-										return true;
-									},
-								}}
-								render={({ field, fieldState: { error } }) => (
-									<MuiChipsInput
-										{...field}
-										size="small"
-										label="Allow Hosts"
-										required
-										hideClearAll
-										validate={(chipValue) =>
-											typeof chipValue === "string" &&
-											isValidIpAddressOrCidr(chipValue)
-										}
-										error={!!error}
-										helperText={error ? error.message : undefined}
-										slotProps={{
-											input: {
-												endAdornment: (
-													<InputAdornment position="end" sx={{ pr: 1 }}>
-														{!evdata?.hello?.read_only && (
-															<Tooltip title="Add suggested default Allow Hosts">
-																<IconButton
-																	aria-label="add suggested default allow hosts"
-																	onClick={() => {
-																		const currentAllowHosts: string[] =
-																			getValues("allow_hosts") || [];
-																		const defaultAllowHosts: string[] =
-																			default_json.allow_hosts || [];
-																		// Only add default hosts that are valid IP addresses or CIDR
-																		const validDefaultHosts =
-																			defaultAllowHosts.filter((host) =>
-																				isValidIpAddressOrCidr(host),
-																			);
-																		const newAllowHostsToAdd =
-																			validDefaultHosts.filter(
-																				(defaultHost) =>
-																					!currentAllowHosts.includes(
-																						defaultHost,
-																					),
-																			);
-																		setValue(
-																			"allow_hosts",
-																			[
-																				...currentAllowHosts,
-																				...newAllowHostsToAdd,
-																			],
-																			{
-																				shouldDirty: true,
-																				shouldValidate: true,
-																			},
-																		);
-																	}}
-																	edge="end"
-																	data-tutor={`reactour__tab${TabIDs.SETTINGS}__step6`}
-																>
-																	<PlaylistAddIcon />
-																</IconButton>
-															</Tooltip>
-														)}
-													</InputAdornment>
-												),
-											},
-										}}
-										renderChip={(Component, key, props) => {
-											const isDefault = default_json.allow_hosts?.includes(
-												props.label as string,
-											);
-											return (
-												<Component
-													key={key}
-													{...props}
-													sx={{
-														color: isDefault
-															? "text.secondary"
-															: "text.primary",
-													}}
-													size="small"
-												/>
-											);
-										}}
-									/>
-								)}
-							/>
-						</Grid>
-						<Grid size={{ xs: 12, md: 2 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step7`}>
-							<Tooltip
-								title={
-									<>
-										<Typography variant="h6" component="div">
-											Enable Multi Channel Mode
-										</Typography>
-										<Typography variant="body2">
-											This boolean parameter controls whether smbd(8) will support
-											SMB3 multi-channel.
-										</Typography>
-									</>
-								}
-							>
-								<SwitchElement
-									switchProps={{
-										"aria-label": "Multi Channel Mode",
-										size: "small",
-									}}
-									id="multi_channel"
-									label="Multi Channel Mode"
-									name="multi_channel"
-									labelPlacement="start"
-									control={control}
-									disabled={evdata?.hello?.read_only}
-								/>
-							</Tooltip>
-						</Grid>
-						<Grid size={{ xs: 12, md: 2 }}>
-							<Tooltip
-								title={
-									<>
-										<Typography variant="h6" component="div">
-											Enable SMB over QUIC
-										</Typography>
-										<Typography variant="body2">
-											This parameter enables SMB over QUIC transport protocol for improved
-											performance and security. Requires Samba 4.23+ and QUIC kernel
-											module support.
-										</Typography>
-										{capabilities && 'supports_quic' in capabilities && !capabilities.supports_quic && 'unsupported_reason' in capabilities && capabilities.unsupported_reason && (
-											<Typography variant="body2" sx={{ mt: 1, color: 'warning.light' }}>
-												<strong>Not available:</strong> {capabilities.unsupported_reason}
-											</Typography>
-										)}
-									</>
-								}
-							>
-								<SwitchElement
-									switchProps={{
-										"aria-label": "SMB over QUIC",
-										size: "small",
-									}}
-									id="smb_over_quic"
-									label="SMB over QUIC"
-									name="smb_over_quic"
-									labelPlacement="start"
-									control={control}
-									disabled={evdata?.hello?.read_only || isCapabilitiesLoading || !(capabilities && 'supports_quic' in capabilities && capabilities.supports_quic)}
-								/>
-							</Tooltip>
-							{capabilities && 'supports_quic' in capabilities && !capabilities.supports_quic && !isCapabilitiesLoading && 'unsupported_reason' in capabilities && capabilities.unsupported_reason && (
-								<Typography variant="caption" color="warning.main" sx={{ mt: 0.5, display: 'block' }}>
-									{capabilities.unsupported_reason}
-								</Typography>
-							)}
-						</Grid>
-						<Grid size={{ xs: 12, md: 4 }} data-tutor={`reactour__tab${TabIDs.SETTINGS}__step8`}>
-							<CheckboxElement
-								size="small"
-								id="bind_all_interfaces"
-								label="Bind All Interfaces"
-								name="bind_all_interfaces"
-								control={control}
-								disabled={evdata?.hello?.read_only}
-							/>
-							<AutocompleteElement
-								multiple
-								label="Interfaces"
-								name="interfaces"
-								options={
-									(nic as InterfaceStat[])
-										?.map((nc) => nc.name)
-										.filter((name) => name !== "lo" && name !== "hassio") || []
-								}
-								control={control}
-								loading={inLoadinf}
-								autocompleteProps={{
-									size: "small",
-									disabled: bindAllWatch || evdata?.hello?.read_only,
-								}}
-							/>
-						</Grid>
-					</Grid>
-				</form>
-				<Divider />
-				<Stack
-					direction="row"
-					spacing={2}
-					sx={{
-						justifyContent: "flex-end",
-						alignItems: "center",
-					}}
-					data-tutor={`reactour__tab${TabIDs.SETTINGS}__step9`}
-				>
-					<Button onClick={() => reset()} disabled={!formState.isDirty}>
-						Reset
-					</Button>
-					<Button
-						type="submit"
-						form="settingsform"
-						disabled={!formState.isDirty}
-						variant="outlined"
-						color="success"
+				{/* Main Content */}
+				<Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+					{/* Left Panel - Tree View */}
+					<Paper
+						sx={{
+							width: 300,
+							borderRight: 1,
+							borderColor: 'divider',
+							overflow: 'auto',
+							flexShrink: 0,
+						}}
 					>
-						Apply
-					</Button>
-				</Stack>
-			</Stack>
-			{/*   <DevTool control={control} />  set up the dev tool */}
+						<SimpleTreeView
+							expandedItems={expandedNodes}
+							onExpandedItemsChange={(event, nodeIds) => setExpandedNodes(nodeIds)}
+							sx={{ p: 1 }}
+						>
+							{filteredTree.map(renderTree)}
+						</SimpleTreeView>
+					</Paper>
+
+					{/* Right Panel - Settings */}
+					<Paper sx={{ flex: 1, p: 3, overflow: 'auto' }}>
+						<form
+							id="settingsform"
+							onSubmit={handleSubmit(handleCommit)}
+							noValidate
+							autoComplete="off"
+						>
+							{selectedSetting ? (
+								<Box>
+									<Typography variant="h5" gutterBottom>
+										{selectedSetting.split('_').map(word =>
+											word.charAt(0).toUpperCase() + word.slice(1)
+										).join(' ')}
+									</Typography>
+									<Divider sx={{ mb: 3 }} />
+									<Box sx={{ maxWidth: 600 }}>
+										{renderSettingField(selectedSetting)}
+									</Box>
+								</Box>
+							) : (
+								<Box sx={{ textAlign: 'center', py: 8 }}>
+									<Typography variant="h6" color="text.secondary">
+										Select a setting from the tree to configure
+									</Typography>
+								</Box>
+							)}
+						</form>
+					</Paper>
+				</Box>
+
+				{/* Bottom Button Bar */}
+				<Paper sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+					<Stack
+						direction="row"
+						spacing={2}
+						sx={{
+							justifyContent: "flex-end",
+							alignItems: "center",
+						}}
+					>
+						<Button onClick={() => reset()} disabled={!formState.isDirty}>
+							Reset
+						</Button>
+						<Button
+							type="submit"
+							form="settingsform"
+							disabled={!formState.isDirty}
+							variant="outlined"
+							color="success"
+						>
+							Apply
+						</Button>
+					</Stack>
+				</Paper>
+			</Box>
 		</InView>
 	);
 }

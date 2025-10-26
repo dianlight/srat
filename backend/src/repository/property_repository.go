@@ -32,7 +32,14 @@ func NewPropertyRepositoryRepository(db *gorm.DB) PropertyRepositoryInterface {
 
 func (self *PropertyRepository) All(include_internal bool) (dbom.Properties, errors.E) {
 	var props []dbom.Property
-	err := self.db.Model(&dbom.Property{}).Find(&props, "internal = ? or internal = false", include_internal).Error
+	var err error
+	if include_internal {
+		// If include_internal is true, fetch all properties
+		err = self.db.Model(&dbom.Property{}).Find(&props).Error
+	} else {
+		// If include_internal is false, fetch only non-internal properties
+		err = self.db.Model(&dbom.Property{}).Find(&props, "internal = ?", false).Error
+	}
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

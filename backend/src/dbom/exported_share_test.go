@@ -51,6 +51,7 @@ func TestExportedShareBooleanFields(t *testing.T) {
 		GuestOk:     false,
 	}
 
+	assert.Equal(t, "boolean-test", share.Name)
 	assert.NotNil(t, share.Disabled)
 	assert.True(t, *share.Disabled)
 	assert.True(t, share.TimeMachine)
@@ -80,6 +81,7 @@ func TestExportedShareTimeMachine(t *testing.T) {
 
 	assert.True(t, share.TimeMachine)
 	assert.Equal(t, "2TB", share.TimeMachineMaxSize)
+	assert.Equal(t, "timemachine-share", share.Name)
 }
 
 func TestExportedShareUsageTypes(t *testing.T) {
@@ -92,6 +94,7 @@ func TestExportedShareUsageTypes(t *testing.T) {
 				Usage: usage,
 			}
 			assert.Equal(t, usage, share.Usage)
+			assert.Equal(t, "usage-test", share.Name)
 		})
 	}
 }
@@ -102,6 +105,7 @@ func TestExportedShareMountPointData(t *testing.T) {
 		MountPointDataPath: "/mnt/data",
 	}
 
+	assert.Equal(t, "mounted-share", share.Name)
 	assert.Equal(t, "/mnt/data", share.MountPointDataPath)
 }
 
@@ -111,6 +115,7 @@ func TestExportedShareEmptyVetoFiles(t *testing.T) {
 		VetoFiles: datatypes.JSONSlice[string]{},
 	}
 
+	assert.Equal(t, "no-veto", share.Name)
 	assert.NotNil(t, share.VetoFiles)
 	assert.Empty(t, share.VetoFiles)
 }
@@ -121,6 +126,7 @@ func TestExportedShareRecycleBinDefault(t *testing.T) {
 		RecycleBin: false,
 	}
 
+	assert.Equal(t, "recycle-test", share.Name)
 	assert.False(t, share.RecycleBin)
 }
 
@@ -130,6 +136,7 @@ func TestExportedShareGuestOkDefault(t *testing.T) {
 		GuestOk: false,
 	}
 
+	assert.Equal(t, "guest-test", share.Name)
 	assert.False(t, share.GuestOk)
 }
 
@@ -151,6 +158,7 @@ func TestExportedShareMultipleUsers(t *testing.T) {
 		RoUsers: roUsers,
 	}
 
+	assert.Equal(t, "multi-user", share.Name)
 	assert.Len(t, share.Users, 3)
 	assert.Len(t, share.RoUsers, 2)
 

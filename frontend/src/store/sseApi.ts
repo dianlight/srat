@@ -1,4 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { getServerEventBackend } from "../macro/Environment" with {
+	type: "macro",
+};
 import { apiUrl } from "./emptyApi";
 import type {
 	Disk,
@@ -8,7 +11,6 @@ import type {
 	Welcome,
 } from "./sratApi";
 import { Supported_events } from "./sratApi";
-import { getServerEventBackend } from "../macro/Environment" with { type: 'macro' };
 
 export type EventData = {
 	[Supported_events.Heartbeat]: HealthPing;

@@ -223,6 +223,7 @@ func prog(state overseer.State) {
 			server.AsHumaRoute(api.NewSystemHanler),
 			server.AsHumaRoute(api.NewIssueAPI),
 			server.AsHumaRoute(api.NewTelemetryHandler),
+			server.AsHumaRoute(api.NewHDIdleHandler),
 			server.NewMuxRouter,
 			server.NewHTTPServer,
 			server.NewHumaAPI,
@@ -257,6 +258,7 @@ func prog(state overseer.State) {
 			lc fx.Lifecycle,
 			props_repo repository.PropertyRepositoryInterface,
 			samba_service service.SambaServiceInterface,
+			//			hdidle_service service.HDIdleServiceInterface,
 		) {
 			// Setting the actual LogLevel
 			err := props_repo.SetValue("LogLevel", *logLevelString)
@@ -273,6 +275,10 @@ func prog(state overseer.State) {
 						log.Fatalf("Cant apply samba config - %#+v", err)
 					}
 					slog.Info("******* Samba config applied! ********")
+
+					return nil
+				},
+				OnStop: func(ctx context.Context) error {
 					return nil
 				},
 			})
