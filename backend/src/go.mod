@@ -1,6 +1,6 @@
 module github.com/dianlight/srat
 
-go 1.25.0
+go 1.25.3
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
