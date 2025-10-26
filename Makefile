@@ -46,7 +46,7 @@ docs-fix:
 		echo "Warning: No package manager found. Auto-fix may fail."; \
 	fi
 	@./scripts/validate-docs.sh --fix
-	bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" --fix
+	bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" --fix
 
 .PHONY: docs-check
 docs-check:

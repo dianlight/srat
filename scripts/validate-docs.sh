@@ -71,7 +71,7 @@ install_packages() {
 # Run markdownlint
 run_markdownlint() {
     print_status "info" "Running markdownlint..."
-    if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules" ; then
+    if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" ; then
         print_status "success" "Markdownlint passed"
         return 0
     else
@@ -88,7 +88,7 @@ run_link_check() {
 
 
     # Check links in all markdown files
-    find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" | while read -r file; do
+    find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" | while read -r file; do
         if ! $RUNNER markdown-link-check "$file" --config .markdown-link-check.json; then
             print_status "error" "Link check failed for $file"
             failed=1
@@ -108,7 +108,7 @@ run_link_check() {
 run_spell_check() {
     print_status "info" "Running spell check..."
 
-    if $RUNNER cspell "**/*.md"; then
+    if $RUNNER cspell "**/*.md" --ignore-pattern "backend/src/vendor/**"; then
         print_status "success" "Spell check passed"
         return 0
     else
@@ -188,7 +188,7 @@ case "${1:-}" in
             print_status "error" "No JS CLI runner found (bunx or npmx required)"
             exit 1
         fi
-        $RUNNER prettier --write "**/*.md" --ignore-path "frontend/node_modules/**"
+        $RUNNER prettier --write "**/*.md"
         print_status "success" "Auto-fix completed"
         exit 0
         ;;
