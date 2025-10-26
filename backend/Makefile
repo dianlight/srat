@@ -153,6 +153,10 @@ static: $(FRONTEND_DIRS)/node_modules
 .PHONY: patch
 patch:
 	@echo "Applying patches to vendored dependencies..."
+	@if ! command -v patch >/dev/null 2>&1; then \
+		echo "ERROR: 'patch' command not found. Please install patch utility."; \
+		exit 1; \
+	fi
 	@find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true
 	@if [ -f "$(ROOT_DIR)/patches/goenums.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/zarldev/goenums" ]; then \
 		cd $(ROOT_DIR)/src/vendor/github.com/zarldev/goenums && patch -p1 --dry-run < $(ROOT_DIR)/patches/goenums.patch >/dev/null 2>&1 && (patch -p1 < $(ROOT_DIR)/patches/goenums.patch || true) || true; \

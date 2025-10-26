@@ -223,9 +223,9 @@ jobs:
           bun-version-file: frontend/package.json
 
       - name: Prepare env for ${{ needs.setversion.outputs.version }}
-        run: |
+        run: |       
           cd backend
-          make patch
+          make patch format
           cd ../frontend
           bun install
           cd ..
