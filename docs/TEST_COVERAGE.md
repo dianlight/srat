@@ -12,7 +12,7 @@ This document provides an overview of the test coverage for the SRAT project, in
 | Frontend (TypeScript) | 70.30%   | 🟢 Green  |
 | Global (Weighted)     | 48.7%    | 🟡 Yellow |
 
-*Last updated: 2025-10-11*
+_Last updated: 2025-10-11_
 
 ## Backend Package-Level Coverage
 
