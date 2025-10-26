@@ -1,3 +1,45 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Comprehensive TestCreateConfigStream Version Check Implementation](#comprehensive-testcreateconfigstream-version-check-implementation)
+  - [Overview](#overview)
+  - [Test Architecture](#test-architecture)
+    - [Key Components](#key-components)
+  - [Test Cases](#test-cases)
+    - [16 Total Test Cases Implemented](#16-total-test-cases-implemented)
+      - [1. Base Configuration Test](#1-base-configuration-test)
+      - [2. Edge Case: Empty Version](#2-edge-case-empty-version)
+      - [3. Edge Case: Invalid Version String](#3-edge-case-invalid-version-string)
+      - [4-8. Version-Specific Major Tests](#4-8-version-specific-major-tests)
+      - [9-11. Boundary Condition Tests](#9-11-boundary-condition-tests)
+      - [12-16. Patch Level Variation Tests](#12-16-patch-level-variation-tests)
+  - [Version-Specific Behavior Matrix](#version-specific-behavior-matrix)
+    - [Samba 4.20 and Earlier](#samba-420-and-earlier)
+    - [Samba 4.21.x (First Supported)](#samba-421x-first-supported)
+    - [Samba 4.22.x (Transition Release)](#samba-422x-transition-release)
+    - [Samba 4.23.x (Modern Version)](#samba-423x-modern-version)
+    - [Samba 4.24.x and 5.0+](#samba-424x-and-50)
+  - [Key Test Insights](#key-test-insights)
+    - [1. Version Comparison Logic](#1-version-comparison-logic)
+    - [2. Template Function Integration](#2-template-function-integration)
+    - [3. Safe Defaults](#3-safe-defaults)
+  - [Test Execution Results](#test-execution-results)
+  - [Running the Tests](#running-the-tests)
+    - [Run All Version Tests](#run-all-version-tests)
+    - [Run Specific Test Category](#run-specific-test-category)
+    - [Run Single Test](#run-single-test)
+  - [Test Coverage Matrix](#test-coverage-matrix)
+  - [Files Modified](#files-modified)
+  - [Future Enhancements](#future-enhancements)
+  - [Troubleshooting](#troubleshooting)
+    - [Test Fails with "Version mismatch"](#test-fails-with-version-mismatch)
+    - [Test Fails with "Missing section"](#test-fails-with-missing-section)
+    - [Mock Not Applied](#mock-not-applied)
+  - [Summary](#summary)
+    - [Key Achievements](#key-achievements)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Comprehensive TestCreateConfigStream Version Check Implementation
 
 ## Overview

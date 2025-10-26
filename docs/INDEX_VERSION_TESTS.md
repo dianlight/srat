@@ -1,3 +1,5 @@
+<!-- DOCTOC SKIP -->
+
 # TestCreateConfigStream Version Check Implementation - Complete Index
 
 ## 📖 Documentation Guide

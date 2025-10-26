@@ -108,7 +108,7 @@ run_link_check() {
 run_spell_check() {
     print_status "info" "Running spell check..."
 
-    if $RUNNER cspell "**/*.md" --ignore-pattern "backend/src/vendor/**"; then
+    if $RUNNER cspell "**/*.md"; then
         print_status "success" "Spell check passed"
         return 0
     else

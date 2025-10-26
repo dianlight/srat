@@ -1,3 +1,38 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Version Check Tests - Quick Reference Guide](#version-check-tests---quick-reference-guide)
+  - [What Was Implemented](#what-was-implemented)
+  - [All 16 Tests at a Glance](#all-16-tests-at-a-glance)
+    - [Core Tests (5 tests)](#core-tests-5-tests)
+    - [Advanced Version Tests (2 tests)](#advanced-version-tests-2-tests)
+    - [Edge Cases (1 test)](#edge-cases-1-test)
+    - [Boundary Tests (3 tests)](#boundary-tests-3-tests)
+    - [Patch Level Tests (5 tests)](#patch-level-tests-5-tests)
+  - [Version-Specific Behaviors Tested](#version-specific-behaviors-tested)
+  - [Running Tests](#running-tests)
+  - [Key Infrastructure Added](#key-infrastructure-added)
+    - [1. Version Mocking (`osutil.go`)](#1-version-mocking-osutilgo)
+    - [2. Test Fixtures (`samba_service_test.go`)](#2-test-fixtures-samba_service_testgo)
+    - [3. Test Data (`test/data/smb.conf`)](#3-test-data-testdatasmbconf)
+  - [Test Results Summary](#test-results-summary)
+  - [Files Modified](#files-modified)
+  - [What's Tested](#whats-tested)
+    - [✅ Configuration Generation](#-configuration-generation)
+    - [✅ Version-Specific Options](#-version-specific-options)
+    - [✅ Version Boundaries](#-version-boundaries)
+    - [✅ Edge Cases](#-edge-cases)
+    - [✅ Patch Levels](#-patch-levels)
+  - [Maintenance Notes](#maintenance-notes)
+    - [Adding a New Samba Version Test](#adding-a-new-samba-version-test)
+    - [Updating Version Boundaries](#updating-version-boundaries)
+    - [Test Data Updates](#test-data-updates)
+  - [CI/CD Integration](#cicd-integration)
+  - [Performance](#performance)
+  - [Documentation](#documentation)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Version Check Tests - Quick Reference Guide
 
 ## What Was Implemented

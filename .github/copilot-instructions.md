@@ -8,6 +8,7 @@
   - [Frontend Patterns](#frontend-patterns)
 - [Development Workflows](#development-workflows)
   - [Backend Development](#backend-development)
+  - [Library Patching with Go Vendor](#library-patching-with-go-vendor)
   - [Frontend Development](#frontend-development)
   - [Full Stack Development](#full-stack-development)
 - [Testing Patterns](#testing-patterns)

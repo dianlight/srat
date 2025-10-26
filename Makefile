@@ -21,7 +21,22 @@ prepare:
 	cd $(FRONTEND_DIRS); bun install
 
 .PHONY: docs
-docs:  docs-fix docs-validate	
+docs:  docs-fix docs-toc docs-validate
+
+.PHONY: docs-toc
+docs-toc:
+	@echo "Generating Table of Contents for Markdown files..."
+	@if command -v bun >/dev/null 2>&1; then \
+		echo "Using bun package manager for doctoc"; \
+		bun install -g doctoc; \
+	elif command -v npm >/dev/null 2>&1; then \
+		echo "Using npm package manager for doctoc"; \
+		npm install -g doctoc; \
+	else \
+		echo "Error: No package manager found. Please install bun or npm first."; \
+		exit 1; \
+	fi
+	@find . -name "*.md" -not -path "./node_modules/*" -not -path "./frontend/node_modules/*" -not -path "./backend/src/vendor/*" | xargs bunx doctoc --github
 
 .PHONY: docs-validate
 docs-validate:

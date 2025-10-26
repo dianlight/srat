@@ -100,10 +100,13 @@
     "wuxingzhong",
     "TESTPKG",
     "journalctl",
+    "hdidle",
+    "Naur",
   ],
   "flagWords": [],
   "ignorePaths": [
     "frontend/node_modules/**",
+    "backend/src/vendor/**",
     ".git/**",
     "*.log",
     "*.lock",

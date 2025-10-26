@@ -1,3 +1,43 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Samba Version Checks in SRAT](#samba-version-checks-in-srat)
+  - [Overview](#overview)
+  - [Architecture](#architecture)
+    - [Backend Components](#backend-components)
+      - [1. Version Detection (`backend/src/internal/osutil/osutil.go`)](#1-version-detection-backendsrcinternalosutilosutilgo)
+      - [2. Template Context Enhancement (`backend/src/service/samba_service.go`)](#2-template-context-enhancement-backendsrcservicesamba_servicego)
+      - [3. Template Functions (`backend/src/tempio/template.go`)](#3-template-functions-backendsrctempiotemplatego)
+    - [Template Configuration (`backend/src/templates/smb.gtpl`)](#template-configuration-backendsrctemplatessmbgtpl)
+  - [Version Feature Mapping](#version-feature-mapping)
+    - [Samba 4.21.0](#samba-4210)
+    - [Samba 4.22.0](#samba-4220)
+    - [Samba 4.23.0](#samba-4230)
+  - [SRAT Template Updates](#srat-template-updates)
+    - [Critical Changes in smb.gtpl](#critical-changes-in-smbgtpl)
+  - [Configuration Behavior by Samba Version](#configuration-behavior-by-samba-version)
+    - [Samba 4.20.x (Not Explicitly Supported)](#samba-420x-not-explicitly-supported)
+    - [Samba 4.21.x](#samba-421x)
+    - [Samba 4.22.x](#samba-422x)
+    - [Samba 4.23.x+ (Current Stable)](#samba-423x-current-stable)
+  - [Error Handling](#error-handling)
+    - [Template Rendering Errors](#template-rendering-errors)
+    - [Safe Defaults](#safe-defaults)
+  - [Debugging Version Issues](#debugging-version-issues)
+    - [Check Detected Samba Version](#check-detected-samba-version)
+    - [Manual Version Check](#manual-version-check)
+    - [Enable Debug Logging](#enable-debug-logging)
+    - [Test Configuration](#test-configuration)
+  - [Maintenance Guide](#maintenance-guide)
+    - [Adding New Version Checks](#adding-new-version-checks)
+    - [Testing Across Versions](#testing-across-versions)
+  - [Related Documentation](#related-documentation)
+  - [References](#references)
+    - [Samba Feature Timeline](#samba-feature-timeline)
+    - [Configuration Files](#configuration-files)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Samba Version Checks in SRAT
 
 ## Overview

@@ -1,3 +1,30 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [SMART Frontend Component Architecture](#smart-frontend-component-architecture)
+  - [Component Hierarchy](#component-hierarchy)
+  - [Data Flow](#data-flow)
+  - [State Management Flow](#state-management-flow)
+  - [API Integration Points](#api-integration-points)
+    - [Current State (Placeholder)](#current-state-placeholder)
+    - [Future State (After Backend Implementation)](#future-state-after-backend-implementation)
+  - [Type Definitions](#type-definitions)
+    - [SmartInfo (from Backend)](#smartinfo-from-backend)
+    - [SmartHealthStatus (Local)](#smarthealthstatus-local)
+    - [SmartTestStatus (Local)](#smartteststatus-local)
+    - [SmartTestType](#smarttesttype)
+  - [User Interactions](#user-interactions)
+    - [View SMART Information](#view-smart-information)
+    - [Start Self-Test](#start-self-test)
+    - [Abort Self-Test](#abort-self-test)
+    - [Enable/Disable SMART](#enabledisable-smart)
+  - [Disabled State Logic](#disabled-state-logic)
+  - [Error Handling](#error-handling)
+  - [Testing Architecture](#testing-architecture)
+  - [Future Enhancements Diagram](#future-enhancements-diagram)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # SMART Frontend Component Architecture
 
 ## Component Hierarchy

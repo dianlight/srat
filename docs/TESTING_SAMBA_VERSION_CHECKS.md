@@ -1,3 +1,36 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Samba Version Checks - Test & Verification Guide](#samba-version-checks---test--verification-guide)
+  - [Quick Start](#quick-start)
+    - [Verify Implementation](#verify-implementation)
+    - [Compilation Check](#compilation-check)
+  - [Unit Test Coverage](#unit-test-coverage)
+    - [Test osutil Version Functions](#test-osutil-version-functions)
+    - [Test Template Functions](#test-template-functions)
+    - [Integration Test](#integration-test)
+  - [Manual Testing](#manual-testing)
+    - [1. Test Version Detection](#1-test-version-detection)
+    - [2. Test Template Rendering](#2-test-template-rendering)
+    - [3. Test Configuration Generation](#3-test-configuration-generation)
+  - [Integration Testing Scenarios](#integration-testing-scenarios)
+    - [Scenario 1: Samba 4.21.x](#scenario-1-samba-421x)
+    - [Scenario 2: Samba 4.22.x](#scenario-2-samba-422x)
+    - [Scenario 3: Samba 4.23.x](#scenario-3-samba-423x)
+  - [Debugging](#debugging)
+    - [Enable Debug Logging](#enable-debug-logging)
+    - [Check Health Endpoint](#check-health-endpoint)
+    - [Manual Version Parsing](#manual-version-parsing)
+  - [Pre-Deployment Checklist](#pre-deployment-checklist)
+  - [Troubleshooting](#troubleshooting)
+    - [Issue: "smbd: command not found"](#issue-smbd-command-not-found)
+    - [Issue: Version shows as empty](#issue-version-shows-as-empty)
+    - [Issue: Template syntax error](#issue-template-syntax-error)
+    - [Issue: Configuration option "unknown"](#issue-configuration-option-unknown)
+  - [References](#references)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Samba Version Checks - Test & Verification Guide
 
 ## Quick Start

@@ -1,3 +1,38 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Summary: Samba Version Checks Implementation](#summary-samba-version-checks-implementation)
+  - [Overview](#overview)
+  - [Changes Made](#changes-made)
+    - [1. Backend Infrastructure](#1-backend-infrastructure)
+      - [`backend/src/internal/osutil/osutil.go`](#backendsrcinternalosutilosutilgo)
+      - [`backend/src/service/samba_service.go`](#backendsrcservicesamba_servicego)
+      - [`backend/src/tempio/template.go`](#backendsrctempiotemplatego)
+    - [2. Template Configuration](#2-template-configuration)
+      - [`backend/src/templates/smb.gtpl`](#backendsrctemplatessmbgtpl)
+    - [3. Documentation](#3-documentation)
+      - [`docs/SAMBA_VERSION_CHECKS.md` (NEW)](#docssamba_version_checksmd-new)
+      - [`CHANGELOG.md`](#changelogmd)
+  - [Samba Version Coverage](#samba-version-coverage)
+    - [4.21.0 (September 2024)](#4210-september-2024)
+    - [4.22.0 (March 2025)](#4220-march-2025)
+    - [4.23.0+ (September 2025)](#4230-september-2025)
+  - [How It Works](#how-it-works)
+    - [Runtime Flow](#runtime-flow)
+    - [Template Decision Logic](#template-decision-logic)
+  - [Benefits](#benefits)
+  - [Testing Recommendations](#testing-recommendations)
+    - [Manual Testing](#manual-testing)
+    - [Automated Testing](#automated-testing)
+  - [Future Maintenance](#future-maintenance)
+    - [When Samba 4.24 is Released](#when-samba-424-is-released)
+    - [Adding More Granular Version Checks](#adding-more-granular-version-checks)
+  - [Files Modified](#files-modified)
+  - [Code Quality](#code-quality)
+  - [Conclusion](#conclusion)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Summary: Samba Version Checks Implementation
 
 ## Overview

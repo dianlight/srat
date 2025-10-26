@@ -1,8 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
 - [SMART Service Enhancement](#smart-service-enhancement)
   - [Overview](#overview)
   - [API Methods](#api-methods)
@@ -20,6 +18,9 @@
     - [Other Platforms](#other-platforms)
   - [Error Handling](#error-handling)
   - [Limitations](#limitations)
+    - [Library Patching Requirement](#library-patching-requirement)
+    - [Linux](#linux-1)
+    - [Other Platforms](#other-platforms-1)
   - [Testing](#testing)
   - [Future Enhancements](#future-enhancements)
 
