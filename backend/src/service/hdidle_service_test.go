@@ -72,6 +72,7 @@ func (suite *HDIdleServiceSuite) TestNewHDIdleService() {
 func (suite *HDIdleServiceSuite) TestStartWithValidSettings() {
 	// Mock settings
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(true),
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
@@ -89,6 +90,7 @@ func (suite *HDIdleServiceSuite) TestStartWithValidSettings() {
 func (suite *HDIdleServiceSuite) TestStartWithDefaultValues() {
 	// Mock settings with default values
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(true),
 		HDIdleDefaultIdleTime:         0, // Should use default
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
@@ -106,6 +108,7 @@ func (suite *HDIdleServiceSuite) TestStartWithDefaultValues() {
 func (suite *HDIdleServiceSuite) TestStartAlreadyRunning() {
 	// Mock settings
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(true),
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
@@ -137,6 +140,7 @@ func (suite *HDIdleServiceSuite) TestStartWithSettingsLoadError() {
 func (suite *HDIdleServiceSuite) TestStartWithDeviceLoadError() {
 	// Mock settings
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(true),
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
@@ -155,6 +159,7 @@ func (suite *HDIdleServiceSuite) TestStartWithDeviceLoadError() {
 func (suite *HDIdleServiceSuite) TestStartWithValidDevices() {
 	// Mock settings
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(true),
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
@@ -192,6 +197,7 @@ func (suite *HDIdleServiceSuite) TestStopWhenNotRunning() {
 func (suite *HDIdleServiceSuite) TestStopWhenRunning() {
 	// Mock settings
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(true),
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
@@ -220,6 +226,7 @@ func (suite *HDIdleServiceSuite) TestGetStatusWhenNotRunning() {
 func (suite *HDIdleServiceSuite) TestGetStatusWhenRunning() {
 	// Mock settings
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(true),
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
@@ -286,6 +293,7 @@ func (suite *HDIdleServiceSuite) TestSaveDeviceConfig() {
 func (suite *HDIdleServiceSuite) TestStartStopMultipleTimes() {
 	// Mock settings
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(true),
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,

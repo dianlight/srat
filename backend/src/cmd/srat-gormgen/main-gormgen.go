@@ -75,7 +75,7 @@ func main() {
 				g := gen.NewGenerator(gen.Config{
 					OutPath:        *output,
 					Mode:           gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface, // generate mode
-					WithUnitTest:   true,
+					WithUnitTest:   false,
 					FieldNullable:  true,
 					FieldCoverable: true,
 					FieldSignable:  true,
