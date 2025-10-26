@@ -117,7 +117,10 @@ dev:
 
 .PHONY: update
 update:
-	go get -C $(SRC_DIRS) -u ./...
+	go get -C $(SRC_DIRS) -u ./... && \
+	go -C $(SRC_DIRS) mod vendor && \
+	make patch format
+
 
 .PHONY: examples
 examples: example_tlog
