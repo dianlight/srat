@@ -238,10 +238,10 @@ jobs:
           sudo -E PATH="$PATH" make test
           cd ..
 
-      - name: Test Frontend ${{ needs.setversion.outputs.version }} (not yet implemented)
+      - name: Test Frontend ${{ needs.setversion.outputs.version }}
         run: |
           cd frontend
-          bun test
+          bun test --only-failures
           cd ..
 
       - name: Check if tag ${{ needs.setversion.outputs.version }} exists

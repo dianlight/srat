@@ -6,7 +6,7 @@ apk add --no-cache git make lsblk eudev gcc musl-dev linux-headers samba ethtool
  git-bash-completion git-prompt graphviz nix
 apk add --no-cache --update-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community go "go~=1.25"
 #bun
-curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.0"
+curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.1"
 
 make -C .. prepare || :
 
