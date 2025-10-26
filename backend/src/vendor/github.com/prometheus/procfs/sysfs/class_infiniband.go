@@ -1,4 +1,4 @@
-// Copyright 2019 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -110,6 +110,7 @@ type InfiniBandHwCounters struct {
 type InfiniBandPort struct {
 	Name        string
 	Port        uint
+	LinkLayer   string // String representation from /sys/class/infiniband/<Name>/ports/<Port>/link_layer
 	State       string // String representation from /sys/class/infiniband/<Name>/ports/<Port>/state
 	StateID     uint   // ID from /sys/class/infiniband/<Name>/ports/<Port>/state
 	PhysState   string // String representation from /sys/class/infiniband/<Name>/ports/<Port>/phys_state
@@ -252,6 +253,13 @@ func (fs FS) parseInfiniBandPort(name string, port string) (*InfiniBandPort, err
 	ibp := InfiniBandPort{Name: name, Port: uint(portNumber)}
 
 	portPath := fs.sys.Path(infinibandClassPath, name, "ports", port)
+
+	linkLayer, err := os.ReadFile(filepath.Join(portPath, "link_layer"))
+	if err != nil {
+		return nil, err
+	}
+	ibp.LinkLayer = strings.TrimSpace(string(linkLayer))
+
 	content, err := os.ReadFile(filepath.Join(portPath, "state"))
 	if err != nil {
 		return nil, err

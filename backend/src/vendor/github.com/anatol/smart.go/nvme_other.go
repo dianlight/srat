@@ -25,7 +25,3 @@ func (d *NVMeDevice) readControllerIdentifyData() (*NvmeIdentController, error) 
 func (d *NVMeDevice) readNamespaceIdentifyData(nsid int) (*NvmeIdentNamespace, error) {
 	return nil, ErrOSUnsupported
 }
-
-func (d *NVMeDevice) FileDescriptor() int {
-	return -1
-}

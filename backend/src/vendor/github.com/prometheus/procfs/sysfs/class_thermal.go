@@ -1,4 +1,4 @@
-// Copyright 2018 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -86,11 +86,12 @@ func parseClassThermalZone(zone string) (ClassThermalZoneStats, error) {
 
 	var zonePassive *uint64
 	passive, err := util.SysReadUintFromFile(filepath.Join(zone, "passive"))
-	if os.IsNotExist(err) || os.IsPermission(err) {
+	switch {
+	case os.IsNotExist(err), os.IsPermission(err):
 		zonePassive = nil
-	} else if err != nil {
+	case err != nil:
 		return ClassThermalZoneStats{}, err
-	} else {
+	default:
 		zonePassive = &passive
 	}
 

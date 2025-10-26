@@ -28,10 +28,6 @@ type Device interface {
 	// ReadGenericAttributes is an *experimental* API for quick access to the most common device SMART properties
 	// This API as well as content of GenericAttributes is subject for a change.
 	ReadGenericAttributes() (*GenericAttributes, error)
-
-	// FileDescriptor returns the underlying file descriptor for the device.
-	// This can be used for advanced operations that require direct access to the device file.
-	FileDescriptor() int
 }
 
 func Open(path string) (Device, error) {

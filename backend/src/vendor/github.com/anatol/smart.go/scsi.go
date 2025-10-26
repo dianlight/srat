@@ -10,10 +10,6 @@ func (d *ScsiDevice) Type() string {
 	return "scsi"
 }
 
-func (d *ScsiDevice) FileDescriptor() int {
-	return d.fd
-}
-
 const (
 	_SG_IO = 0x2285
 

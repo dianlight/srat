@@ -554,10 +554,6 @@ func (d *SataDevice) Type() string {
 	return "sata"
 }
 
-func (d *SataDevice) FileDescriptor() int {
-	return d.fd
-}
-
 func (d *SataDevice) ReadGenericAttributes() (*GenericAttributes, error) {
 	page, err := d.ReadSMARTData()
 	if err != nil {
@@ -583,10 +579,6 @@ func (d *SataDevice) ReadGenericAttributes() (*GenericAttributes, error) {
 			a.Written = attr.ValueRaw
 		case "Power_On_Hours":
 			a.PowerOnHours = attr.ValueRaw
-			duration, err := attr.ParseAsDuration()
-			if err == nil {
-				a.PowerOnHours = uint64(duration.Hours())
-			}
 		case "Power_Cycle_Count":
 			a.PowerCycles = attr.ValueRaw
 		}

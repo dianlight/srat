@@ -1210,10 +1210,6 @@ func (d *NVMeDevice) Type() string {
 	return "nvme"
 }
 
-func (d *NVMeDevice) FileDescriptor() int {
-	return d.fd
-}
-
 func (d *NVMeDevice) ReadGenericAttributes() (*GenericAttributes, error) {
 	log, err := d.ReadSMART()
 	if err != nil {
