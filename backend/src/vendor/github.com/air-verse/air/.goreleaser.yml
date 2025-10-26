@@ -1,0 +1,18 @@
+builds:
+  - goos:
+      - linux
+      - windows
+      - darwin
+    ignore:
+      - goos: darwin
+        goarch: 386
+    ldflags:
+      - -s -w -X "main.airVersion={{.Version}}"
+      - -s -w -X "main.goVersion={{.Env.GOVERSION}}"
+    env:
+      - CGO_ENABLED=0
+archives:
+  - id: tar.gz
+    format: tar.gz
+  - id: binary
+    format: binary

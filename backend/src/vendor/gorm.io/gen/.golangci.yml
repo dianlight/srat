@@ -1,0 +1,32 @@
+version: "2"
+run:
+  tests: false
+
+linters:
+  enable:
+    - bodyclose
+    - revive
+    - unparam
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - gorm.io
+        - gorm.io/gen
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

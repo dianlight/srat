@@ -67,7 +67,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/petermattis/goid v0.0.0-20250721140440-ea1c0173183e // indirect
 	github.com/rakyll/gotest v0.0.6 // indirect
-	github.com/rogpeppe/gohack v1.0.2 // indirect
 	github.com/samber/lo v1.51.0 // indirect
 	github.com/samber/slog-common v0.19.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
@@ -78,9 +77,7 @@ require (
 	github.com/zarldev/goenums v0.4.4 // indirect
 	go.opentelemetry.io/otel v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
-	golang.org/x/tools/go/vcs v0.1.0-deprecated // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
-	gopkg.in/errgo.v2 v2.1.0 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
 	gorm.io/hints v1.1.2 // indirect
 )
@@ -124,7 +121,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/rekby/gpt v0.0.0-20200614112001-7da10aec5566 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/speakeasy-api/openapi-overlay v0.10.2 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -172,6 +168,5 @@ tool (
 	github.com/jmattheis/goverter/cmd/goverter
 	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 	github.com/rakyll/gotest
-	github.com/rogpeppe/gohack
 	github.com/zarldev/goenums
 )

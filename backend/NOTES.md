@@ -7,6 +7,8 @@ This document contains development notes, useful packages, and technical referen
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Dependency Management](#dependency-management)
+  - [Vendor and Patching](#vendor-and-patching)
 - [Go Packages](#go-packages)
   - [Home Assistant Integration](#home-assistant-integration)
   - [System Monitoring & Hardware](#system-monitoring--hardware)
@@ -31,6 +33,48 @@ This document contains development notes, useful packages, and technical referen
 - [Additional Resources](#additional-resources)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Dependency Management
+
+### Vendor and Patching
+
+SRAT uses Go's vendor mechanism to manage patched dependencies. This approach provides several benefits:
+
+1. **Reproducible builds** - All dependencies are versioned and committed
+2. **Patch persistence** - Patches are applied during `make patch` and persist in vendor directory
+3. **No external tools** - Uses standard `go mod vendor` and the `patch` utility
+
+**Patched Libraries:**
+
+- `github.com/anatol/smart.go` - Adds `FileDescriptor()` method for device ioctl access and fixes SATA power_hours parsing
+- `github.com/zarldev/goenums` - Custom enum generation improvements
+- `github.com/jpillora/overseer` - Process management enhancements
+
+**Workflow:**
+
+```bash
+# Initial setup or after updating dependencies
+cd backend/src && go mod vendor && cd .. && make patch
+
+# For development
+make build          # Automatically applies patches
+make format        # Applies patches before formatting
+make test          # Applies patches before testing
+
+# To create new patches
+# 1. Edit files in backend/src/vendor/github.com/{library}/
+# 2. Test changes with `make build` or `make test`
+# 3. Generate patch: diff -Naur original patched > patches/name.patch
+# 4. Commit patch file and vendored changes
+```
+
+**Important Notes:**
+
+- Patches are applied using the `patch` utility (installed via `apk` in Alpine)
+- Multiple patches can target the same file (e.g., smart.go has two patches)
+- Patches are applied in alphabetical order by filename
+- The vendor directory is committed to preserve patches
+- When updating a library, re-run `go mod vendor && make patch`
 
 ## Go Packages
 

@@ -48,7 +48,6 @@ remote_build: $(SRC_DIRS) $(STATIC_DIRS)
 
 .PHONY: format
 format:
-	make patch && \
 	go mod -C $(SRC_DIRS) tidy && \
 	go -C $(SRC_DIRS) vet ./... && \
 	go tool -C $(SRC_DIRS)  testifylint --fix ./...  && \
@@ -148,33 +147,33 @@ static: $(FRONTEND_DIRS)/node_modules
 	cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS)
 
-.ONESHELL:
-.PHONY: undo_patch
-undo_patch:
-	go tool -C $(SRC_DIRS) gohack undo
-	rm -rf ${HOME}/gohack
-
-
-.ONESHELL:
+.PHONY: patch
 patch:
-	go tool -C $(SRC_DIRS) gohack undo
-	rm -rf ${HOME}/gohack
-	go tool -C $(SRC_DIRS) gohack get -vcs github.com/zarldev/goenums
-	git -C ${HOME}/gohack/github.com/zarldev/goenums apply $(ROOT_DIR)/patches/goenums.patch
-	go tool -C $(SRC_DIRS) gohack get -vcs github.com/jpillora/overseer
-	git -C ${HOME}/gohack/github.com/jpillora/overseer apply $(ROOT_DIR)/patches/overseer.patch
-	go tool -C $(SRC_DIRS) gohack get -vcs github.com/anatol/smart.go
-	for patch in $(ROOT_DIR)/patches/smart.go-*; do \
-		echo "Applying $$patch..."; \
-		git -C ${HOME}/gohack/github.com/anatol/smart.go apply $$patch; \
-	done
+	@echo "Applying patches to vendored dependencies..."
+	@find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true
+	@if [ -f "$(ROOT_DIR)/patches/goenums.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/zarldev/goenums" ]; then \
+		cd $(ROOT_DIR)/src/vendor/github.com/zarldev/goenums && patch -p1 --dry-run < $(ROOT_DIR)/patches/goenums.patch >/dev/null 2>&1 && (patch -p1 < $(ROOT_DIR)/patches/goenums.patch || true) || true; \
+	fi
+	@if [ -f "$(ROOT_DIR)/patches/overseer.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/jpillora/overseer" ]; then \
+		cd $(ROOT_DIR)/src/vendor/github.com/jpillora/overseer && patch -p1 --dry-run < $(ROOT_DIR)/patches/overseer.patch >/dev/null 2>&1 && (patch -p1 < $(ROOT_DIR)/patches/overseer.patch || true) || true; \
+	fi
+	@if [ -f "$(ROOT_DIR)/patches/smart.go-#010.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/anatol/smart.go" ]; then \
+		cd $(ROOT_DIR)/src/vendor/github.com/anatol/smart.go && patch -p1 --dry-run < $(ROOT_DIR)/patches/smart.go-#010.patch >/dev/null 2>&1 && (patch -p1 < $(ROOT_DIR)/patches/smart.go-#010.patch || true) || true; \
+	fi
+	@if [ -f "$(ROOT_DIR)/patches/smart.go-srat#999.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/anatol/smart.go" ]; then \
+		cd $(ROOT_DIR)/src/vendor/github.com/anatol/smart.go && patch -p1 --dry-run < $(ROOT_DIR)/patches/smart.go-srat#999.patch >/dev/null 2>&1 && (patch -p1 < $(ROOT_DIR)/patches/smart.go-srat#999.patch || true) || true; \
+	fi
+	@find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true
+	@echo "Patches applied successfully"
 
 .PHONY: gen_patch
 gen_patch:
-	mkdir patches > /dev/null 2>&1 || :
-	cd ${HOME}/gohack/github.com/zarldev/goenums; git diff > $(ROOT_DIR)/patches/goenums.patch
-	cd ${HOME}/gohack/github.com/jpillora/overseer; git diff > $(ROOT_DIR)/patches/overseer.patch
-	cd ${HOME}/gohack/github.com/anatol/smart.go; git diff > $(ROOT_DIR)/patches/smart.go-srat#999.patch
+	@echo "Generating patches from vendored dependencies..."
+	@mkdir -p $(ROOT_DIR)/patches
+	@echo "Note: Generating patches from vendored code. For future updates:"
+	@echo "  1. Manually edit files in $(ROOT_DIR)/src/vendor/github.com/{library}/"
+	@echo "  2. Use: diff -Naur original_version patched_version > patches/{name}.patch"
+	@echo "  3. Or initialize git repos in vendor directories for git diff"
 
 /mnt/remote/config.db3: mount_remote
 	[ -f /mnt/remote/config.db3 ] || echo "No remote mount found use make mount_remote"

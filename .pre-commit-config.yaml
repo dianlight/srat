@@ -6,14 +6,21 @@ repos:
     hooks:
       - id: check-added-large-files
         args: ["--maxkb=1024"]
+        exclude: ^backend/src/vendor/
       - id: check-merge-conflict
+        exclude: ^backend/src/vendor/
       #- id: end-of-file-fixer
      #- id: trailing-whitespace
       - id: check-yaml
+        exclude: ^backend/src/vendor/
       - id: check-toml
+        exclude: ^backend/src/vendor/
       - id: check-xml
+        exclude: ^backend/src/vendor/
       - id: check-case-conflict
+        exclude: ^backend/src/vendor/
       - id: check-symlinks
+        exclude: ^backend/src/vendor/
 
   - repo: local
     hooks:
@@ -33,21 +40,21 @@ repos:
 #        stages: [pre-push]
 #        files: '^backend/src/.*\.go$'
 
-      - id: remove-go-mod-replace
-        name: Remove go.mod replace lines
-        stages: [pre-commit]
-        entry: ./scripts/remove-go-mod-replace.sh
-        language: system
-        files: '^backend/src/go\.mod$'
-        pass_filenames: true
+      # - id: remove-go-mod-replace
+      #   name: Remove go.mod replace lines
+      #   stages: [pre-commit]
+      #   entry: ./scripts/remove-go-mod-replace.sh
+      #   language: system
+      #   files: '^backend/src/go\.mod$'
+      #   pass_filenames: true
 
-      - id: restore-go-mod-replace
-        name: Restore go.mod replace lines
-        entry: ./scripts/restore-go-mod-replace.sh
-        language: system
-        always_run: true
-        stages: [post-commit]
-        pass_filenames: true
+      # - id: restore-go-mod-replace
+      #   name: Restore go.mod replace lines
+      #   entry: ./scripts/restore-go-mod-replace.sh
+      #   language: system
+      #   always_run: true
+      #   stages: [post-commit]
+      #   pass_filenames: true
 
       #- id: update-frontend-package-version
       #  name: Update frontend package.json version from git tag
@@ -62,6 +69,7 @@ repos:
         entry: bash
         language: system
         files: '\\.(md)$'
+        exclude: ^backend/src/vendor/
         args:
           - -c
           - |
@@ -82,6 +90,7 @@ repos:
         entry: bash
         language: system
         files: '^CHANGELOG\\.md$'
+        exclude: ^backend/src/vendor/
         args:
           - -c
           - |
@@ -98,6 +107,7 @@ repos:
         entry: bash
         language: system
         files: '\\.(md)$'
+        exclude: ^backend/src/vendor/
         args:
           - -c
           - |
@@ -114,6 +124,7 @@ repos:
         entry: bash
         language: system
         files: '\\.(md)$'
+        exclude: ^backend/src/vendor/
         args:
           - -c
           - |

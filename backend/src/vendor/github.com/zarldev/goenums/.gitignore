@@ -1,0 +1,11 @@
+.vscode
+/dist
+/build
+/bin
+
+coverage.*
+cover.*
+
+.claude
+
+CLAUDE.md

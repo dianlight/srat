@@ -1,0 +1,68 @@
+# https://taskfile.dev/#/installation
+version: '3'
+
+silent: true
+
+vars:
+  COVERED_PKGS: |
+    ./analyzer
+    ./internal/analysisutil
+    ./internal/checkers
+    ./internal/config
+
+tasks:
+  default:
+    cmds:
+      - task: tidy
+      - task: fmt
+      - task: lint
+      - task: test
+
+  tidy:
+    cmds:
+      - echo "Tidy..."
+      - go mod tidy
+
+  fmt:
+    cmds:
+      - echo "Fmt..."
+      - golangci-lint fmt -v ./...
+
+  lint:
+    cmds:
+      - echo "Lint..."
+      - golangci-lint run --fix ./...
+
+  test:
+    deps: [ test:gen ]
+    cmds:
+      - echo "Test..."
+      - go test ./...
+
+  # task test:checker -- negative-positive
+  test:checker:
+    deps: [ test:gen ]
+    cmds:
+      - go test -count 1 -run TestTestifyLint/{{.CLI_ARGS}} ./analyzer
+
+  test:coverage:
+    cmds:
+      - echo "Test with coverage..."
+      - go test -coverpkg={{ .COVERED_PKGS | trim | splitLines | join "," }} -coverprofile=coverage.out ./...
+
+  test:gen:
+    sources:
+      - internal/testgen/*.go
+    cmds:
+      - echo "Generate analyzer tests..."
+      - go run ./internal/testgen
+
+  profile:
+    cmds:
+      - echo "Do profiling..."
+      - go test -memprofile=mem.out -cpuprofile=cpu.out ./analyzer
+
+  install:
+    cmds:
+      - echo "Install..."
+      - go install .

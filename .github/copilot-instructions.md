@@ -84,11 +84,11 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 - **Test**: `cd backend && make test` (runs with `-p 1` for deterministic output)
 - **Format**: `cd backend && make format` (includes gofmt, testifylint, govet)
 - **Generate**: `cd backend && make gen` (goverter converters + OpenAPI docs)
-- **Patch Libraries**: `cd backend && make patch` (applies patches to external dependencies via gohack)
+- **Patch Libraries**: `cd backend && make patch` (applies patches to vendored dependencies)
 
-### Library Patching with gohack
+### Library Patching with Go Vendor
 
-SRAT uses **patched versions** of certain external Go libraries to enable additional functionality not available in the original packages. The patching is managed via `gohack` and applied automatically during builds.
+SRAT uses **patched versions** of certain external Go libraries to enable additional functionality not available in the original packages. The patching is managed via Go's vendor mechanism with patch files stored in `backend/patches/`.
 
 **Patched Libraries:**
 
@@ -102,35 +102,36 @@ SRAT uses **patched versions** of certain external Go libraries to enable additi
 
 ```bash
 cd backend
-make patch          # Download libraries via gohack and apply patches
-make gen_patch      # Generate new patch files from modified gohack libraries
+make patch          # Apply patches to vendored dependencies
+make gen_patch      # Instructions for generating new patches
+go mod vendor       # Vendor all dependencies (done automatically by make)
 ```
 
 **How it works:**
 
-1. `make patch` uses `gohack` to clone libraries to `~/gohack/github.com/...`
-2. Applies patch files from `backend/patches/*.patch` using `git apply`
-3. For smart.go, applies multiple patches in alphabetical order: `smart.go-*`
-4. Go modules use `replace` directives (temporary, removed by pre-commit) to point to patched versions
-5. Build process uses patched libraries automatically
+1. Libraries are stored in `backend/src/vendor/` via `go mod vendor`
+2. Patch files from `backend/patches/*.patch` are applied to vendored copies using the `patch` utility
+3. For smart.go, multiple patches are applied in alphabetical order: `smart.go-*`
+4. Patches are applied automatically during build via `make patch` target
+5. The vendor directory is committed to the repository with patches already applied
 
 **Adding a new patch:**
 
-1. Run `make patch` to get libraries in `~/gohack`
-2. Edit the library code in `~/gohack/github.com/...`
-3. Test your changes with `make build` or `make test`
-4. Run `make gen_patch` to generate `.patch` files in `backend/patches/`
-5. For smart.go, use naming pattern `smart.go-<priority>.patch` (e.g., `smart.go-#010.patch`, `smart.go-srat#999.patch`)
-6. Commit the patch file to the repository
+1. Edit the library code directly in `backend/src/vendor/github.com/{library}/`
+2. Test your changes with `make build` or `make test`
+3. Generate a patch file using: `diff -Naur original_version patched_version > backend/patches/{name}.patch`
+4. For smart.go, use naming pattern `smart.go-<priority>.patch` (e.g., `smart.go-#010.patch`, `smart.go-srat#999.patch`)
+5. Commit both the patch file and any changes to vendor to the repository
+6. Future developers can regenerate vendor with: `cd backend/src && go mod vendor && cd .. && make patch`
 
 **Important notes:**
 
 - Patches are **required** for SMART service operations (enable/disable, test execution)
 - Multiple patches can be applied to the same library (e.g., smart.go has multiple patches)
 - Patches are applied in alphabetical order by filename
-- Pre-commit hooks remove `replace` directives from `go.mod` to keep it clean
-- CI/CD applies patches before building
-- Never commit `replace` directives in `go.mod`
+- The vendor directory contains the complete dependency tree with patches pre-applied
+- Run `make patch` after `go mod vendor` to ensure patches are applied
+- To update a library version: `cd backend/src && go get -u github.com/library/name && go mod vendor && cd .. && make patch`
 
 ### Frontend Development
 
