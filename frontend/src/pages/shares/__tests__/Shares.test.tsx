@@ -291,9 +291,10 @@ describe("Shares page", () => {
 
     it("allows creating, updating, and deleting shares via interactions", async () => {
         const mutationSpies = await setupMocks();
-
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
         const React = await import("react");
-        const { render, screen, fireEvent, waitFor } = await import("@testing-library/react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../test/setup");
         // @ts-expect-error - Query param ensures fresh module instance for mocks
@@ -310,19 +311,19 @@ describe("Shares page", () => {
         );
 
         const formSubmitButton = await screen.findByTestId("mock-share-form");
-        fireEvent.click(formSubmitButton);
+        await user.click(formSubmitButton as any);
 
         await waitFor(() => expect(mutationSpies.create).toBe(1));
 
         const selectButton = await screen.findByTestId("select-share");
-        fireEvent.click(selectButton);
+        await user.click(selectButton as any);
 
         const updateButton = await screen.findByTestId("trigger-update");
-        fireEvent.click(updateButton);
+        await user.click(updateButton as any);
         await waitFor(() => expect(mutationSpies.update).toBe(1));
 
         const deleteButton = await screen.findByTestId("trigger-delete");
-        fireEvent.click(deleteButton);
+        await user.click(deleteButton as any);
         await waitFor(() => expect(mutationSpies.remove).toBe(1));
     });
 });

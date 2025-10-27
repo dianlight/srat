@@ -29,9 +29,11 @@ describe("VolumesTreeView Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumesTreeView as any, {
-                    onSelectPartition: () => {}
-                }) }
+                {
+                    store, children: React.createElement(VolumesTreeView as any, {
+                        onSelectPartition: () => { }
+                    })
+                }
             )
         );
 
@@ -50,9 +52,11 @@ describe("VolumesTreeView Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumesTreeView as any, {
-                    onSelectPartition: () => {}
-                }) }
+                {
+                    store, children: React.createElement(VolumesTreeView as any, {
+                        onSelectPartition: () => { }
+                    })
+                }
             )
         );
 
@@ -63,7 +67,8 @@ describe("VolumesTreeView Component", () => {
 
     it("handles partition selection", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
         const { createTestStore } = await import("../../../../../test/setup");
@@ -77,9 +82,11 @@ describe("VolumesTreeView Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumesTreeView as any, {
-                    onSelectPartition
-                }) }
+                {
+                    store, children: React.createElement(VolumesTreeView as any, {
+                        onSelectPartition
+                    })
+                }
             )
         );
 
@@ -87,7 +94,8 @@ describe("VolumesTreeView Component", () => {
         const treeItems = container.querySelectorAll('[role="treeitem"]');
         const firstTreeItem = treeItems[0];
         if (treeItems.length > 0 && firstTreeItem) {
-            fireEvent.click(firstTreeItem);
+            const user = userEvent.setup();
+            await user.click(firstTreeItem as any);
         }
 
         expect(container).toBeTruthy();
@@ -105,9 +113,11 @@ describe("VolumesTreeView Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumesTreeView as any, {
-                    onSelectPartition: () => {}
-                }) }
+                {
+                    store, children: React.createElement(VolumesTreeView as any, {
+                        onSelectPartition: () => { }
+                    })
+                }
             )
         );
 
@@ -128,9 +138,11 @@ describe("VolumesTreeView Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumesTreeView as any, {
-                    onSelectPartition: () => {}
-                }) }
+                {
+                    store, children: React.createElement(VolumesTreeView as any, {
+                        onSelectPartition: () => { }
+                    })
+                }
             )
         );
 
@@ -139,7 +151,8 @@ describe("VolumesTreeView Component", () => {
 
     it("handles tree expansion and collapse", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render, act } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
         const { createTestStore } = await import("../../../../../test/setup");
@@ -149,9 +162,11 @@ describe("VolumesTreeView Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumesTreeView as any, {
-                    onSelectPartition: () => {}
-                }) }
+                {
+                    store, children: React.createElement(VolumesTreeView as any, {
+                        onSelectPartition: () => { }
+                    })
+                }
             )
         );
 
@@ -161,7 +176,10 @@ describe("VolumesTreeView Component", () => {
         if (expandIcons.length > 0 && firstExpandIcon) {
             const button = firstExpandIcon.closest('button');
             if (button) {
-                fireEvent.click(button);
+                const user = userEvent.setup();
+                await act(async () => {
+                    await user.click(button as any);
+                });
             }
         }
 
@@ -180,9 +198,11 @@ describe("VolumesTreeView Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumesTreeView as any, {
-                    onSelectPartition: () => {}
-                }) }
+                {
+                    store, children: React.createElement(VolumesTreeView as any, {
+                        onSelectPartition: () => { }
+                    })
+                }
             )
         );
 
@@ -202,9 +222,11 @@ describe("VolumesTreeView Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumesTreeView as any, {
-                    onSelectPartition: () => {}
-                }) }
+                {
+                    store, children: React.createElement(VolumesTreeView as any, {
+                        onSelectPartition: () => { }
+                    })
+                }
             )
         );
 
@@ -225,10 +247,12 @@ describe("VolumesTreeView Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumesTreeView as any, {
-                    onSelectPartition: () => {},
-                    selectedPartitionId: "test-partition"
-                }) }
+                {
+                    store, children: React.createElement(VolumesTreeView as any, {
+                        onSelectPartition: () => { },
+                        selectedPartitionId: "test-partition"
+                    })
+                }
             )
         );
 
@@ -247,9 +271,11 @@ describe("VolumesTreeView Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumesTreeView as any, {
-                    onSelectPartition: () => {}
-                }) }
+                {
+                    store, children: React.createElement(VolumesTreeView as any, {
+                        onSelectPartition: () => { }
+                    })
+                }
             )
         );
 

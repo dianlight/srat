@@ -180,7 +180,8 @@ describe("IssueCard Component", () => {
 
     it("handles click on resolve button", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { default: IssueCard } = await import("../IssueCard");
 
@@ -211,14 +212,16 @@ describe("IssueCard Component", () => {
         const resolveButtons = container.querySelectorAll('button');
         const resolveButton = Array.from(resolveButtons).find(btn => btn.textContent?.includes('Resolve'));
         if (resolveButton) {
-            fireEvent.click(resolveButton);
+            const user = userEvent.setup();
+            await user.click(resolveButton as any);
             expect(resolved).toBe(true);
         }
     });
 
     it("handles dismiss button click", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { default: IssueCard } = await import("../IssueCard");
 
@@ -249,7 +252,8 @@ describe("IssueCard Component", () => {
         const closeIcons = container.querySelectorAll('[data-testid="CloseIcon"]');
         const firstIcon = closeIcons[0];
         if (closeIcons.length > 0 && firstIcon?.parentElement) {
-            fireEvent.click(firstIcon.parentElement);
+            const user = userEvent.setup();
+            await user.click(firstIcon.parentElement as any);
             expect(dismissed).toBe(true);
         }
     });

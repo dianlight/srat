@@ -106,9 +106,12 @@ The backend test coverage is calculated as the total percentage of statements co
 
 - **Test Framework**: `bun:test` with `happy-dom` for DOM simulation
 - **Component Testing**: `@testing-library/react` for component testing
+- **User Interactions**: `@testing-library/user-event` for simulating user actions (REQUIRED)
 - **Assertions**: `@testing-library/jest-dom` for DOM assertions
 - **Coverage Tool**: Bun's built-in coverage tool
 - **Minimum Coverage**: 80% functions coverage
+
+**IMPORTANT**: All user interactions MUST use `@testing-library/user-event`. The deprecated `fireEvent` API is strictly prohibited in all new and modified tests.
 
 ### Test Structure
 
@@ -437,11 +440,16 @@ func (suite *ServiceSuite) SetupTest() {
 
 ### Frontend Testing Best Practices
 
-1. Use dynamic imports for React components
-2. Clear localStorage before each test with `beforeEach()`
-3. Use `screen.findByText()` for async rendering, not `getByText()`
-4. Always use `React.createElement()` syntax in test files
-5. Test user interactions, not implementation details
+1. **Use `@testing-library/user-event` for ALL interactions** - NEVER use `fireEvent`
+   - Import: `const userEvent = (await import("@testing-library/user-event")).default;`
+   - Setup: `const user = userEvent.setup();`
+   - Always await: `await user.click(element)`, `await user.type(input, "text")`
+2. Use dynamic imports for React components
+3. Clear localStorage before each test with `beforeEach()`
+4. Use `screen.findByText()` for async rendering, not `getByText()`
+5. Always use `React.createElement()` syntax in test files
+6. Test user interactions, not implementation details
+7. Wrap stateful UI transitions in `act()` when needed for happy-dom compatibility
 
 ## Updating Coverage Data
 

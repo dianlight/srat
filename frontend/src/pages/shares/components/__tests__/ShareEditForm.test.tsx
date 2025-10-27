@@ -52,7 +52,8 @@ describe("ShareEditForm component", () => {
         const { overrides } = setupCommonOverrides();
 
         const React = await import("react");
-        const { render, screen, fireEvent, waitFor } = await import("@testing-library/react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Usage } = await import("../../../../store/sratApi");
         // @ts-expect-error - Query param fetches isolated module instance
         const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-test");
@@ -89,16 +90,17 @@ describe("ShareEditForm component", () => {
         expect((nameInput as HTMLInputElement).value).toBe("TestShare");
 
         const cycleButton = await screen.findByRole("button", { name: /cycle share name casing/i });
-        fireEvent.click(cycleButton);
-        fireEvent.click(cycleButton);
+        const user = userEvent.setup();
+        await user.click(cycleButton);
+        await user.click(cycleButton);
 
         const addDefaults = (await screen.findAllByLabelText(/add suggested default veto files/i))[0];
         if (addDefaults) {
-            fireEvent.click(addDefaults);
+            await user.click(addDefaults);
         }
 
         const submitButton = await screen.findByRole("button", { name: /create/i });
-        fireEvent.click(submitButton);
+        await user.click(submitButton);
 
         await waitFor(() => expect(handleSubmit).toHaveBeenCalled());
         const submissionCalls = handleSubmit.mock.calls as any[];
@@ -111,7 +113,8 @@ describe("ShareEditForm component", () => {
         const { overrides } = setupCommonOverrides();
 
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Usage } = await import("../../../../store/sratApi");
         // @ts-expect-error - Query param fetches isolated module instance
         const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-existing");
@@ -139,7 +142,8 @@ describe("ShareEditForm component", () => {
         );
 
         const deleteButton = await screen.findByRole("button", { name: /delete/i });
-        fireEvent.click(deleteButton);
+        const user = userEvent.setup();
+        await user.click(deleteButton);
 
         expect(handleDelete).toHaveBeenCalledWith("Existing", expect.objectContaining({ name: "Existing" }));
     });

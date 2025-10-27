@@ -35,7 +35,7 @@ describe("SmbConf Component", () => {
 
     it("renders SmbConf component with syntax highlighter", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
         const { SmbConf } = await import("../SmbConf");
@@ -240,7 +240,9 @@ describe("SmbConf Component", () => {
 
     it("handles InView intersection correctly", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
         const { SmbConf } = await import("../SmbConf");
@@ -267,7 +269,8 @@ describe("SmbConf Component", () => {
 
         // Fire a scroll event to potentially trigger InView
         if (inViewDiv) {
-            fireEvent.scroll(window);
+            const user = userEvent.setup();
+            await user.pointer({ target: inViewDiv });
         }
 
         expect(container).toBeTruthy();
