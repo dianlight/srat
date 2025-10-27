@@ -742,6 +742,7 @@ export function ShareEditForm({
                 <SwitchElement
                     switchProps={{
                         size: "small",
+                        color: isDisabled ? "text.secondary" : "text.primary",
                     }}
                     slotProps={{
                         typography: {
@@ -750,7 +751,6 @@ export function ShareEditForm({
                     }}
                     control={control}
                     name="disabled"
-                    color="primary"
                     label={isDisabled ? "Disabled" : "Enabled"}
                     sx={{ mr: 0 }}
                 />

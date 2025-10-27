@@ -1,4 +1,19 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, mock } from "bun:test";
+
+// Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues
+mock.module("react-syntax-highlighter", () => ({
+    default: ({ children, ...props }: any) => {
+        const React = require("react");
+        return React.createElement("pre", { "data-testid": "syntax-highlighter", ...props },
+            React.createElement("code", null, children)
+        );
+    }
+}));
+
+mock.module("react-syntax-highlighter/dist/esm/styles/hljs", () => ({
+    a11yDark: {},
+    a11yLight: {}
+}));
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -65,7 +80,8 @@ describe("NavBar Component", () => {
 
     it("renders logo with hover functionality", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const { userEvent } = await import("@testing-library/user-event");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -107,14 +123,16 @@ describe("NavBar Component", () => {
         // Test hover functionality if logo elements are found
         if (logoElements.length > 0) {
             const logo = logoElements[0] as HTMLElement;
-            fireEvent.mouseEnter(logo);
-            fireEvent.mouseLeave(logo);
+            userEvent.hover(logo);
+            userEvent.unhover(logo);
         }
     });
 
     it("handles tab switching and localStorage persistence", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const { userEvent } = await import("@testing-library/user-event");
+
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -150,7 +168,7 @@ describe("NavBar Component", () => {
         const tabs = container.querySelectorAll('[role="tab"]');
         const secondTab = tabs[1];
         if (tabs.length > 1 && secondTab) {
-            fireEvent.click(secondTab);
+            userEvent.click(secondTab);
 
             // Check that localStorage is updated
             const storedTab = localStorage.getItem("srat_tab");
@@ -199,7 +217,9 @@ describe("NavBar Component", () => {
 
     it("renders theme switch button and handles mode switching", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const { userEvent } = await import("@testing-library/user-event");
+
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -232,13 +252,13 @@ describe("NavBar Component", () => {
         );
 
         // Find theme switch button (look for mode icons)
-        const themeButtons = container.querySelectorAll('button');
+        const themeButtons = container.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
         const themeButton = Array.from(themeButtons).find(button =>
             button.querySelector('[data-testid="LightModeIcon"], [data-testid="DarkModeIcon"], [data-testid="AutoModeIcon"]')
         );
 
         if (themeButton) {
-            fireEvent.click(themeButton);
+            userEvent.click(themeButton);
         }
 
         expect(true).toBeTruthy(); // Test that no errors occurred
@@ -285,7 +305,8 @@ describe("NavBar Component", () => {
 
     it("renders GitHub support button", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const { userEvent } = await import("@testing-library/user-event");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -325,13 +346,13 @@ describe("NavBar Component", () => {
         );
 
         // Find github icon/button (look for img elements with github in src)
-        const githubButtons = container.querySelectorAll('img');
+        const githubButtons = container.querySelectorAll('img') as NodeListOf<HTMLImageElement>;
         const githubButton = Array.from(githubButtons).find(img =>
             img.src && img.src.includes('github')
         );
 
         if (githubButton && githubButton.parentElement) {
-            fireEvent.click(githubButton.parentElement);
+            userEvent.click(githubButton.parentElement);
         }
     });
 
@@ -533,7 +554,9 @@ describe("NavBar Component", () => {
 
     it("handles mobile menu open and close", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const { userEvent } = await import("@testing-library/user-event");
+
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -568,7 +591,7 @@ describe("NavBar Component", () => {
         // Find menu button
         const menuButton = container.querySelector('[aria-label="navigation menu"]');
         if (menuButton) {
-            fireEvent.click(menuButton);
+            userEvent.click(menuButton);
 
             // Menu should be open, look for menu items
             const menu = document.querySelector('#menu-appbar');
@@ -578,7 +601,7 @@ describe("NavBar Component", () => {
             const menuItems = document.querySelectorAll('[role="menuitem"]');
             const firstMenuItem = menuItems[0];
             if (menuItems.length > 0 && firstMenuItem) {
-                fireEvent.click(firstMenuItem);
+                userEvent.click(firstMenuItem);
             }
         }
 
@@ -587,7 +610,9 @@ describe("NavBar Component", () => {
 
     it("handles menu item click and updates tab", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const { userEvent } = await import("@testing-library/user-event");
+
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -622,13 +647,13 @@ describe("NavBar Component", () => {
         // Find menu button and open menu
         const menuButton = container.querySelector('[aria-label="navigation menu"]');
         if (menuButton) {
-            fireEvent.click(menuButton);
+            userEvent.click(menuButton);
 
             // Find menu items and click one
             const menuItems = document.querySelectorAll('[role="menuitem"]');
             const secondMenuItem = menuItems[1];
             if (menuItems.length > 1 && secondMenuItem) {
-                fireEvent.click(secondMenuItem);
+                userEvent.click(secondMenuItem);
 
                 // Check localStorage was updated
                 const storedTab = localStorage.getItem("srat_tab");
@@ -719,7 +744,9 @@ describe("NavBar Component", () => {
 
     it("toggles tour open/close state", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const { userEvent } = await import("@testing-library/user-event");
+
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -752,20 +779,22 @@ describe("NavBar Component", () => {
         );
 
         // Find help button and click it
-        const buttons = container.querySelectorAll('button');
+        const buttons = container.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
         const helpButton = Array.from(buttons).find(button =>
             button.querySelector('[data-testid="HelpIcon"], [data-testid="HelpOutlineIcon"]')
         );
 
         if (helpButton) {
-            fireEvent.click(helpButton);
+            userEvent.click(helpButton);
             expect(true).toBeTruthy();
         }
     });
 
     it("cycles through theme modes: light -> dark -> system -> light", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const { userEvent } = await import("@testing-library/user-event");
+
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -798,16 +827,16 @@ describe("NavBar Component", () => {
         );
 
         // Find theme switch button
-        const buttons = container.querySelectorAll('button');
+        const buttons = container.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
         const themeButton = Array.from(buttons).find(button =>
             button.querySelector('[data-testid="LightModeIcon"], [data-testid="DarkModeIcon"], [data-testid="AutoModeIcon"]')
         );
 
         if (themeButton) {
             // Click multiple times to cycle through modes
-            fireEvent.click(themeButton);
-            fireEvent.click(themeButton);
-            fireEvent.click(themeButton);
+            userEvent.click(themeButton);
+            userEvent.click(themeButton);
+            userEvent.click(themeButton);
         }
 
         expect(true).toBeTruthy();

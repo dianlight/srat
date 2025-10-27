@@ -143,11 +143,20 @@ describe("Shares page", () => {
             }),
         }));
 
-        mock.module("../../../store/sseApi", () => ({
+        // Mock sseApi hook as imported by Shares component (../../store/sseApi)
+        mock.module("../../store/sseApi", () => ({
             useGetServerEventsQuery: () => ({
                 data: { hello: { read_only: false, protected_mode: false } },
                 isLoading: false,
             }),
+        }));
+
+        // Minimal API shapes for store creation dynamic imports from test/setup.ts
+        const fakeReducer = (state: any = {}, _action: any) => state;
+        const makeMiddleware = () => () => (next: any) => (action: any) => next(action);
+        mock.module("../src/store/sseApi", () => ({
+            sseApi: { reducerPath: "sseApi", reducer: fakeReducer, middleware: makeMiddleware() },
+            wsApi: { reducerPath: "wsApi", reducer: fakeReducer, middleware: makeMiddleware() },
         }));
 
         mock.module("material-ui-confirm", () => ({
@@ -178,6 +187,9 @@ describe("Shares page", () => {
         const navigateStub = (_path: string, options?: { state?: any }) => {
             if (options && "state" in options) {
                 locationState = options.state ?? {};
+            } else {
+                // If navigation occurs without explicit state, clear it to prevent loops
+                locationState = {};
             }
         };
 
@@ -189,7 +201,47 @@ describe("Shares page", () => {
             useNavigate: () => navigateStub,
         }));
 
-        mock.module("../../../store/sratApi", () => ({
+        // Mock sratApi hooks as imported by Shares component (../../store/sratApi)
+        mock.module("../../store/sratApi", () => {
+            // Debug to verify the sratApi mock for Shares component is used
+            // console.debug("Using mocked ../../store/sratApi for Shares test");
+            return {
+                Usage: { None: "None" },
+                usePutApiShareByShareNameMutation: () => [
+                    () => ({
+                        unwrap: () => {
+                            mutationSpies.update += 1;
+                            return Promise.resolve(sampleShare);
+                        },
+                    }),
+                    {},
+                ],
+                useDeleteApiShareByShareNameMutation: () => [
+                    () => ({
+                        unwrap: () => {
+                            mutationSpies.remove += 1;
+                            return Promise.resolve({});
+                        },
+                    }),
+                    {},
+                ],
+                usePostApiShareMutation: () => [
+                    () => ({
+                        unwrap: () => {
+                            mutationSpies.create += 1;
+                            return Promise.resolve(sampleShare);
+                        },
+                    }),
+                    {},
+                ],
+            };
+        });
+
+        // Defensive: also mock by absolute path in case Bun resolves to absolute module IDs
+        mock.module("/workspaces/srat/frontend/src/store/sratApi.ts", () => ({
+            // Minimal RTK Query API object for store creation expectations
+            sratApi: { reducerPath: "sratApi", reducer: fakeReducer, middleware: makeMiddleware() },
+            // Hooks + enums used by component
             Usage: { None: "None" },
             usePutApiShareByShareNameMutation: () => [
                 () => ({
@@ -218,6 +270,20 @@ describe("Shares page", () => {
                 }),
                 {},
             ],
+        }));
+
+        mock.module("/workspaces/srat/frontend/src/store/sseApi.ts", () => ({
+            sseApi: { reducerPath: "sseApi", reducer: fakeReducer, middleware: makeMiddleware() },
+            wsApi: { reducerPath: "wsApi", reducer: fakeReducer, middleware: makeMiddleware() },
+            useGetServerEventsQuery: () => ({
+                data: { hello: { read_only: false, protected_mode: false } },
+                isLoading: false,
+            }),
+        }));
+
+        // Provide minimal RTK Query API object for store creation dynamic import (../src/store/sratApi)
+        mock.module("../src/store/sratApi", () => ({
+            sratApi: { reducerPath: "sratApi", reducer: fakeReducer, middleware: makeMiddleware() },
         }));
 
         return mutationSpies;

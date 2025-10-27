@@ -1,4 +1,19 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, mock } from "bun:test";
+
+// Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues
+mock.module("react-syntax-highlighter", () => ({
+    default: ({ children, ...props }: any) => {
+        const React = require("react");
+        return React.createElement("pre", { "data-testid": "syntax-highlighter", ...props },
+            React.createElement("code", null, children)
+        );
+    }
+}));
+
+mock.module("react-syntax-highlighter/dist/esm/styles/hljs", () => ({
+    a11yDark: {},
+    a11yLight: {}
+}));
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
