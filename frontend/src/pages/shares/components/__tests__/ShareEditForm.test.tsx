@@ -53,6 +53,7 @@ describe("ShareEditForm component", () => {
 
         const React = await import("react");
         const { render, screen, fireEvent, waitFor } = await import("@testing-library/react");
+        const { Usage } = await import("../../../../store/sratApi");
         // @ts-expect-error - Query param fetches isolated module instance
         const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-test");
 
@@ -62,6 +63,7 @@ describe("ShareEditForm component", () => {
             React.createElement(ShareEditForm as any, {
                 shareData: {
                     name: "TestShare",
+                    usage: Usage.None,
                     mount_point_data: {
                         path: "/mnt/free",
                         path_hash: "free-hash",
@@ -110,6 +112,7 @@ describe("ShareEditForm component", () => {
 
         const React = await import("react");
         const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { Usage } = await import("../../../../store/sratApi");
         // @ts-expect-error - Query param fetches isolated module instance
         const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-existing");
 
@@ -120,6 +123,7 @@ describe("ShareEditForm component", () => {
                 shareData: {
                     org_name: "Existing",
                     name: "Existing",
+                    usage: Usage.Share,
                     mount_point_data: {
                         path: "/mnt/existing",
                         path_hash: "existing-hash",

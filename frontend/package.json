@@ -85,7 +85,7 @@
     "test:coverage": "bun test --coverage",
     "test:prepare": "bun ./scripts/add-test-setup.js",
     "test:fix": "bun ./scripts/add-test-setup.js --apply",
-    "test:ci": "bun run test:prepare && bun test --timeout 30000",
+    "test:ci": "bun run test:prepare && bun test --only-failures --timeout 30000",
     "lint": "bun tsc --noEmit && bun run test:prepare && bunx biome check --write"
   },
   "patchedDependencies": {},

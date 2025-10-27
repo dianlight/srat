@@ -241,7 +241,7 @@ jobs:
       - name: Test Frontend ${{ needs.setversion.outputs.version }}
         run: |
           cd frontend
-          bun test --only-failures
+          bun test:ci 
           cd ..
 
       - name: Check if tag ${{ needs.setversion.outputs.version }} exists
