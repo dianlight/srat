@@ -290,13 +290,13 @@ export function ShareEditForm({
                                 label="Usage"
                                 name="usage"
                                 disabled={isDisabled}
-                                options={Object.keys(Usage)
+                                options={Object.values(Usage)
                                     .filter(
                                         (usage) =>
-                                            usage.toLowerCase() !== Usage.Internal,
+                                            usage !== Usage.Internal,
                                     )
                                     .map((usage) => {
-                                        return { id: usage.toLowerCase(), label: usage };
+                                        return { id: usage, label: usage.charAt(0).toUpperCase() + usage.slice(1) };
                                     })}
                                 required
                                 control={control}

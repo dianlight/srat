@@ -291,14 +291,16 @@ export function ShareDetailsPanel({
                         title="Share Configuration"
                         avatar={
                             <Tooltip title={isEditing ? "View Share" : "Edit Share"}>
-                                <IconButton
-                                    color="primary"
-                                    size="small"
-                                    onClick={isEditing ? onCancelEdit : onEditClick}
-                                    disabled={isEditing ? !onCancelEdit : !onEditClick}
-                                >
-                                    {isEditing ? <VisibilityIcon /> : <EditIcon />}
-                                </IconButton>
+                                <span>
+                                    <IconButton
+                                        color="primary"
+                                        size="small"
+                                        onClick={isEditing ? onCancelEdit : onEditClick}
+                                        disabled={isEditing ? !onCancelEdit : !onEditClick}
+                                    >
+                                        {isEditing ? <VisibilityIcon /> : <EditIcon />}
+                                    </IconButton>
+                                </span>
                             </Tooltip>
                         }
                     />
