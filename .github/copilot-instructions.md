@@ -231,7 +231,7 @@ describe("Component rendering", () => {
     const { Provider } = await import("react-redux");
     const { MyComponent } = await import("../MyComponent");
     const store = await createTestStore();
-    
+
     // Setup userEvent for all interactions
     const userEvent = (await import("@testing-library/user-event")).default;
     const user = userEvent.setup();
@@ -246,7 +246,7 @@ describe("Component rendering", () => {
 
     const element = await screen.findByText("Expected Text");
     expect(element).toBeTruthy();
-    
+
     // Always await user interactions
     const button = await screen.findByRole("button");
     await user.click(button);
@@ -378,7 +378,7 @@ describe("Component rendering", () => {
     const { Provider } = await import("react-redux");
     const { ComponentName } = await import("../ComponentName");
     const store = await createTestStore();
-    
+
     // REQUIRED: Setup userEvent for interactions
     const userEvent = (await import("@testing-library/user-event")).default;
     const user = userEvent.setup();
@@ -395,7 +395,7 @@ describe("Component rendering", () => {
     // REQUIRED: Use findByText for async, toBeTruthy() for assertions
     const element = await screen.findByText("Expected Text");
     expect(element).toBeTruthy();
-    
+
     // REQUIRED: Await all user interactions
     const button = await screen.findByRole("button");
     await user.click(button);

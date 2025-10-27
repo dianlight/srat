@@ -107,6 +107,7 @@ bun test
 ```
 
 **Testing Standards:**
+
 - All user interactions MUST use `@testing-library/user-event` - the deprecated `fireEvent` API is strictly prohibited
 - Import: `const userEvent = (await import("@testing-library/user-event")).default;`
 - Setup: `const user = userEvent.setup();`
