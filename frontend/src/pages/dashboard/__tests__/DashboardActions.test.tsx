@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // Helper function to render DashboardActions with required wrappers
 async function renderDashboardActions() {
     const React = await import("react");
-    const { render, screen, fireEvent } = await import("@testing-library/react");
+    const { render, within, fireEvent } = await import("@testing-library/react");
     const { Provider } = await import("react-redux");
     const { BrowserRouter } = await import("react-router-dom");
     const { DashboardActions } = await import("../DashboardActions");
@@ -22,7 +22,7 @@ async function renderDashboardActions() {
         )
     );
 
-    return { ...result, screen, fireEvent, React };
+    return { ...result, within, fireEvent, React };
 }
 
 describe("DashboardActions component", () => {
@@ -31,20 +31,25 @@ describe("DashboardActions component", () => {
         document.body.innerHTML = "";
     });
 
+    afterEach(async () => {
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
+    });
+
     it("renders DashboardActions accordion without crashing", async () => {
         const { container } = await renderDashboardActions();
         expect(container).toBeTruthy();
     });
 
     it("renders accordion with correct title", async () => {
-        const { screen } = await renderDashboardActions();
-        const title = await screen.findByText("Actionable Items");
+        const { container, within } = await renderDashboardActions();
+        const title = await within(container).findByText("Actionable Items");
         expect(title).toBeTruthy();
     });
 
     it("renders show ignored switch", async () => {
-        const { screen } = await renderDashboardActions();
-        const label = await screen.findByText("Show Ignored");
+        const { container, within } = await renderDashboardActions();
+        const label = await within(container).findByText("Show Ignored");
         expect(label).toBeTruthy();
     });
 

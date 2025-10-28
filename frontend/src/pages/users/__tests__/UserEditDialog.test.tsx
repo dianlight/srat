@@ -1,7 +1,11 @@
 import "../../../../test/setup";
-import { describe, it, expect, mock } from "bun:test";
+import { describe, it, expect, mock, afterEach } from "bun:test";
 
 describe("UserEditDialog component", () => {
+    afterEach(async () => {
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
+    });
 
     it("submits new user credentials", async () => {
         const React = await import("react");

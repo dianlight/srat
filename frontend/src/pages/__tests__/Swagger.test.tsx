@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // Minimal localStorage shim for bun:test
 if (!(globalThis as any).localStorage) {
@@ -22,6 +22,11 @@ describe("Swagger page", () => {
         localStorage.clear();
     });
 
+    afterEach(async () => {
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
+    });
+
     it("renders overview content and links", async () => {
         const React = await import("react");
         const rtl = (await import("@testing-library/react")) as any;
@@ -33,7 +38,7 @@ describe("Swagger page", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        rtl.render(
+        const { container } = rtl.render(
             React.createElement(
                 Provider as any,
                 { store },
@@ -45,16 +50,13 @@ describe("Swagger page", () => {
             ),
         );
 
-        const heading = await rtl.screen.findByText("API Documentation");
+        const heading = await rtl.within(container).findByText("API Documentation");
         expect(heading).toBeTruthy();
 
-        const jsonLink = await rtl.screen.findByText("JSON");
-        const yamlLink = await rtl.screen.findByText("YAML");
+        const jsonLink = await rtl.within(container).findByText("JSON");
+        const yamlLink = await rtl.within(container).findByText("YAML");
         expect(jsonLink).toBeTruthy();
         expect(yamlLink).toBeTruthy();
-
-        // Ensure DOM is cleaned to avoid duplicates when tests rerun multiple times
-        rtl.cleanup();
     });
 
     it("includes openapi-explorer with normalized spec-url", async () => {

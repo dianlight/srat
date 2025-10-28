@@ -1,5 +1,5 @@
 import "../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -13,22 +13,33 @@ if (!(globalThis as any).localStorage) {
 }
 
 describe("ErrorBoundary Component", () => {
+    let cleanup: (() => void) | null = null;
+
     beforeEach(() => {
         localStorage.clear();
         // Reset any global state or mocks
         console.error = () => { };
     });
 
+    afterEach(async () => {
+        if (cleanup) {
+            cleanup();
+            cleanup = null;
+        }
+        const { cleanup: rtlCleanup } = await import("@testing-library/react");
+        rtlCleanup();
+    });
+
     it("renders children when there is no error", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, within } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
         const theme = createTheme();
         const testContent = "Test child content that should render normally";
 
-        render(
+        const { container } = render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -40,7 +51,7 @@ describe("ErrorBoundary Component", () => {
             )
         );
 
-        const element = await screen.findByText(testContent);
+        const element = await within(container).findByText(testContent);
         expect(element).toBeTruthy();
     });
 
@@ -133,7 +144,7 @@ describe("ErrorBoundary Component", () => {
 
     it("handles reload button click functionality", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ErrorBoundary } = await import("../ErrorBoundary");
@@ -151,7 +162,7 @@ describe("ErrorBoundary Component", () => {
             throw new Error("Test error");
         };
 
-        render(
+        const { container } = render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -163,7 +174,7 @@ describe("ErrorBoundary Component", () => {
             )
         );
 
-        const reloadButtons = screen.getAllByText("Reload Page");
+        const reloadButtons = within(container).getAllByText("Reload Page");
         const firstButton = reloadButtons[0];
         if (firstButton) {
             const user = userEvent.setup();
