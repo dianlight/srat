@@ -153,21 +153,24 @@ if (typeof process !== "undefined") {
 export async function createTestStore() {
     const { sratApi } = await import("../src/store/sratApi");
     const { sseApi, wsApi } = await import("../src/store/sseApi");
-
-    const reducers: any = { [sratApi.reducerPath]: sratApi.reducer };
-    const middlewares: any[] = [sratApi.middleware];
-    if (sseApi && sseApi.reducer) {
-        reducers[sseApi.reducerPath] = sseApi.reducer;
-        middlewares.push(sseApi.middleware);
-    }
-    if (wsApi && wsApi.reducer) {
-        reducers[wsApi.reducerPath] = wsApi.reducer;
-        middlewares.push(wsApi.middleware);
-    }
+    const { errorSlice } = await import("../src/store/errorSlice");
+    const { mdcSlice } = await import("../src/store/mdcSlice");
+    const mdcMiddleware = (await import("../src/store/mdcMiddleware")).default;
 
     const store = configureStore({
-        reducer: reducers,
-        middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(...middlewares),
+        reducer: {
+            errors: errorSlice.reducer,
+            mdc: mdcSlice.reducer,
+            [sratApi.reducerPath]: sratApi.reducer,
+            [sseApi.reducerPath]: sseApi.reducer,
+            [wsApi.reducerPath]: wsApi.reducer,
+        },
+        middleware: (getDefaultMiddleware) =>
+            getDefaultMiddleware()
+                .concat(mdcMiddleware)
+                .concat(sratApi.middleware)
+                .concat(sseApi.middleware)
+                .concat(wsApi.middleware),
     });
     return store;
 }
