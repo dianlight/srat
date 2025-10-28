@@ -17,7 +17,8 @@ function walk(dir) {
             walk(full);
         } else if (/\.test\.(ts|tsx|js|jsx)$/.test(entry.name)) {
             let content = fs.readFileSync(full, 'utf8');
-            if (!content.includes("test/setup") && !content.includes("../../../../test/setup")) {
+            // Check if file already has any import to test/setup (with any relative path)
+            if (!content.includes("test/setup")) {
                 missingFiles.push(full);
                 if (apply) {
                     content = setupImport + content;
