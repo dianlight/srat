@@ -1,5 +1,5 @@
 import "../../../../../test/setup.ts";
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // localStorage shim for testing
 if (!(globalThis as any).localStorage) {
@@ -19,8 +19,17 @@ if (!(globalThis as any).localStorage) {
 }
 
 describe("SmartStatusPanel Component", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         localStorage.clear();
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
+    });
+
+    afterEach(async () => {
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
     });
 
     // Helper to expand the SMART panel

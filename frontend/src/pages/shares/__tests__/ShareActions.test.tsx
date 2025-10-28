@@ -1,5 +1,5 @@
 import "../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 describe("ShareActions component", () => {
     const createMatchMedia = (matches: boolean) => () => ({
@@ -15,6 +15,12 @@ describe("ShareActions component", () => {
 
     beforeEach(() => {
         (window as any).matchMedia = createMatchMedia(false);
+    });
+
+    afterEach(async () => {
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
     });
 
     const buildShare = () => ({
