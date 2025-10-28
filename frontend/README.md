@@ -106,6 +106,14 @@ Run tests locally:
 bun test
 ```
 
+**Testing Standards:**
+
+- All user interactions MUST use `@testing-library/user-event` - the deprecated `fireEvent` API is strictly prohibited
+- Import: `const userEvent = (await import("@testing-library/user-event")).default;`
+- Setup: `const user = userEvent.setup();`
+- Always await interactions: `await user.click(button)`, `await user.type(input, "text")`
+- See `.github/copilot-instructions.md` for complete testing patterns
+
 > **Note**: Bun 1.2.23 rejects registering lifecycle hooks from inside a running test. We preload `@testing-library/react` in `test/setup.ts` so its automatic cleanup attaches to `afterEach` before any spec runs. If you reorganize the shared setup, keep that top-level import in place or the suite will fail with "Cannot call afterEach() inside a test" errors.
 
 Run linter and typecheck:

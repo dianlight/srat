@@ -160,7 +160,7 @@ export function ShareDetailsPanel({
                             </IconButton>
                         }
                     />
-                    <Collapse in={mountPointExpanded} timeout="auto" unmountOnExit>
+                    <Collapse in={mountPointExpanded} timeout="auto">
                         <CardContent>
                             <Grid container spacing={2}>
                                 <Grid size={{ xs: 12, sm: 6 }}>

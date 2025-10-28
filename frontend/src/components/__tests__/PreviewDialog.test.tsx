@@ -49,7 +49,8 @@ describe("PreviewDialog Component", () => {
 
     it("calls onClose when Close button is pressed", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { PreviewDialog } = await import("../PreviewDialog");
 
         let closeCalls = 0;
@@ -67,7 +68,8 @@ describe("PreviewDialog Component", () => {
         );
 
         const closeButton = await screen.findByRole("button", { name: /close/i });
-        fireEvent.click(closeButton);
+        const user = userEvent.setup();
+        await user.click(closeButton as any);
         expect(closeCalls).toBe(1);
     });
 

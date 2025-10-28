@@ -232,6 +232,10 @@ describe("Component rendering", () => {
     const { MyComponent } = await import("../MyComponent");
     const store = await createTestStore();
 
+    // Setup userEvent for all interactions
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const user = userEvent.setup();
+
     render(
       React.createElement(
         Provider,
@@ -242,6 +246,10 @@ describe("Component rendering", () => {
 
     const element = await screen.findByText("Expected Text");
     expect(element).toBeTruthy();
+
+    // Always await user interactions
+    const button = await screen.findByRole("button");
+    await user.click(button);
   });
 });
 ```
@@ -324,6 +332,12 @@ describe("Component rendering", () => {
 - Use `@testing-library/jest-dom` assertions: `expect(element).toBeTruthy();`
 - For async rendering: Use `await screen.findByText()` not `getByText()`
 - Always use `React.createElement()` syntax, not JSX, in test files
+- **CRITICAL**: Use `@testing-library/user-event` for ALL user interactions — NEVER use `fireEvent`
+  - Import: `const userEvent = (await import("@testing-library/user-event")).default;`
+  - Setup: `const user = userEvent.setup();`
+  - All interactions MUST be awaited: `await user.click(element)`, `await user.type(input, "text")`, `await user.clear(input)`
+  - Wrap stateful UI transitions in `act()` when needed for happy-dom compatibility
+  - `fireEvent` is deprecated and must not be used in any new or modified tests
 
 ### localStorage Testing Pattern
 
@@ -365,6 +379,10 @@ describe("Component rendering", () => {
     const { ComponentName } = await import("../ComponentName");
     const store = await createTestStore();
 
+    // REQUIRED: Setup userEvent for interactions
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const user = userEvent.setup();
+
     // REQUIRED: Use React.createElement, not JSX
     render(
       React.createElement(
@@ -377,6 +395,10 @@ describe("Component rendering", () => {
     // REQUIRED: Use findByText for async, toBeTruthy() for assertions
     const element = await screen.findByText("Expected Text");
     expect(element).toBeTruthy();
+
+    // REQUIRED: Await all user interactions
+    const button = await screen.findByRole("button");
+    await user.click(button);
   });
 });
 ```
@@ -392,8 +414,10 @@ describe("Component rendering", () => {
 - Use `await screen.findByText()` for elements that appear after rendering
 - Use `beforeEach(() => { localStorage.clear(); })` for localStorage tests
 - Dynamic imports MUST be used for React components and testing utilities
+- **ALWAYS** await userEvent interactions: `await user.click()`, `await user.type()`, `await user.clear()`
+- Use `act()` wrapper when userEvent triggers state updates that cause re-renders in happy-dom
 
-**NON-NEGOTIABLE:** All frontend tests must follow these exact patterns. No exceptions for import style, file structure, or testing utilities.
+**NON-NEGOTIABLE:** All frontend tests must follow these exact patterns. No exceptions for import style, file structure, or testing utilities. `fireEvent` is strictly prohibited — use `userEvent` for all interactions.
 
 ## Final Checklist Before Consider a Changes as Done
 

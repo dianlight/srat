@@ -215,7 +215,8 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("handles disk info expansion toggle", async () => {
         const React = await import("react");
-        const { fireEvent } = await import("@testing-library/react");
+        const { act } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
 
         const mockDisk = {
@@ -242,7 +243,10 @@ describe("VolumeDetailsPanel Component", () => {
         if (expandButtons.length > 0 && firstExpandButton) {
             const button = firstExpandButton.closest('button');
             if (button) {
-                fireEvent.click(button);
+                const user = userEvent.setup();
+                await act(async () => {
+                    await user.click(button as any);
+                });
             }
         }
 

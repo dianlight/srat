@@ -134,7 +134,7 @@ describe("ErrorBoundary Component", () => {
     it("handles reload button click functionality", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
-        const { fireEvent } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
@@ -166,7 +166,8 @@ describe("ErrorBoundary Component", () => {
         const reloadButtons = screen.getAllByText("Reload Page");
         const firstButton = reloadButtons[0];
         if (firstButton) {
-            fireEvent.click(firstButton);
+            const user = userEvent.setup();
+            await user.click(firstButton as any);
         }
 
         expect(reloadCalled).toBe(true);

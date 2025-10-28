@@ -31,7 +31,8 @@ describe("ShareActions component", () => {
 
     it("renders desktop action buttons and triggers callbacks", async () => {
         const React = await import("react");
-        const { render, fireEvent, screen } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ShareActions } = await import("../components/ShareActions");
 
@@ -66,10 +67,11 @@ describe("ShareActions component", () => {
         const deleteButton = (await screen.findAllByRole("button", { name: /delete share/i }))[0];
         const disableButton = (await screen.findAllByRole("button", { name: /disable share/i }))[0];
 
-        if (settingsButton) fireEvent.click(settingsButton);
-        if (viewVolumeButton) fireEvent.click(viewVolumeButton);
-        if (deleteButton) fireEvent.click(deleteButton);
-        if (disableButton) fireEvent.click(disableButton);
+        const user = userEvent.setup();
+        if (settingsButton) await user.click(settingsButton as any);
+        if (viewVolumeButton) await user.click(viewVolumeButton as any);
+        if (deleteButton) await user.click(deleteButton as any);
+        if (disableButton) await user.click(disableButton as any);
 
         expect(editCalls).toBe(1);
         expect(viewCalls).toBe(1);
@@ -81,7 +83,8 @@ describe("ShareActions component", () => {
         (window as any).matchMedia = createMatchMedia(true);
 
         const React = await import("react");
-        const { render, fireEvent, screen } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ShareActions } = await import("../components/ShareActions");
 
@@ -109,10 +112,11 @@ describe("ShareActions component", () => {
         );
 
         const menuButton = await screen.findByRole("button", { name: /more actions/i });
-        fireEvent.click(menuButton);
+        const user = userEvent.setup();
+        await user.click(menuButton as any);
 
         const deleteOption = await screen.findByText(/delete share/i);
-        fireEvent.click(deleteOption);
+        await user.click(deleteOption as any);
 
         expect(menuDeleteCalls).toBe(1);
     });

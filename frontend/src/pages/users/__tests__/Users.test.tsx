@@ -210,7 +210,8 @@ describe("Users component", () => {
 
     it("handles FAB click to open add user dialog", async () => {
         const React = await import("react");
-        const { render, fireEvent, screen } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
         const { createTestStore } = await import("../../../../test/setup");
@@ -226,7 +227,8 @@ describe("Users component", () => {
 
         // Find and click FAB button
         const addButton = await screen.findByLabelText("add");
-        fireEvent.click(addButton);
+        const user = userEvent.setup();
+        await user.click(addButton as any);
 
         // Verify click was handled
         expect(addButton).toBeTruthy();
@@ -234,7 +236,8 @@ describe("Users component", () => {
 
     it("handles user edit action", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
         const { createTestStore } = await import("../../../../test/setup");
@@ -252,7 +255,8 @@ describe("Users component", () => {
         const buttons = container.querySelectorAll('button[aria-label="edit"]');
         const firstButton = buttons[0];
         if (buttons.length > 0 && firstButton) {
-            fireEvent.click(firstButton);
+            const user = userEvent.setup();
+            await user.click(firstButton as any);
         }
 
         expect(container).toBeTruthy();
@@ -260,7 +264,8 @@ describe("Users component", () => {
 
     it("handles dialog close action", async () => {
         const React = await import("react");
-        const { render, fireEvent, screen } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
         const { createTestStore } = await import("../../../../test/setup");
@@ -276,7 +281,8 @@ describe("Users component", () => {
 
         // Open dialog
         const addButton = await screen.findByLabelText("add");
-        fireEvent.click(addButton);
+        const user = userEvent.setup();
+        await user.click(addButton as any);
 
         // Try to close it (would need to find cancel/close button in dialog)
         expect(addButton).toBeTruthy();

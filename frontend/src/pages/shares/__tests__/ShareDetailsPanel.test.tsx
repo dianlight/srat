@@ -32,7 +32,8 @@ describe("ShareDetailsPanel", () => {
 
     it("renders share information and triggers toggle actions", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent, within } = await import("@testing-library/react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - Query param ensures fresh module instance for mocks
         const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-test");
 
@@ -55,7 +56,8 @@ describe("ShareDetailsPanel", () => {
         expect(screen.getByText(/Mount Point Information/)).toBeTruthy();
 
         const toggle = within(container).getByLabelText(/show more/i);
-        fireEvent.click(toggle);
+        const user = userEvent.setup();
+        await user.click(toggle as any);
 
         expect(await screen.findByText("/mnt/data")).toBeTruthy();
 
@@ -64,7 +66,7 @@ describe("ShareDetailsPanel", () => {
         if (firstEditIcon) {
             const primaryEditButton = firstEditIcon.closest("button");
             if (primaryEditButton) {
-                fireEvent.click(primaryEditButton);
+                await user.click(primaryEditButton as any);
                 expect(editClicks).toBe(1);
             }
         }
@@ -94,7 +96,8 @@ describe("ShareDetailsPanel", () => {
 
     it("opens PreviewDialog when StorageIcon is clicked", async () => {
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - Query param ensures fresh module instance for mocks
         const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-preview-test");
 
@@ -115,7 +118,8 @@ describe("ShareDetailsPanel", () => {
 
         // Click on the StorageIcon to open PreviewDialog
         await act(async () => {
-            fireEvent.click(storageIconButton);
+            const user = userEvent.setup();
+            await user.click(storageIconButton as any);
         });
 
         // PreviewDialog should now be visible with the mount point path in the title
@@ -124,7 +128,8 @@ describe("ShareDetailsPanel", () => {
         // Find and click the Close button in the dialog
         const closeButton = screen.getByRole("button", { name: /close/i });
         await act(async () => {
-            fireEvent.click(closeButton);
+            const user = userEvent.setup();
+            await user.click(closeButton as any);
         });
     });
 

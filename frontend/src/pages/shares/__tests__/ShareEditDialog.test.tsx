@@ -31,10 +31,12 @@ describe("ShareEditDialog", () => {
         await setupMockForm();
 
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - Query param ensures unmocked module instance
         const { ShareEditDialog } = await import("../ShareEditDialog?share-edit-dialog-test");
 
+        const user = userEvent.setup();
         let closeCalls = 0;
         render(
             React.createElement(ShareEditDialog as any, {
@@ -46,7 +48,7 @@ describe("ShareEditDialog", () => {
         expect(await screen.findByText(/Create New Share/i)).toBeTruthy();
 
         const cancelButton = screen.getByRole("button", { name: /cancel/i });
-        fireEvent.click(cancelButton);
+        await user.click(cancelButton);
         expect(closeCalls).toBe(1);
     });
 
@@ -55,10 +57,12 @@ describe("ShareEditDialog", () => {
         await setupMockForm();
 
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - Query param ensures unmocked module instance
         const { ShareEditDialog } = await import("../ShareEditDialog?share-edit-dialog-test");
 
+        const user = userEvent.setup();
         render(
             React.createElement(ShareEditDialog as any, {
                 open: true,
@@ -69,7 +73,7 @@ describe("ShareEditDialog", () => {
         );
 
         const deleteButton = await screen.findByRole("button", { name: /delete/i });
-        fireEvent.click(deleteButton);
+        await user.click(deleteButton);
         expect(deleteCalls).toBe(1);
     });
 
@@ -80,10 +84,12 @@ describe("ShareEditDialog", () => {
         }, "submit-form-test");
 
         const React = await import("react");
-        const { render, screen, fireEvent } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - Query param ensures unmocked module instance
         const { ShareEditDialog } = await import("../ShareEditDialog?share-edit-dialog-test");
 
+        const user = userEvent.setup();
         let closePayload: any = null;
         render(
             React.createElement(ShareEditDialog as any, {
@@ -96,7 +102,7 @@ describe("ShareEditDialog", () => {
 
         // Find the mock form button with unique test ID
         const submitButton = await screen.findByTestId("submit-form-test");
-        fireEvent.click(submitButton);
+        await user.click(submitButton);
 
         expect(received).toBeTruthy();
         expect(closePayload?.name).toBe("Submitted");

@@ -77,7 +77,8 @@ describe("Volumes component", () => {
 
     it("handles hide system partitions toggle", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { BrowserRouter } = await import("react-router-dom");
         const { Volumes } = await import("../Volumes");
@@ -100,7 +101,8 @@ describe("Volumes component", () => {
         const switches = container.querySelectorAll('input[type="checkbox"]');
         const firstSwitch = switches[0];
         if (switches.length > 0 && firstSwitch) {
-            fireEvent.click(firstSwitch);
+            const user = userEvent.setup();
+            await user.click(firstSwitch as any);
             // Check localStorage was updated
             expect(localStorage.getItem("volumes.hideSystemPartitions")).toBeTruthy();
         }
@@ -302,7 +304,8 @@ describe("Volumes component", () => {
 
     it("handles partition selection", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { BrowserRouter } = await import("react-router-dom");
         const { Volumes } = await import("../Volumes");
@@ -340,7 +343,8 @@ describe("Volumes component", () => {
         const treeItems = container.querySelectorAll('[role="treeitem"]');
         const firstTreeItem = treeItems[0];
         if (treeItems.length > 0 && firstTreeItem) {
-            fireEvent.click(firstTreeItem);
+            const user = userEvent.setup();
+            await user.click(firstTreeItem as any);
         }
 
         expect(container).toBeTruthy();
@@ -348,7 +352,8 @@ describe("Volumes component", () => {
 
     it("handles disk expansion toggle", async () => {
         const React = await import("react");
-        const { render, fireEvent } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { BrowserRouter } = await import("react-router-dom");
         const { Volumes } = await import("../Volumes");
@@ -379,7 +384,8 @@ describe("Volumes component", () => {
         const expandButtons = container.querySelectorAll('[aria-label*="expand"]');
         const firstExpandButton = expandButtons[0];
         if (expandButtons.length > 0 && firstExpandButton) {
-            fireEvent.click(firstExpandButton);
+            const user = userEvent.setup();
+            await user.click(firstExpandButton as any);
         }
 
         expect(container).toBeTruthy();

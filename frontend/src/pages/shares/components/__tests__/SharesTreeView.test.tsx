@@ -26,7 +26,12 @@ describe("SharesTreeView component", () => {
                 },
                 confirm: async (confirmOptions: unknown) => {
                     confirmCalls.push(confirmOptions);
-                    return options?.confirmResult ?? { confirmed: true };
+                    const result = options?.confirmResult ?? { confirmed: true };
+                    // Simulate material-ui-confirm behavior: reject when user cancels
+                    if ((result as any)?.confirmed === false) {
+                        throw result;
+                    }
+                    return result;
                 },
             },
         } as const;
@@ -36,7 +41,8 @@ describe("SharesTreeView component", () => {
         const { overrides, tracking } = setupOverrides();
 
         const React = await import("react");
-        const { render, screen, fireEvent, waitFor } = await import("@testing-library/react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
         // @ts-expect-error - Query param loads isolated module instance
@@ -73,15 +79,16 @@ describe("SharesTreeView component", () => {
             )
         );
 
+        const user = userEvent.setup();
         const documentsNode = await screen.findByText("Documents");
-        fireEvent.click(documentsNode);
+        await user.click(documentsNode);
         expect(onSelect).toHaveBeenCalledWith("doc", expect.objectContaining({ name: "Documents" }));
 
         const firstToggle = await screen.findByTestId("share-toggle-doc");
-        fireEvent.click(firstToggle);
+        await user.click(firstToggle);
 
         const archiveToggle = await screen.findByTestId("share-toggle-arc");
-        fireEvent.click(archiveToggle);
+        await user.click(archiveToggle);
 
         await waitFor(() => expect(tracking.disableCalls.length).toBeGreaterThanOrEqual(1));
         await waitFor(() => expect(tracking.enableCalls.length).toBeGreaterThanOrEqual(1));
@@ -137,7 +144,8 @@ describe("SharesTreeView component", () => {
         const { overrides, tracking } = setupOverrides({ confirmResult: { confirmed: false } });
 
         const React = await import("react");
-        const { render, screen, fireEvent, within } = await import("@testing-library/react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
         // @ts-expect-error - Query param loads isolated module instance
@@ -166,9 +174,10 @@ describe("SharesTreeView component", () => {
             )
         );
 
+        const user = userEvent.setup();
         const toggles = await within(container).findAllByTestId("share-toggle-doc");
         expect(toggles).toHaveLength(1);
-        fireEvent.click(toggles[0]!);
+        await user.click(toggles[0]!);
 
         expect(tracking.disableCalls.length).toBe(0);
     });

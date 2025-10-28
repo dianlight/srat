@@ -1,4 +1,45 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, mock } from "bun:test";
+
+// Mock the sratApi hooks and types used by VolumeMountDialog and related components
+mock.module("../../../../store/sratApi", () => {
+    const fakeReducer = (state: any = {}, _action: any) => state;
+    const makeMiddleware = () => () => (next: any) => (action: any) => next(action);
+
+    return {
+        // Minimal RTK Query API object for store creation
+        sratApi: {
+            reducerPath: "sratApi",
+            reducer: fakeReducer,
+            middleware: makeMiddleware()
+        },
+        // Mock the hook used by VolumeMountDialog
+        useGetApiFilesystemsQuery: (arg: any, options?: any) => ({
+            data: [
+                { name: "ext4", mountFlags: ["rw", "ro", "noexec"] },
+                { name: "ntfs", mountFlags: ["rw", "ro"] },
+                { name: "vfat", mountFlags: ["rw", "ro"] }
+            ],
+            isLoading: false,
+            error: null
+        }),
+        // Export enums that might be needed by other components
+        Type: { System: "system", Data: "data" },
+        Usage: { None: "None", General: "general", TimeMachine: "timemachine" },
+        Time_machine_support: { Disabled: "disabled", Enabled: "enabled" },
+        Supported_events: {
+            Hello: "hello",
+            Heartbeat: "heartbeat",
+            VolumeUpdate: "volume_update",
+            ShareUpdate: "share_update",
+            UserUpdate: "user_update"
+        },
+        Update_process_state: {
+            Idle: "idle",
+            Downloading: "downloading",
+            Installing: "installing"
+        }
+    };
+});
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -26,15 +67,17 @@ describe("VolumeMountDialog Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-        const mockClose = () => {};
+        const mockClose = () => { };
 
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumeMountDialog as any, {
-                    open: true,
-                    onClose: mockClose
-                }) }
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: true,
+                        onClose: mockClose
+                    })
+                }
             )
         );
 
@@ -51,15 +94,17 @@ describe("VolumeMountDialog Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-        const mockClose = () => {};
+        const mockClose = () => { };
 
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumeMountDialog as any, {
-                    open: false,
-                    onClose: mockClose
-                }) }
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: false,
+                        onClose: mockClose
+                    })
+                }
             )
         );
 
@@ -74,15 +119,17 @@ describe("VolumeMountDialog Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-        const mockClose = () => {};
+        const mockClose = () => { };
 
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumeMountDialog as any, {
-                    open: true,
-                    onClose: mockClose
-                }) }
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: true,
+                        onClose: mockClose
+                    })
+                }
             )
         );
 
@@ -99,7 +146,7 @@ describe("VolumeMountDialog Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-        const mockClose = () => {};
+        const mockClose = () => { };
         const mockPartition = {
             id: "test-id",
             name: "Test Partition",
@@ -115,11 +162,13 @@ describe("VolumeMountDialog Component", () => {
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumeMountDialog as any, {
-                    open: true,
-                    onClose: mockClose,
-                    objectToEdit: mockPartition
-                }) }
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: true,
+                        onClose: mockClose,
+                        objectToEdit: mockPartition
+                    })
+                }
             )
         );
 
@@ -134,16 +183,18 @@ describe("VolumeMountDialog Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-        const mockClose = () => {};
+        const mockClose = () => { };
 
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumeMountDialog as any, {
-                    open: true,
-                    onClose: mockClose,
-                    readOnlyView: true
-                }) }
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: true,
+                        onClose: mockClose,
+                        readOnlyView: true
+                    })
+                }
             )
         );
 
@@ -158,15 +209,17 @@ describe("VolumeMountDialog Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-        const mockClose = () => {};
+        const mockClose = () => { };
 
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumeMountDialog as any, {
-                    open: true,
-                    onClose: mockClose
-                }) }
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: true,
+                        onClose: mockClose
+                    })
+                }
             )
         );
 
@@ -183,15 +236,17 @@ describe("VolumeMountDialog Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-        const mockClose = () => {};
+        const mockClose = () => { };
 
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumeMountDialog as any, {
-                    open: true,
-                    onClose: mockClose
-                }) }
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: true,
+                        onClose: mockClose
+                    })
+                }
             )
         );
 
@@ -208,15 +263,17 @@ describe("VolumeMountDialog Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-        const mockClose = () => {};
+        const mockClose = () => { };
 
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumeMountDialog as any, {
-                    open: true,
-                    onClose: mockClose
-                }) }
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: true,
+                        onClose: mockClose
+                    })
+                }
             )
         );
 
@@ -232,15 +289,17 @@ describe("VolumeMountDialog Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-        const mockClose = () => {};
+        const mockClose = () => { };
 
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumeMountDialog as any, {
-                    open: true,
-                    onClose: mockClose
-                }) }
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: true,
+                        onClose: mockClose
+                    })
+                }
             )
         );
 
@@ -257,15 +316,17 @@ describe("VolumeMountDialog Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-        const mockClose = () => {};
+        const mockClose = () => { };
 
         const { container } = render(
             React.createElement(
                 Provider,
-                { store, children: React.createElement(VolumeMountDialog as any, {
-                    open: true,
-                    onClose: mockClose
-                }) }
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: true,
+                        onClose: mockClose
+                    })
+                }
             )
         );
 
