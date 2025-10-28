@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import 'openapi-explorer';
+import { useEffect } from "react";
 import { apiUrl } from "../store/emptyApi";
 import normalizeUrl from 'normalize-url';
 
@@ -7,6 +7,14 @@ import normalizeUrl from 'normalize-url';
 const OpenApiExplorer = 'openapi-explorer' as any;
 
 export function Swagger() {
+	useEffect(() => {
+		// Lazily load the web component in real browsers; skip in tests to avoid happy-dom CSS engine issues
+		if (typeof window !== 'undefined' && !(globalThis as any).__TEST__) {
+			// @ts-ignore - module lacks published types, ambient module declared in global.d.ts
+			import('openapi-explorer').catch(() => { /* ignore in non-browser envs */ });
+		}
+	}, []);
+
 	return (
 		<Box>
 			<OpenApiExplorer spec-url={normalizeUrl(`${apiUrl}/openapi.yaml`)}>

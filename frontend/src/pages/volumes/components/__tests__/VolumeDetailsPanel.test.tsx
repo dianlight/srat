@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -29,8 +29,11 @@ async function renderWithProviders(element: any) {
 describe("VolumeDetailsPanel Component", () => {
     beforeEach(() => {
         localStorage.clear();
-        // Clear DOM before each test
-        document.body.innerHTML = '';
+    });
+
+    afterEach(async () => {
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
     });
 
     it("renders placeholder when no disk or partition selected", async () => {

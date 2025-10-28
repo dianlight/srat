@@ -742,7 +742,7 @@ export function ShareEditForm({
                 <SwitchElement
                     switchProps={{
                         size: "small",
-                        color: isDisabled ? "text.secondary" : "text.primary",
+                        // Color controlled via theme/typography; Switch color prop only accepts palette keys
                     }}
                     slotProps={{
                         typography: {

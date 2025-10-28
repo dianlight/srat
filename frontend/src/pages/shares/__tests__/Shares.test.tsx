@@ -15,19 +15,15 @@ describe("Shares page", () => {
         },
     };
 
-    beforeEach(async () => {
+    beforeEach(() => {
         if ((globalThis as any).localStorage) {
             localStorage.clear();
         }
         mock.restore();
-        // Clear React Testing Library's rendered components
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
     });
 
     afterEach(async () => {
         mock.restore();
-        // Clear React Testing Library's rendered components
         const { cleanup } = await import("@testing-library/react");
         cleanup();
     });
@@ -215,6 +211,8 @@ describe("Shares page", () => {
             // console.debug("Using mocked ../../store/sratApi for Shares test");
             return {
                 Usage: { None: "None" },
+                // Provide the users query hook used by ShareEditForm to avoid hitting real RTKQ
+                useGetApiUsersQuery: () => ({ data: [], isLoading: false, error: null }),
                 usePutApiShareByShareNameMutation: () => [
                     () => ({
                         unwrap: () => {
@@ -247,10 +245,11 @@ describe("Shares page", () => {
 
         // Defensive: also mock by absolute path in case Bun resolves to absolute module IDs
         mock.module(path.resolve(__dirname, "../../../store/sratApi.ts"), () => ({
-            // Minimal RTK Query API object for store creation expectations
-            sratApi: { reducerPath: "sratApi", reducer: fakeReducer, middleware: makeMiddleware() },
+            // Minimal RTK Query API object for store creation expectations, align reducerPath with default 'api'
+            sratApi: { reducerPath: "api", reducer: fakeReducer, middleware: makeMiddleware() },
             // Hooks + enums used by component
             Usage: { None: "None" },
+            useGetApiUsersQuery: () => ({ data: [], isLoading: false, error: null }),
             usePutApiShareByShareNameMutation: () => [
                 () => ({
                     unwrap: () => {
@@ -291,7 +290,8 @@ describe("Shares page", () => {
 
         // Provide minimal RTK Query API object for store creation dynamic import (../src/store/sratApi)
         mock.module("../src/store/sratApi", () => ({
-            sratApi: { reducerPath: "sratApi", reducer: fakeReducer, middleware: makeMiddleware() },
+            // Align with default 'api' reducerPath so createTestStore wires middleware correctly
+            sratApi: { reducerPath: "api", reducer: fakeReducer, middleware: makeMiddleware() },
         }));
 
         return mutationSpies;

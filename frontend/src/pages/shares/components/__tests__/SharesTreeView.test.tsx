@@ -2,16 +2,12 @@ import "../../../../../test/setup";
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 describe("SharesTreeView component", () => {
-    beforeEach(async () => {
+    beforeEach(() => {
         mock.restore();
-        // Clear React Testing Library's rendered components
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
     });
 
     afterEach(async () => {
         mock.restore();
-        // Clear React Testing Library's rendered components
         const { cleanup } = await import("@testing-library/react");
         cleanup();
     });

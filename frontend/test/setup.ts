@@ -5,10 +5,7 @@
 
 import { Window } from "happy-dom";
 import { configureStore } from "@reduxjs/toolkit";
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import '@testing-library/jest-dom'
-
-GlobalRegistrator.register();
 
 // Install DOM globals immediately when this module is imported
 const win = new Window({
@@ -20,7 +17,100 @@ const win = new Window({
 });
 (globalThis as any).window = win as any;
 (globalThis as any).document = win.document as any;
+(globalThis as any).navigator = win.navigator as any;
+(globalThis as any).location = win.location as any;
+
+// Expose common DOM classes/globals used by libraries (MUI, Popper, Prism, etc.)
+(globalThis as any).Node = win.Node as any;
+(globalThis as any).Element = win.Element as any;
+(globalThis as any).Document = (win as any).Document || win.document.constructor;
+(globalThis as any).DocumentFragment = win.DocumentFragment as any;
 (globalThis as any).HTMLElement = win.HTMLElement as any;
+(globalThis as any).SVGElement = win.SVGElement as any;
+(globalThis as any).Text = win.Text as any;
+(globalThis as any).Comment = win.Comment as any;
+(globalThis as any).ShadowRoot = (win as any).ShadowRoot as any;
+(globalThis as any).customElements = (win as any).customElements as any;
+(globalThis as any).getComputedStyle = win.getComputedStyle.bind(win);
+// Mark environment as test for components that conditionally load heavy browser-only modules
+; (globalThis as any).__TEST__ = true;
+
+// Polyfill CSSStyleSheet + adoptedStyleSheets used by lit/openapi-explorer
+if (!(globalThis as any).CSSStyleSheet) {
+    class CSSStyleSheetPolyfill {
+        private _text = "";
+        replaceSync(text: string) { this._text = String(text ?? ""); return this; }
+        async replace(text: string) { this.replaceSync(text); return this; }
+        toString() { return this._text; }
+    }
+    (globalThis as any).CSSStyleSheet = CSSStyleSheetPolyfill as any;
+}
+// Define adoptedStyleSheets on Document/ShadowRoot if missing
+const defineAdoptedStyleSheets = (proto: any) => {
+    if (!proto) return;
+    if (!('adoptedStyleSheets' in proto)) {
+        let _sheets: any[] = [];
+        Object.defineProperty(proto, 'adoptedStyleSheets', {
+            get() { return _sheets; },
+            set(v: any[]) { _sheets = Array.isArray(v) ? v : []; },
+            configurable: true,
+        });
+    }
+};
+defineAdoptedStyleSheets((globalThis as any).Document?.prototype);
+defineAdoptedStyleSheets((globalThis as any).ShadowRoot?.prototype);
+
+// Polyfills/stubs for browser-only APIs referenced in tests/components
+if (!(globalThis as any).matchMedia) {
+    (globalThis as any).matchMedia = (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => { /* deprecated */ },
+        removeListener: () => { /* deprecated */ },
+        addEventListener: () => { },
+        removeEventListener: () => { },
+        dispatchEvent: () => true,
+    });
+}
+
+if (!(globalThis as any).ResizeObserver) {
+    (globalThis as any).ResizeObserver = class {
+        observe() { }
+        unobserve() { }
+        disconnect() { }
+    } as any;
+}
+
+if (!(globalThis as any).IntersectionObserver) {
+    (globalThis as any).IntersectionObserver = class {
+        constructor(_cb: any, _options?: any) { }
+        observe() { }
+        unobserve() { }
+        disconnect() { }
+        takeRecords() { return []; }
+    } as any;
+}
+
+if (!(globalThis as any).requestAnimationFrame) {
+    (globalThis as any).requestAnimationFrame = (cb: (ts: number) => void) => setTimeout(() => cb(Date.now()), 0);
+}
+if (!(globalThis as any).cancelAnimationFrame) {
+    (globalThis as any).cancelAnimationFrame = (id: any) => clearTimeout(id);
+}
+
+// Happy-DOM can throw on duplicate/unmatched removeChild during React strict/effects.
+// Make it tolerant to avoid cross-test unmount noise.
+try {
+    const originalRemoveChild = (globalThis as any).Node?.prototype?.removeChild;
+    if (originalRemoveChild && !('__patched_removeChild' in (globalThis as any).Node.prototype)) {
+        Object.defineProperty((globalThis as any).Node.prototype, '__patched_removeChild', { value: true });
+        (globalThis as any).Node.prototype.removeChild = function (child: any) {
+            try { return originalRemoveChild.call(this, child); }
+            catch { return child; }
+        };
+    }
+} catch { /* ignore */ }
 
 // Ensure document.body exists for @testing-library/react screen
 if (!document.body) {
@@ -55,11 +145,7 @@ if (typeof process !== "undefined") {
     (globalThis as any).process = { env: { API_URL: "http://localhost:8080", RTL_SKIP_AUTO_CLEANUP: "true" } };
 }
 
-// Configure Bun test environment for React Testing Library
-// Override beforeAll/afterAll to no-ops to prevent @testing-library/react from setting up React act environment
-// that conflicts with Bun's test runner
-(globalThis as any).beforeAll = () => { };
-(globalThis as any).afterAll = () => { };
+// Do not override test runner lifecycle hooks; tests rely on them.
 
 // Create the store after the above globals are set. Do dynamic imports to
 // avoid loading modules (that inspect window/process.env at module import)

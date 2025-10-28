@@ -27,21 +27,15 @@ if (!(globalThis as any).localStorage) {
 }
 
 describe("NavBar Component", () => {
-    beforeEach(async () => {
+    beforeEach(() => {
         localStorage.clear();
         mock.restore();
         // Reset any mocks
         (window as any).open = () => null;
-        // Clear React Testing Library's rendered components
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
     });
 
-    afterEach(async () => {
+    afterEach(() => {
         mock.restore();
-        // Clear React Testing Library's rendered components
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
     });
 
     it("renders NavBar with AppBar and basic elements", async () => {

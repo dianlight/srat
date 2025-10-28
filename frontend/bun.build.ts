@@ -44,6 +44,12 @@ const buildConfig: BuildConfig = {
 	target: "browser",
 	sourcemap: "inline",
 	minify: values.watch || values.serve ? false : true,
+	// Avoid bundling optional prism-based highlighters that reference unsupported subpath exports
+	external: [
+		"refractor",
+		"refractor/*",
+		"react-syntax-highlighter/dist/esm/prism*",
+	],
 	plugins: [
 		//copy("src/index.html", "out/index.html")
 		//  html({})

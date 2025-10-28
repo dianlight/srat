@@ -13,6 +13,9 @@ import {
 } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/sseApi";
 
+// Extend Rollbar configuration to allow optional Replay settings not present in types
+type RollbarConfigWithReplay = Rollbar.Configuration & { replay?: unknown };
+
 /**
  * Hook that provides Rollbar functionality with telemetry mode checking
  * This hook ensures that errors and events are only reported based on the current telemetry mode
@@ -28,7 +31,7 @@ export const useRollbarTelemetry = () => {
 		Telemetry_mode.Disabled,
 	);
 	const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
-	const [rollbarConfig, setRollbarConfig] = useState<Rollbar.Configuration>({
+	const [rollbarConfig, setRollbarConfig] = useState<RollbarConfigWithReplay>({
 		accessToken: getRollbarClientAccessToken() || "disabled",
 		environment: getNodeEnv() || "development",
 		codeVersion: packageJson.version,
@@ -59,7 +62,7 @@ export const useRollbarTelemetry = () => {
 		},
 		enabled: false,
 	});
-	useRollbarConfiguration(rollbarConfig);
+	useRollbarConfiguration(rollbarConfig as Rollbar.Configuration);
 
 	useEffect(() => {
 		setTelemetryMode(
@@ -106,12 +109,12 @@ export const useRollbarTelemetry = () => {
 					},
 					person: evdata?.hello.machine_id
 						? {
-								id: evdata.hello.machine_id,
-							}
+							id: evdata.hello.machine_id,
+						}
 						: undefined,
 				},
 				enabled: enableRollbar,
-			});
+			} as RollbarConfigWithReplay);
 		}
 	}, [isLoading, evdata?.hello, apiSettings, apiLoading]);
 

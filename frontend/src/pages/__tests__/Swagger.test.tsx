@@ -52,6 +52,9 @@ describe("Swagger page", () => {
         const yamlLink = await rtl.screen.findByText("YAML");
         expect(jsonLink).toBeTruthy();
         expect(yamlLink).toBeTruthy();
+
+        // Ensure DOM is cleaned to avoid duplicates when tests rerun multiple times
+        rtl.cleanup();
     });
 
     it("includes openapi-explorer with normalized spec-url", async () => {

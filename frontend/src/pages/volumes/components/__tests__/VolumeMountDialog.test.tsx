@@ -53,19 +53,13 @@ if (!(globalThis as any).localStorage) {
 }
 
 describe("VolumeMountDialog Component", () => {
-    beforeEach(async () => {
+    beforeEach(() => {
         localStorage.clear();
         mock.restore();
-        // Clear React Testing Library's rendered components
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
     });
 
-    afterEach(async () => {
+    afterEach(() => {
         mock.restore();
-        // Clear React Testing Library's rendered components
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
     });
 
     it("renders dialog when open prop is true", async () => {

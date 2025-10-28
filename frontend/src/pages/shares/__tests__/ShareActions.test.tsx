@@ -18,7 +18,7 @@ describe("ShareActions component", () => {
     });
 
     afterEach(async () => {
-        // Clear React Testing Library's rendered components
+        // Reset matchMedia and cleanup rendered components between reruns
         const { cleanup } = await import("@testing-library/react");
         cleanup();
     });
