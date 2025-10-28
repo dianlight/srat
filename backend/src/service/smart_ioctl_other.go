@@ -4,33 +4,11 @@
 package service
 
 import (
-	"github.com/anatol/smart.go"
 	"github.com/dianlight/srat/dto"
-	"gitlab.com/tozd/go/errors"
 )
 
-// enableSMART enables SMART on a SATA device (not supported on non-Linux platforms)
-func enableSMART(dev *smart.SataDevice, devicePath string) errors.E {
-	return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "SMART enable not supported on this platform")
-}
-
-// disableSMART disables SMART on a SATA device (not supported on non-Linux platforms)
-func disableSMART(dev *smart.SataDevice, devicePath string) errors.E {
-	return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "SMART disable not supported on this platform")
-}
-
-// executeSMARTTest starts a SMART self-test (not supported on non-Linux platforms)
-func executeSMARTTest(dev *smart.SataDevice, testType byte, devicePath string) errors.E {
-	return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "SMART test execution not supported on this platform")
-}
-
-// parseSelfTestLog parses the SMART self-test log (not supported on non-Linux platforms)
-func parseSelfTestLog(log interface{}) (*dto.SmartTestStatus, errors.E) {
-	return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "reason", "SMART test log parsing not supported on this platform")
-}
-
 // checkSMARTHealth evaluates SMART attributes (cross-platform)
-func checkSMARTHealth(smartInfo *dto.SmartInfo, thresholds map[uint8]uint8, attrs map[uint8]interface{}) *dto.SmartHealthStatus {
+func checkSMARTHealth(smartInfo *dto.SmartInfo, _ interface{}, _ interface{}) *dto.SmartHealthStatus {
 	health := &dto.SmartHealthStatus{
 		Passed:        true,
 		OverallStatus: "healthy",
@@ -44,6 +22,20 @@ func checkSMARTHealth(smartInfo *dto.SmartInfo, thresholds map[uint8]uint8, attr
 			failingAttrs = append(failingAttrs, code)
 			health.Passed = false
 		}
+	}
+
+	// Check power cycle count threshold
+	if smartInfo.PowerCycleCount.Thresholds > 0 &&
+		smartInfo.PowerCycleCount.Value < smartInfo.PowerCycleCount.Thresholds {
+		failingAttrs = append(failingAttrs, "PowerCycleCount")
+		health.Passed = false
+	}
+
+	// Check power on hours threshold
+	if smartInfo.PowerOnHours.Thresholds > 0 &&
+		smartInfo.PowerOnHours.Value < smartInfo.PowerOnHours.Thresholds {
+		failingAttrs = append(failingAttrs, "PowerOnHours")
+		health.Passed = false
 	}
 
 	if len(failingAttrs) > 0 {
