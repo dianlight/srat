@@ -156,6 +156,7 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 - **Test data**: Use `backend/test/data/` dirs for static test files
 - **Minimal coverage**: Backend enforces 5% coverage. Frontend enforces 80% functions coverage.
 - **New tests**: All new features/bug fixes must include tests covering positive and negative cases. Minimal functions coverage is 90% for frontend tests and 6% for backend tests.
+- **Local CI Testing with act**: When testing GitHub Actions workflows locally using `act`, always use `ghcr.io/catthehacker/ubuntu:act-latest` image instead of `full-latest` to reduce resource usage and speed up testing. Example: `act -W .github/workflows/build.yaml -j test-frontend --container-architecture linux/amd64 -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest`
 
 ### Backend Testing
 
