@@ -1,17 +1,20 @@
 name: Update Coverage Badges
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - "backend/src/**/*.go"
-      - "backend/src/**/*_test.go"
-      - "frontend/src/**/*.ts"
-      - "frontend/src/**/*.tsx"
-      - "frontend/src/**/*.test.ts"
-      - "frontend/src/**/*.test.tsx"
-      - ".github/workflows/coverage-badges.yml"
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch: # Allow manual trigger only
+
+# Disabled - this workflow is currently disabled
+# To re-enable, uncomment the push trigger below:
+# push:
+#   branches: [ "main" ]
+#   paths:
+#     - "backend/src/**/*.go"
+#     - "backend/src/**/*_test.go"
+#     - "frontend/src/**/*.ts"
+#     - "frontend/src/**/*.tsx"
+#     - "frontend/src/**/*.test.ts"
+#     - "frontend/src/**/*.test.tsx"
+#     - ".github/workflows/coverage-badges.yml"
 
 permissions:
   contents: write
