@@ -1,5 +1,9 @@
 #!/bin/bash
 # Script to update coverage badges in README.md with actual test coverage values
+# 
+# Usage:
+#   ./update-coverage-badges.sh                              # Run tests and update badges
+#   ./update-coverage-badges.sh --backend 45.2 --frontend 78.5  # Use provided coverage values, skip tests
 
 set -e
 
@@ -13,70 +17,119 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo "📊 Calculating test coverage..."
+# Parse CLI arguments
+BACKEND_COVERAGE=""
+FRONTEND_COVERAGE=""
+RUN_TESTS=true
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --backend)
+            BACKEND_COVERAGE="$2"
+            shift 2
+            ;;
+        --frontend)
+            FRONTEND_COVERAGE="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--backend COVERAGE] [--frontend COVERAGE]"
+            exit 1
+            ;;
+    esac
+done
+
+# Determine if we should run tests
+if [ -n "$BACKEND_COVERAGE" ] && [ -n "$FRONTEND_COVERAGE" ]; then
+    RUN_TESTS=false
+    echo "📊 Using provided coverage values (skipping tests)..."
+else
+    RUN_TESTS=true
+    echo "📊 Calculating test coverage..."
+fi
+
 echo "Repository root: $REPO_ROOT"
 
-# Run backend tests and capture full output (do not exit on test failure here)
-echo "🔧 Running backend tests..."
-cd "$REPO_ROOT/backend"
-BACKEND_ERROR=false
-set +e
-BACKEND_FULL_OUTPUT=$(make test 2>&1)
-BACKEND_EXIT_CODE=$?
-set -e
+# Run backend tests if not provided via CLI
+if [ "$RUN_TESTS" = true ]; then
+    echo "🔧 Running backend tests..."
+    cd "$REPO_ROOT/backend"
+    BACKEND_ERROR=false
+    set +e
+    BACKEND_FULL_OUTPUT=$(make test 2>&1)
+    BACKEND_EXIT_CODE=$?
+    set -e
 
-echo "---- Backend test output start ----"
-echo "$BACKEND_FULL_OUTPUT"
-echo "---- Backend test output end ----"
+    echo "---- Backend test output start ----"
+    echo "$BACKEND_FULL_OUTPUT"
+    echo "---- Backend test output end ----"
 
-# Try to extract coverage from a line like: "Total coverage: XX.X%"
-BACKEND_COVERAGE_LINE=$(echo "$BACKEND_FULL_OUTPUT" | grep "Total coverage:" | tail -1 || true)
-if [ -n "$BACKEND_COVERAGE_LINE" ]; then
-    BACKEND_COVERAGE=$(echo "$BACKEND_COVERAGE_LINE" | awk '{gsub(/%/, "", $3); print $3}')
-    # Normalize/validate
-    if [ -z "$BACKEND_COVERAGE" ] || ! [[ "$BACKEND_COVERAGE" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+    # Try to extract coverage from a line like: "Total coverage: XX.X%"
+    BACKEND_COVERAGE_LINE=$(echo "$BACKEND_FULL_OUTPUT" | grep "Total coverage:" | tail -1 || true)
+    if [ -n "$BACKEND_COVERAGE_LINE" ]; then
+        BACKEND_COVERAGE=$(echo "$BACKEND_COVERAGE_LINE" | awk '{gsub(/%/, "", $3); print $3}')
+        # Normalize/validate
+        if [ -z "$BACKEND_COVERAGE" ] || ! [[ "$BACKEND_COVERAGE" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+            BACKEND_COVERAGE="0.0"
+        fi
+    else
+        BACKEND_ERROR=true
         BACKEND_COVERAGE="0.0"
     fi
+    if [ $BACKEND_EXIT_CODE -ne 0 ]; then
+        BACKEND_ERROR=true
+    fi
+    cd "$REPO_ROOT"
 else
-    BACKEND_ERROR=true
-    BACKEND_COVERAGE="0.0"
-fi
-if [ $BACKEND_EXIT_CODE -ne 0 ]; then
-    BACKEND_ERROR=true
+    BACKEND_ERROR=false
+    # Validate CLI-provided backend coverage
+    if ! [[ "$BACKEND_COVERAGE" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+        echo -e "${RED}Invalid backend coverage value: $BACKEND_COVERAGE${NC}"
+        exit 1
+    fi
 fi
 echo -e "${GREEN}Backend Coverage: ${BACKEND_COVERAGE}%${NC}"
-cd "$REPO_ROOT"
 
-# Run frontend tests and capture full output (do not exit on test failure here)
-echo "🎨 Running frontend tests..."
-cd "$REPO_ROOT/frontend"
-FRONTEND_ERROR=false
-set +e
-FRONTEND_FULL_OUTPUT=$(bun test --coverage 2>&1)
-FRONTEND_EXIT_CODE=$?
-set -e
+# Run frontend tests if not provided via CLI
+if [ "$RUN_TESTS" = true ]; then
+    echo "🎨 Running frontend tests..."
+    cd "$REPO_ROOT/frontend"
+    FRONTEND_ERROR=false
+    set +e
+    FRONTEND_FULL_OUTPUT=$(bun test --coverage 2>&1)
+    FRONTEND_EXIT_CODE=$?
+    set -e
 
-echo "---- Frontend test output start ----"
-echo "$FRONTEND_FULL_OUTPUT"
-echo "---- Frontend test output end ----"
+    echo "---- Frontend test output start ----"
+    echo "$FRONTEND_FULL_OUTPUT"
+    echo "---- Frontend test output end ----"
 
-# Try to extract lines coverage from a table row that contains "All files"
-FRONTEND_COVERAGE_LINE=$(echo "$FRONTEND_FULL_OUTPUT" | grep "All files" | tail -1 || true)
-if [ -n "$FRONTEND_COVERAGE_LINE" ]; then
-    # Extract second column and strip spaces and percent sign
-    FRONTEND_COVERAGE=$(echo "$FRONTEND_COVERAGE_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/%/, "", $2); print $2}')
-    if [ -z "$FRONTEND_COVERAGE" ] || ! [[ "$FRONTEND_COVERAGE" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+    # Try to extract lines coverage from a table row that contains "All files"
+    FRONTEND_COVERAGE_LINE=$(echo "$FRONTEND_FULL_OUTPUT" | grep "All files" | tail -1 || true)
+    if [ -n "$FRONTEND_COVERAGE_LINE" ]; then
+        # Extract second column and strip spaces and percent sign
+        FRONTEND_COVERAGE=$(echo "$FRONTEND_COVERAGE_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/%/, "", $2); print $2}')
+        if [ -z "$FRONTEND_COVERAGE" ] || ! [[ "$FRONTEND_COVERAGE" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+            FRONTEND_COVERAGE="0.0"
+        fi
+    else
+        FRONTEND_ERROR=true
         FRONTEND_COVERAGE="0.0"
     fi
+    if [ $FRONTEND_EXIT_CODE -ne 0 ]; then
+        FRONTEND_ERROR=true
+    fi
+    cd "$REPO_ROOT"
 else
-    FRONTEND_ERROR=true
-    FRONTEND_COVERAGE="0.0"
-fi
-if [ $FRONTEND_EXIT_CODE -ne 0 ]; then
-    FRONTEND_ERROR=true
+    FRONTEND_ERROR=false
+    # Validate CLI-provided frontend coverage
+    if ! [[ "$FRONTEND_COVERAGE" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+        echo -e "${RED}Invalid frontend coverage value: $FRONTEND_COVERAGE${NC}"
+        exit 1
+    fi
 fi
 echo -e "${GREEN}Frontend Coverage: ${FRONTEND_COVERAGE}%${NC}"
-cd "$REPO_ROOT"
 
 # Calculate global coverage (weighted average: 60% backend, 40% frontend)
 GLOBAL_COVERAGE=$(awk "BEGIN {printf \"%.1f\", ($BACKEND_COVERAGE * 0.6) + ($FRONTEND_COVERAGE * 0.4)}")
