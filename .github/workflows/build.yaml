@@ -229,8 +229,7 @@ jobs:
         id: test_backend
         run: |
           cd backend
-          sudo -E PATH="$PATH" make test > backend_test_output.txt 2>&1
-          cat backend_test_output.txt
+          sudo -E PATH="$PATH" make test 2>&1 | tee backend_test_output.txt
           cd ..
 
       - name: Extract Backend Coverage
@@ -271,8 +270,7 @@ jobs:
         id: test_frontend
         run: |
           cd frontend
-          bun test:ci > frontend_test_output.txt 2>&1
-          cat frontend_test_output.txt
+          bun test:ci 2>&1 | tee frontend_test_output.txt
           cd ..
 
       - name: Extract Frontend Coverage
@@ -338,7 +336,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setversion, test-backend, test-frontend, update-coverage]
     env:
-      ROLLBAR_CLIENT_ACCESS_TOKEN: ${{ secrets.ROLLBAR_CLIENT_ACCESS_TOKEN }}
+      ROLLBAR_CLIENT_ACCESS_TOKEN: ${{ secrets.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled' }}
       ROLLBAR_ENVIRONMENT: "production"
     steps:
       - name: Checkout the repository
