@@ -433,6 +433,8 @@ Always prioritize maintainability and clarity in tests.
 
 Always ensure tests are deterministic and can run in CI environments without special setup.
 
+**CRITICAL for frontend tests**: Before considering any modified or new frontend test as correct, execute it with `bun test --rerun-each 10` at least one time and verify 100% pass rate (0 failures). This ensures tests are not flaky and do not have mock state or component state bleed issues. Example: `cd frontend && bun test --rerun-each 10 MyComponentName` must show all 10 test runs passing.
+
 Update documentation to reflect any new patterns, changes in workflows or architecture.
 
 The goal is to maintain high code quality, consistency, and ease of onboarding for future contributors.

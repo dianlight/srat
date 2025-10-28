@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 // Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues
 mock.module("react-syntax-highlighter", () => ({
@@ -27,13 +27,21 @@ if (!(globalThis as any).localStorage) {
 }
 
 describe("NavBar Component", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         localStorage.clear();
-        // Clear DOM before each test
-        document.body.innerHTML = '';
-
+        mock.restore();
         // Reset any mocks
         (window as any).open = () => null;
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
+    });
+
+    afterEach(async () => {
+        mock.restore();
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
     });
 
     it("renders NavBar with AppBar and basic elements", async () => {

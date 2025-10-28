@@ -1,9 +1,19 @@
 import "../../../../test/setup";
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 describe("ShareEditDialog", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         mock.restore();
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
+    });
+
+    afterEach(async () => {
+        mock.restore();
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
     });
 
     const setupMockForm = async (submitCallback?: (data: any) => void, testId = "mock-share-form") => {

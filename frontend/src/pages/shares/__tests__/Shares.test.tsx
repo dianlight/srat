@@ -15,14 +15,21 @@ describe("Shares page", () => {
         },
     };
 
-    beforeEach(() => {
+    beforeEach(async () => {
         if ((globalThis as any).localStorage) {
             localStorage.clear();
         }
+        mock.restore();
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         mock.restore();
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
     });
 
     const setupMocks = async () => {

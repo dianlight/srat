@@ -228,9 +228,9 @@ jobs:
         # Running tests as root is a potential security risk.
         id: test_backend
         run: |
+          set -o pipefail
           cd backend
           sudo -E PATH="$PATH" make test 2>&1 | tee backend_test_output.txt
-          cd ..
 
       - name: Extract Backend Coverage
         id: extract_coverage
@@ -264,14 +264,13 @@ jobs:
         run: |       
           cd frontend
           bun install
-          cd ..
 
       - name: Test Frontend ${{ needs.setversion.outputs.version }}
         id: test_frontend
         run: |
+          set -o pipefail
           cd frontend
           bun test:ci 2>&1 | tee frontend_test_output.txt
-          cd ..
 
       - name: Extract Frontend Coverage
         id: extract_coverage

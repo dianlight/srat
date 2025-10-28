@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 // Mock the sratApi hooks and types used by VolumeMountDialog and related components
 mock.module("../../../../store/sratApi", () => {
@@ -53,10 +53,19 @@ if (!(globalThis as any).localStorage) {
 }
 
 describe("VolumeMountDialog Component", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         localStorage.clear();
-        // Clear DOM before each test
-        document.body.innerHTML = '';
+        mock.restore();
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
+    });
+
+    afterEach(async () => {
+        mock.restore();
+        // Clear React Testing Library's rendered components
+        const { cleanup } = await import("@testing-library/react");
+        cleanup();
     });
 
     it("renders dialog when open prop is true", async () => {
