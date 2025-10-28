@@ -1,4 +1,4 @@
-// /workspaces/srat/backend/src/service/volume_service_test.go
+// Package service_test contains tests for the service layer.
 package service_test
 
 import (

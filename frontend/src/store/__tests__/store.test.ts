@@ -1,4 +1,4 @@
-import "/workspaces/srat/frontend/test/setup.ts";
+import "../../../test/setup.ts";
 import { describe, expect, it } from "bun:test";
 
 describe("Redux Store Configuration", () => {

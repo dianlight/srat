@@ -159,7 +159,7 @@ GetCapabilitiesHandler:
 ### Backend
 
 ```bash
-cd /workspaces/srat/backend
+cd ./backend
 make test_build  # ✅ Builds successfully
 make test        # ✅ All tests pass (33.5% API coverage)
 make gen         # ✅ Generates OpenAPI docs
@@ -168,7 +168,7 @@ make gen         # ✅ Generates OpenAPI docs
 ### Frontend
 
 ```bash
-cd /workspaces/srat/frontend
+cd ./frontend
 bun run build    # ✅ Builds successfully
 bun test         # ✅ All tests pass (267 pass, 1 skip, 69.92% function coverage)
 bun gen          # ⚠️ Fails (known issue, workaround applied)

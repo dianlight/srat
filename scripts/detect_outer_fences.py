@@ -7,7 +7,7 @@ Print a JSON list of objects: {"path":..., "first_line":..., "last_line":..., "f
 import os, json
 from pathlib import Path
 
-root = Path('/workspaces/srat')
+root = Path(__file__).parent.parent
 search_dir = root / 'docs'
 
 candidates = []

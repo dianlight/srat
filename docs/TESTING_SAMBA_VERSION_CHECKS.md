@@ -38,9 +38,7 @@
 ### Verify Implementation
 
 ```bash
-cd /workspaces/srat
-
-# Check modified files
+# From the repository root, check modified files
 git diff --name-only
 
 # Show changes summary
@@ -50,13 +48,14 @@ git diff --stat
 ### Compilation Check
 
 ```bash
-cd /workspaces/srat/backend/src
+# From the backend source directory
+cd backend/src
 
 # Build all modified packages
 go build ./internal/osutil ./tempio ./service
 
 # Build full backend (if Makefile available)
-cd /workspaces/srat/backend && make build
+cd ../.. && cd backend && make build
 ```
 
 ## Unit Test Coverage

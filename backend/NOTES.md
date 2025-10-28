@@ -105,7 +105,7 @@ make test          # Applies patches before testing
 
 ### Code Organization
 
-- Follow the established project structure in `/workspaces/srat/backend/src/`
+- Follow the established project structure in `srat/backend/src/`
 - Use dependency injection with Uber FX
 - Implement proper error handling with structured logging
 - Use the repository pattern for data access

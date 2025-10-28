@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
-root = Path('/workspaces/srat')
+root = Path(__file__).parent.parent
 search_dir = root / 'docs'
 
 matches = []

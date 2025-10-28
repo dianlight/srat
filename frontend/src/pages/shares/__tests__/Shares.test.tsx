@@ -1,4 +1,5 @@
 import "../../../../test/setup";
+import path from "path";
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 describe("Shares page", () => {
@@ -238,7 +239,7 @@ describe("Shares page", () => {
         });
 
         // Defensive: also mock by absolute path in case Bun resolves to absolute module IDs
-        mock.module("/workspaces/srat/frontend/src/store/sratApi.ts", () => ({
+        mock.module(path.resolve(__dirname, "../../../store/sratApi.ts"), () => ({
             // Minimal RTK Query API object for store creation expectations
             sratApi: { reducerPath: "sratApi", reducer: fakeReducer, middleware: makeMiddleware() },
             // Hooks + enums used by component
@@ -272,7 +273,7 @@ describe("Shares page", () => {
             ],
         }));
 
-        mock.module("/workspaces/srat/frontend/src/store/sseApi.ts", () => ({
+        mock.module(path.resolve(__dirname, "../../../store/sseApi.ts"), () => ({
             sseApi: { reducerPath: "sseApi", reducer: fakeReducer, middleware: makeMiddleware() },
             wsApi: { reducerPath: "wsApi", reducer: fakeReducer, middleware: makeMiddleware() },
             useGetServerEventsQuery: () => ({

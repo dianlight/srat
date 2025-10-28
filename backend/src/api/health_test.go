@@ -1,4 +1,4 @@
-// /workspaces/srat/backend/src/api/health_test.go
+// Package api_test contains tests for the API handlers.
 package api_test
 
 import (

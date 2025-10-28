@@ -1,4 +1,4 @@
-import "/workspaces/srat/frontend/test/setup.ts";
+import "../../../../../test/setup.ts";
 import { describe, it, expect, beforeEach } from "bun:test";
 
 // localStorage shim for testing
