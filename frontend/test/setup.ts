@@ -151,7 +151,7 @@ if (typeof process !== "undefined") {
 // avoid loading modules (that inspect window/process.env at module import)
 // before we've set up the test environment.
 export async function createTestStore() {
-    const { sratApi } = await import("../src/store/sratApi");
+    const { emptySplitApi: api } = await import("../src/store/emptyApi");
     const { sseApi, wsApi } = await import("../src/store/sseApi");
     const { errorSlice } = await import("../src/store/errorSlice");
     const { mdcSlice } = await import("../src/store/mdcSlice");
@@ -161,14 +161,14 @@ export async function createTestStore() {
         reducer: {
             errors: errorSlice.reducer,
             mdc: mdcSlice.reducer,
-            [sratApi.reducerPath]: sratApi.reducer,
+            [api.reducerPath]: api.reducer,
             [sseApi.reducerPath]: sseApi.reducer,
             [wsApi.reducerPath]: wsApi.reducer,
         },
         middleware: (getDefaultMiddleware) =>
             getDefaultMiddleware()
                 .concat(mdcMiddleware)
-                .concat(sratApi.middleware)
+                .concat(api.middleware)
                 .concat(sseApi.middleware)
                 .concat(wsApi.middleware),
     });
