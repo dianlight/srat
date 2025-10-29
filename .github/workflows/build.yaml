@@ -303,16 +303,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
-        with:
-          bun-version-file: frontend/package.json
-
       - name: Update coverage badges
         run: |
           bash scripts/update-coverage-badges.sh \
             --backend "${{ needs.test-backend.outputs.coverage }}" \
             --frontend "${{ needs.test-frontend.outputs.coverage }}"
-          make docs
 
       - name: Check for changes
         id: check_changes
