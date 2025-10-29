@@ -245,7 +245,7 @@ fi
 ## 3. Workflow Topology Changes
 
 ### Before
-```
+```txt
 setversion
     ↓
     ├→ test-backend (no outputs)
@@ -257,7 +257,7 @@ setversion
 ```
 
 ### After
-```
+```txt
 setversion
     ↓
     ├→ test-backend (outputs: coverage)

@@ -198,7 +198,6 @@ jobs:
             git push origin HEAD:main
           fi
 
-
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
@@ -220,7 +219,7 @@ jobs:
       - name: Prepare backend for ${{ needs.setversion.outputs.version }}
         run: |       
           cd backend
-          make patch format
+          make format
           cd ..
 
       - name: Test Backend ${{ needs.setversion.outputs.version }}
@@ -368,7 +367,7 @@ jobs:
       - name: Prepare env for ${{ needs.setversion.outputs.version }}
         run: |       
           cd backend
-          make patch format
+          make format
           cd ../frontend
           bun install
           cd ..

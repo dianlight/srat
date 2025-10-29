@@ -78,7 +78,7 @@ The CI/CD workflow has been restructured to separate test execution from coverag
 
 ## Execution Flow
 
-```
+```txt
 setversion
     ↓
     ├→ test-backend (outputs: coverage)

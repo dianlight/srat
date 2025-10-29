@@ -67,7 +67,7 @@ update-coverage:
 ## Architecture
 
 ### Execution Flow
-```
+```txt
 ┌──────────────────┐
 │   setversion     │
 └────────┬─────────┘

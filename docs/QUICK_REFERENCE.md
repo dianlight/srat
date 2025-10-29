@@ -40,7 +40,7 @@ Output: Error message, exit code 1
 
 ## CI/CD Flow
 
-```
+```txt
 test-backend
     ↓ outputs coverage
     
