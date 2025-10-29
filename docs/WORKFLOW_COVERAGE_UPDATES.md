@@ -1,3 +1,24 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Workflow Coverage Updates Implementation](#workflow-coverage-updates-implementation)
+  - [Overview](#overview)
+  - [Key Changes](#key-changes)
+    - [1. Modified Script: `scripts/update-coverage-badges.sh`](#1-modified-script-scriptsupdate-coverage-badgessh)
+    - [2. Enhanced `test-backend` Job](#2-enhanced-test-backend-job)
+    - [3. Enhanced `test-frontend` Job](#3-enhanced-test-frontend-job)
+    - [4. New `update-coverage` Job](#4-new-update-coverage-job)
+    - [5. Updated `build` Job](#5-updated-build-job)
+  - [Execution Flow](#execution-flow)
+  - [Benefits](#benefits)
+  - [Testing the Changes](#testing-the-changes)
+    - [Locally](#locally)
+    - [In CI](#in-ci)
+  - [Files Modified](#files-modified)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Workflow Coverage Updates Implementation
 
 ## Overview
@@ -9,12 +30,14 @@ The CI/CD workflow has been restructured to separate test execution from coverag
 ### 1. Modified Script: `scripts/update-coverage-badges.sh`
 
 **New Features:**
+
 - **CLI Arguments Support**: Script now accepts `--backend COVERAGE` and `--frontend COVERAGE` parameters
 - **Conditional Test Execution**: Tests are skipped if coverage values are provided via CLI
 - **Input Validation**: Validates that provided coverage values are numeric with optional decimals
 - **Backward Compatible**: Running without arguments still executes tests as before
 
 **Usage Examples:**
+
 ```bash
 # Run tests and update badges (original behavior)
 ./scripts/update-coverage-badges.sh
@@ -26,11 +49,13 @@ The CI/CD workflow has been restructured to separate test execution from coverag
 ### 2. Enhanced `test-backend` Job
 
 **New Output:**
+
 - Captures test output to `backend/backend_test_output.txt`
 - Extracts coverage percentage from test output
 - Exports coverage as job output: `coverage`
 
 **Process:**
+
 1. Runs `make test` and captures output
 2. Extracts line matching "Total coverage: XX.X%"
 3. Stores numeric value as step output for downstream jobs
@@ -38,11 +63,13 @@ The CI/CD workflow has been restructured to separate test execution from coverag
 ### 3. Enhanced `test-frontend` Job
 
 **New Output:**
+
 - Captures test output to `frontend/frontend_test_output.txt`
 - Extracts coverage percentage from test output table
 - Exports coverage as job output: `coverage`
 
 **Process:**
+
 1. Runs `bun test:ci` and captures output
 2. Extracts line matching "All files" from coverage table
 3. Stores numeric value as step output for downstream jobs
@@ -52,10 +79,12 @@ The CI/CD workflow has been restructured to separate test execution from coverag
 **Purpose:** Centralized coverage badge and documentation updates
 
 **Dependencies:**
+
 - Depends on: `setversion`, `test-backend`, `test-frontend`
 - Depended on by: `build`
 
 **Workflow:**
+
 1. Receives coverage data from test jobs as inputs
 2. Sets up necessary tools (Go, Bun)
 3. Calls `update-coverage-badges.sh` with CLI parameters (no test re-execution)
@@ -64,13 +93,15 @@ The CI/CD workflow has been restructured to separate test execution from coverag
 6. Commits and pushes changes if any were made (main branch only)
 
 **Git Configuration:**
+
 - Only commits on non-pull-request events
 - Uses `github-actions[bot]` as committer
 - Includes pull-and-rebase to avoid conflicts
 
 ### 5. Updated `build` Job
 
-**Change:** 
+**Change:**
+
 - Modified dependency chain from `needs: [setversion, test-backend, test-frontend]`
 - To: `needs: [setversion, test-backend, test-frontend, update-coverage]`
 
@@ -103,6 +134,7 @@ setversion
 ## Testing the Changes
 
 ### Locally
+
 ```bash
 # Test with provided coverage values
 bash scripts/update-coverage-badges.sh --backend 35.5 --frontend 72.3
@@ -112,7 +144,9 @@ bash scripts/update-coverage-badges.sh
 ```
 
 ### In CI
+
 The workflow will automatically:
+
 1. Extract coverage from test outputs
 2. Pass values to update-coverage job
 3. Update documentation without re-running tests
