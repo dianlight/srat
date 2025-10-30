@@ -162,7 +162,7 @@ xychart-beta
   title "Backend Test Coverage Over Time"
   x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30]
   y-axis "Coverage %" 0 --> 100
-  line [39.9, , , , , ]
+  line [39.9, , , , , 34.3]
 ```
 
 ### Frontend Coverage Over Time
@@ -173,7 +173,7 @@ xychart-beta
   title "Frontend Test Coverage Over Time"
   x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30]
   y-axis "Coverage %" 0 --> 100
-  line [73.11, , , , , ]
+  line [73.11, , , , , 70.30]
 ```
 
 ### Global Coverage Over Time
@@ -184,7 +184,7 @@ xychart-beta
   title "Global Test Coverage Over Time"
   x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30]
   y-axis "Coverage %" 0 --> 100
-  line [53.2, , , , , ]
+  line [53.2, , , , , 48.7]
 ```
 
 ## Coverage Improvement Goals

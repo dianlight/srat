@@ -7,9 +7,9 @@
 [![GitHub](https://img.shields.io/github/license/dianlight/srat)](https://img.shields.io/github/license/dianlight/srat)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
-[![Backend Unit Test Coverage](https://img.shields.io/badge/Backend_Unit_Tests-39.9%25-orange?logo=go)](docs/TEST_COVERAGE.md "Backend Go unit test coverage")
-[![Frontend Unit Test Coverage](https://img.shields.io/badge/Frontend_Unit_Tests-73.11%25-green?logo=typescript)](docs/TEST_COVERAGE.md "Frontend TypeScript unit test coverage")
-[![Global Unit Test Coverage](https://img.shields.io/badge/Global_Unit_Tests-53.2%25-yellow)](docs/TEST_COVERAGE.md "Overall unit test coverage (weighted average)")
+[![Backend Unit Test Coverage](https://img.shields.io/badge/Backend_Unit_Tests-34.3%25-orange?logo=go)](docs/TEST_COVERAGE.md "Backend Go unit test coverage")
+[![Frontend Unit Test Coverage](https://img.shields.io/badge/Frontend_Unit_Tests-70.30%25-green?logo=typescript)](docs/TEST_COVERAGE.md "Frontend TypeScript unit test coverage")
+[![Global Unit Test Coverage](https://img.shields.io/badge/Global_Unit_Tests-48.7%25-yellow)](docs/TEST_COVERAGE.md "Overall unit test coverage (weighted average)")
 
 SRAT (SambaNAS REST Administration Tool) is a new system designed to provide a simplified user interface for configuring SAMBA. It has been developed to work within Home Assistant, specifically for this addon, but can also be used in other contexts.
 

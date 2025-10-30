@@ -214,23 +214,34 @@ if [ -f "$TEST_COVERAGE_FILE" ]; then
         
         # Extract current x-axis dates and y-axis values
         local x_line=$(grep -A 1 "title \"${chart_title}\"" "$TEST_COVERAGE_FILE" | grep "x-axis")
-        local y_line=$(grep -A 2 "title \"${chart_title}\"" "$TEST_COVERAGE_FILE" | grep "line")
+        local y_line=$(grep -A 3 "title \"${chart_title}\"" "$TEST_COVERAGE_FILE" | grep "line")
         
         # Extract dates array content between brackets
         local dates=$(echo "$x_line" | sed 's/.*\[\(.*\)\].*/\1/')
         # Extract values array content between brackets
         local values=$(echo "$y_line" | sed 's/.*\[\(.*\)\].*/\1/')
 
-        # Remove empty entries and trim whitespace
+        # Parse arrays preserving empty entries
         local date_array=()
         local value_array=()
-        for d in ${dates//,/ }; do
-            d=$(echo "$d" | xargs)
-            if [ -n "$d" ]; then date_array+=("$d"); fi
+        
+        # Split dates by comma, trim whitespace, but keep empty entries
+        IFS=',' read -ra date_parts <<< "$dates"
+        for d in "${date_parts[@]}"; do
+            d=$(echo "$d" | xargs)  # Trim whitespace
+            date_array+=("$d")
         done
-        for v in ${values//,/ }; do
-            v=$(echo "$v" | xargs)
-            if [ -n "$v" ]; then value_array+=("$v"); fi
+        
+        # Split values by comma, trim whitespace, but keep empty entries
+        IFS=',' read -ra value_parts <<< "$values"
+        for v in "${value_parts[@]}"; do
+            v=$(echo "$v" | xargs)  # Trim whitespace
+            value_array+=("$v")
+        done
+
+        # Ensure value_array has same length as date_array (fill with empty strings if needed)
+        while [ ${#value_array[@]} -lt ${#date_array[@]} ]; do
+            value_array+=("")
         done
 
         # Check if current date already exists
@@ -253,13 +264,14 @@ if [ -f "$TEST_COVERAGE_FILE" ]; then
             value_array=("${value_array[@]: -30}")
         fi
 
-        # Build new arrays as strings (no leading/trailing commas, no empty values)
+        # Build new arrays as strings (no leading/trailing commas, preserve empty values)
         local new_dates=""
         local new_values=""
         for i in "${!date_array[@]}"; do
             if [ -n "$new_dates" ]; then new_dates+=", "; fi
             if [ -n "$new_values" ]; then new_values+=", "; fi
             new_dates+="${date_array[$i]}"
+            # For values, we want to keep the value even if empty
             new_values+="${value_array[$i]}"
         done
 
