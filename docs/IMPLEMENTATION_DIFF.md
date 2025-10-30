@@ -1,8 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
 - [Implementation Changes - Detailed Diff](#implementation-changes---detailed-diff)
   - [1. Script Changes - Before and After](#1-script-changes---before-and-after)
     - [Before: `scripts/update-coverage-badges.sh` (original behavior)](#before-scriptsupdate-coverage-badgessh-original-behavior)
