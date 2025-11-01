@@ -59,7 +59,7 @@
     "openapi-explorer": "^2.2.776",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-hook-form": "^7.64.0",
+    "react-hook-form": "^7.66.0",
     "react-hook-form-mui": "^8.2.0",
     "react-intersection-observer": "^10.0.0",
     "react-redux": "^9.2.0",
