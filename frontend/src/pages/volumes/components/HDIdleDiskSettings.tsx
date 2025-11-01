@@ -88,16 +88,18 @@ export function HDIdleDiskSettings({ disk, control, readOnly = false }: HDIdleDi
 									</Typography>
 								}
 							>
-								<TextFieldElement
-									name={`${fieldPrefix}_idle_time`}
-									label="Idle Time (seconds)"
-									type="number"
-									control={control}
-									disabled={readOnly}
-									inputProps={{ min: 0 }}
-									size="small"
-									helperText="0 = use default"
-								/>
+								<span style={{ display: "inline-block", width: "100%" }}>
+									<TextFieldElement
+										name={`${fieldPrefix}_idle_time`}
+										label="Idle Time (seconds)"
+										type="number"
+										control={control}
+										disabled={readOnly}
+										inputProps={{ min: 0 }}
+										size="small"
+										helperText="0 = use default"
+									/>
+								</span>
 							</Tooltip>
 						</Grid>
 
@@ -117,19 +119,21 @@ export function HDIdleDiskSettings({ disk, control, readOnly = false }: HDIdleDi
 									</>
 								}
 							>
-								<AutocompleteElement
-									name={`${fieldPrefix}_command_type`}
-									label="Command Type"
-									control={control}
-									options={["", "scsi", "ata"]}
-									autocompleteProps={{
-										size: "small",
-										disabled: readOnly,
-									}}
-									textFieldProps={{
-										helperText: "Empty = use default",
-									}}
-								/>
+								<span style={{ display: "inline-block", width: "100%" }}>
+									<AutocompleteElement
+										name={`${fieldPrefix}_command_type`}
+										label="Command Type"
+										control={control}
+										options={["", "scsi", "ata"]}
+										autocompleteProps={{
+											size: "small",
+											disabled: readOnly,
+										}}
+										textFieldProps={{
+											helperText: "Empty = use default",
+										}}
+									/>
+								</span>
 							</Tooltip>
 						</Grid>
 
@@ -141,16 +145,18 @@ export function HDIdleDiskSettings({ disk, control, readOnly = false }: HDIdleDi
 									</Typography>
 								}
 							>
-								<TextFieldElement
-									name={`${fieldPrefix}_power_condition`}
-									label="Power Condition"
-									type="number"
-									control={control}
-									disabled={readOnly}
-									inputProps={{ min: 0, max: 15 }}
-									size="small"
-									helperText="0 = default"
-								/>
+								<span style={{ display: "inline-block", width: "100%" }}>
+									<TextFieldElement
+										name={`${fieldPrefix}_power_condition`}
+										label="Power Condition"
+										type="number"
+										control={control}
+										disabled={readOnly}
+										inputProps={{ min: 0, max: 15 }}
+										size="small"
+										helperText="0 = default"
+									/>
+								</span>
 							</Tooltip>
 						</Grid>
 

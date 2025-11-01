@@ -1,7 +1,7 @@
-declare module 'openapi-explorer';
+declare module "openapi-explorer";
 
 declare namespace JSX {
-    interface IntrinsicElements {
-        'openapi-explorer': any;
-    }
+	interface IntrinsicElements {
+		"openapi-explorer": any;
+	}
 }
