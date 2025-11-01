@@ -49,6 +49,14 @@ func NewSmartService() SmartServiceInterface {
 	}
 }
 
+// NewSmartServiceWithClient creates a new SmartService with a provided client (for testing)
+func NewSmartServiceWithClient(client smartmontools.SmartClient) SmartServiceInterface {
+	return &smartService{
+		cache:  gocache.New(smartCacheExpiry, smartCacheCleanup),
+		client: client,
+	}
+}
+
 // checkDeviceExists verifies that the device path exists and is readable
 func checkDeviceExists(devicePath string) errors.E {
 	file, err := os.OpenFile(devicePath, os.O_RDONLY, 0)
@@ -268,6 +276,45 @@ func (s *smartService) GetHealthStatus(devicePath string) (*dto.SmartHealthStatu
 	}
 
 	return health, nil
+}
+
+// checkSMARTHealth evaluates SMART attributes to determine disk health
+func checkSMARTHealth(smartInfo *dto.SmartInfo, _ interface{}, _ interface{}) *dto.SmartHealthStatus {
+	health := &dto.SmartHealthStatus{
+		Passed:        true,
+		OverallStatus: "healthy",
+	}
+
+	failingAttrs := []string{}
+
+	// Check if any critical attributes are below threshold
+	for code, attr := range smartInfo.Additional {
+		if attr.Thresholds > 0 && attr.Value < attr.Thresholds {
+			failingAttrs = append(failingAttrs, code)
+			health.Passed = false
+		}
+	}
+
+	// Check power cycle count threshold
+	if smartInfo.PowerCycleCount.Thresholds > 0 &&
+		smartInfo.PowerCycleCount.Value < smartInfo.PowerCycleCount.Thresholds {
+		failingAttrs = append(failingAttrs, "PowerCycleCount")
+		health.Passed = false
+	}
+
+	// Check power on hours threshold
+	if smartInfo.PowerOnHours.Thresholds > 0 &&
+		smartInfo.PowerOnHours.Value < smartInfo.PowerOnHours.Thresholds {
+		failingAttrs = append(failingAttrs, "PowerOnHours")
+		health.Passed = false
+	}
+
+	if len(failingAttrs) > 0 {
+		health.FailingAttributes = failingAttrs
+		health.OverallStatus = "failing"
+	}
+
+	return health
 }
 
 // StartSelfTest initiates a SMART self-test on the device
