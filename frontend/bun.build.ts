@@ -89,7 +89,7 @@ async function build(): Promise<BuildOutput | undefined> {
 			development: {
 				chromeDevToolsAutomaticWorkspaceFolders: true,
 				console: true,
-				hmr: true,
+				hmr: false, // Hot Module Reloading not work anymore with Bun 1.3.1 and @mui/x-charts - need to investigate
 			},
 
 		});

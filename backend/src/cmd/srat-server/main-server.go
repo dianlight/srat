@@ -203,6 +203,7 @@ func prog(state overseer.State) {
 
 	// New FX
 	app := fx.New(
+		fx.StartTimeout(120*time.Second), // Increase timeout for slow startups (e.g., HA websocket connection)
 		appsetup.NewFXLoggerOption(),
 		appsetup.ProvideCoreDependencies(appParams),
 		appsetup.ProvideHAClientDependencies(appParams),
