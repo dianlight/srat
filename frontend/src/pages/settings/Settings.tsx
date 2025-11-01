@@ -274,7 +274,9 @@ export function Settings() {
 					// Render composite panel with all fields in the array
 					return (
 						<Stack spacing={3}>
-							{subCategories.map(field => renderSettingField(field))}
+							{subCategories.map((field) => (
+								<Box key={field}>{renderSettingField(field)}</Box>
+							))}
 						</Stack>
 					);
 				}
@@ -286,7 +288,9 @@ export function Settings() {
 						// Render composite panel with all fields in the array
 						return (
 							<Stack spacing={3}>
-								{settings.map(field => renderSettingField(field))}
+								{settings.map((field) => (
+									<Box key={field}>{renderSettingField(field)}</Box>
+								))}
 							</Stack>
 						);
 					} else if (settingName === normalizedSubCategory && Array.isArray(settings) && settings.length === 1) {
@@ -362,17 +366,19 @@ export function Settings() {
 							</>
 						}
 					>
-						<SwitchElement
-							switchProps={{
-								"aria-label": "Export Stats to HA",
-								size: "small",
-							}}
-							sx={{ display: "flex" }}
-							name="export_stats_to_ha"
-							label="Export Stats to HA"
-							labelPlacement="start"
-							{...commonProps}
-						/>
+						<span style={{ display: "inline-block", width: "100%" }}>
+							<SwitchElement
+								switchProps={{
+									"aria-label": "Export Stats to HA",
+									size: "small",
+								}}
+								sx={{ display: "flex" }}
+								name="export_stats_to_ha"
+								label="Export Stats to HA"
+								labelPlacement="start"
+								{...commonProps}
+							/>
+						</span>
 					</Tooltip>
 				);
 
@@ -449,17 +455,19 @@ export function Settings() {
 							</>
 						}
 					>
-						<SwitchElement
-							switchProps={{
-								"aria-label": "Local Master",
-								size: "small",
-							}}
-							sx={{ display: "flex" }}
-							name="local_master"
-							label="Local Master"
-							labelPlacement="start"
-							{...commonProps}
-						/>
+						<span style={{ display: "inline-block", width: "100%" }}>
+							<SwitchElement
+								switchProps={{
+									"aria-label": "Local Master",
+									size: "small",
+								}}
+								sx={{ display: "flex" }}
+								name="local_master"
+								label="Local Master"
+								labelPlacement="start"
+								{...commonProps}
+							/>
+						</span>
 					</Tooltip>
 				);
 
@@ -621,17 +629,19 @@ export function Settings() {
 							</>
 						}
 					>
-						<SwitchElement
-							switchProps={{
-								"aria-label": "Multi Channel Mode",
-								size: "small",
-							}}
-							id="multi_channel"
-							label="Multi Channel Mode"
-							name="multi_channel"
-							labelPlacement="start"
-							{...commonProps}
-						/>
+						<span style={{ display: "inline-block", width: "100%" }}>
+							<SwitchElement
+								switchProps={{
+									"aria-label": "Multi Channel Mode",
+									size: "small",
+								}}
+								id="multi_channel"
+								label="Multi Channel Mode"
+								name="multi_channel"
+								labelPlacement="start"
+								{...commonProps}
+							/>
+						</span>
 					</Tooltip>
 				);
 
@@ -657,18 +667,20 @@ export function Settings() {
 								</>
 							}
 						>
-							<SwitchElement
-								switchProps={{
-									"aria-label": "SMB over QUIC",
-									size: "small",
-								}}
-								id="smb_over_quic"
-								label="SMB over QUIC"
-								name="smb_over_quic"
-								labelPlacement="start"
-								disabled={evdata?.hello?.read_only || isCapabilitiesLoading || !(capabilities && 'supports_quic' in capabilities && capabilities.supports_quic)}
-								control={control}
-							/>
+							<span style={{ display: "inline-block", width: "100%" }}>
+								<SwitchElement
+									switchProps={{
+										"aria-label": "SMB over QUIC",
+										size: "small",
+									}}
+									id="smb_over_quic"
+									label="SMB over QUIC"
+									name="smb_over_quic"
+									labelPlacement="start"
+									disabled={evdata?.hello?.read_only || isCapabilitiesLoading || !(capabilities && 'supports_quic' in capabilities && capabilities.supports_quic)}
+									control={control}
+								/>
+							</span>
 						</Tooltip>
 						{capabilities && 'supports_quic' in capabilities && !capabilities.supports_quic && !isCapabilitiesLoading && 'unsupported_reason' in capabilities && capabilities.unsupported_reason && (
 							<Typography variant="caption" color="warning.main" sx={{ mt: 0.5, display: 'block' }}>
@@ -726,16 +738,18 @@ export function Settings() {
 							</>
 						}
 					>
-						<SwitchElement
-							name="hdidle_enabled"
-							label="Enable Automatic Disk Spin-Down"
-							labelPlacement="start"
-							switchProps={{
-								"aria-label": "Enable HDIdle",
-								size: "small",
-							}}
-							{...commonProps}
-						/>
+						<span style={{ display: "inline-block", width: "100%" }}>
+							<SwitchElement
+								name="hdidle_enabled"
+								label="Enable Automatic Disk Spin-Down"
+								labelPlacement="start"
+								switchProps={{
+									"aria-label": "Enable HDIdle",
+									size: "small",
+								}}
+								{...commonProps}
+							/>
+						</span>
 					</Tooltip>
 				);
 
@@ -783,17 +797,19 @@ export function Settings() {
 							</>
 						}
 					>
-						<AutocompleteElement
-							name="hdidle_default_command_type"
-							label="Default Command Type"
-							options={["scsi", "ata"]}
-							autocompleteProps={{
-								size: "small",
-								disabled: !control._formValues?.hdidle_enabled || evdata?.hello?.read_only,
-								disableClearable: true,
-							}}
-							control={control}
-						/>
+						<span style={{ display: "inline-block", width: "100%" }}>
+							<AutocompleteElement
+								name="hdidle_default_command_type"
+								label="Default Command Type"
+								options={["scsi", "ata"]}
+								autocompleteProps={{
+									size: "small",
+									disabled: !control._formValues?.hdidle_enabled || evdata?.hello?.read_only,
+									disableClearable: true,
+								}}
+								control={control}
+							/>
+						</span>
 					</Tooltip>
 				);
 
@@ -806,13 +822,15 @@ export function Settings() {
 							</Typography>
 						}
 					>
-						<CheckboxElement
-							name="hdidle_ignore_spin_down_detection"
-							label="Ignore Spin Down Detection"
-							disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
-							size="small"
-							control={control}
-						/>
+						<span style={{ display: "inline-block", width: "100%" }}>
+							<CheckboxElement
+								name="hdidle_ignore_spin_down_detection"
+								label="Ignore Spin Down Detection"
+								disabled={!control._formValues?.hdidle_enabled || evdata?.hello?.read_only}
+								size="small"
+								control={control}
+							/>
+						</span>
 					</Tooltip>
 				);
 

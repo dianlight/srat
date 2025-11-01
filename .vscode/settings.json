@@ -169,5 +169,9 @@
     "eval": false,
     "Invoke-Expression": false,
     "iex": false
-  }
+  },
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 5000,
+  "files.autoSaveWhenNoErrors": true,
+  "files.autoSaveWorkspaceFilesOnly": true
 }

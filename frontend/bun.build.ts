@@ -89,7 +89,7 @@ async function build(): Promise<BuildOutput | undefined> {
 			development: {
 				chromeDevToolsAutomaticWorkspaceFolders: true,
 				console: true,
-				hmr: true,
+				hmr: false, // Hot Module Reloading disabled due to incompatibility with @mui/x-charts (SparkLineChart)
 			},
 
 		});
