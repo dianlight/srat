@@ -45,6 +45,7 @@ This file highlights the must-know, discoverable rules and workflows for product
 - **Builds**: Root `Makefile` proxies to `backend/Makefile`. Frontend uses Bun: `cd frontend && bun install && bun run build`.
 - **Pre-commit**: Repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
 - **Tests**: Backend uses `testify/suite` with `mockio/v2`. Frontend uses `bun:test` with `@testing-library/react`. See below for patterns.
+- **Git Operations**: **NEVER** perform `git add`, `git commit`, `git push`, or any other git write operations without explicit user request. Always wait for the user to request git operations after changes are complete and verified.
 
 ## Architecture Overview
 
@@ -156,6 +157,7 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 - **Test data**: Use `backend/test/data/` dirs for static test files
 - **Minimal coverage**: Backend enforces 5% coverage. Frontend enforces 80% functions coverage.
 - **New tests**: All new features/bug fixes must include tests covering positive and negative cases. Minimal functions coverage is 90% for frontend tests and 6% for backend tests.
+- **Local CI Testing with act**: When testing GitHub Actions workflows locally using `act`, always use `ghcr.io/catthehacker/ubuntu:act-latest` image instead of `full-latest` to reduce resource usage and speed up testing. Also always use -rm flag to avoid vm pollution. Example: `act --rm -W .github/workflows/build.yaml -j test-frontend --container-architecture linux/amd64 -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest`
 
 ### Backend Testing
 

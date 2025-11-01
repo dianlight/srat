@@ -109,8 +109,8 @@ export const useRollbarTelemetry = () => {
 					},
 					person: evdata?.hello.machine_id
 						? {
-							id: evdata.hello.machine_id,
-						}
+								id: evdata.hello.machine_id,
+							}
 						: undefined,
 				},
 				enabled: enableRollbar,

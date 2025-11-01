@@ -12,7 +12,7 @@ This document provides an overview of the test coverage for the SRAT project, in
 | Frontend (TypeScript) | 70.30%   | 🟢 Green  |
 | Global (Weighted)     | 48.7%    | 🟡 Yellow |
 
-*Last updated: 2025-10-28*
+*Last updated: 2025-10-30*
 
 ## Backend Package-Level Coverage
 
@@ -160,9 +160,9 @@ The following graphs show the evolution of test coverage over time.
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Backend Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30]
   y-axis "Coverage %" 0 --> 100
-  line [45.2, , , ]
+  line [34.3, 36.5, 41.0, 45.2, 39.9, 34.3]
 ```
 
 ### Frontend Coverage Over Time
@@ -171,9 +171,9 @@ xychart-beta
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Frontend Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30]
   y-axis "Coverage %" 0 --> 100
-  line [78.5, , , ]
+  line [73.11, 73.11, 72.0, 72.0, 70.30]
 ```
 
 ### Global Coverage Over Time
@@ -182,9 +182,9 @@ xychart-beta
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Global Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30]
   y-axis "Coverage %" 0 --> 100
-  line [58.5, , , ]
+  line [53.2, 53.2, 53.2, 53.2, 53.2, 48.7]
 ```
 
 ## Coverage Improvement Goals

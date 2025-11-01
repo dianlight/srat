@@ -198,7 +198,6 @@ jobs:
             git push origin HEAD:main
           fi
 
-
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
@@ -269,6 +268,14 @@ jobs:
         id: test_frontend
         run: |
           set -o pipefail
+          echo "Verifying setup.ts content before running tests (post-install):"
+          if [ -f frontend/test/setup.ts ]; then
+            echo "SHA1 and path for frontend/test/setup.ts:" && sha1sum frontend/test/setup.ts || true
+            echo "Preview (first 20 lines):" && sed -n '1,20p' frontend/test/setup.ts || true
+          else
+            echo "frontend/test/setup.ts not found (pwd: $(pwd))"
+            ls -la || true
+          fi
           cd frontend
           bun test:ci 2>&1 | tee frontend_test_output.txt
 
@@ -301,7 +308,6 @@ jobs:
           bash scripts/update-coverage-badges.sh \
             --backend "${{ needs.test-backend.outputs.coverage }}" \
             --frontend "${{ needs.test-frontend.outputs.coverage }}"
-          make docs
 
       - name: Check for changes
         id: check_changes

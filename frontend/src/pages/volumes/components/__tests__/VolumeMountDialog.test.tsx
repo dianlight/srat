@@ -1,3 +1,4 @@
+import "../../../../../test/setup";
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 // Mock the sratApi hooks and types used by VolumeMountDialog and related components
