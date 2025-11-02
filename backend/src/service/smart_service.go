@@ -106,8 +106,8 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 	// Get SMART information using smartmontools-go
 	smartInfo, err := s.client.GetSMARTInfo(devicePath)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "No such device") {
-			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "device not found")
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "No such device") || strings.Contains(err.Error(), "SMART Not Supported") {
+			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", err.Error())
 		}
 		return nil, errors.Wrapf(err, "failed to get SMART info for device %s", devicePath)
 	}

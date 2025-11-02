@@ -8,6 +8,7 @@ package smartmontools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os/exec"
@@ -351,7 +352,7 @@ func (c *Client) GetSMARTInfo(devicePath string) (*SMARTInfo, error) {
 						slog.Warn("smartctl message", "severity", msg.Severity, "message", msg.String)
 					}
 				}
-				return &smartInfo, nil
+				return &smartInfo, errors.New("SMART Not Supported")
 			}
 		}
 		return nil, fmt.Errorf("failed to get SMART info: %w", err)
