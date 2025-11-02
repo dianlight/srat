@@ -36,6 +36,9 @@ type HDIdleServiceInterface interface {
 	GetDeviceStatus(path string) (*HDIdleDiskStatus, errors.E)
 	GetDeviceConfig(path string) (*dto.HDIdleDeviceDTO, errors.E)
 	SaveDeviceConfig(device dto.HDIdleDeviceDTO) errors.E
+	// GetEffectiveConfig returns the effective enabled flag and the list of devices
+	// included for monitoring (by GivenName/DevicePath) according to tri-state logic.
+	GetEffectiveConfig() HDIdleEffectiveConfig
 }
 
 // HDIdleDeviceConfig represents per-device configuration
@@ -86,6 +89,13 @@ type hDIdleService struct {
 	diskStats []diskState
 	lastNow   time.Time
 	converter converter.DtoToDbomConverterImpl
+}
+
+// HDIdleEffectiveConfig provides a snapshot of the effective configuration
+// used by the HDIdle service after applying global and per-device settings.
+type HDIdleEffectiveConfig struct {
+	Enabled bool
+	Devices []string // list of GivenName (original DevicePath) included for monitoring
 }
 
 type internalConfig struct {
@@ -291,6 +301,40 @@ func (s *hDIdleService) SaveDeviceConfig(device dto.HDIdleDeviceDTO) errors.E {
 		return errE
 	}
 	return nil
+}
+
+// GetEffectiveConfig returns the effective enabled flag and the list of devices included
+// for monitoring. If the service has not been started yet, it computes the configuration
+// from current settings and repository to provide a meaningful snapshot.
+func (s *hDIdleService) GetEffectiveConfig() HDIdleEffectiveConfig {
+	s.mu.RLock()
+	cfg := s.config
+	s.mu.RUnlock()
+
+	if cfg == nil {
+		// Compute a temporary config snapshot without mutating internal state
+		if snapshot, err := s.convertConfig(); err == nil {
+			cfg = snapshot
+		}
+	}
+
+	ec := HDIdleEffectiveConfig{Enabled: false, Devices: []string{}}
+	if cfg == nil {
+		return ec
+	}
+	ec.Enabled = cfg.Enabled
+	if len(cfg.Devices) > 0 {
+		ec.Devices = make([]string, 0, len(cfg.Devices))
+		for _, d := range cfg.Devices {
+			// Return GivenName which is the configured DevicePath
+			if d.GivenName != "" {
+				ec.Devices = append(ec.Devices, d.GivenName)
+			} else if d.Name != "" {
+				ec.Devices = append(ec.Devices, d.Name)
+			}
+		}
+	}
+	return ec
 }
 
 // convertConfig converts external config to internal config

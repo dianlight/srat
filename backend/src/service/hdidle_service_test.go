@@ -321,3 +321,80 @@ func (suite *HDIdleServiceSuite) TestStartStopMultipleTimes() {
 	suite.NoError(err)
 	suite.False(suite.service.IsRunning())
 }
+
+// --- Tri-state enabled behavior tests ---
+
+func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_OneDeviceYes_IncludesOnlyYesAndEnablesService() {
+	// Global disabled
+	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(false),
+		HDIdleDefaultIdleTime:         600,
+		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
+		HDIdleDefaultPowerCondition:   0,
+		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+	}, nil)
+
+	// Repo: one device YES, one DEFAULT
+	devices := []*dbom.HDIdleDevice{
+		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.YESENABLED},
+		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.DEFAULTENABLED},
+	}
+	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
+
+	err := suite.service.Start()
+	suite.NoError(err)
+
+	ec := suite.service.GetEffectiveConfig()
+	suite.True(ec.Enabled, "service should be effectively enabled due to per-device YES override")
+	suite.ElementsMatch([]string{"sda"}, ec.Devices, "only explicitly enabled device should be included when global is disabled")
+}
+
+func (suite *HDIdleServiceSuite) TestTriState_GlobalEnabled_OneDeviceNo_ExcludesNoKeepsOthers() {
+	// Global enabled
+	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(true),
+		HDIdleDefaultIdleTime:         600,
+		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
+		HDIdleDefaultPowerCondition:   0,
+		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+	}, nil)
+
+	// Repo: one device NO, one DEFAULT
+	devices := []*dbom.HDIdleDevice{
+		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.NOENABLED},
+		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.DEFAULTENABLED},
+	}
+	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
+
+	err := suite.service.Start()
+	suite.NoError(err)
+
+	ec := suite.service.GetEffectiveConfig()
+	suite.True(ec.Enabled, "service should remain enabled due to global setting")
+	suite.ElementsMatch([]string{"sdb"}, ec.Devices, "NO device should be excluded while DEFAULT is included under global ON")
+}
+
+func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_AllDefault_NoDevicesAndDisabled() {
+	// Global disabled
+	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(false),
+		HDIdleDefaultIdleTime:         600,
+		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
+		HDIdleDefaultPowerCondition:   0,
+		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+	}, nil)
+
+	// Repo: all DEFAULT
+	devices := []*dbom.HDIdleDevice{
+		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.DEFAULTENABLED},
+		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.DEFAULTENABLED},
+	}
+	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
+
+	err := suite.service.Start()
+	suite.NoError(err)
+
+	ec := suite.service.GetEffectiveConfig()
+	suite.False(ec.Enabled, "service should be effectively disabled with global OFF and no per-device YES")
+	suite.Empty(ec.Devices, "no devices should be included when global is OFF and all devices are DEFAULT")
+}
