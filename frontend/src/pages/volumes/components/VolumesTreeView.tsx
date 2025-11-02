@@ -32,11 +32,16 @@ import { decodeEscapeSequence } from "../utils";
 
 interface VolumesTreeViewProps {
     disks?: Disk[];
+    // Selected item id can be either a disk id or a partition id
+    selectedItemId?: string;
+    // Backward-compat for older callers/tests
     selectedPartitionId?: string;
     hideSystemPartitions?: boolean;
     // Controlled expanded items and change callback (required)
     expandedItems: string[];
     onExpandedItemsChange: (items: string[]) => void;
+    // Selection handlers
+    onDiskSelect?: (disk: Disk) => void;
     onPartitionSelect: (disk: Disk, partition: Partition) => void;
     onToggleAutomount: (partition: Partition) => void;
     onMount: (partition: Partition) => void;
@@ -49,10 +54,12 @@ interface VolumesTreeViewProps {
 
 export function VolumesTreeView({
     disks,
+    selectedItemId,
     selectedPartitionId,
     hideSystemPartitions = true,
     expandedItems,
     onExpandedItemsChange,
+    onDiskSelect,
     onPartitionSelect,
     onToggleAutomount,
     onMount,
@@ -63,6 +70,8 @@ export function VolumesTreeView({
     readOnly = false,
 }: VolumesTreeViewProps) {
     const theme = useTheme();
+    // Normalize selected id to support both the new and legacy prop name
+    const normalizedSelectedId = selectedItemId ?? selectedPartitionId;
 
     const filteredDisks = useMemo(() => {
         if (!disks) return [];
@@ -242,7 +251,7 @@ export function VolumesTreeView({
 
     const renderPartitionItem = (disk: Disk, partition: Partition, diskIdx: number, partIdx: number) => {
         const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
-        const isSelected = selectedPartitionId === partitionIdentifier;
+        const isSelected = normalizedSelectedId === partitionIdentifier;
         const partitionNameDecoded = decodeEscapeSequence(
             partition.name || partition.id || "Unnamed Partition",
         );
@@ -352,6 +361,8 @@ export function VolumesTreeView({
 
         if (filteredPartitions.length === 0) return null;
 
+        const isSelected = normalizedSelectedId === diskIdentifier;
+
         return (
             <TreeItem
                 key={diskIdentifier}
@@ -363,6 +374,15 @@ export function VolumesTreeView({
                             alignItems: "center",
                             py: 1,
                             px: 1,
+                            backgroundColor: isSelected ? theme.palette.action.selected : "transparent",
+                            borderRadius: 1,
+                            "&:hover": {
+                                backgroundColor: theme.palette.action.hover,
+                            },
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDiskSelect?.(disk);
                         }}
                     >
                         {renderDiskIcon(disk)}
@@ -409,7 +429,7 @@ export function VolumesTreeView({
     return (
         <Box sx={{ height: "100%", overflow: "auto" }}>
             <SimpleTreeView
-                selectedItems={selectedPartitionId || ""}
+                selectedItems={normalizedSelectedId || ""}
                 expandedItems={expandedItems}
                 onExpandedItemsChange={(_, items) => {
                     // SimpleTreeView may emit different shapes; normalize to string[] when possible
