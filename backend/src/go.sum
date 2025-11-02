@@ -94,6 +94,8 @@ github.com/dianlight/smartmontools-go v0.0.3-beta.0 h1:9TJSOt5PsxjqrP30AAsqeM96+
 github.com/dianlight/smartmontools-go v0.0.3-beta.0/go.mod h1:UA9DItzGN2fC7bpaKetY+nO2BjGS4+q8hA8EoOaN2zc=
 github.com/dianlight/smartmontools-go v0.0.3-beta.1 h1:/ZuUfBURHJtIXXXFYu2VxE7M313lKDSVFmX4qS1JF0A=
 github.com/dianlight/smartmontools-go v0.0.3-beta.1/go.mod h1:UA9DItzGN2fC7bpaKetY+nO2BjGS4+q8hA8EoOaN2zc=
+github.com/dianlight/smartmontools-go v0.0.4 h1:s6V+0pGNrhLxmfoZtMacseF1PCMktkShP8H1btesEOY=
+github.com/dianlight/smartmontools-go v0.0.4/go.mod h1:UA9DItzGN2fC7bpaKetY+nO2BjGS4+q8hA8EoOaN2zc=
 github.com/disintegration/gift v1.2.1 h1:Y005a1X4Z7Uc+0gLpSAsKhWi4qLtsdEcMIbbdvdZ6pc=
 github.com/disintegration/gift v1.2.1/go.mod h1:Jh2i7f7Q2BM7Ezno3PhfezbR1xpUg9dUg3/RlKGr4HI=
 github.com/dlclark/regexp2 v1.11.5 h1:Q/sSnsKerHeCkc/jSTNq1oCm7KiVgUMZRDUoRu0JQZQ=

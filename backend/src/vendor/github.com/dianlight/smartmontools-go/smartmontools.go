@@ -345,7 +345,7 @@ func (c *Client) GetSMARTInfo(devicePath string) (*SMARTInfo, error) {
 			var smartInfo SMARTInfo
 			if json.Unmarshal(output, &smartInfo) == nil {
 				// Valid JSON, treat error as warning
-				slog.Warn("smartctl returned error but provided valid JSON output", "error", err)
+				//slog.Debug("smartctl returned error but provided valid JSON output", "error", err)
 				// Check for error messages in the output
 				if smartInfo.Smartctl != nil && len(smartInfo.Smartctl.Messages) > 0 {
 					for _, msg := range smartInfo.Smartctl.Messages {
