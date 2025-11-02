@@ -913,6 +913,7 @@ export type SmartInfo = {
   };
   power_cycle_count: SmartRangeValue;
   power_on_hours: SmartRangeValue;
+  supported: boolean;
   temperature: SmartTempValue;
 };
 export type SmartTestStatus = {

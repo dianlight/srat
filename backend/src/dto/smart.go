@@ -21,6 +21,7 @@ type SmartInfo struct {
 	PowerOnHours    SmartRangeValue            `json:"power_on_hours"`
 	PowerCycleCount SmartRangeValue            `json:"power_cycle_count"`
 	Enabled         bool                       `json:"enabled"`
+	Supported       bool                       `json:"supported"`
 	Additional      map[string]SmartRangeValue `json:"others,omitempty"`
 }
 

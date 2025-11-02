@@ -73,7 +73,13 @@ export function SmartStatusPanel({
     const [showStartTestDialog, setShowStartTestDialog] = useState(false);
     const [selectedTestType, setSelectedTestType] = useState<SmartTestType>("short");
 
-    if (!isSmartSupported || !smartInfo) {
+    // Don't render if SMART is not supported based on backend data
+    if (!smartInfo || smartInfo.supported === false) {
+        return null;
+    }
+
+    // Legacy support: if supported field is not present, fall back to isSmartSupported prop
+    if (smartInfo.supported === undefined && !isSmartSupported) {
         return null;
     }
 
@@ -121,8 +127,8 @@ export function SmartStatusPanel({
             <CardHeader
                 title="S.M.A.R.T. Status"
                 avatar={
-                    <IconButton 
-                        size="small" 
+                    <IconButton
+                        size="small"
                         aria-label="smart preview"
                         sx={{ pointerEvents: 'none' }}
                     >

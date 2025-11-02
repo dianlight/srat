@@ -58,6 +58,31 @@ describe("SmartStatusPanel Component", () => {
         expect(container.firstChild).toBeFalsy();
     });
 
+    it("should not render when smartInfo.supported is false", async () => {
+        const React = await import("react");
+        const { render } = await import("@testing-library/react");
+        const { SmartStatusPanel } = await import("../SmartStatusPanel");
+
+        const mockSmartInfo = {
+            disk_type: "SATA",
+            temperature: { value: 45 },
+            power_on_hours: { value: 10000 },
+            power_cycle_count: { value: 500 },
+            enabled: false,
+            supported: false,
+        } as any;
+
+        const { container } = render(
+            React.createElement(SmartStatusPanel, {
+                smartInfo: mockSmartInfo,
+                isSmartSupported: true,
+            }),
+        );
+
+        // Component should return null when supported is false
+        expect(container.firstChild).toBeFalsy();
+    });
+
     it("should render SMART status when data is available", async () => {
         const React = await import("react");
         const { render, screen, act } = await import("@testing-library/react");
@@ -70,6 +95,7 @@ describe("SmartStatusPanel Component", () => {
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
             enabled: true,
+            supported: true,
         } as any;
 
         render(
@@ -115,6 +141,7 @@ describe("SmartStatusPanel Component", () => {
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
             enabled: true,
+            supported: true,
         } as any;
 
         const mockHealthStatus = {
@@ -158,6 +185,7 @@ describe("SmartStatusPanel Component", () => {
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
             enabled: true,
+            supported: true,
         } as any;
 
         const mockHealthStatus = {
@@ -209,6 +237,7 @@ describe("SmartStatusPanel Component", () => {
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
             enabled: true,
+            supported: true,
         } as any;
 
         const mockTestStatus = {
@@ -257,6 +286,7 @@ describe("SmartStatusPanel Component", () => {
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
             enabled: true,
+            supported: true,
         } as any;
 
         const mockTestStatus = {
@@ -302,6 +332,7 @@ describe("SmartStatusPanel Component", () => {
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
             enabled: true,
+            supported: true,
         } as any;
 
         const { container } = render(
@@ -336,7 +367,7 @@ describe("SmartStatusPanel Component", () => {
         expect((disableButtons[0] as HTMLButtonElement).disabled).toBe(true);
     });
 
-    it("should disable all actions when SMART is not supported", async () => {
+    it("should not render when smartInfo has supported false", async () => {
         const React = await import("react");
         const { render, within } = await import("@testing-library/react");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
@@ -347,19 +378,19 @@ describe("SmartStatusPanel Component", () => {
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
             enabled: true,
+            supported: false, // This is the key field being tested
         } as any;
 
         const { container } = render(
             React.createElement(SmartStatusPanel, {
                 smartInfo: mockSmartInfo,
-                isSmartSupported: false,
+                isSmartSupported: true, // isSmartSupported is true but supported field is false
                 isReadOnlyMode: false,
             }),
         );
 
-        // Component should not render when SMART is not supported
-        const header = within(container).queryByText("S.M.A.R.T. Status");
-        expect(header).toBeFalsy();
+        // Component should not render when smartInfo.supported is false
+        expect(container.firstChild).toBeNull();
     });
 
     it("should call onStartTest when Start Test button is clicked", async () => {
@@ -374,6 +405,7 @@ describe("SmartStatusPanel Component", () => {
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
             enabled: true,
+            supported: true,
         } as any;
 
         let startTestCalled = false;
@@ -427,6 +459,7 @@ describe("SmartStatusPanel Component", () => {
             power_on_hours: { value: 10000 },
             power_cycle_count: { value: 500 },
             enabled: true,
+            supported: true,
         } as any;
 
         const { container } = render(

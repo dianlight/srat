@@ -113,6 +113,10 @@ func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
 					if errSmart != nil {
 						if errors.Is(errSmart, dto.ErrorSMARTNotSupported) {
 							tlog.Trace("SMART not supported for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id)
+							// Set SmartInfo with Supported=false
+							diskDto.SmartInfo = &dto.SmartInfo{
+								Supported: false,
+							}
 						} else {
 							tlog.Warn("Error retrieving SMART info for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id, "err", errSmart)
 						}
@@ -120,9 +124,7 @@ func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
 						diskDto.SmartInfo = smartInfo
 					}
 					continue
-				}
-
-				// Match Partitions
+				} // Match Partitions
 				if diskDto.Partitions != nil {
 					for partIdx := range *diskDto.Partitions {
 						partition := &(*diskDto.Partitions)[partIdx]

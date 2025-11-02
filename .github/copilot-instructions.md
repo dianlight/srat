@@ -57,9 +57,6 @@ SRAT uses **patched versions** of certain external Go libraries to enable additi
 
 **Patched Libraries:**
 
-- `github.com/anatol/smart.go` — Multiple patches applied in order:
-  - `smart.go-#010.patch` - Fix for SATA power_hours parsing (from wuxingzhong/smart.go)
-  - `smart.go-srat#999.patch` - Adds `FileDescriptor()` method for direct device ioctl access
 - `github.com/zarldev/goenums` — Custom enum generation improvements
 - `github.com/jpillora/overseer` — Process management enhancements
 

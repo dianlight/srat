@@ -120,7 +120,8 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 
 	// Initialize the return structure
 	ret := &dto.SmartInfo{
-		Enabled: smartEnabled,
+		Enabled:   smartEnabled,
+		Supported: true,
 	}
 
 	// Extract temperature

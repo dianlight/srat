@@ -250,7 +250,7 @@ export function VolumeDetailsPanel({
                         <SmartStatusPanel
                             smartInfo={disk.smart_info}
                             diskDevicePath={disk.device_path || disk.legacy_device_path}
-                            isSmartSupported={true}
+                            isSmartSupported={disk.smart_info?.supported ?? false}
                             isReadOnlyMode={false}
                             onEnableSmart={enableSmart}
                             onDisableSmart={disableSmart}
