@@ -78,6 +78,7 @@ func (c *DtoToDbomConverterImpl) HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdle
 	dbomHDIdleDevice.IdleTime = source.IdleTime
 	dbomHDIdleDevice.CommandType = c.dtoHdidleCommandToPDtoHdidleCommand(source.CommandType)
 	dbomHDIdleDevice.PowerCondition = source.PowerCondition
+	dbomHDIdleDevice.Enabled = source.Enabled
 	return dbomHDIdleDevice, nil
 }
 func (c *DtoToDbomConverterImpl) HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDeviceDTO, error) {
@@ -86,6 +87,7 @@ func (c *DtoToDbomConverterImpl) HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdl
 	dtoHDIdleDeviceDTO.IdleTime = source.IdleTime
 	dtoHDIdleDeviceDTO.CommandType = c.pDtoHdidleCommandToDtoHdidleCommand(source.CommandType)
 	dtoHDIdleDeviceDTO.PowerCondition = source.PowerCondition
+	dtoHDIdleDeviceDTO.Enabled = source.Enabled
 	return dtoHDIdleDeviceDTO, nil
 }
 func (c *DtoToDbomConverterImpl) MountFlagsToMountDataFlags(source []dto.MountFlag) dbom.MounDataFlags {

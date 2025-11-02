@@ -32,6 +32,7 @@ func newHDIdleDevice(db *gorm.DB, opts ...gen.DOOption) hDIdleDevice {
 	_hDIdleDevice.IdleTime = field.NewInt(tableName, "idle_time")
 	_hDIdleDevice.CommandType = field.NewField(tableName, "command_type")
 	_hDIdleDevice.PowerCondition = field.NewUint8(tableName, "power_condition")
+	_hDIdleDevice.Enabled = field.NewField(tableName, "enabled")
 	_hDIdleDevice.CreatedAt = field.NewTime(tableName, "created_at")
 	_hDIdleDevice.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_hDIdleDevice.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -49,6 +50,7 @@ type hDIdleDevice struct {
 	IdleTime       field.Int
 	CommandType    field.Field
 	PowerCondition field.Uint8
+	Enabled        field.Field
 	CreatedAt      field.Time
 	UpdatedAt      field.Time
 	DeletedAt      field.Field
@@ -72,6 +74,7 @@ func (h *hDIdleDevice) updateTableName(table string) *hDIdleDevice {
 	h.IdleTime = field.NewInt(table, "idle_time")
 	h.CommandType = field.NewField(table, "command_type")
 	h.PowerCondition = field.NewUint8(table, "power_condition")
+	h.Enabled = field.NewField(table, "enabled")
 	h.CreatedAt = field.NewTime(table, "created_at")
 	h.UpdatedAt = field.NewTime(table, "updated_at")
 	h.DeletedAt = field.NewField(table, "deleted_at")
@@ -91,11 +94,12 @@ func (h *hDIdleDevice) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (h *hDIdleDevice) fillFieldMap() {
-	h.fieldMap = make(map[string]field.Expr, 7)
+	h.fieldMap = make(map[string]field.Expr, 8)
 	h.fieldMap["device_path"] = h.DevicePath
 	h.fieldMap["idle_time"] = h.IdleTime
 	h.fieldMap["command_type"] = h.CommandType
 	h.fieldMap["power_condition"] = h.PowerCondition
+	h.fieldMap["enabled"] = h.Enabled
 	h.fieldMap["created_at"] = h.CreatedAt
 	h.fieldMap["updated_at"] = h.UpdatedAt
 	h.fieldMap["deleted_at"] = h.DeletedAt

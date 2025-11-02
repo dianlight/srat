@@ -43,10 +43,10 @@ export function HDIdleDiskSettings({ disk, control, readOnly = false }: HDIdleDi
 	const diskName = (disk as any).model || (disk as any).id || "Unknown";
 	const fieldPrefix = `hdidle_disk_${diskName}`;
 
-	// Read HDIdle status from disk dto when available
+	// Read HDIdle config snapshot from disk dto when available
 	const hdidleStatus = useMemo(() => {
 		const s = (disk as any)?.hdidle_status as
-			| { idle_time_seconds?: number; command_type?: string; power_condition?: number; spun_down?: boolean }
+			| { idle_time?: number; command_type?: string; power_condition?: number; enabled?: string }
 			| undefined;
 		return s;
 	}, [disk]);
@@ -90,14 +90,12 @@ export function HDIdleDiskSettings({ disk, control, readOnly = false }: HDIdleDi
 							{hdidleStatus && (
 								<Box sx={{ mt: 1, mb: 1, p: 1, backgroundColor: "info.lighter", borderRadius: 1 }}>
 									<Typography variant="caption" color="text.secondary">
-										Current: idle time
-										<strong> {hdidleStatus.idle_time_seconds ?? 0}s</strong>, command
+										Current config: idle time
+										<strong> {hdidleStatus.idle_time ?? 0}s</strong>, command
 										<strong> {hdidleStatus.command_type || "default"}</strong>, power condition
-										<strong> {hdidleStatus.power_condition ?? 0}</strong>{" "}
-										{typeof hdidleStatus.spun_down === "boolean" && (
-											<span>
-												— state: <strong>{hdidleStatus.spun_down ? "spun down" : "active"}</strong>
-											</span>
+										<strong> {hdidleStatus.power_condition ?? 0}</strong>
+										{hdidleStatus.enabled && (
+											<span> — enabled: <strong>{hdidleStatus.enabled}</strong></span>
 										)}
 									</Typography>
 								</Box>

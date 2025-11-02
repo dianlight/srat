@@ -95,7 +95,7 @@ components:
         ejectable:
           type: boolean
         hdidle_status:
-          $ref: "#/components/schemas/HDIdleDiskInfo"
+          $ref: "#/components/schemas/HDIdleDeviceDTO"
         id:
           type: string
         legacy_device_name:
@@ -308,6 +308,12 @@ components:
           type: string
         device_path:
           type: string
+        enabled:
+          enum:
+            - default
+            - "yes"
+            - "no"
+          type: string
         idle_time:
           format: int64
           type: integer
@@ -319,21 +325,6 @@ components:
         - device_path
         - idle_time
         - power_condition
-      type: object
-    HDIdleDiskInfo:
-      additionalProperties: false
-      properties:
-        command_type:
-          type: string
-        idle_time_seconds:
-          format: int64
-          type: integer
-        power_condition:
-          format: int32
-          minimum: 0
-          type: integer
-        spun_down:
-          type: boolean
       type: object
     HDIdleDiskStatus:
       additionalProperties: false
@@ -1460,8 +1451,8 @@ paths:
     get:
       operationId: get-api-capabilities
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -1510,8 +1501,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -1589,6 +1580,12 @@ paths:
                   type: string
                 device_path:
                   type: string
+                enabled:
+                  enum:
+                    - default
+                    - "yes"
+                    - "no"
+                  type: string
                 idle_time:
                   format: int64
                   type: integer
@@ -1614,6 +1611,12 @@ paths:
                     - ata
                   type: string
                 device_path:
+                  type: string
+                enabled:
+                  enum:
+                    - default
+                    - "yes"
+                    - "no"
                   type: string
                 idle_time:
                   format: int64
@@ -1827,8 +1830,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -1927,8 +1930,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -1977,8 +1980,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2305,8 +2308,8 @@ paths:
     post:
       operationId: create-issue
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -2361,8 +2364,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3125,8 +3128,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -3286,8 +3289,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -3484,8 +3487,8 @@ paths:
     get:
       operationId: sse
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4004,8 +4007,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4102,8 +4105,8 @@ paths:
     get:
       operationId: list-api-users
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4313,8 +4316,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:

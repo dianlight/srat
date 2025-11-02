@@ -857,6 +857,7 @@ export type HdIdleDeviceDto = {
   $schema?: string;
   command_type?: Command_type;
   device_path: string;
+  enabled?: Enabled;
   idle_time: number;
   power_condition: number;
 };
@@ -1258,17 +1259,11 @@ export type UpdateProgress = {
   progress?: number;
   update_process_state?: Update_process_state;
 };
-export type HdIdleDiskInfo = {
-  command_type?: string;
-  idle_time_seconds?: number;
-  power_condition?: number;
-  spun_down?: boolean;
-};
 export type Disk = {
   connection_bus?: string;
   device_path?: string;
   ejectable?: boolean;
-  hdidle_status?: HdIdleDiskInfo;
+  hdidle_status?: HdIdleDeviceDto;
   id?: string;
   legacy_device_name?: string;
   legacy_device_path?: string;
@@ -1285,6 +1280,11 @@ export type Disk = {
 export enum Command_type {
   Scsi = "scsi",
   Ata = "ata",
+}
+export enum Enabled {
+  Default = "default",
+  Yes = "yes",
+  No = "no",
 }
 export enum Op {
   Add = "add",

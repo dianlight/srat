@@ -13,6 +13,7 @@ type HDIdleDevice struct {
 	IdleTime       int                `gorm:"default:0"`  // 0 = use default
 	CommandType    *dto.HdidleCommand `gorm:"default:"`   // empty = use default
 	PowerCondition uint8              `gorm:"default:0"`
+	Enabled        dto.HdidleEnabled  `gorm:"type:text;default:'default'"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      gorm.DeletedAt `gorm:"index"`

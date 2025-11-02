@@ -61,6 +61,7 @@ type VolumeService struct {
 	state             *dto.ContextState
 	sfGroup           singleflight.Group
 	haService         HomeAssistantServiceInterface
+	hdidleService     HDIdleServiceInterface
 	convDto           converter.DtoToDbomConverterImpl
 	convMDto          converter.MountToDbomImpl
 	procfsGetMounts   func() ([]*procfs.MountInfo, error)
@@ -77,6 +78,7 @@ type VolumeServiceProps struct {
 	IssueService      IssueServiceInterface
 	State             *dto.ContextState
 	HAService         HomeAssistantServiceInterface `optional:"true"`
+	HDIdleService     HDIdleServiceInterface        `optional:"true"`
 }
 
 func NewVolumeService(
@@ -94,6 +96,7 @@ func NewVolumeService(
 		shareService:      in.ShareService,
 		issueService:      in.IssueService,
 		haService:         in.HAService,
+		hdidleService:     in.HDIdleService,
 		convDto:           converter.DtoToDbomConverterImpl{},
 		convMDto:          converter.MountToDbomImpl{},
 		procfsGetMounts:   procfs.GetMounts,
@@ -831,6 +834,23 @@ func (self *VolumeService) GetVolumesData() (*[]dto.Disk, errors.E) {
 				err = self.mount_repo.Delete(mp.Path)
 				if err != nil {
 					slog.Error("Failed to delete stale mount point from DB", "path", mp.Path, "device_id", mp.DeviceId, "err", err)
+				}
+			}
+		}
+
+		// Enrich disks with HDIdle status/config snapshot
+		if self.hdidleService != nil {
+			for i := range ret {
+				if ret[i].Id == nil || *ret[i].Id == "" {
+					continue
+				}
+				cfg, cerr := self.hdidleService.GetDeviceConfig(*ret[i].Id)
+				if cerr != nil {
+					slog.Debug("Failed to get HDIdle device config for disk", "disk_id", *ret[i].Id, "err", cerr)
+					continue
+				}
+				if cfg != nil {
+					ret[i].HDIdleStatus = cfg
 				}
 			}
 		}
