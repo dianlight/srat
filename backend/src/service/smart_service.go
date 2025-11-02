@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anatol/smart.go"
+	"github.com/dianlight/smartmontools-go"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/tlog"
 	gocache "github.com/patrickmn/go-cache"
@@ -31,13 +31,29 @@ type SmartServiceInterface interface {
 }
 
 type smartService struct {
-	cache *gocache.Cache
-	mutex sync.Mutex
+	cache  *gocache.Cache
+	mutex  sync.Mutex
+	client smartmontools.SmartClient
 }
 
 func NewSmartService() SmartServiceInterface {
+	client, err := smartmontools.NewClient()
+	if err != nil {
+		// Fall back to a nil client if smartctl is not available
+		// This allows the service to start but operations will fail gracefully
+		slog.Warn("Failed to initialize smartmontools client", "error", err)
+	}
 	return &smartService{
-		cache: gocache.New(smartCacheExpiry, smartCacheCleanup),
+		cache:  gocache.New(smartCacheExpiry, smartCacheCleanup),
+		client: client,
+	}
+}
+
+// NewSmartServiceWithClient creates a new SmartService with a provided client (for testing)
+func NewSmartServiceWithClient(client smartmontools.SmartClient) SmartServiceInterface {
+	return &smartService{
+		cache:  gocache.New(smartCacheExpiry, smartCacheCleanup),
+		client: client,
 	}
 }
 
@@ -77,133 +93,136 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 		}
 	}
 
-	// Check if the device exists before attempting to open it
+	// Check if the device exists before attempting to query it
 	if err := checkDeviceExists(devicePath); err != nil {
 		return nil, err
 	}
 
-	dev, err := smart.Open(devicePath)
+	// Check if client is available
+	if s.client == nil {
+		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "smartctl not available")
+	}
+
+	// Get SMART information using smartmontools-go
+	smartInfo, err := s.client.GetSMARTInfo(devicePath)
 	if err != nil {
-		if strings.Contains(err.Error(), "unknown drive type") || strings.Contains(err.Error(), "not a valid device") {
-			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "unsupported device")
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "No such device") {
+			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "device not found")
 		}
-		return nil, errors.Wrapf(err, "failed to open device %s", devicePath)
-	}
-	defer dev.Close()
-
-	attrs, err := dev.ReadGenericAttributes()
-	if err != nil {
-		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath)
+		return nil, errors.Wrapf(err, "failed to get SMART info for device %s", devicePath)
 	}
 
-	// Check if SMART is enabled on SATA devices
+	// Check if SMART is supported and enabled
 	smartEnabled := false
-	if satadev, ok := dev.(*smart.SataDevice); ok {
-		// Use checkSMARTStatus to verify SMART is enabled
-		if enabled, err := checkSMARTStatus(satadev, devicePath); err == nil {
-			smartEnabled = enabled
-		} else {
-			// Log detailed error but continue - SMART might be disabled
-			tlog.Warn("failed to check SMART status", "device", devicePath, "error", err)
-		}
+	if smartInfo.SmartSupport != nil {
+		smartEnabled = smartInfo.SmartSupport.Enabled
 	}
 
+	// Initialize the return structure
 	ret := &dto.SmartInfo{
-		Temperature: dto.SmartTempValue{
-			Value: int(attrs.Temperature),
-		},
-		PowerOnHours: dto.SmartRangeValue{
-			Value: int(attrs.PowerOnHours),
-		},
-		PowerCycleCount: dto.SmartRangeValue{
-			Value: int(attrs.PowerCycles),
-		},
 		Enabled: smartEnabled,
 	}
 
-	switch sm := dev.(type) {
-	case *smart.SataDevice:
-		ret.DiskType = "SATA"
-		data, err := sm.ReadSMARTData()
-		if err != nil {
-			slog.Warn("SMART: failed to read SMART data", "device", devicePath, "error", err)
-			break
-		}
-		if attr, ok := data.Attrs[uint8(dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.Code)]; ok {
-			if temp, min, max, overtempCounter, errs := attr.ParseAsTemperature(); errs == nil {
-				ret.Temperature.Value = temp
-				ret.Temperature.Min = min
-				ret.Temperature.Max = max
-				ret.Temperature.OvertempCounter = overtempCounter
-			}
-		}
-		if attr, ok := data.Attrs[uint8(dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code)]; ok {
-			ret.PowerCycleCount.Value = int(attr.Current)
-			ret.PowerCycleCount.Worst = int(attr.Worst)
-		}
-		if attr, ok := data.Attrs[uint8(dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code)]; ok {
-			ret.PowerOnHours.Value = int(attr.Current)
-			ret.PowerOnHours.Worst = int(attr.Worst)
-		}
-		others := make(map[string]dto.SmartRangeValue)
-		for code, attr := range data.Attrs {
-			if attr.Name == "" || code == uint8(dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.Code) ||
-				code == uint8(dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code) ||
-				code == uint8(dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code) {
-				continue
-			}
-			others[attr.Name] = dto.SmartRangeValue{
-				Code:  int(code),
-				Value: int(attr.Current),
-				Worst: int(attr.Worst),
-			}
-		}
-		if len(others) > 0 {
-			ret.Additional = others
-		}
-
-		// Read thresholds if available
-		thdata, err := sm.ReadSMARTThresholds()
-		if err != nil {
-			slog.Warn("SMART: failed to read SMART thresholds", "device", devicePath, "error", err)
-			break
-		}
-		if attr, ok := thdata.Thresholds[uint8(dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code)]; ok {
-			ret.PowerCycleCount.Thresholds = int(attr)
-		}
-		if attr, ok := thdata.Thresholds[uint8(dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code)]; ok {
-			ret.PowerOnHours.Thresholds = int(attr)
-		}
-		for code, attr := range ret.Additional {
-			if thattr, ok := thdata.Thresholds[uint8(attr.Code)]; ok {
-				val := ret.Additional[code]
-				val.Thresholds = int(thattr)
-				ret.Additional[code] = val
-			}
-		}
-	case *smart.ScsiDevice:
-		ret.DiskType = "SCSI"
-	case *smart.NVMeDevice:
-		ret.DiskType = "NVMe"
-		nvmsmart, err := sm.ReadSMART()
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to read SMART data from NVMe device %s", devicePath)
-		}
-		ret.Temperature.OvertempCounter = int(nvmsmart.WarningTempTime)
-		others := make(map[string]dto.SmartRangeValue)
-		others["AvailableSpare"] = dto.SmartRangeValue{
-			Value:      int(nvmsmart.AvailSpare),
-			Thresholds: int(nvmsmart.SpareThresh),
-		}
-		others["PercentageUsed"] = dto.SmartRangeValue{
-			Value: int(nvmsmart.PercentUsed),
-		}
-		others["CriticalWarning"] = dto.SmartRangeValue{
-			Value: int(nvmsmart.CritWarning),
-		}
-		ret.Additional = others
+	// Extract temperature
+	if smartInfo.Temperature != nil {
+		ret.Temperature.Value = smartInfo.Temperature.Current
 	}
 
+	// Extract power on hours
+	if smartInfo.PowerOnTime != nil {
+		ret.PowerOnHours.Value = smartInfo.PowerOnTime.Hours
+	}
+
+	// Extract power cycle count
+	ret.PowerCycleCount.Value = smartInfo.PowerCycleCount
+
+	// Process based on device type
+	if smartInfo.AtaSmartData != nil {
+		// ATA/SATA device
+		ret.DiskType = "SATA"
+
+		// Process SMART attributes
+		if smartInfo.AtaSmartData.Table != nil {
+			others := make(map[string]dto.SmartRangeValue)
+
+			for _, attr := range smartInfo.AtaSmartData.Table {
+				switch attr.ID {
+				case dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.Code:
+					// Temperature attribute
+					ret.Temperature.Value = attr.Value
+					if attr.Raw.Value > 0 {
+						ret.Temperature.Value = int(attr.Raw.Value)
+					}
+				case dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code:
+					// Power cycle count
+					ret.PowerCycleCount.Value = attr.Value
+					ret.PowerCycleCount.Worst = attr.Worst
+					ret.PowerCycleCount.Thresholds = attr.Thresh
+					if attr.Raw.Value > 0 {
+						ret.PowerCycleCount.Value = int(attr.Raw.Value)
+					}
+				case dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code:
+					// Power on hours
+					ret.PowerOnHours.Value = attr.Value
+					ret.PowerOnHours.Worst = attr.Worst
+					ret.PowerOnHours.Thresholds = attr.Thresh
+					if attr.Raw.Value > 0 {
+						ret.PowerOnHours.Value = int(attr.Raw.Value)
+					}
+				default:
+					// Other attributes
+					if attr.Name != "" {
+						others[attr.Name] = dto.SmartRangeValue{
+							Code:       attr.ID,
+							Value:      attr.Value,
+							Worst:      attr.Worst,
+							Thresholds: attr.Thresh,
+						}
+					}
+				}
+			}
+
+			if len(others) > 0 {
+				ret.Additional = others
+			}
+		}
+	} else if smartInfo.NvmeSmartHealth != nil {
+		// NVMe device
+		ret.DiskType = "NVMe"
+
+		// Extract NVMe-specific data
+		if smartInfo.NvmeSmartHealth.Temperature > 0 {
+			ret.Temperature.Value = smartInfo.NvmeSmartHealth.Temperature
+		}
+		if smartInfo.NvmeSmartHealth.WarningTempTime > 0 {
+			ret.Temperature.OvertempCounter = smartInfo.NvmeSmartHealth.WarningTempTime
+		}
+		if smartInfo.NvmeSmartHealth.PowerOnHours > 0 {
+			ret.PowerOnHours.Value = int(smartInfo.NvmeSmartHealth.PowerOnHours)
+		}
+		if smartInfo.NvmeSmartHealth.PowerCycles > 0 {
+			ret.PowerCycleCount.Value = int(smartInfo.NvmeSmartHealth.PowerCycles)
+		}
+
+		// Add NVMe-specific attributes
+		others := make(map[string]dto.SmartRangeValue)
+		others["AvailableSpare"] = dto.SmartRangeValue{
+			Value:      smartInfo.NvmeSmartHealth.AvailableSpare,
+			Thresholds: smartInfo.NvmeSmartHealth.AvailableSpareThresh,
+		}
+		others["PercentageUsed"] = dto.SmartRangeValue{
+			Value: smartInfo.NvmeSmartHealth.PercentageUsed,
+		}
+		others["CriticalWarning"] = dto.SmartRangeValue{
+			Value: smartInfo.NvmeSmartHealth.CriticalWarning,
+		}
+		ret.Additional = others
+	} else {
+		// SCSI or unknown device type
+		ret.DiskType = "SCSI"
+	}
+
+	// Cache the result
 	s.cache.Set(cacheKey, ret, gocache.DefaultExpiration)
 
 	return ret, nil
@@ -211,67 +230,44 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 
 // GetHealthStatus returns the health status of a device by evaluating SMART attributes
 func (s *smartService) GetHealthStatus(devicePath string) (*dto.SmartHealthStatus, errors.E) {
+	// Check if client is available
+	if s.client == nil {
+		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "smartctl not available")
+	}
+
 	// Get SMART info first (may return cached data)
 	smartInfo, err := s.GetSmartInfo(devicePath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if device still exists before opening (in case cached data is stale)
-	if err := checkDeviceExists(devicePath); err != nil {
-		return nil, err
+	// Check if SMART is enabled
+	if !smartInfo.Enabled {
+		tlog.Warn("SMART is not enabled on device", "device", devicePath)
+		return &dto.SmartHealthStatus{
+			Passed:            false,
+			OverallStatus:     "warning",
+			FailingAttributes: []string{"SMART_not_enabled"},
+		}, nil
 	}
 
-	// Open device to read thresholds
-	dev, stdErr := smart.Open(devicePath)
+	// Use smartmontools-go to check health
+	healthy, stdErr := s.client.CheckHealth(devicePath)
 	if stdErr != nil {
-		return nil, errors.Wrapf(stdErr, "failed to open device %s", devicePath)
-	}
-	defer dev.Close()
-
-	var thresholds map[uint8]uint8
-	var attrs map[uint8]interface{}
-	var smartEnabled bool
-
-	// Get thresholds and check SMART status for SATA devices
-	if sm, ok := dev.(*smart.SataDevice); ok {
-		// Check if SMART is actually enabled
-		if enabled, err := checkSMARTStatus(sm, devicePath); err != nil {
-			tlog.Warn("failed to verify SMART enabled status", "device", devicePath, "error", err)
-			smartEnabled = false
-		} else {
-			smartEnabled = enabled
-		}
-
-		// If SMART is not enabled, return warning status
-		if !smartEnabled {
-			tlog.Warn("SMART is not enabled on device", "device", devicePath)
-			return &dto.SmartHealthStatus{
-				Passed:            false,
-				OverallStatus:     "warning",
-				FailingAttributes: []string{"SMART_not_enabled"},
-			}, nil
-		}
-
-		thdata, stdErr := sm.ReadSMARTThresholds()
-		if stdErr == nil {
-			thresholds = thdata.Thresholds
-		} else {
-			tlog.Warn("failed to read SMART thresholds", "device", devicePath, "error", stdErr)
-		}
-
-		data, stdErr := sm.ReadSMARTData()
-		if stdErr == nil {
-			attrs = make(map[uint8]interface{})
-			for k, v := range data.Attrs {
-				attrs[k] = v
-			}
-		} else {
-			tlog.Warn("failed to read SMART data", "device", devicePath, "error", stdErr)
-		}
+		tlog.Warn("failed to check health status", "device", devicePath, "error", stdErr)
 	}
 
-	health := checkSMARTHealth(smartInfo, thresholds, attrs)
+	health := checkSMARTHealth(smartInfo, nil, nil)
+
+	// Override with smartctl health check result
+	if stdErr == nil {
+		health.Passed = healthy
+		if healthy {
+			health.OverallStatus = "healthy"
+		} else if health.OverallStatus == "healthy" {
+			health.OverallStatus = "failing"
+		}
+	}
 
 	// Check if device is about to fail and trigger callback
 	if !health.Passed {
@@ -282,46 +278,80 @@ func (s *smartService) GetHealthStatus(devicePath string) (*dto.SmartHealthStatu
 	return health, nil
 }
 
+// checkSMARTHealth evaluates SMART attributes to determine disk health
+func checkSMARTHealth(smartInfo *dto.SmartInfo, _ interface{}, _ interface{}) *dto.SmartHealthStatus {
+	health := &dto.SmartHealthStatus{
+		Passed:        true,
+		OverallStatus: "healthy",
+	}
+
+	failingAttrs := []string{}
+
+	// Check if any critical attributes are below threshold
+	for code, attr := range smartInfo.Additional {
+		if attr.Thresholds > 0 && attr.Value < attr.Thresholds {
+			failingAttrs = append(failingAttrs, code)
+			health.Passed = false
+		}
+	}
+
+	// Check power cycle count threshold
+	if smartInfo.PowerCycleCount.Thresholds > 0 &&
+		smartInfo.PowerCycleCount.Value < smartInfo.PowerCycleCount.Thresholds {
+		failingAttrs = append(failingAttrs, "PowerCycleCount")
+		health.Passed = false
+	}
+
+	// Check power on hours threshold
+	if smartInfo.PowerOnHours.Thresholds > 0 &&
+		smartInfo.PowerOnHours.Value < smartInfo.PowerOnHours.Thresholds {
+		failingAttrs = append(failingAttrs, "PowerOnHours")
+		health.Passed = false
+	}
+
+	if len(failingAttrs) > 0 {
+		health.FailingAttributes = failingAttrs
+		health.OverallStatus = "failing"
+	}
+
+	return health
+}
+
 // StartSelfTest initiates a SMART self-test on the device
 func (s *smartService) StartSelfTest(devicePath string, testType dto.SmartTestType) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// Validate test type
-	var testByte byte
+	// Map test type to smartctl test string - validate first
+	var testTypeStr string
 	switch testType {
 	case dto.SmartTestTypeShort:
-		testByte = _SMART_SHORT_SELFTEST
+		testTypeStr = "short"
 	case dto.SmartTestTypeLong:
-		testByte = _SMART_LONG_SELFTEST
+		testTypeStr = "long"
 	case dto.SmartTestTypeConveyance:
-		testByte = _SMART_CONVEYANCE_SELFTEST
+		testTypeStr = "conveyance"
 	default:
 		return errors.WithDetails(dto.ErrorInvalidParameter, "test_type", testType)
 	}
 
-	// Check if device exists before opening
+	// Check if client is available
+	if s.client == nil {
+		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "smartctl not available")
+	}
+
+	// Check if device exists
 	if err := checkDeviceExists(devicePath); err != nil {
 		return err
 	}
 
-	// Open device
-	dev, stdErr := smart.Open(devicePath)
-	if stdErr != nil {
-		return errors.Wrapf(stdErr, "failed to open device %s", devicePath)
-	}
-	defer dev.Close()
-
-	// Only SATA devices support self-tests via this method
-	sm, ok := dev.(*smart.SataDevice)
-	if !ok {
-		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
-			"reason", "self-test only supported for SATA devices")
-	}
-
-	// Execute the test
-	if err := executeSMARTTest(sm, testByte, devicePath); err != nil {
-		return errors.Wrap(err, "failed to start SMART self-test")
+	// Start the self-test using smartmontools-go
+	if err := s.client.RunSelfTest(devicePath, testTypeStr); err != nil {
+		if strings.Contains(err.Error(), "not supported") {
+			return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
+				"reason", "self-test not supported")
+		}
+		return errors.Wrapf(err, "failed to start SMART self-test")
 	}
 
 	slog.Info("SMART self-test started", "device", devicePath, "type", testType)
@@ -333,28 +363,23 @@ func (s *smartService) AbortSelfTest(devicePath string) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// Check if device exists before opening
+	// Check if client is available
+	if s.client == nil {
+		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "smartctl not available")
+	}
+
+	// Check if device exists
 	if err := checkDeviceExists(devicePath); err != nil {
 		return err
 	}
 
-	// Open device
-	dev, stdErr := smart.Open(devicePath)
-	if stdErr != nil {
-		return errors.Wrapf(stdErr, "failed to open device %s", devicePath)
-	}
-	defer dev.Close()
-
-	// Only SATA devices support self-test abort via this method
-	sm, ok := dev.(*smart.SataDevice)
-	if !ok {
-		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
-			"reason", "self-test abort only supported for SATA devices")
-	}
-
-	// Execute the abort command
-	if err := executeSMARTTest(sm, _SMART_ABORT_SELFTEST, devicePath); err != nil {
-		return errors.Wrap(err, "failed to abort SMART self-test")
+	// Abort the self-test using smartmontools-go
+	if err := s.client.AbortSelfTest(devicePath); err != nil {
+		if strings.Contains(err.Error(), "not supported") {
+			return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
+				"reason", "self-test abort not supported")
+		}
+		return errors.Wrapf(err, "failed to abort SMART self-test")
 	}
 
 	slog.Info("SMART self-test aborted", "device", devicePath)
@@ -363,37 +388,46 @@ func (s *smartService) AbortSelfTest(devicePath string) errors.E {
 
 // GetTestStatus returns the status of the currently running or last SMART self-test
 func (s *smartService) GetTestStatus(devicePath string) (*dto.SmartTestStatus, errors.E) {
-	// Check if device exists before opening
+	// Check if client is available
+	if s.client == nil {
+		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "smartctl not available")
+	}
+
+	// Check if device exists
 	if err := checkDeviceExists(devicePath); err != nil {
 		return nil, err
 	}
 
-	// Open device
-	dev, stdErr := smart.Open(devicePath)
-	if stdErr != nil {
-		return nil, errors.Wrapf(stdErr, "failed to open device %s", devicePath)
-	}
-	defer dev.Close()
-
-	// Only SATA devices support self-test log reading
-	sm, ok := dev.(*smart.SataDevice)
-	if !ok {
-		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
-			"reason", "self-test status only supported for SATA devices")
-	}
-
-	// Read self-test log
-	log, stdErr := sm.ReadSMARTSelfTestLog()
-	if stdErr != nil {
-		return nil, errors.Wrapf(stdErr, "failed to read SMART self-test log")
-	}
-
-	status, err := parseSelfTestLog(log)
+	// Get SMART info which includes self-test status
+	smartInfo, err := s.client.GetSMARTInfo(devicePath)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to get SMART info")
 	}
 
-	return status, nil
+	// Parse self-test status from ATA SMART data
+	if smartInfo.AtaSmartData != nil && smartInfo.AtaSmartData.SelfTest != nil {
+		status := &dto.SmartTestStatus{
+			Status:   smartInfo.AtaSmartData.SelfTest.Status,
+			TestType: "unknown",
+		}
+
+		// Determine test type if available
+		if strings.Contains(smartInfo.AtaSmartData.SelfTest.Status, "short") {
+			status.TestType = "short"
+		} else if strings.Contains(smartInfo.AtaSmartData.SelfTest.Status, "long") || strings.Contains(smartInfo.AtaSmartData.SelfTest.Status, "extended") {
+			status.TestType = "long"
+		} else if strings.Contains(smartInfo.AtaSmartData.SelfTest.Status, "conveyance") {
+			status.TestType = "conveyance"
+		}
+
+		return status, nil
+	}
+
+	// Return a default status if no self-test info is available
+	return &dto.SmartTestStatus{
+		Status:   "idle",
+		TestType: "none",
+	}, nil
 }
 
 // EnableSMART enables SMART functionality on the device
@@ -401,35 +435,29 @@ func (s *smartService) EnableSMART(devicePath string) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// Check if device exists before opening
+	// Check if client is available
+	if s.client == nil {
+		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "smartctl not available")
+	}
+
+	// Check if device exists
 	if err := checkDeviceExists(devicePath); err != nil {
 		return err
 	}
 
-	// Open device
-	dev, stdErr := smart.Open(devicePath)
-	if stdErr != nil {
-		return errors.Wrapf(stdErr, "failed to open device %s", devicePath)
-	}
-	defer dev.Close()
-
-	// Only SATA devices support enable/disable
-	sm, ok := dev.(*smart.SataDevice)
-	if !ok {
-		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
-			"reason", "SMART enable/disable only supported for SATA devices")
+	// Enable SMART using smartmontools-go
+	if err := s.client.EnableSMART(devicePath); err != nil {
+		return errors.Wrapf(err, "failed to enable SMART")
 	}
 
-	// Execute enable command
-	if err := enableSMART(sm, devicePath); err != nil {
-		return err
-	}
-
-	// Verify SMART is now enabled using checkSMARTStatus
-	if enabled, err := checkSMARTStatus(sm, devicePath); err != nil {
+	// Verify SMART is now enabled
+	supportInfo, err := s.client.IsSMARTSupported(devicePath)
+	if err != nil {
 		tlog.Warn("SMART enabled but verification failed", "device", devicePath, "error", err)
 		return errors.Wrap(err, "SMART enable succeeded but verification failed")
-	} else if !enabled {
+	}
+
+	if !supportInfo.Enabled {
 		return errors.WithDetails(dto.ErrorSMARTOperationFailed, "device", devicePath,
 			"reason", "SMART enable command executed but device reports disabled")
 	}
@@ -443,36 +471,27 @@ func (s *smartService) DisableSMART(devicePath string) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// Check if device exists before opening
+	// Check if client is available
+	if s.client == nil {
+		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "smartctl not available")
+	}
+
+	// Check if device exists
 	if err := checkDeviceExists(devicePath); err != nil {
 		return err
 	}
 
-	// Open device
-	dev, stdErr := smart.Open(devicePath)
-	if stdErr != nil {
-		return errors.Wrapf(stdErr, "failed to open device %s", devicePath)
-	}
-	defer dev.Close()
-
-	// Only SATA devices support enable/disable
-	sm, ok := dev.(*smart.SataDevice)
-	if !ok {
-		return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
-			"reason", "SMART enable/disable only supported for SATA devices")
+	// Disable SMART using smartmontools-go
+	if err := s.client.DisableSMART(devicePath); err != nil {
+		return errors.Wrapf(err, "failed to disable SMART")
 	}
 
-	// Execute disable command
-	if err := disableSMART(sm, devicePath); err != nil {
-		return err
-	}
-
-	// Verify SMART is now disabled using checkSMARTStatus
-	if enabled, err := checkSMARTStatus(sm, devicePath); err != nil {
+	// Verify SMART is now disabled (optional, for informational purposes)
+	supportInfo, err := s.client.IsSMARTSupported(devicePath)
+	if err != nil {
 		tlog.Warn("SMART disabled but verification failed", "device", devicePath, "error", err)
-		// Note: Verification failure is informational only - disable command was successful
 		tlog.Info("SMART disable command executed (verification failed)", "device", devicePath)
-	} else if enabled {
+	} else if supportInfo.Enabled {
 		tlog.Warn("SMART disable command executed but device still reports enabled", "device", devicePath)
 	}
 

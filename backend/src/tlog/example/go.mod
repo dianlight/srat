@@ -1,11 +1,11 @@
 module github.com/dianlight/srat/tlog/example
 
-go 1.25.0
+go 1.25.3
 
 replace github.com/dianlight/srat => ../../
 
 require (
-	github.com/dianlight/srat v0.0.0-00010101000000-000000000000
+	github.com/dianlight/srat v0.0.0-20251028130235-58bbea0d385c
 	gitlab.com/tozd/go/errors v0.10.0
 )
 
@@ -16,10 +16,10 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/samber/lo v1.51.0 // indirect
+	github.com/samber/lo v1.52.0 // indirect
 	github.com/samber/slog-common v0.19.0 // indirect
 	github.com/samber/slog-formatter v1.2.0 // indirect
-	github.com/samber/slog-multi v1.4.1 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	github.com/samber/slog-multi v1.5.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
 )
