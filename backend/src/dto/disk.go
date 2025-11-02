@@ -49,6 +49,9 @@ type Disk struct {
 
 	// S.M.A.R.T. info, if available.
 	SmartInfo *SmartInfo `json:"smart_info,omitempty" readonly:"true"`
+
+	// HDIdleStatus contains current HDIdle status/config snapshot for this disk, if available.
+	HDIdleStatus *HDIdleDiskInfo `json:"hdidle_status,omitempty" readonly:"true"`
 }
 
 // Partition defines model for Filesystem/Partition.
@@ -82,4 +85,20 @@ type Partition struct {
 
 	// MountPointData to mount on the addon-side
 	MountPointData *[]MountPointData `json:"mount_point_data,omitempty"`
+}
+
+// HDIdleDiskInfo defines the current HDIdle status and effective configuration for a disk.
+// This is a read-only snapshot populated by the backend service when available.
+type HDIdleDiskInfo struct {
+	// IdleTimeSeconds Effective idle time in seconds before spin-down for this disk.
+	IdleTimeSeconds *int `json:"idle_time_seconds,omitempty"`
+
+	// CommandType Effective command type used for spin-down (e.g., "scsi", "ata").
+	CommandType *HdidleCommand `json:"command_type,omitempty"`
+
+	// PowerCondition SCSI power condition (0-15). Only relevant for SCSI.
+	PowerCondition *uint8 `json:"power_condition,omitempty"`
+
+	// SpunDown True if the disk is currently in spun-down state according to the monitor.
+	SpunDown *bool `json:"spun_down,omitempty"`
 }

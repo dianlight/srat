@@ -16,7 +16,7 @@ import {
 	TextFieldElement,
 	type Control,
 } from "react-hook-form-mui";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Disk, Settings } from "../../../store/sratApi";
 import { useGetApiSettingsQuery } from "../../../store/sratApi";
 
@@ -40,8 +40,16 @@ export function HDIdleDiskSettings({ disk, control, readOnly = false }: HDIdleDi
 	if (isLoading || !hdidleEnabled) return null;
 
 	const [expanded, setExpanded] = useState(false);
-	const diskName = disk.model || disk.id || "Unknown";
+	const diskName = (disk as any).model || (disk as any).id || "Unknown";
 	const fieldPrefix = `hdidle_disk_${diskName}`;
+
+	// Read HDIdle status from disk dto when available
+	const hdidleStatus = useMemo(() => {
+		const s = (disk as any)?.hdidle_status as
+			| { idle_time_seconds?: number; command_type?: string; power_condition?: number; spun_down?: boolean }
+			| undefined;
+		return s;
+	}, [disk]);
 
 	const handleExpandChange = () => {
 		setExpanded(!expanded);
@@ -75,9 +83,25 @@ export function HDIdleDiskSettings({ disk, control, readOnly = false }: HDIdleDi
 					<Grid container spacing={2}>
 						<Grid size={12}>
 							<Typography variant="body2" color="text.secondary" gutterBottom>
-								Configure specific spin-down settings for <strong>{disk.model || diskName}</strong>.
+								Configure specific spin-down settings for <strong>{(disk as any).model || diskName}</strong>.
 								Leave fields at 0 or empty to use default settings.
 							</Typography>
+
+							{hdidleStatus && (
+								<Box sx={{ mt: 1, mb: 1, p: 1, backgroundColor: "info.lighter", borderRadius: 1 }}>
+									<Typography variant="caption" color="text.secondary">
+										Current: idle time
+										<strong> {hdidleStatus.idle_time_seconds ?? 0}s</strong>, command
+										<strong> {hdidleStatus.command_type || "default"}</strong>, power condition
+										<strong> {hdidleStatus.power_condition ?? 0}</strong>{" "}
+										{typeof hdidleStatus.spun_down === "boolean" && (
+											<span>
+												— state: <strong>{hdidleStatus.spun_down ? "spun down" : "active"}</strong>
+											</span>
+										)}
+									</Typography>
+								</Box>
+							)}
 						</Grid>
 
 						<Grid size={{ xs: 12, md: 4 }}>

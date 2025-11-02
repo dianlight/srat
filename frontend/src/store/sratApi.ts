@@ -1258,10 +1258,17 @@ export type UpdateProgress = {
   progress?: number;
   update_process_state?: Update_process_state;
 };
+export type HdIdleDiskInfo = {
+  command_type?: string;
+  idle_time_seconds?: number;
+  power_condition?: number;
+  spun_down?: boolean;
+};
 export type Disk = {
   connection_bus?: string;
   device_path?: string;
   ejectable?: boolean;
+  hdidle_status?: HdIdleDiskInfo;
   id?: string;
   legacy_device_name?: string;
   legacy_device_path?: string;

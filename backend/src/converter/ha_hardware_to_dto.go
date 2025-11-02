@@ -22,7 +22,7 @@ type HaHardwareToDto interface {
 	// goverter:useUnderlyingTypeMethods
 	// goverter:skipCopySameType
 	// goverter:map . LegacyDeviceName | extractDevice
-	// goverter:ignore SmartInfo DevicePath LegacyDevicePath
+	// goverter:ignore SmartInfo DevicePath LegacyDevicePath HDIdleStatus
 	DriveToDisk(source hardware.Drive, target *dto.Disk) error
 
 	// goverter:useZeroValueOnPointerInconsistency
