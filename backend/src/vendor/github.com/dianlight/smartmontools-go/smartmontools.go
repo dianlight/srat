@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -68,13 +69,18 @@ type NvmeSmartHealth struct {
 }
 
 // SMARTInfo represents SMART information for a device
+type UserCapacity struct {
+	Blocks int64 `json:"blocks"`
+	Bytes  int64 `json:"bytes"`
+}
+
 type SMARTInfo struct {
 	Device                     Device                      `json:"device"`
 	ModelFamily                string                      `json:"model_family,omitempty"`
 	ModelName                  string                      `json:"model_name,omitempty"`
 	SerialNumber               string                      `json:"serial_number,omitempty"`
 	Firmware                   string                      `json:"firmware_version,omitempty"`
-	UserCapacity               int64                       `json:"user_capacity,omitempty"`
+	UserCapacity               *UserCapacity               `json:"user_capacity,omitempty"`
 	SmartStatus                SmartStatus                 `json:"smart_status,omitempty"`
 	SmartSupport               *SmartSupport               `json:"smart_support,omitempty"`
 	AtaSmartData               *AtaSmartData               `json:"ata_smart_data,omitempty"`
@@ -112,9 +118,41 @@ type AtaSmartData struct {
 }
 
 // OfflineDataCollection represents offline data collection status
+type StatusField struct {
+	Value  int    `json:"value"`
+	String string `json:"string"`
+	Passed *bool  `json:"passed,omitempty"`
+}
+
+// UnmarshalJSON allows StatusField to be parsed from either a JSON string
+// (e.g., "completed") or a structured object with fields {value, string, passed}.
+func (s *StatusField) UnmarshalJSON(data []byte) error {
+	// If the JSON value starts with a quote, it's a simple string
+	if len(data) > 0 && data[0] == '"' {
+		// Trim quotes and assign to String
+		var str string
+		if err := json.Unmarshal(data, &str); err != nil {
+			return err
+		}
+		s.String = str
+		// Leave Value and Passed as zero values
+		return nil
+	}
+	// Otherwise, parse as the structured form
+	type alias StatusField
+	var tmp alias
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+	s.Value = tmp.Value
+	s.String = tmp.String
+	s.Passed = tmp.Passed
+	return nil
+}
+
 type OfflineDataCollection struct {
-	Status            string `json:"status,omitempty"`
-	CompletionSeconds int    `json:"completion_seconds,omitempty"`
+	Status            *StatusField `json:"status,omitempty"`
+	CompletionSeconds int          `json:"completion_seconds,omitempty"`
 }
 
 // PollingMinutes represents polling minutes for different test types
@@ -126,7 +164,7 @@ type PollingMinutes struct {
 
 // SelfTest represents self-test information
 type SelfTest struct {
-	Status         string          `json:"status,omitempty"`
+	Status         *StatusField    `json:"status,omitempty"`
 	PollingMinutes *PollingMinutes `json:"polling_minutes,omitempty"`
 }
 
@@ -236,6 +274,11 @@ func NewClient() (SmartClient, error) {
 	path, err := exec.LookPath("smartctl")
 	if err != nil {
 		return nil, fmt.Errorf("smartctl not found in PATH: %w", err)
+	}
+
+	// Ensure smartctl is a compatible version (JSON output requires >= 7.0)
+	if err := ensureCompatibleSmartctl(path); err != nil {
+		return nil, err
 	}
 
 	return &Client{
@@ -470,11 +513,26 @@ func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string,
 
 			if currentInfo.AtaSmartData != nil && currentInfo.AtaSmartData.SelfTest != nil {
 				status := currentInfo.AtaSmartData.SelfTest.Status
-				if status == "completed" || status == "aborted" || status == "interrupted" {
-					if callback != nil {
-						callback(100, fmt.Sprintf("Self-test %s", status))
+				if status != nil {
+					ls := strings.ToLower(status.String)
+					if strings.Contains(ls, "completed") || strings.Contains(ls, "aborted") || strings.Contains(ls, "interrupted") {
+						if callback != nil {
+							// Normalize message to expected phrasing
+							msg := "Self-test "
+							switch {
+							case strings.Contains(ls, "completed"):
+								msg += "completed"
+							case strings.Contains(ls, "aborted"):
+								msg += "aborted"
+							case strings.Contains(ls, "interrupted"):
+								msg += "interrupted"
+							default:
+								msg += status.String
+							}
+							callback(100, msg)
+						}
+						return nil
 					}
-					return nil
 				}
 
 				// Try to get progress from Self-test execution status attribute (ID 231)
@@ -499,7 +557,11 @@ func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string,
 				}
 
 				if callback != nil {
-					callback(progress, fmt.Sprintf("Self-test in progress (%s)", status))
+					msg := "Self-test in progress"
+					if status != nil {
+						msg = fmt.Sprintf("Self-test in progress (%s)", status.String)
+					}
+					callback(progress, msg)
 				}
 			} else {
 				// Fallback progress calculation
@@ -642,4 +704,48 @@ func (c *Client) AbortSelfTest(devicePath string) error {
 		return fmt.Errorf("failed to abort self-test: %w", err)
 	}
 	return nil
+}
+
+// ensureCompatibleSmartctl runs "smartctl -V" and checks the version is supported.
+// The library depends on JSON output (-j), which requires smartctl >= 7.0.
+func ensureCompatibleSmartctl(smartctlPath string) error {
+	out, err := exec.Command(smartctlPath, "-V").Output()
+	if err != nil {
+		return fmt.Errorf("failed to check smartctl version: %w", err)
+	}
+	major, minor, err := parseSmartctlVersion(string(out))
+	if err != nil {
+		return fmt.Errorf("unable to parse smartctl version: %w", err)
+	}
+	const minMajor, minMinor = 7, 0
+	if major < minMajor || (major == minMajor && minor < minMinor) {
+		return fmt.Errorf("unsupported smartctl version %d.%d; require >= %d.%d", major, minor, minMajor, minMinor)
+	}
+	return nil
+}
+
+// parseSmartctlVersion extracts the major and minor version numbers from
+// the output of "smartctl -V". Expected forms include lines like:
+//
+//	"smartctl 7.3 2022-02-28 r5338 ..." or "smartctl 7.5 ...".
+func parseSmartctlVersion(output string) (int, int, error) {
+	// Find first occurrence of "smartctl X.Y"
+	re := regexp.MustCompile(`(?m)\bsmartctl\s+(\d+)\.(\d+)\b`)
+	m := re.FindStringSubmatch(output)
+	if len(m) != 3 {
+		return 0, 0, fmt.Errorf("version pattern not found in output")
+	}
+	// Convert captures to ints
+	var (
+		major int
+		minor int
+	)
+	// Atoi without extra import by using fmt.Sscanf
+	if _, err := fmt.Sscanf(m[1], "%d", &major); err != nil {
+		return 0, 0, fmt.Errorf("invalid major version: %w", err)
+	}
+	if _, err := fmt.Sscanf(m[2], "%d", &minor); err != nil {
+		return 0, 0, fmt.Errorf("invalid minor version: %w", err)
+	}
+	return major, minor, nil
 }

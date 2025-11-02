@@ -81,7 +81,7 @@ github.com/dave/jennifer/jen
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dianlight/smartmontools-go v0.0.1-beta.4
+# github.com/dianlight/smartmontools-go v0.0.3-beta.0
 ## explicit; go 1.24.7
 github.com/dianlight/smartmontools-go
 # github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936

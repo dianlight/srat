@@ -1,0 +1,53 @@
+{
+    "device": {
+        "name": "/dev/sda",
+        "type": "sat"
+    },
+    "model_family": "KINGSTON",
+    "model_name": "KINGSTON SV300S37A240G",
+    "serial_number": "50026B77560145CF",
+    "firmware_version": "BBF01",
+    "user_capacity": {
+        "blocks": 468862128,
+        "bytes": 240057409536
+    },
+    "smart_status": {
+        "passed": true
+    },
+    "smart_support": {
+        "available": true,
+        "enabled": true
+    },
+    "ata_smart_data": {
+        "table": [
+            {
+                "id": 194,
+                "name": "Temperature_Celsius",
+                "value": 40,
+                "worst": 35,
+                "thresh": 0,
+                "flags": {
+                    "value": 0,
+                    "string": "",
+                    "prefailure": false,
+                    "updated_online": false,
+                    "performance": false,
+                    "error_rate": false,
+                    "event_count": false,
+                    "auto_keep": false
+                },
+                "raw": {
+                    "value": 40,
+                    "string": "40"
+                }
+            }
+        ]
+    },
+    "temperature": {
+        "current": 40
+    },
+    "power_on_time": {
+        "hours": 5000
+    },
+    "power_cycle_count": 100
+}

@@ -406,18 +406,23 @@ func (s *smartService) GetTestStatus(devicePath string) (*dto.SmartTestStatus, e
 
 	// Parse self-test status from ATA SMART data
 	if smartInfo.AtaSmartData != nil && smartInfo.AtaSmartData.SelfTest != nil {
+		st := smartInfo.AtaSmartData.SelfTest.Status
 		status := &dto.SmartTestStatus{
-			Status:   smartInfo.AtaSmartData.SelfTest.Status,
+			Status:   "unknown",
 			TestType: "unknown",
 		}
 
-		// Determine test type if available
-		if strings.Contains(smartInfo.AtaSmartData.SelfTest.Status, "short") {
-			status.TestType = "short"
-		} else if strings.Contains(smartInfo.AtaSmartData.SelfTest.Status, "long") || strings.Contains(smartInfo.AtaSmartData.SelfTest.Status, "extended") {
-			status.TestType = "long"
-		} else if strings.Contains(smartInfo.AtaSmartData.SelfTest.Status, "conveyance") {
-			status.TestType = "conveyance"
+		if st != nil {
+			status.Status = st.String
+			ls := strings.ToLower(st.String)
+			// Determine test type if available from status string
+			if strings.Contains(ls, "short") {
+				status.TestType = "short"
+			} else if strings.Contains(ls, "long") || strings.Contains(ls, "extended") {
+				status.TestType = "long"
+			} else if strings.Contains(ls, "conveyance") {
+				status.TestType = "conveyance"
+			}
 		}
 
 		return status, nil

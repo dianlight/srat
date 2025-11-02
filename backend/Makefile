@@ -165,12 +165,6 @@ patch:
 	@if [ -f "$(ROOT_DIR)/patches/overseer.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/jpillora/overseer" ]; then \
 		cd $(ROOT_DIR)/src/vendor/github.com/jpillora/overseer  && patch -p1 < $(ROOT_DIR)/patches/overseer.patch; \
 	fi
-	@if [ -f "$(ROOT_DIR)/patches/smart.go-#010.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/anatol/smart.go" ]; then \
-		cd $(ROOT_DIR)/src/vendor/github.com/anatol/smart.go && patch -p1 < $(ROOT_DIR)/patches/smart.go-#010.patch; \
-	fi
-	@if [ -f "$(ROOT_DIR)/patches/smart.go-srat#999.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/anatol/smart.go" ]; then \
-		cd $(ROOT_DIR)/src/vendor/github.com/anatol/smart.go && patch -p1 < $(ROOT_DIR)/patches/smart.go-srat#999.patch; \
-	fi
 	@find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true
 	@echo "Patches applied successfully"
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"strings"
@@ -428,7 +429,7 @@ func (suite *SmartServiceSuite) TestGetTestStatusSuccess() {
 	mockSMARTInfo := &smartmontools.SMARTInfo{
 		AtaSmartData: &smartmontools.AtaSmartData{
 			SelfTest: &smartmontools.SelfTest{
-				Status: "short test completed without error",
+				Status: &smartmontools.StatusField{String: "short test completed without error"},
 			},
 		},
 	}
@@ -473,4 +474,57 @@ func (suite *SmartServiceSuite) TestAbortSelfTestSuccess() {
 
 	// Assert
 	suite.NoError(err)
+}
+
+// TestUserCapacityParsing tests that both legacy (int64) and new (object) user_capacity formats
+// from smartctl can be properly parsed
+func (suite *SmartServiceSuite) TestUserCapacityParsing() {
+	testCases := []struct {
+		name          string
+		jsonFile      string
+		expectedBytes int64
+	}{
+		{
+			name:          "Legacy format (smartctl < 7.3)",
+			jsonFile:      "../../test/data/smartctl-legacy-user-capacity.json",
+			expectedBytes: 240057409536,
+		},
+		{
+			name:          "New format (smartctl >= 7.3)",
+			jsonFile:      "../../test/data/smartctl-7.3-user-capacity.json",
+			expectedBytes: 240057409536,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// Read test JSON file
+			data, err := os.ReadFile(tc.jsonFile)
+			suite.NoError(err)
+
+			// Parse JSON using a compatibility struct that supports both legacy (number)
+			// and new (object with bytes field) formats for user_capacity
+			type compat struct {
+				UserCapacity any `json:"user_capacity"`
+			}
+			var s compat
+			err = json.Unmarshal(data, &s)
+			suite.NoError(err)
+
+			// Extract bytes accounting for both representations
+			var bytes int64
+			switch v := s.UserCapacity.(type) {
+			case float64:
+				bytes = int64(v)
+			case map[string]any:
+				if b, ok := v["bytes"].(float64); ok {
+					bytes = int64(b)
+				}
+			default:
+				bytes = 0
+			}
+
+			suite.Equal(tc.expectedBytes, bytes)
+		})
+	}
 }

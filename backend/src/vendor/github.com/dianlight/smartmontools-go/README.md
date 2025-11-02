@@ -22,7 +22,9 @@ A Go library that interfaces with smartmontools to monitor and manage storage de
 
 ## Prerequisites
 
-This library requires `smartctl` (part of smartmontools) to be installed on your system:
+This library requires `smartctl` (part of smartmontools) to be installed on your system.
+
+Minimum supported version: smartctl 7.0 (for JSON `-j` output).
 
 ### Linux
 ```bash
