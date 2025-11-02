@@ -41,6 +41,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const error = initialDisks ? null : volumeHook.error;
 	const [selectedDisk, setSelectedDisk] = useState<Disk | undefined>(undefined);
 	const [selectedPartition, setSelectedPartition] = useState<Partition | undefined>(undefined);
+	// Note: this id can refer to either a disk or a partition
 	const [selectedPartitionId, setSelectedPartitionId] = useState<string | undefined>(() => localStorage.getItem("volumes.selectedPartitionId") || undefined);
 	const [expandedDisks, setExpandedDisks] = useState<string[]>(() => {
 		try {
@@ -56,6 +57,17 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const [mountVolume, _mountVolumeResult] = usePostApiVolumeByMountPathHashMountMutation();
 	const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeByMountPathHashMountMutation();
 	const [patchMountSettings] = usePatchApiVolumeByMountPathHashSettingsMutation();
+
+	// Handle disk selection (top-level)
+	const handleDiskSelect = (disk: Disk) => {
+		setSelectedDisk(disk);
+		setSelectedPartition(undefined);
+		const diskIdx = disks?.indexOf(disk) || 0;
+		const diskIdentifier = disk.id || `disk-${diskIdx}`;
+		setSelectedPartitionId(diskIdentifier);
+		// Ensure the disk is expanded and persisted
+		setExpandedDisks((prev) => (prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier]));
+	};
 
 	// Handle partition selection
 	const handlePartitionSelect = (disk: Disk, partition: Partition) => {
@@ -158,11 +170,19 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 		if (!disks || disks.length === 0) return;
 		if (!selectedPartitionId) return;
 
-		// Try to locate the partition corresponding to selectedPartitionId
+		// Try to locate the partition or disk corresponding to selectedPartitionId
 		for (const disk of disks) {
+			const diskIdx = disks.indexOf(disk);
+			const diskIdentifier = disk.id || `disk-${diskIdx}`;
+			if (diskIdentifier === selectedPartitionId) {
+				setSelectedDisk(disk);
+				setSelectedPartition(undefined);
+				// Make sure it's expanded
+				setExpandedDisks((prev) => (prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier]));
+				return;
+			}
 			if (!disk.partitions) continue;
 			for (const partition of disk.partitions) {
-				const diskIdx = disks.indexOf(disk);
 				const partIdx = disk.partitions.indexOf(partition);
 				const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
 				if (partitionIdentifier === selectedPartitionId) {
@@ -471,10 +491,11 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 						) : (
 							<VolumesTreeView
 								disks={disks}
-								selectedPartitionId={selectedPartitionId}
+								selectedItemId={selectedPartitionId}
 								expandedItems={expandedDisks}
 								onExpandedItemsChange={setExpandedDisks}
 								hideSystemPartitions={hideSystemPartitions}
+								onDiskSelect={handleDiskSelect}
 								onPartitionSelect={handlePartitionSelect}
 								onToggleAutomount={handleToggleAutomount}
 								onMount={(partition) => {
