@@ -16,15 +16,15 @@ import (
 
 // mockSmartClient implements smartmontools.SmartClient for testing
 type mockSmartClient struct {
-	getSMARTInfoFunc      func(devicePath string) (*smartmontools.SMARTInfo, error)
-	checkHealthFunc       func(devicePath string) (bool, error)
-	runSelfTestFunc       func(devicePath string, testType string) error
-	abortSelfTestFunc     func(devicePath string) error
-	enableSMARTFunc       func(devicePath string) error
-	disableSMARTFunc      func(devicePath string) error
-	isSMARTSupportedFunc  func(devicePath string) (*smartmontools.SMARTSupportInfo, error)
-	scanDevicesFunc       func() ([]smartmontools.Device, error)
-	getDeviceInfoFunc     func(devicePath string) (map[string]interface{}, error)
+	getSMARTInfoFunc          func(devicePath string) (*smartmontools.SMARTInfo, error)
+	checkHealthFunc           func(devicePath string) (bool, error)
+	runSelfTestFunc           func(devicePath string, testType string) error
+	abortSelfTestFunc         func(devicePath string) error
+	enableSMARTFunc           func(devicePath string) error
+	disableSMARTFunc          func(devicePath string) error
+	isSMARTSupportedFunc      func(devicePath string) (*smartmontools.SMARTSupportInfo, error)
+	scanDevicesFunc           func() ([]smartmontools.Device, error)
+	getDeviceInfoFunc         func(devicePath string) (map[string]interface{}, error)
 	getAvailableSelfTestsFunc func(devicePath string) (*smartmontools.SelfTestInfo, error)
 }
 
@@ -148,7 +148,7 @@ func (suite *SmartServiceSuite) TestGetSmartInfoSuccess() {
 	// Create a temporary file to simulate device existence
 	tempFile, _ := os.CreateTemp("", "testdevice")
 	defer os.Remove(tempFile.Name())
-	
+
 	// Mock smartctl response
 	mockSMARTInfo := &smartmontools.SMARTInfo{
 		Device: smartmontools.Device{
@@ -201,17 +201,17 @@ func (suite *SmartServiceSuite) TestGetSmartInfoSuccess() {
 			},
 		},
 	}
-	
+
 	suite.mockClient.getSMARTInfoFunc = func(devicePath string) (*smartmontools.SMARTInfo, error) {
 		if devicePath == tempFile.Name() {
 			return mockSMARTInfo, nil
 		}
 		return nil, errors.New("device not found")
 	}
-	
+
 	// Execute
 	info, err := suite.service.GetSmartInfo(tempFile.Name())
-	
+
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(info)
@@ -223,6 +223,11 @@ func (suite *SmartServiceSuite) TestGetSmartInfoSuccess() {
 }
 
 func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
+	// Skip this test if running as root (uid 0) since permission checks don't work
+	if os.Getuid() == 0 {
+		suite.T().Skip("Skipping permission test when running as root")
+	}
+
 	// Create a temp file and remove read permission
 	tempFile, _ := os.CreateTemp("", "testdevice")
 	defer os.Remove(tempFile.Name())
@@ -237,7 +242,11 @@ func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
 	suite.Nil(info)
 	suite.True(goerrors.Is(err, dto.ErrorSMARTNotSupported))
 	details := goerrors.Details(err)
-	reason := details["reason"].(string)
+	suite.NotNil(details, "Error should have details")
+	reasonVal, ok := details["reason"]
+	suite.True(ok, "Error details should contain 'reason' key")
+	reason, ok := reasonVal.(string)
+	suite.True(ok, "Error reason should be a string")
 	suite.True(strings.Contains(reason, "not readable"),
 		"Expected reason to contain 'not readable', got: %s", reason)
 }
@@ -259,7 +268,7 @@ func (suite *SmartServiceSuite) TestGetHealthStatusSuccess() {
 	// Create a temporary file
 	tempFile, _ := os.CreateTemp("", "testdevice")
 	defer os.Remove(tempFile.Name())
-	
+
 	// Mock GetSMARTInfo
 	mockSMARTInfo := &smartmontools.SMARTInfo{
 		SmartSupport: &smartmontools.SmartSupport{
@@ -278,24 +287,24 @@ func (suite *SmartServiceSuite) TestGetHealthStatusSuccess() {
 			},
 		},
 	}
-	
+
 	suite.mockClient.getSMARTInfoFunc = func(devicePath string) (*smartmontools.SMARTInfo, error) {
 		if devicePath == tempFile.Name() {
 			return mockSMARTInfo, nil
 		}
 		return nil, errors.New("device not found")
 	}
-	
+
 	suite.mockClient.checkHealthFunc = func(devicePath string) (bool, error) {
 		if devicePath == tempFile.Name() {
 			return true, nil
 		}
 		return false, errors.New("device not found")
 	}
-	
+
 	// Execute
 	health, err := suite.service.GetHealthStatus(tempFile.Name())
-	
+
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(health)
@@ -320,17 +329,17 @@ func (suite *SmartServiceSuite) TestStartSelfTestSuccess() {
 	// Create a temporary file
 	tempFile, _ := os.CreateTemp("", "testdevice")
 	defer os.Remove(tempFile.Name())
-	
+
 	suite.mockClient.runSelfTestFunc = func(devicePath string, testType string) error {
 		if devicePath == tempFile.Name() && testType == "short" {
 			return nil
 		}
 		return errors.New("unexpected parameters")
 	}
-	
+
 	// Execute
 	err := suite.service.StartSelfTest(tempFile.Name(), dto.SmartTestTypeShort)
-	
+
 	// Assert
 	suite.NoError(err)
 }
@@ -349,14 +358,14 @@ func (suite *SmartServiceSuite) TestEnableSMARTSuccess() {
 	// Create a temporary file
 	tempFile, _ := os.CreateTemp("", "testdevice")
 	defer os.Remove(tempFile.Name())
-	
+
 	suite.mockClient.enableSMARTFunc = func(devicePath string) error {
 		if devicePath == tempFile.Name() {
 			return nil
 		}
 		return errors.New("unexpected device")
 	}
-	
+
 	suite.mockClient.isSMARTSupportedFunc = func(devicePath string) (*smartmontools.SMARTSupportInfo, error) {
 		if devicePath == tempFile.Name() {
 			return &smartmontools.SMARTSupportInfo{
@@ -366,10 +375,10 @@ func (suite *SmartServiceSuite) TestEnableSMARTSuccess() {
 		}
 		return nil, errors.New("unexpected device")
 	}
-	
+
 	// Execute
 	err := suite.service.EnableSMART(tempFile.Name())
-	
+
 	// Assert
 	suite.NoError(err)
 }
@@ -378,14 +387,14 @@ func (suite *SmartServiceSuite) TestDisableSMARTSuccess() {
 	// Create a temporary file
 	tempFile, _ := os.CreateTemp("", "testdevice")
 	defer os.Remove(tempFile.Name())
-	
+
 	suite.mockClient.disableSMARTFunc = func(devicePath string) error {
 		if devicePath == tempFile.Name() {
 			return nil
 		}
 		return errors.New("unexpected device")
 	}
-	
+
 	suite.mockClient.isSMARTSupportedFunc = func(devicePath string) (*smartmontools.SMARTSupportInfo, error) {
 		if devicePath == tempFile.Name() {
 			return &smartmontools.SMARTSupportInfo{
@@ -395,10 +404,10 @@ func (suite *SmartServiceSuite) TestDisableSMARTSuccess() {
 		}
 		return nil, errors.New("unexpected device")
 	}
-	
+
 	// Execute
 	err := suite.service.DisableSMART(tempFile.Name())
-	
+
 	// Assert
 	suite.NoError(err)
 }
@@ -414,7 +423,7 @@ func (suite *SmartServiceSuite) TestGetTestStatusSuccess() {
 	// Create a temporary file
 	tempFile, _ := os.CreateTemp("", "testdevice")
 	defer os.Remove(tempFile.Name())
-	
+
 	// Mock GetSMARTInfo with self-test status
 	mockSMARTInfo := &smartmontools.SMARTInfo{
 		AtaSmartData: &smartmontools.AtaSmartData{
@@ -423,17 +432,17 @@ func (suite *SmartServiceSuite) TestGetTestStatusSuccess() {
 			},
 		},
 	}
-	
+
 	suite.mockClient.getSMARTInfoFunc = func(devicePath string) (*smartmontools.SMARTInfo, error) {
 		if devicePath == tempFile.Name() {
 			return mockSMARTInfo, nil
 		}
 		return nil, errors.New("device not found")
 	}
-	
+
 	// Execute
 	status, err := suite.service.GetTestStatus(tempFile.Name())
-	
+
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(status)
@@ -451,17 +460,17 @@ func (suite *SmartServiceSuite) TestAbortSelfTestSuccess() {
 	// Create a temporary file
 	tempFile, _ := os.CreateTemp("", "testdevice")
 	defer os.Remove(tempFile.Name())
-	
+
 	suite.mockClient.abortSelfTestFunc = func(devicePath string) error {
 		if devicePath == tempFile.Name() {
 			return nil
 		}
 		return errors.New("unexpected device")
 	}
-	
+
 	// Execute
 	err := suite.service.AbortSelfTest(tempFile.Name())
-	
+
 	// Assert
 	suite.NoError(err)
 }
