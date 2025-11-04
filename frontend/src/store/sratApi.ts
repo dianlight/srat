@@ -1282,8 +1282,8 @@ export enum Command_type {
   Ata = "ata",
 }
 export enum Enabled {
-  Default = "default",
   Yes = "yes",
+  Custom = "custom",
   No = "no",
 }
 export enum Op {

@@ -358,7 +358,7 @@ func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
 		DefaultIdle:           time.Duration((*settings).HDIdleDefaultIdleTime) * time.Second,
 		DefaultCommandType:    (*settings).HDIdleDefaultCommandType,
 		DefaultPowerCondition: (*settings).HDIdleDefaultPowerCondition,
-		IgnoreSpinDown:        settings.HDIdleIgnoreSpinDownDetection != nil && *settings.HDIdleIgnoreSpinDownDetection,
+		IgnoreSpinDown:        (*settings).HDIdleIgnoreSpinDownDetection,
 		NameMap:               make(map[string]string),
 	}
 
@@ -368,9 +368,6 @@ func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
 		return nil, errors.Wrap(err, "failed to load HDIdle devices")
 	}
 
-	// Track if any device is explicitly enabled (overrides global)
-	anyDeviceForcedEnabled := false
-
 	// Convert devices considering per-device Enabled tri-state
 	for _, dev := range devices {
 		deviceRealPath, err := io.RealPath(dev.DevicePath)
@@ -378,29 +375,23 @@ func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
 			deviceRealPath = ""
 		}
 
-		idle := time.Duration(dev.IdleTime) * time.Second
-		if idle == 0 {
-			idle = intConfig.DefaultIdle
-		}
-
-		cmdType := dev.CommandType
-		if cmdType == nil {
-			cmdType = &intConfig.DefaultCommandType
-		}
-
-		// Determine if this device should be monitored based on tri-state Enabled
-		// - NO => never include
-		// - YES => include and force service enabled
-		// - DEFAULT => include only if global is enabled
+		idle := intConfig.DefaultIdle
+		cmdType := &intConfig.DefaultCommandType
 		includeDevice := false
+
 		switch dev.Enabled {
 		case dto.HdidleEnableds.NOENABLED:
 			includeDevice = false
 		case dto.HdidleEnableds.YESENABLED:
 			includeDevice = true
-			anyDeviceForcedEnabled = true
-		default: // DEFAULT
-			includeDevice = globalEnabled
+		case dto.HdidleEnableds.CUSTOMENABLED:
+			includeDevice = true
+			if dev.IdleTime != 0 {
+				idle = time.Duration(dev.IdleTime) * time.Second
+			}
+			if dev.CommandType != nil {
+				cmdType = dev.CommandType
+			}
 		}
 
 		if includeDevice {
@@ -417,11 +408,6 @@ func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
 				intConfig.NameMap[deviceRealPath] = dev.DevicePath
 			}
 		}
-	}
-
-	// If any device is explicitly enabled, ensure service runs even if global disabled
-	if anyDeviceForcedEnabled {
-		intConfig.Enabled = true
 	}
 
 	// Calculate skew time and pool interval

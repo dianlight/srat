@@ -76,7 +76,7 @@ func (suite *HDIdleServiceSuite) TestStartWithValidSettings() {
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Mock empty device list
@@ -94,7 +94,7 @@ func (suite *HDIdleServiceSuite) TestStartWithDefaultValues() {
 		HDIdleDefaultIdleTime:         0, // Should use default
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: nil,
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Mock empty device list
@@ -112,7 +112,7 @@ func (suite *HDIdleServiceSuite) TestStartAlreadyRunning() {
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Mock empty device list
@@ -144,7 +144,7 @@ func (suite *HDIdleServiceSuite) TestStartWithDeviceLoadError() {
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Mock device load error
@@ -163,7 +163,7 @@ func (suite *HDIdleServiceSuite) TestStartWithValidDevices() {
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Mock devices
@@ -201,7 +201,7 @@ func (suite *HDIdleServiceSuite) TestStopWhenRunning() {
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Mock empty device list
@@ -230,7 +230,7 @@ func (suite *HDIdleServiceSuite) TestGetStatusWhenRunning() {
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Mock empty device list
@@ -297,7 +297,7 @@ func (suite *HDIdleServiceSuite) TestStartStopMultipleTimes() {
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Mock empty device list
@@ -331,13 +331,13 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_OneDeviceYes_Includ
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Repo: one device YES, one DEFAULT
 	devices := []*dbom.HDIdleDevice{
 		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.YESENABLED},
-		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.DEFAULTENABLED},
+		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
 	}
 	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
 
@@ -356,13 +356,13 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalEnabled_OneDeviceNo_Excludes
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Repo: one device NO, one DEFAULT
 	devices := []*dbom.HDIdleDevice{
 		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.NOENABLED},
-		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.DEFAULTENABLED},
+		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
 	}
 	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
 
@@ -381,13 +381,13 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_AllDefault_NoDevice
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: boolPtr(false),
+		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
 	// Repo: all DEFAULT
 	devices := []*dbom.HDIdleDevice{
-		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.DEFAULTENABLED},
-		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.DEFAULTENABLED},
+		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
+		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
 	}
 	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
 

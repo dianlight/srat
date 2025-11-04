@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/dianlight/smartmontools-go"
 	"github.com/dianlight/srat/internal/appsetup"
 	"github.com/dianlight/srat/tlog"
 	"github.com/gorilla/mux"
@@ -212,6 +213,7 @@ func prog(state overseer.State) {
 		fx.Provide(
 			func() *overseer.State { return &state },
 			server.AsHumaRoute(api.NewSSEBroker),
+			smartmontools.NewClient,
 			api.NewWebSocketBroker,
 			server.AsHumaRoute(api.NewHealthHandler),
 			server.AsHumaRoute(api.NewShareHandler),

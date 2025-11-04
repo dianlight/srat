@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/tlog"
 	gocache "github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 )
 
 const (
@@ -36,16 +37,15 @@ type smartService struct {
 	client smartmontools.SmartClient
 }
 
-func NewSmartService() SmartServiceInterface {
-	client, err := smartmontools.NewClient()
-	if err != nil {
-		// Fall back to a nil client if smartctl is not available
-		// This allows the service to start but operations will fail gracefully
-		slog.Warn("Failed to initialize smartmontools client", "error", err)
-	}
+type SmartServiceParams struct {
+	fx.In
+	Client smartmontools.SmartClient `optional:"true"`
+}
+
+func NewSmartService(in SmartServiceParams) SmartServiceInterface {
 	return &smartService{
 		cache:  gocache.New(smartCacheExpiry, smartCacheCleanup),
-		client: client,
+		client: in.Client,
 	}
 }
 
