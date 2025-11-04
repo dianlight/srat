@@ -51,14 +51,6 @@ export function VolumeDetailsPanel({
     const [previewObject, setPreviewObject] = useState<any | null>(null);
     const [previewTitle, setPreviewTitle] = useState<string>("Preview");
 
-    // Form control for HDIdle disk settings
-    const { control } = useForm({
-        defaultValues: {
-            // Initialize with disk-specific HDIdle settings
-            // These would be populated from the API in a real implementation
-        },
-    });
-
     // Smart operations hook
     const { startSelfTest, abortSelfTest, enableSmart, disableSmart, isLoading: smartOperationLoading } = useSmartOperations(disk?.id);
 
@@ -246,7 +238,7 @@ export function VolumeDetailsPanel({
                 {/* Disk-only panels: visible only when a disk is selected without a partition */}
                 {disk && !partition && (
                     <>
-                        <HDIdleDiskSettings disk={disk} control={control} readOnly={false} />
+                        <HDIdleDiskSettings disk={disk} readOnly={false} />
                         <SmartStatusPanel
                             smartInfo={disk.smart_info}
                             diskDevicePath={disk.device_path || disk.legacy_device_path}
