@@ -109,7 +109,7 @@ export function VolumeDetailsPanel({
 
     const mountData = partition?.mount_point_data?.[0];
     const allShares = partition?.mount_point_data?.flatMap((mpd) => mpd.shares).filter(Boolean) || [];
-    const isMounted = mountData?.is_mounted;
+    const isMounted = partition?.mount_point_data?.some((mpd) => mpd.is_mounted);
 
     return (
         <Box sx={{ height: "100%", overflow: "auto", p: 2 }}>
@@ -275,7 +275,7 @@ export function VolumeDetailsPanel({
                                     </Typography>
                                 </Grid>
                                 {partition.size != null && (
-                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                         <Typography variant="subtitle2" color="text.secondary">
                                             Size
                                         </Typography>
@@ -285,7 +285,7 @@ export function VolumeDetailsPanel({
                                     </Grid>
                                 )}
                                 {(mountData?.fstype || partition.fs_type) && (
-                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                         <Typography variant="subtitle2" color="text.secondary">
                                             File System
                                         </Typography>
@@ -294,18 +294,8 @@ export function VolumeDetailsPanel({
                                         </Typography>
                                     </Grid>
                                 )}
-                                {partition.id && (
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <Typography variant="subtitle2" color="text.secondary">
-                                            Partition ID
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-                                            {partition.id}
-                                        </Typography>
-                                    </Grid>
-                                )}
                                 {partition.legacy_device_name && (
-                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                         <Typography variant="subtitle2" color="text.secondary">
                                             Device
                                         </Typography>
@@ -314,6 +304,17 @@ export function VolumeDetailsPanel({
                                         </Typography>
                                     </Grid>
                                 )}
+                                {partition.id && (
+                                    <Grid size={{ xs: 12 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            Partition ID
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                                            {partition.id}
+                                        </Typography>
+                                    </Grid>
+                                )}
+
 
                                 {/* Mount Status */}
                                 <Grid size={{ xs: 12 }}>
@@ -329,58 +330,33 @@ export function VolumeDetailsPanel({
                                         {partition.system && (
                                             <Chip label="System" size="small" variant="outlined" />
                                         )}
-                                        {mountData?.is_to_mount_at_startup && (
-                                            <Chip label="Auto-mount" size="small" variant="outlined" color="primary" />
-                                        )}
-                                        {mountData && !mountData.is_write_supported && (
-                                            <Chip label="Read-Only" size="small" variant="outlined" color="secondary" />
-                                        )}
                                     </Stack>
                                 </Grid>
 
                                 {/* Mount Information */}
-                                {isMounted && mountData && (
+                                {isMounted && (
                                     <>
-                                        {/* Host Mount Information */}
-                                        {partition.mount_point_data && partition.mount_point_data.length > 0 && (
-                                            <Grid size={{ xs: 12, sm: 6 }}>
-                                                <Typography variant="subtitle2" color="text.secondary">
-                                                    Mount Point{partition.mount_point_data.length > 1 ? "s" : ""}
-                                                </Typography>
-                                                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 0.5 }}>
-                                                    {partition.mount_point_data.map((mpd, index) => (
-                                                        <Chip
-                                                            key={index}
-                                                            label={mpd.path}
-                                                            size="small"
-                                                            variant="outlined"
-                                                            sx={{ fontFamily: "monospace" }}
-                                                        />
-                                                    ))}
-                                                </Stack>
-                                            </Grid>
-                                        )}
-                                        {mountData.disk_label && (
+                                        {partition.mount_point_data?.some((mpd) => mpd.disk_label) && (
                                             <Grid size={{ xs: 12, sm: 6 }}>
                                                 <Typography variant="subtitle2" color="text.secondary">
                                                     Disk Label
                                                 </Typography>
                                                 <Typography variant="body2">
-                                                    {mountData.disk_label}
+                                                    {partition.mount_point_data.find((mpd) => mpd.disk_label)?.disk_label}
                                                 </Typography>
                                             </Grid>
                                         )}
-                                        {mountData.time_machine_support && (
+                                        {partition.mount_point_data?.some((mpd) => mpd.time_machine_support) && (
                                             <Grid size={{ xs: 12, sm: 6 }}>
                                                 <Typography variant="subtitle2" color="text.secondary">
                                                     Time Machine Support
                                                 </Typography>
                                                 <Chip
-                                                    label={mountData.time_machine_support}
+                                                    label={partition.mount_point_data.find((mpd) => mpd.time_machine_support)?.time_machine_support}
                                                     color={
-                                                        mountData.time_machine_support === Time_machine_support.Supported
+                                                        partition.mount_point_data.find((mpd) => mpd.time_machine_support)?.time_machine_support === Time_machine_support.Supported
                                                             ? "success"
-                                                            : mountData.time_machine_support === Time_machine_support.Experimental
+                                                            : partition.mount_point_data.find((mpd) => mpd.time_machine_support)?.time_machine_support === Time_machine_support.Experimental
                                                                 ? "warning"
                                                                 : "error"
                                                     }
@@ -388,25 +364,61 @@ export function VolumeDetailsPanel({
                                                 />
                                             </Grid>
                                         )}
-                                        {/* Warnings and Errors */}
-                                        {mountData.warnings && (
+                                        {partition.mount_point_data?.some((mpd) => mpd.warnings) && (
                                             <Grid size={{ xs: 12 }}>
                                                 <Typography variant="subtitle2" color="warning.main">
                                                     Warnings
                                                 </Typography>
-                                                <Typography variant="body2" color="warning.main">
-                                                    {mountData.warnings}
+                                                {partition.mount_point_data?.filter((mpd) => mpd.warnings)?.map(
+                                                    (mpd, index) => (
+                                                        <Typography key={index} variant="body2" color="warning.main">
+                                                            {mpd.warnings}
+                                                        </Typography>
+                                                    )
+                                                )}
+                                            </Grid>
+                                        )}
+                                        {partition.mount_point_data?.some((mpd) => mpd.invalid && mpd.invalid_error) && (
+                                            <Grid size={{ xs: 12 }}>
+                                                <Typography variant="subtitle2" color="error.main">
+                                                    Errors
+                                                </Typography>
+                                                <Typography variant="body2" color="error.main">
+                                                    {partition.mount_point_data?.find((mpd) => mpd.invalid && mpd.invalid_error)?.invalid_error}
                                                 </Typography>
                                             </Grid>
                                         )}
-                                        {mountData.invalid && mountData.invalid_error && (
+                                        {/* Host Mount Information */}
+                                        {partition.mount_point_data && partition.mount_point_data.length > 0 && (
                                             <Grid size={{ xs: 12 }}>
-                                                <Typography variant="subtitle2" color="error.main">
-                                                    Error
+                                                <Typography variant="subtitle2" color="text.secondary">
+                                                    Mount Point{partition.mount_point_data.length > 1 ? "s" : ""}
                                                 </Typography>
-                                                <Typography variant="body2" color="error.main">
-                                                    {mountData.invalid_error}
-                                                </Typography>
+                                                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 0.5 }}>
+                                                    {partition.mount_point_data.map((mpd, index) => {
+                                                        const badges = [];
+                                                        if (mpd?.is_to_mount_at_startup) {
+                                                            badges.push("Auto-mount");
+                                                        }
+                                                        if (!mpd.is_write_supported) {
+                                                            badges.push("Read-Only");
+                                                        }
+                                                        const label = badges.length > 0
+                                                            ? `${mpd.path} • ${badges.join(" • ")}`
+                                                            : mpd.path;
+
+                                                        return (
+                                                            <Chip
+                                                                key={index}
+                                                                label={label}
+                                                                size="small"
+                                                                variant="outlined"
+                                                                color={!mpd.is_write_supported ? "secondary" : mpd?.is_to_mount_at_startup ? "primary" : "default"}
+                                                                sx={{ fontFamily: "monospace" }}
+                                                            />
+                                                        );
+                                                    })}
+                                                </Stack>
                                             </Grid>
                                         )}
                                     </>

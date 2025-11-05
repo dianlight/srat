@@ -309,10 +309,10 @@ export function VolumesTreeView({
                                 )}
                                 {isMounted && (
                                     <Chip
-                                        label={partition.mount_point_data?.some(mp => mp.is_write_supported) ? "Mounted" : "RO Mount"}
+                                        label={partition.mount_point_data?.every(mp => !mp.is_write_supported) ? "Mounted (Read-Only)" : "Mounted"}
                                         size="small"
                                         variant="outlined"
-                                        color={partition.mount_point_data?.some(mp => mp.is_write_supported) ? "success" : "secondary"}
+                                        color={partition.mount_point_data?.every(mp => !mp.is_write_supported) ? "secondary" : "success"}
                                         sx={{ fontSize: "0.7rem", height: 16 }}
                                     />
                                 )}
