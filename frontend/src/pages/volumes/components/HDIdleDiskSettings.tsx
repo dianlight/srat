@@ -71,7 +71,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 	return visible && !isLoadingSettings && (
 		<Card>
 			<CardHeader
-				title="HDIdle Disk Spin-Down Settings"
+				title="Power Settings"
 				avatar={
 					<IconButton size="small" sx={{ pointerEvents: 'none' }}>
 						<PowerIcon color="primary" />
