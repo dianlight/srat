@@ -1032,6 +1032,7 @@ export type ProcessStatus = {
   status: string[] | null;
 };
 export type SambaProcessStatus = {
+  hdidle: ProcessStatus;
   nmbd: ProcessStatus;
   smbd: ProcessStatus;
   srat: ProcessStatus;
@@ -1159,9 +1160,9 @@ export type Settings = {
   bind_all_interfaces?: boolean;
   compatibility_mode?: boolean;
   export_stats_to_ha?: boolean;
-  hdidle_default_command_type: Hdidle_default_command_type;
-  hdidle_default_idle_time: number;
-  hdidle_default_power_condition: number;
+  hdidle_default_command_type?: Hdidle_default_command_type;
+  hdidle_default_idle_time?: number;
+  hdidle_default_power_condition?: number;
   hdidle_enabled?: boolean;
   hdidle_ignore_spin_down_detection?: boolean;
   hostname?: string;

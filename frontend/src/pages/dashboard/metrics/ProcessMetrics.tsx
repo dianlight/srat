@@ -30,6 +30,189 @@ export function ProcessMetrics({
 }: ProcessMetricsProps) {
 	const theme = useTheme();
 
+	// Separate main processes and subprocesses
+	// Subprocesses have negative PIDs where the absolute value is the parent PID
+	const mainProcesses = processData.filter((p) => p.pid === null || p.pid >= 0);
+	const subprocesses = processData.filter((p) => p.pid !== null && p.pid < 0);
+
+	// Create a map of parent PID to subprocesses
+	const subprocessMap = new Map<number, ProcessStatus[]>();
+	for (const subprocess of subprocesses) {
+		const parentPid = Math.abs(subprocess.pid!);
+		if (!subprocessMap.has(parentPid)) {
+			subprocessMap.set(parentPid, []);
+		}
+		subprocessMap.get(parentPid)!.push(subprocess);
+	}
+
+	const renderProcess = (process: ProcessStatus, isSubprocess = false) => {
+		const pidDisplay = isSubprocess
+			? "sub"
+			: process.pid !== null && process.pid >= 0
+				? process.pid
+				: "N/A";
+
+		const cpuDisplay =
+			process.cpu !== null && process.cpu > 0
+				? `${process.cpu.toFixed(1)}%`
+				: isSubprocess
+					? "N/A"
+					: process.cpu !== null
+						? `${process.cpu.toFixed(1)}%`
+						: "N/A";
+
+		const memoryDisplay =
+			process.memory !== null && process.memory > 0
+				? `${process.memory.toFixed(1)}%`
+				: isSubprocess
+					? "N/A"
+					: process.memory !== null
+						? `${process.memory.toFixed(1)}%`
+						: "N/A";
+
+		const showCpuChart =
+			!isSubprocess && (cpuHistory[process.name]?.length || 0) > 1;
+		const showMemoryChart =
+			!isSubprocess && (memoryHistory[process.name]?.length || 0) > 1;
+
+		return (
+			<TableRow key={process.name}>
+				<TableCell component="th" scope="row">
+					<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+						{isSubprocess && (
+							<Box
+								sx={{
+									width: 20,
+									height: 20,
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "center",
+								}}
+							>
+								<Box
+									sx={{
+										width: 2,
+										height: 12,
+										bgcolor: "text.disabled",
+										mr: 0.5,
+									}}
+								/>
+								<Box
+									sx={{
+										width: 8,
+										height: 2,
+										bgcolor: "text.disabled",
+									}}
+								/>
+							</Box>
+						)}
+						<Typography
+							variant="body2"
+							sx={{
+								fontStyle: isSubprocess ? "italic" : "normal",
+								color: isSubprocess ? "text.secondary" : "text.primary",
+							}}
+						>
+							{process.name}
+						</Typography>
+					</Box>
+				</TableCell>
+				<TableCell
+					align="right"
+					sx={{
+						color:
+							process.status === "Running" ? "success.main" : "error.main",
+					}}
+				>
+					{process.status}
+				</TableCell>
+				<TableCell align="right">{pidDisplay}</TableCell>
+				<TableCell align="right" sx={{ minWidth: 150 }}>
+					<Box
+						sx={{
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "flex-end",
+						}}
+					>
+						<Typography
+							variant="body2"
+							sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+						>
+							{cpuDisplay}
+						</Typography>
+						<Box sx={{ width: 50, height: 20 }}>
+							{showCpuChart ? (
+								<SparkLineChart
+									data={cpuHistory[process.name] ?? []}
+									width={60}
+									height={20}
+									color={theme.palette.primary.main}
+									showTooltip
+								/>
+							) : null}
+						</Box>
+					</Box>
+				</TableCell>
+				<TableCell align="right" sx={{ minWidth: 150 }}>
+					<Box
+						sx={{
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "flex-end",
+						}}
+					>
+						<Typography
+							variant="body2"
+							sx={{ mr: 1, minWidth: "70px", textAlign: "right" }}
+						>
+							{memoryDisplay}
+						</Typography>
+						<Box sx={{ width: 50, height: 20 }}>
+							{showMemoryChart ? (
+								<SparkLineChart
+									data={memoryHistory[process.name] ?? []}
+									width={60}
+									height={20}
+									color={theme.palette.success.main}
+									showTooltip
+								/>
+							) : null}
+						</Box>
+					</Box>
+				</TableCell>
+				<TableCell align="right" sx={{ minWidth: 150 }}>
+					<Box
+						sx={{
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "flex-end",
+						}}
+					>
+						<Typography
+							variant="body2"
+							sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+						>
+							{process.connections ?? "N/A"}
+						</Typography>
+						<Box sx={{ width: 50, height: 20 }}>
+							{(connectionsHistory[process.name]?.length || 0) > 1 ? (
+								<SparkLineChart
+									data={connectionsHistory[process.name] ?? []}
+									width={60}
+									height={20}
+									plotType="bar"
+									color={theme.palette.secondary.main}
+									showTooltip
+								/>
+							) : null}
+						</Box>
+					</Box>
+				</TableCell>
+			</TableRow>
+		);
+	};
+
 	return (
 		<>
 			<Typography variant="body1" sx={{ mb: 2 }}>
@@ -48,110 +231,16 @@ export function ProcessMetrics({
 						</TableRow>
 					</TableHead>
 					<TableBody>
-						{processData.map((process) => (
-							<TableRow key={process.name}>
-								<TableCell component="th" scope="row">
-									{process.name}
-								</TableCell>
-								<TableCell
-									align="right"
-									sx={{
-										color:
-											process.status === "Running"
-												? "success.main"
-												: "error.main",
-									}}
-								>
-									{process.status}
-								</TableCell>
-								<TableCell align="right">{process.pid ?? "N/A"}</TableCell>
-								<TableCell align="right" sx={{ minWidth: 150 }}>
-									<Box
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "flex-end",
-										}}
-									>
-										<Typography
-											variant="body2"
-											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
-										>
-											{process.cpu !== null
-												? `${process.cpu.toFixed(1)}%`
-												: "N/A"}
-										</Typography>
-										<Box sx={{ width: 50, height: 20 }}>
-											{(cpuHistory[process.name]?.length || 0) > 1 ? (
-												<SparkLineChart
-													data={cpuHistory[process.name] ?? []}
-													width={60}
-													height={20}
-													color={theme.palette.primary.main}
-													showTooltip
-												/>
-											) : null}
-										</Box>
-									</Box>
-								</TableCell>
-								<TableCell align="right" sx={{ minWidth: 150 }}>
-									<Box
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "flex-end",
-										}}
-									>
-										<Typography
-											variant="body2"
-											sx={{ mr: 1, minWidth: "70px", textAlign: "right" }}
-										>
-											{process.memory !== null
-												? `${process.memory.toFixed(1)}%`
-												: "N/A"}
-										</Typography>
-										<Box sx={{ width: 50, height: 20 }}>
-											{(memoryHistory[process.name]?.length || 0) > 1 ? (
-												<SparkLineChart
-													data={memoryHistory[process.name] ?? []}
-													width={60}
-													height={20}
-													color={theme.palette.success.main}
-													showTooltip
-												/>
-											) : null}
-										</Box>
-									</Box>
-								</TableCell>
-								<TableCell align="right" sx={{ minWidth: 150 }}>
-									<Box
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "flex-end",
-										}}
-									>
-										<Typography
-											variant="body2"
-											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
-										>
-											{process.connections ?? "N/A"}
-										</Typography>
-										<Box sx={{ width: 50, height: 20 }}>
-											{(connectionsHistory[process.name]?.length || 0) > 1 ? (
-												<SparkLineChart
-													data={connectionsHistory[process.name] ?? []}
-													width={60}
-													height={20}
-													plotType="bar"
-													color={theme.palette.secondary.main}
-													showTooltip
-												/>
-											) : null}
-										</Box>
-									</Box>
-								</TableCell>
-							</TableRow>
+						{mainProcesses.map((process) => (
+							<>
+								{renderProcess(process, false)}
+								{process.pid !== null &&
+									process.pid > 0 &&
+									subprocessMap.has(process.pid) &&
+									subprocessMap.get(process.pid)!.map((subprocess) =>
+										renderProcess(subprocess, true),
+									)}
+							</>
 						))}
 					</TableBody>
 				</Table>

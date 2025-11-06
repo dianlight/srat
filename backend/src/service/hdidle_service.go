@@ -39,6 +39,10 @@ type HDIdleServiceInterface interface {
 	// GetEffectiveConfig returns the effective enabled flag and the list of devices
 	// included for monitoring (by GivenName/DevicePath) according to tri-state logic.
 	GetEffectiveConfig() HDIdleEffectiveConfig
+	// GetProcessStatus returns a ProcessStatus representation of the HDIdle monitoring service.
+	// The parentPid is used to indicate this is a subprocess by storing it as a negative value.
+	// Convention: Subprocesses have their parent process PID as a negative number.
+	GetProcessStatus(parentPid int32) *dto.ProcessStatus
 }
 
 // HDIdleDeviceConfig represents per-device configuration
@@ -335,6 +339,50 @@ func (s *hDIdleService) GetEffectiveConfig() HDIdleEffectiveConfig {
 		}
 	}
 	return ec
+}
+
+// GetProcessStatus returns a ProcessStatus representation of the HDIdle monitoring service.
+// This allows the HDIdle monitor to appear as a subprocess in the process metrics.
+//
+// Parameters:
+//   - parentPid: The PID of the parent SRAT process. This is stored as a negative value
+//     to indicate that this is a virtual subprocess, not a real OS process.
+//
+// Convention: Subprocesses use negative PIDs where the absolute value represents the
+// parent process PID. For example, if SRAT has PID 1234, the HDIdle subprocess will
+// have PID -1234. This convention allows the UI to distinguish between real processes
+// and virtual subprocesses/monitoring threads.
+//
+// Returns:
+//   - A ProcessStatus where:
+//   - Pid: Negative parent PID (e.g., -1234 if parent is 1234)
+//   - Name: "powersave-monitor"
+//   - Connections: Number of monitored disks
+//   - IsRunning: Whether the monitoring loop is active
+//   - Status: ["idle"] when not running, ["running"] when active
+func (s *hDIdleService) GetProcessStatus(parentPid int32) *dto.ProcessStatus {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	status := &dto.ProcessStatus{
+		Pid:           -parentPid, // Negative PID indicates this is a subprocess
+		Name:          "powersave-monitor",
+		CreateTime:    time.Time{},
+		CPUPercent:    0.0,
+		MemoryPercent: 0.0,
+		OpenFiles:     0,
+		Connections:   0,
+		Status:        []string{"idle"},
+		IsRunning:     s.running,
+	}
+
+	// If running, populate with monitored disk count
+	if s.running && s.config != nil {
+		status.Connections = len(s.diskStats)
+		status.Status = []string{"running"}
+	}
+
+	return status
 }
 
 // convertConfig converts external config to internal config

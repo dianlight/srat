@@ -28,6 +28,7 @@ export function ProcessMetricsAccordion({
 	onChange,
 }: ProcessMetricsAccordionProps) {
 	// Aggregate metrics for collapsed view
+	// Exclude subprocesses (negative PIDs) from aggregates
 	const aggregate = (() => {
 		if (!processData || processData.length === 0) {
 			return { cpu: 0, memory: 0, connections: 0 };
@@ -36,6 +37,10 @@ export function ProcessMetricsAccordion({
 		let memory = 0;
 		let connections = 0;
 		for (const p of processData) {
+			// Skip subprocesses (negative PIDs)
+			if (p.pid !== null && p.pid < 0) {
+				continue;
+			}
 			if (typeof p.cpu === "number" && !isNaN(p.cpu)) cpu += p.cpu;
 			if (typeof p.memory === "number" && !isNaN(p.memory)) memory += p.memory;
 			if (typeof p.connections === "number" && !isNaN(p.connections))

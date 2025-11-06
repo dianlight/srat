@@ -50,6 +50,7 @@ type SambaService struct {
 	mount_client       mount.ClientWithResponsesInterface
 	cache              *cache.Cache
 	dbomConv           converter.DtoToDbomConverterImpl
+	hdidle_service     HDIdleServiceInterface
 }
 
 type SambaServiceParams struct {
@@ -64,6 +65,7 @@ type SambaServiceParams struct {
 	HA_ws_service       HaWsServiceInterface
 	Mount_client        mount.ClientWithResponsesInterface `optional:"true"`
 	Su                  SupervisorServiceInterface
+	Hdidle_service      HDIdleServiceInterface
 }
 
 func NewSambaService(in SambaServiceParams) SambaServiceInterface {
@@ -80,6 +82,7 @@ func NewSambaService(in SambaServiceParams) SambaServiceInterface {
 	in.Dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
 	p.ha_ws_service = in.HA_ws_service
 	p.dbomConv = converter.DtoToDbomConverterImpl{}
+	p.hdidle_service = in.Hdidle_service
 
 	p.ha_ws_service.SubscribeToHaEvents(func(ready bool) {
 		if !ready {
@@ -203,14 +206,22 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 	return tconfig, nil
 }
 
-// GetSambaProcess retrieves the Samba process (smbd) if it's running.
+// GetSambaProcess retrieves the status of all Samba-related processes and subprocesses.
 //
-// This function searches through all running processes to find the Samba
-// daemon process named "smbd".
+// This function searches through all running processes to find:
+//   - smbd: Samba daemon (real OS process)
+//   - nmbd: NetBIOS name server (real OS process)
+//   - wsdd2: Web Services Discovery daemon (real OS process)
+//   - srat-server: SRAT main process (real OS process)
+//   - hdidle: HDIdle power-save monitoring (virtual subprocess)
+//
+// For virtual subprocesses (like HDIdle), the PID is set to the negative value
+// of the parent process PID. This convention allows distinguishing between real
+// OS processes and internal monitoring threads in the UI.
 //
 // Returns:
-//   - *process.Process: A pointer to the Samba process if found, or nil if not found.
-//   - error: An error if one occurred during the process search, or nil if successful.
+//   - *dto.SambaProcessStatus: Status of all processes, with PIDs set to -1 if not found
+//   - errors.E: An error if one occurred during the process search
 func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) {
 	spc := dto.SambaProcessStatus{
 		Smbd: dto.ProcessStatus{
@@ -223,6 +234,9 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 			Pid: -1,
 		},
 		Srat: dto.ProcessStatus{
+			Pid: -1,
+		},
+		Hdidle: dto.ProcessStatus{
 			Pid: -1,
 		},
 	}
@@ -248,6 +262,17 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 			conv.ProcessToProcessStatus(p, &spc.Srat)
 		}
 	}
+
+	// Get HDIdle monitoring status as a subprocess
+	// Convention: Subprocesses use negative parent PIDs to indicate they are
+	// virtual monitoring threads rather than real OS processes
+	if self.hdidle_service != nil {
+		hdidleStatus := self.hdidle_service.GetProcessStatus(spc.Srat.Pid)
+		if hdidleStatus != nil {
+			spc.Hdidle = *hdidleStatus
+		}
+	}
+
 	return &spc, nil
 }
 

@@ -239,12 +239,22 @@ func TestSambaProcessStatus_AllFields(t *testing.T) {
 			Name:      "srat",
 			IsRunning: true,
 		},
+		Hdidle: dto.ProcessStatus{
+			Pid:         -1237, // Negative PID indicates subprocess of srat (PID 1237)
+			Name:        "hdidle-monitor",
+			IsRunning:   true,
+			Connections: 3,
+		},
 	}
 
 	assert.Equal(t, int32(1234), status.Smbd.Pid)
 	assert.Equal(t, "smbd", status.Smbd.Name)
 	assert.True(t, status.Smbd.IsRunning)
 	assert.False(t, status.Wsdd2.IsRunning)
+	assert.Equal(t, int32(-1237), status.Hdidle.Pid)
+	assert.Equal(t, "hdidle-monitor", status.Hdidle.Name)
+	assert.True(t, status.Hdidle.IsRunning)
+	assert.Equal(t, 3, status.Hdidle.Connections)
 }
 
 // ReleaseAsset Tests

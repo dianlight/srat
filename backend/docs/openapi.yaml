@@ -794,6 +794,8 @@ components:
     SambaProcessStatus:
       additionalProperties: false
       properties:
+        hdidle:
+          $ref: "#/components/schemas/ProcessStatus"
         nmbd:
           $ref: "#/components/schemas/ProcessStatus"
         smbd:
@@ -807,6 +809,7 @@ components:
         - nmbd
         - wsdd2
         - srat
+        - hdidle
       type: object
     SambaServerID:
       additionalProperties: false
@@ -1025,6 +1028,7 @@ components:
           default: false
           type: boolean
         hdidle_ignore_spin_down_detection:
+          default: false
           type: boolean
         hostname:
           type: string
@@ -1064,10 +1068,6 @@ components:
           type: string
         workgroup:
           type: string
-      required:
-        - hdidle_default_idle_time
-        - hdidle_default_command_type
-        - hdidle_default_power_condition
       type: object
     SharedResource:
       additionalProperties: true
@@ -2308,8 +2308,8 @@ paths:
     post:
       operationId: create-issue
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -2761,6 +2761,7 @@ paths:
                   default: false
                   type: boolean
                 hdidle_ignore_spin_down_detection:
+                  default: false
                   type: boolean
                 hostname:
                   type: string
@@ -2837,6 +2838,7 @@ paths:
                   default: false
                   type: boolean
                 hdidle_ignore_spin_down_detection:
+                  default: false
                   type: boolean
                 hostname:
                   type: string
@@ -2965,8 +2967,8 @@ paths:
     post:
       operationId: post-api-share
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -3675,8 +3677,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3718,8 +3720,8 @@ paths:
     get:
       operationId: list-api-telemetry-modes
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3850,8 +3852,8 @@ paths:
     get:
       operationId: list-api-update-channels
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3958,8 +3960,8 @@ paths:
             maxLength: 30
             minimum: 1
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -4159,8 +4161,8 @@ paths:
           schema:
             description: The ID of the disk to eject (e.g., sda, sdb)
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -4316,8 +4318,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
