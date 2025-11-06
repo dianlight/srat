@@ -13,7 +13,7 @@ import {
 	type SxProps,
 	type Theme,
 } from "@mui/material";
-import { SparkLineChart } from "@mui/x-charts/SparkLineChart";
+import { SafeSparkLineChart as SparkLineChart } from "../../../components/charts/SafeSparkLineChart";
 
 const MAX_HISTORY_LENGTH = 10;
 
@@ -193,4 +193,11 @@ export function MetricCard({
 			</CardContent>
 		</Card>
 	);
+}
+
+// Force a full reload on HMR updates to avoid @mui/x-charts internal hook mismatch during hot swapping
+if (import.meta && (import.meta as any).hot) {
+	(import.meta as any).hot.accept(() => {
+		window.location.reload();
+	});
 }
