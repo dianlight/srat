@@ -71,7 +71,7 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, dto.ErrorUserAlreadyExists
 		}
-		slog.Error("Error creating user in repository", "err", err)
+		//slog.Error("Error creating user in repository", "err", err)
 		return nil, errors.Wrap(err, "failed to create user in repository")
 	}
 

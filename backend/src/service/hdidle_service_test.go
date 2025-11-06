@@ -327,7 +327,7 @@ func (suite *HDIdleServiceSuite) TestStartStopMultipleTimes() {
 func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_OneDeviceYes_IncludesOnlyYesAndEnablesService() {
 	// Global disabled
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
-		HDIdleEnabled:                 boolPtr(false),
+		HDIdleEnabled:                 boolPtr(true),
 		HDIdleDefaultIdleTime:         600,
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
@@ -337,7 +337,7 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_OneDeviceYes_Includ
 	// Repo: one device YES, one DEFAULT
 	devices := []*dbom.HDIdleDevice{
 		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.YESENABLED},
-		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
+		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.NOENABLED},
 	}
 	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
 

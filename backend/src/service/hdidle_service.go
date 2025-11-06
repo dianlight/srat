@@ -199,7 +199,7 @@ func (s *hDIdleService) Stop() errors.E {
 		return errors.New("HDIdle service is not running")
 	}
 
-	tlog.Info("Stopping HDIdle service")
+	tlog.Debug("Stopping HDIdle service")
 	close(s.stopChan)
 	s.running = false
 	s.diskStats = []diskState{}
@@ -327,7 +327,7 @@ func (s *hDIdleService) GetEffectiveConfig() HDIdleEffectiveConfig {
 		return ec
 	}
 	ec.Enabled = cfg.Enabled
-	if len(cfg.Devices) > 0 {
+	if len(cfg.Devices) > 0 && ec.Enabled {
 		ec.Devices = make([]string, 0, len(cfg.Devices))
 		for _, d := range cfg.Devices {
 			// Return GivenName which is the configured DevicePath
@@ -412,7 +412,7 @@ func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
 
 	devices, err := s.hdidlerepo.LoadAll()
 	if err != nil {
-		tlog.Error("Failed to load HDIdle devices from repository", "error", err)
+		//tlog.Error("Failed to load HDIdle devices from repository", "error", err)
 		return nil, errors.Wrap(err, "failed to load HDIdle devices")
 	}
 

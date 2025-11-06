@@ -10,6 +10,8 @@ idiomatic Go API for accessing SMART information from storage devices.
   - Device scanning and discovery
   - SMART health status checking
   - Detailed SMART attribute reading
+  - Disk type detection (SSD, HDD, NVMe, Unknown)
+  - Rotation rate (RPM) information for HDDs
   - Temperature monitoring
   - Power-on time tracking
   - Self-test execution and progress monitoring

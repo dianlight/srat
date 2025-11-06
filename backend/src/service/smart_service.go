@@ -355,7 +355,7 @@ func (s *smartService) StartSelfTest(devicePath string, testType dto.SmartTestTy
 		return errors.Wrapf(err, "failed to start SMART self-test")
 	}
 
-	slog.Info("SMART self-test started", "device", devicePath, "type", testType)
+	slog.Debug("SMART self-test started", "device", devicePath, "type", testType)
 	return nil
 }
 
@@ -383,7 +383,7 @@ func (s *smartService) AbortSelfTest(devicePath string) errors.E {
 		return errors.Wrapf(err, "failed to abort SMART self-test")
 	}
 
-	slog.Info("SMART self-test aborted", "device", devicePath)
+	slog.Debug("SMART self-test aborted", "device", devicePath)
 	return nil
 }
 
@@ -468,7 +468,7 @@ func (s *smartService) EnableSMART(devicePath string) errors.E {
 			"reason", "SMART enable command executed but device reports disabled")
 	}
 
-	slog.Info("SMART enabled and verified", "device", devicePath)
+	slog.Debug("SMART enabled and verified", "device", devicePath)
 	return nil
 }
 
@@ -501,6 +501,6 @@ func (s *smartService) DisableSMART(devicePath string) errors.E {
 		tlog.Warn("SMART disable command executed but device still reports enabled", "device", devicePath)
 	}
 
-	slog.Info("SMART disabled", "device", devicePath)
+	slog.Debug("SMART disabled", "device", devicePath)
 	return nil
 }

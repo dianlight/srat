@@ -116,6 +116,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 			mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[service.HaWsServiceInterface],
+			mock.Mock[service.HDIdleServiceInterface],
 		),
 		fx.Populate(&suite.sambaService),
 		fx.Populate(&suite.property_repo),

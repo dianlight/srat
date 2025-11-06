@@ -81,7 +81,7 @@ github.com/dave/jennifer/jen
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dianlight/smartmontools-go v0.0.4
+# github.com/dianlight/smartmontools-go v0.0.5
 ## explicit; go 1.24.7
 github.com/dianlight/smartmontools-go
 # github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
@@ -90,7 +90,7 @@ github.com/dprotaso/go-yit
 # github.com/dustin/go-humanize v1.0.1
 ## explicit; go 1.16
 github.com/dustin/go-humanize
-# github.com/ebitengine/purego v0.9.0
+# github.com/ebitengine/purego v0.9.1
 ## explicit; go 1.18
 github.com/ebitengine/purego
 github.com/ebitengine/purego/internal/cgo
@@ -265,7 +265,7 @@ github.com/mohae/deepcopy
 # github.com/ncruces/go-strftime v1.0.0
 ## explicit; go 1.17
 github.com/ncruces/go-strftime
-# github.com/oapi-codegen/oapi-codegen/v2 v2.5.0
+# github.com/oapi-codegen/oapi-codegen/v2 v2.5.1
 ## explicit; go 1.22.5
 github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 github.com/oapi-codegen/oapi-codegen/v2/pkg/codegen
@@ -287,7 +287,7 @@ github.com/ovechkin-dm/go-dyno/pkg/dyno
 github.com/ovechkin-dm/go-dyno/pkg/dynoconfig
 github.com/ovechkin-dm/go-dyno/pkg/dynoopts
 github.com/ovechkin-dm/go-dyno/proxy
-# github.com/ovechkin-dm/mockio/v2 v2.0.3
+# github.com/ovechkin-dm/mockio/v2 v2.0.4
 ## explicit; go 1.21
 github.com/ovechkin-dm/mockio/v2/config
 github.com/ovechkin-dm/mockio/v2/matchers
@@ -311,7 +311,7 @@ github.com/pelletier/go-toml/v2/unstable
 # github.com/perimeterx/marshmallow v1.1.5
 ## explicit; go 1.17
 github.com/perimeterx/marshmallow
-# github.com/petermattis/goid v0.0.0-20250721140440-ea1c0173183e
+# github.com/petermattis/goid v0.0.0-20250904145737-900bdf8bb490
 ## explicit; go 1.17
 github.com/petermattis/goid
 # github.com/pilebones/go-udev v0.9.1
@@ -339,7 +339,7 @@ github.com/pressly/goose/v3/internal/sqlparser
 github.com/pressly/goose/v3/lock
 github.com/pressly/goose/v3/lock/internal/store
 github.com/pressly/goose/v3/lock/internal/table
-# github.com/prometheus/procfs v0.19.1
+# github.com/prometheus/procfs v0.19.2
 ## explicit; go 1.24.0
 github.com/prometheus/procfs
 github.com/prometheus/procfs/blockdevice
@@ -386,8 +386,8 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/sethvargo/go-retry v0.3.0
 ## explicit; go 1.21
 github.com/sethvargo/go-retry
-# github.com/shirou/gopsutil/v4 v4.25.9
-## explicit; go 1.23.0
+# github.com/shirou/gopsutil/v4 v4.25.10
+## explicit; go 1.24.0
 github.com/shirou/gopsutil/v4/common
 github.com/shirou/gopsutil/v4/cpu
 github.com/shirou/gopsutil/v4/disk
@@ -654,7 +654,7 @@ gorm.io/gen/internal/model
 gorm.io/gen/internal/parser
 gorm.io/gen/internal/template
 gorm.io/gen/internal/utils/pools
-# gorm.io/gorm v1.31.0
+# gorm.io/gorm v1.31.1
 ## explicit; go 1.18
 gorm.io/gorm
 gorm.io/gorm/callbacks
@@ -706,7 +706,7 @@ modernc.org/mathutil
 # modernc.org/memory v1.11.0
 ## explicit; go 1.23.0
 modernc.org/memory
-# modernc.org/sqlite v1.39.1
+# modernc.org/sqlite v1.40.0
 ## explicit; go 1.24.0
 modernc.org/sqlite/lib
 # moul.io/banner v1.0.1

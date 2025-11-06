@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/dianlight/smartmontools-go"
@@ -248,7 +247,7 @@ func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
 	suite.True(ok, "Error details should contain 'reason' key")
 	reason, ok := reasonVal.(string)
 	suite.True(ok, "Error reason should be a string")
-	suite.True(strings.Contains(reason, "not readable"),
+	suite.Contains(reason, "not readable",
 		"Expected reason to contain 'not readable', got: %s", reason)
 }
 

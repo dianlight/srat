@@ -8,13 +8,19 @@ package smartmontools
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os/exec"
 	"regexp"
 	"strings"
 	"time"
+)
+
+// SMART attribute IDs for SSD detection
+const (
+	SmartAttrSSDLifeLeft       = 231 // SSD Life Left attribute
+	SmartAttrSandForceInternal = 233 // SandForce Internal (SSD-specific)
+	SmartAttrTotalLBAsWritten  = 234 // Total LBAs Written (SSD-specific)
 )
 
 // Commander interface for executing commands
@@ -75,6 +81,7 @@ type UserCapacity struct {
 	Bytes  int64 `json:"bytes"`
 }
 
+// SMARTInfo represents comprehensive SMART information for a storage device
 type SMARTInfo struct {
 	Device                     Device                      `json:"device"`
 	ModelFamily                string                      `json:"model_family,omitempty"`
@@ -82,6 +89,8 @@ type SMARTInfo struct {
 	SerialNumber               string                      `json:"serial_number,omitempty"`
 	Firmware                   string                      `json:"firmware_version,omitempty"`
 	UserCapacity               *UserCapacity               `json:"user_capacity,omitempty"`
+	RotationRate               *int                        `json:"rotation_rate,omitempty"` // Rotation rate in RPM (0 for SSDs, >0 for HDDs, nil if not available or not applicable)
+	DiskType                   string                      `json:"-"`                       // Computed disk type: "SSD", "HDD", "NVMe", or "Unknown"
 	SmartStatus                SmartStatus                 `json:"smart_status,omitempty"`
 	SmartSupport               *SmartSupport               `json:"smart_support,omitempty"`
 	AtaSmartData               *AtaSmartData               `json:"ata_smart_data,omitempty"`
@@ -352,7 +361,13 @@ func (c *Client) GetSMARTInfo(devicePath string) (*SMARTInfo, error) {
 						slog.Warn("smartctl message", "severity", msg.Severity, "message", msg.String)
 					}
 				}
-				return &smartInfo, errors.New("SMART Not Supported")
+				smartInfo.DiskType = determineDiskType(&smartInfo)
+				// If we have valid device information, return it without error
+				// If device name is empty, SMART is likely not supported
+				if smartInfo.Device.Name != "" {
+					return &smartInfo, nil
+				}
+				return &smartInfo, fmt.Errorf("SMART Not Supported")
 			}
 		}
 		return nil, fmt.Errorf("failed to get SMART info: %w", err)
@@ -370,7 +385,48 @@ func (c *Client) GetSMARTInfo(devicePath string) (*SMARTInfo, error) {
 		}
 	}
 
+	// Determine disk type based on rotation rate and device type
+	smartInfo.DiskType = determineDiskType(&smartInfo)
+
 	return &smartInfo, nil
+}
+
+// determineDiskType determines the type of disk based on available information
+func determineDiskType(info *SMARTInfo) string {
+	// Check for NVMe devices first
+	if info.Device.Type == "nvme" || info.NvmeSmartHealth != nil || info.NvmeControllerCapabilities != nil {
+		return "NVMe"
+	}
+
+	// Check rotation rate for ATA/SATA devices
+	if info.RotationRate != nil {
+		if *info.RotationRate == 0 {
+			return "SSD"
+		}
+		return "HDD"
+	}
+
+	// Check device type from smartctl
+	deviceType := strings.ToLower(info.Device.Type)
+	if strings.Contains(deviceType, "nvme") {
+		return "NVMe"
+	}
+	if strings.Contains(deviceType, "sata") || strings.Contains(deviceType, "ata") || strings.Contains(deviceType, "sat") {
+		// If we have ATA SMART data but no rotation rate, try to infer
+		if info.AtaSmartData != nil {
+			// Look for SSD-specific attributes
+			if info.AtaSmartData.Table != nil {
+				for _, attr := range info.AtaSmartData.Table {
+					if attr.ID == SmartAttrSSDLifeLeft || attr.ID == SmartAttrSandForceInternal || attr.ID == SmartAttrTotalLBAsWritten {
+						return "SSD"
+					}
+				}
+			}
+		}
+	}
+
+	// If we can't determine, return Unknown
+	return "Unknown"
 }
 
 // CheckHealth checks if a device is healthy according to SMART
