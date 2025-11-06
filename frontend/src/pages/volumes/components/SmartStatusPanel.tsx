@@ -162,6 +162,33 @@ export function SmartStatusPanel({
             <Collapse in={smartExpanded} timeout="auto" unmountOnExit>
                 <CardContent>
                     <Stack spacing={3}>
+                        {/* Disk Type & RPM Section */}
+                        {(smartInfo.disk_type || (smartInfo.rotation_rate && smartInfo.rotation_rate > 0)) && (
+                            <Box>
+                                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                    Device Information
+                                </Typography>
+                                <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" sx={{ gap: 1 }}>
+                                    {smartInfo.disk_type && (
+                                        <Chip
+                                            label={smartInfo.disk_type}
+                                            color="primary"
+                                            size="small"
+                                            variant="outlined"
+                                        />
+                                    )}
+                                    {smartInfo.rotation_rate && smartInfo.rotation_rate > 0 && (
+                                        <Chip
+                                            label={`${smartInfo.rotation_rate} RPM`}
+                                            color="info"
+                                            size="small"
+                                            variant="outlined"
+                                        />
+                                    )}
+                                </Stack>
+                            </Box>
+                        )}
+
                         {/* Temperature Section */}
                         {smartInfo.temperature && (
                             <Box>

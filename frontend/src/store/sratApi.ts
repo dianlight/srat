@@ -914,6 +914,7 @@ export type SmartInfo = {
   };
   power_cycle_count: SmartRangeValue;
   power_on_hours: SmartRangeValue;
+  rotation_rate?: number;
   supported: boolean;
   temperature: SmartTempValue;
 };

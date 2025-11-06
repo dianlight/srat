@@ -485,4 +485,166 @@ describe("SmartStatusPanel Component", () => {
         expect(tempRanges).toHaveLength(1);
         expect(tempRanges[0]).toBeTruthy();
     });
+
+    it("should display disk type when available", async () => {
+        const React = await import("react");
+        const { render, screen, act, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { SmartStatusPanel } = await import("../SmartStatusPanel");
+
+        const mockSmartInfo = {
+            disk_type: "SATA",
+            temperature: { value: 45 },
+            power_on_hours: { value: 10000 },
+            power_cycle_count: { value: 500 },
+            enabled: true,
+            supported: true,
+        } as any;
+
+        const { container } = render(
+            React.createElement(SmartStatusPanel, {
+                smartInfo: mockSmartInfo,
+                isSmartSupported: true,
+                isReadOnlyMode: false,
+            }),
+        );
+
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            const user = userEvent.setup();
+            await act(async () => {
+                await user.click(expandBtn as any);
+            });
+        }
+
+        // Should display disk type
+        const diskTypeChip = await within(container).findAllByText("SATA");
+        expect(diskTypeChip.length).toBeGreaterThan(0);
+    });
+
+    it("should display RPM when rotation_rate > 0", async () => {
+        const React = await import("react");
+        const { render, screen, act, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { SmartStatusPanel } = await import("../SmartStatusPanel");
+
+        const mockSmartInfo = {
+            disk_type: "SATA",
+            rotation_rate: 7200,
+            temperature: { value: 45 },
+            power_on_hours: { value: 10000 },
+            power_cycle_count: { value: 500 },
+            enabled: true,
+            supported: true,
+        } as any;
+
+        const { container } = render(
+            React.createElement(SmartStatusPanel, {
+                smartInfo: mockSmartInfo,
+                isSmartSupported: true,
+                isReadOnlyMode: false,
+            }),
+        );
+
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            const user = userEvent.setup();
+            await act(async () => {
+                await user.click(expandBtn as any);
+            });
+        }
+
+        // Should display RPM
+        const rpmChip = await within(container).findAllByText("7200 RPM");
+        expect(rpmChip.length).toBeGreaterThan(0);
+    });
+
+    it("should not display RPM when rotation_rate is 0", async () => {
+        const React = await import("react");
+        const { render, screen, act, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { SmartStatusPanel } = await import("../SmartStatusPanel");
+
+        const mockSmartInfo = {
+            disk_type: "SATA",
+            rotation_rate: 0, // SSD
+            temperature: { value: 45 },
+            power_on_hours: { value: 10000 },
+            power_cycle_count: { value: 500 },
+            enabled: true,
+            supported: true,
+        } as any;
+
+        const { container } = render(
+            React.createElement(SmartStatusPanel, {
+                smartInfo: mockSmartInfo,
+                isSmartSupported: true,
+                isReadOnlyMode: false,
+            }),
+        );
+
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            const user = userEvent.setup();
+            await act(async () => {
+                await user.click(expandBtn as any);
+            });
+        }
+
+        // Should NOT display RPM
+        const rpmChips = within(container).queryAllByText(/RPM/);
+        expect(rpmChips.length).toBe(0);
+    });
+
+    it("should display both disk type and RPM for HDDs", async () => {
+        const React = await import("react");
+        const { render, screen, act, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { SmartStatusPanel } = await import("../SmartStatusPanel");
+
+        const mockSmartInfo = {
+            disk_type: "SATA",
+            rotation_rate: 5400,
+            temperature: { value: 40 },
+            power_on_hours: { value: 8000 },
+            power_cycle_count: { value: 300 },
+            enabled: true,
+            supported: true,
+        } as any;
+
+        const { container } = render(
+            React.createElement(SmartStatusPanel, {
+                smartInfo: mockSmartInfo,
+                isSmartSupported: true,
+                isReadOnlyMode: false,
+            }),
+        );
+
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            const user = userEvent.setup();
+            await act(async () => {
+                await user.click(expandBtn as any);
+            });
+        }
+
+        // Should display both disk type and RPM
+        const diskTypeChip = await within(container).findAllByText("SATA");
+        expect(diskTypeChip.length).toBeGreaterThan(0);
+
+        const rpmChip = await within(container).findAllByText("5400 RPM");
+        expect(rpmChip.length).toBeGreaterThan(0);
+
+        // Should have "Device Information" section
+        const deviceInfoSection = await within(container).findAllByText("Device Information");
+        expect(deviceInfoSection.length).toBeGreaterThan(0);
+    });
 });

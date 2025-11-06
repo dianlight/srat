@@ -222,6 +222,103 @@ func (suite *SmartServiceSuite) TestGetSmartInfoSuccess() {
 	suite.Equal(50, info.PowerCycleCount.Value)
 }
 
+func (suite *SmartServiceSuite) TestGetSmartInfoWithRotationRate() {
+	// Create a temporary file to simulate device existence
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	rpm := 7200
+	// Mock smartctl response with rotation rate
+	mockSMARTInfo := &smartmontools.SMARTInfo{
+		Device: smartmontools.Device{
+			Name: tempFile.Name(),
+			Type: "sat",
+		},
+		SmartSupport: &smartmontools.SmartSupport{
+			Available: true,
+			Enabled:   true,
+		},
+		RotationRate: &rpm,
+		Temperature: &smartmontools.Temperature{
+			Current: 40,
+		},
+		PowerOnTime: &smartmontools.PowerOnTime{
+			Hours: 5000,
+		},
+		PowerCycleCount: 100,
+		AtaSmartData: &smartmontools.AtaSmartData{
+			Table: []smartmontools.SmartAttribute{},
+		},
+	}
+
+	suite.mockClient.getSMARTInfoFunc = func(devicePath string) (*smartmontools.SMARTInfo, error) {
+		if devicePath == tempFile.Name() {
+			return mockSMARTInfo, nil
+		}
+		return nil, errors.New("device not found")
+	}
+
+	// Execute
+	info, err := suite.service.GetSmartInfo(tempFile.Name())
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(info)
+	suite.Equal("SATA", info.DiskType)
+	suite.Equal(7200, info.RotationRate, "RPM should be populated when > 0")
+	suite.True(info.Enabled)
+	suite.Equal(40, info.Temperature.Value)
+	suite.Equal(5000, info.PowerOnHours.Value)
+	suite.Equal(100, info.PowerCycleCount.Value)
+}
+
+func (suite *SmartServiceSuite) TestGetSmartInfoWithZeroRotationRate() {
+	// Create a temporary file to simulate device existence
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	rpm := 0 // SSD
+	// Mock smartctl response with zero rotation rate
+	mockSMARTInfo := &smartmontools.SMARTInfo{
+		Device: smartmontools.Device{
+			Name: tempFile.Name(),
+			Type: "sat",
+		},
+		SmartSupport: &smartmontools.SmartSupport{
+			Available: true,
+			Enabled:   true,
+		},
+		RotationRate: &rpm,
+		Temperature: &smartmontools.Temperature{
+			Current: 30,
+		},
+		PowerOnTime: &smartmontools.PowerOnTime{
+			Hours: 2000,
+		},
+		PowerCycleCount: 75,
+		AtaSmartData: &smartmontools.AtaSmartData{
+			Table: []smartmontools.SmartAttribute{},
+		},
+	}
+
+	suite.mockClient.getSMARTInfoFunc = func(devicePath string) (*smartmontools.SMARTInfo, error) {
+		if devicePath == tempFile.Name() {
+			return mockSMARTInfo, nil
+		}
+		return nil, errors.New("device not found")
+	}
+
+	// Execute
+	info, err := suite.service.GetSmartInfo(tempFile.Name())
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(info)
+	suite.Equal("SATA", info.DiskType)
+	suite.Equal(0, info.RotationRate, "RPM should not be populated when = 0 (SSD)")
+	suite.True(info.Enabled)
+}
+
 func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
 	// Skip this test if running as root (uid 0) since permission checks don't work
 	if os.Getuid() == 0 {

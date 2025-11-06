@@ -17,6 +17,7 @@ type SmartTempValue struct {
 
 type SmartInfo struct {
 	DiskType        string                     `json:"disk_type,omitempty" enum:"SATA,NVMe,SCSI,Unknown"`
+	RotationRate    int                        `json:"rotation_rate,omitempty"` // RPM, only populated if > 0 (HDDs)
 	Temperature     SmartTempValue             `json:"temperature"`
 	PowerOnHours    SmartRangeValue            `json:"power_on_hours"`
 	PowerCycleCount SmartRangeValue            `json:"power_cycle_count"`

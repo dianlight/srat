@@ -124,6 +124,11 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 		Supported: true,
 	}
 
+	// Extract rotation rate (RPM) if available and > 0
+	if smartInfo.RotationRate != nil && *smartInfo.RotationRate > 0 {
+		ret.RotationRate = *smartInfo.RotationRate
+	}
+
 	// Extract temperature
 	if smartInfo.Temperature != nil {
 		ret.Temperature.Value = smartInfo.Temperature.Current
