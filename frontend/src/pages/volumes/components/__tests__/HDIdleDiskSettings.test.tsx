@@ -21,8 +21,9 @@ describe("HDIdleDiskSettings Component", () => {
     it("renders accordion with disk settings title", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("../../../../../test/setup");
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-        const { useForm } = await import("react-hook-form-mui");
 
         const mockDisk = {
             id: "disk-1",
@@ -32,36 +33,25 @@ describe("HDIdleDiskSettings Component", () => {
             removable: false,
         };
 
-        const TestWrapper = () => {
-            const { control } = useForm({
-                defaultValues: {
-                    hdidle_disk_sda_idle_time: 0,
-                    hdidle_disk_sda_command_type: "",
-                    hdidle_disk_sda_power_condition: 0,
-                },
-            });
+        const store = await createTestStore();
+        render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
+            })
+        );
 
-            return React.createElement(
-                HDIdleDiskSettings as any,
-                {
-                    disk: mockDisk,
-                    control,
-                    readOnly: false,
-                }
-            );
-        };
-
-        render(React.createElement(TestWrapper));
-
-        const title = await screen.findByText(/HDIdle Disk Spin-Down Settings/i);
+        const title = await screen.findByText(/Power Settings/i);
         expect(title).toBeTruthy();
     });
 
     it("displays disk model in description", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("../../../../../test/setup");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-        const { useForm } = await import("react-hook-form-mui");
 
         const mockDisk = {
             id: "disk-1",
@@ -71,36 +61,30 @@ describe("HDIdleDiskSettings Component", () => {
             removable: false,
         };
 
-        const TestWrapper = () => {
-            const { control } = useForm({
-                defaultValues: {
-                    hdidle_disk_sda_idle_time: 0,
-                    hdidle_disk_sda_command_type: "",
-                    hdidle_disk_sda_power_condition: 0,
-                },
-            });
+        const store = await createTestStore();
+        const user = userEvent.setup();
 
-            return React.createElement(
-                HDIdleDiskSettings as any,
-                {
-                    disk: mockDisk,
-                    control,
-                    readOnly: false,
-                }
-            );
-        };
+        render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
+            })
+        );
 
-        const { container } = render(React.createElement(TestWrapper));
+        const expandBtn = await screen.findByRole("button", { name: /show more/i });
+        await user.click(expandBtn);
 
-        // Component should render with title
-        expect(container.innerHTML).toContain("HDIdle Disk Spin-Down Settings");
+        const model = await screen.findByText(/Samsung SSD 870/i);
+        expect(model).toBeTruthy();
     });
 
     it("renders idle time configuration field", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("../../../../../test/setup");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-        const { useForm } = await import("react-hook-form-mui");
 
         const mockDisk = {
             id: "disk-1",
@@ -110,36 +94,30 @@ describe("HDIdleDiskSettings Component", () => {
             removable: false,
         };
 
-        const TestWrapper = () => {
-            const { control } = useForm({
-                defaultValues: {
-                    hdidle_disk_sdb_idle_time: 0,
-                    hdidle_disk_sdb_command_type: "",
-                    hdidle_disk_sdb_power_condition: 0,
-                },
-            });
+        const store = await createTestStore();
+        const user = userEvent.setup();
 
-            return React.createElement(
-                HDIdleDiskSettings as any,
-                {
-                    disk: mockDisk,
-                    control,
-                    readOnly: false,
-                }
-            );
-        };
+        render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
+            })
+        );
 
-        const { container } = render(React.createElement(TestWrapper));
+        const expandBtn = await screen.findByRole("button", { name: /show more/i });
+        await user.click(expandBtn);
 
-        // Component should render with title
-        expect(container.innerHTML).toContain("HDIdle Disk Spin-Down Settings");
+        const idleField = await screen.findByLabelText(/Idle Time/i);
+        expect(idleField).toBeTruthy();
     });
 
     it("renders command type configuration field", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("../../../../../test/setup");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-        const { useForm } = await import("react-hook-form-mui");
 
         const mockDisk = {
             id: "disk-1",
@@ -149,36 +127,30 @@ describe("HDIdleDiskSettings Component", () => {
             removable: true,
         };
 
-        const TestWrapper = () => {
-            const { control } = useForm({
-                defaultValues: {
-                    hdidle_disk_sdc_idle_time: 0,
-                    hdidle_disk_sdc_command_type: "",
-                    hdidle_disk_sdc_power_condition: 0,
-                },
-            });
+        const store = await createTestStore();
+        const user = userEvent.setup();
 
-            return React.createElement(
-                HDIdleDiskSettings as any,
-                {
-                    disk: mockDisk,
-                    control,
-                    readOnly: false,
-                }
-            );
-        };
+        render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
+            })
+        );
 
-        const { container } = render(React.createElement(TestWrapper));
+        const expandBtn = await screen.findByRole("button", { name: /show more/i });
+        await user.click(expandBtn);
 
-        // Component should render with title
-        expect(container.innerHTML).toContain("HDIdle Disk Spin-Down Settings");
+        const cmdType = await screen.findByLabelText(/Command Type/i);
+        expect(cmdType).toBeTruthy();
     });
 
     it("respects readOnly mode", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("../../../../../test/setup");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-        const { useForm } = await import("react-hook-form-mui");
 
         const mockDisk = {
             id: "disk-1",
@@ -188,34 +160,33 @@ describe("HDIdleDiskSettings Component", () => {
             removable: false,
         };
 
-        const TestWrapper = () => {
-            const { control } = useForm({
-                defaultValues: {
-                    hdidle_disk_sda_idle_time: 0,
-                    hdidle_disk_sda_command_type: "",
-                    hdidle_disk_sda_power_condition: 0,
-                },
-            });
+        const store = await createTestStore();
+        const user = userEvent.setup();
 
-            return React.createElement(
-                HDIdleDiskSettings as any,
-                {
-                    disk: mockDisk,
-                    control,
-                    readOnly: true,
-                }
-            );
-        };
+        render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: true }),
+            })
+        );
 
-        const { container } = render(React.createElement(TestWrapper));
+        const expandBtn = await screen.findByRole("button", { name: /show more/i });
+        await user.click(expandBtn);
 
-        // Component should render in read-only mode
-        expect(container).toBeTruthy();
-    }); it("handles disk without name using ID", async () => {
+        const idleField = await screen.findByLabelText(/Idle Time/i);
+        const cmdType = await screen.findByLabelText(/Command Type/i);
+        expect((idleField as HTMLInputElement).disabled).toBe(true);
+        // Autocomplete renders an input with combobox role
+        expect((cmdType as HTMLInputElement).getAttribute('aria-disabled') === 'true' || (cmdType as HTMLInputElement).disabled === true).toBeTruthy();
+    });
+
+    it("handles disk without name using ID", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("../../../../../test/setup");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-        const { useForm } = await import("react-hook-form-mui");
 
         const mockDisk = {
             id: "disk-unknown",
@@ -224,28 +195,21 @@ describe("HDIdleDiskSettings Component", () => {
             removable: false,
         };
 
-        const TestWrapper = () => {
-            const { control } = useForm({
-                defaultValues: {
-                    hdidle_disk_disk_unknown_idle_time: 0,
-                    hdidle_disk_disk_unknown_command_type: "",
-                    hdidle_disk_disk_unknown_power_condition: 0,
-                },
-            });
+        const store = await createTestStore();
+        const user = userEvent.setup();
 
-            return React.createElement(
-                HDIdleDiskSettings as any,
-                {
-                    disk: mockDisk,
-                    control,
-                    readOnly: false,
-                }
-            );
-        };
+        render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
+            })
+        );
 
-        const { container } = render(React.createElement(TestWrapper));
+        const expandBtn = await screen.findByRole("button", { name: /show more/i });
+        await user.click(expandBtn);
 
-        // Should render even without a name, using ID
-        expect(container).toBeTruthy();
+        // Should render model even without a name, falling back to id or model
+        const model = await screen.findByText(/Mystery Disk|disk-unknown/i);
+        expect(model).toBeTruthy();
     });
 });
