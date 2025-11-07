@@ -8,11 +8,11 @@ This document provides an overview of the test coverage for the SRAT project, in
 
 | Component             | Coverage | Status    |
 | --------------------- | -------- | --------- |
-| Backend (Go)          | 34.3%    | 🟠 Orange |
-| Frontend (TypeScript) | 70.30%   | 🟢 Green  |
-| Global (Weighted)     | 48.7%    | 🟡 Yellow |
+| Backend (Go)          | 40.9%    | 🟡 Yellow |
+| Frontend (TypeScript) | 70.81%   | ✅ Good |
+| Global (Weighted)     | 52.9%    | 🟡 Yellow |
 
-*Last updated: 2025-11-06*
+*Last updated: 2025-11-07*
 
 ## Backend Package-Level Coverage
 
@@ -20,34 +20,34 @@ The following table shows coverage for all backend packages. The target is **60%
 
 | Package                    | Coverage | Status        | Priority to Improve       |
 | -------------------------- | -------- | ------------- | ------------------------- |
-| `api`                      | 48.1%    | 🟠 Needs Work | High - Close to target    |
-| `cmd/srat-cli`             | 5.7%     | 🔴 Critical   | Low - CLI testing complex |
-| `cmd/srat-openapi`         | 17.9%    | 🔴 Critical   | Low - Code gen utility    |
-| `cmd/srat-server`          | 5.4%     | 🔴 Critical   | Low - Main entry point    |
-| `config`                   | 71.1%    | ✅ Good       | None                      |
-| `converter`                | 27.2%    | 🟠 Needs Work | Medium                    |
-| `dbom`                     | 19.0%    | 🔴 Critical   | High                      |
-| `dbom/migrations`          | 63.8%    | ✅ Good       | None                      |
-| `dto`                      | 19.1%    | 🔴 Critical   | High                      |
-| `homeassistant/addons`     | 13.2%    | 🔴 Critical   | Medium                    |
-| `homeassistant/core`       | 25.8%    | 🟠 Needs Work | Medium                    |
-| `homeassistant/core_api`   | 45.0%    | 🟠 Needs Work | Medium                    |
-| `homeassistant/hardware`   | 16.3%    | 🔴 Critical   | Medium                    |
-| `homeassistant/host`       | 27.3%    | 🟠 Needs Work | Medium                    |
-| `homeassistant/ingress`    | 20.8%    | 🟠 Needs Work | Medium                    |
-| `homeassistant/mount`      | 36.8%    | 🟠 Needs Work | Medium                    |
-| `homeassistant/resolution` | 13.7%    | 🔴 Critical   | Medium                    |
-| `homeassistant/root`       | 19.6%    | 🔴 Critical   | Medium                    |
-| `homeassistant/websocket`  | 60.9%    | ✅ Good       | None                      |
-| `internal`                 | 88.6%    | ✅ Excellent  | None                      |
-| `internal/appsetup`        | 80.0%    | ✅ Excellent  | None                      |
-| `internal/osutil`          | 77.4%    | ✅ Excellent  | None                      |
-| `repository`               | 71.0%    | ✅ Good       | None                      |
-| `server`                   | 33.8%    | 🟠 Needs Work | High                      |
-| `service`                  | 33.6%    | 🟠 Needs Work | High                      |
-| `tempio`                   | 85.7%    | ✅ Excellent  | None                      |
-| `tlog`                     | 83.9%    | ✅ Excellent  | None                      |
-| `unixsamba`                | 75.1%    | ✅ Excellent  | None                      |
+| `api`                      | 76.5% | ✅ Good | High - Close to target    |
+| `cmd/srat-cli`             | 5.4% | 🔴 Critical | Low - CLI testing complex |
+| `cmd/srat-openapi`         | 17.9% | 🔴 Critical | Low - Code gen utility    |
+| `cmd/srat-server`          | 5.3% | 🔴 Critical | Low - Main entry point    |
+| `config`                   | 73.7% | ✅ Good | None                      |
+| `converter`                | 32.8% | 🟠 Needs Work | Medium                    |
+| `dbom`                     | 25.8% | 🟠 Needs Work | High                      |
+| `dbom/migrations`          | 63.8% | ✅ Good | None                      |
+| `dto`                      | 29.3% | 🟠 Needs Work | High                      |
+| `homeassistant/addons`     | 13.2% | 🔴 Critical | Medium                    |
+| `homeassistant/core`       | 25.8% | 🟠 Needs Work | Medium                    |
+| `homeassistant/core_api`   | 45.0% | 🟠 Needs Work | Medium                    |
+| `homeassistant/hardware`   | 16.3% | 🔴 Critical | Medium                    |
+| `homeassistant/host`       | 27.3% | 🟠 Needs Work | Medium                    |
+| `homeassistant/ingress`    | 20.8% | 🟠 Needs Work | Medium                    |
+| `homeassistant/mount`      | 36.8% | 🟠 Needs Work | Medium                    |
+| `homeassistant/resolution` | 13.7% | 🔴 Critical | Medium                    |
+| `homeassistant/root`       | 19.6% | 🔴 Critical | Medium                    |
+| `homeassistant/websocket`  | 60.9% | ✅ Good | None                      |
+| `internal`                 | 88.6% | ✅ Excellent | None                      |
+| `internal/appsetup`        | 51.3% | 🟠 Needs Work | None                      |
+| `internal/osutil`          | 63.0% | ✅ Good | None                      |
+| `repository`               | 67.5% | ✅ Good | None                      |
+| `server`                   | 60.0% | ✅ Good | High                      |
+| `service`                  | 45.1% | 🟠 Needs Work | High                      |
+| `tempio`                   | 46.9% | 🟠 Needs Work | None                      |
+| `tlog`                     | 83.9% | ✅ Excellent | None                      |
+| `unixsamba`                | 75.1% | ✅ Good | None                      |
 
 **Summary:**
 
@@ -160,9 +160,9 @@ The following graphs show the evolution of test coverage over time.
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Backend Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06, 2025-11-07]
   y-axis "Coverage %" 0 --> 100
-  line [34.3, 36.5, 41.0, 45.2, 39.9, 34.3, 39.9, 40.8]
+  line [34.3, 36.5, 41.0, 45.2, 39.9, 34.3, 39.9, 40.8, 40.9]
 ```
 
 ### Frontend Coverage Over Time
@@ -171,9 +171,9 @@ xychart-beta
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Frontend Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06, 2025-11-07]
   y-axis "Coverage %" 0 --> 100
-  line [73.11, 73.11, 72.0, 72.0, 70.30, , 72.51, 71.48]
+  line [73.11, 73.11, 72.0, 72.0, 70.30, 72.51, 71.48, 70.81]
 ```
 
 ### Global Coverage Over Time
@@ -182,9 +182,9 @@ xychart-beta
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Global Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06, 2025-11-07]
   y-axis "Coverage %" 0 --> 100
-  line [53.2, 53.2, 53.2, 53.2, 53.2, 48.7, 52.9, 53.1]
+  line [53.2, 53.2, 53.2, 53.2, 53.2, 48.7, 52.9, 53.1, 52.9]
 ```
 
 ## Coverage Improvement Goals
