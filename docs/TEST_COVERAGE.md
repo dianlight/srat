@@ -9,7 +9,7 @@ This document provides an overview of the test coverage for the SRAT project, in
 | Component             | Coverage | Status    |
 | --------------------- | -------- | --------- |
 | Backend (Go)          | 40.9%    | 🟡 Yellow |
-| Frontend (TypeScript) | 70.81%   | ✅ Good |
+| Frontend (TypeScript) | 70.81%   | ✅ Good   |
 | Global (Weighted)     | 52.9%    | 🟡 Yellow |
 
 *Last updated: 2025-11-07*
@@ -20,34 +20,34 @@ The following table shows coverage for all backend packages. The target is **60%
 
 | Package                    | Coverage | Status        | Priority to Improve       |
 | -------------------------- | -------- | ------------- | ------------------------- |
-| `api`                      | 76.5% | ✅ Good | High - Close to target    |
-| `cmd/srat-cli`             | 5.4% | 🔴 Critical | Low - CLI testing complex |
-| `cmd/srat-openapi`         | 17.9% | 🔴 Critical | Low - Code gen utility    |
-| `cmd/srat-server`          | 5.3% | 🔴 Critical | Low - Main entry point    |
-| `config`                   | 73.7% | ✅ Good | None                      |
-| `converter`                | 32.8% | 🟠 Needs Work | Medium                    |
-| `dbom`                     | 25.8% | 🟠 Needs Work | High                      |
-| `dbom/migrations`          | 63.8% | ✅ Good | None                      |
-| `dto`                      | 29.3% | 🟠 Needs Work | High                      |
-| `homeassistant/addons`     | 13.2% | 🔴 Critical | Medium                    |
-| `homeassistant/core`       | 25.8% | 🟠 Needs Work | Medium                    |
-| `homeassistant/core_api`   | 45.0% | 🟠 Needs Work | Medium                    |
-| `homeassistant/hardware`   | 16.3% | 🔴 Critical | Medium                    |
-| `homeassistant/host`       | 27.3% | 🟠 Needs Work | Medium                    |
-| `homeassistant/ingress`    | 20.8% | 🟠 Needs Work | Medium                    |
-| `homeassistant/mount`      | 36.8% | 🟠 Needs Work | Medium                    |
-| `homeassistant/resolution` | 13.7% | 🔴 Critical | Medium                    |
-| `homeassistant/root`       | 19.6% | 🔴 Critical | Medium                    |
-| `homeassistant/websocket`  | 60.9% | ✅ Good | None                      |
-| `internal`                 | 88.6% | ✅ Excellent | None                      |
-| `internal/appsetup`        | 51.3% | 🟠 Needs Work | None                      |
-| `internal/osutil`          | 63.0% | ✅ Good | None                      |
-| `repository`               | 67.5% | ✅ Good | None                      |
-| `server`                   | 60.0% | ✅ Good | High                      |
-| `service`                  | 45.1% | 🟠 Needs Work | High                      |
-| `tempio`                   | 46.9% | 🟠 Needs Work | None                      |
-| `tlog`                     | 83.9% | ✅ Excellent | None                      |
-| `unixsamba`                | 75.1% | ✅ Good | None                      |
+| `api`                      | 76.5%    | ✅ Good       | High - Close to target    |
+| `cmd/srat-cli`             | 5.4%     | 🔴 Critical   | Low - CLI testing complex |
+| `cmd/srat-openapi`         | 17.9%    | 🔴 Critical   | Low - Code gen utility    |
+| `cmd/srat-server`          | 5.3%     | 🔴 Critical   | Low - Main entry point    |
+| `config`                   | 73.7%    | ✅ Good       | None                      |
+| `converter`                | 32.8%    | 🟠 Needs Work | Medium                    |
+| `dbom`                     | 25.8%    | 🟠 Needs Work | High                      |
+| `dbom/migrations`          | 63.8%    | ✅ Good       | None                      |
+| `dto`                      | 29.3%    | 🟠 Needs Work | High                      |
+| `homeassistant/addons`     | 13.2%    | 🔴 Critical   | Medium                    |
+| `homeassistant/core`       | 25.8%    | 🟠 Needs Work | Medium                    |
+| `homeassistant/core_api`   | 45.0%    | 🟠 Needs Work | Medium                    |
+| `homeassistant/hardware`   | 16.3%    | 🔴 Critical   | Medium                    |
+| `homeassistant/host`       | 27.3%    | 🟠 Needs Work | Medium                    |
+| `homeassistant/ingress`    | 20.8%    | 🟠 Needs Work | Medium                    |
+| `homeassistant/mount`      | 36.8%    | 🟠 Needs Work | Medium                    |
+| `homeassistant/resolution` | 13.7%    | 🔴 Critical   | Medium                    |
+| `homeassistant/root`       | 19.6%    | 🔴 Critical   | Medium                    |
+| `homeassistant/websocket`  | 60.9%    | ✅ Good       | None                      |
+| `internal`                 | 88.6%    | ✅ Excellent  | None                      |
+| `internal/appsetup`        | 51.3%    | 🟠 Needs Work | None                      |
+| `internal/osutil`          | 63.0%    | ✅ Good       | None                      |
+| `repository`               | 67.5%    | ✅ Good       | None                      |
+| `server`                   | 60.0%    | ✅ Good       | High                      |
+| `service`                  | 45.1%    | 🟠 Needs Work | High                      |
+| `tempio`                   | 46.9%    | 🟠 Needs Work | None                      |
+| `tlog`                     | 83.9%    | ✅ Excellent  | None                      |
+| `unixsamba`                | 75.1%    | ✅ Good       | None                      |
 
 **Summary:**
 
@@ -189,7 +189,7 @@ xychart-beta
 
 ## Package-Specific Improvement Strategies
 
-### High Priority Packages 
+### High Priority Packages
 
 #### `api` Package
 
@@ -209,8 +209,8 @@ xychart-beta
 3. Test both success and error paths for each endpoint
 4. Verify `SetDirty*()` calls for state-changing operations
 
-#### `server` Package 
- 
+#### `server` Package
+
 **Strategy**:
 
 - Test server initialization with various configurations
@@ -219,8 +219,8 @@ xychart-beta
 - Test SSE connection management
 - Test error handling and recovery
 
-#### `service` Package 
- 
+#### `service` Package
+
 **Files with low coverage**:
 
 - Filesystem service methods
@@ -237,7 +237,7 @@ xychart-beta
 
 ### Medium Priority Packages
 
-#### `converter` Package 
+#### `converter` Package
 
 **Strategy**:
 
@@ -246,7 +246,7 @@ xychart-beta
 - Test type conversion edge cases
 - Converters are auto-generated by goverter but still need edge case tests
 
-#### `dbom` Package 
+#### `dbom` Package
 
 **Strategy**:
 
@@ -255,7 +255,7 @@ xychart-beta
 - Test custom GORM callbacks (BeforeCreate, AfterFind, etc.)
 - Test JSON marshaling/unmarshaling for complex types
 
-#### `dto` Package 
+#### `dto` Package
 
 **Strategy**:
 
@@ -264,19 +264,19 @@ xychart-beta
 - Test serialization/deserialization
 - Test DTO helper methods and constructors
 
-#### `homeassistant/*` Packages 
+#### `homeassistant/*` Packages
 
 Multiple sub-packages need improvement:
 
-- `addons`  - Test addon discovery and management
-- `core`  - Test Home Assistant core API interactions
-- `core_api`  - Close to target, add edge case tests
-- `hardware`  - Test hardware detection and enumeration
-- `host`  - Test host system interactions
-- `ingress`  - Test ingress configuration
-- `mount`  - Test mount point operations
-- `resolution`  - Test resolution checks
-- `root`  - Test root API client initialization
+- `addons` - Test addon discovery and management
+- `core` - Test Home Assistant core API interactions
+- `core_api` - Close to target, add edge case tests
+- `hardware` - Test hardware detection and enumeration
+- `host` - Test host system interactions
+- `ingress` - Test ingress configuration
+- `mount` - Test mount point operations
+- `resolution` - Test resolution checks
+- `root` - Test root API client initialization
 
 **Common Strategy for homeassistant packages**:
 
@@ -287,7 +287,7 @@ Multiple sub-packages need improvement:
 
 ### Low Priority Packages (defer improvement)
 
-#### `cmd/*` Packages 
+#### `cmd/*` Packages
 
 These are command-line entry points and are difficult to test comprehensively:
 
