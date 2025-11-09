@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
@@ -48,14 +47,11 @@ func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 	huma.Delete(api, "/volume/{mount_path_hash}/mount", self.UmountVolume, huma.OperationTags("volume"))
 	huma.Put(api, "/volume/{mount_path_hash}/settings", self.UpdateVolumeSettings, huma.OperationTags("volume"))
 	huma.Patch(api, "/volume/{mount_path_hash}/settings", self.PatchVolumeSettings, huma.OperationTags("volume"))
-	huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
+	// huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
 }
 
 func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body *[]dto.Disk }, error) {
-	volumes, err := self.vservice.GetVolumesData()
-	if err != nil {
-		return nil, err
-	}
+	volumes := self.vservice.GetVolumesData()
 	return &struct{ Body *[]dto.Disk }{Body: volumes}, nil
 }
 
@@ -122,6 +118,7 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 	return nil, nil
 }
 
+/*
 func (self *VolumeHandler) EjectDiskHandler(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" doc:"The ID of the disk to eject (e.g., sda, sdb)"`
 }) (*struct{ Status int }, error) {
@@ -145,6 +142,7 @@ func (self *VolumeHandler) EjectDiskHandler(ctx context.Context, input *struct {
 	// Return 204 No Content on success
 	return &struct{ Status int }{Status: http.StatusNoContent}, nil
 }
+*/
 
 // UpdateVolumeSettings handles PUT requests to update the configuration of an existing mount point.
 func (self *VolumeHandler) UpdateVolumeSettings(ctx context.Context, input *struct {

@@ -64,7 +64,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 			},
 			service.NewVolumeService,
 			service.NewFilesystemService,
-			mock.Mock[service.BroadcasterServiceInterface],
+			//mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[service.HardwareServiceInterface],
 			mock.Mock[service.ShareServiceInterface],
@@ -313,10 +313,9 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	//mock.When(suite.mockMountRepo.FindByPath(mountPath2)).ThenReturn(dbomMountData2, nil).Verify(matchers.Times(1))
 
 	// Call the function
-	disks, err := suite.volumeService.GetVolumesData()
+	disks := suite.volumeService.GetVolumesData()
 
 	// Assertions
-	suite.Require().NoError(err)
 	suite.Require().NotNil(disks)
 	suite.Require().Len(*disks, 2)
 
@@ -354,62 +353,6 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	//suite.True(mountPoint2.IsMounted, "MountPoint2 IsMounted should be true after successful save")
 }
 
-func (suite *VolumeServiceTestSuite) TestGetVolumesData_HardwareClientError() {
-	expectedErr := errors.New("hardware client failed")
-
-	// NotifyClient is invoked asynchronously; don't enforce a strict call count to avoid flakes
-	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(nil, expectedErr)
-	//suite.mockHardwareClient.On("GetHardwareInfoWithResponse" /*suite.ctx*/, testContext, mock.Anything).Return(nil, expectedErr).Once()
-	// Fallback logic is commented out, so we expect the error to propagate
-
-	disks, err := suite.volumeService.GetVolumesData()
-	suite.Nil(disks)
-	suite.Require().Error(err)
-	suite.ErrorIs(err, expectedErr)
-}
-
-/*
-func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoFindByPathError_NotFound() {
-	mockHWResponse := []dto.Disk{
-		{
-			Id:               pointer.String("disk-1"),
-			LegacyDevicePath: pointer.String("/dev/sda"),
-			Size:             pointer.Int(100),
-			Partitions: &[]dto.Partition{
-				{
-					Id:               pointer.String("part-1"),
-					Name:             pointer.String("RootFS"),
-					LegacyDevicePath: pointer.String("/dev/sda1"),
-					Size:             pointer.Int(50),
-					HostMountPointData: &[]dto.MountPointData{{
-						Path: "/mnt/rootfs",
-					}},
-				},
-			},
-		},
-	}
-	mountPath1 := "/mnt/newfs"
-	//expectedErr := gorm.ErrRecordNotFound
-
-	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
-	//mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(nil, errors.WithStack(expectedErr)).Verify(matchers.Times(1))
-
-	disks, err := suite.volumeService.GetVolumesData()
-	suite.T().Logf("Disks returned: %+v", disks)
-	suite.Require().NoError(err) // FindByPath ErrRecordNotFound is handled internally
-	suite.Require().NotNil(disks)
-	suite.Require().Len(*disks, 1)
-	suite.Require().Len(*(*disks)[0].Partitions, 1)
-	suite.Require().NotNil((*(*disks)[0].Partitions)[0])
-	suite.Require().NotNil(*(*(*disks)[0].Partitions)[0].MountPointData)
-	suite.Require().Len(*(*(*disks)[0].Partitions)[0].MountPointData, 1)
-	mountPoint := (*(*(*disks)[0].Partitions)[0].MountPointData)[0]
-	suite.Equal(mountPath1, mountPoint.Path)
-	//suite.True(mountPoint.IsMounted)  // Should reflect state after successful save
-	//suite.False(mountPoint.IsInvalid) // Should not be invalid
-}
-*/
-
 func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 	mountPath1 := "/mnt/test1"
 	mockHWResponse := []dto.Disk{
@@ -438,8 +381,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 	//mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(expectedErr).Verify(matchers.Times(1))
 
-	disks, err := suite.volumeService.GetVolumesData()
-	suite.Require().NoError(err) // Save error is logged but not returned
+	disks := suite.volumeService.GetVolumesData()
 	suite.Require().NotNil(disks)
 	suite.Require().Len(*disks, 1)
 	suite.Require().Len(*(*disks)[0].Partitions, 1)
@@ -449,9 +391,6 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
 	// The data returned will likely be the original data before the failed save.
 	suite.True(mountPoint.IsMounted) // Still true from hardware/converter data
 	// Check if the code marks it invalid on Save error
-	//suite.True(mountPoint.IsInvalid, "Mount point should be marked invalid on save error")
-	//suite.Require().NotNil(mountPoint.InvalidError)
-	//suite.Contains(*mountPoint.InvalidError, expectedErr.Error())
 }
 
 // --- NotifyClient Tests ---

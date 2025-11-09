@@ -52,6 +52,9 @@ type Disk struct {
 
 	// HDIdleStatus contains current HDIdle configuration snapshot for this disk, if available.
 	HDIdleStatus *HDIdleDeviceDTO `json:"hdidle_status,omitempty" readonly:"true"`
+
+	// Refresh version counter to indicate when the disk info was last refreshed.
+	RefreshVersion uint32 `json:"refresh_version,omitempty" readonly:"true"`
 }
 
 // Partition defines model for Filesystem/Partition.
@@ -85,6 +88,9 @@ type Partition struct {
 
 	// MountPointData to mount on the addon-side
 	MountPointData *[]MountPointData `json:"mount_point_data,omitempty"`
+
+	// Refresh version counter to indicate when the partition info was last refreshed.
+	RefreshVersion uint32 `json:"refresh_version,omitempty" readonly:"true"`
 }
 
 // (HDIdleDiskInfo removed; replaced by HDIdleDeviceDTO usage on Disk)

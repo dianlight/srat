@@ -141,16 +141,18 @@ type volumeServiceStub struct{}
 
 func (volumeServiceStub) MountVolume(*dto.MountPointData) errors.E  { return nil }
 func (volumeServiceStub) UnmountVolume(string, bool, bool) errors.E { return nil }
-func (volumeServiceStub) GetVolumesData() (*[]dto.Disk, errors.E)   { return nil, nil }
+func (volumeServiceStub) GetVolumesData() *[]dto.Disk               { return nil }
 func (volumeServiceStub) PathHashToPath(string) (string, errors.E)  { return "", nil }
-func (volumeServiceStub) EjectDisk(string) error                    { return nil }
+
+// func (volumeServiceStub) EjectDisk(string) error                    { return nil }
 func (volumeServiceStub) UpdateMountPointSettings(string, dto.MountPointData) (*dto.MountPointData, errors.E) {
 	return nil, nil
 }
 func (volumeServiceStub) PatchMountPointSettings(string, dto.MountPointData) (*dto.MountPointData, errors.E) {
 	return nil, nil
 }
-func (volumeServiceStub) NotifyClient()                                               {}
+
+// func (volumeServiceStub) NotifyClient()                                               {}
 func (volumeServiceStub) CreateAutomountFailureNotification(string, string, errors.E) {}
 func (volumeServiceStub) CreateUnmountedPartitionNotification(string, string)         {}
 func (volumeServiceStub) DismissAutomountNotification(string, string)                 {}

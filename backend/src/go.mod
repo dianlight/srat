@@ -8,6 +8,7 @@ require (
 	github.com/google/go-github/v76 v76.0.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jpillora/overseer v1.1.6
+	github.com/maniartech/signals v1.3.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/pilebones/go-udev v0.9.1

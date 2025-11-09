@@ -22,12 +22,12 @@ type HaHardwareToDto interface {
 	// goverter:useUnderlyingTypeMethods
 	// goverter:skipCopySameType
 	// goverter:map . LegacyDeviceName | extractDevice
-	// goverter:ignore SmartInfo DevicePath LegacyDevicePath HDIdleStatus
+	// goverter:ignore SmartInfo DevicePath LegacyDevicePath HDIdleStatus RefreshVersion
 	DriveToDisk(source hardware.Drive, target *dto.Disk) error
 
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore MountPointData  DevicePath FsType
+	// goverter:ignore MountPointData  DevicePath FsType RefreshVersion
 	// goverter:map Device LegacyDevicePath
 	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
@@ -36,7 +36,7 @@ type HaHardwareToDto interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore MountPointData  DevicePath FsType
+	// goverter:ignore MountPointData  DevicePath FsType RefreshVersion
 	// goverter:map Device LegacyDevicePath
 	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas

@@ -238,6 +238,9 @@ github.com/lufia/plan9stats
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
+# github.com/maniartech/signals v1.3.1
+## explicit; go 1.21
+github.com/maniartech/signals
 # github.com/mattn/go-colorable v0.1.14
 ## explicit; go 1.18
 github.com/mattn/go-colorable

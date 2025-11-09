@@ -2,8 +2,6 @@ package converter
 
 import (
 	"log/slog"
-	"os"
-	"path/filepath"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/u-root/u-root/pkg/mount"
@@ -31,26 +29,4 @@ func stringToMounFlags(source string) (*dbom.MounDataFlags, error) {
 	slog.Debug("Converting mount data string to MounDataFlags", "data", source)
 	err := ret.Scan(source)
 	return &ret, err
-}
-
-func deviceToDeviceId(source string) (string, error) {
-	deviceID := ""
-	entries, err := os.ReadDir("/dev/disk/by-id/")
-	if err == nil {
-		for _, entry := range entries {
-			if entry.Type()&os.ModeSymlink != 0 {
-				linkPath := filepath.Join("/dev/disk/by-id/", entry.Name())
-				resolved, err := filepath.EvalSymlinks(linkPath)
-				if err != nil {
-					continue
-				}
-				//slog.Debug("Resolved symlink", "link", linkPath, "resolved", resolved, "source", source)
-				if resolved == source || linkPath == source {
-					deviceID = "by-id-" + entry.Name()
-					break
-				}
-			}
-		}
-	}
-	return deviceID, nil
 }

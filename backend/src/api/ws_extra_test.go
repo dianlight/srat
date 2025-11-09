@@ -27,7 +27,7 @@ func (suite *WsExtraSuite) TestWebSocketReceivesMessagesFromBroadcaster() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	state := &dto.ContextState{}
-	broker := service.NewBroadcasterService(ctx, nil, nil, state)
+	broker := service.NewBroadcasterService(ctx, nil, nil, state, nil, nil)
 
 	h := api.NewWebSocketBroker(ctx, broker)
 	r := mux.NewRouter()

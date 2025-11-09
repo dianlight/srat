@@ -8,6 +8,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
@@ -35,6 +36,7 @@ type ShareService struct {
 	samba_user_repo     repository.SambaUserRepositoryInterface
 	mount_repo          repository.MountPointPathRepositoryInterface
 	broadcaster         BroadcasterServiceInterface
+	eventBus            events.EventBusInterface
 	sharesQueueMutex    *sync.RWMutex
 	dbomConv            converter.DtoToDbomConverterImpl
 }
@@ -45,6 +47,7 @@ type ShareServiceParams struct {
 	SambaUserRepo     repository.SambaUserRepositoryInterface
 	MountRepo         repository.MountPointPathRepositoryInterface
 	Broadcaster       BroadcasterServiceInterface
+	EventBus          events.EventBusInterface
 }
 
 func NewShareService(in ShareServiceParams) ShareServiceInterface {
@@ -53,6 +56,7 @@ func NewShareService(in ShareServiceParams) ShareServiceInterface {
 		samba_user_repo:     in.SambaUserRepo,
 		mount_repo:          in.MountRepo,
 		broadcaster:         in.Broadcaster,
+		eventBus:            in.EventBus,
 		sharesQueueMutex:    &sync.RWMutex{},
 		dbomConv:            converter.DtoToDbomConverterImpl{},
 	}

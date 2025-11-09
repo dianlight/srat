@@ -97,14 +97,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 
-	disks, err := s.volumeService.GetVolumesData()
-	if err != nil {
-		if !errors.Is(err, dto.ErrorNotFound) {
-			return err
-		}
-		slog.Debug("No volumes data found, continuing with empty disk list")
-		disks = &[]dto.Disk{}
-	}
+	disks := s.volumeService.GetVolumesData()
 
 	s.currentDiskHealth = &dto.DiskHealth{
 		PerDiskIO: make([]dto.DiskIOStats, 0),

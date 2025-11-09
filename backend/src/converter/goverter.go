@@ -3,6 +3,7 @@ package converter
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 //go:generate go tool goverter gen ./...
@@ -29,4 +30,26 @@ func isPathDirNotExists(path string) (bool, error) {
 
 	// Path exists, check if it's a directory.
 	return !fi.IsDir(), nil
+}
+
+func deviceToDeviceId(source string) (string, error) {
+	deviceID := ""
+	entries, err := os.ReadDir("/dev/disk/by-id/")
+	if err == nil {
+		for _, entry := range entries {
+			if entry.Type()&os.ModeSymlink != 0 {
+				linkPath := filepath.Join("/dev/disk/by-id/", entry.Name())
+				resolved, err := filepath.EvalSymlinks(linkPath)
+				if err != nil {
+					continue
+				}
+				//slog.Debug("Resolved symlink", "link", linkPath, "resolved", resolved, "source", source)
+				if resolved == source || linkPath == source {
+					deviceID = "by-id-" + entry.Name()
+					break
+				}
+			}
+		}
+	}
+	return deviceID, nil
 }

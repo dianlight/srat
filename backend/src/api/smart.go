@@ -62,11 +62,7 @@ func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartInfo }, error) {
 	// Get disk info to find device path
-	volumes, errE := h.volumeService.GetVolumesData()
-	if errE != nil {
-		tlog.Error("Failed to get volumes", "error", errE)
-		return nil, huma.Error500InternalServerError("Failed to get volumes", errE)
-	}
+	volumes := h.volumeService.GetVolumesData()
 
 	devicePath := findDevicePath(volumes, input.DiskID)
 	if devicePath == "" {
@@ -90,11 +86,7 @@ func (h *SmartHandler) GetSmartHealth(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartHealthStatus }, error) {
 	// Get disk info to find device path
-	volumes, errE := h.volumeService.GetVolumesData()
-	if errE != nil {
-		tlog.Error("Failed to get volumes", "error", errE)
-		return nil, huma.Error500InternalServerError("Failed to get volumes", errE)
-	}
+	volumes := h.volumeService.GetVolumesData()
 
 	devicePath := findDevicePath(volumes, input.DiskID)
 	if devicePath == "" {
@@ -118,11 +110,7 @@ func (h *SmartHandler) GetSmartTestStatus(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartTestStatus }, error) {
 	// Get disk info to find device path
-	volumes, errE := h.volumeService.GetVolumesData()
-	if errE != nil {
-		tlog.Error("Failed to get volumes", "error", errE)
-		return nil, huma.Error500InternalServerError("Failed to get volumes", errE)
-	}
+	volumes := h.volumeService.GetVolumesData()
 
 	devicePath := findDevicePath(volumes, input.DiskID)
 	if devicePath == "" {
@@ -154,11 +142,7 @@ func (h *SmartHandler) StartSmartTest(ctx context.Context, input *struct {
 	}
 
 	// Get disk info to find device path
-	volumes, errE := h.volumeService.GetVolumesData()
-	if errE != nil {
-		tlog.Error("Failed to get volumes", "error", errE)
-		return nil, huma.Error500InternalServerError("Failed to get volumes", errE)
-	}
+	volumes := h.volumeService.GetVolumesData()
 
 	devicePath := findDevicePath(volumes, input.DiskID)
 	if devicePath == "" {
@@ -166,7 +150,7 @@ func (h *SmartHandler) StartSmartTest(ctx context.Context, input *struct {
 	}
 
 	// Start the test
-	errE = h.smartService.StartSelfTest(devicePath, input.Body.TestType)
+	errE := h.smartService.StartSelfTest(devicePath, input.Body.TestType)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -193,11 +177,7 @@ func (h *SmartHandler) AbortSmartTest(ctx context.Context, input *struct {
 	}
 
 	// Get disk info to find device path
-	volumes, errE := h.volumeService.GetVolumesData()
-	if errE != nil {
-		tlog.Error("Failed to get volumes", "error", errE)
-		return nil, huma.Error500InternalServerError("Failed to get volumes", errE)
-	}
+	volumes := h.volumeService.GetVolumesData()
 
 	devicePath := findDevicePath(volumes, input.DiskID)
 	if devicePath == "" {
@@ -205,7 +185,7 @@ func (h *SmartHandler) AbortSmartTest(ctx context.Context, input *struct {
 	}
 
 	// Abort the test
-	errE = h.smartService.AbortSelfTest(devicePath)
+	errE := h.smartService.AbortSelfTest(devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -229,11 +209,7 @@ func (h *SmartHandler) EnableSmart(ctx context.Context, input *struct {
 	}
 
 	// Get disk info to find device path
-	volumes, errE := h.volumeService.GetVolumesData()
-	if errE != nil {
-		tlog.Error("Failed to get volumes", "error", errE)
-		return nil, huma.Error500InternalServerError("Failed to get volumes", errE)
-	}
+	volumes := h.volumeService.GetVolumesData()
 
 	devicePath := findDevicePath(volumes, input.DiskID)
 	if devicePath == "" {
@@ -241,7 +217,7 @@ func (h *SmartHandler) EnableSmart(ctx context.Context, input *struct {
 	}
 
 	// Enable SMART
-	errE = h.smartService.EnableSMART(devicePath)
+	errE := h.smartService.EnableSMART(devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -265,11 +241,7 @@ func (h *SmartHandler) DisableSmart(ctx context.Context, input *struct {
 	}
 
 	// Get disk info to find device path
-	volumes, errE := h.volumeService.GetVolumesData()
-	if errE != nil {
-		tlog.Error("Failed to get volumes", "error", errE)
-		return nil, huma.Error500InternalServerError("Failed to get volumes", errE)
-	}
+	volumes := h.volumeService.GetVolumesData()
 
 	devicePath := findDevicePath(volumes, input.DiskID)
 	if devicePath == "" {
@@ -277,7 +249,7 @@ func (h *SmartHandler) DisableSmart(ctx context.Context, input *struct {
 	}
 
 	// Disable SMART
-	errE = h.smartService.DisableSMART(devicePath)
+	errE := h.smartService.DisableSMART(devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)

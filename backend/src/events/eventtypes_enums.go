@@ -6,7 +6,7 @@
 // using the command:
 // goenums -l event_type.go
 
-package dto
+package events
 
 import (
 	"bytes"
@@ -26,35 +26,27 @@ type EventType struct {
 // eventTypesContainer is the container for all enum values.
 // It is private and should not be used directly use the public methods on the EventType type.
 type eventTypesContainer struct {
-	EVENTHELLO        EventType
-	EVENTUPDATING     EventType
-	EVENTVOLUMES      EventType
-	EVENTHEARTBEAT    EventType
-	EVENTSHARE        EventType
-	EVENTHDIDLECONFIG EventType
+	ADD    EventType
+	REMOVE EventType
+	UPDATE EventType
+	ERROR  EventType
 }
 
 // EventTypes is a main entry point using the EventType type.
 // It it a container for all enum values and provides a convenient way to access all enum values and perform
 // operations, with convenience methods for common use cases.
 var EventTypes = eventTypesContainer{
-	EVENTHELLO: EventType{
-		eventType: eventHello,
+	ADD: EventType{
+		eventType: Add,
 	},
-	EVENTUPDATING: EventType{
-		eventType: eventUpdating,
+	REMOVE: EventType{
+		eventType: Remove,
 	},
-	EVENTVOLUMES: EventType{
-		eventType: eventVolumes,
+	UPDATE: EventType{
+		eventType: Update,
 	},
-	EVENTHEARTBEAT: EventType{
-		eventType: eventHeartbeat,
-	},
-	EVENTSHARE: EventType{
-		eventType: eventShare,
-	},
-	EVENTHDIDLECONFIG: EventType{
-		eventType: eventHDIdleConfig,
+	ERROR: EventType{
+		eventType: Error,
 	},
 }
 
@@ -67,12 +59,10 @@ var invalidEventType = EventType{
 // This method is useful for iterating over all enum values in a loop.
 func (e eventTypesContainer) allSlice() []EventType {
 	return []EventType{
-		EventTypes.EVENTHELLO,
-		EventTypes.EVENTUPDATING,
-		EventTypes.EVENTVOLUMES,
-		EventTypes.EVENTHEARTBEAT,
-		EventTypes.EVENTSHARE,
-		EventTypes.EVENTHDIDLECONFIG,
+		EventTypes.ADD,
+		EventTypes.REMOVE,
+		EventTypes.UPDATE,
+		EventTypes.ERROR,
 	}
 }
 
@@ -159,12 +149,10 @@ func ParseEventType(input any) (EventType, error) {
 // eventTypesNameMap is a map of enum values to their EventType representation
 // It is used to convert string representations of enum values into their EventType representation.
 var eventTypesNameMap = map[string]EventType{
-	"hello":         EventTypes.EVENTHELLO,
-	"updating":      EventTypes.EVENTUPDATING,
-	"volumes":       EventTypes.EVENTVOLUMES,
-	"heartbeat":     EventTypes.EVENTHEARTBEAT,
-	"share":         EventTypes.EVENTSHARE,
-	"hdidle_config": EventTypes.EVENTHDIDLECONFIG,
+	"add":    EventTypes.ADD,
+	"remove": EventTypes.REMOVE,
+	"update": EventTypes.UPDATE,
+	"error":  EventTypes.ERROR,
 }
 
 // stringToEventType converts a string representation of an enum value into its EventType representation
@@ -206,12 +194,10 @@ func ExhaustiveEventTypes(f func(EventType)) {
 
 // validEventTypes is a map of enum values to their validity
 var validEventTypes = map[EventType]bool{
-	EventTypes.EVENTHELLO:        true,
-	EventTypes.EVENTUPDATING:     true,
-	EventTypes.EVENTVOLUMES:      true,
-	EventTypes.EVENTHEARTBEAT:    true,
-	EventTypes.EVENTSHARE:        true,
-	EventTypes.EVENTHDIDLECONFIG: true,
+	EventTypes.ADD:    true,
+	EventTypes.REMOVE: true,
+	EventTypes.UPDATE: true,
+	EventTypes.ERROR:  true,
 }
 
 // IsValid checks whether the EventTypes value is valid.
@@ -312,17 +298,15 @@ func (e *EventType) UnmarshalYAML(by []byte) error {
 }
 
 // eventtypeNames is a constant string slice containing all enum values cononical absolute names
-const eventtypeNames = "helloupdatingvolumesheartbeatsharehdidle_config"
+const eventtypeNames = "addremoveupdateerror"
 
 // eventtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the eventtypeNames string slice
 var eventtypeNamesMap = map[EventType]string{
-	EventTypes.EVENTHELLO:        eventtypeNames[0:5],
-	EventTypes.EVENTUPDATING:     eventtypeNames[5:13],
-	EventTypes.EVENTVOLUMES:      eventtypeNames[13:20],
-	EventTypes.EVENTHEARTBEAT:    eventtypeNames[20:29],
-	EventTypes.EVENTSHARE:        eventtypeNames[29:34],
-	EventTypes.EVENTHDIDLECONFIG: eventtypeNames[34:47],
+	EventTypes.ADD:    eventtypeNames[0:3],
+	EventTypes.REMOVE: eventtypeNames[3:9],
+	EventTypes.UPDATE: eventtypeNames[9:15],
+	EventTypes.ERROR:  eventtypeNames[15:20],
 }
 
 // String implements the Stringer interface.
@@ -341,11 +325,9 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [6]struct{}
-	_ = x[eventHello]
-	_ = x[eventUpdating-1]
-	_ = x[eventVolumes-2]
-	_ = x[eventHeartbeat-3]
-	_ = x[eventShare-4]
-	_ = x[eventHDIdleConfig-5]
+	var x [4]struct{}
+	_ = x[Add]
+	_ = x[Remove-1]
+	_ = x[Update-2]
+	_ = x[Error-3]
 }

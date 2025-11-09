@@ -69,6 +69,7 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 	mock.Verify(suite.mockDirtySvc, matchers.Times(1)).SetDirtyVolumes()
 }
 
+/*
 func (suite *VolumeHandlerSuite) TestEjectDiskSuccess() {
 	mock.When(suite.mockVolumeSvc.EjectDisk(mock.Any[string]())).ThenReturn(nil)
 
@@ -79,6 +80,7 @@ func (suite *VolumeHandlerSuite) TestEjectDiskSuccess() {
 	suite.Require().Equal(http.StatusNoContent, resp.Code)
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).EjectDisk(mock.Any[string]())
 }
+*/
 
 func (suite *VolumeHandlerSuite) TestUpdateVolumeSettingsSuccess() {
 	mountPath := "/mnt/testvol"

@@ -368,7 +368,7 @@ func TestWelcome_AllFields(t *testing.T) {
 	welcome := dto.Welcome{
 		Message:         "Welcome to SRAT",
 		ActiveClients:   5,
-		SupportedEvents: []dto.EventType{dto.EventTypes.EVENTHELLO, dto.EventTypes.EVENTVOLUMES},
+		SupportedEvents: []dto.WebEventType{dto.WebEventTypes.EVENTHELLO, dto.WebEventTypes.EVENTVOLUMES},
 		UpdateChannel:   "Release",
 		MachineId:       &machineID,
 		BuildVersion:    "1.2.3",

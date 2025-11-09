@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/addons"
 	"github.com/dianlight/srat/homeassistant/core_api"
 	"github.com/dianlight/srat/homeassistant/hardware"
@@ -55,6 +56,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		func() *slog.Logger { return slog.Default() },
 		func() (context.Context, context.CancelFunc) { return params.Ctx, params.CancelFn },
 		func() *dto.ContextState { return params.StaticConfig },
+		func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 		func() *github.Client {
 			rateLimiter := github_ratelimit.New(nil)
 			return github.NewClient(&http.Client{

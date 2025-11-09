@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/tlog"
 	"github.com/teivah/broadcast"
@@ -29,6 +30,8 @@ type BroadcasterService struct {
 	relay            *broadcast.Relay[broadcastEvent]
 	haService        HomeAssistantServiceInterface
 	haRootService    HaRootServiceInterface
+	eventBus         events.EventBusInterface
+	volumeService    VolumeServiceInterface
 }
 
 type broadcastEvent struct {
@@ -41,16 +44,60 @@ func NewBroadcasterService(
 	haService HomeAssistantServiceInterface,
 	haRootService HaRootServiceInterface,
 	state *dto.ContextState,
+	eventBus events.EventBusInterface,
+	volumeService VolumeServiceInterface,
 ) (broker BroadcasterServiceInterface) {
 	// Instantiate a broker
-	return &BroadcasterService{
+	b := &BroadcasterService{
 		ctx:           ctx,
 		relay:         broadcast.NewRelay[broadcastEvent](),
 		haService:     haService,
 		state:         state,
 		SentCounter:   atomic.Uint64{},
 		haRootService: haRootService,
+		eventBus:      eventBus,
+		volumeService: volumeService,
 	}
+
+	// Register event bus listeners
+	b.setupEventListeners()
+
+	return b
+}
+
+func (broker *BroadcasterService) setupEventListeners() {
+	// Listen for disk events
+	broker.eventBus.OnDisk(func(event events.DiskEvent) {
+		diskID := "unknown"
+		if event.Disk.Id != nil {
+			diskID = *event.Disk.Id
+		}
+		slog.Debug("BroadcasterService received Disk event", "disk", diskID)
+		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
+	})
+
+	// Listen for partition events
+	broker.eventBus.OnPartition(func(event events.PartitionEvent) {
+		partName := "unknown"
+		if event.Partition.Name != nil {
+			partName = *event.Partition.Name
+		}
+		slog.Debug("BroadcasterService received Partition event", "partition", partName)
+		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
+	})
+
+	// Listen for share events
+	broker.eventBus.OnShare(func(event events.ShareEvent) {
+		slog.Debug("BroadcasterService received Share event", "share", event.Share.Name)
+		broker.BroadcastMessage(event.Share)
+	})
+
+	// Listen for mount point events
+	broker.eventBus.OnMountPoint(func(event events.MountPointEvent) {
+		slog.Debug("BroadcasterService received MountPointMounted event", "mount_point", event.MountPoint.Path)
+		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
+	})
+
 }
 
 func (broker *BroadcasterService) BroadcastMessage(msg any) any {
@@ -214,7 +261,7 @@ func (broker *BroadcasterService) createWelcomeMessage() dto.Welcome {
 	welcomeMsg := dto.Welcome{
 		Message:         "Welcome to SRAT WebSocket",
 		ActiveClients:   broker.ConnectedClients.Load(),
-		SupportedEvents: dto.EventTypes.All(),
+		SupportedEvents: dto.WebEventTypes.All(),
 		UpdateChannel:   broker.state.UpdateChannel.String(),
 		ReadOnly:        broker.state.ReadOnlyMode,
 		SecureMode:      broker.state.SecureMode,

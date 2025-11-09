@@ -13,8 +13,7 @@ import (
 
 	"gitlab.com/tozd/go/errors"
 
-	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/converter" // Keep for firstTimeJSONImporter
+	"github.com/dianlight/srat/config" // Keep for firstTimeJSONImporter
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/internal"
@@ -396,49 +395,51 @@ func main() {
 						slog.Info("******* Autocreating users done! ********")
 
 						// Automount all volumes
-						if !apiContext.ProtectedMode {
-							slog.Info("******* Automounting all shares! ********")
-							all, err := mount_repo.All()
-							if err != nil {
-								log.Fatalf("Cant load mounts - %#+v", err)
-							}
-							for _, mnt := range all {
-								if mnt.Type == "ADDON" && mnt.IsToMountAtStartup != nil && *mnt.IsToMountAtStartup {
-									slog.Info("Automounting share", "path", mnt.Path)
-									conv := converter.DtoToDbomConverterImpl{}
-									mpd := dto.MountPointData{}
-									conv.MountPointPathToMountPointData(mnt, &mpd, nil)
-									err := volume_service.MountVolume(&mpd)
-									if err != nil {
-										if errors.Is(err, dto.ErrorAlreadyMounted) {
-											slog.Info("Share already mounted", "path", mnt.Path)
+						/*
+							if !apiContext.ProtectedMode {
+								slog.Info("******* Automounting all shares! ********")
+								all, err := mount_repo.All()
+								if err != nil {
+									log.Fatalf("Cant load mounts - %#+v", err)
+								}
+								for _, mnt := range all {
+									if mnt.Type == "ADDON" && mnt.IsToMountAtStartup != nil && *mnt.IsToMountAtStartup {
+										slog.Info("Automounting share", "path", mnt.Path)
+										conv := converter.DtoToDbomConverterImpl{}
+										mpd := dto.MountPointData{}
+										conv.MountPointPathToMountPointData(mnt, &mpd, nil)
+										err := volume_service.MountVolume(&mpd)
+										if err != nil {
+											if errors.Is(err, dto.ErrorAlreadyMounted) {
+												slog.Info("Share already mounted", "path", mnt.Path)
+												// Dismiss any existing failure notifications since the partition is now mounted
+												volume_service.DismissAutomountNotification(mnt.Path, "automount_failure")
+												volume_service.DismissAutomountNotification(mnt.Path, "unmounted_partition")
+											} else {
+												slog.Error("Error automounting share", "path", mnt.Path, "err", err)
+												// Create a persistent notification about the automount failure
+												volume_service.CreateAutomountFailureNotification(mnt.Path, mnt.DeviceId, err)
+											}
+										} else {
+											slog.Debug("Share automounted", "path", mnt.Path)
 											// Dismiss any existing failure notifications since the partition is now mounted
 											volume_service.DismissAutomountNotification(mnt.Path, "automount_failure")
 											volume_service.DismissAutomountNotification(mnt.Path, "unmounted_partition")
-										} else {
-											slog.Error("Error automounting share", "path", mnt.Path, "err", err)
-											// Create a persistent notification about the automount failure
-											volume_service.CreateAutomountFailureNotification(mnt.Path, mnt.DeviceId, err)
 										}
-									} else {
-										slog.Debug("Share automounted", "path", mnt.Path)
-										// Dismiss any existing failure notifications since the partition is now mounted
-										volume_service.DismissAutomountNotification(mnt.Path, "automount_failure")
-										volume_service.DismissAutomountNotification(mnt.Path, "unmounted_partition")
 									}
 								}
-							}
-							slog.Info("******* Automounting all shares done! ********")
+								slog.Info("******* Automounting all shares done! ********")
 
-							// Check for any partitions marked for automount that are still unmounted
-							slog.Info("******* Checking for unmounted automount partitions ********")
-							err = volume_service.CheckUnmountedAutomountPartitions()
-							if err != nil {
-								slog.Error("Error checking unmounted automount partitions", "err", err)
+								// Check for any partitions marked for automount that are still unmounted
+								slog.Info("******* Checking for unmounted automount partitions ********")
+								err = volume_service.CheckUnmountedAutomountPartitions()
+								if err != nil {
+									slog.Error("Error checking unmounted automount partitions", "err", err)
+								}
+							} else {
+								slog.Info("******* Protected mode is ON, skipping automounting shares! ********")
 							}
-						} else {
-							slog.Info("******* Protected mode is ON, skipping automounting shares! ********")
-						}
+						*/
 
 						// Apply config to samba
 						slog.Info("******* Applying Samba config ********")

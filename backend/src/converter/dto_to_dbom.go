@@ -35,7 +35,7 @@ type DtoToDbomConverter interface {
 	// goverter:map Path IsInvalid | isPathDirNotExists
 	// goverter:ignore Partition
 	// goverter:map Data CustomFlags
-	// goverter:ignore InvalidError Warnings
+	// goverter:ignore InvalidError Warnings RefreshVersion
 	// goverter:map Path IsWriteSupported | FSTypeIsWriteSupported
 	// goverter:map FSType TimeMachineSupport | TimeMachineSupportFromFS
 	// goverter:map Path DiskLabel | DiskLabelFromPath
@@ -90,7 +90,7 @@ type DtoToDbomConverter interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore InvalidError Warnings
+	// goverter:ignore InvalidError Warnings RefreshVersion
 	// goverter:map Flags Flags
 	// goverter:map Data CustomFlags
 	// goverter:map Path IsInvalid | isPathDirNotExists
