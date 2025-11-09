@@ -104,7 +104,7 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 	}
 
 	// Disable all share services for this mount point
-	_, errE := self.shareService.DisableShareFromPath(mountPath)
+	_, errE := self.shareService.SetShareFromPathEnabled(mountPath, false)
 	if errE != nil && !errors.Is(errE, dto.ErrorShareNotFound) {
 		return nil, huma.Error500InternalServerError("Failed to disable share for mount point", err)
 	}

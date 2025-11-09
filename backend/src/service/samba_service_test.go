@@ -31,6 +31,7 @@ import (
 type SambaServiceSuite struct {
 	suite.Suite
 	sambaService service.SambaServiceInterface
+	shareRepo    repository.ExportedShareRepositoryInterface
 	//apictx              dto.ContextState
 	share_service   service.ShareServiceInterface
 	property_repo   repository.PropertyRepositoryInterface
@@ -124,6 +125,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 		fx.Populate(&suite.property_repo),
 		fx.Populate(&suite.share_service),
 		fx.Populate(&suite.samba_user_repo),
+		fx.Populate(&suite.shareRepo),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
@@ -180,7 +182,7 @@ func (suite *SambaServiceSuite) setupCommonMocks() {
 		},
 	}, nil)
 
-	mock.When(suite.share_service.All()).ThenReturn(&[]dbom.ExportedShare{
+	mock.When(suite.shareRepo.All()).ThenReturn(&[]dbom.ExportedShare{
 		{
 			Name:               "CONFIG",
 			MountPointDataPath: "/homeassistant",

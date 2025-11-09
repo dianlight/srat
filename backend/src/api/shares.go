@@ -116,7 +116,6 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 		return nil, errors.Wrapf(err, "failed to create share %s", input.Body.Name)
 	}
 	self.dirtyservice.SetDirtyShares()
-	go self.shareService.NotifyClient()
 
 	return &struct {
 		Status int
@@ -163,7 +162,6 @@ func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
 	}
 
 	self.dirtyservice.SetDirtyShares()
-	go self.shareService.NotifyClient()
 	return &struct{ Body dto.SharedResource }{Body: *updatedShare}, nil
 }
 
@@ -192,7 +190,6 @@ func (self *ShareHandler) DeleteShare(ctx context.Context, input *struct {
 	}
 
 	self.dirtyservice.SetDirtyShares()
-	go self.shareService.NotifyClient()
 	return &struct{}{}, nil
 }
 
@@ -209,7 +206,6 @@ func (self *ShareHandler) DisableShare(ctx context.Context, input *struct {
 	}
 
 	self.dirtyservice.SetDirtyShares()
-	go self.shareService.NotifyClient()
 	return &struct{ Body dto.SharedResource }{Body: *disabledShare}, nil
 }
 
@@ -226,6 +222,5 @@ func (self *ShareHandler) EnableShare(ctx context.Context, input *struct {
 	}
 
 	self.dirtyservice.SetDirtyShares()
-	go self.shareService.NotifyClient()
 	return &struct{ Body dto.SharedResource }{Body: *enabledShare}, nil
 }

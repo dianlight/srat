@@ -76,7 +76,6 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 	}
 
 	s.dirtyService.SetDirtyUsers()
-	go s.shareService.NotifyClient()
 
 	var createdUserDto dto.User
 	if err := conv.SambaUserToUser(dbUser, &createdUserDto); err != nil {
@@ -124,7 +123,6 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 	}
 
 	s.dirtyService.SetDirtyUsers()
-	go s.shareService.NotifyClient()
 
 	var updatedUserDto dto.User
 	if err := conv.SambaUserToUser(*dbUser, &updatedUserDto); err != nil {
@@ -165,7 +163,6 @@ func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 	}
 
 	s.dirtyService.SetDirtyUsers()
-	go s.shareService.NotifyClient()
 
 	var updatedAdminDto dto.User
 	if err := conv.SambaUserToUser(dbUser, &updatedAdminDto); err != nil {
@@ -182,6 +179,5 @@ func (s *UserService) DeleteUser(username string) error {
 		return errors.Wrapf(err, "failed to delete user %s from repository", username)
 	}
 	s.dirtyService.SetDirtyUsers()
-	go s.shareService.NotifyClient()
 	return nil
 }

@@ -380,7 +380,7 @@ func (self *SambaService) RestartSambaService() errors.E {
 }
 
 func (self *SambaService) umountHaStorage() errors.E {
-	shares, err := self.share_service.All()
+	shares, err := self.share_service.ListShares()
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -390,7 +390,7 @@ func (self *SambaService) umountHaStorage() errors.E {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		for _, share := range *shares {
+		for _, share := range shares {
 			if share.Disabled != nil && *share.Disabled {
 				continue
 			}
@@ -412,13 +412,13 @@ func (self *SambaService) umountHaStorage() errors.E {
 }
 
 func (self *SambaService) mountHaStorage() errors.E {
-	shares, err := self.share_service.All()
+	shares, err := self.share_service.ListShares()
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	if self.state.HACoreReady && self.state.AddonIpAddress != "" {
-		for _, share := range *shares {
+		for _, share := range shares {
 			if share.Disabled != nil && *share.Disabled {
 				continue
 			}

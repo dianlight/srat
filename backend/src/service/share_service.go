@@ -1,7 +1,7 @@
 package service
 
 import (
-	"log"
+	"context"
 	"log/slog"
 	"sync"
 
@@ -16,8 +16,7 @@ import (
 )
 
 type ShareServiceInterface interface {
-	All() (*[]dto.SharedResource, errors.E)
-	SaveAll(*[]dto.SharedResource) errors.E
+	//	SaveAll(*[]dto.SharedResource) errors.E
 	ListShares() ([]dto.SharedResource, errors.E)
 	GetShare(name string) (*dto.SharedResource, errors.E)
 	CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E)
@@ -25,9 +24,9 @@ type ShareServiceInterface interface {
 	DeleteShare(name string) errors.E
 	DisableShare(name string) (*dto.SharedResource, errors.E)
 	EnableShare(name string) (*dto.SharedResource, errors.E)
-	GetShareFromPath(path string) (*dto.SharedResource, errors.E)
-	DisableShareFromPath(path string) (*dto.SharedResource, errors.E)
-	NotifyClient()
+	//GetShareFromPath(path string) (*dto.SharedResource, errors.E)
+	SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E)
+	//NotifyClient()
 	VerifyShare(share *dto.SharedResource) errors.E
 }
 
@@ -35,7 +34,6 @@ type ShareService struct {
 	exported_share_repo repository.ExportedShareRepositoryInterface
 	samba_user_repo     repository.SambaUserRepositoryInterface
 	mount_repo          repository.MountPointPathRepositoryInterface
-	broadcaster         BroadcasterServiceInterface
 	eventBus            events.EventBusInterface
 	sharesQueueMutex    *sync.RWMutex
 	dbomConv            converter.DtoToDbomConverterImpl
@@ -46,31 +44,41 @@ type ShareServiceParams struct {
 	ExportedShareRepo repository.ExportedShareRepositoryInterface
 	SambaUserRepo     repository.SambaUserRepositoryInterface
 	MountRepo         repository.MountPointPathRepositoryInterface
-	//Broadcaster       BroadcasterServiceInterface
-	EventBus events.EventBusInterface
+	EventBus          events.EventBusInterface
 }
 
-func NewShareService(in ShareServiceParams) ShareServiceInterface {
-	return &ShareService{
+func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterface {
+	s := &ShareService{
 		exported_share_repo: in.ExportedShareRepo,
 		samba_user_repo:     in.SambaUserRepo,
 		mount_repo:          in.MountRepo,
-		//broadcaster:         in.Broadcaster,
-		eventBus:         in.EventBus,
-		sharesQueueMutex: &sync.RWMutex{},
-		dbomConv:         converter.DtoToDbomConverterImpl{},
+		eventBus:            in.EventBus,
+		sharesQueueMutex:    &sync.RWMutex{},
+		dbomConv:            converter.DtoToDbomConverterImpl{},
 	}
+	var unsubscribe func()
+	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			unsubscribe = s.eventBus.OnMountPoint(func(event events.MountPointEvent) {
+				slog.Info("Received ShareEvent", "type", event.Type, "mountpoint", event.MountPoint)
+				_, errs := s.SetShareFromPathEnabled(event.MountPoint.Path, event.MountPoint.IsMounted)
+				if errs != nil {
+					slog.Error("Error updating share status from mount event", "err", errs)
+				}
+			})
+			return nil
+		},
+		OnStop: func(_ context.Context) error {
+			if unsubscribe != nil {
+				unsubscribe()
+			}
+			return nil
+		},
+	})
+	return s
 }
 
-func (s *ShareService) All() (*[]dto.SharedResource, errors.E) {
-	sh, errE := s.exported_share_repo.All()
-	if errE != nil {
-		return nil, errE
-	}
-	ret, err := s.dbomConv.ExportedSharesToSharedResources(sh)
-	return ret, errors.WithStack(err)
-}
-
+/*
 func (s *ShareService) SaveAll(shares *[]dto.SharedResource) errors.E {
 	sh, err := s.dbomConv.SharedResourcesToExportedShares(shares)
 	if err != nil {
@@ -78,6 +86,7 @@ func (s *ShareService) SaveAll(shares *[]dto.SharedResource) errors.E {
 	}
 	return s.exported_share_repo.SaveAll(sh)
 }
+*/
 
 func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
 	shares, err := s.exported_share_repo.All()
@@ -173,6 +182,11 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
 
+	s.eventBus.EmitShare(events.ShareEvent{
+		Event: events.Event{Type: events.EventTypes.ADD},
+		Share: &dtoShare,
+	})
+
 	return &dtoShare, nil
 }
 
@@ -214,8 +228,6 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		slog.Warn("New share verification failed", "share", createdDtoShare.Name, "err", err)
 	}
 
-	go s.NotifyClient()
-
 	err = s.mount_repo.Save(&dbShare.MountPointData)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to save mount point")
@@ -233,6 +245,11 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
 
+	s.eventBus.EmitShare(events.ShareEvent{
+		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Share: &dtoShare,
+	})
+
 	return &dtoShare, nil
 }
 
@@ -243,6 +260,10 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 	if err != nil { // Leverage GetShare for not-found check
 		return err
 	}
+	s.eventBus.EmitShare(events.ShareEvent{
+		Event: events.Event{Type: events.EventTypes.REMOVE},
+		Share: ashare,
+	})
 	err = s.exported_share_repo.Delete(name)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete share")
@@ -251,27 +272,12 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 	if err != nil {
 		return errors.Wrap(err, "failed to delete mount point")
 	}
-	go s.NotifyClient()
 	return nil
 }
 
-func (s *ShareService) findByPath(path string) (*dbom.ExportedShare, errors.E) {
-	shares, err := s.exported_share_repo.All()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list shares")
-	}
-
-	for i := range *shares {
-		if (*shares)[i].MountPointData.Path == path {
-			return &(*shares)[i], nil
-		}
-	}
-
-	return nil, errors.WithStack(dto.ErrorShareNotFound)
-}
-
+/*
 func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, errors.E) {
-	share, err := s.findByPath(path)
+	share, err := s.exported_share_repo.FindByMountPath(path)
 	if err != nil {
 		return nil, err // This will propagate ErrorShareNotFound
 	}
@@ -284,14 +290,25 @@ func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, error
 	}
 	return &dtoShare, nil
 }
+*/
 
-func (s *ShareService) DisableShareFromPath(path string) (*dto.SharedResource, errors.E) {
-	share, err := s.findByPath(path)
+func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E) {
+	share, err := s.exported_share_repo.FindByMountPath(path)
 	if err != nil {
 		return nil, err // This will propagate ErrorShareNotFound
 	}
+	if share.Disabled != nil && *share.Disabled == !enabled {
+		// No change needed
+		var conv converter.DtoToDbomConverterImpl
+		var dtoShare dto.SharedResource
+		err = conv.ExportedShareToSharedResource(*share, &dtoShare, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert share")
+		}
+		return &dtoShare, nil
+	}
 
-	disabled := true
+	disabled := !enabled
 	share.Disabled = &disabled
 	err = s.exported_share_repo.Save(share)
 	if err != nil {
@@ -304,6 +321,11 @@ func (s *ShareService) DisableShareFromPath(path string) (*dto.SharedResource, e
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
+	s.eventBus.EmitShare(events.ShareEvent{
+		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Share: &dtoShare,
+	})
+
 	return &dtoShare, nil
 }
 
@@ -327,6 +349,10 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
+	s.eventBus.EmitShare(events.ShareEvent{
+		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Share: &dtoShare,
+	})
 	return &dtoShare, nil
 }
 
@@ -338,6 +364,7 @@ func (s *ShareService) EnableShare(name string) (*dto.SharedResource, errors.E) 
 	return s.setShareEnabled(name, true)
 }
 
+/*
 func (s *ShareService) NotifyClient() {
 	s.sharesQueueMutex.RLock()
 	defer s.sharesQueueMutex.RUnlock()
@@ -349,6 +376,7 @@ func (s *ShareService) NotifyClient() {
 	}
 	s.broadcaster.BroadcastMessage(shares)
 }
+*/
 
 // VerifyShare checks the validity of a share and disables it if invalid
 // It handles the following scenarios:

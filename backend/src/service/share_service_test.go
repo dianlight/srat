@@ -66,18 +66,18 @@ func (suite *ShareServiceSuite) TearDownTest() {
 	suite.app.RequireStop()
 }
 
-func (suite *ShareServiceSuite) TestAll() {
+func (suite *ShareServiceSuite) TestListShares() {
 	mock.When(suite.exported_share_repo.All()).ThenReturn(&[]dbom.ExportedShare{
 		{
 			Name: "test",
 		},
 	}, nil)
 
-	shares, err := suite.shareService.All()
+	shares, err := suite.shareService.ListShares()
 
 	suite.NoError(err)
 	suite.NotNil(shares)
-	suite.Len(*shares, 1)
+	suite.Len(shares, 1)
 }
 
 // TestVerifyShareWithMountedRWVolume tests share verification with mounted RW volume

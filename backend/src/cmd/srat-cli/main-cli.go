@@ -451,12 +451,12 @@ func main() {
 					} else if command == "stop" {
 						slog.Info("******* Unmounting all shares from Homeassistant ********")
 						// remount network share on ha_core
-						shares, err := share_service.All()
+						shares, err := share_service.ListShares()
 						if err != nil {
 							log.Fatalf("Can't get Shares - %#+v", err)
 						}
 
-						for _, share := range *shares {
+						for _, share := range shares {
 							if share.Disabled != nil && *share.Disabled {
 								continue
 							}

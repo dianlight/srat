@@ -119,7 +119,6 @@ func TestProvideCoreDependenciesReturnsOption(t *testing.T) {
 
 type shareServiceStub struct{}
 
-func (shareServiceStub) All() (*[]dto.SharedResource, errors.E)          { return nil, nil }
 func (shareServiceStub) SaveAll(*[]dto.SharedResource) errors.E          { return nil }
 func (shareServiceStub) ListShares() ([]dto.SharedResource, errors.E)    { return nil, nil }
 func (shareServiceStub) GetShare(string) (*dto.SharedResource, errors.E) { return nil, nil }
@@ -133,7 +132,7 @@ func (shareServiceStub) DeleteShare(string) errors.E                            
 func (shareServiceStub) DisableShare(string) (*dto.SharedResource, errors.E)         { return nil, nil }
 func (shareServiceStub) EnableShare(string) (*dto.SharedResource, errors.E)          { return nil, nil }
 func (shareServiceStub) GetShareFromPath(string) (*dto.SharedResource, errors.E)     { return nil, nil }
-func (shareServiceStub) DisableShareFromPath(string) (*dto.SharedResource, errors.E) { return nil, nil }
+func (shareServiceStub) SetShareFromPathEnabled(string, bool) (*dto.SharedResource, errors.E) { return nil, nil }
 func (shareServiceStub) NotifyClient()                                               {}
 func (shareServiceStub) VerifyShare(*dto.SharedResource) errors.E                    { return nil }
 
