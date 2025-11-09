@@ -13,7 +13,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/prometheus/procfs/blockdevice"
 	"github.com/stretchr/testify/suite"
-	"gitlab.com/tozd/go/errors"
 )
 
 // DiskStatsServiceSuite contains unit tests for disk_stats_service.go
@@ -74,7 +73,7 @@ func (suite *DiskStatsServiceSuite) TestGetDiskStatsNotInitialized() {
 
 func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_NoVolumes() {
 	// Arrange: VolumeService returns ErrorNotFound to simulate no volumes
-	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn(nil, errors.WithStack(dto.ErrorNotFound))
+	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn(nil)
 
 	// Act
 	err := suite.ds.updateDiskStats()
@@ -113,7 +112,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 	}
 	disks := []dto.Disk{d}
 
-	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn(&disks, nil)
+	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn(&disks)
 
 	// Act
 	err := suite.ds.updateDiskStats()

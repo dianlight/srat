@@ -47,7 +47,7 @@ type UpgradeServiceTestSuite struct {
 }
 
 func TestUpgradeServiceTestSuite(t *testing.T) {
-	t.SkipNow()
+	t.Skipf("Activate only to test upgrade of github library for limit rate of github call")
 	suite.Run(t, new(UpgradeServiceTestSuite))
 }
 
@@ -116,21 +116,21 @@ func newGitHubReleaseAsset(name, downloadURL string, size int64) *github.Release
 // Helper to create a mock GitHub repository release
 func newGitHubRepositoryRelease(tagName string, prerelease bool, assets []*github.ReleaseAsset) *github.RepositoryRelease {
 	return &github.RepositoryRelease{
-		TagName:         github.String(tagName),
-		Prerelease:      github.Bool(prerelease),
+		TagName:         &tagName,
+		Prerelease:      pointer.Bool(prerelease),
 		Assets:          assets,
-		TargetCommitish: github.String("main"),
-		Name:            github.String(fmt.Sprintf("Release %s", tagName)),
-		Body:            github.String(fmt.Sprintf("Release notes for %s", tagName)),
-		Draft:           github.Bool(false),
-		HTMLURL:         github.String(fmt.Sprintf("http://example.com/releases/%s", tagName)),
-		AssetsURL:       github.String(fmt.Sprintf("http://example.com/releases/%s/assets", tagName)),
-		UploadURL:       github.String(fmt.Sprintf("http://example.com/releases/%s/upload", tagName)),
-		ZipballURL:      github.String(fmt.Sprintf("http://example.com/archive/%s.zip", tagName)),
-		TarballURL:      github.String(fmt.Sprintf("http://example.com/archive/%s.tar.gz", tagName)),
+		TargetCommitish: pointer.String("main"),
+		Name:            pointer.String(fmt.Sprintf("Release %s", tagName)),
+		Body:            pointer.String(fmt.Sprintf("Release notes for %s", tagName)),
+		Draft:           pointer.Bool(false),
+		HTMLURL:         pointer.String(fmt.Sprintf("http://example.com/releases/%s", tagName)),
+		AssetsURL:       pointer.String(fmt.Sprintf("http://example.com/releases/%s/assets", tagName)),
+		UploadURL:       pointer.String(fmt.Sprintf("http://example.com/releases/%s/upload", tagName)),
+		ZipballURL:      pointer.String(fmt.Sprintf("http://example.com/archive/%s.zip", tagName)),
+		TarballURL:      pointer.String(fmt.Sprintf("http://example.com/archive/%s.tar.gz", tagName)),
 		PublishedAt:     &github.Timestamp{Time: time.Now()},
 		CreatedAt:       &github.Timestamp{Time: time.Now()},
-		Author:          &github.User{Login: github.String("testuser")},
+		Author:          &github.User{Login: pointer.String("testuser")},
 	}
 }
 
@@ -382,7 +382,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_Success(
 			if p, ok := args[0].(dto.UpdateProgress); ok {
 				progressEvents = append(progressEvents, p)
 			}
-			return []any{nil, nil}
+			return []any{nil}
 		}),
 	)
 	// Re-run to capture broadcasts
@@ -591,7 +591,7 @@ func (suite *UpgradeServiceTestSuite) TestRun_GoroutineLifecycle() {
 					broadcastHappened = true
 				}
 			}
-			return []any{nil, nil}
+			return []any{nil}
 		}),
 	)
 	// The `rate.Sometimes` might execute the Do func immediately or after its interval.

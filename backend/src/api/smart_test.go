@@ -94,7 +94,7 @@ func (suite *SmartHandlerSuite) TestGetSmartInfoSuccess() {
 		},
 	}
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 	mock.When(suite.mockSmartSvc.GetSmartInfo(devicePath)).ThenReturn(smartInfo, nil)
 
 	_, apiInst := humatest.New(suite.T())
@@ -122,7 +122,7 @@ func (suite *SmartHandlerSuite) TestGetSmartInfoNotSupported() {
 		},
 	}
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 	mock.When(suite.mockSmartSvc.GetSmartInfo(devicePath)).ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath))
 
 	_, apiInst := humatest.New(suite.T())
@@ -150,7 +150,7 @@ func (suite *SmartHandlerSuite) TestGetSmartHealthSuccess() {
 		FailingAttributes: []string{},
 	}
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 	mock.When(suite.mockSmartSvc.GetHealthStatus(devicePath)).ThenReturn(health, nil)
 
 	_, apiInst := humatest.New(suite.T())
@@ -183,7 +183,7 @@ func (suite *SmartHandlerSuite) TestGetSmartTestStatusSuccess() {
 		PercentComplete: 0,
 	}
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 	mock.When(suite.mockSmartSvc.GetTestStatus(devicePath)).ThenReturn(testStatus, nil)
 
 	_, apiInst := humatest.New(suite.T())
@@ -210,7 +210,7 @@ func (suite *SmartHandlerSuite) TestStartSmartTestSuccess() {
 		},
 	}
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 	mock.When(suite.mockSmartSvc.StartSelfTest(devicePath, dto.SmartTestTypeShort)).ThenReturn(nil)
 
 	_, apiInst := humatest.New(suite.T())
@@ -236,7 +236,7 @@ func (suite *SmartHandlerSuite) TestAbortSmartTestSuccess() {
 		},
 	}
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 	mock.When(suite.mockSmartSvc.AbortSelfTest(devicePath)).ThenReturn(nil)
 
 	_, apiInst := humatest.New(suite.T())
@@ -260,7 +260,7 @@ func (suite *SmartHandlerSuite) TestEnableSmartSuccess() {
 		},
 	}
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 	mock.When(suite.mockSmartSvc.EnableSMART(devicePath)).ThenReturn(nil)
 
 	_, apiInst := humatest.New(suite.T())
@@ -284,7 +284,7 @@ func (suite *SmartHandlerSuite) TestDisableSmartSuccess() {
 		},
 	}
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 	mock.When(suite.mockSmartSvc.DisableSMART(devicePath)).ThenReturn(nil)
 
 	_, apiInst := humatest.New(suite.T())
@@ -301,7 +301,7 @@ func (suite *SmartHandlerSuite) TestDisableSmartSuccess() {
 func (suite *SmartHandlerSuite) TestDiskNotFound() {
 	disks := &[]dto.Disk{}
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterSmartHandlers(apiInst)
@@ -331,7 +331,7 @@ func (suite *SmartHandlerSuite) TestReadOnlyModeRejectsStartTest() {
 		suite.mockBroadSvc,
 	)
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 
 	_, apiInst := humatest.New(suite.T())
 	readOnlyHandler.RegisterSmartHandlers(apiInst)

@@ -15,6 +15,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
@@ -117,6 +118,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[service.HaWsServiceInterface],
 			mock.Mock[service.HDIdleServiceInterface],
+			mock.Mock[events.EventBusInterface],
 		),
 		fx.Populate(&suite.sambaService),
 		fx.Populate(&suite.property_repo),

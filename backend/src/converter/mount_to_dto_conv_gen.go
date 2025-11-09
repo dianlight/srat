@@ -36,12 +36,19 @@ func (c *MountToDtoImpl) MountToMountPointData(source *mount.MountPoint, target 
 			pString := source.FSType
 			target.FSType = &pString
 		}
-		if source.Data != "" {
-			pDtoMountFlags, err := stringToMountFlags(source.Data)
+		if source.Flags != 0 {
+			pDtoMountFlags, err := uintptrToMountFlags(source.Flags)
 			if err != nil {
 				return err
 			}
-			target.CustomFlags = pDtoMountFlags
+			target.Flags = pDtoMountFlags
+		}
+		if source.Data != "" {
+			pDtoMountFlags2, err := stringToMountFlags(source.Data)
+			if err != nil {
+				return err
+			}
+			target.CustomFlags = pDtoMountFlags2
 		}
 		if source.Device != "" {
 			xstring, err := deviceToDeviceId(source.Device)

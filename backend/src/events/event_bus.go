@@ -72,16 +72,19 @@ func (eb *EventBus) EmitDisk(event DiskEvent) {
 	}
 	tlog.Trace("Emitting Disk event", "disk", diskID)
 	eb.disk.Emit(eb.ctx, event)
-	for _, partition := range *event.Disk.Partitions {
-		tlog.Trace("Emitting Partition event for  disk", "partition", *partition.Name, "disk", diskID)
-		eb.EmitPartition(PartitionEvent{
-			Event: Event{
-				Type: event.Type,
-			},
-			Partition: &partition,
-			Disk:      event.Disk,
-		})
+	if event.Disk.Partitions != nil {
+		for _, partition := range *event.Disk.Partitions {
+			tlog.Trace("Emitting Partition event for  disk", "partition", partition, "disk", diskID)
+			eb.EmitPartition(PartitionEvent{
+				Event: Event{
+					Type: event.Type,
+				},
+				Partition: &partition,
+				Disk:      event.Disk,
+			})
+		}
 	}
+
 }
 
 func (eb *EventBus) OnDisk(handler func(DiskEvent)) func() {

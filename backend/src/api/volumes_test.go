@@ -14,7 +14,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -70,7 +69,7 @@ func (suite *VolumeHandlerSuite) TearDownTest() {
 func (suite *VolumeHandlerSuite) TestListVolumesSuccess() {
 	id1, id2 := "sda", "sdb"
 	vols := &[]dto.Disk{{Id: &id1}, {Id: &id2}}
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(vols, nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(vols)
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterVolumeHandlers(apiInst)
 	resp := apiInst.Get("/volumes")
@@ -82,10 +81,13 @@ func (suite *VolumeHandlerSuite) TestListVolumesSuccess() {
 }
 
 func (suite *VolumeHandlerSuite) TestListVolumesError() {
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(nil, errors.New("db"))
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(nil)
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterVolumeHandlers(apiInst)
 	resp := apiInst.Get("/volumes")
-	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
+	suite.Require().Equal(http.StatusOK, resp.Code)
+	var out []dto.Disk
+	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
+	suite.Len(out, 0)
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
 }

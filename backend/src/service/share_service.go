@@ -46,8 +46,8 @@ type ShareServiceParams struct {
 	ExportedShareRepo repository.ExportedShareRepositoryInterface
 	SambaUserRepo     repository.SambaUserRepositoryInterface
 	MountRepo         repository.MountPointPathRepositoryInterface
-	Broadcaster       BroadcasterServiceInterface
-	EventBus          events.EventBusInterface
+	//Broadcaster       BroadcasterServiceInterface
+	EventBus events.EventBusInterface
 }
 
 func NewShareService(in ShareServiceParams) ShareServiceInterface {
@@ -55,10 +55,10 @@ func NewShareService(in ShareServiceParams) ShareServiceInterface {
 		exported_share_repo: in.ExportedShareRepo,
 		samba_user_repo:     in.SambaUserRepo,
 		mount_repo:          in.MountRepo,
-		broadcaster:         in.Broadcaster,
-		eventBus:            in.EventBus,
-		sharesQueueMutex:    &sync.RWMutex{},
-		dbomConv:            converter.DtoToDbomConverterImpl{},
+		//broadcaster:         in.Broadcaster,
+		eventBus:         in.EventBus,
+		sharesQueueMutex: &sync.RWMutex{},
+		dbomConv:         converter.DtoToDbomConverterImpl{},
 	}
 }
 

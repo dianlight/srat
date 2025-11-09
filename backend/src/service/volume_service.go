@@ -72,7 +72,7 @@ type VolumeService struct {
 
 type VolumeServiceProps struct {
 	fx.In
-	Ctx               context.Context
+	Ctx context.Context
 	//Broadcaster       BroadcasterServiceInterface
 	MountPointRepo    repository.MountPointPathRepositoryInterface
 	HardwareClient    HardwareServiceInterface `optional:"true"`
@@ -90,7 +90,7 @@ func NewVolumeService(
 	in VolumeServiceProps,
 ) VolumeServiceInterface {
 	p := &VolumeService{
-		ctx:               in.Ctx,
+		ctx: in.Ctx,
 		//broascasting:      in.Broadcaster,
 		volumesQueueMutex: sync.RWMutex{},
 		mount_repo:        in.MountPointRepo,
@@ -137,7 +137,9 @@ func NewVolumeService(
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			unsubscribe()
+			if unsubscribe != nil {
+				unsubscribe()
+			}
 			return nil
 		},
 	})
@@ -641,6 +643,13 @@ func (self *VolumeService) udevEventHandler() {
 }
 
 func (self *VolumeService) GetVolumesData() *[]dto.Disk {
+	if len(*self.disks) == 0 {
+		err := self.getVolumesData()
+		if err != nil {
+			slog.Error("Failed to get volumes data in GetVolumesData", "err", err)
+			return &[]dto.Disk{}
+		}
+	}
 	value := slices.Collect(maps.Values(*self.disks))
 	return &value
 }
@@ -705,6 +714,10 @@ func (self *VolumeService) getVolumesData() errors.E {
 				disk.RefreshVersion = self.refreshVersion
 				(*self.disks)[*disk.Id] = disk
 				for _, part := range *disk.Partitions {
+					if part.DevicePath == nil || *part.DevicePath == "" {
+						slog.Debug("Skipping partition with nil or empty device path", "disk_id", *disk.Id)
+						continue
+					}
 					if part.MountPointData == nil {
 						part.MountPointData = &[]dto.MountPointData{}
 					}

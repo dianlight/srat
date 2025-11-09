@@ -108,6 +108,10 @@ components:
           items:
             $ref: "#/components/schemas/Partition"
           type: array
+        refresh_version:
+          format: int32
+          minimum: 0
+          type: integer
         removable:
           type: boolean
         revision:
@@ -594,6 +598,10 @@ components:
           type: string
         path_hash:
           type: string
+        refresh_version:
+          format: int32
+          minimum: 0
+          type: integer
         shares:
           items:
             $ref: "#/components/schemas/SharedResource"
@@ -680,6 +688,10 @@ components:
           type: array
         name:
           type: string
+        refresh_version:
+          format: int32
+          minimum: 0
+          type: integer
         size:
           format: int64
           type: integer
@@ -1883,8 +1895,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2132,8 +2144,8 @@ paths:
     get:
       operationId: list-api-filesystems
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2461,8 +2473,8 @@ paths:
     get:
       operationId: list-api-nics
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2547,8 +2559,8 @@ paths:
     put:
       operationId: put-api-samba-apply
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -3723,8 +3735,8 @@ paths:
     get:
       operationId: list-api-telemetry-modes
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4153,52 +4165,6 @@ paths:
       summary: List API users
       tags:
         - user
-  /api/volume/disk/{disk_id}/eject:
-    post:
-      operationId: post-api-volume-disk-by-disk-id-eject
-      parameters:
-        - description: The ID of the disk to eject (e.g., sda, sdb)
-          in: path
-          name: disk_id
-          required: true
-          schema:
-            description: The ID of the disk to eject (e.g., sda, sdb)
-            type: string
-        - $ref: "#/components/parameters/X-Span-Id"
-        - $ref: "#/components/parameters/X-Trace-Id"
-      responses:
-        "204":
-          description: No Content
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-        4xx:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-        default:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-      summary: Post API volume disk by disk ID eject
-      tags:
-        - volume
   /api/volume/{mount_path_hash}/mount:
     delete:
       operationId: delete-api-volume-by-mount-path-hash-mount
@@ -4321,8 +4287,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4374,8 +4340,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:

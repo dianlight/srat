@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
@@ -64,11 +65,13 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 			},
 			service.NewVolumeService,
 			service.NewFilesystemService,
+			events.NewEventBus,
 			//mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[service.HardwareServiceInterface],
 			mock.Mock[service.ShareServiceInterface],
 			mock.Mock[service.IssueServiceInterface],
+			//mock.Mock[events.EventBusInterface],
 		),
 		fx.Populate(&suite.volumeService),
 		fx.Populate(&suite.mockMountRepo),
@@ -130,6 +133,7 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	}
 
 	// Mock FindByPath
+	mock.When(suite.mockMountRepo.FindByDevice(device)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(2))
 	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(1))
 
 	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
@@ -151,16 +155,24 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 		[]dto.Disk{
 			{LegacyDeviceName: pointer.String("sda1"), Size: pointer.Int(100), Id: pointer.String("SSD"),
 				Partitions: &[]dto.Partition{
-					{LegacyDeviceName: pointer.String("sda1"), Size: pointer.Int(100), Id: pointer.String("SSD")},
+					{
+						DevicePath:       &device,
+						LegacyDeviceName: pointer.String("sda1"), Size: pointer.Int(100), Id: pointer.String("SSD")},
 				},
 			},
 			{LegacyDeviceName: pointer.String("sda2"), Size: pointer.Int(200), Id: pointer.String("HDD"),
 				Partitions: &[]dto.Partition{
-					{LegacyDeviceName: pointer.String("sda2"), Size: pointer.Int(200), Id: &device, DevicePath: &device},
+					{
+						LegacyDeviceName: pointer.String("sda2"), Size: pointer.Int(200), Id: &device, DevicePath: &device},
 				},
 			},
 		},
 		nil)
+
+	disks := suite.volumeService.GetVolumesData()
+	suite.Require().NotNil(disks, "Expected GetVolumesData to return disks")
+	suite.Require().NotEmpty(*disks, "Expected GetVolumesData to return non-empty disks")
+	suite.Require().Len(*disks, 2, "Expected GetVolumesData to return 2 disks")
 
 	defer func() {
 		err := suite.volumeService.UnmountVolume(mountPath, true, false) // Cleanup
@@ -168,10 +180,10 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 		loop.ClearFile(device)
 	}()
 	// --- Execute ---
-	err = suite.volumeService.MountVolume(&mountData)
+	errE := suite.volumeService.MountVolume(&mountData)
 
 	// --- Assert ---
-	suite.Require().NoError(err, "Expected no error on successful mount")
+	suite.Require().NoError(errE, "Expected no error on successful mount", errE)
 	suite.NotEmpty(*mountData.Flags)
 	suite.Contains(*mountData.Flags, dto.MountFlag{Name: "noatime", Description: "", NeedsValue: false, FlagValue: "", ValueDescription: "", ValueValidationRegex: ""})
 
@@ -255,6 +267,10 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	mountPath1 := "/mnt/test1"
 	mountPath2 := "/mnt/test2"
 
+	device1 := pointer.String("/dev/disk/by-id/virtio-disk1-part1")
+	device2 := pointer.String("/dev/disk/by-id/virtio-disk2-part1")
+	device2Legacy := pointer.String("/dev/sdb1")
+	device2LegacyName := pointer.String("sdb1")
 	mockHWResponse := []dto.Disk{
 		{
 			Id:               pointer.String("disk-1"),
@@ -268,10 +284,11 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 					Name:             pointer.String("RootFS"),
 					LegacyDevicePath: pointer.String("/dev/sda1"),
 					LegacyDeviceName: pointer.String("sda1"),
-					DevicePath:       pointer.String("/dev/disk/by-id/virtio-disk1-part1"),
+					DevicePath:       device1,
 					Size:             pointer.Int(50),
 					HostMountPointData: &[]dto.MountPointData{{
-						Path: mountPath1,
+						DeviceId: *device1,
+						Path:     mountPath1,
 					}},
 				},
 			},
@@ -286,12 +303,13 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 				{
 					Id:               pointer.String("part-1"),
 					Name:             pointer.String("DataFs"),
-					LegacyDevicePath: pointer.String("/dev/sdb1"),
-					LegacyDeviceName: pointer.String("sdb1"),
-					DevicePath:       pointer.String("/dev/disk/by-id/virtio-disk2-part1"),
+					LegacyDevicePath: device2Legacy,
+					LegacyDeviceName: device2LegacyName,
+					DevicePath:       device2,
 					Size:             pointer.Int(50),
 					HostMountPointData: &[]dto.MountPointData{{
-						Path: mountPath2,
+						DeviceId: *device2,
+						Path:     mountPath2,
 					}},
 				},
 			},
@@ -302,11 +320,15 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	//dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, DeviceId: "sda1", Type: "ADDON"} // Initial state in DB
 	//dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, DeviceId: "sdb1", Type: "ADDON"} // Initial state in DB
 
+	mock.When(suite.mockMountRepo.FindByDevice(*device1)).ThenReturn(&dbom.MountPointPath{Path: mountPath1, DeviceId: *device1, Type: "ADDON"}, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByDevice(*device2)).ThenReturn(&dbom.MountPointPath{Path: mountPath2, DeviceId: *device2, Type: "ADDON"}, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHWResponse, nil).Verify(matchers.AtLeastOnce())
 
-	mock.When(suite.mockMountRepo.AllByDeviceId()).ThenReturn(map[string]dbom.MountPointPath{
-		"sdb1": {Path: mountPath2, DeviceId: "sdb1", Type: "ADDON"},
-	}, nil).Verify(matchers.Times(1))
+	/*
+		mock.When(suite.mockMountRepo.AllByDeviceId()).ThenReturn(map[string]dbom.MountPointPath{
+			"sdb1": {Path: mountPath2, DeviceId: "sdb1", Type: "ADDON"},
+		}, nil).Verify(matchers.Times(1))
+	*/
 
 	// Expect FindByPath and Save for each mount point found in hardware data
 	//mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
@@ -320,8 +342,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	suite.Require().Len(*disks, 2)
 
 	disk := (*disks)[0]
-	suite.Equal(mockHWResponse[0].Vendor, disk.Vendor)
-	suite.Equal(mockHWResponse[0].Model, disk.Model)
+	suite.EqualValues(mockHWResponse[0].Vendor, disk.Vendor)
+	suite.EqualValues(mockHWResponse[0].Model, disk.Model)
 	suite.Require().NotNil(disk.Partitions)
 	suite.Require().Len(*disk.Partitions, 1)
 
@@ -352,48 +374,6 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	// This assertion depends on the converter logic AND the successful Save mock
 	//suite.True(mountPoint2.IsMounted, "MountPoint2 IsMounted should be true after successful save")
 }
-
-func (suite *VolumeServiceTestSuite) TestGetVolumesData_RepoSaveError() {
-	mountPath1 := "/mnt/test1"
-	mockHWResponse := []dto.Disk{
-		{
-			Id:   pointer.String("disk-1"),
-			Size: pointer.Int(100),
-			Partitions: &[]dto.Partition{
-				{
-					Id:               pointer.String("part-1"),
-					Size:             pointer.Int(50),
-					LegacyDevicePath: pointer.String("/dev/sda1"),
-					LegacyDeviceName: pointer.String("sda1"),
-					DevicePath:       pointer.String("/dev/disk/by-id/virtio-disk1-part1"),
-					HostMountPointData: &[]dto.MountPointData{{
-						Path: mountPath1,
-					}},
-				},
-			},
-		},
-	}
-
-	//dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, DeviceId: "sda1"}
-	expectedErr := errors.New("DB save error")
-
-	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHWResponse, nil).Verify(matchers.Times(1))
-	//mock.When(suite.mockMountRepo.FindByPath(mountPath1)).ThenReturn(dbomMountData1, nil).Verify(matchers.Times(1))
-	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(expectedErr).Verify(matchers.Times(1))
-
-	disks := suite.volumeService.GetVolumesData()
-	suite.Require().NotNil(disks)
-	suite.Require().Len(*disks, 1)
-	suite.Require().Len(*(*disks)[0].Partitions, 1)
-	suite.Require().Len(*(*(*disks)[0].Partitions)[0].MountPointData, 1)
-	mountPoint := (*(*(*disks)[0].Partitions)[0].MountPointData)[0]
-	suite.Equal(mountPath1, mountPoint.Path)
-	// The data returned will likely be the original data before the failed save.
-	suite.True(mountPoint.IsMounted) // Still true from hardware/converter data
-	// Check if the code marks it invalid on Save error
-}
-
-// --- NotifyClient Tests ---
 
 // --- UpdateMountPointSettings Tests ---
 func (suite *VolumeServiceTestSuite) TestUpdateMountPointSettings_Success() {

@@ -60,7 +60,9 @@ func NewBroadcasterService(
 	}
 
 	// Register event bus listeners
-	b.setupEventListeners()
+	if eventBus != nil {
+		b.setupEventListeners()
+	}
 
 	return b
 }

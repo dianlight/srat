@@ -16,7 +16,7 @@ import (
 type MountToDto interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:ignore IsToMountAtStartup Shares Flags InvalidError Warnings RefreshVersion
+	// goverter:ignore IsToMountAtStartup Shares InvalidError Warnings RefreshVersion
 	// goverter:map Data CustomFlags | stringToMountFlags
 	// goverter:map Device Type | pathToType
 	// goverter:map Device DeviceId | deviceToDeviceId
@@ -29,6 +29,7 @@ type MountToDto interface {
 	// goverter:map Path IsWriteSupported | FSTypeIsWriteSupported
 	// goverter:map Device Partition | partitionFromDevice
 	// goverter:map FSType TimeMachineSupport | TimeMachineSupportFromFS
+	// goverter:map Flags Flags | uintptrToMountFlags
 	// goverter:context disks
 	MountToMountPointData(source *mount.MountPoint, target *dto.MountPointData, disks []dto.Disk) error
 }
@@ -50,4 +51,11 @@ func partitionFromDevice(device string, disks []dto.Disk) *dto.Partition {
 		}
 	}
 	return nil
+}
+
+func uintptrToMountFlags(source uintptr) (*dto.MountFlags, error) {
+	var ret dto.MountFlags
+	slog.Debug("Converting mount uintptr to MounFlags", "data", source)
+	err := ret.Scan(source)
+	return &ret, err
 }

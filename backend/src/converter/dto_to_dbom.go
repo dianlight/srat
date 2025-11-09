@@ -130,7 +130,7 @@ func stringToExportedShare(source string) dbom.ExportedShare {
 func partitionFromDeviceId(source string, disks []dto.Disk) *dto.Partition {
 	for _, d := range disks {
 		for _, p := range *d.Partitions {
-			if p.Id != nil && *p.Id == source {
+			if (p.Id != nil && *p.Id == source) || (p.DevicePath != nil && *p.DevicePath == source) {
 				return &p
 			}
 		}

@@ -109,129 +109,132 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 		PerPartitionInfo: make(map[string][]dto.PerPartitionInfo, 0),
 	}
 
-	for _, disk := range *disks {
-		if disk.DevicePath == nil {
-			slog.Debug("Skipping disk with nil device", "diskID", disk.Id)
-			continue
-		}
-		stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.LegacyDeviceName)
+	if disks != nil {
+		for _, disk := range *disks {
+			if disk.DevicePath == nil {
+				slog.Debug("Skipping disk with nil device", "diskID", disk.Id)
+				continue
+			}
+			stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.LegacyDeviceName)
 
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		if s.lastStats[*disk.Id] != nil {
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			if s.lastStats[*disk.Id] != nil {
 
-			dstat := dto.DiskIOStats{
-				DeviceName:        *disk.LegacyDeviceName,
-				DeviceDescription: *disk.Id,
-				ReadIOPS:          (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Id].ReadIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
-				WriteIOPS:         (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Id].WriteIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
-				ReadLatency:       (float64(stats.ReadTicks) - float64(s.lastStats[*disk.Id].ReadTicks)) / (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Id].ReadIOs)),
-				WriteLatency:      (float64(stats.WriteTicks) - float64(s.lastStats[*disk.Id].WriteTicks)) / (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Id].WriteIOs)),
-				SmartData:         disk.SmartInfo,
-			}
-			if dstat.ReadIOPS < 0 || math.IsNaN(dstat.ReadIOPS) {
-				dstat.ReadIOPS = 0
-			}
-			if dstat.WriteIOPS < 0 || math.IsNaN(dstat.WriteIOPS) {
-				dstat.WriteIOPS = 0
-			}
-			if dstat.ReadLatency < 0 || math.IsNaN(dstat.ReadLatency) {
-				dstat.ReadLatency = 0
-			}
-			if dstat.WriteLatency < 0 || math.IsNaN(dstat.WriteLatency) {
-				dstat.WriteLatency = 0
-			}
-			s.currentDiskHealth.PerDiskIO = append(s.currentDiskHealth.PerDiskIO, dstat)
-
-			s.currentDiskHealth.Global.TotalIOPS += dstat.ReadIOPS + dstat.WriteIOPS
-			if dstat.ReadIOPS+dstat.WriteIOPS > 0 {
-				s.currentDiskHealth.Global.TotalReadLatency += dstat.ReadLatency
-			}
-			if dstat.WriteIOPS > 0 {
-				s.currentDiskHealth.Global.TotalWriteLatency += dstat.WriteLatency
-			}
-			s.lastStats[*disk.Id] = &stats
-
-			// --- Smart data population ---
-			/*
-				smartStats, err := s.smartService.GetSmartInfo("/dev/" + *disk.Device)
-				if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-					slog.Warn("Error getting SMART stats", "disk", *disk.Device, "err", err)
-				} else {
-					s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStats
+				dstat := dto.DiskIOStats{
+					DeviceName:        *disk.LegacyDeviceName,
+					DeviceDescription: *disk.Id,
+					ReadIOPS:          (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Id].ReadIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
+					WriteIOPS:         (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Id].WriteIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
+					ReadLatency:       (float64(stats.ReadTicks) - float64(s.lastStats[*disk.Id].ReadTicks)) / (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Id].ReadIOs)),
+					WriteLatency:      (float64(stats.WriteTicks) - float64(s.lastStats[*disk.Id].WriteTicks)) / (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Id].WriteIOs)),
+					SmartData:         disk.SmartInfo,
 				}
-			*/
-		} else {
-			s.lastStats[*disk.Id] = &stats
-		}
-
-		// --- PerPartitionInfo population ---
-		if disk.Partitions != nil {
-			for _, part := range *disk.Partitions {
-
-				// Fill PerPartitionInfo
-				var fstype, name string
-				if part.FsType != nil {
-					fstype = *part.FsType
+				if dstat.ReadIOPS < 0 || math.IsNaN(dstat.ReadIOPS) {
+					dstat.ReadIOPS = 0
 				}
-				if part.Name != nil {
-					name = *part.Name
-				} else if part.LegacyDeviceName != nil {
-					name = *part.LegacyDeviceName
-				} else if part.Id != nil {
-					name = *part.Id
-				} else {
-					name = "unknown"
+				if dstat.WriteIOPS < 0 || math.IsNaN(dstat.WriteIOPS) {
+					dstat.WriteIOPS = 0
 				}
-				fsckSupported := s.isFsckSupported(fstype)
-				fsckNeeded := s.determineFsckNeeded(&part, fstype, fsckSupported)
-				// Use partition size if available
-				// Get free space using syscall.Statfs
-				var totalSpace, freeSpace uint64
-				mountPoint := ""
-				if part.Size != nil {
-					// Prevent integer overflow/underflow converting int -> uint64
-					if *part.Size > 0 {
-						totalSpace = uint64(*part.Size)
+				if dstat.ReadLatency < 0 || math.IsNaN(dstat.ReadLatency) {
+					dstat.ReadLatency = 0
+				}
+				if dstat.WriteLatency < 0 || math.IsNaN(dstat.WriteLatency) {
+					dstat.WriteLatency = 0
+				}
+				s.currentDiskHealth.PerDiskIO = append(s.currentDiskHealth.PerDiskIO, dstat)
+
+				s.currentDiskHealth.Global.TotalIOPS += dstat.ReadIOPS + dstat.WriteIOPS
+				if dstat.ReadIOPS+dstat.WriteIOPS > 0 {
+					s.currentDiskHealth.Global.TotalReadLatency += dstat.ReadLatency
+				}
+				if dstat.WriteIOPS > 0 {
+					s.currentDiskHealth.Global.TotalWriteLatency += dstat.WriteLatency
+				}
+				s.lastStats[*disk.Id] = &stats
+
+				// --- Smart data population ---
+				/*
+					smartStats, err := s.smartService.GetSmartInfo("/dev/" + *disk.Device)
+					if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
+						slog.Warn("Error getting SMART stats", "disk", *disk.Device, "err", err)
 					} else {
-						totalSpace = 0
+						s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStats
 					}
-				}
-				if part.MountPointData != nil && (*part.MountPointData)[0].Path != "" {
-					// Use first mount point if multiple (shouldn't normally happen)
-					mp := (*part.MountPointData)[0]
+				*/
+			} else {
+				s.lastStats[*disk.Id] = &stats
+			}
 
-					mountPoint = mp.Path
+			// --- PerPartitionInfo population ---
+			if disk.Partitions != nil {
+				for _, part := range *disk.Partitions {
 
-					var stat syscall.Statfs_t
-					if err := syscall.Statfs(mp.Path, &stat); err == nil {
-						// Guard against negative block size before converting to uint64
-						if stat.Bsize > 0 {
-							bsize := uint64(stat.Bsize)
-							freeSpace = stat.Bfree * bsize
-							totalSpace = stat.Blocks * bsize
+					// Fill PerPartitionInfo
+					var fstype, name string
+					if part.FsType != nil {
+						fstype = *part.FsType
+					}
+					if part.Name != nil {
+						name = *part.Name
+					} else if part.LegacyDeviceName != nil {
+						name = *part.LegacyDeviceName
+					} else if part.Id != nil {
+						name = *part.Id
+					} else {
+						name = "unknown"
+					}
+					fsckSupported := s.isFsckSupported(fstype)
+					fsckNeeded := s.determineFsckNeeded(&part, fstype, fsckSupported)
+					// Use partition size if available
+					// Get free space using syscall.Statfs
+					var totalSpace, freeSpace uint64
+					mountPoint := ""
+					if part.Size != nil {
+						// Prevent integer overflow/underflow converting int -> uint64
+						if *part.Size > 0 {
+							totalSpace = uint64(*part.Size)
+						} else {
+							totalSpace = 0
 						}
 					}
-				}
-				info := dto.PerPartitionInfo{
-					Name:          name,
-					MountPoint:    mountPoint,
-					Device:        *part.Id,
-					FSType:        fstype,
-					FreeSpace:     freeSpace,
-					TotalSpace:    totalSpace,
-					FsckNeeded:    fsckNeeded,
-					FsckSupported: fsckSupported,
-				}
-				if s.currentDiskHealth.PerPartitionInfo[*disk.Id] == nil {
-					s.currentDiskHealth.PerPartitionInfo[*disk.Id] = make([]dto.PerPartitionInfo, 0)
-				}
-				s.currentDiskHealth.PerPartitionInfo[*disk.Id] = append(s.currentDiskHealth.PerPartitionInfo[*disk.Id], info)
-			}
+					if part.MountPointData != nil && (*part.MountPointData)[0].Path != "" {
+						// Use first mount point if multiple (shouldn't normally happen)
+						mp := (*part.MountPointData)[0]
 
+						mountPoint = mp.Path
+
+						var stat syscall.Statfs_t
+						if err := syscall.Statfs(mp.Path, &stat); err == nil {
+							// Guard against negative block size before converting to uint64
+							if stat.Bsize > 0 {
+								bsize := uint64(stat.Bsize)
+								freeSpace = stat.Bfree * bsize
+								totalSpace = stat.Blocks * bsize
+							}
+						}
+					}
+					info := dto.PerPartitionInfo{
+						Name:          name,
+						MountPoint:    mountPoint,
+						Device:        *part.Id,
+						FSType:        fstype,
+						FreeSpace:     freeSpace,
+						TotalSpace:    totalSpace,
+						FsckNeeded:    fsckNeeded,
+						FsckSupported: fsckSupported,
+					}
+					if s.currentDiskHealth.PerPartitionInfo[*disk.Id] == nil {
+						s.currentDiskHealth.PerPartitionInfo[*disk.Id] = make([]dto.PerPartitionInfo, 0)
+					}
+					s.currentDiskHealth.PerPartitionInfo[*disk.Id] = append(s.currentDiskHealth.PerPartitionInfo[*disk.Id], info)
+				}
+
+			}
 		}
 	}
+
 	s.lastUpdateTime = time.Now()
 	return nil
 }
