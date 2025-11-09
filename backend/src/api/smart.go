@@ -12,10 +12,10 @@ import (
 )
 
 type SmartHandler struct {
-	apiContext      *dto.ContextState
-	smartService    service.SmartServiceInterface
-	volumeService   service.VolumeServiceInterface
-	dirtyService    service.DirtyDataServiceInterface
+	apiContext    *dto.ContextState
+	smartService  service.SmartServiceInterface
+	volumeService service.VolumeServiceInterface
+	//dirtyService    service.DirtyDataServiceInterface
 	broadcasterServ service.BroadcasterServiceInterface
 }
 
@@ -23,14 +23,14 @@ func NewSmartHandler(
 	smartService service.SmartServiceInterface,
 	volumeService service.VolumeServiceInterface,
 	apiContext *dto.ContextState,
-	dirtyService service.DirtyDataServiceInterface,
+	//dirtyService service.DirtyDataServiceInterface,
 	broadcasterServ service.BroadcasterServiceInterface,
 ) *SmartHandler {
 	return &SmartHandler{
-		apiContext:      apiContext,
-		smartService:    smartService,
-		volumeService:   volumeService,
-		dirtyService:    dirtyService,
+		apiContext:    apiContext,
+		smartService:  smartService,
+		volumeService: volumeService,
+		//dirtyService:    dirtyService,
 		broadcasterServ: broadcasterServ,
 	}
 }
@@ -162,8 +162,6 @@ func (h *SmartHandler) StartSmartTest(ctx context.Context, input *struct {
 		return nil, huma.Error500InternalServerError("Failed to start SMART test", errE)
 	}
 
-	h.dirtyService.SetDirtyVolumes()
-
 	return &struct{ Body string }{Body: fmt.Sprintf("SMART %s test started on disk %s", input.Body.TestType, input.DiskID)}, nil
 }
 
@@ -193,8 +191,6 @@ func (h *SmartHandler) AbortSmartTest(ctx context.Context, input *struct {
 		tlog.Error("Failed to abort SMART test", "device", devicePath, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to abort SMART test", errE)
 	}
-
-	h.dirtyService.SetDirtyVolumes()
 
 	return &struct{ Body string }{Body: fmt.Sprintf("SMART test aborted on disk %s", input.DiskID)}, nil
 }
@@ -226,8 +222,6 @@ func (h *SmartHandler) EnableSmart(ctx context.Context, input *struct {
 		return nil, huma.Error500InternalServerError("Failed to enable SMART", errE)
 	}
 
-	h.dirtyService.SetDirtyVolumes()
-
 	return &struct{ Body string }{Body: fmt.Sprintf("SMART enabled on disk %s", input.DiskID)}, nil
 }
 
@@ -257,8 +251,6 @@ func (h *SmartHandler) DisableSmart(ctx context.Context, input *struct {
 		tlog.Error("Failed to disable SMART", "device", devicePath, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to disable SMART", errE)
 	}
-
-	h.dirtyService.SetDirtyVolumes()
 
 	return &struct{ Body string }{Body: fmt.Sprintf("SMART disabled on disk %s", input.DiskID)}, nil
 }

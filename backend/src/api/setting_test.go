@@ -14,6 +14,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -46,6 +47,8 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			},
 			api.NewSettingsHanler,
 			service.NewDirtyDataService,
+			service.NewSettingService,
+			events.NewEventBus,
 			mock.Mock[service.TelemetryServiceInterface],
 			//			mock.Mock[service.BroadcasterServiceInterface],
 			//			mock.Mock[service.SambaServiceInterface],

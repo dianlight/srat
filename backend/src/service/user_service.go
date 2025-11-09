@@ -6,6 +6,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -22,21 +23,21 @@ type UserServiceInterface interface {
 
 type UserService struct {
 	userRepo     repository.SambaUserRepositoryInterface
-	dirtyService DirtyDataServiceInterface
+	eventBus     events.EventBusInterface
 	shareService ShareServiceInterface
 }
 
 type UserServiceParams struct {
 	fx.In
 	UserRepo     repository.SambaUserRepositoryInterface
-	DirtyService DirtyDataServiceInterface
 	ShareService ShareServiceInterface
+	EventBus     events.EventBusInterface
 }
 
 func NewUserService(params UserServiceParams) UserServiceInterface {
 	return &UserService{
 		userRepo:     params.UserRepo,
-		dirtyService: params.DirtyService,
+		eventBus:     params.EventBus,
 		shareService: params.ShareService,
 	}
 }
@@ -75,12 +76,18 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 		return nil, errors.Wrap(err, "failed to create user in repository")
 	}
 
-	s.dirtyService.SetDirtyUsers()
-
 	var createdUserDto dto.User
 	if err := conv.SambaUserToUser(dbUser, &createdUserDto); err != nil {
 		return nil, errors.Wrap(err, "failed to convert created DBOM user back to DTO")
 	}
+
+	s.eventBus.EmitUser(events.UserEvent{
+		Event: events.Event{
+			Type: events.EventTypes.ADD,
+		},
+		User: &createdUserDto,
+	})
+
 	return &createdUserDto, nil
 }
 
@@ -122,12 +129,18 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 		return nil, errors.Wrapf(err, "failed to save updated user %s to repository", dbUser.Username)
 	}
 
-	s.dirtyService.SetDirtyUsers()
-
 	var updatedUserDto dto.User
 	if err := conv.SambaUserToUser(*dbUser, &updatedUserDto); err != nil {
 		return nil, errors.Wrap(err, "failed to convert updated DBOM user back to DTO")
 	}
+
+	s.eventBus.EmitUser(events.UserEvent{
+		Event: events.Event{
+			Type: events.EventTypes.UPDATE,
+		},
+		User: &updatedUserDto,
+	})
+
 	return &updatedUserDto, nil
 }
 
@@ -162,12 +175,16 @@ func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 		return nil, errors.Wrap(err, "failed to save updated admin user")
 	}
 
-	s.dirtyService.SetDirtyUsers()
-
 	var updatedAdminDto dto.User
 	if err := conv.SambaUserToUser(dbUser, &updatedAdminDto); err != nil {
 		return nil, errors.Wrap(err, "failed to convert updated admin DBOM to DTO")
 	}
+	s.eventBus.EmitUser(events.UserEvent{
+		Event: events.Event{
+			Type: events.EventTypes.UPDATE,
+		},
+		User: &updatedAdminDto,
+	})
 	return &updatedAdminDto, nil
 }
 
@@ -178,6 +195,11 @@ func (s *UserService) DeleteUser(username string) error {
 		}
 		return errors.Wrapf(err, "failed to delete user %s from repository", username)
 	}
-	s.dirtyService.SetDirtyUsers()
+	s.eventBus.EmitUser(events.UserEvent{
+		Event: events.Event{
+			Type: events.EventTypes.REMOVE,
+		},
+		User: &dto.User{Username: username},
+	})
 	return nil
 }

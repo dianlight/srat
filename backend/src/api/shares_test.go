@@ -10,6 +10,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -24,7 +25,7 @@ type ShareHandlerSuite struct {
 	suite.Suite
 	app              *fxtest.App
 	handler          *api.ShareHandler
-	mockDirtyService service.DirtyDataServiceInterface
+	dirtyService     service.DirtyDataServiceInterface
 	mockShareService service.ShareServiceInterface
 	ctx              context.Context
 	cancel           context.CancelFunc
@@ -38,7 +39,8 @@ func (suite *ShareHandlerSuite) SetupTest() {
 				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 			},
 			api.NewShareHandler,
-			mock.Mock[service.DirtyDataServiceInterface],
+			service.NewDirtyDataService,
+			events.NewEventBus,
 			mock.Mock[service.ShareServiceInterface],
 			func() *dto.ContextState {
 				return &dto.ContextState{
@@ -50,7 +52,7 @@ func (suite *ShareHandlerSuite) SetupTest() {
 			},
 		),
 		fx.Populate(&suite.handler),
-		fx.Populate(&suite.mockDirtyService),
+		fx.Populate(&suite.dirtyService),
 		fx.Populate(&suite.mockShareService),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
@@ -90,7 +92,7 @@ func (suite *ShareHandlerSuite) TestCreateShareSuccess() {
 	suite.Equal(expectedShare.Name, result.Name)
 
 	// Verify that SetDirtyShares was called synchronously
-	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Shares)
 }
 
 type SharedResourceFromFrontend struct {
@@ -169,7 +171,7 @@ func (suite *ShareHandlerSuite) TestCreateShareSuccessFull() {
 	suite.Equal(expectedShare.Name, result.Name)
 
 	// Verify that SetDirtyShares was called synchronously
-	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Shares)
 }
 
 func (suite *ShareHandlerSuite) TestCreateShareAlreadyExists() {
@@ -226,7 +228,7 @@ func (suite *ShareHandlerSuite) TestCreateShareAsyncNotification() {
 	suite.Equal(expectedShare.Name, result.Name)
 
 	// Verify that SetDirtyShares was called synchronously
-	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Shares)
 
 	// Note: NotifyClient is called asynchronously (in a goroutine),
 	// so we can't reliably assert it was called in this test without
@@ -455,7 +457,7 @@ func (suite *ShareHandlerSuite) TestDeleteShareSuccess() {
 	suite.Require().Equal(http.StatusNoContent, resp.Code)
 
 	// Verify that SetDirtyShares was called
-	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Shares)
 }
 
 func (suite *ShareHandlerSuite) TestDeleteShareNotFound() {
@@ -499,7 +501,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareSuccess() {
 	suite.Equal(expectedShare.Usage, result.Usage)
 
 	// Verify that SetDirtyShares was called
-	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Shares)
 }
 
 func (suite *ShareHandlerSuite) TestUpdateShareNotFound() {
@@ -542,7 +544,7 @@ func (suite *ShareHandlerSuite) TestDisableShareSuccess() {
 	suite.True(*result.Disabled)
 
 	// Verify that SetDirtyShares was called
-	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Shares)
 }
 
 func (suite *ShareHandlerSuite) TestDisableShareNotFound() {
@@ -584,7 +586,7 @@ func (suite *ShareHandlerSuite) TestEnableShareSuccess() {
 	suite.False(*result.Disabled)
 
 	// Verify that SetDirtyShares was called
-	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Shares)
 }
 
 func (suite *ShareHandlerSuite) TestEnableShareNotFound() {
@@ -971,7 +973,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithMountedRWVolume() {
 	suite.True(result.MountPointData.IsMounted)
 	suite.True(*result.MountPointData.IsWriteSupported)
 
-	mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Shares)
 }
 
 // TestCreateShareWithROVolumeNoRWUsers tests that RO volumes cannot have RW users

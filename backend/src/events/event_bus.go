@@ -34,6 +34,14 @@ type EventBusInterface interface {
 	// Mount point events
 	EmitMountPoint(event MountPointEvent)
 	OnMountPoint(handler func(MountPointEvent)) func()
+
+	// User events
+	EmitUser(event UserEvent)
+	OnUser(handler func(UserEvent)) func()
+
+	// Setting events
+	EmitSetting(event SettingEvent)
+	OnSetting(handler func(SettingEvent)) func()
 }
 
 // EventBus implements EventBusInterface using maniartech/signals
@@ -51,6 +59,12 @@ type EventBus struct {
 
 	// Mount point event signals
 	mountPoint signals.Signal[MountPointEvent]
+
+	// User event signals
+	user signals.Signal[UserEvent]
+
+	// Setting event signals
+	setting signals.Signal[SettingEvent]
 }
 
 // NewEventBus creates a new EventBus instance
@@ -61,6 +75,8 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 		partition:  signals.New[PartitionEvent](),
 		share:      signals.New[ShareEvent](),
 		mountPoint: signals.New[MountPointEvent](),
+		user:       signals.New[UserEvent](),
+		setting:    signals.New[SettingEvent](),
 	}
 }
 
@@ -166,5 +182,39 @@ func (eb *EventBus) OnMountPointUnmounted(handler func(MountPointEvent)) func() 
 	}, key)
 	return func() {
 		eb.mountPoint.RemoveListener(key)
+	}
+}
+
+// User event methods
+func (eb *EventBus) EmitUser(event UserEvent) {
+	slog.Debug("Emitting User event", "user", event.User.Username)
+	eb.user.Emit(eb.ctx, event)
+}
+
+func (eb *EventBus) OnUser(handler func(UserEvent)) func() {
+	slog.Debug("Registering User event handler")
+	key := generateKey()
+	eb.user.AddListener(func(ctx context.Context, event UserEvent) {
+		handler(event)
+	}, key)
+	return func() {
+		eb.user.RemoveListener(key)
+	}
+}
+
+// Setting event methods
+func (eb *EventBus) EmitSetting(event SettingEvent) {
+	slog.Debug("Emitting Setting event", "setting", event.Setting)
+	eb.setting.Emit(eb.ctx, event)
+}
+
+func (eb *EventBus) OnSetting(handler func(SettingEvent)) func() {
+	slog.Debug("Registering Setting event handler")
+	key := generateKey()
+	eb.setting.AddListener(func(ctx context.Context, event SettingEvent) {
+		handler(event)
+	}, key)
+	return func() {
+		eb.setting.RemoveListener(key)
 	}
 }

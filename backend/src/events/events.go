@@ -32,3 +32,15 @@ type MountPointEvent struct {
 	Event
 	MountPoint *dto.MountPointData
 }
+
+// UserEvent represents a user-related event
+type UserEvent struct {
+	Event
+	User *dto.User
+}
+
+// SettingEvent represents a setting-related event
+type SettingEvent struct {
+	Event
+	Setting *dto.Settings
+}

@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/tlog"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 )
 
 type DirtyDataServiceInterface interface {
-	SetDirtyShares()
-	SetDirtyVolumes()
-	SetDirtyUsers()
-	SetDirtySettings()
 	GetDirtyDataTracker() dto.DataDirtyTracker
 	AddRestartCallback(callback func() errors.E)
 	ResetDirtyStatus()
@@ -27,11 +26,43 @@ type DirtyDataService struct {
 	restartCallbacks *[]func() errors.E
 }
 
-func NewDirtyDataService(ctx context.Context) DirtyDataServiceInterface {
+func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.EventBusInterface) DirtyDataServiceInterface {
 	p := new(DirtyDataService)
 	p.ctx = ctx
 	p.dataDirtyTracker = dto.DataDirtyTracker{}
 	p.restartCallbacks = &[]func() errors.E{}
+
+	unsubscribe := make([]func(), 3)
+
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			tlog.Trace("Starting DirtyDataService")
+			// Register event bus listeners
+			if eventBus != nil {
+				unsubscribe[0] = eventBus.OnShare(func(event events.ShareEvent) {
+					slog.Debug("DirtyDataService received Share event", "share", event.Share.Name)
+					p.setDirtyShares()
+				})
+				unsubscribe[1] = eventBus.OnUser(func(event events.UserEvent) {
+					slog.Debug("DirtyDataService received User event", "user", event.User.Username)
+					p.setDirtyUsers()
+				})
+				unsubscribe[2] = eventBus.OnSetting(func(event events.SettingEvent) {
+					slog.Debug("DirtyDataService received Setting event", "setting", event.Setting)
+					p.setDirtySettings()
+				})
+			}
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			tlog.Trace("Stopping DirtyDataService")
+			for _, unsub := range unsubscribe {
+				unsub()
+			}
+			return nil
+		},
+	})
+
 	return p
 }
 
@@ -61,22 +92,17 @@ func (p *DirtyDataService) stopTimer() {
 	}
 }
 
-func (p *DirtyDataService) SetDirtyShares() {
+func (p *DirtyDataService) setDirtyShares() {
 	p.dataDirtyTracker.Shares = true
 	p.startTimer()
 }
 
-func (p *DirtyDataService) SetDirtyVolumes() {
-	p.dataDirtyTracker.Volumes = true
-	p.startTimer()
-}
-
-func (p *DirtyDataService) SetDirtyUsers() {
+func (p *DirtyDataService) setDirtyUsers() {
 	p.dataDirtyTracker.Users = true
 	p.startTimer()
 }
 
-func (p *DirtyDataService) SetDirtySettings() {
+func (p *DirtyDataService) setDirtySettings() {
 	p.dataDirtyTracker.Settings = true
 	p.startTimer()
 }

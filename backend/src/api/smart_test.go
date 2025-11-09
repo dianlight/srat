@@ -223,7 +223,7 @@ func (suite *SmartHandlerSuite) TestStartSmartTestSuccess() {
 
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
 	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).StartSelfTest(devicePath, dto.SmartTestTypeShort)
-	mock.Verify(suite.mockDirtySvc, matchers.Times(1)).SetDirtyVolumes()
+
 }
 
 func (suite *SmartHandlerSuite) TestAbortSmartTestSuccess() {
@@ -247,7 +247,6 @@ func (suite *SmartHandlerSuite) TestAbortSmartTestSuccess() {
 
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
 	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).AbortSelfTest(devicePath)
-	mock.Verify(suite.mockDirtySvc, matchers.Times(1)).SetDirtyVolumes()
 }
 
 func (suite *SmartHandlerSuite) TestEnableSmartSuccess() {
@@ -271,7 +270,6 @@ func (suite *SmartHandlerSuite) TestEnableSmartSuccess() {
 
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
 	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).EnableSMART(devicePath)
-	mock.Verify(suite.mockDirtySvc, matchers.Times(1)).SetDirtyVolumes()
 }
 
 func (suite *SmartHandlerSuite) TestDisableSmartSuccess() {
@@ -295,7 +293,6 @@ func (suite *SmartHandlerSuite) TestDisableSmartSuccess() {
 
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
 	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).DisableSMART(devicePath)
-	mock.Verify(suite.mockDirtySvc, matchers.Times(1)).SetDirtyVolumes()
 }
 
 func (suite *SmartHandlerSuite) TestDiskNotFound() {
@@ -327,7 +324,7 @@ func (suite *SmartHandlerSuite) TestReadOnlyModeRejectsStartTest() {
 		suite.mockSmartSvc,
 		suite.mockVolumeSvc,
 		&dto.ContextState{ReadOnlyMode: true},
-		suite.mockDirtySvc,
+		//	suite.mockDirtySvc,
 		suite.mockBroadSvc,
 	)
 

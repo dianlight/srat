@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/tlog"
 	"github.com/teivah/broadcast"
+	"go.uber.org/fx"
 
 	"github.com/danielgtaylor/huma/v2/sse"
 )
@@ -40,6 +41,7 @@ type broadcastEvent struct {
 }
 
 func NewBroadcasterService(
+	lc fx.Lifecycle,
 	ctx context.Context,
 	haService HomeAssistantServiceInterface,
 	haRootService HaRootServiceInterface,
@@ -59,17 +61,34 @@ func NewBroadcasterService(
 		volumeService: volumeService,
 	}
 
-	// Register event bus listeners
-	if eventBus != nil {
-		b.setupEventListeners()
-	}
+	var unsubscribe []func()
+
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			tlog.Trace("Starting BroadcasterService")
+			// Register event bus listeners
+			if eventBus != nil {
+				unsubscribe = b.setupEventListeners()
+			}
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			tlog.Trace("Stopping BroadcasterService")
+			for _, unsub := range unsubscribe {
+				unsub()
+			}
+			b.relay.Close()
+			return nil
+		},
+	})
 
 	return b
 }
 
-func (broker *BroadcasterService) setupEventListeners() {
+func (broker *BroadcasterService) setupEventListeners() []func() {
+	ret := make([]func(), 4)
 	// Listen for disk events
-	broker.eventBus.OnDisk(func(event events.DiskEvent) {
+	ret[0] = broker.eventBus.OnDisk(func(event events.DiskEvent) {
 		diskID := "unknown"
 		if event.Disk.Id != nil {
 			diskID = *event.Disk.Id
@@ -79,7 +98,7 @@ func (broker *BroadcasterService) setupEventListeners() {
 	})
 
 	// Listen for partition events
-	broker.eventBus.OnPartition(func(event events.PartitionEvent) {
+	ret[1] = broker.eventBus.OnPartition(func(event events.PartitionEvent) {
 		partName := "unknown"
 		if event.Partition.Name != nil {
 			partName = *event.Partition.Name
@@ -89,17 +108,18 @@ func (broker *BroadcasterService) setupEventListeners() {
 	})
 
 	// Listen for share events
-	broker.eventBus.OnShare(func(event events.ShareEvent) {
+	ret[2] = broker.eventBus.OnShare(func(event events.ShareEvent) {
 		slog.Debug("BroadcasterService received Share event", "share", event.Share.Name)
 		broker.BroadcastMessage(event.Share)
 	})
 
 	// Listen for mount point events
-	broker.eventBus.OnMountPoint(func(event events.MountPointEvent) {
+	ret[3] = broker.eventBus.OnMountPoint(func(event events.MountPointEvent) {
 		slog.Debug("BroadcasterService received MountPointMounted event", "mount_point", event.MountPoint.Path)
 		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
 	})
 
+	return ret
 }
 
 func (broker *BroadcasterService) BroadcastMessage(msg any) any {

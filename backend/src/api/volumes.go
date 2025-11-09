@@ -21,15 +21,19 @@ type VolumeHandler struct {
 	apiContext   *dto.ContextState
 	vservice     service.VolumeServiceInterface
 	shareService service.ShareServiceInterface
-	dirtyservice service.DirtyDataServiceInterface
+	//dirtyservice service.DirtyDataServiceInterface
 }
 
-func NewVolumeHandler(vservice service.VolumeServiceInterface, shareService service.ShareServiceInterface, apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface) *VolumeHandler {
+func NewVolumeHandler(
+	vservice service.VolumeServiceInterface,
+	shareService service.ShareServiceInterface,
+	apiContext *dto.ContextState,
+) *VolumeHandler {
 	p := new(VolumeHandler)
 	p.vservice = vservice
 	p.shareService = shareService
 	p.apiContext = apiContext
-	p.dirtyservice = dirtyservice
+	//p.dirtyservice = dirtyservice
 	return p
 }
 
@@ -87,7 +91,6 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 			return nil, huma.Error500InternalServerError("Unknown Error", errE)
 		}
 	}
-	self.dirtyservice.SetDirtyVolumes()
 
 	return &struct{ Body dto.MountPointData }{Body: mount_data}, nil
 }
@@ -114,7 +117,6 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 		return nil, huma.Error406NotAcceptable(fmt.Sprintf("%#v", err.Details()["Detail"]), err)
 	}
 
-	self.dirtyservice.SetDirtyVolumes()
 	return nil, nil
 }
 
@@ -167,7 +169,6 @@ func (self *VolumeHandler) UpdateVolumeSettings(ctx context.Context, input *stru
 		return nil, huma.Error500InternalServerError("Failed to update mount configuration", serviceErr)
 	}
 
-	self.dirtyservice.SetDirtyVolumes()
 	return &struct{ Body dto.MountPointData }{Body: *updatedDto}, nil
 }
 
@@ -194,6 +195,5 @@ func (self *VolumeHandler) PatchVolumeSettings(ctx context.Context, input *struc
 		return nil, huma.Error500InternalServerError("Failed to patch mount configuration", serviceErr)
 	}
 
-	self.dirtyservice.SetDirtyVolumes()
 	return &struct{ Body dto.MountPointData }{Body: *updatedDto}, nil
 }

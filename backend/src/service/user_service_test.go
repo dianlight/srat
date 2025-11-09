@@ -1,24 +1,33 @@
 package service
 
 import (
+	"context"
+	"sync"
 	"testing"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
 )
 
 // UserServiceSuite contains unit tests for user_service.go
 type UserServiceSuite struct {
 	suite.Suite
+	app          *fxtest.App
+	ctx          context.Context
+	cancel       context.CancelFunc
+	wg           *sync.WaitGroup
 	ctrl         *matchers.MockController
 	userRepoMock repository.SambaUserRepositoryInterface
-	dirtyMock    DirtyDataServiceInterface
+	dirtyService DirtyDataServiceInterface
 	shareMock    ShareServiceInterface
 	userService  UserServiceInterface
 }
@@ -29,19 +38,30 @@ func TestUserServiceSuite(t *testing.T) {
 }
 
 func (suite *UserServiceSuite) SetupTest() {
-	suite.ctrl = mock.NewMockController(suite.T())
+	suite.wg = &sync.WaitGroup{}
 
-	// Create mocks
-	suite.userRepoMock = mock.Mock[repository.SambaUserRepositoryInterface](suite.ctrl)
-	suite.dirtyMock = mock.Mock[DirtyDataServiceInterface](suite.ctrl)
-	suite.shareMock = mock.Mock[ShareServiceInterface](suite.ctrl)
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) {
+				ctx := context.WithValue(context.Background(), "wg", suite.wg)
+				return context.WithCancel(ctx)
+			},
+			NewUserService,
+			NewDirtyDataService,
+			events.NewEventBus,
+			mock.Mock[repository.SambaUserRepositoryInterface],
+			mock.Mock[ShareServiceInterface],
+		),
+		fx.Populate(&suite.ctx, &suite.cancel),
+		fx.Populate(&suite.userRepoMock),
+		fx.Populate(&suite.dirtyService),
+		fx.Populate(&suite.shareMock),
+		fx.Populate(&suite.userService),
+	)
 
-	// Instantiate userService under test with mocks
-	suite.userService = &UserService{
-		userRepo:     suite.userRepoMock,
-		dirtyService: suite.dirtyMock,
-		shareService: suite.shareMock,
-	}
+	suite.app.RequireStart()
+
 }
 
 func (suite *UserServiceSuite) TestListUsers_Success() {
@@ -118,7 +138,8 @@ func (suite *UserServiceSuite) TestCreateUser_Success() {
 	suite.NotNil(createdUser)
 	suite.Equal("newuser", createdUser.Username)
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).Create(mock.Any[*dbom.SambaUser]())
-	mock.Verify(suite.dirtyMock, matchers.Times(1)).SetDirtyUsers()
+
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 }
 
 func (suite *UserServiceSuite) TestCreateUser_DuplicateUsername() {
@@ -188,7 +209,7 @@ func (suite *UserServiceSuite) TestUpdateUser_Success() {
 	suite.Equal(currentUsername, updatedUser.Username)
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).GetUserByName(currentUsername)
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).Save(mock.Any[*dbom.SambaUser]())
-	mock.Verify(suite.dirtyMock, matchers.Times(1)).SetDirtyUsers()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 }
 
 func (suite *UserServiceSuite) TestUpdateUser_UserNotFound() {
@@ -244,7 +265,7 @@ func (suite *UserServiceSuite) TestUpdateUser_RenameSuccess() {
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).GetUserByName(newUsername)
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).Rename(currentUsername, newUsername)
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).Save(mock.Any[*dbom.SambaUser]())
-	mock.Verify(suite.dirtyMock, matchers.Times(1)).SetDirtyUsers()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 }
 
 func (suite *UserServiceSuite) TestUpdateUser_RenameToExistingUser() {
@@ -339,7 +360,7 @@ func (suite *UserServiceSuite) TestUpdateAdminUser_Success() {
 	suite.True(updatedAdmin.IsAdmin)
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).GetAdmin()
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).Save(mock.Any[*dbom.SambaUser]())
-	mock.Verify(suite.dirtyMock, matchers.Times(1)).SetDirtyUsers()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 }
 
 func (suite *UserServiceSuite) TestUpdateAdminUser_GetAdminError() {
@@ -394,7 +415,7 @@ func (suite *UserServiceSuite) TestUpdateAdminUser_RenameSuccess() {
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).GetUserByName(newAdminName)
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).Rename("oldadmin", newAdminName)
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).Save(mock.Any[*dbom.SambaUser]())
-	mock.Verify(suite.dirtyMock, matchers.Times(1)).SetDirtyUsers()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 }
 
 func (suite *UserServiceSuite) TestUpdateAdminUser_RenameToExistingUser() {
@@ -445,7 +466,7 @@ func (suite *UserServiceSuite) TestDeleteUser_Success() {
 	// Assert
 	suite.NoError(err)
 	mock.Verify(suite.userRepoMock, matchers.Times(1)).Delete(username)
-	mock.Verify(suite.dirtyMock, matchers.Times(1)).SetDirtyUsers()
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 }
 
 func (suite *UserServiceSuite) TestDeleteUser_UserNotFound() {

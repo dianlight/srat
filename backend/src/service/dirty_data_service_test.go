@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -18,6 +19,7 @@ import (
 type DirtyDataServiceTestSuite struct {
 	suite.Suite
 	dirtyDataService DirtyDataServiceInterface
+	eventBus         events.EventBusInterface
 	ctx              context.Context
 	cancel           context.CancelFunc
 	app              *fxtest.App
@@ -35,8 +37,10 @@ func (suite *DirtyDataServiceTestSuite) SetupTest() {
 				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 			},
 			NewDirtyDataService,
+			events.NewEventBus,
 		),
 		fx.Populate(&suite.dirtyDataService),
+		fx.Populate(&suite.eventBus),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
@@ -55,31 +59,19 @@ func (suite *DirtyDataServiceTestSuite) TestNewDirtyDataService() {
 }
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtyShares() {
-	suite.dirtyDataService.SetDirtyShares()
+	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
+	//time.Sleep(500 * time.Millisecond)
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
 	suite.True(tracker.Shares)
-	suite.False(tracker.Volumes)
 	suite.False(tracker.Users)
 	suite.False(tracker.Settings)
 	suite.True(suite.dirtyDataService.IsTimerRunning())
-}
-
-func (suite *DirtyDataServiceTestSuite) TestSetDirtyVolumes() {
-	suite.dirtyDataService.SetDirtyVolumes()
-	tracker := suite.dirtyDataService.GetDirtyDataTracker()
-	suite.False(tracker.Shares)
-	suite.True(tracker.Volumes)
-	suite.False(tracker.Users)
-	suite.False(tracker.Settings)
-	suite.True(suite.dirtyDataService.IsTimerRunning())
-
 }
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtyUsers() {
-	suite.dirtyDataService.SetDirtyUsers()
+	suite.eventBus.EmitUser(events.UserEvent{User: &dto.User{}})
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
 	suite.False(tracker.Shares)
-	suite.False(tracker.Volumes)
 	suite.True(tracker.Users)
 	suite.False(tracker.Settings)
 	suite.True(suite.dirtyDataService.IsTimerRunning())
@@ -87,10 +79,9 @@ func (suite *DirtyDataServiceTestSuite) TestSetDirtyUsers() {
 }
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtySettings() {
-	suite.dirtyDataService.SetDirtySettings()
+	suite.eventBus.EmitSetting(events.SettingEvent{Setting: &dto.Settings{}})
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
 	suite.False(tracker.Shares)
-	suite.False(tracker.Volumes)
 	suite.False(tracker.Users)
 	suite.True(tracker.Settings)
 	suite.True(suite.dirtyDataService.IsTimerRunning())
@@ -98,15 +89,13 @@ func (suite *DirtyDataServiceTestSuite) TestSetDirtySettings() {
 }
 
 func (suite *DirtyDataServiceTestSuite) TestResetDirtyStatus() {
-	suite.dirtyDataService.SetDirtyShares()
-	suite.dirtyDataService.SetDirtyVolumes()
-	suite.dirtyDataService.SetDirtyUsers()
-	suite.dirtyDataService.SetDirtySettings()
+	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
+	suite.eventBus.EmitUser(events.UserEvent{User: &dto.User{}})
+	suite.eventBus.EmitSetting(events.SettingEvent{Setting: &dto.Settings{}})
 
 	suite.dirtyDataService.ResetDirtyStatus()
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
 	suite.False(tracker.Shares)
-	suite.False(tracker.Volumes)
 	suite.False(tracker.Users)
 	suite.False(tracker.Settings)
 	suite.False(suite.dirtyDataService.IsTimerRunning())
@@ -120,7 +109,7 @@ func (suite *DirtyDataServiceTestSuite) TestAddRestartCallback() {
 		return nil
 	}
 	suite.dirtyDataService.AddRestartCallback(callback)
-	suite.dirtyDataService.SetDirtySettings()
+	suite.eventBus.EmitSetting(events.SettingEvent{Setting: &dto.Settings{}})
 	time.Sleep(6 * time.Second)
 	suite.True(callbackCalled)
 	suite.False(suite.dirtyDataService.IsTimerRunning())
@@ -128,20 +117,20 @@ func (suite *DirtyDataServiceTestSuite) TestAddRestartCallback() {
 }
 
 func (suite *DirtyDataServiceTestSuite) TestTimerResetOnMultipleSetDirty() {
-	suite.dirtyDataService.SetDirtyShares()
+	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
+	suite.eventBus.EmitSetting(events.SettingEvent{Setting: &dto.Settings{}})
 	time.Sleep(1 * time.Second)
-	suite.dirtyDataService.SetDirtyVolumes()
 
 	suite.True(suite.dirtyDataService.IsTimerRunning())
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
 
 	suite.True(tracker.Shares)
-	suite.True(tracker.Volumes)
+	suite.True(tracker.Settings)
 
 	time.Sleep(6 * time.Second)
 	tracker = suite.dirtyDataService.GetDirtyDataTracker()
 	suite.False(tracker.Shares)
-	suite.False(tracker.Volumes)
+	suite.False(tracker.Settings)
 	suite.False(suite.dirtyDataService.IsTimerRunning())
 
 }

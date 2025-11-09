@@ -12,18 +12,18 @@ import (
 )
 
 type ShareHandler struct {
-	apiContext   *dto.ContextState
-	dirtyservice service.DirtyDataServiceInterface
+	apiContext *dto.ContextState
+	//dirtyservice service.DirtyDataServiceInterface
 	shareService service.ShareServiceInterface
 }
 
 func NewShareHandler(apiContext *dto.ContextState,
-	dirtyService service.DirtyDataServiceInterface,
+	//dirtyService service.DirtyDataServiceInterface,
 	shareService service.ShareServiceInterface,
 ) *ShareHandler {
 	p := new(ShareHandler)
 	p.apiContext = apiContext
-	p.dirtyservice = dirtyService
+	//p.dirtyservice = dirtyService
 	p.shareService = shareService
 	return p
 }
@@ -115,7 +115,6 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 		slog.Error("Failed to create share", "share_name", input.Body.Name, "error", err)
 		return nil, errors.Wrapf(err, "failed to create share %s", input.Body.Name)
 	}
-	self.dirtyservice.SetDirtyShares()
 
 	return &struct {
 		Status int
@@ -161,7 +160,6 @@ func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
 		return nil, errors.Wrapf(err, "failed to update share %s", input.ShareName)
 	}
 
-	self.dirtyservice.SetDirtyShares()
 	return &struct{ Body dto.SharedResource }{Body: *updatedShare}, nil
 }
 
@@ -189,7 +187,6 @@ func (self *ShareHandler) DeleteShare(ctx context.Context, input *struct {
 		return nil, errors.Wrapf(err, "failed to delete share %s", input.ShareName)
 	}
 
-	self.dirtyservice.SetDirtyShares()
 	return &struct{}{}, nil
 }
 
@@ -205,7 +202,6 @@ func (self *ShareHandler) DisableShare(ctx context.Context, input *struct {
 		return nil, errors.Wrapf(err, "failed to disable share %s", input.ShareName)
 	}
 
-	self.dirtyservice.SetDirtyShares()
 	return &struct{ Body dto.SharedResource }{Body: *disabledShare}, nil
 }
 
@@ -221,6 +217,5 @@ func (self *ShareHandler) EnableShare(ctx context.Context, input *struct {
 		return nil, errors.Wrapf(err, "failed to enable share %s", input.ShareName)
 	}
 
-	self.dirtyservice.SetDirtyShares()
 	return &struct{ Body dto.SharedResource }{Body: *enabledShare}, nil
 }
