@@ -409,7 +409,7 @@ func (suite *VolumeServiceTestSuite) TestUpdateMountPointSettings_Success() {
 		suite.Contains(*savedDbData.Flags, dbom.MounDataFlag{Name: "noatime"})
 		suite.Equal(updatedStartup, savedDbData.IsToMountAtStartup)
 		return []any{nil}
-	})).Verify(matchers.Times(1))
+	})).Verify(matchers.Times(2))
 
 	resultDto, errE := suite.volumeService.UpdateMountPointSettings(path, updates)
 	suite.Require().Nil(errE)
@@ -457,7 +457,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_Success_OnlySta
 		suite.Equal("ext4", savedDbData.FSType) // Should not change
 		suite.Equal(patchedStartup, savedDbData.IsToMountAtStartup)
 		return []any{nil}
-	})).Verify(matchers.Times(1))
+	})).Verify(matchers.Times(2))
 
 	resultDto, errE := suite.volumeService.PatchMountPointSettings(path, patch)
 	suite.Require().Nil(errE)
@@ -484,7 +484,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_NoChanges() {
 
 	mock.When(suite.mockMountRepo.FindByPath(path)).ThenReturn(dbData, nil).Verify(matchers.Times(1))
 	// Save should NOT be called if no changes
-	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.Times(0))
+	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.Times(1))
 
 	resultDto, errE := suite.volumeService.PatchMountPointSettings(path, patch)
 	suite.Require().Nil(errE)

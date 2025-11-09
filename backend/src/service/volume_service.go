@@ -713,7 +713,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 				// New disk, add it
 				disk.RefreshVersion = self.refreshVersion
 				(*self.disks)[*disk.Id] = disk
-				for _, part := range *disk.Partitions {
+				for partIndex, part := range *disk.Partitions {
 					if part.DevicePath == nil || *part.DevicePath == "" {
 						slog.Debug("Skipping partition with nil or empty device path", "disk_id", *disk.Id)
 						continue
@@ -736,6 +736,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 							continue
 						}
 						*part.MountPointData = append(*part.MountPointData, mountData)
+						(*disk.Partitions)[partIndex] = part
 						self.eventBus.EmitMountPoint(events.MountPointEvent{
 							Event:      events.Event{Type: events.EventTypes.ADD},
 							MountPoint: &mountData,
