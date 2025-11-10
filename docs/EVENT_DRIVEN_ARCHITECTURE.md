@@ -22,31 +22,110 @@ The SRAT backend has been refactored to use an **event-driven architecture** wit
 
 ### Event Flow Diagram
 
-```
-┌─────────────────────┐
-│   Services emit     │
-│   Events (Disk,     │
-│   Partition, Share) │
-└──────────┬──────────┘
-           │
-           ▼
-    ┌────────────────┐
-    │   EventBus     │
-    │   (signals)    │
-    └────────┬───────┘
-             │
-             ▼
-    ┌─────────────────────────────┐
-    │   BroadcasterService        │
-    │   Receives & Relays Events  │
-    │   to WebSocket/SSE Clients  │
-    └─────────────────────────────┘
-             │
-             ▼
-    ┌─────────────────────────────┐
-    │   Connected Clients         │
-    │   (WebSocket/SSE)           │
-    └─────────────────────────────┘
+```mermaid
+graph TB
+    subgraph "Event Producers"
+        VS[VolumeService]
+        SS[ShareService]
+        MS[MountService]
+        US[UserService]
+        STS[SettingService]
+    end
+
+    subgraph "Event Bus Core"
+        EB[EventBus<br/>signals library]
+        
+        subgraph "Event Types"
+            DE[DiskEvent]
+            PE[PartitionEvent]
+            SE[ShareEvent]
+            ME[MountPointEvent]
+            UE[UserEvent]
+            STE[SettingEvent]
+        end
+    end
+
+    subgraph "Current Active Listeners"
+        BS[BroadcasterService]
+        subgraph "BroadcasterService Handlers"
+            BSH1[OnDisk Handler<br/>→ GetVolumesData]
+            BSH2[OnPartition Handler<br/>→ GetVolumesData]
+            BSH3[OnShare Handler<br/>→ Broadcast Share]
+            BSH4[OnMountPoint Handler<br/>→ GetVolumesData]
+        end
+        FL[Future Listeners<br/>Extensible]
+    end
+
+    subgraph "Client Communication"
+        subgraph "Web Clients"
+            WS[WebSocket Clients<br/>Filtered Events]
+            SSE[SSE Clients<br/>Filtered Events]
+        end
+        subgraph "Home Assistant Integration"
+            HA1[HA: DiskEntities<br/>VolumeStatus]
+            HA2[HA: DiskHealth]
+            HA3[HA: SambaStatus]
+            HA4[HA: ProcessStatus]
+        end
+    end
+
+    VS -->|EmitDisk| EB
+    VS -->|EmitPartition| EB
+    SS -->|EmitShare| EB
+    MS -->|EmitMountPoint| EB
+    US -.->|EmitUser| EB
+    STS -.->|EmitSetting| EB
+
+    EB --> DE
+    EB --> PE
+    EB --> SE
+    EB --> ME
+    EB -.-> UE
+    EB -.-> STE
+
+    DE --> BSH1
+    PE --> BSH2
+    SE --> BSH3
+    ME --> BSH4
+
+    BSH1 --> BS
+    BSH2 --> BS
+    BSH3 --> BS
+    BSH4 --> BS
+
+    DE -.->|Available| FL
+    PE -.->|Available| FL
+    SE -.->|Available| FL
+    ME -.->|Available| FL
+    UE -.->|Available| FL
+    STE -.->|Available| FL
+
+    BS -->|Broadcast| WS
+    BS -->|Broadcast| SSE
+    BS -->|Send Entities| HA1
+    BS -->|Send Health| HA2
+    BS -->|Send Status| HA3
+    BS -->|Send Process| HA4
+
+    style EB fill:#e1f5ff,stroke:#01579b,stroke-width:3px
+    style BS fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style BSH1 fill:#ffe0b2,stroke:#e65100
+    style BSH2 fill:#ffe0b2,stroke:#e65100
+    style BSH3 fill:#ffe0b2,stroke:#e65100
+    style BSH4 fill:#ffe0b2,stroke:#e65100
+    style DE fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style PE fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style SE fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style ME fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style UE fill:#f3e5f5,stroke:#4a148c,stroke-dasharray: 5 5
+    style STE fill:#f3e5f5,stroke:#4a148c,stroke-dasharray: 5 5
+    style FL fill:#e8f5e9,stroke:#1b5e20,stroke-dasharray: 5 5
+    style WS fill:#e3f2fd,stroke:#1565c0
+    style SSE fill:#e3f2fd,stroke:#1565c0
+    style HA1 fill:#e8f5e9,stroke:#2e7d32
+    style HA2 fill:#e8f5e9,stroke:#2e7d32
+    style HA3 fill:#e8f5e9,stroke:#2e7d32
+    style HA4 fill:#e8f5e9,stroke:#2e7d32
 ```
 
 ## Integration Points
