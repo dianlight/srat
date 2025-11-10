@@ -342,8 +342,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	suite.Require().Len(*disks, 2)
 
 	disk := (*disks)[0]
-	suite.EqualValues(mockHWResponse[0].Vendor, disk.Vendor)
-	suite.EqualValues(mockHWResponse[0].Model, disk.Model)
+	suite.Equal(mockHWResponse[0].Vendor, disk.Vendor)
+	suite.Equal(mockHWResponse[0].Model, disk.Model)
 	suite.Require().NotNil(disk.Partitions)
 	suite.Require().Len(*disk.Partitions, 1)
 

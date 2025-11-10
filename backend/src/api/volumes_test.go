@@ -88,6 +88,6 @@ func (suite *VolumeHandlerSuite) TestListVolumesError() {
 	suite.Require().Equal(http.StatusOK, resp.Code)
 	var out []dto.Disk
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
-	suite.Len(out, 0)
+	suite.Empty(out)
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
 }
