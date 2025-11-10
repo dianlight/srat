@@ -128,13 +128,15 @@ func (shareServiceStub) CreateShare(dto.SharedResource) (*dto.SharedResource, er
 func (shareServiceStub) UpdateShare(string, dto.SharedResource) (*dto.SharedResource, errors.E) {
 	return nil, nil
 }
-func (shareServiceStub) DeleteShare(string) errors.E                                 { return nil }
-func (shareServiceStub) DisableShare(string) (*dto.SharedResource, errors.E)         { return nil, nil }
-func (shareServiceStub) EnableShare(string) (*dto.SharedResource, errors.E)          { return nil, nil }
-func (shareServiceStub) GetShareFromPath(string) (*dto.SharedResource, errors.E)     { return nil, nil }
-func (shareServiceStub) SetShareFromPathEnabled(string, bool) (*dto.SharedResource, errors.E) { return nil, nil }
-func (shareServiceStub) NotifyClient()                                               {}
-func (shareServiceStub) VerifyShare(*dto.SharedResource) errors.E                    { return nil }
+func (shareServiceStub) DeleteShare(string) errors.E                             { return nil }
+func (shareServiceStub) DisableShare(string) (*dto.SharedResource, errors.E)     { return nil, nil }
+func (shareServiceStub) EnableShare(string) (*dto.SharedResource, errors.E)      { return nil, nil }
+func (shareServiceStub) GetShareFromPath(string) (*dto.SharedResource, errors.E) { return nil, nil }
+func (shareServiceStub) SetShareFromPathEnabled(string, bool) (*dto.SharedResource, errors.E) {
+	return nil, nil
+}
+func (shareServiceStub) NotifyClient()                            {}
+func (shareServiceStub) VerifyShare(*dto.SharedResource) errors.E { return nil }
 
 type volumeServiceStub struct{}
 

@@ -90,6 +90,8 @@ func TestSambaSession_AllFields(t *testing.T) {
 	assert.Equal(t, uint64(1000), session.UserID)
 	assert.Equal(t, "AES-128-GCM", session.Encryption.Cipher)
 	assert.Equal(t, "full", session.Encryption.Degree)
+	assert.Equal(t, "AES-128-CMAC", session.Signing.Cipher)
+	assert.Equal(t, "partial", session.Signing.Degree)
 }
 
 func TestSambaSession_Channels(t *testing.T) {
@@ -144,6 +146,9 @@ func TestSambaTcon_AllFields(t *testing.T) {
 	assert.Equal(t, "share1", tcon.Share)
 	assert.Equal(t, "A:", tcon.Device)
 	assert.Equal(t, "AES-256-GCM", tcon.Encryption.Cipher)
+	assert.Equal(t, "full", tcon.Encryption.Degree)
+	assert.Equal(t, "AES-256-CMAC", tcon.Signing.Cipher)
+	assert.Equal(t, "partial", tcon.Signing.Degree)
 }
 
 // SambaStatus Tests
@@ -222,4 +227,5 @@ func TestSambaStatus_JSON(t *testing.T) {
 	assert.Len(t, status.Sessions, 1)
 	assert.Equal(t, "testuser", status.Sessions["session-1"].Username)
 	assert.Equal(t, "AES-128-GCM", status.Sessions["session-1"].Encryption.Cipher)
+	assert.Equal(t, "AES-128-CMAC", status.Sessions["session-1"].Signing.Cipher)
 }

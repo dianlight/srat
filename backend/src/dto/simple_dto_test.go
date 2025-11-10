@@ -118,6 +118,8 @@ guest ok = yes
 	assert.Contains(t, conf.Data, "[global]")
 	assert.Contains(t, conf.Data, "[share1]")
 	assert.Contains(t, conf.Data, "path = /mnt/share1")
+	assert.Contains(t, conf.Data, "read only = no")
+	assert.Contains(t, conf.Data, "guest ok = yes")
 }
 
 // ContextState Tests

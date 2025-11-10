@@ -93,6 +93,10 @@ func TestSmartInfo_AllFields(t *testing.T) {
 	assert.Len(t, smart.Additional, 2)
 	assert.Contains(t, smart.Additional, "reallocated_sectors")
 	assert.Contains(t, smart.Additional, "seek_error_rate")
+	assert.Equal(t, 5, smart.Additional["reallocated_sectors"].Code)
+	assert.Equal(t, 0, smart.Additional["reallocated_sectors"].Value)
+	assert.Equal(t, 7, smart.Additional["seek_error_rate"].Code)
+	assert.Equal(t, 100, smart.Additional["seek_error_rate"].Value)
 }
 
 func TestSmartInfo_DiskTypes(t *testing.T) {
@@ -176,4 +180,5 @@ func TestSmartHealthStatus_Failing(t *testing.T) {
 	assert.Equal(t, "failing", health.OverallStatus)
 	assert.Len(t, health.FailingAttributes, 2)
 	assert.Contains(t, health.FailingAttributes, "Reallocated_Sector_Ct")
+	assert.Contains(t, health.FailingAttributes, "Current_Pending_Sector")
 }

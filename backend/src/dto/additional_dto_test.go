@@ -69,7 +69,15 @@ func TestDiskIOStats_AllFields(t *testing.T) {
 	assert.Equal(t, "Samsung SSD", stats.DeviceDescription)
 	assert.Equal(t, 150.5, stats.ReadIOPS)
 	assert.Equal(t, 75.2, stats.WriteIOPS)
+	assert.Equal(t, 2.5, stats.ReadLatency)
+	assert.Equal(t, 3.1, stats.WriteLatency)
 	assert.NotNil(t, stats.SmartData)
+	assert.Equal(t, "SATA", stats.SmartData.DiskType)
+	assert.Equal(t, 35, stats.SmartData.Temperature.Value)
+	assert.Equal(t, 0, stats.SmartData.Temperature.Min)
+	assert.Equal(t, 0, stats.SmartData.Temperature.Max)
+	assert.Equal(t, 0, stats.SmartData.Temperature.OvertempCounter)
+
 }
 
 func TestGlobalDiskStats_AllFields(t *testing.T) {
@@ -135,7 +143,23 @@ func TestDiskHealth_AllFields(t *testing.T) {
 
 	assert.Equal(t, 500.0, health.Global.TotalIOPS)
 	assert.Len(t, health.PerDiskIO, 1)
+	assert.Equal(t, "/dev/sda", health.PerDiskIO[0].DeviceName)
+	assert.Equal(t, "Samsung SSD", health.PerDiskIO[0].DeviceDescription)
+	assert.Equal(t, 150.5, health.PerDiskIO[0].ReadIOPS)
+	assert.Equal(t, 75.2, health.PerDiskIO[0].WriteIOPS)
+	assert.Equal(t, float64(0), health.PerDiskIO[0].ReadLatency)
+	assert.Equal(t, float64(0), health.PerDiskIO[0].WriteLatency)
+	assert.Nil(t, health.PerDiskIO[0].SmartData)
 	assert.Contains(t, health.PerPartitionInfo, "/dev/sda")
+	assert.Len(t, health.PerPartitionInfo["/dev/sda"], 1)
+	assert.Equal(t, "sda1", health.PerPartitionInfo["/dev/sda"][0].Name)
+	assert.Equal(t, "/mnt/data", health.PerPartitionInfo["/dev/sda"][0].MountPoint)
+	assert.Equal(t, "/dev/sda1", health.PerPartitionInfo["/dev/sda"][0].Device)
+	assert.Equal(t, "ext4", health.PerPartitionInfo["/dev/sda"][0].FSType)
+	assert.Equal(t, uint64(0), health.PerPartitionInfo["/dev/sda"][0].FreeSpace)
+	assert.Equal(t, uint64(0), health.PerPartitionInfo["/dev/sda"][0].TotalSpace)
+	assert.False(t, health.PerPartitionInfo["/dev/sda"][0].FsckNeeded)
+	assert.False(t, health.PerPartitionInfo["/dev/sda"][0].FsckSupported)
 }
 
 // NetworkStats Tests
@@ -184,6 +208,12 @@ func TestNetworkStats_AllFields(t *testing.T) {
 	}
 
 	assert.Len(t, stats.PerNicIO, 1)
+	assert.Equal(t, "eth0", stats.PerNicIO[0].DeviceName)
+	assert.Equal(t, int64(1000000000), stats.PerNicIO[0].DeviceMaxSpeed)
+	assert.Equal(t, 500.5, stats.PerNicIO[0].InboundTraffic)
+	assert.Equal(t, 250.2, stats.PerNicIO[0].OutboundTraffic)
+	assert.Empty(t, stats.PerNicIO[0].IP)
+	assert.Empty(t, stats.PerNicIO[0].Netmask)
 	assert.Equal(t, 1500.5, stats.Global.TotalInboundTraffic)
 }
 
@@ -209,7 +239,7 @@ func TestProcessStatus_AllFields(t *testing.T) {
 	assert.Equal(t, float32(10.2), status.MemoryPercent)
 	assert.Equal(t, 50, status.OpenFiles)
 	assert.Equal(t, 10, status.Connections)
-	assert.Contains(t, status.Status, "running")
+	assert.Equal(t, []string{"running"}, status.Status)
 	assert.True(t, status.IsRunning)
 }
 
@@ -246,7 +276,15 @@ func TestSambaProcessStatus_AllFields(t *testing.T) {
 	assert.Equal(t, int32(1234), status.Smbd.Pid)
 	assert.Equal(t, "smbd", status.Smbd.Name)
 	assert.True(t, status.Smbd.IsRunning)
+	assert.Equal(t, int32(1235), status.Nmbd.Pid)
+	assert.Equal(t, "nmbd", status.Nmbd.Name)
+	assert.True(t, status.Nmbd.IsRunning)
+	assert.Equal(t, int32(1236), status.Wsdd2.Pid)
+	assert.Equal(t, "wsdd2", status.Wsdd2.Name)
 	assert.False(t, status.Wsdd2.IsRunning)
+	assert.Equal(t, int32(1237), status.Srat.Pid)
+	assert.Equal(t, "srat", status.Srat.Name)
+	assert.True(t, status.Srat.IsRunning)
 	assert.Equal(t, int32(-1237), status.Hdidle.Pid)
 	assert.Equal(t, "hdidle-monitor", status.Hdidle.Name)
 	assert.True(t, status.Hdidle.IsRunning)
@@ -281,6 +319,7 @@ func TestReleaseAsset_AllFields(t *testing.T) {
 	assert.Equal(t, "v1.2.3", release.LastRelease)
 	assert.Equal(t, "srat-amd64", release.ArchAsset.Name)
 	assert.Equal(t, 1024000, release.ArchAsset.Size)
+	assert.Equal(t, int64(12345), release.ArchAsset.ID)
 }
 
 func TestUpdateProgress_AllFields(t *testing.T) {
@@ -326,6 +365,7 @@ func TestSystemCapabilities_NotSupported(t *testing.T) {
 	assert.False(t, caps.SupportsQUIC)
 	assert.False(t, caps.HasKernelModule)
 	assert.False(t, caps.SambaVersionSufficient)
+	assert.Equal(t, "4.20.0", caps.SambaVersion)
 	assert.NotEmpty(t, caps.UnsupportedReason)
 }
 
@@ -342,8 +382,8 @@ func TestUser_AllFields(t *testing.T) {
 	assert.Equal(t, "testuser", user.Username)
 	assert.Equal(t, "secret123", user.Password)
 	assert.True(t, user.IsAdmin)
-	assert.Len(t, user.RwShares, 2)
-	assert.Len(t, user.RoShares, 1)
+	assert.Equal(t, []string{"share1", "share2"}, user.RwShares)
+	assert.Equal(t, []string{"share3"}, user.RoShares)
 }
 
 func TestUser_MinimalFields(t *testing.T) {
@@ -376,11 +416,14 @@ func TestWelcome_AllFields(t *testing.T) {
 
 	assert.Equal(t, "Welcome to SRAT", welcome.Message)
 	assert.Equal(t, int32(5), welcome.ActiveClients)
-	assert.Len(t, welcome.SupportedEvents, 2)
+	assert.Equal(t, []dto.WebEventType{dto.WebEventTypes.EVENTHELLO, dto.WebEventTypes.EVENTVOLUMES}, welcome.SupportedEvents)
 	assert.Equal(t, "Release", welcome.UpdateChannel)
 	assert.NotNil(t, welcome.MachineId)
 	assert.Equal(t, "abc123", *welcome.MachineId)
+	assert.Equal(t, "1.2.3", welcome.BuildVersion)
 	assert.True(t, welcome.SecureMode)
+	assert.False(t, welcome.ProtectedMode)
+	assert.False(t, welcome.ReadOnly)
 	assert.Positive(t, welcome.StartTime)
 }
 
@@ -427,11 +470,40 @@ func TestHealthPing_AllFields(t *testing.T) {
 
 	assert.True(t, health.Alive)
 	assert.Positive(t, health.AliveTime)
+	assert.Equal(t, int32(1234), health.SambaProcessStatus.Smbd.Pid)
+	assert.Empty(t, health.SambaProcessStatus.Smbd.Name)
 	assert.True(t, health.SambaProcessStatus.Smbd.IsRunning)
+	assert.Equal(t, int32(0), health.SambaProcessStatus.Nmbd.Pid)
+	assert.Empty(t, health.SambaProcessStatus.Nmbd.Name)
+	assert.False(t, health.SambaProcessStatus.Nmbd.IsRunning)
+	assert.Equal(t, int32(0), health.SambaProcessStatus.Wsdd2.Pid)
+	assert.Empty(t, health.SambaProcessStatus.Wsdd2.Name)
+	assert.False(t, health.SambaProcessStatus.Wsdd2.IsRunning)
+	assert.Equal(t, int32(0), health.SambaProcessStatus.Srat.Pid)
+	assert.Empty(t, health.SambaProcessStatus.Srat.Name)
+	assert.False(t, health.SambaProcessStatus.Srat.IsRunning)
+	assert.Equal(t, int32(0), health.SambaProcessStatus.Hdidle.Pid)
+	assert.Empty(t, health.SambaProcessStatus.Hdidle.Name)
+	assert.False(t, health.SambaProcessStatus.Hdidle.IsRunning)
+	assert.Equal(t, 0, health.SambaProcessStatus.Hdidle.Connections)
 	assert.Empty(t, health.LastError)
 	assert.True(t, health.Dirty.Shares)
+	assert.False(t, health.Dirty.Users)
+	assert.False(t, health.Dirty.Settings)
+	assert.Equal(t, "v1.0.0", health.LastRelease.LastRelease)
+	assert.Empty(t, health.LastRelease.ArchAsset.Name)
+	assert.Equal(t, 0, health.LastRelease.ArchAsset.Size)
+	assert.Equal(t, int64(0), health.LastRelease.ArchAsset.ID)
 	assert.NotNil(t, health.DiskHealth)
+	assert.Equal(t, 100.0, health.DiskHealth.Global.TotalIOPS)
+	assert.Equal(t, 0.0, health.DiskHealth.Global.TotalReadLatency)
+	assert.Equal(t, 0.0, health.DiskHealth.Global.TotalWriteLatency)
+	assert.Empty(t, health.DiskHealth.PerDiskIO)
+	assert.Empty(t, health.DiskHealth.PerPartitionInfo)
 	assert.NotNil(t, health.NetworkHealth)
+	assert.Equal(t, 500.0, health.NetworkHealth.Global.TotalInboundTraffic)
+	assert.Equal(t, 0.0, health.NetworkHealth.Global.TotalOutboundTraffic)
+	assert.Empty(t, health.NetworkHealth.PerNicIO)
 	assert.Equal(t, int64(3600), health.Uptime)
 }
 
