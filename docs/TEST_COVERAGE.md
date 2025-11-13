@@ -8,11 +8,11 @@ This document provides an overview of the test coverage for the SRAT project, in
 
 | Component             | Coverage | Status    |
 | --------------------- | -------- | --------- |
-| Backend (Go)          | 40.9%    | 🟡 Yellow |
-| Frontend (TypeScript) | 70.81%   | ✅ Good   |
-| Global (Weighted)     | 52.9%    | 🟡 Yellow |
+| Backend (Go)          | 40.8%    | 🟡 Yellow |
+| Frontend (TypeScript) | 71.48%   | ✅ Good |
+| Global (Weighted)     | 53.1%    | 🟡 Yellow |
 
-*Last updated: 2025-11-07*
+*Last updated: 2025-11-13*
 
 ## Backend Package-Level Coverage
 
@@ -160,9 +160,9 @@ The following graphs show the evolution of test coverage over time.
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Backend Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06, 2025-11-07]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06, 2025-11-07, 2025-11-13]
   y-axis "Coverage %" 0 --> 100
-  line [34.3, 36.5, 41.0, 45.2, 39.9, 34.3, 39.9, 40.8, 40.9]
+  line [34.3, 36.5, 41.0, 45.2, 39.9, 34.3, 39.9, 40.8, 40.9, 40.8]
 ```
 
 ### Frontend Coverage Over Time
@@ -171,9 +171,9 @@ xychart-beta
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Frontend Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06, 2025-11-07]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06, 2025-11-07, 2025-11-13]
   y-axis "Coverage %" 0 --> 100
-  line [73.11, 73.11, 72.0, 72.0, 70.30, 71.0, 72.51, 71.48, 70.81]
+  line [73.11, 73.11, 72.0, 72.0, 70.30, 71.0, 72.51, 71.48, 70.81, 71.48]
 ```
 
 ### Global Coverage Over Time
@@ -182,9 +182,9 @@ xychart-beta
 %%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#222','primaryTextColor':'#fff','primaryBorderColor':'#388E3C','lineColor':'#2196F3','secondaryColor':'#FFC107','tertiaryColor':'#fff','background':'#181818'}}}%%
 xychart-beta
   title "Global Test Coverage Over Time"
-  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06, 2025-11-07]
+  x-axis [2025-10-06, 2025-10-07, 2025-10-11, 2025-10-28, 2025-10-29, 2025-10-30, 2025-11-02, 2025-11-06, 2025-11-07, 2025-11-13]
   y-axis "Coverage %" 0 --> 100
-  line [53.2, 53.2, 53.2, 53.2, 53.2, 48.7, 52.9, 53.1, 52.9]
+  line [53.2, 53.2, 53.2, 53.2, 53.2, 48.7, 52.9, 53.1, 52.9, 53.1]
 ```
 
 ## Package-Specific Improvement Strategies
