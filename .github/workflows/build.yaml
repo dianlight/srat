@@ -243,6 +243,15 @@ jobs:
           echo "backend_coverage=$COVERAGE" >> "$GITHUB_OUTPUT"
           echo "Backend Coverage: $COVERAGE%"
 
+      - name: Upload Backend Coverage to Codecov
+        uses: codecov/codecov-action@af09b5e394c93991b95a5e7646aeb90c1917f78f # v5.5.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./backend/src/coverage.out
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+
   test-frontend:
     name: Test Frontend
     runs-on: ubuntu-latest
@@ -277,7 +286,7 @@ jobs:
             ls -la || true
           fi
           cd frontend
-          bun test:ci 2>&1 | tee frontend_test_output.txt
+          bun test:ci --coverage-reporter=lcov 2>&1 | tee frontend_test_output.txt
 
       - name: Extract Frontend Coverage
         id: extract_coverage
@@ -290,6 +299,15 @@ jobs:
           fi
           echo "frontend_coverage=$COVERAGE" >> "$GITHUB_OUTPUT"
           echo "Frontend Coverage: $COVERAGE%"
+
+      - name: Upload Frontend Coverage to Codecov
+        uses: codecov/codecov-action@af09b5e394c93991b95a5e7646aeb90c1917f78f # v5.5.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+          fail_ci_if_error: false
 
   update-coverage:
     name: Update Coverage Badges

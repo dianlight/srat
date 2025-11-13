@@ -1,0 +1,58 @@
+# Codecov configuration for SRAT project
+# Documentation: https://docs.codecov.io/docs/codecov-yaml
+
+codecov:
+  require_ci_to_pass: no
+  notify:
+    after_n_builds: 2  # Wait for both backend and frontend coverage
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        # Don't fail the build if coverage decreases slightly
+        informational: true
+    patch:
+      default:
+        target: 60%
+        informational: true
+
+  precision: 2
+  round: down
+  range: "50...100"
+
+# Component-based coverage tracking
+flag_management:
+  default_rules:
+    carryforward: true
+
+flags:
+  backend:
+    paths:
+      - backend/src/
+    carryforward: true
+  frontend:
+    paths:
+      - frontend/src/
+    carryforward: true
+
+# Ignore patterns
+ignore:
+  - "backend/src/vendor/**"
+  - "backend/src/**/*_test.go"
+  - "backend/src/**/test/**"
+  - "frontend/src/**/*.test.ts"
+  - "frontend/src/**/*.test.tsx"
+  - "frontend/test/**"
+  - "frontend/out/**"
+  - "frontend/coverage/**"
+  - "**/node_modules/**"
+  - "**/__tests__/**"
+
+# Comment settings
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: false
