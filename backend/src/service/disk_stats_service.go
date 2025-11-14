@@ -199,19 +199,24 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 							totalSpace = 0
 						}
 					}
-					if part.MountPointData != nil && (*part.MountPointData)[0].Path != "" {
+					if part.MountPointData != nil && len(*part.MountPointData) > 0 {
 						// Use first mount point if multiple (shouldn't normally happen)
-						mp := (*part.MountPointData)[0]
+						var mp dto.MountPointData
+						for _, m := range *part.MountPointData {
+							mp = m
+							break
+						}
+						if mp.Path != "" {
+							mountPoint = mp.Path
 
-						mountPoint = mp.Path
-
-						var stat syscall.Statfs_t
-						if err := syscall.Statfs(mp.Path, &stat); err == nil {
-							// Guard against negative block size before converting to uint64
-							if stat.Bsize > 0 {
-								bsize := uint64(stat.Bsize)
-								freeSpace = stat.Bfree * bsize
-								totalSpace = stat.Blocks * bsize
+							var stat syscall.Statfs_t
+							if err := syscall.Statfs(mp.Path, &stat); err == nil {
+								// Guard against negative block size before converting to uint64
+								if stat.Bsize > 0 {
+									bsize := uint64(stat.Bsize)
+									freeSpace = stat.Bfree * bsize
+									totalSpace = stat.Blocks * bsize
+								}
 							}
 						}
 					}
@@ -280,7 +285,7 @@ func (s *diskStatsService) determineFsckNeeded(part *dto.Partition, fstype strin
 }
 
 func partitionMountState(part *dto.Partition) (isMounted bool, hasInfo bool) {
-	checkMounts := func(mounts *[]dto.MountPointData) {
+	checkMounts := func(mounts *map[string]dto.MountPointData) {
 		if mounts == nil {
 			return
 		}
@@ -304,7 +309,7 @@ func partitionMountState(part *dto.Partition) (isMounted bool, hasInfo bool) {
 }
 
 func partitionHasDirtyIndicators(part *dto.Partition) bool {
-	hasIndicator := func(mounts *[]dto.MountPointData) bool {
+	hasIndicator := func(mounts *map[string]dto.MountPointData) bool {
 		if mounts == nil {
 			return false
 		}

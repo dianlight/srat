@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 
 	"fmt"
@@ -52,6 +53,7 @@ type VolumeServiceInterface interface {
 type VolumeService struct {
 	ctx               context.Context
 	volumesQueueMutex sync.RWMutex
+	refreshing        atomic.Bool
 	broascasting      BroadcasterServiceInterface
 	mount_repo        repository.MountPointPathRepositoryInterface
 	hardwareClient    HardwareServiceInterface
@@ -113,9 +115,29 @@ func NewVolumeService(
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			unsubscribe = p.eventBus.OnMountPoint(func(mpe events.MountPointEvent) {
+				// Avoid recursive refresh loops: skip handling mount events while we are refreshing volumes
+				if p.refreshing.Load() {
+					return
+				}
 				err := p.persistMountPoint(mpe.MountPoint)
 				if err != nil {
 					slog.Error("Failed to persist mount point on event", "mount_point", mpe.MountPoint, "err", err)
+				}
+				if mpe.MountPoint.Partition != nil && mpe.MountPoint.Partition.Id != nil {
+					slog.Info("MountPointEvent received", "type", mpe.Type, "mount_point", mpe.MountPoint.Path, "device_id", *mpe.MountPoint.Partition.Id, "is_mounted", mpe.MountPoint.IsMounted)
+					if mpe.MountPoint.Partition.DiskId != nil {
+						disktmp, ok := (*p.disks)[*mpe.MountPoint.Partition.DiskId]
+						if ok {
+							parttmp, ok := (*disktmp.Partitions)[*mpe.MountPoint.Partition.Id]
+							if ok {
+								(*parttmp.MountPointData)[mpe.MountPoint.Path] = *mpe.MountPoint
+							}
+						}
+					}
+				}
+				err = p.getVolumesData()
+				if err != nil {
+					slog.Error("Failed to refresh volumes data on mount point event", "err", err)
 				}
 				if !mpe.MountPoint.IsMounted && mpe.Type == events.EventTypes.ADD && mpe.MountPoint.IsToMountAtStartup != nil && *mpe.MountPoint.IsToMountAtStartup {
 					err = p.MountVolume(mpe.MountPoint)
@@ -661,6 +683,9 @@ func (self *VolumeService) getVolumesData() errors.E {
 	tlog.Trace("Requesting GetVolumesData via singleflight...")
 
 	v, err, _ := self.sfGroup.Do("GetVolumesData", func() (interface{}, error) {
+		// Mark that a refresh cycle is in progress to avoid recursive event-triggered refreshes
+		self.refreshing.Store(true)
+		defer self.refreshing.Store(false)
 		self.volumesQueueMutex.Lock()
 		defer self.volumesQueueMutex.Unlock()
 		self.refreshVersion++
@@ -672,22 +697,23 @@ func (self *VolumeService) getVolumesData() errors.E {
 
 		// Use mock data in demo mode or when SRAT_MOCK is true
 		if self.state.SupervisorURL == "demo" || os.Getenv("SRAT_MOCK") == "true" {
-			ret = append(ret, dto.Disk{
-				Id: pointer.String("DemoDisk"),
-				Partitions: &[]dto.Partition{
-					{
-						Id:         pointer.String("DemoPartition"),
-						DevicePath: pointer.String("/dev/bogus"),
-						System:     pointer.Bool(false),
-						MountPointData: &[]dto.MountPointData{
-							{
-								Path:      "/mnt/bogus",
-								FSType:    pointer.String("ext4"),
-								IsMounted: false,
-							},
+			demoParts := map[string]dto.Partition{
+				"DemoPartition": {
+					Id:         pointer.String("DemoPartition"),
+					DevicePath: pointer.String("/dev/bogus"),
+					System:     pointer.Bool(false),
+					MountPointData: &map[string]dto.MountPointData{
+						"/mnt/bogus": {
+							Path:      "/mnt/bogus",
+							FSType:    pointer.String("ext4"),
+							IsMounted: false,
 						},
 					},
 				},
+			}
+			ret = append(ret, dto.Disk{
+				Id:         pointer.String("DemoDisk"),
+				Partitions: &demoParts,
 			})
 			return &ret, nil
 		}
@@ -713,13 +739,16 @@ func (self *VolumeService) getVolumesData() errors.E {
 				// New disk, add it
 				disk.RefreshVersion = self.refreshVersion
 				(*self.disks)[*disk.Id] = disk
-				for partIndex, part := range *disk.Partitions {
+				for pid, part := range *disk.Partitions {
+					if part.DiskId == nil || *part.DiskId == "" {
+						part.DiskId = disk.Id
+					}
 					if part.DevicePath == nil || *part.DevicePath == "" {
 						slog.Debug("Skipping partition with nil or empty device path", "disk_id", *disk.Id)
 						continue
 					}
 					if part.MountPointData == nil {
-						part.MountPointData = &[]dto.MountPointData{}
+						part.MountPointData = &map[string]dto.MountPointData{}
 					}
 					dmp, err := self.mount_repo.FindByDevice(*part.DevicePath)
 					if err != nil {
@@ -735,8 +764,8 @@ func (self *VolumeService) getVolumesData() errors.E {
 							slog.Error("Failed to convert mount point data", "device", *part.DevicePath, "err", err)
 							continue
 						}
-						*part.MountPointData = append(*part.MountPointData, mountData)
-						(*disk.Partitions)[partIndex] = part
+						(*part.MountPointData)[mountData.Path] = mountData
+						(*disk.Partitions)[pid] = part
 						self.eventBus.EmitMountPoint(events.MountPointEvent{
 							Event:      events.Event{Type: events.EventTypes.ADD},
 							MountPoint: &mountData,
@@ -780,22 +809,31 @@ func (self *VolumeService) getVolumesData() errors.E {
 				}
 
 				if part.MountPointData == nil {
-					part.MountPointData = &[]dto.MountPointData{}
+					part.MountPointData = &map[string]dto.MountPointData{}
 				}
 
 				for _, prtstate := range mountInfos {
-					found := slices.IndexFunc(*part.MountPointData, func(mpd dto.MountPointData) bool {
-						return mpd.Path == prtstate.MountPoint
-					})
-					if found != -1 {
-						if !(*part.MountPointData)[found].IsMounted {
-							(*part.MountPointData)[found].IsMounted = true
+					found := false
+					var foundPath string
+					for path, mpd := range *part.MountPointData {
+						if mpd.Path == prtstate.MountPoint {
+							found = true
+							foundPath = path
+							break
+						}
+					}
+					if found {
+						mpd := (*part.MountPointData)[foundPath]
+						if !mpd.IsMounted {
+							mpd.IsMounted = true
+							(*part.MountPointData)[foundPath] = mpd
 							self.eventBus.EmitMountPoint(events.MountPointEvent{
 								Event:      events.Event{Type: events.EventTypes.UPDATE},
-								MountPoint: &(*part.MountPointData)[found],
+								MountPoint: &mpd,
 							})
 						}
-						(*part.MountPointData)[found].RefreshVersion = self.refreshVersion
+						mpd.RefreshVersion = self.refreshVersion
+						(*part.MountPointData)[foundPath] = mpd
 						continue
 					}
 
@@ -814,7 +852,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 						}
 						mountPoint.Flags.Scan(prtstate.Options)
 						mountPoint.CustomFlags.Scan(prtstate.SuperOptions)
-						*part.MountPointData = append(*part.MountPointData, mountPoint)
+						(*part.MountPointData)[prtstate.MountPoint] = mountPoint
 						self.eventBus.EmitMountPoint(events.MountPointEvent{
 							Event:      events.Event{Type: events.EventTypes.ADD},
 							MountPoint: &mountPoint,
@@ -824,9 +862,12 @@ func (self *VolumeService) getVolumesData() errors.E {
 
 				}
 
-				for _, mpd := range *part.MountPointData {
+				for key, mpd := range *part.MountPointData {
 					if mpd.RefreshVersion != self.refreshVersion {
+						// Mark as not mounted and update refresh version in-place in the map
 						mpd.IsMounted = false
+						mpd.RefreshVersion = self.refreshVersion
+						(*part.MountPointData)[key] = mpd
 						self.eventBus.EmitMountPoint(events.MountPointEvent{
 							Event:      events.Event{Type: events.EventTypes.UPDATE},
 							MountPoint: &mpd,

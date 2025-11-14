@@ -21,14 +21,7 @@ func (c *HaHardwareToDtoImpl) DriveToDisk(source hardware.Drive, target *dto.Dis
 		target.Ejectable = source.Ejectable
 	}
 	if source.Filesystems != nil {
-		var dtoPartitionList []dto.Partition
-		if (*source.Filesystems) != nil {
-			dtoPartitionList = make([]dto.Partition, len((*source.Filesystems)))
-			for i := 0; i < len((*source.Filesystems)); i++ {
-				dtoPartitionList[i] = c.filesystemToPartition((*source.Filesystems)[i])
-			}
-		}
-		target.Partitions = &dtoPartitionList
+		target.Partitions = filesystemsToPartitionsMap(source.Filesystems)
 	}
 	if source.Id != nil {
 		target.Id = source.Id

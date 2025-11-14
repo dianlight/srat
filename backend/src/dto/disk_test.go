@@ -72,7 +72,7 @@ func TestDisk_WithPartitions(t *testing.T) {
 		System:           &system,
 	}
 
-	partitions := []dto.Partition{partition}
+	partitions := map[string]dto.Partition{*partition.Id: partition}
 
 	disk := dto.Disk{
 		Partitions: &partitions,
@@ -80,8 +80,8 @@ func TestDisk_WithPartitions(t *testing.T) {
 
 	assert.NotNil(t, disk.Partitions)
 	assert.Len(t, *disk.Partitions, 1)
-	assert.Equal(t, partitionName, *(*disk.Partitions)[0].LegacyDeviceName)
-	assert.Equal(t, fsType, *(*disk.Partitions)[0].FsType)
+	assert.Equal(t, partitionName, *(*disk.Partitions)[*partition.Id].LegacyDeviceName)
+	assert.Equal(t, fsType, *(*disk.Partitions)[*partition.Id].FsType)
 }
 
 func TestDisk_WithSmartInfo(t *testing.T) {
@@ -145,13 +145,13 @@ func TestPartition_WithMountPoints(t *testing.T) {
 		Path: mountPath,
 		Type: "HOST",
 	}
-	hostMountPoints := []dto.MountPointData{hostMount}
+	hostMountPoints := map[string]dto.MountPointData{mountPath: hostMount}
 
 	addonMount := dto.MountPointData{
 		Path: mountPath,
 		Type: "ADDON",
 	}
-	addonMountPoints := []dto.MountPointData{addonMount}
+	addonMountPoints := map[string]dto.MountPointData{mountPath: addonMount}
 
 	partition := dto.Partition{
 		HostMountPointData: &hostMountPoints,
@@ -160,10 +160,10 @@ func TestPartition_WithMountPoints(t *testing.T) {
 
 	assert.NotNil(t, partition.HostMountPointData)
 	assert.Len(t, *partition.HostMountPointData, 1)
-	assert.Equal(t, mountPath, (*partition.HostMountPointData)[0].Path)
+	assert.Equal(t, mountPath, (*partition.HostMountPointData)[mountPath].Path)
 	assert.NotNil(t, partition.MountPointData)
 	assert.Len(t, *partition.MountPointData, 1)
-	assert.Equal(t, mountPath, (*partition.MountPointData)[0].Path)
+	assert.Equal(t, mountPath, (*partition.MountPointData)[mountPath].Path)
 }
 
 func TestDisk_NilFields(t *testing.T) {

@@ -196,13 +196,13 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntities() {
 			Model:      &diskModel,
 			Vendor:     &diskVendor,
 			Removable:  &removable,
-			Partitions: &[]dto.Partition{
-				{
+			Partitions: &map[string]dto.Partition{
+				partitionId: {
 					Id:         &partitionId,
 					DevicePath: &partitionDevice,
 					Size:       &partitionSize,
-					MountPointData: &[]dto.MountPointData{
-						{
+					MountPointData: &map[string]dto.MountPointData{
+						mountPath: {
 							Path:      mountPath,
 							IsMounted: isMounted,
 							Shares:    []dto.SharedResource{},
@@ -246,13 +246,13 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntitiesDisabled() {
 			Model:      &diskModel,
 			Vendor:     &diskVendor,
 			Removable:  &removable,
-			Partitions: &[]dto.Partition{
-				{
+			Partitions: &map[string]dto.Partition{
+				partitionId: {
 					Id:         &partitionId,
 					DevicePath: &partitionDevice,
 					Size:       &partitionSize,
-					MountPointData: &[]dto.MountPointData{
-						{
+					MountPointData: &map[string]dto.MountPointData{
+						mountPath: {
 							Path:      mountPath,
 							IsMounted: isMounted,
 							Shares:    []dto.SharedResource{},

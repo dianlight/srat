@@ -158,6 +158,10 @@ func TestSambaTcon_AllFields(t *testing.T) {
 	tcon.Signing.Degree = "partial"
 
 	assert.Equal(t, "tcon-456", tcon.TconID)
+	assert.Equal(t, "client-pc", tcon.Machine)
+	assert.Equal(t, now, tcon.ConnectedAt.Time)
+	assert.Equal(t, "samba-service", tcon.Service)
+	assert.Equal(t, "1234", tcon.ServerID.PID)
 	assert.Equal(t, "session-123", tcon.SessionID)
 	assert.Equal(t, "share1", tcon.Share)
 	assert.Equal(t, "A:", tcon.Device)
@@ -192,6 +196,7 @@ func TestSambaStatus_AllFields(t *testing.T) {
 
 	assert.Equal(t, "4.18.0", status.Version)
 	assert.Equal(t, "/etc/samba/smb.conf", status.SmbConf)
+	assert.Equal(t, now, status.Timestamp.Time)
 	assert.Len(t, status.Sessions, 1)
 	assert.Len(t, status.Tcons, 1)
 	assert.Contains(t, status.Sessions, "session-1")

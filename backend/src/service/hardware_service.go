@@ -126,10 +126,10 @@ func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
 					continue
 				} // Match Partitions
 				if diskDto.Partitions != nil {
-					for partIdx := range *diskDto.Partitions {
-						partition := &(*diskDto.Partitions)[partIdx]
+					for pid, part := range *diskDto.Partitions {
+						partition := part // copy
 						if partition.LegacyDeviceName == nil || *partition.LegacyDeviceName == "" {
-							tlog.Debug("Skipping partition with nil or empty legacy device name", "disk_id", diskDto.Id, "partition_index", partIdx)
+							tlog.Debug("Skipping partition with nil or empty legacy device name", "disk_id", diskDto.Id, "partition_id", pid)
 							continue
 						}
 						if *device.Name == *partition.LegacyDeviceName {
@@ -145,8 +145,13 @@ func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
 									partition.FsType = device.Attributes.IDFSTYPE
 								}
 							}
-							partition.System = pointer.Bool(strings.HasPrefix(*partition.Name, "hassos-"))
-							break
+							name := ""
+							if partition.Name != nil {
+								name = *partition.Name
+							}
+							partition.System = pointer.Bool(strings.HasPrefix(name, "hassos-"))
+							// write back into the map
+							(*diskDto.Partitions)[pid] = partition
 						}
 					}
 				}

@@ -18,7 +18,7 @@ import (
 type HaHardwareToDto interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:map Filesystems Partitions
+	// goverter:map Filesystems Partitions | filesystemsToPartitionsMap
 	// goverter:useUnderlyingTypeMethods
 	// goverter:skipCopySameType
 	// goverter:map . LegacyDeviceName | extractDevice
@@ -27,7 +27,7 @@ type HaHardwareToDto interface {
 
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore MountPointData  DevicePath FsType RefreshVersion
+	// goverter:ignore MountPointData  DevicePath FsType RefreshVersion DiskId
 	// goverter:map Device LegacyDevicePath
 	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
@@ -36,15 +36,15 @@ type HaHardwareToDto interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore MountPointData  DevicePath FsType RefreshVersion
+	// goverter:ignore MountPointData  DevicePath FsType RefreshVersion DiskId
 	// goverter:map Device LegacyDevicePath
 	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
 	FilesystemToPartition(source hardware.Filesystem, target *dto.Partition) error
 }
 
-func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointData {
-	var mountPointDatas []dto.MountPointData
+func mountPointsToMountPointDatas(source hardware.Filesystem) *map[string]dto.MountPointData {
+	mountPointDatas := make(map[string]dto.MountPointData)
 
 	if source.MountPoints == nil || len(*source.MountPoints) == 0 {
 		return &mountPointDatas
@@ -53,7 +53,7 @@ func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointD
 	fstype, _, _ := mount.FSFromBlock(*source.Device)
 
 	for _, s := range *source.MountPoints {
-		mountPointDatas = append(mountPointDatas, dto.MountPointData{
+		mountPointDatas[s] = dto.MountPointData{
 			Path:        s,
 			DeviceId:    *source.Id,
 			FSType:      &fstype,
@@ -61,7 +61,7 @@ func mountPointsToMountPointDatas(source hardware.Filesystem) *[]dto.MountPointD
 			CustomFlags: nil,
 			IsMounted:   true,
 			Type:        "HOST",
-		})
+		}
 	}
 
 	return &mountPointDatas
@@ -86,4 +86,43 @@ func trimDevPrefix(source *string) *string {
 	}
 	trimmedDevice := strings.TrimPrefix(*source, "/dev/")
 	return &trimmedDevice
+}
+
+// filesystemsToPartitionsMap converts a list of HA filesystems to a map of Partitions keyed by Id.
+// This is used by the goverter mapping for Filesystems -> Partitions.
+// goverter:helper
+func filesystemsToPartitionsMap(source *[]hardware.Filesystem) *map[string]dto.Partition {
+	m := make(map[string]dto.Partition)
+	if source == nil || len(*source) == 0 {
+		return &m
+	}
+	for _, fs := range *source {
+		var p dto.Partition
+		if fs.Device != nil {
+			x := *fs.Device
+			p.LegacyDevicePath = &x
+		}
+		p.LegacyDeviceName = trimDevPrefix(fs.Device)
+		if fs.Id != nil {
+			x := *fs.Id
+			p.Id = &x
+		}
+		if fs.Name != nil {
+			x := *fs.Name
+			p.Name = &x
+		}
+		if fs.Size != nil {
+			x := *fs.Size
+			p.Size = &x
+		}
+		if fs.System != nil {
+			x := *fs.System
+			p.System = &x
+		}
+		p.HostMountPointData = mountPointsToMountPointDatas(fs)
+		if p.Id != nil && *p.Id != "" {
+			m[*p.Id] = p
+		}
+	}
+	return &m
 }

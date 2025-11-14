@@ -120,7 +120,7 @@ func TestExportedShareToStringRoundTrip(t *testing.T) {
 
 func TestPartitionFromDeviceId(t *testing.T) {
 	id := "disk-1"
-	partitions := []dto.Partition{{Id: &id}}
+	partitions := map[string]dto.Partition{id: {Id: &id}}
 	disks := []dto.Disk{{Partitions: &partitions}}
 
 	result := partitionFromDeviceId(id, disks)

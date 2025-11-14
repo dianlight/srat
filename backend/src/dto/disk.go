@@ -17,8 +17,9 @@ type Disk struct {
 	// Ejectable Is the drive ejectable by the system?
 	Ejectable *bool `json:"ejectable,omitempty"`
 
-	// Partitions A list of filesystem partitions on the drive.
-	Partitions *[]Partition `json:"partitions,omitempty"`
+	// Partitions A map of filesystem partitions on the drive keyed by Partition.Id.
+	// Using a map allows O(1) lookups and stable identification without relying on array order.
+	Partitions *map[string]Partition `json:"partitions,omitempty"`
 
 	// Id Unique and persistent id for drive.
 	Id *string `json:"id,omitempty"`
@@ -71,6 +72,9 @@ type Partition struct {
 	// Id Unique and persistent id for filesystem.
 	Id *string `json:"id,omitempty"`
 
+	// DiskId Unique and persistent id for parent drive.
+	DiskId *string `json:"disk_id,omitempty"`
+
 	// FsType Filesystem type (e.g. ext4, ntfs, etc.).
 	FsType *string `json:"fs_type,omitempty"`
 
@@ -83,14 +87,14 @@ type Partition struct {
 	// System true if filesystem considered a system/internal device.
 	System *bool `json:"system,omitempty"`
 
-	// MountPointData to mount on the host-side
-	HostMountPointData *[]MountPointData `json:"host_mount_point_data,omitempty"`
+	// HostMountPointData A map of mount points on the host-side keyed by MountPointData.Path.
+	// Using a map allows O(1) lookups and stable identification by path.
+	HostMountPointData *map[string]MountPointData `json:"host_mount_point_data,omitempty"`
 
-	// MountPointData to mount on the addon-side
-	MountPointData *[]MountPointData `json:"mount_point_data,omitempty"`
+	// MountPointData A map of mount points on the addon-side keyed by MountPointData.Path.
+	// Using a map allows O(1) lookups and stable identification by path.
+	MountPointData *map[string]MountPointData `json:"mount_point_data,omitempty"`
 
 	// Refresh version counter to indicate when the partition info was last refreshed.
 	RefreshVersion uint32 `json:"refresh_version,omitempty" readonly:"true"`
 }
-
-// (HDIdleDiskInfo removed; replaced by HDIdleDeviceDTO usage on Disk)

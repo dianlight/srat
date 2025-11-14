@@ -401,16 +401,6 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/users` }),
         providesTags: ["user"],
       }),
-      postApiVolumeDiskByDiskIdEject: build.mutation<
-        PostApiVolumeDiskByDiskIdEjectApiResponse,
-        PostApiVolumeDiskByDiskIdEjectApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/volume/disk/${queryArg.diskId}/eject`,
-          method: "POST",
-        }),
-        invalidatesTags: ["volume"],
-      }),
       deleteApiVolumeByMountPathHashMount: build.mutation<
         DeleteApiVolumeByMountPathHashMountApiResponse,
         DeleteApiVolumeByMountPathHashMountApiArg
@@ -776,12 +766,6 @@ export type GetApiUsersApiResponse =
   | /** status 200 OK */ (User[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiUsersApiArg = void;
-export type PostApiVolumeDiskByDiskIdEjectApiResponse =
-  /** status default Error */ ErrorModel;
-export type PostApiVolumeDiskByDiskIdEjectApiArg = {
-  /** The ID of the disk to eject (e.g., sda, sdb) */
-  diskId: string;
-};
 export type DeleteApiVolumeByMountPathHashMountApiResponse =
   /** status default Error */ ErrorModel;
 export type DeleteApiVolumeByMountPathHashMountApiArg = {
@@ -960,7 +944,6 @@ export type DataDirtyTracker = {
   settings: boolean;
   shares: boolean;
   users: boolean;
-  volumes: boolean;
 };
 export type GlobalDiskStats = {
   total_iops: number;
@@ -1179,13 +1162,19 @@ export type Settings = {
 };
 export type Partition = {
   device_path?: string;
+  disk_id?: string;
   fs_type?: string;
-  host_mount_point_data?: MountPointData[];
+  host_mount_point_data?: {
+    [key: string]: MountPointData;
+  };
   id?: string;
   legacy_device_name?: string;
   legacy_device_path?: string;
-  mount_point_data?: MountPointData[];
+  mount_point_data?: {
+    [key: string]: MountPointData;
+  };
   name?: string;
+  refresh_version?: number;
   size?: number;
   system?: boolean;
 };
@@ -1207,6 +1196,7 @@ export type MountPointData = {
   partition?: Partition;
   path: string;
   path_hash?: string;
+  refresh_version?: number;
   shares?: SharedResource[] | null;
   time_machine_support?: Time_machine_support;
   type: Type;
@@ -1270,7 +1260,10 @@ export type Disk = {
   legacy_device_name?: string;
   legacy_device_path?: string;
   model?: string;
-  partitions?: Partition[];
+  partitions?: {
+    [key: string]: Partition;
+  };
+  refresh_version?: number;
   removable?: boolean;
   revision?: string;
   seat?: string;
@@ -1409,7 +1402,6 @@ export const {
   usePutApiUserByUsernameMutation,
   usePutApiUseradminMutation,
   useGetApiUsersQuery,
-  usePostApiVolumeDiskByDiskIdEjectMutation,
   useDeleteApiVolumeByMountPathHashMountMutation,
   usePostApiVolumeByMountPathHashMountMutation,
   usePatchApiVolumeByMountPathHashSettingsMutation,

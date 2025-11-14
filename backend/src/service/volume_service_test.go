@@ -154,15 +154,15 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(
 		[]dto.Disk{
 			{LegacyDeviceName: pointer.String("sda1"), Size: pointer.Int(100), Id: pointer.String("SSD"),
-				Partitions: &[]dto.Partition{
-					{
+				Partitions: &map[string]dto.Partition{
+					"SSD": {
 						DevicePath:       &device,
 						LegacyDeviceName: pointer.String("sda1"), Size: pointer.Int(100), Id: pointer.String("SSD")},
 				},
 			},
 			{LegacyDeviceName: pointer.String("sda2"), Size: pointer.Int(200), Id: pointer.String("HDD"),
-				Partitions: &[]dto.Partition{
-					{
+				Partitions: &map[string]dto.Partition{
+					device: {
 						LegacyDeviceName: pointer.String("sda2"), Size: pointer.Int(200), Id: &device, DevicePath: &device},
 				},
 			},
@@ -278,18 +278,20 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 			Size:             pointer.Int(100),
 			Vendor:           pointer.String("ATA"),
 			Model:            pointer.String("Model-1"),
-			Partitions: &[]dto.Partition{
-				{
+			Partitions: &map[string]dto.Partition{
+				"part-1": {
 					Id:               pointer.String("part-1"),
 					Name:             pointer.String("RootFS"),
 					LegacyDevicePath: pointer.String("/dev/sda1"),
 					LegacyDeviceName: pointer.String("sda1"),
 					DevicePath:       device1,
 					Size:             pointer.Int(50),
-					HostMountPointData: &[]dto.MountPointData{{
-						DeviceId: *device1,
-						Path:     mountPath1,
-					}},
+					HostMountPointData: &map[string]dto.MountPointData{
+						mountPath1: {
+							DeviceId: *device1,
+							Path:     mountPath1,
+						},
+					},
 				},
 			},
 		},
@@ -299,24 +301,24 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 			Vendor:           pointer.String("SATA"),
 			Model:            pointer.String("Model-2"),
 			Size:             pointer.Int(100),
-			Partitions: &[]dto.Partition{
-				{
+			Partitions: &map[string]dto.Partition{
+				"part-1": {
 					Id:               pointer.String("part-1"),
 					Name:             pointer.String("DataFs"),
 					LegacyDevicePath: device2Legacy,
 					LegacyDeviceName: device2LegacyName,
 					DevicePath:       device2,
 					Size:             pointer.Int(50),
-					HostMountPointData: &[]dto.MountPointData{{
-						DeviceId: *device2,
-						Path:     mountPath2,
-					}},
+					HostMountPointData: &map[string]dto.MountPointData{
+						mountPath2: {
+							DeviceId: *device2,
+							Path:     mountPath2,
+						},
+					},
 				},
 			},
 		},
-	}
-
-	// Prepare mock repo responses
+	} // Prepare mock repo responses
 	//dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, DeviceId: "sda1", Type: "ADDON"} // Initial state in DB
 	//dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, DeviceId: "sdb1", Type: "ADDON"} // Initial state in DB
 
@@ -348,28 +350,28 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	suite.Require().Len(*disk.Partitions, 1)
 
 	// --- Assertions for Partition 1 ---
-	part1 := (*disk.Partitions)[0]
+	part1 := (*disk.Partitions)["part-1"]
 	suite.Require().NotNil(part1.LegacyDevicePath)
-	suite.Equal(*(*mockHWResponse[0].Partitions)[0].LegacyDevicePath, *part1.LegacyDevicePath)
+	suite.Equal(*(*mockHWResponse[0].Partitions)["part-1"].LegacyDevicePath, *part1.LegacyDevicePath)
 	suite.Require().NotNil(part1.Name)
-	suite.Equal(*(*mockHWResponse[0].Partitions)[0].Name, *part1.Name)
+	suite.Equal(*(*mockHWResponse[0].Partitions)["part-1"].Name, *part1.Name)
 	suite.Require().NotNil(part1.MountPointData)
 	suite.Require().Len(*part1.MountPointData, 1, "Expected 1 mount point for partition 1")
-	mountPoint1 := (*part1.MountPointData)[0]
+	mountPoint1 := (*part1.MountPointData)[mountPath1]
 	suite.Equal(mountPath1, mountPoint1.Path)
 	// This assertion depends on the converter logic AND the successful Save mock
 	//suite.True(mountPoint1.IsMounted, "MountPoint1 IsMounted should be true after successful save")
 
 	// --- Assertions for Partition 2 ---
 	disk = (*disks)[1]
-	part2 := (*disk.Partitions)[0]
+	part2 := (*disk.Partitions)["part-1"]
 	suite.Require().NotNil(part2.LegacyDevicePath)
-	suite.Equal(*(*mockHWResponse[1].Partitions)[0].LegacyDevicePath, *part2.LegacyDevicePath)
+	suite.Equal(*(*mockHWResponse[1].Partitions)["part-1"].LegacyDevicePath, *part2.LegacyDevicePath)
 	suite.Require().NotNil(part2.Name)
 	//suite.Equal(*(*drive1.Filesystems)[1].Name, *part2.Name)
 	suite.Require().NotNil(part2.MountPointData)
 	suite.Require().Len(*part2.MountPointData, 1, "Expected 1 mount point for partition 2")
-	mountPoint2 := (*part2.MountPointData)[0]
+	mountPoint2 := (*part2.MountPointData)[mountPath2]
 	suite.Equal(mountPath2, mountPoint2.Path)
 	// This assertion depends on the converter logic AND the successful Save mock
 	//suite.True(mountPoint2.IsMounted, "MountPoint2 IsMounted should be true after successful save")

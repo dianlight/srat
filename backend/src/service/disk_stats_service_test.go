@@ -95,11 +95,13 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_NoVolumes() {
 func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice() {
 	// Arrange: prepare a disk with nil Device but with partitions (which should be skipped)
 	diskID := "disk-123"
-	partitions := []dto.Partition{
-		{
+	partID := "part-1"
+	partitions := map[string]dto.Partition{
+		partID: {
+			Id:   &partID,
 			Size: nil,
-			MountPointData: &[]dto.MountPointData{
-				{
+			MountPointData: &map[string]dto.MountPointData{
+				"/nonexistent": {
 					Path: "/nonexistent",
 				},
 			},
@@ -136,8 +138,8 @@ func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_UnmountedConfiguredP
 	fsType := "ext4"
 	deviceID := "sda1"
 	mountPath := "/mnt/data"
-	mountData := []dto.MountPointData{
-		{
+	mountData := map[string]dto.MountPointData{
+		mountPath: {
 			Path:      mountPath,
 			IsMounted: false,
 		},
@@ -157,8 +159,8 @@ func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_UnmountedConfiguredP
 func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_ExtFilesystemDirtyState() {
 	fsType := "ext4"
 	deviceID := "sdb1"
-	mountData := []dto.MountPointData{
-		{
+	mountData := map[string]dto.MountPointData{
+		"/data": {
 			Path:      "/data",
 			IsMounted: true,
 		},
@@ -187,8 +189,8 @@ func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_ExtFilesystemDirtySt
 func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_CleanMountedPartition() {
 	fsType := "ext4"
 	deviceID := "sdc1"
-	mountData := []dto.MountPointData{
-		{
+	mountData := map[string]dto.MountPointData{
+		"/data": {
 			Path:      "/data",
 			IsMounted: true,
 		},

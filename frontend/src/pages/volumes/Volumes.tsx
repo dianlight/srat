@@ -74,7 +74,8 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 		setSelectedDisk(disk);
 		setSelectedPartition(partition);
 		const diskIdx = disks?.indexOf(disk) || 0;
-		const partIdx = disk.partitions?.indexOf(partition) || 0;
+		const partitions = Object.values(disk.partitions || {});
+		const partIdx = partitions.indexOf(partition);
 		const partitionId = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
 		setSelectedPartitionId(partitionId);
 		// Ensure the containing disk is expanded and persisted
@@ -132,10 +133,12 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 			let foundDisk: Disk | undefined;
 
 			for (const disk of disks) {
-				if (disk.partitions) {
-					for (const partition of disk.partitions) {
+				const partitions = Object.values(disk.partitions || {});
+				if (partitions.length > 0) {
+					for (const partition of partitions) {
+						const mpds = Object.values(partition.mount_point_data || {});
 						if (
-							partition.mount_point_data?.some(
+							mpds.some(
 								(mpd) => mpd.path_hash === mountPathHashFromState,
 							)
 						) {
@@ -181,9 +184,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 				setExpandedDisks((prev) => (prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier]));
 				return;
 			}
-			if (!disk.partitions) continue;
-			for (const partition of disk.partitions) {
-				const partIdx = disk.partitions.indexOf(partition);
+			const partitions = Object.values(disk.partitions || {});
+			if (partitions.length === 0) continue;
+			for (const partition of partitions) {
+				const partIdx = partitions.indexOf(partition);
 				const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
 				if (partitionIdentifier === selectedPartitionId) {
 					setSelectedDisk(disk);
@@ -249,7 +253,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	}
 
 	function handleCreateShare(partition: Partition) {
-		const firstMountPointData = partition.mount_point_data?.[0];
+		const firstMountPointData = Object.values(partition.mount_point_data || {})[0];
 		if (firstMountPointData?.path) {
 			// Ensure path exists for preselection
 			navigate("/", {
@@ -267,7 +271,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 
 	function handleGoToShare(partition: Partition) {
 		//console.log("Go to share for:", partition);
-		const mountData = partition.mount_point_data?.[0];
+		const mountData = Object.values(partition.mount_point_data || {})[0];
 		const share = mountData?.shares?.[0]; // Get the first share associated with this mount point
 
 		if (share?.name) {
@@ -281,7 +285,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	function onSubmitUmountVolume(partition: Partition, force = false) {
 		console.log("Umount Request", partition, "Force:", force);
 		// Ensure mount_point_data exists and has at least one entry with a path
-		const mountData = partition.mount_point_data?.[0];
+		const mountData = Object.values(partition.mount_point_data || {})[0];
 		if (!mountData?.path) {
 			toast.error("Cannot unmount: Missing mount point path.");
 			console.error("Missing mount path for partition:", partition);
@@ -336,7 +340,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	function handleToggleAutomount(partition: Partition) {
 		if (evdata?.hello?.read_only) return;
 
-		const mountData = partition.mount_point_data?.[0];
+		const mountData = Object.values(partition.mount_point_data || {})[0];
 		if (!mountData || !mountData.path_hash) {
 			toast.error("Cannot toggle automount: Missing mount point data.");
 			console.error("Missing mount data for partition:", partition);
@@ -408,7 +412,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	}
 
 	// Get the related share for the selected partition
-	const selectedShare = selectedPartition?.mount_point_data?.[0]?.shares?.[0];
+	const selectedShare = Object.values(selectedPartition?.mount_point_data || {})[0]?.shares?.[0];
 
 	return (
 		<>
