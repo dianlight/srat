@@ -86,6 +86,7 @@ func TestMountPointData_WithPartition(t *testing.T) {
 	}
 
 	assert.NotNil(t, mountData.Partition)
+	assert.Equal(t, "/mnt/data", mountData.Path)
 	assert.Equal(t, partitionName, *mountData.Partition.LegacyDeviceName)
 }
 
@@ -102,6 +103,7 @@ func TestMountPointData_WithShares(t *testing.T) {
 	}
 
 	assert.NotNil(t, mountData.Shares)
+	assert.Equal(t, "/mnt/data", mountData.Path)
 	assert.Len(t, mountData.Shares, 1)
 	assert.Equal(t, shareName, mountData.Shares[0].Name)
 }
@@ -137,6 +139,7 @@ func TestMountPointData_InvalidState(t *testing.T) {
 	}
 
 	assert.True(t, mountData.IsInvalid)
+	assert.Equal(t, "/mnt/data", mountData.Path)
 	assert.NotNil(t, mountData.InvalidError)
 	assert.Equal(t, errorMsg, *mountData.InvalidError)
 }

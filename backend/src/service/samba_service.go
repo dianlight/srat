@@ -14,6 +14,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
@@ -37,60 +38,86 @@ type SambaServiceInterface interface {
 }
 
 type SambaService struct {
-	DockerInterface    string
-	DockerNet          string
-	state              *dto.ContextState
-	dirtyservice       DirtyDataServiceInterface
-	supervisor_service SupervisorServiceInterface
-	share_service      ShareServiceInterface
-	share_repo         repository.ExportedShareRepositoryInterface
-	ha_ws_service      HaWsServiceInterface
-	prop_repo          repository.PropertyRepositoryInterface
-	samba_user_repo    repository.SambaUserRepositoryInterface
-	mount_client       mount.ClientWithResponsesInterface
-	cache              *cache.Cache
-	dbomConv           converter.DtoToDbomConverterImpl
-	hdidle_service     HDIdleServiceInterface
+	DockerInterface string
+	DockerNet       string
+	state           *dto.ContextState
+	//	supervisor_service SupervisorServiceInterface
+	share_service ShareServiceInterface
+	share_repo    repository.ExportedShareRepositoryInterface
+	//	ha_ws_service      HaWsServiceInterface
+	prop_repo       repository.PropertyRepositoryInterface
+	samba_user_repo repository.SambaUserRepositoryInterface
+	mount_client    mount.ClientWithResponsesInterface
+	cache           *cache.Cache
+	dbomConv        converter.DtoToDbomConverterImpl
+	hdidle_service  HDIdleServiceInterface
+	eventBus        events.EventBusInterface
 }
 
 type SambaServiceParams struct {
 	fx.In
 
 	State               *dto.ContextState
-	Dirtyservice        DirtyDataServiceInterface
 	Share_service       ShareServiceInterface
 	Prop_repo           repository.PropertyRepositoryInterface
 	Exported_share_repo repository.ExportedShareRepositoryInterface
 	Samba_user_repo     repository.SambaUserRepositoryInterface
-	HA_ws_service       HaWsServiceInterface
-	Mount_client        mount.ClientWithResponsesInterface `optional:"true"`
-	Su                  SupervisorServiceInterface
-	Hdidle_service      HDIdleServiceInterface
+	//	HA_ws_service       HaWsServiceInterface
+	Mount_client mount.ClientWithResponsesInterface `optional:"true"`
+	//	Su                  SupervisorServiceInterface
+	Hdidle_service HDIdleServiceInterface
+	EventBus       events.EventBusInterface
 }
 
-func NewSambaService(in SambaServiceParams) SambaServiceInterface {
+func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterface {
 	p := &SambaService{}
 	p.state = in.State
-	p.dirtyservice = in.Dirtyservice
 	p.share_service = in.Share_service
 	p.prop_repo = in.Prop_repo
 	p.share_repo = in.Exported_share_repo
 	p.samba_user_repo = in.Samba_user_repo
 	p.mount_client = in.Mount_client
-	p.supervisor_service = in.Su
+	//	p.supervisor_service = in.Su
 	p.cache = cache.New(1*time.Minute, 10*time.Minute)
-	in.Dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
-	p.ha_ws_service = in.HA_ws_service
+	p.eventBus = in.EventBus
+	//in.Dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
+	//	p.ha_ws_service = in.HA_ws_service
 	p.dbomConv = converter.DtoToDbomConverterImpl{}
 	p.hdidle_service = in.Hdidle_service
+	/*
+		p.ha_ws_service.SubscribeToHaEvents(func(ready bool) {
+			if !ready {
+				return
+			}
+			if e := p.mountHaStorage(); e != nil {
+				slog.Error("Error mounting HA storage", "error", e)
+			}
+		})
+	*/
 
-	p.ha_ws_service.SubscribeToHaEvents(func(ready bool) {
-		if !ready {
-			return
-		}
-		if e := p.mountHaStorage(); e != nil {
-			slog.Error("Error mounting HA storage", "error", e)
-		}
+	var unsubscribe func()
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			unsubscribe = p.eventBus.OnSamba(func(event events.SambaEvent) {
+				if event.Type == events.EventTypes.RESTART {
+					slog.Info("SambaService received RESTART event, writing and restarting Samba configuration...")
+					if err := p.WriteAndRestartSambaConfig(); err != nil {
+						slog.Error("Error writing and restarting Samba configuration", "error", err)
+						p.eventBus.EmitDirtyData(events.DirtyDataEvent{
+							Event:            events.Event{Type: events.EventTypes.ERROR},
+							DataDirtyTracker: event.DataDirtyTracker,
+						})
+					}
+				}
+			})
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			if unsubscribe != nil {
+				unsubscribe()
+			}
+			return nil
+		},
 	})
 
 	return p
@@ -317,9 +344,6 @@ func (self *SambaService) RestartSambaService() errors.E {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		if process.Smbd.Pid != -1 {
-			if e := self.umountHaStorage(); e != nil {
-				slog.Error("Error unmounting HA storage", "error", e)
-			}
 			slog.Info("Reloading smbd configuration...")
 			cmdSmbdReload := exec.CommandContext(ctx, "smbcontrol", "smbd", "reload-config")
 			outSmbd, err := cmdSmbdReload.CombinedOutput()
@@ -331,13 +355,12 @@ func (self *SambaService) RestartSambaService() errors.E {
 				}
 			}
 			defer func() {
-				// Remount network shares on ha_core
-				// This logic might be better placed after confirming all local services are stable
-				// or if it's specifically tied to smbd/nmbd reloads.
-				e := self.mountHaStorage()
-				if e != nil {
-					slog.Error("Error mounting HA storage", "error", e)
-				}
+				self.eventBus.EmitDirtyData(events.DirtyDataEvent{
+					Event: events.Event{Type: events.EventTypes.CLEAN},
+					DataDirtyTracker: dto.DataDirtyTracker{
+						Shares: true,
+					},
+				})
 			}()
 		}
 
@@ -375,64 +398,6 @@ func (self *SambaService) RestartSambaService() errors.E {
 		}
 	} else {
 		slog.Warn("Samba process (smbd) not found, skipping reload commands.")
-	}
-	return nil
-}
-
-func (self *SambaService) umountHaStorage() errors.E {
-	shares, err := self.share_service.ListShares()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if self.state.HACoreReady {
-		mounts, err := self.supervisor_service.NetworkGetAllMounted()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		for _, share := range shares {
-			if share.Disabled != nil && *share.Disabled {
-				continue
-			}
-			switch share.Usage {
-			case "media", "share", "backup":
-				delete(mounts, share.Name)
-			}
-		}
-		// Unmount any remaining mounts
-		slog.Info("Unmounting remaining HA mounts", "count", len(mounts))
-		for name := range mounts {
-			err := self.supervisor_service.NetworkUnmountShare(name)
-			if err != nil {
-				slog.Error("Unmounting error", "share", name, "err", err)
-			}
-		}
-	}
-	return nil
-}
-
-func (self *SambaService) mountHaStorage() errors.E {
-	shares, err := self.share_service.ListShares()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if self.state.HACoreReady && self.state.AddonIpAddress != "" {
-		for _, share := range shares {
-			if share.Disabled != nil && *share.Disabled {
-				continue
-			}
-			if (share.Invalid != nil && *share.Invalid) || (share.MountPointData == nil || share.MountPointData.IsInvalid) {
-				continue
-			}
-			switch share.Usage {
-			case "media", "share", "backup":
-				err = self.supervisor_service.NetworkMountShare(share)
-				if err != nil {
-					slog.Error("Mounting error", "share", share, "err", err)
-				}
-			}
-		}
 	}
 	return nil
 }

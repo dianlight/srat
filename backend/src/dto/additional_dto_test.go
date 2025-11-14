@@ -435,6 +435,8 @@ func TestWelcome_NilMachineID(t *testing.T) {
 	}
 
 	assert.Nil(t, welcome.MachineId)
+	assert.Equal(t, "Welcome", welcome.Message)
+	assert.Equal(t, int32(0), welcome.ActiveClients)
 }
 
 // HealthPing Tests

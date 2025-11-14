@@ -128,7 +128,7 @@ func (suite *SambaHandlerSuite) TestApplySambaError() {
 	expectedErr := errors.New("failed to write samba configuration")
 
 	// Configure mock expectations - fails on first step
-	mock.When(suite.mockSambaService.WriteSambaConfig()).ThenReturn(expectedErr)
+	mock.When(suite.mockSambaService.WriteAndRestartSambaConfig()).ThenReturn(expectedErr)
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())

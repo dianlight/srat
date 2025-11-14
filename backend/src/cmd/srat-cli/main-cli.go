@@ -349,7 +349,8 @@ func main() {
 						log.Fatalf("Cant set log level - %#+v", err)
 					}
 
-					if command == "start" {
+					switch command {
+					case "start":
 						// Autocreate users
 						slog.Info("******* Autocreating users ********")
 						_ha_mount_user_password_, err := props_repo.Value("_ha_mount_user_password_", true)
@@ -448,28 +449,14 @@ func main() {
 							log.Fatalf("Cant apply samba config - %#+v", err)
 						}
 						slog.Info("******* Samba config applied! ********")
-					} else if command == "stop" {
+					case "stop":
 						slog.Info("******* Unmounting all shares from Homeassistant ********")
-						// remount network share on ha_core
-						shares, err := share_service.ListShares()
+						err = supervisor_service.NetworkUnmountAllShares()
 						if err != nil {
-							log.Fatalf("Can't get Shares - %#+v", err)
-						}
-
-						for _, share := range shares {
-							if share.Disabled != nil && *share.Disabled {
-								continue
-							}
-							switch share.Usage {
-							case "media", "share", "backup":
-								err = supervisor_service.NetworkUnmountShare(share.Name)
-								if err != nil {
-									slog.Error("UnMounting error", "share", share, "err", err)
-								}
-							}
+							slog.Error("Error unmounting all shares from Homeassistant", "err", err)
 						}
 						slog.Info("******* Unmounted all shares from Homeassistant ********")
-					} else if command == "upgrade" {
+					case "upgrade":
 						slog.Info("Starting upgrade process", "channel", *upgradeChannel)
 						updch, ett := dto.ParseUpdateChannel(*upgradeChannel)
 						if ett != nil {

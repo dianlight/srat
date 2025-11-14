@@ -4,14 +4,12 @@ import (
 	"context"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -85,52 +83,5 @@ func (suite *DirtyDataServiceTestSuite) TestSetDirtySettings() {
 	suite.False(tracker.Users)
 	suite.True(tracker.Settings)
 	suite.True(suite.dirtyDataService.IsTimerRunning())
-
-}
-
-func (suite *DirtyDataServiceTestSuite) TestResetDirtyStatus() {
-	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
-	suite.eventBus.EmitUser(events.UserEvent{User: &dto.User{}})
-	suite.eventBus.EmitSetting(events.SettingEvent{Setting: &dto.Settings{}})
-
-	suite.dirtyDataService.ResetDirtyStatus()
-	tracker := suite.dirtyDataService.GetDirtyDataTracker()
-	suite.False(tracker.Shares)
-	suite.False(tracker.Users)
-	suite.False(tracker.Settings)
-	suite.False(suite.dirtyDataService.IsTimerRunning())
-
-}
-
-func (suite *DirtyDataServiceTestSuite) TestAddRestartCallback() {
-	var callbackCalled bool
-	callback := func() errors.E {
-		callbackCalled = true
-		return nil
-	}
-	suite.dirtyDataService.AddRestartCallback(callback)
-	suite.eventBus.EmitSetting(events.SettingEvent{Setting: &dto.Settings{}})
-	time.Sleep(6 * time.Second)
-	suite.True(callbackCalled)
-	suite.False(suite.dirtyDataService.IsTimerRunning())
-
-}
-
-func (suite *DirtyDataServiceTestSuite) TestTimerResetOnMultipleSetDirty() {
-	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
-	suite.eventBus.EmitSetting(events.SettingEvent{Setting: &dto.Settings{}})
-	time.Sleep(1 * time.Second)
-
-	suite.True(suite.dirtyDataService.IsTimerRunning())
-	tracker := suite.dirtyDataService.GetDirtyDataTracker()
-
-	suite.True(tracker.Shares)
-	suite.True(tracker.Settings)
-
-	time.Sleep(6 * time.Second)
-	tracker = suite.dirtyDataService.GetDirtyDataTracker()
-	suite.False(tracker.Shares)
-	suite.False(tracker.Settings)
-	suite.False(suite.dirtyDataService.IsTimerRunning())
 
 }

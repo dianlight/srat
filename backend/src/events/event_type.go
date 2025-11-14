@@ -4,8 +4,10 @@ package events
 type eventType int
 
 const (
-	Add    eventType = iota // "add"
-	Remove                  // "remove"
-	Update                  // "update"
-	Error                   // "error"
+	Add     eventType = iota // "add"
+	Remove                   // "remove"
+	Update                   // "update"
+	Restart                  // "restart"
+	Error                    // "error"
+	Clean                    // "clean"
 )

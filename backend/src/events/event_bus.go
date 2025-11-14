@@ -19,6 +19,7 @@ func generateKey() string {
 
 // EventBusInterface defines the interface for the event bus
 type EventBusInterface interface {
+
 	// Disk events
 	EmitDisk(event DiskEvent)
 	OnDisk(handler func(DiskEvent)) func()
@@ -42,6 +43,14 @@ type EventBusInterface interface {
 	// Setting events
 	EmitSetting(event SettingEvent)
 	OnSetting(handler func(SettingEvent)) func()
+
+	// Samba events
+	EmitSamba(event SambaEvent)
+	OnSamba(handler func(SambaEvent)) func()
+
+	// Dirty data events
+	EmitDirtyData(event DirtyDataEvent)
+	OnDirtyData(handler func(DirtyDataEvent)) func()
 }
 
 // EventBus implements EventBusInterface using maniartech/signals
@@ -65,6 +74,12 @@ type EventBus struct {
 
 	// Setting event signals
 	setting signals.Signal[SettingEvent]
+
+	// Samba event signals
+	samba signals.Signal[SambaEvent]
+
+	// Dirty data event signals
+	dirtyData signals.Signal[DirtyDataEvent]
 }
 
 // NewEventBus creates a new EventBus instance
@@ -77,6 +92,8 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 		mountPoint: signals.New[MountPointEvent](),
 		user:       signals.New[UserEvent](),
 		setting:    signals.New[SettingEvent](),
+		samba:      signals.New[SambaEvent](),
+		dirtyData:  signals.New[DirtyDataEvent](),
 	}
 }
 
@@ -216,5 +233,39 @@ func (eb *EventBus) OnSetting(handler func(SettingEvent)) func() {
 	}, key)
 	return func() {
 		eb.setting.RemoveListener(key)
+	}
+}
+
+// Samba event methods
+func (eb *EventBus) EmitSamba(event SambaEvent) {
+	slog.Debug("Emitting Samba event")
+	eb.samba.Emit(eb.ctx, event)
+}
+
+func (eb *EventBus) OnSamba(handler func(SambaEvent)) func() {
+	slog.Debug("Registering Samba event handler")
+	key := generateKey()
+	eb.samba.AddListener(func(ctx context.Context, event SambaEvent) {
+		handler(event)
+	}, key)
+	return func() {
+		eb.samba.RemoveListener(key)
+	}
+}
+
+// Dirty data event methods
+func (eb *EventBus) EmitDirtyData(event DirtyDataEvent) {
+	slog.Debug("Emitting DirtyData event", "tracker", event.DataDirtyTracker)
+	eb.dirtyData.Emit(eb.ctx, event)
+}
+
+func (eb *EventBus) OnDirtyData(handler func(DirtyDataEvent)) func() {
+	slog.Debug("Registering DirtyData event handler")
+	key := generateKey()
+	eb.dirtyData.AddListener(func(ctx context.Context, event DirtyDataEvent) {
+		handler(event)
+	}, key)
+	return func() {
+		eb.dirtyData.RemoveListener(key)
 	}
 }

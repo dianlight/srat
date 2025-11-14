@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
@@ -44,8 +45,10 @@ func (suite *SupervisorServiceSuite) SetupTest() {
 				}
 			},
 			service.NewSupervisorService,
+			events.NewEventBus,
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[service.ShareServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 		fx.Populate(&suite.mountClient),
@@ -73,8 +76,10 @@ func (suite *SupervisorServiceSuite) TestNetworkGetAllMounted_HACoreNotReady() {
 				}
 			},
 			service.NewSupervisorService,
+			events.NewEventBus,
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[service.ShareServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 	)
@@ -149,8 +154,10 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountShare_HACoreNotReady() {
 				}
 			},
 			service.NewSupervisorService,
+			events.NewEventBus,
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[service.ShareServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 	)

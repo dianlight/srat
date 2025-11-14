@@ -44,3 +44,15 @@ type SettingEvent struct {
 	Event
 	Setting *dto.Settings
 }
+
+// SambaEvent represents a Samba-related event
+type SambaEvent struct {
+	Event
+	DataDirtyTracker dto.DataDirtyTracker
+}
+
+// DirtyDataEvent represents a dirty data event
+type DirtyDataEvent struct {
+	Event
+	DataDirtyTracker dto.DataDirtyTracker
+}
