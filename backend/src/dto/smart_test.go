@@ -138,6 +138,7 @@ func TestSmartInfo_EmptyAdditional(t *testing.T) {
 
 	assert.NotNil(t, smart.Additional)
 	assert.Empty(t, smart.Additional)
+	assert.Equal(t, "NVMe", smart.DiskType)
 }
 
 func TestSmartTestType_Values(t *testing.T) {

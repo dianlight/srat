@@ -213,7 +213,7 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 			return
 		case event := <-listener.Ch():
 			// Filter out Home Assistant-specific events that shouldn't go to SSE clients
-			if broker.shouldSkipSSEEvent(event.Message) {
+			if broker.shouldSkipClientSend(event.Message) {
 				continue
 			}
 
@@ -263,7 +263,7 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 			return
 		case event := <-listener.Ch():
 			// Filter out Home Assistant-specific events that shouldn't go to WebSocket clients
-			if broker.shouldSkipSSEEvent(event.Message) {
+			if broker.shouldSkipClientSend(event.Message) {
 				continue
 			}
 
@@ -305,9 +305,9 @@ func (broker *BroadcasterService) createWelcomeMessage() dto.Welcome {
 	return welcomeMsg
 }
 
-// shouldSkipSSEEvent determines if an event should be skipped for web clients (SSE/WebSocket)
+// shouldSkipClientSend determines if an event should be skipped for web clients (SSE/WebSocket)
 // These events are meant for Home Assistant integration only
-func (broker *BroadcasterService) shouldSkipSSEEvent(event any) bool {
+func (broker *BroadcasterService) shouldSkipClientSend(event any) bool {
 	switch event.(type) {
 	case dto.SambaStatus, *dto.SambaStatus:
 		return true

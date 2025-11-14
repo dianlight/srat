@@ -3,7 +3,6 @@ package events
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"sync/atomic"
 
 	"github.com/dianlight/srat/tlog"
@@ -97,14 +96,31 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 	}
 }
 
+// Generic internal methods for event handling
+func onEvent[T any](signal signals.Signal[T], eventName string, handler func(T)) func() {
+	tlog.Debug("Registering event handler", "event", eventName)
+	key := generateKey()
+	count := signal.AddListener(func(ctx context.Context, event T) {
+		handler(event)
+	}, key)
+	tlog.Debug("Event handler registered", "event", eventName, "listener_count", count)
+	return func() {
+		signal.RemoveListener(key)
+	}
+}
+
+func emitEvent[T any](signal signals.Signal[T], ctx context.Context, eventName string, event T, logFields ...any) {
+	tlog.Debug("Emitting event", append([]any{"event", eventName}, logFields...)...)
+	signal.Emit(ctx, event)
+}
+
 // Disk event methods
 func (eb *EventBus) EmitDisk(event DiskEvent) {
 	diskID := "unknown"
 	if event.Disk.Id != nil {
 		diskID = *event.Disk.Id
 	}
-	tlog.Trace("Emitting Disk event", "disk", diskID)
-	eb.disk.Emit(eb.ctx, event)
+	emitEvent(eb.disk, eb.ctx, "Disk", event, "disk", diskID)
 	if event.Disk.Partitions != nil {
 		for _, partition := range *event.Disk.Partitions {
 			tlog.Trace("Emitting Partition event for  disk", "partition", partition, "disk", diskID)
@@ -121,14 +137,7 @@ func (eb *EventBus) EmitDisk(event DiskEvent) {
 }
 
 func (eb *EventBus) OnDisk(handler func(DiskEvent)) func() {
-	tlog.Debug("Registering DiskAdded event handler")
-	key := generateKey()
-	eb.disk.AddListener(func(ctx context.Context, event DiskEvent) {
-		handler(event)
-	}, key)
-	return func() {
-		eb.disk.RemoveListener(key)
-	}
+	return onEvent(eb.disk, "Disk", handler)
 }
 
 // Partition event methods
@@ -141,131 +150,68 @@ func (eb *EventBus) EmitPartition(event PartitionEvent) {
 	if event.Disk.Id != nil {
 		diskID = *event.Disk.Id
 	}
-	tlog.Debug("Emitting PartitionAdded event", "partition", partName, "disk", diskID)
-	eb.partition.Emit(eb.ctx, event)
+	emitEvent(eb.partition, eb.ctx, "Partition", event, "partition", partName, "disk", diskID)
 
 }
 
 func (eb *EventBus) OnPartition(handler func(PartitionEvent)) func() {
-	tlog.Debug("Registering Partition event handler")
-	key := generateKey()
-	eb.partition.AddListener(func(ctx context.Context, event PartitionEvent) {
-		handler(event)
-	}, key)
-	return func() {
-		eb.partition.RemoveListener(key)
-	}
+	return onEvent(eb.partition, "Partition", handler)
 }
 
 // Share event methods
 func (eb *EventBus) EmitShare(event ShareEvent) {
-	slog.Debug("Emitting Share event", "share", event.Share.Name)
-	eb.share.Emit(eb.ctx, event)
+	emitEvent(eb.share, eb.ctx, "Share", event, "share", event.Share.Name)
 }
 
 func (eb *EventBus) OnShare(handler func(ShareEvent)) func() {
-	slog.Debug("Registering Share event handler")
-	key := generateKey()
-	eb.share.AddListener(func(ctx context.Context, event ShareEvent) {
-		handler(event)
-	}, key)
-	return func() {
-		eb.share.RemoveListener(key)
-	}
+	return onEvent(eb.share, "Share", handler)
 }
 
 // Mount point event methods
 func (eb *EventBus) EmitMountPoint(event MountPointEvent) {
-	slog.Debug("Emitting MountPoint event", "mount_point", event.MountPoint.Path)
-	eb.mountPoint.Emit(eb.ctx, event)
+	emitEvent(eb.mountPoint, eb.ctx, "MountPoint", event, "mount_point", event.MountPoint.Path)
 }
 
 func (eb *EventBus) OnMountPoint(handler func(MountPointEvent)) func() {
-	slog.Debug("Registering MountPoint event handler")
-	key := generateKey()
-	eb.mountPoint.AddListener(func(ctx context.Context, event MountPointEvent) {
-		handler(event)
-	}, key)
-	return func() {
-		eb.mountPoint.RemoveListener(key)
-	}
+	return onEvent(eb.mountPoint, "MountPoint", handler)
 }
 
 func (eb *EventBus) OnMountPointUnmounted(handler func(MountPointEvent)) func() {
-	slog.Debug("Registering MountPointUnmounted event handler")
-	key := generateKey()
-	eb.mountPoint.AddListener(func(ctx context.Context, event MountPointEvent) {
-		handler(event)
-	}, key)
-	return func() {
-		eb.mountPoint.RemoveListener(key)
-	}
+	return onEvent(eb.mountPoint, "MountPointUnmounted", handler)
 }
 
 // User event methods
 func (eb *EventBus) EmitUser(event UserEvent) {
-	slog.Debug("Emitting User event", "user", event.User.Username)
-	eb.user.Emit(eb.ctx, event)
+	emitEvent(eb.user, eb.ctx, "User", event, "user", event.User.Username)
 }
 
 func (eb *EventBus) OnUser(handler func(UserEvent)) func() {
-	slog.Debug("Registering User event handler")
-	key := generateKey()
-	eb.user.AddListener(func(ctx context.Context, event UserEvent) {
-		handler(event)
-	}, key)
-	return func() {
-		eb.user.RemoveListener(key)
-	}
+	return onEvent(eb.user, "User", handler)
 }
 
 // Setting event methods
 func (eb *EventBus) EmitSetting(event SettingEvent) {
-	slog.Debug("Emitting Setting event", "setting", event.Setting)
-	eb.setting.Emit(eb.ctx, event)
+	emitEvent(eb.setting, eb.ctx, "Setting", event, "setting", event.Setting)
 }
 
 func (eb *EventBus) OnSetting(handler func(SettingEvent)) func() {
-	slog.Debug("Registering Setting event handler")
-	key := generateKey()
-	eb.setting.AddListener(func(ctx context.Context, event SettingEvent) {
-		handler(event)
-	}, key)
-	return func() {
-		eb.setting.RemoveListener(key)
-	}
+	return onEvent(eb.setting, "Setting", handler)
 }
 
 // Samba event methods
 func (eb *EventBus) EmitSamba(event SambaEvent) {
-	slog.Debug("Emitting Samba event")
-	eb.samba.Emit(eb.ctx, event)
+	emitEvent(eb.samba, eb.ctx, "Samba", event)
 }
 
 func (eb *EventBus) OnSamba(handler func(SambaEvent)) func() {
-	slog.Debug("Registering Samba event handler")
-	key := generateKey()
-	eb.samba.AddListener(func(ctx context.Context, event SambaEvent) {
-		handler(event)
-	}, key)
-	return func() {
-		eb.samba.RemoveListener(key)
-	}
+	return onEvent(eb.samba, "Samba", handler)
 }
 
 // Dirty data event methods
 func (eb *EventBus) EmitDirtyData(event DirtyDataEvent) {
-	slog.Debug("Emitting DirtyData event", "tracker", event.DataDirtyTracker)
-	eb.dirtyData.Emit(eb.ctx, event)
+	emitEvent(eb.dirtyData, eb.ctx, "DirtyData", event, "tracker", event.DataDirtyTracker)
 }
 
 func (eb *EventBus) OnDirtyData(handler func(DirtyDataEvent)) func() {
-	slog.Debug("Registering DirtyData event handler")
-	key := generateKey()
-	eb.dirtyData.AddListener(func(ctx context.Context, event DirtyDataEvent) {
-		handler(event)
-	}, key)
-	return func() {
-		eb.dirtyData.RemoveListener(key)
-	}
+	return onEvent(eb.dirtyData, "DirtyData", handler)
 }

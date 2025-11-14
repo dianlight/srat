@@ -252,3 +252,77 @@ func TestEventBusUnsubscribe(t *testing.T) {
 		assert.Equal(t, int32(0), counter.Load())
 	}
 }
+
+func TestEventBusOneEmitMultipleListeners(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	// Track which listeners received the event
+	listener1Received := atomic.Bool{}
+	listener2Received := atomic.Bool{}
+	listener3Received := atomic.Bool{}
+
+	var receivedDiskIDs [3]string
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	// Register three listeners that track their received events
+	unsubscribe1 := bus.OnDisk(func(event DiskEvent) {
+		mu.Lock()
+		receivedDiskIDs[0] = *event.Disk.Id
+		mu.Unlock()
+		listener1Received.Store(true)
+		wg.Done()
+	})
+	defer unsubscribe1()
+
+	unsubscribe2 := bus.OnDisk(func(event DiskEvent) {
+		mu.Lock()
+		receivedDiskIDs[1] = *event.Disk.Id
+		mu.Unlock()
+		listener2Received.Store(true)
+		wg.Done()
+	})
+	defer unsubscribe2()
+
+	unsubscribe3 := bus.OnDisk(func(event DiskEvent) {
+		mu.Lock()
+		receivedDiskIDs[2] = *event.Disk.Id
+		mu.Unlock()
+		listener3Received.Store(true)
+		wg.Done()
+	})
+	defer unsubscribe3()
+
+	// Emit one event
+	disk := &dto.Disk{
+		Id:    pointer.String("sda"),
+		Model: pointer.String("Test Disk"),
+	}
+	bus.EmitDisk(DiskEvent{Disk: disk})
+
+	// Wait for all listeners to receive the event
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// All three listeners should have received the event
+		assert.True(t, listener1Received.Load(), "listener1 should have received event")
+		assert.True(t, listener2Received.Load(), "listener2 should have received event")
+		assert.True(t, listener3Received.Load(), "listener3 should have received event")
+
+		// All should have received the same disk ID
+		mu.Lock()
+		assert.Equal(t, "sda", receivedDiskIDs[0])
+		assert.Equal(t, "sda", receivedDiskIDs[1])
+		assert.Equal(t, "sda", receivedDiskIDs[2])
+		mu.Unlock()
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for all listeners to receive event")
+	}
+}

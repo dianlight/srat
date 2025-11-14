@@ -64,7 +64,7 @@ func TestBroadcasterService_shouldSkipSSEEvent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := broadcaster.shouldSkipSSEEvent(tt.event)
+			result := broadcaster.shouldSkipClientSend(tt.event)
 			assert.Equal(t, tt.expected, result, "shouldSkipSSEEvent() = %v, want %v", result, tt.expected)
 		})
 	}

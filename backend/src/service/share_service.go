@@ -10,6 +10,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/tlog"
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -60,9 +61,13 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
 			unsubscribe = s.eventBus.OnMountPoint(func(event events.MountPointEvent) {
-				slog.Info("Received ShareEvent", "type", event.Type, "mountpoint", event.MountPoint)
+				slog.Info("Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
 				_, errs := s.SetShareFromPathEnabled(event.MountPoint.Path, event.MountPoint.IsMounted)
 				if errs != nil {
+					if errors.Is(errs, dto.ErrorShareNotFound) {
+						tlog.Trace("No share found for mount point", "path", event.MountPoint.Path)
+						return
+					}
 					slog.Error("Error updating share status from mount event", "err", errs)
 				}
 			})

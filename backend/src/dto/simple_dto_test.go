@@ -82,6 +82,8 @@ func TestResolutionIssue_UnhealthyAndUnsupported(t *testing.T) {
 
 	assert.True(t, issue.Unhealthy)
 	assert.True(t, issue.Unsupported)
+	assert.Equal(t, "compatibility", issue.Type)
+	assert.Equal(t, "deprecated_feature", issue.Context)
 }
 
 // SmbConf Tests
