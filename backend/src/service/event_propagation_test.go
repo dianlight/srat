@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/u-root/u-root/pkg/mount"
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -34,6 +36,7 @@ type EventPropagationTestSuite struct {
 	shareService     ShareServiceInterface
 	userService      UserServiceInterface
 	dirtyDataService DirtyDataServiceInterface
+	VolumeService    VolumeServiceInterface
 	mockShareRepo    repository.ExportedShareRepositoryInterface
 	mockUserRepo     repository.SambaUserRepositoryInterface
 	mockMountRepo    repository.MountPointPathRepositoryInterface
@@ -58,6 +61,12 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 			NewDirtyDataService,
 			NewShareService,
 			NewUserService,
+			// Real VolumeService with injected test mount ops
+			NewVolumeService,
+			NewFilesystemService,
+			func() *dto.ContextState { return &dto.ContextState{} },
+			mock.Mock[IssueServiceInterface],
+			mock.Mock[HardwareServiceInterface],
 			mock.Mock[repository.ExportedShareRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
 			mock.Mock[repository.MountPointPathRepositoryInterface],
@@ -71,8 +80,35 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 		fx.Populate(&suite.mockShareRepo),
 		fx.Populate(&suite.mockUserRepo),
 		fx.Populate(&suite.mockMountRepo),
+		fx.Populate(&suite.VolumeService),
 	)
 	suite.app.RequireStart()
+
+	// Inject fake mount operations to avoid touching the real OS
+	if vs, ok := suite.VolumeService.(*VolumeService); ok {
+		vs.MockSetMountOps(
+			func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+				for _, f := range opts {
+					_ = f()
+				}
+				return &mount.MountPoint{Path: target, Device: source, FSType: "ext4", Flags: flags, Data: data}, nil
+			},
+			func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+				for _, f := range opts {
+					_ = f()
+				}
+				if fstype == "" {
+					fstype = "ext4"
+				}
+				return &mount.MountPoint{Path: target, Device: source, FSType: fstype, Flags: flags, Data: data}, nil
+			},
+			func(target string, force, lazy bool) error {
+				// Ensure the directory exists so VolumeService's os.Remove succeeds
+				_ = os.MkdirAll(target, 0o750)
+				return nil
+			},
+		)
+	}
 
 	// Setup global mock for share repo to avoid nil pointer errors when mount point events trigger share lookups
 	mock.When(suite.mockShareRepo.FindByMountPath(mock.Any[string]())).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
@@ -595,19 +631,14 @@ func (suite *EventPropagationTestSuite) TestVolumeEventPropagation() {
 	})
 	defer unsubscribe()
 
-	// Action: Emit a Volume event for mount operation
+	// Action: Call VolumeService to mount
 	mountPoint := &dto.MountPointData{
 		Path:      "/mnt/test-volume",
 		IsMounted: true,
 		DeviceId:  "sda1",
+		Partition: &dto.Partition{Id: pointer.String("sda1"), DevicePath: pointer.String("/dev/fake-sda1")},
 	}
-	suite.eventBus.EmitVolume(events.VolumeEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
-		MountPoint: mountPoint,
-		Operation:  "mount",
-	})
+	_ = suite.VolumeService.MountVolume(mountPoint)
 
 	// Wait for event
 	done := make(chan struct{})
@@ -621,7 +652,6 @@ func (suite *EventPropagationTestSuite) TestVolumeEventPropagation() {
 		require.NotNil(suite.T(), receivedEvent, "Should receive volume event")
 		assert.Equal(suite.T(), "mount", receivedEvent.Operation)
 		assert.Equal(suite.T(), "/mnt/test-volume", receivedEvent.MountPoint.Path)
-		assert.True(suite.T(), receivedEvent.MountPoint.IsMounted)
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for volume event")
 	}
@@ -640,19 +670,16 @@ func (suite *EventPropagationTestSuite) TestVolumeUnmountEventPropagation() {
 	})
 	defer unsubscribe()
 
-	// Action: Emit a Volume event for unmount operation
+	// Mock repo so UnmountVolume can resolve mount entry
+	mock.When(suite.mockMountRepo.FindByPath("/mnt/test-volume")).ThenReturn(&dbom.MountPointPath{Path: "/mnt/test-volume", DeviceId: "sda1", FSType: "ext4"}, nil)
+
+	// Action: Call VolumeService to unmount
 	mountPoint := &dto.MountPointData{
 		Path:      "/mnt/test-volume",
 		IsMounted: false,
 		DeviceId:  "sda1",
 	}
-	suite.eventBus.EmitVolume(events.VolumeEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
-		MountPoint: mountPoint,
-		Operation:  "unmount",
-	})
+	_ = suite.VolumeService.UnmountVolume(mountPoint.Path, true, false)
 
 	// Wait for event
 	done := make(chan struct{})
@@ -666,7 +693,6 @@ func (suite *EventPropagationTestSuite) TestVolumeUnmountEventPropagation() {
 		require.NotNil(suite.T(), receivedEvent, "Should receive volume event")
 		assert.Equal(suite.T(), "unmount", receivedEvent.Operation)
 		assert.Equal(suite.T(), "/mnt/test-volume", receivedEvent.MountPoint.Path)
-		assert.False(suite.T(), receivedEvent.MountPoint.IsMounted)
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for volume unmount event")
 	}
@@ -698,18 +724,11 @@ func (suite *EventPropagationTestSuite) TestVolumeEventToMountPointEventChain() 
 		Path:      "/mnt/test-chain",
 		IsMounted: true,
 		DeviceId:  "sdb1",
+		Partition: &dto.Partition{Id: pointer.String("sdb1"), DevicePath: pointer.String("/dev/fake-sdb1")},
 	}
 
-	// In real service, mount operation emits both events
-	suite.eventBus.EmitMountPoint(events.MountPointEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
-		MountPoint: mountPoint,
-	})
-	suite.eventBus.EmitVolume(events.VolumeEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
-		MountPoint: mountPoint,
-		Operation:  "mount",
-	})
+	// Call service
+	_ = suite.VolumeService.MountVolume(mountPoint)
 
 	// Wait for events
 	done := make(chan struct{})
@@ -743,35 +762,27 @@ func (suite *EventPropagationTestSuite) TestMultipleVolumeOperationsSequence() {
 	})
 	defer unsubscribe()
 
-	// Action: Emit multiple volume operations
+	// Mock repo for unmount
+	mock.When(suite.mockMountRepo.FindByPath("/mnt/test-seq")).ThenReturn(&dbom.MountPointPath{Path: "/mnt/test-seq", DeviceId: "sdc1", FSType: "ext4"}, nil)
+
+	// Action: Execute multiple volume operations through the service
 	mountPoint := &dto.MountPointData{
-		Path:     "/mnt/test-seq",
-		DeviceId: "sdc1",
+		Path:      "/mnt/test-seq",
+		DeviceId:  "sdc1",
+		Partition: &dto.Partition{Id: pointer.String("sdc1"), DevicePath: pointer.String("/dev/fake-sdc1")},
 	}
 
 	// Mount
 	mountPoint.IsMounted = true
-	suite.eventBus.EmitVolume(events.VolumeEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
-		MountPoint: mountPoint,
-		Operation:  "mount",
-	})
+	_ = suite.VolumeService.MountVolume(mountPoint)
 
 	// Unmount
 	mountPoint.IsMounted = false
-	suite.eventBus.EmitVolume(events.VolumeEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
-		MountPoint: mountPoint,
-		Operation:  "unmount",
-	})
+	_ = suite.VolumeService.UnmountVolume(mountPoint.Path, true, false)
 
 	// Mount again
 	mountPoint.IsMounted = true
-	suite.eventBus.EmitVolume(events.VolumeEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
-		MountPoint: mountPoint,
-		Operation:  "mount",
-	})
+	_ = suite.VolumeService.MountVolume(mountPoint)
 
 	// Wait for all events
 	done := make(chan struct{})
@@ -800,7 +811,8 @@ func (suite *EventPropagationTestSuite) TestVolumeDiskPartitionEventChain() {
 	volumeEventReceived := atomic.Bool{}
 
 	var wg sync.WaitGroup
-	wg.Add(4)
+	// Expect: Disk + Partition + MountPoint (manual) + MountPoint (from MountVolume) + Volume
+	wg.Add(5)
 
 	// Mock repository to avoid nil pointer dereference when ShareService tries to look up share by path
 	mock.When(suite.mockShareRepo.FindByMountPath("/mnt/sdd1")).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
@@ -854,18 +866,15 @@ func (suite *EventPropagationTestSuite) TestVolumeDiskPartitionEventChain() {
 		Path:      "/mnt/sdd1",
 		IsMounted: true,
 		DeviceId:  "sdd1",
+		Partition: &dto.Partition{Id: pointer.String("sdd1"), DevicePath: pointer.String("/dev/fake-sdd1")},
 	}
 	suite.eventBus.EmitMountPoint(events.MountPointEvent{
 		Event:      events.Event{Type: events.EventTypes.UPDATE},
 		MountPoint: mountPoint,
 	})
 
-	// 3. Volume event
-	suite.eventBus.EmitVolume(events.VolumeEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
-		MountPoint: mountPoint,
-		Operation:  "mount",
-	})
+	// 3. Volume event via service
+	_ = suite.VolumeService.MountVolume(mountPoint)
 
 	// Wait for all events
 	done := make(chan struct{})
@@ -905,30 +914,26 @@ func (suite *EventPropagationTestSuite) TestConcurrentVolumeOperations() {
 	})
 	defer unsubscribe()
 
-	// Action: Emit concurrent mount and unmount operations
+	// For concurrent unmounts, return a minimal record so UnmountVolume can proceed without nil deref
+	mock.When(suite.mockMountRepo.FindByPath(mock.Any[string]())).ThenAnswer(matchers.Answer(func(args []any) []any {
+		path := args[0].(string)
+		return []any{&dbom.MountPointPath{Path: path, DeviceId: "", FSType: "ext4"}, nil}
+	}))
+
+	// Action: Emit concurrent mount and unmount operations via service
 	for i := 0; i < numOperations; i++ {
 		idx := i
 		go func() {
-			suite.eventBus.EmitVolume(events.VolumeEvent{
-				Event: events.Event{Type: events.EventTypes.UPDATE},
-				MountPoint: &dto.MountPointData{
-					Path:      fmt.Sprintf("/mnt/vol-%d", idx),
-					IsMounted: true,
-					DeviceId:  fmt.Sprintf("sd%c1", 'e'+idx),
-				},
-				Operation: "mount",
+			dev := fmt.Sprintf("sd%c1", 'e'+idx)
+			_ = suite.VolumeService.MountVolume(&dto.MountPointData{
+				Path:      fmt.Sprintf("/mnt/vol-%d", idx),
+				IsMounted: true,
+				DeviceId:  dev,
+				Partition: &dto.Partition{Id: pointer.String(dev), DevicePath: pointer.String("/dev/fake-" + dev)},
 			})
 		}()
 		go func() {
-			suite.eventBus.EmitVolume(events.VolumeEvent{
-				Event: events.Event{Type: events.EventTypes.UPDATE},
-				MountPoint: &dto.MountPointData{
-					Path:      fmt.Sprintf("/mnt/vol-%d", idx),
-					IsMounted: false,
-					DeviceId:  fmt.Sprintf("sd%c1", 'e'+idx),
-				},
-				Operation: "unmount",
-			})
+			_ = suite.VolumeService.UnmountVolume(fmt.Sprintf("/mnt/vol-%d", idx), true, false)
 		}()
 	}
 

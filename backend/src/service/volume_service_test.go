@@ -343,44 +343,46 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	suite.Require().NotNil(disks)
 	suite.Require().Len(*disks, 2)
 
-	disk := (*disks)[0]
-	// Verify disk matches one of the mocked entries (order is not guaranteed)
-	if d, ok := mockHWResponse[*disk.Id]; ok {
-		suite.Equal(d.Vendor, disk.Vendor)
-		suite.Equal(d.Model, disk.Model)
+	// Build a lookup by disk ID to avoid order dependency
+	byID := map[string]dto.Disk{}
+	for _, d := range *disks {
+		if d.Id != nil {
+			byID[*d.Id] = d
+		}
 	}
-	suite.Require().NotNil(disk.Partitions)
-	suite.Require().Len(*disk.Partitions, 1)
 
-	// --- Assertions for Partition 1 ---
-	part1 := (*disk.Partitions)["part-1"]
-	suite.Require().NotNil(part1.LegacyDevicePath)
-	// Ensure legacy device path is set
-	suite.NotNil(part1.LegacyDevicePath)
-	suite.Require().NotNil(part1.Name)
-	if d, ok := mockHWResponse[*disk.Id]; ok {
-		suite.Equal(*(*d.Partitions)["part-1"].Name, *part1.Name)
-	}
-	suite.Require().NotNil(part1.MountPointData)
-	suite.Require().Len(*part1.MountPointData, 1, "Expected 1 mount point for partition 1")
-	mountPoint1 := (*part1.MountPointData)[mountPath1]
-	suite.Equal(mountPath1, mountPoint1.Path)
-	// This assertion depends on the converter logic AND the successful Save mock
-	//suite.True(mountPoint1.IsMounted, "MountPoint1 IsMounted should be true after successful save")
+	// Validate disk-1
+	d1, ok1 := byID["disk-1"]
+	suite.Require().True(ok1, "disk-1 should be present")
+	suite.Equal(mockHWResponse["disk-1"].Vendor, d1.Vendor)
+	suite.Equal(mockHWResponse["disk-1"].Model, d1.Model)
+	suite.Require().NotNil(d1.Partitions)
+	suite.Require().Len(*d1.Partitions, 1)
+	p1 := (*d1.Partitions)["part-1"]
+	suite.Require().NotNil(p1.LegacyDevicePath)
+	suite.Require().NotNil(p1.Name)
+	suite.Equal(*(*mockHWResponse["disk-1"].Partitions)["part-1"].Name, *p1.Name)
+	suite.Require().NotNil(p1.MountPointData)
+	suite.Require().Len(*p1.MountPointData, 1, "Expected 1 mount point for partition 1")
+	mp1, ok := (*p1.MountPointData)[mountPath1]
+	suite.Require().True(ok, "Expected mount path %s in partition 1", mountPath1)
+	suite.Equal(mountPath1, mp1.Path)
 
-	// --- Assertions for Partition 2 ---
-	disk = (*disks)[1]
-	part2 := (*disk.Partitions)["part-1"]
-	suite.Require().NotNil(part2.LegacyDevicePath)
-	suite.NotNil(part2.LegacyDevicePath)
-	suite.Require().NotNil(part2.Name)
-	//suite.Equal(*(*drive1.Filesystems)[1].Name, *part2.Name)
-	suite.Require().NotNil(part2.MountPointData)
-	suite.Require().Len(*part2.MountPointData, 1, "Expected 1 mount point for partition 2")
-	mountPoint2 := (*part2.MountPointData)[mountPath2]
-	suite.Equal(mountPath2, mountPoint2.Path)
-	// This assertion depends on the converter logic AND the successful Save mock
-	//suite.True(mountPoint2.IsMounted, "MountPoint2 IsMounted should be true after successful save")
+	// Validate disk-2
+	d2, ok2 := byID["disk-2"]
+	suite.Require().True(ok2, "disk-2 should be present")
+	suite.Equal(mockHWResponse["disk-2"].Vendor, d2.Vendor)
+	suite.Equal(mockHWResponse["disk-2"].Model, d2.Model)
+	suite.Require().NotNil(d2.Partitions)
+	suite.Require().Len(*d2.Partitions, 1)
+	p2 := (*d2.Partitions)["part-1"]
+	suite.Require().NotNil(p2.LegacyDevicePath)
+	suite.Require().NotNil(p2.Name)
+	suite.Require().NotNil(p2.MountPointData)
+	suite.Require().Len(*p2.MountPointData, 1, "Expected 1 mount point for partition 2")
+	mp2, ok := (*p2.MountPointData)[mountPath2]
+	suite.Require().True(ok, "Expected mount path %s in partition 2", mountPath2)
+	suite.Equal(mountPath2, mp2.Path)
 }
 
 // --- UpdateMountPointSettings Tests ---

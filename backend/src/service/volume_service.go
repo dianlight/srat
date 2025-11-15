@@ -70,6 +70,10 @@ type VolumeService struct {
 	procfsGetMounts   func() ([]*procfs.MountInfo, error)
 	disks             *map[string]dto.Disk
 	refreshVersion    uint32
+	// test hooks for mount operations
+	tryMountFunc func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error)
+	doMountFunc  func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error)
+	unmountFunc  func(target string, force, lazy bool) error
 }
 
 type VolumeServiceProps struct {
@@ -109,6 +113,9 @@ func NewVolumeService(
 		procfsGetMounts:   procfs.GetMounts,
 		disks:             &map[string]dto.Disk{},
 		refreshVersion:    0,
+		tryMountFunc:      mount.TryMount,
+		doMountFunc:       mount.Mount,
+		unmountFunc:       mount.Unmount,
 	}
 
 	unsubscribe := p.eventBus.OnMountPoint(func(mpe events.MountPointEvent) {
@@ -341,10 +348,10 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 
 	if md.FSType == nil || *md.FSType == "" {
 		// Use TryMount if FSType is not specified
-		mp, errS = mount.TryMount(*md.Partition.DevicePath, md.Path, data, flags, mountFunc)
+		mp, errS = ms.tryMountFunc(*md.Partition.DevicePath, md.Path, data, flags, mountFunc)
 	} else {
 		// Use Mount if FSType is specified
-		mp, errS = mount.Mount(*md.Partition.DevicePath, md.Path, *md.FSType, data, flags, mountFunc)
+		mp, errS = ms.doMountFunc(*md.Partition.DevicePath, md.Path, *md.FSType, data, flags, mountFunc)
 	}
 
 	if errS != nil {
@@ -494,7 +501,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 	}()
 
 	slog.Debug("Attempting to unmount volume", "path", path, "force", force, "lazy", lazy)
-	err = errors.WithStack(mount.Unmount(path, force, lazy))
+	err = errors.WithStack(ms.unmountFunc(path, force, lazy))
 	if err != nil {
 		slog.Error("Failed to unmount volume", "path", path, "err", err)
 		return errors.WithDetails(dto.ErrorUnmountFail, "Detail", err.Error(), "Path", path, "Error", err)
@@ -1237,4 +1244,21 @@ func (self *VolumeService) CheckUnmountedAutomountPartitions() errors.E {
 
 func (ms *VolumeService) MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error)) {
 	ms.procfsGetMounts = f
+}
+
+// MockSetMountOps allows tests to override mount operations.
+func (ms *VolumeService) MockSetMountOps(
+	tryMount func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+	mountFn func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+	unmountFn func(target string, force, lazy bool) error,
+) {
+	if tryMount != nil {
+		ms.tryMountFunc = tryMount
+	}
+	if mountFn != nil {
+		ms.doMountFunc = mountFn
+	}
+	if unmountFn != nil {
+		ms.unmountFunc = unmountFn
+	}
 }
