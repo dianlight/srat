@@ -20,6 +20,7 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/suite"
+	"github.com/u-root/u-root/pkg/mount"
 	"github.com/u-root/u-root/pkg/mount/loop"
 	"github.com/xorcare/pointer"
 	errors "gitlab.com/tozd/go/errors"
@@ -37,6 +38,17 @@ type VolumeServiceTestSuite struct {
 	ctx                context.Context
 	cancel             context.CancelFunc
 	app                *fxtest.App
+}
+
+// helper to access concrete methods not exposed on the interface
+func (suite *VolumeServiceTestSuite) mockMountOps(
+	tryMount func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+	mountFn func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+	unmountFn func(target string, force, lazy bool) error,
+) {
+	if v, ok := suite.volumeService.(*service.VolumeService); ok {
+		v.MockSetMountOps(tryMount, mountFn, unmountFn)
+	}
 }
 
 func TestVolumeServiceTestSuite(t *testing.T) {
@@ -383,6 +395,257 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	mp2, ok := (*p2.MountPointData)[mountPath2]
 	suite.Require().True(ok, "Expected mount path %s in partition 2", mountPath2)
 	suite.Equal(mountPath2, mp2.Path)
+}
+
+// --- Additional GetVolumesData focused tests ---
+
+// Ensures GetVolumesData returns Partitions with MountPointData (addon-side) populated
+// in addition to any HostMountPointData provided by the hardware client.
+func (suite *VolumeServiceTestSuite) TestGetVolumesData_ReturnsMountPointData() {
+	mountPathAddon := "/mnt/addon-mp"
+	device := pointer.String("/dev/disk/by-id/testdisk1-part1")
+	partID := pointer.String("test-part-1")
+
+	// Mock hardware: one disk, one partition with only HostMountPointData set
+	hostMount := dto.MountPointData{Path: "/host/mount", DeviceId: *partID, Type: "HOST"}
+	hostMap := map[string]dto.MountPointData{hostMount.Path: hostMount}
+
+	mockHW := map[string]dto.Disk{
+		"disk-1": {
+			Id:     pointer.String("disk-1"),
+			Vendor: pointer.String("VEND"),
+			Model:  pointer.String("MODEL"),
+			Partitions: &map[string]dto.Partition{
+				*partID: {
+					Id:                 partID,
+					DevicePath:         device,
+					LegacyDevicePath:   pointer.String("/dev/sda1"),
+					HostMountPointData: &hostMap,
+					MountPointData:     &map[string]dto.MountPointData{},
+				},
+			},
+		},
+	}
+
+	// Repo: no pre-existing mount configuration for this device
+	mock.When(suite.mockMountRepo.FindByDevice(*device)).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound)).Verify(matchers.Times(1))
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
+
+	// Procfs mounts contain an addon-side mount for our partition
+	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) {
+		return []*procfs.MountInfo{
+			{MountID: 2001, ParentID: 1, MajorMinorVer: "0:99", Root: "/", Source: *device, MountPoint: mountPathAddon, FSType: "ext4", Options: map[string]string{"rw": ""}, SuperOptions: map[string]string{}},
+		}, nil
+	})
+
+	disks := suite.volumeService.GetVolumesData()
+	suite.Require().NotNil(disks)
+	suite.Require().Len(*disks, 1)
+
+	d := (*disks)[0]
+	suite.Require().NotNil(d.Partitions)
+	p, ok := (*d.Partitions)[*partID]
+	suite.Require().True(ok)
+
+	// HostMountPointData remained intact
+	suite.Require().NotNil(p.HostMountPointData)
+	suite.Require().Contains(*p.HostMountPointData, hostMount.Path)
+
+	// MountPointData (addon-side) is present and contains the procfs mount
+	suite.Require().NotNil(p.MountPointData)
+	mp, ok := (*p.MountPointData)[mountPathAddon]
+	suite.Require().True(ok, "expected addon mount path in MountPointData")
+	suite.Equal(mountPathAddon, mp.Path)
+	suite.True(mp.IsMounted)
+	suite.Equal("ADDON", mp.Type)
+}
+
+// Ensures addon MountPointData and HostMountPointData are not mixed.
+func (suite *VolumeServiceTestSuite) TestGetVolumesData_NoMixHostAndAddon() {
+	hostPath := "/host/point"
+	addonPath := "/addon/point"
+	device := pointer.String("/dev/disk/by-id/testdisk2-part1")
+	partID := pointer.String("test-part-2")
+
+	hostMount := dto.MountPointData{Path: hostPath, DeviceId: *partID, Type: "HOST"}
+	hostMap := map[string]dto.MountPointData{hostPath: hostMount}
+
+	mockHW := map[string]dto.Disk{
+		"disk-2": {
+			Id:     pointer.String("disk-2"),
+			Vendor: pointer.String("VEND"),
+			Model:  pointer.String("MODEL"),
+			Partitions: &map[string]dto.Partition{
+				*partID: {
+					Id:                 partID,
+					DevicePath:         device,
+					HostMountPointData: &hostMap,
+					MountPointData:     &map[string]dto.MountPointData{},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.mockMountRepo.FindByDevice(*device)).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound)).Verify(matchers.Times(1))
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
+
+	// Procfs: only addon mount present
+	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) {
+		return []*procfs.MountInfo{
+			{MountID: 3001, ParentID: 1, MajorMinorVer: "0:98", Root: "/", Source: *device, MountPoint: addonPath, FSType: "xfs", Options: map[string]string{"rw": ""}, SuperOptions: map[string]string{}},
+		}, nil
+	})
+
+	disks := suite.volumeService.GetVolumesData()
+	suite.Require().NotNil(disks)
+	suite.Require().Len(*disks, 1)
+	part := (*(*disks)[0].Partitions)[*partID]
+
+	// Host mount should not appear in addon MountPointData
+	suite.Require().NotNil(part.MountPointData)
+	suite.Require().NotContains(*part.MountPointData, hostPath)
+	suite.Require().Contains(*part.MountPointData, addonPath)
+
+	// Addon mount should not appear in HostMountPointData
+	suite.Require().NotNil(part.HostMountPointData)
+	suite.Require().NotContains(*part.HostMountPointData, addonPath)
+	suite.Require().Contains(*part.HostMountPointData, hostPath)
+}
+
+// --- Mount/Unmount affecting GetVolumesData state ---
+
+func (suite *VolumeServiceTestSuite) TestMountVolume_UpdatesMountPointDataState() {
+	devicePath := "/dev/disk/by-id/mockdisk3-part1"
+	partID := "mock-part-3"
+	mountPath := "/mnt/mock3"
+	fstype := "ext4"
+
+	// Hardware with 1 partition, no addon mounts initially
+	mockHW := map[string]dto.Disk{
+		"disk-3": {
+			Id:     pointer.String("disk-3"),
+			Vendor: pointer.String("VEND"),
+			Model:  pointer.String("MODEL"),
+			Partitions: &map[string]dto.Partition{
+				partID: {
+					Id:             pointer.String(partID),
+					DevicePath:     pointer.String(devicePath),
+					MountPointData: &map[string]dto.MountPointData{},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
+	// No existing repo record for device
+	mock.When(suite.mockMountRepo.FindByDevice(devicePath)).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound)).Verify(matchers.Times(1))
+	// Expect a save during mount event persistence
+	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.AtLeastOnce())
+
+	// Before mounting, procfs does not list our mount
+	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) {
+		return []*procfs.MountInfo{}, nil
+	})
+
+	// Stub mount operation to succeed and reflect our desired mountpoint
+	suite.mockMountOps(
+		func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+			return &mount.MountPoint{Path: target, Device: devicePath, FSType: fstype, Flags: 0, Data: ""}, nil
+		},
+		func(source, target, fstypeP, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+			return &mount.MountPoint{Path: target, Device: devicePath, FSType: fstypeP, Flags: 0, Data: data}, nil
+		},
+		nil,
+	)
+
+	// Now pretends the system shows the mount right after mounting
+	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) {
+		return []*procfs.MountInfo{
+			{MountID: 4001, ParentID: 1, MajorMinorVer: "0:97", Root: "/", Source: devicePath, MountPoint: mountPath, FSType: fstype, Options: map[string]string{"rw": ""}, SuperOptions: map[string]string{}},
+		}, nil
+	})
+
+	// Perform mount
+	// Ensure disks cache is populated so MountVolume can resolve Partition from DeviceId
+	_ = suite.volumeService.GetVolumesData()
+	md := dto.MountPointData{
+		Path:     mountPath,
+		DeviceId: partID,
+		FSType:   &fstype,
+		Flags:    &dto.MountFlags{},
+	}
+	err := suite.volumeService.MountVolume(&md)
+	suite.Require().NoError(err)
+
+	// Validate state via GetVolumesData
+	disks := suite.volumeService.GetVolumesData()
+	suite.Require().NotNil(disks)
+	part := (*(*disks)[0].Partitions)[partID]
+	suite.Require().NotNil(part.MountPointData)
+	mpd, ok := (*part.MountPointData)[mountPath]
+	suite.Require().True(ok)
+	suite.True(mpd.IsMounted)
+	suite.Equal(mountPath, mpd.Path)
+	suite.Require().NotNil(mpd.Partition)
+	suite.Equal(partID, *mpd.Partition.Id)
+}
+
+func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataState() {
+	devicePath := "/dev/disk/by-id/mockdisk4-part1"
+	partID := "mock-part-4"
+	mountPath := "/mnt/mock4"
+	fstype := "xfs"
+
+	// Hardware
+	mockHW := map[string]dto.Disk{
+		"disk-4": {
+			Id:     pointer.String("disk-4"),
+			Vendor: pointer.String("VEND"),
+			Model:  pointer.String("MODEL"),
+			Partitions: &map[string]dto.Partition{
+				partID: {
+					Id:             pointer.String(partID),
+					DevicePath:     pointer.String(devicePath),
+					MountPointData: &map[string]dto.MountPointData{},
+				},
+			},
+		},
+	}
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
+
+	// Repo returns an existing mount configuration by device and path
+	dbrec := &dbom.MountPointPath{Path: mountPath, DeviceId: partID, FSType: fstype, Type: "ADDON"}
+	mock.When(suite.mockMountRepo.FindByDevice(devicePath)).ThenReturn(dbrec, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbrec, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.AtLeastOnce())
+
+	// Initially, procfs indicates the mount is active
+	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) {
+		return []*procfs.MountInfo{
+			{MountID: 5001, ParentID: 1, MajorMinorVer: "0:96", Root: "/", Source: devicePath, MountPoint: mountPath, FSType: fstype, Options: map[string]string{"rw": ""}, SuperOptions: map[string]string{}},
+		}, nil
+	})
+	// Trigger initial load so MountPointData is populated as mounted
+	_ = suite.volumeService.GetVolumesData()
+
+	// After unmount, procfs should not contain the entry anymore
+	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) { return []*procfs.MountInfo{}, nil })
+
+	// Stub unmount to succeed
+	suite.mockMountOps(nil, nil, func(target string, force, lazy bool) error { return nil })
+
+	// Perform unmount
+	err := suite.volumeService.UnmountVolume(mountPath, true, false)
+	suite.Require().NoError(err)
+
+	// Validate state reflects unmounted
+	disks := suite.volumeService.GetVolumesData()
+	suite.Require().NotNil(disks)
+	part := (*(*disks)[0].Partitions)[partID]
+	suite.Require().NotNil(part.MountPointData)
+	mpd, ok := (*part.MountPointData)[mountPath]
+	suite.Require().True(ok)
+	suite.False(mpd.IsMounted)
 }
 
 // --- UpdateMountPointSettings Tests ---
