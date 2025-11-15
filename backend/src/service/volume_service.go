@@ -409,6 +409,13 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			MountPoint: mount_data,
 		})
 
+		// Emit VolumeEvent for mount operation
+		ms.eventBus.EmitVolume(events.VolumeEvent{
+			Event:      events.Event{Type: events.EventTypes.UPDATE},
+			MountPoint: mount_data,
+			Operation:  "mount",
+		})
+
 		/*
 			err = ms.mount_repo.Save(dbom_mount_data)
 			if err != nil {
@@ -476,6 +483,14 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 			Event:      events.Event{Type: events.EventTypes.UPDATE},
 			MountPoint: md,
 		})
+		// Emit VolumeEvent for unmount operation
+		if err == nil && !md.IsMounted {
+			ms.eventBus.EmitVolume(events.VolumeEvent{
+				Event:      events.Event{Type: events.EventTypes.UPDATE},
+				MountPoint: md,
+				Operation:  "unmount",
+			})
+		}
 	}()
 
 	slog.Debug("Attempting to unmount volume", "path", path, "force", force, "lazy", lazy)

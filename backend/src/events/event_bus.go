@@ -47,6 +47,10 @@ type EventBusInterface interface {
 	EmitSamba(event SambaEvent)
 	OnSamba(handler func(SambaEvent)) func()
 
+	// Volume events
+	EmitVolume(event VolumeEvent)
+	OnVolume(handler func(VolumeEvent)) func()
+
 	// Dirty data events
 	EmitDirtyData(event DirtyDataEvent)
 	OnDirtyData(handler func(DirtyDataEvent)) func()
@@ -77,6 +81,9 @@ type EventBus struct {
 	// Samba event signals
 	samba signals.Signal[SambaEvent]
 
+	// Volume event signals
+	volume signals.Signal[VolumeEvent]
+
 	// Dirty data event signals
 	dirtyData signals.Signal[DirtyDataEvent]
 }
@@ -92,6 +99,7 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 		user:       signals.New[UserEvent](),
 		setting:    signals.New[SettingEvent](),
 		samba:      signals.New[SambaEvent](),
+		volume:     signals.New[VolumeEvent](),
 		dirtyData:  signals.New[DirtyDataEvent](),
 	}
 }
@@ -205,6 +213,15 @@ func (eb *EventBus) EmitSamba(event SambaEvent) {
 
 func (eb *EventBus) OnSamba(handler func(SambaEvent)) func() {
 	return onEvent(eb.samba, "Samba", handler)
+}
+
+// Volume event methods
+func (eb *EventBus) EmitVolume(event VolumeEvent) {
+	emitEvent(eb.volume, eb.ctx, "Volume", event, "operation", event.Operation, "mount_point", event.MountPoint.Path)
+}
+
+func (eb *EventBus) OnVolume(handler func(VolumeEvent)) func() {
+	return onEvent(eb.volume, "Volume", handler)
 }
 
 // Dirty data event methods

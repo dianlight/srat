@@ -51,6 +51,13 @@ type SambaEvent struct {
 	DataDirtyTracker dto.DataDirtyTracker
 }
 
+// VolumeEvent represents a volume operation event (mount/unmount)
+type VolumeEvent struct {
+	Event
+	MountPoint *dto.MountPointData
+	Operation  string // "mount" or "unmount"
+}
+
 // DirtyDataEvent represents a dirty data event
 type DirtyDataEvent struct {
 	Event

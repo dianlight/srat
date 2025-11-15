@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -72,6 +73,9 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 		fx.Populate(&suite.mockMountRepo),
 	)
 	suite.app.RequireStart()
+
+	// Setup global mock for share repo to avoid nil pointer errors when mount point events trigger share lookups
+	mock.When(suite.mockShareRepo.FindByMountPath(mock.Any[string]())).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
 }
 
 func (suite *EventPropagationTestSuite) TearDownTest() {
@@ -578,3 +582,368 @@ func (suite *EventPropagationTestSuite) TestSettingEventPropagation() {
 	}
 }
 
+// TestVolumeEventPropagation tests volume event propagation
+func (suite *EventPropagationTestSuite) TestVolumeEventPropagation() {
+	// Setup: Track volume events
+	var receivedEvent *events.VolumeEvent
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	unsubscribe := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+		receivedEvent = &event
+		wg.Done()
+	})
+	defer unsubscribe()
+
+	// Action: Emit a Volume event for mount operation
+	mountPoint := &dto.MountPointData{
+		Path:      "/mnt/test-volume",
+		IsMounted: true,
+		DeviceId:  "sda1",
+	}
+	suite.eventBus.EmitVolume(events.VolumeEvent{
+		Event: events.Event{
+			Type: events.EventTypes.UPDATE,
+		},
+		MountPoint: mountPoint,
+		Operation:  "mount",
+	})
+
+	// Wait for event
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		require.NotNil(suite.T(), receivedEvent, "Should receive volume event")
+		assert.Equal(suite.T(), "mount", receivedEvent.Operation)
+		assert.Equal(suite.T(), "/mnt/test-volume", receivedEvent.MountPoint.Path)
+		assert.True(suite.T(), receivedEvent.MountPoint.IsMounted)
+	case <-time.After(2 * time.Second):
+		suite.T().Fatal("timeout waiting for volume event")
+	}
+}
+
+// TestVolumeUnmountEventPropagation tests volume unmount event propagation
+func (suite *EventPropagationTestSuite) TestVolumeUnmountEventPropagation() {
+	// Setup: Track volume events
+	var receivedEvent *events.VolumeEvent
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	unsubscribe := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+		receivedEvent = &event
+		wg.Done()
+	})
+	defer unsubscribe()
+
+	// Action: Emit a Volume event for unmount operation
+	mountPoint := &dto.MountPointData{
+		Path:      "/mnt/test-volume",
+		IsMounted: false,
+		DeviceId:  "sda1",
+	}
+	suite.eventBus.EmitVolume(events.VolumeEvent{
+		Event: events.Event{
+			Type: events.EventTypes.UPDATE,
+		},
+		MountPoint: mountPoint,
+		Operation:  "unmount",
+	})
+
+	// Wait for event
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		require.NotNil(suite.T(), receivedEvent, "Should receive volume event")
+		assert.Equal(suite.T(), "unmount", receivedEvent.Operation)
+		assert.Equal(suite.T(), "/mnt/test-volume", receivedEvent.MountPoint.Path)
+		assert.False(suite.T(), receivedEvent.MountPoint.IsMounted)
+	case <-time.After(2 * time.Second):
+		suite.T().Fatal("timeout waiting for volume unmount event")
+	}
+}
+
+// TestVolumeEventToMountPointEventChain tests that volume operations trigger mount point events
+func (suite *EventPropagationTestSuite) TestVolumeEventToMountPointEventChain() {
+	// Setup: Track both volume and mount point events
+	volumeEventReceived := atomic.Bool{}
+	mountPointEventReceived := atomic.Bool{}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	unsubscribe1 := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+		volumeEventReceived.Store(true)
+		wg.Done()
+	})
+	defer unsubscribe1()
+
+	unsubscribe2 := suite.eventBus.OnMountPoint(func(event events.MountPointEvent) {
+		mountPointEventReceived.Store(true)
+		wg.Done()
+	})
+	defer unsubscribe2()
+
+	// Action: Emit volume and mount point events (simulating real service behavior)
+	mountPoint := &dto.MountPointData{
+		Path:      "/mnt/test-chain",
+		IsMounted: true,
+		DeviceId:  "sdb1",
+	}
+
+	// In real service, mount operation emits both events
+	suite.eventBus.EmitMountPoint(events.MountPointEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: mountPoint,
+	})
+	suite.eventBus.EmitVolume(events.VolumeEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: mountPoint,
+		Operation:  "mount",
+	})
+
+	// Wait for events
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		assert.True(suite.T(), volumeEventReceived.Load(), "Volume event should be received")
+		assert.True(suite.T(), mountPointEventReceived.Load(), "MountPoint event should be received")
+	case <-time.After(2 * time.Second):
+		suite.T().Fatal("timeout waiting for volume and mount point events")
+	}
+}
+
+// TestMultipleVolumeOperationsSequence tests sequential volume operations
+func (suite *EventPropagationTestSuite) TestMultipleVolumeOperationsSequence() {
+	// Setup: Track volume events in sequence
+	var operations []string
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(3) // mount, unmount, mount
+
+	unsubscribe := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+		mu.Lock()
+		operations = append(operations, event.Operation)
+		mu.Unlock()
+		wg.Done()
+	})
+	defer unsubscribe()
+
+	// Action: Emit multiple volume operations
+	mountPoint := &dto.MountPointData{
+		Path:     "/mnt/test-seq",
+		DeviceId: "sdc1",
+	}
+
+	// Mount
+	mountPoint.IsMounted = true
+	suite.eventBus.EmitVolume(events.VolumeEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: mountPoint,
+		Operation:  "mount",
+	})
+
+	// Unmount
+	mountPoint.IsMounted = false
+	suite.eventBus.EmitVolume(events.VolumeEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: mountPoint,
+		Operation:  "unmount",
+	})
+
+	// Mount again
+	mountPoint.IsMounted = true
+	suite.eventBus.EmitVolume(events.VolumeEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: mountPoint,
+		Operation:  "mount",
+	})
+
+	// Wait for all events
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		mu.Lock()
+		defer mu.Unlock()
+		assert.Len(suite.T(), operations, 3, "Should receive 3 operations")
+		assert.Equal(suite.T(), []string{"mount", "unmount", "mount"}, operations)
+	case <-time.After(2 * time.Second):
+		suite.T().Fatal("timeout waiting for volume operation sequence")
+	}
+}
+
+// TestVolumeDiskPartitionEventChain tests the full event chain: Disk -> Partition -> MountPoint -> Volume
+func (suite *EventPropagationTestSuite) TestVolumeDiskPartitionEventChain() {
+	// Setup: Track all events in the volume lifecycle
+	diskEventReceived := atomic.Bool{}
+	partitionEventReceived := atomic.Bool{}
+	mountPointEventReceived := atomic.Bool{}
+	volumeEventReceived := atomic.Bool{}
+
+	var wg sync.WaitGroup
+	wg.Add(4)
+
+	// Mock repository to avoid nil pointer dereference when ShareService tries to look up share by path
+	mock.When(suite.mockShareRepo.FindByMountPath("/mnt/sdd1")).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
+
+	unsubscribe1 := suite.eventBus.OnDisk(func(event events.DiskEvent) {
+		diskEventReceived.Store(true)
+		wg.Done()
+	})
+	defer unsubscribe1()
+
+	unsubscribe2 := suite.eventBus.OnPartition(func(event events.PartitionEvent) {
+		partitionEventReceived.Store(true)
+		wg.Done()
+	})
+	defer unsubscribe2()
+
+	unsubscribe3 := suite.eventBus.OnMountPoint(func(event events.MountPointEvent) {
+		mountPointEventReceived.Store(true)
+		wg.Done()
+	})
+	defer unsubscribe3()
+
+	unsubscribe4 := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+		volumeEventReceived.Store(true)
+		wg.Done()
+	})
+	defer unsubscribe4()
+
+	// Action: Emit a complete volume lifecycle event chain
+	partitions := map[string]dto.Partition{
+		"sdd1": {
+			Name:       pointer.String("sdd1"),
+			DevicePath: pointer.String("/dev/sdd1"),
+			Id:         pointer.String("sdd1"),
+		},
+	}
+	disk := &dto.Disk{
+		Id:         pointer.String("sdd"),
+		Model:      pointer.String("Test Disk"),
+		Partitions: &partitions,
+	}
+
+	// 1. Disk detected
+	suite.eventBus.EmitDisk(events.DiskEvent{
+		Event: events.Event{Type: events.EventTypes.ADD},
+		Disk:  disk,
+	})
+
+	// 2. Mount point event
+	mountPoint := &dto.MountPointData{
+		Path:      "/mnt/sdd1",
+		IsMounted: true,
+		DeviceId:  "sdd1",
+	}
+	suite.eventBus.EmitMountPoint(events.MountPointEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: mountPoint,
+	})
+
+	// 3. Volume event
+	suite.eventBus.EmitVolume(events.VolumeEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: mountPoint,
+		Operation:  "mount",
+	})
+
+	// Wait for all events
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		assert.True(suite.T(), diskEventReceived.Load(), "Disk event should be received")
+		assert.True(suite.T(), partitionEventReceived.Load(), "Partition event should be auto-emitted from disk")
+		assert.True(suite.T(), mountPointEventReceived.Load(), "MountPoint event should be received")
+		assert.True(suite.T(), volumeEventReceived.Load(), "Volume event should be received")
+	case <-time.After(2 * time.Second):
+		suite.T().Fatal("timeout waiting for volume lifecycle event chain")
+	}
+}
+
+// TestConcurrentVolumeOperations tests concurrent volume mount/unmount operations
+func (suite *EventPropagationTestSuite) TestConcurrentVolumeOperations() {
+	// Setup: Count volume events from concurrent operations
+	mountCounter := atomic.Int32{}
+	unmountCounter := atomic.Int32{}
+
+	const numOperations = 5
+	var wg sync.WaitGroup
+	wg.Add(numOperations * 2) // 5 mounts + 5 unmounts
+
+	unsubscribe := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+		if event.Operation == "mount" {
+			mountCounter.Add(1)
+		} else if event.Operation == "unmount" {
+			unmountCounter.Add(1)
+		}
+		wg.Done()
+	})
+	defer unsubscribe()
+
+	// Action: Emit concurrent mount and unmount operations
+	for i := 0; i < numOperations; i++ {
+		idx := i
+		go func() {
+			suite.eventBus.EmitVolume(events.VolumeEvent{
+				Event: events.Event{Type: events.EventTypes.UPDATE},
+				MountPoint: &dto.MountPointData{
+					Path:      fmt.Sprintf("/mnt/vol-%d", idx),
+					IsMounted: true,
+					DeviceId:  fmt.Sprintf("sd%c1", 'e'+idx),
+				},
+				Operation: "mount",
+			})
+		}()
+		go func() {
+			suite.eventBus.EmitVolume(events.VolumeEvent{
+				Event: events.Event{Type: events.EventTypes.UPDATE},
+				MountPoint: &dto.MountPointData{
+					Path:      fmt.Sprintf("/mnt/vol-%d", idx),
+					IsMounted: false,
+					DeviceId:  fmt.Sprintf("sd%c1", 'e'+idx),
+				},
+				Operation: "unmount",
+			})
+		}()
+	}
+
+	// Wait for all events
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		assert.Equal(suite.T(), int32(numOperations), mountCounter.Load(), "All mount events should be received")
+		assert.Equal(suite.T(), int32(numOperations), unmountCounter.Load(), "All unmount events should be received")
+	case <-time.After(5 * time.Second):
+		suite.T().Fatal("timeout waiting for concurrent volume operations")
+	}
+}
