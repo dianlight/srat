@@ -61,15 +61,11 @@ func NewBroadcasterService(
 		volumeService: volumeService,
 	}
 
-	var unsubscribe []func()
+	unsubscribe := b.setupEventListeners()
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			tlog.Trace("Starting BroadcasterService")
-			// Register event bus listeners
-			if eventBus != nil {
-				unsubscribe = b.setupEventListeners()
-			}
 			return nil
 		},
 		OnStop: func(context.Context) error {

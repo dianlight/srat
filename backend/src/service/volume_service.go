@@ -111,42 +111,42 @@ func NewVolumeService(
 		refreshVersion:    0,
 	}
 
-	var unsubscribe func()
+	unsubscribe := p.eventBus.OnMountPoint(func(mpe events.MountPointEvent) {
+		// Avoid recursive refresh loops: skip handling mount events while we are refreshing volumes
+		if p.refreshing.Load() {
+			return
+		}
+		err := p.persistMountPoint(mpe.MountPoint)
+		if err != nil {
+			slog.Error("Failed to persist mount point on event", "mount_point", mpe.MountPoint, "err", err)
+		}
+		if mpe.MountPoint.Partition != nil && mpe.MountPoint.Partition.Id != nil {
+			slog.Info("MountPointEvent received", "type", mpe.Type, "mount_point", mpe.MountPoint.Path, "device_id", *mpe.MountPoint.Partition.Id, "is_mounted", mpe.MountPoint.IsMounted)
+			if mpe.MountPoint.Partition.DiskId != nil {
+				disktmp, ok := (*p.disks)[*mpe.MountPoint.Partition.DiskId]
+				if ok {
+					parttmp, ok := (*disktmp.Partitions)[*mpe.MountPoint.Partition.Id]
+					if ok {
+						(*parttmp.MountPointData)[mpe.MountPoint.Path] = *mpe.MountPoint
+					}
+				}
+			}
+		}
+		err = p.getVolumesData()
+		if err != nil {
+			slog.Error("Failed to refresh volumes data on mount point event", "err", err)
+		}
+		if !mpe.MountPoint.IsMounted && mpe.Type == events.EventTypes.ADD && mpe.MountPoint.IsToMountAtStartup != nil && *mpe.MountPoint.IsToMountAtStartup {
+			err = p.MountVolume(mpe.MountPoint)
+			if err != nil {
+				slog.Error("Failed to mount volume on event", "mount_point", mpe.MountPoint, "err", err)
+				p.createAutomountFailureNotification(mpe.MountPoint.Path, mpe.MountPoint.DeviceId, err)
+			}
+		}
+	})
+
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			unsubscribe = p.eventBus.OnMountPoint(func(mpe events.MountPointEvent) {
-				// Avoid recursive refresh loops: skip handling mount events while we are refreshing volumes
-				if p.refreshing.Load() {
-					return
-				}
-				err := p.persistMountPoint(mpe.MountPoint)
-				if err != nil {
-					slog.Error("Failed to persist mount point on event", "mount_point", mpe.MountPoint, "err", err)
-				}
-				if mpe.MountPoint.Partition != nil && mpe.MountPoint.Partition.Id != nil {
-					slog.Info("MountPointEvent received", "type", mpe.Type, "mount_point", mpe.MountPoint.Path, "device_id", *mpe.MountPoint.Partition.Id, "is_mounted", mpe.MountPoint.IsMounted)
-					if mpe.MountPoint.Partition.DiskId != nil {
-						disktmp, ok := (*p.disks)[*mpe.MountPoint.Partition.DiskId]
-						if ok {
-							parttmp, ok := (*disktmp.Partitions)[*mpe.MountPoint.Partition.Id]
-							if ok {
-								(*parttmp.MountPointData)[mpe.MountPoint.Path] = *mpe.MountPoint
-							}
-						}
-					}
-				}
-				err = p.getVolumesData()
-				if err != nil {
-					slog.Error("Failed to refresh volumes data on mount point event", "err", err)
-				}
-				if !mpe.MountPoint.IsMounted && mpe.Type == events.EventTypes.ADD && mpe.MountPoint.IsToMountAtStartup != nil && *mpe.MountPoint.IsToMountAtStartup {
-					err = p.MountVolume(mpe.MountPoint)
-					if err != nil {
-						slog.Error("Failed to mount volume on event", "mount_point", mpe.MountPoint, "err", err)
-						p.createAutomountFailureNotification(mpe.MountPoint.Path, mpe.MountPoint.DeviceId, err)
-					}
-				}
-			})
 			err := p.getVolumesData()
 			if err != nil {
 				return err
@@ -682,7 +682,7 @@ func (self *VolumeService) GetVolumesData() *[]dto.Disk {
 func (self *VolumeService) getVolumesData() errors.E {
 	tlog.Trace("Requesting GetVolumesData via singleflight...")
 
-	v, err, _ := self.sfGroup.Do("GetVolumesData", func() (interface{}, error) {
+	_, err, _ := self.sfGroup.Do("GetVolumesData", func() (interface{}, error) {
 		// Mark that a refresh cycle is in progress to avoid recursive event-triggered refreshes
 		self.refreshing.Store(true)
 		defer self.refreshing.Store(false)
@@ -692,8 +692,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 
 		tlog.Trace("Executing GetVolumesData core logic (singleflight)...")
 
-		ret := []dto.Disk{}
-		//dbconv := converter.DtoToDbomConverterImpl{}
+		ret := self.disks
 
 		// Use mock data in demo mode or when SRAT_MOCK is true
 		if self.state.SupervisorURL == "demo" || os.Getenv("SRAT_MOCK") == "true" {
@@ -711,10 +710,11 @@ func (self *VolumeService) getVolumesData() errors.E {
 					},
 				},
 			}
-			ret = append(ret, dto.Disk{
+
+			(*ret)["DemoDisk"] = dto.Disk{
 				Id:         pointer.String("DemoDisk"),
 				Partitions: &demoParts,
-			})
+			}
 			return &ret, nil
 		}
 
@@ -725,13 +725,13 @@ func (self *VolumeService) getVolumesData() errors.E {
 		}
 
 		// Get Host Hardware
-		ret, errHw := self.hardwareClient.GetHardwareInfo()
+		hwDisks, errHw := self.hardwareClient.GetHardwareInfo()
 		if errHw != nil {
 			return nil, errHw
 		}
 
 		// Disks processing
-		for _, disk := range ret {
+		for _, disk := range hwDisks {
 			if disk.Partitions == nil {
 				continue
 			}
@@ -878,155 +878,13 @@ func (self *VolumeService) getVolumesData() errors.E {
 			}
 		}
 
-		/*
-			// Add AddonMountPointsData and check from DB (Save New and Update Old )
-			mountPointDataToSave := make([]dbom.MountPointPath, 0)
-			//mountPointDataToDelete := make([]dbom.MountPointPath, 0)
-			for idx, disk := range ret {
-				if disk.Partitions == nil {
-					continue
-				}
-				for pidx, part := range *disk.Partitions {
-					if part.Id == nil || *part.Id == "" {
-						slog.Debug("Skipping partition with nil or empty device id", "disk_id", disk.Id, "partition_index", pidx)
-						continue
-					}
-
-					mountInfos, err := self.procfsGetMounts()
-					if err != nil {
-						slog.Error("Failed to get local mount points", "err", err)
-						continue
-					}
-					//slog.Debug("Prtstatus entries found", "count", len(prtstatus))
-					for _, prtstate := range mountInfos {
-						//slog.Debug("Check", "legacy_device", *part.LegacyDevicePath, "part_device", prtstate.Device, "part_mountpoint", prtstate.Mountpoint, "db_device", *part.Id)
-						if part.LegacyDevicePath != nil && part.DevicePath != nil &&
-							(prtstate.Source == *part.LegacyDevicePath || prtstate.Source == *part.DevicePath) &&
-							prtstate.MountPoint != "" {
-							// Local mountpoint for partition found
-							tlog.Trace("Checking partition", "part_device", prtstate.Source, "part_mountpoint", prtstate.MountPoint, "db_device", *part.Id, "legacy_device", *part.LegacyDeviceName)
-							mountPoint := dto.MountPointData{}
-							if mountPointPath, ok := existingDBmountPoints[*part.Id]; ok {
-								// Existing mount point in DB, update details
-								errConv := dbconv.MountPointPathToMountPointData(mountPointPath, &mountPoint, nil)
-								if errConv != nil {
-									slog.Error("Failed to convert mount point data", "err", errConv)
-								}
-							}
-							//slog.Debug("Opts found for mount point", "mountPoint", mountPoint, "opts", prtstate.Options, "fstype", prtstate.FSType, "superOpts", prtstate.SuperOptions)
-							mountPoint.Path = prtstate.MountPoint
-							mountPoint.DeviceId = *part.Id
-							mountPoint.IsMounted = true
-							mountPoint.Flags = &dto.MountFlags{}
-							mountPoint.Flags.Scan(prtstate.Options)
-							mountPoint.CustomFlags = &dto.MountFlags{}
-							mountPoint.CustomFlags.Scan(prtstate.SuperOptions)
-							mountPoint.FSType = &prtstate.FSType
-							mountPoint.Type = "ADDON"
-							mountPoint.Partition = &part
-							if (*disk.Partitions)[pidx].MountPointData == nil {
-								(*disk.Partitions)[pidx].MountPointData = &[]dto.MountPointData{}
-							}
-							*(*disk.Partitions)[pidx].MountPointData = append(*(*disk.Partitions)[pidx].MountPointData, mountPoint)
-							delete(existingDBmountPoints, *part.Id)
-							tlog.Trace("Added mount point data to partition", "device_id", *part.Id, "prtstate", prtstate, "mountpoint", mountPoint)
-
-							mountPointPath := &dbom.MountPointPath{}
-							errConv := self.convDto.MountPointDataToMountPointPath(mountPoint, mountPointPath)
-							if errConv != nil {
-								slog.Error("Failed to convert mount point data for saving", "err", errConv)
-							}
-							mountPointDataToSave = append(mountPointDataToSave, *mountPointPath)
-						}
-					}
-				}
-				ret[idx] = disk
-			}
-		*/
-
-		/*
-			// Populate existing Shares
-			for i, disk := range ret {
-				for j, volume := range *disk.Partitions {
-					if volume.MountPointData == nil {
-						continue
-					}
-					for k, mountPoint := range *volume.MountPointData {
-						sharedData, errShare := self.shareService.GetShareFromPath(mountPoint.Path)
-						if errShare != nil {
-							if errors.Is(errShare, dto.ErrorShareNotFound) {
-								continue
-							} else {
-								return nil, errShare
-							}
-						}
-						if sharedData != nil {
-							shares := (*(*(ret)[i].Partitions)[j].MountPointData)[k].Shares
-							if shares == nil {
-								shares = make([]dto.SharedResource, 0)
-							}
-							shares = append(shares, *sharedData)
-							(*(*(ret)[i].Partitions)[j].MountPointData)[k].Shares = shares
-						}
-					}
-				}
-			}
-
-			// Save mountPointDataToSave
-			if len(mountPointDataToSave) > 0 {
-				tlog.Trace("Saving updated mount points to DB", "count", len(mountPointDataToSave))
-				for _, mp := range mountPointDataToSave {
-					tlog.Trace("Saving mount point to DB", "path", mp.Path, "device_id", mp.DeviceId)
-					err = self.mount_repo.Save(&mp)
-					if err != nil {
-						slog.Error("Failed to save mount point to DB", "path", mp.Path, "device_id", mp.DeviceId, "err", err)
-					}
-				}
-			}
-
-			// Remove mountPointDataToDelete
-			if len(existingDBmountPoints) > 0 {
-				tlog.Trace("Cleaning up mount points in DB that no longer exist on system", "count", len(existingDBmountPoints))
-				for _, mp := range existingDBmountPoints {
-					tlog.Trace("Removing stale mount point from DB", "path", mp.Path, "device_id", mp.DeviceId)
-					err = self.mount_repo.Delete(mp.Path)
-					if err != nil {
-						slog.Error("Failed to delete stale mount point from DB", "path", mp.Path, "device_id", mp.DeviceId, "err", err)
-					}
-				}
-			}
-
-			// Enrich disks with HDIdle status/config snapshot
-			if self.hdidleService != nil {
-				for i := range ret {
-					if ret[i].Id == nil || *ret[i].Id == "" {
-						continue
-					}
-					cfg, cerr := self.hdidleService.GetDeviceConfig(*ret[i].Id)
-					if cerr != nil {
-						slog.Debug("Failed to get HDIdle device config for disk", "disk_id", *ret[i].Id, "err", cerr)
-						continue
-					}
-					if cfg != nil {
-						ret[i].HDIdleStatus = cfg
-					}
-				}
-			}
-		*/
-
-		//slog.Debug("Finished getting and syncing volumes data (core logic).")
-		return &ret, nil
+		// Build return slice from current disks map (order not guaranteed)
+		return ret, nil
 	})
 
 	if err != nil {
 		//slog.Error("Singleflight execution of GetVolumesData failed", "err", err, "shared", shared)
 		return errors.WithStack(err)
-	}
-
-	_, ok := v.(*[]dto.Disk)
-	if !ok {
-		slog.Error("Singleflight returned unexpected type for GetVolumesData", "type", fmt.Sprintf("%T", v))
-		return errors.New("internal error: singleflight returned unexpected type")
 	}
 
 	return nil

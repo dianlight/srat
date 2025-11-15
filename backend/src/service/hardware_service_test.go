@@ -110,7 +110,7 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_EmptyDrives() {
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(disks)
-	suite.Empty(disks)
+	suite.Equal(0, len(disks))
 }
 
 func (suite *HardwareServiceSuite) TestGetHardwareInfo_ErrorResponse() {
@@ -208,5 +208,5 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_SkipsDrivesWithoutFilesys
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(disks)
-	suite.Empty(disks) // Should skip drives without filesystems
+	suite.Equal(0, len(disks)) // Should skip drives without filesystems
 }

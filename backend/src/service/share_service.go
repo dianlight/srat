@@ -14,6 +14,7 @@ import (
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
+	"gorm.io/gorm"
 )
 
 type ShareServiceInterface interface {
@@ -57,20 +58,19 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		sharesQueueMutex:    &sync.RWMutex{},
 		dbomConv:            converter.DtoToDbomConverterImpl{},
 	}
-	var unsubscribe func()
+	unsubscribe := s.eventBus.OnMountPoint(func(event events.MountPointEvent) {
+		slog.Info("Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
+		_, errs := s.SetShareFromPathEnabled(event.MountPoint.Path, event.MountPoint.IsMounted)
+		if errs != nil {
+			if errors.Is(errs, gorm.ErrRecordNotFound) {
+				tlog.Trace("No share found for mount point", "path", event.MountPoint.Path)
+				return
+			}
+			slog.Error("Error updating share status from mount event", "err", errs)
+		}
+	})
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			unsubscribe = s.eventBus.OnMountPoint(func(event events.MountPointEvent) {
-				slog.Info("Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
-				_, errs := s.SetShareFromPathEnabled(event.MountPoint.Path, event.MountPoint.IsMounted)
-				if errs != nil {
-					if errors.Is(errs, dto.ErrorShareNotFound) {
-						tlog.Trace("No share found for mount point", "path", event.MountPoint.Path)
-						return
-					}
-					slog.Error("Error updating share status from mount event", "err", errs)
-				}
-			})
 			return nil
 		},
 		OnStop: func(_ context.Context) error {
@@ -143,7 +143,7 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
 	existing, err := s.exported_share_repo.FindByName(share.Name)
-	if err != nil && !errors.Is(err, dto.ErrorShareNotFound) {
+	if err != nil && (!errors.Is(err, gorm.ErrRecordNotFound) && !errors.Is(err, dto.ErrorShareNotFound)) {
 		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
 		return nil, errors.Wrap(err, "failed to check for existing share")
 	}

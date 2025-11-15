@@ -95,21 +95,20 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 		})
 	*/
 
-	var unsubscribe func()
+	unsubscribe := p.eventBus.OnSamba(func(event events.SambaEvent) {
+		if event.Type == events.EventTypes.RESTART {
+			slog.Info("SambaService received RESTART event, writing and restarting Samba configuration...")
+			if err := p.WriteAndRestartSambaConfig(); err != nil {
+				slog.Error("Error writing and restarting Samba configuration", "error", err)
+				p.eventBus.EmitDirtyData(events.DirtyDataEvent{
+					Event:            events.Event{Type: events.EventTypes.ERROR},
+					DataDirtyTracker: event.DataDirtyTracker,
+				})
+			}
+		}
+	})
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			unsubscribe = p.eventBus.OnSamba(func(event events.SambaEvent) {
-				if event.Type == events.EventTypes.RESTART {
-					slog.Info("SambaService received RESTART event, writing and restarting Samba configuration...")
-					if err := p.WriteAndRestartSambaConfig(); err != nil {
-						slog.Error("Error writing and restarting Samba configuration", "error", err)
-						p.eventBus.EmitDirtyData(events.DirtyDataEvent{
-							Event:            events.Event{Type: events.EventTypes.ERROR},
-							DataDirtyTracker: event.DataDirtyTracker,
-						})
-					}
-				}
-			})
 			return nil
 		},
 		OnStop: func(context.Context) error {

@@ -22,7 +22,7 @@ import (
 // of hardware info (`hardware.HardwareInfo`) so other packages don't have
 // to import the generated `hardware` package.
 type HardwareServiceInterface interface {
-	GetHardwareInfo() ([]dto.Disk, errors.E)
+	GetHardwareInfo() (map[string]dto.Disk, errors.E)
 	InvalidateHardwareInfo()
 }
 
@@ -49,22 +49,22 @@ func NewHardwareService(
 	}
 }
 
-func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
+func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 	// try cache first
 	const hwCacheKey = "hardware_info"
 	if h.cache != nil {
 		if cached, ok := h.cache.Get(hwCacheKey); ok {
-			if disks, castOk := cached.([]dto.Disk); castOk {
+			if disks, castOk := cached.(map[string]dto.Disk); castOk {
 				tlog.Debug("Returning hardware info from cache", "drive_count", len(disks))
 				return disks, nil
 			}
 			// unexpected type, invalidate
-			tlog.Warn("Invalid type found in hardware info cache, invalidating", "expected", "[]dto.Disk", "actual", fmt.Sprintf("%T", cached))
+			tlog.Warn("Invalid type found in hardware info cache, invalidating", "expected", "map[string]dto.Disk", "actual", fmt.Sprintf("%T", cached))
 			h.cache.Delete(hwCacheKey)
 		}
 	}
 
-	ret := []dto.Disk{}
+	ret := map[string]dto.Disk{}
 	hwser, errHw := h.haClient.GetHardwareInfoWithResponse(h.ctx)
 	if errHw != nil || hwser == nil {
 		if !errors.Is(errHw, dto.ErrorNotFound) {
@@ -157,9 +157,23 @@ func (h *hardwareService) GetHardwareInfo() ([]dto.Disk, errors.E) {
 				}
 			}
 		}
-		ret = append(ret, diskDto)
+		// Ensure disk has an ID to use as map key
+		if diskDto.Id == nil || *diskDto.Id == "" {
+			if drive.Id != nil && *drive.Id != "" {
+				diskDto.Id = drive.Id
+			}
+		}
+		if diskDto.Id == nil || *diskDto.Id == "" {
+			tlog.Warn("Skipping disk with missing ID after conversion", "drive_index", i)
+			continue
+		}
+		ret[*diskDto.Id] = diskDto
 	}
 
+	// populate cache
+	if h.cache != nil {
+		h.cache.SetDefault(hwCacheKey, ret)
+	}
 	return ret, nil
 }
 

@@ -83,7 +83,13 @@ func LoadMountInfo() ([]*MountInfoEntry, error) {
 	overrideMu.RUnlock()
 
 	if override == nil {
-		infos, err := mountinfo.GetMounts(nil)
+		infos, err := mountinfo.GetMounts(func(m *mountinfo.Info) (skip, stop bool) {
+			if info, err := os.Stat(m.Mountpoint); err == nil && info.IsDir() {
+				return false, false
+			} else {
+				return true, false
+			}
+		})
 		if err != nil {
 			return nil, err
 		}

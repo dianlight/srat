@@ -57,35 +57,36 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 	p.share_service = in.ShareService
 	p.eventBus = in.EventBus
 	unsubscribe := make([]func(), 2)
+	unsubscribe[0] = p.eventBus.OnDirtyData(func(event events.DirtyDataEvent) {
+		slog.Debug("DirtyDataService received DirtyData event", "tracker", event.DataDirtyTracker)
+		if event.Type == events.EventTypes.CLEAN {
+			p.mountHaStorage()
+		}
+	})
+	unsubscribe[1] = p.eventBus.OnShare(func(event events.ShareEvent) {
+		if event.Type == events.EventTypes.REMOVE {
+			err := p.NetworkUnmountShare(event.Share.Name)
+			if err != nil {
+				slog.Error("Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
+			}
+		} else if event.Type == events.EventTypes.UPDATE &&
+			(event.Share.Disabled != nil && *event.Share.Disabled == true) {
+			err := p.NetworkUnmountShare(event.Share.Name)
+			if err != nil {
+				slog.Error("Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
+			}
+		} else if event.Type == events.EventTypes.UPDATE &&
+			(event.Share.Usage == dto.UsageAsInternal ||
+				event.Share.Usage == dto.UsageAsNone) {
+			err := p.NetworkUnmountShare(event.Share.Name)
+			if err != nil {
+				slog.Error("Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
+			}
+		}
+	})
+
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			unsubscribe[0] = p.eventBus.OnDirtyData(func(event events.DirtyDataEvent) {
-				slog.Debug("DirtyDataService received DirtyData event", "tracker", event.DataDirtyTracker)
-				if event.Type == events.EventTypes.CLEAN {
-					p.mountHaStorage()
-				}
-			})
-			unsubscribe[1] = p.eventBus.OnShare(func(event events.ShareEvent) {
-				if event.Type == events.EventTypes.REMOVE {
-					err := p.NetworkUnmountShare(event.Share.Name)
-					if err != nil {
-						slog.Error("Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
-					}
-				} else if event.Type == events.EventTypes.UPDATE &&
-					(event.Share.Disabled != nil && *event.Share.Disabled == true) {
-					err := p.NetworkUnmountShare(event.Share.Name)
-					if err != nil {
-						slog.Error("Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
-					}
-				} else if event.Type == events.EventTypes.UPDATE &&
-					(event.Share.Usage == dto.UsageAsInternal ||
-						event.Share.Usage == dto.UsageAsNone) {
-					err := p.NetworkUnmountShare(event.Share.Name)
-					if err != nil {
-						slog.Error("Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
-					}
-				}
-			})
 			return nil
 		},
 		OnStop: func(context.Context) error {
