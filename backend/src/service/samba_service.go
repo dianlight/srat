@@ -84,18 +84,9 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 	//	p.ha_ws_service = in.HA_ws_service
 	p.dbomConv = converter.DtoToDbomConverterImpl{}
 	p.hdidle_service = in.Hdidle_service
-	/*
-		p.ha_ws_service.SubscribeToHaEvents(func(ready bool) {
-			if !ready {
-				return
-			}
-			if e := p.mountHaStorage(); e != nil {
-				slog.Error("Error mounting HA storage", "error", e)
-			}
-		})
-	*/
 
-	unsubscribe := p.eventBus.OnSamba(func(event events.SambaEvent) {
+	var unsubscribe [2]func()
+	unsubscribe[0] = p.eventBus.OnSamba(func(event events.SambaEvent) {
 		if event.Type == events.EventTypes.RESTART {
 			slog.Info("SambaService received RESTART event, writing and restarting Samba configuration...")
 			if err := p.WriteAndRestartSambaConfig(); err != nil {
@@ -112,8 +103,10 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 			return nil
 		},
 		OnStop: func(context.Context) error {
-			if unsubscribe != nil {
-				unsubscribe()
+			for _, unsub := range unsubscribe {
+				if unsub != nil {
+					unsub()
+				}
 			}
 			return nil
 		},

@@ -56,14 +56,22 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 	p.state = in.State
 	p.share_service = in.ShareService
 	p.eventBus = in.EventBus
-	unsubscribe := make([]func(), 2)
+	unsubscribe := make([]func(), 3)
 	unsubscribe[0] = p.eventBus.OnDirtyData(func(event events.DirtyDataEvent) {
 		slog.Debug("DirtyDataService received DirtyData event", "tracker", event.DataDirtyTracker)
 		if event.Type == events.EventTypes.CLEAN {
 			p.mountHaStorage()
 		}
 	})
-	unsubscribe[1] = p.eventBus.OnShare(func(event events.ShareEvent) {
+	unsubscribe[1] = p.eventBus.OnHomeAssistant(func(event events.HomeAssistantEvent) {
+		if event.Type == events.EventTypes.START {
+			err := p.mountHaStorage()
+			if err != nil {
+				slog.Error("Error mounting HA storage shares", "err", err)
+			}
+		}
+	})
+	unsubscribe[2] = p.eventBus.OnShare(func(event events.ShareEvent) {
 		if event.Type == events.EventTypes.REMOVE {
 			err := p.NetworkUnmountShare(event.Share.Name)
 			if err != nil {
@@ -240,6 +248,10 @@ func (self *SupervisorService) NetworkUnmountShare(shareName string) errors.E {
 }
 
 func (self *SupervisorService) mountHaStorage() errors.E {
+	if self.state.HACoreReady == false {
+		slog.Info("HA Core is not ready, skipping mountHaStorage")
+		return nil
+	}
 	shares, err := self.share_service.ListShares()
 	if err != nil {
 		return errors.WithStack(err)
