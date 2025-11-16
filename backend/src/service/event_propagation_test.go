@@ -268,7 +268,7 @@ func (suite *EventPropagationTestSuite) TestDiskEventPropagation() {
 		Id:    pointer.String("sda"),
 		Model: pointer.String("Test Disk"),
 	}
-	suite.eventBus.EmitDisk(events.DiskEvent{
+	suite.eventBus.EmitDiskAndPartition(events.DiskEvent{
 		Event: events.Event{
 			Type: events.EventTypes.ADD,
 		},
@@ -458,7 +458,7 @@ func (suite *EventPropagationTestSuite) TestConcurrentEventPropagation() {
 			})
 		}(i)
 		go func(idx int) {
-			suite.eventBus.EmitDisk(events.DiskEvent{
+			suite.eventBus.EmitDiskAndPartition(events.DiskEvent{
 				Disk: &dto.Disk{Id: pointer.String("disk-" + string(rune(idx)))},
 			})
 		}(i)
@@ -559,7 +559,7 @@ func (suite *EventPropagationTestSuite) TestDiskEventEmitsPartitionEvents() {
 		Model:      pointer.String("Test Disk"),
 		Partitions: &partitions,
 	}
-	suite.eventBus.EmitDisk(events.DiskEvent{
+	suite.eventBus.EmitDiskAndPartition(events.DiskEvent{
 		Event: events.Event{
 			Type: events.EventTypes.ADD,
 		},
@@ -673,13 +673,8 @@ func (suite *EventPropagationTestSuite) TestVolumeUnmountEventPropagation() {
 	// Mock repo so UnmountVolume can resolve mount entry
 	mock.When(suite.mockMountRepo.FindByPath("/mnt/test-volume")).ThenReturn(&dbom.MountPointPath{Path: "/mnt/test-volume", DeviceId: "sda1", FSType: "ext4"}, nil)
 
-	// Action: Call VolumeService to unmount
-	mountPoint := &dto.MountPointData{
-		Path:      "/mnt/test-volume",
-		IsMounted: false,
-		DeviceId:  "sda1",
-	}
-	_ = suite.VolumeService.UnmountVolume(mountPoint.Path, true, false)
+	err := suite.VolumeService.UnmountVolume("/mnt/test-volume", true, false)
+	suite.Require().NoError(err)
 
 	// Wait for event
 	done := make(chan struct{})
@@ -856,7 +851,7 @@ func (suite *EventPropagationTestSuite) TestVolumeDiskPartitionEventChain() {
 	}
 
 	// 1. Disk detected
-	suite.eventBus.EmitDisk(events.DiskEvent{
+	suite.eventBus.EmitDiskAndPartition(events.DiskEvent{
 		Event: events.Event{Type: events.EventTypes.ADD},
 		Disk:  disk,
 	})
@@ -905,9 +900,10 @@ func (suite *EventPropagationTestSuite) TestConcurrentVolumeOperations() {
 	wg.Add(numOperations * 2) // 5 mounts + 5 unmounts
 
 	unsubscribe := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
-		if event.Operation == "mount" {
+		switch event.Operation {
+		case "mount":
 			mountCounter.Add(1)
-		} else if event.Operation == "unmount" {
+		case "unmount":
 			unmountCounter.Add(1)
 		}
 		wg.Done()

@@ -20,7 +20,7 @@ func generateKey() string {
 type EventBusInterface interface {
 
 	// Disk events
-	EmitDisk(event DiskEvent)
+	EmitDiskAndPartition(event DiskEvent)
 	OnDisk(handler func(DiskEvent)) func()
 
 	// Partition events
@@ -54,6 +54,10 @@ type EventBusInterface interface {
 	// Dirty data events
 	EmitDirtyData(event DirtyDataEvent)
 	OnDirtyData(handler func(DirtyDataEvent)) func()
+
+	// Home Assistant events
+	EmitHomeAssistant(event HomeAssistantEvent)
+	OnHomeAssistant(handler func(HomeAssistantEvent)) func()
 }
 
 // EventBus implements EventBusInterface using maniartech/signals
@@ -86,21 +90,25 @@ type EventBus struct {
 
 	// Dirty data event signals
 	dirtyData signals.Signal[DirtyDataEvent]
+
+	// Home Assistant event signals
+	homeAssistant signals.Signal[HomeAssistantEvent]
 }
 
 // NewEventBus creates a new EventBus instance
 func NewEventBus(ctx context.Context) EventBusInterface {
 	return &EventBus{
-		ctx:        ctx,
-		disk:       signals.New[DiskEvent](),
-		partition:  signals.New[PartitionEvent](),
-		share:      signals.New[ShareEvent](),
-		mountPoint: signals.New[MountPointEvent](),
-		user:       signals.New[UserEvent](),
-		setting:    signals.New[SettingEvent](),
-		samba:      signals.New[SambaEvent](),
-		volume:     signals.New[VolumeEvent](),
-		dirtyData:  signals.New[DirtyDataEvent](),
+		ctx:           ctx,
+		disk:          signals.New[DiskEvent](),
+		partition:     signals.New[PartitionEvent](),
+		share:         signals.New[ShareEvent](),
+		mountPoint:    signals.New[MountPointEvent](),
+		user:          signals.New[UserEvent](),
+		setting:       signals.New[SettingEvent](),
+		samba:         signals.New[SambaEvent](),
+		volume:        signals.New[VolumeEvent](),
+		dirtyData:     signals.New[DirtyDataEvent](),
+		homeAssistant: signals.New[HomeAssistantEvent](),
 	}
 }
 
@@ -123,7 +131,7 @@ func emitEvent[T any](signal signals.Signal[T], ctx context.Context, eventName s
 }
 
 // Disk event methods
-func (eb *EventBus) EmitDisk(event DiskEvent) {
+func (eb *EventBus) EmitDiskAndPartition(event DiskEvent) {
 	diskID := "unknown"
 	if event.Disk.Id != nil {
 		diskID = *event.Disk.Id
@@ -151,11 +159,11 @@ func (eb *EventBus) OnDisk(handler func(DiskEvent)) func() {
 // Partition event methods
 func (eb *EventBus) EmitPartition(event PartitionEvent) {
 	partName := "unknown"
-	if event.Partition.Name != nil && *event.Partition.Name != "" {
+	if event.Partition != nil && event.Partition.Name != nil && *event.Partition.Name != "" {
 		partName = *event.Partition.Name
 	}
 	diskID := "unknown"
-	if event.Disk.Id != nil {
+	if event.Disk != nil && event.Disk.Id != nil {
 		diskID = *event.Disk.Id
 	}
 	emitEvent(eb.partition, eb.ctx, "Partition", event, "partition", partName, "disk", diskID)
@@ -231,4 +239,13 @@ func (eb *EventBus) EmitDirtyData(event DirtyDataEvent) {
 
 func (eb *EventBus) OnDirtyData(handler func(DirtyDataEvent)) func() {
 	return onEvent(eb.dirtyData, "DirtyData", handler)
+}
+
+// Home Assistant event methods
+func (eb *EventBus) EmitHomeAssistant(event HomeAssistantEvent) {
+	emitEvent(eb.homeAssistant, eb.ctx, "HomeAssistant", event)
+}
+
+func (eb *EventBus) OnHomeAssistant(handler func(HomeAssistantEvent)) func() {
+	return onEvent(eb.homeAssistant, "HomeAssistant", handler)
 }

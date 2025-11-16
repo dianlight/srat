@@ -63,3 +63,8 @@ type DirtyDataEvent struct {
 	Event
 	DataDirtyTracker dto.DataDirtyTracker
 }
+
+// HomeAssistantEvent represents a Home Assistant-related event
+type HomeAssistantEvent struct {
+	Event
+}

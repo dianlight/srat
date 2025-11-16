@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/tlog"
 	"github.com/patrickmn/go-cache"
@@ -16,6 +17,8 @@ import (
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
+
+const hwCacheKey = "hardware_info"
 
 // HardwareServiceInterface is the interface other services use.
 // It exposes a method that returns a neutral, internal representation
@@ -29,6 +32,7 @@ type HardwareServiceInterface interface {
 type hardwareService struct {
 	ctx          context.Context
 	haClient     hardware.ClientWithResponsesInterface
+	state        *dto.ContextState
 	conv         converter.HaHardwareToDtoImpl
 	smartService SmartServiceInterface
 	cache        *cache.Cache
@@ -37,21 +41,39 @@ type hardwareService struct {
 func NewHardwareService(
 	lc fx.Lifecycle,
 	ctx context.Context,
+	state *dto.ContextState,
 	haClient hardware.ClientWithResponsesInterface,
 	smartServiceInstance SmartServiceInterface,
+	eventBus events.EventBusInterface,
 ) HardwareServiceInterface {
-	return &hardwareService{
+	hs := &hardwareService{
 		ctx:          ctx,
 		haClient:     haClient,
 		conv:         converter.HaHardwareToDtoImpl{},
 		smartService: smartServiceInstance,
+		state:        state,
 		cache:        cache.New(30*time.Minute, 10*time.Minute),
 	}
+	unsubscribe := eventBus.OnHomeAssistant(func(hae events.HomeAssistantEvent) {
+		if hae.Type == events.EventTypes.START {
+			hs.InvalidateHardwareInfo()
+		}
+	})
+	lc.Append(fx.Hook{
+
+		OnStop: func(ctx context.Context) error {
+			tlog.Trace("HardwareService stopped")
+			if unsubscribe != nil {
+				unsubscribe()
+			}
+			return nil
+		},
+	})
+	return hs
 }
 
 func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 	// try cache first
-	const hwCacheKey = "hardware_info"
 	if h.cache != nil {
 		if cached, ok := h.cache.Get(hwCacheKey); ok {
 			if disks, castOk := cached.(map[string]dto.Disk); castOk {
@@ -65,6 +87,10 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 	}
 
 	ret := map[string]dto.Disk{}
+	if !h.state.HACoreReady {
+		slog.Debug("HA Core not ready, cannot get hardware info")
+		return ret, nil
+	}
 	hwser, errHw := h.haClient.GetHardwareInfoWithResponse(h.ctx)
 	if errHw != nil || hwser == nil {
 		if !errors.Is(errHw, dto.ErrorNotFound) {
@@ -183,6 +209,6 @@ func (h *hardwareService) InvalidateHardwareInfo() {
 	if h.cache == nil {
 		return
 	}
-	h.cache.Delete("hardware_info")
+	h.cache.Delete(hwCacheKey)
 	tlog.Debug("Invalidated hardware info cache")
 }

@@ -121,7 +121,7 @@ func TestBroadcasterService_EventToBroadcastMapping(t *testing.T) {
 	}
 
 	// 1) Disk -> volumes data
-	eb.EmitDisk(events.DiskEvent{Event: events.Event{Type: events.EventTypes.ADD}, Disk: &dto.Disk{Id: ptrStr("d1")}})
+	eb.EmitDiskAndPartition(events.DiskEvent{Event: events.Event{Type: events.EventTypes.ADD}, Disk: &dto.Disk{Id: ptrStr("d1")}})
 	if msg, ok := recv(); assert.True(t, ok, "disk event should produce a broadcast") {
 		disks, ok := msg.(*[]dto.Disk)
 		assert.True(t, ok, "expected *[]dto.Disk, got %T", msg)

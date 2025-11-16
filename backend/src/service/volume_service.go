@@ -118,7 +118,8 @@ func NewVolumeService(
 		unmountFunc:       mount.Unmount,
 	}
 
-	unsubscribe := p.eventBus.OnMountPoint(func(mpe events.MountPointEvent) {
+	var unsubscribe [2]func()
+	unsubscribe[0] = p.eventBus.OnMountPoint(func(mpe events.MountPointEvent) {
 		// Avoid recursive refresh loops: skip handling mount events while we are refreshing volumes
 		if p.refreshing.Load() {
 			return
@@ -151,6 +152,14 @@ func NewVolumeService(
 			}
 		}
 	})
+	unsubscribe[1] = p.eventBus.OnHomeAssistant(func(hae events.HomeAssistantEvent) {
+		if hae.Type == events.EventTypes.START {
+			err := p.getVolumesData()
+			if err != nil {
+				slog.Error("Failed to refresh volumes data on Home Assistant start event", "err", err)
+			}
+		}
+	})
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -166,8 +175,10 @@ func NewVolumeService(
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			if unsubscribe != nil {
-				unsubscribe()
+			for _, unsub := range unsubscribe {
+				if unsub != nil {
+					unsub()
+				}
 			}
 			return nil
 		},
@@ -230,25 +241,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			}
 		}
 	}
-	/*
-		// Validate Partition data
-		if md.Partition == nil {
-			// Populate partition from disk
-			disks, err := ms.hardwareClient.GetHardwareInfo()
-			if err != nil {
-				return errors.WithStack(err)
-			}
 
-			for _, disk := range disks {
-				for _, part := range *disk.Partitions {
-					if *part.Id == md.DeviceId {
-						md.Partition = &part
-						break
-					}
-				}
-			}
-		}
-	*/
 	if md.Partition == nil {
 		return errors.WithDetails(dto.ErrorDeviceNotFound,
 			"DeviceId", md.DeviceId,
@@ -422,26 +415,6 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			MountPoint: mount_data,
 			Operation:  "mount",
 		})
-
-		/*
-			err = ms.mount_repo.Save(dbom_mount_data)
-			if err != nil {
-				// Critical: Mount succeeded but DB save failed. State is inconsistent.
-				// Attempt to unmount?
-				slog.Error("CRITICAL: Mount succeeded but failed to save state to DB. Attempting unmount.", "device", md.DeviceId, "data", dbom_mount_data, "mp", mp, "save_error", err)
-				unmountErr := mount.Unmount(dbom_mount_data.Path, true, false) // Force unmount
-				if unmountErr != nil {
-					slog.Error("Failed to auto-unmount after DB save failure", "path", dbom_mount_data.Path, "unmount_error", unmountErr)
-					// Return original save error, but add context
-					return errors.WithDetails(dto.ErrorDatabaseError, "Detail", "Failed to save mount state after successful mount, and auto-unmount failed",
-						"Device", dbom_mount_data.DeviceId, "Path", dbom_mount_data.Path, "Error", err, "UnmountError", unmountErr.Error())
-
-				}
-				// Return original save error
-				return errors.WithDetails(dto.ErrorDatabaseError, "Detail", "Failed to save mount state after successful mount. Volume has been unmounted.",
-					"Device", dbom_mount_data.DeviceId, "Path", dbom_mount_data.Path, "Error", err)
-			}
-		*/
 	}
 
 	// Dismiss any existing failure notifications since the mount was successful
@@ -794,7 +767,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 						})
 					}
 				}
-				self.eventBus.EmitDisk(events.DiskEvent{
+				self.eventBus.EmitDiskAndPartition(events.DiskEvent{
 					Event: events.Event{Type: events.EventTypes.ADD},
 					Disk:  &disk,
 				})
@@ -818,7 +791,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 				// Disk not present in current scan, remove it
 				removedDisk := disk
 				delete(*self.disks, diskName)
-				self.eventBus.EmitDisk(events.DiskEvent{
+				self.eventBus.EmitDiskAndPartition(events.DiskEvent{
 					Event: events.Event{Type: events.EventTypes.REMOVE},
 					Disk:  &removedDisk,
 				})
