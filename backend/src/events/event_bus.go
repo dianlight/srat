@@ -18,7 +18,6 @@ func generateKey() string {
 
 // EventBusInterface defines the interface for the event bus
 type EventBusInterface interface {
-
 	// Disk events
 	EmitDiskAndPartition(event DiskEvent)
 	OnDisk(handler func(DiskEvent)) func()
@@ -60,74 +59,72 @@ type EventBusInterface interface {
 	OnHomeAssistant(handler func(HomeAssistantEvent)) func()
 }
 
-// EventBus implements EventBusInterface using maniartech/signals
+// EventBus implements EventBusInterface using maniartech/signals SyncSignal
 type EventBus struct {
 	ctx context.Context
 
-	// Disk event signals
-	disk signals.Signal[DiskEvent]
-
-	// Partition event signals
-	partition signals.Signal[PartitionEvent]
-
-	// Share event signals
-	share signals.Signal[ShareEvent]
-
-	// Mount point event signals
-	mountPoint signals.Signal[MountPointEvent]
-
-	// User event signals
-	user signals.Signal[UserEvent]
-
-	// Setting event signals
-	setting signals.Signal[SettingEvent]
-
-	// Samba event signals
-	samba signals.Signal[SambaEvent]
-
-	// Volume event signals
-	volume signals.Signal[VolumeEvent]
-
-	// Dirty data event signals
-	dirtyData signals.Signal[DirtyDataEvent]
-
-	// Home Assistant event signals
-	homeAssistant signals.Signal[HomeAssistantEvent]
+	// Synchronous signals (no goroutine dispatch) for deterministic ordering & error management
+	disk          signals.SyncSignal[DiskEvent]
+	partition     signals.SyncSignal[PartitionEvent]
+	share         signals.SyncSignal[ShareEvent]
+	mountPoint    signals.SyncSignal[MountPointEvent]
+	user          signals.SyncSignal[UserEvent]
+	setting       signals.SyncSignal[SettingEvent]
+	samba         signals.SyncSignal[SambaEvent]
+	volume        signals.SyncSignal[VolumeEvent]
+	dirtyData     signals.SyncSignal[DirtyDataEvent]
+	homeAssistant signals.SyncSignal[HomeAssistantEvent]
 }
 
 // NewEventBus creates a new EventBus instance
 func NewEventBus(ctx context.Context) EventBusInterface {
 	return &EventBus{
 		ctx:           ctx,
-		disk:          signals.New[DiskEvent](),
-		partition:     signals.New[PartitionEvent](),
-		share:         signals.New[ShareEvent](),
-		mountPoint:    signals.New[MountPointEvent](),
-		user:          signals.New[UserEvent](),
-		setting:       signals.New[SettingEvent](),
-		samba:         signals.New[SambaEvent](),
-		volume:        signals.New[VolumeEvent](),
-		dirtyData:     signals.New[DirtyDataEvent](),
-		homeAssistant: signals.New[HomeAssistantEvent](),
+		disk:          *signals.NewSync[DiskEvent](),
+		partition:     *signals.NewSync[PartitionEvent](),
+		share:         *signals.NewSync[ShareEvent](),
+		mountPoint:    *signals.NewSync[MountPointEvent](),
+		user:          *signals.NewSync[UserEvent](),
+		setting:       *signals.NewSync[SettingEvent](),
+		samba:         *signals.NewSync[SambaEvent](),
+		volume:        *signals.NewSync[VolumeEvent](),
+		dirtyData:     *signals.NewSync[DirtyDataEvent](),
+		homeAssistant: *signals.NewSync[HomeAssistantEvent](),
 	}
 }
 
 // Generic internal methods for event handling
-func onEvent[T any](signal signals.Signal[T], eventName string, handler func(T)) func() {
+func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func(T)) func() {
 	tlog.Debug("Registering event handler", "event", eventName)
 	key := generateKey()
 	count := signal.AddListener(func(ctx context.Context, event T) {
+		// Panic/exception safety
+		defer func() {
+			if r := recover(); r != nil {
+				tlog.Error("Event handler panic", "event", eventName, "panic", r)
+			}
+		}()
 		handler(event)
 	}, key)
 	tlog.Debug("Event handler registered", "event", eventName, "listener_count", count)
 	return func() {
 		signal.RemoveListener(key)
+		tlog.Debug("Event handler unregistered", "event", eventName, "key", key)
 	}
 }
 
-func emitEvent[T any](signal signals.Signal[T], ctx context.Context, eventName string, event T, logFields ...any) {
+func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, eventName string, event T, logFields ...any) {
 	tlog.Debug("Emitting event", append([]any{"event", eventName}, logFields...)...)
-	signal.Emit(ctx, event)
+	// Emit synchronously; recover panic inside signal dispatch and log emission errors
+	defer func() {
+		if r := recover(); r != nil {
+			tlog.Error("Panic emitting event", "event", eventName, "panic", r)
+		}
+	}()
+	if err := signal.TryEmit(ctx, event); err != nil {
+		// We log at warn level to avoid noisy error logs for expected cancellations
+		tlog.Warn("Event emission error", "event", eventName, "error", err)
+	}
 }
 
 // Disk event methods
@@ -139,7 +136,7 @@ func (eb *EventBus) EmitDiskAndPartition(event DiskEvent) {
 	emitEvent(eb.disk, eb.ctx, "Disk", event, "disk", diskID)
 	if event.Disk.Partitions != nil {
 		for _, partition := range *event.Disk.Partitions {
-			tlog.Trace("Emitting Partition event for  disk", "partition", partition, "disk", diskID)
+			tlog.Trace("Emitting Partition event for disk", "partition", partition, "disk", diskID)
 			eb.EmitPartition(PartitionEvent{
 				Event: Event{
 					Type: event.Type,
@@ -149,7 +146,6 @@ func (eb *EventBus) EmitDiskAndPartition(event DiskEvent) {
 			})
 		}
 	}
-
 }
 
 func (eb *EventBus) OnDisk(handler func(DiskEvent)) func() {
@@ -167,7 +163,6 @@ func (eb *EventBus) EmitPartition(event PartitionEvent) {
 		diskID = *event.Disk.Id
 	}
 	emitEvent(eb.partition, eb.ctx, "Partition", event, "partition", partName, "disk", diskID)
-
 }
 
 func (eb *EventBus) OnPartition(handler func(PartitionEvent)) func() {
@@ -225,7 +220,11 @@ func (eb *EventBus) OnSamba(handler func(SambaEvent)) func() {
 
 // Volume event methods
 func (eb *EventBus) EmitVolume(event VolumeEvent) {
-	emitEvent(eb.volume, eb.ctx, "Volume", event, "operation", event.Operation, "mount_point", event.MountPoint.Path)
+	mp := ""
+	if event.MountPoint.Path != "" {
+		mp = event.MountPoint.Path
+	}
+	emitEvent(eb.volume, eb.ctx, "Volume", event, "operation", event.Operation, "mount_point", mp)
 }
 
 func (eb *EventBus) OnVolume(handler func(VolumeEvent)) func() {
