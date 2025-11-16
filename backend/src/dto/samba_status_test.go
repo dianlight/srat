@@ -100,7 +100,7 @@ func TestSambaSession_AllFields(t *testing.T) {
 	assert.Equal(t, "client-pc", session.Hostname)
 	assert.Equal(t, "SMB3_11", session.SessionDialect)
 	assert.Equal(t, "1234", session.ServerID.PID)
-	assert.Len(t, session.Channels, 0)
+	assert.Empty(t, session.Channels)
 
 }
 
@@ -132,7 +132,7 @@ func TestSambaSession_Channels(t *testing.T) {
 	assert.Equal(t, "192.168.1.1:445", session.Channels["channel-1"].LocalAddress)
 	assert.Equal(t, "192.168.1.100:51234", session.Channels["channel-1"].RemoteAddress)
 	assert.Equal(t, "session-123", session.SessionID)
-	assert.Equal(t, 1, len(session.Channels))
+	assert.Len(t, session.Channels, 1)
 
 }
 

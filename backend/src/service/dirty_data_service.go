@@ -72,12 +72,12 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 func (p *DirtyDataService) startTimer() {
 	if p.timer != nil {
 		p.timer.Stop()
-	} else {
-		p.eventBus.EmitDirtyData(events.DirtyDataEvent{
-			Event:            events.Event{Type: events.EventTypes.ADD},
-			DataDirtyTracker: p.dataDirtyTracker,
-		})
 	}
+	p.eventBus.EmitDirtyData(events.DirtyDataEvent{
+		Event:            events.Event{Type: events.EventTypes.ADD},
+		DataDirtyTracker: p.dataDirtyTracker,
+	})
+
 	p.timer = time.AfterFunc(5*time.Second, func() {
 		p.eventBus.EmitSamba(events.SambaEvent{
 			Event:            events.Event{Type: events.EventTypes.RESTART},

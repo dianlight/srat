@@ -18,8 +18,6 @@ import (
 	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/xorcare/pointer"
@@ -147,14 +145,22 @@ func (suite *EventPropagationTestSuite) TearDownTest() {
 func (suite *EventPropagationTestSuite) TestShareServiceToDirtyDataService() {
 	// Setup: Track dirty data changes
 	var dirtyTracker dto.DataDirtyTracker
+	var shareEventReceived atomic.Bool
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(2)
 
 	unsubscribe := suite.eventBus.OnDirtyData(func(event events.DirtyDataEvent) {
 		dirtyTracker = event.DataDirtyTracker
 		wg.Done()
 	})
 	defer unsubscribe()
+	unsubscribeShare := suite.eventBus.OnShare(func(event events.ShareEvent) {
+		if event.Event.Type == events.EventTypes.ADD {
+			shareEventReceived.Store(true)
+		}
+		wg.Done()
+	})
+	defer unsubscribeShare()
 
 	mock.When(suite.mockShareRepo.FindByName("test-share")).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
 	mock.When(suite.mockShareRepo.Save(mock.Any[*dbom.ExportedShare]())).ThenReturn(nil)
@@ -167,11 +173,11 @@ func (suite *EventPropagationTestSuite) TestShareServiceToDirtyDataService() {
 	share := dto.SharedResource{
 		Name: "test-share",
 		MountPointData: &dto.MountPointData{
-			Path: "/mnt/test",
+			Path: "/",
 		},
 	}
 	_, err := suite.shareService.CreateShare(share)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// Wait for DirtyData event with timeout
 	done := make(chan struct{})
@@ -183,8 +189,11 @@ func (suite *EventPropagationTestSuite) TestShareServiceToDirtyDataService() {
 	select {
 	case <-done:
 		// DirtyDataService should have marked shares as dirty
-		assert.True(suite.T(), dirtyTracker.Shares, "Shares should be marked dirty")
+		suite.True(shareEventReceived.Load(), "Share event should be received")
+		suite.True(dirtyTracker.Shares, "Shares should be marked dirty")
 	case <-time.After(2 * time.Second):
+		suite.True(shareEventReceived.Load(), "Share event should be received")
+		suite.True(dirtyTracker.Shares, "Shares should be marked dirty")
 		suite.T().Fatal("timeout waiting for DirtyData event")
 	}
 }
@@ -211,7 +220,7 @@ func (suite *EventPropagationTestSuite) TestUserServiceToDirtyDataService() {
 		Password: "testpass",
 	}
 	_, err := suite.userService.CreateUser(user)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// Wait for DirtyData event with timeout
 	done := make(chan struct{})
@@ -223,7 +232,7 @@ func (suite *EventPropagationTestSuite) TestUserServiceToDirtyDataService() {
 	select {
 	case <-done:
 		// DirtyDataService should have marked users as dirty
-		assert.True(suite.T(), dirtyTracker.Users, "Users should be marked dirty")
+		suite.True(dirtyTracker.Users, "Users should be marked dirty")
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for DirtyData event")
 	}
@@ -265,9 +274,9 @@ func (suite *EventPropagationTestSuite) TestMountPointEventPropagation() {
 
 	select {
 	case <-done:
-		require.NotNil(suite.T(), receivedEvent, "Should receive mount point event")
-		assert.Equal(suite.T(), "/mnt/test", receivedEvent.MountPoint.Path)
-		assert.True(suite.T(), receivedEvent.MountPoint.IsMounted)
+		suite.Require().NotNil(receivedEvent, "Should receive mount point event")
+		suite.Equal("/mnt/test", receivedEvent.MountPoint.Path)
+		suite.True(receivedEvent.MountPoint.IsMounted)
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for mount point event")
 	}
@@ -307,7 +316,7 @@ func (suite *EventPropagationTestSuite) TestDiskEventPropagation() {
 
 	select {
 	case <-done:
-		assert.True(suite.T(), receivedDiskEvent.Load(), "Should receive disk event")
+		suite.True(receivedDiskEvent.Load(), "Should receive disk event")
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for disk event")
 	}
@@ -361,9 +370,9 @@ func (suite *EventPropagationTestSuite) TestMultipleListenersReceiveSameEvent() 
 
 	select {
 	case <-done:
-		assert.True(suite.T(), listener1Received.Load(), "listener1 should receive event")
-		assert.True(suite.T(), listener2Received.Load(), "listener2 should receive event")
-		assert.True(suite.T(), listener3Received.Load(), "listener3 should receive event")
+		suite.True(listener1Received.Load(), "listener1 should receive event")
+		suite.True(listener2Received.Load(), "listener2 should receive event")
+		suite.True(listener3Received.Load(), "listener3 should receive event")
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for all listeners to receive event")
 	}
@@ -417,7 +426,7 @@ func (suite *EventPropagationTestSuite) TestEventPropagationChain() {
 		},
 	}
 	_, err := suite.shareService.CreateShare(share)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// Wait for all events
 	done := make(chan struct{})
@@ -428,13 +437,13 @@ func (suite *EventPropagationTestSuite) TestEventPropagationChain() {
 
 	select {
 	case <-done:
-		assert.True(suite.T(), shareEventReceived.Load(), "Share event should be received")
-		assert.True(suite.T(), dirtyDataEventReceived.Load(), "DirtyData event should be received")
-		assert.True(suite.T(), sambaEventReceived.Load(), "Samba event should be received")
+		suite.True(shareEventReceived.Load(), "Share event should be received")
+		suite.True(dirtyDataEventReceived.Load(), "DirtyData event should be received")
+		suite.True(sambaEventReceived.Load(), "Samba event should be received")
 	case <-time.After((5 + 1) * time.Second):
-		assert.True(suite.T(), shareEventReceived.Load(), "Share event should be received")
-		assert.True(suite.T(), dirtyDataEventReceived.Load(), "DirtyData event should be received")
-		assert.True(suite.T(), sambaEventReceived.Load(), "Samba event should be received")
+		suite.True(shareEventReceived.Load(), "Share event should be received")
+		suite.True(dirtyDataEventReceived.Load(), "DirtyData event should be received")
+		suite.True(sambaEventReceived.Load(), "Samba event should be received")
 		suite.T().Fatal("timeout waiting for event propagation chain")
 	}
 }
@@ -496,9 +505,9 @@ func (suite *EventPropagationTestSuite) TestConcurrentEventPropagation() {
 
 	select {
 	case <-done:
-		assert.Equal(suite.T(), int32(numEmissions), shareCounter.Load(), "All share events should be received")
-		assert.Equal(suite.T(), int32(numEmissions), userCounter.Load(), "All user events should be received")
-		assert.Equal(suite.T(), int32(numEmissions), diskCounter.Load(), "All disk events should be received")
+		suite.Equal(int32(numEmissions), shareCounter.Load(), "All share events should be received")
+		suite.Equal(int32(numEmissions), userCounter.Load(), "All user events should be received")
+		suite.Equal(int32(numEmissions), diskCounter.Load(), "All disk events should be received")
 	case <-time.After(5 * time.Second):
 		suite.T().Fatal("timeout waiting for concurrent events")
 	}
@@ -530,7 +539,7 @@ func (suite *EventPropagationTestSuite) TestEventUnsubscription() {
 
 	select {
 	case <-done:
-		assert.Equal(suite.T(), int32(1), counter.Load(), "First event should be received")
+		suite.Equal(int32(1), counter.Load(), "First event should be received")
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for first event")
 	}
@@ -546,7 +555,7 @@ func (suite *EventPropagationTestSuite) TestEventUnsubscription() {
 	// Give some time to ensure no event is received
 	time.Sleep(500 * time.Millisecond)
 
-	assert.Equal(suite.T(), int32(1), counter.Load(), "No event should be received after unsubscription")
+	suite.Equal(int32(1), counter.Load(), "No event should be received after unsubscription")
 }
 
 // TestDiskEventEmitsPartitionEvents tests that disk events cascade to partition events
@@ -598,8 +607,8 @@ func (suite *EventPropagationTestSuite) TestDiskEventEmitsPartitionEvents() {
 
 	select {
 	case <-done:
-		assert.True(suite.T(), diskReceived.Load(), "Disk event should be received")
-		assert.True(suite.T(), partitionReceived.Load(), "Partition event should be auto-emitted")
+		suite.True(diskReceived.Load(), "Disk event should be received")
+		suite.True(partitionReceived.Load(), "Partition event should be auto-emitted")
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for disk and partition events")
 	}
@@ -635,7 +644,7 @@ func (suite *EventPropagationTestSuite) TestSettingEventPropagation() {
 
 	select {
 	case <-done:
-		assert.True(suite.T(), eventReceived.Load(), "Should receive setting event")
+		suite.True(eventReceived.Load(), "Should receive setting event")
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for setting event")
 	}
@@ -672,9 +681,9 @@ func (suite *EventPropagationTestSuite) TestVolumeEventPropagation() {
 
 	select {
 	case <-done:
-		require.NotNil(suite.T(), receivedEvent, "Should receive volume event")
-		assert.Equal(suite.T(), "mount", receivedEvent.Operation)
-		assert.Equal(suite.T(), "/mnt/test-volume", receivedEvent.MountPoint.Path)
+		suite.Require().NotNil(receivedEvent, "Should receive volume event")
+		suite.Equal("mount", receivedEvent.Operation)
+		suite.Equal("/mnt/test-volume", receivedEvent.MountPoint.Path)
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for volume event")
 	}
@@ -708,9 +717,9 @@ func (suite *EventPropagationTestSuite) TestVolumeUnmountEventPropagation() {
 
 	select {
 	case <-done:
-		require.NotNil(suite.T(), receivedEvent, "Should receive volume event")
-		assert.Equal(suite.T(), "unmount", receivedEvent.Operation)
-		assert.Equal(suite.T(), "/mnt/test-volume", receivedEvent.MountPoint.Path)
+		suite.Require().NotNil(receivedEvent, "Should receive volume event")
+		suite.Equal("unmount", receivedEvent.Operation)
+		suite.Equal("/mnt/test-volume", receivedEvent.MountPoint.Path)
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for volume unmount event")
 	}
@@ -757,8 +766,8 @@ func (suite *EventPropagationTestSuite) TestVolumeEventToMountPointEventChain() 
 
 	select {
 	case <-done:
-		assert.True(suite.T(), volumeEventReceived.Load(), "Volume event should be received")
-		assert.True(suite.T(), mountPointEventReceived.Load(), "MountPoint event should be received")
+		suite.True(volumeEventReceived.Load(), "Volume event should be received")
+		suite.True(mountPointEventReceived.Load(), "MountPoint event should be received")
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for volume and mount point events")
 	}
@@ -813,8 +822,8 @@ func (suite *EventPropagationTestSuite) TestMultipleVolumeOperationsSequence() {
 	case <-done:
 		mu.Lock()
 		defer mu.Unlock()
-		assert.Len(suite.T(), operations, 3, "Should receive 3 operations")
-		assert.Equal(suite.T(), []string{"mount", "unmount", "mount"}, operations)
+		suite.Len(operations, 3, "Should receive 3 operations")
+		suite.Equal([]string{"mount", "unmount", "mount"}, operations)
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for volume operation sequence")
 	}
@@ -903,10 +912,10 @@ func (suite *EventPropagationTestSuite) TestVolumeDiskPartitionEventChain() {
 
 	select {
 	case <-done:
-		assert.True(suite.T(), diskEventReceived.Load(), "Disk event should be received")
-		assert.True(suite.T(), partitionEventReceived.Load(), "Partition event should be auto-emitted from disk")
-		assert.True(suite.T(), mountPointEventReceived.Load(), "MountPoint event should be received")
-		assert.True(suite.T(), volumeEventReceived.Load(), "Volume event should be received")
+		suite.True(diskEventReceived.Load(), "Disk event should be received")
+		suite.True(partitionEventReceived.Load(), "Partition event should be auto-emitted from disk")
+		suite.True(mountPointEventReceived.Load(), "MountPoint event should be received")
+		suite.True(volumeEventReceived.Load(), "Volume event should be received")
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for volume lifecycle event chain")
 	}
@@ -965,8 +974,8 @@ func (suite *EventPropagationTestSuite) TestConcurrentVolumeOperations() {
 
 	select {
 	case <-done:
-		assert.Equal(suite.T(), int32(numOperations), mountCounter.Load(), "All mount events should be received")
-		assert.Equal(suite.T(), int32(numOperations), unmountCounter.Load(), "All unmount events should be received")
+		suite.Equal(int32(numOperations), mountCounter.Load(), "All mount events should be received")
+		suite.Equal(int32(numOperations), unmountCounter.Load(), "All unmount events should be received")
 	case <-time.After(5 * time.Second):
 		suite.T().Fatal("timeout waiting for concurrent volume operations")
 	}

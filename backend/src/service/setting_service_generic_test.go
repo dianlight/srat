@@ -106,7 +106,7 @@ func (suite *SettingServiceGenericSuite) TestGetValueAs_BoolFromRepo() {
 	val, err := service.GetValueAs[bool](suite.settingService, "compatibility_mode")
 
 	suite.NoError(err)
-	suite.Equal(true, val)
+	suite.True(val)
 }
 
 func (suite *SettingServiceGenericSuite) TestGetValueAs_SliceFromRepo() {
