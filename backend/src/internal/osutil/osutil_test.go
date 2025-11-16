@@ -77,6 +77,8 @@ func TestMountInfoEntry(t *testing.T) {
 		MountSource:  "/dev/sda1",
 	}
 
+	assert.NotNil(t, entry)
+	assert.NotEmpty(t, entry.MountOptions)
 	assert.Equal(t, 1, entry.MountID)
 	assert.Equal(t, 0, entry.ParentID)
 	assert.Equal(t, 8, entry.DevMajor)

@@ -3,16 +3,19 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/assert"
@@ -57,6 +60,18 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 				ctx := context.WithValue(context.Background(), "wg", wg)
 				return context.WithCancel(ctx)
 			},
+			func() *config.DefaultConfig {
+				var nconfig config.Config
+				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+				if err != nil {
+					log.Fatalf("Cant read default config file %#+v", err)
+				}
+				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+				if err != nil {
+					log.Fatalf("Cant load default config from buffer %#+v", err)
+				}
+				return &config.DefaultConfig{Config: nconfig}
+			},
 			events.NewEventBus,
 			NewDirtyDataService,
 			NewShareService,
@@ -64,12 +79,15 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 			// Real VolumeService with injected test mount ops
 			NewVolumeService,
 			NewFilesystemService,
+			NewSettingService,
 			func() *dto.ContextState { return &dto.ContextState{} },
 			mock.Mock[IssueServiceInterface],
 			mock.Mock[HardwareServiceInterface],
 			mock.Mock[repository.ExportedShareRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
 			mock.Mock[repository.MountPointPathRepositoryInterface],
+			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[TelemetryServiceInterface],
 		),
 		fx.Populate(&suite.eventBus),
 		fx.Populate(&suite.shareService),
@@ -82,6 +100,11 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 		fx.Populate(&suite.mockMountRepo),
 		fx.Populate(&suite.VolumeService),
 	)
+	mock.When(suite.mockUserRepo.All()).ThenReturn(dbom.SambaUsers{dbom.SambaUser{
+		Username: "homeassistant",
+		Password: "changeme!",
+	}}, nil)
+
 	suite.app.RequireStart()
 
 	// Inject fake mount operations to avoid touching the real OS

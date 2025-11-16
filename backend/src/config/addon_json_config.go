@@ -30,6 +30,10 @@ type Shares map[string]Share
 
 const CURRENT_CONFIG_VERSION = 5
 
+type DefaultConfig struct {
+	Config
+}
+
 type Config struct {
 	CurrentFile       string
 	ConfigSpecVersion int    `json:"version,omitempty"`

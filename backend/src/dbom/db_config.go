@@ -173,6 +173,9 @@ func NewDB(lc fx.Lifecycle, v struct {
 		slog.Error("Failed to migrate database", "error", errE, "path", v.ApiCtx.DatabasePath)
 		return replaceDatabase(lc, v)
 	}
+	if os.Getenv("SRAT_MOCK") == "true" {
+		return db
+	}
 
 	// GooseDBMigration
 	goose.SetBaseFS(migrations)

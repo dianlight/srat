@@ -17,9 +17,8 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/tlog"
 	"github.com/rollbar/rollbar-go"
 )
@@ -55,8 +54,9 @@ type TelemetryService struct {
 	environment       string
 	version           string
 
-	prop   repository.PropertyRepositoryInterface
-	haroot HaRootServiceInterface
+	settingService SettingServiceInterface
+	haroot         HaRootServiceInterface
+	eventBus       events.EventBusInterface
 
 	// tlog callback management
 	tlogErrorCallbackID string
@@ -68,8 +68,9 @@ type TelemetryService struct {
 
 // NewTelemetryService creates a new telemetry service instance
 func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
-	prop repository.PropertyRepositoryInterface,
+	settingService SettingServiceInterface,
 	haroot HaRootServiceInterface,
+	eventBus events.EventBusInterface,
 ) (TelemetryServiceInterface, errors.E) {
 	accessToken := config.RollbarToken
 	if accessToken == "" {
@@ -91,25 +92,15 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 		}
 	}
 
-	dbconfig, err := prop.All(true)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	var conv converter.DtoToDbomConverterImpl
-
-	var mconfig dto.Settings
-	err = conv.PropertiesToSettings(dbconfig, &mconfig)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if !mconfig.TelemetryMode.IsValid() {
-		mconfig.TelemetryMode = dto.TelemetryModes.TELEMETRYMODEASK
+	telemetryMode, _ := settingService.GetValue("TelemetryMode")
+	if mode, ok := telemetryMode.(dto.TelemetryMode); !ok || !mode.IsValid() {
+		telemetryMode = dto.TelemetryModes.TELEMETRYMODEASK
 	}
 
 	tm := &TelemetryService{
 		ctx:                 Ctx,
-		prop:                prop,
-		mode:                mconfig.TelemetryMode,
+		settingService:      settingService,
+		mode:                telemetryMode.(dto.TelemetryMode),
 		accessToken:         accessToken,
 		environment:         environment,
 		version:             config.Version,
@@ -117,13 +108,20 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 		errorSessionLimiter: &errorSessionLimiter,
 	}
 
+	unsubscribe := eventBus.OnSetting(func(event events.SettingEvent) {
+		tm.Configure(event.Setting.TelemetryMode)
+	})
+
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			tm.Configure(mconfig.TelemetryMode)
+			tm.Configure(tm.mode)
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			tm.Shutdown()
+			if unsubscribe != nil {
+				unsubscribe()
+			}
 			return nil
 		},
 	})

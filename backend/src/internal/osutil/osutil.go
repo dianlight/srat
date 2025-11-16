@@ -17,18 +17,19 @@ import (
 )
 
 // MountInfoEntry contains data from /proc/<pid>/mountinfo.
+// Ex: 1546 1508 8:8 /supervisor/media /media rw,relatime master:112 - ext4 /dev/sda8 rw,commit=30
 type MountInfoEntry struct {
-	MountID        int
-	ParentID       int
-	DevMajor       int
-	DevMinor       int
-	Root           string
-	MountDir       string
-	MountOptions   map[string]string
-	OptionalFields []string
-	FsType         string
-	MountSource    string
-	SuperOptions   map[string]string
+	MountID        int               // 1546
+	ParentID       int               // 1508
+	DevMajor       int               // 8
+	DevMinor       int               // 8
+	Root           string            // /supervisor/media
+	MountDir       string            // /media
+	MountOptions   map[string]string // rw,relatime
+	OptionalFields []string          // master:112
+	FsType         string            // ext4
+	MountSource    string            // /dev/sda8
+	SuperOptions   map[string]string // rw,commit=30
 }
 
 var (

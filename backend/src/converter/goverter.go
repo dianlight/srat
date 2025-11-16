@@ -2,8 +2,13 @@ package converter
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+
+	"github.com/dianlight/srat/internal/osutil"
+	"github.com/u-root/u-root/pkg/mount"
+	"github.com/xorcare/pointer"
 )
 
 //go:generate go tool goverter gen ./...
@@ -53,3 +58,42 @@ func deviceToDeviceId(source string) (string, error) {
 	}
 	return deviceID, nil
 }
+
+func mountPathToDeviceId(mountPath string) (string, error) {
+	info, err := osutil.LoadMountInfo()
+	if err != nil {
+		slog.Warn("Error loading mount info", "err", err)
+		return "", nil
+	}
+	//	slog.Info("Loaded mount info", "count", len(info))
+	for _, m := range info {
+		//		slog.Info("Mount info", "mount_dir", m.MountDir, "mount_source", m.MountSource, "mountPath", mountPath)
+		if m.MountDir == mountPath {
+			return deviceToDeviceId(m.MountSource)
+		} else {
+			same, _ := mount.SameFilesystem(mountPath, m.MountDir)
+			if same {
+				return deviceToDeviceId(m.MountSource)
+			}
+		}
+	}
+	return "", nil
+}
+
+func falsePConst() *bool {
+	return pointer.Bool(false)
+}
+
+func falseConst() bool {
+	return false
+}
+
+/*
+func truePConst() *bool {
+	return pointer.Bool(true)
+}
+
+func trueConst() bool {
+	return true
+}
+*/

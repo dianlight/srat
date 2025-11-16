@@ -85,12 +85,13 @@ func (self *PropertyRepository) SetInternalValue(key string, value interface{}) 
 
 func (self *PropertyRepository) Value(key string, include_internal bool) (interface{}, errors.E) {
 	var prop dbom.Property
-	err := self.db.Model(&dbom.Property{}).First(&prop, "key = ? and (internal = ? or internal = false)", key, include_internal).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	res := self.db.Model(&dbom.Property{}).First(&prop, "key = ? and (internal = ? or internal = false)", key, include_internal)
+	if res.Error != nil {
+		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return nil, errors.WithStack(dto.ErrorNotFound)
 		}
-		return nil, errors.WithStack(err)
+		//slog.Error("Error retrieving property", "key", key, "include_internal", include_internal, "res", res)
+		return nil, errors.WithStack(res.Error)
 	}
 	return prop.Value, nil
 }

@@ -110,6 +110,8 @@ type DtoToDbomConverter interface {
 	// goverter:update:ignoreZeroValueField:basic no
 	SambaUserToUser(source dbom.SambaUser, target *dto.User) error
 
+	SambaUsersToUsers(source []dbom.SambaUser) (target []dto.User, err error)
+
 	// goverter:update target
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignoreMissing

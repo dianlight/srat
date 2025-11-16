@@ -2,10 +2,12 @@ package appsetup
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"net/http"
 	"strings"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -21,6 +23,7 @@ import (
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/templates"
 	"github.com/dianlight/srat/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v76/github"
@@ -62,6 +65,18 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			return github.NewClient(&http.Client{
 				Transport: rateLimiter,
 			})
+		},
+		func() *config.DefaultConfig {
+			var nconfig config.Config
+			buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+			if err != nil {
+				log.Fatalf("Cant read default config file %#+v", err)
+			}
+			err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+			if err != nil {
+				log.Fatalf("Cant load default config from buffer %#+v", err)
+			}
+			return &config.DefaultConfig{Config: nconfig}
 		},
 		service.NewAddonsService,
 		service.NewHomeAssistantService,

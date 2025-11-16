@@ -20,18 +20,16 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(s
 	if source.Disabled != nil {
 		target.Disabled = source.Disabled
 	}
-	if source.Users != nil {
-		target.Users = make([]dto.User, len(source.Users))
-		for i := 0; i < len(source.Users); i++ {
-			target.Users[i] = c.dbomSambaUserToDtoUser(source.Users[i])
-		}
+	dtoUserList, err := c.SambaUsersToUsers(source.Users)
+	if err != nil {
+		return err
 	}
-	if source.RoUsers != nil {
-		target.RoUsers = make([]dto.User, len(source.RoUsers))
-		for j := 0; j < len(source.RoUsers); j++ {
-			target.RoUsers[j] = c.dbomSambaUserToDtoUser(source.RoUsers[j])
-		}
+	target.Users = dtoUserList
+	dtoUserList2, err := c.SambaUsersToUsers(source.RoUsers)
+	if err != nil {
+		return err
 	}
+	target.RoUsers = dtoUserList2
 	if source.TimeMachine != false {
 		pBool := source.TimeMachine
 		target.TimeMachine = &pBool
@@ -222,6 +220,16 @@ func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *
 	}
 	return nil
 }
+func (c *DtoToDbomConverterImpl) SambaUsersToUsers(source []dbom.SambaUser) ([]dto.User, error) {
+	var dtoUserList []dto.User
+	if source != nil {
+		dtoUserList = make([]dto.User, len(source))
+		for i := 0; i < len(source); i++ {
+			dtoUserList[i] = c.dbomSambaUserToDtoUser(source[i])
+		}
+	}
+	return dtoUserList, nil
+}
 func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPointPath(source dto.SharedResource, target *dbom.ExportedShare) error {
 	if source.Name != "" {
 		target.Name = source.Name
@@ -370,18 +378,16 @@ func (c *DtoToDbomConverterImpl) exportedShareToSharedResource(source dbom.Expor
 	var dtoSharedResource dto.SharedResource
 	dtoSharedResource.Name = source.Name
 	dtoSharedResource.Disabled = source.Disabled
-	if source.Users != nil {
-		dtoSharedResource.Users = make([]dto.User, len(source.Users))
-		for i := 0; i < len(source.Users); i++ {
-			dtoSharedResource.Users[i] = c.dbomSambaUserToDtoUser(source.Users[i])
-		}
+	dtoUserList, err := c.SambaUsersToUsers(source.Users)
+	if err != nil {
+		return dtoSharedResource, err
 	}
-	if source.RoUsers != nil {
-		dtoSharedResource.RoUsers = make([]dto.User, len(source.RoUsers))
-		for j := 0; j < len(source.RoUsers); j++ {
-			dtoSharedResource.RoUsers[j] = c.dbomSambaUserToDtoUser(source.RoUsers[j])
-		}
+	dtoSharedResource.Users = dtoUserList
+	dtoUserList2, err := c.SambaUsersToUsers(source.RoUsers)
+	if err != nil {
+		return dtoSharedResource, err
 	}
+	dtoSharedResource.RoUsers = dtoUserList2
 	pBool := source.TimeMachine
 	dtoSharedResource.TimeMachine = &pBool
 	pBool2 := source.RecycleBin

@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"log/slog"
+	"os"
 	"sync"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -34,27 +36,30 @@ type ShareServiceInterface interface {
 
 type ShareService struct {
 	exported_share_repo repository.ExportedShareRepositoryInterface
-	samba_user_repo     repository.SambaUserRepositoryInterface
+	user_service        UserServiceInterface
 	mount_repo          repository.MountPointPathRepositoryInterface
 	eventBus            events.EventBusInterface
 	sharesQueueMutex    *sync.RWMutex
 	dbomConv            converter.DtoToDbomConverterImpl
+	defaultConfig       *config.DefaultConfig
 }
 
 type ShareServiceParams struct {
 	fx.In
 	ExportedShareRepo repository.ExportedShareRepositoryInterface
-	SambaUserRepo     repository.SambaUserRepositoryInterface
+	UserService       UserServiceInterface
 	MountRepo         repository.MountPointPathRepositoryInterface
 	EventBus          events.EventBusInterface
+	DefaultConfig     *config.DefaultConfig
 }
 
 func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterface {
 	s := &ShareService{
 		exported_share_repo: in.ExportedShareRepo,
-		samba_user_repo:     in.SambaUserRepo,
+		user_service:        in.UserService,
 		mount_repo:          in.MountRepo,
 		eventBus:            in.EventBus,
+		defaultConfig:       in.DefaultConfig,
 		sharesQueueMutex:    &sync.RWMutex{},
 		dbomConv:            converter.DtoToDbomConverterImpl{},
 	}
@@ -71,6 +76,35 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 	})
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
+			if os.Getenv("SRAT_MOCK") == "true" {
+				return nil
+			}
+			allusers, err := s.user_service.ListUsers()
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			// Create all default Shares if don't exists
+			cconv := converter.ConfigToDtoConverterImpl{}
+			for _, defCShare := range s.defaultConfig.Shares {
+				_, err := s.GetShare(defCShare.Name)
+				if err != nil {
+					if errors.Is(err, dto.ErrorShareNotFound) {
+						defShare, errConv := cconv.ShareToSharedResource(defCShare, allusers)
+						if errConv != nil {
+							slog.Error("Error converting default share", "name", defCShare.Name, "err", errConv)
+							continue
+						}
+						slog.Info("Creating default share", "name", defShare.Name, "path", defShare.MountPointData.Path, "device_id", defShare.MountPointData.DeviceId)
+						_, createErr := s.CreateShare(defShare)
+						if createErr != nil {
+							slog.Error("Error creating default share", "name", defShare.Name, "err", createErr)
+							return createErr
+						}
+					} else {
+						slog.Error("Error checking for default share", "name", defCShare.Name, "err", err)
+					}
+				}
+			}
 			return nil
 		},
 		OnStop: func(_ context.Context) error {
@@ -159,11 +193,16 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 	}
 
 	if len(dbShare.Users) == 0 {
-		admin, err := s.samba_user_repo.GetAdmin()
+		admin, err := s.user_service.GetAdmin()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get admin user")
 		}
-		dbShare.Users = []dbom.SambaUser{admin}
+		var dbomAdmin dbom.SambaUser
+		err = s.dbomConv.UserToSambaUser(*admin, &dbomAdmin)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert admin user to dbom.SambaUser")
+		}
+		dbShare.Users = []dbom.SambaUser{dbomAdmin}
 	}
 
 	errS := s.mount_repo.Save(&dbShare.MountPointData)
@@ -211,11 +250,16 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 	}
 
 	if len(dbShare.Users) == 0 {
-		adminUser, adminErr := s.samba_user_repo.GetAdmin()
+		adminUser, adminErr := s.user_service.GetAdmin()
 		if adminErr != nil {
 			return nil, errors.Wrap(adminErr, "failed to get admin user for new share")
 		}
-		dbShare.Users = append(dbShare.Users, adminUser)
+		var dbomAdmin dbom.SambaUser
+		errS := s.dbomConv.UserToSambaUser(*adminUser, &dbomAdmin)
+		if errS != nil {
+			return nil, errors.Wrap(errS, "failed to convert admin user to dbom.SambaUser")
+		}
+		dbShare.Users = append(dbShare.Users, dbomAdmin)
 	}
 
 	if err := s.exported_share_repo.Save(dbShare); err != nil {

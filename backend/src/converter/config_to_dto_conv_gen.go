@@ -6,10 +6,127 @@ package converter
 import (
 	config "github.com/dianlight/srat/config"
 	dto "github.com/dianlight/srat/dto"
+	osutil "github.com/dianlight/srat/internal/osutil"
+	xhashes "github.com/shomali11/util/xhashes"
 )
 
 type ConfigToDtoConverterImpl struct{}
 
+func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target *dto.Settings) error {
+	target.Hostname = source.Hostname
+	target.Workgroup = source.Workgroup
+	if source.Mountoptions != nil {
+		target.Mountoptions = make([]string, len(source.Mountoptions))
+		for i := 0; i < len(source.Mountoptions); i++ {
+			target.Mountoptions[i] = source.Mountoptions[i]
+		}
+	}
+	if source.AllowHost != nil {
+		target.AllowHost = make([]string, len(source.AllowHost))
+		for j := 0; j < len(source.AllowHost); j++ {
+			target.AllowHost[j] = source.AllowHost[j]
+		}
+	}
+	target.CompatibilityMode = source.CompatibilityMode
+	if source.Interfaces != nil {
+		target.Interfaces = make([]string, len(source.Interfaces))
+		for k := 0; k < len(source.Interfaces); k++ {
+			target.Interfaces[k] = source.Interfaces[k]
+		}
+	}
+	target.BindAllInterfaces = source.BindAllInterfaces
+	target.LogLevel = source.LogLevel
+	target.MultiChannel = source.MultiChannel
+	dtoUpdateChannel, err := dto.ParseUpdateChannel(source.UpdateChannel)
+	if err != nil {
+		return err
+	}
+	target.UpdateChannel = dtoUpdateChannel
+	dtoTelemetryMode, err := dto.ParseTelemetryMode(source.TelemetryMode)
+	if err != nil {
+		return err
+	}
+	target.TelemetryMode = dtoTelemetryMode
+	pBool := source.LocalMaster
+	target.LocalMaster = &pBool
+	return nil
+}
+func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share) (*dto.MountPointData, error) {
+	var dtoMountPointData dto.MountPointData
+	dtoMountPointData.DiskLabel = DiskLabelFromPath(source.Path)
+	dtoMountPointData.DiskSerial = DiskSerialFromPath(source.Path)
+	dtoMountPointData.DiskSize = DiskSizeFromPath(source.Path)
+	dtoMountPointData.Path = source.Path
+	dtoMountPointData.PathHash = xhashes.SHA1(source.Path)
+	dtoMountPointData.Type = pathToType(source.Path)
+	pString := source.FS
+	dtoMountPointData.FSType = &pString
+	xstring, err := mountPathToDeviceId(source.Path)
+	if err != nil {
+		return nil, err
+	}
+	dtoMountPointData.DeviceId = xstring
+	xbool, err := osutil.IsMounted(source.Path)
+	if err != nil {
+		return nil, err
+	}
+	dtoMountPointData.IsMounted = xbool
+	dtoMountPointData.IsInvalid = falseConst()
+	dtoMountPointData.IsToMountAtStartup = falsePConst()
+	dtoMountPointData.IsWriteSupported = FSTypeIsWriteSupported(source.Path)
+	dtoMountPointData.TimeMachineSupport = TimeMachineSupportFromFS(source.FS)
+	return &dtoMountPointData, nil
+}
+func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, context []dto.User) (dto.SharedResource, error) {
+	var dtoSharedResource dto.SharedResource
+	dtoSharedResource.Name = source.Name
+	pBool := source.Disabled
+	dtoSharedResource.Disabled = &pBool
+	dtoUserList, err := StringsToDtoUsers(source.Users, context)
+	if err != nil {
+		return dtoSharedResource, err
+	}
+	dtoSharedResource.Users = dtoUserList
+	if source.RoUsers != nil {
+		dtoSharedResource.RoUsers = make([]dto.User, len(source.RoUsers))
+		for i := 0; i < len(source.RoUsers); i++ {
+			dtoUser, err := StringToDtoUser(source.RoUsers[i], context)
+			if err != nil {
+				return dtoSharedResource, err
+			}
+			dtoSharedResource.RoUsers[i] = dtoUser
+		}
+	}
+	pBool2 := source.TimeMachine
+	dtoSharedResource.TimeMachine = &pBool2
+	if source.RecycleBin != nil {
+		xbool := *source.RecycleBin
+		dtoSharedResource.RecycleBin = &xbool
+	}
+	if source.GuestOk != nil {
+		xbool2 := *source.GuestOk
+		dtoSharedResource.GuestOk = &xbool2
+	}
+	if source.TimeMachineMaxSize != nil {
+		xstring := *source.TimeMachineMaxSize
+		dtoSharedResource.TimeMachineMaxSize = &xstring
+	}
+	dtoSharedResource.Usage = dto.HAMountUsage(source.Usage)
+	dtoSharedResource.IsHAMounted = falsePConst()
+	if source.VetoFiles != nil {
+		dtoSharedResource.VetoFiles = make([]string, len(source.VetoFiles))
+		for j := 0; j < len(source.VetoFiles); j++ {
+			dtoSharedResource.VetoFiles[j] = source.VetoFiles[j]
+		}
+	}
+	pDtoMountPointData, err := c.ShareToMountPointData(source)
+	if err != nil {
+		return dtoSharedResource, err
+	}
+	dtoSharedResource.MountPointData = pDtoMountPointData
+	dtoSharedResource.Invalid = falsePConst()
+	return dtoSharedResource, nil
+}
 func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResource, target *config.Share) error {
 	if source.Name != "" {
 		target.Name = source.Name
