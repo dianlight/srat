@@ -44,7 +44,7 @@ type DtoToDbomConverter interface {
 	mountPointPathToMountPointData(source dbom.MountPointPath) (dto.MountPointData, error)
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
-	// goverter:ignore DeviceId
+	// goverter:map Path DeviceId | mountPathToDeviceId
 	// goverter:map  CustomFlags Data
 	mountPointDataToMountPointPath(source dto.MountPointData) (dbom.MountPointPath, error)
 

@@ -416,6 +416,11 @@ func (c *DtoToDbomConverterImpl) mountPointDataToMountPointPath(source dto.Mount
 	var dbomMountPointPath dbom.MountPointPath
 	dbomMountPointPath.Path = source.Path
 	dbomMountPointPath.Type = source.Type
+	xstring, err := mountPathToDeviceId(source.Path)
+	if err != nil {
+		return dbomMountPointPath, err
+	}
+	dbomMountPointPath.DeviceId = xstring
 	if source.FSType != nil {
 		dbomMountPointPath.FSType = *source.FSType
 	}

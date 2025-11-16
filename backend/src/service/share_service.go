@@ -92,7 +92,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 						defShare, errConv := cconv.ShareToSharedResource(defCShare, allusers)
 						if errConv != nil {
 							slog.Error("Error converting default share", "name", defCShare.Name, "err", errConv)
-							continue
+							return errors.WithStack(errConv)
 						}
 						slog.Info("Creating default share", "name", defShare.Name, "path", defShare.MountPointData.Path, "device_id", defShare.MountPointData.DeviceId)
 						_, createErr := s.CreateShare(defShare)

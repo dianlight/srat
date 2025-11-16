@@ -2,12 +2,15 @@ package service_test
 
 import (
 	"context"
+	"log"
 	"testing"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -32,6 +35,18 @@ func (suite *SettingServiceSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			func() *config.DefaultConfig {
+				var nconfig config.Config
+				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+				if err != nil {
+					log.Fatalf("Cant read default config file %#+v", err)
+				}
+				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+				if err != nil {
+					log.Fatalf("Cant load default config from buffer %#+v", err)
+				}
+				return &config.DefaultConfig{Config: nconfig}
+			},
 			service.NewSettingService,
 			events.NewEventBus,
 			mock.Mock[repository.PropertyRepositoryInterface],

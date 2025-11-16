@@ -2,13 +2,16 @@ package service
 
 import (
 	"context"
+	"log"
 	"sync"
 	"testing"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -46,6 +49,18 @@ func (suite *UserServiceSuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				ctx := context.WithValue(context.Background(), "wg", suite.wg)
 				return context.WithCancel(ctx)
+			},
+			func() *config.DefaultConfig {
+				var nconfig config.Config
+				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+				if err != nil {
+					log.Fatalf("Cant read default config file %#+v", err)
+				}
+				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+				if err != nil {
+					log.Fatalf("Cant load default config from buffer %#+v", err)
+				}
+				return &config.DefaultConfig{Config: nconfig}
 			},
 			NewUserService,
 			NewDirtyDataService,
@@ -92,7 +107,7 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 	suite.Len(users, 2)
 	suite.Equal("testuser1", users[0].Username)
 	suite.Equal("testuser2", users[1].Username)
-	mock.Verify(suite.userRepoMock, matchers.Times(1)).All()
+	mock.Verify(suite.userRepoMock, matchers.Times(2)).All()
 }
 
 func (suite *UserServiceSuite) TestListUsers_RepositoryError() {
@@ -106,7 +121,7 @@ func (suite *UserServiceSuite) TestListUsers_RepositoryError() {
 	suite.Error(err)
 	suite.Nil(users)
 	suite.Contains(err.Error(), "failed to list users from repository")
-	mock.Verify(suite.userRepoMock, matchers.Times(1)).All()
+	mock.Verify(suite.userRepoMock, matchers.Times(2)).All()
 }
 
 func (suite *UserServiceSuite) TestListUsers_EmptyList() {
@@ -120,7 +135,7 @@ func (suite *UserServiceSuite) TestListUsers_EmptyList() {
 	// Assert
 	suite.NoError(err)
 	suite.Empty(users)
-	mock.Verify(suite.userRepoMock, matchers.Times(1)).All()
+	mock.Verify(suite.userRepoMock, matchers.Times(2)).All()
 }
 
 func (suite *UserServiceSuite) TestCreateUser_Success() {
@@ -140,7 +155,7 @@ func (suite *UserServiceSuite) TestCreateUser_Success() {
 	suite.NoError(err)
 	suite.NotNil(createdUser)
 	suite.Equal("newuser", createdUser.Username)
-	mock.Verify(suite.userRepoMock, matchers.Times(1)).Create(mock.Any[*dbom.SambaUser]())
+	mock.Verify(suite.userRepoMock, matchers.Times(2)).Create(mock.Any[*dbom.SambaUser]())
 
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 }
@@ -162,7 +177,7 @@ func (suite *UserServiceSuite) TestCreateUser_DuplicateUsername() {
 	suite.Error(err)
 	suite.Nil(createdUser)
 	suite.True(errors.Is(err, dto.ErrorUserAlreadyExists))
-	mock.Verify(suite.userRepoMock, matchers.Times(1)).Create(mock.Any[*dbom.SambaUser]())
+	mock.Verify(suite.userRepoMock, matchers.Times(2)).Create(mock.Any[*dbom.SambaUser]())
 }
 
 func (suite *UserServiceSuite) TestCreateUser_RepositoryError() {
@@ -182,7 +197,7 @@ func (suite *UserServiceSuite) TestCreateUser_RepositoryError() {
 	suite.Error(err)
 	suite.Nil(createdUser)
 	suite.Contains(err.Error(), "failed to create user in repository")
-	mock.Verify(suite.userRepoMock, matchers.Times(1)).Create(mock.Any[*dbom.SambaUser]())
+	mock.Verify(suite.userRepoMock, matchers.Times(2)).Create(mock.Any[*dbom.SambaUser]())
 }
 
 func (suite *UserServiceSuite) TestUpdateUser_Success() {

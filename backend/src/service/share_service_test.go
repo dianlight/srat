@@ -2,15 +2,18 @@ package service_test
 
 import (
 	"context"
+	"log"
 	"os"
 	"sync"
 	"testing"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -21,6 +24,7 @@ import (
 type ShareServiceSuite struct {
 	suite.Suite
 	shareService        service.ShareServiceInterface
+	userService         service.UserServiceInterface
 	exported_share_repo repository.ExportedShareRepositoryInterface
 	app                 *fxtest.App
 }
@@ -49,8 +53,21 @@ func (suite *ShareServiceSuite) SetupTest() {
 
 				return &sharedResources
 			},
+			func() *config.DefaultConfig {
+				var nconfig config.Config
+				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+				if err != nil {
+					log.Fatalf("Cant read default config file %#+v", err)
+				}
+				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+				if err != nil {
+					log.Fatalf("Cant load default config from buffer %#+v", err)
+				}
+				return &config.DefaultConfig{Config: nconfig}
+			},
 			service.NewShareService,
 			mock.Mock[service.BroadcasterServiceInterface],
+			mock.Mock[service.UserServiceInterface],
 			mock.Mock[repository.ExportedShareRepositoryInterface],
 			mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
@@ -58,7 +75,13 @@ func (suite *ShareServiceSuite) SetupTest() {
 		),
 		fx.Populate(&suite.shareService),
 		fx.Populate(&suite.exported_share_repo),
+		fx.Populate(&suite.userService),
 	)
+
+	mock.When(suite.userService.ListUsers()).ThenReturn([]dto.User{
+		{Username: "homeassistant"},
+	}, nil)
+
 	suite.app.RequireStart()
 }
 

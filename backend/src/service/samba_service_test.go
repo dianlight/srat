@@ -12,6 +12,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -20,6 +21,7 @@ import (
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
 	service "github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -107,8 +109,21 @@ func (suite *SambaServiceSuite) SetupTest() {
 
 				return &sharedResources
 			},
+			func() *config.DefaultConfig {
+				var nconfig config.Config
+				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+				if err != nil {
+					log.Fatalf("Cant read default config file %#+v", err)
+				}
+				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+				if err != nil {
+					log.Fatalf("Cant load default config from buffer %#+v", err)
+				}
+				return &config.DefaultConfig{Config: nconfig}
+			},
 			service.NewSambaService,
 			service.NewShareService,
+			service.NewUserService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
 			mock.Mock[service.SupervisorServiceInterface],
@@ -119,6 +134,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[service.HaWsServiceInterface],
 			mock.Mock[service.HDIdleServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
 			mock.Mock[events.EventBusInterface],
 		),
 		fx.Populate(&suite.sambaService),
@@ -129,6 +145,20 @@ func (suite *SambaServiceSuite) SetupTest() {
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
+	mock.When(suite.samba_user_repo.All()).ThenReturn(dbom.SambaUsers{
+		{
+			Username: "dianlight",
+			IsAdmin:  true,
+		},
+		{
+			Username: "testuser",
+			IsAdmin:  false,
+		},
+		{
+			Username: "homeassistant",
+			IsAdmin:  false,
+		},
+	}, nil)
 	suite.app.RequireStart()
 }
 
@@ -140,16 +170,6 @@ func (suite *SambaServiceSuite) TearDownTest() {
 
 // Helper function to setup common test data
 func (suite *SambaServiceSuite) setupCommonMocks() {
-	mock.When(suite.samba_user_repo.All()).ThenReturn(dbom.SambaUsers{
-		{
-			Username: "dianlight",
-			IsAdmin:  true,
-		},
-		{
-			Username: "testuser",
-			IsAdmin:  false,
-		},
-	}, nil)
 
 	mock.When(suite.property_repo.All(mock.Any[bool]())).ThenReturn(dbom.Properties{
 		"Hostname": {
