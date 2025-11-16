@@ -1,22 +1,26 @@
 {
-    "servers": {
-        "mui-mcp": {
-            "type": "stdio",
-            "command": "bunx",
-            "args": [
-                "-y",
-                "@mui/mcp@latest"
-            ]
-        },
-        "awesome-copilot": {
-          "type": "stdio",
-          "command": "docker",
-          "args": [
-            "run",
-            "-i",
-            "--rm",
-            "ghcr.io/microsoft/mcp-dotnet-samples/awesome-copilot:latest"
-          ]
-        },
+  "servers": {
+    "mui-mcp": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "-y",
+        "@mui/mcp@latest"
+      ]
+    },
+    "awesome-copilot": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "ghcr.io/microsoft/mcp-dotnet-samples/awesome-copilot:latest"
+      ]
+    },
+    "gopls-mcp": {
+      "type": "http",
+      "url": "http://localhost:8092",
     }
+  }
 }

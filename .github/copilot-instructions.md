@@ -147,16 +147,12 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 ```go
 // Backend HTTP handler test
 func (suite *ShareHandlerSuite) TestCreateShareSuccess() {
-    mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(expectedShare, nil)
+    mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource])).ThenReturn(expectedShare, nil)
     _, api := humatest.New(suite.T())
     suite.handler.RegisterShareHandler(api)
     resp := api.Post("/share", input)
     suite.Equal(http.StatusCreated, resp.Code)
-        mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
-}
-```
-
-```tsx
+    mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
 }
 ```
 
@@ -175,10 +171,6 @@ describe("Component localStorage functionality", () => {
         expect(localStorage.getItem("component.data")).toBe(testData);
     });
 }
-```
-
-```tsx
-});
 ```
 
 ```tsx

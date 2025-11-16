@@ -66,6 +66,7 @@
   "javascript.preferGoToSourceDefinition": true,
   "javascript.referencesCodeLens.enabled": true,
   "chat.tools.terminal.autoApprove": {
+    
     "/.*/": {
       "approve": true,
       "matchCommandLine": false
@@ -173,5 +174,16 @@
   "files.autoSave": "afterDelay",
   "files.autoSaveDelay": 5000,
   "files.autoSaveWhenNoErrors": true,
-  "files.autoSaveWorkspaceFilesOnly": true
+  "files.autoSaveWorkspaceFilesOnly": true,
+  "go.diagnostic.vulncheck": "Imports",
+  "go.languageServerFlags": [
+    "-mcp.listen=localhost:8092"
+  ],
+  "chat.mcp.serverSampling": {
+    "srat/.vscode/mcp.json: gopls-mcp": {
+      "allowedModels": [
+        "copilot/claude-sonnet-4.5"
+      ]
+    }
+  }
 }
