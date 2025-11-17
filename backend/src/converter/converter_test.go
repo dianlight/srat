@@ -386,7 +386,7 @@ func TestConfigToDto_TimeMachineSupportFromFS_AllTypes(t *testing.T) {
 func TestConfigToDto_FSTypeIsWriteSupported(t *testing.T) {
 	// This function calls osutil.IsWritable which checks actual path writability
 	// In test environment, we can check the function returns a boolean pointer
-	result := FSTypeIsWriteSupported("/tmp")
+	result := isWriteSupported("/tmp")
 	assert.NotNil(t, result)
 	// The result depends on actual filesystem permissions
 }

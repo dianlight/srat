@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/dianlight/srat/internal/osutil"
+	"github.com/dianlight/srat/tlog"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/xorcare/pointer"
 )
@@ -17,6 +18,19 @@ var osStat = os.Stat
 
 func MockFuncOsStat(fn func(name string) (os.FileInfo, error)) {
 	osStat = fn
+}
+
+// test hooks for filesystem interactions
+var osReadDir = os.ReadDir
+
+func MockFuncOsReadDir(fn func(name string) ([]os.DirEntry, error)) {
+	osReadDir = fn
+}
+
+var evalSymlink = filepath.EvalSymlinks
+
+func MockFuncEvalSymlink(fn func(path string) (string, error)) {
+	evalSymlink = fn
 }
 
 // isPathDirNotExists checks if a given path string points to an existing directory.
@@ -39,12 +53,12 @@ func isPathDirNotExists(path string) (bool, error) {
 
 func deviceToDeviceId(source string) (string, error) {
 	deviceID := source
-	entries, err := os.ReadDir("/dev/disk/by-id/")
+	entries, err := osReadDir("/dev/disk/by-id/")
 	if err == nil {
 		for _, entry := range entries {
 			if entry.Type()&os.ModeSymlink != 0 {
 				linkPath := filepath.Join("/dev/disk/by-id/", entry.Name())
-				resolved, err := filepath.EvalSymlinks(linkPath)
+				resolved, err := evalSymlink(linkPath)
 				if err != nil {
 					continue
 				}
@@ -99,3 +113,9 @@ func trueConst() bool {
 	return true
 }
 */
+
+func isWriteSupported(path string) *bool {
+	tlog.Trace("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
+	return pointer.Bool(osutil.IsWritable(path))
+
+}

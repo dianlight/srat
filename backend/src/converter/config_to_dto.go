@@ -8,10 +8,8 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/dianlight/srat/tlog"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/u-root/u-root/pkg/mount"
-	"github.com/xorcare/pointer"
 )
 
 // goverter:converter
@@ -39,7 +37,7 @@ type ConfigToDtoConverter interface {
 	// goverter:map Path Type | pathToType
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:map FS FSType
-	// goverter:map Path IsWriteSupported | FSTypeIsWriteSupported
+	// goverter:map Path IsWriteSupported | isWriteSupported
 	// goverter:map FS TimeMachineSupport | TimeMachineSupportFromFS
 	// goverter:map Path DiskLabel | DiskLabelFromPath
 	// goverter:map Path DiskSerial | DiskSerialFromPath
@@ -176,10 +174,4 @@ func TimeMachineSupportFromFS(fsType string) *dto.TimeMachineSupport {
 	default:
 		return &dto.TimeMachineSupports.UNKNOWN
 	}
-}
-
-func FSTypeIsWriteSupported(path string) *bool {
-	tlog.Trace("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
-	return pointer.Bool(osutil.IsWritable(path))
-
 }

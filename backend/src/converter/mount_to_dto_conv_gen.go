@@ -75,7 +75,7 @@ func (c *MountToDtoImpl) MountToMountPointData(source *mount.MountPoint, target 
 			target.IsInvalid = xbool2
 		}
 		if source.Path != "" {
-			target.IsWriteSupported = FSTypeIsWriteSupported(source.Path)
+			target.IsWriteSupported = isWriteSupported(source.Path)
 		}
 		if source.FSType != "" {
 			target.TimeMachineSupport = TimeMachineSupportFromFS(source.FSType)
