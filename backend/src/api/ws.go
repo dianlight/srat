@@ -91,7 +91,10 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 			return errors.WithDetails(err, "message", "Failed to marshal event data", "event", msg)
 		}
 
-		typeName := self.reverseMap[reflect.TypeOf(msg.Data).Name()]
+		typeName, ok := self.reverseMap[reflect.TypeOf(msg.Data).Name()]
+		if !ok {
+			return errors.Errorf("unknown event type for WebSocket: %T", msg.Data)
+		}
 
 		// Send the event data
 		err = conn.WriteMessage(websocket.TextMessage,
