@@ -19,7 +19,7 @@
       ]
     },
     "gopls-mcp": {
-      "type": "http",
+      "type": "sse",
       "url": "http://localhost:8092",
     }
   }

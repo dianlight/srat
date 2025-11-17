@@ -38,7 +38,7 @@ func isPathDirNotExists(path string) (bool, error) {
 }
 
 func deviceToDeviceId(source string) (string, error) {
-	deviceID := ""
+	deviceID := source
 	entries, err := os.ReadDir("/dev/disk/by-id/")
 	if err == nil {
 		for _, entry := range entries {
@@ -60,20 +60,22 @@ func deviceToDeviceId(source string) (string, error) {
 }
 
 func mountPathToDeviceId(mountPath string) (string, error) {
+	slog.Debug("Resolving device ID for mount path", "mountPath", mountPath)
 	info, err := osutil.LoadMountInfo()
 	if err != nil {
 		slog.Warn("Error loading mount info", "err", err)
 		return "", nil
 	}
-	//	slog.Info("Loaded mount info", "count", len(info))
+	slog.Info("Loaded mount info", "count", len(info), "all", info)
 	for _, m := range info {
-		//		slog.Info("Mount info", "mount_dir", m.MountDir, "mount_source", m.MountSource, "mountPath", mountPath)
+		slog.Info("Mount info", "mount_dir", m.MountDir, "mount_source", m.MountSource, "mountPath", mountPath, "all", m)
 		if m.MountDir == mountPath {
 			return deviceToDeviceId(m.MountSource)
 		} else {
 			same, _ := mount.SameFilesystem(mountPath, m.MountDir)
 			if same {
-				return deviceToDeviceId(m.MountSource)
+				slog.Info("Same filesystem detected", "mountPath", mountPath, "mountDir", m.MountDir)
+				return mountPathToDeviceId(m.MountDir)
 			}
 		}
 	}

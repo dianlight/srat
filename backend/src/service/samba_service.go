@@ -121,9 +121,10 @@ func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, errors.E) {
 	}
 
 	cmd := exec.Command("smbstatus", "-j")
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Errorf("Error executing smbstatus: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
+		outErr, _ := cmd.CombinedOutput()
+		return nil, errors.Errorf("Error executing smbstatus: %w \n %#v", err, map[string]any{"error": err, "output": string(out), "errout": string(outErr), "cmd": cmd.String()})
 	}
 
 	// Validate that output is valid JSON before unmarshaling

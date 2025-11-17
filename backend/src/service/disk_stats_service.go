@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/tlog"
 	"github.com/prometheus/procfs/blockdevice"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -118,6 +119,10 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 			stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.LegacyDeviceName)
 
 			if err != nil {
+				if os.IsNotExist(errors.Unwrap(err)) {
+					tlog.Trace("Disk device not found in /proc, skipping", "disk", *disk.LegacyDeviceName)
+					continue
+				}
 				return errors.WithStack(err)
 			}
 			if s.lastStats[*disk.Id] != nil {

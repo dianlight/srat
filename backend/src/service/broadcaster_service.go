@@ -90,7 +90,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 			diskID = *event.Disk.Id
 		}
 		slog.Debug("BroadcasterService received Disk event", "disk", diskID)
-		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
+		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
 	})
 
 	// Listen for partition events
@@ -100,19 +100,19 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 			partName = *event.Partition.Name
 		}
 		slog.Debug("BroadcasterService received Partition event", "partition", partName)
-		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
+		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
 	})
 
 	// Listen for share events
 	ret[2] = broker.eventBus.OnShare(func(event events.ShareEvent) {
 		slog.Debug("BroadcasterService received Share event", "share", event.Share.Name)
-		broker.BroadcastMessage(event.Share)
+		broker.BroadcastMessage(*event.Share)
 	})
 
 	// Listen for mount point events
 	ret[3] = broker.eventBus.OnMountPoint(func(event events.MountPointEvent) {
 		slog.Debug("BroadcasterService received MountPointMounted event", "mount_point", event.MountPoint.Path)
-		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
+		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
 	})
 
 	return ret

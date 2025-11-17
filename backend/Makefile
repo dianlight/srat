@@ -112,7 +112,7 @@ dev_cli:
 .PHONY: dev
 dev:
 	#make dev_cli
-	go tool -C $(SRC_DIRS) air -c .air.toml
+	SRAT_DEVMODE=true go tool -C $(SRC_DIRS) air -c .air.toml
 
 
 .PHONY: update

@@ -785,6 +785,8 @@ func (self *VolumeService) getVolumesData() errors.E {
 			return nil, errors.WithStack(err)
 		}
 
+		slog.Debug("Mount infos retrieved from procfs", "count", len(mountInfos))
+
 		// Partition processing
 		for diskName, disk := range *self.disks {
 			if disk.RefreshVersion != self.refreshVersion {
@@ -803,8 +805,10 @@ func (self *VolumeService) getVolumesData() errors.E {
 					continue
 				}
 
+				part := (*disk.Partitions)[pidx]
 				if part.MountPointData == nil {
 					part.MountPointData = &map[string]dto.MountPointData{}
+
 				}
 
 				for _, prtstate := range mountInfos {
@@ -854,7 +858,6 @@ func (self *VolumeService) getVolumesData() errors.E {
 						})
 						continue
 					}
-
 				}
 
 				for key, mpd := range *part.MountPointData {
@@ -870,6 +873,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 						continue
 					}
 				}
+				(*disk.Partitions)[pidx] = part
 			}
 		}
 
@@ -884,17 +888,6 @@ func (self *VolumeService) getVolumesData() errors.E {
 
 	return nil
 }
-
-/*
-func (self *VolumeService) NotifyClient() {
-	slog.Debug("Notifying client about volume changes...")
-
-	var data = self.GetVolumesData()
-
-	slog.Debug("Broadcasting updated volumes data", "disk_count", len(*data))
-	self.broascasting.BroadcastMessage(data)
-}
-*/
 
 func (self *VolumeService) CreateBlockDevice(device string) error {
 	// Controlla se il dispositivo esiste già
