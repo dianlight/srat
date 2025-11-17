@@ -347,14 +347,10 @@ func (self *SambaService) RestartSambaService() errors.E {
 					slog.Error("Error reloading smbd config", "error", err, "output", string(outSmbd))
 				}
 			}
-			defer func() {
-				self.eventBus.EmitDirtyData(events.DirtyDataEvent{
-					Event: events.Event{Type: events.EventTypes.CLEAN},
-					DataDirtyTracker: dto.DataDirtyTracker{
-						Shares: true,
-					},
-				})
-			}()
+			self.eventBus.EmitDirtyData(events.DirtyDataEvent{
+				Event:            events.Event{Type: events.EventTypes.CLEAN},
+				DataDirtyTracker: dto.DataDirtyTracker{},
+			})
 		}
 
 		if process.Nmbd.Pid != -1 {
