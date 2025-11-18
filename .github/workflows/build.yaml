@@ -244,7 +244,7 @@ jobs:
           echo "Backend Coverage: $COVERAGE%"
 
       - name: Upload Backend Coverage to Codecov
-        uses: codecov/codecov-action@af09b5e394c93991b95a5e7646aeb90c1917f78f # v5.5.1
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./backend/src/coverage.out
@@ -301,7 +301,7 @@ jobs:
           echo "Frontend Coverage: $COVERAGE%"
 
       - name: Upload Frontend Coverage to Codecov
-        uses: codecov/codecov-action@af09b5e394c93991b95a5e7646aeb90c1917f78f # v5.5.1
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./frontend/coverage/lcov.info
