@@ -38,7 +38,7 @@ jobs:
     name: Set version
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0 # fetch-depth: 0 is required for git commands to see all history/tags
 
@@ -206,7 +206,7 @@ jobs:
       coverage: ${{ steps.extract_coverage.outputs.backend_coverage }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0
 
@@ -244,7 +244,7 @@ jobs:
           echo "Backend Coverage: $COVERAGE%"
 
       - name: Upload Backend Coverage to Codecov
-        uses: codecov/codecov-action@af09b5e394c93991b95a5e7646aeb90c1917f78f # v5.5.1
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./backend/src/coverage.out
@@ -260,7 +260,7 @@ jobs:
       coverage: ${{ steps.extract_coverage.outputs.frontend_coverage }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0
 
@@ -301,7 +301,7 @@ jobs:
           echo "Frontend Coverage: $COVERAGE%"
 
       - name: Upload Frontend Coverage to Codecov
-        uses: codecov/codecov-action@af09b5e394c93991b95a5e7646aeb90c1917f78f # v5.5.1
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./frontend/coverage/lcov.info
@@ -317,7 +317,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -363,7 +363,7 @@ jobs:
       ROLLBAR_ENVIRONMENT: "production"
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0
 
@@ -492,7 +492,7 @@ jobs:
           github.event_name == 'release' &&
           github.event.action == 'published' &&
           !contains(needs.setversion.outputs.version, '-dev')
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           ref: main
           fetch-depth: 1
