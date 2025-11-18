@@ -108,7 +108,7 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 ### Full Stack Development
 
 - **Prepare environment**: `make prepare` (installs pre-commit + dependencies)
-- **Build all**: `make ALL` (multi-arch: amd64, armv7, aarch64)
+- **Build all**: `make ALL` (multi-arch: amd64, aarch64)
 - **Clean**: `make clean`
 
 ## Testing Patterns
