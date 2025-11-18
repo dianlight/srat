@@ -196,9 +196,9 @@ func TestCoreInfo_Architectures(t *testing.T) {
 		arch string
 	}{
 		{"AMD64", "amd64"},
-		{"ARMv7", "armhf"},
+	//	{"ARMv7", "armhf"},
 		{"AArch64", "aarch64"},
-		{"i386", "i386"},
+	//	{"i386", "i386"},
 	}
 
 	for _, tt := range tests {

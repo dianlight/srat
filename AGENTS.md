@@ -30,7 +30,7 @@ The SRAT project utilizes various coding agents and tools to assist with develop
 - **Purpose**: Automated building and testing
 - **Backend**: Uses `make` targets in `backend/Makefile` with Air for hot reload
 - **Frontend**: Bun-based build system with watch mode
-- **CI/CD**: Integrated with GitHub Actions for multi-arch builds (amd64, armv7, aarch64)
+- **CI/CD**: Integrated with GitHub Actions for multi-arch builds (amd64, aarch64)
 
 ## Service Agents
 

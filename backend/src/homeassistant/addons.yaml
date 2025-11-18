@@ -66,7 +66,7 @@ components:
           type: array
           items:
             type: string
-          example: ["amd64", "armv7"]
+          example: ["amd64", "aarch64"]
         machine:
           type: array
           items:

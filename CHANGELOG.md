@@ -4,14 +4,14 @@
 
 ## [ 🚧 Unreleased ]
 
-### � Documentation
+### :memo: Documentation
 
 - **Frontend Testing Standards**: Updated documentation and Copilot instructions to mandate `@testing-library/user-event` for all user interactions in tests. The deprecated `fireEvent` API is now strictly prohibited in all new and modified tests. Updated files:
   - `.github/copilot-instructions.md`: Added userEvent requirements to Testing Library Standards and Component Testing Pattern sections
   - `docs/TEST_COVERAGE.md`: Added userEvent to Framework & Tools and Frontend Testing Best Practices
   - `frontend/README.md`: Added Testing Standards section with userEvent requirement
 
-### �🐛 Bug Fixes
+### 🐛 Bug Fixes
 
 - **Udev Event Parsing Error Handling**: Improved handling of malformed udev events to prevent spurious error reports to Rollbar. Malformed events with invalid environment data are now logged at debug level instead of error level, reducing noise in error tracking while maintaining visibility for legitimate errors.
 
