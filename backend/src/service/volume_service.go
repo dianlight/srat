@@ -755,6 +755,10 @@ func (self *VolumeService) getVolumesData() errors.E {
 						// Existing mount point found, add to partition
 						mountData := dto.MountPointData{}
 						err := self.convDto.MountPointPathToMountPointData(*dmp, &mountData, *self.GetVolumesData())
+						slog.Debug("Loaded existing mount point from repository", "device", *part.DevicePath, "path", dmp.Path,
+							"is_mounted", mountData.IsMounted,
+							"path_hash", mountData.PathHash,
+							"is_writable", mountData.IsWriteSupported)
 						if err != nil {
 							slog.Error("Failed to convert mount point data", "device", *part.DevicePath, "err", err)
 							continue
@@ -812,42 +816,36 @@ func (self *VolumeService) getVolumesData() errors.E {
 				}
 
 				for _, prtstate := range mountInfos {
-					found := false
-					var foundPath string
-					for path, mpd := range *part.MountPointData {
-						if mpd.Path == prtstate.MountPoint {
-							found = true
-							foundPath = path
-							break
-						}
-					}
-					if found {
-						mpd := (*part.MountPointData)[foundPath]
+
+					if mpd, ok := (*part.MountPointData)[prtstate.MountPoint]; ok {
 						if !mpd.IsMounted {
 							mpd.IsMounted = true
-							(*part.MountPointData)[foundPath] = mpd
+							(*part.MountPointData)[prtstate.MountPoint] = mpd
 							self.eventBus.EmitMountPoint(events.MountPointEvent{
 								Event:      events.Event{Type: events.EventTypes.UPDATE},
 								MountPoint: &mpd,
 							})
 						}
 						mpd.RefreshVersion = self.refreshVersion
-						(*part.MountPointData)[foundPath] = mpd
+						(*part.MountPointData)[prtstate.MountPoint] = mpd
 						continue
 					}
 
 					if prtstate.Source == *part.DevicePath || (part.LegacyDevicePath != nil && prtstate.Source == *part.LegacyDevicePath) {
 						// Found matching mount info for partition
+						iw := osutil.IsWritable(prtstate.MountPoint)
 						mountPoint := dto.MountPointData{
-							Path:           prtstate.MountPoint,
-							DeviceId:       *part.Id,
-							IsMounted:      true,
-							Flags:          &dto.MountFlags{},
-							CustomFlags:    &dto.MountFlags{},
-							FSType:         pointer.String(prtstate.FSType),
-							Type:           "ADDON",
-							Partition:      &part,
-							RefreshVersion: self.refreshVersion,
+							Path:             prtstate.MountPoint,
+							DeviceId:         *part.Id,
+							PathHash:         xhashes.SHA1(prtstate.MountPoint),
+							IsWriteSupported: pointer.Bool(iw),
+							IsMounted:        true,
+							Flags:            &dto.MountFlags{},
+							CustomFlags:      &dto.MountFlags{},
+							FSType:           pointer.String(prtstate.FSType),
+							Type:             "ADDON",
+							Partition:        &part,
+							RefreshVersion:   self.refreshVersion,
 						}
 						mountPoint.Flags.Scan(prtstate.Options)
 						mountPoint.CustomFlags.Scan(prtstate.SuperOptions)

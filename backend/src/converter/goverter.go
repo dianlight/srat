@@ -115,7 +115,7 @@ func trueConst() bool {
 */
 
 func isWriteSupported(path string) *bool {
-	tlog.Trace("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
+	tlog.Debug("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
 	return pointer.Bool(osutil.IsWritable(path))
 
 }

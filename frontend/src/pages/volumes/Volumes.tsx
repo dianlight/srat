@@ -26,6 +26,7 @@ import { VolumesTreeView, VolumeDetailsPanel, VolumeMountDialog } from "./compon
 import { decodeEscapeSequence } from "./utils";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { useGetServerEventsQuery } from "../../store/sseApi";
+import path from "node:path";
 
 export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
@@ -340,36 +341,37 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	function handleToggleAutomount(partition: Partition) {
 		if (evdata?.hello?.read_only) return;
 
-		const mountData = Object.values(partition.mount_point_data || {})[0];
-		if (!mountData || !mountData.path_hash) {
-			toast.error("Cannot toggle automount: Missing mount point data.");
-			console.error("Missing mount data for partition:", partition);
-			return;
-		}
+		for (const [path, mountData] of Object.entries(partition.mount_point_data || {})) {
+			if (!mountData.path_hash) {
+				toast.error(`Cannot toggle automount: ${path} Missing hash point data.`);
+				console.error("Missing mount data for mount point:", mountData);
+				continue;
+			}
 
-		const newAutomountState = !mountData.is_to_mount_at_startup;
-		const actionText = newAutomountState ? "enable" : "disable";
-		const partitionName = decodeEscapeSequence(partition.name || "this volume");
+			const newAutomountState = !mountData.is_to_mount_at_startup;
+			const actionText = newAutomountState ? "enable" : "disable";
+			const partitionName = decodeEscapeSequence(partition.name || "this volume");
 
-		console.log(partition);
+			console.log(partition);
 
-		patchMountSettings({
-			mountPathHash: mountData.path_hash,
-			mountPointData: {
-				...mountData,
-				is_to_mount_at_startup: newAutomountState,
-			},
-		})
-			.unwrap()
-			.then(() => {
-				toast.info(`Automount ${actionText}d for ${partitionName}.`);
+			patchMountSettings({
+				mountPathHash: mountData.path_hash,
+				mountPointData: {
+					...mountData,
+					is_to_mount_at_startup: newAutomountState,
+				},
 			})
-			.catch((err: any) => {
-				console.error(`Error toggling automount for ${partitionName}:`, err);
-				toast.error(
-					`Failed to ${actionText} automount for ${partitionName}: ${err.data?.detail || err.message || "Unknown error"}`,
-				);
-			});
+				.unwrap()
+				.then(() => {
+					toast.info(`Automount ${actionText}d for ${partitionName}.`);
+				})
+				.catch((err: any) => {
+					console.error(`Error toggling automount for ${partitionName}:`, err);
+					toast.error(
+						`Failed to ${actionText} automount for ${partitionName}: ${err.data?.detail || err.message || "Unknown error"}`,
+					);
+				});
+		}
 	}
 
 	useEffect(() => {

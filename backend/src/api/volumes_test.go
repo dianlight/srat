@@ -13,7 +13,9 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
+	"github.com/shomali11/util/xhashes"
 	"github.com/stretchr/testify/suite"
+	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -24,7 +26,6 @@ type VolumeHandlerSuite struct {
 	handler       *api.VolumeHandler
 	mockVolumeSvc service.VolumeServiceInterface
 	mockShareSvc  service.ShareServiceInterface
-	mockDirtySvc  service.DirtyDataServiceInterface
 	ctx           context.Context
 	cancel        context.CancelFunc
 }
@@ -42,12 +43,10 @@ func (suite *VolumeHandlerSuite) SetupTest() {
 			api.NewVolumeHandler,
 			mock.Mock[service.VolumeServiceInterface],
 			mock.Mock[service.ShareServiceInterface],
-			mock.Mock[service.DirtyDataServiceInterface],
 		),
 		fx.Populate(&suite.handler),
 		fx.Populate(&suite.mockVolumeSvc),
 		fx.Populate(&suite.mockShareSvc),
-		fx.Populate(&suite.mockDirtySvc),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
@@ -66,28 +65,64 @@ func (suite *VolumeHandlerSuite) TearDownTest() {
 	}
 }
 
-func (suite *VolumeHandlerSuite) TestListVolumesSuccess() {
-	id1, id2 := "sda", "sdb"
-	vols := &[]dto.Disk{{Id: &id1}, {Id: &id2}}
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(vols)
-	_, apiInst := humatest.New(suite.T())
-	suite.handler.RegisterVolumeHandlers(apiInst)
-	resp := apiInst.Get("/volumes")
-	suite.Require().Equal(http.StatusOK, resp.Code)
-	var out []dto.Disk
-	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
-	suite.Len(out, 2)
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
-}
+// TestListVolumes_ReturnsDiskPartitionMountPointData verifies that the /volumes endpoint
+// returns nested structures including disks, their partitions, and mount point data.
+func (suite *VolumeHandlerSuite) TestListVolumes_ReturnsDiskPartitionMountPointData() {
+	diskID := "disk1"
+	partID := "part1"
+	devicePath := "/dev/sda1"
+	mountPath := "/mnt/data"
+	mountPoint := dto.MountPointData{
+		Path:             mountPath,
+		PathHash:         xhashes.SHA1(mountPath),
+		DeviceId:         partID,
+		IsMounted:        true,
+		IsWriteSupported: pointer.Bool(true),
+		Type:             "ADDON",
+	}
+	partition := dto.Partition{
+		Id:             &partID,
+		DevicePath:     &devicePath,
+		MountPointData: &map[string]dto.MountPointData{mountPath: mountPoint},
+	}
+	disk := dto.Disk{
+		Id:         &diskID,
+		Partitions: &map[string]dto.Partition{partID: partition},
+	}
+	disks := &[]dto.Disk{disk}
 
-func (suite *VolumeHandlerSuite) TestListVolumesError() {
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(nil)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
+
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterVolumeHandlers(apiInst)
+
 	resp := apiInst.Get("/volumes")
 	suite.Require().Equal(http.StatusOK, resp.Code)
+
 	var out []dto.Disk
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
-	suite.Empty(out)
+	suite.Require().Len(out, 1, "Expected one disk returned")
+
+	// Validate Disk
+	gotDisk := out[0]
+	suite.Require().NotNil(gotDisk.Partitions, "Partitions map must be present")
+	suite.Require().Len(*gotDisk.Partitions, 1, "Expected one partition")
+
+	// Validate Partition
+	gotPart, ok := (*gotDisk.Partitions)[partID]
+	suite.Require().True(ok, "Partition id missing in map")
+	suite.Require().NotNil(gotPart.MountPointData, "MountPointData map must be present")
+	suite.Require().Len(*gotPart.MountPointData, 1, "Expected one mount point")
+
+	// Validate MountPointData
+	gotMP, ok := (*gotPart.MountPointData)[mountPath]
+	suite.Require().True(ok, "Mount point path missing in map")
+	suite.Equal(mountPath, gotMP.Path)
+	suite.Equal(gotMP.PathHash, xhashes.SHA1(mountPath))
+	suite.Equal(partID, gotMP.DeviceId)
+	suite.True(gotMP.IsMounted, "Mount point should be marked mounted")
+	suite.True(*gotMP.IsWriteSupported, "Mount point should support write")
+	suite.Equal("ADDON", gotMP.Type)
+
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
 }
