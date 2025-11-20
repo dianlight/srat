@@ -81,29 +81,6 @@ func (suite *VolumeHandlerSuite) TestEjectDiskSuccess() {
 }
 */
 
-func (suite *VolumeHandlerSuite) TestUpdateVolumeSettingsSuccess() {
-	mountPath := "/mnt/testvol"
-	hash := xhashes.SHA1(mountPath)
-	inputDto := dto.MountPointData{Path: mountPath, Type: "HOST"}
-
-	updated := inputDto
-	mock.When(suite.mockVolumeSvc.PathHashToPath(mock.Any[string]())).ThenReturn(mountPath, nil)
-	mock.When(suite.mockVolumeSvc.UpdateMountPointSettings(mock.Any[string](), mock.Any[dto.MountPointData]())).ThenReturn(&updated, nil)
-
-	_, apiInst := humatest.New(suite.T())
-	suite.handler.RegisterVolumeHandlers(apiInst)
-
-	resp := apiInst.Put(fmt.Sprintf("/volume/%s/settings", hash), inputDto)
-	suite.Require().Equal(http.StatusOK, resp.Code)
-
-	var out dto.MountPointData
-	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
-	suite.Equal(mountPath, out.Path)
-
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mock.Any[string]())
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).UpdateMountPointSettings(mock.Any[string](), mock.Any[dto.MountPointData]())
-}
-
 func (suite *VolumeHandlerSuite) TestPatchVolumeSettingsSuccess() {
 	mountPath := "/mnt/testvol"
 	hash := xhashes.SHA1(mountPath)

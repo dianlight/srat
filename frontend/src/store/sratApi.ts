@@ -437,17 +437,6 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["volume"],
       }),
-      putApiVolumeByMountPathHashSettings: build.mutation<
-        PutApiVolumeByMountPathHashSettingsApiResponse,
-        PutApiVolumeByMountPathHashSettingsApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/volume/${queryArg.mountPathHash}/settings`,
-          method: "PUT",
-          body: queryArg.mountPointData,
-        }),
-        invalidatesTags: ["volume"],
-      }),
       getApiVolumes: build.query<GetApiVolumesApiResponse, GetApiVolumesApiArg>(
         {
           query: () => ({ url: `/api/volumes` }),
@@ -785,12 +774,6 @@ export type PostApiVolumeByMountPathHashMountApiArg = {
 export type PatchApiVolumeByMountPathHashSettingsApiResponse =
   /** status 200 OK */ MountPointData | /** status default Error */ ErrorModel;
 export type PatchApiVolumeByMountPathHashSettingsApiArg = {
-  mountPathHash: string;
-  mountPointData: MountPointData;
-};
-export type PutApiVolumeByMountPathHashSettingsApiResponse =
-  /** status 200 OK */ MountPointData | /** status default Error */ ErrorModel;
-export type PutApiVolumeByMountPathHashSettingsApiArg = {
   mountPathHash: string;
   mountPointData: MountPointData;
 };
@@ -1404,6 +1387,5 @@ export const {
   useDeleteApiVolumeByMountPathHashMountMutation,
   usePostApiVolumeByMountPathHashMountMutation,
   usePatchApiVolumeByMountPathHashSettingsMutation,
-  usePutApiVolumeByMountPathHashSettingsMutation,
   useGetApiVolumesQuery,
 } = injectedRtkApi;

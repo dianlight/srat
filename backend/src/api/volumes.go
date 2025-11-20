@@ -49,7 +49,6 @@ func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 	huma.Get(api, "/volumes", self.ListVolumes, huma.OperationTags("volume"))
 	huma.Post(api, "/volume/{mount_path_hash}/mount", self.MountVolume, huma.OperationTags("volume"))
 	huma.Delete(api, "/volume/{mount_path_hash}/mount", self.UmountVolume, huma.OperationTags("volume"))
-	huma.Put(api, "/volume/{mount_path_hash}/settings", self.UpdateVolumeSettings, huma.OperationTags("volume"))
 	huma.Patch(api, "/volume/{mount_path_hash}/settings", self.PatchVolumeSettings, huma.OperationTags("volume"))
 	// huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
 }
@@ -145,32 +144,6 @@ func (self *VolumeHandler) EjectDiskHandler(ctx context.Context, input *struct {
 	return &struct{ Status int }{Status: http.StatusNoContent}, nil
 }
 */
-
-// UpdateVolumeSettings handles PUT requests to update the configuration of an existing mount point.
-func (self *VolumeHandler) UpdateVolumeSettings(ctx context.Context, input *struct {
-	MountPathHash string             `path:"mount_path_hash"`
-	Body          dto.MountPointData `required:"true"`
-}) (*struct{ Body dto.MountPointData }, error) {
-	if self.apiContext.ReadOnlyMode {
-		return nil, huma.Error403Forbidden("Cannot update volume settings in read-only mode")
-	}
-
-	mountPath, errE := self.vservice.PathHashToPath(input.MountPathHash)
-	if errE != nil {
-		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
-	}
-
-	updatedDto, serviceErr := self.vservice.UpdateMountPointSettings(mountPath, input.Body)
-	if serviceErr != nil {
-		if errors.Is(serviceErr, dto.ErrorNotFound) {
-			return nil, huma.Error404NotFound(serviceErr.Error())
-		}
-		// Error is already logged by the service layer
-		return nil, huma.Error500InternalServerError("Failed to update mount configuration", serviceErr)
-	}
-
-	return &struct{ Body dto.MountPointData }{Body: *updatedDto}, nil
-}
 
 // PatchVolumeSettings handles PATCH requests to partially update the configuration of an existing mount point.
 func (self *VolumeHandler) PatchVolumeSettings(ctx context.Context, input *struct {

@@ -39,7 +39,6 @@ type VolumeServiceInterface interface {
 	GetVolumesData() *[]dto.Disk
 	PathHashToPath(pathhash string) (string, errors.E)
 	//EjectDisk(diskID string) error
-	UpdateMountPointSettings(path string, settingsUpdate dto.MountPointData) (*dto.MountPointData, errors.E)
 	PatchMountPointSettings(path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
 	//CreateAutomountFailureNotification(mountPath, device string, err errors.E)
 	//CreateUnmountedPartitionNotification(mountPath, device string)
@@ -992,67 +991,6 @@ func (self *VolumeService) EjectDisk(diskID string) error {
 	return nil
 }
 */
-
-func (ms *VolumeService) UpdateMountPointSettings(path string, updates dto.MountPointData) (*dto.MountPointData, errors.E) {
-
-	dbMountData, err := ms.mount_repo.FindByPath(path)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
-		}
-		return nil, errors.WithStack(err)
-	}
-
-	var conv converter.DtoToDbomConverterImpl
-
-	// Apply updates
-	if updates.FSType != nil {
-		dbMountData.FSType = *updates.FSType
-	}
-	if updates.Flags != nil {
-		if dbMountData.Flags == nil {
-			dbMountData.Flags = &dbom.MounDataFlags{}
-		}
-		*dbMountData.Flags = conv.MountFlagsToMountDataFlags(*updates.Flags)
-	}
-	if updates.CustomFlags != nil {
-		if dbMountData.Data == nil {
-			dbMountData.Data = &dbom.MounDataFlags{}
-		}
-		*dbMountData.Data = conv.MountFlagsToMountDataFlags(*updates.CustomFlags)
-	}
-	if updates.IsToMountAtStartup != nil {
-		dbMountData.IsToMountAtStartup = updates.IsToMountAtStartup
-	}
-
-	if err := ms.mount_repo.Save(dbMountData); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	updatedDto := dto.MountPointData{}
-	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &updatedDto, *ms.GetVolumesData()); convErr != nil {
-		return nil, errors.WithStack(convErr)
-	}
-
-	// Update cached mount point data
-	if updatedDto.Partition != nil && updatedDto.Partition.DiskId != nil && updatedDto.Partition.Id != nil {
-		if disk, ok := (*ms.disks)[*updatedDto.Partition.DiskId]; ok {
-			if part, ok := (*disk.Partitions)[*updatedDto.Partition.Id]; ok {
-				if part.MountPointData != nil {
-					(*part.MountPointData)[updatedDto.Path] = updatedDto
-					(*disk.Partitions)[*updatedDto.Partition.Id] = part
-					(*ms.disks)[*updatedDto.Partition.DiskId] = disk
-				}
-			}
-		}
-	}
-
-	ms.eventBus.EmitMountPoint(events.MountPointEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
-		MountPoint: &updatedDto,
-	})
-	return &updatedDto, nil
-}
 
 func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.MountPointData) (*dto.MountPointData, errors.E) {
 

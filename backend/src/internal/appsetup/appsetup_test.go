@@ -146,9 +146,6 @@ func (volumeServiceStub) GetVolumesData() *[]dto.Disk               { return nil
 func (volumeServiceStub) PathHashToPath(string) (string, errors.E)  { return "", nil }
 
 // func (volumeServiceStub) EjectDisk(string) error                    { return nil }
-func (volumeServiceStub) UpdateMountPointSettings(string, dto.MountPointData) (*dto.MountPointData, errors.E) {
-	return nil, nil
-}
 func (volumeServiceStub) PatchMountPointSettings(string, dto.MountPointData) (*dto.MountPointData, errors.E) {
 	return nil, nil
 }

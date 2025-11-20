@@ -648,64 +648,6 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 	suite.False(mpd.IsMounted)
 }
 
-// --- UpdateMountPointSettings Tests ---
-func (suite *VolumeServiceTestSuite) TestUpdateMountPointSettings_Success() {
-	path := "/mnt/testupdate"
-	originalFSType := "ext4"
-	updatedFSType := "xfs"
-	//originalFlags := &dto.MountFlags{{Name: "ro"}}
-	updatedFlagsDto := &dto.MountFlags{{Name: "rw"}, {Name: "noatime"}}
-	originalStartup := pointer.Bool(true)
-	updatedStartup := pointer.Bool(false)
-
-	dbData := &dbom.MountPointPath{
-		Path:               path,
-		DeviceId:           "/dev/sdb1",
-		FSType:             originalFSType,
-		Flags:              &dbom.MounDataFlags{{Name: "ro"}},
-		IsToMountAtStartup: originalStartup,
-	}
-
-	updates := dto.MountPointData{
-		FSType:             &updatedFSType,
-		Flags:              updatedFlagsDto,
-		IsToMountAtStartup: updatedStartup,
-	}
-
-	mock.When(suite.mockMountRepo.FindByPath(path)).ThenReturn(dbData, nil).Verify(matchers.Times(1))
-	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
-		savedDbData := args[0].(*dbom.MountPointPath)
-		suite.Equal(path, savedDbData.Path)
-		suite.Equal(updatedFSType, savedDbData.FSType)
-		suite.Len(*savedDbData.Flags, 2) // rw, noatime
-		suite.Contains(*savedDbData.Flags, dbom.MounDataFlag{Name: "rw"})
-		suite.Contains(*savedDbData.Flags, dbom.MounDataFlag{Name: "noatime"})
-		suite.Equal(updatedStartup, savedDbData.IsToMountAtStartup)
-		return []any{nil}
-	})).Verify(matchers.Times(2))
-
-	resultDto, errE := suite.volumeService.UpdateMountPointSettings(path, updates)
-	suite.Require().Nil(errE)
-	suite.Require().NotNil(resultDto)
-	suite.Equal(path, resultDto.Path)
-	suite.Equal(updatedFSType, *resultDto.FSType)
-	suite.Len(*resultDto.Flags, 2)
-	suite.Contains(*resultDto.Flags, dto.MountFlag{Name: "rw"})
-	suite.Contains(*resultDto.Flags, dto.MountFlag{Name: "noatime"})
-	suite.Equal(updatedStartup, resultDto.IsToMountAtStartup)
-}
-
-func (suite *VolumeServiceTestSuite) TestUpdateMountPointSettings_NotFound() {
-	path := "/mnt/notfound"
-	updates := dto.MountPointData{FSType: pointer.String("xfs")}
-
-	mock.When(suite.mockMountRepo.FindByPath(path)).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound)).Verify(matchers.Times(1))
-
-	_, errE := suite.volumeService.UpdateMountPointSettings(path, updates)
-	suite.Require().NotNil(errE)
-	suite.True(errors.Is(errE, dto.ErrorNotFound))
-}
-
 // --- PatchMountPointSettings Tests ---
 func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_Success_OnlyStartup() {
 	path := "/mnt/testpatch"
