@@ -126,3 +126,173 @@ func (suite *VolumeHandlerSuite) TestListVolumes_ReturnsDiskPartitionMountPointD
 
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
 }
+
+// TestUpdateMountPointSettings_UpdatesIsToMountAtStartup verifies that UpdateMountPointSettings
+// correctly updates the mount point configuration and the change is reflected in GetVolumesData.
+func (suite *VolumeHandlerSuite) TestUpdateMountPointSettings_UpdatesIsToMountAtStartup() {
+	diskID := "disk1"
+	partID := "part1"
+	devicePath := "/dev/sda1"
+	mountPath := "/mnt/data"
+	mountPathHash := xhashes.SHA1(mountPath)
+
+	// Initial state: mount point with IsToMountAtStartup = false
+	mountPointInitial := dto.MountPointData{
+		Path:               mountPath,
+		PathHash:           mountPathHash,
+		DeviceId:           partID,
+		IsMounted:          false,
+		IsToMountAtStartup: pointer.Bool(false),
+		Type:               "ADDON",
+	}
+	partition := dto.Partition{
+		Id:             &partID,
+		DevicePath:     &devicePath,
+		MountPointData: &map[string]dto.MountPointData{mountPath: mountPointInitial},
+	}
+	disk := dto.Disk{
+		Id:         &diskID,
+		Partitions: &map[string]dto.Partition{partID: partition},
+	}
+	disksInitial := &[]dto.Disk{disk}
+
+	// Updated state: mount point with IsToMountAtStartup = true
+	mountPointUpdated := mountPointInitial
+	mountPointUpdated.IsToMountAtStartup = pointer.Bool(true)
+	partitionUpdated := partition
+	partitionUpdated.MountPointData = &map[string]dto.MountPointData{mountPath: mountPointUpdated}
+	diskUpdated := disk
+	diskUpdated.Partitions = &map[string]dto.Partition{partID: partitionUpdated}
+	disksUpdated := &[]dto.Disk{diskUpdated}
+
+	// Mock GetVolumesData to return initial state, then updated state
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disksInitial).ThenReturn(disksUpdated)
+	mock.When(suite.mockVolumeSvc.PathHashToPath(mountPathHash)).ThenReturn(mountPath, nil)
+	mock.When(suite.mockVolumeSvc.UpdateMountPointSettings(mock.Any[string](), mock.Any[dto.MountPointData]())).
+		ThenReturn(&mountPointUpdated, nil)
+
+	_, apiInst := humatest.New(suite.T())
+	suite.handler.RegisterVolumeHandlers(apiInst)
+
+	// Step 1: Get initial volumes data
+	resp1 := apiInst.Get("/volumes")
+	suite.Require().Equal(http.StatusOK, resp1.Code)
+
+	var disks1 []dto.Disk
+	suite.NoError(json.Unmarshal(resp1.Body.Bytes(), &disks1))
+	suite.Require().Len(disks1, 1)
+	mp1 := (*(*disks1[0].Partitions)[partID].MountPointData)[mountPath]
+	suite.Equal(false, *mp1.IsToMountAtStartup, "Initial IsToMountAtStartup should be false")
+
+	// Step 2: Update IsToMountAtStartup to true
+	updateBody := dto.MountPointData{
+		Path:               mountPath,
+		Type:               "ADDON",
+		IsToMountAtStartup: pointer.Bool(true),
+	}
+	resp2 := apiInst.Put("/volume/"+mountPathHash+"/settings", updateBody)
+	suite.Require().Equal(http.StatusOK, resp2.Code)
+
+	var updatedMP dto.MountPointData
+	suite.NoError(json.Unmarshal(resp2.Body.Bytes(), &updatedMP))
+	suite.Equal(true, *updatedMP.IsToMountAtStartup, "Updated MountPointData should have IsToMountAtStartup=true")
+
+	// Step 3: Get volumes data again and verify the change
+	resp3 := apiInst.Get("/volumes")
+	suite.Require().Equal(http.StatusOK, resp3.Code)
+
+	var disks2 []dto.Disk
+	suite.NoError(json.Unmarshal(resp3.Body.Bytes(), &disks2))
+	suite.Require().Len(disks2, 1)
+	mp2 := (*(*disks2[0].Partitions)[partID].MountPointData)[mountPath]
+	suite.Equal(true, *mp2.IsToMountAtStartup, "GetVolumesData should reflect updated IsToMountAtStartup=true")
+
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(2)).GetVolumesData()
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mountPathHash)
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).UpdateMountPointSettings(mock.Any[string](), mock.Any[dto.MountPointData]())
+}
+
+// TestPatchMountPointSettings_UpdatesIsToMountAtStartup verifies that PatchMountPointSettings
+// correctly updates the mount point configuration and the change is reflected in GetVolumesData.
+func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtStartup() {
+	diskID := "disk1"
+	partID := "part1"
+	devicePath := "/dev/sda1"
+	mountPath := "/mnt/data"
+	mountPathHash := xhashes.SHA1(mountPath)
+
+	// Initial state: mount point with IsToMountAtStartup = false
+	mountPointInitial := dto.MountPointData{
+		Path:               mountPath,
+		PathHash:           mountPathHash,
+		DeviceId:           partID,
+		IsMounted:          false,
+		IsToMountAtStartup: pointer.Bool(false),
+		Type:               "ADDON",
+	}
+	partition := dto.Partition{
+		Id:             &partID,
+		DevicePath:     &devicePath,
+		MountPointData: &map[string]dto.MountPointData{mountPath: mountPointInitial},
+	}
+	disk := dto.Disk{
+		Id:         &diskID,
+		Partitions: &map[string]dto.Partition{partID: partition},
+	}
+	disksInitial := &[]dto.Disk{disk}
+
+	// Updated state: mount point with IsToMountAtStartup = true
+	mountPointUpdated := mountPointInitial
+	mountPointUpdated.IsToMountAtStartup = pointer.Bool(true)
+	partitionUpdated := partition
+	partitionUpdated.MountPointData = &map[string]dto.MountPointData{mountPath: mountPointUpdated}
+	diskUpdated := disk
+	diskUpdated.Partitions = &map[string]dto.Partition{partID: partitionUpdated}
+	disksUpdated := &[]dto.Disk{diskUpdated}
+
+	// Mock GetVolumesData to return initial state, then updated state
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disksInitial).ThenReturn(disksUpdated)
+	mock.When(suite.mockVolumeSvc.PathHashToPath(mountPathHash)).ThenReturn(mountPath, nil)
+	mock.When(suite.mockVolumeSvc.PatchMountPointSettings(mock.Any[string](), mock.Any[dto.MountPointData]())).
+		ThenReturn(&mountPointUpdated, nil)
+
+	_, apiInst := humatest.New(suite.T())
+	suite.handler.RegisterVolumeHandlers(apiInst)
+
+	// Step 1: Get initial volumes data
+	resp1 := apiInst.Get("/volumes")
+	suite.Require().Equal(http.StatusOK, resp1.Code)
+
+	var disks1 []dto.Disk
+	suite.NoError(json.Unmarshal(resp1.Body.Bytes(), &disks1))
+	suite.Require().Len(disks1, 1)
+	mp1 := (*(*disks1[0].Partitions)[partID].MountPointData)[mountPath]
+	suite.Equal(false, *mp1.IsToMountAtStartup, "Initial IsToMountAtStartup should be false")
+
+	// Step 2: Patch IsToMountAtStartup to true
+	patchBody := dto.MountPointData{
+		Path:               mountPath,
+		Type:               "ADDON",
+		IsToMountAtStartup: pointer.Bool(true),
+	}
+	resp2 := apiInst.Patch("/volume/"+mountPathHash+"/settings", patchBody)
+	suite.Require().Equal(http.StatusOK, resp2.Code)
+
+	var patchedMP dto.MountPointData
+	suite.NoError(json.Unmarshal(resp2.Body.Bytes(), &patchedMP))
+	suite.Equal(true, *patchedMP.IsToMountAtStartup, "Patched MountPointData should have IsToMountAtStartup=true")
+
+	// Step 3: Get volumes data again and verify the change
+	resp3 := apiInst.Get("/volumes")
+	suite.Require().Equal(http.StatusOK, resp3.Code)
+
+	var disks2 []dto.Disk
+	suite.NoError(json.Unmarshal(resp3.Body.Bytes(), &disks2))
+	suite.Require().Len(disks2, 1)
+	mp2 := (*(*disks2[0].Partitions)[partID].MountPointData)[mountPath]
+	suite.Equal(true, *mp2.IsToMountAtStartup, "GetVolumesData should reflect patched IsToMountAtStartup=true")
+
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(2)).GetVolumesData()
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mountPathHash)
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PatchMountPointSettings(mock.Any[string](), mock.Any[dto.MountPointData]())
+}

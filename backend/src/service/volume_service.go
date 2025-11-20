@@ -1030,9 +1030,23 @@ func (ms *VolumeService) UpdateMountPointSettings(path string, updates dto.Mount
 	}
 
 	updatedDto := dto.MountPointData{}
-	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &updatedDto, nil); convErr != nil {
+	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &updatedDto, *ms.GetVolumesData()); convErr != nil {
 		return nil, errors.WithStack(convErr)
 	}
+
+	// Update cached mount point data
+	if updatedDto.Partition != nil && updatedDto.Partition.DiskId != nil && updatedDto.Partition.Id != nil {
+		if disk, ok := (*ms.disks)[*updatedDto.Partition.DiskId]; ok {
+			if part, ok := (*disk.Partitions)[*updatedDto.Partition.Id]; ok {
+				if part.MountPointData != nil {
+					(*part.MountPointData)[updatedDto.Path] = updatedDto
+					(*disk.Partitions)[*updatedDto.Partition.Id] = part
+					(*ms.disks)[*updatedDto.Partition.DiskId] = disk
+				}
+			}
+		}
+	}
+
 	ms.eventBus.EmitMountPoint(events.MountPointEvent{
 		Event:      events.Event{Type: events.EventTypes.UPDATE},
 		MountPoint: &updatedDto,
@@ -1090,9 +1104,23 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 	}
 
 	currentDto := dto.MountPointData{}
-	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &currentDto, nil); convErr != nil {
+	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &currentDto, *ms.GetVolumesData()); convErr != nil {
 		return nil, errors.WithStack(convErr)
 	}
+
+	// Update cached mount point data
+	if currentDto.Partition != nil && currentDto.Partition.DiskId != nil && currentDto.Partition.Id != nil {
+		if disk, ok := (*ms.disks)[*currentDto.Partition.DiskId]; ok {
+			if part, ok := (*disk.Partitions)[*currentDto.Partition.Id]; ok {
+				if part.MountPointData != nil {
+					(*part.MountPointData)[currentDto.Path] = currentDto
+					(*disk.Partitions)[*currentDto.Partition.Id] = part
+					(*ms.disks)[*currentDto.Partition.DiskId] = disk
+				}
+			}
+		}
+	}
+
 	ms.eventBus.EmitMountPoint(events.MountPointEvent{
 		Event:      events.Event{Type: events.EventTypes.UPDATE},
 		MountPoint: &currentDto,
