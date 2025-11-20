@@ -32,7 +32,7 @@ type ConfigToDtoConverter interface {
 	// goverter:ignore Partition
 	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
 	// goverter:map IsInvalid | falseConst
-	// goverter:map IsToMountAtStartup | falsePConst
+	// goverter:map IsToMountAtStartup | truePConst
 	// goverter:map Path DeviceId | mountPathToDeviceId
 	// goverter:map Path Type | pathToType
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1

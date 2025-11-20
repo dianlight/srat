@@ -72,7 +72,7 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share) (*
 	}
 	dtoMountPointData.IsMounted = xbool
 	dtoMountPointData.IsInvalid = falseConst()
-	dtoMountPointData.IsToMountAtStartup = falsePConst()
+	dtoMountPointData.IsToMountAtStartup = truePConst()
 	dtoMountPointData.IsWriteSupported = isWriteSupported(source.Path)
 	dtoMountPointData.TimeMachineSupport = TimeMachineSupportFromFS(source.FS)
 	return &dtoMountPointData, nil

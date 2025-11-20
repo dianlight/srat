@@ -104,11 +104,11 @@ func falseConst() bool {
 	return false
 }
 
-/*
+
 func truePConst() *bool {
 	return pointer.Bool(true)
 }
-
+/*
 func trueConst() bool {
 	return true
 }

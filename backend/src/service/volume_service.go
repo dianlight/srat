@@ -757,6 +757,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 						err := self.convDto.MountPointPathToMountPointData(*dmp, &mountData, *self.GetVolumesData())
 						slog.Debug("Loaded existing mount point from repository", "device", *part.DevicePath, "path", dmp.Path,
 							"is_mounted", mountData.IsMounted,
+							"is_to_mount_at_startup", mountData.IsToMountAtStartup,
 							"path_hash", mountData.PathHash,
 							"is_writable", mountData.IsWriteSupported)
 						if err != nil {
