@@ -1051,10 +1051,37 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 		if disk, ok := (*ms.disks)[*currentDto.Partition.DiskId]; ok {
 			if part, ok := (*disk.Partitions)[*currentDto.Partition.Id]; ok {
 				if part.MountPointData != nil {
+					// Replace full mount point entry so all mutable fields (like IsToMountAtStartup) are updated
 					(*part.MountPointData)[currentDto.Path] = currentDto
 					(*disk.Partitions)[*currentDto.Partition.Id] = part
 					(*ms.disks)[*currentDto.Partition.DiskId] = disk
 				}
+			}
+		}
+	} else {
+		// Fallback: partition could not be resolved (e.g., DeviceId mismatch between repo record and hardware snapshot).
+		// Attempt best-effort update by searching mount point path across all cached partitions.
+		for dk, d := range *ms.disks {
+			if d.Partitions == nil {
+				continue
+			}
+			updated := false
+			for pid, part := range *d.Partitions {
+				if part.MountPointData == nil {
+					continue
+				}
+				if existing, ok := (*part.MountPointData)[path]; ok {
+					// Update only relevant mutable fields to avoid overwriting runtime state (IsMounted etc.)
+					existing.IsToMountAtStartup = currentDto.IsToMountAtStartup
+					(*part.MountPointData)[path] = existing
+					(*d.Partitions)[pid] = part
+					(*ms.disks)[dk] = d
+					updated = true
+					break
+				}
+			}
+			if updated {
+				break
 			}
 		}
 	}

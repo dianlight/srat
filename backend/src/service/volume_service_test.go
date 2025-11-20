@@ -708,3 +708,78 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_NoChanges() {
 	suite.Equal("btrfs", *resultDto.FSType)
 	suite.Equal(originalStartup, resultDto.IsToMountAtStartup)
 }
+
+// Ensures that after patching IsToMountAtStartup the subsequent GetVolumesData reflects the updated value.
+func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupFlagInGetVolumesData() {
+	mountPath := "/mnt/startup-test"
+	devicePath := "/dev/disk/by-id/startdisk1-part1"
+	partID := pointer.String("startup-part-1")
+	diskID := pointer.String("startup-disk-1")
+
+	// Initial DB state: IsToMountAtStartup = false
+	originalStartup := pointer.Bool(false)
+	dbData := &dbom.MountPointPath{
+		Path:               mountPath,
+		DeviceId:           devicePath, // repository is keyed by device path
+		FSType:             "ext4",
+		IsToMountAtStartup: originalStartup,
+		Type:               "ADDON",
+	}
+
+	// Hardware snapshot: one disk with one partition, no mounts (unmounted)
+	mockHW := map[string]dto.Disk{
+		*diskID: {
+			Id:     diskID,
+			Vendor: pointer.String("VEND"),
+			Model:  pointer.String("MODEL"),
+			Partitions: &map[string]dto.Partition{
+				*partID: {
+					Id:             partID,
+					DiskId:         diskID,
+					DevicePath:     pointer.String(devicePath),
+					MountPointData: &map[string]dto.MountPointData{},
+				},
+			},
+		},
+	}
+
+	// Mock repository and hardware client calls
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
+	mock.When(suite.mockMountRepo.FindByDevice(devicePath)).ThenReturn(dbData, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbData, nil).Verify(matchers.AtLeastOnce())
+	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.AtLeastOnce())
+
+	// Ensure no active mounts in procfs
+	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) { return []*procfs.MountInfo{}, nil })
+
+	// Initial load
+	disks := suite.volumeService.GetVolumesData()
+	suite.Require().NotNil(disks)
+	suite.Require().Len(*disks, 1)
+	part := (*(*disks)[0].Partitions)[*partID]
+	suite.Require().NotNil(part.MountPointData)
+	// Mount point should have been added from repository
+	mpd, ok := (*part.MountPointData)[mountPath]
+	suite.Require().True(ok, "expected mount point from repo to be present")
+	suite.Require().NotNil(mpd.IsToMountAtStartup)
+	suite.False(*mpd.IsToMountAtStartup, "expected initial IsToMountAtStartup to be false")
+	suite.False(mpd.IsMounted, "expected mount point to be unmounted")
+
+	// Patch: set IsToMountAtStartup = true
+	patchedStartup := pointer.Bool(true)
+	patch := dto.MountPointData{IsToMountAtStartup: patchedStartup}
+	resultDto, errE := suite.volumeService.PatchMountPointSettings(mountPath, patch)
+	suite.Require().Nil(errE)
+	suite.Require().NotNil(resultDto)
+	suite.Require().NotNil(resultDto.IsToMountAtStartup)
+	suite.True(*resultDto.IsToMountAtStartup, "expected patched IsToMountAtStartup to be true")
+
+	// Reload (should use cached data)
+	disksAfter := suite.volumeService.GetVolumesData()
+	suite.Require().NotNil(disksAfter)
+	partAfter := (*(*disksAfter)[0].Partitions)[*partID]
+	mpdAfter, ok := (*partAfter.MountPointData)[mountPath]
+	suite.Require().True(ok, "expected mount point to still be present after patch")
+	suite.Require().NotNil(mpdAfter.IsToMountAtStartup)
+	suite.True(*mpdAfter.IsToMountAtStartup, "expected IsToMountAtStartup to be true after patch and refresh")
+}
