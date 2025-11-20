@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/dianlight/srat/tlog"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/xorcare/pointer"
 )
@@ -104,10 +103,10 @@ func falseConst() bool {
 	return false
 }
 
-
 func truePConst() *bool {
 	return pointer.Bool(true)
 }
+
 /*
 func trueConst() bool {
 	return true
@@ -115,7 +114,7 @@ func trueConst() bool {
 */
 
 func isWriteSupported(path string) *bool {
-	tlog.Debug("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
+	//tlog.Debug("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
 	return pointer.Bool(osutil.IsWritable(path))
 
 }

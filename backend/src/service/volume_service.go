@@ -128,7 +128,7 @@ func NewVolumeService(
 			slog.Error("Failed to persist mount point on event", "mount_point", mpe.MountPoint, "err", err)
 		}
 		if mpe.MountPoint.Partition != nil && mpe.MountPoint.Partition.Id != nil {
-			slog.Info("MountPointEvent received", "type", mpe.Type, "mount_point", mpe.MountPoint.Path, "device_id", *mpe.MountPoint.Partition.Id, "is_mounted", mpe.MountPoint.IsMounted)
+			slog.Info("MountPointEvent received", "type", mpe.Type, "mount_point", mpe.MountPoint.Path, "device_id", *mpe.MountPoint.Partition.Id, "is_mounted", mpe.MountPoint.IsMounted, "is_to_mount_at_startup", mpe.MountPoint.IsToMountAtStartup)
 			if mpe.MountPoint.Partition.DiskId != nil {
 				disktmp, ok := (*p.disks)[*mpe.MountPoint.Partition.DiskId]
 				if ok {

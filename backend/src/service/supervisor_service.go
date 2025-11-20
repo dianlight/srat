@@ -91,6 +91,10 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 				slog.Error("Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
 			}
 		}
+		err := p.mountHaStorage()
+		if err != nil {
+			slog.Error("Error mounting HA storage shares", "err", err)
+		}
 	})
 
 	lc.Append(fx.Hook{
