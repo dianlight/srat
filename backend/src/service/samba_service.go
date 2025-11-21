@@ -85,7 +85,7 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 	p.dbomConv = converter.DtoToDbomConverterImpl{}
 	p.hdidle_service = in.Hdidle_service
 
-	var unsubscribe [2]func()
+	var unsubscribe [1]func()
 	unsubscribe[0] = p.eventBus.OnSamba(func(event events.SambaEvent) {
 		if event.Type == events.EventTypes.RESTART {
 			slog.Info("SambaService received RESTART event, writing and restarting Samba configuration...")

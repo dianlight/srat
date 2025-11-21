@@ -18,6 +18,7 @@ idiomatic Go API for accessing SMART information from storage devices.
   - Device information retrieval
   - SMART support detection and management
   - Self-test availability checking
+  - Standby mode detection (ATA devices only)
 
 # Prerequisites
 
@@ -69,6 +70,22 @@ Windows:
 	        }
 	    }
 	}
+
+# Standby Mode Handling
+
+For ATA devices (ata, sat, sata, scsi), the library automatically adds the
+--nocheck=standby flag to smartctl commands. This prevents waking up devices
+that are in standby/sleep mode, which is especially useful for power-saving
+scenarios.
+
+When a device is in standby mode:
+  - GetSMARTInfo will return a SMARTInfo with InStandby set to true
+  - CheckHealth will return an error indicating the device is in standby
+  - GetDeviceInfo will return an error indicating the device is in standby
+  - GetAvailableSelfTests will return an error indicating the device is in standby
+
+NVMe devices do not support standby mode detection and do not receive the
+--nocheck=standby flag.
 
 # Permissions
 

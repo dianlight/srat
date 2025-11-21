@@ -19,6 +19,7 @@ A Go library that interfaces with smartmontools to monitor and manage storage de
 - 🌡️ **Temperature Monitoring**: Track device temperature
 - ⚙️ **Self-Tests**: Initiate and monitor SMART self-tests
 - 🔧 **Device Information**: Retrieve model, serial number, firmware version, and more
+- 🔌 **USB Bridge Support**: Automatic fallback for unknown USB bridges with embedded device database
 
 ## Prerequisites
 
@@ -139,6 +140,29 @@ if err != nil {
 client := smartmontools.NewClientWithPath("/usr/local/sbin/smartctl")
 ```
 
+### USB Bridge Support
+
+The library includes automatic support for USB storage devices that use unknown USB bridges. When smartctl reports an "Unknown USB bridge" error, the library:
+
+1. **Checks embedded database**: Looks up the USB vendor:product ID in the embedded standard `drivedb.h` from smartmontools
+2. **Automatic fallback**: If found, uses the known device type; otherwise falls back to `-d sat`
+3. **Caches results**: Remembers successful device types for faster future access
+
+```go
+client, _ := smartmontools.NewClient()
+
+// Works automatically with USB bridges, even if unknown to smartctl
+info, err := client.GetSMARTInfo("/dev/disk/by-id/usb-Intenso_Memory_Center-0:0")
+if err != nil {
+    log.Fatalf("Failed to get SMART info: %v", err)
+}
+
+fmt.Printf("Model: %s\n", info.ModelName)
+fmt.Printf("Health: %v\n", info.SmartStatus.Passed)
+```
+
+The embedded database is the official smartmontools `drivedb.h` which contains USB bridge definitions from the upstream project. See [docs/drivedb.md](./docs/drivedb.md) for details.
+
 ## API Reference
 
 See [APIDOC.md](APIDOC.md) for detailed API documentation.
@@ -163,6 +187,14 @@ go run main.go
 This library uses a command-line wrapper approach, executing `smartctl` commands and parsing their JSON output. The library leverages smartmontools' built-in JSON output format for reliable and structured data extraction.
 
 While the project references libgoffi in its description, the current implementation uses the command-line interface for maximum compatibility and reliability. Future versions may incorporate direct library bindings using libgoffi for enhanced performance.
+
+📚 **For a comprehensive analysis of different SMART access approaches**, see our [Architecture Decision Record (ADR-001)](./docs/architecture/ADR-001-smart-access-approaches.md), which covers:
+- Command wrapper (current approach)
+- Direct ioctl access
+- Shared library with FFI
+- Hybrid approaches
+
+The ADR includes detailed comparisons, code examples, performance benchmarks, and recommendations for different use cases.
 
 ## Implementation details
 

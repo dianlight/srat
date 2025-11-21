@@ -182,7 +182,7 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 	suite.NoError(json.Unmarshal(resp1.Body.Bytes(), &disks1))
 	suite.Require().Len(disks1, 1)
 	mp1 := (*(*disks1[0].Partitions)[partID].MountPointData)[mountPath]
-	suite.Equal(false, *mp1.IsToMountAtStartup, "Initial IsToMountAtStartup should be false")
+	suite.False(*mp1.IsToMountAtStartup, "Initial IsToMountAtStartup should be false")
 
 	// Step 2: Patch IsToMountAtStartup to true
 	patchBody := dto.MountPointData{
@@ -195,7 +195,7 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 
 	var patchedMP dto.MountPointData
 	suite.NoError(json.Unmarshal(resp2.Body.Bytes(), &patchedMP))
-	suite.Equal(true, *patchedMP.IsToMountAtStartup, "Patched MountPointData should have IsToMountAtStartup=true")
+	suite.True(*patchedMP.IsToMountAtStartup, "Patched MountPointData should have IsToMountAtStartup=true")
 
 	// Step 3: Get volumes data again and verify the change
 	resp3 := apiInst.Get("/volumes")
@@ -205,7 +205,7 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 	suite.NoError(json.Unmarshal(resp3.Body.Bytes(), &disks2))
 	suite.Require().Len(disks2, 1)
 	mp2 := (*(*disks2[0].Partitions)[partID].MountPointData)[mountPath]
-	suite.Equal(true, *mp2.IsToMountAtStartup, "GetVolumesData should reflect patched IsToMountAtStartup=true")
+	suite.True(*mp2.IsToMountAtStartup, "GetVolumesData should reflect patched IsToMountAtStartup=true")
 
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(2)).GetVolumesData()
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mountPathHash)
