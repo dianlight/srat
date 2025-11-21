@@ -86,16 +86,9 @@ func TestDisk_WithPartitions(t *testing.T) {
 
 func TestDisk_WithSmartInfo(t *testing.T) {
 	smartInfo := dto.SmartInfo{
-		DiskType: "SATA",
-		Temperature: dto.SmartTempValue{
-			Value: 45,
-			Min:   20,
-			Max:   80,
-		},
-		PowerOnHours: dto.SmartRangeValue{
-			Value: 1000,
-			Code:  9,
-		},
+		DiskType:     "SATA",
+		RotationRate: 7200,
+		Supported:    true,
 	}
 
 	disk := dto.Disk{
@@ -104,8 +97,8 @@ func TestDisk_WithSmartInfo(t *testing.T) {
 
 	assert.NotNil(t, disk.SmartInfo)
 	assert.Equal(t, "SATA", disk.SmartInfo.DiskType)
-	assert.Equal(t, 45, disk.SmartInfo.Temperature.Value)
-	assert.Equal(t, 1000, disk.SmartInfo.PowerOnHours.Value)
+	assert.Equal(t, 7200, disk.SmartInfo.RotationRate)
+	assert.True(t, disk.SmartInfo.Supported)
 }
 
 func TestPartition_Fields(t *testing.T) {

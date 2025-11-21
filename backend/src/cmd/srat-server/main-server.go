@@ -27,7 +27,6 @@ import (
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
-	"github.com/dianlight/srat/service"
 
 	"github.com/jpillora/overseer"
 	"github.com/jpillora/overseer/fetcher"
@@ -260,7 +259,7 @@ func prog(state overseer.State) {
 		fx.Invoke(func(
 			lc fx.Lifecycle,
 			props_repo repository.PropertyRepositoryInterface,
-			samba_service service.SambaServiceInterface,
+			//samba_service service.SambaServiceInterface,
 			//			hdidle_service service.HDIdleServiceInterface,
 		) {
 			// Setting the actual LogLevel
@@ -272,13 +271,14 @@ func prog(state overseer.State) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					// Apply config to samba
-					slog.Info("******* Applying Samba config ********")
-					err = samba_service.WriteAndRestartSambaConfig()
-					if err != nil {
-						log.Fatalf("Cant apply samba config - %#+v", err)
-					}
-					slog.Info("******* Samba config applied! ********")
-
+					/*
+						slog.Info("******* Applying Samba config ********")
+						err = samba_service.WriteAndRestartSambaConfig()
+						if err != nil {
+							log.Fatalf("Cant apply samba config - %#+v", err)
+						}
+						slog.Info("******* Samba config applied! ********")
+					*/
 					return nil
 				},
 				OnStop: func(ctx context.Context) error {

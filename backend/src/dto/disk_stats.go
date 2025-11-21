@@ -2,13 +2,13 @@ package dto
 
 // DiskIOStats contains I/O statistics for a single disk.
 type DiskIOStats struct {
-	DeviceName        string     `json:"device_name"`
-	DeviceDescription string     `json:"device_description"`
-	ReadIOPS          float64    `json:"read_iops"`
-	WriteIOPS         float64    `json:"write_iops"`
-	ReadLatency       float64    `json:"read_latency_ms"`
-	WriteLatency      float64    `json:"write_latency_ms"`
-	SmartData         *SmartInfo `json:"smart_data,omitempty"`
+	DeviceName        string       `json:"device_name"`
+	DeviceDescription string       `json:"device_description"`
+	ReadIOPS          float64      `json:"read_iops"`
+	WriteIOPS         float64      `json:"write_iops"`
+	ReadLatency       float64      `json:"read_latency_ms"`
+	WriteLatency      float64      `json:"write_latency_ms"`
+	SmartData         *SmartStatus `json:"smart_data,omitempty"`
 }
 
 // GlobalDiskStats contains the aggregated I/O and latency statistics for all disks.

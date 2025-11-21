@@ -134,7 +134,6 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 					WriteIOPS:         (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Id].WriteIOs)) / (time.Since(s.lastUpdateTime).Seconds()),
 					ReadLatency:       (float64(stats.ReadTicks) - float64(s.lastStats[*disk.Id].ReadTicks)) / (float64(stats.ReadIOs) - float64(s.lastStats[*disk.Id].ReadIOs)),
 					WriteLatency:      (float64(stats.WriteTicks) - float64(s.lastStats[*disk.Id].WriteTicks)) / (float64(stats.WriteIOs) - float64(s.lastStats[*disk.Id].WriteIOs)),
-					SmartData:         disk.SmartInfo,
 				}
 				if dstat.ReadIOPS < 0 || math.IsNaN(dstat.ReadIOPS) {
 					dstat.ReadIOPS = 0
@@ -160,19 +159,17 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 				s.lastStats[*disk.Id] = &stats
 
 				// --- Smart data population ---
-				/*
-					smartStats, err := s.smartService.GetSmartInfo("/dev/" + *disk.Device)
+				if disk.DevicePath != nil {
+					smartStatus, err := s.smartService.GetSmartStatus(*disk.DevicePath)
 					if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-						slog.Warn("Error getting SMART stats", "disk", *disk.Device, "err", err)
-					} else {
-						s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStats
+						slog.Warn("Error getting SMART status", "disk", *disk.DevicePath, "err", err)
+					} else if smartStatus != nil {
+						s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStatus
 					}
-				*/
+				}
 			} else {
 				s.lastStats[*disk.Id] = &stats
-			}
-
-			// --- PerPartitionInfo population ---
+			} // --- PerPartitionInfo population ---
 			if disk.Partitions != nil {
 				for _, part := range *disk.Partitions {
 

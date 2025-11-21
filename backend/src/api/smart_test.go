@@ -80,18 +80,9 @@ func (suite *SmartHandlerSuite) TestGetSmartInfoSuccess() {
 		},
 	}
 	smartInfo := &dto.SmartInfo{
-		DiskType: "SATA",
-		Temperature: dto.SmartTempValue{
-			Value: 45,
-			Min:   30,
-			Max:   50,
-		},
-		PowerOnHours: dto.SmartRangeValue{
-			Value: 1000,
-		},
-		PowerCycleCount: dto.SmartRangeValue{
-			Value: 100,
-		},
+		DiskType:     "SATA",
+		RotationRate: 7200,
+		Supported:    true,
 	}
 
 	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
@@ -106,7 +97,8 @@ func (suite *SmartHandlerSuite) TestGetSmartInfoSuccess() {
 	var out dto.SmartInfo
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.Equal("SATA", out.DiskType)
-	suite.Equal(45, out.Temperature.Value)
+	suite.Equal(7200, out.RotationRate)
+	suite.True(out.Supported)
 
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
 	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).GetSmartInfo(devicePath)

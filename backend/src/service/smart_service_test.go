@@ -119,7 +119,7 @@ func (suite *SmartServiceSuite) TearDownTest() {
 func (suite *SmartServiceSuite) TestGetSmartInfoCacheHit() {
 	// Setup: Manually set cache
 	expectedInfo := &dto.SmartInfo{DiskType: "SATA"}
-	cacheKey := smartCacheKeyPrefix + "/dev/sda"
+	cacheKey := smartCacheKeyPrefix + "/dev/sda" + "_info"
 	suite.service.(*smartService).cache.Set(cacheKey, expectedInfo, gocache.DefaultExpiration)
 
 	// Execute
@@ -216,10 +216,8 @@ func (suite *SmartServiceSuite) TestGetSmartInfoSuccess() {
 	suite.NoError(err)
 	suite.NotNil(info)
 	suite.Equal("SATA", info.DiskType)
-	suite.True(info.Enabled)
-	suite.Equal(35, info.Temperature.Value)
-	suite.Equal(1000, info.PowerOnHours.Value)
-	suite.Equal(50, info.PowerCycleCount.Value)
+	suite.True(info.Supported)
+	// Dynamic fields like Enabled, Temperature, PowerOnHours, PowerCycleCount are now in SmartStatus
 }
 
 func (suite *SmartServiceSuite) TestGetSmartInfoWithRotationRate() {
@@ -266,10 +264,7 @@ func (suite *SmartServiceSuite) TestGetSmartInfoWithRotationRate() {
 	suite.NotNil(info)
 	suite.Equal("SATA", info.DiskType)
 	suite.Equal(7200, info.RotationRate, "RPM should be populated when > 0")
-	suite.True(info.Enabled)
-	suite.Equal(40, info.Temperature.Value)
-	suite.Equal(5000, info.PowerOnHours.Value)
-	suite.Equal(100, info.PowerCycleCount.Value)
+	suite.True(info.Supported)
 }
 
 func (suite *SmartServiceSuite) TestGetSmartInfoWithZeroRotationRate() {
@@ -316,7 +311,7 @@ func (suite *SmartServiceSuite) TestGetSmartInfoWithZeroRotationRate() {
 	suite.NotNil(info)
 	suite.Equal("SATA", info.DiskType)
 	suite.Equal(0, info.RotationRate, "RPM should not be populated when = 0 (SSD)")
-	suite.True(info.Enabled)
+	suite.True(info.Supported)
 }
 
 func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {

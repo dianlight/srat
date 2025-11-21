@@ -69,27 +69,15 @@ func TestSmartInfo_AllFields(t *testing.T) {
 	}
 
 	smart := dto.SmartInfo{
-		DiskType: "SATA",
-		Temperature: dto.SmartTempValue{
-			Value: 45,
-			Min:   20,
-			Max:   80,
-		},
-		PowerOnHours: dto.SmartRangeValue{
-			Code:  9,
-			Value: 10000,
-		},
-		PowerCycleCount: dto.SmartRangeValue{
-			Code:  12,
-			Value: 500,
-		},
-		Additional: additional,
+		DiskType:     "SATA",
+		RotationRate: 7200,
+		Supported:    true,
+		Additional:   additional,
 	}
 
 	assert.Equal(t, "SATA", smart.DiskType)
-	assert.Equal(t, 45, smart.Temperature.Value)
-	assert.Equal(t, 10000, smart.PowerOnHours.Value)
-	assert.Equal(t, 500, smart.PowerCycleCount.Value)
+	assert.Equal(t, 7200, smart.RotationRate)
+	assert.True(t, smart.Supported)
 	assert.Len(t, smart.Additional, 2)
 	assert.Contains(t, smart.Additional, "reallocated_sectors")
 	assert.Contains(t, smart.Additional, "seek_error_rate")
@@ -124,9 +112,8 @@ func TestSmartInfo_ZeroValues(t *testing.T) {
 	smart := dto.SmartInfo{}
 
 	assert.Empty(t, smart.DiskType)
-	assert.Equal(t, 0, smart.Temperature.Value)
-	assert.Equal(t, 0, smart.PowerOnHours.Value)
-	assert.Equal(t, 0, smart.PowerCycleCount.Value)
+	assert.Equal(t, 0, smart.RotationRate)
+	assert.False(t, smart.Supported)
 	assert.Nil(t, smart.Additional)
 }
 
@@ -139,6 +126,70 @@ func TestSmartInfo_EmptyAdditional(t *testing.T) {
 	assert.NotNil(t, smart.Additional)
 	assert.Empty(t, smart.Additional)
 	assert.Equal(t, "NVMe", smart.DiskType)
+}
+
+func TestSmartStatus_AllFields(t *testing.T) {
+	additional := map[string]dto.SmartRangeValue{
+		"reallocated_sectors": {
+			Code:  5,
+			Value: 0,
+		},
+		"seek_error_rate": {
+			Code:  7,
+			Value: 100,
+		},
+	}
+
+	status := dto.SmartStatus{
+		Temperature: dto.SmartTempValue{
+			Value: 45,
+			Min:   20,
+			Max:   80,
+		},
+		PowerOnHours: dto.SmartRangeValue{
+			Code:  9,
+			Value: 10000,
+		},
+		PowerCycleCount: dto.SmartRangeValue{
+			Code:  12,
+			Value: 500,
+		},
+		Enabled:    true,
+		Additional: additional,
+	}
+
+	assert.Equal(t, 45, status.Temperature.Value)
+	assert.Equal(t, 10000, status.PowerOnHours.Value)
+	assert.Equal(t, 500, status.PowerCycleCount.Value)
+	assert.True(t, status.Enabled)
+	assert.Len(t, status.Additional, 2)
+	assert.Contains(t, status.Additional, "reallocated_sectors")
+	assert.Contains(t, status.Additional, "seek_error_rate")
+	assert.Equal(t, 5, status.Additional["reallocated_sectors"].Code)
+	assert.Equal(t, 0, status.Additional["reallocated_sectors"].Value)
+	assert.Equal(t, 7, status.Additional["seek_error_rate"].Code)
+	assert.Equal(t, 100, status.Additional["seek_error_rate"].Value)
+}
+
+func TestSmartStatus_ZeroValues(t *testing.T) {
+	status := dto.SmartStatus{}
+
+	assert.Equal(t, 0, status.Temperature.Value)
+	assert.Equal(t, 0, status.PowerOnHours.Value)
+	assert.Equal(t, 0, status.PowerCycleCount.Value)
+	assert.False(t, status.Enabled)
+	assert.Nil(t, status.Additional)
+}
+
+func TestSmartStatus_EmptyAdditional(t *testing.T) {
+	status := dto.SmartStatus{
+		Enabled:    true,
+		Additional: make(map[string]dto.SmartRangeValue),
+	}
+
+	assert.NotNil(t, status.Additional)
+	assert.Empty(t, status.Additional)
+	assert.True(t, status.Enabled)
 }
 
 func TestSmartTestType_Values(t *testing.T) {

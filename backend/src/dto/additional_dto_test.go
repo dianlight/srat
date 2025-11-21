@@ -57,8 +57,7 @@ func TestDiskIOStats_AllFields(t *testing.T) {
 		WriteIOPS:         75.2,
 		ReadLatency:       2.5,
 		WriteLatency:      3.1,
-		SmartData: &dto.SmartInfo{
-			DiskType: "SATA",
+		SmartData: &dto.SmartStatus{
 			Temperature: dto.SmartTempValue{
 				Value: 35,
 			},
@@ -72,7 +71,6 @@ func TestDiskIOStats_AllFields(t *testing.T) {
 	assert.Equal(t, 2.5, stats.ReadLatency)
 	assert.Equal(t, 3.1, stats.WriteLatency)
 	assert.NotNil(t, stats.SmartData)
-	assert.Equal(t, "SATA", stats.SmartData.DiskType)
 	assert.Equal(t, 35, stats.SmartData.Temperature.Value)
 	assert.Equal(t, 0, stats.SmartData.Temperature.Min)
 	assert.Equal(t, 0, stats.SmartData.Temperature.Max)

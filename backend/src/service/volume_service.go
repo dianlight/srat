@@ -759,7 +759,7 @@ func (self *VolumeService) processNewDisk(disk dto.Disk) error {
 }
 
 // processExistingDisk updates an existing disk's refresh version and reloads mount data from DB
-func (self *VolumeService) processExistingDisk(diskId string, disk dto.Disk) error {
+func (self *VolumeService) processExistingDisk(diskId string) error {
 	existing := (*self.disks)[diskId]
 	existing.RefreshVersion = self.refreshVersion
 
@@ -946,7 +946,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 				}
 			} else {
 				// Existing disk, update refresh version and reload mount data from DB
-				if err := self.processExistingDisk(*disk.Id, disk); err != nil {
+				if err := self.processExistingDisk(*disk.Id); err != nil {
 					slog.Warn("Failed to process existing disk", "disk_id", *disk.Id, "err", err)
 					continue
 				}

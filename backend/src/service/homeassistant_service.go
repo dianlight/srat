@@ -507,9 +507,9 @@ func (s *HomeAssistantService) sendDiskIOEntity(diskIO dto.DiskIOStats) error {
 
 	// Add SMART data if available
 	if diskIO.SmartData != nil {
-		attributes["smart_temperature"] = diskIO.SmartData.Temperature
-		attributes["smart_power_on_hours"] = diskIO.SmartData.PowerOnHours
-		attributes["smart_power_cycle_count"] = diskIO.SmartData.PowerCycleCount
+		attributes["smart_temperature"] = diskIO.SmartData.Temperature.Value
+		attributes["smart_power_on_hours"] = diskIO.SmartData.PowerOnHours.Value
+		attributes["smart_power_cycle_count"] = diskIO.SmartData.PowerCycleCount.Value
 	}
 
 	// Calculate total IOPS as state
