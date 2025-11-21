@@ -12,7 +12,7 @@ import (
 
 type MountToDtoImpl struct{}
 
-func (c *MountToDtoImpl) MountToMountPointData(source *mount.MountPoint, target *dto.MountPointData, context []dto.Disk) error {
+func (c *MountToDtoImpl) MountToMountPointData(source *mount.MountPoint, target *dto.MountPointData, context *dto.DiskMap) error {
 	if source != nil {
 		if source.Path != "" {
 			target.DiskLabel = DiskLabelFromPath(source.Path)
@@ -73,6 +73,9 @@ func (c *MountToDtoImpl) MountToMountPointData(source *mount.MountPoint, target 
 				return err
 			}
 			target.IsInvalid = xbool2
+		}
+		if source.Path != "" {
+			target.IsToMountAtStartup = isToMountAtStartupFromPath(source.Path, context)
 		}
 		if source.Path != "" {
 			target.IsWriteSupported = isWriteSupported(source.Path)

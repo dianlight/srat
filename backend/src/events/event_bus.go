@@ -95,7 +95,7 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 
 // Generic internal methods for event handling
 func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func(T)) func() {
-	tlog.Debug("Registering event handler", "event", eventName)
+	tlog.Trace("Registering event handler", "event", eventName)
 	key := generateKey()
 	count := signal.AddListener(func(ctx context.Context, event T) {
 		// Panic/exception safety
@@ -104,26 +104,27 @@ func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func
 				tlog.Error("Event handler panic", "event", eventName, "panic", r)
 			}
 		}()
+		tlog.Debug("<-- Receiving events ", "event", event)
 		handler(event)
 	}, key)
 	tlog.Debug("Event handler registered", "event", eventName, "listener_count", count)
 	return func() {
 		signal.RemoveListener(key)
-		tlog.Debug("Event handler unregistered", "event", eventName, "key", key)
+		tlog.Trace("Event handler unregistered", "event", eventName, "key", key)
 	}
 }
 
-func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, eventName string, event T, logFields ...any) {
-	tlog.Debug("Emitting event", append([]any{"event", eventName}, logFields...)...)
+func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T) {
+	tlog.Debug("--> Emitting event", "event", event)
 	// Emit synchronously; recover panic inside signal dispatch and log emission errors
 	defer func() {
 		if r := recover(); r != nil {
-			tlog.Error("Panic emitting event", "event", eventName, "panic", r)
+			tlog.Error("Panic emitting event", "event", event, "panic", r)
 		}
 	}()
 	if err := signal.TryEmit(ctx, event); err != nil {
 		// We log at warn level to avoid noisy error logs for expected cancellations
-		tlog.Warn("Event emission error", "event", eventName, "error", err)
+		tlog.Warn("Event emission error", "event", event, "error", err)
 	}
 }
 
@@ -133,7 +134,7 @@ func (eb *EventBus) EmitDiskAndPartition(event DiskEvent) {
 	if event.Disk.Id != nil {
 		diskID = *event.Disk.Id
 	}
-	emitEvent(eb.disk, eb.ctx, "Disk", event, "disk", diskID)
+	emitEvent(eb.disk, eb.ctx, event)
 	if event.Disk.Partitions != nil {
 		for _, partition := range *event.Disk.Partitions {
 			tlog.Trace("Emitting Partition event for disk", "partition", partition, "disk", diskID)
@@ -154,15 +155,7 @@ func (eb *EventBus) OnDisk(handler func(DiskEvent)) func() {
 
 // Partition event methods
 func (eb *EventBus) EmitPartition(event PartitionEvent) {
-	partName := "unknown"
-	if event.Partition != nil && event.Partition.Name != nil && *event.Partition.Name != "" {
-		partName = *event.Partition.Name
-	}
-	diskID := "unknown"
-	if event.Disk != nil && event.Disk.Id != nil {
-		diskID = *event.Disk.Id
-	}
-	emitEvent(eb.partition, eb.ctx, "Partition", event, "partition", partName, "disk", diskID)
+	emitEvent(eb.partition, eb.ctx, event)
 }
 
 func (eb *EventBus) OnPartition(handler func(PartitionEvent)) func() {
@@ -171,7 +164,7 @@ func (eb *EventBus) OnPartition(handler func(PartitionEvent)) func() {
 
 // Share event methods
 func (eb *EventBus) EmitShare(event ShareEvent) {
-	emitEvent(eb.share, eb.ctx, "Share", event, "share", event.Share.Name)
+	emitEvent(eb.share, eb.ctx, event)
 }
 
 func (eb *EventBus) OnShare(handler func(ShareEvent)) func() {
@@ -180,7 +173,7 @@ func (eb *EventBus) OnShare(handler func(ShareEvent)) func() {
 
 // Mount point event methods
 func (eb *EventBus) EmitMountPoint(event MountPointEvent) {
-	emitEvent(eb.mountPoint, eb.ctx, "MountPoint", event, "mount_point", event.MountPoint.Path)
+	emitEvent(eb.mountPoint, eb.ctx, event)
 }
 
 func (eb *EventBus) OnMountPoint(handler func(MountPointEvent)) func() {
@@ -193,7 +186,7 @@ func (eb *EventBus) OnMountPointUnmounted(handler func(MountPointEvent)) func() 
 
 // User event methods
 func (eb *EventBus) EmitUser(event UserEvent) {
-	emitEvent(eb.user, eb.ctx, "User", event, "user", event.User.Username)
+	emitEvent(eb.user, eb.ctx, event)
 }
 
 func (eb *EventBus) OnUser(handler func(UserEvent)) func() {
@@ -202,7 +195,7 @@ func (eb *EventBus) OnUser(handler func(UserEvent)) func() {
 
 // Setting event methods
 func (eb *EventBus) EmitSetting(event SettingEvent) {
-	emitEvent(eb.setting, eb.ctx, "Setting", event, "setting", event.Setting)
+	emitEvent(eb.setting, eb.ctx, event)
 }
 
 func (eb *EventBus) OnSetting(handler func(SettingEvent)) func() {
@@ -211,7 +204,7 @@ func (eb *EventBus) OnSetting(handler func(SettingEvent)) func() {
 
 // Samba event methods
 func (eb *EventBus) EmitSamba(event SambaEvent) {
-	emitEvent(eb.samba, eb.ctx, "Samba", event)
+	emitEvent(eb.samba, eb.ctx, event)
 }
 
 func (eb *EventBus) OnSamba(handler func(SambaEvent)) func() {
@@ -220,11 +213,7 @@ func (eb *EventBus) OnSamba(handler func(SambaEvent)) func() {
 
 // Volume event methods
 func (eb *EventBus) EmitVolume(event VolumeEvent) {
-	mp := ""
-	if event.MountPoint.Path != "" {
-		mp = event.MountPoint.Path
-	}
-	emitEvent(eb.volume, eb.ctx, "Volume", event, "operation", event.Operation, "mount_point", mp)
+	emitEvent(eb.volume, eb.ctx, event)
 }
 
 func (eb *EventBus) OnVolume(handler func(VolumeEvent)) func() {
@@ -233,7 +222,7 @@ func (eb *EventBus) OnVolume(handler func(VolumeEvent)) func() {
 
 // Dirty data event methods
 func (eb *EventBus) EmitDirtyData(event DirtyDataEvent) {
-	emitEvent(eb.dirtyData, eb.ctx, "DirtyData", event, "tracker", event.DataDirtyTracker)
+	emitEvent(eb.dirtyData, eb.ctx, event)
 }
 
 func (eb *EventBus) OnDirtyData(handler func(DirtyDataEvent)) func() {
@@ -242,7 +231,7 @@ func (eb *EventBus) OnDirtyData(handler func(DirtyDataEvent)) func() {
 
 // Home Assistant event methods
 func (eb *EventBus) EmitHomeAssistant(event HomeAssistantEvent) {
-	emitEvent(eb.homeAssistant, eb.ctx, "HomeAssistant", event)
+	emitEvent(eb.homeAssistant, eb.ctx, event)
 }
 
 func (eb *EventBus) OnHomeAssistant(handler func(HomeAssistantEvent)) func() {

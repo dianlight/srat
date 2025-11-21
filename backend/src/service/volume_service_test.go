@@ -149,7 +149,7 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	// - Initial GetVolumesData for new disks (2 partitions)
 	// - Subsequent GetVolumesData calls during mount/unmount refresh existing disks (2 partitions per call)
 	mock.When(suite.mockMountRepo.FindByDevice(device)).ThenReturn(dbomMountData, nil).Verify(matchers.AtLeastOnce())
-	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.AtLeastOnce())
+	//mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.AtLeastOnce())
 
 	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenAnswer(matchers.Answer(func(args []any) []any {
 		mp, ok := args[0].(*dbom.MountPointPath)
@@ -263,16 +263,21 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_PathEmpty() {
 	suite.Equal("Mount point path is empty", details["Message"])
 }
 
-func (suite *VolumeServiceTestSuite) TestUnmountVolume_RepoFindByPathError() {
-	mountPath := "/mnt/test1"
-	expectedErr := errors.New("database error")
+func (suite *VolumeServiceTestSuite) TestUnmountVolume_NotInCache() {
+	mountPath := "/mnt/notfound"
 
-	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(nil, expectedErr).Verify(matchers.Times(1))
-	//suite.mockMountRepo.On("FindByPath", mountPath).Return(nil, expectedErr).Once()
+	// Path not in cache (GetVolumesData was never called or path doesn't exist)
+	// UnmountVolume should attempt unmount even if path is not in cache
+	// For this test, we expect unmount to be called but the path doesn't actually exist
+	// So os.Remove will fail, but that's not an error case we return
+	suite.mockMountOps(nil, nil, func(target string, force, lazy bool) error { return nil })
+
+	// FindByPath should NOT be called with new implementation
+	// UnmountVolume uses cache first, then falls back to path-only unmount
+	// No database calls should be made unless the partition info exists in cache
 
 	err := suite.volumeService.UnmountVolume(mountPath, false, false)
-	suite.Require().NotNil(err)
-	suite.ErrorIs(err, expectedErr)
+	suite.Require().Nil(err, "Expected no error when unmounting path not in cache")
 }
 
 // --- GetVolumesData Tests ---
@@ -619,12 +624,12 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 	}
 	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
 
-	// Repo returns an existing mount configuration by device and path
-	// NOTE: Using AtLeastOnce() because GetVolumesData calls loadMountPointFromDB for existing disks,
-	// causing additional FindByDevice calls beyond the unmount operation itself
+	// Repo returns an existing mount configuration by device
+	// NOTE: Using AtLeastOnce() because GetVolumesData calls loadMountPointFromDB for existing disks
 	dbrec := &dbom.MountPointPath{Path: mountPath, DeviceId: partID, FSType: fstype, Type: "ADDON"}
 	mock.When(suite.mockMountRepo.FindByDevice(devicePath)).ThenReturn(dbrec, nil).Verify(matchers.AtLeastOnce())
-	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbrec, nil).Verify(matchers.AtLeastOnce())
+	// FindByPath is only called if we have partition info to persist (i.e., if unmount updates DB)
+	// With new implementation using cache-first approach, this may not be called
 	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.AtLeastOnce())
 
 	// Initially, procfs indicates the mount is active

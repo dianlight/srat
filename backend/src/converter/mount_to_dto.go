@@ -5,6 +5,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/u-root/u-root/pkg/mount"
+	"github.com/xorcare/pointer"
 )
 
 // goverter:converter
@@ -16,7 +17,7 @@ import (
 type MountToDto interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:ignore IsToMountAtStartup Shares InvalidError Warnings RefreshVersion
+	// goverter:ignore Shares InvalidError Warnings RefreshVersion
 	// goverter:map Data CustomFlags | stringToMountFlags
 	// goverter:map Device Type | pathToType
 	// goverter:map Device DeviceId | deviceToDeviceId
@@ -30,8 +31,9 @@ type MountToDto interface {
 	// goverter:map Device Partition | partitionFromDevice
 	// goverter:map FSType TimeMachineSupport | TimeMachineSupportFromFS
 	// goverter:map Flags Flags | uintptrToMountFlags
+	// goverter:map Path IsToMountAtStartup | isToMountAtStartupFromPath
 	// goverter:context disks
-	MountToMountPointData(source *mount.MountPoint, target *dto.MountPointData, disks []dto.Disk) error
+	MountToMountPointData(source *mount.MountPoint, target *dto.MountPointData, disks *dto.DiskMap) error
 }
 
 func stringToMountFlags(source string) (*dto.MountFlags, error) {
@@ -42,8 +44,8 @@ func stringToMountFlags(source string) (*dto.MountFlags, error) {
 }
 
 // goverter:context disks
-func partitionFromDevice(device string, disks []dto.Disk) *dto.Partition {
-	for _, d := range disks {
+func partitionFromDevice(device string, disks *dto.DiskMap) *dto.Partition {
+	for _, d := range *disks {
 		for _, p := range *d.Partitions {
 			if p.DevicePath != nil && *p.DevicePath == device {
 				return &p
@@ -51,6 +53,18 @@ func partitionFromDevice(device string, disks []dto.Disk) *dto.Partition {
 		}
 	}
 	return nil
+}
+
+// goverter:context disks
+func isToMountAtStartupFromPath(path string, disks *dto.DiskMap) *bool {
+	mp, ok := disks.GetMountPointByPath(path)
+	if !ok {
+		return pointer.Bool(false)
+	}
+	if mp.IsToMountAtStartup != nil {
+		return mp.IsToMountAtStartup
+	}
+	return pointer.Bool(false)
 }
 
 func uintptrToMountFlags(source uintptr) (*dto.MountFlags, error) {
