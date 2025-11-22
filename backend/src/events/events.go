@@ -1,12 +1,36 @@
 package events
 
 import (
+	"context"
+
 	"github.com/dianlight/srat/dto"
+	"github.com/google/uuid"
 )
 
+// eventUUIDKey is the context key for event UUID
+type eventUUIDKey struct{}
+
+// Event is the base event struct without UUID (UUID is now stored in context)
 type Event struct {
-	UUID string
 	Type EventType
+}
+
+// GetEventUUID retrieves the UUID from context
+func GetEventUUID(ctx context.Context) string {
+	if val := ctx.Value(eventUUIDKey{}); val != nil {
+		if id, ok := val.(string); ok {
+			return id
+		}
+	}
+	return ""
+}
+
+// ContextWithEventUUID returns a new context with the event UUID set
+func ContextWithEventUUID(ctx context.Context) context.Context {
+	if GetEventUUID(ctx) == "" {
+		return context.WithValue(ctx, eventUUIDKey{}, uuid.New().String())
+	}
+	return ctx
 }
 
 // DiskEvent represents a disk-related event

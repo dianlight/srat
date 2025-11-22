@@ -113,36 +113,6 @@ func isTerminalSupported() bool {
 	return isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd()) || strings.Contains(os.Getenv("TERM"), "color")
 }
 
-/*
-// supportsUnicode checks if the terminal supports Unicode characters for tree formatting
-func supportsUnicode() bool {
-	if !isTerminalSupported() {
-		return false
-	}
-
-	// Check common environment variables that indicate Unicode support
-	term := os.Getenv("TERM")
-	langVar := os.Getenv("LANG")
-	lcAll := os.Getenv("LC_ALL")
-
-	// Most modern terminals support Unicode
-	unicodeTerms := []string{"xterm", "screen", "tmux", "alacritty", "kitty", "iterm", "vscode"}
-	for _, unicodeTerm := range unicodeTerms {
-		if strings.Contains(strings.ToLower(term), unicodeTerm) {
-			return true
-		}
-	}
-
-	// Check for UTF-8 in language settings
-	if strings.Contains(strings.ToUpper(langVar), "UTF-8") ||
-		strings.Contains(strings.ToUpper(lcAll), "UTF-8") {
-		return true
-	}
-
-	// Default to true for most modern environments
-	return term != "dumb" && term != ""
-}
-*/
 
 // extractContextValues extracts key-value pairs from context
 func extractContextValues(ctx context.Context) []slog.Attr {
