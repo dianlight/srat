@@ -69,7 +69,7 @@ func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
-	smartInfo, errE := h.smartService.GetSmartInfo(devicePath)
+	smartInfo, errE := h.smartService.GetSmartInfo(ctx, devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -93,7 +93,7 @@ func (h *SmartHandler) GetSmartHealth(ctx context.Context, input *struct {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
-	healthStatus, errE := h.smartService.GetHealthStatus(devicePath)
+	healthStatus, errE := h.smartService.GetHealthStatus(ctx, devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -117,7 +117,7 @@ func (h *SmartHandler) GetSmartTestStatus(ctx context.Context, input *struct {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
-	testStatus, errE := h.smartService.GetTestStatus(devicePath)
+	testStatus, errE := h.smartService.GetTestStatus(ctx, devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -149,8 +149,8 @@ func (h *SmartHandler) StartSmartTest(ctx context.Context, input *struct {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
-	// Start the test
-	errE := h.smartService.StartSelfTest(devicePath, input.Body.TestType)
+	// Start the test (progress callback support pending upstream library capability)
+	errE := h.smartService.StartSelfTest(ctx, devicePath, input.Body.TestType)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -183,7 +183,7 @@ func (h *SmartHandler) AbortSmartTest(ctx context.Context, input *struct {
 	}
 
 	// Abort the test
-	errE := h.smartService.AbortSelfTest(devicePath)
+	errE := h.smartService.AbortSelfTest(ctx, devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -213,7 +213,7 @@ func (h *SmartHandler) EnableSmart(ctx context.Context, input *struct {
 	}
 
 	// Enable SMART
-	errE := h.smartService.EnableSMART(devicePath)
+	errE := h.smartService.EnableSMART(ctx, devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -243,7 +243,7 @@ func (h *SmartHandler) DisableSmart(ctx context.Context, input *struct {
 	}
 
 	// Disable SMART
-	errE := h.smartService.DisableSMART(devicePath)
+	errE := h.smartService.DisableSMART(ctx, devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)

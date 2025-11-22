@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"strings"
@@ -22,14 +23,14 @@ const (
 )
 
 type SmartServiceInterface interface {
-	GetSmartInfo(deviceName string) (*dto.SmartInfo, errors.E)
-	GetSmartStatus(deviceName string) (*dto.SmartStatus, errors.E)
-	GetHealthStatus(devicePath string) (*dto.SmartHealthStatus, errors.E)
-	StartSelfTest(devicePath string, testType dto.SmartTestType) errors.E
-	AbortSelfTest(devicePath string) errors.E
-	GetTestStatus(devicePath string) (*dto.SmartTestStatus, errors.E)
-	EnableSMART(devicePath string) errors.E
-	DisableSMART(devicePath string) errors.E
+	GetSmartInfo(ctx context.Context, deviceName string) (*dto.SmartInfo, errors.E)
+	GetSmartStatus(ctx context.Context, deviceName string) (*dto.SmartStatus, errors.E)
+	GetHealthStatus(ctx context.Context, devicePath string) (*dto.SmartHealthStatus, errors.E)
+	StartSelfTest(ctx context.Context, devicePath string, testType dto.SmartTestType) errors.E
+	AbortSelfTest(ctx context.Context, devicePath string) errors.E
+	GetTestStatus(ctx context.Context, devicePath string) (*dto.SmartTestStatus, errors.E)
+	EnableSMART(ctx context.Context, devicePath string) errors.E
+	DisableSMART(ctx context.Context, devicePath string) errors.E
 }
 
 type smartService struct {
@@ -74,7 +75,7 @@ func checkDeviceExists(devicePath string) errors.E {
 	return nil
 }
 
-func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E) {
+func (s *smartService) GetSmartInfo(ctx context.Context, devicePath string) (*dto.SmartInfo, errors.E) {
 	cacheKey := smartCacheKeyPrefix + devicePath + "_info"
 	// Try to get from cache first
 	if cachedInfo, found := s.cache.Get(cacheKey); found {
@@ -105,7 +106,7 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 	}
 
 	// Get SMART information using smartmontools-go
-	smartInfo, err := s.client.GetSMARTInfo(nil, devicePath)
+	smartInfo, err := s.client.GetSMARTInfo(ctx, devicePath)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "No such device") || strings.Contains(err.Error(), "SMART Not Supported") {
 			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", err.Error())
@@ -186,7 +187,7 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 }
 
 // GetSmartStatus returns dynamic SMART status data for a device
-func (s *smartService) GetSmartStatus(devicePath string) (*dto.SmartStatus, errors.E) {
+func (s *smartService) GetSmartStatus(ctx context.Context, devicePath string) (*dto.SmartStatus, errors.E) {
 	cacheKey := smartCacheKeyPrefix + devicePath + "_status"
 	// Try to get from cache first
 	if cachedStatus, found := s.cache.Get(cacheKey); found {
@@ -217,7 +218,7 @@ func (s *smartService) GetSmartStatus(devicePath string) (*dto.SmartStatus, erro
 	}
 
 	// Get SMART information using smartmontools-go
-	smartInfo, err := s.client.GetSMARTInfo(nil, devicePath)
+	smartInfo, err := s.client.GetSMARTInfo(ctx, devicePath)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "No such device") || strings.Contains(err.Error(), "SMART Not Supported") {
 			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", err.Error())
@@ -336,14 +337,14 @@ func (s *smartService) GetSmartStatus(devicePath string) (*dto.SmartStatus, erro
 }
 
 // GetHealthStatus returns the health status of a device by evaluating SMART attributes
-func (s *smartService) GetHealthStatus(devicePath string) (*dto.SmartHealthStatus, errors.E) {
+func (s *smartService) GetHealthStatus(ctx context.Context, devicePath string) (*dto.SmartHealthStatus, errors.E) {
 	// Check if client is available
 	if s.client == nil {
 		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "smartctl not available")
 	}
 
 	// Get SMART status first (may return cached data)
-	smartStatus, err := s.GetSmartStatus(devicePath)
+	smartStatus, err := s.GetSmartStatus(ctx, devicePath)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +360,7 @@ func (s *smartService) GetHealthStatus(devicePath string) (*dto.SmartHealthStatu
 	}
 
 	// Use smartmontools-go to check health
-	healthy, stdErr := s.client.CheckHealth(nil, devicePath)
+	healthy, stdErr := s.client.CheckHealth(ctx, devicePath)
 	if stdErr != nil {
 		tlog.Warn("failed to check health status", "device", devicePath, "error", stdErr)
 	}
@@ -425,7 +426,7 @@ func checkSMARTHealth(smartStatus *dto.SmartStatus, _ interface{}, _ interface{}
 }
 
 // StartSelfTest initiates a SMART self-test on the device
-func (s *smartService) StartSelfTest(devicePath string, testType dto.SmartTestType) errors.E {
+func (s *smartService) StartSelfTest(ctx context.Context, devicePath string, testType dto.SmartTestType) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -453,7 +454,7 @@ func (s *smartService) StartSelfTest(devicePath string, testType dto.SmartTestTy
 	}
 
 	// Start the self-test using smartmontools-go
-	if err := s.client.RunSelfTest(nil, devicePath, testTypeStr); err != nil {
+	if err := s.client.RunSelfTest(ctx, devicePath, testTypeStr); err != nil {
 		if strings.Contains(err.Error(), "not supported") {
 			return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
 				"reason", "self-test not supported")
@@ -461,12 +462,12 @@ func (s *smartService) StartSelfTest(devicePath string, testType dto.SmartTestTy
 		return errors.Wrapf(err, "failed to start SMART self-test")
 	}
 
-	slog.Debug("SMART self-test started", "device", devicePath, "type", testType)
+	slog.DebugContext(ctx, "SMART self-test started", "device", devicePath, "type", testType)
 	return nil
 }
 
 // AbortSelfTest aborts the currently running SMART self-test on the device
-func (s *smartService) AbortSelfTest(devicePath string) errors.E {
+func (s *smartService) AbortSelfTest(ctx context.Context, devicePath string) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -481,7 +482,7 @@ func (s *smartService) AbortSelfTest(devicePath string) errors.E {
 	}
 
 	// Abort the self-test using smartmontools-go
-	if err := s.client.AbortSelfTest(nil, devicePath); err != nil {
+	if err := s.client.AbortSelfTest(ctx, devicePath); err != nil {
 		if strings.Contains(err.Error(), "not supported") {
 			return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
 				"reason", "self-test abort not supported")
@@ -489,12 +490,12 @@ func (s *smartService) AbortSelfTest(devicePath string) errors.E {
 		return errors.Wrapf(err, "failed to abort SMART self-test")
 	}
 
-	slog.Debug("SMART self-test aborted", "device", devicePath)
+	slog.DebugContext(ctx, "SMART self-test aborted", "device", devicePath)
 	return nil
 }
 
 // GetTestStatus returns the status of the currently running or last SMART self-test
-func (s *smartService) GetTestStatus(devicePath string) (*dto.SmartTestStatus, errors.E) {
+func (s *smartService) GetTestStatus(ctx context.Context, devicePath string) (*dto.SmartTestStatus, errors.E) {
 	// Check if client is available
 	if s.client == nil {
 		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", "smartctl not available")
@@ -506,7 +507,7 @@ func (s *smartService) GetTestStatus(devicePath string) (*dto.SmartTestStatus, e
 	}
 
 	// Get SMART info which includes self-test status
-	smartInfo, err := s.client.GetSMARTInfo(nil, devicePath)
+	smartInfo, err := s.client.GetSMARTInfo(ctx, devicePath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get SMART info")
 	}
@@ -543,7 +544,7 @@ func (s *smartService) GetTestStatus(devicePath string) (*dto.SmartTestStatus, e
 }
 
 // EnableSMART enables SMART functionality on the device
-func (s *smartService) EnableSMART(devicePath string) errors.E {
+func (s *smartService) EnableSMART(ctx context.Context, devicePath string) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -558,12 +559,12 @@ func (s *smartService) EnableSMART(devicePath string) errors.E {
 	}
 
 	// Enable SMART using smartmontools-go
-	if err := s.client.EnableSMART(nil, devicePath); err != nil {
+	if err := s.client.EnableSMART(ctx, devicePath); err != nil {
 		return errors.Wrapf(err, "failed to enable SMART")
 	}
 
 	// Verify SMART is now enabled
-	supportInfo, err := s.client.IsSMARTSupported(nil, devicePath)
+	supportInfo, err := s.client.IsSMARTSupported(ctx, devicePath)
 	if err != nil {
 		tlog.Warn("SMART enabled but verification failed", "device", devicePath, "error", err)
 		return errors.Wrap(err, "SMART enable succeeded but verification failed")
@@ -574,12 +575,12 @@ func (s *smartService) EnableSMART(devicePath string) errors.E {
 			"reason", "SMART enable command executed but device reports disabled")
 	}
 
-	slog.Debug("SMART enabled and verified", "device", devicePath)
+	slog.DebugContext(ctx, "SMART enabled and verified", "device", devicePath)
 	return nil
 }
 
 // DisableSMART disables SMART functionality on the device
-func (s *smartService) DisableSMART(devicePath string) errors.E {
+func (s *smartService) DisableSMART(ctx context.Context, devicePath string) errors.E {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -594,12 +595,12 @@ func (s *smartService) DisableSMART(devicePath string) errors.E {
 	}
 
 	// Disable SMART using smartmontools-go
-	if err := s.client.DisableSMART(nil, devicePath); err != nil {
+	if err := s.client.DisableSMART(ctx, devicePath); err != nil {
 		return errors.Wrapf(err, "failed to disable SMART")
 	}
 
 	// Verify SMART is now disabled (optional, for informational purposes)
-	supportInfo, err := s.client.IsSMARTSupported(nil, devicePath)
+	supportInfo, err := s.client.IsSMARTSupported(ctx, devicePath)
 	if err != nil {
 		tlog.Warn("SMART disabled but verification failed", "device", devicePath, "error", err)
 		tlog.Info("SMART disable command executed (verification failed)", "device", devicePath)
@@ -607,6 +608,10 @@ func (s *smartService) DisableSMART(devicePath string) errors.E {
 		tlog.Warn("SMART disable command executed but device still reports enabled", "device", devicePath)
 	}
 
-	slog.Debug("SMART disabled", "device", devicePath)
+	slog.DebugContext(ctx, "SMART disabled", "device", devicePath)
 	return nil
 }
+
+// StartSelfTestWithProgress initiates a SMART self-test reporting progress via callback.
+// The callback may be invoked multiple times; context cancellation aborts the test process if supported by smartmontools-go.
+// NOTE: StartSelfTestWithProgress removed pending upstream library support for progress callbacks.

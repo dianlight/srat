@@ -135,7 +135,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 				if diskDto.LegacyDeviceName != nil && *diskDto.LegacyDeviceName != "" && *device.Name == *diskDto.LegacyDeviceName {
 					diskDto.LegacyDevicePath = device.DevPath
 					diskDto.DevicePath = device.ById
-					smartInfo, errSmart := h.smartService.GetSmartInfo(*diskDto.DevicePath)
+					smartInfo, errSmart := h.smartService.GetSmartInfo(h.ctx, *diskDto.DevicePath)
 					if errSmart != nil {
 						if errors.Is(errSmart, dto.ErrorSMARTNotSupported) {
 							tlog.TraceContext(h.ctx, "SMART not supported for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id)
