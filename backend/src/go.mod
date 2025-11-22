@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/jpillora/overseer v1.1.6
 	github.com/maniartech/signals v1.3.1
-	github.com/mattn/go-isatty v0.0.20
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/pilebones/go-udev v0.9.1
 	github.com/shirou/gopsutil/v4 v4.25.10
@@ -22,19 +22,17 @@ require (
 	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
 	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/dianlight/smartmontools-go v0.1.1
+	github.com/dianlight/tlog v0.0.1
 	github.com/fatih/color v1.18.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/gorilla/websocket v1.5.3
 	github.com/jarcoal/httpmock v1.4.1
-	github.com/k0kubun/pp/v3 v3.5.0
 	github.com/lonegunmanb/go-defaults v1.4.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/procfs v0.19.2
 	github.com/rollbar/rollbar-go v1.4.8
-	github.com/samber/slog-formatter v1.2.0
 	github.com/samber/slog-http v1.9.0
-	github.com/samber/slog-multi v1.5.0
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
@@ -58,6 +56,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.149.1 // indirect
 	github.com/jmattheis/goverter v1.9.2 // indirect
+	github.com/k0kubun/pp/v3 v3.5.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
@@ -70,6 +69,8 @@ require (
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/samber/lo v1.52.0 // indirect
 	github.com/samber/slog-common v0.19.0 // indirect
+	github.com/samber/slog-formatter v1.2.0 // indirect
+	github.com/samber/slog-multi v1.6.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
@@ -148,7 +149,7 @@ require (
 
 require (
 	github.com/glebarez/sqlite v1.11.0
-	github.com/lmittmann/tint v1.1.2
+	github.com/lmittmann/tint v1.1.2 // indirect
 	github.com/moby/sys/mountinfo v0.7.2
 	github.com/ovechkin-dm/mockio/v2 v2.0.4
 	github.com/rs/cors v1.11.1

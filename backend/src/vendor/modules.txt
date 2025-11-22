@@ -84,6 +84,9 @@ github.com/davecgh/go-spew/spew
 # github.com/dianlight/smartmontools-go v0.1.1
 ## explicit; go 1.24.7
 github.com/dianlight/smartmontools-go
+# github.com/dianlight/tlog v0.0.1
+## explicit; go 1.25.0
+github.com/dianlight/tlog
 # github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 ## explicit; go 1.13
 github.com/dprotaso/go-yit
@@ -380,7 +383,7 @@ github.com/samber/slog-formatter
 # github.com/samber/slog-http v1.9.0
 ## explicit; go 1.21
 github.com/samber/slog-http
-# github.com/samber/slog-multi v1.5.0
+# github.com/samber/slog-multi v1.6.0
 ## explicit; go 1.21
 github.com/samber/slog-multi
 # github.com/sergi/go-diff v1.4.0

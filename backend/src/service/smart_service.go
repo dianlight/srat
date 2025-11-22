@@ -10,7 +10,7 @@ import (
 
 	"github.com/dianlight/smartmontools-go"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	gocache "github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"

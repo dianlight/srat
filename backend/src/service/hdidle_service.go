@@ -16,7 +16,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/repository"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 )
 
 const (

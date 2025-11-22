@@ -16,7 +16,7 @@ import (
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/internal/appsetup"
 	"github.com/dianlight/srat/server"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 
 	"go.uber.org/fx"
 )

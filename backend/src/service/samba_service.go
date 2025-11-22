@@ -19,7 +19,7 @@ import (
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tempio"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/lonegunmanb/go-defaults"
 	cache "github.com/patrickmn/go-cache"
 	"github.com/shirou/gopsutil/v4/process"

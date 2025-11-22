@@ -3,14 +3,15 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Basic Usage](#basic-usage)
-  - [Creating Logger Instances](#creating-logger-instances)
-  - [Logger Struct Features](#logger-struct-features)
-  - [Available Methods](#available-methods)
-  - [Callback Integration](#callback-integration)
-  - [Advanced Usage](#advanced-usage)
-  - [Migration from Package Functions](#migration-from-package-functions)
-- [Constructor Functions](#constructor-functions)
+- [TLog Package - Logger Struct Usage](#tlog-package---logger-struct-usage)
+  - [Basic Usage](#basic-usage)
+    - [Creating Logger Instances](#creating-logger-instances)
+    - [Logger Struct Features](#logger-struct-features)
+    - [Available Methods](#available-methods)
+    - [Callback Integration](#callback-integration)
+    - [Advanced Usage](#advanced-usage)
+    - [Migration from Package Functions](#migration-from-package-functions)
+  - [Constructor Functions](#constructor-functions)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -26,7 +27,7 @@ package main
 import (
     "context"
     "log/slog"
-    "github.com/dianlight/srat/tlog"
+    "github.com/dianlight/tlog"
 )
 
 func main() {

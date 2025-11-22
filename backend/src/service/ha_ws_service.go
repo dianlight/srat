@@ -10,7 +10,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/websocket"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 )
 
 // HaWsServiceInterface defines callbacks for Home Assistant lifecycle events

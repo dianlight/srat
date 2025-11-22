@@ -10,7 +10,7 @@ import (
 
 	_ "github.com/dianlight/srat/dbom/migrations"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/glebarez/sqlite"
 	"github.com/pressly/goose/v3"
 	"gitlab.com/tozd/go/errors"

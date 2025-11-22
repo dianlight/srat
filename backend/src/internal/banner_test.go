@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/fatih/color"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -12,7 +12,6 @@
 //	package main
 //
 //	import (
-//	    "github.com/dianlight/srat/tlog"
 //	    "gitlab.com/tozd/go/errors"
 //	)
 //

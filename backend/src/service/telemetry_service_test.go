@@ -27,7 +27,7 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/templates"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 )
 
 type TelemetryServiceSuite struct {
