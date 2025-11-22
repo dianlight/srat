@@ -1092,12 +1092,6 @@ components:
           type: boolean
         guest_ok:
           type: boolean
-        ha_status:
-          type: string
-        invalid:
-          type: boolean
-        is_ha_mounted:
-          type: boolean
         mount_point_data:
           $ref: "#/components/schemas/MountPointData"
         name:
@@ -1110,6 +1104,8 @@ components:
           type:
             - array
             - "null"
+        status:
+          $ref: "#/components/schemas/SharedResourceStatus"
         timemachine:
           type: boolean
         timemachine_max_size:
@@ -1132,6 +1128,16 @@ components:
           items:
             type: string
           type: array
+      type: object
+    SharedResourceStatus:
+      additionalProperties: false
+      properties:
+        is_ha_mounted:
+          default: false
+          type: boolean
+        is_valid:
+          default: false
+          type: boolean
       type: object
     SmartHealthStatus:
       additionalProperties: false
@@ -1801,8 +1807,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -1851,8 +1857,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -1901,8 +1907,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2051,8 +2057,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2240,8 +2246,8 @@ paths:
     get:
       operationId: get-api-hostname
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2283,8 +2289,8 @@ paths:
     get:
       operationId: get-issues
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2479,8 +2485,8 @@ paths:
     get:
       operationId: list-api-nics
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2565,8 +2571,8 @@ paths:
     put:
       operationId: put-api-samba-apply
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -2647,8 +2653,8 @@ paths:
     get:
       operationId: get-api-samba-status
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3177,12 +3183,6 @@ paths:
                   type: boolean
                 guest_ok:
                   type: boolean
-                ha_status:
-                  type: string
-                invalid:
-                  type: boolean
-                is_ha_mounted:
-                  type: boolean
                 mount_point_data: {}
                 name:
                   type: string
@@ -3191,6 +3191,7 @@ paths:
                 ro_users:
                   items: {}
                   type: array
+                status: {}
                 timemachine:
                   type: boolean
                 timemachine_max_size:
@@ -3226,12 +3227,6 @@ paths:
                   type: boolean
                 guest_ok:
                   type: boolean
-                ha_status:
-                  type: string
-                invalid:
-                  type: boolean
-                is_ha_mounted:
-                  type: boolean
                 mount_point_data: {}
                 name:
                   type: string
@@ -3240,6 +3235,7 @@ paths:
                 ro_users:
                   items: {}
                   type: array
+                status: {}
                 timemachine:
                   type: boolean
                 timemachine_max_size:
@@ -3463,8 +3459,8 @@ paths:
     get:
       operationId: list-api-shares
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3510,8 +3506,8 @@ paths:
     get:
       operationId: sse
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4239,8 +4235,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4342,8 +4338,8 @@ paths:
     get:
       operationId: list-api-volumes
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:

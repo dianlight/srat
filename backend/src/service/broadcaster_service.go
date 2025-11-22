@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/tlog"
 	"github.com/teivah/broadcast"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 
 	"github.com/danielgtaylor/huma/v2/sse"
@@ -84,35 +85,39 @@ func NewBroadcasterService(
 func (broker *BroadcasterService) setupEventListeners() []func() {
 	ret := make([]func(), 4)
 	// Listen for disk events
-	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) {
+	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
 		diskID := "unknown"
 		if event.Disk.Id != nil {
 			diskID = *event.Disk.Id
 		}
 		slog.DebugContext(ctx, "BroadcasterService received Disk event", "disk", diskID)
 		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
+		return nil
 	})
 
 	// Listen for partition events
-	ret[1] = broker.eventBus.OnPartition(func(ctx context.Context, event events.PartitionEvent) {
+	ret[1] = broker.eventBus.OnPartition(func(ctx context.Context, event events.PartitionEvent) errors.E {
 		partName := "unknown"
 		if event.Partition.Name != nil {
 			partName = *event.Partition.Name
 		}
 		slog.DebugContext(ctx, "BroadcasterService received Partition event", "partition", partName)
 		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
+		return nil
 	})
 
 	// Listen for share events
-	ret[2] = broker.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
+	ret[2] = broker.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received Share event", "share", event.Share.Name)
 		broker.BroadcastMessage(*event.Share)
+		return nil
 	})
 
 	// Listen for mount point events
-	ret[3] = broker.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) {
+	ret[3] = broker.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received MountPointMounted event", "mount_point", event.MountPoint.Path)
 		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
+		return nil
 	})
 
 	return ret

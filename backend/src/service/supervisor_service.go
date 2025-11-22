@@ -57,31 +57,36 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 	p.share_service = in.ShareService
 	p.eventBus = in.EventBus
 	unsubscribe := make([]func(), 3)
-	unsubscribe[0] = p.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) {
+	unsubscribe[0] = p.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) errors.E {
 		slog.DebugContext(ctx, "DirtyDataService received DirtyData event", "tracker", event.DataDirtyTracker)
 		if event.Type == events.EventTypes.CLEAN {
 			p.mountHaStorage()
 		}
+		return nil
 	})
-	unsubscribe[1] = p.eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
+	unsubscribe[1] = p.eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) errors.E {
 		if event.Type == events.EventTypes.START {
 			err := p.mountHaStorage()
 			if err != nil {
 				slog.ErrorContext(ctx, "Error mounting HA storage shares", "err", err)
+				return err
 			}
 		}
+		return nil
 	})
-	unsubscribe[2] = p.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
+	unsubscribe[2] = p.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 		if event.Type == events.EventTypes.REMOVE {
 			err := p.NetworkUnmountShare(event.Share.Name)
 			if err != nil {
 				slog.ErrorContext(ctx, "Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
+				return err
 			}
 		} else if event.Type == events.EventTypes.UPDATE &&
 			(event.Share.Disabled != nil && *event.Share.Disabled == true) {
 			err := p.NetworkUnmountShare(event.Share.Name)
 			if err != nil {
 				slog.ErrorContext(ctx, "Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
+				return err
 			}
 		} else if event.Type == events.EventTypes.UPDATE &&
 			(event.Share.Usage == dto.UsageAsInternal ||
@@ -89,12 +94,15 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 			err := p.NetworkUnmountShare(event.Share.Name)
 			if err != nil {
 				slog.ErrorContext(ctx, "Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
+				return err
 			}
 		}
 		err := p.mountHaStorage()
 		if err != nil {
 			slog.ErrorContext(ctx, "Error mounting HA storage shares", "err", err)
+			return err
 		}
+		return nil
 	})
 
 	lc.Append(fx.Hook{

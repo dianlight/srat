@@ -27,7 +27,7 @@ type ShareServiceInterface interface {
 	DeleteShare(name string) errors.E
 	DisableShare(name string) (*dto.SharedResource, errors.E)
 	EnableShare(name string) (*dto.SharedResource, errors.E)
-	//GetShareFromPath(path string) (*dto.SharedResource, errors.E)
+	GetShareFromPath(path string) (*dto.SharedResource, errors.E)
 	SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E)
 	//NotifyClient()
 	VerifyShare(share *dto.SharedResource) errors.E
@@ -62,17 +62,27 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		sharesQueueMutex:    &sync.RWMutex{},
 		dbomConv:            converter.DtoToDbomConverterImpl{},
 	}
-	unsubscribe := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) {
+	unsubscribe := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.InfoContext(ctx, "Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
-		_, errs := s.SetShareFromPathEnabled(event.MountPoint.Path, event.MountPoint.IsMounted)
-		if errs != nil {
-			if errors.Is(errs, gorm.ErrRecordNotFound) {
+		share, err := s.GetShareFromPath(event.MountPoint.Path)
+		if err != nil {
+			if errors.Is(err, dto.ErrorShareNotFound) {
 				tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
-				return
+				return nil
 			}
-			slog.ErrorContext(ctx, "Error updating share status from mount event", "err", errs)
+			return err // This will propagate ErrorShareNotFound
 		}
+		if share == nil {
+			tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
+			return nil
+		}
+		s.eventBus.EmitShare(events.ShareEvent{
+			Event: events.Event{Type: events.EventTypes.UPDATE},
+			Share: share, // Let subscribers fetch the share if needed
+		})
+		return nil
 	})
+
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
 			if os.Getenv("SRAT_MOCK") == "true" {
@@ -308,6 +318,30 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 		return errors.Wrap(err, "failed to delete mount point")
 	}
 	return nil
+}
+
+func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, errors.E) {
+	share, err := s.exported_share_repo.FindByMountPath(path)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorShareNotFound)
+		}
+		return nil, errors.Wrap(err, "failed to get share by mount path")
+	}
+	if share == nil {
+		return nil, errors.WithStack(dto.ErrorShareNotFound)
+	}
+	var conv converter.DtoToDbomConverterImpl
+	dtoShare, errS := conv.ExportedShareToSharedResource(*share)
+	if errS != nil {
+		return nil, errors.Wrap(errS, "failed to convert share")
+	}
+
+	if err := s.VerifyShare(&dtoShare); err != nil {
+		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
+	}
+
+	return &dtoShare, nil
 }
 
 func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E) {

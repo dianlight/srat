@@ -86,17 +86,19 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 	p.hdidle_service = in.Hdidle_service
 
 	var unsubscribe [1]func()
-	unsubscribe[0] = p.eventBus.OnSamba(func(ctx context.Context, event events.SambaEvent) {
+	unsubscribe[0] = p.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) errors.E {
 		if event.Type == events.EventTypes.RESTART {
 			slog.InfoContext(ctx, "SambaService received RESTART event, writing and restarting Samba configuration...")
 			if err := p.WriteAndRestartSambaConfig(); err != nil {
 				slog.ErrorContext(ctx, "Error writing and restarting Samba configuration", "error", err)
-				p.eventBus.EmitDirtyData(events.DirtyDataEvent{
-					Event:            events.Event{Type: events.EventTypes.RESTART},
+				p.eventBus.EmitSamba(events.SambaEvent{
+					Event:            events.Event{Type: events.EventTypes.ERROR},
 					DataDirtyTracker: event.DataDirtyTracker,
 				})
+				return err
 			}
 		}
+		return nil
 	})
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
@@ -346,7 +348,7 @@ func (self *SambaService) RestartSambaService() errors.E {
 					slog.ErrorContext(ctx, "Error reloading smbd config", "error", err, "output", string(outSmbd))
 				}
 			}
-			self.eventBus.EmitDirtyData(events.DirtyDataEvent{
+			self.eventBus.EmitSamba(events.SambaEvent{
 				Event:            events.Event{Type: events.EventTypes.CLEAN},
 				DataDirtyTracker: dto.DataDirtyTracker{},
 			})

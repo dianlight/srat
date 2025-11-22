@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xorcare/pointer"
+	"gitlab.com/tozd/go/errors"
 )
 
 func TestEventBusDisk(t *testing.T) {
@@ -22,9 +23,10 @@ func TestEventBusDisk(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
+	unsubscribe := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
 		receivedEvent = &event
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe()
 
@@ -61,9 +63,10 @@ func TestEventBusPartition(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnPartition(func(ctx context.Context, event PartitionEvent) {
+	unsubscribe := bus.OnPartition(func(ctx context.Context, event PartitionEvent) errors.E {
 		receivedEvent = &event
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe()
 
@@ -102,9 +105,10 @@ func TestEventBusShare(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnShare(func(ctx context.Context, event ShareEvent) {
+	unsubscribe := bus.OnShare(func(ctx context.Context, event ShareEvent) errors.E {
 		receivedEvent = &event
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe()
 
@@ -139,9 +143,10 @@ func TestEventBusMountPoint(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnMountPoint(func(ctx context.Context, event MountPointEvent) {
+	unsubscribe := bus.OnMountPoint(func(ctx context.Context, event MountPointEvent) errors.E {
 		receivedEvent = &event
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe()
 
@@ -176,21 +181,24 @@ func TestEventBusMultipleListeners(t *testing.T) {
 	wg.Add(3)
 
 	// Register three listeners
-	unsubscribe1 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
+	unsubscribe1 := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
 		counter.Add(1)
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe1()
 
-	unsubscribe2 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
+	unsubscribe2 := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
 		counter.Add(1)
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe2()
 
-	unsubscribe3 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
+	unsubscribe3 := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
 		counter.Add(1)
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe3()
 
@@ -224,9 +232,10 @@ func TestEventBusUnsubscribe(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
+	unsubscribe := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
 		counter.Add(1)
 		wg.Done()
+		return nil
 	})
 
 	// Unsubscribe before emitting
@@ -268,30 +277,33 @@ func TestEventBusOneEmitMultipleListeners(t *testing.T) {
 	wg.Add(3)
 
 	// Register three listeners that track their received events
-	unsubscribe1 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
+	unsubscribe1 := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
 		mu.Lock()
 		receivedDiskIDs[0] = *event.Disk.Id
 		mu.Unlock()
 		listener1Received.Store(true)
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe1()
 
-	unsubscribe2 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
+	unsubscribe2 := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
 		mu.Lock()
 		receivedDiskIDs[1] = *event.Disk.Id
 		mu.Unlock()
 		listener2Received.Store(true)
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe2()
 
-	unsubscribe3 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
+	unsubscribe3 := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
 		mu.Lock()
 		receivedDiskIDs[2] = *event.Disk.Id
 		mu.Unlock()
 		listener3Received.Store(true)
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe3()
 
@@ -337,9 +349,10 @@ func TestEventBusUUIDGeneration(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnShare(func(ctx context.Context, event ShareEvent) {
+	unsubscribe := bus.OnShare(func(ctx context.Context, event ShareEvent) errors.E {
 		receivedEvent = &event
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe()
 
@@ -384,9 +397,10 @@ func TestEventBusUUIDNotOverwritten(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnShare(func(ctx context.Context, event ShareEvent) {
+	unsubscribe := bus.OnShare(func(ctx context.Context, event ShareEvent) errors.E {
 		receivedEvent = &event
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe()
 
@@ -429,20 +443,22 @@ func TestEventBusMultipleListenersGetSameUUID(t *testing.T) {
 	wg.Add(2)
 
 	// Register first listener
-	unsubscribe1 := bus.OnShare(func(ctx context.Context, event ShareEvent) {
+	unsubscribe1 := bus.OnShare(func(ctx context.Context, event ShareEvent) errors.E {
 		mu.Lock()
 		listener1Received = true
 		mu.Unlock()
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe1()
 
 	// Register second listener
-	unsubscribe2 := bus.OnShare(func(ctx context.Context, event ShareEvent) {
+	unsubscribe2 := bus.OnShare(func(ctx context.Context, event ShareEvent) errors.E {
 		mu.Lock()
 		listener2Received = true
 		mu.Unlock()
 		wg.Done()
+		return nil
 	})
 	defer unsubscribe2()
 

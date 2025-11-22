@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -115,8 +116,9 @@ func TestHaWsService_OnConnected(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 1)
-	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) errors.E {
 		eventReceived <- event
+		return nil
 	})
 
 	app := fxtest.New(t,
@@ -192,8 +194,9 @@ func TestHaWsService_OnDisconnected(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 1)
-	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) errors.E {
 		eventReceived <- event
+		return nil
 	})
 
 	app := fxtest.New(t,
@@ -261,8 +264,9 @@ func TestHaWsService_OnHaStarted(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 1)
-	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) errors.E {
 		eventReceived <- event
+		return nil
 	})
 
 	app := fxtest.New(t,
@@ -340,8 +344,9 @@ func TestHaWsService_OnHaStopped(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 1)
-	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) errors.E {
 		eventReceived <- event
+		return nil
 	})
 
 	app := fxtest.New(t,
@@ -414,8 +419,9 @@ func TestHaWsService_ConnectAndDisconnectSequence(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 10)
-	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) errors.E {
 		eventReceived <- event
+		return nil
 	})
 
 	app := fxtest.New(t,
@@ -590,8 +596,9 @@ func TestHaWsService_MultipleConnectionEvents(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 10)
-	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) errors.E {
 		eventReceived <- event
+		return nil
 	})
 
 	app := fxtest.New(t,

@@ -8,6 +8,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/tlog"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
 
@@ -31,24 +32,34 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 
 	unsubscribe := make([]func(), 4)
 	if eventBus != nil {
-		unsubscribe[0] = eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
+		unsubscribe[0] = eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 			slog.DebugContext(ctx, "DirtyDataService received Share event", "share", event.Share.Name)
 			p.setDirtyShares()
+			return nil
 		})
-		unsubscribe[1] = eventBus.OnUser(func(ctx context.Context, event events.UserEvent) {
+		unsubscribe[1] = eventBus.OnUser(func(ctx context.Context, event events.UserEvent) errors.E {
 			slog.DebugContext(ctx, "DirtyDataService received User event", "user", event.User.Username)
 			p.setDirtyUsers()
+			return nil
 		})
-		unsubscribe[2] = eventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) {
+		unsubscribe[2] = eventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) errors.E {
 			slog.DebugContext(ctx, "DirtyDataService received Setting event", "setting", event.Setting)
 			p.setDirtySettings()
+			return nil
 		})
-		unsubscribe[3] = eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) {
-			slog.DebugContext(ctx, "DirtyDataService received DirtyData event", "tracker", event.DataDirtyTracker)
+		unsubscribe[3] = eventBus.OnSamba(func(ctx context.Context, event events.SambaEvent) errors.E {
+			slog.DebugContext(ctx, "DirtyDataService received Samba event", "tracker", event.DataDirtyTracker)
 			if event.Type == events.EventTypes.CLEAN {
 				p.resetDirtyStatus()
 			}
+			return nil
 		})
+		/*
+			unsubscribe[4] = eventBus.OnMountPoint(func(ctx context.Context, mpe events.MountPointEvent) {
+				slog.DebugContext(ctx, "DirtyDataService received MountPoint event", "mountpoint", mpe.MountPoint.Path)
+				p.setDirtyShares()
+			})
+		*/
 	}
 
 	lc.Append(fx.Hook{
@@ -79,7 +90,7 @@ func (p *DirtyDataService) startTimer() {
 	})
 
 	p.timer = time.AfterFunc(5*time.Second, func() {
-		p.eventBus.EmitSamba(events.SambaEvent{
+		p.eventBus.EmitDirtyData(events.DirtyDataEvent{
 			Event:            events.Event{Type: events.EventTypes.RESTART},
 			DataDirtyTracker: p.dataDirtyTracker,
 		})

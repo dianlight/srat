@@ -118,14 +118,15 @@ func NewVolumeService(
 	}
 
 	var unsubscribe [2]func()
-	unsubscribe[0] = p.eventBus.OnMountPoint(func(ctx context.Context, mpe events.MountPointEvent) {
+	unsubscribe[0] = p.eventBus.OnMountPoint(func(ctx context.Context, mpe events.MountPointEvent) errors.E {
 		// Avoid recursive refresh loops: skip handling mount events while we are refreshing volumes
 		if p.refreshing.Load() {
-			return
+			return nil
 		}
 		err := p.persistMountPoint(mpe.MountPoint)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to persist mount point on event", "mount_point", mpe.MountPoint, "err", err)
+			return err
 		}
 		if mpe.MountPoint.Partition != nil && mpe.MountPoint.Partition.Id != nil {
 			slog.InfoContext(ctx, "MountPointEvent received", "type", mpe.Type, "mount_point", mpe.MountPoint.Path, "device_id", *mpe.MountPoint.Partition.Id, "is_mounted", mpe.MountPoint.IsMounted, "is_to_mount_at_startup", mpe.MountPoint.IsToMountAtStartup)
@@ -139,6 +140,7 @@ func NewVolumeService(
 		err = p.getVolumesData()
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to refresh volumes data on mount point event", "err", err)
+			return err
 		}
 		if !mpe.MountPoint.IsMounted && mpe.Type == events.EventTypes.ADD && mpe.MountPoint.IsToMountAtStartup != nil && *mpe.MountPoint.IsToMountAtStartup {
 			err = p.MountVolume(mpe.MountPoint)
@@ -147,14 +149,16 @@ func NewVolumeService(
 				p.createAutomountFailureNotification(mpe.MountPoint.Path, mpe.MountPoint.DeviceId, err)
 			}
 		}
+		return nil
 	})
-	unsubscribe[1] = p.eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) {
+	unsubscribe[1] = p.eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
 		if hae.Type == events.EventTypes.START {
 			err := p.getVolumesData()
 			if err != nil {
 				slog.ErrorContext(ctx, "Failed to refresh volumes data on Home Assistant start event", "err", err)
 			}
 		}
+		return nil
 	})
 
 	lc.Append(fx.Hook{
@@ -395,13 +399,14 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			Event:      events.Event{Type: events.EventTypes.UPDATE},
 			MountPoint: mount_data,
 		})
-
-		// Emit VolumeEvent for mount operation
-		ms.eventBus.EmitVolume(events.VolumeEvent{
-			Event:      events.Event{Type: events.EventTypes.UPDATE},
-			MountPoint: mount_data,
-			Operation:  "mount",
-		})
+		/*
+			// Emit VolumeEvent for mount operation
+			ms.eventBus.EmitVolume(events.VolumeEvent{
+				Event:      events.Event{Type: events.EventTypes.UPDATE},
+				MountPoint: mount_data,
+				Operation:  "mount",
+			})
+		*/
 	}
 
 	// Dismiss any existing failure notifications since the mount was successful

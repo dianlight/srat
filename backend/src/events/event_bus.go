@@ -2,11 +2,13 @@ package events
 
 import (
 	"context"
+
 	"fmt"
 	"sync/atomic"
 
 	"github.com/dianlight/tlog"
 	"github.com/maniartech/signals"
+	"gitlab.com/tozd/go/errors"
 )
 
 var keyCounter uint64
@@ -20,43 +22,40 @@ func generateKey() string {
 type EventBusInterface interface {
 	// Disk events
 	EmitDiskAndPartition(event DiskEvent)
-	OnDisk(handler func(context.Context, DiskEvent)) func()
+	OnDisk(handler func(context.Context, DiskEvent) errors.E) func()
 
 	// Partition events
 	EmitPartition(event PartitionEvent)
-	OnPartition(handler func(context.Context, PartitionEvent)) func()
+	OnPartition(handler func(context.Context, PartitionEvent) errors.E) func()
 
 	// Share events
 	EmitShare(event ShareEvent)
-	OnShare(handler func(context.Context, ShareEvent)) func()
-
+	OnShare(handler func(context.Context, ShareEvent) errors.E) func()
 	// Mount point events
 	EmitMountPoint(event MountPointEvent)
-	OnMountPoint(handler func(context.Context, MountPointEvent)) func()
+	OnMountPoint(handler func(context.Context, MountPointEvent) errors.E) func()
 
 	// User events
 	EmitUser(event UserEvent)
-	OnUser(handler func(context.Context, UserEvent)) func()
+	OnUser(handler func(context.Context, UserEvent) errors.E) func()
 
 	// Setting events
 	EmitSetting(event SettingEvent)
-	OnSetting(handler func(context.Context, SettingEvent)) func()
-
+	OnSetting(handler func(context.Context, SettingEvent) errors.E) func()
 	// Samba events
 	EmitSamba(event SambaEvent)
-	OnSamba(handler func(context.Context, SambaEvent)) func()
+	OnSamba(handler func(context.Context, SambaEvent) errors.E) func()
 
 	// Volume events
 	EmitVolume(event VolumeEvent)
-	OnVolume(handler func(context.Context, VolumeEvent)) func()
-
+	OnVolume(handler func(context.Context, VolumeEvent) errors.E) func()
 	// Dirty data events
 	EmitDirtyData(event DirtyDataEvent)
-	OnDirtyData(handler func(context.Context, DirtyDataEvent)) func()
+	OnDirtyData(handler func(context.Context, DirtyDataEvent) errors.E) func()
 
 	// Home Assistant events
 	EmitHomeAssistant(event HomeAssistantEvent)
-	OnHomeAssistant(handler func(context.Context, HomeAssistantEvent)) func()
+	OnHomeAssistant(handler func(context.Context, HomeAssistantEvent) errors.E) func()
 }
 
 // EventBus implements EventBusInterface using maniartech/signals SyncSignal
@@ -99,11 +98,11 @@ type EventConstraint interface {
 }
 
 // Generic internal methods for event handling
-func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func(context.Context, T)) func() {
+func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func(context.Context, T) errors.E) func() {
 	tlog.Trace("Registering event handler", append([]any{"event", eventName}, tlog.WithCaller(0)...)...)
 	key := generateKey()
 	caller := tlog.WithCaller(1)
-	count := signal.AddListener(func(ctx context.Context, event T) {
+	count := signal.AddListenerWithErr(func(ctx context.Context, event T) error {
 		// Panic/exception safety
 		defer func() {
 			if r := recover(); r != nil {
@@ -111,7 +110,7 @@ func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func
 			}
 		}()
 		tlog.DebugContext(ctx, "<-- Receiving events ", append([]any{"type", fmt.Sprintf("%T", event), "event", fmt.Sprintf("%#v", event)}, caller...)...)
-		handler(ctx, event)
+		return handler(ctx, event)
 	}, key)
 	tlog.Debug("Event handler registered", append([]any{"event", eventName, "listener_count", count}, caller...)...)
 	return func() {
@@ -158,7 +157,7 @@ func (eb *EventBus) EmitDiskAndPartition(event DiskEvent) {
 	}
 }
 
-func (eb *EventBus) OnDisk(handler func(context.Context, DiskEvent)) func() {
+func (eb *EventBus) OnDisk(handler func(context.Context, DiskEvent) errors.E) func() {
 	return onEvent(eb.disk, "Disk", handler)
 }
 
@@ -167,7 +166,7 @@ func (eb *EventBus) EmitPartition(event PartitionEvent) {
 	emitEvent(eb.partition, eb.ctx, event)
 }
 
-func (eb *EventBus) OnPartition(handler func(context.Context, PartitionEvent)) func() {
+func (eb *EventBus) OnPartition(handler func(context.Context, PartitionEvent) errors.E) func() {
 	return onEvent(eb.partition, "Partition", handler)
 }
 
@@ -176,7 +175,7 @@ func (eb *EventBus) EmitShare(event ShareEvent) {
 	emitEvent(eb.share, eb.ctx, event)
 }
 
-func (eb *EventBus) OnShare(handler func(context.Context, ShareEvent)) func() {
+func (eb *EventBus) OnShare(handler func(context.Context, ShareEvent) errors.E) func() {
 	return onEvent(eb.share, "Share", handler)
 }
 
@@ -185,11 +184,11 @@ func (eb *EventBus) EmitMountPoint(event MountPointEvent) {
 	emitEvent(eb.mountPoint, eb.ctx, event)
 }
 
-func (eb *EventBus) OnMountPoint(handler func(context.Context, MountPointEvent)) func() {
+func (eb *EventBus) OnMountPoint(handler func(context.Context, MountPointEvent) errors.E) func() {
 	return onEvent(eb.mountPoint, "MountPoint", handler)
 }
 
-func (eb *EventBus) OnMountPointUnmounted(handler func(context.Context, MountPointEvent)) func() {
+func (eb *EventBus) OnMountPointUnmounted(handler func(context.Context, MountPointEvent) errors.E) func() {
 	return onEvent(eb.mountPoint, "MountPointUnmounted", handler)
 }
 
@@ -198,7 +197,7 @@ func (eb *EventBus) EmitUser(event UserEvent) {
 	emitEvent(eb.user, eb.ctx, event)
 }
 
-func (eb *EventBus) OnUser(handler func(context.Context, UserEvent)) func() {
+func (eb *EventBus) OnUser(handler func(context.Context, UserEvent) errors.E) func() {
 	return onEvent(eb.user, "User", handler)
 }
 
@@ -207,7 +206,7 @@ func (eb *EventBus) EmitSetting(event SettingEvent) {
 	emitEvent(eb.setting, eb.ctx, event)
 }
 
-func (eb *EventBus) OnSetting(handler func(context.Context, SettingEvent)) func() {
+func (eb *EventBus) OnSetting(handler func(context.Context, SettingEvent) errors.E) func() {
 	return onEvent(eb.setting, "Setting", handler)
 }
 
@@ -216,7 +215,7 @@ func (eb *EventBus) EmitSamba(event SambaEvent) {
 	emitEvent(eb.samba, eb.ctx, event)
 }
 
-func (eb *EventBus) OnSamba(handler func(context.Context, SambaEvent)) func() {
+func (eb *EventBus) OnSamba(handler func(context.Context, SambaEvent) errors.E) func() {
 	return onEvent(eb.samba, "Samba", handler)
 }
 
@@ -225,7 +224,7 @@ func (eb *EventBus) EmitVolume(event VolumeEvent) {
 	emitEvent(eb.volume, eb.ctx, event)
 }
 
-func (eb *EventBus) OnVolume(handler func(context.Context, VolumeEvent)) func() {
+func (eb *EventBus) OnVolume(handler func(context.Context, VolumeEvent) errors.E) func() {
 	return onEvent(eb.volume, "Volume", handler)
 }
 
@@ -234,7 +233,7 @@ func (eb *EventBus) EmitDirtyData(event DirtyDataEvent) {
 	emitEvent(eb.dirtyData, eb.ctx, event)
 }
 
-func (eb *EventBus) OnDirtyData(handler func(context.Context, DirtyDataEvent)) func() {
+func (eb *EventBus) OnDirtyData(handler func(context.Context, DirtyDataEvent) errors.E) func() {
 	return onEvent(eb.dirtyData, "DirtyData", handler)
 }
 
@@ -243,6 +242,6 @@ func (eb *EventBus) EmitHomeAssistant(event HomeAssistantEvent) {
 	emitEvent(eb.homeAssistant, eb.ctx, event)
 }
 
-func (eb *EventBus) OnHomeAssistant(handler func(context.Context, HomeAssistantEvent)) func() {
+func (eb *EventBus) OnHomeAssistant(handler func(context.Context, HomeAssistantEvent) errors.E) func() {
 	return onEvent(eb.homeAssistant, "HomeAssistant", handler)
 }
