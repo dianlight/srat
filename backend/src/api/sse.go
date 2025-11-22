@@ -64,6 +64,6 @@ func (self *BrokerHandler) RegisterSse(api huma.API) {
 		dto.WebEventTypes.EVENTSHARE.String():     []dto.SharedResource{},
 	}, func(ctx context.Context, input *struct{}, send sse.Sender) {
 		self.broadcaster.ProcessHttpChannel(send)
-		slog.Debug("SSE Channel closed")
+		slog.DebugContext(ctx, "SSE Channel closed")
 	})
 }

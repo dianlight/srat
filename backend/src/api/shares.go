@@ -112,7 +112,7 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorShareAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
-		slog.Error("Failed to create share", "share_name", input.Body.Name, "error", err)
+		slog.ErrorContext(ctx, "Failed to create share", "share_name", input.Body.Name, "error", err)
 		return nil, errors.Wrapf(err, "failed to create share %s", input.Body.Name)
 	}
 
@@ -156,7 +156,7 @@ func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorShareAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
-		slog.Error("Failed to update share", "share_name", input.ShareName, "error", err)
+		slog.ErrorContext(ctx, "Failed to update share", "share_name", input.ShareName, "error", err)
 		return nil, errors.Wrapf(err, "failed to update share %s", input.ShareName)
 	}
 

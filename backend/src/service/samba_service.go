@@ -312,10 +312,9 @@ func (self *SambaService) WriteSambaConfig() errors.E {
 }
 
 func (self *SambaService) TestSambaConfig() errors.E {
-	tlog.Trace("Testing Samba configuration file", "file", self.state.SambaConfigFile)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	tlog.TraceContext(ctx, "Testing Samba configuration file", "file", self.state.SambaConfigFile)
 
 	// Check samba configuration with exec testparm -s
 	cmd := exec.CommandContext(ctx, "testparm", "-s", self.state.SambaConfigFile)
@@ -327,7 +326,6 @@ func (self *SambaService) TestSambaConfig() errors.E {
 }
 
 func (self *SambaService) RestartSambaService() errors.E {
-	tlog.Trace("Restarting Samba service")
 	process, err := self.GetSambaProcess()
 	if err != nil {
 		return errors.WithStack(err)
@@ -336,6 +334,7 @@ func (self *SambaService) RestartSambaService() errors.E {
 	if process != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
+		tlog.TraceContext(ctx, "Restarting Samba service")
 		if process.Smbd.Pid != -1 {
 			slog.InfoContext(ctx, "Reloading smbd configuration...")
 			cmdSmbdReload := exec.CommandContext(ctx, "smbcontrol", "smbd", "reload-config")
