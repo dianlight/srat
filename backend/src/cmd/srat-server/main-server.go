@@ -212,7 +212,9 @@ func prog(state overseer.State) {
 		fx.Provide(
 			func() *overseer.State { return &state },
 			server.AsHumaRoute(api.NewSSEBroker),
-			smartmontools.NewClient,
+			func() (smartmontools.SmartClient, error) {
+				return smartmontools.NewClient(smartmontools.WithLogHandler(tlog.WithLevel(tlog.LevelInfo)))
+			},
 			api.NewWebSocketBroker,
 			server.AsHumaRoute(api.NewHealthHandler),
 			server.AsHumaRoute(api.NewShareHandler),
