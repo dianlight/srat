@@ -108,7 +108,7 @@ func (self *UpgradeService) run() error {
 				})
 				ass, err := self.GetUpgradeReleaseAsset(nil)
 				if err != nil && !errors.Is(err, dto.ErrorNoUpdateAvailable) {
-					slog.Error("Error checking for updates", "err", err)
+					slog.ErrorContext(self.ctx, "Error checking for updates", "err", err)
 				}
 				if ass != nil {
 					self.notifyClient(dto.UpdateProgress{
@@ -257,7 +257,7 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 		}
 	}()
 
-	slog.Info("Starting download and extraction", "asset_name", asset.Name, "download_url", asset.BrowserDownloadURL, "temp_dir", tmpDir)
+	slog.InfoContext(self.ctx, "Starting download and extraction", "asset_name", asset.Name, "download_url", asset.BrowserDownloadURL, "temp_dir", tmpDir)
 
 	// --- Download Phase ---
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: 0})
@@ -568,7 +568,7 @@ func (self *UpgradeService) findLatestLocalBinaries(searchDir string, basePatter
 	}
 	currentExeModTime := currentExeStat.ModTime()
 
-	slog.Debug("Searching for local update binary", "searchDir", searchDir, "pattern", basePattern+"*", "currentExeModTime", currentExeModTime)
+	slog.DebugContext(self.ctx, "Searching for local update binary", "searchDir", searchDir, "pattern", basePattern+"*", "currentExeModTime", currentExeModTime)
 
 	var latestFilePaths []string
 	var latestModTime time.Time
@@ -576,7 +576,7 @@ func (self *UpgradeService) findLatestLocalBinaries(searchDir string, basePatter
 	entries, err := os.ReadDir(searchDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			slog.Warn("Local update directory does not exist", "dir", searchDir)
+			slog.WarnContext(self.ctx, "Local update directory does not exist", "dir", searchDir)
 			return []string{}, time.Time{}, errors.WithMessagef(dto.ErrorNoUpdateAvailable, "local update directory %s not found", searchDir)
 		}
 		return []string{}, time.Time{}, errors.Wrapf(err, "failed to read local update directory %s", searchDir)
@@ -585,33 +585,33 @@ func (self *UpgradeService) findLatestLocalBinaries(searchDir string, basePatter
 	foundCandidate := false
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasPrefix(entry.Name(), basePattern) {
-			slog.Debug("Skipping candidate local update binary", "path", entry.Name())
+			slog.DebugContext(self.ctx, "Skipping candidate local update binary", "path", entry.Name())
 			continue
 		}
 
 		fullPath := filepath.Join(searchDir, entry.Name())
 		info, errStat := entry.Info()
 		if errStat != nil {
-			slog.Warn("Failed to stat candidate local update file", "path", fullPath, "error", errStat)
+			slog.WarnContext(self.ctx, "Failed to stat candidate local update file", "path", fullPath, "error", errStat)
 			continue
 		}
 		if info.Mode().IsRegular() && info.ModTime().After(currentExeModTime) {
-			slog.Debug("Found potential local update binary", "path", fullPath, "modTime", info.ModTime())
+			slog.DebugContext(self.ctx, "Found potential local update binary", "path", fullPath, "modTime", info.ModTime())
 			latestFilePaths = append(latestFilePaths, fullPath)
 			latestModTime = info.ModTime()
 			foundCandidate = true
-			slog.Debug("New latest local update binary candidate", "path", latestFilePaths, "modTime", latestModTime)
+			slog.DebugContext(self.ctx, "New latest local update binary candidate", "path", latestFilePaths, "modTime", latestModTime)
 		} else {
-			slog.Debug("Ignore file", "path", fullPath, "info", info)
+			slog.DebugContext(self.ctx, "Ignore file", "path", fullPath, "info", info)
 		}
 	}
 
 	if !foundCandidate {
-		slog.Info("No new local update binary found", "searchDir", searchDir, "pattern", basePattern+"*")
+		slog.InfoContext(self.ctx, "No new local update binary found", "searchDir", searchDir, "pattern", basePattern+"*")
 		return []string{}, time.Time{}, errors.WithMessage(dto.ErrorNoUpdateAvailable, "no new local update binary found")
 	}
 
-	slog.Info("Latest local update binary selected", "path", latestFilePaths, "modTime", latestModTime)
+	slog.InfoContext(self.ctx, "Latest local update binary selected", "path", latestFilePaths, "modTime", latestModTime)
 	return latestFilePaths, latestModTime, nil
 }
 
@@ -626,17 +626,17 @@ func (self *UpgradeService) InstallUpdateLocal(updateChannel *dto.UpdateChannel)
 		return err
 	}
 
-	slog.Info("Starting local update process.")
+	slog.InfoContext(self.ctx, "Starting local update process.")
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING})
 
 	foundFilePaths, _, errFind := self.findLatestLocalBinaries(localUpdateDir, localUpdatePattern)
 	if errFind != nil {
 		errMsg := fmt.Sprintf("Local update: %s", errFind.Error())
 		if errors.Is(errFind, dto.ErrorNoUpdateAvailable) {
-			slog.Info("No local update found or directory missing.")
+			slog.InfoContext(self.ctx, "No local update found or directory missing.")
 			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE, ErrorMessage: errMsg})
 		} else {
-			slog.Error("Error finding local update binary.", "error", errFind)
+			slog.ErrorContext(self.ctx, "Error finding local update binary.", "error", errFind)
 			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errMsg})
 		}
 		return errFind
@@ -647,10 +647,10 @@ func (self *UpgradeService) InstallUpdateLocal(updateChannel *dto.UpdateChannel)
 	for _, foundFilePath := range foundFilePaths {
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, LastRelease: filepath.Base(foundFilePath)})
 		updatePkg := &UpdatePackage{CurrentExecutablePath: &foundFilePath, OtherFilesPaths: []string{}, TempDirPath: filepath.Dir(foundFilePath)}
-		slog.Info("Prepared local update package", "executable", *updatePkg.CurrentExecutablePath)
+		slog.InfoContext(self.ctx, "Prepared local update package", "executable", *updatePkg.CurrentExecutablePath)
 		err := self.InstallUpdatePackage(updatePkg)
 		if err != nil {
-			slog.Error("Error installing local update package", "error", err)
+			slog.ErrorContext(self.ctx, "Error installing local update package", "error", err)
 			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
 			aerr = errors.WithStack(err)
 		}
@@ -670,7 +670,7 @@ func (self *UpgradeService) InstallOverseerLocal(overseerUpdatePath string) erro
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
 		return err
 	}
-	slog.Info("Starting local overseer update process.", "overseerPath", overseerUpdatePath)
+	slog.InfoContext(self.ctx, "Starting local overseer update process.", "overseerPath", overseerUpdatePath)
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING})
 
 	foundFilePath, _, errFind := self.findLatestLocalBinary(localUpdateDir, localUpdatePattern)
@@ -686,7 +686,7 @@ func (self *UpgradeService) InstallOverseerLocal(overseerUpdatePath string) erro
 
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, LastRelease: filepath.Base(foundFilePath)})
 	updatePkg := &UpdatePackage{CurrentExecutablePath: &foundFilePath, OtherFilesPaths: []string{}, TempDirPath: filepath.Dir(foundFilePath)}
-	slog.Info("Prepared local overseer update package", "executable", *updatePkg.CurrentExecutablePath)
+	slog.InfoContext(self.ctx, "Prepared local overseer update package", "executable", *updatePkg.CurrentExecutablePath)
 	return self.InstallOverseerUpdate(updatePkg, overseerUpdatePath)
 }
 */

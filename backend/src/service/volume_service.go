@@ -904,7 +904,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 func (self *VolumeService) CreateBlockDevice(device string) error {
 	// Controlla se il dispositivo esiste già
 	if _, err := os.Stat(device); !os.IsNotExist(err) {
-		slog.Warn("Loop device already exists", "device", device)
+		slog.WarnContext(self.ctx, "Loop device already exists", "device", device)
 		return nil
 	}
 
@@ -1000,7 +1000,7 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 	if currentDto.Partition != nil && currentDto.Partition.DiskId != nil && currentDto.Partition.Id != nil {
 		err := ms.disks.AddMountPoint(*currentDto.Partition.DiskId, *currentDto.Partition.Id, currentDto)
 		if err != nil {
-			slog.Warn("Failed to update mount point in cache", "err", err)
+			slog.WarnContext(ms.ctx, "Failed to update mount point in cache", "err", err)
 		}
 	} else {
 		// Fallback: partition could not be resolved.
@@ -1010,7 +1010,7 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 				existing.IsToMountAtStartup = currentDto.IsToMountAtStartup
 				err := ms.disks.AddMountPoint(*existing.Partition.DiskId, *existing.Partition.Id, existing)
 				if err != nil {
-					slog.Warn("Failed to update mount point in fallback cache update", "err", err)
+					slog.WarnContext(ms.ctx, "Failed to update mount point in fallback cache update", "err", err)
 				}
 				updated = true
 			}
@@ -1028,7 +1028,7 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 						existing.IsToMountAtStartup = currentDto.IsToMountAtStartup
 						err := ms.disks.AddMountPoint(dk, pid, existing)
 						if err != nil {
-							slog.Warn("Failed to update mount point in fallback cache update", "err", err)
+							slog.WarnContext(ms.ctx, "Failed to update mount point in fallback cache update", "err", err)
 						}
 						updated = true
 						break
@@ -1051,7 +1051,7 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 // createAutomountFailureNotification creates a persistent notification for failed automount operations
 func (self *VolumeService) createAutomountFailureNotification(mountPath, device string, err errors.E) {
 	if self.haService == nil {
-		slog.Debug("Home Assistant service not available, skipping automount failure notification")
+		slog.DebugContext(self.ctx, "Home Assistant service not available, skipping automount failure notification")
 		return
 	}
 
@@ -1069,9 +1069,9 @@ func (self *VolumeService) createAutomountFailureNotification(mountPath, device 
 
 	notifyErr := self.haService.CreatePersistentNotification(notificationID, title, message)
 	if notifyErr != nil {
-		slog.Error("Failed to create automount failure notification", "mount_path", mountPath, "device", device, "err", notifyErr)
+		slog.ErrorContext(self.ctx, "Failed to create automount failure notification", "mount_path", mountPath, "device", device, "err", notifyErr)
 	} else {
-		slog.Info("Created automount failure notification", "mount_path", mountPath, "device", device, "notification_id", notificationID)
+		slog.InfoContext(self.ctx, "Created automount failure notification", "mount_path", mountPath, "device", device, "notification_id", notificationID)
 	}
 }
 
@@ -1085,9 +1085,9 @@ func (self *VolumeService) dismissAutomountNotification(deviceId string, notific
 
 	notifyErr := self.haService.DismissPersistentNotification(notificationID)
 	if notifyErr != nil {
-		slog.Warn("Failed to dismiss automount notification", "mount_path", deviceId, "notification_type", notificationType, "err", notifyErr)
+		slog.WarnContext(self.ctx, "Failed to dismiss automount notification", "mount_path", deviceId, "notification_type", notificationType, "err", notifyErr)
 	} else {
-		slog.Debug("Dismissed automount notification", "mount_path", deviceId, "notification_type", notificationType, "notification_id", notificationID)
+		slog.DebugContext(self.ctx, "Dismissed automount notification", "mount_path", deviceId, "notification_type", notificationType, "notification_id", notificationID)
 	}
 }
 

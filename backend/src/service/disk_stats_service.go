@@ -159,7 +159,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 				if disk.DevicePath != nil {
 					smartStatus, err := s.smartService.GetSmartStatus(*disk.DevicePath)
 					if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-						slog.Warn("Error getting SMART status", "disk", *disk.DevicePath, "err", err)
+						slog.WarnContext(s.ctx, "Error getting SMART status", "disk", *disk.DevicePath, "err", err)
 					} else if smartStatus != nil {
 						s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStatus
 					}

@@ -253,7 +253,7 @@ func (self *SupervisorService) NetworkUnmountShare(shareName string) errors.E {
 
 func (self *SupervisorService) mountHaStorage() errors.E {
 	if self.state.HACoreReady == false {
-		slog.Info("HA Core is not ready, skipping mountHaStorage")
+		slog.InfoContext(self.apiContext, "HA Core is not ready, skipping mountHaStorage")
 		return nil
 	}
 	shares, err := self.share_service.ListShares()
@@ -273,7 +273,7 @@ func (self *SupervisorService) mountHaStorage() errors.E {
 			case "media", "share", "backup":
 				err = self.NetworkMountShare(share)
 				if err != nil {
-					slog.Error("Mounting error", "share", share, "err", err)
+					slog.ErrorContext(self.apiContext, "Mounting error", "share", share, "err", err)
 				}
 			}
 		}
@@ -302,11 +302,11 @@ func (self *SupervisorService) NetworkUnmountAllShares() errors.E {
 			}
 		}
 		// Unmount any remaining mounts
-		slog.Info("Unmounting remaining HA mounts", "count", len(mounts))
+		slog.InfoContext(self.apiContext, "Unmounting remaining HA mounts", "count", len(mounts))
 		for name := range mounts {
 			err := self.NetworkUnmountShare(name)
 			if err != nil {
-				slog.Error("Unmounting error", "share", name, "err", err)
+				slog.ErrorContext(self.apiContext, "Unmounting error", "share", name, "err", err)
 			}
 		}
 	}

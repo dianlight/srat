@@ -51,11 +51,11 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 			if os.Getenv("SRAT_MOCK") == "true" {
 				return nil
 			}
-			slog.Info("******* Autocreating users ********")
+			slog.InfoContext(ctx, "******* Autocreating users ********")
 
 			_ha_mount_user_password_, err := us.settingService.GetValue("_ha_mount_user_password_")
 			if err != nil {
-				slog.Error("Cant get _ha_mount_user_password_ setting", "err", err)
+				slog.ErrorContext(ctx, "Cant get _ha_mount_user_password_ setting", "err", err)
 				_ha_mount_user_password_ = "changeme!"
 			} else if _ha_mount_user_password_ == nil || _ha_mount_user_password_ == "" {
 				_ha_mount_user_password_ = "changeme!"
@@ -66,11 +66,11 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 				Shell:         "/sbin/nologin",
 			})
 			if err != nil {
-				slog.Error("Cant create samba user", "err", err)
+				slog.ErrorContext(ctx, "Cant create samba user", "err", err)
 			}
 			users, err := us.userRepo.All()
 			if err != nil {
-				slog.Error("Cant load users", "err", err)
+				slog.ErrorContext(ctx, "Cant load users", "err", err)
 			}
 			if len(users) == 0 {
 				// Create adminUser
@@ -81,21 +81,21 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 				})
 				err := us.userRepo.Create(&users[0])
 				if err != nil {
-					slog.Error("Error autocreating admin user", "name", params.DefaultConfig.Username, "err", err)
+					slog.ErrorContext(ctx, "Error autocreating admin user", "name", params.DefaultConfig.Username, "err", err)
 				}
 			}
 			for _, user := range users {
-				slog.Info("Autocreating user", "name", user.Username)
+				slog.InfoContext(ctx, "Autocreating user", "name", user.Username)
 				err = unixsamba.CreateSambaUser(user.Username, user.Password, unixsamba.UserOptions{
 					CreateHome:    false,
 					SystemAccount: false,
 					Shell:         "/sbin/nologin",
 				})
 				if err != nil {
-					slog.Error("Error autocreating user", "name", user.Username, "err", err)
+					slog.ErrorContext(ctx, "Error autocreating user", "name", user.Username, "err", err)
 				}
 			}
-			slog.Info("******* Autocreating users done! ********")
+			slog.InfoContext(ctx, "******* Autocreating users done! ********")
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
