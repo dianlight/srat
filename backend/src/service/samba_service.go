@@ -337,14 +337,14 @@ func (self *SambaService) RestartSambaService() errors.E {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		if process.Smbd.Pid != -1 {
-			slog.Info("Reloading smbd configuration...")
+			slog.InfoContext(ctx, "Reloading smbd configuration...")
 			cmdSmbdReload := exec.CommandContext(ctx, "smbcontrol", "smbd", "reload-config")
 			outSmbd, err := cmdSmbdReload.CombinedOutput()
 			if err != nil {
 				if strings.Contains(string(outSmbd), "Can't find pid for destination") {
-					slog.Warn("Samba process (smbd) not found, skipping reload command.")
+					slog.WarnContext(ctx, "Samba process (smbd) not found, skipping reload command.")
 				} else {
-					slog.Error("Error reloading smbd config", "error", err, "output", string(outSmbd))
+					slog.ErrorContext(ctx, "Error reloading smbd config", "error", err, "output", string(outSmbd))
 				}
 			}
 			self.eventBus.EmitDirtyData(events.DirtyDataEvent{
@@ -354,14 +354,14 @@ func (self *SambaService) RestartSambaService() errors.E {
 		}
 
 		if process.Nmbd.Pid != -1 {
-			slog.Info("Reloading nmbd configuration...")
+			slog.InfoContext(ctx, "Reloading nmbd configuration...")
 			cmdNmbdReload := exec.CommandContext(ctx, "smbcontrol", "nmbd", "reload-config")
 			outNmbd, err := cmdNmbdReload.CombinedOutput()
 			if err != nil {
 				if strings.Contains(string(outNmbd), "Can't find pid for destination") {
-					slog.Warn("Samba process (nmbd) not found, skipping reload command.")
+					slog.WarnContext(ctx, "Samba process (nmbd) not found, skipping reload command.")
 				} else {
-					slog.Error("Error reloading nmbd config", "error", err, "output", string(outNmbd))
+					slog.ErrorContext(ctx, "Error reloading nmbd config", "error", err, "output", string(outNmbd))
 				}
 			}
 		}
@@ -370,7 +370,7 @@ func (self *SambaService) RestartSambaService() errors.E {
 			// Restart wsdd2 service using s6
 			wsdd2ServicePath := "/run/s6-rc/servicedirs/wsdd2"
 			if _, statErr := os.Stat(wsdd2ServicePath); statErr == nil {
-				slog.Info("Restarting wsdd2 service...")
+				slog.InfoContext(ctx, "Restarting wsdd2 service...")
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
@@ -380,9 +380,9 @@ func (self *SambaService) RestartSambaService() errors.E {
 					return errors.Errorf("Error restarting wsdd2 service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outWsdd2)})
 				}
 			} else if os.IsNotExist(statErr) {
-				tlog.Warn("wsdd2 service path not found, skipping restart.", "path", wsdd2ServicePath)
+				tlog.WarnContext(ctx, "wsdd2 service path not found, skipping restart.", "path", wsdd2ServicePath)
 			} else {
-				tlog.Error("Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
+				tlog.ErrorContext(ctx, "Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
 			}
 		}
 	} else {
