@@ -102,20 +102,21 @@ type EventConstraint interface {
 func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func(context.Context, T)) func() {
 	tlog.Trace("Registering event handler", append([]any{"event", eventName}, tlog.WithCaller()...)...)
 	key := generateKey()
+	caller := tlog.WithCaller()
 	count := signal.AddListener(func(ctx context.Context, event T) {
 		// Panic/exception safety
 		defer func() {
 			if r := recover(); r != nil {
-				tlog.ErrorContext(ctx, "Event handler panic", append([]any{"event", eventName, "panic", r}, tlog.WithCaller()...)...)
+				tlog.ErrorContext(ctx, "Event handler panic", append([]any{"event", eventName, "panic", r}, caller...)...)
 			}
 		}()
-		tlog.DebugContext(ctx, "<-- Receiving events ", append([]any{"event", event}, tlog.WithCaller()...)...)
+		tlog.DebugContext(ctx, "<-- Receiving events ", append([]any{"type", fmt.Sprintf("%T", event), "event", event}, caller...)...)
 		handler(ctx, event)
 	}, key)
-	tlog.Debug("Event handler registered", append([]any{"event", eventName, "listener_count", count}, tlog.WithCaller()...)...)
+	tlog.Debug("Event handler registered", append([]any{"event", eventName, "listener_count", count}, caller...)...)
 	return func() {
 		signal.RemoveListener(key)
-		tlog.Trace("Event handler unregistered", append([]any{"event", eventName, "key", key}, tlog.WithCaller()...)...)
+		tlog.Trace("Event handler unregistered", append([]any{"event", eventName, "key", key}, caller...)...)
 	}
 }
 
@@ -123,7 +124,7 @@ func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T
 	// Add UUID to context if not already present
 	ctx = ContextWithEventUUID(ctx)
 
-	tlog.DebugContext(ctx, "--> Emitting event", append([]any{"event", event}, tlog.WithCaller()...)...)
+	tlog.DebugContext(ctx, "--> Emitting event", append([]any{"type", fmt.Sprintf("%T", event), "event", event}, tlog.WithCaller()...)...)
 	// Emit synchronously; recover panic inside signal dispatch and log emission errors
 	defer func() {
 		if r := recover(); r != nil {
