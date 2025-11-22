@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xorcare/pointer"
@@ -324,5 +325,155 @@ func TestEventBusOneEmitMultipleListeners(t *testing.T) {
 		mu.Unlock()
 	case <-time.After(5 * time.Second):
 		t.Fatal("timeout waiting for all listeners to receive event")
+	}
+}
+
+// TestEventBusUUIDGeneration tests that UUID is generated for events without UUID
+func TestEventBusUUIDGeneration(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	var receivedEvent *ShareEvent
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	// Register listener
+	unsubscribe := bus.OnShare(func(event ShareEvent) {
+		receivedEvent = &event
+		wg.Done()
+	})
+	defer unsubscribe()
+
+	// Emit event with empty UUID
+	share := &dto.SharedResource{
+		Name: "test-share",
+	}
+	bus.EmitShare(ShareEvent{
+		Event: Event{
+			Type: EventTypes.ADD,
+		},
+		Share: share,
+	})
+
+	// Wait for event
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		require.NotNil(t, receivedEvent)
+		assert.NotEmpty(t, receivedEvent.UUID, "UUID should be generated")
+		// Verify it's a valid UUID format
+		_, err := uuid.Parse(receivedEvent.UUID)
+		assert.NoError(t, err, "Generated UUID should be valid")
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for event")
+	}
+}
+
+// TestEventBusUUIDNotOverwritten tests that pre-set UUID is not overwritten
+func TestEventBusUUIDNotOverwritten(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	var receivedEvent *ShareEvent
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	// Register listener
+	unsubscribe := bus.OnShare(func(event ShareEvent) {
+		receivedEvent = &event
+		wg.Done()
+	})
+	defer unsubscribe()
+
+	presetUUID := "550e8400-e29b-41d4-a716-446655440000"
+
+	// Emit event with preset UUID
+	share := &dto.SharedResource{
+		Name: "test-share",
+	}
+	bus.EmitShare(ShareEvent{
+		Event: Event{
+			UUID: presetUUID,
+			Type: EventTypes.ADD,
+		},
+		Share: share,
+	})
+
+	// Wait for event
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		require.NotNil(t, receivedEvent)
+		assert.Equal(t, presetUUID, receivedEvent.UUID, "Pre-set UUID should not be overwritten")
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for event")
+	}
+}
+
+// TestEventBusMultipleListenersGetSameUUID tests that multiple listeners receive the same UUID
+func TestEventBusMultipleListenersGetSameUUID(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	var uuid1, uuid2 string
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// Register first listener
+	unsubscribe1 := bus.OnShare(func(event ShareEvent) {
+		mu.Lock()
+		uuid1 = event.UUID
+		mu.Unlock()
+		wg.Done()
+	})
+	defer unsubscribe1()
+
+	// Register second listener
+	unsubscribe2 := bus.OnShare(func(event ShareEvent) {
+		mu.Lock()
+		uuid2 = event.UUID
+		mu.Unlock()
+		wg.Done()
+	})
+	defer unsubscribe2()
+
+	// Emit event with empty UUID
+	share := &dto.SharedResource{
+		Name: "test-share",
+	}
+	bus.EmitShare(ShareEvent{
+		Event: Event{
+			Type: EventTypes.ADD,
+		},
+		Share: share,
+	})
+
+	// Wait for all listeners
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		mu.Lock()
+		assert.NotEmpty(t, uuid1, "UUID should be generated for listener 1")
+		assert.NotEmpty(t, uuid2, "UUID should be generated for listener 2")
+		assert.Equal(t, uuid1, uuid2, "Both listeners should receive the same UUID")
+		mu.Unlock()
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for events")
 	}
 }

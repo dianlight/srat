@@ -3,9 +3,11 @@ package events
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync/atomic"
 
 	"github.com/dianlight/srat/tlog"
+	"github.com/google/uuid"
 	"github.com/maniartech/signals"
 )
 
@@ -93,6 +95,46 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 	}
 }
 
+// EventConstraint ensures that T embeds Event
+type EventConstraint interface {
+	GetEvent() *Event
+}
+
+// Helper function to set UUID on Event if it's embedded in T
+// Note: This modifies the event in place through reflection
+func setEventUUID[T any](event *T) {
+	if event == nil {
+		return
+	}
+	val := reflect.ValueOf(event).Elem()
+	eventField := val.FieldByName("Event")
+	if eventField.IsValid() && eventField.Kind() == reflect.Struct {
+		uuidField := eventField.FieldByName("UUID")
+		if uuidField.IsValid() && uuidField.CanSet() && uuidField.Kind() == reflect.String {
+			if uuidField.String() == "" {
+				uuidField.SetString(uuid.New().String())
+			}
+		}
+	}
+}
+
+// Helper function to get Event from any type that embeds it
+func getEvent[T any](event T) *Event {
+	// Use reflection to get the Event field
+	val := reflect.ValueOf(event)
+	if val.Kind() == reflect.Pointer {
+		val = val.Elem()
+	}
+	eventField := val.FieldByName("Event")
+	if !eventField.IsValid() {
+		return nil
+	}
+	if e, ok := eventField.Interface().(Event); ok {
+		return &e
+	}
+	return nil
+}
+
 // Generic internal methods for event handling
 func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func(T)) func() {
 	tlog.Trace("Registering event handler", "event", eventName)
@@ -115,6 +157,11 @@ func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func
 }
 
 func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T) {
+	// Generate UUID if Event is embedded in T
+	if e := getEvent(event); e != nil && e.UUID == "" {
+		setEventUUID(&event)
+	}
+
 	tlog.Debug("--> Emitting event", "event", event)
 	// Emit synchronously; recover panic inside signal dispatch and log emission errors
 	defer func() {

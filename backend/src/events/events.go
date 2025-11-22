@@ -5,6 +5,7 @@ import (
 )
 
 type Event struct {
+	UUID string
 	Type EventType
 }
 
