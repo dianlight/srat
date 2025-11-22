@@ -52,7 +52,7 @@ func Up00009(ctx context.Context, db *sql.DB) error {
 		// use json to serialize value
 		sqlvalue, err := json.Marshal(newvalue.Interface())
 		if err != nil {
-			slog.Warn("Error marshaling default property", "key", key, "error", err)
+			slog.WarnContext(ctx, "Error marshaling default property", "key", key, "error", err)
 			continue
 		}
 
@@ -61,7 +61,7 @@ func Up00009(ctx context.Context, db *sql.DB) error {
 		} else {
 			affected, _ := r.RowsAffected()
 			if affected > 0 {
-				slog.Info("Writing default property", "key", key, "value", string(sqlvalue))
+				slog.InfoContext(ctx, "Writing default property", "key", key, "value", string(sqlvalue))
 			}
 			//log.Printf("Inserted rows: %d", affected)
 		}

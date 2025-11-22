@@ -19,7 +19,7 @@ func Up00008(ctx context.Context, db *sql.DB) error {
 
 	_ha_mount_user_password_, errc := osutil.GenerateSecurePassword()
 	if errc != nil {
-		slog.Error("Cant generate password", "errc", errc)
+		slog.ErrorContext(ctx, "Cant generate password", "errc", errc)
 		_ha_mount_user_password_ = "changeme"
 	}
 
