@@ -38,7 +38,7 @@ jobs:
     name: Set version
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 0 # fetch-depth: 0 is required for git commands to see all history/tags
 
@@ -206,7 +206,7 @@ jobs:
       coverage: ${{ steps.extract_coverage.outputs.backend_coverage }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 0
 
@@ -260,7 +260,7 @@ jobs:
       coverage: ${{ steps.extract_coverage.outputs.frontend_coverage }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 0
 
@@ -317,7 +317,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -363,7 +363,7 @@ jobs:
       ROLLBAR_ENVIRONMENT: "production"
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 0
 
@@ -492,7 +492,7 @@ jobs:
           github.event_name == 'release' &&
           github.event.action == 'published' &&
           !contains(needs.setversion.outputs.version, '-dev')
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           ref: main
           fetch-depth: 1
