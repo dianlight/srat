@@ -62,7 +62,7 @@ func NewHardwareService(
 	lc.Append(fx.Hook{
 
 		OnStop: func(ctx context.Context) error {
-			tlog.Trace("HardwareService stopped")
+			tlog.TraceContext(ctx, "HardwareService stopped")
 			if unsubscribe != nil {
 				unsubscribe()
 			}
@@ -77,11 +77,11 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 	if h.cache != nil {
 		if cached, ok := h.cache.Get(hwCacheKey); ok {
 			if disks, castOk := cached.(map[string]dto.Disk); castOk {
-				tlog.Debug("Returning hardware info from cache", "drive_count", len(disks))
+				tlog.DebugContext(h.ctx, "Returning hardware info from cache", "drive_count", len(disks))
 				return disks, nil
 			}
 			// unexpected type, invalidate
-			tlog.Warn("Invalid type found in hardware info cache, invalidating", "expected", "map[string]dto.Disk", "actual", fmt.Sprintf("%T", cached))
+			tlog.WarnContext(h.ctx, "Invalid type found in hardware info cache, invalidating", "expected", "map[string]dto.Disk", "actual", fmt.Sprintf("%T", cached))
 			h.cache.Delete(hwCacheKey)
 		}
 	}
@@ -105,20 +105,20 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		return nil, errors.New(errMsg)
 	}
 
-	tlog.Trace("Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
+	tlog.TraceContext(h.ctx, "Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
 	for i, drive := range *hwser.JSON200.Data.Drives {
 		if drive.Filesystems == nil || len(*drive.Filesystems) == 0 {
-			tlog.Debug("Skipping drive with no filesystems", "drive_index", i, "drive_id", drive.Id)
+			tlog.DebugContext(h.ctx, "Skipping drive with no filesystems", "drive_index", i, "drive_id", drive.Id)
 			continue
 		}
 		var diskDto dto.Disk
 		errConvDrive := h.conv.DriveToDisk(drive, &diskDto)
 		if errConvDrive != nil {
-			tlog.Warn("Error converting drive to disk DTO", "drive_index", i, "drive_id", drive.Id, "err", errConvDrive)
+			tlog.WarnContext(h.ctx, "Error converting drive to disk DTO", "drive_index", i, "drive_id", drive.Id, "err", errConvDrive)
 			continue
 		}
 		if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 {
-			tlog.Debug("Skipping drive DTO with no partitions after conversion", "drive_index", i, "drive_id", drive.Id)
+			tlog.DebugContext(h.ctx, "Skipping drive DTO with no partitions after conversion", "drive_index", i, "drive_id", drive.Id)
 			continue
 		}
 
@@ -127,7 +127,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 			for deviceIdx := range *hwser.JSON200.Data.Devices {
 				device := &(*hwser.JSON200.Data.Devices)[deviceIdx]
 				if device.DevPath == nil || *device.DevPath == "" {
-					tlog.Debug("Skipping device with nil or empty name", "drive_index", i, "drive_id", drive.Id, "device_index", deviceIdx)
+					tlog.DebugContext(h.ctx, "Skipping device with nil or empty name", "drive_index", i, "drive_id", drive.Id, "device_index", deviceIdx)
 					continue
 				}
 
@@ -138,13 +138,13 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 					smartInfo, errSmart := h.smartService.GetSmartInfo(*diskDto.DevicePath)
 					if errSmart != nil {
 						if errors.Is(errSmart, dto.ErrorSMARTNotSupported) {
-							tlog.Trace("SMART not supported for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id)
+							tlog.TraceContext(h.ctx, "SMART not supported for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id)
 							// Set SmartInfo with Supported=false
 							diskDto.SmartInfo = &dto.SmartInfo{
 								Supported: false,
 							}
 						} else {
-							tlog.Warn("Error retrieving SMART info for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id, "err", errSmart)
+							tlog.WarnContext(h.ctx, "Error retrieving SMART info for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id, "err", errSmart)
 						}
 					} else if smartInfo != nil {
 						diskDto.SmartInfo = smartInfo
@@ -155,7 +155,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 					for pid, part := range *diskDto.Partitions {
 						partition := part // copy
 						if partition.LegacyDeviceName == nil || *partition.LegacyDeviceName == "" {
-							tlog.Debug("Skipping partition with nil or empty legacy device name", "disk_id", diskDto.Id, "partition_id", pid)
+							tlog.DebugContext(h.ctx, "Skipping partition with nil or empty legacy device name", "disk_id", diskDto.Id, "partition_id", pid)
 							continue
 						}
 						if *device.Name == *partition.LegacyDeviceName {
@@ -190,7 +190,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 			}
 		}
 		if diskDto.Id == nil || *diskDto.Id == "" {
-			tlog.Warn("Skipping disk with missing ID after conversion", "drive_index", i)
+			tlog.WarnContext(h.ctx, "Skipping disk with missing ID after conversion", "drive_index", i)
 			continue
 		}
 		ret[*diskDto.Id] = diskDto
@@ -210,5 +210,5 @@ func (h *hardwareService) InvalidateHardwareInfo() {
 		return
 	}
 	h.cache.Delete(hwCacheKey)
-	tlog.Debug("Invalidated hardware info cache")
+	tlog.DebugContext(h.ctx, "Invalidated hardware info cache")
 }

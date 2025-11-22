@@ -74,7 +74,7 @@ func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.Error("Failed to get SMART info", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to get SMART info", "device", devicePath, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to get SMART info", errE)
 	}
 
@@ -98,7 +98,7 @@ func (h *SmartHandler) GetSmartHealth(ctx context.Context, input *struct {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.Error("Failed to get SMART health status", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to get SMART health status", "device", devicePath, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to get SMART health status", errE)
 	}
 
@@ -122,7 +122,7 @@ func (h *SmartHandler) GetSmartTestStatus(ctx context.Context, input *struct {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.Error("Failed to get SMART test status", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to get SMART test status", "device", devicePath, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to get SMART test status", errE)
 	}
 
@@ -158,7 +158,7 @@ func (h *SmartHandler) StartSmartTest(ctx context.Context, input *struct {
 		if errors.Is(errE, dto.ErrorSMARTTestInProgress) {
 			return nil, huma.Error422UnprocessableEntity("SMART test already in progress", errE)
 		}
-		tlog.Error("Failed to start SMART test", "device", devicePath, "test_type", input.Body.TestType, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to start SMART test", "device", devicePath, "test_type", input.Body.TestType, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to start SMART test", errE)
 	}
 
@@ -188,7 +188,7 @@ func (h *SmartHandler) AbortSmartTest(ctx context.Context, input *struct {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.Error("Failed to abort SMART test", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to abort SMART test", "device", devicePath, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to abort SMART test", errE)
 	}
 
@@ -218,7 +218,7 @@ func (h *SmartHandler) EnableSmart(ctx context.Context, input *struct {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.Error("Failed to enable SMART", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to enable SMART", "device", devicePath, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to enable SMART", errE)
 	}
 
@@ -248,7 +248,7 @@ func (h *SmartHandler) DisableSmart(ctx context.Context, input *struct {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.Error("Failed to disable SMART", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to disable SMART", "device", devicePath, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to disable SMART", errE)
 	}
 

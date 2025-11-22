@@ -506,11 +506,11 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 }
 
 func (self *VolumeService) udevEventHandler() {
-	tlog.Trace("Starting Udev event handler...")
+	tlog.TraceContext(self.ctx, "Starting Udev event handler...")
 
 	conn := new(netlink.UEventConn)
 	if err := conn.Connect(netlink.UdevEvent); err != nil {
-		tlog.Error("Unable to connect to Netlink Kobject UEvent socket", "err", err)
+		tlog.ErrorContext(self.ctx, "Unable to connect to Netlink Kobject UEvent socket", "err", err)
 		return // Exit goroutine if connection fails
 	}
 	defer conn.Close()
@@ -518,7 +518,7 @@ func (self *VolumeService) udevEventHandler() {
 	queue := make(chan netlink.UEvent, 10)
 	errorChan := make(chan error, 1)
 	quit := conn.Monitor(queue, errorChan, nil)
-	tlog.Trace("Udev monitor started successfully.")
+	tlog.TraceContext(self.ctx, "Udev monitor started successfully.")
 
 	// Handling message from queue
 	for {
@@ -807,7 +807,7 @@ func (self *VolumeService) processMountInfos(mountInfos []*procfs.MountInfo) {
 // Disks and partitions are read from the hardware client and enriched with local mount point data.
 // It also syncs mount point data with database records, saving new entries and removing obsolete ones.
 func (self *VolumeService) getVolumesData() errors.E {
-	tlog.Trace("Requesting GetVolumesData via singleflight...")
+	tlog.TraceContext(self.ctx, "Requesting GetVolumesData via singleflight...")
 
 	_, err, _ := self.sfGroup.Do("GetVolumesData", func() (interface{}, error) {
 		// Mark that a refresh cycle is in progress to avoid recursive event-triggered refreshes
@@ -817,7 +817,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 		defer self.volumesQueueMutex.Unlock()
 		self.refreshVersion++
 
-		tlog.Trace("Executing GetVolumesData core logic (singleflight)...")
+		tlog.TraceContext(self.ctx, "Executing GetVolumesData core logic (singleflight)...")
 
 		ret := self.disks
 

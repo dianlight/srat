@@ -120,7 +120,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 
 			if err != nil {
 				if os.IsNotExist(errors.Unwrap(err)) {
-					tlog.Trace("Disk device not found in /proc, skipping", "disk", *disk.LegacyDeviceName)
+					tlog.TraceContext(s.ctx, "Disk device not found in /proc, skipping", "disk", *disk.LegacyDeviceName)
 					continue
 				}
 				return errors.WithStack(err)

@@ -72,7 +72,7 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 	errE := self.vservice.MountVolume(&mount_data)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorMountFail) {
-			tlog.Error("Failed to mount volume", "mount_path", mount_data.Path, "error", errE)
+			tlog.ErrorContext(ctx, "Failed to mount volume", "mount_path", mount_data.Path, "error", errE)
 			if errE.Details() != nil {
 				var errMessage string
 				for key, value := range errE.Details() {

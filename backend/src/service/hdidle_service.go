@@ -199,7 +199,7 @@ func (s *hDIdleService) Stop() errors.E {
 		return errors.New("HDIdle service is not running")
 	}
 
-	tlog.Debug("Stopping HDIdle service")
+	tlog.DebugContext(s.apiContext, "Stopping HDIdle service")
 	close(s.stopChan)
 	s.running = false
 	s.diskStats = []diskState{}
@@ -583,14 +583,14 @@ func (s *hDIdleService) updateDiskState(name string, reads, writes uint64, now t
 				// Time to spin down
 				givenName := s.resolveDeviceGivenName(ds.Name)
 				if ds.SpunDown && s.config.IgnoreSpinDown {
-					tlog.Info("Spindown (ignoring prior spin down state)", "disk", givenName)
+					tlog.InfoContext(s.apiContext, "Spindown (ignoring prior spin down state)", "disk", givenName)
 				} else {
-					tlog.Info("Spindown", "disk", givenName)
+					tlog.InfoContext(s.apiContext, "Spindown", "disk", givenName)
 				}
 
 				device := fmt.Sprintf("/dev/%s", ds.Name)
 				if err := s.spindownDisk(device, ds.CommandType, ds.PowerCondition); err != nil {
-					tlog.Error("Failed to spindown disk", "disk", givenName, "error", err)
+					tlog.ErrorContext(s.apiContext, "Failed to spindown disk", "disk", givenName, "error", err)
 				}
 
 				ds.LastSpunDownAt = now
@@ -603,7 +603,7 @@ func (s *hDIdleService) updateDiskState(name string, reads, writes uint64, now t
 		if ds.SpunDown {
 			// Disk just spun up
 			givenName := s.resolveDeviceGivenName(ds.Name)
-			tlog.Info("Spinup", "disk", givenName)
+			tlog.InfoContext(s.apiContext, "Spinup", "disk", givenName)
 			ds.SpinUpAt = now
 		}
 

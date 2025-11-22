@@ -64,12 +64,12 @@ func NewBroadcasterService(
 	unsubscribe := b.setupEventListeners()
 
 	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			tlog.Trace("Starting BroadcasterService")
+		OnStart: func(ctx context.Context) error {
+			tlog.TraceContext(ctx, "Starting BroadcasterService")
 			return nil
 		},
-		OnStop: func(context.Context) error {
-			tlog.Trace("Stopping BroadcasterService")
+		OnStop: func(ctx context.Context) error {
+			tlog.TraceContext(ctx, "Stopping BroadcasterService")
 			for _, unsub := range unsubscribe {
 				unsub()
 			}
@@ -120,7 +120,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 
 func (broker *BroadcasterService) BroadcastMessage(msg any) any {
 	if _, ok := msg.(dto.HealthPing); !ok {
-		tlog.Trace("Queued Message", "type", fmt.Sprintf("%T", msg), "msg", msg)
+		tlog.TraceContext(broker.ctx, "Queued Message", "type", fmt.Sprintf("%T", msg), "msg", msg)
 	}
 	defer broker.SentCounter.Add(1)
 	broker.relay.Broadcast(broadcastEvent{ID: broker.SentCounter.Load(), Message: msg})
@@ -177,7 +177,7 @@ func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
 			slog.Warn("Failed to send samba process status entity to Home Assistant", "error", err)
 		}
 	default:
-		tlog.Trace("Skipping Home Assistant entity update for unsupported message type", "type", fmt.Sprintf("%T", msg), "msg", msg)
+		tlog.TraceContext(broker.ctx, "Skipping Home Assistant entity update for unsupported message type", "type", fmt.Sprintf("%T", msg), "msg", msg)
 	}
 }
 
@@ -268,7 +268,7 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 				Data: event.Message,
 			})
 			if err != nil {
-				tlog.Trace("Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+				tlog.TraceContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
 				return
 			}
 		}

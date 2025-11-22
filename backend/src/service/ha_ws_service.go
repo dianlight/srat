@@ -60,10 +60,10 @@ func NewHaWsService(lc fx.Lifecycle, params HaWsServiceParams) (HaWsServiceInter
 				unsubC, err := s.client.SubscribeConnectionEvents(func(ev websocket.ConnectionEvent) {
 					switch ev.Type {
 					case websocket.ConnEventConnected:
-						tlog.Trace("ha_ws_service: websocket connected")
+						tlog.TraceContext(ctx, "ha_ws_service: websocket connected")
 						s.onHaConnected()
 					case websocket.ConnEventDisconnected:
-						tlog.Trace("ha_ws_service: websocket disconnected")
+						tlog.TraceContext(ctx, "ha_ws_service: websocket disconnected")
 						s.onHaDisconnected()
 					}
 				})
@@ -141,7 +141,7 @@ func (s *HaWsService) onHaDisconnected() {
 func (s *HaWsService) subscribeToHaEvents() {
 	// subscribe to homeassistant_started
 	unsubStart, err := s.client.SubscribeEvents(s.ctx, "homeassistant_started", func(ev json.RawMessage) {
-		tlog.Trace("ha_ws_service: received homeassistant_started event")
+		tlog.TraceContext(s.ctx, "ha_ws_service: received homeassistant_started event")
 		s.onHaStarted()
 	})
 	if err != nil {
@@ -152,7 +152,7 @@ func (s *HaWsService) subscribeToHaEvents() {
 
 	// subscribe to homeassistant_stop (the docs mention homeassistant_stop/homeassistant_started)
 	unsubStop, err2 := s.client.SubscribeEvents(s.ctx, "homeassistant_stop", func(ev json.RawMessage) {
-		tlog.Trace("ha_ws_service: received homeassistant_stop event")
+		tlog.TraceContext(s.ctx, "ha_ws_service: received homeassistant_stop event")
 		s.onHaStopped()
 	})
 	if err2 != nil {

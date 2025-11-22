@@ -118,7 +118,7 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 			// Send ping to keep connection alive
 			err := conn.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
-				tlog.Trace("Error sending ping to WebSocket client", "err", err)
+				tlog.TraceContext(self.ctx, "Error sending ping to WebSocket client", "err", err)
 				return
 			}
 		}

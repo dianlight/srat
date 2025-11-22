@@ -73,7 +73,7 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 	}, func(ctx context.Context, input *GetIssuesInput) (*GetIssuesOutput, error) {
 		issues, err := a.service.FindOpen()
 		if err != nil {
-			tlog.Error("failed to get issues", err)
+			tlog.ErrorContext(ctx, "failed to get issues", err)
 			return nil, huma.Error500InternalServerError("failed to get issues", err)
 		}
 		return &GetIssuesOutput{Body: issues}, nil
@@ -87,7 +87,7 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 		Tags:        []string{"Issues"},
 	}, func(ctx context.Context, input *CreateIssueInput) (*CreateIssueOutput, error) {
 		if err := a.service.Create(&input.Body); err != nil {
-			tlog.Error("failed to create issue", err)
+			tlog.ErrorContext(ctx, "failed to create issue", err)
 			return nil, huma.Error500InternalServerError("failed to create issue", err)
 		}
 		return &CreateIssueOutput{Body: &input.Body}, nil
@@ -101,7 +101,7 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 		Tags:        []string{"Issues"},
 	}, func(ctx context.Context, input *ResolveIssueInput) (*ResolveIssueOutput, error) {
 		if err := a.service.Resolve(input.ID); err != nil {
-			tlog.Error("failed to resolve issue", err)
+			tlog.ErrorContext(ctx, "failed to resolve issue", err)
 			return nil, huma.Error500InternalServerError("failed to resolve issue", err)
 		}
 		return &ResolveIssueOutput{Status: http.StatusNoContent}, nil
@@ -117,7 +117,7 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 		input.Body.ID = input.ID
 		updatedIssue, err := a.service.Update(&input.Body)
 		if err != nil {
-			tlog.Error("failed to update issue", err)
+			tlog.ErrorContext(ctx, "failed to update issue", err)
 			return nil, huma.Error500InternalServerError("failed to update issue", err)
 		}
 		return &UpdateIssueOutput{Body: updatedIssue}, nil

@@ -53,11 +53,11 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			tlog.Trace("Starting DirtyDataService")
+			tlog.TraceContext(ctx, "Starting DirtyDataService")
 			return nil
 		},
 		OnStop: func(context.Context) error {
-			tlog.Trace("Stopping DirtyDataService")
+			tlog.TraceContext(ctx, "Stopping DirtyDataService")
 			for _, unsub := range unsubscribe {
 				unsub()
 			}

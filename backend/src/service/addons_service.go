@@ -50,7 +50,7 @@ const (
 // NewAddonsService creates a new instance of AddonsService.
 func NewAddonsService(lc fx.Lifecycle, params AddonsServiceParams) AddonsServiceInterface {
 	if params.AddonsClient == nil {
-		tlog.Debug("AddonsClient is not available for AddonsService. Operations requiring it will fail.")
+		tlog.DebugContext(params.Ctx, "AddonsClient is not available for AddonsService. Operations requiring it will fail.")
 	}
 	p := &AddonsService{
 		ctx:          params.Ctx,
