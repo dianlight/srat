@@ -322,6 +322,39 @@ func replaceLogLevel(_ []string, a slog.Attr) slog.Attr {
 	return a
 }
 
+// getCallerInfo returns the caller's file, function, and line number
+// skipFrames parameter allows skipping additional stack frames (default 0 means immediate caller)
+func getCallerInfo(skipFrames int) (file string, function string, line int) {
+	pc := make([]uintptr, 1)
+	// skip [runtime.Callers, getCallerInfo, caller of getCallerInfo, ...additional frames]
+	runtime.Callers(2+skipFrames, pc[:])
+	if pc[0] == 0 {
+		return "unknown", "unknown", 0
+	}
+	fn := runtime.FuncForPC(pc[0])
+	if fn == nil {
+		return "unknown", "unknown", 0
+	}
+	file, line = fn.FileLine(pc[0])
+	// Extract just the filename without the full path
+	if idx := strings.LastIndex(file, "/"); idx != -1 {
+		file = file[idx+1:]
+	}
+	// Extract just the function name without the package path
+	funcName := fn.Name()
+	if idx := strings.LastIndex(funcName, "."); idx != -1 {
+		funcName = funcName[idx+1:]
+	}
+	return file, funcName, line
+}
+
+// WithCaller is a helper function that adds caller information to the log args
+// Usage: tlog.Debug("message", tlog.WithCaller()..., "key", "value")
+func WithCaller() []any {
+	file, function, line := getCallerInfo(1)
+	return []any{"caller", fmt.Sprintf("%s:%s:%d", file, function, line)}
+}
+
 // Trace logs a message at trace level
 func Trace(msg string, args ...any) {
 	ctx := context.Background()

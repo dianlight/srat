@@ -137,22 +137,22 @@ func getEvent[T any](event T) *Event {
 
 // Generic internal methods for event handling
 func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func(T)) func() {
-	tlog.Trace("Registering event handler", "event", eventName)
+	tlog.Trace("Registering event handler", append([]any{"event", eventName}, tlog.WithCaller()...)...)
 	key := generateKey()
 	count := signal.AddListener(func(ctx context.Context, event T) {
 		// Panic/exception safety
 		defer func() {
 			if r := recover(); r != nil {
-				tlog.Error("Event handler panic", "event", eventName, "panic", r)
+				tlog.Error("Event handler panic", append([]any{"event", eventName, "panic", r}, tlog.WithCaller()...)...)
 			}
 		}()
-		tlog.Debug("<-- Receiving events ", "event", event)
+		tlog.Debug("<-- Receiving events ", append([]any{"event", event}, tlog.WithCaller()...)...)
 		handler(event)
 	}, key)
-	tlog.Debug("Event handler registered", "event", eventName, "listener_count", count)
+	tlog.Debug("Event handler registered", append([]any{"event", eventName, "listener_count", count}, tlog.WithCaller()...)...)
 	return func() {
 		signal.RemoveListener(key)
-		tlog.Trace("Event handler unregistered", "event", eventName, "key", key)
+		tlog.Trace("Event handler unregistered", append([]any{"event", eventName, "key", key}, tlog.WithCaller()...)...)
 	}
 }
 
@@ -162,16 +162,16 @@ func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T
 		setEventUUID(&event)
 	}
 
-	tlog.Debug("--> Emitting event", "event", event)
+	tlog.Debug("--> Emitting event", append([]any{"event", event}, tlog.WithCaller()...)...)
 	// Emit synchronously; recover panic inside signal dispatch and log emission errors
 	defer func() {
 		if r := recover(); r != nil {
-			tlog.Error("Panic emitting event", "event", event, "panic", r)
+			tlog.Error("Panic emitting event", append([]any{"event", event, "panic", r}, tlog.WithCaller()...)...)
 		}
 	}()
 	if err := signal.TryEmit(ctx, event); err != nil {
 		// We log at warn level to avoid noisy error logs for expected cancellations
-		tlog.Warn("Event emission error", "event", event, "error", err)
+		tlog.Warn("Event emission error", append([]any{"event", event, "error", err}, tlog.WithCaller()...)...)
 	}
 }
 

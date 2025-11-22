@@ -107,6 +107,31 @@ tlog.ErrorContext(ctx, "Validation failed", "field", "email", "value", email)
 tlog.FatalContext(ctx, "Database connection lost") // This will exit the program
 ```
 
+### Logging with Caller Information
+
+The logger automatically includes source file and line information in the output due to the `AddSource: true` configuration. However, you can explicitly add caller information to log entries using the `WithCaller()` helper function:
+
+```go
+// Explicit caller information: file:function:line
+tlog.Debug("Processing event", append([]any{"event", myEvent}, tlog.WithCaller()...)...)
+
+// Output: ... Processing event event=<event> caller=event_bus.go:emitEvent:165
+
+// Use with any log level
+tlog.Info("User logged in", append([]any{"user", username}, tlog.WithCaller()...)...)
+tlog.Error("Connection failed", append([]any{"host", hostname, "error", err}, tlog.WithCaller()...)...)
+
+// Combine with context
+tlog.DebugContext(ctx, "Query executed", append([]any{"duration", 250}, tlog.WithCaller()...)...)
+```
+
+The `WithCaller()` function returns a slice of `[]any` containing `caller` key with value in format `filename:functionName:lineNumber` (e.g., `event_bus.go:emitEvent:165`). This is useful for:
+
+- **Tracing event handlers**: Know exactly where an event was emitted or received
+- **Debugging**: Quickly identify the source of log messages
+- **Performance monitoring**: Track which functions are logging at specific levels
+- **Audit trails**: Include caller context in critical operations
+
 ## Level Management
 
 ### Setting Log Levels
