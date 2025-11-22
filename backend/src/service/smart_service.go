@@ -105,7 +105,7 @@ func (s *smartService) GetSmartInfo(devicePath string) (*dto.SmartInfo, errors.E
 	}
 
 	// Get SMART information using smartmontools-go
-	smartInfo, err := s.client.GetSMARTInfo(devicePath)
+	smartInfo, err := s.client.GetSMARTInfo(nil, devicePath)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "No such device") || strings.Contains(err.Error(), "SMART Not Supported") {
 			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", err.Error())
@@ -217,7 +217,7 @@ func (s *smartService) GetSmartStatus(devicePath string) (*dto.SmartStatus, erro
 	}
 
 	// Get SMART information using smartmontools-go
-	smartInfo, err := s.client.GetSMARTInfo(devicePath)
+	smartInfo, err := s.client.GetSMARTInfo(nil, devicePath)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "No such device") || strings.Contains(err.Error(), "SMART Not Supported") {
 			return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath, "reason", err.Error())
@@ -359,7 +359,7 @@ func (s *smartService) GetHealthStatus(devicePath string) (*dto.SmartHealthStatu
 	}
 
 	// Use smartmontools-go to check health
-	healthy, stdErr := s.client.CheckHealth(devicePath)
+	healthy, stdErr := s.client.CheckHealth(nil, devicePath)
 	if stdErr != nil {
 		tlog.Warn("failed to check health status", "device", devicePath, "error", stdErr)
 	}
@@ -453,7 +453,7 @@ func (s *smartService) StartSelfTest(devicePath string, testType dto.SmartTestTy
 	}
 
 	// Start the self-test using smartmontools-go
-	if err := s.client.RunSelfTest(devicePath, testTypeStr); err != nil {
+	if err := s.client.RunSelfTest(nil, devicePath, testTypeStr); err != nil {
 		if strings.Contains(err.Error(), "not supported") {
 			return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
 				"reason", "self-test not supported")
@@ -481,7 +481,7 @@ func (s *smartService) AbortSelfTest(devicePath string) errors.E {
 	}
 
 	// Abort the self-test using smartmontools-go
-	if err := s.client.AbortSelfTest(devicePath); err != nil {
+	if err := s.client.AbortSelfTest(nil, devicePath); err != nil {
 		if strings.Contains(err.Error(), "not supported") {
 			return errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath,
 				"reason", "self-test abort not supported")
@@ -506,7 +506,7 @@ func (s *smartService) GetTestStatus(devicePath string) (*dto.SmartTestStatus, e
 	}
 
 	// Get SMART info which includes self-test status
-	smartInfo, err := s.client.GetSMARTInfo(devicePath)
+	smartInfo, err := s.client.GetSMARTInfo(nil, devicePath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get SMART info")
 	}
@@ -558,12 +558,12 @@ func (s *smartService) EnableSMART(devicePath string) errors.E {
 	}
 
 	// Enable SMART using smartmontools-go
-	if err := s.client.EnableSMART(devicePath); err != nil {
+	if err := s.client.EnableSMART(nil, devicePath); err != nil {
 		return errors.Wrapf(err, "failed to enable SMART")
 	}
 
 	// Verify SMART is now enabled
-	supportInfo, err := s.client.IsSMARTSupported(devicePath)
+	supportInfo, err := s.client.IsSMARTSupported(nil, devicePath)
 	if err != nil {
 		tlog.Warn("SMART enabled but verification failed", "device", devicePath, "error", err)
 		return errors.Wrap(err, "SMART enable succeeded but verification failed")
@@ -594,12 +594,12 @@ func (s *smartService) DisableSMART(devicePath string) errors.E {
 	}
 
 	// Disable SMART using smartmontools-go
-	if err := s.client.DisableSMART(devicePath); err != nil {
+	if err := s.client.DisableSMART(nil, devicePath); err != nil {
 		return errors.Wrapf(err, "failed to disable SMART")
 	}
 
 	// Verify SMART is now disabled (optional, for informational purposes)
-	supportInfo, err := s.client.IsSMARTSupported(devicePath)
+	supportInfo, err := s.client.IsSMARTSupported(nil, devicePath)
 	if err != nil {
 		tlog.Warn("SMART disabled but verification failed", "device", devicePath, "error", err)
 		tlog.Info("SMART disable command executed (verification failed)", "device", devicePath)

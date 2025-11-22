@@ -137,7 +137,56 @@ if err != nil {
 
 ```go
 // If smartctl is not in PATH or you want to use a specific binary
-client := smartmontools.NewClientWithPath("/usr/local/sbin/smartctl")
+client, err := smartmontools.NewClient(smartmontools.WithSmartctlPath("/usr/local/sbin/smartctl"))
+if err != nil {
+    log.Fatalf("Failed to create client: %v", err)
+}
+```
+
+### Custom Logging
+
+```go
+// Configure custom logger for debug output
+import "log/slog"
+
+logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+    Level: slog.LevelDebug,
+}))
+
+client, err := smartmontools.NewClient(smartmontools.WithLogHandler(logger))
+if err != nil {
+    log.Fatalf("Failed to create client: %v", err)
+}
+```
+
+### Custom Default Context
+
+```go
+// Set a default context that will be used when methods are called with nil context
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+client, err := smartmontools.NewClient(smartmontools.WithContext(ctx))
+if err != nil {
+    log.Fatalf("Failed to create client: %v", err)
+}
+
+// Now when calling with nil context, the client will use the configured default
+info, err := client.GetSMARTInfo(nil, "/dev/sda") // Uses the 30s timeout context
+```
+
+### Combining Options
+
+```go
+// Combine multiple options
+client, err := smartmontools.NewClient(
+    smartmontools.WithSmartctlPath("/usr/local/sbin/smartctl"),
+    smartmontools.WithLogHandler(logger),
+    smartmontools.WithContext(ctx),
+)
+if err != nil {
+    log.Fatalf("Failed to create client: %v", err)
+}
 ```
 
 ### USB Bridge Support

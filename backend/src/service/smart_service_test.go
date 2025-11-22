@@ -28,77 +28,78 @@ type mockSmartClient struct {
 	getAvailableSelfTestsFunc func(devicePath string) (*smartmontools.SelfTestInfo, error)
 }
 
-func (m *mockSmartClient) GetSMARTInfo(devicePath string) (*smartmontools.SMARTInfo, error) {
+// All interface methods accept a context. Tests ignore the context value.
+func (m *mockSmartClient) GetSMARTInfo(_ context.Context, devicePath string) (*smartmontools.SMARTInfo, error) {
 	if m.getSMARTInfoFunc != nil {
 		return m.getSMARTInfoFunc(devicePath)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) CheckHealth(devicePath string) (bool, error) {
+func (m *mockSmartClient) CheckHealth(_ context.Context, devicePath string) (bool, error) {
 	if m.checkHealthFunc != nil {
 		return m.checkHealthFunc(devicePath)
 	}
 	return false, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) RunSelfTest(devicePath string, testType string) error {
+func (m *mockSmartClient) RunSelfTest(_ context.Context, devicePath string, testType string) error {
 	if m.runSelfTestFunc != nil {
 		return m.runSelfTestFunc(devicePath, testType)
 	}
 	return errors.New("not implemented")
 }
 
-func (m *mockSmartClient) AbortSelfTest(devicePath string) error {
+func (m *mockSmartClient) AbortSelfTest(_ context.Context, devicePath string) error {
 	if m.abortSelfTestFunc != nil {
 		return m.abortSelfTestFunc(devicePath)
 	}
 	return errors.New("not implemented")
 }
 
-func (m *mockSmartClient) EnableSMART(devicePath string) error {
+func (m *mockSmartClient) EnableSMART(_ context.Context, devicePath string) error {
 	if m.enableSMARTFunc != nil {
 		return m.enableSMARTFunc(devicePath)
 	}
 	return errors.New("not implemented")
 }
 
-func (m *mockSmartClient) DisableSMART(devicePath string) error {
+func (m *mockSmartClient) DisableSMART(_ context.Context, devicePath string) error {
 	if m.disableSMARTFunc != nil {
 		return m.disableSMARTFunc(devicePath)
 	}
 	return errors.New("not implemented")
 }
 
-func (m *mockSmartClient) IsSMARTSupported(devicePath string) (*smartmontools.SMARTSupportInfo, error) {
+func (m *mockSmartClient) IsSMARTSupported(_ context.Context, devicePath string) (*smartmontools.SMARTSupportInfo, error) {
 	if m.isSMARTSupportedFunc != nil {
 		return m.isSMARTSupportedFunc(devicePath)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) ScanDevices() ([]smartmontools.Device, error) {
+func (m *mockSmartClient) ScanDevices(_ context.Context) ([]smartmontools.Device, error) {
 	if m.scanDevicesFunc != nil {
 		return m.scanDevicesFunc()
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) GetDeviceInfo(devicePath string) (map[string]interface{}, error) {
+func (m *mockSmartClient) GetDeviceInfo(_ context.Context, devicePath string) (map[string]interface{}, error) {
 	if m.getDeviceInfoFunc != nil {
 		return m.getDeviceInfoFunc(devicePath)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) GetAvailableSelfTests(devicePath string) (*smartmontools.SelfTestInfo, error) {
+func (m *mockSmartClient) GetAvailableSelfTests(_ context.Context, devicePath string) (*smartmontools.SelfTestInfo, error) {
 	if m.getAvailableSelfTestsFunc != nil {
 		return m.getAvailableSelfTestsFunc(devicePath)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) RunSelfTestWithProgress(ctx context.Context, devicePath string, testType string, callback smartmontools.ProgressCallback) error {
+func (m *mockSmartClient) RunSelfTestWithProgress(_ context.Context, _ string, _ string, _ smartmontools.ProgressCallback) error {
 	return errors.New("not implemented")
 }
 
