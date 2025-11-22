@@ -59,19 +59,19 @@ func (s *HomeAssistantService) SendDiskEntities(disks *[]dto.Disk) error {
 	}
 
 	if s.coreClient == nil || disks == nil || s.state.HACoreReady == false {
-		slog.Debug("Skipping sending disk entities to Home Assistant", "core_client", s.coreClient != nil, "disks", disks != nil)
+		slog.DebugContext(s.ctx, "Skipping sending disk entities to Home Assistant", "core_client", s.coreClient != nil, "disks", disks != nil)
 		return nil
 	}
 
 	for _, disk := range *disks {
 		if err := s.sendDiskEntity(disk); err != nil {
-			slog.Warn("Failed to send disk entity to Home Assistant", "disk", disk.Id, "error", err)
+			slog.WarnContext(s.ctx, "Failed to send disk entity to Home Assistant", "disk", disk.Id, "error", err)
 		}
 
 		if disk.Partitions != nil {
 			for _, partition := range *disk.Partitions {
 				if err := s.sendPartitionEntity(partition, disk); err != nil {
-					slog.Warn("Failed to send partition entity to Home Assistant", "partition", partition.Id, "error", err)
+					slog.WarnContext(s.ctx, "Failed to send partition entity to Home Assistant", "partition", partition.Id, "error", err)
 				}
 			}
 		}
@@ -87,7 +87,7 @@ func (s *HomeAssistantService) SendSambaStatusEntity(status *dto.SambaStatus) er
 	}
 
 	if s.coreClient == nil || status == nil || s.state.HACoreReady == false {
-		slog.Debug("Skipping sending Samba status entity to Home Assistant", "core_client", s.coreClient != nil, "status", status != nil)
+		slog.DebugContext(s.ctx, "Skipping sending Samba status entity to Home Assistant", "core_client", s.coreClient != nil, "status", status != nil)
 		return nil
 	}
 
@@ -126,7 +126,7 @@ func (s *HomeAssistantService) SendSambaStatusEntity(status *dto.SambaStatus) er
 	} else {
 	}
 
-	slog.Debug("Sent Samba status entity to Home Assistant", "entity_id", entityId, "state", state, "response", string(resp.Body))
+	slog.DebugContext(s.ctx, "Sent Samba status entity to Home Assistant", "entity_id", entityId, "state", state, "response", string(resp.Body))
 	return nil
 }
 
@@ -137,7 +137,7 @@ func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.SambaPro
 	}
 
 	if s.coreClient == nil || status == nil || s.state.HACoreReady == false {
-		slog.Debug("Skipping sending Samba process status entity to Home Assistant", "core_client", s.coreClient != nil, "status", status != nil)
+		slog.DebugContext(s.ctx, "Skipping sending Samba process status entity to Home Assistant", "core_client", s.coreClient != nil, "status", status != nil)
 		return nil
 	}
 
@@ -200,10 +200,10 @@ func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.SambaPro
 	}
 
 	if resp.StatusCode() >= 400 {
-		return errors.Errorf("failed to send samba process status entity: HTTP %d", resp.StatusCode())
+		return errors.Errorf("failed to send Samba process status entity to Home Assistant: %s", string(resp.Body))
 	}
 
-	slog.Debug("Sent Samba process status entity to Home Assistant", "entity_id", entityId, "state", state)
+	slog.DebugContext(s.ctx, "Sent Samba process status entity to Home Assistant", "entity_id", entityId, "state", state)
 	return nil
 }
 
@@ -214,7 +214,7 @@ func (s *HomeAssistantService) SendVolumeStatusEntity(data *[]dto.Disk) error {
 	}
 
 	if s.coreClient == nil || data == nil || s.state.HACoreReady == false {
-		slog.Debug("Skipping sending volume status entity to Home Assistant", "core_client", s.coreClient != nil, "data", data != nil)
+		slog.DebugContext(s.ctx, "Skipping sending volume status entity to Home Assistant", "core_client", s.coreClient != nil, "data", data != nil)
 		return nil
 	}
 
@@ -268,10 +268,10 @@ func (s *HomeAssistantService) SendVolumeStatusEntity(data *[]dto.Disk) error {
 	}
 
 	if resp.StatusCode() >= 400 {
-		return errors.Errorf("failed to send volume status entity: HTTP %d", resp.StatusCode())
+		return errors.Errorf("failed to send volume status entity to Home Assistant: %s", string(resp.Body))
 	}
 
-	slog.Debug("Sent Volume status entity to Home Assistant", "entity_id", entityId, "total_disks", totalDisks)
+	slog.DebugContext(s.ctx, "Sent Volume status entity to Home Assistant", "entity_id", entityId, "total_disks", totalDisks)
 	return nil
 }
 
@@ -330,10 +330,10 @@ func (s *HomeAssistantService) sendDiskEntity(disk dto.Disk) error {
 	}
 
 	if resp.StatusCode() >= 400 {
-		return errors.Errorf("failed to send disk entity: HTTP %d", resp.StatusCode())
+		return errors.Errorf("failed to send disk entity to Home Assistant: %s", string(resp.Body))
 	}
 
-	slog.Debug("Sent disk entity to Home Assistant", "entity_id", entityId, "disk_id", *disk.Id)
+	slog.DebugContext(s.ctx, "Sent disk entity to Home Assistant", "entity_id", entityId, "disk_id", *disk.Id)
 	return nil
 }
 
@@ -408,10 +408,10 @@ func (s *HomeAssistantService) sendPartitionEntity(partition dto.Partition, disk
 	}
 
 	if resp.StatusCode() >= 400 {
-		return errors.Errorf("failed to send partition entity: HTTP %d", resp.StatusCode())
+		return errors.Errorf("failed to send partition entity to Home Assistant: %s", string(resp.Body))
 	}
 
-	slog.Debug("Sent partition entity to Home Assistant", "entity_id", entityId, "partition_id", *partition.Id, "state", state)
+	slog.DebugContext(s.ctx, "Sent partition entity to Home Assistant", "entity_id", entityId, "partition_id", *partition.Id, "state", state)
 	return nil
 }
 
@@ -427,14 +427,14 @@ func (s *HomeAssistantService) SendDiskHealthEntities(diskHealth *dto.DiskHealth
 
 	// Send global disk health entity
 	if err := s.sendGlobalDiskHealthEntity(diskHealth); err != nil {
-		slog.Warn("Failed to send global disk health entity to Home Assistant", "error", err)
+		slog.WarnContext(s.ctx, "Failed to send global disk health entity to Home Assistant", "error", err)
 	}
 
 	// Send individual disk I/O entities
 	if diskHealth.PerDiskIO != nil {
 		for _, diskIO := range diskHealth.PerDiskIO {
 			if err := s.sendDiskIOEntity(diskIO); err != nil {
-				slog.Warn("Failed to send disk I/O entity to Home Assistant", "device", diskIO.DeviceName, "error", err)
+				slog.WarnContext(s.ctx, "Failed to send disk I/O entity to Home Assistant", "device", diskIO.DeviceName, "error", err)
 			}
 		}
 	}
@@ -443,7 +443,7 @@ func (s *HomeAssistantService) SendDiskHealthEntities(diskHealth *dto.DiskHealth
 	for diskName, partitions := range diskHealth.PerPartitionInfo {
 		for _, partition := range partitions {
 			if err := s.sendPartitionHealthEntity(diskName, partition); err != nil {
-				slog.Warn("Failed to send partition health entity to Home Assistant", "device", partition.Device, "error", err)
+				slog.WarnContext(s.ctx, "Failed to send partition health entity to Home Assistant", "device", partition.Device, "error", err)
 			}
 		}
 	}
@@ -482,7 +482,7 @@ func (s *HomeAssistantService) sendGlobalDiskHealthEntity(diskHealth *dto.DiskHe
 		return errors.Errorf("failed to send global disk health entity: HTTP %d", resp.StatusCode())
 	}
 
-	slog.Debug("Sent global disk health entity to Home Assistant", "entity_id", entityId, "iops", diskHealth.Global.TotalIOPS)
+	slog.DebugContext(s.ctx, "Sent global disk health entity to Home Assistant", "entity_id", entityId, "iops", diskHealth.Global.TotalIOPS)
 	return nil
 }
 
@@ -531,7 +531,7 @@ func (s *HomeAssistantService) sendDiskIOEntity(diskIO dto.DiskIOStats) error {
 		return errors.Errorf("failed to send disk I/O entity: HTTP %d", resp.StatusCode())
 	}
 
-	slog.Debug("Sent disk I/O entity to Home Assistant", "entity_id", entityId, "device", diskIO.DeviceName, "iops", totalIOPS)
+	slog.DebugContext(s.ctx, "Sent disk I/O entity to Home Assistant", "entity_id", entityId, "device", diskIO.DeviceName, "iops", totalIOPS)
 	return nil
 }
 
@@ -580,13 +580,13 @@ func (s *HomeAssistantService) sendPartitionHealthEntity(diskName string, partit
 		return errors.Errorf("failed to send partition health entity: HTTP %d", resp.StatusCode())
 	}
 
-	slog.Debug("Sent partition health entity to Home Assistant", "entity_id", entityId, "device", partition.Device, "free_space", partition.FreeSpace)
+	slog.DebugContext(s.ctx, "Sent partition health entity to Home Assistant", "entity_id", entityId, "device", partition.Device, "free_space", partition.FreeSpace)
 	return nil
 }
 
 func (s *HomeAssistantService) CreatePersistentNotification(notificationID, title, message string) error {
 	if s.coreClient == nil {
-		slog.Debug("Skipping persistent notification creation - no Home Assistant client available")
+		slog.DebugContext(s.ctx, "Skipping persistent notification creation - no Home Assistant client available")
 		return nil
 	}
 
@@ -598,7 +598,7 @@ func (s *HomeAssistantService) CreatePersistentNotification(notificationID, titl
 	s.notificationTrackerLock.RUnlock()
 
 	if exists && lastSent == today {
-		slog.Debug("Skipping notification - already sent today", "notification_id", notificationID, "date", today)
+		slog.DebugContext(s.ctx, "Skipping notification - already sent today", "notification_id", notificationID, "date", today)
 		return nil
 	}
 
@@ -622,13 +622,13 @@ func (s *HomeAssistantService) CreatePersistentNotification(notificationID, titl
 	s.notificationTracker[notificationID] = today
 	s.notificationTrackerLock.Unlock()
 
-	slog.Debug("Created persistent notification in Home Assistant", "notification_id", notificationID, "title", title)
+	slog.DebugContext(s.ctx, "Created persistent notification in Home Assistant", "notification_id", notificationID, "title", title)
 	return nil
 }
 
 func (s *HomeAssistantService) DismissPersistentNotification(notificationID string) error {
 	if s.coreClient == nil {
-		slog.Debug("Skipping persistent notification dismissal - no Home Assistant client available")
+		slog.DebugContext(s.ctx, "Skipping persistent notification dismissal - no Home Assistant client available")
 		return nil
 	}
 
@@ -650,7 +650,7 @@ func (s *HomeAssistantService) DismissPersistentNotification(notificationID stri
 	delete(s.notificationTracker, notificationID)
 	s.notificationTrackerLock.Unlock()
 
-	slog.Debug("Dismissed persistent notification in Home Assistant", "notification_id", notificationID)
+	slog.DebugContext(s.ctx, "Dismissed persistent notification in Home Assistant", "notification_id", notificationID)
 	return nil
 }
 

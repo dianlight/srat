@@ -78,7 +78,7 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) UpgradeServiceIn
 				p.updateChannel = &dto.UpdateChannel{}
 				errS := p.updateChannel.Scan(value)
 				if errS != nil {
-					slog.Warn("Unable to convert config value", "value", value, "type", fmt.Sprintf("%T", value), "err", errS)
+					slog.WarnContext(ctx, "Unable to convert config value", "value", value, "type", fmt.Sprintf("%T", value), "err", errS)
 					p.updateChannel = &dto.UpdateChannels.NONE
 				}
 			}
@@ -98,11 +98,11 @@ func (self *UpgradeService) run() error {
 	for {
 		select {
 		case <-self.ctx.Done():
-			slog.Info("Run process closed", "err", self.ctx.Err())
+			slog.InfoContext(self.ctx, "Run process closed", "err", self.ctx.Err())
 			return errors.WithStack(self.ctx.Err())
 		default:
 			self.updateLimiter.Do(func() {
-				slog.Debug("Version Checking...")
+				slog.DebugContext(self.ctx, "Version Checking...")
 				self.notifyClient(dto.UpdateProgress{
 					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING,
 				})
@@ -134,20 +134,20 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 	if updateChannel != &dto.UpdateChannels.NONE && updateChannel != &dto.UpdateChannels.DEVELOP {
 		myversion, err := semver.NewVersion(config.Version)
 		if err != nil {
-			slog.Error("Error parsing version", "current", config.Version, "err", err)
+			slog.ErrorContext(self.ctx, "Error parsing version", "current", config.Version, "err", err)
 			return nil, errors.WithStack(err)
 		}
 
-		slog.Debug("Checking for updates...", "channel", updateChannel.String())
+		slog.DebugContext(self.ctx, "Checking for updates...", "channel", updateChannel.String())
 		releases, _, err := self.gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
 			Page:    1,
 			PerPage: 5,
 		})
 		if err != nil {
 			if _, ok := err.(*github.RateLimitError); ok {
-				slog.Warn("Github API hit rate limit")
+				slog.WarnContext(self.ctx, "Github API hit rate limit")
 			}
-			slog.Warn("Error getting releases", "err", err)
+			slog.WarnContext(self.ctx, "Error getting releases", "err", err)
 			return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases found")
 		} else if len(releases) > 0 {
 			for _, release := range releases {
@@ -159,10 +159,10 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 
 				assertVersion, err := semver.NewVersion(*release.TagName)
 				if err != nil {
-					slog.Warn("Error parsing version", "version", *release.TagName, "err", err)
+					slog.WarnContext(self.ctx, "Error parsing version", "version", *release.TagName, "err", err)
 					continue
 				}
-				slog.Debug("Checking version", "current", config.Version, "release", *release.TagName)
+				slog.DebugContext(self.ctx, "Checking version", "current", config.Version, "release", *release.TagName)
 
 				if myversion.GreaterThanEqual(assertVersion) {
 					continue
@@ -198,7 +198,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 				return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases found")
 			}
 		} else {
-			slog.Debug("No Releases found")
+			slog.DebugContext(self.ctx, "No Releases found")
 			return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases found")
 		}
 	} else {
@@ -301,7 +301,7 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 		lastReportedPercentage: 0,
 	}
 
-	slog.Debug("Downloading asset", "url", asset.BrowserDownloadURL, "destination", downloadedFilePath, "size", resp.ContentLength)
+	slog.DebugContext(self.ctx, "Downloading asset", "url", asset.BrowserDownloadURL, "destination", downloadedFilePath, "size", resp.ContentLength)
 	_, err = io.Copy(downloadedFile, pr)
 	if err != nil {
 		errWrapped := errors.Wrapf(err, "failed to write downloaded asset to file %s", downloadedFilePath)
@@ -313,7 +313,7 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: 100})
 	}
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE, Progress: 100})
-	slog.Info("Asset downloaded successfully", "path", downloadedFilePath)
+	slog.InfoContext(self.ctx, "Asset downloaded successfully", "path", downloadedFilePath)
 
 	// --- Extraction Phase ---
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSEXTRACTING, Progress: 0})
@@ -331,7 +331,7 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 	var executablePath *string
 	var foundPaths []string
 
-	slog.Debug("Extracting asset", "source_zip", downloadedFilePath, "total_files", totalFiles)
+	slog.DebugContext(self.ctx, "Extracting asset", "source_zip", downloadedFilePath, "total_files", totalFiles)
 	for _, f := range zipReader.File {
 		targetPath := filepath.Join(tmpDir, f.Name)
 
@@ -383,7 +383,7 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 			destFile.Close()
 
 			if filepath.Base(targetPath) == currentExecutableName {
-				slog.Info("Found matching executable in archive", "path", targetPath, "current_exe_name", currentExecutableName)
+				slog.InfoContext(self.ctx, "Found matching executable in archive", "path", targetPath, "current_exe_name", currentExecutableName)
 				executablePath = &targetPath
 			} else {
 				foundPaths = append(foundPaths, targetPath)
@@ -398,7 +398,7 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 	}
 
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE, Progress: 100})
-	slog.Info("Asset extracted successfully", "temp_dir", tmpDir)
+	slog.InfoContext(self.ctx, "Asset extracted successfully", "temp_dir", tmpDir)
 
 	success = true // Mark as successful so defer doesn't clean up tmpDir
 	return &UpdatePackage{
@@ -415,11 +415,11 @@ func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinatio
 	if destinationFile == "" {
 		return errors.New("invalid destination file path")
 	}
-	slog.Info("Starting in-place update installation", "new_executable", newExecutablePath)
+	slog.InfoContext(self.ctx, "Starting in-place update installation", "new_executable", newExecutablePath)
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLING, Progress: 0})
 
 	// Perform the update using standard library functions
-	slog.Info("Applying update...", "target_executable", destinationFile, "source_new_executable", newExecutablePath)
+	slog.InfoContext(self.ctx, "Applying update...", "target_executable", destinationFile, "source_new_executable", newExecutablePath)
 
 	// Step 1: Open the new executable file
 	newExeFile, err := os.Open(newExecutablePath)
@@ -472,9 +472,9 @@ func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinatio
 		os.Remove(oldSavePath)
 		if err := os.Rename(destinationFile, oldSavePath); err != nil {
 			// Log warning but don't fail - backup is optional
-			slog.Warn("Failed to backup old executable", "destination", destinationFile, "backup", oldSavePath, "error", err)
+			slog.WarnContext(self.ctx, "Failed to backup old executable", "destination", destinationFile, "backup", oldSavePath, "error", err)
 		} else {
-			slog.Info("Backed up old executable", "backup", oldSavePath)
+			slog.InfoContext(self.ctx, "Backed up old executable", "backup", oldSavePath)
 		}
 	}
 
@@ -485,7 +485,7 @@ func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinatio
 		// Try to restore backup on error
 		if _, statErr := os.Stat(oldSavePath); statErr == nil {
 			if restoreErr := os.Rename(oldSavePath, destinationFile); restoreErr != nil {
-				slog.Error("Failed to restore backup after rename failure", "error", restoreErr)
+				slog.ErrorContext(self.ctx, "Failed to restore backup after rename failure", "error", restoreErr)
 			}
 		}
 		errWrapped := errors.Wrapf(err, "failed to apply in-place update to %s from %s", destinationFile, tempPath)
@@ -493,7 +493,7 @@ func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinatio
 		return errWrapped
 	}
 
-	slog.Info("In-place update applied successfully. Application will need to be restarted.", "updated_executable", destinationFile)
+	slog.InfoContext(self.ctx, "In-place update applied successfully. Application will need to be restarted.", "updated_executable", destinationFile)
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE, Progress: 100})
 	return nil
 }
