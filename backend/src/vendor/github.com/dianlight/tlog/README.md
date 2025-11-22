@@ -294,16 +294,37 @@ When your application shuts down, ensure callbacks are processed:
 defer tlog.Shutdown()
 ```
 
-### Custom Logger Instances
+### Custom Logger Instances & Functional Options
 
-Create a logger with a specific minimum level without affecting the global logger:
+You can create independent logger instances and customize them using functional options. Supported options:
+
+- `WithLevel(level slog.Level)`: set the minimum level for the instance
+- `WithCommonKeys([]string)`: replace the default list of context keys to auto-extract
+- `WithAddCommonKeys([]string)`: append additional context keys to the default list
 
 ```go
 // Create a trace-level logger for detailed debugging
-debugLogger := tlog.WithLevel(tlog.LevelTrace)
+traceLogger := tlog.NewLogger(tlog.WithLevel(tlog.LevelTrace))
 
-// Use the custom logger
-debugLogger.Log(context.Background(), tlog.LevelTrace, "Detailed trace info")
+// Create a logger that only logs WARN and above
+warnLogger := tlog.NewLoggerWithLevel(tlog.LevelWarn)
+
+// Create a logger with custom context keys (replaces default set)
+customCtxLogger := tlog.NewLogger(
+  tlog.WithCommonKeys([]string{"request_id", "tenant_id", "user_id"}),
+)
+
+// Create a logger adding extra keys to the default set
+extendedCtxLogger := tlog.NewLogger(
+  tlog.WithAddCommonKeys([]string{"tenant_id", "correlation_id"}),
+)
+
+traceLogger.Trace("Detailed trace info", "step", 1)
+warnLogger.Error("Failure detected", "component", "cache")
+customCtxLogger.InfoContext(
+  context.WithValue(context.Background(), "tenant_id", "t-42"),
+  "Processed tenant request",
+)
 ```
 
 ### Error Handling
@@ -538,7 +559,7 @@ tlog.PrintWithLevel(tlog.LevelWarn, "Warning message")       // Full message in 
 tlog.PrintWithLevelAll("Sample message for all levels")
 ```
 
-### Enhanced Context Support
+### Enhanced Context Support & Custom Keys
 
 Context values are automatically extracted and included in log output:
 
@@ -556,13 +577,31 @@ tlog.ErrorContext(ctx, "Request failed", "error", "timeout", "duration", "30s")
 // Output: ... Request failed error=timeout duration=30s request_id=req-12345 user_id=user-456 trace_id=trace-abc-xyz
 ```
 
-Supported context keys that are automatically extracted:
+Default auto-extracted context keys:
 
+- `X-Trace-Id`
+- `X-Span-Id`
 - `request_id`
 - `user_id`
 - `session_id`
 - `trace_id`
 - `span_id`
+- `event_uuid`
+
+You can customize which keys are extracted per logger instance via the functional options:
+
+```go
+// Replace defaults entirely
+logger := tlog.NewLogger(tlog.WithCommonKeys([]string{"req", "usr"}))
+
+// Add extra keys while keeping defaults
+logger2 := tlog.NewLogger(tlog.WithAddCommonKeys([]string{"tenant_id", "correlation_id"}))
+
+ctx := context.Background()
+ctx = context.WithValue(ctx, "tenant_id", "t-42")
+ctx = context.WithValue(ctx, "request_id", "r-99")
+logger2.InfoContext(ctx, "Handled request")
+```
 
 ### Sensitive Data Protection
 
@@ -711,13 +750,19 @@ Colors are automatically disabled when:
 
 ```go
 // Create logger with specific level
-debugLogger := tlog.WithLevel(tlog.LevelDebug)
+debugLogger := tlog.NewLogger(tlog.WithLevel(tlog.LevelDebug))
 debugLogger.Debug("This will appear")
 debugLogger.Trace("This won't appear (below debug level)")
 
 // Create new logger instances
-logger1 := tlog.NewLogger()                      // Uses default configuration
-logger2 := tlog.NewLoggerWithLevel(tlog.LevelError) // Only logs errors and fatal
+logger1 := tlog.NewLogger()                           // Uses default configuration
+logger2 := tlog.NewLoggerWithLevel(tlog.LevelError)   // Only logs errors and fatal
+
+// Extend context keys for a specific logger
+auditLogger := tlog.NewLogger(
+  tlog.WithAddCommonKeys([]string{"tenant_id", "audit_id"}),
+  tlog.WithLevel(tlog.LevelInfo),
+)
 ```
 
 ### Logger Methods

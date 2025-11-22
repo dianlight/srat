@@ -100,9 +100,9 @@ type EventConstraint interface {
 
 // Generic internal methods for event handling
 func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func(context.Context, T)) func() {
-	tlog.Trace("Registering event handler", append([]any{"event", eventName}, tlog.WithCaller()...)...)
+	tlog.Trace("Registering event handler", append([]any{"event", eventName}, tlog.WithCaller(0)...)...)
 	key := generateKey()
-	caller := tlog.WithCaller()
+	caller := tlog.WithCaller(1)
 	count := signal.AddListener(func(ctx context.Context, event T) {
 		// Panic/exception safety
 		defer func() {
@@ -110,7 +110,7 @@ func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func
 				tlog.ErrorContext(ctx, "Event handler panic", append([]any{"event", eventName, "panic", r}, caller...)...)
 			}
 		}()
-		tlog.DebugContext(ctx, "<-- Receiving events ", append([]any{"type", fmt.Sprintf("%T", event), "event", event}, caller...)...)
+		tlog.DebugContext(ctx, "<-- Receiving events ", append([]any{"type", fmt.Sprintf("%T", event), "event", fmt.Sprintf("%#v", event)}, caller...)...)
 		handler(ctx, event)
 	}, key)
 	tlog.Debug("Event handler registered", append([]any{"event", eventName, "listener_count", count}, caller...)...)
@@ -124,16 +124,16 @@ func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T
 	// Add UUID to context if not already present
 	ctx = ContextWithEventUUID(ctx)
 
-	tlog.DebugContext(ctx, "--> Emitting event", append([]any{"type", fmt.Sprintf("%T", event), "event", event}, tlog.WithCaller()...)...)
+	tlog.DebugContext(ctx, "--> Emitting event", append([]any{"type", fmt.Sprintf("%T", event), "event", fmt.Sprintf("%#v", event)}, tlog.WithCaller(1)...)...)
 	// Emit synchronously; recover panic inside signal dispatch and log emission errors
 	defer func() {
 		if r := recover(); r != nil {
-			tlog.ErrorContext(ctx, "Panic emitting event", append([]any{"event", event, "panic", r}, tlog.WithCaller()...)...)
+			tlog.ErrorContext(ctx, "Panic emitting event", append([]any{"event", fmt.Sprintf("%#v", event), "panic", r}, tlog.WithCaller(1)...)...)
 		}
 	}()
 	if err := signal.TryEmit(ctx, event); err != nil {
 		// We log at warn level to avoid noisy error logs for expected cancellations
-		tlog.WarnContext(ctx, "Event emission error", append([]any{"event", event, "error", err}, tlog.WithCaller()...)...)
+		tlog.WarnContext(ctx, "Event emission error", append([]any{"event", fmt.Sprintf("%#v", event), "error", err}, tlog.WithCaller(1)...)...)
 	}
 }
 

@@ -112,7 +112,6 @@ func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, co
 		dtoSharedResource.TimeMachineMaxSize = &xstring
 	}
 	dtoSharedResource.Usage = dto.HAMountUsage(source.Usage)
-	dtoSharedResource.IsHAMounted = falsePConst()
 	if source.VetoFiles != nil {
 		dtoSharedResource.VetoFiles = make([]string, len(source.VetoFiles))
 		for j := 0; j < len(source.VetoFiles); j++ {
@@ -124,7 +123,6 @@ func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, co
 		return dtoSharedResource, err
 	}
 	dtoSharedResource.MountPointData = pDtoMountPointData
-	dtoSharedResource.Invalid = falsePConst()
 	return dtoSharedResource, nil
 }
 func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResource, target *config.Share) error {

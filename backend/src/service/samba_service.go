@@ -194,7 +194,7 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 		if share.Disabled != nil && *share.Disabled {
 			continue
 		}
-		if share.Invalid != nil && *share.Invalid {
+		if share.Status != nil && !share.Status.IsValid {
 			continue
 		}
 		if share.MountPointData != nil && share.MountPointData.IsInvalid {

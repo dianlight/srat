@@ -44,10 +44,8 @@ type ConfigToDtoConverter interface {
 	// goverter:map Path DiskSize | DiskSizeFromPath
 	ShareToMountPointData(source config.Share) (*dto.MountPointData, error)
 
-	// goverter:ignore _ HaStatus
+	// goverter:ignore _ Status
 	// goverter:map Users Users | StringsToDtoUsers
-	// goverter:map IsHAMounted | falsePConst
-	// goverter:map Invalid | falsePConst
 	// goverter:map . MountPointData
 	// goverter:context users
 	ShareToSharedResource(source config.Share, users []dto.User) (dto.SharedResource, error)

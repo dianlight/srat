@@ -22,7 +22,7 @@ require (
 	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
 	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/dianlight/smartmontools-go v0.1.1
-	github.com/dianlight/tlog v0.0.1
+	github.com/dianlight/tlog v0.0.5
 	github.com/fatih/color v1.18.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/gorilla/websocket v1.5.3
@@ -138,7 +138,7 @@ require (
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/sync v0.18.0
-	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/libc v1.66.10 // indirect

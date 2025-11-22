@@ -22,7 +22,7 @@ import (
 
 var tmpBinPath = filepath.Join(os.TempDir(), "overseer-"+token()+extension())
 
-//a overseer master process
+// a overseer master process
 type master struct {
 	*Config
 	slaveID             int
@@ -105,7 +105,7 @@ func (mp *master) setupSignalling() {
 	mp.restarted = make(chan bool)
 	mp.descriptorsReleased = make(chan bool)
 	//read all master process signals
-	signals := make(chan os.Signal)
+	signals := make(chan os.Signal, 1)
 	signal.Notify(signals)
 	go func() {
 		for s := range signals {
@@ -176,7 +176,7 @@ func (mp *master) retreiveFileDescriptors() error {
 	return nil
 }
 
-//fetchLoop is run in a goroutine
+// fetchLoop is run in a goroutine
 func (mp *master) fetchLoop() {
 	min := mp.Config.MinFetchInterval
 	time.Sleep(min)
@@ -282,7 +282,7 @@ func (mp *master) fetch() {
 			}
 		}
 	}()
-	tokenOut, err := cmd.CombinedOutput()
+	tokenOut, err := cmd.Output()
 	returned = true
 	if err != nil {
 		mp.warnf("failed to run temp binary: %s (%s) output \"%s\"", err, tmpBinPath, tokenOut)
@@ -331,7 +331,7 @@ func (mp *master) triggerRestart() {
 	}
 }
 
-//not a real fork
+// not a real fork
 func (mp *master) forkLoop() error {
 	//loop, restart command
 	for {

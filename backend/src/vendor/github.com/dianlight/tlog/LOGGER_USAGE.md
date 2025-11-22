@@ -37,6 +37,12 @@ func main() {
     // Create a logger with a specific minimum level
     debugLogger := tlog.NewLoggerWithLevel(tlog.LevelDebug)
 
+    // Create a logger by composing functional options
+    traceLogger := tlog.NewLogger(tlog.WithLevel(tlog.LevelTrace))
+
+    // Add extra context extraction keys
+    extendedLogger := tlog.NewLogger(tlog.WithAddCommonKeys([]string{"tenant_id", "correlation_id"}))
+
     // Use the logger methods
     logger.Info("Application started")
     logger.Error("Something went wrong", "error", "connection failed")
@@ -128,8 +134,34 @@ logger.Error("error message")
 
 Both approaches work and emit events to the same callback system.
 
-## Constructor Functions
+### Functional Options & Constructors
 
-- `NewLogger()`: Creates a logger with the default configuration
-- `NewLoggerWithLevel(level)`: Creates a logger with a specific minimum level
-- `WithLevel(level)`: Creates a raw slog.Logger with a specific level (existing function)
+Constructors:
+
+- `NewLogger(opts ...LoggerOption)`: Creates a logger with default level & keys, applying any options
+- `NewLoggerWithLevel(level slog.Level, opts ...LoggerOption)`: Convenience wrapper that prepends `WithLevel(level)` to options
+
+Functional options:
+
+- `WithLevel(level slog.Level)`: Set instance minimum log level
+- `WithCommonKeys(keys []string)`: Replace default extracted context keys
+- `WithAddCommonKeys(keys []string)`: Append additional keys to the default set
+
+Examples:
+
+```go
+// Only log warnings and above, plus add tenant_id
+logger := tlog.NewLogger(
+  tlog.WithLevel(tlog.LevelWarn),
+  tlog.WithAddCommonKeys([]string{"tenant_id"}),
+)
+
+// Replace default context keys entirely
+minimalCtxLogger := tlog.NewLogger(
+  tlog.WithCommonKeys([]string{"req", "usr"}),
+)
+
+// Equivalent ways to set level
+loggerA := tlog.NewLogger(tlog.WithLevel(tlog.LevelDebug))
+loggerB := tlog.NewLoggerWithLevel(tlog.LevelDebug)
+```

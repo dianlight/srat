@@ -784,7 +784,9 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotMounted() {
 				},
 			},
 			Disabled: pointer.Bool(true), // Should be disabled if not mounted
-			Invalid:  pointer.Bool(true), // Should be marked as invalid/anomaly
+			Status: &dto.SharedResourceStatus{
+				IsValid: false, // Should be marked as invalid
+			},
 			MountPointData: &dto.MountPointData{
 				Path:             "/mnt/share-not-mounted",
 				PathHash:         "hash5",
@@ -815,8 +817,8 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotMounted() {
 	suite.Equal("share-not-mounted-was-active", result[0].Name)
 	suite.NotNil(result[0].Disabled)
 	suite.True(*result[0].Disabled, "Share should be disabled when volume is not mounted")
-	suite.NotNil(result[0].Invalid)
-	suite.True(*result[0].Invalid, "Share should be marked as invalid/anomaly when volume is not mounted")
+	suite.NotNil(result[0].Status)
+	suite.False(result[0].Status.IsValid, "Share should be marked as invalid when volume is not mounted")
 	suite.False(result[0].MountPointData.IsMounted)
 }
 
@@ -833,7 +835,9 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotExists() {
 				},
 			},
 			Disabled: pointer.Bool(true), // Should be disabled
-			Invalid:  pointer.Bool(true), // Should be marked as invalid/anomaly
+			Status: &dto.SharedResourceStatus{
+				IsValid: false, // Should be marked as invalid
+			},
 			MountPointData: &dto.MountPointData{ // Volume doesn't exist but has placeholder data
 				Path:      "/mnt/nonexistent",
 				PathHash:  "hash6",
@@ -862,8 +866,8 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotExists() {
 	suite.Equal("share-no-volume", result[0].Name)
 	suite.NotNil(result[0].Disabled)
 	suite.True(*result[0].Disabled, "Share should be disabled when volume doesn't exist")
-	suite.NotNil(result[0].Invalid)
-	suite.True(*result[0].Invalid, "Share should be marked as invalid/anomaly when volume doesn't exist")
+	suite.NotNil(result[0].Status)
+	suite.False(result[0].Status.IsValid, "Share should be marked as invalid when volume doesn't exist")
 	suite.True(result[0].MountPointData.IsInvalid, "Mount point should be marked as invalid")
 	suite.False(result[0].MountPointData.IsMounted)
 }
@@ -882,7 +886,9 @@ func (suite *ShareHandlerSuite) TestGetShareWithVolumeNotMounted() {
 			},
 		},
 		Disabled: pointer.Bool(true),
-		Invalid:  pointer.Bool(true),
+		Status: &dto.SharedResourceStatus{
+			IsValid: false,
+		},
 		MountPointData: &dto.MountPointData{
 			Path:             "/mnt/share-not-mounted",
 			PathHash:         "hash7",
@@ -909,8 +915,8 @@ func (suite *ShareHandlerSuite) TestGetShareWithVolumeNotMounted() {
 	suite.Equal(shareName, result.Name)
 	suite.NotNil(result.Disabled)
 	suite.True(*result.Disabled)
-	suite.NotNil(result.Invalid)
-	suite.True(*result.Invalid)
+	suite.NotNil(result.Status)
+	suite.False(result.Status.IsValid)
 	suite.False(result.MountPointData.IsMounted)
 }
 

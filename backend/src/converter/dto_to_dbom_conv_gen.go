@@ -13,44 +13,36 @@ import (
 
 type DtoToDbomConverterImpl struct{}
 
-func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error {
-	if source.Name != "" {
-		target.Name = source.Name
-	}
-	if source.Disabled != nil {
-		target.Disabled = source.Disabled
-	}
+func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error) {
+	var dtoSharedResource dto.SharedResource
+	dtoSharedResource.Name = source.Name
+	dtoSharedResource.Disabled = source.Disabled
 	dtoUserList, err := c.SambaUsersToUsers(source.Users)
 	if err != nil {
-		return err
+		return dtoSharedResource, err
 	}
-	target.Users = dtoUserList
+	dtoSharedResource.Users = dtoUserList
 	dtoUserList2, err := c.SambaUsersToUsers(source.RoUsers)
 	if err != nil {
-		return err
+		return dtoSharedResource, err
 	}
-	target.RoUsers = dtoUserList2
-	if source.TimeMachine != false {
-		pBool := source.TimeMachine
-		target.TimeMachine = &pBool
+	dtoSharedResource.RoUsers = dtoUserList2
+	pBool := source.TimeMachine
+	dtoSharedResource.TimeMachine = &pBool
+	pBool2 := source.RecycleBin
+	dtoSharedResource.RecycleBin = &pBool2
+	pBool3 := source.GuestOk
+	dtoSharedResource.GuestOk = &pBool3
+	pString := source.TimeMachineMaxSize
+	dtoSharedResource.TimeMachineMaxSize = &pString
+	dtoSharedResource.Usage = source.Usage
+	dtoSharedResource.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
+	pDtoMountPointData, err := c.dbomMountPointPathToPDtoMountPointData(source.MountPointData)
+	if err != nil {
+		return dtoSharedResource, err
 	}
-	if source.RecycleBin != false {
-		pBool2 := source.RecycleBin
-		target.RecycleBin = &pBool2
-	}
-	if source.GuestOk != false {
-		pBool3 := source.GuestOk
-		target.GuestOk = &pBool3
-	}
-	if source.TimeMachineMaxSize != "" {
-		pString := source.TimeMachineMaxSize
-		target.TimeMachineMaxSize = &pString
-	}
-	if source.Usage != "" {
-		target.Usage = source.Usage
-	}
-	target.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
-	return nil
+	dtoSharedResource.MountPointData = pDtoMountPointData
+	return dtoSharedResource, nil
 }
 func (c *DtoToDbomConverterImpl) ExportedSharesToSharedResources(source *[]dbom.ExportedShare) (*[]dto.SharedResource, error) {
 	var pDtoSharedResourceList *[]dto.SharedResource
@@ -59,7 +51,7 @@ func (c *DtoToDbomConverterImpl) ExportedSharesToSharedResources(source *[]dbom.
 		if (*source) != nil {
 			dtoSharedResourceList = make([]dto.SharedResource, len((*source)))
 			for i := 0; i < len((*source)); i++ {
-				dtoSharedResource, err := c.exportedShareToSharedResource((*source)[i])
+				dtoSharedResource, err := c.ExportedShareToSharedResource((*source)[i])
 				if err != nil {
 					return nil, err
 				}
@@ -193,7 +185,7 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	if source.Shares != nil {
 		target.Shares = make([]dto.SharedResource, len(source.Shares))
 		for i := 0; i < len(source.Shares); i++ {
-			dtoSharedResource, err := c.exportedShareToSharedResource(source.Shares[i])
+			dtoSharedResource, err := c.ExportedShareToSharedResource(source.Shares[i])
 			if err != nil {
 				return err
 			}
@@ -374,37 +366,6 @@ func (c *DtoToDbomConverterImpl) dtoMountFlagsToDbomMounDataFlags(source dto.Mou
 	}
 	return dbomMounDataFlags
 }
-func (c *DtoToDbomConverterImpl) exportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error) {
-	var dtoSharedResource dto.SharedResource
-	dtoSharedResource.Name = source.Name
-	dtoSharedResource.Disabled = source.Disabled
-	dtoUserList, err := c.SambaUsersToUsers(source.Users)
-	if err != nil {
-		return dtoSharedResource, err
-	}
-	dtoSharedResource.Users = dtoUserList
-	dtoUserList2, err := c.SambaUsersToUsers(source.RoUsers)
-	if err != nil {
-		return dtoSharedResource, err
-	}
-	dtoSharedResource.RoUsers = dtoUserList2
-	pBool := source.TimeMachine
-	dtoSharedResource.TimeMachine = &pBool
-	pBool2 := source.RecycleBin
-	dtoSharedResource.RecycleBin = &pBool2
-	pBool3 := source.GuestOk
-	dtoSharedResource.GuestOk = &pBool3
-	pString := source.TimeMachineMaxSize
-	dtoSharedResource.TimeMachineMaxSize = &pString
-	dtoSharedResource.Usage = source.Usage
-	dtoSharedResource.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
-	pDtoMountPointData, err := c.dbomMountPointPathToPDtoMountPointData(source.MountPointData)
-	if err != nil {
-		return dtoSharedResource, err
-	}
-	dtoSharedResource.MountPointData = pDtoMountPointData
-	return dtoSharedResource, nil
-}
 func (c *DtoToDbomConverterImpl) mountDataFlagToMountFlag(source dbom.MounDataFlag) (dto.MountFlag, error) {
 	var dtoMountFlag dto.MountFlag
 	dtoMountFlag.Name = source.Name
@@ -476,7 +437,7 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 	if source.Shares != nil {
 		dtoMountPointData.Shares = make([]dto.SharedResource, len(source.Shares))
 		for i := 0; i < len(source.Shares); i++ {
-			dtoSharedResource, err := c.exportedShareToSharedResource(source.Shares[i])
+			dtoSharedResource, err := c.ExportedShareToSharedResource(source.Shares[i])
 			if err != nil {
 				return dtoMountPointData, err
 			}

@@ -216,11 +216,13 @@ func TestDtoToDbomConverter_ExportedShareToSharedResource_WithEmptyPath(t *testi
 	}
 
 	var targetWithEmptyPath dto.SharedResource
-	err := conv.ExportedShareToSharedResource(sourceWithEmptyPath, &targetWithEmptyPath, nil)
+	targetWithEmptyPath, err := conv.ExportedShareToSharedResource(sourceWithEmptyPath)
 
 	require.NoError(t, err)
 	assert.Equal(t, "UPDATER", targetWithEmptyPath.Name)
-	assert.Nil(t, targetWithEmptyPath.MountPointData, "MountPointData should be nil when path is empty")
+	if targetWithEmptyPath.MountPointData != nil {
+		assert.Empty(t, targetWithEmptyPath.MountPointData.Path, "MountPointData path should be empty when source path is empty")
+	}
 
 	// Test case 2: Share with valid path
 	fstype := "ext4"
@@ -236,7 +238,7 @@ func TestDtoToDbomConverter_ExportedShareToSharedResource_WithEmptyPath(t *testi
 	}
 
 	var targetWithValidPath dto.SharedResource
-	err = conv.ExportedShareToSharedResource(sourceWithValidPath, &targetWithValidPath, nil)
+	targetWithValidPath, err = conv.ExportedShareToSharedResource(sourceWithValidPath)
 
 	require.NoError(t, err)
 	assert.Equal(t, "valid-share", targetWithValidPath.Name)
@@ -257,11 +259,13 @@ func TestDtoToDbomConverter_ExportedShareToSharedResource_WithNilPath(t *testing
 	}
 
 	var target dto.SharedResource
-	err := conv.ExportedShareToSharedResource(source, &target, nil)
+	target, err := conv.ExportedShareToSharedResource(source)
 
 	require.NoError(t, err)
 	assert.Equal(t, "no-mount-share", target.Name)
-	assert.Nil(t, target.MountPointData, "MountPointData should be nil when path is empty string")
+	if target.MountPointData != nil {
+		assert.Empty(t, target.MountPointData.Path, "MountPointData path should be empty when source path is empty")
+	}
 }
 
 func TestDtoToDbomConverter_SharedResourceToExportedShare(t *testing.T) {

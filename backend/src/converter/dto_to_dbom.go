@@ -27,8 +27,8 @@ type DtoToDbomConverter interface {
 	// goverter:map MountPointData.Path MountPointDataPath
 	sharedResourceToExportedShare(source dto.SharedResource) (dbom.ExportedShare, error)
 
-	// goverter:ignore Invalid IsHAMounted HaStatus
-	exportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error)
+	// goverter:ignore Status
+	ExportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error)
 
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
@@ -56,12 +56,11 @@ type DtoToDbomConverter interface {
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	userToSambaUser(source dto.User) (dbom.SambaUser, error)
 
-	// goverter:update target
-	// goverter:ignore Invalid IsHAMounted HaStatus
-	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore MountPointData
-	// goverter:useZeroValueOnPointerInconsistency
-	ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error
+	// g.overter:update target
+	// g.overter:useUnderlyingTypeMethods
+	// g.overter:ignore MountPointData Status
+	// g.overter:useZeroValueOnPointerInconsistency
+	// ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error
 
 	// goverter:useUnderlyingTypeMethods
 	// goverter:useZeroValueOnPointerInconsistency

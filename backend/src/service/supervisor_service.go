@@ -266,7 +266,8 @@ func (self *SupervisorService) mountHaStorage() errors.E {
 			if share.Disabled != nil && *share.Disabled {
 				continue
 			}
-			if (share.Invalid != nil && *share.Invalid) || (share.MountPointData == nil || share.MountPointData.IsInvalid) {
+
+			if !share.Status.IsValid {
 				continue
 			}
 			switch share.Usage {

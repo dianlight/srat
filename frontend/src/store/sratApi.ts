@@ -865,25 +865,15 @@ export type SmartRangeValue = {
   value: number;
   worst?: number;
 };
-export type SmartTempValue = {
-  max?: number;
-  min?: number;
-  overtemp_counter?: number;
-  value: number;
-};
 export type SmartInfo = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   disk_type?: Disk_type;
-  enabled: boolean;
   others?: {
     [key: string]: SmartRangeValue;
   };
-  power_cycle_count: SmartRangeValue;
-  power_on_hours: SmartRangeValue;
   rotation_rate?: number;
   supported: boolean;
-  temperature: SmartTempValue;
 };
 export type SmartTestStatus = {
   /** A URL to the JSON Schema for this object. */
@@ -933,12 +923,27 @@ export type GlobalDiskStats = {
   total_read_latency_ms: number;
   total_write_latency_ms: number;
 };
+export type SmartTempValue = {
+  max?: number;
+  min?: number;
+  overtemp_counter?: number;
+  value: number;
+};
+export type SmartStatus = {
+  enabled: boolean;
+  others?: {
+    [key: string]: SmartRangeValue;
+  };
+  power_cycle_count: SmartRangeValue;
+  power_on_hours: SmartRangeValue;
+  temperature: SmartTempValue;
+};
 export type DiskIoStats = {
   device_description: string;
   device_name: string;
   read_iops: number;
   read_latency_ms: number;
-  smart_data?: SmartInfo;
+  smart_data?: SmartStatus;
   write_iops: number;
   write_latency_ms: number;
 };

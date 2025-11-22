@@ -17,7 +17,7 @@ import (
 type DtoToDbomConverterInterface interface {
 	DtoToDbomConverter
 	SharedResourceToExportedShare(source dto.SharedResource, target *dbom.ExportedShare) errors.E
-	ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) errors.E
+	//ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) errors.E
 	SettingsToProperties(source dto.Settings, target *dbom.Properties) errors.E
 	PropertiesToSettings(source dbom.Properties, target *dto.Settings) errors.E
 }
@@ -152,6 +152,7 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShare(source dto.Shared
 	return nil
 }
 
+/*
 func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource, disks []dto.Disk) errors.E {
 	err := c.ExportedShareToSharedResourceNoMountPointData(source, target)
 	if err != nil {
@@ -172,3 +173,4 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.Expor
 
 	return nil
 }
+*/
