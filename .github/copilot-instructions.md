@@ -31,6 +31,62 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 - **Converters**: `backend/src/converter/*` — Goverter-generated converters for DTO↔DBOM transformations. Run `go generate` after changes.
 - **Logging**: `backend/src/tlog` — Custom logging with sensitive data masking, structured logs, and terminal color support.
 
+#### Context-Aware Logging (MANDATORY RULE)
+
+When writing or modifying Go backend code, prefer the context variants of logging functions whenever a `context.Context` is ALREADY in scope:
+
+Use:
+`slog.InfoContext(ctx, ...)`, `slog.WarnContext(ctx, ...)`, `slog.ErrorContext(ctx, ...)`, `slog.DebugContext(ctx, ...)`
+`tlog.TraceContext(ctx, ...)`, `tlog.DebugContext(ctx, ...)`, `tlog.InfoContext(ctx, ...)`, `tlog.WarnContext(ctx, ...)`, `tlog.ErrorContext(ctx, ...)`
+
+Rules:
+1. Only add the context form if a context variable is naturally available (e.g. `ctx`, `self.ctx`, `s.ctx`, `handler.ctx`, `apiContext`, `r.Context()`, constructor-local `Ctx`).
+2. DO NOT create a new context just for logging (no `context.Background()`, `context.TODO()`, `context.WithTimeout(...)` solely to pass to log).
+3. Preserve original argument order; only insert the context as the first argument.
+4. Do not refactor method signatures to add context purely for logging.
+5. In goroutines: use an existing captured context if present; do not capture a new one solely for logging.
+6. Leave the original non-context call if no appropriate context exists (this is acceptable and preferred over manufacturing one).
+7. Avoid changing vendor or third-party code for this; skip files under `backend/src/vendor/` unless explicitly patching via the established patch workflow.
+8. Tests may keep simple non-context logging unless the test specifically exercises context logging behavior.
+9. Never pass a nil context or a fabricated stand‑in (e.g. a struct field that is not a `context.Context`).
+
+Acceptable context identifiers (examples, not exhaustive): `ctx`, `self.ctx`, `s.ctx`, `ms.ctx`, `ts.ctx`, `handler.ctx`, `apiContext`, `self.apiContext`, `r.Context()`, locally declared `Ctx` in constructors.
+
+Examples:
+
+Before:
+```go
+slog.Info("Reloading config", "component", comp)
+tlog.Trace("Starting scan", "disk", d)
+```
+
+After (if `ctx` available):
+```go
+slog.InfoContext(ctx, "Reloading config", "component", comp)
+tlog.TraceContext(ctx, "Starting scan", "disk", d)
+```
+
+Before (goroutine without captured context):
+```go
+go func() {
+  slog.Debug("Background task running", "id", id)
+}()
+```
+Leave as-is unless the goroutine already captures a legitimate context for other reasons.
+
+Incorrect (manufactures context only for logging):
+```go
+slog.WarnContext(context.Background(), "Will retry", "attempt", n) // NOT ALLOWED
+```
+
+Correct alternative:
+```go
+slog.Warn("Will retry", "attempt", n)
+```
+
+Rationale: Using context-aware logging lets structured handlers attach trace/span, cancellation, and request lineage automatically. Avoid polluting code with artificial contexts—only leverage what is organically available.
+
+
 ### Frontend Patterns
 
 - **Components**: `frontend/src/components/` — Reusable React components with Material-UI
