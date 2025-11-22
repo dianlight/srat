@@ -115,7 +115,7 @@ func TestHaWsService_OnConnected(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 1)
-	eventBus.OnHomeAssistant(func(event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
 		eventReceived <- event
 	})
 
@@ -192,7 +192,7 @@ func TestHaWsService_OnDisconnected(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 1)
-	eventBus.OnHomeAssistant(func(event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
 		eventReceived <- event
 	})
 
@@ -261,7 +261,7 @@ func TestHaWsService_OnHaStarted(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 1)
-	eventBus.OnHomeAssistant(func(event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
 		eventReceived <- event
 	})
 
@@ -340,7 +340,7 @@ func TestHaWsService_OnHaStopped(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 1)
-	eventBus.OnHomeAssistant(func(event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
 		eventReceived <- event
 	})
 
@@ -414,7 +414,7 @@ func TestHaWsService_ConnectAndDisconnectSequence(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 10)
-	eventBus.OnHomeAssistant(func(event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
 		eventReceived <- event
 	})
 
@@ -590,7 +590,7 @@ func TestHaWsService_MultipleConnectionEvents(t *testing.T) {
 
 	// Subscribe to HomeAssistant events
 	eventReceived := make(chan events.HomeAssistantEvent, 10)
-	eventBus.OnHomeAssistant(func(event events.HomeAssistantEvent) {
+	eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) {
 		eventReceived <- event
 	})
 

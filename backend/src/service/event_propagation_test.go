@@ -149,12 +149,12 @@ func (suite *EventPropagationTestSuite) TestShareServiceToDirtyDataService() {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	unsubscribe := suite.eventBus.OnDirtyData(func(event events.DirtyDataEvent) {
+	unsubscribe := suite.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) {
 		dirtyTracker = event.DataDirtyTracker
 		wg.Done()
 	})
 	defer unsubscribe()
-	unsubscribeShare := suite.eventBus.OnShare(func(event events.ShareEvent) {
+	unsubscribeShare := suite.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
 		if event.Event.Type == events.EventTypes.ADD {
 			shareEventReceived.Store(true)
 		}
@@ -205,7 +205,7 @@ func (suite *EventPropagationTestSuite) TestUserServiceToDirtyDataService() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	unsubscribe := suite.eventBus.OnDirtyData(func(event events.DirtyDataEvent) {
+	unsubscribe := suite.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) {
 		dirtyTracker = event.DataDirtyTracker
 		wg.Done()
 	})
@@ -247,7 +247,7 @@ func (suite *EventPropagationTestSuite) TestMountPointEventPropagation() {
 
 	mock.When(suite.mockShareRepo.FindByMountPath("/mnt/test")).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
 
-	unsubscribe := suite.eventBus.OnMountPoint(func(event events.MountPointEvent) {
+	unsubscribe := suite.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) {
 		receivedEvent = &event
 		wg.Done()
 	})
@@ -289,7 +289,7 @@ func (suite *EventPropagationTestSuite) TestDiskEventPropagation() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	unsubscribe := suite.eventBus.OnDisk(func(event events.DiskEvent) {
+	unsubscribe := suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) {
 		receivedDiskEvent.Store(true)
 		wg.Done()
 	})
@@ -332,19 +332,19 @@ func (suite *EventPropagationTestSuite) TestMultipleListenersReceiveSameEvent() 
 	var wg sync.WaitGroup
 	wg.Add(3)
 
-	unsubscribe1 := suite.eventBus.OnShare(func(event events.ShareEvent) {
+	unsubscribe1 := suite.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
 		listener1Received.Store(true)
 		wg.Done()
 	})
 	defer unsubscribe1()
 
-	unsubscribe2 := suite.eventBus.OnShare(func(event events.ShareEvent) {
+	unsubscribe2 := suite.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
 		listener2Received.Store(true)
 		wg.Done()
 	})
 	defer unsubscribe2()
 
-	unsubscribe3 := suite.eventBus.OnShare(func(event events.ShareEvent) {
+	unsubscribe3 := suite.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
 		listener3Received.Store(true)
 		wg.Done()
 	})
@@ -388,13 +388,13 @@ func (suite *EventPropagationTestSuite) TestEventPropagationChain() {
 	var wg sync.WaitGroup
 	wg.Add(3)
 
-	unsubscribe1 := suite.eventBus.OnShare(func(event events.ShareEvent) {
+	unsubscribe1 := suite.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
 		shareEventReceived.Store(true)
 		wg.Done()
 	})
 	defer unsubscribe1()
 
-	unsubscribe2 := suite.eventBus.OnDirtyData(func(event events.DirtyDataEvent) {
+	unsubscribe2 := suite.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) {
 		if event.DataDirtyTracker.Shares {
 			dirtyDataEventReceived.Store(true)
 			wg.Done()
@@ -402,7 +402,7 @@ func (suite *EventPropagationTestSuite) TestEventPropagationChain() {
 	})
 	defer unsubscribe2()
 
-	unsubscribe3 := suite.eventBus.OnSamba(func(event events.SambaEvent) {
+	unsubscribe3 := suite.eventBus.OnSamba(func(ctx context.Context, event events.SambaEvent) {
 		sambaEventReceived.Store(true)
 		wg.Done()
 	})
@@ -459,19 +459,19 @@ func (suite *EventPropagationTestSuite) TestConcurrentEventPropagation() {
 	var wg sync.WaitGroup
 	wg.Add(numEmissions * 3) // 10 emissions * 3 event types
 
-	unsubscribe1 := suite.eventBus.OnShare(func(event events.ShareEvent) {
+	unsubscribe1 := suite.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
 		shareCounter.Add(1)
 		wg.Done()
 	})
 	defer unsubscribe1()
 
-	unsubscribe2 := suite.eventBus.OnUser(func(event events.UserEvent) {
+	unsubscribe2 := suite.eventBus.OnUser(func(ctx context.Context, event events.UserEvent) {
 		userCounter.Add(1)
 		wg.Done()
 	})
 	defer unsubscribe2()
 
-	unsubscribe3 := suite.eventBus.OnDisk(func(event events.DiskEvent) {
+	unsubscribe3 := suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) {
 		diskCounter.Add(1)
 		wg.Done()
 	})
@@ -520,7 +520,7 @@ func (suite *EventPropagationTestSuite) TestEventUnsubscription() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	unsubscribe := suite.eventBus.OnShare(func(event events.ShareEvent) {
+	unsubscribe := suite.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
 		counter.Add(1)
 		wg.Done()
 	})
@@ -567,13 +567,13 @@ func (suite *EventPropagationTestSuite) TestDiskEventEmitsPartitionEvents() {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	unsubscribe1 := suite.eventBus.OnDisk(func(event events.DiskEvent) {
+	unsubscribe1 := suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) {
 		diskReceived.Store(true)
 		wg.Done()
 	})
 	defer unsubscribe1()
 
-	unsubscribe2 := suite.eventBus.OnPartition(func(event events.PartitionEvent) {
+	unsubscribe2 := suite.eventBus.OnPartition(func(ctx context.Context, event events.PartitionEvent) {
 		partitionReceived.Store(true)
 		wg.Done()
 	})
@@ -621,7 +621,7 @@ func (suite *EventPropagationTestSuite) TestSettingEventPropagation() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	unsubscribe := suite.eventBus.OnSetting(func(event events.SettingEvent) {
+	unsubscribe := suite.eventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) {
 		eventReceived.Store(true)
 		wg.Done()
 	})
@@ -657,7 +657,7 @@ func (suite *EventPropagationTestSuite) TestVolumeEventPropagation() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	unsubscribe := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+	unsubscribe := suite.eventBus.OnVolume(func(ctx context.Context, event events.VolumeEvent) {
 		receivedEvent = &event
 		wg.Done()
 	})
@@ -696,7 +696,7 @@ func (suite *EventPropagationTestSuite) TestVolumeUnmountEventPropagation() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	unsubscribe := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+	unsubscribe := suite.eventBus.OnVolume(func(ctx context.Context, event events.VolumeEvent) {
 		receivedEvent = &event
 		wg.Done()
 	})
@@ -734,13 +734,13 @@ func (suite *EventPropagationTestSuite) TestVolumeEventToMountPointEventChain() 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	unsubscribe1 := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+	unsubscribe1 := suite.eventBus.OnVolume(func(ctx context.Context, event events.VolumeEvent) {
 		volumeEventReceived.Store(true)
 		wg.Done()
 	})
 	defer unsubscribe1()
 
-	unsubscribe2 := suite.eventBus.OnMountPoint(func(event events.MountPointEvent) {
+	unsubscribe2 := suite.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) {
 		mountPointEventReceived.Store(true)
 		wg.Done()
 	})
@@ -781,7 +781,7 @@ func (suite *EventPropagationTestSuite) TestMultipleVolumeOperationsSequence() {
 	var wg sync.WaitGroup
 	wg.Add(3) // mount, unmount, mount
 
-	unsubscribe := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+	unsubscribe := suite.eventBus.OnVolume(func(ctx context.Context, event events.VolumeEvent) {
 		mu.Lock()
 		operations = append(operations, event.Operation)
 		mu.Unlock()
@@ -844,25 +844,25 @@ func (suite *EventPropagationTestSuite) TestVolumeDiskPartitionEventChain() {
 	// Mock repository to avoid nil pointer dereference when ShareService tries to look up share by path
 	mock.When(suite.mockShareRepo.FindByMountPath("/mnt/sdd1")).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
 
-	unsubscribe1 := suite.eventBus.OnDisk(func(event events.DiskEvent) {
+	unsubscribe1 := suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) {
 		diskEventReceived.Store(true)
 		wg.Done()
 	})
 	defer unsubscribe1()
 
-	unsubscribe2 := suite.eventBus.OnPartition(func(event events.PartitionEvent) {
+	unsubscribe2 := suite.eventBus.OnPartition(func(ctx context.Context, event events.PartitionEvent) {
 		partitionEventReceived.Store(true)
 		wg.Done()
 	})
 	defer unsubscribe2()
 
-	unsubscribe3 := suite.eventBus.OnMountPoint(func(event events.MountPointEvent) {
+	unsubscribe3 := suite.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) {
 		mountPointEventReceived.Store(true)
 		wg.Done()
 	})
 	defer unsubscribe3()
 
-	unsubscribe4 := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+	unsubscribe4 := suite.eventBus.OnVolume(func(ctx context.Context, event events.VolumeEvent) {
 		volumeEventReceived.Store(true)
 		wg.Done()
 	})
@@ -931,7 +931,7 @@ func (suite *EventPropagationTestSuite) TestConcurrentVolumeOperations() {
 	var wg sync.WaitGroup
 	wg.Add(numOperations * 2) // 5 mounts + 5 unmounts
 
-	unsubscribe := suite.eventBus.OnVolume(func(event events.VolumeEvent) {
+	unsubscribe := suite.eventBus.OnVolume(func(ctx context.Context, event events.VolumeEvent) {
 		switch event.Operation {
 		case "mount":
 			mountCounter.Add(1)

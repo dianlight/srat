@@ -54,7 +54,7 @@ func NewHardwareService(
 		state:        state,
 		cache:        cache.New(30*time.Minute, 10*time.Minute),
 	}
-	unsubscribe := eventBus.OnHomeAssistant(func(hae events.HomeAssistantEvent) {
+	unsubscribe := eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) {
 		if hae.Type == events.EventTypes.START {
 			hs.InvalidateHardwareInfo()
 		}

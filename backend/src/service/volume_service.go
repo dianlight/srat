@@ -118,41 +118,41 @@ func NewVolumeService(
 	}
 
 	var unsubscribe [2]func()
-	unsubscribe[0] = p.eventBus.OnMountPoint(func(mpe events.MountPointEvent) {
+	unsubscribe[0] = p.eventBus.OnMountPoint(func(ctx context.Context, mpe events.MountPointEvent) {
 		// Avoid recursive refresh loops: skip handling mount events while we are refreshing volumes
 		if p.refreshing.Load() {
 			return
 		}
 		err := p.persistMountPoint(mpe.MountPoint)
 		if err != nil {
-			slog.Error("Failed to persist mount point on event", "mount_point", mpe.MountPoint, "err", err)
+			slog.ErrorContext(ctx, "Failed to persist mount point on event", "mount_point", mpe.MountPoint, "err", err)
 		}
 		if mpe.MountPoint.Partition != nil && mpe.MountPoint.Partition.Id != nil {
-			slog.Info("MountPointEvent received", "type", mpe.Type, "mount_point", mpe.MountPoint.Path, "device_id", *mpe.MountPoint.Partition.Id, "is_mounted", mpe.MountPoint.IsMounted, "is_to_mount_at_startup", mpe.MountPoint.IsToMountAtStartup)
+			slog.InfoContext(ctx, "MountPointEvent received", "type", mpe.Type, "mount_point", mpe.MountPoint.Path, "device_id", *mpe.MountPoint.Partition.Id, "is_mounted", mpe.MountPoint.IsMounted, "is_to_mount_at_startup", mpe.MountPoint.IsToMountAtStartup)
 			if mpe.MountPoint.Partition.DiskId != nil {
 				err := p.disks.AddMountPoint(*mpe.MountPoint.Partition.DiskId, *mpe.MountPoint.Partition.Id, *mpe.MountPoint)
 				if err != nil {
-					slog.Warn("Failed to add mount point to disk map", "err", err)
+					slog.WarnContext(ctx, "Failed to add mount point to disk map", "err", err)
 				}
 			}
 		}
 		err = p.getVolumesData()
 		if err != nil {
-			slog.Error("Failed to refresh volumes data on mount point event", "err", err)
+			slog.ErrorContext(ctx, "Failed to refresh volumes data on mount point event", "err", err)
 		}
 		if !mpe.MountPoint.IsMounted && mpe.Type == events.EventTypes.ADD && mpe.MountPoint.IsToMountAtStartup != nil && *mpe.MountPoint.IsToMountAtStartup {
 			err = p.MountVolume(mpe.MountPoint)
 			if err != nil {
-				slog.Error("Failed to mount volume on event", "mount_point", mpe.MountPoint, "err", err)
+				slog.ErrorContext(ctx, "Failed to mount volume on event", "mount_point", mpe.MountPoint, "err", err)
 				p.createAutomountFailureNotification(mpe.MountPoint.Path, mpe.MountPoint.DeviceId, err)
 			}
 		}
 	})
-	unsubscribe[1] = p.eventBus.OnHomeAssistant(func(hae events.HomeAssistantEvent) {
+	unsubscribe[1] = p.eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) {
 		if hae.Type == events.EventTypes.START {
 			err := p.getVolumesData()
 			if err != nil {
-				slog.Error("Failed to refresh volumes data on Home Assistant start event", "err", err)
+				slog.ErrorContext(ctx, "Failed to refresh volumes data on Home Assistant start event", "err", err)
 			}
 		}
 	})

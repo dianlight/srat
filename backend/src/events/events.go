@@ -7,9 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// eventUUIDKey is the context key for event UUID
-type eventUUIDKey struct{}
-
 // Event is the base event struct without UUID (UUID is now stored in context)
 type Event struct {
 	Type EventType
@@ -17,7 +14,7 @@ type Event struct {
 
 // GetEventUUID retrieves the UUID from context
 func GetEventUUID(ctx context.Context) string {
-	if val := ctx.Value(eventUUIDKey{}); val != nil {
+	if val := ctx.Value("event_uuid"); val != nil {
 		if id, ok := val.(string); ok {
 			return id
 		}
@@ -28,7 +25,7 @@ func GetEventUUID(ctx context.Context) string {
 // ContextWithEventUUID returns a new context with the event UUID set
 func ContextWithEventUUID(ctx context.Context) context.Context {
 	if GetEventUUID(ctx) == "" {
-		return context.WithValue(ctx, eventUUIDKey{}, uuid.New().String())
+		return context.WithValue(ctx, "event_uuid", uuid.New().String())
 	}
 	return ctx
 }

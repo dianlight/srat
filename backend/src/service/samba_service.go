@@ -86,13 +86,13 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 	p.hdidle_service = in.Hdidle_service
 
 	var unsubscribe [1]func()
-	unsubscribe[0] = p.eventBus.OnSamba(func(event events.SambaEvent) {
+	unsubscribe[0] = p.eventBus.OnSamba(func(ctx context.Context, event events.SambaEvent) {
 		if event.Type == events.EventTypes.RESTART {
-			slog.Info("SambaService received RESTART event, writing and restarting Samba configuration...")
+			slog.InfoContext(ctx, "SambaService received RESTART event, writing and restarting Samba configuration...")
 			if err := p.WriteAndRestartSambaConfig(); err != nil {
-				slog.Error("Error writing and restarting Samba configuration", "error", err)
+				slog.ErrorContext(ctx, "Error writing and restarting Samba configuration", "error", err)
 				p.eventBus.EmitDirtyData(events.DirtyDataEvent{
-					Event:            events.Event{Type: events.EventTypes.ERROR},
+					Event:            events.Event{Type: events.EventTypes.RESTART},
 					DataDirtyTracker: event.DataDirtyTracker,
 				})
 			}

@@ -84,34 +84,34 @@ func NewBroadcasterService(
 func (broker *BroadcasterService) setupEventListeners() []func() {
 	ret := make([]func(), 4)
 	// Listen for disk events
-	ret[0] = broker.eventBus.OnDisk(func(event events.DiskEvent) {
+	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) {
 		diskID := "unknown"
 		if event.Disk.Id != nil {
 			diskID = *event.Disk.Id
 		}
-		slog.Debug("BroadcasterService received Disk event", "disk", diskID)
+		slog.DebugContext(ctx, "BroadcasterService received Disk event", "disk", diskID)
 		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
 	})
 
 	// Listen for partition events
-	ret[1] = broker.eventBus.OnPartition(func(event events.PartitionEvent) {
+	ret[1] = broker.eventBus.OnPartition(func(ctx context.Context, event events.PartitionEvent) {
 		partName := "unknown"
 		if event.Partition.Name != nil {
 			partName = *event.Partition.Name
 		}
-		slog.Debug("BroadcasterService received Partition event", "partition", partName)
+		slog.DebugContext(ctx, "BroadcasterService received Partition event", "partition", partName)
 		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
 	})
 
 	// Listen for share events
-	ret[2] = broker.eventBus.OnShare(func(event events.ShareEvent) {
-		slog.Debug("BroadcasterService received Share event", "share", event.Share.Name)
+	ret[2] = broker.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
+		slog.DebugContext(ctx, "BroadcasterService received Share event", "share", event.Share.Name)
 		broker.BroadcastMessage(*event.Share)
 	})
 
 	// Listen for mount point events
-	ret[3] = broker.eventBus.OnMountPoint(func(event events.MountPointEvent) {
-		slog.Debug("BroadcasterService received MountPointMounted event", "mount_point", event.MountPoint.Path)
+	ret[3] = broker.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) {
+		slog.DebugContext(ctx, "BroadcasterService received MountPointMounted event", "mount_point", event.MountPoint.Path)
 		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
 	})
 

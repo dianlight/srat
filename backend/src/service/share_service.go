@@ -63,15 +63,15 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		sharesQueueMutex:    &sync.RWMutex{},
 		dbomConv:            converter.DtoToDbomConverterImpl{},
 	}
-	unsubscribe := s.eventBus.OnMountPoint(func(event events.MountPointEvent) {
-		slog.Info("Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
+	unsubscribe := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) {
+		slog.InfoContext(ctx, "Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
 		_, errs := s.SetShareFromPathEnabled(event.MountPoint.Path, event.MountPoint.IsMounted)
 		if errs != nil {
 			if errors.Is(errs, gorm.ErrRecordNotFound) {
-				tlog.Trace("No share found for mount point", "path", event.MountPoint.Path)
+				tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
 				return
 			}
-			slog.Error("Error updating share status from mount event", "err", errs)
+			slog.ErrorContext(ctx, "Error updating share status from mount event", "err", errs)
 		}
 	})
 	lc.Append(fx.Hook{

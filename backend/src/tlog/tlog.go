@@ -113,7 +113,6 @@ func isTerminalSupported() bool {
 	return isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd()) || strings.Contains(os.Getenv("TERM"), "color")
 }
 
-
 // extractContextValues extracts key-value pairs from context
 func extractContextValues(ctx context.Context) []slog.Attr {
 	var attrs []slog.Attr
@@ -122,7 +121,7 @@ func extractContextValues(ctx context.Context) []slog.Attr {
 	// This is a basic implementation - could be extended
 	if ctx != nil {
 		// Try common context keys
-		commonKeys := []string{"X-Trace-Id", "X-Span-Id", "request_id", "user_id", "session_id", "trace_id", "span_id"}
+		commonKeys := []string{"X-Trace-Id", "X-Span-Id", "request_id", "user_id", "session_id", "trace_id", "span_id", "event_uuid"}
 		for _, key := range commonKeys {
 			if val := ctx.Value(key); val != nil {
 				attrs = append(attrs, slog.Any(key, val))
@@ -142,7 +141,7 @@ func extractContextToArgs(ctx context.Context) []any {
 	var args []any
 
 	// Try common context keys
-	commonKeys := []string{"X-Trace-Id", "X-Span-Id", "request_id", "user_id", "session_id", "trace_id", "span_id"}
+	commonKeys := []string{"X-Trace-Id", "X-Span-Id", "request_id", "user_id", "session_id", "trace_id", "span_id", "event_uuid"}
 	for _, key := range commonKeys {
 		if val := ctx.Value(key); val != nil {
 			args = append(args, key, val)

@@ -22,7 +22,7 @@ func TestEventBusDisk(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnDisk(func(event DiskEvent) {
+	unsubscribe := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
 		receivedEvent = &event
 		wg.Done()
 	})
@@ -61,7 +61,7 @@ func TestEventBusPartition(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnPartition(func(event PartitionEvent) {
+	unsubscribe := bus.OnPartition(func(ctx context.Context, event PartitionEvent) {
 		receivedEvent = &event
 		wg.Done()
 	})
@@ -102,7 +102,7 @@ func TestEventBusShare(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnShare(func(event ShareEvent) {
+	unsubscribe := bus.OnShare(func(ctx context.Context, event ShareEvent) {
 		receivedEvent = &event
 		wg.Done()
 	})
@@ -139,7 +139,7 @@ func TestEventBusMountPoint(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnMountPoint(func(event MountPointEvent) {
+	unsubscribe := bus.OnMountPoint(func(ctx context.Context, event MountPointEvent) {
 		receivedEvent = &event
 		wg.Done()
 	})
@@ -176,19 +176,19 @@ func TestEventBusMultipleListeners(t *testing.T) {
 	wg.Add(3)
 
 	// Register three listeners
-	unsubscribe1 := bus.OnDisk(func(event DiskEvent) {
+	unsubscribe1 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
 		counter.Add(1)
 		wg.Done()
 	})
 	defer unsubscribe1()
 
-	unsubscribe2 := bus.OnDisk(func(event DiskEvent) {
+	unsubscribe2 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
 		counter.Add(1)
 		wg.Done()
 	})
 	defer unsubscribe2()
 
-	unsubscribe3 := bus.OnDisk(func(event DiskEvent) {
+	unsubscribe3 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
 		counter.Add(1)
 		wg.Done()
 	})
@@ -224,7 +224,7 @@ func TestEventBusUnsubscribe(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnDisk(func(event DiskEvent) {
+	unsubscribe := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
 		counter.Add(1)
 		wg.Done()
 	})
@@ -268,7 +268,7 @@ func TestEventBusOneEmitMultipleListeners(t *testing.T) {
 	wg.Add(3)
 
 	// Register three listeners that track their received events
-	unsubscribe1 := bus.OnDisk(func(event DiskEvent) {
+	unsubscribe1 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
 		mu.Lock()
 		receivedDiskIDs[0] = *event.Disk.Id
 		mu.Unlock()
@@ -277,7 +277,7 @@ func TestEventBusOneEmitMultipleListeners(t *testing.T) {
 	})
 	defer unsubscribe1()
 
-	unsubscribe2 := bus.OnDisk(func(event DiskEvent) {
+	unsubscribe2 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
 		mu.Lock()
 		receivedDiskIDs[1] = *event.Disk.Id
 		mu.Unlock()
@@ -286,7 +286,7 @@ func TestEventBusOneEmitMultipleListeners(t *testing.T) {
 	})
 	defer unsubscribe2()
 
-	unsubscribe3 := bus.OnDisk(func(event DiskEvent) {
+	unsubscribe3 := bus.OnDisk(func(ctx context.Context, event DiskEvent) {
 		mu.Lock()
 		receivedDiskIDs[2] = *event.Disk.Id
 		mu.Unlock()
@@ -337,7 +337,7 @@ func TestEventBusUUIDGeneration(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnShare(func(event ShareEvent) {
+	unsubscribe := bus.OnShare(func(ctx context.Context, event ShareEvent) {
 		receivedEvent = &event
 		wg.Done()
 	})
@@ -384,7 +384,7 @@ func TestEventBusUUIDNotOverwritten(t *testing.T) {
 	wg.Add(1)
 
 	// Register listener
-	unsubscribe := bus.OnShare(func(event ShareEvent) {
+	unsubscribe := bus.OnShare(func(ctx context.Context, event ShareEvent) {
 		receivedEvent = &event
 		wg.Done()
 	})
@@ -429,7 +429,7 @@ func TestEventBusMultipleListenersGetSameUUID(t *testing.T) {
 	wg.Add(2)
 
 	// Register first listener
-	unsubscribe1 := bus.OnShare(func(event ShareEvent) {
+	unsubscribe1 := bus.OnShare(func(ctx context.Context, event ShareEvent) {
 		mu.Lock()
 		listener1Received = true
 		mu.Unlock()
@@ -438,7 +438,7 @@ func TestEventBusMultipleListenersGetSameUUID(t *testing.T) {
 	defer unsubscribe1()
 
 	// Register second listener
-	unsubscribe2 := bus.OnShare(func(event ShareEvent) {
+	unsubscribe2 := bus.OnShare(func(ctx context.Context, event ShareEvent) {
 		mu.Lock()
 		listener2Received = true
 		mu.Unlock()

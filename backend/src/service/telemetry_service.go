@@ -108,7 +108,7 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 		errorSessionLimiter: &errorSessionLimiter,
 	}
 
-	unsubscribe := eventBus.OnSetting(func(event events.SettingEvent) {
+	unsubscribe := eventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) {
 		tm.Configure(event.Setting.TelemetryMode)
 	})
 

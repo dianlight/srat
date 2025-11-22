@@ -31,20 +31,20 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 
 	unsubscribe := make([]func(), 4)
 	if eventBus != nil {
-		unsubscribe[0] = eventBus.OnShare(func(event events.ShareEvent) {
-			slog.Debug("DirtyDataService received Share event", "share", event.Share.Name)
+		unsubscribe[0] = eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) {
+			slog.DebugContext(ctx, "DirtyDataService received Share event", "share", event.Share.Name)
 			p.setDirtyShares()
 		})
-		unsubscribe[1] = eventBus.OnUser(func(event events.UserEvent) {
-			slog.Debug("DirtyDataService received User event", "user", event.User.Username)
+		unsubscribe[1] = eventBus.OnUser(func(ctx context.Context, event events.UserEvent) {
+			slog.DebugContext(ctx, "DirtyDataService received User event", "user", event.User.Username)
 			p.setDirtyUsers()
 		})
-		unsubscribe[2] = eventBus.OnSetting(func(event events.SettingEvent) {
-			slog.Debug("DirtyDataService received Setting event", "setting", event.Setting)
+		unsubscribe[2] = eventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) {
+			slog.DebugContext(ctx, "DirtyDataService received Setting event", "setting", event.Setting)
 			p.setDirtySettings()
 		})
-		unsubscribe[3] = eventBus.OnDirtyData(func(event events.DirtyDataEvent) {
-			slog.Debug("DirtyDataService received DirtyData event", "tracker", event.DataDirtyTracker)
+		unsubscribe[3] = eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) {
+			slog.DebugContext(ctx, "DirtyDataService received DirtyData event", "tracker", event.DataDirtyTracker)
 			if event.Type == events.EventTypes.CLEAN {
 				p.resetDirtyStatus()
 			}
