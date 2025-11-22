@@ -10,7 +10,7 @@ import (
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/gorilla/mux"
 	"github.com/jpillora/overseer"
 	"github.com/rs/cors"

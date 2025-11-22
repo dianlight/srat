@@ -84,6 +84,9 @@ github.com/davecgh/go-spew/spew
 # github.com/dianlight/smartmontools-go v0.0.5
 ## explicit; go 1.24.7
 github.com/dianlight/smartmontools-go
+# github.com/dianlight/tlog v0.0.0 => /home/runner/work/tlog
+## explicit; go 1.25.3
+github.com/dianlight/tlog
 # github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
 ## explicit; go 1.13
 github.com/dprotaso/go-yit
@@ -715,3 +718,4 @@ modernc.org/sqlite/lib
 # moul.io/banner v1.0.1
 ## explicit; go 1.13
 moul.io/banner
+# github.com/dianlight/tlog => /home/runner/work/tlog

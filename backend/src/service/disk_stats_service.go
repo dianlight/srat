@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/prometheus/procfs/blockdevice"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"

@@ -81,7 +81,7 @@ The package supports the following log levels (from lowest to highest priority):
 ### Simple Logging
 
 ```go
-import "github.com/dianlight/srat/tlog"
+import "github.com/dianlight/tlog"
 
 // Basic logging functions
 tlog.Trace("Detailed execution trace", "step", 1)

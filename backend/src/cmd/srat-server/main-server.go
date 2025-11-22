@@ -17,7 +17,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/smartmontools-go"
 	"github.com/dianlight/srat/internal/appsetup"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/gorilla/mux"
 	"gitlab.com/tozd/go/errors"
 

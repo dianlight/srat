@@ -24,7 +24,7 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/templates"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v76/github"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"

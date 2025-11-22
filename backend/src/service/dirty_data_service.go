@@ -7,7 +7,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"go.uber.org/fx"
 )
 

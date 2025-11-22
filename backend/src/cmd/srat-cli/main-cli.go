@@ -20,7 +20,7 @@ import (
 	"github.com/dianlight/srat/internal/appsetup"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 
 	"go.uber.org/fx"
 )

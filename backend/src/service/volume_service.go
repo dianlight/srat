@@ -21,7 +21,7 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/prometheus/procfs"
 	"github.com/shomali11/util/xhashes"

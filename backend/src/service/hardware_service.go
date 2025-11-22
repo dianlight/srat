@@ -11,7 +11,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/hardware"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/patrickmn/go-cache"
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
