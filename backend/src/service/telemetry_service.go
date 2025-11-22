@@ -146,7 +146,7 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						slog.Warn("Recovered from rollbar.Close() panic during reconfiguration", "panic", r)
+						slog.WarnContext(ts.ctx, "Recovered from rollbar.Close() panic during reconfiguration", "panic", r)
 					}
 				}()
 				rollbar.Close()
@@ -164,7 +164,7 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 
 	sysinfo, err := ts.haroot.GetSystemInfo()
 	if err != nil {
-		slog.Warn("Error getting system info", "error", errors.WithStack(err))
+		slog.WarnContext(ts.ctx, "Error getting system info", "error", errors.WithStack(err))
 	}
 
 	// Only initialize Rollbar if mode is All or Errors and internet is available
@@ -239,7 +239,7 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 		rollbarGlobalClosed = false
 		rollbarGlobalMu.Unlock()
 		ts.rollbarMu.Unlock()
-		slog.Info("Rollbar telemetry configured", "mode", mode.String(), "platform", rollbar.Platform(), "environment", ts.environment, "version", ts.version)
+		slog.InfoContext(ts.ctx, "Rollbar telemetry configured", "mode", mode.String(), "platform", rollbar.Platform(), "environment", ts.environment, "version", ts.version)
 
 		// Register tlog callbacks for Error and Fatal levels
 		ts.registerTlogCallbacks()
@@ -252,7 +252,7 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 			})
 		}
 	} else {
-		slog.Info("Rollbar telemetry disabled", "mode", mode.String(), "internet", ts.IsConnectedToInternet())
+		slog.InfoContext(ts.ctx, "Rollbar telemetry disabled", "mode", mode.String(), "internet", ts.IsConnectedToInternet())
 		// Ensure callbacks are not registered when disabled
 		ts.unregisterTlogCallbacks()
 	}
@@ -287,7 +287,7 @@ func (ts *TelemetryService) ReportError(interfaces ...interface{}) errors.E {
 	if ts.mode == dto.TelemetryModes.TELEMETRYMODEALL || ts.mode == dto.TelemetryModes.TELEMETRYMODEERRORS {
 		ts.errorSessionLimiter.Do(func() {
 			rollbar.Error(interfaces...)
-			slog.Debug("Error reported to Rollbar", "error", interfaces)
+			slog.DebugContext(ts.ctx, "Error reported to Rollbar", "error", interfaces)
 		})
 	}
 
@@ -313,7 +313,7 @@ func (ts *TelemetryService) ReportEvent(event string, data map[string]interface{
 	data["timestamp"] = time.Now().UTC().Format(time.RFC3339)
 
 	rollbar.Info(fmt.Sprintf("Event: %s", event), data)
-	slog.Debug("Event reported to Rollbar", "event", event, "data", data)
+	slog.DebugContext(ts.ctx, "Event reported to Rollbar", "event", event, "data", data)
 
 	return nil
 }
@@ -332,21 +332,21 @@ func (ts *TelemetryService) IsConnectedToInternet() bool {
 	// Create request to test connectivity
 	req, err := http.NewRequestWithContext(ctx, "HEAD", "https://api.rollbar.com", nil)
 	if err != nil {
-		slog.Debug("Failed to create internet connectivity request", "error", err)
+		slog.DebugContext(ctx, "Failed to create internet connectivity request", "error", err)
 		return false
 	}
 
 	// Execute request
 	resp, err := client.Do(req)
 	if err != nil {
-		slog.Debug("Internet connectivity check failed", "error", err)
+		slog.DebugContext(ctx, "Internet connectivity check failed", "error", err)
 		return false
 	}
 	defer resp.Body.Close()
 
 	// Consider successful if we get any response (even 4xx/5xx indicates connectivity)
 	connected := resp.StatusCode > 0
-	slog.Debug("Internet connectivity check completed", "connected", connected, "status", resp.StatusCode)
+	slog.DebugContext(ctx, "Internet connectivity check completed", "connected", connected, "status", resp.StatusCode)
 
 	return connected
 }
@@ -374,13 +374,13 @@ func (ts *TelemetryService) Shutdown() {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						slog.Warn("Recovered from rollbar.Close() panic", "panic", r)
+						slog.WarnContext(ts.ctx, "Recovered from rollbar.Close() panic", "panic", r)
 					}
 				}()
 				rollbar.Close()
 			}()
 			rollbarGlobalClosed = true
-			slog.Info("Rollbar telemetry service shutdown")
+			slog.InfoContext(ts.ctx, "Rollbar telemetry service shutdown")
 		}
 		ts.rollbarConfigured = false
 		ts.rollbarClosed = true

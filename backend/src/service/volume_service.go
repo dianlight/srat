@@ -263,12 +263,12 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			//slog.Error("Error checking if path is mounted", "path", dbom_mount_data.Path, "err", errS)
 			return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking mount status", "Path", md.Path, "Error", errS)
 		}
-		slog.Debug("osutil.IsMounted check failed, but path not mounted, proceeding", "path", md.Path, "err", errS)
+		slog.DebugContext(ms.ctx, "osutil.IsMounted check failed, but path not mounted, proceeding", "path", md.Path, "err", errS)
 		ok = false // Ensure ok is false if IsMounted errored
 	}
 
 	if ok {
-		slog.Warn("Volume already mounted according to OS check", "device", md.DeviceId, "path", md.Path)
+		slog.WarnContext(ms.ctx, "Volume already mounted according to OS check", "device", md.DeviceId, "path", md.Path)
 		return errors.WithDetails(dto.ErrorAlreadyMounted,
 			"Device", md.DeviceId,
 			"Path", md.Path,
@@ -280,24 +280,24 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		// Rename logic if path is already mounted (even if DB state was inconsistent)
 		orgPath := md.Path
 		if ok { // Only rename if osutil.IsMounted returned true
-			slog.Info("Attempting to rename mount path due to conflict", "original_path", orgPath)
+			slog.InfoContext(ms.ctx, "Attempting to rename mount path due to conflict", "original_path", orgPath)
 			for i := 1; ; i++ {
 				md.Path = orgPath + "_(" + strconv.Itoa(i) + ")"
 				okCheck, errCheck := osutil.IsMounted(md.Path)
 				if errCheck != nil {
 					// Similar to above, error might be okay if path doesn't exist yet
 					if okCheck {
-						slog.Error("Error checking renamed path mount status", "path", md.Path, "err", errCheck)
+								slog.ErrorContext(ms.ctx, "Error checking renamed path mount status", "path", md.Path, "err", errCheck)
 						return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking renamed mount status", "Path", md.Path, "Error", errCheck)
 					}
 					okCheck = false // Treat error as not mounted
 				}
 				if !okCheck {
-					slog.Info("Found available renamed path", "new_path", md.Path)
+					slog.InfoContext(ms.ctx, "Found available renamed path", "new_path", md.Path)
 					break // Found an unused path
 				}
 				if i > 100 { // Safety break
-					slog.Error("Could not find available renamed mount path after 100 attempts", "original_path", orgPath)
+					slog.ErrorContext(ms.ctx, "Could not find available renamed mount path after 100 attempts", "original_path", orgPath)
 					return errors.WithDetails(dto.ErrorMountFail, "Path", orgPath, "Message", "Could not find available renamed mount path")
 				}
 			}
@@ -307,7 +307,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 	// Initialize flags if nil to avoid nil pointer dereference
 	if md.Flags == nil {
 		md.Flags = &dto.MountFlags{}
-		slog.Debug("Initialized nil Flags to empty MountFlags", "device", md.DeviceId, "path", md.Path)
+		slog.DebugContext(ms.ctx, "Initialized nil Flags to empty MountFlags", "device", md.DeviceId, "path", md.Path)
 	}
 
 	flags, data, err := ms.fs_service.MountFlagsToSyscallFlagAndData(*md.Flags)
@@ -320,7 +320,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
-	slog.Debug("Attempting to mount volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", flags, "data", data)
+	slog.DebugContext(ms.ctx, "Attempting to mount volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", flags, "data", data)
 
 	var mp *mount.MountPoint
 	// Ensure secure directory permissions when creating mount point
@@ -351,7 +351,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			fsTypeStr = *md.FSType
 		}
 
-		slog.Error("Failed to mount volume",
+		slog.ErrorContext(ms.ctx, "Failed to mount volume",
 			"device_id", md.DeviceId,
 			"device_path", *md.Partition.DevicePath,
 			"fstype", fsTypeStr,
@@ -365,7 +365,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		if _, statErr := os.Stat(md.Path); statErr == nil {
 			// Directory exists, try to remove it
 			if removeErr := os.Remove(md.Path); removeErr != nil {
-				slog.Warn("Failed to cleanup mount directory after mount failure",
+				slog.WarnContext(ms.ctx, "Failed to cleanup mount directory after mount failure",
 					"path", md.Path,
 					"cleanup_error", removeErr)
 			}
@@ -382,13 +382,13 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"Error", errS.Error(),
 		)
 	} else {
-		slog.Info("Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", mp.Flags, "data", mp.Data)
+		slog.InfoContext(ms.ctx, "Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", mp.Flags, "data", mp.Data)
 		mount_data := &dto.MountPointData{}
 		// Update dbom_mount_data with details from the actual mount point if available
 		errS = ms.convMDto.MountToMountPointData(mp, mount_data, ms.disks)
 		if errS != nil {
 			// Log error but proceed, as mount succeeded
-			slog.Warn("Failed to convert mount details back to DTO", "err", errS)
+			slog.WarnContext(ms.ctx, "Failed to convert mount details back to DTO", "err", errS)
 			// Don't return error here, mount was successful
 		}
 		ms.eventBus.EmitMountPoint(events.MountPointEvent{
@@ -428,7 +428,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 	// Look up mount point data from in-memory cache first
 	md, ok := ms.disks.GetMountPointByPath(path)
 	if !ok {
-		slog.Warn("Mount path not found in cache, attempting unmount anyway", "path", path)
+		slog.WarnContext(ms.ctx, "Mount path not found in cache, attempting unmount anyway", "path", path)
 		// Proceed with unmount using the path directly even if not in cache
 		md = dto.MountPointData{
 			Path:      path,
@@ -457,22 +457,22 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 		}
 	}()
 
-	slog.Debug("Attempting to unmount volume", "path", path, "force", force, "lazy", lazy)
+	slog.DebugContext(ms.ctx, "Attempting to unmount volume", "path", path, "force", force, "lazy", lazy)
 	unmountErr := errors.WithStack(ms.unmountFunc(path, force, lazy))
 	if unmountErr != nil {
-		slog.Error("Failed to unmount volume", "path", path, "err", unmountErr)
+		slog.ErrorContext(ms.ctx, "Failed to unmount volume", "path", path, "err", unmountErr)
 		return errors.WithDetails(dto.ErrorUnmountFail, "Detail", unmountErr.Error(), "Path", path, "Error", unmountErr)
 	}
 
 	// Unmount succeeded
-	slog.Info("Successfully unmounted volume", "path", path, "device", md.DeviceId)
+	slog.InfoContext(ms.ctx, "Successfully unmounted volume", "path", path, "device", md.DeviceId)
 	mountPointData.IsMounted = false
 
 	// Remove the mount point directory
 	if err := os.Remove(path); err != nil {
-		slog.Error("Failed to remove mount point directory", "path", path, "err", err)
+		slog.ErrorContext(ms.ctx, "Failed to remove mount point directory", "path", path, "err", err)
 	} else {
-		slog.Debug("Removed mount point directory", "path", path)
+		slog.DebugContext(ms.ctx, "Removed mount point directory", "path", path)
 	}
 
 	// Update the cached mount point data with unmounted state
@@ -498,7 +498,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) error
 		mountPointData.Partition = partitionInfo
 		err := ms.disks.AddMountPoint(*partitionInfo.DiskId, *partitionInfo.Id, mountPointData)
 		if err != nil {
-			slog.Warn("Failed to update mount point in cache after unmount", "path", path, "err", err)
+			slog.WarnContext(ms.ctx, "Failed to update mount point in cache after unmount", "path", path, "err", err)
 		}
 	}
 
@@ -524,7 +524,7 @@ func (self *VolumeService) udevEventHandler() {
 	for {
 		select {
 		case <-self.ctx.Done():
-			slog.Info("Udev event handler stopping due to context cancellation.", "err", self.ctx.Err())
+			slog.InfoContext(self.ctx, "Udev event handler stopping due to context cancellation.", "err", self.ctx.Err())
 			close(quit)
 			return
 		case uevent := <-queue:
@@ -533,17 +533,17 @@ func (self *VolumeService) udevEventHandler() {
 				action := uevent.Action
 				devName, _ := uevent.Env["DEVNAME"]
 				devType, _ := uevent.Env["DEVTYPE"]
-				slog.Debug("Received Udev block event", "action", action, "devname", devName, "devtype", devType)
+				slog.DebugContext(self.ctx, "Received Udev block event", "action", action, "devname", devName, "devtype", devType)
 
 				// Process block device events
 				if action == "add" || action == "remove" || action == "change" {
-					slog.Info("Processing block device event", "action", action, "devname", devName)
+					slog.InfoContext(self.ctx, "Processing block device event", "action", action, "devname", devName)
 
 					// Get current volumes data
 					self.hardwareClient.InvalidateHardwareInfo()
 					err := self.getVolumesData()
 					if err != nil {
-						slog.Error("Failed to get volumes data after udev event", "err", err)
+						slog.ErrorContext(self.ctx, "Failed to get volumes data after udev event", "err", err)
 						continue
 					}
 				}
@@ -555,17 +555,17 @@ func (self *VolumeService) udevEventHandler() {
 				// Extract more context if available
 				errMsg := err.Error()
 				if strings.Contains(errMsg, "invalid env data") {
-					slog.Debug("Ignoring malformed uevent with invalid env data",
+					slog.DebugContext(self.ctx, "Ignoring malformed uevent with invalid env data",
 						"err", err,
 						"detail", "This can occur when kernel sends events with non-standard formatting")
 				} else {
-					slog.Debug("Failed to parse uevent, skipping",
+					slog.DebugContext(self.ctx, "Failed to parse uevent, skipping",
 						"err", err,
 						"detail", "Event format not recognized or incompatible")
 				}
 			} else {
 				// Other errors (connection issues, etc.) are more serious
-				slog.Error("Error received from Udev monitor", "err", err)
+				slog.ErrorContext(self.ctx, "Error received from Udev monitor", "err", err)
 			}
 		}
 	}
@@ -575,7 +575,7 @@ func (self *VolumeService) GetVolumesData() *[]dto.Disk {
 	if len(*self.disks) == 0 {
 		err := self.getVolumesData()
 		if err != nil {
-			slog.Error("Failed to get volumes data in GetVolumesData", "err", err)
+			slog.ErrorContext(self.ctx, "Failed to get volumes data in GetVolumesData", "err", err)
 			return &[]dto.Disk{}
 		}
 	}
@@ -592,7 +592,7 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) (*dto.Mount
 	dmp, err := self.mount_repo.FindByDevice(*part.DevicePath)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			slog.Error("Failed to get mount point from repository", "device", *part.DevicePath, "err", err)
+			slog.ErrorContext(self.ctx, "Failed to get mount point from repository", "device", *part.DevicePath, "err", err)
 			return nil, errors.WithStack(err)
 		}
 		return nil, nil
@@ -601,11 +601,11 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) (*dto.Mount
 	mountData := dto.MountPointData{}
 	convErr := self.convDto.MountPointPathToMountPointData(*dmp, &mountData, *self.GetVolumesData())
 	if convErr != nil {
-		slog.Error("Failed to convert mount point data", "device", *part.DevicePath, "err", convErr)
+		slog.ErrorContext(self.ctx, "Failed to convert mount point data", "device", *part.DevicePath, "err", convErr)
 		return nil, errors.WithStack(convErr)
 	}
 
-	slog.Debug("Loaded mount point from repository", "device", *part.DevicePath, "path", dmp.Path,
+	slog.DebugContext(self.ctx, "Loaded mount point from repository", "device", *part.DevicePath, "path", dmp.Path,
 		"is_mounted", mountData.IsMounted,
 		"is_to_mount_at_startup", mountData.IsToMountAtStartup,
 		"path_hash", mountData.PathHash,
@@ -621,7 +621,7 @@ func (self *VolumeService) processPartitionMountData(disk *dto.Disk, pid string,
 	}
 
 	if part.DevicePath == nil || *part.DevicePath == "" {
-		slog.Debug("Skipping partition with nil or empty device path", "disk_id", *disk.Id)
+		slog.DebugContext(self.ctx, "Skipping partition with nil or empty device path", "disk_id", *disk.Id)
 		return nil
 	}
 
@@ -660,7 +660,7 @@ func (self *VolumeService) processNewDisk(disk dto.Disk) error {
 	if disk.Partitions != nil {
 		for pid, part := range *disk.Partitions {
 			if err := self.processPartitionMountData(&disk, pid, part, true); err != nil {
-				slog.Warn("Failed to process partition mount data for new disk", "disk_id", *disk.Id, "partition_id", pid, "err", err)
+				slog.WarnContext(self.ctx, "Failed to process partition mount data for new disk", "disk_id", *disk.Id, "partition_id", pid, "err", err)
 				continue
 			}
 		}
@@ -688,7 +688,7 @@ func (self *VolumeService) processExistingDisk(diskId string) error {
 			// Reload mount point data from DB
 			mountData, err := self.loadMountPointFromDB(&part)
 			if err != nil {
-				slog.Warn("Failed to reload mount data for existing disk partition", "disk_id", diskId, "partition_id", pid, "err", err)
+				slog.WarnContext(self.ctx, "Failed to reload mount data for existing disk partition", "disk_id", diskId, "partition_id", pid, "err", err)
 				continue
 			}
 
@@ -732,7 +732,7 @@ func (self *VolumeService) processMountInfos(mountInfos []*procfs.MountInfo) {
 
 		for pidx, part := range *disk.Partitions {
 			if part.Id == nil || *part.Id == "" {
-				slog.Debug("Skipping partition with nil or empty device id", "disk_id", diskName, "partition_index", pidx)
+				slog.DebugContext(self.ctx, "Skipping partition with nil or empty device id", "disk_id", diskName, "partition_index", pidx)
 				continue
 			}
 
@@ -797,7 +797,7 @@ func (self *VolumeService) processMountInfos(mountInfos []*procfs.MountInfo) {
 			}
 			err := self.disks.AddPartition(*disk.Id, part)
 			if err != nil {
-				slog.Warn("Failed to update partition in disk map", "disk_id", *disk.Id, "partition_id", *part.Id, "err", err)
+				slog.WarnContext(self.ctx, "Failed to update partition in disk map", "disk_id", *disk.Id, "partition_id", *part.Id, "err", err)
 			}
 		}
 	}
@@ -847,7 +847,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 
 		// Skip hardware client if it's not initialized
 		if self.hardwareClient == nil {
-			slog.Debug("Hardware client not initialized, continuing with empty disk list")
+			slog.DebugContext(self.ctx, "Hardware client not initialized, continuing with empty disk list")
 			return &ret, nil
 		}
 
@@ -866,13 +866,13 @@ func (self *VolumeService) getVolumesData() errors.E {
 			if _, ok := self.disks.Get(*disk.Id); !ok {
 				// New disk, add it
 				if err := self.processNewDisk(disk); err != nil {
-					slog.Warn("Failed to process new disk", "disk_id", *disk.Id, "err", err)
+					slog.WarnContext(self.ctx, "Failed to process new disk", "disk_id", *disk.Id, "err", err)
 					continue
 				}
 			} else {
 				// Existing disk, update refresh version and reload mount data from DB
 				if err := self.processExistingDisk(*disk.Id); err != nil {
-					slog.Warn("Failed to process existing disk", "disk_id", *disk.Id, "err", err)
+					slog.WarnContext(self.ctx, "Failed to process existing disk", "disk_id", *disk.Id, "err", err)
 					continue
 				}
 			}
@@ -884,7 +884,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 			return nil, errors.WithStack(err)
 		}
 
-		slog.Debug("Mount infos retrieved from procfs", "count", len(mountInfos))
+		slog.DebugContext(self.ctx, "Mount infos retrieved from procfs", "count", len(mountInfos))
 
 		// Update partition mount states based on current mount info
 		self.processMountInfos(mountInfos)

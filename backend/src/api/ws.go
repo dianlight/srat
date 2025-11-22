@@ -69,7 +69,7 @@ func reverseMap(m map[string]any) map[string]string {
 func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := self.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		slog.Error("Failed to upgrade connection to WebSocket", "error", err)
+		slog.ErrorContext(self.ctx, "Failed to upgrade connection to WebSocket", "error", err)
 		return
 	}
 	defer conn.Close()
@@ -81,7 +81,7 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 		return nil
 	})
 
-	slog.Debug("WebSocket client connected")
+	slog.DebugContext(self.ctx, "WebSocket client connected")
 
 	self.broadcaster.ProcessWebSocketChannel(func(msg ws.Message) errors.E {
 

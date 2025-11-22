@@ -46,7 +46,7 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 	if os.Getenv("SRAT_MOCK") != "true" {
 		fs, err = blockdevice.NewFS("/proc", "/sys")
 		if err != nil {
-			slog.Warn("Failed to create block device filesystem, using mock data", "error", err)
+			slog.WarnContext(Ctx, "Failed to create block device filesystem, using mock data", "error", err)
 		}
 	}
 
@@ -65,13 +65,10 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 		OnStart: func(ctx context.Context) error {
 			err := ds.updateDiskStats()
 			if err != nil && !errors.Is(err, dto.ErrorNotFound) {
-				slog.Warn("Failed to update disk stats", "error", err)
+				slog.WarnContext(ctx, "Failed to update disk stats", "error", err)
 			}
-			Ctx.Value("wg").(*sync.WaitGroup).Add(1)
-			go func() {
-				defer Ctx.Value("wg").(*sync.WaitGroup).Done()
-				ds.run()
-			}()
+			wg := Ctx.Value("wg").(*sync.WaitGroup)
+			wg.Go(func() { ds.run() })
 			return nil
 		},
 	})
@@ -82,12 +79,12 @@ func (self *diskStatsService) run() error {
 	for {
 		select {
 		case <-self.ctx.Done():
-			slog.Info("Run process closed", "err", self.ctx.Err())
+			slog.InfoContext(self.ctx, "Run process closed", "err", self.ctx.Err())
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(time.Second * 10):
 			err := self.updateDiskStats()
 			if err != nil && !errors.Is(err, dto.ErrorNotFound) {
-				slog.Warn("Failed to update disk stats", "error", err)
+				slog.WarnContext(self.ctx, "Failed to update disk stats", "error", err)
 				continue
 			}
 		}
@@ -113,7 +110,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 	if disks != nil {
 		for _, disk := range *disks {
 			if disk.DevicePath == nil {
-				slog.Debug("Skipping disk with nil device", "diskID", disk.Id)
+				slog.DebugContext(s.ctx, "Skipping disk with nil device", "diskID", disk.Id)
 				continue
 			}
 			stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.LegacyDeviceName)

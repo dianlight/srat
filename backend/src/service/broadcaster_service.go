@@ -140,41 +140,41 @@ func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
 	switch v := msg.(type) {
 	case *[]dto.Disk:
 		if err := broker.haService.SendDiskEntities(v); err != nil {
-			slog.Warn("Failed to send disk entities to Home Assistant", "error", err)
+			slog.WarnContext(broker.ctx, "Failed to send disk entities to Home Assistant", "error", err)
 		}
 		if err := broker.haService.SendVolumeStatusEntity(v); err != nil {
-			slog.Warn("Failed to send volume status entity to Home Assistant", "error", err)
+			slog.WarnContext(broker.ctx, "Failed to send volume status entity to Home Assistant", "error", err)
 		}
 	case []dto.Disk:
 		if err := broker.haService.SendDiskEntities(&v); err != nil {
-			slog.Warn("Failed to send disk entities to Home Assistant", "error", err)
+			slog.WarnContext(broker.ctx, "Failed to send disk entities to Home Assistant", "error", err)
 		}
 		if err := broker.haService.SendVolumeStatusEntity(&v); err != nil {
-			slog.Warn("Failed to send volume status entity to Home Assistant", "error", err)
+			slog.WarnContext(broker.ctx, "Failed to send volume status entity to Home Assistant", "error", err)
 		}
 	case *dto.DiskHealth:
 		if err := broker.haService.SendDiskHealthEntities(v); err != nil {
-			slog.Warn("Failed to send disk health entities to Home Assistant", "error", err)
+			slog.WarnContext(broker.ctx, "Failed to send disk health entities to Home Assistant", "error", err)
 		}
 	case dto.DiskHealth:
 		if err := broker.haService.SendDiskHealthEntities(&v); err != nil {
-			slog.Warn("Failed to send disk health entities to Home Assistant", "error", err)
+			slog.WarnContext(broker.ctx, "Failed to send disk health entities to Home Assistant", "error", err)
 		}
 	case *dto.SambaStatus:
 		if err := broker.haService.SendSambaStatusEntity(v); err != nil {
-			slog.Warn("Failed to send samba status entity to Home Assistant", "error", err)
+			slog.WarnContext(broker.ctx, "Failed to send samba status entity to Home Assistant", "error", err)
 		}
 	case dto.SambaStatus:
 		if err := broker.haService.SendSambaStatusEntity(&v); err != nil {
-			slog.Warn("Failed to send samba status entity to Home Assistant", "error", err)
+			slog.WarnContext(broker.ctx, "Failed to send samba status entity to Home Assistant", "error", err)
 		}
 	case *dto.SambaProcessStatus:
 		if err := broker.haService.SendSambaProcessStatusEntity(v); err != nil {
-			slog.Warn("Failed to send samba process status entity to Home Assistant", "error", err)
+			slog.WarnContext(broker.ctx, "Failed to send samba process status entity to Home Assistant", "error", err)
 		}
 	case dto.SambaProcessStatus:
 		if err := broker.haService.SendSambaProcessStatusEntity(&v); err != nil {
-			slog.Warn("Failed to send samba process status entity to Home Assistant", "error", err)
+			slog.WarnContext(broker.ctx, "Failed to send samba process status entity to Home Assistant", "error", err)
 		}
 	default:
 		tlog.TraceContext(broker.ctx, "Skipping Home Assistant entity update for unsupported message type", "type", fmt.Sprintf("%T", msg), "msg", msg)
@@ -191,7 +191,7 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 	listener := broker.relay.Listener(5)
 	defer listener.Close() // Close the listener when done
 
-	slog.Debug("SSE Connected client", "actual clients", broker.ConnectedClients.Load())
+	slog.DebugContext(broker.ctx, "SSE Connected client", "actual clients", broker.ConnectedClients.Load())
 
 	err := send(sse.Message{
 		ID:    0,
@@ -199,13 +199,13 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 		Data:  broker.createWelcomeMessage(),
 	})
 	if err != nil {
-		slog.Warn("Error sending welcome message to SSE client", "err", err)
+		slog.WarnContext(broker.ctx, "Error sending welcome message to SSE client", "err", err)
 	}
 
 	for {
 		select {
 		case <-broker.ctx.Done():
-			slog.Info("SSE Process Closed", "err", broker.ctx.Err(), "active clients", broker.ConnectedClients.Load())
+			slog.InfoContext(broker.ctx, "SSE Process Closed", "err", broker.ctx.Err(), "active clients", broker.ConnectedClients.Load())
 			return
 		case event := <-listener.Ch():
 			// Filter out Home Assistant-specific events that shouldn't go to SSE clients
@@ -223,7 +223,7 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 				!strings.Contains(err.Error(), "context canceled") &&
 				!strings.Contains(err.Error(), "connection reset by peer") &&
 				!strings.Contains(err.Error(), "i/o timeout") {
-				*/slog.Warn("Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+				*/slog.WarnContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
 				//				}
 				return
 			}
@@ -241,7 +241,7 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 	listener := broker.relay.Listener(5)
 	defer listener.Close() // Close the listener when done
 
-	slog.Debug("WebSocket Connected client", "actual clients", broker.ConnectedClients.Load())
+	slog.DebugContext(broker.ctx, "WebSocket Connected client", "actual clients", broker.ConnectedClients.Load())
 
 	// Send welcome message
 	err := send(ws.Message{
@@ -249,13 +249,13 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 		Data: broker.createWelcomeMessage(),
 	})
 	if err != nil {
-		slog.Warn("Error sending welcome message to SSE client", "err", err)
+		slog.WarnContext(broker.ctx, "Error sending welcome message to SSE client", "err", err)
 	}
 
 	for {
 		select {
 		case <-broker.ctx.Done():
-			slog.Info("WebSocket Process Closed", "err", broker.ctx.Err(), "active clients", broker.ConnectedClients.Load())
+			slog.InfoContext(broker.ctx, "WebSocket Process Closed", "err", broker.ctx.Err(), "active clients", broker.ConnectedClients.Load())
 			return
 		case event := <-listener.Ch():
 			// Filter out Home Assistant-specific events that shouldn't go to WebSocket clients
@@ -292,7 +292,7 @@ func (broker *BroadcasterService) createWelcomeMessage() dto.Welcome {
 	if broker.haRootService != nil {
 		sysInfo, err := broker.haRootService.GetSystemInfo()
 		if err != nil {
-			slog.Debug("Error getting system info for machine_id", "err", err)
+			slog.DebugContext(broker.ctx, "Error getting system info for machine_id", "err", err)
 			welcomeMsg.MachineId = nil
 		} else if sysInfo != nil && sysInfo.MachineId != nil {
 			welcomeMsg.MachineId = sysInfo.MachineId

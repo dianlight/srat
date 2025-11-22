@@ -49,7 +49,7 @@ func NewHaWsService(lc fx.Lifecycle, params HaWsServiceParams) (HaWsServiceInter
 
 	// if websocket client is not available, nothing to subscribe
 	if s.client == nil {
-		slog.Debug("ha_ws_service: no websocket client provided; skipping subscriptions")
+		slog.DebugContext(s.ctx, "ha_ws_service: no websocket client provided; skipping subscriptions")
 		return s, nil
 	}
 
@@ -68,13 +68,13 @@ func NewHaWsService(lc fx.Lifecycle, params HaWsServiceParams) (HaWsServiceInter
 					}
 				})
 				if err != nil {
-					slog.Warn("ha_ws_service: subscribe connection events failed", "error", err)
+					slog.WarnContext(ctx, "ha_ws_service: subscribe connection events failed", "error", err)
 				} else {
 					s.unsubConn = unsubC
 				}
 				err = s.client.Connect(s.ctx)
 				if err != nil {
-					slog.Warn("ha_ws_service: websocket connection failed", "error", err)
+					slog.WarnContext(ctx, "ha_ws_service: websocket connection failed", "error", err)
 					return err
 				}
 			}
@@ -92,7 +92,7 @@ func NewHaWsService(lc fx.Lifecycle, params HaWsServiceParams) (HaWsServiceInter
 
 // notifyHaReady calls all registered handlers with the new ready state.
 func (s *HaWsService) onHaStarted() {
-	slog.Debug("ha_ws_service: OnHaStarted called")
+	slog.DebugContext(s.ctx, "ha_ws_service: OnHaStarted called")
 	s.state.HACoreReady = true
 	s.subscribeToHaEvents()
 	s.EventBus.EmitHomeAssistant(events.HomeAssistantEvent{
@@ -104,7 +104,7 @@ func (s *HaWsService) onHaStarted() {
 
 // onHaStopped default implementation logs the event.
 func (s *HaWsService) onHaStopped() {
-	slog.Debug("ha_ws_service: OnHaStopped called")
+	slog.DebugContext(s.ctx, "ha_ws_service: OnHaStopped called")
 	s.state.HACoreReady = false
 	s.unsubscribeFromHaEvents()
 	s.EventBus.EmitHomeAssistant(events.HomeAssistantEvent{
@@ -116,7 +116,7 @@ func (s *HaWsService) onHaStopped() {
 
 // onHaConnected default implementation logs the websocket connection event.
 func (s *HaWsService) onHaConnected() {
-	slog.Debug("ha_ws_service: OnHaConnected called")
+	slog.DebugContext(s.ctx, "ha_ws_service: OnHaConnected called")
 	s.state.HACoreReady = true
 	s.subscribeToHaEvents()
 	s.EventBus.EmitHomeAssistant(events.HomeAssistantEvent{
@@ -128,7 +128,7 @@ func (s *HaWsService) onHaConnected() {
 
 // onHaDisconnected default implementation logs the websocket disconnection event.
 func (s *HaWsService) onHaDisconnected() {
-	slog.Debug("ha_ws_service: OnHaDisconnected called")
+	slog.DebugContext(s.ctx, "ha_ws_service: OnHaDisconnected called")
 	s.state.HACoreReady = false
 	s.unsubscribeFromHaEvents()
 	s.EventBus.EmitHomeAssistant(events.HomeAssistantEvent{
@@ -145,7 +145,7 @@ func (s *HaWsService) subscribeToHaEvents() {
 		s.onHaStarted()
 	})
 	if err != nil {
-		slog.Warn("ha_ws_service: subscribe homeassistant_started failed", "error", err)
+		slog.WarnContext(s.ctx, "ha_ws_service: subscribe homeassistant_started failed", "error", err)
 	} else {
 		s.unsubStarted = unsubStart
 	}
@@ -156,7 +156,7 @@ func (s *HaWsService) subscribeToHaEvents() {
 		s.onHaStopped()
 	})
 	if err2 != nil {
-		slog.Warn("ha_ws_service: subscribe homeassistant_stop failed", "error", err2)
+		slog.WarnContext(s.ctx, "ha_ws_service: subscribe homeassistant_stop failed", "error", err2)
 	} else {
 		s.unsubStopped = unsubStop
 	}

@@ -88,7 +88,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 
 	ret := map[string]dto.Disk{}
 	if !h.state.HACoreReady {
-		slog.Debug("HA Core not ready, cannot get hardware info")
+		slog.DebugContext(h.ctx, "HA Core not ready, cannot get hardware info")
 		return ret, nil
 	}
 	hwser, errHw := h.haClient.GetHardwareInfoWithResponse(h.ctx)
@@ -96,12 +96,12 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		if !errors.Is(errHw, dto.ErrorNotFound) {
 			return nil, errors.WithDetails(errHw, "message", "failed to get hardware info from HA Supervisor", "hwset", hwser)
 		}
-		slog.Debug("Hardware info not found, continuing with empty disk list")
+		slog.DebugContext(h.ctx, "Hardware info not found, continuing with empty disk list")
 	}
 
 	if hwser.StatusCode() != 200 || hwser.JSON200 == nil || hwser.JSON200.Data == nil || hwser.JSON200.Data.Drives == nil {
 		errMsg := "Received invalid hardware info response from HA Supervisor"
-		slog.Error(errMsg, "status_code", hwser.StatusCode(), "response_body", string(hwser.Body))
+		slog.ErrorContext(h.ctx, errMsg, "status_code", hwser.StatusCode(), "response_body", string(hwser.Body))
 		return nil, errors.New(errMsg)
 	}
 
