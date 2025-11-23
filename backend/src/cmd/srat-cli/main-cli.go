@@ -105,7 +105,6 @@ func main() {
 	dockerInterface = startCmd.String("docker-interface", "", "Docker interface")
 	dockerNetwork = startCmd.String("docker-network", "", "Docker network")
 	if !internal.Is_embed {
-		//		internal.Frontend = flag.String("frontend", "", "Frontend path - if missing the internal is used")
 		internal.TemplateFile = startCmd.String("template", "", "Template file")
 	}
 
@@ -123,7 +122,7 @@ func main() {
 		fmt.Printf("Usage %s <config_options...> <command> <command_options...>\n", os.Args[0])
 		fmt.Println("Config Options:")
 		flag.PrintDefaults()
-		fmt.Println("Command start:")
+		fmt.Println("Command start (deprecated):")
 		startCmd.PrintDefaults()
 		fmt.Println("Command stop:")
 		stopCmd.PrintDefaults()
@@ -165,18 +164,18 @@ func main() {
 		tlog.Error("Error log")
 	*/
 
-	if !*silentMode {
-		internal.Banner("srat-cli")
-	}
-
 	command, cmdErr := parseCommand(flag.Args())
 	if cmdErr != nil {
 		slog.Error(cmdErr.Error())
 		flag.Usage()
 		os.Exit(1)
 	}
+	if !*silentMode {
+		internal.Banner("srat-cli", command)
+	}
 	switch command {
 	case "start":
+		os.Exit(0) // Deprecated
 		startCmd.Parse(flag.Args()[1:])
 	case "stop":
 		stopCmd.Parse(flag.Args()[1:])

@@ -137,18 +137,18 @@ func NewVolumeService(
 				}
 			}
 		}
-		err = p.getVolumesData()
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to refresh volumes data on mount point event", "err", err)
-			return err
-		}
-		if !mpe.MountPoint.IsMounted && mpe.Type == events.EventTypes.ADD && mpe.MountPoint.IsToMountAtStartup != nil && *mpe.MountPoint.IsToMountAtStartup {
+		if !mpe.MountPoint.IsMounted && (mpe.Type == events.EventTypes.ADD || mpe.Type == events.EventTypes.UPDATE) && mpe.MountPoint.IsToMountAtStartup != nil && *mpe.MountPoint.IsToMountAtStartup {
 			err = p.MountVolume(mpe.MountPoint)
 			if err != nil {
 				slog.ErrorContext(ctx, "Failed to mount volume on event", "mount_point", mpe.MountPoint, "err", err)
 				p.createAutomountFailureNotification(mpe.MountPoint.Path, mpe.MountPoint.DeviceId, err)
 			}
 		}
+		//		err = p.getVolumesData()
+		//		if err != nil {
+		//			slog.ErrorContext(ctx, "Failed to refresh volumes data on mount point event", "err", err)
+		//			return err
+		//		}
 		return nil
 	})
 	unsubscribe[1] = p.eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
@@ -669,12 +669,11 @@ func (self *VolumeService) processNewDisk(disk dto.Disk) error {
 				continue
 			}
 		}
+		self.eventBus.EmitDiskAndPartition(events.DiskEvent{
+			Event: events.Event{Type: events.EventTypes.ADD},
+			Disk:  &disk,
+		})
 	}
-
-	self.eventBus.EmitDiskAndPartition(events.DiskEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
-		Disk:  &disk,
-	})
 
 	return nil
 }
@@ -889,7 +888,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 			return nil, errors.WithStack(err)
 		}
 
-		slog.DebugContext(self.ctx, "Mount infos retrieved from procfs", "count", len(mountInfos))
+		tlog.TraceContext(self.ctx, "Mount infos retrieved from procfs", "count", len(mountInfos))
 
 		// Update partition mount states based on current mount info
 		self.processMountInfos(mountInfos)

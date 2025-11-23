@@ -89,7 +89,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 
 	ret := map[string]dto.Disk{}
 	if !h.state.HACoreReady {
-		slog.DebugContext(h.ctx, "HA Core not ready, cannot get hardware info")
+		tlog.DebugContext(h.ctx, "HA Core not ready, cannot get hardware info", tlog.WithCaller(0)...)
 		return ret, nil
 	}
 	hwser, errHw := h.haClient.GetHardwareInfoWithResponse(h.ctx)

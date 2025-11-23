@@ -52,7 +52,7 @@ func main() {
 
 	yamlPath, jsonPath := openAPIFilenames(*output)
 
-	internal.Banner("srat-openapi")
+	internal.Banner("srat-openapi", "")
 
 	err := tlog.SetLevelFromString(*logLevelString)
 	if err != nil {

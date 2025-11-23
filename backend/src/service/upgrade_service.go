@@ -100,28 +100,26 @@ func (self *UpgradeService) run() error {
 		case <-self.ctx.Done():
 			slog.InfoContext(self.ctx, "Run process closed", "err", self.ctx.Err())
 			return errors.WithStack(self.ctx.Err())
-		default:
-			self.updateLimiter.Do(func() {
-				slog.DebugContext(self.ctx, "Version Checking...")
-				self.notifyClient(dto.UpdateProgress{
-					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING,
-				})
-				ass, err := self.GetUpgradeReleaseAsset(nil)
-				if err != nil && !errors.Is(err, dto.ErrorNoUpdateAvailable) {
-					slog.ErrorContext(self.ctx, "Error checking for updates", "err", err)
-				}
-				if ass != nil {
-					self.notifyClient(dto.UpdateProgress{
-						ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
-						LastRelease:    ass.LastRelease,
-					})
-				} else {
-					self.notifyClient(dto.UpdateProgress{
-						ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE,
-					})
-				}
+		case <-time.After(self.updateLimiter.Interval):
+			slog.DebugContext(self.ctx, "Version Checking...")
+			self.notifyClient(dto.UpdateProgress{
+				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING,
 			})
-			time.Sleep(self.updateLimiter.Interval / 10)
+			ass, err := self.GetUpgradeReleaseAsset(nil)
+			if err != nil && !errors.Is(err, dto.ErrorNoUpdateAvailable) {
+				slog.ErrorContext(self.ctx, "Error checking for updates", "err", err)
+			}
+			if ass != nil {
+				self.notifyClient(dto.UpdateProgress{
+					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
+					LastRelease:    ass.LastRelease,
+				})
+			} else {
+				self.notifyClient(dto.UpdateProgress{
+					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE,
+				})
+			}
+
 		}
 	}
 }

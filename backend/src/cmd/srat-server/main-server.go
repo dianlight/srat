@@ -121,7 +121,7 @@ func main() {
 	}
 
 	flag.Usage = func() {
-		internal.Banner("srat")
+		internal.Banner("srat-server", "")
 		flag.PrintDefaults()
 	}
 
@@ -158,7 +158,7 @@ func main() {
 
 func prog(state overseer.State) {
 
-	internal.Banner("srat-server")
+	internal.Banner("srat-server", "")
 
 	slog.Debug("Startup Options", "Flags", os.Args)
 	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
@@ -253,7 +253,7 @@ func prog(state overseer.State) {
 					if err != nil {
 						return errors.WithMessage(err)
 					}
-					slog.Debug("Route:", "template", template)
+					tlog.Trace("Route:", "template", template)
 					return nil
 				})
 			},

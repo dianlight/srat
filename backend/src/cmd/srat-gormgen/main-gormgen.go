@@ -40,7 +40,7 @@ func main() {
 	flag.Parse()
 	applyMockEnv(*mockMode)
 
-	internal.Banner("srat-gormgen")
+	internal.Banner("srat-gormgen", "")
 
 	err := tlog.SetLevelFromString(*logLevelString)
 	if err != nil {
