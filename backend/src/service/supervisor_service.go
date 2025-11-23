@@ -57,10 +57,14 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 	p.share_service = in.ShareService
 	p.eventBus = in.EventBus
 	unsubscribe := make([]func(), 3)
-	unsubscribe[0] = p.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) errors.E {
-		slog.DebugContext(ctx, "DirtyDataService received DirtyData event", "tracker", event.DataDirtyTracker)
+	unsubscribe[0] = p.eventBus.OnSamba(func(ctx context.Context, event events.SambaEvent) errors.E {
+		slog.DebugContext(ctx, "SupervisorService received DirtyData event", "tracker", event.DataDirtyTracker)
 		if event.Type == events.EventTypes.CLEAN {
-			p.mountHaStorage()
+			err := p.mountHaStorage()
+			if err != nil {
+				slog.ErrorContext(ctx, "Error mounting HA storage shares", "err", err)
+				return err
+			}
 		}
 		return nil
 	})

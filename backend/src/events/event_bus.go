@@ -112,7 +112,7 @@ func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func
 		tlog.DebugContext(ctx, "<-- Receiving events ", append([]any{"type", fmt.Sprintf("%T", event), "event", fmt.Sprintf("%#v", event)}, caller...)...)
 		return handler(ctx, event)
 	}, key)
-	tlog.Debug("Event handler registered", append([]any{"event", eventName, "listener_count", count}, caller...)...)
+	tlog.Trace("Event handler registered", append([]any{"event", eventName, "listener_count", count}, caller...)...)
 	return func() {
 		signal.RemoveListener(key)
 		tlog.Trace("Event handler unregistered", append([]any{"event", eventName, "key", key}, caller...)...)
