@@ -589,7 +589,7 @@ func (self *VolumeService) GetVolumesData() *[]dto.Disk {
 }
 
 // loadMountPointFromDB loads mount point data from the database for a partition
-func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) (*dto.MountPointData, errors.E) {
+func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) ([]*dto.MountPointData, errors.E) {
 	if part.DevicePath == nil || *part.DevicePath == "" {
 		return nil, nil
 	}
@@ -603,20 +603,15 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) (*dto.Mount
 		return nil, nil
 	}
 
-	mountData := dto.MountPointData{}
-	convErr := self.convDto.MountPointPathToMountPointData(*dmp, &mountData, *self.GetVolumesData())
+	mountData, convErr := self.convDto.MountPointPathsToMountPointDatas(dmp)
 	if convErr != nil {
 		slog.ErrorContext(self.ctx, "Failed to convert mount point data", "device", *part.DevicePath, "err", convErr)
 		return nil, errors.WithStack(convErr)
 	}
 
-	slog.DebugContext(self.ctx, "Loaded mount point from repository", "device", *part.DevicePath, "path", dmp.Path,
-		"is_mounted", mountData.IsMounted,
-		"is_to_mount_at_startup", mountData.IsToMountAtStartup,
-		"path_hash", mountData.PathHash,
-		"is_writable", mountData.IsWriteSupported)
+	slog.DebugContext(self.ctx, "Loaded mount point from repository", "device", *part.DevicePath, "mountData", mountData)
 
-	return &mountData, nil
+	return mountData, nil
 }
 
 // processPartitionMountData loads mount data from DB and initializes partition mount point data
@@ -639,16 +634,30 @@ func (self *VolumeService) processPartitionMountData(disk *dto.Disk, pid string,
 		return err
 	}
 
-	if mountData != nil {
-		(*part.MountPointData)[mountData.Path] = *mountData
-		(*disk.Partitions)[pid] = part
-
-		if emitEvents {
-			self.eventBus.EmitMountPoint(events.MountPointEvent{
-				Event:      events.Event{Type: events.EventTypes.ADD},
-				MountPoint: mountData,
-			})
+	if len(mountData) > 0 {
+		for _, mountD := range mountData {
+			if mountD1, ok := (*part.MountPointData)[mountD.Path]; ok {
+				mountD.IsToMountAtStartup = mountD1.IsToMountAtStartup
+				mountD.RefreshVersion = self.refreshVersion
+				(*part.MountPointData)[mountD.Path] = mountD1
+				if emitEvents {
+					self.eventBus.EmitMountPoint(events.MountPointEvent{
+						Event:      events.Event{Type: events.EventTypes.UPDATE},
+						MountPoint: mountD,
+					})
+				}
+			} else {
+				mountD.RefreshVersion = self.refreshVersion
+				(*part.MountPointData)[mountD.Path] = *mountD
+				if emitEvents {
+					self.eventBus.EmitMountPoint(events.MountPointEvent{
+						Event:      events.Event{Type: events.EventTypes.ADD},
+						MountPoint: mountD,
+					})
+				}
+			}
 		}
+		(*disk.Partitions)[pid] = part
 	}
 
 	return nil
@@ -685,38 +694,24 @@ func (self *VolumeService) processExistingDisk(diskId string) error {
 		return errors.WithDetails(dto.ErrorNotFound, "Message", "disk not found", "DiskId", diskId)
 	}
 	existing.RefreshVersion = self.refreshVersion
-
-	// Refresh mount data from DB for all partitions to ensure is_to_mount_at_startup is up to date
-	if existing.Partitions != nil {
-		for pid, part := range *existing.Partitions {
-			// Reload mount point data from DB
-			mountData, err := self.loadMountPointFromDB(&part)
-			if err != nil {
-				slog.WarnContext(self.ctx, "Failed to reload mount data for existing disk partition", "disk_id", diskId, "partition_id", pid, "err", err)
-				continue
-			}
-
-			// Update existing mount point data with DB values
-			if mountData != nil && part.MountPointData != nil {
-				if existingMpd, ok := (*part.MountPointData)[mountData.Path]; ok {
-					// Preserve current mount state (IsMounted), but update DB-sourced fields
-					// Don't update RefreshVersion - let processMountInfos handle sync with procfs
-					existingMpd.IsToMountAtStartup = mountData.IsToMountAtStartup
-					(*part.MountPointData)[mountData.Path] = existingMpd
-				} else {
-					// Add new mount point data from DB
-					mountData.RefreshVersion = self.refreshVersion
-					(*part.MountPointData)[mountData.Path] = *mountData
-				}
-				(*existing.Partitions)[pid] = part
-			}
-		}
-	}
-
 	err := self.disks.Add(existing)
 	if err != nil {
 		return err
 	}
+	// Refresh mount data from DB for all partitions to ensure is_to_mount_at_startup is up to date
+	if existing.Partitions != nil {
+		for pid, part := range *existing.Partitions {
+			if err := self.processPartitionMountData(&existing, pid, part, true); err != nil {
+				slog.WarnContext(self.ctx, "Failed to process partition mount data for new disk", "disk_id", *existing.Id, "partition_id", pid, "err", err)
+				continue
+			}
+		}
+		self.eventBus.EmitDiskAndPartition(events.DiskEvent{
+			Event: events.Event{Type: events.EventTypes.UPDATE},
+			Disk:  &existing,
+		})
+	}
+
 	return nil
 }
 
@@ -1044,7 +1039,6 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 			}
 		}
 	}
-
 	ms.eventBus.EmitMountPoint(events.MountPointEvent{
 		Event:      events.Event{Type: events.EventTypes.UPDATE},
 		MountPoint: &currentDto,

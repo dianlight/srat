@@ -58,7 +58,7 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 	p.eventBus = in.EventBus
 	unsubscribe := make([]func(), 3)
 	unsubscribe[0] = p.eventBus.OnSamba(func(ctx context.Context, event events.SambaEvent) errors.E {
-		slog.DebugContext(ctx, "SupervisorService received DirtyData event", "tracker", event.DataDirtyTracker)
+		slog.DebugContext(ctx, "SupervisorService received Samba event", "tracker", event.DataDirtyTracker)
 		if event.Type == events.EventTypes.CLEAN {
 			err := p.mountHaStorage()
 			if err != nil {
@@ -110,10 +110,12 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 	})
 
 	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
+		OnStart: func(ctx context.Context) error {
+			slog.DebugContext(ctx, "Startting Supervisor Service")
 			return nil
 		},
-		OnStop: func(context.Context) error {
+		OnStop: func(ctx context.Context) error {
+			slog.DebugContext(ctx, "Stopping Supervisor Service")
 			for _, unsub := range unsubscribe {
 				unsub()
 			}

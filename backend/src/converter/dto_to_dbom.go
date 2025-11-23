@@ -42,6 +42,7 @@ type DtoToDbomConverter interface {
 	// goverter:map Path DiskSerial | DiskSerialFromPath
 	// goverter:map Path DiskSize | DiskSizeFromPath
 	mountPointPathToMountPointData(source dbom.MountPointPath) (dto.MountPointData, error)
+	MountPointPathsToMountPointDatas(source []*dbom.MountPointPath) ([]*dto.MountPointData, error)
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:map Path DeviceId | mountPathToDeviceId
