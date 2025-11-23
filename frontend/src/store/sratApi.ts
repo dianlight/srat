@@ -100,6 +100,15 @@ const injectedRtkApi = api
         }),
         providesTags: ["disk"],
       }),
+      getApiDiskByDiskIdSmartStatus: build.query<
+        GetApiDiskByDiskIdSmartStatusApiResponse,
+        GetApiDiskByDiskIdSmartStatusApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/smart/status`,
+        }),
+        providesTags: ["disk"],
+      }),
       getApiDiskByDiskIdSmartTest: build.query<
         GetApiDiskByDiskIdSmartTestApiResponse,
         GetApiDiskByDiskIdSmartTestApiArg
@@ -509,6 +518,13 @@ export type GetApiDiskByDiskIdSmartInfoApiArg = {
   /** The disk ID or device path */
   diskId: string;
 };
+export type GetApiDiskByDiskIdSmartStatusApiResponse = /** status 200 OK */
+  | SmartStatus
+  | /** status default Error */ ErrorModel;
+export type GetApiDiskByDiskIdSmartStatusApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
 export type GetApiDiskByDiskIdSmartTestApiResponse = /** status 200 OK */
   | SmartTestStatus
   | /** status default Error */ ErrorModel;
@@ -875,6 +891,23 @@ export type SmartInfo = {
   rotation_rate?: number;
   supported: boolean;
 };
+export type SmartTempValue = {
+  max?: number;
+  min?: number;
+  overtemp_counter?: number;
+  value: number;
+};
+export type SmartStatus = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  enabled: boolean;
+  others?: {
+    [key: string]: SmartRangeValue;
+  };
+  power_cycle_count: SmartRangeValue;
+  power_on_hours: SmartRangeValue;
+  temperature: SmartTempValue;
+};
 export type SmartTestStatus = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -922,21 +955,6 @@ export type GlobalDiskStats = {
   total_iops: number;
   total_read_latency_ms: number;
   total_write_latency_ms: number;
-};
-export type SmartTempValue = {
-  max?: number;
-  min?: number;
-  overtemp_counter?: number;
-  value: number;
-};
-export type SmartStatus = {
-  enabled: boolean;
-  others?: {
-    [key: string]: SmartRangeValue;
-  };
-  power_cycle_count: SmartRangeValue;
-  power_on_hours: SmartRangeValue;
-  temperature: SmartTempValue;
 };
 export type DiskIoStats = {
   device_description: string;
@@ -1181,18 +1199,20 @@ export type User = {
   username: string;
   [key: string]: unknown;
 };
+export type SharedResourceStatus = {
+  is_ha_mounted?: boolean;
+  is_valid?: boolean;
+};
 export type SharedResource = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   disabled?: boolean;
   guest_ok?: boolean;
-  ha_status?: string;
-  invalid?: boolean;
-  is_ha_mounted?: boolean;
   mount_point_data?: MountPointData;
   name?: string;
   recycle_bin_enabled?: boolean;
   ro_users?: User[] | null;
+  status?: SharedResourceStatus;
   timemachine?: boolean;
   timemachine_max_size?: string;
   usage?: Usage;
@@ -1351,6 +1371,7 @@ export const {
   usePostApiDiskByDiskIdSmartEnableMutation,
   useGetApiDiskByDiskIdSmartHealthQuery,
   useGetApiDiskByDiskIdSmartInfoQuery,
+  useGetApiDiskByDiskIdSmartStatusQuery,
   useGetApiDiskByDiskIdSmartTestQuery,
   usePostApiDiskByDiskIdSmartTestAbortMutation,
   usePostApiDiskByDiskIdSmartTestStartMutation,

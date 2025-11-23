@@ -24,7 +24,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Collapse from "@mui/material/Collapse";
 import { useState } from "react";
-import { type SmartInfo } from "../../../store/sratApi";
+import { useGetApiDiskByDiskIdSmartInfoQuery, useGetApiDiskByDiskIdSmartStatusQuery, type SmartInfo, type SmartStatus } from "../../../store/sratApi";
 
 // Local type definitions for SMART data that isn't in the OpenAPI spec yet
 interface SmartHealthStatus {
@@ -72,6 +72,12 @@ export function SmartStatusPanel({
     const [smartExpanded, setSmartExpanded] = useState(false);
     const [showStartTestDialog, setShowStartTestDialog] = useState(false);
     const [selectedTestType, setSelectedTestType] = useState<SmartTestType>("short");
+    const { data: smartStatus, isLoading: smartStatusIsLoading } = useGetApiDiskByDiskIdSmartStatusQuery({
+        diskId: diskDevicePath || ""
+    }, {
+        skip: !diskDevicePath,
+        refetchOnMountOrArgChange: true,
+    });
 
     // Don't render if SMART is not supported based on backend data
     if (!smartInfo || smartInfo.supported === false) {
@@ -82,13 +88,13 @@ export function SmartStatusPanel({
     if (smartInfo.supported === undefined && !isSmartSupported) {
         return null;
     }
-
-    const isTestRunning = testStatus?.status === "running";
-    const canStartTest = !isTestRunning && isSmartSupported && !isReadOnlyMode && smartInfo?.enabled;
-    const canAbortTest = isTestRunning && !isReadOnlyMode;
-    const canToggleSmart = isSmartSupported && !isReadOnlyMode;
-    const isSmartEnabled = smartInfo?.enabled ?? false;
-
+    /*
+        const isTestRunning = testStatus?.status === "running";
+        const canStartTest = !isTestRunning && isSmartSupported && !isReadOnlyMode && smartInfo?.enabled;
+        const canAbortTest = isTestRunning && !isReadOnlyMode;
+        const canToggleSmart = isSmartSupported && !isReadOnlyMode;
+        const isSmartEnabled = smartInfo?.enabled ?? false;
+    */
     const handleStartTest = () => {
         if (onStartTest) {
             onStartTest(selectedTestType);
@@ -190,7 +196,7 @@ export function SmartStatusPanel({
                         )}
 
                         {/* Temperature Section */}
-                        {smartInfo.temperature && (
+                        {!smartStatusIsLoading && smartStatus && (smartStatus as SmartStatus)?.temperature && (
                             <Box>
                                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                                     <ThermostatIcon fontSize="small" color="primary" />
@@ -200,13 +206,13 @@ export function SmartStatusPanel({
                                 </Stack>
                                 <Stack direction="row" spacing={2} alignItems="center">
                                     <Typography variant="h6">
-                                        {smartInfo.temperature.value}°C
+                                        {(smartStatus as SmartStatus).temperature.value}°C
                                     </Typography>
-                                    {smartInfo.temperature.min || smartInfo.temperature.max ? (
+                                    {(smartStatus as SmartStatus).temperature.min || (smartStatus as SmartStatus).temperature.max ? (
                                         <Typography variant="caption" color="text.secondary">
-                                            {smartInfo.temperature.min && `Min: ${smartInfo.temperature.min}°C`}
-                                            {smartInfo.temperature.min && smartInfo.temperature.max && " / "}
-                                            {smartInfo.temperature.max && `Max: ${smartInfo.temperature.max}°C`}
+                                            {(smartStatus as SmartStatus).temperature.min && `Min: ${(smartStatus as SmartStatus).temperature.min}°C`}
+                                            {(smartStatus as SmartStatus).temperature.min && (smartStatus as SmartStatus).temperature.max && " / "}
+                                            {(smartStatus as SmartStatus).temperature.max && `Max: ${(smartStatus as SmartStatus).temperature.max}°C`}
                                         </Typography>
                                     ) : null}
                                 </Stack>
@@ -214,33 +220,35 @@ export function SmartStatusPanel({
                         )}
 
                         {/* Power Stats Section */}
-                        <Stack spacing={1}>
-                            <Typography variant="subtitle2" color="text.secondary">
-                                Power Statistics
-                            </Typography>
-                            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                                {smartInfo.power_on_hours && (
-                                    <Box sx={{ flex: 1 }}>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Power-On Hours
-                                        </Typography>
-                                        <Typography variant="body2">
-                                            {smartInfo.power_on_hours.value.toLocaleString()} hours
-                                        </Typography>
-                                    </Box>
-                                )}
-                                {smartInfo.power_cycle_count && (
-                                    <Box sx={{ flex: 1 }}>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Power Cycles
-                                        </Typography>
-                                        <Typography variant="body2">
-                                            {smartInfo.power_cycle_count.value.toLocaleString()} cycles
-                                        </Typography>
-                                    </Box>
-                                )}
+                        {!smartStatusIsLoading && smartStatus && (smartStatus as SmartStatus)?.power_on_hours && (
+                            <Stack spacing={1}>
+                                <Typography variant="subtitle2" color="text.secondary">
+                                    Power Statistics
+                                </Typography>
+                                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                                    {(smartStatus as SmartStatus).power_on_hours && (
+                                        <Box sx={{ flex: 1 }}>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Power-On Hours
+                                            </Typography>
+                                            <Typography variant="body2">
+                                                {(smartStatus as SmartStatus).power_on_hours.value.toLocaleString()} hours
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                    {(smartStatus as SmartStatus).power_cycle_count && (
+                                        <Box sx={{ flex: 1 }}>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Power Cycles
+                                            </Typography>
+                                            <Typography variant="body2">
+                                                {(smartStatus as SmartStatus).power_cycle_count.value.toLocaleString()} cycles
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                </Stack>
                             </Stack>
-                        </Stack>
+                        )}
 
                         {/* Health Status Section */}
                         {healthStatus && (
@@ -296,13 +304,13 @@ export function SmartStatusPanel({
                                                 </Typography>
                                             )}
                                         </Stack>
-                                        {isTestRunning && testStatus.percent_complete !== undefined && (
+                                        {(testStatus?.status === "running") && testStatus.percent_complete !== undefined && (
                                             <Typography variant="caption" color="text.secondary">
                                                 {testStatus.percent_complete}%
                                             </Typography>
                                         )}
                                     </Stack>
-                                    {isTestRunning && testStatus.percent_complete !== undefined && (
+                                    {(testStatus?.status === "running") && testStatus.percent_complete !== undefined && (
                                         <LinearProgress
                                             variant="determinate"
                                             value={testStatus.percent_complete}
@@ -328,15 +336,11 @@ export function SmartStatusPanel({
                                     size="small"
                                     variant="outlined"
                                     onClick={() => setShowStartTestDialog(true)}
-                                    disabled={!canStartTest || isLoading}
+                                    disabled={(testStatus?.status === "running") || isLoading || isReadOnlyMode}
                                     title={
-                                        !isSmartSupported
-                                            ? "SMART not supported"
-                                            : isReadOnlyMode
-                                                ? "Read-only mode"
-                                                : isTestRunning
-                                                    ? "Test already running"
-                                                    : "Start SMART self-test"
+                                        (testStatus?.status === "running")
+                                            ? "Test already running"
+                                            : "Start SMART self-test"
                                     }
                                 >
                                     Start Test
@@ -346,13 +350,11 @@ export function SmartStatusPanel({
                                     variant="outlined"
                                     color="warning"
                                     onClick={onAbortTest}
-                                    disabled={!canAbortTest || isLoading}
+                                    disabled={!(testStatus?.status === "running") || isLoading || isReadOnlyMode}
                                     title={
-                                        !isTestRunning
+                                        !(testStatus?.status === "running")
                                             ? "No test running"
-                                            : isReadOnlyMode
-                                                ? "Read-only mode"
-                                                : "Abort running self-test"
+                                            : "Abort running self-test"
                                     }
                                 >
                                     Abort Test
@@ -361,15 +363,11 @@ export function SmartStatusPanel({
                                     size="small"
                                     variant="outlined"
                                     onClick={onEnableSmart}
-                                    disabled={!canToggleSmart || isLoading || isSmartEnabled}
+                                    disabled={isLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
                                     title={
-                                        !isSmartSupported
-                                            ? "SMART not supported"
-                                            : isReadOnlyMode
-                                                ? "Read-only mode"
-                                                : isSmartEnabled
-                                                    ? "SMART already enabled"
-                                                    : "Enable SMART monitoring"
+                                        (smartStatus as SmartStatus)?.enabled ?? false
+                                            ? "SMART already enabled"
+                                            : "Enable SMART monitoring"
                                     }
                                 >
                                     Enable SMART
@@ -379,15 +377,11 @@ export function SmartStatusPanel({
                                     variant="outlined"
                                     color="error"
                                     onClick={onDisableSmart}
-                                    disabled={!canToggleSmart || isLoading || !isSmartEnabled}
+                                    disabled={isLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
                                     title={
-                                        !isSmartSupported
-                                            ? "SMART not supported"
-                                            : isReadOnlyMode
-                                                ? "Read-only mode"
-                                                : !isSmartEnabled
-                                                    ? "SMART already disabled"
-                                                    : "Disable SMART monitoring"
+                                        !((smartStatus as SmartStatus)?.enabled ?? false)
+                                            ? "SMART already disabled"
+                                            : "Disable SMART monitoring"
                                     }
                                 >
                                     Disable SMART

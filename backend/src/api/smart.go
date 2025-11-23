@@ -49,6 +49,7 @@ func NewSmartHandler(
 // - api: The huma.API instance to register the handlers with.
 func (h *SmartHandler) RegisterSmartHandlers(api huma.API) {
 	huma.Get(api, "/disk/{disk_id}/smart/info", h.GetSmartInfo, huma.OperationTags("disk"))
+	huma.Get(api, "/disk/{disk_id}/smart/status", h.GetSmartStatus, huma.OperationTags("disk"))
 	huma.Get(api, "/disk/{disk_id}/smart/health", h.GetSmartHealth, huma.OperationTags("disk"))
 	huma.Get(api, "/disk/{disk_id}/smart/test", h.GetSmartTestStatus, huma.OperationTags("disk"))
 	huma.Post(api, "/disk/{disk_id}/smart/test/start", h.StartSmartTest, huma.OperationTags("disk"))
@@ -79,6 +80,30 @@ func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 	}
 
 	return &struct{ Body *dto.SmartInfo }{Body: smartInfo}, nil
+}
+
+// GetSmartInfo retrieves SMART information for a specific disk
+func (h *SmartHandler) GetSmartStatus(ctx context.Context, input *struct {
+	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
+}) (*struct{ Body *dto.SmartStatus }, error) {
+	// Get disk info to find device path
+	volumes := h.volumeService.GetVolumesData()
+
+	devicePath := findDevicePath(volumes, input.DiskID)
+	if devicePath == "" {
+		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
+	}
+
+	smartStatus, errE := h.smartService.GetSmartStatus(ctx, devicePath)
+	if errE != nil {
+		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
+			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
+		}
+		tlog.ErrorContext(ctx, "Failed to get SMART status", "device", devicePath, "error", errE)
+		return nil, huma.Error500InternalServerError("Failed to get SMART status", errE)
+	}
+
+	return &struct{ Body *dto.SmartStatus }{Body: smartStatus}, nil
 }
 
 // GetSmartHealth retrieves SMART health status for a specific disk
