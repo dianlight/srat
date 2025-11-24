@@ -242,7 +242,7 @@ export function VolumeDetailsPanel({
                         <HDIdleDiskSettings disk={disk} readOnly={false} />
                         <SmartStatusPanel
                             smartInfo={disk.smart_info}
-                            diskDevicePath={disk.device_path || disk.legacy_device_path}
+                            diskId={disk.id}
                             isSmartSupported={disk.smart_info?.supported ?? false}
                             isReadOnlyMode={false}
                             onEnableSmart={enableSmart}

@@ -25,6 +25,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Collapse from "@mui/material/Collapse";
 import { useState } from "react";
 import { useGetApiDiskByDiskIdSmartInfoQuery, useGetApiDiskByDiskIdSmartStatusQuery, type SmartInfo, type SmartStatus } from "../../../store/sratApi";
+import { getNodeEnv } from "../../../macro/Environment";
 
 // Local type definitions for SMART data that isn't in the OpenAPI spec yet
 interface SmartHealthStatus {
@@ -44,7 +45,7 @@ export type SmartTestType = "short" | "long" | "conveyance";
 
 interface SmartStatusPanelProps {
     smartInfo?: SmartInfo;
-    diskDevicePath?: string;
+    diskId?: string;
     healthStatus?: SmartHealthStatus;
     testStatus?: SmartTestStatus;
     isSmartSupported?: boolean;
@@ -58,7 +59,7 @@ interface SmartStatusPanelProps {
 
 export function SmartStatusPanel({
     smartInfo,
-    diskDevicePath,
+    diskId,
     healthStatus,
     testStatus,
     isSmartSupported = false,
@@ -73,9 +74,9 @@ export function SmartStatusPanel({
     const [showStartTestDialog, setShowStartTestDialog] = useState(false);
     const [selectedTestType, setSelectedTestType] = useState<SmartTestType>("short");
     const { data: smartStatus, isLoading: smartStatusIsLoading } = useGetApiDiskByDiskIdSmartStatusQuery({
-        diskId: diskDevicePath || ""
+        diskId: diskId || ""
     }, {
-        skip: !diskDevicePath,
+        skip: !diskId,
         refetchOnMountOrArgChange: true,
     });
 
@@ -88,13 +89,7 @@ export function SmartStatusPanel({
     if (smartInfo.supported === undefined && !isSmartSupported) {
         return null;
     }
-    /*
-        const isTestRunning = testStatus?.status === "running";
-        const canStartTest = !isTestRunning && isSmartSupported && !isReadOnlyMode && smartInfo?.enabled;
-        const canAbortTest = isTestRunning && !isReadOnlyMode;
-        const canToggleSmart = isSmartSupported && !isReadOnlyMode;
-        const isSmartEnabled = smartInfo?.enabled ?? false;
-    */
+
     const handleStartTest = () => {
         if (onStartTest) {
             onStartTest(selectedTestType);
@@ -131,7 +126,7 @@ export function SmartStatusPanel({
     return (
         <Card>
             <CardHeader
-                title="S.M.A.R.T. Status"
+                title="S.M.A.R.T. Status ( 🚧 Work In Progress )"
                 avatar={
                     <IconButton
                         size="small"
@@ -327,67 +322,70 @@ export function SmartStatusPanel({
                         )}
 
                         {/* Control Buttons */}
-                        <Box>
-                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                                Actions
-                            </Typography>
-                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ flexWrap: "wrap" }}>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => setShowStartTestDialog(true)}
-                                    disabled={(testStatus?.status === "running") || isLoading || isReadOnlyMode}
-                                    title={
-                                        (testStatus?.status === "running")
-                                            ? "Test already running"
-                                            : "Start SMART self-test"
-                                    }
-                                >
-                                    Start Test
-                                </Button>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="warning"
-                                    onClick={onAbortTest}
-                                    disabled={!(testStatus?.status === "running") || isLoading || isReadOnlyMode}
-                                    title={
-                                        !(testStatus?.status === "running")
-                                            ? "No test running"
-                                            : "Abort running self-test"
-                                    }
-                                >
-                                    Abort Test
-                                </Button>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={onEnableSmart}
-                                    disabled={isLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
-                                    title={
-                                        (smartStatus as SmartStatus)?.enabled ?? false
-                                            ? "SMART already enabled"
-                                            : "Enable SMART monitoring"
-                                    }
-                                >
-                                    Enable SMART
-                                </Button>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="error"
-                                    onClick={onDisableSmart}
-                                    disabled={isLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
-                                    title={
-                                        !((smartStatus as SmartStatus)?.enabled ?? false)
-                                            ? "SMART already disabled"
-                                            : "Disable SMART monitoring"
-                                    }
-                                >
-                                    Disable SMART
-                                </Button>
-                            </Stack>
-                        </Box>
+                        {getNodeEnv() !== "production" && (
+                            <Box>
+                                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                    Actions
+                                </Typography>
+                                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ flexWrap: "wrap" }}>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        onClick={() => setShowStartTestDialog(true)}
+                                        disabled={(testStatus?.status === "running") || isLoading || isReadOnlyMode}
+                                        title={
+                                            (testStatus?.status === "running")
+                                                ? "Test already running"
+                                                : "Start SMART self-test"
+                                        }
+                                    >
+                                        Start Test
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color="warning"
+                                        onClick={onAbortTest}
+                                        disabled={!(testStatus?.status === "running") || isLoading || isReadOnlyMode}
+                                        title={
+                                            !(testStatus?.status === "running")
+                                                ? "No test running"
+                                                : "Abort running self-test"
+                                        }
+                                    >
+                                        Abort Test
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        onClick={onEnableSmart}
+                                        disabled={isLoading || smartStatusIsLoading || ((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
+                                        title={
+                                            (smartStatus as SmartStatus)?.enabled ?? false
+                                                ? "SMART already enabled"
+                                                : "Enable SMART monitoring"
+                                        }
+                                    >
+                                        Enable SMART
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color="error"
+                                        onClick={onDisableSmart}
+                                        disabled={isLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
+                                        title={
+                                            !((smartStatus as SmartStatus)?.enabled ?? false)
+                                                ? "SMART already disabled"
+                                                : "Disable SMART monitoring"
+                                        }
+                                    >
+                                        Disable SMART
+                                    </Button>
+                                </Stack>
+                            </Box>
+                        )}
+                        { /*End Control Buttons  */}
                     </Stack>
                 </CardContent>
             </Collapse>
