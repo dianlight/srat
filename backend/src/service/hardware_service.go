@@ -56,6 +56,7 @@ func NewHardwareService(
 	}
 	unsubscribe := eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
 		if hae.Type == events.EventTypes.START {
+			tlog.DebugContext(ctx, "Home Assistant started event received, invalidating hardware info cache")
 			hs.InvalidateHardwareInfo()
 		}
 		return nil
@@ -211,5 +212,5 @@ func (h *hardwareService) InvalidateHardwareInfo() {
 		return
 	}
 	h.cache.Delete(hwCacheKey)
-	tlog.DebugContext(h.ctx, "Invalidated hardware info cache")
+	tlog.TraceContext(h.ctx, "Invalidated hardware info cache")
 }

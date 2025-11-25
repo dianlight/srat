@@ -594,7 +594,7 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) ([]*dto.Mou
 		return nil, nil
 	}
 
-	dmp, err := self.mount_repo.FindByDevice(*part.DevicePath)
+	dmp, err := self.mount_repo.FindByDevice(*part.Id)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			slog.ErrorContext(self.ctx, "Failed to get mount point from repository", "device", *part.DevicePath, "err", err)
@@ -602,6 +602,7 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) ([]*dto.Mou
 		}
 		return nil, nil
 	}
+	tlog.DebugContext(self.ctx, "Found mount point records in DB for device", "device", *part.DevicePath, "count", len(dmp))
 
 	mountData, convErr := self.convDto.MountPointPathsToMountPointDatas(dmp)
 	if convErr != nil {

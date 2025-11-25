@@ -51,7 +51,7 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 			if os.Getenv("SRAT_MOCK") == "true" {
 				return nil
 			}
-			slog.InfoContext(ctx, "******* Autocreating users ********")
+			slog.DebugContext(ctx, "******* Autocreating users ********")
 
 			_ha_mount_user_password_, err := us.settingService.GetValue("_ha_mount_user_password_")
 			if err != nil {
@@ -95,7 +95,7 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 					slog.ErrorContext(ctx, "Error autocreating user", "name", user.Username, "err", err)
 				}
 			}
-			slog.InfoContext(ctx, "******* Autocreating users done! ********")
+			slog.DebugContext(ctx, "******* Autocreating users done! ********")
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {

@@ -322,8 +322,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 			Model:            pointer.String("Model-2"),
 			Size:             pointer.Int(100),
 			Partitions: &map[string]dto.Partition{
-				"part-1": {
-					Id:               pointer.String("part-1"),
+				"part-2": {
+					Id:               pointer.String("part-2"),
 					Name:             pointer.String("DataFs"),
 					LegacyDevicePath: device2Legacy,
 					LegacyDeviceName: device2LegacyName,
@@ -342,8 +342,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	//dbomMountData1 := &dbom.MountPointPath{Path: mountPath1, DeviceId: "sda1", Type: "ADDON"} // Initial state in DB
 	//dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, DeviceId: "sdb1", Type: "ADDON"} // Initial state in DB
 
-	mock.When(suite.mockMountRepo.FindByDevice(*device1)).ThenReturn([]*dbom.MountPointPath{{Path: mountPath1, DeviceId: *device1, Type: "ADDON"}}, nil).Verify(matchers.Times(1))
-	mock.When(suite.mockMountRepo.FindByDevice(*device2)).ThenReturn([]*dbom.MountPointPath{{Path: mountPath2, DeviceId: *device2, Type: "ADDON"}}, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByDevice("part-1")).ThenReturn([]*dbom.MountPointPath{{Path: mountPath1, DeviceId: *device1, Type: "ADDON"}}, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByDevice("part-2")).ThenReturn([]*dbom.MountPointPath{{Path: mountPath2, DeviceId: *device2, Type: "ADDON"}}, nil).Verify(matchers.Times(1))
 	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHWResponse, nil).Verify(matchers.AtLeastOnce())
 
 	/*
@@ -395,7 +395,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	suite.Equal(mockHWResponse["disk-2"].Model, d2.Model)
 	suite.Require().NotNil(d2.Partitions)
 	suite.Require().Len(*d2.Partitions, 1)
-	p2 := (*d2.Partitions)["part-1"]
+	p2 := (*d2.Partitions)["part-2"]
 	suite.Require().NotNil(p2.LegacyDevicePath)
 	suite.Require().NotNil(p2.Name)
 	suite.Require().NotNil(p2.MountPointData)
@@ -436,7 +436,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_ReturnsMountPointData() 
 	}
 
 	// Repo: no pre-existing mount configuration for this device
-	mock.When(suite.mockMountRepo.FindByDevice(*device)).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound)).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByDevice(*partID)).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound)).Verify(matchers.Times(1))
 	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
 
 	// Procfs mounts contain an addon-side mount for our partition
@@ -494,7 +494,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_NoMixHostAndAddon() {
 		},
 	}
 
-	mock.When(suite.mockMountRepo.FindByDevice(*device)).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound)).Verify(matchers.Times(1))
+	mock.When(suite.mockMountRepo.FindByDevice(*partID)).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound)).Verify(matchers.Times(1))
 	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
 
 	// Procfs: only addon mount present
@@ -628,7 +628,7 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 	// Repo returns an existing mount configuration by device
 	// NOTE: Using AtLeastOnce() because GetVolumesData calls loadMountPointFromDB for existing disks
 	dbrec := &dbom.MountPointPath{Path: mountPath, DeviceId: partID, FSType: fstype, Type: "ADDON"}
-	mock.When(suite.mockMountRepo.FindByDevice(devicePath)).ThenReturn([]*dbom.MountPointPath{dbrec}, nil).Verify(matchers.AtLeastOnce())
+	mock.When(suite.mockMountRepo.FindByDevice(partID)).ThenReturn([]*dbom.MountPointPath{dbrec}, nil).Verify(matchers.AtLeastOnce())
 	// FindByPath is only called if we have partition info to persist (i.e., if unmount updates DB)
 	// With new implementation using cache-first approach, this may not be called
 	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.AtLeastOnce())
@@ -761,7 +761,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	// Note: After refactoring, GetVolumesData reloads mount data from DB for existing disks,
 	// causing multiple calls to FindByDevice (initial load + subsequent refreshes)
 	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
-	mock.When(suite.mockMountRepo.FindByDevice(devicePath)).ThenReturn([]*dbom.MountPointPath{dbData}, nil).Verify(matchers.AtLeastOnce())
+	mock.When(suite.mockMountRepo.FindByDevice(*partID)).ThenReturn([]*dbom.MountPointPath{dbData}, nil).Verify(matchers.AtLeastOnce())
 	mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbData, nil).Verify(matchers.AtLeastOnce())
 	mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.AtLeastOnce())
 
