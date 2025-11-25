@@ -1,0 +1,193 @@
+name: Cleanup Stale Branches
+
+on:
+  schedule:
+    # Runs at 01:00 UTC every day
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+    # Allows manual triggering of the workflow
+
+permissions:
+  contents: write        # Required to delete branches
+  pull-requests: read    # Required to list and check PR associations
+
+concurrency:
+  group: cleanup-branches
+  cancel-in-progress: true
+
+jobs:
+  cleanup-branches:
+    name: Clean up stale branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+
+      - name: Delete stale branches
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+            const oneWeekAgo = new Date(Date.now() - ONE_WEEK_MS);
+
+            core.info(`Starting branch cleanup for ${owner}/${repo}`);
+            core.info(`Cutoff date for stale branches: ${oneWeekAgo.toISOString()}`);
+
+            // Get the default branch to exclude it from deletion
+            const { data: repoInfo } = await github.rest.repos.get({ owner, repo });
+            const defaultBranch = repoInfo.default_branch;
+            core.info(`Default branch: ${defaultBranch}`);
+
+            // Get all open and draft PRs to find protected branches
+            const openPRs = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            // Create a set of branch names that are associated with open/draft PRs
+            const protectedBranches = new Set();
+            for (const pr of openPRs) {
+              // Only protect branches from the same repo (not forks)
+              if (pr.head && pr.head.repo && pr.head.repo.full_name === `${owner}/${repo}`) {
+                protectedBranches.add(pr.head.ref);
+              }
+            }
+            core.info(`Found ${protectedBranches.size} branches protected by open/draft PRs`);
+
+            // Get all branches
+            const branches = await github.paginate(github.rest.repos.listBranches, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+
+            core.info(`Found ${branches.length} total branches to evaluate`);
+
+            let deletedCount = 0;
+            let skippedCount = 0;
+            const deletedBranches = [];
+            const skippedBranches = [];
+
+            for (const branch of branches) {
+              const branchName = branch.name;
+
+              // Skip the default branch
+              if (branchName === defaultBranch) {
+                core.info(`Skipping default branch: ${branchName}`);
+                skippedBranches.push({ name: branchName, reason: 'default branch' });
+                skippedCount++;
+                continue;
+              }
+
+              // Skip protected branches (associated with open/draft PRs)
+              if (protectedBranches.has(branchName)) {
+                core.info(`Skipping branch with open/draft PR: ${branchName}`);
+                skippedBranches.push({ name: branchName, reason: 'open/draft PR' });
+                skippedCount++;
+                continue;
+              }
+
+              // Get the latest commit on the branch to check its date
+              let commitDate;
+              try {
+                const { data: commit } = await github.rest.repos.getCommit({
+                  owner,
+                  repo,
+                  ref: branch.commit.sha,
+                });
+                commitDate = new Date(commit.commit.committer.date);
+              } catch (err) {
+                core.warning(`Failed to get commit info for branch ${branchName}: ${err.message}`);
+                skippedBranches.push({ name: branchName, reason: 'failed to get commit info' });
+                skippedCount++;
+                continue;
+              }
+
+              // Check if the branch is merged into the default branch
+              let isMerged = false;
+              try {
+                // Check if the branch commit is an ancestor of the default branch
+                const { status } = await github.rest.repos.compareCommits({
+                  owner,
+                  repo,
+                  base: defaultBranch,
+                  head: branch.commit.sha,
+                });
+                isMerged = (status === 'behind' || status === 'identical');
+              } catch (err) {
+                // If comparison fails, assume not merged
+                core.warning(`Failed to compare branch ${branchName}: ${err.message}`);
+              }
+
+              // Decision logic:
+              // 1. Merged branches: delete if last commit is older than 1 week
+              // 2. Unmerged branches: delete if not associated with open/draft PR (already checked above)
+              //    For unmerged branches, we also check if they're older than 1 week for safety
+              
+              const isOlderThanOneWeek = commitDate < oneWeekAgo;
+
+              if (isMerged && isOlderThanOneWeek) {
+                // Delete merged branch older than 1 week
+                try {
+                  await github.rest.git.deleteRef({
+                    owner,
+                    repo,
+                    ref: `heads/${branchName}`,
+                  });
+                  core.info(`Deleted merged branch: ${branchName} (last commit: ${commitDate.toISOString()})`);
+                  deletedBranches.push({ name: branchName, reason: 'merged, older than 1 week' });
+                  deletedCount++;
+                } catch (err) {
+                  core.warning(`Failed to delete branch ${branchName}: ${err.message}`);
+                  skippedBranches.push({ name: branchName, reason: `delete failed: ${err.message}` });
+                  skippedCount++;
+                }
+              } else if (!isMerged && isOlderThanOneWeek) {
+                // Delete unmerged branch not associated with PR and older than 1 week
+                try {
+                  await github.rest.git.deleteRef({
+                    owner,
+                    repo,
+                    ref: `heads/${branchName}`,
+                  });
+                  core.info(`Deleted unmerged stale branch: ${branchName} (last commit: ${commitDate.toISOString()})`);
+                  deletedBranches.push({ name: branchName, reason: 'unmerged, no open PR, older than 1 week' });
+                  deletedCount++;
+                } catch (err) {
+                  core.warning(`Failed to delete branch ${branchName}: ${err.message}`);
+                  skippedBranches.push({ name: branchName, reason: `delete failed: ${err.message}` });
+                  skippedCount++;
+                }
+              } else {
+                // Branch is either:
+                // - Merged but less than 1 week old
+                // - Unmerged but less than 1 week old
+                const reason = isMerged ? 'merged, less than 1 week old' : 'unmerged, less than 1 week old';
+                core.info(`Skipping branch: ${branchName} (${reason})`);
+                skippedBranches.push({ name: branchName, reason });
+                skippedCount++;
+              }
+            }
+
+            // Summary
+            core.info('');
+            core.info('=== Branch Cleanup Summary ===');
+            core.info(`Total branches evaluated: ${branches.length}`);
+            core.info(`Branches deleted: ${deletedCount}`);
+            core.info(`Branches skipped: ${skippedCount}`);
+
+            if (deletedBranches.length > 0) {
+              core.info('');
+              core.info('Deleted branches:');
+              for (const b of deletedBranches) {
+                core.info(`  - ${b.name}: ${b.reason}`);
+              }
+            }
+
+            core.info('');
+            core.info('Branch cleanup completed successfully.');
