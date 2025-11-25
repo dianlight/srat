@@ -856,7 +856,7 @@ func (suite *EventPropagationTestSuite) TestMultipleVolumeOperationsSequence() {
 		defer mu.Unlock()
 		// Verify we got at least the unmount event and some mount events
 		suite.Contains(operations, "unmount", "Should receive unmount event")
-		suite.True(len(operations) >= 1, "Should receive at least one operation event")
+		suite.GreaterOrEqual(len(operations), 1, "Should receive at least one operation event")
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for volume operation sequence")
 	}
