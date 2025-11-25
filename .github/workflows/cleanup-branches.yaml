@@ -6,6 +6,12 @@ on:
     - cron: '0 1 * * *'
   workflow_dispatch:
     # Allows manual triggering of the workflow
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (no actual deletions)'
+        required: false
+        default: 'false'
+        type: boolean
 
 permissions:
   contents: write        # Required to delete branches
@@ -28,12 +34,16 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            // Configuration
+            const DRY_RUN = ${{ inputs.dry_run || false }};
+            const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
             const oneWeekAgo = new Date(Date.now() - ONE_WEEK_MS);
 
             core.info(`Starting branch cleanup for ${owner}/${repo}`);
+            core.info(`Mode: ${DRY_RUN ? '🔍 DRY RUN (no actual deletions)' : '🗑️ LIVE (branches will be deleted)'}`);
             core.info(`Cutoff date for stale branches: ${oneWeekAgo.toISOString()}`);
 
             // Get the default branch to exclude it from deletion
@@ -133,35 +143,47 @@ jobs:
 
               if (isMerged && isOlderThanOneWeek) {
                 // Delete merged branch older than 1 week
-                try {
-                  await github.rest.git.deleteRef({
-                    owner,
-                    repo,
-                    ref: `heads/${branchName}`,
-                  });
-                  core.info(`Deleted merged branch: ${branchName} (last commit: ${commitDate.toISOString()})`);
-                  deletedBranches.push({ name: branchName, reason: 'merged, older than 1 week' });
+                if (DRY_RUN) {
+                  core.info(`[DRY RUN] Would delete merged branch: ${branchName} (last commit: ${commitDate.toISOString()})`);
+                  deletedBranches.push({ name: branchName, reason: 'merged, older than 1 week (dry run)' });
                   deletedCount++;
-                } catch (err) {
-                  core.warning(`Failed to delete branch ${branchName}: ${err.message}`);
-                  skippedBranches.push({ name: branchName, reason: `delete failed: ${err.message}` });
-                  skippedCount++;
+                } else {
+                  try {
+                    await github.rest.git.deleteRef({
+                      owner,
+                      repo,
+                      ref: `heads/${branchName}`,
+                    });
+                    core.info(`Deleted merged branch: ${branchName} (last commit: ${commitDate.toISOString()})`);
+                    deletedBranches.push({ name: branchName, reason: 'merged, older than 1 week' });
+                    deletedCount++;
+                  } catch (err) {
+                    core.warning(`Failed to delete branch ${branchName}: ${err.message}`);
+                    skippedBranches.push({ name: branchName, reason: `delete failed: ${err.message}` });
+                    skippedCount++;
+                  }
                 }
               } else if (!isMerged && isOlderThanOneWeek) {
                 // Delete unmerged branch not associated with PR and older than 1 week
-                try {
-                  await github.rest.git.deleteRef({
-                    owner,
-                    repo,
-                    ref: `heads/${branchName}`,
-                  });
-                  core.info(`Deleted unmerged stale branch: ${branchName} (last commit: ${commitDate.toISOString()})`);
-                  deletedBranches.push({ name: branchName, reason: 'unmerged, no open PR, older than 1 week' });
+                if (DRY_RUN) {
+                  core.info(`[DRY RUN] Would delete unmerged stale branch: ${branchName} (last commit: ${commitDate.toISOString()})`);
+                  deletedBranches.push({ name: branchName, reason: 'unmerged, no open PR, older than 1 week (dry run)' });
                   deletedCount++;
-                } catch (err) {
-                  core.warning(`Failed to delete branch ${branchName}: ${err.message}`);
-                  skippedBranches.push({ name: branchName, reason: `delete failed: ${err.message}` });
-                  skippedCount++;
+                } else {
+                  try {
+                    await github.rest.git.deleteRef({
+                      owner,
+                      repo,
+                      ref: `heads/${branchName}`,
+                    });
+                    core.info(`Deleted unmerged stale branch: ${branchName} (last commit: ${commitDate.toISOString()})`);
+                    deletedBranches.push({ name: branchName, reason: 'unmerged, no open PR, older than 1 week' });
+                    deletedCount++;
+                  } catch (err) {
+                    core.warning(`Failed to delete branch ${branchName}: ${err.message}`);
+                    skippedBranches.push({ name: branchName, reason: `delete failed: ${err.message}` });
+                    skippedCount++;
+                  }
                 }
               } else {
                 // Branch is either:
@@ -176,18 +198,18 @@ jobs:
 
             // Summary
             core.info('');
-            core.info('=== Branch Cleanup Summary ===');
+            core.info(`=== Branch Cleanup Summary ${DRY_RUN ? '(DRY RUN)' : ''} ===`);
             core.info(`Total branches evaluated: ${branches.length}`);
-            core.info(`Branches deleted: ${deletedCount}`);
+            core.info(`Branches ${DRY_RUN ? 'that would be deleted' : 'deleted'}: ${deletedCount}`);
             core.info(`Branches skipped: ${skippedCount}`);
 
             if (deletedBranches.length > 0) {
               core.info('');
-              core.info('Deleted branches:');
+              core.info(`${DRY_RUN ? 'Branches that would be deleted:' : 'Deleted branches:'}`);
               for (const b of deletedBranches) {
                 core.info(`  - ${b.name}: ${b.reason}`);
               }
             }
 
             core.info('');
-            core.info('Branch cleanup completed successfully.');
+            core.info(`Branch cleanup ${DRY_RUN ? 'dry run' : ''} completed successfully.`);
