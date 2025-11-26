@@ -17,20 +17,17 @@ import (
 
 var (
 	Q              = new(Query)
-	HDIdleDevice   *hDIdleDevice
 	MountPointPath *mountPointPath
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
-	HDIdleDevice = &Q.HDIdleDevice
 	MountPointPath = &Q.MountPointPath
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:             db,
-		HDIdleDevice:   newHDIdleDevice(db, opts...),
 		MountPointPath: newMountPointPath(db, opts...),
 	}
 }
@@ -38,7 +35,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 type Query struct {
 	db *gorm.DB
 
-	HDIdleDevice   hDIdleDevice
 	MountPointPath mountPointPath
 }
 
@@ -47,7 +43,6 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:             db,
-		HDIdleDevice:   q.HDIdleDevice.clone(db),
 		MountPointPath: q.MountPointPath.clone(db),
 	}
 }
@@ -63,19 +58,16 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:             db,
-		HDIdleDevice:   q.HDIdleDevice.replaceDB(db),
 		MountPointPath: q.MountPointPath.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	HDIdleDevice   IHDIdleDeviceDo
 	MountPointPath IMountPointPathDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		HDIdleDevice:   q.HDIdleDevice.WithContext(ctx),
 		MountPointPath: q.MountPointPath.WithContext(ctx),
 	}
 }

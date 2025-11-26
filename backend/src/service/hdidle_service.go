@@ -18,7 +18,8 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
 
-	"github.com/dianlight/srat/dbhelpers/g"
+	"github.com/dianlight/srat/dbom/g"
+	"github.com/dianlight/srat/dbom/g/query"
 )
 
 const (
@@ -282,7 +283,8 @@ func (s *hDIdleService) GetDeviceStatus(path string) (*HDIdleDiskStatus, errors.
 func (s *hDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDeviceDTO, errors.E) {
 	//device, err := g.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).LoadByPath(s.ctx, path)
 	device, err := gorm.G[dbom.HDIdleDevice](s.db).
-		Where("device_path = ?", path).
+		//	Where("device_path = ?", path).
+		Where(g.HDIdleDevice.DevicePath.Eq(path)).
 		First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -303,7 +305,7 @@ func (s *hDIdleService) SaveDeviceConfig(device dto.HDIdleDeviceDTO) errors.E {
 		return errors.WithStack(err)
 	}
 
-	_, err = g.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).Updates(s.ctx, dbDevice)
+	_, err = query.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).Updates(s.ctx, dbDevice)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -413,7 +415,7 @@ func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
 		NameMap:               make(map[string]string),
 	}
 
-	devices, errS := g.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).All(s.ctx)
+	devices, errS := query.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).All(s.ctx)
 	if errS != nil {
 		//tlog.Error("Failed to load HDIdle devices from repository", "error", err)
 		return nil, errors.Wrap(errS, "failed to load HDIdle devices")

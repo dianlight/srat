@@ -105,7 +105,6 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		repository.NewPropertyRepositoryRepository,
 		repository.NewSambaUserRepository,
 		repository.NewIssueRepository,
-		repository.NewHDIdleDeviceRepository,
 	)
 }
 

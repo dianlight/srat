@@ -84,7 +84,7 @@ func main() {
 				g.UseDB(gormdb) // reuse your gorm db
 
 				// Generate basic type-safe DAO API for struct following conventions
-				g.ApplyBasic(dbom.HDIdleDevice{})
+				//g.ApplyBasic(dbom.HDIdleDevice{})
 				g.ApplyBasic(dbom.MountPointPath{})
 
 				// Generate Type Safe API with Dynamic SQL defined on Querier interface for `model.User` and `model.Company`

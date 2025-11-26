@@ -1,4 +1,4 @@
-package dbhelpers
+package query
 
 import (
 	"github.com/dianlight/srat/dbom"

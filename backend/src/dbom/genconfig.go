@@ -1,4 +1,4 @@
-package dbhelpers
+package dbom
 
 import (
 	"gorm.io/cli/gorm/genconfig"
@@ -24,5 +24,5 @@ var _ = genconfig.Config{
 	   IncludeStructs:    []any{"User", "Account*", models.User{}},
 	*/
 	IncludeInterfaces: []any{"*Query"},
-	IncludeStructs:    []any{"*"},
+	IncludeStructs:    []any{HDIdleDevice{}},
 }
