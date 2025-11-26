@@ -36,6 +36,7 @@ require (
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
+	gorm.io/cli/gorm v0.2.4
 	gorm.io/datatypes v1.2.7
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gen v0.3.27
@@ -55,6 +56,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.149.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmattheis/goverter v1.9.2 // indirect
 	github.com/k0kubun/pp/v3 v3.5.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
@@ -74,6 +76,8 @@ require (
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
+	github.com/spf13/cobra v1.9.1 // indirect
+	github.com/spf13/pflag v1.0.7 // indirect
 	github.com/tdewolff/parse/v2 v2.8.3 // indirect
 	github.com/woodsbury/decimal128 v1.3.0 // indirect
 	github.com/zarldev/goenums v0.4.4 // indirect
@@ -171,4 +175,5 @@ tool (
 	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 	github.com/rakyll/gotest
 	github.com/zarldev/goenums
+	gorm.io/cli/gorm
 )

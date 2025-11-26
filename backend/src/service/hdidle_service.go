@@ -14,9 +14,11 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/dianlight/srat/converter"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/tlog"
+
+	"github.com/dianlight/srat/dbhelpers/g"
 )
 
 const (
@@ -79,11 +81,12 @@ type HDIdleDiskStatus struct {
 
 // hDIdleService implements HDIdleServiceInterface
 type hDIdleService struct {
-	apiContext       context.Context
+	db               *gorm.DB
+	ctx              context.Context
 	apiContextCancel context.CancelFunc
 	state            *dto.ContextState
-	hdidlerepo       repository.HDIdleDeviceRepositoryInterface
-	settingService   SettingServiceInterface
+	//	hdidlerepo       repository.HDIdleDeviceRepositoryInterface
+	settingService SettingServiceInterface
 
 	// Internal state
 	mu        sync.RWMutex
@@ -139,22 +142,23 @@ type diskState struct {
 // HDIdleServiceParams defines dependencies for HDIdleService
 type HDIdleServiceParams struct {
 	fx.In
-	ApiContext       context.Context
+	DB               *gorm.DB
+	Ctx              context.Context
 	ApiContextCancel context.CancelFunc
 	State            *dto.ContextState
-	Hdidlerepo       repository.HDIdleDeviceRepositoryInterface
-	SettingService   SettingServiceInterface
+	//	hdidlerepo       repository.HDIdleDeviceRepositoryInterface
+	SettingService SettingServiceInterface
 }
 
 // NewHDIdleService creates a new HDIdleService instance
 func NewHDIdleService(lc fx.Lifecycle, in HDIdleServiceParams) HDIdleServiceInterface {
 
 	hdidle_service := &hDIdleService{
-		apiContext:       in.ApiContext,
+		ctx:              in.Ctx,
 		apiContextCancel: in.ApiContextCancel,
 		state:            in.State,
 		running:          false,
-		hdidlerepo:       in.Hdidlerepo,
+		db:               in.DB,
 		settingService:   in.SettingService,
 		converter:        converter.DtoToDbomConverterImpl{},
 	}
@@ -199,7 +203,7 @@ func (s *hDIdleService) Stop() errors.E {
 		return errors.New("HDIdle service is not running")
 	}
 
-	tlog.DebugContext(s.apiContext, "Stopping HDIdle service")
+	tlog.DebugContext(s.ctx, "Stopping HDIdle service")
 	close(s.stopChan)
 	s.running = false
 	s.diskStats = []diskState{}
@@ -276,19 +280,18 @@ func (s *hDIdleService) GetDeviceStatus(path string) (*HDIdleDiskStatus, errors.
 }
 
 func (s *hDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDeviceDTO, errors.E) {
-	device, err := s.hdidlerepo.LoadByPath(path)
+	//device, err := g.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).LoadByPath(s.ctx, path)
+	device, err := gorm.G[dbom.HDIdleDevice](s.db).
+		Where("device_path = ?", path).
+		First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return &dto.HDIdleDeviceDTO{DevicePath: path}, nil
 		}
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
-	if device == nil {
-		return nil, errors.Errorf("device %s not found", path)
-	}
-
-	dtoDevice, errN := s.converter.HDIdleDeviceToHDIdleDeviceDTO(*device)
+	dtoDevice, errN := s.converter.HDIdleDeviceToHDIdleDeviceDTO(device)
 	if errN != nil {
 		return nil, errors.WithStack(errN)
 	}
@@ -300,9 +303,9 @@ func (s *hDIdleService) SaveDeviceConfig(device dto.HDIdleDeviceDTO) errors.E {
 		return errors.WithStack(err)
 	}
 
-	errE := s.hdidlerepo.Update(&dbDevice)
-	if errE != nil {
-		return errE
+	_, err = g.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).Updates(s.ctx, dbDevice)
+	if err != nil {
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -410,10 +413,10 @@ func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
 		NameMap:               make(map[string]string),
 	}
 
-	devices, err := s.hdidlerepo.LoadAll()
-	if err != nil {
+	devices, errS := g.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).All(s.ctx)
+	if errS != nil {
 		//tlog.Error("Failed to load HDIdle devices from repository", "error", err)
-		return nil, errors.Wrap(err, "failed to load HDIdle devices")
+		return nil, errors.Wrap(errS, "failed to load HDIdle devices")
 	}
 
 	// Convert devices considering per-device Enabled tri-state
@@ -506,7 +509,7 @@ func (s *hDIdleService) monitorLoop() {
 		select {
 		case <-s.stopChan:
 			return
-		case <-s.apiContext.Done():
+		case <-s.ctx.Done():
 			return
 		case <-ticker.C:
 			s.observeDiskActivity()
@@ -583,14 +586,14 @@ func (s *hDIdleService) updateDiskState(name string, reads, writes uint64, now t
 				// Time to spin down
 				givenName := s.resolveDeviceGivenName(ds.Name)
 				if ds.SpunDown && s.config.IgnoreSpinDown {
-					tlog.InfoContext(s.apiContext, "Spindown (ignoring prior spin down state)", "disk", givenName)
+					tlog.InfoContext(s.ctx, "Spindown (ignoring prior spin down state)", "disk", givenName)
 				} else {
-					tlog.InfoContext(s.apiContext, "Spindown", "disk", givenName)
+					tlog.InfoContext(s.ctx, "Spindown", "disk", givenName)
 				}
 
 				device := fmt.Sprintf("/dev/%s", ds.Name)
 				if err := s.spindownDisk(device, ds.CommandType, ds.PowerCondition); err != nil {
-					tlog.ErrorContext(s.apiContext, "Failed to spindown disk", "disk", givenName, "error", err)
+					tlog.ErrorContext(s.ctx, "Failed to spindown disk", "disk", givenName, "error", err)
 				}
 
 				ds.LastSpunDownAt = now
@@ -603,7 +606,7 @@ func (s *hDIdleService) updateDiskState(name string, reads, writes uint64, now t
 		if ds.SpunDown {
 			// Disk just spun up
 			givenName := s.resolveDeviceGivenName(ds.Name)
-			tlog.InfoContext(s.apiContext, "Spinup", "disk", givenName)
+			tlog.InfoContext(s.ctx, "Spinup", "disk", givenName)
 			ds.SpinUpAt = now
 		}
 
