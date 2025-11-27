@@ -273,7 +273,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	function handleGoToShare(partition: Partition) {
 		//console.log("Go to share for:", partition);
 		const mountData = Object.values(partition.mount_point_data || {})[0];
-		const share = mountData?.shares?.[0]; // Get the first share associated with this mount point
+		const share = mountData?.share; // Get the first share associated with this mount point
 
 		if (share?.name) {
 			// Navigate to the shares page and pass the share name as state
@@ -414,7 +414,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	}
 
 	// Get the related share for the selected partition
-	const selectedShare = Object.values(selectedPartition?.mount_point_data || {})[0]?.shares?.[0];
+	const selectedShare = Object.values(selectedPartition?.mount_point_data || {})[0]?.share;
 
 	return (
 		<>

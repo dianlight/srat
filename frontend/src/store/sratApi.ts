@@ -1184,7 +1184,8 @@ export type MountPointData = {
   path: string;
   path_hash?: string;
   refresh_version?: number;
-  shares?: SharedResource[] | null;
+  root?: string;
+  share?: SharedResource;
   time_machine_support?: Time_machine_support;
   type: Type;
   warnings?: string;

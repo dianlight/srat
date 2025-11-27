@@ -48,9 +48,8 @@ export function DashboardActions() {
 
 					const mpds = Object.values(partition.mount_point_data || {});
 					const isMounted = mpds.some((mpd) => mpd.is_mounted);
-					const hasShares = mpds.some((mpd) =>
-						mpd.shares?.some((share) => !share.disabled),
-					);
+					const hasShares = mpds.some((mpd) => mpd.share && mpd.share.disabled === false);
+
 					const firstMountPath = mpds[0]?.path;
 
 					if (!isMounted) {

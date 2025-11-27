@@ -109,7 +109,7 @@ export function VolumeDetailsPanel({
 
     const mpds = Object.values(partition?.mount_point_data || {});
     const mountData = mpds[0];
-    const allShares = mpds.flatMap((mpd) => mpd.shares).filter(Boolean) || [];
+    //const allShares = mpds.flatMap((mpd) => mpd.shares).filter(Boolean) || [];
     const isMounted = mpds.some((mpd) => mpd.is_mounted);
 
     return (
@@ -542,8 +542,8 @@ export function VolumeDetailsPanel({
                     </Card>
                 )}
 
-                {/* Share Information Card */}
-                {partition && mountData?.shares && mountData.shares.length > 0 ? (
+                {/* Share Information Card * /}
+                {partition && mountData?.share ? (
                     <Card>
                         <CardHeader
                             title={`Related Share${allShares?.length === 1 ? "" : "s"} (${allShares?.length})`}
@@ -573,7 +573,7 @@ export function VolumeDetailsPanel({
                                             />
                                             <CardContent sx={{ flex: 1 }}>
                                                 <Stack spacing={2}>
-                                                    {/* Share Properties */}
+                                                    {/* Share Properties * /}
                                                     <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                                                         {share?.usage && share?.usage !== Usage.Internal && (
                                                             <Chip
@@ -619,7 +619,7 @@ export function VolumeDetailsPanel({
                                                         )}
                                                     </Stack>
 
-                                                    {/* Users */}
+                                                    {/* Users * /}
                                                     {share?.users && share?.users.length > 0 && (
                                                         <Box>
                                                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -640,7 +640,7 @@ export function VolumeDetailsPanel({
                                                         </Box>
                                                     )}
 
-                                                    {/* Read-Only Users */}
+                                                    {/* Read-Only Users * /}
                                                     {share?.ro_users && share?.ro_users.length > 0 && (
                                                         <Box>
                                                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -692,6 +692,7 @@ export function VolumeDetailsPanel({
                         </CardContent>
                     </Card>
                 ) : null}
+                {/* Preview Button for Partition or Disk */}
             </Stack>
 
             {/* Preview dialog for disk object */}

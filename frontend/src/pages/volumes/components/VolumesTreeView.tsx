@@ -140,7 +140,7 @@ export function VolumesTreeView({
         }> = [];
         const mpds = Object.values(partition.mount_point_data || {});
         const isMounted = mpds.some((mpd) => mpd.is_mounted);
-        const hasShares = mpds.some((mpd) => mpd.shares && mpd.shares.length > 0);
+        const hasShares = mpds.some((mpd) => mpd.share);
         const firstMountPath = mpds[0]?.path;
         const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
 
