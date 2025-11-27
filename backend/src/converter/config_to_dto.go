@@ -27,8 +27,8 @@ type ConfigToDtoConverter interface {
 	//ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
 
 	// g.overter:update target
-	// g.overter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Shares IsToMountAtStartup
-	// goverter:ignore Flags CustomFlags InvalidError Warnings Shares RefreshVersion
+	// g.overter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Share IsToMountAtStartup
+	// goverter:ignore Flags CustomFlags InvalidError Warnings Share RefreshVersion
 	// goverter:ignore Partition
 	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
 	// goverter:map IsInvalid | falseConst

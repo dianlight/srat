@@ -203,6 +203,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 			Name: "all_share1",
 			MountPointData: dbom.MountPointPath{
 				Path:     "/mnt/all_share1",
+				Root:     "/",
 				DeviceId: "all_source1",
 				FSType:   "ext4",
 				Type:     "ADDON",
@@ -214,6 +215,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 			Name: "all_share2",
 			MountPointData: dbom.MountPointPath{
 				Path:     "/mnt/all_share2",
+				Root:     "/",
 				DeviceId: "all_source2",
 				FSType:   "ntfs",
 				Type:     "ADDON",
@@ -230,7 +232,7 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_All() {
 	allShares, err := suite.export_share_repo.All()
 	suite.Require().NoError(err)
 	suite.Require().Len(*allShares, 2)
-	if !cmp.Equal(shares, *allShares, cmpopts.IgnoreFields(dbom.ExportedShare{}, "CreatedAt", "UpdatedAt", "DeletedAt", "MountPointDataPath", "MountPointData")) {
+	if !cmp.Equal(shares, *allShares, cmpopts.IgnoreFields(dbom.ExportedShare{}, "CreatedAt", "UpdatedAt", "DeletedAt", "MountPointDataPath", "MountPointDataRoot", "MountPointData")) {
 		suite.Equal(shares, *allShares)
 	}
 

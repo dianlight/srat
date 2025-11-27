@@ -205,7 +205,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntities() {
 						mountPath: {
 							Path:      mountPath,
 							IsMounted: isMounted,
-							Shares:    []dto.SharedResource{},
+							Share:     &dto.SharedResource{},
 						},
 					},
 				},
@@ -255,7 +255,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntitiesDisabled() {
 						mountPath: {
 							Path:      mountPath,
 							IsMounted: isMounted,
-							Shares:    []dto.SharedResource{},
+							Share:     &dto.SharedResource{},
 						},
 					},
 				},

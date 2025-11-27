@@ -71,7 +71,7 @@ func TestMountPointData_ZeroValues(t *testing.T) {
 	assert.Nil(t, mountData.TimeMachineSupport)
 	assert.Nil(t, mountData.InvalidError)
 	assert.Nil(t, mountData.Warnings)
-	assert.Nil(t, mountData.Shares)
+	assert.Nil(t, mountData.Share)
 }
 
 func TestMountPointData_WithPartition(t *testing.T) {
@@ -95,17 +95,15 @@ func TestMountPointData_WithShares(t *testing.T) {
 	share := dto.SharedResource{
 		Name: shareName,
 	}
-	shares := []dto.SharedResource{share}
 
 	mountData := dto.MountPointData{
 		Path:   "/mnt/data",
-		Shares: shares,
+		Share: &share,
 	}
 
-	assert.NotNil(t, mountData.Shares)
+	assert.NotNil(t, mountData.Share)
 	assert.Equal(t, "/mnt/data", mountData.Path)
-	assert.Len(t, mountData.Shares, 1)
-	assert.Equal(t, shareName, mountData.Shares[0].Name)
+	assert.Equal(t, shareName, mountData.Share.Name)
 }
 
 func TestMountPointData_Types(t *testing.T) {

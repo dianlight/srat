@@ -111,16 +111,11 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 	if source.IsToMountAtStartup != nil {
 		target.IsToMountAtStartup = source.IsToMountAtStartup
 	}
-	if source.Shares != nil {
-		target.Shares = make([]dbom.ExportedShare, len(source.Shares))
-		for i := 0; i < len(source.Shares); i++ {
-			dbomExportedShare, err := c.sharedResourceToExportedShare(source.Shares[i])
-			if err != nil {
-				return err
-			}
-			target.Shares[i] = dbomExportedShare
-		}
+	pDbomExportedShare, err := c.pDtoSharedResourceToPDbomExportedShare(source.Share)
+	if err != nil {
+		return err
 	}
+	target.ExportedShare = pDbomExportedShare
 	return nil
 }
 func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData, context []dto.Disk) error {
@@ -188,16 +183,11 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	if source.FSType != "" {
 		target.TimeMachineSupport = TimeMachineSupportFromFS(source.FSType)
 	}
-	if source.Shares != nil {
-		target.Shares = make([]dto.SharedResource, len(source.Shares))
-		for i := 0; i < len(source.Shares); i++ {
-			dtoSharedResource, err := c.ExportedShareToSharedResource(source.Shares[i])
-			if err != nil {
-				return err
-			}
-			target.Shares[i] = dtoSharedResource
-		}
+	pDtoSharedResource, err := c.pDbomExportedShareToPDtoSharedResource(source.ExportedShare)
+	if err != nil {
+		return err
 	}
+	target.Share = pDtoSharedResource
 	return nil
 }
 func (c *DtoToDbomConverterImpl) MountPointPathsToMountPointDatas(source []dbom.MountPointPath) ([]*dto.MountPointData, error) {
@@ -271,6 +261,13 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 	}
 	if pString != nil {
 		target.MountPointDataPath = *pString
+	}
+	var pString2 *string
+	if source.MountPointData != nil {
+		pString2 = &source.MountPointData.Root
+	}
+	if pString2 != nil {
+		target.MountPointDataRoot = *pString2
 	}
 	return nil
 }
@@ -409,16 +406,11 @@ func (c *DtoToDbomConverterImpl) mountPointDataToMountPointPath(source dto.Mount
 	dbomMountPointPath.Flags = c.pDtoMountFlagsToPDbomMounDataFlags(source.Flags)
 	dbomMountPointPath.Data = c.pDtoMountFlagsToPDbomMounDataFlags(source.CustomFlags)
 	dbomMountPointPath.IsToMountAtStartup = source.IsToMountAtStartup
-	if source.Shares != nil {
-		dbomMountPointPath.Shares = make([]dbom.ExportedShare, len(source.Shares))
-		for i := 0; i < len(source.Shares); i++ {
-			dbomExportedShare, err := c.sharedResourceToExportedShare(source.Shares[i])
-			if err != nil {
-				return dbomMountPointPath, err
-			}
-			dbomMountPointPath.Shares[i] = dbomExportedShare
-		}
+	pDbomExportedShare, err := c.pDtoSharedResourceToPDbomExportedShare(source.Share)
+	if err != nil {
+		return dbomMountPointPath, err
 	}
+	dbomMountPointPath.ExportedShare = pDbomExportedShare
 	return dbomMountPointPath, nil
 }
 func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.MountPointPath) (dto.MountPointData, error) {
@@ -456,17 +448,23 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 	dtoMountPointData.IsToMountAtStartup = source.IsToMountAtStartup
 	dtoMountPointData.IsWriteSupported = isWriteSupported(source.Path)
 	dtoMountPointData.TimeMachineSupport = TimeMachineSupportFromFS(source.FSType)
-	if source.Shares != nil {
-		dtoMountPointData.Shares = make([]dto.SharedResource, len(source.Shares))
-		for i := 0; i < len(source.Shares); i++ {
-			dtoSharedResource, err := c.ExportedShareToSharedResource(source.Shares[i])
-			if err != nil {
-				return dtoMountPointData, err
-			}
-			dtoMountPointData.Shares[i] = dtoSharedResource
-		}
+	pDtoSharedResource, err := c.pDbomExportedShareToPDtoSharedResource(source.ExportedShare)
+	if err != nil {
+		return dtoMountPointData, err
 	}
+	dtoMountPointData.Share = pDtoSharedResource
 	return dtoMountPointData, nil
+}
+func (c *DtoToDbomConverterImpl) pDbomExportedShareToPDtoSharedResource(source *dbom.ExportedShare) (*dto.SharedResource, error) {
+	var pDtoSharedResource *dto.SharedResource
+	if source != nil {
+		dtoSharedResource, err := c.ExportedShareToSharedResource((*source))
+		if err != nil {
+			return nil, err
+		}
+		pDtoSharedResource = &dtoSharedResource
+	}
+	return pDtoSharedResource, nil
 }
 func (c *DtoToDbomConverterImpl) pDbomMounDataFlagsToPDtoMountFlags(source *dbom.MounDataFlags) (*dto.MountFlags, error) {
 	var pDtoMountFlags *dto.MountFlags
@@ -504,6 +502,17 @@ func (c *DtoToDbomConverterImpl) pDtoMountPointDataToDbomMountPointPath(source *
 		dbomMountPointPath = dbomMountPointPath2
 	}
 	return dbomMountPointPath, nil
+}
+func (c *DtoToDbomConverterImpl) pDtoSharedResourceToPDbomExportedShare(source *dto.SharedResource) (*dbom.ExportedShare, error) {
+	var pDbomExportedShare *dbom.ExportedShare
+	if source != nil {
+		dbomExportedShare, err := c.sharedResourceToExportedShare((*source))
+		if err != nil {
+			return nil, err
+		}
+		pDbomExportedShare = &dbomExportedShare
+	}
+	return pDbomExportedShare, nil
 }
 func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.SharedResource) (dbom.ExportedShare, error) {
 	var dbomExportedShare dbom.ExportedShare
@@ -549,6 +558,13 @@ func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.Shared
 	}
 	if pString != nil {
 		dbomExportedShare.MountPointDataPath = *pString
+	}
+	var pString2 *string
+	if source.MountPointData != nil {
+		pString2 = &source.MountPointData.Root
+	}
+	if pString2 != nil {
+		dbomExportedShare.MountPointDataRoot = *pString2
 	}
 	dbomMountPointPath, err := c.pDtoMountPointDataToDbomMountPointPath(source.MountPointData)
 	if err != nil {

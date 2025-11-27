@@ -17,7 +17,7 @@ import (
 type MountToDto interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:ignore Shares InvalidError Warnings RefreshVersion
+	// goverter:ignore Share InvalidError Warnings RefreshVersion
 	// goverter:map Data CustomFlags | stringToMountFlags
 	// goverter:map Device Type | pathToType
 	// goverter:map Device DeviceId | deviceToDeviceId

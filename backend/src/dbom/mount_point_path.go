@@ -11,7 +11,7 @@ import (
 
 type MountPointPath struct {
 	Path               string `gorm:"primarykey"`
-	Root               string //`gorm:"primarykey"`
+	Root               string `gorm:"primarykey;default:'/'"`
 	Type               string `gorm:"not null;default:null"`
 	DeviceId           string `gorm:"not null;default:null;index"` // Device ID (e.g., from /dev/disk/by-id/) associated with this mount point.
 	FSType             string
@@ -19,9 +19,9 @@ type MountPointPath struct {
 	Data               *MounDataFlags `gorm:"not null;default:''"`
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
-	DeletedAt          gorm.DeletedAt  `gorm:"index"`
-	IsToMountAtStartup *bool           `gorm:"not null;default:false"` // If true, mount point should be mounted at startup.
-	Shares             []ExportedShare `gorm:"foreignKey:MountPointDataPath;references:Path;"`
+	DeletedAt          gorm.DeletedAt `gorm:"index"`
+	IsToMountAtStartup *bool          `gorm:"not null;default:false"` // If true, mount point should be mounted at startup.
+	ExportedShare      *ExportedShare `gorm:"foreignKey:MountPointDataPath,MountPointDataRoot;references:Path,Root"`
 }
 
 // invalidPathCharsRegex defines characters that are NOT allowed in a path.

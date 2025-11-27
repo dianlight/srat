@@ -25,6 +25,7 @@ type DtoToDbomConverter interface {
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:map MountPointData.Path MountPointDataPath
+	// goverter:map MountPointData.Root MountPointDataRoot
 	sharedResourceToExportedShare(source dto.SharedResource) (dbom.ExportedShare, error)
 
 	// goverter:ignore Status
@@ -41,12 +42,14 @@ type DtoToDbomConverter interface {
 	// goverter:map Path DiskLabel | DiskLabelFromPath
 	// goverter:map Path DiskSerial | DiskSerialFromPath
 	// goverter:map Path DiskSize | DiskSizeFromPath
+	// goverter:map ExportedShare Share
 	mountPointPathToMountPointData(source dbom.MountPointPath) (dto.MountPointData, error)
 	MountPointPathsToMountPointDatas(source []dbom.MountPointPath) ([]*dto.MountPointData, error)
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:map Path DeviceId | mountPathToDeviceId
-	// goverter:map  CustomFlags Data
+	// goverter:map CustomFlags Data
+	// goverter:map Share ExportedShare
 	mountPointDataToMountPointPath(source dto.MountPointData) (dbom.MountPointPath, error)
 
 	// goverter:ignore Description ValueDescription ValueValidationRegex
@@ -76,6 +79,7 @@ type DtoToDbomConverter interface {
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignore Users RoUsers MountPointData
 	// goverter:map MountPointData.Path MountPointDataPath
+	// goverter:map MountPointData.Root MountPointDataRoot
 	// goverter:useUnderlyingTypeMethods
 	SharedResourceToExportedShareNoUsersNoMountPointPath(source dto.SharedResource, target *dbom.ExportedShare) error
 
@@ -84,6 +88,7 @@ type DtoToDbomConverter interface {
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:map Flags Flags
 	// goverter:map CustomFlags Data
+	// goverter:map Share ExportedShare
 	// goverter:useUnderlyingTypeMethods
 	MountPointDataToMountPointPath(source dto.MountPointData, target *dbom.MountPointPath) error
 
@@ -102,6 +107,7 @@ type DtoToDbomConverter interface {
 	// goverter:map Path DiskSerial | DiskSerialFromPath
 	// goverter:map Path DiskSize | DiskSizeFromPath
 	// goverter:map DeviceId Partition | partitionFromDeviceId
+	// goverter:map ExportedShare Share
 	// goverter:context disks
 	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData, disks []dto.Disk) error
 

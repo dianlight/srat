@@ -162,7 +162,7 @@ func TestDtoToDbomConverter_MountPointDataToMountPointPath(t *testing.T) {
 		Flags:              &flags,
 		CustomFlags:        &custom,
 		IsToMountAtStartup: &startup,
-		Shares:             []dto.SharedResource{{Name: shareName}},
+		Share:             &dto.SharedResource{Name: shareName},
 	}
 
 	var target dbom.MountPointPath
@@ -182,9 +182,8 @@ func TestDtoToDbomConverter_MountPointDataToMountPointPath(t *testing.T) {
 	if assert.NotNil(t, target.IsToMountAtStartup) {
 		assert.Equal(t, startup, *target.IsToMountAtStartup)
 	}
-	if assert.Len(t, target.Shares, 1) {
-		assert.Equal(t, shareName, target.Shares[0].Name)
-	}
+	assert.NotNil(t, target.ExportedShare)
+	assert.Equal(t, shareName, target.ExportedShare.Name)
 }
 
 func TestDtoToDbomConverter_MountFlagsToMountDataFlags(t *testing.T) {

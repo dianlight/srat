@@ -20,6 +20,6 @@ type MountPointData struct {
 	TimeMachineSupport *TimeMachineSupport `json:"time_machine_support,omitempty" read-only:"true" enum:"unsupported,supported,experimental,unknown"`
 	InvalidError       *string             `json:"invalid_error,omitempty" read-only:"true"`
 	Warnings           *string             `json:"warnings,omitempty" read-only:"true"`
-	Shares             []SharedResource    `json:"shares,omitempty" read-only:"true"` // Shares that are mounted on this mount point.
+	Share              *SharedResource     `json:"share,omitempty" read-only:"true"` // Shares that are mounted on this mount point.
 	RefreshVersion     uint32              `json:"refresh_version,omitempty" readonly:"true"`
 }

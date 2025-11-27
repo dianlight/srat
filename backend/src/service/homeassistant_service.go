@@ -234,10 +234,8 @@ func (s *HomeAssistantService) SendVolumeStatusEntity(data *[]dto.Disk) error {
 						if mp.IsMounted {
 							mountedPartitions++
 						}
-						for _, share := range mp.Shares {
-							if share.Disabled != nil && !*share.Disabled {
-								sharedPartitions++
-							}
+						if mp.Share.Disabled != nil && !*mp.Share.Disabled {
+							sharedPartitions++
 						}
 					}
 				}
@@ -377,10 +375,8 @@ func (s *HomeAssistantService) sendPartitionEntity(partition dto.Partition, disk
 				mountedCount++
 				attributes["mount_path"] = mp.Path
 			}
-			for _, share := range mp.Shares {
-				if share.Disabled != nil && !*share.Disabled {
-					shareCount++
-				}
+			if mp.Share.Disabled != nil && !*mp.Share.Disabled {
+				shareCount++
 			}
 		}
 	}

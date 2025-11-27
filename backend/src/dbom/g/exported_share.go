@@ -25,6 +25,7 @@ var ExportedShare = struct {
 	TimeMachineMaxSize field.String
 	Usage              field.Struct[dto.HAMountUsage]
 	MountPointDataPath field.String
+	MountPointDataRoot field.String
 	MountPointData     field.Struct[dbom.MountPointPath]
 }{
 	Name:               field.String{}.WithColumn("name"),
@@ -41,5 +42,6 @@ var ExportedShare = struct {
 	TimeMachineMaxSize: field.String{}.WithColumn("time_machine_max_size"),
 	Usage:              field.Struct[dto.HAMountUsage]{}.WithName("Usage"),
 	MountPointDataPath: field.String{}.WithColumn("mount_point_data_path"),
+	MountPointDataRoot: field.String{}.WithColumn("mount_point_data_root"),
 	MountPointData:     field.Struct[dbom.MountPointPath]{}.WithName("MountPointData"),
 }

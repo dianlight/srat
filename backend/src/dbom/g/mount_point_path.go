@@ -20,7 +20,7 @@ var MountPointPath = struct {
 	UpdatedAt          field.Time
 	DeletedAt          field.Field[gorm.DeletedAt]
 	IsToMountAtStartup field.Bool
-	Shares             field.Slice[dbom.ExportedShare]
+	ExportedShare      field.Struct[dbom.ExportedShare]
 }{
 	Path:               field.String{}.WithColumn("path"),
 	Root:               field.String{}.WithColumn("root"),
@@ -33,5 +33,5 @@ var MountPointPath = struct {
 	UpdatedAt:          field.Time{}.WithColumn("updated_at"),
 	DeletedAt:          field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at"),
 	IsToMountAtStartup: field.Bool{}.WithColumn("is_to_mount_at_startup"),
-	Shares:             field.Slice[dbom.ExportedShare]{}.WithName("Shares"),
+	ExportedShare:      field.Struct[dbom.ExportedShare]{}.WithName("ExportedShare"),
 }

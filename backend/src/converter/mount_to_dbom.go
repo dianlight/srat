@@ -16,7 +16,7 @@ import (
 type MountToDbom interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt IsToMountAtStartup Shares Flags
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt IsToMountAtStartup ExportedShare Flags
 	// g.overter:map Flags Flags | uintptrToMounFlags
 	// goverter:map Data Data | stringToMounFlags
 	// goverter:map Device Type | pathToType
