@@ -24,6 +24,7 @@ type MountToDto interface {
 	// goverter:map Path DiskLabel | DiskLabelFromPath
 	// goverter:map Path DiskSerial | DiskSerialFromPath
 	// goverter:map Path DiskSize | DiskSizeFromPath
+	// goverter:map Path Root | rootFromPath
 	// goverter:map Path IsInvalid | isPathDirNotExists
 	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
 	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
@@ -65,6 +66,18 @@ func isToMountAtStartupFromPath(path string, disks *dto.DiskMap) *bool {
 		return mp.IsToMountAtStartup
 	}
 	return pointer.Bool(false)
+}
+
+// goverter:context disks
+func rootFromPath(path string, disks *dto.DiskMap) string {
+	mp, ok := disks.GetMountPointByPath(path)
+	if !ok {
+		return path
+	}
+	if mp.Root != "" {
+		return mp.Root
+	}
+	return path
 }
 
 func uintptrToMountFlags(source uintptr) (*dto.MountFlags, error) {

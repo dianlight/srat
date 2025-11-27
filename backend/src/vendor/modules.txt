@@ -666,16 +666,6 @@ gorm.io/driver/mysql
 # gorm.io/driver/sqlite v1.6.0
 ## explicit; go 1.20
 gorm.io/driver/sqlite
-# gorm.io/gen v0.3.27
-## explicit; go 1.18
-gorm.io/gen
-gorm.io/gen/field
-gorm.io/gen/helper
-gorm.io/gen/internal/generate
-gorm.io/gen/internal/model
-gorm.io/gen/internal/parser
-gorm.io/gen/internal/template
-gorm.io/gen/internal/utils/pools
 # gorm.io/gorm v1.31.1
 ## explicit; go 1.18
 gorm.io/gorm
@@ -687,13 +677,6 @@ gorm.io/gorm/logger
 gorm.io/gorm/migrator
 gorm.io/gorm/schema
 gorm.io/gorm/utils
-gorm.io/gorm/utils/tests
-# gorm.io/hints v1.1.2
-## explicit; go 1.16
-gorm.io/hints
-# gorm.io/plugin/dbresolver v1.6.2
-## explicit; go 1.18
-gorm.io/plugin/dbresolver
 # modernc.org/libc v1.66.10
 ## explicit; go 1.23.0
 modernc.org/libc

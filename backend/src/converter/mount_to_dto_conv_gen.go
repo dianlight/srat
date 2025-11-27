@@ -29,6 +29,9 @@ func (c *MountToDtoImpl) MountToMountPointData(source *mount.MountPoint, target 
 		if source.Path != "" {
 			target.PathHash = xhashes.SHA1(source.Path)
 		}
+		if source.Path != "" {
+			target.Root = rootFromPath(source.Path, context)
+		}
 		if source.Device != "" {
 			target.Type = pathToType(source.Device)
 		}

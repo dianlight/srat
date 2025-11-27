@@ -6,6 +6,7 @@ type MountPointData struct {
 	DiskSize           *uint64             `json:"disk_size,omitempty" read-only:"true"` // Size of the disk in bytes.
 	Path               string              `json:"path" read-only:"true"`
 	PathHash           string              `json:"path_hash,omitempty" read-only:"true"`
+	Root               string              `json:"root,omitempty"`
 	Type               string              `json:"type" read-only:"true" enum:"HOST,ADDON"` // Type of the mountpoint.
 	FSType             *string             `json:"fstype,omitempty"`
 	Flags              *MountFlags         `json:"flags,omitempty"`

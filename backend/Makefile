@@ -72,7 +72,6 @@ docs: gen
 
 gen: $(SRCS)
 	go generate -C $(SRC_DIRS)  ./... && \
-	go run -C $(SRC_DIRS) ./cmd/srat-gormgen -out ../src/repository/dao/ && \
 	go run -C $(SRC_DIRS) ./cmd/srat-openapi -out ../docs && \
 	bunx @redocly/cli@latest lint ./docs/openapi.yaml
 

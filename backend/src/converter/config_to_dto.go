@@ -42,6 +42,7 @@ type ConfigToDtoConverter interface {
 	// goverter:map Path DiskLabel | DiskLabelFromPath
 	// goverter:map Path DiskSerial | DiskSerialFromPath
 	// goverter:map Path DiskSize | DiskSizeFromPath
+	// goverter:map Path Root
 	ShareToMountPointData(source config.Share) (*dto.MountPointData, error)
 
 	// goverter:ignore _ Status

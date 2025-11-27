@@ -10,6 +10,7 @@ import (
 
 var MountPointPath = struct {
 	Path               field.String
+	Root               field.String
 	Type               field.String
 	DeviceId           field.String
 	FSType             field.String
@@ -22,6 +23,7 @@ var MountPointPath = struct {
 	Shares             field.Slice[dbom.ExportedShare]
 }{
 	Path:               field.String{}.WithColumn("path"),
+	Root:               field.String{}.WithColumn("root"),
 	Type:               field.String{}.WithColumn("type"),
 	DeviceId:           field.String{}.WithColumn("device_id"),
 	FSType:             field.String{}.WithColumn("fs_type"),
