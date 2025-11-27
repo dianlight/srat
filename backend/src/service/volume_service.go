@@ -17,10 +17,10 @@ import (
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/tlog"
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/prometheus/procfs"
@@ -31,6 +31,7 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type VolumeServiceInterface interface {
@@ -40,10 +41,6 @@ type VolumeServiceInterface interface {
 	PathHashToPath(pathhash string) (string, errors.E)
 	//EjectDisk(diskID string) error
 	PatchMountPointSettings(path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
-	//CreateAutomountFailureNotification(mountPath, device string, err errors.E)
-	//CreateUnmountedPartitionNotification(mountPath, device string)
-	//DismissAutomountNotification(mountPath string, notificationType string)
-	//CheckUnmountedAutomountPartitions() errors.E
 	// Test only
 	MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error))
 	CreateBlockDevice(device string) error
@@ -51,24 +48,25 @@ type VolumeServiceInterface interface {
 
 type VolumeService struct {
 	ctx               context.Context
+	db                *gorm.DB
 	volumesQueueMutex sync.RWMutex
 	refreshing        atomic.Bool
 	broascasting      BroadcasterServiceInterface
-	mount_repo        repository.MountPointPathRepositoryInterface
-	hardwareClient    HardwareServiceInterface
-	fs_service        FilesystemServiceInterface
-	shareService      ShareServiceInterface
-	issueService      IssueServiceInterface
-	state             *dto.ContextState
-	sfGroup           singleflight.Group
-	haService         HomeAssistantServiceInterface
-	hdidleService     HDIdleServiceInterface
-	eventBus          events.EventBusInterface
-	convDto           converter.DtoToDbomConverterImpl
-	convMDto          converter.MountToDtoImpl
-	procfsGetMounts   func() ([]*procfs.MountInfo, error)
-	disks             *dto.DiskMap
-	refreshVersion    uint32
+	//mount_repo        repository.MountPointPathRepositoryInterface
+	hardwareClient  HardwareServiceInterface
+	fs_service      FilesystemServiceInterface
+	shareService    ShareServiceInterface
+	issueService    IssueServiceInterface
+	state           *dto.ContextState
+	sfGroup         singleflight.Group
+	haService       HomeAssistantServiceInterface
+	hdidleService   HDIdleServiceInterface
+	eventBus        events.EventBusInterface
+	convDto         converter.DtoToDbomConverterImpl
+	convMDto        converter.MountToDtoImpl
+	procfsGetMounts func() ([]*procfs.MountInfo, error)
+	disks           *dto.DiskMap
+	refreshVersion  uint32
 	// test hooks for mount operations
 	tryMountFunc func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error)
 	doMountFunc  func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error)
@@ -78,8 +76,8 @@ type VolumeService struct {
 type VolumeServiceProps struct {
 	fx.In
 	Ctx context.Context
-	//Broadcaster       BroadcasterServiceInterface
-	MountPointRepo    repository.MountPointPathRepositoryInterface
+	Db  *gorm.DB
+	//MountPointRepo    repository.MountPointPathRepositoryInterface
 	HardwareClient    HardwareServiceInterface `optional:"true"`
 	FilesystemService FilesystemServiceInterface
 	ShareService      ShareServiceInterface
@@ -98,23 +96,24 @@ func NewVolumeService(
 		ctx: in.Ctx,
 		//broascasting:      in.Broadcaster,
 		volumesQueueMutex: sync.RWMutex{},
-		mount_repo:        in.MountPointRepo,
-		hardwareClient:    in.HardwareClient,
-		fs_service:        in.FilesystemService,
-		state:             in.State,
-		shareService:      in.ShareService,
-		issueService:      in.IssueService,
-		haService:         in.HAService,
-		hdidleService:     in.HDIdleService,
-		eventBus:          in.EventBus,
-		convDto:           converter.DtoToDbomConverterImpl{},
-		convMDto:          converter.MountToDtoImpl{},
-		procfsGetMounts:   procfs.GetMounts,
-		disks:             &dto.DiskMap{},
-		refreshVersion:    0,
-		tryMountFunc:      mount.TryMount,
-		doMountFunc:       mount.Mount,
-		unmountFunc:       mount.Unmount,
+		//mount_repo:        in.MountPointRepo,
+		db:              in.Db,
+		hardwareClient:  in.HardwareClient,
+		fs_service:      in.FilesystemService,
+		state:           in.State,
+		shareService:    in.ShareService,
+		issueService:    in.IssueService,
+		haService:       in.HAService,
+		hdidleService:   in.HDIdleService,
+		eventBus:        in.EventBus,
+		convDto:         converter.DtoToDbomConverterImpl{},
+		convMDto:        converter.MountToDtoImpl{},
+		procfsGetMounts: procfs.GetMounts,
+		disks:           &dto.DiskMap{},
+		refreshVersion:  0,
+		tryMountFunc:    mount.TryMount,
+		doMountFunc:     mount.Mount,
+		unmountFunc:     mount.Unmount,
 	}
 
 	var unsubscribe [2]func()
@@ -193,7 +192,10 @@ func (self *VolumeService) persistMountPoint(md *dto.MountPointData) errors.E {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = self.mount_repo.Save(dbom_mount_data)
+	err = self.db.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).
+		Create(dbom_mount_data).Error
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -417,7 +419,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 }
 
 func (ms *VolumeService) PathHashToPath(pathhash string) (string, errors.E) {
-	dbom_mount_data, err := ms.mount_repo.All()
+	dbom_mount_data, err := gorm.G[dbom.MountPointPath](ms.db).Find(ms.ctx)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -590,11 +592,13 @@ func (self *VolumeService) GetVolumesData() *[]dto.Disk {
 
 // loadMountPointFromDB loads mount point data from the database for a partition
 func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) ([]*dto.MountPointData, errors.E) {
-	if part.DevicePath == nil || *part.DevicePath == "" {
+	if part.Id == nil || *part.Id == "" {
 		return nil, nil
 	}
 
-	dmp, err := self.mount_repo.FindByDevice(*part.Id)
+	dmp, err := gorm.G[dbom.MountPointPath](self.db).
+		Where(g.MountPointPath.DeviceId.Eq(*part.Id)).
+		Find(self.ctx)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			slog.ErrorContext(self.ctx, "Failed to get mount point from repository", "device", *part.DevicePath, "err", err)
@@ -944,58 +948,34 @@ func (self *VolumeService) extractMajorMinor(device string) (int, int, error) {
 
 func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.MountPointData) (*dto.MountPointData, errors.E) {
 
-	dbMountData, err := ms.mount_repo.FindByPath(path)
+	dbMountData, err := gorm.G[dbom.MountPointPath](ms.db).
+		Where(g.MountPointPath.Path.Eq(path)).First(ms.ctx)
+	if err != nil {
+		return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
+	}
+
+	err = ms.convDto.MountPointDataToMountPointPath(patchData, &dbMountData)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	affected, err := gorm.G[*dbom.MountPointPath](ms.db).
+		Where(g.MountPointPath.Path.Eq(path)).
+		Updates(ms.ctx, &dbMountData)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
 		}
 		return nil, errors.WithStack(err)
 	}
-
-	var conv converter.DtoToDbomConverterImpl
-	changed := false
-
-	if patchData.FSType != nil {
-		if dbMountData.FSType != *patchData.FSType {
-			dbMountData.FSType = *patchData.FSType
-			changed = true
-		}
-	}
-
-	if patchData.Flags != nil {
-		if dbMountData.Flags == nil {
-			dbMountData.Flags = &dbom.MounDataFlags{}
-		}
-		*dbMountData.Flags = conv.MountFlagsToMountDataFlags(*patchData.Flags)
-		changed = true
-	}
-
-	if patchData.CustomFlags != nil {
-		if dbMountData.Data == nil {
-			dbMountData.Data = &dbom.MounDataFlags{}
-		}
-		*dbMountData.Data = conv.MountFlagsToMountDataFlags(*patchData.CustomFlags)
-		changed = true
-	}
-
-	if patchData.IsToMountAtStartup != nil {
-		if dbMountData.IsToMountAtStartup == nil || *dbMountData.IsToMountAtStartup != *patchData.IsToMountAtStartup {
-			dbMountData.IsToMountAtStartup = patchData.IsToMountAtStartup
-			changed = true
-		}
-	}
-
-	if changed {
-		if err := ms.mount_repo.Save(dbMountData); err != nil {
-			return nil, errors.WithStack(err)
-		}
+	if affected == 0 {
+		return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
 	}
 
 	currentDto := dto.MountPointData{}
-	if convErr := conv.MountPointPathToMountPointData(*dbMountData, &currentDto, *ms.GetVolumesData()); convErr != nil {
+	if convErr := ms.convDto.MountPointPathToMountPointData(dbMountData, &currentDto, *ms.GetVolumesData()); convErr != nil {
 		return nil, errors.WithStack(convErr)
 	}
-
 	// Update cached mount point data
 	if currentDto.Partition != nil && currentDto.Partition.DiskId != nil && currentDto.Partition.Id != nil {
 		err := ms.disks.AddMountPoint(*currentDto.Partition.DiskId, *currentDto.Partition.Id, currentDto)

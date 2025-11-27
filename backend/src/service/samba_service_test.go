@@ -106,7 +106,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 				if err != nil {
 					suite.T().Errorf("Cant read template file %s", err)
 				}
-
+				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
 				return &sharedResources
 			},
 			func() *config.DefaultConfig {
@@ -121,6 +121,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 				}
 				return &config.DefaultConfig{Config: nconfig}
 			},
+			dbom.NewDB,
 			service.NewSambaService,
 			service.NewShareService,
 			service.NewUserService,
@@ -130,7 +131,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 			mock.Mock[repository.ExportedShareRepositoryInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
-			mock.Mock[repository.MountPointPathRepositoryInterface],
+			//mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[service.HaWsServiceInterface],
 			mock.Mock[service.HDIdleServiceInterface],

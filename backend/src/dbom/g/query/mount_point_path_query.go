@@ -6,7 +6,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/dianlight/srat/dbom"
 	"gorm.io/cli/gorm/typed"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -20,34 +19,21 @@ func MountPointPathQuery[T any](db *gorm.DB, opts ...clause.Expression) _MountPo
 
 type _MountPointPathQueryInterface[T any] interface {
 	typed.Interface[T]
-	FindByPath(ctx context.Context, path string) (*dbom.MountPointPath, error)
-	FindByDevice(ctx context.Context, device string) ([]*dbom.MountPointPath, error)
+	All(ctx context.Context) ([]*T, error)
 }
 
 type _MountPointPathQueryImpl[T any] struct {
 	typed.Interface[T]
 }
 
-func (e _MountPointPathQueryImpl[T]) FindByPath(ctx context.Context, path string) (*dbom.MountPointPath, error) {
+func (e _MountPointPathQueryImpl[T]) All(ctx context.Context) ([]*T, error) {
 	var sb strings.Builder
-	_params := make([]any, 0, 2)
+	_params := make([]any, 0, 1)
 
-	sb.WriteString("SELECT * FROM ? WHERE path=?")
-	_params = append(_params, clause.Table{Name: clause.CurrentTable}, path)
+	sb.WriteString("SELECT * FROM ?")
+	_params = append(_params, clause.Table{Name: clause.CurrentTable})
 
-	var result *dbom.MountPointPath
-	err := e.Raw(sb.String(), _params...).Scan(ctx, &result)
-	return result, err
-}
-
-func (e _MountPointPathQueryImpl[T]) FindByDevice(ctx context.Context, device string) ([]*dbom.MountPointPath, error) {
-	var sb strings.Builder
-	_params := make([]any, 0, 2)
-
-	sb.WriteString("SELECT * FROM ? WHERE device_id=?")
-	_params = append(_params, clause.Table{Name: clause.CurrentTable}, device)
-
-	var result []*dbom.MountPointPath
+	var result []*T
 	err := e.Raw(sb.String(), _params...).Scan(ctx, &result)
 	return result, err
 }

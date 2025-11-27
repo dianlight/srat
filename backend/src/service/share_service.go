@@ -34,33 +34,39 @@ type ShareServiceInterface interface {
 }
 
 type ShareService struct {
+	ctx                 context.Context
+	db                  *gorm.DB
 	exported_share_repo repository.ExportedShareRepositoryInterface
 	user_service        UserServiceInterface
-	mount_repo          repository.MountPointPathRepositoryInterface
-	eventBus            events.EventBusInterface
-	sharesQueueMutex    *sync.RWMutex
-	dbomConv            converter.DtoToDbomConverterImpl
-	defaultConfig       *config.DefaultConfig
+	//mount_repo          repository.MountPointPathRepositoryInterface
+	eventBus         events.EventBusInterface
+	sharesQueueMutex *sync.RWMutex
+	dbomConv         converter.DtoToDbomConverterImpl
+	defaultConfig    *config.DefaultConfig
 }
 
 type ShareServiceParams struct {
 	fx.In
+	Ctx               context.Context
+	Db                *gorm.DB
 	ExportedShareRepo repository.ExportedShareRepositoryInterface
 	UserService       UserServiceInterface
-	MountRepo         repository.MountPointPathRepositoryInterface
-	EventBus          events.EventBusInterface
-	DefaultConfig     *config.DefaultConfig
+	//MountRepo         repository.MountPointPathRepositoryInterface
+	EventBus      events.EventBusInterface
+	DefaultConfig *config.DefaultConfig
 }
 
 func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterface {
 	s := &ShareService{
 		exported_share_repo: in.ExportedShareRepo,
 		user_service:        in.UserService,
-		mount_repo:          in.MountRepo,
-		eventBus:            in.EventBus,
-		defaultConfig:       in.DefaultConfig,
-		sharesQueueMutex:    &sync.RWMutex{},
-		dbomConv:            converter.DtoToDbomConverterImpl{},
+		//mount_repo:          in.MountRepo,
+		ctx:              in.Ctx,
+		db:               in.Db,
+		eventBus:         in.EventBus,
+		defaultConfig:    in.DefaultConfig,
+		sharesQueueMutex: &sync.RWMutex{},
+		dbomConv:         converter.DtoToDbomConverterImpl{},
 	}
 	unsubscribe := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.InfoContext(ctx, "Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
@@ -203,10 +209,12 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		dbShare.Users = []dbom.SambaUser{dbomAdmin}
 	}
 
-	err = s.mount_repo.Save(&dbShare.MountPointData)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to save mount point")
-	}
+	/*
+		err = s.mount_repo.Save(&dbShare.MountPointData)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to save mount point")
+		}
+	*/
 
 	err = s.exported_share_repo.Save(&dbShare)
 	if err != nil {
@@ -274,11 +282,12 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		slog.Warn("New share verification failed", "share", createdDtoShare.Name, "err", err)
 	}
 
-	err = s.mount_repo.Save(&dbShare.MountPointData)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to save mount point")
-	}
-
+	/*
+		err = s.mount_repo.Save(&dbShare.MountPointData)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to save mount point")
+		}
+	*/
 	err = s.exported_share_repo.Save(dbShare)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to save share")
@@ -313,10 +322,12 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 	if err != nil {
 		return errors.Wrap(err, "failed to delete share")
 	}
-	err = s.mount_repo.Delete(ashare.MountPointData.Path)
-	if err != nil {
-		return errors.Wrap(err, "failed to delete mount point")
-	}
+	/*
+		err = s.mount_repo.Delete(ashare.MountPointData.Path)
+		if err != nil {
+			return errors.Wrap(err, "failed to delete mount point")
+		}
+	*/
 	return nil
 }
 

@@ -32,6 +32,7 @@ import (
 type EventPropagationTestSuite struct {
 	suite.Suite
 	app              *fxtest.App
+	db               *gorm.DB
 	ctx              context.Context
 	cancel           context.CancelFunc
 	eventBus         events.EventBusInterface
@@ -41,7 +42,7 @@ type EventPropagationTestSuite struct {
 	VolumeService    VolumeServiceInterface
 	mockShareRepo    repository.ExportedShareRepositoryInterface
 	mockUserRepo     repository.SambaUserRepositoryInterface
-	mockMountRepo    repository.MountPointPathRepositoryInterface
+	// mockMountRepo    repository.MountPointPathRepositoryInterface
 }
 
 func TestEventPropagationTestSuite(t *testing.T) {
@@ -74,6 +75,12 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 				}
 				return &config.DefaultConfig{Config: nconfig}
 			},
+			func() *dto.ContextState {
+				return &dto.ContextState{
+					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
+				}
+			},
+			dbom.NewDB,
 			events.NewEventBus,
 			NewDirtyDataService,
 			NewShareService,
@@ -82,12 +89,11 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 			NewVolumeService,
 			NewFilesystemService,
 			NewSettingService,
-			func() *dto.ContextState { return &dto.ContextState{} },
 			mock.Mock[IssueServiceInterface],
 			mock.Mock[HardwareServiceInterface],
 			mock.Mock[repository.ExportedShareRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
-			mock.Mock[repository.MountPointPathRepositoryInterface],
+			//mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[TelemetryServiceInterface],
 		),
@@ -99,8 +105,9 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 		fx.Populate(&suite.cancel),
 		fx.Populate(&suite.mockShareRepo),
 		fx.Populate(&suite.mockUserRepo),
-		fx.Populate(&suite.mockMountRepo),
+		//fx.Populate(&suite.mockMountRepo),
 		fx.Populate(&suite.VolumeService),
+		fx.Populate(&suite.db),
 	)
 	mock.When(suite.mockUserRepo.All()).ThenReturn(dbom.SambaUsers{dbom.SambaUser{
 		Username: "homeassistant",
@@ -286,6 +293,8 @@ func (suite *EventPropagationTestSuite) TestMountPointEventPropagation() {
 	// Action: Emit a MountPoint event
 	mountPoint := &dto.MountPointData{
 		Path:      "/mnt/test",
+		DeviceId:  "device1",
+		Type:      "ADDON",
 		IsMounted: true,
 	}
 	suite.eventBus.EmitMountPoint(events.MountPointEvent{
@@ -730,7 +739,8 @@ func (suite *EventPropagationTestSuite) TestVolumeUnmountEventPropagation() {
 	defer unsubscribe()
 
 	// Mock repo so UnmountVolume can resolve mount entry
-	mock.When(suite.mockMountRepo.FindByPath("/mnt/test-volume")).ThenReturn(&dbom.MountPointPath{Path: "/mnt/test-volume", DeviceId: "sda1", FSType: "ext4"}, nil)
+	//mock.When(suite.mockMountRepo.FindByPath("/mnt/test-volume")).ThenReturn(&dbom.MountPointPath{Path: "/mnt/test-volume", DeviceId: "sda1", FSType: "ext4"}, nil)
+	suite.db.Create(&dbom.MountPointPath{Path: "/mnt/test-volume", DeviceId: "sda1", FSType: "ext4"})
 
 	err := suite.VolumeService.UnmountVolume("/mnt/test-volume", true, false)
 	suite.Require().NoError(err)
@@ -822,8 +832,8 @@ func (suite *EventPropagationTestSuite) TestMultipleVolumeOperationsSequence() {
 	defer unsubscribeVol()
 
 	// Mock repo for unmount
-	mock.When(suite.mockMountRepo.FindByPath("/mnt/test-seq")).ThenReturn(&dbom.MountPointPath{Path: "/mnt/test-seq", DeviceId: "sdc1", FSType: "ext4"}, nil)
-
+	//mock.When(suite.mockMountRepo.FindByPath("/mnt/test-seq")).ThenReturn(&dbom.MountPointPath{Path: "/mnt/test-seq", DeviceId: "sdc1", FSType: "ext4"}, nil)
+	suite.db.Create(&dbom.MountPointPath{Path: "/mnt/test-seq", DeviceId: "sdc1", FSType: "ext4"})
 	// Action: Execute multiple volume operations through the service
 	mountPoint := &dto.MountPointData{
 		Path:      "/mnt/test-seq",

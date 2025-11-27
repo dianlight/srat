@@ -50,7 +50,7 @@ func (suite *ShareServiceSuite) SetupTest() {
 				if err != nil {
 					suite.T().Errorf("Cant read template file %s", err)
 				}
-
+				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
 				return &sharedResources
 			},
 			func() *config.DefaultConfig {
@@ -65,11 +65,12 @@ func (suite *ShareServiceSuite) SetupTest() {
 				}
 				return &config.DefaultConfig{Config: nconfig}
 			},
+			dbom.NewDB,
 			service.NewShareService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[service.UserServiceInterface],
 			mock.Mock[repository.ExportedShareRepositoryInterface],
-			mock.Mock[repository.MountPointPathRepositoryInterface],
+			//	mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
 			mock.Mock[events.EventBusInterface],
 		),

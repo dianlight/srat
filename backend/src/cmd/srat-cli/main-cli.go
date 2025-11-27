@@ -309,7 +309,7 @@ func main() {
 	if needsDB {
 		fxOptions = append(fxOptions, fx.Invoke(func(
 			lc fx.Lifecycle,
-			mount_repo repository.MountPointPathRepositoryInterface,
+			//mount_repo repository.MountPointPathRepositoryInterface,
 			props_repo repository.PropertyRepositoryInterface,
 			share_service service.ShareServiceInterface,
 			hardwareClient hardware.ClientWithResponsesInterface,

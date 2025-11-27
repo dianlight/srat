@@ -85,7 +85,7 @@ func main() {
 
 				// Generate basic type-safe DAO API for struct following conventions
 				//g.ApplyBasic(dbom.HDIdleDevice{})
-				g.ApplyBasic(dbom.MountPointPath{})
+				//g.ApplyBasic(dbom.MountPointPath{})
 
 				// Generate Type Safe API with Dynamic SQL defined on Querier interface for `model.User` and `model.Company`
 				//g.ApplyInterface(func(Querier) {}, model.User{}, model.Company{})

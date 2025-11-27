@@ -194,12 +194,12 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	}
 	return nil
 }
-func (c *DtoToDbomConverterImpl) MountPointPathsToMountPointDatas(source []*dbom.MountPointPath) ([]*dto.MountPointData, error) {
+func (c *DtoToDbomConverterImpl) MountPointPathsToMountPointDatas(source []dbom.MountPointPath) ([]*dto.MountPointData, error) {
 	var pDtoMountPointDataList []*dto.MountPointData
 	if source != nil {
 		pDtoMountPointDataList = make([]*dto.MountPointData, len(source))
 		for i := 0; i < len(source); i++ {
-			pDtoMountPointData, err := c.pDbomMountPointPathToPDtoMountPointData(source[i])
+			pDtoMountPointData, err := c.dbomMountPointPathToPDtoMountPointData(source[i])
 			if err != nil {
 				return nil, err
 			}
@@ -470,17 +470,6 @@ func (c *DtoToDbomConverterImpl) pDbomMounDataFlagsToPDtoMountFlags(source *dbom
 		pDtoMountFlags = &dtoMountFlags
 	}
 	return pDtoMountFlags, nil
-}
-func (c *DtoToDbomConverterImpl) pDbomMountPointPathToPDtoMountPointData(source *dbom.MountPointPath) (*dto.MountPointData, error) {
-	var pDtoMountPointData *dto.MountPointData
-	if source != nil {
-		dtoMountPointData, err := c.mountPointPathToMountPointData((*source))
-		if err != nil {
-			return nil, err
-		}
-		pDtoMountPointData = &dtoMountPointData
-	}
-	return pDtoMountPointData, nil
 }
 func (c *DtoToDbomConverterImpl) pDtoHdidleCommandToDtoHdidleCommand(source *dto.HdidleCommand) dto.HdidleCommand {
 	var dtoHdidleCommand dto.HdidleCommand
