@@ -301,4 +301,5 @@ func prog(state overseer.State) {
 	apiCtx.Value("wg").(*sync.WaitGroup).Wait() // Ensure background tasks complete
 	apiCancel()                                 // Explicitly cancel context
 	slog.Info("SRAT stopped", "pid", state.ID)
+	os.Exit(0)
 }

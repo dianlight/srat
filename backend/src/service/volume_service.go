@@ -389,9 +389,8 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	} else {
 		slog.InfoContext(ms.ctx, "Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", mp.Flags, "data", mp.Data)
-		mount_data := &dto.MountPointData{}
 		// Update dbom_mount_data with details from the actual mount point if available
-		errS = ms.convMDto.MountToMountPointData(mp, mount_data, ms.disks)
+		errS = ms.convMDto.MountToMountPointData(mp, md, ms.disks)
 		if errS != nil {
 			// Log error but proceed, as mount succeeded
 			slog.WarnContext(ms.ctx, "Failed to convert mount details back to DTO", "err", errS)
@@ -399,7 +398,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		}
 		ms.eventBus.EmitMountPoint(events.MountPointEvent{
 			Event:      events.Event{Type: events.EventTypes.UPDATE},
-			MountPoint: mount_data,
+			MountPoint: md,
 		})
 		/*
 			// Emit VolumeEvent for mount operation
