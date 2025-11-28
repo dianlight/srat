@@ -19,6 +19,7 @@ A Go library that interfaces with smartmontools to monitor and manage storage de
 - 🌡️ **Temperature Monitoring**: Track device temperature
 - ⚙️ **Self-Tests**: Initiate and monitor SMART self-tests
 - 🔧 **Device Information**: Retrieve model, serial number, firmware version, and more
+- 🔌 **USB Bridge Support**: Automatic fallback for unknown USB bridges with embedded device database
 
 ## Prerequisites
 
@@ -136,8 +137,124 @@ if err != nil {
 
 ```go
 // If smartctl is not in PATH or you want to use a specific binary
-client := smartmontools.NewClientWithPath("/usr/local/sbin/smartctl")
+client, err := smartmontools.NewClient(smartmontools.WithSmartctlPath("/usr/local/sbin/smartctl"))
+if err != nil {
+    log.Fatalf("Failed to create client: %v", err)
+}
 ```
+
+### Logging
+
+The library uses the [`tlog`](https://github.com/dianlight/tlog) package for structured logging.
+
+Default behavior:
+
+* When you call `smartmontools.NewClient()` without a `WithLogHandler` option, the client creates a debug-level `*tlog.Logger` (via `tlog.NewLoggerWithLevel(tlog.LevelDebug)`) so that diagnostic output (command execution, fallbacks, warnings) is available.
+* You can adjust the global log level at runtime using `tlog.SetLevelFromString("info")` or `tlog.SetLevel(tlog.LevelInfo)`. Levels include: `trace`, `debug`, `info`, `notice`, `warn`, `error`, `fatal`.
+* All internal logging is key/value structured. Expensive debug operations are guarded; if you perform your own heavy debug logging, first check with `tlog.IsLevelEnabled(tlog.LevelDebug)`.
+
+Override the logger for a specific client instance:
+
+```go
+import (
+    "context"
+    "log"
+    "github.com/dianlight/smartmontools-go"
+    "github.com/dianlight/tlog"
+)
+
+func main() {
+    // Create a custom logger which only logs WARN and above.
+    customLogger := tlog.NewLoggerWithLevel(tlog.LevelWarn)
+
+    client, err := smartmontools.NewClient(
+        smartmontools.WithLogHandler(customLogger),
+    )
+    if err != nil {
+        log.Fatalf("Failed to create client: %v", err)
+    }
+
+    // Example global level change (applies to package-level functions too)
+    if err := tlog.SetLevelFromString("info"); err != nil {
+        tlog.Warn("Failed to set log level", "error", err)
+    }
+
+    devices, err := client.ScanDevices(context.Background())
+    if err != nil {
+        tlog.Error("Scan failed", "error", err)
+        return
+    }
+    tlog.Info("Scan complete", "count", len(devices))
+}
+```
+
+If you need a logger instance with a different minimum level temporarily (without changing globals), use:
+
+```go
+traceLogger := tlog.WithLevel(tlog.LevelTrace) // returns *slog.Logger for ad-hoc usage
+traceLogger.Log(context.Background(), tlog.LevelTrace, "Detailed trace")
+```
+
+For code interacting with the client, prefer passing a `*tlog.Logger` via `WithLogHandler`. For ad-hoc logging outside the client lifecycle, use the package-level helpers (`tlog.Info`, `tlog.DebugContext`, etc.).
+
+Graceful shutdown of callback processor (if you registered callbacks):
+
+```go
+defer tlog.Shutdown() // Ensures queued callback events are processed before exit
+```
+
+### Custom Default Context
+
+```go
+// Set a default context that will be used when methods are called with nil context
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+client, err := smartmontools.NewClient(smartmontools.WithContext(ctx))
+if err != nil {
+    log.Fatalf("Failed to create client: %v", err)
+}
+
+// Now when calling with nil context, the client will use the configured default
+info, err := client.GetSMARTInfo(nil, "/dev/sda") // Uses the 30s timeout context
+```
+
+### Combining Options
+
+```go
+// Combine multiple options
+client, err := smartmontools.NewClient(
+    smartmontools.WithSmartctlPath("/usr/local/sbin/smartctl"),
+    smartmontools.WithLogHandler(logger),
+    smartmontools.WithContext(ctx),
+)
+if err != nil {
+    log.Fatalf("Failed to create client: %v", err)
+}
+```
+
+### USB Bridge Support
+
+The library includes automatic support for USB storage devices that use unknown USB bridges. When smartctl reports an "Unknown USB bridge" error, the library:
+
+1. **Checks embedded database**: Looks up the USB vendor:product ID in the embedded standard `drivedb.h` from smartmontools
+2. **Automatic fallback**: If found, uses the known device type; otherwise falls back to `-d sat`
+3. **Caches results**: Remembers successful device types for faster future access
+
+```go
+client, _ := smartmontools.NewClient()
+
+// Works automatically with USB bridges, even if unknown to smartctl
+info, err := client.GetSMARTInfo("/dev/disk/by-id/usb-Intenso_Memory_Center-0:0")
+if err != nil {
+    log.Fatalf("Failed to get SMART info: %v", err)
+}
+
+fmt.Printf("Model: %s\n", info.ModelName)
+fmt.Printf("Health: %v\n", info.SmartStatus.Passed)
+```
+
+The embedded database is the official smartmontools `drivedb.h` which contains USB bridge definitions from the upstream project. See [docs/drivedb.md](./docs/drivedb.md) for details.
 
 ## API Reference
 
@@ -163,6 +280,14 @@ go run main.go
 This library uses a command-line wrapper approach, executing `smartctl` commands and parsing their JSON output. The library leverages smartmontools' built-in JSON output format for reliable and structured data extraction.
 
 While the project references libgoffi in its description, the current implementation uses the command-line interface for maximum compatibility and reliability. Future versions may incorporate direct library bindings using libgoffi for enhanced performance.
+
+📚 **For a comprehensive analysis of different SMART access approaches**, see our [Architecture Decision Record (ADR-001)](./docs/architecture/ADR-001-smart-access-approaches.md), which covers:
+- Command wrapper (current approach)
+- Direct ioctl access
+- Shared library with FFI
+- Hybrid approaches
+
+The ADR includes detailed comparisons, code examples, performance benchmarks, and recommendations for different use cases.
 
 ## Implementation details
 
