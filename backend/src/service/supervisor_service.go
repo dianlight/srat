@@ -111,7 +111,7 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			slog.DebugContext(ctx, "Startting Supervisor Service")
+			slog.DebugContext(ctx, "Starting Supervisor Service")
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {

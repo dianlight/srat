@@ -599,22 +599,22 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) ([]*dto.Mou
 		Where(g.MountPointPath.DeviceId.Eq(*part.Id)).
 		Find(self.ctx)
 	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			slog.ErrorContext(self.ctx, "Failed to get mount point from repository", "device", *part.DevicePath, "err", err)
-			return nil, errors.WithStack(err)
-		}
+		return nil, errors.WithStack(err)
+	}
+
+	if len(dmp) == 0 {
+		slog.DebugContext(self.ctx, "No mount point records found in DB for device", "device", *part.Id, "name", part.Name)
 		return nil, nil
 	}
-	tlog.DebugContext(self.ctx, "Found mount point records in DB for device", "device", *part.DevicePath, "count", len(dmp))
 
+	tlog.DebugContext(self.ctx, "Found mount point records in DB for device", "device", *part.Id, "name", part.Name, "count", len(dmp))
 	mountData, convErr := self.convDto.MountPointPathsToMountPointDatas(dmp)
 	if convErr != nil {
-		slog.ErrorContext(self.ctx, "Failed to convert mount point data", "device", *part.DevicePath, "err", convErr)
+		slog.ErrorContext(self.ctx, "Failed to convert mount point data", "device", *part.Id, "err", convErr)
 		return nil, errors.WithStack(convErr)
 	}
 
-	slog.DebugContext(self.ctx, "Loaded mount point from repository", "device", *part.DevicePath, "mountData", mountData)
-
+	slog.DebugContext(self.ctx, "Loaded mount point from repository", "device", *part.Id, "mountData", mountData)
 	return mountData, nil
 }
 
@@ -682,7 +682,7 @@ func (self *VolumeService) processNewDisk(disk dto.Disk) error {
 				continue
 			}
 		}
-		self.eventBus.EmitDiskAndPartition(events.DiskEvent{
+		self.eventBus.EmitDisk(events.DiskEvent{
 			Event: events.Event{Type: events.EventTypes.ADD},
 			Disk:  &disk,
 		})
@@ -710,7 +710,7 @@ func (self *VolumeService) processExistingDisk(diskId string) error {
 				continue
 			}
 		}
-		self.eventBus.EmitDiskAndPartition(events.DiskEvent{
+		self.eventBus.EmitDisk(events.DiskEvent{
 			Event: events.Event{Type: events.EventTypes.UPDATE},
 			Disk:  &existing,
 		})
@@ -726,7 +726,7 @@ func (self *VolumeService) processMountInfos(mountInfos []*procfs.MountInfo) {
 			// Disk not present in current scan, remove it
 			removedDisk := disk
 			self.disks.Remove(diskName)
-			self.eventBus.EmitDiskAndPartition(events.DiskEvent{
+			self.eventBus.EmitDisk(events.DiskEvent{
 				Event: events.Event{Type: events.EventTypes.REMOVE},
 				Disk:  &removedDisk,
 			})

@@ -35,7 +35,7 @@ func TestEventBusDisk(t *testing.T) {
 		Id:    pointer.String("sda"),
 		Model: pointer.String("Test Disk"),
 	}
-	bus.EmitDiskAndPartition(DiskEvent{Disk: disk})
+	bus.EmitDisk(DiskEvent{Disk: disk})
 
 	// Wait for event
 	done := make(chan struct{})
@@ -206,7 +206,7 @@ func TestEventBusMultipleListeners(t *testing.T) {
 	disk := &dto.Disk{
 		Id: pointer.String("sda"),
 	}
-	bus.EmitDiskAndPartition(DiskEvent{Disk: disk})
+	bus.EmitDisk(DiskEvent{Disk: disk})
 
 	// Wait for all listeners
 	done := make(chan struct{})
@@ -245,7 +245,7 @@ func TestEventBusUnsubscribe(t *testing.T) {
 	disk := &dto.Disk{
 		Id: pointer.String("sda"),
 	}
-	bus.EmitDiskAndPartition(DiskEvent{Disk: disk})
+	bus.EmitDisk(DiskEvent{Disk: disk})
 
 	// Should timeout since listener was unsubscribed
 	done := make(chan struct{})
@@ -312,7 +312,7 @@ func TestEventBusOneEmitMultipleListeners(t *testing.T) {
 		Id:    pointer.String("sda"),
 		Model: pointer.String("Test Disk"),
 	}
-	bus.EmitDiskAndPartition(DiskEvent{Disk: disk})
+	bus.EmitDisk(DiskEvent{Disk: disk})
 
 	// Wait for all listeners to receive the event
 	done := make(chan struct{})

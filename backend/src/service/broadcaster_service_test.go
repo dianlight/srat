@@ -121,7 +121,7 @@ func TestBroadcasterService_EventToBroadcastMapping(t *testing.T) {
 	}
 
 	// 1) Disk -> volumes data
-	eb.EmitDiskAndPartition(events.DiskEvent{Event: events.Event{Type: events.EventTypes.ADD}, Disk: &dto.Disk{Id: ptrStr("d1")}})
+	eb.EmitDisk(events.DiskEvent{Event: events.Event{Type: events.EventTypes.ADD}, Disk: &dto.Disk{Id: ptrStr("d1")}})
 	if msg, ok := recv(); assert.True(t, ok, "disk event should produce a broadcast") {
 		disks, ok := msg.([]dto.Disk)
 		assert.True(t, ok, "expected []dto.Disk, got %T", msg)
@@ -154,7 +154,7 @@ func TestBroadcasterService_EventToBroadcastMapping(t *testing.T) {
 			assert.Equal(t, *share, gotShare)
 		}
 		// GetVolumesData should still be called only twice (from previous two cases)
-		mock.Verify(volMock, matchers.Times(2)).GetVolumesData()
+		mock.Verify(volMock, matchers.Times(1)).GetVolumesData()
 	}
 
 	// 4) MountPoint -> volumes data
@@ -166,7 +166,7 @@ func TestBroadcasterService_EventToBroadcastMapping(t *testing.T) {
 		if ok {
 			assert.Equal(t, expectedDisks, disks)
 		}
-		mock.Verify(volMock, matchers.Times(3)).GetVolumesData()
+		mock.Verify(volMock, matchers.Times(2)).GetVolumesData()
 	}
 }
 

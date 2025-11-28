@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"sync/atomic"
 
 	"github.com/dianlight/srat/config"
@@ -83,7 +84,7 @@ func NewBroadcasterService(
 }
 
 func (broker *BroadcasterService) setupEventListeners() []func() {
-	ret := make([]func(), 4)
+	ret := make([]func(), 3)
 	// Listen for disk events
 	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
 		diskID := "unknown"
@@ -96,25 +97,27 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	})
 
 	// Listen for partition events
-	ret[1] = broker.eventBus.OnPartition(func(ctx context.Context, event events.PartitionEvent) errors.E {
-		partName := "unknown"
-		if event.Partition.Name != nil {
-			partName = *event.Partition.Name
-		}
-		slog.DebugContext(ctx, "BroadcasterService received Partition event", "partition", partName)
-		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
-		return nil
-	})
+	/*
+		ret[1] = broker.eventBus.OnPartition(func(ctx context.Context, event events.PartitionEvent) errors.E {
+			partName := "unknown"
+			if event.Partition.Name != nil {
+				partName = *event.Partition.Name
+			}
+			slog.DebugContext(ctx, "BroadcasterService received Partition event", "partition", partName)
+			broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
+			return nil
+		})
+	*/
 
 	// Listen for share events
-	ret[2] = broker.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
+	ret[1] = broker.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received Share event", "share", event.Share.Name)
 		broker.BroadcastMessage(*event.Share)
 		return nil
 	})
 
 	// Listen for mount point events
-	ret[3] = broker.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
+	ret[2] = broker.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received MountPointMounted event", "mount_point", event.MountPoint.Path)
 		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
 		return nil
@@ -124,6 +127,14 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 }
 
 func (broker *BroadcasterService) BroadcastMessage(msg any) any {
+
+	if reflect.ValueOf(msg).Kind() == reflect.Ptr {
+		if reflect.ValueOf(msg).IsNil() {
+			tlog.WarnContext(broker.ctx, "Attempted to broadcast nil pointer message", "type", fmt.Sprintf("%T", msg))
+			return msg
+		}
+	}
+
 	if _, ok := msg.(dto.HealthPing); !ok {
 		tlog.TraceContext(broker.ctx, "Queued Message", "type", fmt.Sprintf("%T", msg), "msg", msg)
 	}

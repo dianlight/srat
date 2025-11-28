@@ -340,7 +340,7 @@ func (suite *EventPropagationTestSuite) TestDiskEventPropagation() {
 		Id:    pointer.String("sda"),
 		Model: pointer.String("Test Disk"),
 	}
-	suite.eventBus.EmitDiskAndPartition(events.DiskEvent{
+	suite.eventBus.EmitDisk(events.DiskEvent{
 		Event: events.Event{
 			Type: events.EventTypes.ADD,
 		},
@@ -523,7 +523,7 @@ func (suite *EventPropagationTestSuite) TestConcurrentEventPropagation() {
 			})
 		}(i)
 		go func(idx int) {
-			suite.eventBus.EmitDiskAndPartition(events.DiskEvent{
+			suite.eventBus.EmitDisk(events.DiskEvent{
 				Disk: &dto.Disk{Id: pointer.String("disk-" + string(rune(idx)))},
 			})
 		}(i)
@@ -627,7 +627,7 @@ func (suite *EventPropagationTestSuite) TestDiskEventEmitsPartitionEvents() {
 		Model:      pointer.String("Test Disk"),
 		Partitions: &partitions,
 	}
-	suite.eventBus.EmitDiskAndPartition(events.DiskEvent{
+	suite.eventBus.EmitDisk(events.DiskEvent{
 		Event: events.Event{
 			Type: events.EventTypes.ADD,
 		},
@@ -928,7 +928,7 @@ func (suite *EventPropagationTestSuite) TestVolumeDiskPartitionEventChain() {
 	}
 
 	// 1. Disk detected
-	suite.eventBus.EmitDiskAndPartition(events.DiskEvent{
+	suite.eventBus.EmitDisk(events.DiskEvent{
 		Event: events.Event{Type: events.EventTypes.ADD},
 		Disk:  disk,
 	})
