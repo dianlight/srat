@@ -2,17 +2,17 @@ package dto
 
 import "gitlab.com/tozd/go/errors"
 
-type DiskMap map[string]Disk
+type DiskMap map[string]*Disk
 
 // Add inserts or updates a Disk in the map using its Id as the key.
 // It initializes the map if it is nil. Returns an error if the disk Id is nil or empty.
-func (m *DiskMap) Add(d Disk) error {
+func (m *DiskMap) Add(d *Disk) error {
 	if d.Id == nil || *d.Id == "" {
 		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk id is nil or empty")
 	}
-	if *m == nil {
-		*m = make(DiskMap)
-	}
+	//	if *m == nil {
+	//		*m = make(DiskMap)
+	//	}
 	(*m)[*d.Id] = d
 	return nil
 }
@@ -31,9 +31,9 @@ func (m *DiskMap) Remove(id string) bool {
 }
 
 // Get returns the Disk for the given id and a boolean indicating if it exists.
-func (m *DiskMap) Get(id string) (Disk, bool) {
+func (m *DiskMap) Get(id string) (*Disk, bool) {
 	if m == nil || *m == nil || id == "" {
-		return Disk{}, false
+		return nil, false
 	}
 	d, ok := (*m)[id]
 	return d, ok
@@ -194,9 +194,9 @@ func (m *DiskMap) GetMountPoint(diskID, partitionID, path string) (MountPointDat
 
 // GetMountPointByPath searches all disks and partitions for a mount point matching the given path.
 // Returns the mount point data and true if found, otherwise returns false.
-func (m *DiskMap) GetMountPointByPath(path string) (MountPointData, bool) {
+func (m *DiskMap) GetMountPointByPath(path string) (*MountPointData, bool) {
 	if m == nil || *m == nil || path == "" {
-		return MountPointData{}, false
+		return nil, false
 	}
 	for _, d := range *m {
 		if d.Partitions == nil {
@@ -207,9 +207,9 @@ func (m *DiskMap) GetMountPointByPath(path string) (MountPointData, bool) {
 				continue
 			}
 			if mp, ok := (*part.MountPointData)[path]; ok {
-				return mp, true
+				return &mp, true
 			}
 		}
 	}
-	return MountPointData{}, false
+	return nil, false
 }

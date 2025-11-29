@@ -142,7 +142,7 @@ type volumeServiceStub struct{}
 
 func (volumeServiceStub) MountVolume(*dto.MountPointData) errors.E  { return nil }
 func (volumeServiceStub) UnmountVolume(string, bool, bool) errors.E { return nil }
-func (volumeServiceStub) GetVolumesData() *[]dto.Disk               { return nil }
+func (volumeServiceStub) GetVolumesData() []*dto.Disk               { return []*dto.Disk{} }
 func (volumeServiceStub) PathHashToPath(string) (string, errors.E)  { return "", nil }
 
 // func (volumeServiceStub) EjectDisk(string) error                    { return nil }
@@ -157,6 +157,7 @@ func (volumeServiceStub) DismissAutomountNotification(string, string)           
 func (volumeServiceStub) CheckUnmountedAutomountPartitions() errors.E                 { return nil }
 func (volumeServiceStub) MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error))  {}
 func (volumeServiceStub) CreateBlockDevice(string) error                              { return nil }
+func (volumeServiceStub) GetDevicePathByDeviceID(string) (string, errors.E)           { return "", nil }
 
 func TestProvideCyclicDependencyWorkaroundOption(t *testing.T) {
 	app := fx.New(

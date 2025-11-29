@@ -53,9 +53,9 @@ func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 	// huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
 }
 
-func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body *[]dto.Disk }, error) {
+func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body []*dto.Disk }, error) {
 	volumes := self.vservice.GetVolumesData()
-	return &struct{ Body *[]dto.Disk }{Body: volumes}, nil
+	return &struct{ Body []*dto.Disk }{Body: volumes}, nil
 }
 
 func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {

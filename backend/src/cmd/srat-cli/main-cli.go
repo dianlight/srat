@@ -333,7 +333,7 @@ func main() {
 					case "start":
 					case "stop":
 						slog.Info("******* Unmounting all shares from Homeassistant ********")
-						err = supervisor_service.NetworkUnmountAllShares()
+						err = supervisor_service.NetworkUnmountAllShares(ctx)
 						if err != nil {
 							slog.Error("Error unmounting all shares from Homeassistant", "err", err)
 						}

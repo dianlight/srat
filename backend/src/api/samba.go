@@ -46,7 +46,7 @@ func (handler *SambaHanler) GetSambaStatus(ctx context.Context, input *struct{})
 //   - An error if any of the steps fail.
 func (handler *SambaHanler) ApplySamba(ctx context.Context, input *struct{}) (*struct{}, error) {
 
-	err := handler.sambaService.WriteAndRestartSambaConfig()
+	err := handler.sambaService.WriteAndRestartSambaConfig(ctx)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Restarting Samba configuration failed", err)
 	}

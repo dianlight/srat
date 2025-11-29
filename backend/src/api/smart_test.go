@@ -237,7 +237,7 @@ func (suite *SmartHandlerSuite) TestAbortSmartTestSuccess() {
 	resp := apiInst.Post("/disk/sda/smart/test/abort", map[string]any{})
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetDevicePathByDeviceID(mock.Exact(diskID))
 	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).AbortSelfTest(mock.Any[context.Context](), mock.Exact(devicePath))
 }
 

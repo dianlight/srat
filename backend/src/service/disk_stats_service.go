@@ -107,8 +107,8 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 		PerPartitionInfo: make(map[string][]dto.PerPartitionInfo, 0),
 	}
 
-	if disks != nil {
-		for _, disk := range *disks {
+	if len(disks) != 0 {
+		for _, disk := range disks {
 			if disk.DevicePath == nil {
 				slog.DebugContext(s.ctx, "Skipping disk with nil device", "diskID", disk.Id)
 				continue

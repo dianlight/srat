@@ -36,10 +36,10 @@ func (f *fakeSamba) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) {
 	return &dto.SambaProcessStatus{}, nil
 }
 func (f *fakeSamba) GetSambaStatus() (*dto.SambaStatus, errors.E) { return &dto.SambaStatus{}, nil }
-func (f *fakeSamba) WriteSambaConfig() errors.E                   { return nil }
-func (f *fakeSamba) RestartSambaService() errors.E                { return nil }
-func (f *fakeSamba) TestSambaConfig() errors.E                    { return nil }
-func (f *fakeSamba) WriteAndRestartSambaConfig() errors.E         { return nil }
+func (f *fakeSamba) WriteSambaConfig(ctx context.Context) errors.E                   { return nil }
+func (f *fakeSamba) RestartSambaService(ctx context.Context) errors.E                { return nil }
+func (f *fakeSamba) TestSambaConfig(ctx context.Context) errors.E                    { return nil }
+func (f *fakeSamba) WriteAndRestartSambaConfig(ctx context.Context) errors.E         { return nil }
 
 type fakeDirty struct {
 	callbacks []func() errors.E

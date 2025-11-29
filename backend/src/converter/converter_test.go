@@ -121,7 +121,7 @@ func TestExportedShareToStringRoundTrip(t *testing.T) {
 func TestPartitionFromDeviceId(t *testing.T) {
 	id := "disk-1"
 	partitions := map[string]dto.Partition{id: {Id: &id}}
-	disks := []dto.Disk{{Partitions: &partitions}}
+	disks := []*dto.Disk{{Partitions: &partitions}}
 
 	result := partitionFromDeviceId(id, disks)
 	if assert.NotNil(t, result) {
@@ -130,7 +130,7 @@ func TestPartitionFromDeviceId(t *testing.T) {
 }
 
 func TestPartitionFromDeviceIdNotFound(t *testing.T) {
-	disks := []dto.Disk{}
+	disks := []*dto.Disk{}
 	result := partitionFromDeviceId("missing", disks)
 	assert.Nil(t, result)
 }

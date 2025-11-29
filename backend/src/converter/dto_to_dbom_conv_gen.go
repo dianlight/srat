@@ -118,7 +118,7 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 	target.ExportedShare = pDbomExportedShare
 	return nil
 }
-func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData, context []dto.Disk) error {
+func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData, context []*dto.Disk) error {
 	if source.Path != "" {
 		target.DiskLabel = DiskLabelFromPath(source.Path)
 	}

@@ -20,6 +20,7 @@ type DtoToDbomConverterInterface interface {
 	//ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResource) errors.E
 	SettingsToProperties(source dto.Settings, target *dbom.Properties) errors.E
 	PropertiesToSettings(source dbom.Properties, target *dto.Settings) errors.E
+	MountPointPathsToMountPointDataMap(source []dbom.MountPointPath) (map[string]*dto.MountPointData, errors.E)
 }
 
 func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, target *dbom.Properties) errors.E {
@@ -174,3 +175,16 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.Expor
 	return nil
 }
 */
+
+func (c *DtoToDbomConverterImpl) MountPointPathsToMountPointDataMap(source []dbom.MountPointPath) (map[string]*dto.MountPointData, errors.E) {
+	result := make(map[string]*dto.MountPointData)
+	for _, mpPath := range source {
+		var mpData dto.MountPointData
+		err := c.MountPointPathToMountPointData(mpPath, &mpData, nil)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		result[mpPath.Path] = &mpData
+	}
+	return result, nil
+}

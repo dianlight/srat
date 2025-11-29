@@ -89,7 +89,7 @@ func (suite *VolumeHandlerSuite) TestListVolumes_ReturnsDiskPartitionMountPointD
 		Id:         &diskID,
 		Partitions: &map[string]dto.Partition{partID: partition},
 	}
-	disks := &[]dto.Disk{disk}
+	disks := []*dto.Disk{&disk}
 
 	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
 
@@ -154,7 +154,7 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 		Id:         &diskID,
 		Partitions: &map[string]dto.Partition{partID: partition},
 	}
-	disksInitial := &[]dto.Disk{disk}
+	disksInitial := []*dto.Disk{&disk}
 
 	// Updated state: mount point with IsToMountAtStartup = true
 	mountPointUpdated := mountPointInitial
@@ -163,7 +163,7 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 	partitionUpdated.MountPointData = &map[string]dto.MountPointData{mountPath: mountPointUpdated}
 	diskUpdated := disk
 	diskUpdated.Partitions = &map[string]dto.Partition{partID: partitionUpdated}
-	disksUpdated := &[]dto.Disk{diskUpdated}
+	disksUpdated := []*dto.Disk{&diskUpdated}
 
 	// Mock GetVolumesData to return initial state, then updated state
 	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disksInitial).ThenReturn(disksUpdated)

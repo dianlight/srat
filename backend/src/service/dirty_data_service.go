@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/dianlight/srat/dto"
@@ -22,6 +23,7 @@ type DirtyDataService struct {
 	dataDirtyTracker dto.DataDirtyTracker
 	timer            *time.Timer
 	eventBus         events.EventBusInterface
+	timerMutex       sync.Mutex
 }
 
 func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.EventBusInterface) DirtyDataServiceInterface {
@@ -29,6 +31,7 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 	p.ctx = ctx
 	p.dataDirtyTracker = dto.DataDirtyTracker{}
 	p.eventBus = eventBus
+	p.timerMutex = sync.Mutex{}
 
 	unsubscribe := make([]func(), 4)
 	if eventBus != nil {
@@ -55,11 +58,13 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 			return nil
 		})
 		/*
-			unsubscribe[4] = eventBus.OnMountPoint(func(ctx context.Context, mpe events.MountPointEvent) {
+			unsubscribe[4] = eventBus.OnMountPoint(func(ctx context.Context, mpe events.MountPointEvent) errors.E {
 				slog.DebugContext(ctx, "DirtyDataService received MountPoint event", "mountpoint", mpe.MountPoint.Path)
 				p.setDirtyShares()
+				return nil
 			})
 		*/
+
 	}
 
 	lc.Append(fx.Hook{
@@ -81,17 +86,21 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 
 // start or reset timer for 15 seconds
 func (p *DirtyDataService) startTimer() {
+	p.timerMutex.Lock()
+	defer p.timerMutex.Unlock()
+
 	if p.timer != nil {
 		p.timer.Stop()
 	}
-	/*
-		p.eventBus.EmitDirtyData(events.DirtyDataEvent{
-			Event:            events.Event{Type: events.EventTypes.ADD},
-			DataDirtyTracker: p.dataDirtyTracker,
-		})
-	*/
+
+	p.eventBus.EmitDirtyData(events.DirtyDataEvent{
+		Event:            events.Event{Type: events.EventTypes.START},
+		DataDirtyTracker: p.dataDirtyTracker,
+	})
 
 	p.timer = time.AfterFunc(5*time.Second, func() {
+		p.timerMutex.Lock()
+		defer p.timerMutex.Unlock()
 		p.eventBus.EmitDirtyData(events.DirtyDataEvent{
 			Event:            events.Event{Type: events.EventTypes.RESTART},
 			DataDirtyTracker: p.dataDirtyTracker,

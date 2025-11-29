@@ -84,7 +84,7 @@ func NewBroadcasterService(
 }
 
 func (broker *BroadcasterService) setupEventListeners() []func() {
-	ret := make([]func(), 3)
+	ret := make([]func(), 4)
 	// Listen for disk events
 	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
 		diskID := "unknown"
@@ -92,7 +92,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 			diskID = *event.Disk.Id
 		}
 		slog.DebugContext(ctx, "BroadcasterService received Disk event", "disk", diskID)
-		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
+		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
 		return nil
 	})
 
@@ -119,7 +119,12 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	// Listen for mount point events
 	ret[2] = broker.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received MountPointMounted event", "mount_point", event.MountPoint.Path)
-		broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
+		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
+		return nil
+	})
+	ret[3] = broker.eventBus.OnDirtyData(func(ctx context.Context, dde events.DirtyDataEvent) errors.E {
+		slog.DebugContext(ctx, "BroadcasterService received DirtyData event", "tracker", dde.DataDirtyTracker)
+		broker.BroadcastMessage(dde) // TODO: implement push of dirty data status only
 		return nil
 	})
 
@@ -235,12 +240,7 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 				Data:  event.Message,
 			})
 			if err != nil {
-				/* 				if !strings.Contains(err.Error(), "broken pipe") &&
-				!strings.Contains(err.Error(), "context canceled") &&
-				!strings.Contains(err.Error(), "connection reset by peer") &&
-				!strings.Contains(err.Error(), "i/o timeout") {
-				*/slog.WarnContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
-				//				}
+				slog.WarnContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
 				return
 			}
 		}

@@ -109,7 +109,7 @@ type DtoToDbomConverter interface {
 	// goverter:map DeviceId Partition | partitionFromDeviceId
 	// goverter:map ExportedShare Share
 	// goverter:context disks
-	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData, disks []dto.Disk) error
+	MountPointPathToMountPointData(source dbom.MountPointPath, target *dto.MountPointData, disks []*dto.Disk) error
 
 	// goverter:update target
 	// goverter:ignore _
@@ -135,7 +135,7 @@ func stringToExportedShare(source string) dbom.ExportedShare {
 }
 
 // goverter:context disks
-func partitionFromDeviceId(source string, disks []dto.Disk) *dto.Partition {
+func partitionFromDeviceId(source string, disks []*dto.Disk) *dto.Partition {
 	for _, d := range disks {
 		if d.Partitions != nil {
 			for _, p := range *d.Partitions {
@@ -147,3 +147,11 @@ func partitionFromDeviceId(source string, disks []dto.Disk) *dto.Partition {
 	}
 	return nil
 }
+
+/*func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error {
+	err := c.ExportedShareToSharedResourceNoMountPointData(source, target)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}*/

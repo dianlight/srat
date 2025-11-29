@@ -11,8 +11,8 @@ func TestDiskMap_AddAndGet(t *testing.T) {
 	id := "disk-1"
 	d := dto.Disk{Id: &id}
 
-	m := dto.DiskMap(nil)
-	err := (&m).Add(d)
+	m := dto.DiskMap{}
+	err := (&m).Add(&d)
 	assert.NoError(t, err)
 
 	got, ok := (&m).Get(id)
@@ -23,7 +23,7 @@ func TestDiskMap_AddAndGet(t *testing.T) {
 func TestDiskMap_AddInvalidID(t *testing.T) {
 	m := dto.DiskMap{}
 	d := dto.Disk{}
-	err := (&m).Add(d)
+	err := (&m).Add(&d)
 	assert.Error(t, err)
 }
 
@@ -31,7 +31,7 @@ func TestDiskMap_Remove(t *testing.T) {
 	id := "disk-2"
 	d := dto.Disk{Id: &id}
 	m := dto.DiskMap{}
-	_ = (&m).Add(d)
+	_ = (&m).Add(&d)
 
 	removed := (&m).Remove(id)
 	assert.True(t, removed)
@@ -48,7 +48,7 @@ func TestDiskMap_AddPartitionAndRemovePartition(t *testing.T) {
 	diskID := "disk-3"
 	d := dto.Disk{Id: &diskID}
 	m := dto.DiskMap{}
-	_ = (&m).Add(d)
+	_ = (&m).Add(&d)
 
 	partID := "part-1"
 	p := dto.Partition{Id: &partID}
@@ -88,7 +88,7 @@ func TestDiskMap_AddPartition_Errors(t *testing.T) {
 
 	// Empty partition id
 	diskID := "disk-4"
-	_ = (&m).Add(dto.Disk{Id: &diskID})
+	_ = (&m).Add(&dto.Disk{Id: &diskID})
 	err = (&m).AddPartition(diskID, dto.Partition{})
 	assert.Error(t, err)
 }
@@ -98,7 +98,7 @@ func TestDiskMap_AddAndRemoveMountPoint(t *testing.T) {
 	diskID := "d1"
 	partID := "p1"
 	m := dto.DiskMap{}
-	_ = (&m).Add(dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{partID: {Id: &partID}}})
+	_ = (&m).Add(&dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{partID: {Id: &partID}}})
 
 	// Add mount point
 	mp := dto.MountPointData{Path: "/mnt/data"}
@@ -146,13 +146,13 @@ func TestDiskMap_AddMountPoint_Errors(t *testing.T) {
 
 	// Disk present, partition missing
 	diskID := "d2"
-	_ = (&m).Add(dto.Disk{Id: &diskID})
+	_ = (&m).Add(&dto.Disk{Id: &diskID})
 	err = (&m).AddMountPoint(diskID, "p1", dto.MountPointData{Path: "/mnt/x"})
 	assert.Error(t, err)
 
 	// Empty path
 	parts := map[string]dto.Partition{"p1": {Id: ptr("p1")}}
-	_ = (&m).Add(dto.Disk{Id: &diskID, Partitions: &parts})
+	_ = (&m).Add(&dto.Disk{Id: &diskID, Partitions: &parts})
 	err = (&m).AddMountPoint(diskID, "p1", dto.MountPointData{})
 	assert.Error(t, err)
 }
@@ -164,7 +164,7 @@ func TestDiskMap_GetPartition(t *testing.T) {
 	partID := "partition-get"
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID)}}
 	m := dto.DiskMap{}
-	_ = (&m).Add(dto.Disk{Id: &diskID, Partitions: &parts})
+	_ = (&m).Add(&dto.Disk{Id: &diskID, Partitions: &parts})
 
 	part, ok := (&m).GetPartition(diskID, partID)
 	assert.True(t, ok)
@@ -180,7 +180,7 @@ func TestDiskMap_GetMountPoint(t *testing.T) {
 	mount := dto.MountPointData{Path: "/mnt/mp"}
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{"/mnt/mp": mount}}}
 	m := dto.DiskMap{}
-	_ = (&m).Add(dto.Disk{Id: &diskID, Partitions: &parts})
+	_ = (&m).Add(&dto.Disk{Id: &diskID, Partitions: &parts})
 
 	mp, ok := (&m).GetMountPoint(diskID, partID, "/mnt/mp")
 	assert.True(t, ok)
@@ -200,7 +200,7 @@ func TestDiskMap_GetMountPointByPath(t *testing.T) {
 	mount := dto.MountPointData{Path: "/mnt/mp-path"}
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{"/mnt/mp-path": mount}}}
 	m := dto.DiskMap{}
-	_ = (&m).Add(dto.Disk{Id: &diskID, Partitions: &parts})
+	_ = (&m).Add(&dto.Disk{Id: &diskID, Partitions: &parts})
 
 	mp, ok := (&m).GetMountPointByPath("/mnt/mp-path")
 	assert.True(t, ok)

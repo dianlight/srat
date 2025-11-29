@@ -111,9 +111,9 @@ func (suite *SambaHandlerSuite) TestGetSambaStatusError() {
 
 func (suite *SambaHandlerSuite) TestApplySambaSuccess() {
 	// Configure mock expectations - ApplySamba calls multiple service methods
-	mock.When(suite.mockSambaService.WriteSambaConfig()).ThenReturn(nil)
-	mock.When(suite.mockSambaService.TestSambaConfig()).ThenReturn(nil)
-	mock.When(suite.mockSambaService.RestartSambaService()).ThenReturn(nil)
+	mock.When(suite.mockSambaService.WriteSambaConfig(mock.AnyContext())).ThenReturn(nil)
+	mock.When(suite.mockSambaService.TestSambaConfig(mock.AnyContext())).ThenReturn(nil)
+	mock.When(suite.mockSambaService.RestartSambaService(mock.AnyContext())).ThenReturn(nil)
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())
@@ -128,7 +128,7 @@ func (suite *SambaHandlerSuite) TestApplySambaError() {
 	expectedErr := errors.New("failed to write samba configuration")
 
 	// Configure mock expectations - fails on first step
-	mock.When(suite.mockSambaService.WriteAndRestartSambaConfig()).ThenReturn(expectedErr)
+	mock.When(suite.mockSambaService.WriteAndRestartSambaConfig(mock.AnyContext())).ThenReturn(expectedErr)
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())

@@ -40,7 +40,7 @@ func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServ
 	eventMap := map[string]any{
 		dto.WebEventTypes.EVENTHELLO.String():     dto.Welcome{},
 		dto.WebEventTypes.EVENTUPDATING.String():  dto.UpdateProgress{},
-		dto.WebEventTypes.EVENTVOLUMES.String():   []dto.Disk{},
+		dto.WebEventTypes.EVENTVOLUMES.String():   []*dto.Disk{},
 		dto.WebEventTypes.EVENTHEARTBEAT.String(): dto.HealthPing{},
 		dto.WebEventTypes.EVENTSHARE.String():     []dto.SharedResource{},
 	}

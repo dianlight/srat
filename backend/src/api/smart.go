@@ -62,11 +62,8 @@ func (h *SmartHandler) RegisterSmartHandlers(api huma.API) {
 func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartInfo }, error) {
-	// Get disk info to find device path
-	volumes := h.volumeService.GetVolumesData()
-
-	devicePath := findDevicePath(volumes, input.DiskID)
-	if devicePath == "" {
+	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
+	if errE != nil {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
@@ -86,11 +83,8 @@ func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 func (h *SmartHandler) GetSmartStatus(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartStatus }, error) {
-	// Get disk info to find device path
-	volumes := h.volumeService.GetVolumesData()
-
-	devicePath := findDevicePath(volumes, input.DiskID)
-	if devicePath == "" {
+	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
+	if errE != nil {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
@@ -111,10 +105,9 @@ func (h *SmartHandler) GetSmartHealth(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartHealthStatus }, error) {
 	// Get disk info to find device path
-	volumes := h.volumeService.GetVolumesData()
 
-	devicePath := findDevicePath(volumes, input.DiskID)
-	if devicePath == "" {
+	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
+	if errE != nil {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
@@ -134,11 +127,9 @@ func (h *SmartHandler) GetSmartHealth(ctx context.Context, input *struct {
 func (h *SmartHandler) GetSmartTestStatus(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartTestStatus }, error) {
-	// Get disk info to find device path
-	volumes := h.volumeService.GetVolumesData()
 
-	devicePath := findDevicePath(volumes, input.DiskID)
-	if devicePath == "" {
+	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
+	if errE != nil {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
@@ -166,16 +157,13 @@ func (h *SmartHandler) StartSmartTest(ctx context.Context, input *struct {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
 	}
 
-	// Get disk info to find device path
-	volumes := h.volumeService.GetVolumesData()
-
-	devicePath := findDevicePath(volumes, input.DiskID)
-	if devicePath == "" {
+	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
+	if errE != nil {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
 	// Start the test (progress callback support pending upstream library capability)
-	errE := h.smartService.StartSelfTest(ctx, devicePath, input.Body.TestType)
+	errE = h.smartService.StartSelfTest(ctx, devicePath, input.Body.TestType)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -199,16 +187,13 @@ func (h *SmartHandler) AbortSmartTest(ctx context.Context, input *struct {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
 	}
 
-	// Get disk info to find device path
-	volumes := h.volumeService.GetVolumesData()
-
-	devicePath := findDevicePath(volumes, input.DiskID)
-	if devicePath == "" {
+	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
+	if errE != nil {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
 	// Abort the test
-	errE := h.smartService.AbortSelfTest(ctx, devicePath)
+	errE = h.smartService.AbortSelfTest(ctx, devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -230,15 +215,14 @@ func (h *SmartHandler) EnableSmart(ctx context.Context, input *struct {
 	}
 
 	// Get disk info to find device path
-	volumes := h.volumeService.GetVolumesData()
 
-	devicePath := findDevicePath(volumes, input.DiskID)
-	if devicePath == "" {
+	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
+	if errE != nil {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
 	// Enable SMART
-	errE := h.smartService.EnableSMART(ctx, devicePath)
+	errE = h.smartService.EnableSMART(ctx, devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -259,16 +243,13 @@ func (h *SmartHandler) DisableSmart(ctx context.Context, input *struct {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
 	}
 
-	// Get disk info to find device path
-	volumes := h.volumeService.GetVolumesData()
-
-	devicePath := findDevicePath(volumes, input.DiskID)
-	if devicePath == "" {
+	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
+	if errE != nil {
 		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
 	}
 
 	// Disable SMART
-	errE := h.smartService.DisableSMART(ctx, devicePath)
+	errE = h.smartService.DisableSMART(ctx, devicePath)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -278,25 +259,4 @@ func (h *SmartHandler) DisableSmart(ctx context.Context, input *struct {
 	}
 
 	return &struct{ Body string }{Body: fmt.Sprintf("SMART disabled on disk %s", input.DiskID)}, nil
-}
-
-// findDevicePath finds the device path for a given disk ID
-func findDevicePath(volumes *[]dto.Disk, diskID string) string {
-	if volumes == nil {
-		return ""
-	}
-
-	for _, disk := range *volumes {
-		if disk.Id != nil && *disk.Id == diskID {
-			return *disk.DevicePath
-		}
-	}
-
-	// If not found by ID, try to use diskID directly as device path
-	// (in case it's passed as /dev/sda, etc.)
-	if len(diskID) > 0 && diskID[0] == '/' {
-		return diskID
-	}
-
-	return ""
 }

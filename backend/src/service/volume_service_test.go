@@ -177,13 +177,17 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 				Partitions: &map[string]dto.Partition{
 					"SSD": {
 						DevicePath:       &device,
-						LegacyDeviceName: pointer.String("sda1"), Size: pointer.Int(100), Id: pointer.String("SSD")},
+						LegacyDeviceName: pointer.String("sda1"), Size: pointer.Int(100), Id: pointer.String("SSD"),
+						DiskId: pointer.String("SSD"),
+					},
 				},
 			},
 			"HDD": {LegacyDeviceName: pointer.String("sda2"), Size: pointer.Int(200), Id: pointer.String("HDD"),
 				Partitions: &map[string]dto.Partition{
 					device: {
-						LegacyDeviceName: pointer.String("sda2"), Size: pointer.Int(200), Id: &device, DevicePath: &device},
+						LegacyDeviceName: pointer.String("sda2"), Size: pointer.Int(200), Id: &device, DevicePath: &device,
+						DiskId: pointer.String("HDD"),
+					},
 				},
 			},
 		},
@@ -191,8 +195,8 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 
 	disks := suite.volumeService.GetVolumesData()
 	suite.Require().NotNil(disks, "Expected GetVolumesData to return disks")
-	suite.Require().NotEmpty(*disks, "Expected GetVolumesData to return non-empty disks")
-	suite.Require().Len(*disks, 2, "Expected GetVolumesData to return 2 disks")
+	suite.Require().NotEmpty(disks, "Expected GetVolumesData to return non-empty disks")
+	suite.Require().Len(disks, 2, "Expected GetVolumesData to return 2 disks")
 
 	defer func() {
 		err := suite.volumeService.UnmountVolume(mountPath, true, false) // Cleanup
@@ -311,6 +315,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 					LegacyDeviceName: pointer.String("sda1"),
 					DevicePath:       device1,
 					Size:             pointer.Int(50),
+					DiskId:           pointer.String("disk-1"),
 					HostMountPointData: &map[string]dto.MountPointData{
 						mountPath1: {
 							DeviceId: *device1,
@@ -334,6 +339,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 					LegacyDeviceName: device2LegacyName,
 					DevicePath:       device2,
 					Size:             pointer.Int(50),
+					DiskId:           pointer.String("disk-2"),
 					HostMountPointData: &map[string]dto.MountPointData{
 						mountPath2: {
 							DeviceId: *device2,
@@ -348,9 +354,9 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	//dbomMountData2 := &dbom.MountPointPath{Path: mountPath2, DeviceId: "sdb1", Type: "ADDON"} // Initial state in DB
 
 	//mock.When(suite.mockMountRepo.FindByDevice("part-1")).ThenReturn([]*dbom.MountPointPath{{Path: mountPath1, DeviceId: *device1, Type: "ADDON"}}, nil).Verify(matchers.Times(1))
-	suite.db.Create(&dbom.MountPointPath{Path: mountPath1, DeviceId: *device1, Type: "ADDON"})
+	suite.Require().NoError(suite.db.Create(&dbom.MountPointPath{Path: mountPath1, DeviceId: *device1, Type: "ADDON"}).Error)
 	//mock.When(suite.mockMountRepo.FindByDevice("part-2")).ThenReturn([]*dbom.MountPointPath{{Path: mountPath2, DeviceId: *device2, Type: "ADDON"}}, nil).Verify(matchers.Times(1))
-	suite.db.Create(&dbom.MountPointPath{Path: mountPath2, DeviceId: *device2, Type: "ADDON"})
+	suite.Require().NoError(suite.db.Create(&dbom.MountPointPath{Path: mountPath2, DeviceId: *device2, Type: "ADDON"}).Error)
 	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHWResponse, nil).Verify(matchers.AtLeastOnce())
 
 	/*
@@ -368,11 +374,11 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 
 	// Assertions
 	suite.Require().NotNil(disks)
-	suite.Require().Len(*disks, 2)
+	suite.Require().Len(disks, 2)
 
 	// Build a lookup by disk ID to avoid order dependency
-	byID := map[string]dto.Disk{}
-	for _, d := range *disks {
+	byID := map[string]*dto.Disk{}
+	for _, d := range disks {
 		if d.Id != nil {
 			byID[*d.Id] = d
 		}
@@ -437,6 +443,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_ReturnsMountPointData() 
 					LegacyDevicePath:   pointer.String("/dev/sda1"),
 					HostMountPointData: &hostMap,
 					MountPointData:     &map[string]dto.MountPointData{},
+					DiskId:             pointer.String("disk-1"),
 				},
 			},
 		},
@@ -455,9 +462,9 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_ReturnsMountPointData() 
 
 	disks := suite.volumeService.GetVolumesData()
 	suite.Require().NotNil(disks)
-	suite.Require().Len(*disks, 1)
+	suite.Require().Len(disks, 1)
 
-	d := (*disks)[0]
+	d := (disks)[0]
 	suite.Require().NotNil(d.Partitions)
 	p, ok := (*d.Partitions)[*partID]
 	suite.Require().True(ok)
@@ -494,6 +501,7 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_NoMixHostAndAddon() {
 				*partID: {
 					Id:                 partID,
 					DevicePath:         device,
+					DiskId:             pointer.String("disk-2"),
 					HostMountPointData: &hostMap,
 					MountPointData:     &map[string]dto.MountPointData{},
 				},
@@ -513,8 +521,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_NoMixHostAndAddon() {
 
 	disks := suite.volumeService.GetVolumesData()
 	suite.Require().NotNil(disks)
-	suite.Require().Len(*disks, 1)
-	part := (*(*disks)[0].Partitions)[*partID]
+	suite.Require().Len(disks, 1)
+	part := (*disks[0].Partitions)[*partID]
 
 	// Host mount should not appear in addon MountPointData
 	suite.Require().NotNil(part.MountPointData)
@@ -626,17 +634,18 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 					Id:             pointer.String(partID),
 					DevicePath:     pointer.String(devicePath),
 					MountPointData: &map[string]dto.MountPointData{},
+					DiskId:         pointer.String("disk-4"),
 				},
 			},
 		},
 	}
-	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.Times(1))
 
 	// Repo returns an existing mount configuration by device
 	// NOTE: Using AtLeastOnce() because GetVolumesData calls loadMountPointFromDB for existing disks
-	dbrec := &dbom.MountPointPath{Path: mountPath, DeviceId: partID, FSType: fstype, Type: "ADDON"}
+	//dbrec := &dbom.MountPointPath{Path: mountPath, DeviceId: partID, FSType: fstype, Type: "ADDON"}
 	//mock.When(suite.mockMountRepo.FindByDevice(partID)).ThenReturn([]*dbom.MountPointPath{dbrec}, nil).Verify(matchers.AtLeastOnce())
-	suite.db.Create(dbrec)
+	//suite.db.Create(dbrec)
 
 	// FindByPath is only called if we have partition info to persist (i.e., if unmount updates DB)
 	// With new implementation using cache-first approach, this may not be called
@@ -649,7 +658,13 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 		}, nil
 	})
 	// Trigger initial load so MountPointData is populated as mounted
-	_ = suite.volumeService.GetVolumesData()
+	disks := suite.volumeService.GetVolumesData()
+	suite.Require().NotNil(disks)
+	part := (*disks[0].Partitions)[partID]
+	suite.Require().NotNil(part.MountPointData)
+	mpd, ok := (*part.MountPointData)[mountPath]
+	suite.Require().True(ok)
+	suite.True(mpd.IsMounted)
 
 	// After unmount, procfs should not contain the entry anymore
 	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) { return []*procfs.MountInfo{}, nil })
@@ -662,11 +677,11 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 	suite.Require().NoError(err)
 
 	// Validate state reflects unmounted
-	disks := suite.volumeService.GetVolumesData()
+	disks = suite.volumeService.GetVolumesData()
 	suite.Require().NotNil(disks)
-	part := (*(*disks)[0].Partitions)[partID]
+	part = (*disks[0].Partitions)[partID]
 	suite.Require().NotNil(part.MountPointData)
-	mpd, ok := (*part.MountPointData)[mountPath]
+	mpd, ok = (*part.MountPointData)[mountPath]
 	suite.Require().True(ok)
 	suite.False(mpd.IsMounted)
 }
@@ -786,8 +801,8 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	// Initial load
 	disks := suite.volumeService.GetVolumesData()
 	suite.Require().NotNil(disks)
-	suite.Require().Len(*disks, 1)
-	part := (*(*disks)[0].Partitions)[*partID]
+	suite.Require().Len(disks, 1)
+	part := (*disks[0].Partitions)[*partID]
 	suite.Require().NotNil(part.MountPointData)
 	// Mount point should have been added from repository
 	mpd, ok := (*part.MountPointData)[mountPath]
@@ -808,7 +823,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	// Reload (should use cached data)
 	disksAfter := suite.volumeService.GetVolumesData()
 	suite.Require().NotNil(disksAfter)
-	partAfter := (*(*disksAfter)[0].Partitions)[*partID]
+	partAfter := (*disksAfter[0].Partitions)[*partID]
 	mpdAfter, ok := (*partAfter.MountPointData)[mountPath]
 	suite.Require().True(ok, "expected mount point to still be present after patch")
 	suite.Require().NotNil(mpdAfter.IsToMountAtStartup)

@@ -112,9 +112,9 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 		LegacyDeviceName: nil, // important: should be skipped
 		Partitions:       &partitions,
 	}
-	disks := []dto.Disk{d}
+	disks := []*dto.Disk{&d}
 
-	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn(&disks)
+	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn(disks)
 
 	// Act
 	err := suite.ds.updateDiskStats()

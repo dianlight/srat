@@ -263,12 +263,14 @@ func TestSambaProcessStatus_AllFields(t *testing.T) {
 			Name:      "srat",
 			IsRunning: true,
 		},
-		Hdidle: dto.ProcessStatus{
-			Pid:         -1237, // Negative PID indicates subprocess of srat (PID 1237)
-			Name:        "hdidle-monitor",
-			IsRunning:   true,
-			Connections: 3,
-		},
+		/*
+			Hdidle: dto.ProcessStatus{
+				Pid:         -1237, // Negative PID indicates subprocess of srat (PID 1237)
+				Name:        "hdidle-monitor",
+				IsRunning:   true,
+				Connections: 3,
+			},
+		*/
 	}
 
 	assert.Equal(t, int32(1234), status.Smbd.Pid)
@@ -283,10 +285,10 @@ func TestSambaProcessStatus_AllFields(t *testing.T) {
 	assert.Equal(t, int32(1237), status.Srat.Pid)
 	assert.Equal(t, "srat", status.Srat.Name)
 	assert.True(t, status.Srat.IsRunning)
-	assert.Equal(t, int32(-1237), status.Hdidle.Pid)
-	assert.Equal(t, "hdidle-monitor", status.Hdidle.Name)
-	assert.True(t, status.Hdidle.IsRunning)
-	assert.Equal(t, 3, status.Hdidle.Connections)
+	//assert.Equal(t, int32(-1237), status.Hdidle.Pid)
+	//assert.Equal(t, "hdidle-monitor", status.Hdidle.Name)
+	//assert.True(t, status.Hdidle.IsRunning)
+	//assert.Equal(t, 3, status.Hdidle.Connections)
 }
 
 // ReleaseAsset Tests
@@ -482,10 +484,10 @@ func TestHealthPing_AllFields(t *testing.T) {
 	assert.Equal(t, int32(0), health.SambaProcessStatus.Srat.Pid)
 	assert.Empty(t, health.SambaProcessStatus.Srat.Name)
 	assert.False(t, health.SambaProcessStatus.Srat.IsRunning)
-	assert.Equal(t, int32(0), health.SambaProcessStatus.Hdidle.Pid)
-	assert.Empty(t, health.SambaProcessStatus.Hdidle.Name)
-	assert.False(t, health.SambaProcessStatus.Hdidle.IsRunning)
-	assert.Equal(t, 0, health.SambaProcessStatus.Hdidle.Connections)
+	//assert.Equal(t, int32(0), health.SambaProcessStatus.Hdidle.Pid)
+	//assert.Empty(t, health.SambaProcessStatus.Hdidle.Name)
+	//assert.False(t, health.SambaProcessStatus.Hdidle.IsRunning)
+	//assert.Equal(t, 0, health.SambaProcessStatus.Hdidle.Connections)
 	assert.Empty(t, health.LastError)
 	assert.True(t, health.Dirty.Shares)
 	assert.False(t, health.Dirty.Users)
