@@ -173,7 +173,7 @@ func (suite *HDIdleServiceSuite) TestStartWithValidDevices() {
 		},
 	}
 
-	suite.NoError(suite.db.Create(&devices).Error)
+	suite.NoError(suite.db.Save(&devices).Error)
 
 	err := suite.service.Start()
 	suite.NoError(err)
@@ -324,7 +324,7 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_OneDeviceYes_Includ
 		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.NOENABLED},
 	}
 
-	suite.Require().NoError(suite.db.Create(&devices).Error)
+	suite.Require().NoError(suite.db.Save(&devices).Error)
 
 	err := suite.service.Start()
 	suite.NoError(err)
@@ -349,7 +349,7 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalEnabled_OneDeviceNo_Excludes
 		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.NOENABLED},
 		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
 	}
-	suite.Require().NoError(suite.db.Create(&devices).Error)
+	suite.Require().NoError(suite.db.Save(&devices).Error)
 
 	err := suite.service.Start()
 	suite.NoError(err)
@@ -374,7 +374,7 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_AllDefault_NoDevice
 		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
 		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
 	}
-	suite.Require().NoError(suite.db.Create(&devices).Error)
+	suite.Require().NoError(suite.db.Debug().Save(&devices).Error)
 
 	err := suite.service.Start()
 	suite.NoError(err)

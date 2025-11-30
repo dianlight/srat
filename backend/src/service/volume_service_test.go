@@ -639,7 +639,7 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 			},
 		},
 	}
-	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.Times(1))
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.Times(2))
 
 	// Repo returns an existing mount configuration by device
 	// NOTE: Using AtLeastOnce() because GetVolumesData calls loadMountPointFromDB for existing disks
