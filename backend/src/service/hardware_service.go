@@ -156,6 +156,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 				if diskDto.Partitions != nil {
 					for pid, part := range *diskDto.Partitions {
 						partition := part // copy
+						partition.DiskId = diskDto.Id
 						if partition.LegacyDeviceName == nil || *partition.LegacyDeviceName == "" {
 							tlog.DebugContext(h.ctx, "Skipping partition with nil or empty legacy device name", "disk_id", diskDto.Id, "partition_id", pid)
 							continue

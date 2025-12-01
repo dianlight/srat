@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"fmt"
+	"runtime/debug"
 	"sync/atomic"
 
 	"github.com/dianlight/tlog"
@@ -106,7 +107,7 @@ func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func
 		// Panic/exception safety
 		defer func() {
 			if r := recover(); r != nil {
-				tlog.ErrorContext(ctx, "Event handler panic", append([]any{"event", eventName, "panic", r}, caller...)...)
+				tlog.ErrorContext(ctx, "Event handler panic", append([]any{"event", eventName, "panic", r, "stack", string(debug.Stack())}, caller...)...)
 			}
 		}()
 		tlog.DebugContext(ctx, "<-- Receiving events ", append([]any{"type", fmt.Sprintf("%T", event), "event", fmt.Sprintf("%#v", event)}, caller...)...)
@@ -127,7 +128,7 @@ func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T
 	// Emit synchronously; recover panic inside signal dispatch and log emission errors
 	defer func() {
 		if r := recover(); r != nil {
-			tlog.ErrorContext(ctx, "Panic emitting event", append([]any{"event", fmt.Sprintf("%#v", event), "panic", r}, tlog.WithCaller(1)...)...)
+			tlog.ErrorContext(ctx, "Panic emitting event", append([]any{"event", fmt.Sprintf("%#v", event), "panic", r, "stack", string(debug.Stack())}, tlog.WithCaller(1)...)...)
 		}
 	}()
 	if err := signal.TryEmit(ctx, event); err != nil {

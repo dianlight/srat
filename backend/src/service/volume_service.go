@@ -116,6 +116,7 @@ func NewVolumeService(
 	unsubscribe[0] = p.eventBus.OnPartition(p.handlePartitionEvent)
 	unsubscribe[1] = p.eventBus.OnMountPoint(p.handleMountPointEvent)
 	unsubscribe[2] = p.eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
+		tlog.DebugContext(ctx, "Home Assistant started event received, getVolumesData called")
 		if hae.Type == events.EventTypes.START {
 			err := p.getVolumesData()
 			if err != nil {
@@ -836,9 +837,14 @@ func (self *VolumeService) getVolumesData() errors.E {
 
 func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.PartitionEvent) errors.E {
 
+	tlog.DebugContext(ctx, "Processing partition event for mount data sync", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "event_type", e.Type)
+
 	if e.Partition.DevicePath == nil || *e.Partition.DevicePath == "" {
 		slog.DebugContext(ctx, "Skipping partition with nil or empty device path", "disk_id", *e.Disk.Id)
 		return nil
+	}
+	if e.Partition.DiskId == nil || *e.Partition.DiskId == "" {
+		e.Partition.DiskId = e.Disk.Id
 	}
 
 	mountData, err := self.loadMountPointFromDB(e.Partition)
