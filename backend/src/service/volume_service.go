@@ -790,11 +790,13 @@ func (self *VolumeService) getVolumesData() errors.E {
 			return nil, errHw
 		}
 
+		tlog.DebugContext(self.ctx, "Retrieved hardware disks from hardware client", "disk_count", len(hwDisks))
 		// Disks processing
 		for _, disk := range hwDisks {
 			if disk.Partitions == nil {
 				continue
 			}
+			tlog.DebugContext(self.ctx, "Processing disk from hardware client", "disk_id", *disk.Id, "partition_count", len(*disk.Partitions))
 			disk.RefreshVersion = self.refreshVersion
 
 			currentDisk, updateDisk := self.disks.Get(*disk.Id)
@@ -849,16 +851,19 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 
 	mountData, err := self.loadMountPointFromDB(e.Partition)
 	if err != nil {
+		slog.ErrorContext(ctx, "Failed to load mount point data from DB for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "err", err)
 		return err
 	}
 
 	// Get current mount information from procfs
 	mountInfos, errS := self.procfsGetMounts()
 	if errS != nil {
+		slog.ErrorContext(ctx, "Failed to get current mount information from procfs", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "err", errS)
 		return errors.WithStack(errS)
 	}
 
 	// Update existing mount points with current mount info
+	tlog.DebugContext(ctx, "Synchronizing mount points for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_data_count", len(mountData), "procfs_mounts_count", len(mountInfos))
 	for _, prtstate := range mountInfos {
 		iw := osutil.IsWritable(prtstate.MountPoint)
 		if mountPoint, ok := mountData[prtstate.MountPoint]; ok {
@@ -916,6 +921,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 		}
 	}
 
+	tlog.DebugContext(ctx, "Marking stale mount points as unmounted for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)
 	for _, mountPoint := range mountData {
 		if mountPoint.RefreshVersion != self.refreshVersion {
 			oldstate := mountPoint.IsMounted
@@ -934,11 +940,13 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			}
 		}
 	}
+	tlog.DebugContext(ctx, "Done synchronizing mount points for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)
 
 	return nil
 }
 
 func (self *VolumeService) handleMountPointEvent(ctx context.Context, e events.MountPointEvent) errors.E {
+	tlog.DebugContext(ctx, "Processing mount point event for persistence", "mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId, "event_type", e.Type)
 	err := self.persistMountPoint(e.MountPoint)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to persist mount point on event", "mount_point", e.MountPoint, "err", err)

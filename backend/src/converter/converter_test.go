@@ -162,7 +162,7 @@ func TestDtoToDbomConverter_MountPointDataToMountPointPath(t *testing.T) {
 		Flags:              &flags,
 		CustomFlags:        &custom,
 		IsToMountAtStartup: &startup,
-		Share:             &dto.SharedResource{Name: shareName},
+		Share:              &dto.SharedResource{Name: shareName},
 	}
 
 	var target dbom.MountPointPath

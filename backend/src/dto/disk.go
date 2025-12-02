@@ -69,8 +69,11 @@ type Partition struct {
 	// Device Special device file for the filesystem (e.g. /dev/disk/by-id/).
 	DevicePath *string `json:"device_path,omitempty"`
 
-	// Id Unique and persistent id for filesystem.
+	// Id Unique and persistent id for disk partition.
 	Id *string `json:"id,omitempty"`
+
+	// uuid UUID of the filesystem, if available uniquely identifying it.
+	Uuid *string `json:"uuid,omitempty"`
 
 	// DiskId Unique and persistent id for parent drive.
 	DiskId *string `json:"disk_id,omitempty"`

@@ -1,6 +1,9 @@
 package converter
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -31,7 +34,9 @@ type HaHardwareToDto interface {
 	// goverter:map Device LegacyDevicePath
 	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
-	filesystemToPartition(source hardware.Filesystem) dto.Partition
+	// goverter:map Id Id | filesystemUUIDToPartitionID
+	// goverter:map Id Uuid
+	filesystemToPartition(source hardware.Filesystem) (dto.Partition, error)
 
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
@@ -40,6 +45,8 @@ type HaHardwareToDto interface {
 	// goverter:map Device LegacyDevicePath
 	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
+	// goverter:map Id Id | filesystemUUIDToPartitionID
+	// goverter:map Id Uuid
 	FilesystemToPartition(source hardware.Filesystem, target *dto.Partition) error
 }
 
@@ -91,10 +98,10 @@ func trimDevPrefix(source *string) *string {
 // filesystemsToPartitionsMap converts a list of HA filesystems to a map of Partitions keyed by Id.
 // This is used by the goverter mapping for Filesystems -> Partitions.
 // goverter:helper
-func filesystemsToPartitionsMap(source *[]hardware.Filesystem) *map[string]dto.Partition {
+func filesystemsToPartitionsMap(source *[]hardware.Filesystem) (*map[string]dto.Partition, error) {
 	m := make(map[string]dto.Partition)
 	if source == nil || len(*source) == 0 {
-		return &m
+		return &m, nil
 	}
 	for _, fs := range *source {
 		var p dto.Partition
@@ -104,8 +111,15 @@ func filesystemsToPartitionsMap(source *[]hardware.Filesystem) *map[string]dto.P
 		}
 		p.LegacyDeviceName = trimDevPrefix(fs.Device)
 		if fs.Id != nil {
+			x, err := filesystemUUIDToPartitionID(fs.Id)
+			if err != nil {
+				return nil, fmt.Errorf("error converting filesystem ID to partition ID: %w", err)
+			}
+			p.Id = x
+		}
+		if fs.Id != nil {
 			x := *fs.Id
-			p.Id = &x
+			p.Uuid = &x
 		}
 		if fs.Name != nil {
 			x := *fs.Name
@@ -124,5 +138,51 @@ func filesystemsToPartitionsMap(source *[]hardware.Filesystem) *map[string]dto.P
 			m[*p.Id] = p
 		}
 	}
-	return &m
+	return &m, nil
+}
+
+// filesystemUUIDToPartitionID converts a filesystem UUID to a partition ID.
+// It looks up the device path from /dev/disk/by-uuid/ and then finds the
+// corresponding ID from /dev/disk/by-id/.
+// Returns the UUID prefixed with "by-uuid-" if the ID cannot be found.
+func filesystemUUIDToPartitionID(uuid *string) (*string, error) {
+	// First, resolve the UUID to the actual device path
+	if strings.HasPrefix(*uuid, "by-uuid-") {
+		trimmed := strings.TrimPrefix(*uuid, "by-uuid-")
+		uuid = &trimmed
+	}
+	uuidPath := filepath.Join("/dev/disk/by-uuid/", *uuid)
+	devicePath, err := filepath.EvalSymlinks(uuidPath)
+	if err != nil {
+		// UUID symlink not found or cannot be resolved, return prefixed UUID
+		x := "by-uuid-" + *uuid
+		return &x, err
+	}
+
+	// Now find the corresponding ID in /dev/disk/by-id/
+	entries, err := os.ReadDir("/dev/disk/by-id/")
+	if err != nil {
+		// Cannot read by-id directory, return prefixed UUID
+		x := "by-uuid-" + *uuid
+		return &x, err
+	}
+
+	for _, entry := range entries {
+		if entry.Type()&os.ModeSymlink != 0 {
+			idPath := filepath.Join("/dev/disk/by-id/", entry.Name())
+			resolvedID, err := filepath.EvalSymlinks(idPath)
+			if err != nil {
+				continue
+			}
+			// Check if this ID symlink points to the same device
+			if resolvedID == devicePath {
+				x := "by-id-" + entry.Name()
+				return &x, nil
+			}
+		}
+	}
+
+	// No matching ID found, return prefixed UUID as fallback
+	x := "by-uuid-" + *uuid
+	return &x, fmt.Errorf(" No matching ID found, return prefixed UUID as fallback uuid: %s", *uuid)
 }

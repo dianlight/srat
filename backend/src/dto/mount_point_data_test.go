@@ -97,7 +97,7 @@ func TestMountPointData_WithShares(t *testing.T) {
 	}
 
 	mountData := dto.MountPointData{
-		Path:   "/mnt/data",
+		Path:  "/mnt/data",
 		Share: &share,
 	}
 
