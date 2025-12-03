@@ -9,6 +9,7 @@
     "docker",
     "sensors"
   ],
+  "typescript.experimental.useTsgo": true,
   "makefile.configureOnOpen": false,
   "remote.localPortHost": "allInterfaces",
   "typescript.inlayHints.parameterTypes.enabled": true,
@@ -66,7 +67,6 @@
   "javascript.preferGoToSourceDefinition": true,
   "javascript.referencesCodeLens.enabled": true,
   "chat.tools.terminal.autoApprove": {
-    
     "/.*/": {
       "approve": true,
       "matchCommandLine": false

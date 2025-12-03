@@ -96,7 +96,8 @@
 				"codezombiech.gitignore",
 				"oven.bun-vscode",
 				"SanjulaGanepola.github-local-actions",
-				"bierner.markdown-mermaid"
+				"bierner.markdown-mermaid",
+				"TypeScriptTeam.native-preview"
 			],
 			"mcp": {
 				"servers": {
