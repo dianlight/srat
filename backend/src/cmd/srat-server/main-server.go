@@ -17,6 +17,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/smartmontools-go"
 	"github.com/dianlight/srat/internal/appsetup"
+	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"github.com/gorilla/mux"
 	"gitlab.com/tozd/go/errors"
@@ -261,7 +262,7 @@ func prog(state overseer.State) {
 		fx.Invoke(func(
 			lc fx.Lifecycle,
 			props_repo repository.PropertyRepositoryInterface,
-			//samba_service service.SambaServiceInterface,
+			_ service.SupervisorServiceInterface,
 			//			hdidle_service service.HDIdleServiceInterface,
 		) {
 			// Setting the actual LogLevel

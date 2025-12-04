@@ -127,7 +127,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 			service.NewUserService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
-			mock.Mock[service.SupervisorServiceInterface],
+			//mock.Mock[service.SupervisorServiceInterface],
 			mock.Mock[repository.ExportedShareRepositoryInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
