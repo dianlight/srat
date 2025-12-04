@@ -33,6 +33,7 @@ type VolumeServiceTestSuite struct {
 	//mockMountRepo      repository.MountPointPathRepositoryInterface
 	mockHardwareClient service.HardwareServiceInterface
 	volumeService      service.VolumeServiceInterface
+	hardwareService    service.HardwareServiceInterface
 	ctrl               *matchers.MockController
 	ctx                context.Context
 	cancel             context.CancelFunc
@@ -91,6 +92,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		fx.Populate(&suite.volumeService),
 		//fx.Populate(&suite.mockMountRepo),
 		fx.Populate(&suite.mockHardwareClient),
+		fx.Populate(&suite.hardwareService),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 		fx.Populate(&suite.db),
@@ -799,6 +801,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) { return []*procfs.MountInfo{}, nil })
 
 	// Initial load
+	suite.hardwareService.InvalidateHardwareInfo()
 	disks := suite.volumeService.GetVolumesData()
 	suite.Require().NotNil(disks)
 	suite.Require().Len(disks, 1)
@@ -806,7 +809,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	suite.Require().NotNil(part.MountPointData)
 	// Mount point should have been added from repository
 	mpd, ok := (*part.MountPointData)[mountPath]
-	suite.Require().True(ok, "expected mount point from repo to be present")
+	suite.Require().True(ok, "expected mount point from repo to be present", "mountPath", mountPath, "MountPointData", part.MountPointData)
 	suite.Require().NotNil(mpd.IsToMountAtStartup)
 	suite.False(*mpd.IsToMountAtStartup, "expected initial IsToMountAtStartup to be false")
 	suite.False(mpd.IsMounted, "expected mount point to be unmounted")

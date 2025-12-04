@@ -789,6 +789,10 @@ func (self *VolumeService) getVolumesData() errors.E {
 		if errHw != nil {
 			return nil, errHw
 		}
+		if hwDisks == nil {
+			slog.DebugContext(self.ctx, "Hardware client returned nil disks, continuing with empty disk list")
+			return &ret, nil
+		}
 
 		tlog.DebugContext(self.ctx, "Retrieved hardware disks from hardware client", "disk_count", len(hwDisks))
 		// Disks processing
@@ -854,6 +858,16 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 		slog.ErrorContext(ctx, "Failed to load mount point data from DB for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "err", err)
 		return err
 	}
+	// Add missing mount points from DB to in-memory cache
+	for _, md := range mountData {
+		if _, ok := self.disks.GetMountPoint(*e.Partition.DiskId, *e.Partition.Id, md.Path); !ok {
+			err := self.disks.AddMountPoint(*e.Partition.DiskId, *e.Partition.Id, *md)
+			if err != nil {
+				slog.WarnContext(self.ctx, "Failed to add mount point to disk map during partition event handling", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", md.Path, "err", err)
+				continue
+			}
+		}
+	}
 
 	// Get current mount information from procfs
 	mountInfos, errS := self.procfsGetMounts()
@@ -866,14 +880,10 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 	tlog.DebugContext(ctx, "Synchronizing mount points for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_data_count", len(mountData), "procfs_mounts_count", len(mountInfos))
 	for _, prtstate := range mountInfos {
 		iw := osutil.IsWritable(prtstate.MountPoint)
-		if mountPoint, ok := mountData[prtstate.MountPoint]; ok {
-			slog.DebugContext(ctx, "Found existing mount point in DB for partition, updating state", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "is_mounted", mountPoint.IsMounted)
+		if mountPoint, ok := self.disks.GetMountPoint(*e.Partition.DiskId, *e.Partition.Id, prtstate.MountPoint); ok {
+			slog.DebugContext(ctx, "Found existing mount point in cache for partition, updating state", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "is_mounted", mountPoint.IsMounted)
 			oldstate := mountPoint.IsMounted
-
-			mountPoint.IsMounted, errS = osutil.IsMounted(prtstate.MountPoint)
-			if errS != nil {
-				slog.WarnContext(ctx, "Failed to verify mount status from OS for mount point, keeping existing state", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", errS)
-			}
+			mountPoint.IsMounted = true
 			mountPoint.Root = prtstate.Root
 			mountPoint.RefreshVersion = self.refreshVersion
 			mountPoint.IsWriteSupported = pointer.Bool(iw)
@@ -886,7 +896,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
 				continue
 			}
-			if oldstate != mountPoint.IsMounted {
+			if !oldstate {
 				self.eventBus.EmitMountPoint(events.MountPointEvent{
 					Event:      events.Event{Type: events.EventTypes.UPDATE},
 					MountPoint: mountPoint,
@@ -926,9 +936,9 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 	}
 
 	tlog.DebugContext(ctx, "Marking stale mount points as unmounted for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)
-	for _, mountPoint := range mountData {
-		if mountPoint.RefreshVersion != self.refreshVersion {
-			oldstate := mountPoint.IsMounted
+	for _, mountPoint := range self.disks.GetAllMountPoints() {
+		if mountPoint.RefreshVersion != self.refreshVersion && (mountPoint.IsMounted || (mountPoint.IsToMountAtStartup != nil && *mountPoint.IsToMountAtStartup)) {
+			slog.DebugContext(ctx, "Marking mount point as unmounted since not found in procfs mounts", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path)
 			mountPoint.IsMounted = false
 			mountPoint.RefreshVersion = self.refreshVersion
 			err := self.disks.AddMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
@@ -936,12 +946,10 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
 				continue
 			}
-			if oldstate {
-				self.eventBus.EmitMountPoint(events.MountPointEvent{
-					Event:      events.Event{Type: events.EventTypes.UPDATE},
-					MountPoint: mountPoint,
-				})
-			}
+			self.eventBus.EmitMountPoint(events.MountPointEvent{
+				Event:      events.Event{Type: events.EventTypes.UPDATE},
+				MountPoint: mountPoint,
+			})
 		}
 	}
 	tlog.DebugContext(ctx, "Done synchronizing mount points for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)

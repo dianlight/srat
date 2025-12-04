@@ -178,18 +178,18 @@ func (m *DiskMap) GetPartition(diskID, partitionID string) (Partition, bool) {
 
 // GetMountPoint retrieves a mount point from the specified disk partition by path.
 // Returns the mount point data and true if it exists; otherwise returns false.
-func (m *DiskMap) GetMountPoint(diskID, partitionID, path string) (MountPointData, bool) {
+func (m *DiskMap) GetMountPoint(diskID, partitionID, path string) (*MountPointData, bool) {
 	if path == "" {
-		return MountPointData{}, false
+		return nil, false
 	}
 	partition, ok := m.GetPartition(diskID, partitionID)
 	if !ok || partition.MountPointData == nil {
-		return MountPointData{}, false
+		return nil, false
 	}
 	if mp, ok := (*partition.MountPointData)[path]; ok {
-		return mp, true
+		return &mp, true
 	}
-	return MountPointData{}, false
+	return nil, false
 }
 
 // GetMountPointByPath searches all disks and partitions for a mount point matching the given path.
@@ -212,4 +212,25 @@ func (m *DiskMap) GetMountPointByPath(path string) (*MountPointData, bool) {
 		}
 	}
 	return nil, false
+}
+
+func (m *DiskMap) GetAllMountPoints() []*MountPointData {
+	var result []*MountPointData
+	if m == nil || *m == nil {
+		return result
+	}
+	for _, d := range *m {
+		if d.Partitions == nil {
+			continue
+		}
+		for _, part := range *d.Partitions {
+			if part.MountPointData == nil {
+				continue
+			}
+			for _, mp := range *part.MountPointData {
+				result = append(result, &mp)
+			}
+		}
+	}
+	return result
 }

@@ -209,3 +209,16 @@ func TestDiskMap_GetMountPointByPath(t *testing.T) {
 	_, missing := (&m).GetMountPointByPath("/missing")
 	assert.False(t, missing)
 }
+
+func TestDiskMap_GetAllMountPoints(t *testing.T) {
+	diskID := "disk-all-mp"
+	partID := "part-all-mp"
+	mount1 := dto.MountPointData{Path: "/mnt/mp1"}
+	mount2 := dto.MountPointData{Path: "/mnt/mp2"}
+	parts := map[string]dto.Partition{partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{"/mnt/mp1": mount1, "/mnt/mp2": mount2}}}
+	m := dto.DiskMap{}
+	_ = (&m).Add(&dto.Disk{Id: &diskID, Partitions: &parts})
+
+	allMPs := (&m).GetAllMountPoints()
+	assert.Len(t, allMPs, 2)
+}

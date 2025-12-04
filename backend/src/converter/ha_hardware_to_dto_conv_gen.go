@@ -69,12 +69,15 @@ func (c *HaHardwareToDtoImpl) FilesystemToPartition(source hardware.Filesystem, 
 		target.Id = pString
 	}
 	if source.Id != nil {
-		xstring2 := *source.Id
-		target.Uuid = &xstring2
+		pString2, err := partitionIDToFilesystemUUID(source.Id)
+		if err != nil {
+			return err
+		}
+		target.Uuid = pString2
 	}
 	if source.Name != nil {
-		xstring3 := *source.Name
-		target.Name = &xstring3
+		xstring2 := *source.Name
+		target.Name = &xstring2
 	}
 	if source.Size != nil {
 		xint := *source.Size
@@ -101,13 +104,14 @@ func (c *HaHardwareToDtoImpl) filesystemToPartition(source hardware.Filesystem) 
 		return dtoPartition, err
 	}
 	dtoPartition.Id = pString
-	if source.Id != nil {
-		xstring2 := *source.Id
-		dtoPartition.Uuid = &xstring2
+	pString2, err := partitionIDToFilesystemUUID(source.Id)
+	if err != nil {
+		return dtoPartition, err
 	}
+	dtoPartition.Uuid = pString2
 	if source.Name != nil {
-		xstring3 := *source.Name
-		dtoPartition.Name = &xstring3
+		xstring2 := *source.Name
+		dtoPartition.Name = &xstring2
 	}
 	if source.Size != nil {
 		xint := *source.Size

@@ -35,7 +35,7 @@ type HaHardwareToDto interface {
 	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
 	// goverter:map Id Id | filesystemUUIDToPartitionID
-	// goverter:map Id Uuid
+	// goverter:map Id Uuid | partitionIDToFilesystemUUID
 	filesystemToPartition(source hardware.Filesystem) (dto.Partition, error)
 
 	// goverter:update target
@@ -46,7 +46,7 @@ type HaHardwareToDto interface {
 	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
 	// goverter:map Id Id | filesystemUUIDToPartitionID
-	// goverter:map Id Uuid
+	// goverter:map Id Uuid | partitionIDToFilesystemUUID
 	FilesystemToPartition(source hardware.Filesystem, target *dto.Partition) error
 }
 
@@ -147,6 +147,10 @@ func filesystemsToPartitionsMap(source *[]hardware.Filesystem) (*map[string]dto.
 // Returns the UUID prefixed with "by-uuid-" if the ID cannot be found.
 func filesystemUUIDToPartitionID(uuid *string) (*string, error) {
 	// First, resolve the UUID to the actual device path
+	if strings.HasPrefix(*uuid, "by-id-") {
+		trimmed := strings.TrimPrefix(*uuid, "by-id-")
+		return &trimmed, nil
+	}
 	if strings.HasPrefix(*uuid, "by-uuid-") {
 		trimmed := strings.TrimPrefix(*uuid, "by-uuid-")
 		uuid = &trimmed
@@ -185,4 +189,49 @@ func filesystemUUIDToPartitionID(uuid *string) (*string, error) {
 	// No matching ID found, return prefixed UUID as fallback
 	x := "by-uuid-" + *uuid
 	return &x, fmt.Errorf(" No matching ID found, return prefixed UUID as fallback uuid: %s", *uuid)
+}
+
+func partitionIDToFilesystemUUID(id *string) (*string, error) {
+	// First, resolve the UUID to the actual device path
+	if strings.HasPrefix(*id, "by-uuid-") {
+		trimmed := strings.TrimPrefix(*id, "by-uuid-")
+		return &trimmed, nil
+	}
+	if strings.HasPrefix(*id, "by-id-") {
+		trimmed := strings.TrimPrefix(*id, "by-id-")
+		id = &trimmed
+	}
+	uuidPath := filepath.Join("/dev/disk/by-id/", *id)
+	devicePath, err := filepath.EvalSymlinks(uuidPath)
+	if err != nil {
+		x := "by-id-" + *id
+		return &x, err
+	}
+
+	// Now find the corresponding ID in /dev/disk/by-uuid/
+	entries, err := os.ReadDir("/dev/disk/by-uuid/")
+	if err != nil {
+		// Cannot read by-id directory, return prefixed UUID
+		x := "by-id-" + *id
+		return &x, err
+	}
+
+	for _, entry := range entries {
+		if entry.Type()&os.ModeSymlink != 0 {
+			idPath := filepath.Join("/dev/disk/by-uuid/", entry.Name())
+			resolvedID, err := filepath.EvalSymlinks(idPath)
+			if err != nil {
+				continue
+			}
+			// Check if this ID symlink points to the same device
+			if resolvedID == devicePath {
+				x := entry.Name()
+				return &x, nil
+			}
+		}
+	}
+
+	// No matching ID found, return prefixed UUID as fallback
+	x := "by-uuid-" + *id
+	return &x, fmt.Errorf(" No matching ID found, return prefixed UUID as fallback uuid: %s", *id)
 }
