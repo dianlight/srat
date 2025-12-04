@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/rand"
 	"encoding/base64"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,11 +11,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/moby/sys/mountinfo"
+	"github.com/prometheus/procfs"
 	"golang.org/x/sys/unix"
 )
 
-// MountInfoEntry contains data from /proc/<pid>/mountinfo.
+// MountInfoEntry contains data from /proc/self/mountinfo.
 // Ex: 1546 1508 8:8 /supervisor/media /media rw,relatime master:112 - ext4 /dev/sda8 rw,commit=30
 type MountInfoEntry struct {
 	MountID        int               // 1546
@@ -34,100 +33,95 @@ type MountInfoEntry struct {
 
 var (
 	overrideMu        sync.RWMutex
-	mountInfoOverride mountInfoSource
+	mountsOverride    func() ([]*procfs.MountInfo, error)
 	versionOverride   string
 	versionOverrideMu sync.RWMutex
 )
 
-type mountInfoSource func() (io.ReadCloser, error)
-
-// MockMountInfo replaces the mountinfo reader with the provided content until the
-// returned restore function is called.
+// MockMountInfo replaces the mount info reader with the provided mount info string content
+// until the returned restore function is called. This is useful for testing.
+// The format should be mount info strings as they appear in /proc/self/mountinfo, one per line.
 func MockMountInfo(content string) (restore func()) {
-	return setMountInfoSource(func() (io.ReadCloser, error) {
-		return io.NopCloser(strings.NewReader(content)), nil
+	mounts, _ := parseMountInfoString(content)
+	return setMountsOverride(func() ([]*procfs.MountInfo, error) {
+		return convertToProcs(mounts), nil
 	})
 }
 
-// MockSambaVersion replaces the Samba version for testing purposes until the
-// returned restore function is called.
-func MockSambaVersion(version string) (restore func()) {
-	versionOverrideMu.Lock()
-	previousVersion := versionOverride
-	versionOverride = version
-	versionOverrideMu.Unlock()
-
-	return func() {
-		versionOverrideMu.Lock()
-		versionOverride = previousVersion
-		versionOverrideMu.Unlock()
+// parseMountInfoString parses mount info text format into MountInfoEntry structs.
+func parseMountInfoString(content string) ([]*MountInfoEntry, error) {
+	entries := []*MountInfoEntry{}
+	if content == "" {
+		return entries, nil
 	}
-}
 
-func setMountInfoSource(fn mountInfoSource) (restore func()) {
-	overrideMu.Lock()
-	previous := mountInfoOverride
-	mountInfoOverride = fn
-	overrideMu.Unlock()
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
 
-	return func() {
-		overrideMu.Lock()
-		mountInfoOverride = previous
-		overrideMu.Unlock()
-	}
-}
-
-// LoadMountInfo loads the current mount information for the running process.
-func LoadMountInfo() ([]*MountInfoEntry, error) {
-	overrideMu.RLock()
-	override := mountInfoOverride
-	overrideMu.RUnlock()
-
-	if override == nil {
-		infos, err := mountinfo.GetMounts(func(m *mountinfo.Info) (skip, stop bool) {
-			if info, err := os.Stat(m.Mountpoint); err == nil && info.IsDir() {
-				return false, false
-			} else {
-				return true, false
-			}
-		})
+		entry, err := parseMountLine(line)
 		if err != nil {
 			return nil, err
 		}
-		return convertInfos(infos), nil
+		entries = append(entries, entry)
 	}
 
-	reader, err := override()
-	if err != nil {
+	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-	defer reader.Close()
 
-	infos, err := mountinfo.GetMountsFromReader(reader, nil)
-	if err != nil {
-		return nil, err
-	}
-	return convertInfos(infos), nil
+	return entries, nil
 }
 
-func convertInfos(infos []*mountinfo.Info) []*MountInfoEntry {
-	entries := make([]*MountInfoEntry, 0, len(infos))
-	for _, info := range infos {
-		entries = append(entries, &MountInfoEntry{
-			MountID:        info.ID,
-			ParentID:       info.Parent,
-			DevMajor:       info.Major,
-			DevMinor:       info.Minor,
-			Root:           info.Root,
-			MountDir:       info.Mountpoint,
-			MountOptions:   parseOptions(info.Options),
-			OptionalFields: parseOptional(info.Optional),
-			FsType:         info.FSType,
-			MountSource:    info.Source,
-			SuperOptions:   parseOptions(info.VFSOptions),
-		})
+// parseMountLine parses a single mount info line.
+func parseMountLine(line string) (*MountInfoEntry, error) {
+	fields := strings.Fields(line)
+	if len(fields) < 10 {
+		return nil, nil // Skip invalid lines
 	}
-	return entries
+
+	// Find the separator "-"
+	separatorIdx := -1
+	for i := 6; i < len(fields)-3; i++ {
+		if fields[i] == "-" {
+			separatorIdx = i
+			break
+		}
+	}
+
+	if separatorIdx == -1 {
+		return nil, nil
+	}
+
+	mountID, _ := strconv.Atoi(fields[0])
+	parentID, _ := strconv.Atoi(fields[1])
+
+	// Parse major:minor
+	devParts := strings.Split(fields[2], ":")
+	devMajor, _ := strconv.Atoi(devParts[0])
+	devMinor := 0
+	if len(devParts) > 1 {
+		devMinor, _ = strconv.Atoi(devParts[1])
+	}
+
+	entry := &MountInfoEntry{
+		MountID:        mountID,
+		ParentID:       parentID,
+		DevMajor:       devMajor,
+		DevMinor:       devMinor,
+		Root:           fields[3],
+		MountDir:       fields[4],
+		MountOptions:   parseOptions(fields[5]),
+		OptionalFields: fields[6:separatorIdx],
+		FsType:         fields[separatorIdx+1],
+		MountSource:    fields[separatorIdx+2],
+		SuperOptions:   parseOptions(fields[separatorIdx+3]),
+	}
+
+	return entry, nil
 }
 
 func parseOptions(opts string) map[string]string {
@@ -156,6 +150,146 @@ func parseOptional(optional string) []string {
 	out := make([]string, len(fields))
 	copy(out, fields)
 	return out
+}
+
+// convertInfos is a wrapper for backward compatibility with tests.
+func convertInfos(entries []*MountInfoEntry) []*MountInfoEntry {
+	if entries == nil {
+		return make([]*MountInfoEntry, 0)
+	}
+	return entries
+}
+
+// convertToProcs converts MountInfoEntry slice to procfs.MountInfo slice.
+func convertToProcs(entries []*MountInfoEntry) []*procfs.MountInfo {
+	if entries == nil {
+		return nil
+	}
+	result := make([]*procfs.MountInfo, len(entries))
+	for i, entry := range entries {
+		result[i] = &procfs.MountInfo{
+			MountID:        entry.MountID,
+			ParentID:       entry.ParentID,
+			MajorMinorVer:  strconv.Itoa(entry.DevMajor) + ":" + strconv.Itoa(entry.DevMinor),
+			Root:           entry.Root,
+			MountPoint:     entry.MountDir,
+			Options:        entry.MountOptions,
+			OptionalFields: convertToMap(entry.OptionalFields),
+			FSType:         entry.FsType,
+			Source:         entry.MountSource,
+			SuperOptions:   entry.SuperOptions,
+		}
+	}
+	return result
+}
+
+// convertToMap converts optional fields slice to map.
+func convertToMap(fields []string) map[string]string {
+	result := make(map[string]string)
+	for _, field := range fields {
+		parts := strings.SplitN(field, ":", 2)
+		if len(parts) == 2 {
+			result[parts[0]] = parts[1]
+		} else {
+			result[field] = ""
+		}
+	}
+	return result
+}
+
+// MockSambaVersion replaces the Samba version for testing purposes until the
+// returned restore function is called.
+func MockSambaVersion(version string) (restore func()) {
+	versionOverrideMu.Lock()
+	previousVersion := versionOverride
+	versionOverride = version
+	versionOverrideMu.Unlock()
+
+	return func() {
+		versionOverrideMu.Lock()
+		versionOverride = previousVersion
+		versionOverrideMu.Unlock()
+	}
+}
+
+func setMountsOverride(fn func() ([]*procfs.MountInfo, error)) (restore func()) {
+	overrideMu.Lock()
+	previous := mountsOverride
+	mountsOverride = fn
+	overrideMu.Unlock()
+
+	return func() {
+		overrideMu.Lock()
+		mountsOverride = previous
+		overrideMu.Unlock()
+	}
+}
+
+// LoadMountInfo loads the current mount information for the running process.
+func LoadMountInfo() ([]*MountInfoEntry, error) {
+	overrideMu.RLock()
+	override := mountsOverride
+	overrideMu.RUnlock()
+
+	if override != nil {
+		mounts, err := override()
+		if err != nil {
+			return nil, err
+		}
+		return convertFromProcs(mounts), nil
+	}
+
+	mounts, err := procfs.GetMounts()
+	if err != nil {
+		return nil, err
+	}
+	return convertFromProcs(mounts), nil
+}
+
+// convertFromProcs converts procfs.MountInfo slice to MountInfoEntry slice.
+func convertFromProcs(mounts []*procfs.MountInfo) []*MountInfoEntry {
+	if mounts == nil {
+		return nil
+	}
+	result := make([]*MountInfoEntry, len(mounts))
+	for i, mount := range mounts {
+		devMajor, devMinor := 0, 0
+		parts := strings.Split(mount.MajorMinorVer, ":")
+		if len(parts) > 0 {
+			devMajor, _ = strconv.Atoi(parts[0])
+		}
+		if len(parts) > 1 {
+			devMinor, _ = strconv.Atoi(parts[1])
+		}
+
+		result[i] = &MountInfoEntry{
+			MountID:        mount.MountID,
+			ParentID:       mount.ParentID,
+			DevMajor:       devMajor,
+			DevMinor:       devMinor,
+			Root:           mount.Root,
+			MountDir:       mount.MountPoint,
+			MountOptions:   mount.Options,
+			OptionalFields: convertMapToSlice(mount.OptionalFields),
+			FsType:         mount.FSType,
+			MountSource:    mount.Source,
+			SuperOptions:   mount.SuperOptions,
+		}
+	}
+	return result
+}
+
+// convertMapToSlice converts optional fields map back to slice format.
+func convertMapToSlice(fields map[string]string) []string {
+	result := make([]string, 0, len(fields))
+	for k, v := range fields {
+		if v != "" {
+			result = append(result, k+":"+v)
+		} else {
+			result = append(result, k)
+		}
+	}
+	return result
 }
 
 // IsMounted checks whether the provided path is present in the mount table.

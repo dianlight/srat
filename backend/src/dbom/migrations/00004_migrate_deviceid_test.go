@@ -83,7 +83,7 @@ func TestUp00004UpdatesDeviceIDWhenSymlinkMatches(t *testing.T) {
 		WillReturnRows(rows)
 
 	mock.ExpectExec("UPDATE mount_point_paths SET device_id = \\$1 WHERE path = \\$2").
-		WithArgs("by-id-disk0", "/mnt/a").
+		WithArgs("disk0", "/mnt/a").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	originalReadDir := readDirFunc

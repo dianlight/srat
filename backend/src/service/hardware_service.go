@@ -107,7 +107,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		return nil, errors.New(errMsg)
 	}
 
-	tlog.TraceContext(h.ctx, "Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
+	tlog.DebugContext(h.ctx, "Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
 	for i, drive := range *hwser.JSON200.Data.Drives {
 		if drive.Filesystems == nil || len(*drive.Filesystems) == 0 {
 			tlog.DebugContext(h.ctx, "Skipping drive with no filesystems", "drive_index", i, "drive_id", drive.Id)
@@ -152,7 +152,8 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 						diskDto.SmartInfo = smartInfo
 					}
 					continue
-				} // Match Partitions
+				}
+				// Match Partitions
 				if diskDto.Partitions != nil {
 					for pid, part := range *diskDto.Partitions {
 						partition := part // copy
@@ -196,6 +197,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 			tlog.WarnContext(h.ctx, "Skipping disk with missing ID after conversion", "drive_index", i)
 			continue
 		}
+		tlog.DebugContext(h.ctx, "Adding disk DTO to result map", "disk_id", *diskDto.Id)
 		ret[*diskDto.Id] = diskDto
 	}
 

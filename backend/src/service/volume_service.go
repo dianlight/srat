@@ -867,9 +867,13 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 	for _, prtstate := range mountInfos {
 		iw := osutil.IsWritable(prtstate.MountPoint)
 		if mountPoint, ok := mountData[prtstate.MountPoint]; ok {
+			slog.DebugContext(ctx, "Found existing mount point in DB for partition, updating state", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "is_mounted", mountPoint.IsMounted)
 			oldstate := mountPoint.IsMounted
 
-			mountPoint.IsMounted = true
+			mountPoint.IsMounted, errS = osutil.IsMounted(prtstate.MountPoint)
+			if errS != nil {
+				slog.WarnContext(ctx, "Failed to verify mount status from OS for mount point, keeping existing state", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", errS)
+			}
 			mountPoint.Root = prtstate.Root
 			mountPoint.RefreshVersion = self.refreshVersion
 			mountPoint.IsWriteSupported = pointer.Bool(iw)
@@ -882,7 +886,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
 				continue
 			}
-			if !oldstate {
+			if oldstate != mountPoint.IsMounted {
 				self.eventBus.EmitMountPoint(events.MountPointEvent{
 					Event:      events.Event{Type: events.EventTypes.UPDATE},
 					MountPoint: mountPoint,

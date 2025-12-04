@@ -63,7 +63,7 @@ func deviceToDeviceId(source string) (string, error) {
 				}
 				//slog.Debug("Resolved symlink", "link", linkPath, "resolved", resolved, "source", source)
 				if resolved == source || linkPath == source {
-					deviceID = "by-id-" + entry.Name()
+					deviceID = entry.Name()
 					break
 				}
 			}

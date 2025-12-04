@@ -176,7 +176,7 @@ func filesystemUUIDToPartitionID(uuid *string) (*string, error) {
 			}
 			// Check if this ID symlink points to the same device
 			if resolvedID == devicePath {
-				x := "by-id-" + entry.Name()
+				x := entry.Name()
 				return &x, nil
 			}
 		}

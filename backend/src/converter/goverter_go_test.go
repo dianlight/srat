@@ -71,7 +71,7 @@ func (s *GoverterSuite) TestDeviceToDeviceId_MatchByResolved() {
 	id, err := deviceToDeviceId("/dev/special0")
 
 	s.Require().NoError(err)
-	s.Equal("by-id-disk-ABC", id)
+	s.Equal("disk-ABC", id)
 }
 
 func (s *GoverterSuite) TestDeviceToDeviceId_NoMatchReturnsSource() {
@@ -102,7 +102,7 @@ func (s *GoverterSuite) TestMountPathToDeviceId_DirectMatch() {
 
 	id, err := mountPathToDeviceId("/mnt/test")
 	s.Require().NoError(err)
-	s.Equal("by-id-disk-ABC", id)
+	s.Equal("disk-ABC", id)
 }
 
 func (s *GoverterSuite) TestFalseConsts() {

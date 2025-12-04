@@ -180,6 +180,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 	// GooseDBMigration
 	goose.SetBaseFS(migrations)
 	goose.WithSlog(slog.Default())
+	goose.WithVerbose(false)
 
 	if err := goose.SetDialect("sqlite3"); err != nil {
 		panic(err)
