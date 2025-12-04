@@ -9,12 +9,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os/exec"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dianlight/tlog"
 )
 
 // SMART attribute IDs for SSD detection
@@ -35,7 +36,7 @@ func WithSmartctlPath(path string) ClientOption {
 }
 
 // WithLogHandler sets a custom log handler for the client
-func WithLogHandler(handler *slog.Logger) ClientOption {
+func WithLogHandler(handler *tlog.Logger) ClientOption {
 	return func(c *Client) {
 		c.logHandler = handler
 	}
@@ -57,7 +58,7 @@ func WithContext(ctx context.Context) ClientOption {
 
 // Commander interface for executing commands
 type Commander interface {
-	Command(ctx context.Context, logger *slog.Logger, name string, arg ...string) Cmd
+	Command(ctx context.Context, logger *tlog.Logger, name string, arg ...string) Cmd
 }
 
 // Cmd interface for command execution
@@ -69,7 +70,7 @@ type Cmd interface {
 // execCommander implements Commander using os/exec
 type execCommander struct{}
 
-func (e execCommander) Command(ctx context.Context, logger *slog.Logger, name string, arg ...string) Cmd {
+func (e execCommander) Command(ctx context.Context, logger *tlog.Logger, name string, arg ...string) Cmd {
 	logger.DebugContext(ctx, "Executing command", "name", name, "args", arg)
 	return exec.CommandContext(ctx, name, arg...)
 }
@@ -311,21 +312,23 @@ type Client struct {
 	commander          Commander
 	deviceTypeCache    map[string]string // Maps device path to device type (e.g., "sat")
 	deviceTypeCacheMux sync.RWMutex      // Protects deviceTypeCache
-	logHandler         *slog.Logger      // Logger for the client
+	logHandler         *tlog.Logger      // Logger for the client
 	defaultCtx         context.Context   // Default context to use when nil is passed
 }
 
 // NewClient creates a new smartmontools client with optional configuration.
 // If no smartctl path is provided, it will search for smartctl in PATH.
-// If no log handler is provided, it will use slog.Default() for debug logging.
+// If no log handler is provided, it will use a tlog debug-level logger for diagnostic output.
 // If no context is provided, context.Background() will be used as the default.
 func NewClient(opts ...ClientOption) (SmartClient, error) {
 	// Create client with defaults
 	client := &Client{
 		commander:       execCommander{},
 		deviceTypeCache: loadDrivedbAddendum(),
-		logHandler:      slog.Default(),
-		defaultCtx:      context.Background(),
+		// Use a debug-level logger by default so library emits diagnostic output.
+		// Use NewLoggerWithLevel to obtain a *tlog.Logger (tlog.WithLevel returns *slog.Logger).
+		logHandler: tlog.NewLoggerWithLevel(tlog.LevelDebug),
+		defaultCtx: context.Background(),
 	}
 
 	// Track if commander was set via options (for testing)
@@ -456,7 +459,7 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 			var smartInfo SMARTInfo
 			if json.Unmarshal(output, &smartInfo) == nil {
 				// Valid JSON, treat error as warning
-				//slog.Debug("smartctl returned error but provided valid JSON output", "error", err)
+				//c.logHandler.DebugContext(ctx, "smartctl returned error but provided valid JSON output", "error", err)
 				// Check for error messages in the output
 				if smartInfo.Smartctl != nil && len(smartInfo.Smartctl.Messages) > 0 {
 					for _, msg := range smartInfo.Smartctl.Messages {
@@ -474,12 +477,12 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 						if usbBridgeID != "" {
 							if knownType, ok := c.getCachedDeviceType(usbBridgeID); ok {
 								deviceType = knownType
-								slog.InfoContext(ctx, "Found USB bridge in drivedb", "usbBridgeID", usbBridgeID, "deviceType", deviceType)
+								c.logHandler.InfoContext(ctx, "Found USB bridge in drivedb", "usbBridgeID", usbBridgeID, "deviceType", deviceType)
 							}
 						} // If not in drivedb, default to sat
 						if deviceType == "" {
 							deviceType = "sat"
-							slog.InfoContext(ctx, "Unknown USB bridge detected, retrying with -d sat", "devicePath", devicePath)
+							c.logHandler.InfoContext(ctx, "Unknown USB bridge detected, retrying with -d sat", "devicePath", devicePath)
 						}
 
 						// Retry with the determined device type and --nocheck=standby
@@ -511,14 +514,14 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 								if retrySmartInfo.Device.Name != "" {
 									// Success! Cache the device type for this device path
 									c.setCachedDeviceType(devicePath, deviceType)
-									slog.InfoContext(ctx, "Successfully accessed device", "devicePath", devicePath, "deviceType", deviceType)
+									c.logHandler.InfoContext(ctx, "Successfully accessed device", "devicePath", devicePath, "deviceType", deviceType)
 									retrySmartInfo.DiskType = determineDiskType(&retrySmartInfo)
 									return &retrySmartInfo, nil
 								}
 							}
 						}
 						// If retry didn't work, log the failure
-						slog.DebugContext(ctx, "Retry with device type failed", "devicePath", devicePath, "deviceType", deviceType, "error", retryErr)
+						c.logHandler.DebugContext(ctx, "Retry with device type failed", "devicePath", devicePath, "deviceType", deviceType, "error", retryErr)
 					}
 				}
 

@@ -8,9 +8,10 @@ package smartmontools
 import (
 	_ "embed"
 	"fmt"
-	"log/slog"
 	"regexp"
 	"strings"
+
+	"github.com/dianlight/tlog"
 )
 
 //go:embed drivedb.h
@@ -98,7 +99,7 @@ func loadDrivedbAddendum() map[string]string {
 		}
 	}
 
-	slog.Debug("Loaded drivedb from smartmontools drivedb.h", "entries", len(cache))
+	tlog.Debug("Loaded drivedb from smartmontools drivedb.h", "entries", len(cache))
 	return cache
 }
 

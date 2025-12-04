@@ -120,6 +120,9 @@ update:
 	go -C $(SRC_DIRS) mod vendor && \
 	make patch format
 
+.PHONY: show_update
+show_update:
+	go -C $(SRC_DIRS) list -mod=mod -m -u all 
 
 .PHONY: examples
 examples: example_tlog

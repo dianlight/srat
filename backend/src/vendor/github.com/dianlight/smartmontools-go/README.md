@@ -143,20 +143,64 @@ if err != nil {
 }
 ```
 
-### Custom Logging
+### Logging
+
+The library uses the [`tlog`](https://github.com/dianlight/tlog) package for structured logging.
+
+Default behavior:
+
+* When you call `smartmontools.NewClient()` without a `WithLogHandler` option, the client creates a debug-level `*tlog.Logger` (via `tlog.NewLoggerWithLevel(tlog.LevelDebug)`) so that diagnostic output (command execution, fallbacks, warnings) is available.
+* You can adjust the global log level at runtime using `tlog.SetLevelFromString("info")` or `tlog.SetLevel(tlog.LevelInfo)`. Levels include: `trace`, `debug`, `info`, `notice`, `warn`, `error`, `fatal`.
+* All internal logging is key/value structured. Expensive debug operations are guarded; if you perform your own heavy debug logging, first check with `tlog.IsLevelEnabled(tlog.LevelDebug)`.
+
+Override the logger for a specific client instance:
 
 ```go
-// Configure custom logger for debug output
-import "log/slog"
+import (
+    "context"
+    "log"
+    "github.com/dianlight/smartmontools-go"
+    "github.com/dianlight/tlog"
+)
 
-logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-    Level: slog.LevelDebug,
-}))
+func main() {
+    // Create a custom logger which only logs WARN and above.
+    customLogger := tlog.NewLoggerWithLevel(tlog.LevelWarn)
 
-client, err := smartmontools.NewClient(smartmontools.WithLogHandler(logger))
-if err != nil {
-    log.Fatalf("Failed to create client: %v", err)
+    client, err := smartmontools.NewClient(
+        smartmontools.WithLogHandler(customLogger),
+    )
+    if err != nil {
+        log.Fatalf("Failed to create client: %v", err)
+    }
+
+    // Example global level change (applies to package-level functions too)
+    if err := tlog.SetLevelFromString("info"); err != nil {
+        tlog.Warn("Failed to set log level", "error", err)
+    }
+
+    devices, err := client.ScanDevices(context.Background())
+    if err != nil {
+        tlog.Error("Scan failed", "error", err)
+        return
+    }
+    tlog.Info("Scan complete", "count", len(devices))
 }
+```
+
+If you need a logger instance with a different minimum level temporarily (without changing globals), use:
+
+```go
+traceLogger := tlog.WithLevel(tlog.LevelTrace) // returns *slog.Logger for ad-hoc usage
+traceLogger.Log(context.Background(), tlog.LevelTrace, "Detailed trace")
+```
+
+For code interacting with the client, prefer passing a `*tlog.Logger` via `WithLogHandler`. For ad-hoc logging outside the client lifecycle, use the package-level helpers (`tlog.Info`, `tlog.DebugContext`, etc.).
+
+Graceful shutdown of callback processor (if you registered callbacks):
+
+```go
+defer tlog.Shutdown() // Ensures queued callback events are processed before exit
 ```
 
 ### Custom Default Context
