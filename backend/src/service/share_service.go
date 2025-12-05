@@ -31,11 +31,13 @@ type ShareServiceInterface interface {
 	SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E)
 	//NotifyClient()
 	VerifyShare(share *dto.SharedResource) errors.E
+	SetSupervisorService(s SupervisorServiceInterface)
 }
 
 type ShareService struct {
-	ctx context.Context
-	db  *gorm.DB
+	ctx                context.Context
+	db                 *gorm.DB
+	supervisor_service SupervisorServiceInterface
 	//exported_share_repo repository.ExportedShareRepositoryInterface
 	user_service UserServiceInterface
 	//mount_repo          repository.MountPointPathRepositoryInterface
@@ -49,6 +51,7 @@ type ShareServiceParams struct {
 	fx.In
 	Ctx context.Context
 	Db  *gorm.DB
+	//	SupervisorService SupervisorServiceInterface `optional:"true"`
 	//ExportedShareRepo repository.ExportedShareRepositoryInterface
 	UserService UserServiceInterface
 	//MountRepo         repository.MountPointPathRepositoryInterface
@@ -61,6 +64,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		//exported_share_repo: in.ExportedShareRepo,
 		user_service: in.UserService,
 		//mount_repo:          in.MountRepo,
+		//		supervisor_service: in.SupervisorService,
 		ctx:              in.Ctx,
 		db:               in.Db,
 		eventBus:         in.EventBus,
@@ -76,7 +80,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 				tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
 				return nil
 			}
-			return err // This will propagate ErrorShareNotFound
+			return err
 		}
 		if share == nil {
 			tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
@@ -354,6 +358,14 @@ func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.
 		return nil, errors.Wrap(err, "failed to save share")
 	}
 
+	if *share.Disabled && (share.Usage == dto.UsageAsMedia || share.Usage == dto.UsageAsBackup || share.Usage == dto.UsageAsShare) {
+		// Umount the volume if the share is being disabled and is of type media/backup/share
+		errE := s.supervisor_service.NetworkUnmountShare(s.ctx, share.Name)
+		if errE != nil {
+			slog.Error("Failed to unmount volume for disabled share", "share", share.Name, "error", errE)
+		}
+	}
+
 	var conv converter.DtoToDbomConverterImpl
 	dtoShare, errS := conv.ExportedShareToSharedResource(share)
 	if errS != nil {
@@ -465,4 +477,8 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 	}
 	share.Status.IsValid = true
 	return nil
+}
+
+func (s *ShareService) SetSupervisorService(svc SupervisorServiceInterface) {
+	s.supervisor_service = svc
 }

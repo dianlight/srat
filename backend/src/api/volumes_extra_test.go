@@ -55,7 +55,7 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 
 	mock.When(suite.mockVolumeSvc.PathHashToPath(mock.Any[string]())).ThenReturn(mountPath, nil)
 	mock.When(suite.mockShareSvc.SetShareFromPathEnabled(mock.Any[string](), mock.Any[bool]())).ThenReturn(nil, nil)
-	mock.When(suite.mockVolumeSvc.UnmountVolume(mock.Any[string](), mock.Any[bool](), mock.Any[bool]())).ThenReturn(nil)
+	mock.When(suite.mockVolumeSvc.UnmountVolume(mock.Any[string](), mock.Any[bool]())).ThenReturn(nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterVolumeHandlers(apiInst)
@@ -64,8 +64,8 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 	suite.Require().Equal(http.StatusNoContent, resp.Code)
 
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mock.Any[string]())
-	mock.Verify(suite.mockShareSvc, matchers.Times(1)).SetShareFromPathEnabled(mock.Any[string](), mock.Any[bool]())
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).UnmountVolume(mock.Any[string](), mock.Any[bool](), mock.Any[bool]())
+	//mock.Verify(suite.mockShareSvc, matchers.Times(1)).SetShareFromPathEnabled(mock.Any[string](), mock.Any[bool]())
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).UnmountVolume(mock.Any[string](), mock.Any[bool]())
 }
 
 /*

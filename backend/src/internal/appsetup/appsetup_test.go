@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
@@ -19,37 +20,55 @@ import (
 	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/service"
-	"github.com/prometheus/procfs"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gitlab.com/tozd/go/errors"
+	"github.com/ovechkin-dm/mockio/v2/matchers"
+	"github.com/ovechkin-dm/mockio/v2/mock"
+	"github.com/stretchr/testify/suite"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 )
 
-func TestNewFXLoggerOption(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	app := fx.New(
-		fx.Provide(func() *slog.Logger { return logger }),
-		NewFXLoggerOption(),
-	)
-
-	require.NoError(t, app.Err())
+type AppSetupSuite struct {
+	suite.Suite
+	params BaseAppParams
+	logger *slog.Logger
 }
 
-func TestProvideHAClientDependencies(t *testing.T) {
+func (suite *AppSetupSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	params := BaseAppParams{
+	suite.params = BaseAppParams{
 		Ctx:      ctx,
 		CancelFn: cancel,
 		StaticConfig: &dto.ContextState{
 			SupervisorURL:   "http://example.org",
 			SupervisorToken: "token",
+			DatabasePath:    filepath.Join(suite.T().TempDir(), "test.db"),
 		},
 	}
+	suite.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
+func (suite *AppSetupSuite) TearDownTest() {
+	if suite.params.CancelFn != nil {
+		suite.params.CancelFn()
+	}
+}
+
+func TestAppSetupSuite(t *testing.T) {
+	suite.Run(t, new(AppSetupSuite))
+}
+
+func (suite *AppSetupSuite) TestNewFXLoggerOption() {
+	app := fxtest.New(
+		suite.T(),
+		fx.Provide(func() *slog.Logger { return suite.logger }),
+		NewFXLoggerOption(),
+	)
+
+	app.RequireStart()
+	app.RequireStop()
+}
+
+func (suite *AppSetupSuite) TestProvideHAClientDependencies() {
 	var (
 		addonsClient     addons.ClientWithResponsesInterface
 		hardwareClient   hardware.ClientWithResponsesInterface
@@ -62,8 +81,9 @@ func TestProvideHAClientDependencies(t *testing.T) {
 		websocketClient  websocket.ClientInterface
 	)
 
-	app := fx.New(
-		ProvideHAClientDependencies(params),
+	app := fxtest.New(
+		suite.T(),
+		ProvideHAClientDependencies(suite.params),
 		fx.Populate(
 			&addonsClient,
 			&hardwareClient,
@@ -76,111 +96,69 @@ func TestProvideHAClientDependencies(t *testing.T) {
 			&websocketClient,
 		),
 	)
-	require.NoError(t, app.Err())
-	require.NoError(t, app.Start(context.Background()))
-	t.Cleanup(func() { _ = app.Stop(context.Background()) })
+	app.RequireStart()
+	suite.T().Cleanup(func() { app.RequireStop() })
 
-	require.NotNil(t, addonsClient)
-	require.NotNil(t, hardwareClient)
-	require.NotNil(t, mountClient)
-	require.NotNil(t, hostClient)
-	require.NotNil(t, resolutionClient)
-	require.NotNil(t, coreAPIClient)
-	require.NotNil(t, rootClient)
-	require.NotNil(t, ingressClient)
+	suite.Require().NotNil(addonsClient)
+	suite.Require().NotNil(hardwareClient)
+	suite.Require().NotNil(mountClient)
+	suite.Require().NotNil(hostClient)
+	suite.Require().NotNil(resolutionClient)
+	suite.Require().NotNil(coreAPIClient)
+	suite.Require().NotNil(rootClient)
+	suite.Require().NotNil(ingressClient)
 	if client, ok := addonsClient.(*addons.ClientWithResponses); ok {
 		if core, ok := client.ClientInterface.(*addons.Client); ok {
-			assert.Equal(t, "http://example.org/", core.Server)
+			suite.Equal("http://example.org/", core.Server)
 		} else {
-			t.Fatalf("unexpected addons client interface type %T", client.ClientInterface)
+			suite.T().Fatalf("unexpected addons client interface type %T", client.ClientInterface)
 		}
 	} else {
-		t.Fatalf("unexpected addons client type %T", addonsClient)
+		suite.T().Fatalf("unexpected addons client type %T", addonsClient)
 	}
 
-	require.NotNil(t, websocketClient)
+	suite.Require().NotNil(websocketClient)
 }
 
-func TestProvideCoreDependenciesReturnsOption(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	params := BaseAppParams{
-		Ctx:      ctx,
-		CancelFn: cancel,
-		StaticConfig: &dto.ContextState{
-			DatabasePath: "file::memory:?cache=shared",
-		},
-	}
-
-	option := ProvideCoreDependencies(params)
-	require.NotNil(t, option)
+func (suite *AppSetupSuite) TestProvideCoreDependenciesReturnsOption() {
+	option := ProvideCoreDependencies(suite.params)
+	suite.Require().NotNil(option)
 }
 
-type shareServiceStub struct{}
+func (suite *AppSetupSuite) TestProvideCyclicDependencyWorkaroundOption() {
+	var shareService service.ShareServiceInterface
+	var supervisorService service.SupervisorServiceInterface
 
-func (shareServiceStub) SaveAll(*[]dto.SharedResource) errors.E          { return nil }
-func (shareServiceStub) ListShares() ([]dto.SharedResource, errors.E)    { return nil, nil }
-func (shareServiceStub) GetShare(string) (*dto.SharedResource, errors.E) { return nil, nil }
-func (shareServiceStub) CreateShare(dto.SharedResource) (*dto.SharedResource, errors.E) {
-	return nil, nil
-}
-func (shareServiceStub) UpdateShare(string, dto.SharedResource) (*dto.SharedResource, errors.E) {
-	return nil, nil
-}
-func (shareServiceStub) DeleteShare(string) errors.E                             { return nil }
-func (shareServiceStub) DisableShare(string) (*dto.SharedResource, errors.E)     { return nil, nil }
-func (shareServiceStub) EnableShare(string) (*dto.SharedResource, errors.E)      { return nil, nil }
-func (shareServiceStub) GetShareFromPath(string) (*dto.SharedResource, errors.E) { return nil, nil }
-func (shareServiceStub) SetShareFromPathEnabled(string, bool) (*dto.SharedResource, errors.E) {
-	return nil, nil
-}
-func (shareServiceStub) NotifyClient()                            {}
-func (shareServiceStub) VerifyShare(*dto.SharedResource) errors.E { return nil }
-
-type volumeServiceStub struct{}
-
-func (volumeServiceStub) MountVolume(*dto.MountPointData) errors.E  { return nil }
-func (volumeServiceStub) UnmountVolume(string, bool, bool) errors.E { return nil }
-func (volumeServiceStub) GetVolumesData() []*dto.Disk               { return []*dto.Disk{} }
-func (volumeServiceStub) PathHashToPath(string) (string, errors.E)  { return "", nil }
-
-// func (volumeServiceStub) EjectDisk(string) error                    { return nil }
-func (volumeServiceStub) PatchMountPointSettings(string, dto.MountPointData) (*dto.MountPointData, errors.E) {
-	return nil, nil
-}
-
-// func (volumeServiceStub) NotifyClient()                                               {}
-func (volumeServiceStub) CreateAutomountFailureNotification(string, string, errors.E) {}
-func (volumeServiceStub) CreateUnmountedPartitionNotification(string, string)         {}
-func (volumeServiceStub) DismissAutomountNotification(string, string)                 {}
-func (volumeServiceStub) CheckUnmountedAutomountPartitions() errors.E                 { return nil }
-func (volumeServiceStub) MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error))  {}
-func (volumeServiceStub) CreateBlockDevice(string) error                              { return nil }
-func (volumeServiceStub) GetDevicePathByDeviceID(string) (string, errors.E)           { return "", nil }
-
-func TestProvideCyclicDependencyWorkaroundOption(t *testing.T) {
-	app := fx.New(
-		fx.Provide(func() service.ShareServiceInterface { return shareServiceStub{} }),
-		fx.Provide(func() service.VolumeServiceInterface { return volumeServiceStub{} }),
+	app := fxtest.New(
+		suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			mock.Mock[service.ShareServiceInterface],
+			mock.Mock[service.SupervisorServiceInterface],
+		),
 		ProvideCyclicDependencyWorkaroundOption(),
+		fx.Populate(&shareService, &supervisorService),
 	)
-	require.NoError(t, app.Err())
+
+	app.RequireStart()
+	app.RequireStop()
+
+	//mock.Verify(shareService, matchers.Times(1)).SetSupervisorService(supervisorService)
 }
 
-func TestProvideFrontendOption(t *testing.T) {
+func (suite *AppSetupSuite) TestProvideFrontendOption() {
 	original := internal.Frontend
 	internal.Frontend = nil
-	t.Cleanup(func() { internal.Frontend = original })
+	suite.T().Cleanup(func() { internal.Frontend = original })
 
 	var fs http.FileSystem
-	app := fx.New(
+	app := fxtest.New(
+		suite.T(),
 		ProvideFrontendOption(),
 		fx.Populate(&fs),
 	)
-	require.NoError(t, app.Err())
-	require.NoError(t, app.Start(context.Background()))
-	t.Cleanup(func() { _ = app.Stop(context.Background()) })
 
-	require.NotNil(t, fs)
+	app.RequireStart()
+	suite.Require().NotNil(fs)
+	app.RequireStop()
 }

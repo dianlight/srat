@@ -201,7 +201,7 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	suite.Require().Len(disks, 2, "Expected GetVolumesData to return 2 disks")
 
 	defer func() {
-		err := suite.volumeService.UnmountVolume(mountPath, true, false) // Cleanup
+		err := suite.volumeService.UnmountVolume(mountPath, true) // Cleanup
 		suite.Require().Nil(err, "Expected no error on unmount")
 		loop.ClearFile(device)
 	}()
@@ -287,7 +287,7 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_NotInCache() {
 	// UnmountVolume uses cache first, then falls back to path-only unmount
 	// No database calls should be made unless the partition info exists in cache
 
-	err := suite.volumeService.UnmountVolume(mountPath, false, false)
+	err := suite.volumeService.UnmountVolume(mountPath, false)
 	suite.Require().Nil(err, "Expected no error when unmounting path not in cache")
 }
 
@@ -675,7 +675,7 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 	suite.mockMountOps(nil, nil, func(target string, force, lazy bool) error { return nil })
 
 	// Perform unmount
-	err := suite.volumeService.UnmountVolume(mountPath, true, false)
+	err := suite.volumeService.UnmountVolume(mountPath, true)
 	suite.Require().NoError(err)
 
 	// Validate state reflects unmounted

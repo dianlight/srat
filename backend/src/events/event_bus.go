@@ -204,10 +204,10 @@ type EventBusInterface interface {
 	OnPartition(handler func(context.Context, PartitionEvent) errors.E) func()
 
 	// Share events
-	EmitShare(event ShareEvent)
+	EmitShare(event ShareEvent) errors.E
 	OnShare(handler func(context.Context, ShareEvent) errors.E) func()
 	// Mount point events
-	EmitMountPoint(event MountPointEvent)
+	EmitMountPoint(event MountPointEvent) errors.E
 	OnMountPoint(handler func(context.Context, MountPointEvent) errors.E) func()
 
 	// User events
@@ -294,7 +294,7 @@ func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func
 	}
 }
 
-func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T) {
+func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T) errors.E {
 	// Add UUID to context if not already present
 	ctx = ContextWithEventUUID(ctx)
 
@@ -308,7 +308,9 @@ func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T
 	if err := signal.TryEmit(ctx, event); err != nil {
 		// We log at warn level to avoid noisy error logs for expected cancellations
 		tlog.WarnContext(ctx, "Event emission error", append([]any{"event", formatWithoutPointerAddresses(event), "error", err}, tlog.WithCaller(1)...)...)
+		return errors.WithStack(err)
 	}
+	return nil
 }
 
 // Disk event methods
@@ -348,8 +350,8 @@ func (eb *EventBus) OnPartition(handler func(context.Context, PartitionEvent) er
 }
 
 // Share event methods
-func (eb *EventBus) EmitShare(event ShareEvent) {
-	emitEvent(eb.share, eb.ctx, event)
+func (eb *EventBus) EmitShare(event ShareEvent) errors.E {
+	return emitEvent(eb.share, eb.ctx, event)
 }
 
 func (eb *EventBus) OnShare(handler func(context.Context, ShareEvent) errors.E) func() {
@@ -357,8 +359,8 @@ func (eb *EventBus) OnShare(handler func(context.Context, ShareEvent) errors.E) 
 }
 
 // Mount point event methods
-func (eb *EventBus) EmitMountPoint(event MountPointEvent) {
-	emitEvent(eb.mountPoint, eb.ctx, event)
+func (eb *EventBus) EmitMountPoint(event MountPointEvent) errors.E {
+	return emitEvent(eb.mountPoint, eb.ctx, event)
 }
 
 func (eb *EventBus) OnMountPoint(handler func(context.Context, MountPointEvent) errors.E) func() {

@@ -36,7 +36,7 @@ import (
 
 type VolumeServiceInterface interface {
 	MountVolume(md *dto.MountPointData) errors.E
-	UnmountVolume(id string, force bool, lazy bool) errors.E
+	UnmountVolume(id string, force bool) errors.E
 	GetVolumesData() []*dto.Disk
 	PathHashToPath(pathhash string) (string, errors.E)
 	GetDevicePathByDeviceID(deviceID string) (string, errors.E)
@@ -401,29 +401,41 @@ func (ms *VolumeService) PathHashToPath(pathhash string) (string, errors.E) {
 	return "", errors.New("PathHash not found")
 }
 
-func (ms *VolumeService) UnmountVolume(path string, force bool, lazy bool) errors.E {
+func (ms *VolumeService) UnmountVolume(path string, force bool) errors.E {
 	// Look up mount point data from in-memory cache first
 	md, ok := ms.disks.GetMountPointByPath(path)
-	if !ok {
-		slog.WarnContext(ms.ctx, "Mount path not found in cache, attempting unmount anyway", "path", path)
+	if ok && md.Share != nil && md.Share.Status.IsHAMounted {
+		slog.DebugContext(ms.ctx, "Found mount point as HAMounted", "path", path)
+		md.IsInvalid = true
+		ms.eventBus.EmitShare(events.ShareEvent{
+			Event: events.Event{Type: events.EventTypes.REMOVE},
+			Share: md.Share,
+		})
+	} else if !ok {
+		// Fallback to DB lookup if not found in cache
+		slog.DebugContext(ms.ctx, "Mount point not found in cache, looking up in DB", "path", path)
+		md = &dto.MountPointData{Path: path}
 	}
+	return ms.unmountVolume(md, force)
+}
 
-	slog.DebugContext(ms.ctx, "Attempting to unmount volume", "path", path, "force", force, "lazy", lazy)
-	unmountErr := errors.WithStack(ms.unmountFunc(path, force, lazy))
+func (ms *VolumeService) unmountVolume(md *dto.MountPointData, force bool) errors.E {
+	slog.DebugContext(ms.ctx, "Attempting to unmount volume", "path", md.Path, "force", force)
+	unmountErr := errors.WithStack(ms.unmountFunc(md.Path, force, !force))
 	if unmountErr != nil {
-		slog.ErrorContext(ms.ctx, "Failed to unmount volume", "path", path, "err", unmountErr)
-		return errors.WithDetails(dto.ErrorUnmountFail, "Detail", unmountErr.Error(), "Path", path, "Error", unmountErr)
+		slog.ErrorContext(ms.ctx, "Failed to unmount volume", "path", md.Path, "err", unmountErr)
+		return errors.WithDetails(dto.ErrorUnmountFail, "Detail", unmountErr.Error(), "Path", md.Path, "Error", unmountErr)
 	}
 
-	slog.InfoContext(ms.ctx, "Successfully unmounted volume", "path", path)
+	slog.InfoContext(ms.ctx, "Successfully unmounted volume", "path", md.Path)
 
-	if err := os.Remove(path); err != nil {
-		slog.WarnContext(ms.ctx, "Failed to remove mount point directory", "path", path, "err", err)
+	if err := os.Remove(md.Path); err != nil {
+		slog.WarnContext(ms.ctx, "Failed to remove mount point directory", "path", md.Path, "err", err)
 	} else {
-		slog.DebugContext(ms.ctx, "Removed mount point directory", "path", path)
+		slog.DebugContext(ms.ctx, "Removed mount point directory", "path", md.Path)
 	}
 	// Unmount succeeded
-	if md != nil {
+	if md != nil && md.Partition != nil && md.Partition.DiskId != nil && md.Partition.Id != nil {
 		md.IsMounted = false
 		ms.eventBus.EmitMountPoint(events.MountPointEvent{
 			Event:      events.Event{Type: events.EventTypes.UPDATE},

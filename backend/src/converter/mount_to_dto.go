@@ -5,7 +5,6 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/u-root/u-root/pkg/mount"
-	"github.com/xorcare/pointer"
 )
 
 // goverter:converter
@@ -17,9 +16,9 @@ import (
 type MountToDto interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:ignore Share InvalidError Warnings RefreshVersion
+	// goverter:ignore Share InvalidError Warnings RefreshVersion IsToMountAtStartup Type
 	// goverter:map Data CustomFlags | stringToMountFlags
-	// goverter:map Device Type | pathToType
+	// g.overter:map Device Type | pathToType
 	// goverter:map Device DeviceId | deviceToDeviceId
 	// goverter:map Path DiskLabel | DiskLabelFromPath
 	// goverter:map Path DiskSerial | DiskSerialFromPath
@@ -32,7 +31,7 @@ type MountToDto interface {
 	// goverter:map Device Partition | partitionFromDevice
 	// goverter:map FSType TimeMachineSupport | TimeMachineSupportFromFS
 	// goverter:map Flags Flags | uintptrToMountFlags
-	// goverter:map Path IsToMountAtStartup | isToMountAtStartupFromPath
+	// g.overter:map Path IsToMountAtStartup | isToMountAtStartupFromPath
 	// goverter:context disks
 	MountToMountPointData(source *mount.MountPoint, target *dto.MountPointData, disks *dto.DiskMap) error
 }
@@ -56,6 +55,7 @@ func partitionFromDevice(device string, disks *dto.DiskMap) *dto.Partition {
 	return nil
 }
 
+/*
 // goverter:context disks
 func isToMountAtStartupFromPath(path string, disks *dto.DiskMap) *bool {
 	mp, ok := disks.GetMountPointByPath(path)
@@ -67,6 +67,7 @@ func isToMountAtStartupFromPath(path string, disks *dto.DiskMap) *bool {
 	}
 	return pointer.Bool(false)
 }
+*/
 
 // goverter:context disks
 func rootFromPath(path string, disks *dto.DiskMap) string {

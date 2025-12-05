@@ -32,9 +32,6 @@ func (c *MountToDtoImpl) MountToMountPointData(source *mount.MountPoint, target 
 		if source.Path != "" {
 			target.Root = rootFromPath(source.Path, context)
 		}
-		if source.Device != "" {
-			target.Type = pathToType(source.Device)
-		}
 		if source.FSType != "" {
 			pString := source.FSType
 			target.FSType = &pString
@@ -76,9 +73,6 @@ func (c *MountToDtoImpl) MountToMountPointData(source *mount.MountPoint, target 
 				return err
 			}
 			target.IsInvalid = xbool2
-		}
-		if source.Path != "" {
-			target.IsToMountAtStartup = isToMountAtStartupFromPath(source.Path, context)
 		}
 		if source.Path != "" {
 			target.IsWriteSupported = isWriteSupported(source.Path)

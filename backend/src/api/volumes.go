@@ -97,7 +97,7 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 	MountPathHash string `path:"mount_path_hash"`
 	Force         bool   `query:"force" default:"false" doc:"Force umount operation"`
-	Lazy          bool   `query:"lazy" default:"false" doc:"Lazy umount operation"`
+	// Lazy          bool   `query:"lazy" default:"false" doc:"Lazy umount operation"`
 }) (*struct{}, error) {
 
 	mountPath, err := self.vservice.PathHashToPath(input.MountPathHash)
@@ -105,13 +105,14 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
 	}
 
-	// Disable all share services for this mount point
-	_, errE := self.shareService.SetShareFromPathEnabled(mountPath, false)
-	if errE != nil && !errors.Is(errE, dto.ErrorShareNotFound) {
-		return nil, huma.Error500InternalServerError("Failed to disable share for mount point", errE)
-	}
-
-	err = self.vservice.UnmountVolume(mountPath, input.Force, input.Lazy && !input.Force)
+	/*
+		// Disable all share services for this mount point
+		_, errE := self.shareService.SetShareFromPathEnabled(mountPath, false)
+		if errE != nil && !errors.Is(errE, dto.ErrorShareNotFound) {
+			return nil, huma.Error500InternalServerError("Failed to disable share for mount point", errE)
+		}
+	*/
+	err = self.vservice.UnmountVolume(mountPath, input.Force)
 	if err != nil {
 		return nil, huma.Error406NotAcceptable(fmt.Sprintf("%#v", err.Details()["Detail"]), err)
 	}
