@@ -313,7 +313,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 				umountVolume({
 					mountPathHash: mountData.path_hash || "", // Use the extracted path
 					force: force,
-					lazy: true, // Consider if lazy unmount is always desired
 				})
 					.unwrap()
 					.then(() => {

@@ -1861,8 +1861,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2061,8 +2061,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2539,8 +2539,8 @@ paths:
     get:
       operationId: list-api-nics
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2586,8 +2586,8 @@ paths:
     put:
       operationId: put-api-restart
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3157,8 +3157,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3419,8 +3419,8 @@ paths:
             description: Name of the share to disable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3923,8 +3923,8 @@ paths:
     get:
       operationId: list-api-update-channels
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4237,14 +4237,6 @@ paths:
           schema:
             default: false
             description: Force umount operation
-            type: boolean
-        - description: Lazy umount operation
-          explode: false
-          in: query
-          name: lazy
-          schema:
-            default: false
-            description: Lazy umount operation
             type: boolean
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"

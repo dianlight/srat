@@ -419,7 +419,6 @@ const injectedRtkApi = api
           method: "DELETE",
           params: {
             force: queryArg.force,
-            lazy: queryArg.lazy,
           },
         }),
         invalidatesTags: ["volume"],
@@ -777,8 +776,6 @@ export type DeleteApiVolumeByMountPathHashMountApiArg = {
   mountPathHash: string;
   /** Force umount operation */
   force?: boolean;
-  /** Lazy umount operation */
-  lazy?: boolean;
 };
 export type PostApiVolumeByMountPathHashMountApiResponse = /** status 200 OK */
   | MountPointData
@@ -1022,7 +1019,6 @@ export type ProcessStatus = {
   status: string[] | null;
 };
 export type SambaProcessStatus = {
-  hdidle: ProcessStatus;
   nmbd: ProcessStatus;
   smbd: ProcessStatus;
   srat: ProcessStatus;
@@ -1258,6 +1254,7 @@ export type Partition = {
   refresh_version?: number;
   size?: number;
   system?: boolean;
+  uuid?: string;
 };
 export type Disk = {
   connection_bus?: string;
