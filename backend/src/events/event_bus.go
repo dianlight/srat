@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"database/sql/driver"
 
 	"fmt"
 	"reflect"
@@ -43,6 +44,20 @@ func writeValue(b *strings.Builder, rv reflect.Value, seen map[uintptr]bool, dep
 	if depth > maxDepth {
 		b.WriteString("<max-depth>")
 		return
+	}
+
+	// Check if rv implements database/sql/driver.Valuer interface before unwrapping
+	// But skip nil pointers to avoid panics when calling Value() on nil receivers
+	if rv.Kind() != reflect.Pointer || !rv.IsNil() {
+		if rv.CanInterface() {
+			if v, ok := rv.Interface().(driver.Valuer); ok {
+				val, err := v.Value()
+				if err == nil {
+					writeValue(b, reflect.ValueOf(val), seen, depth+1, maxDepth)
+					return
+				}
+			}
+		}
 	}
 
 	// Unwrap interfaces

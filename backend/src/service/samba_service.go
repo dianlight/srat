@@ -45,7 +45,7 @@ type SambaService struct {
 	state           *dto.ContextState
 	//	supervisor_service SupervisorServiceInterface
 	share_service ShareServiceInterface
-	share_repo    repository.ExportedShareRepositoryInterface
+	//share_repo    repository.ExportedShareRepositoryInterface
 	//	ha_ws_service      HaWsServiceInterface
 	prop_repo       repository.PropertyRepositoryInterface
 	samba_user_repo repository.SambaUserRepositoryInterface
@@ -60,11 +60,11 @@ type SambaServiceParams struct {
 	fx.In
 	//Ctx                 context.Context
 	//CtxCancel           context.CancelFunc
-	State               *dto.ContextState
-	Share_service       ShareServiceInterface
-	Prop_repo           repository.PropertyRepositoryInterface
-	Exported_share_repo repository.ExportedShareRepositoryInterface
-	Samba_user_repo     repository.SambaUserRepositoryInterface
+	State         *dto.ContextState
+	Share_service ShareServiceInterface
+	Prop_repo     repository.PropertyRepositoryInterface
+	//Exported_share_repo repository.ExportedShareRepositoryInterface
+	Samba_user_repo repository.SambaUserRepositoryInterface
 	//	HA_ws_service       HaWsServiceInterface
 	Mount_client mount.ClientWithResponsesInterface `optional:"true"`
 	//	Su                  SupervisorServiceInterface
@@ -79,7 +79,7 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 	p.state = in.State
 	p.share_service = in.Share_service
 	p.prop_repo = in.Prop_repo
-	p.share_repo = in.Exported_share_repo
+	//p.share_repo = in.Exported_share_repo
 	p.samba_user_repo = in.Samba_user_repo
 	p.mount_client = in.Mount_client
 	//	p.supervisor_service = in.Su
@@ -188,18 +188,13 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
-	shares, err := self.share_repo.All()
+	sr, err := self.share_service.ListShares()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
 
-	sr, errS := self.dbomConv.ExportedSharesToSharedResources(shares)
-	if errS != nil {
-		return tconfig, errors.WithStack(errS)
-	}
-
-	nshare := make([]dbom.ExportedShare, 0, len(*sr))
-	for _, share := range *sr {
+	nshare := make([]dbom.ExportedShare, 0, len(sr))
+	for _, share := range sr {
 		if share.Disabled != nil && *share.Disabled {
 			continue
 		}

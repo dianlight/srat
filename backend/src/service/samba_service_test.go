@@ -26,6 +26,7 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/stretchr/testify/suite"
+	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -33,7 +34,7 @@ import (
 type SambaServiceSuite struct {
 	suite.Suite
 	sambaService service.SambaServiceInterface
-	shareRepo    repository.ExportedShareRepositoryInterface
+	//shareRepo    repository.ExportedShareRepositoryInterface
 	//apictx              dto.ContextState
 	share_service   service.ShareServiceInterface
 	property_repo   repository.PropertyRepositoryInterface
@@ -123,12 +124,12 @@ func (suite *SambaServiceSuite) SetupTest() {
 			},
 			dbom.NewDB,
 			service.NewSambaService,
-			service.NewShareService,
+			mock.Mock[service.ShareServiceInterface],
 			service.NewUserService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
 			//mock.Mock[service.SupervisorServiceInterface],
-			mock.Mock[repository.ExportedShareRepositoryInterface],
+			//mock.Mock[repository.ExportedShareRepositoryInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
 			//mock.Mock[repository.MountPointPathRepositoryInterface],
@@ -142,7 +143,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 		fx.Populate(&suite.property_repo),
 		fx.Populate(&suite.share_service),
 		fx.Populate(&suite.samba_user_repo),
-		fx.Populate(&suite.shareRepo),
+		//fx.Populate(&suite.shareRepo),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
@@ -203,14 +204,14 @@ func (suite *SambaServiceSuite) setupCommonMocks() {
 		},
 	}, nil)
 
-	mock.When(suite.shareRepo.All()).ThenReturn(&[]dbom.ExportedShare{
+	mock.When(suite.share_service.ListShares()).ThenReturn([]dto.SharedResource{
 		{
-			Name:               "CONFIG",
-			MountPointDataPath: "/homeassistant",
-			MountPointData: dbom.MountPointPath{
+			Name: "CONFIG",
+			//MountPointDataPath: "/homeassistant",
+			MountPointData: &dto.MountPointData{
 				Path: "homeassistant",
 			},
-			Users: []dbom.SambaUser{
+			Users: []dto.User{
 				{
 					Username: "dianlight",
 				},
@@ -218,12 +219,12 @@ func (suite *SambaServiceSuite) setupCommonMocks() {
 			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
-			Name:               "MEDIA",
-			MountPointDataPath: "/media",
-			MountPointData: dbom.MountPointPath{
+			Name: "MEDIA",
+			//MountPointDataPath: "/media",
+			MountPointData: &dto.MountPointData{
 				Path: "media",
 			},
-			Users: []dbom.SambaUser{
+			Users: []dto.User{
 				{
 					Username: "dianlight",
 					IsAdmin:  true,
@@ -232,12 +233,12 @@ func (suite *SambaServiceSuite) setupCommonMocks() {
 			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
-			Name:               "BACKUP",
-			MountPointDataPath: "/backup",
-			MountPointData: dbom.MountPointPath{
+			Name: "BACKUP",
+			//MountPointDataPath: "/backup",
+			MountPointData: &dto.MountPointData{
 				Path: "backup",
 			},
-			Users: []dbom.SambaUser{
+			Users: []dto.User{
 				{
 					Username: "dianlight",
 				},
@@ -245,12 +246,12 @@ func (suite *SambaServiceSuite) setupCommonMocks() {
 			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
-			Name:               "SHARE",
-			MountPointDataPath: "/share",
-			MountPointData: dbom.MountPointPath{
+			Name: "SHARE",
+			//MountPointDataPath: "/share",
+			MountPointData: &dto.MountPointData{
 				Path: "share",
 			},
-			Users: []dbom.SambaUser{
+			Users: []dto.User{
 				{
 					Username: "dianlight",
 					IsAdmin:  true,
@@ -259,12 +260,12 @@ func (suite *SambaServiceSuite) setupCommonMocks() {
 			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
-			Name:               "ADDONS",
-			MountPointDataPath: "/addons",
-			MountPointData: dbom.MountPointPath{
+			Name: "ADDONS",
+			//MountPointDataPath: "/addons",
+			MountPointData: &dto.MountPointData{
 				Path: "addons",
 			},
-			Users: []dbom.SambaUser{
+			Users: []dto.User{
 				{
 					Username: "dianlight",
 					IsAdmin:  true,
@@ -273,12 +274,12 @@ func (suite *SambaServiceSuite) setupCommonMocks() {
 			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
-			Name:               "ADDON_CONFIGS",
-			MountPointDataPath: "/addon_configs",
-			MountPointData: dbom.MountPointPath{
+			Name: "ADDON_CONFIGS",
+			//MountPointDataPath: "/addon_configs",
+			MountPointData: &dto.MountPointData{
 				Path: "addon_configs",
 			},
-			Users: []dbom.SambaUser{
+			Users: []dto.User{
 				{
 					Username: "dianlight",
 					IsAdmin:  true,
@@ -287,18 +288,18 @@ func (suite *SambaServiceSuite) setupCommonMocks() {
 			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
-			Name:               "EFI",
-			MountPointDataPath: "/mnt/EFI",
-			MountPointData: dbom.MountPointPath{
+			Name: "EFI",
+			//MountPointDataPath: "/mnt/EFI",
+			MountPointData: &dto.MountPointData{
 				Path: "mnt/EFI",
 			},
-			Users: []dbom.SambaUser{
+			Users: []dto.User{
 				{
 					Username: "testuser",
 					IsAdmin:  false,
 				},
 			},
-			RoUsers: []dbom.SambaUser{
+			RoUsers: []dto.User{
 				{
 					Username: "dianlight",
 					IsAdmin:  true,
@@ -307,33 +308,33 @@ func (suite *SambaServiceSuite) setupCommonMocks() {
 			VetoFiles: []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
-			Name:               "LIBRARY",
-			MountPointDataPath: "/mnt/LIBRARY",
-			MountPointData: dbom.MountPointPath{
+			Name: "LIBRARY",
+			//MountPointDataPath: "/mnt/LIBRARY",
+			MountPointData: &dto.MountPointData{
 				Path: "mnt/LIBRARY",
 			},
-			Users: []dbom.SambaUser{
+			Users: []dto.User{
 				{
 					Username: "dianlight",
 					IsAdmin:  true,
 				},
 			},
-			TimeMachine: true,
+			TimeMachine: pointer.Bool(true),
 			VetoFiles:   []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
-			Name:               "UPDATER",
-			MountPointDataPath: "/mnt/Updater",
-			MountPointData: dbom.MountPointPath{
+			Name: "UPDATER",
+			//MountPointDataPath: "/mnt/Updater",
+			MountPointData: &dto.MountPointData{
 				Path: "mnt/Updater",
 			},
-			Users: []dbom.SambaUser{
+			Users: []dto.User{
 				{
 					Username: "dianlight",
 					IsAdmin:  true,
 				},
 			},
-			RecycleBin: true,
+			RecycleBin: pointer.Bool(true),
 			VetoFiles:  []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 	}, nil)

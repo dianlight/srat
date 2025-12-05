@@ -9,9 +9,9 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -34,10 +34,10 @@ type ShareServiceInterface interface {
 }
 
 type ShareService struct {
-	ctx                 context.Context
-	db                  *gorm.DB
-	exported_share_repo repository.ExportedShareRepositoryInterface
-	user_service        UserServiceInterface
+	ctx context.Context
+	db  *gorm.DB
+	//exported_share_repo repository.ExportedShareRepositoryInterface
+	user_service UserServiceInterface
 	//mount_repo          repository.MountPointPathRepositoryInterface
 	eventBus         events.EventBusInterface
 	sharesQueueMutex *sync.RWMutex
@@ -47,10 +47,10 @@ type ShareService struct {
 
 type ShareServiceParams struct {
 	fx.In
-	Ctx               context.Context
-	Db                *gorm.DB
-	ExportedShareRepo repository.ExportedShareRepositoryInterface
-	UserService       UserServiceInterface
+	Ctx context.Context
+	Db  *gorm.DB
+	//ExportedShareRepo repository.ExportedShareRepositoryInterface
+	UserService UserServiceInterface
 	//MountRepo         repository.MountPointPathRepositoryInterface
 	EventBus      events.EventBusInterface
 	DefaultConfig *config.DefaultConfig
@@ -58,8 +58,8 @@ type ShareServiceParams struct {
 
 func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterface {
 	s := &ShareService{
-		exported_share_repo: in.ExportedShareRepo,
-		user_service:        in.UserService,
+		//exported_share_repo: in.ExportedShareRepo,
+		user_service: in.UserService,
 		//mount_repo:          in.MountRepo,
 		ctx:              in.Ctx,
 		db:               in.Db,
@@ -133,13 +133,13 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 }
 
 func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
-	shares, err := s.exported_share_repo.All()
+	shares, err := gorm.G[dbom.ExportedShare](s.db).Find(s.ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list shares")
 	}
 	var conv converter.DtoToDbomConverterImpl
 	var dtoShares []dto.SharedResource
-	for _, share := range *shares {
+	for _, share := range shares {
 		dtoShare, err := conv.ExportedShareToSharedResource(share)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to convert share")
@@ -158,15 +158,16 @@ func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
 }
 
 func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
-	share, err := s.exported_share_repo.FindByName(name)
+	share, err := gorm.G[dbom.ExportedShare](s.db).
+		Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorShareNotFound)
+		}
 		return nil, errors.Wrap(err, "failed to get share")
 	}
-	if share == nil {
-		return nil, errors.WithStack(dto.ErrorShareNotFound)
-	}
 	var conv converter.DtoToDbomConverterImpl
-	dtoShare, errS := conv.ExportedShareToSharedResource(*share)
+	dtoShare, errS := conv.ExportedShareToSharedResource(share)
 
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert share")
@@ -180,12 +181,13 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 }
 
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
-	existing, err := s.exported_share_repo.FindByName(share.Name)
-	if err != nil && (!errors.Is(err, gorm.ErrRecordNotFound) && !errors.Is(err, dto.ErrorShareNotFound)) {
+	_, err := gorm.G[dbom.ExportedShare](s.db).
+		Where(g.ExportedShare.Name.Eq(share.Name)).First(s.ctx)
+	if err != nil && (!errors.Is(err, gorm.ErrRecordNotFound)) {
 		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
 		return nil, errors.Wrap(err, "failed to check for existing share")
 	}
-	if existing != nil {
+	if err == nil {
 		return nil, errors.WithStack(dto.ErrorShareAlreadyExists)
 	}
 
@@ -209,16 +211,9 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		dbShare.Users = []dbom.SambaUser{dbomAdmin}
 	}
 
-	/*
-		err = s.mount_repo.Save(&dbShare.MountPointData)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to save mount point")
-		}
-	*/
-
-	err = s.exported_share_repo.Save(&dbShare)
+	err = gorm.G[dbom.ExportedShare](s.db).Create(s.ctx, &dbShare)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to save share")
+		return nil, errors.Errorf("failed to save share '%s' to repository: %w", share.Name, err)
 	}
 
 	var convOut converter.DtoToDbomConverterImpl
@@ -240,16 +235,17 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 }
 
 func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.SharedResource, errors.E) {
-	dbShare, err := s.exported_share_repo.FindByName(name)
+	dbShare, err := gorm.G[dbom.ExportedShare](s.db).
+		Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorShareNotFound)
+		}
 		return nil, errors.Wrap(err, "failed to get share")
-	}
-	if dbShare == nil {
-		return nil, errors.WithStack(dto.ErrorShareNotFound)
 	}
 
 	var conv converter.DtoToDbomConverterImpl
-	err = conv.SharedResourceToExportedShare(share, dbShare)
+	err = conv.SharedResourceToExportedShare(share, &dbShare)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
@@ -267,13 +263,13 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		dbShare.Users = append(dbShare.Users, dbomAdmin)
 	}
 
-	if err := s.exported_share_repo.Save(dbShare); err != nil {
+	if _, err := gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, dbShare); err != nil {
 		// Note: gorm.ErrDuplicatedKey might not be standard across all GORM dialects/drivers.
 		// Checking for a more generic "constraint violation" or relying on the FindByName check might be more robust.
-		return nil, errors.Wrapf(err, "failed to save share '%s' to repository", share.Name)
+		return nil, errors.Wrapf(err, "failed to update share '%s' to repository", share.Name)
 	}
 
-	createdDtoShare, errS := conv.ExportedShareToSharedResource(*dbShare)
+	createdDtoShare, errS := conv.ExportedShareToSharedResource(dbShare)
 	if errS != nil {
 		return nil, errors.Wrapf(errS, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
 	}
@@ -282,29 +278,12 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		slog.Warn("New share verification failed", "share", createdDtoShare.Name, "err", err)
 	}
 
-	/*
-		err = s.mount_repo.Save(&dbShare.MountPointData)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to save mount point")
-		}
-	*/
-	err = s.exported_share_repo.Save(dbShare)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to save share")
-	}
-
-	var convOut converter.DtoToDbomConverterImpl
-	dtoShare, errS := convOut.ExportedShareToSharedResource(*dbShare)
-	if errS != nil {
-		return nil, errors.Wrap(errS, "failed to convert share")
-	}
-
 	s.eventBus.EmitShare(events.ShareEvent{
 		Event: events.Event{Type: events.EventTypes.UPDATE},
-		Share: &dtoShare,
+		Share: &createdDtoShare,
 	})
 
-	return &dtoShare, nil
+	return &createdDtoShare, nil
 }
 
 // DeleteShare deletes a shared resource by its name.
@@ -318,32 +297,25 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 		Event: events.Event{Type: events.EventTypes.REMOVE},
 		Share: ashare,
 	})
-	err = s.exported_share_repo.Delete(name)
-	if err != nil {
-		return errors.Wrap(err, "failed to delete share")
+	_, errS := gorm.G[dbom.ExportedShare](s.db).
+		Where(g.ExportedShare.Name.Eq(name)).Delete(s.ctx)
+	if errS != nil {
+		return errors.Wrap(errS, "failed to delete share")
 	}
-	/*
-		err = s.mount_repo.Delete(ashare.MountPointData.Path)
-		if err != nil {
-			return errors.Wrap(err, "failed to delete mount point")
-		}
-	*/
 	return nil
 }
 
 func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, errors.E) {
-	share, err := s.exported_share_repo.FindByMountPath(path)
+	share, err := gorm.G[dbom.ExportedShare](s.db).
+		Where(g.ExportedShare.MountPointDataPath.Eq(path)).First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.WithStack(dto.ErrorShareNotFound)
 		}
 		return nil, errors.Wrap(err, "failed to get share by mount path")
 	}
-	if share == nil {
-		return nil, errors.WithStack(dto.ErrorShareNotFound)
-	}
 	var conv converter.DtoToDbomConverterImpl
-	dtoShare, errS := conv.ExportedShareToSharedResource(*share)
+	dtoShare, errS := conv.ExportedShareToSharedResource(share)
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
@@ -356,15 +328,19 @@ func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, error
 }
 
 func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E) {
-	share, err := s.exported_share_repo.FindByMountPath(path)
+	share, err := gorm.G[dbom.ExportedShare](s.db).
+		Where(g.ExportedShare.MountPointDataPath.Eq(path)).First(s.ctx)
 	if err != nil {
-		return nil, err // This will propagate ErrorShareNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorShareNotFound)
+		}
+		return nil, errors.Wrap(err, "failed to get share by mount path")
 	}
 	if share.Disabled != nil && *share.Disabled == !enabled {
 		// No change needed
 		tlog.Debug("No update on Share", "path", path, "share", share)
 		var conv converter.DtoToDbomConverterImpl
-		dtoShare, err := conv.ExportedShareToSharedResource(*share)
+		dtoShare, err := conv.ExportedShareToSharedResource(share)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to convert share")
 		}
@@ -373,13 +349,13 @@ func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.
 
 	disabled := !enabled
 	share.Disabled = &disabled
-	err = s.exported_share_repo.Save(share)
+	_, err = gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, share)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to save share")
 	}
 
 	var conv converter.DtoToDbomConverterImpl
-	dtoShare, errS := conv.ExportedShareToSharedResource(*share)
+	dtoShare, errS := conv.ExportedShareToSharedResource(share)
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
@@ -392,21 +368,21 @@ func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.
 }
 
 func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedResource, errors.E) {
-	share, err := s.exported_share_repo.FindByName(name)
+	share, err := gorm.G[dbom.ExportedShare](s.db).Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorShareNotFound)
+		}
 		return nil, errors.Wrap(err, "failed to get share")
-	}
-	if share == nil {
-		return nil, errors.WithStack(dto.ErrorShareNotFound)
 	}
 	disabled := !enabled
 	share.Disabled = &disabled
-	err = s.exported_share_repo.Save(share)
+	_, err = gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, share)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to save share")
 	}
 	var conv converter.DtoToDbomConverterImpl
-	dtoShare, errS := conv.ExportedShareToSharedResource(*share)
+	dtoShare, errS := conv.ExportedShareToSharedResource(share)
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}

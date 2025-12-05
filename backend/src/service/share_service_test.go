@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
@@ -19,14 +20,16 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
+	"gorm.io/gorm"
 )
 
 type ShareServiceSuite struct {
 	suite.Suite
-	shareService        service.ShareServiceInterface
-	userService         service.UserServiceInterface
-	exported_share_repo repository.ExportedShareRepositoryInterface
-	app                 *fxtest.App
+	shareService service.ShareServiceInterface
+	userService  service.UserServiceInterface
+	//exported_share_repo repository.ExportedShareRepositoryInterface
+	app *fxtest.App
+	db  *gorm.DB
 }
 
 func TestShareServiceSuite(t *testing.T) {
@@ -69,14 +72,15 @@ func (suite *ShareServiceSuite) SetupTest() {
 			service.NewShareService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[service.UserServiceInterface],
-			mock.Mock[repository.ExportedShareRepositoryInterface],
+			//mock.Mock[repository.ExportedShareRepositoryInterface],
 			//	mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[repository.SambaUserRepositoryInterface],
 			mock.Mock[events.EventBusInterface],
 		),
 		fx.Populate(&suite.shareService),
-		fx.Populate(&suite.exported_share_repo),
+		//fx.Populate(&suite.exported_share_repo),
 		fx.Populate(&suite.userService),
+		fx.Populate(&suite.db),
 	)
 
 	mock.When(suite.userService.ListUsers()).ThenReturn([]dto.User{
@@ -91,17 +95,24 @@ func (suite *ShareServiceSuite) TearDownTest() {
 }
 
 func (suite *ShareServiceSuite) TestListShares() {
-	mock.When(suite.exported_share_repo.All()).ThenReturn(&[]dbom.ExportedShare{
-		{
-			Name: "test",
+	suite.Require().NoError(suite.db.Create(&dbom.ExportedShare{
+		Name:               "test_xx",
+		MountPointDataPath: "/test_xx",
+		MountPointData: dbom.MountPointPath{
+			Path:     "/test_xx",
+			Type:     "ADDON",
+			DeviceId: "test_xx_deviceId",
 		},
-	}, nil)
+	}).Error)
+
+	count, err := gorm.G[dbom.ExportedShare](suite.db).Count(suite.T().Context(), g.ExportedShare.Name.Column().Name)
+	suite.Require().NoError(err, "Count shares should not error", "error", err)
 
 	shares, err := suite.shareService.ListShares()
 
 	suite.NoError(err)
 	suite.NotNil(shares)
-	suite.Len(shares, 1)
+	suite.Len(shares, int(count))
 }
 
 // TestVerifyShareWithMountedRWVolume tests share verification with mounted RW volume

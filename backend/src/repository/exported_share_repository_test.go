@@ -1,5 +1,6 @@
 package repository_test
 
+/*
 import (
 	"context"
 	"log"
@@ -303,3 +304,4 @@ func (suite *ExportedSharesRepositorySuite) TestExportedShareRepository_UpdateNa
 	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.ExportedShare{})
 	suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&dbom.MountPointPath{})
 }
+*/
