@@ -105,6 +105,10 @@
     "Naur",
     "esac",
     "gsub",
+    "maniartech",
+    "Maniartech",
+    "unsubscription",
+    "nolint",
   ],
   "flagWords": [],
   "ignorePaths": [

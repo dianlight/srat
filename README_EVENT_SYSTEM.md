@@ -1,3 +1,43 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [SRAT Backend Event-Driven Architecture Refactoring](#srat-backend-event-driven-architecture-refactoring)
+  - [Overview](#overview)
+  - [What Changed](#what-changed)
+    - [✅ New Components Created](#-new-components-created)
+    - [📝 Modified Files](#-modified-files)
+  - [Architecture](#architecture)
+  - [Key Features](#key-features)
+  - [Building and Testing](#building-and-testing)
+    - [Compile](#compile)
+    - [Test](#test)
+    - [Run](#run)
+  - [Implementation Status](#implementation-status)
+  - [Next Steps](#next-steps)
+    - [Phase 1: Add Event Emissions (Manual)](#phase-1-add-event-emissions-manual)
+    - [Phase 2: Validation](#phase-2-validation)
+    - [Phase 3: Performance Testing](#phase-3-performance-testing)
+  - [Example: Emitting an Event](#example-emitting-an-event)
+  - [Example: Receiving Events (Automatic in BroadcasterService)](#example-receiving-events-automatic-in-broadcasterservice)
+  - [Documentation Files](#documentation-files)
+  - [Event Types](#event-types)
+    - [Disk Events](#disk-events)
+    - [Partition Events](#partition-events)
+    - [Share Events](#share-events)
+    - [Mount Point Events](#mount-point-events)
+  - [Logging](#logging)
+  - [Performance Characteristics](#performance-characteristics)
+  - [Files Overview](#files-overview)
+  - [Testing Coverage](#testing-coverage)
+  - [Benefits](#benefits)
+  - [Backward Compatibility](#backward-compatibility)
+  - [Support for Adding Custom Events](#support-for-adding-custom-events)
+  - [Questions & Troubleshooting](#questions--troubleshooting)
+  - [Next Development Steps](#next-development-steps)
+  - [Summary](#summary)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # SRAT Backend Event-Driven Architecture Refactoring
 
 ## Overview
@@ -27,7 +67,7 @@ The SRAT backend has been successfully refactored to use an **event-driven archi
 
 ### 📝 Modified Files
 
-```
+```plaintext
 backend/src/
 ├── go.mod (no external dependencies added)
 ├── service/
@@ -40,7 +80,7 @@ backend/src/
 
 ## Architecture
 
-```
+```plaintext
 Services emit events → EventBus → BroadcasterService → Connected Clients
                          ↓
                   (Async via goroutines)
@@ -61,41 +101,46 @@ Services emit events → EventBus → BroadcasterService → Connected Clients
 ## Building and Testing
 
 ### Compile
+
 ```bash
 cd backend/src
 go build -v ./...  # ✅ All packages compile successfully
 ```
 
 ### Test
+
 ```bash
 cd backend/src
 go test ./events/... -v  # ✅ All 12 tests pass in 0.51s
 ```
 
 ### Run
+
 ```bash
 make dev  # Start development server with hot-reload
 ```
 
 ## Implementation Status
 
-| Component | Status | Details |
-|-----------|--------|---------|
-| EventBus | ✅ Complete | Core event system implemented and tested |
-| Event Types | ✅ Complete | 4 event types defined (Disk, Partition, Share, MountPoint) |
-| VolumeService | ✅ Ready | Added EventBus field, ready for event emission |
-| ShareService | ✅ Ready | Added EventBus field, ready for event emission |
-| BroadcasterService | ✅ Listening | Automatically receives and relays all events |
-| FX Integration | ✅ Complete | EventBus registered and provided to all services |
-| Tests | ✅ Complete | 12 comprehensive tests, all passing |
-| Documentation | ✅ Complete | 3 documentation files created |
+| Component          | Status    | Details                                                    |
+| ------------------ | --------- | ---------------------------------------------------------- |
+| EventBus           | Complete  | Core event system implemented and tested                   |
+| Event Types        | Complete  | 4 event types defined (Disk, Partition, Share, MountPoint) |
+| VolumeService      | Ready     | Added EventBus field, ready for event emission             |
+| ShareService       | Ready     | Added EventBus field, ready for event emission             |
+| BroadcasterService | Listening | Automatically receives and relays all events               |
+| FX Integration     | Complete  | EventBus registered and provided to all services           |
+| Tests              | Complete  | 12 comprehensive tests, all passing                        |
+| Documentation      | Complete  | 3 documentation files created                              |
 
 ## Next Steps
 
 ### Phase 1: Add Event Emissions (Manual)
+
 Services need to call `eventBus.Emit*()` at key state change points:
 
 **VolumeService:**
+
 - `EmitDiskAdded()` when disk detected
 - `EmitDiskRemoved()` when disk removed
 - `EmitPartitionAdded()` when partition found
@@ -104,6 +149,7 @@ Services need to call `eventBus.Emit*()` at key state change points:
 - `EmitMountPointUnmounted()` when unmount succeeds
 
 **ShareService:**
+
 - `EmitShareCreated()` when share created
 - `EmitShareUpdated()` when share modified
 - `EmitShareDeleted()` when share deleted
@@ -111,12 +157,14 @@ Services need to call `eventBus.Emit*()` at key state change points:
 - `EmitShareDisabled()` when share disabled
 
 ### Phase 2: Validation
+
 1. Connect WebSocket/SSE clients
 2. Verify events propagate to clients
 3. Monitor server logs for event flow
 4. Test Home Assistant integration (if enabled)
 
 ### Phase 3: Performance Testing
+
 1. Load test with high event frequency
 2. Monitor goroutine count
 3. Verify memory usage
@@ -127,7 +175,7 @@ Services need to call `eventBus.Emit*()` at key state change points:
 ```go
 func (vs *VolumeService) DetectDisk(disk *dto.Disk) {
     // ... existing logic ...
-    
+
     // Emit event for clients
     vs.eventBus.EmitDiskAdded(events.DiskEvent{Disk: disk})
 }
@@ -136,6 +184,7 @@ func (vs *VolumeService) DetectDisk(disk *dto.Disk) {
 ## Example: Receiving Events (Automatic in BroadcasterService)
 
 The BroadcasterService automatically sets up listeners:
+
 ```go
 broker.eventBus.OnDiskAdded(func(event events.DiskEvent) {
     // Automatically relay to all connected clients
@@ -166,6 +215,7 @@ broker.eventBus.OnDiskAdded(func(event events.DiskEvent) {
 ## Event Types
 
 ### Disk Events
+
 ```go
 type DiskEvent struct {
     Disk *dto.Disk
@@ -174,6 +224,7 @@ type DiskEvent struct {
 ```
 
 ### Partition Events
+
 ```go
 type PartitionEvent struct {
     Partition *dto.Partition
@@ -183,6 +234,7 @@ type PartitionEvent struct {
 ```
 
 ### Share Events
+
 ```go
 type ShareEvent struct {
     Share *dto.SharedResource
@@ -192,6 +244,7 @@ type ShareEvent struct {
 ```
 
 ### Mount Point Events
+
 ```go
 type MountPointEvent struct {
     MountPoint *dto.MountPointData
@@ -202,11 +255,13 @@ type MountPointEvent struct {
 ## Logging
 
 Enable debug logging to see events in action:
+
 ```bash
 srat-server -loglevel debug
 ```
 
 Key log messages:
+
 - `"Emitting [Type] event"` - Event emitted from service
 - `"Registering [Type] event handler"` - Handler registered
 - `"BroadcasterService received [Type] event"` - Event received by broadcaster
@@ -221,7 +276,7 @@ Key log messages:
 
 ## Files Overview
 
-```
+```plaintext
 backend/
 ├── src/
 │   ├── events/
@@ -244,6 +299,7 @@ backend/
 ## Testing Coverage
 
 All event types tested:
+
 - ✅ Disk added/removed
 - ✅ Partition added/removed
 - ✅ Share created/updated/deleted/enabled/disabled
@@ -251,7 +307,7 @@ All event types tested:
 - ✅ Multiple listeners
 - ✅ Unsubscribe functionality
 
-```
+```plaintext
 PASS: 12/12 tests in 0.51 seconds
 - All events properly emitted and received
 - Multiple listeners work correctly
@@ -271,6 +327,7 @@ PASS: 12/12 tests in 0.51 seconds
 ## Backward Compatibility
 
 ✅ **Fully backward compatible** - All existing functionality preserved:
+
 - Services work exactly as before
 - BroadcasterService functions unchanged
 - WebSocket/SSE clients unaffected
@@ -314,6 +371,7 @@ A: No risk. Listeners are cleaned up automatically. Context cancellation handles
 ## Summary
 
 The SRAT backend now has a modern, efficient event-driven architecture that:
+
 - ✅ Eliminates service coupling
 - ✅ Provides real-time client updates
 - ✅ Requires no external dependencies

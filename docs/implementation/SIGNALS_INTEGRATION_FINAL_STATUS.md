@@ -1,3 +1,29 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [SRAT Signals Library Integration - Final Status](#srat-signals-library-integration---final-status)
+  - [✅ Implementation Complete](#-implementation-complete)
+  - [Summary of Changes](#summary-of-changes)
+    - [1. EventBus Implementation](#1-eventbus-implementation)
+    - [2. Dependency Management](#2-dependency-management)
+    - [3. Test Suite](#3-test-suite)
+    - [4. Documentation](#4-documentation)
+  - [Test Results](#test-results)
+  - [Build Status](#build-status)
+  - [Key Benefits](#key-benefits)
+  - [Files Modified](#files-modified)
+  - [API Compatibility](#api-compatibility)
+  - [Signals Library Features](#signals-library-features)
+  - [Next Steps for Developers](#next-steps-for-developers)
+    - [Immediate (Optional)](#immediate-optional)
+    - [Short-term (Manual Implementation)](#short-term-manual-implementation)
+    - [Medium-term (Validation)](#medium-term-validation)
+  - [Version Information](#version-information)
+  - [Verification Commands](#verification-commands)
+  - [Conclusion](#conclusion)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # SRAT Signals Library Integration - Final Status
 
 ## ✅ Implementation Complete
@@ -7,6 +33,7 @@ The SRAT backend event-driven architecture has been successfully refactored to u
 ## Summary of Changes
 
 ### 1. EventBus Implementation
+
 **File**: `backend/src/events/event_bus.go`
 
 - ✅ Replaced custom `simpleSignal[T]` implementation with `signals.Signal[T]`
@@ -16,6 +43,7 @@ The SRAT backend event-driven architecture has been successfully refactored to u
 - ✅ Added import: `github.com/maniartech/signals`
 
 ### 2. Dependency Management
+
 **File**: `backend/src/go.mod`
 
 - ✅ Made `github.com/maniartech/signals v1.3.1` explicit in require block
@@ -23,6 +51,7 @@ The SRAT backend event-driven architecture has been successfully refactored to u
 - ✅ Ran `go mod vendor` to include library in vendor directory
 
 ### 3. Test Suite
+
 **File**: `backend/src/events/event_bus_test.go`
 
 - ✅ Updated all timeouts from 2 seconds to 5 seconds (for async processing)
@@ -30,6 +59,7 @@ The SRAT backend event-driven architecture has been successfully refactored to u
 - ✅ Test logic unchanged, fully compatible with signals library
 
 ### 4. Documentation
+
 Created comprehensive documentation:
 
 - ✅ `SIGNALS_LIBRARY_INTEGRATION.md` - Detailed integration guide
@@ -38,7 +68,7 @@ Created comprehensive documentation:
 
 ## Test Results
 
-```
+```plaintext
 ✅ TestEventBusDiskAdded ...................... PASS (0.00s)
 ✅ TestEventBusDiskRemoved ................... PASS (0.00s)
 ✅ TestEventBusPartitionAdded ............... PASS (0.00s)
@@ -59,7 +89,7 @@ TOTAL: 12/12 PASS ............................ 0.513s
 
 ✅ **Full backend compiles without errors**
 
-```
+```plaintext
 github.com/dianlight/srat/events        (signals integration)
 github.com/dianlight/srat/repository
 github.com/dianlight/srat/service
@@ -71,25 +101,25 @@ github.com/dianlight/srat/cmd/srat-server (all commands build)
 
 ## Key Benefits
 
-| Benefit | Details |
-|---------|---------|
-| **Industry Standard** | Battle-tested signals library (maniartech/signals) |
-| **Reduced Code** | 87% less custom signal implementation code |
-| **Better Maintenance** | No custom sync.RWMutex code to maintain |
-| **Performance** | Optimized listener management and event emission |
-| **Context Support** | Built-in context propagation for cancellation |
-| **Error Handling** | Comprehensive error handling in library |
-| **Community Maintained** | Bug fixes and improvements from library team |
-| **Async by Default** | Events processed asynchronously in goroutines |
-| **Backward Compatible** | 100% compatible - EventBusInterface unchanged |
+| Benefit                  | Details                                            |
+| ------------------------ | -------------------------------------------------- |
+| **Industry Standard**    | Battle-tested signals library (maniartech/signals) |
+| **Reduced Code**         | 87% less custom signal implementation code         |
+| **Better Maintenance**   | No custom sync.RWMutex code to maintain            |
+| **Performance**          | Optimized listener management and event emission   |
+| **Context Support**      | Built-in context propagation for cancellation      |
+| **Error Handling**       | Comprehensive error handling in library            |
+| **Community Maintained** | Bug fixes and improvements from library team       |
+| **Async by Default**     | Events processed asynchronously in goroutines      |
+| **Backward Compatible**  | 100% compatible - EventBusInterface unchanged      |
 
 ## Files Modified
 
-| File | Changes |
-|------|---------|
-| `backend/src/events/event_bus.go` | Signals library integration (±50 lines) |
+| File                                   | Changes                                       |
+| -------------------------------------- | --------------------------------------------- |
+| `backend/src/events/event_bus.go`      | Signals library integration (±50 lines)       |
 | `backend/src/events/event_bus_test.go` | Timeout adjustments (1 line × 10 occurrences) |
-| `backend/src/go.mod` | Added signals to require block (1 line) |
+| `backend/src/go.mod`                   | Added signals to require block (1 line)       |
 
 ## API Compatibility
 
@@ -124,15 +154,18 @@ The `maniartech/signals` library provides:
 ## Next Steps for Developers
 
 ### Immediate (Optional)
+
 - Review `SIGNALS_LIBRARY_INTEGRATION.md` for implementation details
 - Review `IMPLEMENTATION_COMPARISON.md` for custom vs library comparison
 
 ### Short-term (Manual Implementation)
+
 1. Add `eventBus.Emit*()` calls to VolumeService methods
 2. Add `eventBus.Emit*()` calls to ShareService methods
 3. Test with connected WebSocket/SSE clients
 
 ### Medium-term (Validation)
+
 1. Verify real-time event propagation to clients
 2. Monitor Home Assistant integration
 3. Performance testing under load

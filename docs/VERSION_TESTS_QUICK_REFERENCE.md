@@ -86,9 +86,9 @@ Enhanced the `TestCreateConfigStream` test suite with comprehensive version-spec
 
 | Feature               | 4.21 | 4.22 | 4.23 | 4.24 | 5.0 |
 | --------------------- | ---- | ---- | ---- | ---- | --- |
-| fruit:posix_rename    | ✅   | ❌   | ❌   | ❌   | ❌  |
-| server smb transports | ❌   | ❌   | ✅   | ✅   | ✅  |
-| Tests passing         | ✅   | ✅   | ✅   | ✅   | ✅  |
+| fruit:posix_rename    | Y    | N    | N    | N    | N   |
+| server smb transports | N    | N    | Y    | Y    | Y   |
+| Tests passing         | Y    | Y    | Y    | Y    | Y   |
 
 ## Running Tests
 

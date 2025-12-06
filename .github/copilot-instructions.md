@@ -40,6 +40,7 @@ Use:
 `tlog.TraceContext(ctx, ...)`, `tlog.DebugContext(ctx, ...)`, `tlog.InfoContext(ctx, ...)`, `tlog.WarnContext(ctx, ...)`, `tlog.ErrorContext(ctx, ...)`
 
 Rules:
+
 1. Only add the context form if a context variable is naturally available (e.g. `ctx`, `self.ctx`, `s.ctx`, `handler.ctx`, `apiContext`, `r.Context()`, constructor-local `Ctx`).
 2. DO NOT create a new context just for logging (no `context.Background()`, `context.TODO()`, `context.WithTimeout(...)` solely to pass to log).
 3. Preserve original argument order; only insert the context as the first argument.
@@ -55,37 +56,42 @@ Acceptable context identifiers (examples, not exhaustive): `ctx`, `self.ctx`, `s
 Examples:
 
 Before:
+
 ```go
 slog.Info("Reloading config", "component", comp)
 tlog.Trace("Starting scan", "disk", d)
 ```
 
 After (if `ctx` available):
+
 ```go
 slog.InfoContext(ctx, "Reloading config", "component", comp)
 tlog.TraceContext(ctx, "Starting scan", "disk", d)
 ```
 
 Before (goroutine without captured context):
+
 ```go
 go func() {
   slog.Debug("Background task running", "id", id)
 }()
 ```
+
 Leave as-is unless the goroutine already captures a legitimate context for other reasons.
 
 Incorrect (manufactures context only for logging):
+
 ```go
 slog.WarnContext(context.Background(), "Will retry", "attempt", n) // NOT ALLOWED
 ```
 
 Correct alternative:
+
 ```go
 slog.Warn("Will retry", "attempt", n)
 ```
 
 Rationale: Using context-aware logging lets structured handlers attach trace/span, cancellation, and request lineage automatically. Avoid polluting code with artificial contexts—only leverage what is organically available.
-
 
 ### Frontend Patterns
 

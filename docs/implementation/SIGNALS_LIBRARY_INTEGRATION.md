@@ -1,3 +1,40 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Signals Library Integration](#signals-library-integration)
+  - [Overview](#overview)
+  - [What Changed](#what-changed)
+    - [1. EventBus Implementation](#1-eventbus-implementation)
+      - [Before (Custom Implementation)](#before-custom-implementation)
+      - [After (Signals Library)](#after-signals-library)
+    - [2. Key API Differences](#2-key-api-differences)
+    - [3. Code Changes](#3-code-changes)
+      - [Imports Updated](#imports-updated)
+      - [EventBus struct (No change in field names)](#eventbus-struct-no-change-in-field-names)
+      - [Initialization](#initialization)
+      - [Event Emission](#event-emission)
+      - [Event Subscription](#event-subscription)
+    - [4. Dependency Management](#4-dependency-management)
+      - [go.mod Changes](#gomod-changes)
+      - [Vendor Directory](#vendor-directory)
+  - [Benefits of Using Signals Library](#benefits-of-using-signals-library)
+  - [Testing](#testing)
+    - [Test Results](#test-results)
+    - [Test Adjustments](#test-adjustments)
+  - [Build Status](#build-status)
+  - [Backward Compatibility](#backward-compatibility)
+  - [Files Modified](#files-modified)
+  - [Performance Characteristics](#performance-characteristics)
+  - [Signals Library Features](#signals-library-features)
+  - [Next Steps](#next-steps)
+    - [Already Complete ✅](#already-complete-)
+    - [Manual Implementation (Future)](#manual-implementation-future)
+  - [Migration Notes](#migration-notes)
+  - [Signals Library Documentation](#signals-library-documentation)
+  - [Summary](#summary)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Signals Library Integration
 
 ## Overview
@@ -7,14 +44,17 @@ The SRAT backend event-driven architecture has been refactored to use **`github.
 ## What Changed
 
 ### 1. EventBus Implementation
+
 **File**: `backend/src/events/event_bus.go`
 
 #### Before (Custom Implementation)
+
 - Used custom `simpleSignal[T]` struct with manual sync.RWMutex
 - Manual listener map management
 - Custom `Connect()` and `Emit()` methods
 
 #### After (Signals Library)
+
 - Uses `signals.Signal[T]` from `github.com/maniartech/signals`
 - Library handles all synchronization internally
 - Uses `AddListener()` and `RemoveListener()` for subscription management
@@ -22,16 +62,17 @@ The SRAT backend event-driven architecture has been refactored to use **`github.
 
 ### 2. Key API Differences
 
-| Operation | Custom | Signals Library |
-|-----------|--------|-----------------|
-| Create Signal | `simpleSignal[T]{listeners: map}` | `signals.New[T]()` |
-| Emit Event | `signal.Emit(event)` | `signal.Emit(ctx, event)` |
-| Subscribe | `signal.Connect(handler)` | `signal.AddListener(handler, key)` |
-| Unsubscribe | Call returned func | `signal.RemoveListener(key)` |
+| Operation     | Custom                            | Signals Library                    |
+| ------------- | --------------------------------- | ---------------------------------- |
+| Create Signal | `simpleSignal[T]{listeners: map}` | `signals.New[T]()`                 |
+| Emit Event    | `signal.Emit(event)`              | `signal.Emit(ctx, event)`          |
+| Subscribe     | `signal.Connect(handler)`         | `signal.AddListener(handler, key)` |
+| Unsubscribe   | Call returned func                | `signal.RemoveListener(key)`       |
 
 ### 3. Code Changes
 
 #### Imports Updated
+
 ```go
 // Old
 import "sync"
@@ -41,6 +82,7 @@ import "github.com/maniartech/signals"
 ```
 
 #### EventBus struct (No change in field names)
+
 ```go
 type EventBus struct {
     ctx context.Context
@@ -51,6 +93,7 @@ type EventBus struct {
 ```
 
 #### Initialization
+
 ```go
 // Old
 diskAdded: simpleSignal[DiskEvent]{listeners: make(map[uint64]func(DiskEvent))}
@@ -60,6 +103,7 @@ diskAdded: signals.New[DiskEvent]()
 ```
 
 #### Event Emission
+
 ```go
 // Old
 eb.diskAdded.Emit(event)
@@ -69,6 +113,7 @@ eb.diskAdded.Emit(eb.ctx, event)
 ```
 
 #### Event Subscription
+
 ```go
 // Old
 return eb.diskAdded.Connect(handler)
@@ -86,6 +131,7 @@ return func() {
 ### 4. Dependency Management
 
 #### go.mod Changes
+
 ```diff
 require (
     github.com/maniartech/signals v1.3.1
@@ -96,6 +142,7 @@ require (
 **Status**: ✅ Already present in go.mod as indirect dependency, now made explicit.
 
 #### Vendor Directory
+
 - Synced with `go mod vendor` to include signals library in vendor directory
 - Go modules tidied with `go mod tidy`
 
@@ -111,9 +158,10 @@ require (
 ## Testing
 
 ### Test Results
+
 ✅ **All 12 tests passing** in 0.513 seconds
 
-```
+```plaintext
 TestEventBusDiskAdded .......................... PASS
 TestEventBusDiskRemoved ........................ PASS
 TestEventBusPartitionAdded ..................... PASS
@@ -129,6 +177,7 @@ TestEventBusUnsubscribe ........................ PASS
 ```
 
 ### Test Adjustments
+
 - Updated timeouts from 2 seconds to 5 seconds for async event processing
 - All test logic remains the same
 - Uses sync.WaitGroup for reliable timing
@@ -137,7 +186,7 @@ TestEventBusUnsubscribe ........................ PASS
 
 ✅ **Full backend compiles successfully**
 
-```
+```plaintext
 github.com/dianlight/srat/events
 github.com/dianlight/srat/repository
 github.com/dianlight/srat/service
@@ -193,12 +242,14 @@ The `maniartech/signals` library provides:
 ## Next Steps
 
 ### Already Complete ✅
+
 - Integration with signals library
 - All tests passing
 - Full backend compilation
 - Documentation
 
 ### Manual Implementation (Future)
+
 - Add `eventBus.Emit*()` calls in VolumeService at change points
 - Add `eventBus.Emit*()` calls in ShareService at change points
 - Test with connected WebSocket/SSE clients
@@ -216,6 +267,7 @@ If upgrading from the custom implementation:
 ## Signals Library Documentation
 
 For more information about the signals library, see:
+
 - GitHub: https://github.com/maniartech/signals
 - Features:
   - Type-safe generic signals

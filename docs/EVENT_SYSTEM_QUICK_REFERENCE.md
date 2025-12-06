@@ -1,3 +1,30 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Event System Quick Reference](#event-system-quick-reference)
+  - [Quick Start](#quick-start)
+    - [Emit an Event](#emit-an-event)
+    - [Subscribe to an Event (Manual)](#subscribe-to-an-event-manual)
+  - [Service Integration Checklist](#service-integration-checklist)
+    - [Adding EventBus to a Service](#adding-eventbus-to-a-service)
+  - [Available Events](#available-events)
+    - [Disk Events](#disk-events)
+    - [Partition Events](#partition-events)
+    - [Share Events](#share-events)
+    - [Mount Point Events](#mount-point-events)
+  - [Common Patterns](#common-patterns)
+    - [Service Emitting Event](#service-emitting-event)
+    - [Service Listening to Events](#service-listening-to-events)
+    - [Testing Events](#testing-events)
+  - [Event Flow](#event-flow)
+  - [Files Reference](#files-reference)
+  - [Logging](#logging)
+  - [Performance Notes](#performance-notes)
+  - [Troubleshooting](#troubleshooting)
+  - [Adding New Events](#adding-new-events)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Event System Quick Reference
 
 ## Quick Start
@@ -49,11 +76,13 @@ defer unsubscribe()
 ### Adding EventBus to a Service
 
 1. **Import the events package**
+
    ```go
    import "github.com/dianlight/srat/events"
    ```
 
 2. **Add field to struct**
+
    ```go
    type MyService struct {
        eventBus events.EventBusInterface
@@ -62,6 +91,7 @@ defer unsubscribe()
    ```
 
 3. **Add to FX params struct**
+
    ```go
    type MyServiceParams struct {
        fx.In
@@ -71,6 +101,7 @@ defer unsubscribe()
    ```
 
 4. **Update constructor**
+
    ```go
    func NewMyService(in MyServiceParams) MyServiceInterface {
        return &MyService{
@@ -81,6 +112,7 @@ defer unsubscribe()
    ```
 
 5. **Emit events at change points**
+
    ```go
    // When something changes
    service.eventBus.EmitShareCreated(events.ShareEvent{Share: newShare})
@@ -89,47 +121,53 @@ defer unsubscribe()
 ## Available Events
 
 ### Disk Events
-| Event | Method | When |
-|-------|--------|------|
-| DiskAdded | `EmitDiskAdded()` | New disk detected |
-| DiskRemoved | `EmitDiskRemoved()` | Disk removed |
+
+| Event       | Method              | When              |
+| ----------- | ------------------- | ----------------- |
+| DiskAdded   | `EmitDiskAdded()`   | New disk detected |
+| DiskRemoved | `EmitDiskRemoved()` | Disk removed      |
 
 ### Partition Events
-| Event | Method | When |
-|-------|--------|------|
-| PartitionAdded | `EmitPartitionAdded()` | New partition found |
-| PartitionRemoved | `EmitPartitionRemoved()` | Partition removed |
+
+| Event            | Method                   | When                |
+| ---------------- | ------------------------ | ------------------- |
+| PartitionAdded   | `EmitPartitionAdded()`   | New partition found |
+| PartitionRemoved | `EmitPartitionRemoved()` | Partition removed   |
 
 ### Share Events
-| Event | Method | When |
-|-------|--------|------|
-| ShareCreated | `EmitShareCreated()` | Share created |
-| ShareUpdated | `EmitShareUpdated()` | Share modified |
-| ShareDeleted | `EmitShareDeleted()` | Share deleted |
-| ShareEnabled | `EmitShareEnabled()` | Share enabled |
+
+| Event         | Method                | When           |
+| ------------- | --------------------- | -------------- |
+| ShareCreated  | `EmitShareCreated()`  | Share created  |
+| ShareUpdated  | `EmitShareUpdated()`  | Share modified |
+| ShareDeleted  | `EmitShareDeleted()`  | Share deleted  |
+| ShareEnabled  | `EmitShareEnabled()`  | Share enabled  |
 | ShareDisabled | `EmitShareDisabled()` | Share disabled |
 
 ### Mount Point Events
-| Event | Method | When |
-|-------|--------|------|
-| MountPointMounted | `EmitMountPointMounted()` | Mount succeeds |
+
+| Event               | Method                      | When             |
+| ------------------- | --------------------------- | ---------------- |
+| MountPointMounted   | `EmitMountPointMounted()`   | Mount succeeds   |
 | MountPointUnmounted | `EmitMountPointUnmounted()` | Unmount succeeds |
 
 ## Common Patterns
 
 ### Service Emitting Event
+
 ```go
 func (s *Service) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
     // ... validation and creation logic ...
-    
+
     // Emit event
     s.eventBus.EmitShareCreated(events.ShareEvent{Share: &share})
-    
+
     return &share, nil
 }
 ```
 
 ### Service Listening to Events
+
 ```go
 func (s *Service) setupEventListeners() {
     s.eventBus.OnDiskAdded(func(event events.DiskEvent) {
@@ -140,29 +178,30 @@ func (s *Service) setupEventListeners() {
 ```
 
 ### Testing Events
+
 ```go
 func TestDiskAddedEvent(t *testing.T) {
     bus := events.NewEventBus(context.Background())
-    
+
     var received *events.DiskEvent
     unsubscribe := bus.OnDiskAdded(func(event events.DiskEvent) {
         received = &event
     })
     defer unsubscribe()
-    
+
     disk := &dto.Disk{Id: pointer.String("test")}
     bus.EmitDiskAdded(events.DiskEvent{Disk: disk})
-    
+
     // Give goroutine time to execute
     time.Sleep(10 * time.Millisecond)
-    
+
     assert.NotNil(t, received)
 }
 ```
 
 ## Event Flow
 
-```
+```plaintext
 Service (VolumeService, ShareService)
     │
     ├─ Detects change
@@ -189,22 +228,24 @@ Home Assistant (if enabled)
 
 ## Files Reference
 
-| File | Purpose |
-|------|---------|
-| `backend/src/events/events.go` | Event type definitions |
-| `backend/src/events/event_bus.go` | EventBus implementation |
-| `backend/src/events/event_bus_test.go` | Tests |
-| `backend/src/service/broadcaster_service.go` | Event relay |
-| `backend/src/internal/appsetup/appsetup.go` | FX registration |
+| File                                         | Purpose                 |
+| -------------------------------------------- | ----------------------- |
+| `backend/src/events/events.go`               | Event type definitions  |
+| `backend/src/events/event_bus.go`            | EventBus implementation |
+| `backend/src/events/event_bus_test.go`       | Tests                   |
+| `backend/src/service/broadcaster_service.go` | Event relay             |
+| `backend/src/internal/appsetup/appsetup.go`  | FX registration         |
 
 ## Logging
 
 Enable debug logging to see events:
+
 ```bash
 srat-server -loglevel debug
 ```
 
 Look for:
+
 - `"Emitting [Type] event"` - Event emitted
 - `"Registering [Type] event handler"` - Handler registered
 - `"BroadcasterService received [Type] event"` - Event received
@@ -220,22 +261,26 @@ Look for:
 ## Troubleshooting
 
 **Event not received?**
+
 - Check logs for "Emitting" message
 - Verify subscriber is connected before emit
 - Check for panics in event handler
 
 **Multiple events?**
+
 - Multiple listeners will all be called
 - This is expected behavior
 - Add deduplication logic if needed
 
 **Memory leaks?**
+
 - Always defer unsubscribe (though context cancellation handles it)
 - Check goroutine count with `runtime.NumGoroutine()`
 
 ## Adding New Events
 
 1. Define event type in `backend/src/events/events.go`:
+
    ```go
    type UserEvent struct {
        User *dto.SambaUser
@@ -243,6 +288,7 @@ Look for:
    ```
 
 2. Add methods to `EventBusInterface`:
+
    ```go
    EmitUserCreated(event UserEvent)
    OnUserCreated(handler func(UserEvent)) func()

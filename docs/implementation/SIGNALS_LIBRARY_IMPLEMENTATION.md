@@ -1,3 +1,43 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [GitHub.com/Maniartech/Signals Implementation Summary](#githubcommaniartechsignals-implementation-summary)
+  - [Instruction Implemented ✅](#instruction-implemented-)
+  - [What Was Done](#what-was-done)
+    - [1. Dependency Integration](#1-dependency-integration)
+    - [2. EventBus Refactoring](#2-eventbus-refactoring)
+    - [3. API Wrapper](#3-api-wrapper)
+    - [4. Key Implementation Changes](#4-key-implementation-changes)
+      - [Old (Custom)](#old-custom)
+      - [New (Signals Library)](#new-signals-library)
+    - [5. Method Implementation Pattern](#5-method-implementation-pattern)
+      - [Emit Methods](#emit-methods)
+      - [Listener Registration](#listener-registration)
+  - [Test Results](#test-results)
+    - [All Tests Passing ✅](#all-tests-passing-)
+  - [Build Verification](#build-verification)
+    - [Full Backend Compilation ✅](#full-backend-compilation-)
+  - [Technical Details](#technical-details)
+    - [Signals Library API Used](#signals-library-api-used)
+    - [Features Provided by Signals Library](#features-provided-by-signals-library)
+  - [Event Types Supported](#event-types-supported)
+  - [Backward Compatibility](#backward-compatibility)
+  - [Code Metrics](#code-metrics)
+  - [Performance Characteristics](#performance-characteristics)
+  - [Files Modified](#files-modified)
+  - [Documentation Created](#documentation-created)
+  - [Why Signals Library](#why-signals-library)
+    - [Advantages Over Custom Implementation](#advantages-over-custom-implementation)
+    - [Industry Standard](#industry-standard)
+  - [Verification Checklist](#verification-checklist)
+  - [Next Steps](#next-steps)
+    - [Infrastructure Complete ✅](#infrastructure-complete-)
+    - [Manual Implementation (Developer Work)](#manual-implementation-developer-work)
+  - [How to Verify](#how-to-verify)
+  - [Conclusion](#conclusion)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # GitHub.com/Maniartech/Signals Implementation Summary
 
 ## Instruction Implemented ✅
@@ -9,17 +49,21 @@
 ## What Was Done
 
 ### 1. Dependency Integration
+
 - Added `github.com/maniartech/signals v1.3.1` to `go.mod` (explicit require)
 - Synced vendor directory with `go mod vendor`
 - Tidied dependencies with `go mod tidy`
 
 ### 2. EventBus Refactoring
+
 - Replaced custom `simpleSignal[T]` type with `signals.Signal[T]`
 - Updated all 8 signal fields in EventBus struct
 - Implemented 40 interface methods using signals library API
 
 ### 3. API Wrapper
+
 Created a clean wrapper layer in EventBusInterface that:
+
 - Maintains backward compatibility (all method signatures identical)
 - Hides signals library complexity behind simple interface
 - Provides consistent API across all event types
@@ -27,6 +71,7 @@ Created a clean wrapper layer in EventBusInterface that:
 ### 4. Key Implementation Changes
 
 #### Old (Custom)
+
 ```go
 type simpleSignal[T any] struct {
     mu        sync.RWMutex
@@ -36,6 +81,7 @@ type simpleSignal[T any] struct {
 ```
 
 #### New (Signals Library)
+
 ```go
 type EventBus struct {
     ctx context.Context
@@ -48,6 +94,7 @@ type EventBus struct {
 ### 5. Method Implementation Pattern
 
 #### Emit Methods
+
 ```go
 func (eb *EventBus) EmitDiskAdded(event DiskEvent) {
     slog.Debug("Emitting DiskAdded event", "disk", diskID)
@@ -56,6 +103,7 @@ func (eb *EventBus) EmitDiskAdded(event DiskEvent) {
 ```
 
 #### Listener Registration
+
 ```go
 func (eb *EventBus) OnDiskAdded(handler func(DiskEvent)) func() {
     key := generateKey()
@@ -71,7 +119,8 @@ func (eb *EventBus) OnDiskAdded(handler func(DiskEvent)) func() {
 ## Test Results
 
 ### All Tests Passing ✅
-```
+
+```plaintext
 12/12 Tests Passed
 Total Time: 0.513 seconds
 
@@ -92,7 +141,8 @@ Total Time: 0.513 seconds
 ## Build Verification
 
 ### Full Backend Compilation ✅
-```
+
+```plaintext
 ✅ github.com/dianlight/srat/events
 ✅ github.com/dianlight/srat/repository
 ✅ github.com/dianlight/srat/service
@@ -106,14 +156,14 @@ Total Time: 0.513 seconds
 
 ### Signals Library API Used
 
-| Method | Purpose |
-|--------|---------|
-| `signals.New[T]()` | Create new signal |
-| `signal.Emit(ctx, event)` | Emit event to all listeners |
-| `signal.AddListener(handler, key)` | Register listener |
-| `signal.RemoveListener(key)` | Unregister listener |
-| `signal.Len()` | Get listener count |
-| `signal.IsEmpty()` | Check if has listeners |
+| Method                             | Purpose                     |
+| ---------------------------------- | --------------------------- |
+| `signals.New[T]()`                 | Create new signal           |
+| `signal.Emit(ctx, event)`          | Emit event to all listeners |
+| `signal.AddListener(handler, key)` | Register listener           |
+| `signal.RemoveListener(key)`       | Unregister listener         |
+| `signal.Len()`                     | Get listener count          |
+| `signal.IsEmpty()`                 | Check if has listeners      |
 
 ### Features Provided by Signals Library
 
@@ -145,13 +195,13 @@ Total Time: 0.513 seconds
 
 ## Code Metrics
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Custom Signal Code | ~250 lines | 0 lines | -250 |
-| EventBus Lines | ~350 lines | ~280 lines | -70 |
-| External Dependency | 0 | 1 | +1 |
-| Test Coverage | 12 tests | 12 tests | Same |
-| Build Status | ✅ Pass | ✅ Pass | Maintained |
+| Metric              | Before     | After      | Change     |
+| ------------------- | ---------- | ---------- | ---------- |
+| Custom Signal Code  | ~250 lines | 0 lines    | -250       |
+| EventBus Lines      | ~350 lines | ~280 lines | -70        |
+| External Dependency | 0          | 1          | +1         |
+| Test Coverage       | 12 tests   | 12 tests   | Same       |
+| Build Status        | Pass       | Pass       | Maintained |
 
 ## Performance Characteristics
 
@@ -163,7 +213,7 @@ Total Time: 0.513 seconds
 
 ## Files Modified
 
-```
+```plaintext
 backend/src/
 ├── go.mod (1 line added)
 ├── events/
@@ -208,6 +258,7 @@ backend/src/
 ### Industry Standard
 
 The `maniartech/signals` library is:
+
 - ✅ Well-documented
 - ✅ Production-proven
 - ✅ Actively maintained
@@ -230,11 +281,13 @@ The `maniartech/signals` library is:
 ## Next Steps
 
 ### Infrastructure Complete ✅
+
 - Event system fully functional
 - Signals library integrated
 - All tests passing
 
 ### Manual Implementation (Developer Work)
+
 1. Add event emissions to VolumeService
 2. Add event emissions to ShareService
 3. Test with WebSocket/SSE clients
