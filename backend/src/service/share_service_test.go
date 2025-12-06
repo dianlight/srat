@@ -18,6 +18,7 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
@@ -320,7 +321,172 @@ func (suite *ShareServiceSuite) TestVerifyShareNilShare() {
 	suite.Contains(err.Error(), "share cannot be nil")
 }
 
-// Helper function
+// ============================================================================
+// GetShare Tests
+// ============================================================================
+
+func (suite *ShareServiceSuite) TestGetShareNotFound() {
+	// Execute
+	share, err := suite.shareService.GetShare("nonexistent-share")
+
+	// Assert
+	suite.Error(err)
+	suite.Nil(share)
+	suite.True(errors.Is(err, dto.ErrorShareNotFound))
+}
+
+// ============================================================================
+// CreateShare Tests
+// ============================================================================
+
+func (suite *ShareServiceSuite) TestCreateShareSuccess() {
+	// Setup
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	newShare := dto.SharedResource{
+		Name:        "new-share",
+		Disabled:    boolPtr(false),
+		GuestOk:     boolPtr(true),
+		TimeMachine: boolPtr(false),
+		RecycleBin:  boolPtr(true),
+		Usage:       "media",
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/new",
+			DeviceId: "newdev123",
+			Type:     "ADDON",
+		},
+		Users: []dto.User{
+			{
+				Username: "homeassistant",
+			},
+		},
+	}
+
+	// Execute
+	created, err := suite.shareService.CreateShare(newShare)
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(created)
+	suite.Equal("new-share", created.Name)
+	suite.False(*created.Disabled)
+	suite.True(*created.GuestOk)
+	suite.Len(created.Users, 1)
+}
+
+func (suite *ShareServiceSuite) TestCreateShareWithoutExplicitUsers() {
+	// Setup: Mock GetAdmin to return the admin user
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	newShare := dto.SharedResource{
+		Name:     "admin-auto-share",
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/auto",
+			DeviceId: "auto123",
+			Type:     "ADDON",
+		},
+		Users: []dto.User{}, // Empty users list
+	}
+
+	// Execute
+	created, err := suite.shareService.CreateShare(newShare)
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(created)
+	// Admin user should be automatically added
+	suite.Len(created.Users, 1)
+	suite.Equal("homeassistant", created.Users[0].Username)
+}
+
+func (suite *ShareServiceSuite) TestCreateShareWithMultipleProperties() {
+	// Setup
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	newShare := dto.SharedResource{
+		Name:               "feature-rich-share",
+		Disabled:           boolPtr(false),
+		GuestOk:            boolPtr(true),
+		TimeMachine:        boolPtr(true),
+		RecycleBin:         boolPtr(true),
+		TimeMachineMaxSize: stringPtr("500G"),
+		Usage:              "backup",
+		VetoFiles:          []string{"*.exe", "*.dll"},
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/backup",
+			DeviceId: "backup123",
+			Type:     "ADDON",
+		},
+		Users: []dto.User{
+			{
+				Username: "homeassistant",
+				RwShares: []string{"feature-rich-share"},
+			},
+		},
+		RoUsers: []dto.User{
+			{
+				Username: "readonly-user",
+			},
+		},
+	}
+
+	// Execute
+	created, err := suite.shareService.CreateShare(newShare)
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(created)
+	suite.Equal("feature-rich-share", created.Name)
+	suite.True(*created.GuestOk)
+	suite.True(*created.TimeMachine)
+	suite.True(*created.RecycleBin)
+	suite.Equal("500G", *created.TimeMachineMaxSize)
+	suite.Len(created.VetoFiles, 2)
+	suite.Len(created.Users, 1)
+	suite.Len(created.RoUsers, 1)
+}
+
+// ============================================================================
+// UpdateShare Tests
+// ============================================================================
+
+func (suite *ShareServiceSuite) TestUpdateShareNotFound() {
+	// Setup: Mock GetAdmin
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	// Execute
+	updatedShare := dto.SharedResource{
+		Name:     "nonexistent-share",
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/missing",
+			DeviceId: "missing123",
+			Type:     "ADDON",
+		},
+	}
+
+	result, err := suite.shareService.UpdateShare("nonexistent-share", updatedShare)
+
+	// Assert
+	suite.Error(err)
+	suite.Nil(result)
+	suite.True(errors.Is(err, dto.ErrorShareNotFound))
+}
+
+// Helper functions
 func boolPtr(b bool) *bool {
 	return &b
+}
+
+func stringPtr(s string) *string {
+	return &s
 }

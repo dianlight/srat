@@ -137,9 +137,13 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 }
 
 func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
-	shares, err := gorm.G[dbom.ExportedShare](s.db).Find(s.ctx)
+	shares, err := gorm.G[dbom.ExportedShare](s.db.Debug()).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
+		Find(s.ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list shares")
+		return nil, errors.Errorf("failed to list shares from repository: %w", err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	var dtoShares []dto.SharedResource
@@ -163,6 +167,9 @@ func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
 
 func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 	share, err := gorm.G[dbom.ExportedShare](s.db).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
 		Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -186,6 +193,9 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
 	_, err := gorm.G[dbom.ExportedShare](s.db).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
 		Where(g.ExportedShare.Name.Eq(share.Name)).First(s.ctx)
 	if err != nil && (!errors.Is(err, gorm.ErrRecordNotFound)) {
 		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
@@ -240,6 +250,9 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 
 func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.SharedResource, errors.E) {
 	dbShare, err := gorm.G[dbom.ExportedShare](s.db).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
 		Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
