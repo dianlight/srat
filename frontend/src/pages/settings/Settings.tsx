@@ -102,14 +102,22 @@ const categories: { [key: string]: { [key: string]: string[] } | string[] } = {
 	'Update': ['update_channel'],
 	'Telemetry': ['telemetry_mode'],
 	'HomeAssistant': ['export_stats_to_ha'],
-	'Power': ['hdidle_enabled', 'hdidle_default_idle_time', 'hdidle_default_command_type', 'hdidle_ignore_spin_down_detection'],
 };
+const beta_categories: { [key: string]: { [key: string]: string[] } | string[] } = {
+	'Power ( 🚧 WIP )': ['hdidle_enabled', 'hdidle_default_idle_time', 'hdidle_default_command_type', 'hdidle_ignore_spin_down_detection'],
+};
+
 
 // Build tree structure dynamically from categories
 const buildSettingsTree = (): SettingTreeNode[] => {
 	const tree: SettingTreeNode[] = [];
 
-	Object.entries(categories).forEach(([category, subCategories]) => {
+	let all_categories = { ...categories };
+	if (getNodeEnv() !== 'production') {
+		all_categories = { ...all_categories, ...beta_categories };
+	}
+
+	Object.entries(all_categories).forEach(([category, subCategories]) => {
 		if (Array.isArray(subCategories)) {
 			// For string arrays like General, create a single leaf node
 			const leafNode: SettingTreeNode = {
@@ -143,7 +151,7 @@ const buildSettingsTree = (): SettingTreeNode[] => {
 };
 
 export function Settings() {
-	const [selectedSetting, setSelectedSetting] = useState<string | null>(null);
+	const [selectedSetting, setSelectedSetting] = useState<string | null>("general");
 	const [searchQuery, setSearchQuery] = useState<string>('');
 	const [expandedNodes, setExpandedNodes] = useState<string[]>(['network', 'update', 'telemetry', 'hdidle']);
 
@@ -266,8 +274,13 @@ export function Settings() {
 			disabled: evdata?.hello?.read_only,
 		};
 
+		let all_categories = { ...categories };
+		if (getNodeEnv() !== 'production') {
+			all_categories = { ...all_categories, ...beta_categories };
+		}
+
 		// Check if this is a composite category (leaf node with multiple fields)
-		for (const [category, subCategories] of Object.entries(categories)) {
+		for (const [category, subCategories] of Object.entries(all_categories)) {
 			if (Array.isArray(subCategories)) {
 				// If subCategories is a string array (like General), and settingName matches the category
 				if (settingName === category.toLowerCase()) {

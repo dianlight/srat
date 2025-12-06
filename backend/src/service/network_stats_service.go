@@ -37,12 +37,12 @@ type networkStatsService struct {
 func NewNetworkStatsService(lc fx.Lifecycle, Ctx context.Context, prop_repo repository.PropertyRepositoryInterface) NetworkStatsService {
 	fs, err := procfs.NewFS("/proc")
 	if err != nil {
-		slog.Error("Failed to create procfs filesystem", "error", err)
+		slog.ErrorContext(Ctx, "Failed to create procfs filesystem", "error", err)
 	}
 
 	sfs, err := sysfs.NewFS("/sys")
 	if err != nil {
-		slog.Error("Failed to create sysfs filesystem", "error", err)
+		slog.ErrorContext(Ctx, "Failed to create sysfs filesystem", "error", err)
 	}
 
 	ns := &networkStatsService{
@@ -63,7 +63,7 @@ func NewNetworkStatsService(lc fx.Lifecycle, Ctx context.Context, prop_repo repo
 				if errors.Is(err, dto.ErrorNotFound) {
 					// ignore
 				} else {
-					slog.Error("Failed to update network stats", "error", err)
+					slog.ErrorContext(ctx, "Failed to update network stats", "error", err)
 				}
 			}
 			go func() {
@@ -80,12 +80,12 @@ func (self *networkStatsService) run() error {
 	for {
 		select {
 		case <-self.ctx.Done():
-			slog.Info("Run process closed", "err", self.ctx.Err())
+			slog.InfoContext(self.ctx, "Run process closed", "err", self.ctx.Err())
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(time.Second * 10):
 			err := self.updateNetworkStats()
 			if err != nil {
-				slog.Error("Failed to update network stats", "error", err)
+				slog.ErrorContext(self.ctx, "Failed to update network stats", "error", err)
 				continue
 			}
 		}
@@ -108,7 +108,7 @@ func (s *networkStatsService) updateNetworkStats() error {
 	}
 	bindAll, ok := BindAllInterfaces.(bool)
 	if !ok {
-		slog.Warn("BindAllInterfaces property from DB is not of expected type bool", "type", fmt.Sprintf("%T", BindAllInterfaces))
+		slog.WarnContext(s.ctx, "BindAllInterfaces property from DB is not of expected type bool", "type", fmt.Sprintf("%T", BindAllInterfaces))
 		s.lastUpdateTime = time.Now()
 		return nil
 	}
@@ -132,9 +132,9 @@ func (s *networkStatsService) updateNetworkStats() error {
 		nicSlice, ok = nics.([]interface{})
 		if !ok {
 			if nics != nil {
-				slog.Warn("Interfaces property from DB is not of expected type []interface{}", "type", fmt.Sprintf("%T", nics))
+				slog.WarnContext(s.ctx, "Interfaces property from DB is not of expected type []interface{}", "type", fmt.Sprintf("%T", nics))
 			} else {
-				slog.Debug("Interfaces property from DB is nil")
+				slog.DebugContext(s.ctx, "Interfaces property from DB is nil")
 			}
 			s.lastUpdateTime = time.Now()
 			return nil
@@ -152,13 +152,13 @@ func (s *networkStatsService) updateNetworkStats() error {
 	for _, nic := range nicSlice {
 		nicName, ok := nic.(string)
 		if !ok {
-			slog.Warn("Skipping non-string value in interfaces list", "value", nic)
+			slog.WarnContext(s.ctx, "Skipping non-string value in interfaces list", "value", nic)
 			continue
 		}
 
 		// Skip virtual ethernet (veth) interfaces used by containers
 		if strings.HasPrefix(nicName, "veth") {
-			slog.Debug("Skipping veth interface", "interface", nicName)
+			slog.DebugContext(s.ctx, "Skipping veth interface", "interface", nicName)
 			continue
 		}
 
@@ -169,7 +169,7 @@ func (s *networkStatsService) updateNetworkStats() error {
 				if err != nil {
 					// Interface may have been removed between /proc/net/dev read and sysfs access
 					// This is common with virtual interfaces (veth). Skip silently.
-					slog.Debug("Network interface no longer accessible, skipping", "interface", nicName, "error", err)
+					slog.DebugContext(s.ctx, "Network interface no longer accessible, skipping", "interface", nicName, "error", err)
 					delete(s.lastStats, nicName) // Clean up old stats for removed interface
 					continue
 				}

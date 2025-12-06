@@ -4,17 +4,18 @@ import (
 	"fmt"
 
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/fatih/color"
 	"moul.io/banner"
 )
 
-func Banner(module string) {
+func Banner(module string, command string) {
 	colTitle := color.New(color.FgHiCyan, color.Bold)
 	colInfo := color.New(color.FgHiWhite)
 	colLink := color.New(color.FgHiBlue, color.Underline)
 
-	colTitle.Println(banner.Inline(module))
+	colTitle.Print(banner.Inline(module))
+	colTitle.Println(command)
 	colTitle.Println("SambaNAS2 Rest Administration Interface")
 	colVersion := color.New(color.FgHiGreen, color.Bold)
 	colHash := color.New(color.FgHiMagenta)

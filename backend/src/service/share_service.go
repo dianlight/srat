@@ -1,22 +1,25 @@
 package service
 
 import (
-	"log"
+	"context"
 	"log/slog"
+	"os"
 	"sync"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
+	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
-	"github.com/xorcare/pointer"
+	"github.com/dianlight/srat/events"
+	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
+	"gorm.io/gorm"
 )
 
 type ShareServiceInterface interface {
-	All() (*[]dto.SharedResource, errors.E)
-	SaveAll(*[]dto.SharedResource) errors.E
+	//	SaveAll(*[]dto.SharedResource) errors.E
 	ListShares() ([]dto.SharedResource, errors.E)
 	GetShare(name string) (*dto.SharedResource, errors.E)
 	CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E)
@@ -25,66 +28,127 @@ type ShareServiceInterface interface {
 	DisableShare(name string) (*dto.SharedResource, errors.E)
 	EnableShare(name string) (*dto.SharedResource, errors.E)
 	GetShareFromPath(path string) (*dto.SharedResource, errors.E)
-	DisableShareFromPath(path string) (*dto.SharedResource, errors.E)
-	NotifyClient()
+	SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E)
+	//NotifyClient()
 	VerifyShare(share *dto.SharedResource) errors.E
+	SetSupervisorService(s SupervisorServiceInterface)
 }
 
 type ShareService struct {
-	exported_share_repo repository.ExportedShareRepositoryInterface
-	samba_user_repo     repository.SambaUserRepositoryInterface
-	mount_repo          repository.MountPointPathRepositoryInterface
-	broadcaster         BroadcasterServiceInterface
-	sharesQueueMutex    *sync.RWMutex
-	dbomConv            converter.DtoToDbomConverterImpl
+	ctx                context.Context
+	db                 *gorm.DB
+	supervisor_service SupervisorServiceInterface
+	//exported_share_repo repository.ExportedShareRepositoryInterface
+	user_service UserServiceInterface
+	//mount_repo          repository.MountPointPathRepositoryInterface
+	eventBus         events.EventBusInterface
+	sharesQueueMutex *sync.RWMutex
+	dbomConv         converter.DtoToDbomConverterImpl
+	defaultConfig    *config.DefaultConfig
 }
 
 type ShareServiceParams struct {
 	fx.In
-	ExportedShareRepo repository.ExportedShareRepositoryInterface
-	SambaUserRepo     repository.SambaUserRepositoryInterface
-	MountRepo         repository.MountPointPathRepositoryInterface
-	Broadcaster       BroadcasterServiceInterface
+	Ctx context.Context
+	Db  *gorm.DB
+	//	SupervisorService SupervisorServiceInterface `optional:"true"`
+	//ExportedShareRepo repository.ExportedShareRepositoryInterface
+	UserService UserServiceInterface
+	//MountRepo         repository.MountPointPathRepositoryInterface
+	EventBus      events.EventBusInterface
+	DefaultConfig *config.DefaultConfig
 }
 
-func NewShareService(in ShareServiceParams) ShareServiceInterface {
-	return &ShareService{
-		exported_share_repo: in.ExportedShareRepo,
-		samba_user_repo:     in.SambaUserRepo,
-		mount_repo:          in.MountRepo,
-		broadcaster:         in.Broadcaster,
-		sharesQueueMutex:    &sync.RWMutex{},
-		dbomConv:            converter.DtoToDbomConverterImpl{},
+func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterface {
+	s := &ShareService{
+		//exported_share_repo: in.ExportedShareRepo,
+		user_service: in.UserService,
+		//mount_repo:          in.MountRepo,
+		//		supervisor_service: in.SupervisorService,
+		ctx:              in.Ctx,
+		db:               in.Db,
+		eventBus:         in.EventBus,
+		defaultConfig:    in.DefaultConfig,
+		sharesQueueMutex: &sync.RWMutex{},
+		dbomConv:         converter.DtoToDbomConverterImpl{},
 	}
-}
+	unsubscribe := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
+		slog.InfoContext(ctx, "Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
+		share, err := s.GetShareFromPath(event.MountPoint.Path)
+		if err != nil {
+			if errors.Is(err, dto.ErrorShareNotFound) {
+				tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
+				return nil
+			}
+			return err
+		}
+		if share == nil {
+			tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
+			return nil
+		}
+		s.eventBus.EmitShare(events.ShareEvent{
+			Event: events.Event{Type: events.EventTypes.UPDATE},
+			Share: share, // Let subscribers fetch the share if needed
+		})
+		return nil
+	})
 
-func (s *ShareService) All() (*[]dto.SharedResource, errors.E) {
-	sh, errE := s.exported_share_repo.All()
-	if errE != nil {
-		return nil, errE
-	}
-	ret, err := s.dbomConv.ExportedSharesToSharedResources(sh)
-	return ret, errors.WithStack(err)
-}
-
-func (s *ShareService) SaveAll(shares *[]dto.SharedResource) errors.E {
-	sh, err := s.dbomConv.SharedResourcesToExportedShares(shares)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return s.exported_share_repo.SaveAll(sh)
+	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			if os.Getenv("SRAT_MOCK") == "true" {
+				return nil
+			}
+			allusers, err := s.user_service.ListUsers()
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			// Create all default Shares if don't exists
+			cconv := converter.ConfigToDtoConverterImpl{}
+			for _, defCShare := range s.defaultConfig.Shares {
+				_, err := s.GetShare(defCShare.Name)
+				if err != nil {
+					if errors.Is(err, dto.ErrorShareNotFound) {
+						defShare, errConv := cconv.ShareToSharedResource(defCShare, allusers)
+						if errConv != nil {
+							slog.Error("Error converting default share", "name", defCShare.Name, "err", errConv)
+							return errors.WithStack(errConv)
+						}
+						slog.Info("Creating default share", "name", defShare.Name, "path", defShare.MountPointData.Path, "device_id", defShare.MountPointData.DeviceId)
+						_, createErr := s.CreateShare(defShare)
+						if createErr != nil {
+							slog.Error("Error creating default share", "name", defShare.Name, "err", createErr)
+							return createErr
+						}
+					} else {
+						slog.Error("Error checking for default share", "name", defCShare.Name, "err", err)
+					}
+				}
+			}
+			return nil
+		},
+		OnStop: func(_ context.Context) error {
+			if unsubscribe != nil {
+				unsubscribe()
+			}
+			return nil
+		},
+	})
+	return s
 }
 
 func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
-	shares, err := s.exported_share_repo.All()
+	shares, err := gorm.G[dbom.ExportedShare](s.db.Debug()).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
+		Find(s.ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list shares")
+		return nil, errors.Errorf("failed to list shares from repository: %w", err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	var dtoShares []dto.SharedResource
-	for _, share := range *shares {
-		var dtoShare dto.SharedResource
-		err := conv.ExportedShareToSharedResource(share, &dtoShare, nil)
+	for _, share := range shares {
+		dtoShare, err := conv.ExportedShareToSharedResource(share)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to convert share")
 		}
@@ -102,18 +166,22 @@ func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
 }
 
 func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
-	share, err := s.exported_share_repo.FindByName(name)
+	share, err := gorm.G[dbom.ExportedShare](s.db).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
+		Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorShareNotFound)
+		}
 		return nil, errors.Wrap(err, "failed to get share")
 	}
-	if share == nil {
-		return nil, errors.WithStack(dto.ErrorShareNotFound)
-	}
 	var conv converter.DtoToDbomConverterImpl
-	var dtoShare dto.SharedResource
-	err = conv.ExportedShareToSharedResource(*share, &dtoShare, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert share")
+	dtoShare, errS := conv.ExportedShareToSharedResource(share)
+
+	if errS != nil {
+		return nil, errors.Wrap(errS, "failed to convert share")
 	}
 
 	if err := s.VerifyShare(&dtoShare); err != nil {
@@ -124,12 +192,16 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 }
 
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
-	existing, err := s.exported_share_repo.FindByName(share.Name)
-	if err != nil && !errors.Is(err, dto.ErrorShareNotFound) {
+	_, err := gorm.G[dbom.ExportedShare](s.db).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
+		Where(g.ExportedShare.Name.Eq(share.Name)).First(s.ctx)
+	if err != nil && (!errors.Is(err, gorm.ErrRecordNotFound)) {
 		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
 		return nil, errors.Wrap(err, "failed to check for existing share")
 	}
-	if existing != nil {
+	if err == nil {
 		return nil, errors.WithStack(dto.ErrorShareAlreadyExists)
 	}
 
@@ -141,95 +213,94 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 	}
 
 	if len(dbShare.Users) == 0 {
-		admin, err := s.samba_user_repo.GetAdmin()
+		admin, err := s.user_service.GetAdmin()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get admin user")
 		}
-		dbShare.Users = []dbom.SambaUser{admin}
+		var dbomAdmin dbom.SambaUser
+		err = s.dbomConv.UserToSambaUser(*admin, &dbomAdmin)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert admin user to dbom.SambaUser")
+		}
+		dbShare.Users = []dbom.SambaUser{dbomAdmin}
 	}
 
-	errS := s.mount_repo.Save(&dbShare.MountPointData)
-	if errS != nil {
-		return nil, errors.Wrap(errS, "failed to save mount point")
-	}
-
-	err = s.exported_share_repo.Save(&dbShare)
+	err = gorm.G[dbom.ExportedShare](s.db).Create(s.ctx, &dbShare)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to save share")
+		return nil, errors.Errorf("failed to save share '%s' to repository: %w", share.Name, err)
 	}
 
-	var dtoShare dto.SharedResource
 	var convOut converter.DtoToDbomConverterImpl
-	err = convOut.ExportedShareToSharedResource(dbShare, &dtoShare, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert share")
+	dtoShare, errS := convOut.ExportedShareToSharedResource(dbShare)
+	if errS != nil {
+		return nil, errors.Wrap(errS, "failed to convert share")
 	}
 
 	if err := s.VerifyShare(&dtoShare); err != nil {
 		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
 
+	s.eventBus.EmitShare(events.ShareEvent{
+		Event: events.Event{Type: events.EventTypes.ADD},
+		Share: &dtoShare,
+	})
+
 	return &dtoShare, nil
 }
 
 func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.SharedResource, errors.E) {
-	dbShare, err := s.exported_share_repo.FindByName(name)
+	dbShare, err := gorm.G[dbom.ExportedShare](s.db).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
+		Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorShareNotFound)
+		}
 		return nil, errors.Wrap(err, "failed to get share")
-	}
-	if dbShare == nil {
-		return nil, errors.WithStack(dto.ErrorShareNotFound)
 	}
 
 	var conv converter.DtoToDbomConverterImpl
-	err = conv.SharedResourceToExportedShare(share, dbShare)
+	err = conv.SharedResourceToExportedShare(share, &dbShare)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
 
 	if len(dbShare.Users) == 0 {
-		adminUser, adminErr := s.samba_user_repo.GetAdmin()
+		adminUser, adminErr := s.user_service.GetAdmin()
 		if adminErr != nil {
 			return nil, errors.Wrap(adminErr, "failed to get admin user for new share")
 		}
-		dbShare.Users = append(dbShare.Users, adminUser)
+		var dbomAdmin dbom.SambaUser
+		errS := s.dbomConv.UserToSambaUser(*adminUser, &dbomAdmin)
+		if errS != nil {
+			return nil, errors.Wrap(errS, "failed to convert admin user to dbom.SambaUser")
+		}
+		dbShare.Users = append(dbShare.Users, dbomAdmin)
 	}
 
-	if err := s.exported_share_repo.Save(dbShare); err != nil {
+	if _, err := gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, dbShare); err != nil {
 		// Note: gorm.ErrDuplicatedKey might not be standard across all GORM dialects/drivers.
 		// Checking for a more generic "constraint violation" or relying on the FindByName check might be more robust.
-		return nil, errors.Wrapf(err, "failed to save share '%s' to repository", share.Name)
+		return nil, errors.Wrapf(err, "failed to update share '%s' to repository", share.Name)
 	}
 
-	var createdDtoShare dto.SharedResource
-	if err := conv.ExportedShareToSharedResource(*dbShare, &createdDtoShare, nil); err != nil {
-		return nil, errors.Wrapf(err, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
+	createdDtoShare, errS := conv.ExportedShareToSharedResource(dbShare)
+	if errS != nil {
+		return nil, errors.Wrapf(errS, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
 	}
 
 	if err := s.VerifyShare(&createdDtoShare); err != nil {
 		slog.Warn("New share verification failed", "share", createdDtoShare.Name, "err", err)
 	}
 
-	go s.NotifyClient()
+	s.eventBus.EmitShare(events.ShareEvent{
+		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Share: &createdDtoShare,
+	})
 
-	err = s.mount_repo.Save(&dbShare.MountPointData)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to save mount point")
-	}
-
-	err = s.exported_share_repo.Save(dbShare)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to save share")
-	}
-
-	var dtoShare dto.SharedResource
-	var convOut converter.DtoToDbomConverterImpl
-	err = convOut.ExportedShareToSharedResource(*dbShare, &dtoShare, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert share")
-	}
-
-	return &dtoShare, nil
+	return &createdDtoShare, nil
 }
 
 // DeleteShare deletes a shared resource by its name.
@@ -239,90 +310,111 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 	if err != nil { // Leverage GetShare for not-found check
 		return err
 	}
-	err = s.exported_share_repo.Delete(name)
-	if err != nil {
-		return errors.Wrap(err, "failed to delete share")
+	s.eventBus.EmitShare(events.ShareEvent{
+		Event: events.Event{Type: events.EventTypes.REMOVE},
+		Share: ashare,
+	})
+	_, errS := gorm.G[dbom.ExportedShare](s.db).
+		Where(g.ExportedShare.Name.Eq(name)).Delete(s.ctx)
+	if errS != nil {
+		return errors.Wrap(errS, "failed to delete share")
 	}
-	err = s.mount_repo.Delete(ashare.MountPointData.Path)
-	if err != nil {
-		return errors.Wrap(err, "failed to delete mount point")
-	}
-	go s.NotifyClient()
 	return nil
 }
 
-func (s *ShareService) findByPath(path string) (*dbom.ExportedShare, errors.E) {
-	shares, err := s.exported_share_repo.All()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list shares")
-	}
-
-	for i := range *shares {
-		if (*shares)[i].MountPointData.Path == path {
-			return &(*shares)[i], nil
-		}
-	}
-
-	return nil, errors.WithStack(dto.ErrorShareNotFound)
-}
-
 func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, errors.E) {
-	share, err := s.findByPath(path)
+	share, err := gorm.G[dbom.ExportedShare](s.db).
+		Where(g.ExportedShare.MountPointDataPath.Eq(path)).First(s.ctx)
 	if err != nil {
-		return nil, err // This will propagate ErrorShareNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorShareNotFound)
+		}
+		return nil, errors.Wrap(err, "failed to get share by mount path")
+	}
+	var conv converter.DtoToDbomConverterImpl
+	dtoShare, errS := conv.ExportedShareToSharedResource(share)
+	if errS != nil {
+		return nil, errors.Wrap(errS, "failed to convert share")
 	}
 
-	var conv converter.DtoToDbomConverterImpl
-	var dtoShare dto.SharedResource
-	err = conv.ExportedShareToSharedResource(*share, &dtoShare, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert share")
+	if err := s.VerifyShare(&dtoShare); err != nil {
+		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
+
 	return &dtoShare, nil
 }
 
-func (s *ShareService) DisableShareFromPath(path string) (*dto.SharedResource, errors.E) {
-	share, err := s.findByPath(path)
+func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E) {
+	share, err := gorm.G[dbom.ExportedShare](s.db).
+		Where(g.ExportedShare.MountPointDataPath.Eq(path)).First(s.ctx)
 	if err != nil {
-		return nil, err // This will propagate ErrorShareNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorShareNotFound)
+		}
+		return nil, errors.Wrap(err, "failed to get share by mount path")
+	}
+	if share.Disabled != nil && *share.Disabled == !enabled {
+		// No change needed
+		tlog.Debug("No update on Share", "path", path, "share", share)
+		var conv converter.DtoToDbomConverterImpl
+		dtoShare, err := conv.ExportedShareToSharedResource(share)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert share")
+		}
+		return &dtoShare, nil
 	}
 
-	disabled := true
+	disabled := !enabled
 	share.Disabled = &disabled
-	err = s.exported_share_repo.Save(share)
+	_, err = gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, share)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to save share")
 	}
 
-	var conv converter.DtoToDbomConverterImpl
-	var dtoShare dto.SharedResource
-	err = conv.ExportedShareToSharedResource(*share, &dtoShare, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert share")
+	if *share.Disabled && (share.Usage == dto.UsageAsMedia || share.Usage == dto.UsageAsBackup || share.Usage == dto.UsageAsShare) {
+		// Umount the volume if the share is being disabled and is of type media/backup/share
+		errE := s.supervisor_service.NetworkUnmountShare(s.ctx, share.Name)
+		if errE != nil {
+			slog.Error("Failed to unmount volume for disabled share", "share", share.Name, "error", errE)
+		}
 	}
+
+	var conv converter.DtoToDbomConverterImpl
+	dtoShare, errS := conv.ExportedShareToSharedResource(share)
+	if errS != nil {
+		return nil, errors.Wrap(errS, "failed to convert share")
+	}
+	s.eventBus.EmitShare(events.ShareEvent{
+		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Share: &dtoShare,
+	})
+
 	return &dtoShare, nil
 }
 
 func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedResource, errors.E) {
-	share, err := s.exported_share_repo.FindByName(name)
+	share, err := gorm.G[dbom.ExportedShare](s.db).Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.WithStack(dto.ErrorShareNotFound)
+		}
 		return nil, errors.Wrap(err, "failed to get share")
-	}
-	if share == nil {
-		return nil, errors.WithStack(dto.ErrorShareNotFound)
 	}
 	disabled := !enabled
 	share.Disabled = &disabled
-	err = s.exported_share_repo.Save(share)
+	_, err = gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, share)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to save share")
 	}
 	var conv converter.DtoToDbomConverterImpl
-	var dtoShare dto.SharedResource
-	err = conv.ExportedShareToSharedResource(*share, &dtoShare, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert share")
+	dtoShare, errS := conv.ExportedShareToSharedResource(share)
+	if errS != nil {
+		return nil, errors.Wrap(errS, "failed to convert share")
 	}
+	s.eventBus.EmitShare(events.ShareEvent{
+		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Share: &dtoShare,
+	})
 	return &dtoShare, nil
 }
 
@@ -332,18 +424,6 @@ func (s *ShareService) DisableShare(name string) (*dto.SharedResource, errors.E)
 
 func (s *ShareService) EnableShare(name string) (*dto.SharedResource, errors.E) {
 	return s.setShareEnabled(name, true)
-}
-
-func (s *ShareService) NotifyClient() {
-	s.sharesQueueMutex.RLock()
-	defer s.sharesQueueMutex.RUnlock()
-
-	shares, err := s.ListShares()
-	if err != nil {
-		log.Printf("Error listing shares in notifyClient: %v", err)
-		return
-	}
-	s.broadcaster.BroadcastMessage(shares)
 }
 
 // VerifyShare checks the validity of a share and disables it if invalid
@@ -356,12 +436,14 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 	if share == nil {
 		return errors.New("share cannot be nil")
 	}
+	if share.Status == nil {
+		share.Status = &dto.SharedResourceStatus{}
+	}
 
 	// Case 4: Check if MountPointData exists and has a valid path
 	if share.MountPointData == nil || share.MountPointData.Path == "" {
 		slog.Warn("Share has no valid MountPointData", "share", share.Name)
-		share.Invalid = pointer.Bool(true)
-		share.Disabled = pointer.Bool(true)
+		share.Status.IsValid = false
 		return nil
 	}
 
@@ -370,8 +452,7 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 		slog.Warn("Share volume does not exist",
 			"share", share.Name,
 			"path", share.MountPointData.Path)
-		share.Invalid = pointer.Bool(true)
-		share.Disabled = pointer.Bool(true)
+		share.Status.IsValid = false
 		return nil
 	}
 
@@ -380,8 +461,7 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 		slog.Warn("Share volume is not mounted",
 			"share", share.Name,
 			"path", share.MountPointData.Path)
-		share.Invalid = pointer.Bool(true)
-		share.Disabled = pointer.Bool(true)
+		share.Status.IsValid = false
 		return nil
 	}
 
@@ -408,23 +488,10 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 		}
 		// Case 1: RW volume - share state depends on DB disabled value (already set)
 	}
-
-	// Check if mount is active in Home Assistant (for non-internal shares)
-	if share.Usage != "internal" && share.Usage != "none" {
-		if share.IsHAMounted != nil && !*share.IsHAMounted {
-			slog.Warn("Share mount point is not mounted in Home Assistant",
-				"share", share.Name,
-				"status", share.HaStatus)
-			share.Invalid = pointer.Bool(true)
-			share.Disabled = pointer.Bool(true)
-			return nil
-		}
-	}
-
-	// Share is valid
-	if share.Invalid == nil || !*share.Invalid {
-		share.Invalid = pointer.Bool(false)
-	}
-
+	share.Status.IsValid = true
 	return nil
+}
+
+func (s *ShareService) SetSupervisorService(svc SupervisorServiceInterface) {
+	s.supervisor_service = svc
 }

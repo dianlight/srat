@@ -220,10 +220,10 @@ $ go list -m -json gitlab.com/tozd/go/errors
 
 ### Actions Taken
 
-| Dependency                           | Status                 | Action      | Rationale                                              |
-| ------------------------------------ | ---------------------- | ----------- | ------------------------------------------------------ |
-| `github.com/m1/go-generate-password` | Abandoned (3.5 years)  | ✅ Replaced | Simple functionality, single usage, easily replaceable |
-| `gitlab.com/tozd/go/errors`          | Active (13 months ago) | ✅ Kept     | Actively maintained, extensive usage, unique value     |
+| Dependency                           | Status                 | Action   | Rationale                                              |
+| ------------------------------------ | ---------------------- | -------- | ------------------------------------------------------ |
+| `github.com/m1/go-generate-password` | Abandoned (3.5 years)  | Replaced | Simple functionality, single usage, easily replaceable |
+| `gitlab.com/tozd/go/errors`          | Active (13 months ago) | Kept     | Actively maintained, extensive usage, unique value     |
 
 ### Metrics
 

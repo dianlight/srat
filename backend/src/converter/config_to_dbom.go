@@ -19,6 +19,7 @@ type ConfigToDbomConverter interface {
 	// goverter:ignore MountPointData
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:map Path MountPointDataPath
+	// goverter:map Path MountPointDataRoot
 	// goverter:context users
 	ShareToExportedShareNoMountPointPath(source config.Share, target *dbom.ExportedShare, users *dbom.SambaUsers) error
 

@@ -120,8 +120,8 @@ func TestExportedShareToStringRoundTrip(t *testing.T) {
 
 func TestPartitionFromDeviceId(t *testing.T) {
 	id := "disk-1"
-	partitions := []dto.Partition{{Id: &id}}
-	disks := []dto.Disk{{Partitions: &partitions}}
+	partitions := map[string]dto.Partition{id: {Id: &id}}
+	disks := []*dto.Disk{{Partitions: &partitions}}
 
 	result := partitionFromDeviceId(id, disks)
 	if assert.NotNil(t, result) {
@@ -130,7 +130,7 @@ func TestPartitionFromDeviceId(t *testing.T) {
 }
 
 func TestPartitionFromDeviceIdNotFound(t *testing.T) {
-	disks := []dto.Disk{}
+	disks := []*dto.Disk{}
 	result := partitionFromDeviceId("missing", disks)
 	assert.Nil(t, result)
 }
@@ -162,7 +162,7 @@ func TestDtoToDbomConverter_MountPointDataToMountPointPath(t *testing.T) {
 		Flags:              &flags,
 		CustomFlags:        &custom,
 		IsToMountAtStartup: &startup,
-		Shares:             []dto.SharedResource{{Name: shareName}},
+		Share:              &dto.SharedResource{Name: shareName},
 	}
 
 	var target dbom.MountPointPath
@@ -182,9 +182,8 @@ func TestDtoToDbomConverter_MountPointDataToMountPointPath(t *testing.T) {
 	if assert.NotNil(t, target.IsToMountAtStartup) {
 		assert.Equal(t, startup, *target.IsToMountAtStartup)
 	}
-	if assert.Len(t, target.Shares, 1) {
-		assert.Equal(t, shareName, target.Shares[0].Name)
-	}
+	assert.NotNil(t, target.ExportedShare)
+	assert.Equal(t, shareName, target.ExportedShare.Name)
 }
 
 func TestDtoToDbomConverter_MountFlagsToMountDataFlags(t *testing.T) {
@@ -216,11 +215,13 @@ func TestDtoToDbomConverter_ExportedShareToSharedResource_WithEmptyPath(t *testi
 	}
 
 	var targetWithEmptyPath dto.SharedResource
-	err := conv.ExportedShareToSharedResource(sourceWithEmptyPath, &targetWithEmptyPath, nil)
+	targetWithEmptyPath, err := conv.ExportedShareToSharedResource(sourceWithEmptyPath)
 
 	require.NoError(t, err)
 	assert.Equal(t, "UPDATER", targetWithEmptyPath.Name)
-	assert.Nil(t, targetWithEmptyPath.MountPointData, "MountPointData should be nil when path is empty")
+	if targetWithEmptyPath.MountPointData != nil {
+		assert.Empty(t, targetWithEmptyPath.MountPointData.Path, "MountPointData path should be empty when source path is empty")
+	}
 
 	// Test case 2: Share with valid path
 	fstype := "ext4"
@@ -236,7 +237,7 @@ func TestDtoToDbomConverter_ExportedShareToSharedResource_WithEmptyPath(t *testi
 	}
 
 	var targetWithValidPath dto.SharedResource
-	err = conv.ExportedShareToSharedResource(sourceWithValidPath, &targetWithValidPath, nil)
+	targetWithValidPath, err = conv.ExportedShareToSharedResource(sourceWithValidPath)
 
 	require.NoError(t, err)
 	assert.Equal(t, "valid-share", targetWithValidPath.Name)
@@ -257,11 +258,13 @@ func TestDtoToDbomConverter_ExportedShareToSharedResource_WithNilPath(t *testing
 	}
 
 	var target dto.SharedResource
-	err := conv.ExportedShareToSharedResource(source, &target, nil)
+	target, err := conv.ExportedShareToSharedResource(source)
 
 	require.NoError(t, err)
 	assert.Equal(t, "no-mount-share", target.Name)
-	assert.Nil(t, target.MountPointData, "MountPointData should be nil when path is empty string")
+	if target.MountPointData != nil {
+		assert.Empty(t, target.MountPointData.Path, "MountPointData path should be empty when source path is empty")
+	}
 }
 
 func TestDtoToDbomConverter_SharedResourceToExportedShare(t *testing.T) {
@@ -386,7 +389,7 @@ func TestConfigToDto_TimeMachineSupportFromFS_AllTypes(t *testing.T) {
 func TestConfigToDto_FSTypeIsWriteSupported(t *testing.T) {
 	// This function calls osutil.IsWritable which checks actual path writability
 	// In test environment, we can check the function returns a boolean pointer
-	result := FSTypeIsWriteSupported("/tmp")
+	result := isWriteSupported("/tmp")
 	assert.NotNil(t, result)
 	// The result depends on actual filesystem permissions
 }

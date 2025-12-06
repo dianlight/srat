@@ -253,14 +253,14 @@ func TestTimeMachineSupport_UnmarshalJSON(t *testing.T) {
 func TestEventType_String(t *testing.T) {
 	tests := []struct {
 		name     string
-		event    dto.EventType
+		event    dto.WebEventType
 		expected string
 	}{
-		{"Hello", dto.EventTypes.EVENTHELLO, "hello"},
-		{"Updating", dto.EventTypes.EVENTUPDATING, "updating"},
-		{"Volumes", dto.EventTypes.EVENTVOLUMES, "volumes"},
-		{"Heartbeat", dto.EventTypes.EVENTHEARTBEAT, "heartbeat"},
-		{"Share", dto.EventTypes.EVENTSHARE, "share"},
+		{"Hello", dto.WebEventTypes.EVENTHELLO, "hello"},
+		{"Updating", dto.WebEventTypes.EVENTUPDATING, "updating"},
+		{"Volumes", dto.WebEventTypes.EVENTVOLUMES, "volumes"},
+		{"Heartbeat", dto.WebEventTypes.EVENTHEARTBEAT, "heartbeat"},
+		{"Share", dto.WebEventTypes.EVENTSHARE, "share"},
 	}
 
 	for _, tt := range tests {
@@ -271,43 +271,43 @@ func TestEventType_String(t *testing.T) {
 }
 
 func TestEventType_IsValid(t *testing.T) {
-	assert.True(t, dto.EventTypes.EVENTHELLO.IsValid())
-	assert.True(t, dto.EventTypes.EVENTUPDATING.IsValid())
-	assert.True(t, dto.EventTypes.EVENTVOLUMES.IsValid())
-	assert.True(t, dto.EventTypes.EVENTHEARTBEAT.IsValid())
-	assert.True(t, dto.EventTypes.EVENTSHARE.IsValid())
+	assert.True(t, dto.WebEventTypes.EVENTHELLO.IsValid())
+	assert.True(t, dto.WebEventTypes.EVENTUPDATING.IsValid())
+	assert.True(t, dto.WebEventTypes.EVENTVOLUMES.IsValid())
+	assert.True(t, dto.WebEventTypes.EVENTHEARTBEAT.IsValid())
+	assert.True(t, dto.WebEventTypes.EVENTSHARE.IsValid())
 }
 
 func TestEventType_MarshalJSON(t *testing.T) {
-	event := dto.EventTypes.EVENTHELLO
+	event := dto.WebEventTypes.EVENTHELLO
 	data, err := json.Marshal(event)
 	assert.NoError(t, err)
 	assert.Equal(t, `"hello"`, string(data))
 }
 
 func TestEventType_UnmarshalJSON(t *testing.T) {
-	var event dto.EventType
+	var event dto.WebEventType
 	err := json.Unmarshal([]byte(`"updating"`), &event)
 	assert.NoError(t, err)
-	assert.Equal(t, dto.EventTypes.EVENTUPDATING, event)
+	assert.Equal(t, dto.WebEventTypes.EVENTUPDATING, event)
 }
 
 func TestEventType_ParseEventType(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    interface{}
-		expected dto.EventType
+		expected dto.WebEventType
 		hasError bool
 	}{
-		{"String hello", "hello", dto.EventTypes.EVENTHELLO, false},
-		{"String updating", "updating", dto.EventTypes.EVENTUPDATING, false},
-		{"Bytes", []byte("volumes"), dto.EventTypes.EVENTVOLUMES, false},
-		{"EventType type", dto.EventTypes.EVENTSHARE, dto.EventTypes.EVENTSHARE, false},
+		{"String hello", "hello", dto.WebEventTypes.EVENTHELLO, false},
+		{"String updating", "updating", dto.WebEventTypes.EVENTUPDATING, false},
+		{"Bytes", []byte("volumes"), dto.WebEventTypes.EVENTVOLUMES, false},
+		{"EventType type", dto.WebEventTypes.EVENTSHARE, dto.WebEventTypes.EVENTSHARE, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := dto.ParseEventType(tt.input)
+			result, err := dto.ParseWebEventType(tt.input)
 			if tt.hasError {
 				assert.Error(t, err)
 			} else {
@@ -319,35 +319,35 @@ func TestEventType_ParseEventType(t *testing.T) {
 }
 
 func TestEventType_MarshalText(t *testing.T) {
-	event := dto.EventTypes.EVENTVOLUMES
+	event := dto.WebEventTypes.EVENTVOLUMES
 	data, err := event.MarshalText()
 	assert.NoError(t, err)
 	assert.Equal(t, `"volumes"`, string(data))
 }
 
 func TestEventType_UnmarshalText(t *testing.T) {
-	var event dto.EventType
+	var event dto.WebEventType
 	err := event.UnmarshalText([]byte("heartbeat"))
 	assert.NoError(t, err)
-	assert.Equal(t, dto.EventTypes.EVENTHEARTBEAT, event)
+	assert.Equal(t, dto.WebEventTypes.EVENTHEARTBEAT, event)
 }
 
 func TestEventType_MarshalBinary(t *testing.T) {
-	event := dto.EventTypes.EVENTSHARE
+	event := dto.WebEventTypes.EVENTSHARE
 	data, err := event.MarshalBinary()
 	assert.NoError(t, err)
 	assert.Equal(t, `"share"`, string(data))
 }
 
 func TestEventType_UnmarshalBinary(t *testing.T) {
-	var event dto.EventType
+	var event dto.WebEventType
 	err := event.UnmarshalBinary([]byte("hello"))
 	assert.NoError(t, err)
-	assert.Equal(t, dto.EventTypes.EVENTHELLO, event)
+	assert.Equal(t, dto.WebEventTypes.EVENTHELLO, event)
 }
 
 func TestEventType_Value(t *testing.T) {
-	event := dto.EventTypes.EVENTUPDATING
+	event := dto.WebEventTypes.EVENTUPDATING
 	val, err := event.Value()
 	assert.NoError(t, err)
 	assert.Equal(t, "updating", val)
@@ -355,31 +355,31 @@ func TestEventType_Value(t *testing.T) {
 
 func TestEventType_All(t *testing.T) {
 	count := 0
-	for range dto.EventTypes.All() {
+	for range dto.WebEventTypes.All() {
 		count++
 	}
 	assert.Equal(t, 6, count)
 }
 
 func TestEventType_MarshalYAML(t *testing.T) {
-	event := dto.EventTypes.EVENTHELLO
+	event := dto.WebEventTypes.EVENTHELLO
 	data, err := event.MarshalYAML()
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("hello"), data)
 }
 
 func TestEventType_UnmarshalYAML(t *testing.T) {
-	var event dto.EventType
+	var event dto.WebEventType
 	err := event.UnmarshalYAML([]byte("share"))
 	assert.NoError(t, err)
-	assert.Equal(t, dto.EventTypes.EVENTSHARE, event)
+	assert.Equal(t, dto.WebEventTypes.EVENTSHARE, event)
 }
 
 func TestEventType_Scan(t *testing.T) {
-	var event dto.EventType
+	var event dto.WebEventType
 	err := event.Scan("volumes")
 	assert.NoError(t, err)
-	assert.Equal(t, dto.EventTypes.EVENTVOLUMES, event)
+	assert.Equal(t, dto.WebEventTypes.EVENTVOLUMES, event)
 }
 
 // UpdateProcessState tests

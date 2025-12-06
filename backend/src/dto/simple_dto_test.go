@@ -82,6 +82,8 @@ func TestResolutionIssue_UnhealthyAndUnsupported(t *testing.T) {
 
 	assert.True(t, issue.Unhealthy)
 	assert.True(t, issue.Unsupported)
+	assert.Equal(t, "compatibility", issue.Type)
+	assert.Equal(t, "deprecated_feature", issue.Context)
 }
 
 // SmbConf Tests
@@ -118,6 +120,8 @@ guest ok = yes
 	assert.Contains(t, conf.Data, "[global]")
 	assert.Contains(t, conf.Data, "[share1]")
 	assert.Contains(t, conf.Data, "path = /mnt/share1")
+	assert.Contains(t, conf.Data, "read only = no")
+	assert.Contains(t, conf.Data, "guest ok = yes")
 }
 
 // ContextState Tests
@@ -224,13 +228,11 @@ func TestDataDirtyTracker_AllClean(t *testing.T) {
 	tracker := dto.DataDirtyTracker{
 		Shares:   false,
 		Users:    false,
-		Volumes:  false,
 		Settings: false,
 	}
 
 	assert.False(t, tracker.Shares)
 	assert.False(t, tracker.Users)
-	assert.False(t, tracker.Volumes)
 	assert.False(t, tracker.Settings)
 }
 
@@ -238,13 +240,11 @@ func TestDataDirtyTracker_AllDirty(t *testing.T) {
 	tracker := dto.DataDirtyTracker{
 		Shares:   true,
 		Users:    true,
-		Volumes:  true,
 		Settings: true,
 	}
 
 	assert.True(t, tracker.Shares)
 	assert.True(t, tracker.Users)
-	assert.True(t, tracker.Volumes)
 	assert.True(t, tracker.Settings)
 }
 
@@ -252,13 +252,11 @@ func TestDataDirtyTracker_PartialDirty(t *testing.T) {
 	tracker := dto.DataDirtyTracker{
 		Shares:   true,
 		Users:    false,
-		Volumes:  true,
 		Settings: false,
 	}
 
 	assert.True(t, tracker.Shares)
 	assert.False(t, tracker.Users)
-	assert.True(t, tracker.Volumes)
 	assert.False(t, tracker.Settings)
 }
 

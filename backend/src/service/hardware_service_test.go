@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -34,6 +36,10 @@ func (suite *HardwareServiceSuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.Background())
 			},
+			// Provide state with HA Core ready to allow hardware info retrieval
+			func() *dto.ContextState { return &dto.ContextState{HACoreReady: true} },
+			// Provide an EventBus bound to the same context
+			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 			service.NewHardwareService,
 			mock.Mock[hardware.ClientWithResponsesInterface],
 			mock.Mock[service.SmartServiceInterface],

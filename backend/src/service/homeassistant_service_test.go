@@ -125,9 +125,9 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntity() {
 			CPUPercent:    0.5,
 			MemoryPercent: 0.3,
 		},
-		Wsdd2:  dto.ProcessStatus{IsRunning: false},
-		Srat:   dto.ProcessStatus{IsRunning: false},
-		Hdidle: dto.ProcessStatus{IsRunning: false},
+		Wsdd2: dto.ProcessStatus{IsRunning: false},
+		Srat:  dto.ProcessStatus{IsRunning: false},
+		//Hdidle: dto.ProcessStatus{IsRunning: false},
 	}
 
 	// Act - should not panic or return error when client is nil
@@ -158,9 +158,9 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntityDisa
 			CPUPercent:    0.5,
 			MemoryPercent: 0.3,
 		},
-		Wsdd2:  dto.ProcessStatus{IsRunning: false},
-		Srat:   dto.ProcessStatus{IsRunning: false},
-		Hdidle: dto.ProcessStatus{IsRunning: false},
+		Wsdd2: dto.ProcessStatus{IsRunning: false},
+		Srat:  dto.ProcessStatus{IsRunning: false},
+		//Hdidle: dto.ProcessStatus{IsRunning: false},
 	}
 
 	// Act - should not panic or return error when client is nil
@@ -196,16 +196,16 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntities() {
 			Model:      &diskModel,
 			Vendor:     &diskVendor,
 			Removable:  &removable,
-			Partitions: &[]dto.Partition{
-				{
+			Partitions: &map[string]dto.Partition{
+				partitionId: {
 					Id:         &partitionId,
 					DevicePath: &partitionDevice,
 					Size:       &partitionSize,
-					MountPointData: &[]dto.MountPointData{
-						{
+					MountPointData: &map[string]dto.MountPointData{
+						mountPath: {
 							Path:      mountPath,
 							IsMounted: isMounted,
-							Shares:    []dto.SharedResource{},
+							Share:     &dto.SharedResource{},
 						},
 					},
 				},
@@ -246,16 +246,16 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntitiesDisabled() {
 			Model:      &diskModel,
 			Vendor:     &diskVendor,
 			Removable:  &removable,
-			Partitions: &[]dto.Partition{
-				{
+			Partitions: &map[string]dto.Partition{
+				partitionId: {
 					Id:         &partitionId,
 					DevicePath: &partitionDevice,
 					Size:       &partitionSize,
-					MountPointData: &[]dto.MountPointData{
-						{
+					MountPointData: &map[string]dto.MountPointData{
+						mountPath: {
 							Path:      mountPath,
 							IsMounted: isMounted,
-							Shares:    []dto.SharedResource{},
+							Share:     &dto.SharedResource{},
 						},
 					},
 				},

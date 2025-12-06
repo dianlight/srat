@@ -144,10 +144,10 @@ Package manager support:
 
 | Setup             | Runtime | Package Manager | Documentation Tools | Status           |
 | ----------------- | ------- | --------------- | ------------------- | ---------------- |
-| **Bun Only**      | bun     | bun             | ✅ Full support     | **Recommended**  |
-| **Node.js + bun** | node    | bun             | ✅ Full support     | Hybrid approach  |
-| **Node.js + npm** | node    | npm             | ✅ Full support     | Traditional      |
-| **bun + npm**     | bun     | npm             | ✅ Full support     | Mixed (uncommon) |
+| **Bun Only**      | bun     | bun             | Full support        | **Recommended**  |
+| **Node.js + bun** | node    | bun             | Full support        | Hybrid approach  |
+| **Node.js + npm** | node    | npm             | Full support        | Traditional      |
+| **bun + npm**     | bun     | npm             | Full support        | Mixed (uncommon) |
 
 ## Real-World Scenarios
 

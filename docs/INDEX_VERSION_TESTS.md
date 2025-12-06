@@ -99,16 +99,16 @@ func (suite *SambaServiceSuite) compareConfigSections(...)
 
 ---
 
-## 🔍 Version Coverage Matrix
+## Version Coverage Matrix
 
 | Version | Tests | fruit:posix_rename | server smb transports | Status         |
 | ------- | ----- | ------------------ | --------------------- | -------------- |
-| 4.20    | 1     | ✅                 | ❌                    | Pre-baseline   |
-| 4.21    | 3     | ✅                 | ❌                    | Baseline       |
-| 4.22    | 3     | ❌                 | ❌                    | Transition     |
-| 4.23    | 3     | ❌                 | ✅                    | Modern         |
-| 4.24    | 1     | ❌                 | ✅                    | Forward compat |
-| 5.0     | 1     | ❌                 | ✅                    | Major version  |
+| 4.20    | 1     | Y                  | N                     | Pre-baseline   |
+| 4.21    | 3     | Y                  | N                     | Baseline       |
+| 4.22    | 3     | N                  | N                     | Transition     |
+| 4.23    | 3     | N                  | Y                     | Modern         |
+| 4.24    | 1     | N                  | Y                     | Forward compat |
+| 5.0     | 1     | N                  | Y                     | Major version  |
 | Edge    | 2     | N/A                | N/A                   | Error handling |
 
 ---

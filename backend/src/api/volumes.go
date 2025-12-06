@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/shomali11/util/xhashes"
 )
 
@@ -22,15 +21,19 @@ type VolumeHandler struct {
 	apiContext   *dto.ContextState
 	vservice     service.VolumeServiceInterface
 	shareService service.ShareServiceInterface
-	dirtyservice service.DirtyDataServiceInterface
+	//dirtyservice service.DirtyDataServiceInterface
 }
 
-func NewVolumeHandler(vservice service.VolumeServiceInterface, shareService service.ShareServiceInterface, apiContext *dto.ContextState, dirtyservice service.DirtyDataServiceInterface) *VolumeHandler {
+func NewVolumeHandler(
+	vservice service.VolumeServiceInterface,
+	shareService service.ShareServiceInterface,
+	apiContext *dto.ContextState,
+) *VolumeHandler {
 	p := new(VolumeHandler)
 	p.vservice = vservice
 	p.shareService = shareService
 	p.apiContext = apiContext
-	p.dirtyservice = dirtyservice
+	//p.dirtyservice = dirtyservice
 	return p
 }
 
@@ -46,17 +49,13 @@ func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 	huma.Get(api, "/volumes", self.ListVolumes, huma.OperationTags("volume"))
 	huma.Post(api, "/volume/{mount_path_hash}/mount", self.MountVolume, huma.OperationTags("volume"))
 	huma.Delete(api, "/volume/{mount_path_hash}/mount", self.UmountVolume, huma.OperationTags("volume"))
-	huma.Put(api, "/volume/{mount_path_hash}/settings", self.UpdateVolumeSettings, huma.OperationTags("volume"))
-	huma.Patch(api, "/volume/{mount_path_hash}/settings", self.PatchVolumeSettings, huma.OperationTags("volume"))
-	huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
+	huma.Patch(api, "/volume/{mount_path_hash}/settings", self.PatchMountPointSettings, huma.OperationTags("volume"))
+	// huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
 }
 
-func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body *[]dto.Disk }, error) {
-	volumes, err := self.vservice.GetVolumesData()
-	if err != nil {
-		return nil, err
-	}
-	return &struct{ Body *[]dto.Disk }{Body: volumes}, nil
+func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body []*dto.Disk }, error) {
+	volumes := self.vservice.GetVolumesData()
+	return &struct{ Body []*dto.Disk }{Body: volumes}, nil
 }
 
 func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
@@ -73,7 +72,7 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 	errE := self.vservice.MountVolume(&mount_data)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorMountFail) {
-			tlog.Error("Failed to mount volume", "mount_path", mount_data.Path, "error", errE)
+			tlog.ErrorContext(ctx, "Failed to mount volume", "mount_path", mount_data.Path, "error", errE)
 			if errE.Details() != nil {
 				var errMessage string
 				for key, value := range errE.Details() {
@@ -91,7 +90,6 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 			return nil, huma.Error500InternalServerError("Unknown Error", errE)
 		}
 	}
-	self.dirtyservice.SetDirtyVolumes()
 
 	return &struct{ Body dto.MountPointData }{Body: mount_data}, nil
 }
@@ -99,7 +97,7 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 	MountPathHash string `path:"mount_path_hash"`
 	Force         bool   `query:"force" default:"false" doc:"Force umount operation"`
-	Lazy          bool   `query:"lazy" default:"false" doc:"Lazy umount operation"`
+	// Lazy          bool   `query:"lazy" default:"false" doc:"Lazy umount operation"`
 }) (*struct{}, error) {
 
 	mountPath, err := self.vservice.PathHashToPath(input.MountPathHash)
@@ -107,21 +105,22 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
 	}
 
-	// Disable all share services for this mount point
-	_, errE := self.shareService.DisableShareFromPath(mountPath)
-	if errE != nil && !errors.Is(errE, dto.ErrorShareNotFound) {
-		return nil, huma.Error500InternalServerError("Failed to disable share for mount point", err)
-	}
-
-	err = self.vservice.UnmountVolume(mountPath, input.Force, input.Lazy && !input.Force)
+	/*
+		// Disable all share services for this mount point
+		_, errE := self.shareService.SetShareFromPathEnabled(mountPath, false)
+		if errE != nil && !errors.Is(errE, dto.ErrorShareNotFound) {
+			return nil, huma.Error500InternalServerError("Failed to disable share for mount point", errE)
+		}
+	*/
+	err = self.vservice.UnmountVolume(mountPath, input.Force)
 	if err != nil {
 		return nil, huma.Error406NotAcceptable(fmt.Sprintf("%#v", err.Details()["Detail"]), err)
 	}
 
-	self.dirtyservice.SetDirtyVolumes()
 	return nil, nil
 }
 
+/*
 func (self *VolumeHandler) EjectDiskHandler(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" doc:"The ID of the disk to eject (e.g., sda, sdb)"`
 }) (*struct{ Status int }, error) {
@@ -145,36 +144,10 @@ func (self *VolumeHandler) EjectDiskHandler(ctx context.Context, input *struct {
 	// Return 204 No Content on success
 	return &struct{ Status int }{Status: http.StatusNoContent}, nil
 }
+*/
 
-// UpdateVolumeSettings handles PUT requests to update the configuration of an existing mount point.
-func (self *VolumeHandler) UpdateVolumeSettings(ctx context.Context, input *struct {
-	MountPathHash string             `path:"mount_path_hash"`
-	Body          dto.MountPointData `required:"true"`
-}) (*struct{ Body dto.MountPointData }, error) {
-	if self.apiContext.ReadOnlyMode {
-		return nil, huma.Error403Forbidden("Cannot update volume settings in read-only mode")
-	}
-
-	mountPath, errE := self.vservice.PathHashToPath(input.MountPathHash)
-	if errE != nil {
-		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
-	}
-
-	updatedDto, serviceErr := self.vservice.UpdateMountPointSettings(mountPath, input.Body)
-	if serviceErr != nil {
-		if errors.Is(serviceErr, dto.ErrorNotFound) {
-			return nil, huma.Error404NotFound(serviceErr.Error())
-		}
-		// Error is already logged by the service layer
-		return nil, huma.Error500InternalServerError("Failed to update mount configuration", serviceErr)
-	}
-
-	self.dirtyservice.SetDirtyVolumes()
-	return &struct{ Body dto.MountPointData }{Body: *updatedDto}, nil
-}
-
-// PatchVolumeSettings handles PATCH requests to partially update the configuration of an existing mount point.
-func (self *VolumeHandler) PatchVolumeSettings(ctx context.Context, input *struct {
+// PatchMountPointSettings handles PATCH requests to partially update the configuration of an existing mount point.
+func (self *VolumeHandler) PatchMountPointSettings(ctx context.Context, input *struct {
 	MountPathHash string             `path:"mount_path_hash"`
 	Body          dto.MountPointData `required:"true"`
 }) (*struct{ Body dto.MountPointData }, error) {
@@ -196,6 +169,5 @@ func (self *VolumeHandler) PatchVolumeSettings(ctx context.Context, input *struc
 		return nil, huma.Error500InternalServerError("Failed to patch mount configuration", serviceErr)
 	}
 
-	self.dirtyservice.SetDirtyVolumes()
 	return &struct{ Body dto.MountPointData }{Body: *updatedDto}, nil
 }

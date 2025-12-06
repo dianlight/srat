@@ -6,11 +6,11 @@ This document provides an overview of the test coverage for the SRAT project, in
 
 ## Current Coverage
 
-| Component             | Coverage | Status    |
-| --------------------- | -------- | --------- |
-| Backend (Go)          | 40.8%    | 🟡 Yellow |
-| Frontend (TypeScript) | 71.48%   | ✅ Good |
-| Global (Weighted)     | 53.1%    | 🟡 Yellow |
+| Component             | Coverage | Status |
+| --------------------- | -------- | ------ |
+| Backend (Go)          | 40.8%    | Yellow |
+| Frontend (TypeScript) | 71.48%   | Good   |
+| Global (Weighted)     | 53.1%    | Yellow |
 
 *Last updated: 2025-11-13*
 
@@ -18,41 +18,41 @@ This document provides an overview of the test coverage for the SRAT project, in
 
 The following table shows coverage for all backend packages. The target is **60% minimum coverage** for each package.
 
-| Package                    | Coverage | Status        | Priority to Improve       |
-| -------------------------- | -------- | ------------- | ------------------------- |
-| `api`                      | 76.5%    | ✅ Good       | High - Close to target    |
-| `cmd/srat-cli`             | 5.4%     | 🔴 Critical   | Low - CLI testing complex |
-| `cmd/srat-openapi`         | 17.9%    | 🔴 Critical   | Low - Code gen utility    |
-| `cmd/srat-server`          | 5.3%     | 🔴 Critical   | Low - Main entry point    |
-| `config`                   | 73.7%    | ✅ Good       | None                      |
-| `converter`                | 32.8%    | 🟠 Needs Work | Medium                    |
-| `dbom`                     | 25.8%    | 🟠 Needs Work | High                      |
-| `dbom/migrations`          | 63.8%    | ✅ Good       | None                      |
-| `dto`                      | 29.3%    | 🟠 Needs Work | High                      |
-| `homeassistant/addons`     | 13.2%    | 🔴 Critical   | Medium                    |
-| `homeassistant/core`       | 25.8%    | 🟠 Needs Work | Medium                    |
-| `homeassistant/core_api`   | 45.0%    | 🟠 Needs Work | Medium                    |
-| `homeassistant/hardware`   | 16.3%    | 🔴 Critical   | Medium                    |
-| `homeassistant/host`       | 27.3%    | 🟠 Needs Work | Medium                    |
-| `homeassistant/ingress`    | 20.8%    | 🟠 Needs Work | Medium                    |
-| `homeassistant/mount`      | 36.8%    | 🟠 Needs Work | Medium                    |
-| `homeassistant/resolution` | 13.7%    | 🔴 Critical   | Medium                    |
-| `homeassistant/root`       | 19.6%    | 🔴 Critical   | Medium                    |
-| `homeassistant/websocket`  | 60.9%    | ✅ Good       | None                      |
-| `internal`                 | 88.6%    | ✅ Excellent  | None                      |
-| `internal/appsetup`        | 51.3%    | 🟠 Needs Work | None                      |
-| `internal/osutil`          | 63.0%    | ✅ Good       | None                      |
-| `repository`               | 67.5%    | ✅ Good       | None                      |
-| `server`                   | 60.0%    | ✅ Good       | High                      |
-| `service`                  | 45.1%    | 🟠 Needs Work | High                      |
-| `tempio`                   | 46.9%    | 🟠 Needs Work | None                      |
-| `tlog`                     | 83.9%    | ✅ Excellent  | None                      |
-| `unixsamba`                | 75.1%    | ✅ Good       | None                      |
+| Package                    | Coverage | Status     | Priority to Improve       |
+| -------------------------- | -------- | ---------- | ------------------------- |
+| `api`                      | 76.5%    | Good       | High - Close to target    |
+| `cmd/srat-cli`             | 5.4%     | Critical   | Low - CLI testing complex |
+| `cmd/srat-openapi`         | 17.9%    | Critical   | Low - Code gen utility    |
+| `cmd/srat-server`          | 5.3%     | Critical   | Low - Main entry point    |
+| `config`                   | 73.7%    | Good       | None                      |
+| `converter`                | 32.8%    | Needs Work | Medium                    |
+| `dbom`                     | 25.8%    | Needs Work | High                      |
+| `dbom/migrations`          | 63.8%    | Good       | None                      |
+| `dto`                      | 29.3%    | Needs Work | High                      |
+| `homeassistant/addons`     | 13.2%    | Critical   | Medium                    |
+| `homeassistant/core`       | 25.8%    | Needs Work | Medium                    |
+| `homeassistant/core_api`   | 45.0%    | Needs Work | Medium                    |
+| `homeassistant/hardware`   | 16.3%    | Critical   | Medium                    |
+| `homeassistant/host`       | 27.3%    | Needs Work | Medium                    |
+| `homeassistant/ingress`    | 20.8%    | Needs Work | Medium                    |
+| `homeassistant/mount`      | 36.8%    | Needs Work | Medium                    |
+| `homeassistant/resolution` | 13.7%    | Critical   | Medium                    |
+| `homeassistant/root`       | 19.6%    | Critical   | Medium                    |
+| `homeassistant/websocket`  | 60.9%    | Good       | None                      |
+| `internal`                 | 88.6%    | Excellent  | None                      |
+| `internal/appsetup`        | 51.3%    | Needs Work | None                      |
+| `internal/osutil`          | 63.0%    | Good       | None                      |
+| `repository`               | 67.5%    | Good       | None                      |
+| `server`                   | 60.0%    | Good       | High                      |
+| `service`                  | 45.1%    | Needs Work | High                      |
+| `tempio`                   | 46.9%    | Needs Work | None                      |
+| `tlog`                     | 83.9%    | Excellent  | None                      |
+| `unixsamba`                | 75.1%    | Good       | None                      |
 
 **Summary:**
 
-- ✅ **10 packages** already meet or exceed 60% threshold
-- 🟠 **10 packages** need improvement (20-59% coverage)
+- Good: **10 packages** already meet or exceed 60% threshold
+- Needs Work: **10 packages** need improvement (20-59% coverage)
 - 🔴 **9 packages** critical (below 20% coverage)
 
 ## Coverage Thresholds

@@ -1,5 +1,6 @@
 package repository
 
+/*
 import (
 	"log/slog"
 	"sync"
@@ -94,50 +95,50 @@ func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) errors.E {
 			slog.Debug("Record not found, creating new ExportedShare", "name", share.Name)
 			// The BeforeSave hook will execute its logic for new records.
 			// GORM's Create with FullSaveAssociations will handle associations.
-			createErr := tx. /*.Debug()*/ /*.Session(&gorm.Session{FullSaveAssociations: true})*/ Create(share).Error
-			if createErr != nil {
-				slog.Error("Failed to create share", "share_name", share.Name, "error", createErr)
-				return errors.WithDetails(createErr, "share_name", share.Name, "details", share)
-			}
-			return nil
-		} else if err != nil {
-			// Another error occurred during the First check (not ErrRecordNotFound)
-			slog.Error("Failed to check share existence", "share_name", share.Name, "error", err)
+			createErr := tx. /*.Debug()*/ /*.Session(&gorm.Session{FullSaveAssociations: true})* / Create(share).Error
+	if createErr != nil {
+		slog.Error("Failed to create share", "share_name", share.Name, "error", createErr)
+		return errors.WithDetails(createErr, "share_name", share.Name, "details", share)
+	}
+	return nil
+} else if err != nil {
+	// Another error occurred during the First check (not ErrRecordNotFound)
+	slog.Error("Failed to check share existence", "share_name", share.Name, "error", err)
+	return errors.WithDetails(err, "share_name", share.Name, "details", share)
+} else {
+	// Record exists, so update.
+	slog.Debug("Record found, updating existing ExportedShare", "name", share.Name)
+
+	// If the existing record in the DB is soft-deleted (existingShare.DeletedAt.Valid is true)
+	// AND the incoming 'share' object intends for the record to be active (share.DeletedAt.Valid is false),
+	// then explicitly set the 'deleted_at' column to NULL.
+	// This is necessary because tx.Updates(share) with a struct argument typically only updates non-zero fields
+	// from the 'share' struct by default, and would not clear 'deleted_at' if 'share.DeletedAt' is its zero value.
+	if existingShare.DeletedAt.Valid && !share.DeletedAt.Valid {
+		if err := tx.Model(&dbom.ExportedShare{}).Unscoped().Where("name = ?", share.Name).UpdateColumn("deleted_at", gorm.Expr("NULL")).Error; err != nil {
+			slog.Error("Failed to explicitly undelete share before update", "share_name", share.Name, "error", err)
 			return errors.WithDetails(err, "share_name", share.Name, "details", share)
-		} else {
-			// Record exists, so update.
-			slog.Debug("Record found, updating existing ExportedShare", "name", share.Name)
+		}
+		slog.Debug("Explicitly set DeletedAt to NULL for existing share", "name", share.Name)
+	}
 
-			// If the existing record in the DB is soft-deleted (existingShare.DeletedAt.Valid is true)
-			// AND the incoming 'share' object intends for the record to be active (share.DeletedAt.Valid is false),
-			// then explicitly set the 'deleted_at' column to NULL.
-			// This is necessary because tx.Updates(share) with a struct argument typically only updates non-zero fields
-			// from the 'share' struct by default, and would not clear 'deleted_at' if 'share.DeletedAt' is its zero value.
-			if existingShare.DeletedAt.Valid && !share.DeletedAt.Valid {
-				if err := tx.Model(&dbom.ExportedShare{}).Unscoped().Where("name = ?", share.Name).UpdateColumn("deleted_at", gorm.Expr("NULL")).Error; err != nil {
-					slog.Error("Failed to explicitly undelete share before update", "share_name", share.Name, "error", err)
-					return errors.WithDetails(err, "share_name", share.Name, "details", share)
-				}
-				slog.Debug("Explicitly set DeletedAt to NULL for existing share", "name", share.Name)
-			}
+	if len(share.RoUsers) == 0 {
+		err := tx.Model(&share).Association("RoUsers").Clear()
+		if err != nil {
+			slog.Error("Failed to clear RoUsers association", "share_name", share.Name, "error", err)
+		}
+	}
 
-			if len(share.RoUsers) == 0 {
-				err := tx.Model(&share).Association("RoUsers").Clear()
-				if err != nil {
-					slog.Error("Failed to clear RoUsers association", "share_name", share.Name, "error", err)
-				}
-			}
+	if len(share.Users) == 0 {
+		err := tx.Model(&share).Association("Users").Clear()
+		if err != nil {
+			slog.Error("Failed to clear Users association", "share_name", share.Name, "error", err)
+		}
+	}
 
-			if len(share.Users) == 0 {
-				err := tx.Model(&share).Association("Users").Clear()
-				if err != nil {
-					slog.Error("Failed to clear Users association", "share_name", share.Name, "error", err)
-				}
-			}
-
-			// The BeforeSave hook will see the record exists and skip its specific creation logic.
-			// Note: tx.Updates(share_struct) only updates non-zero fields by default.
-			updateErr := tx. /*Debug().*/ /*.Session(&gorm.Session{FullSaveAssociations: true}).*/ Select("*").Updates(share).Error
+	// The BeforeSave hook will see the record exists and skip its specific creation logic.
+	// Note: tx.Updates(share_struct) only updates non-zero fields by default.
+	updateErr := tx. /*Debug().*/ /*.Session(&gorm.Session{FullSaveAssociations: true}).* / Select("*").Updates(share).Error
 			if updateErr != nil {
 				slog.Error("Failed to update share", "share_name", share.Name, "error", updateErr)
 				return errors.WithDetails(updateErr, "share_name", share.Name, "details", share)
@@ -150,3 +151,4 @@ func (p *ExportedShareRepository) Save(share *dbom.ExportedShare) errors.E {
 func (p *ExportedShareRepository) Delete(name string) errors.E {
 	return errors.WithStack(p.db.Select(clause.Associations).Delete(&dbom.ExportedShare{Name: name}).Error)
 }
+*/

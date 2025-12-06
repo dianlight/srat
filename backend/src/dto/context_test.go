@@ -49,13 +49,11 @@ func TestDataDirtyTracker(t *testing.T) {
 	tracker := dto.DataDirtyTracker{
 		Shares:   true,
 		Users:    false,
-		Volumes:  true,
 		Settings: false,
 	}
 
 	assert.True(t, tracker.Shares)
 	assert.False(t, tracker.Users)
-	assert.True(t, tracker.Volumes)
 	assert.False(t, tracker.Settings)
 }
 
@@ -64,7 +62,6 @@ func TestDataDirtyTrackerAllFalse(t *testing.T) {
 
 	assert.False(t, tracker.Shares)
 	assert.False(t, tracker.Users)
-	assert.False(t, tracker.Volumes)
 	assert.False(t, tracker.Settings)
 }
 
@@ -72,13 +69,11 @@ func TestDataDirtyTrackerAllTrue(t *testing.T) {
 	tracker := dto.DataDirtyTracker{
 		Shares:   true,
 		Users:    true,
-		Volumes:  true,
 		Settings: true,
 	}
 
 	assert.True(t, tracker.Shares)
 	assert.True(t, tracker.Users)
-	assert.True(t, tracker.Volumes)
 	assert.True(t, tracker.Settings)
 }
 

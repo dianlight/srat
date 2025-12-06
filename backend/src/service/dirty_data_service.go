@@ -3,20 +3,18 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
+	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 )
 
 type DirtyDataServiceInterface interface {
-	SetDirtyShares()
-	SetDirtyVolumes()
-	SetDirtyUsers()
-	SetDirtySettings()
 	GetDirtyDataTracker() dto.DataDirtyTracker
-	AddRestartCallback(callback func() errors.E)
-	ResetDirtyStatus()
 	IsTimerRunning() bool
 }
 
@@ -24,31 +22,89 @@ type DirtyDataService struct {
 	ctx              context.Context
 	dataDirtyTracker dto.DataDirtyTracker
 	timer            *time.Timer
-	restartCallbacks *[]func() errors.E
+	eventBus         events.EventBusInterface
+	timerMutex       sync.Mutex
 }
 
-func NewDirtyDataService(ctx context.Context) DirtyDataServiceInterface {
+func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.EventBusInterface) DirtyDataServiceInterface {
 	p := new(DirtyDataService)
 	p.ctx = ctx
 	p.dataDirtyTracker = dto.DataDirtyTracker{}
-	p.restartCallbacks = &[]func() errors.E{}
+	p.eventBus = eventBus
+	p.timerMutex = sync.Mutex{}
+
+	unsubscribe := make([]func(), 4)
+	if eventBus != nil {
+		unsubscribe[0] = eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
+			slog.DebugContext(ctx, "DirtyDataService received Share event", "share", event.Share.Name)
+			p.setDirtyShares()
+			return nil
+		})
+		unsubscribe[1] = eventBus.OnUser(func(ctx context.Context, event events.UserEvent) errors.E {
+			slog.DebugContext(ctx, "DirtyDataService received User event", "user", event.User.Username)
+			p.setDirtyUsers()
+			return nil
+		})
+		unsubscribe[2] = eventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) errors.E {
+			slog.DebugContext(ctx, "DirtyDataService received Setting event", "setting", event.Setting)
+			p.setDirtySettings()
+			return nil
+		})
+		unsubscribe[3] = eventBus.OnSamba(func(ctx context.Context, event events.SambaEvent) errors.E {
+			slog.DebugContext(ctx, "DirtyDataService received Samba event", "tracker", event.DataDirtyTracker)
+			if event.Type == events.EventTypes.CLEAN {
+				p.resetDirtyStatus()
+			}
+			return nil
+		})
+		/*
+			unsubscribe[4] = eventBus.OnMountPoint(func(ctx context.Context, mpe events.MountPointEvent) errors.E {
+				slog.DebugContext(ctx, "DirtyDataService received MountPoint event", "mountpoint", mpe.MountPoint.Path)
+				p.setDirtyShares()
+				return nil
+			})
+		*/
+
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			tlog.DebugContext(ctx, "Starting DirtyDataService")
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			tlog.DebugContext(ctx, "Stopping DirtyDataService")
+			for _, unsub := range unsubscribe {
+				unsub()
+			}
+			return nil
+		},
+	})
+
 	return p
 }
 
 // start or reset timer for 15 seconds
 func (p *DirtyDataService) startTimer() {
+	p.timerMutex.Lock()
+	defer p.timerMutex.Unlock()
+
 	if p.timer != nil {
 		p.timer.Stop()
 	}
+
+	p.eventBus.EmitDirtyData(events.DirtyDataEvent{
+		Event:            events.Event{Type: events.EventTypes.START},
+		DataDirtyTracker: p.dataDirtyTracker,
+	})
+
 	p.timer = time.AfterFunc(5*time.Second, func() {
-		p.dataDirtyTracker = dto.DataDirtyTracker{}
-		for _, callback := range *p.restartCallbacks {
-			slog.Debug("Calling callback for Restart", "callback", callback)
-			err := callback()
-			if err != nil {
-				slog.Warn("Error in restart callback", "err", err)
-			}
-		}
+		p.timerMutex.Lock()
+		defer p.timerMutex.Unlock()
+		p.eventBus.EmitDirtyData(events.DirtyDataEvent{
+			Event:            events.Event{Type: events.EventTypes.RESTART},
+			DataDirtyTracker: p.dataDirtyTracker,
+		})
 		p.timer = nil
 	})
 }
@@ -61,22 +117,17 @@ func (p *DirtyDataService) stopTimer() {
 	}
 }
 
-func (p *DirtyDataService) SetDirtyShares() {
+func (p *DirtyDataService) setDirtyShares() {
 	p.dataDirtyTracker.Shares = true
 	p.startTimer()
 }
 
-func (p *DirtyDataService) SetDirtyVolumes() {
-	p.dataDirtyTracker.Volumes = true
-	p.startTimer()
-}
-
-func (p *DirtyDataService) SetDirtyUsers() {
+func (p *DirtyDataService) setDirtyUsers() {
 	p.dataDirtyTracker.Users = true
 	p.startTimer()
 }
 
-func (p *DirtyDataService) SetDirtySettings() {
+func (p *DirtyDataService) setDirtySettings() {
 	p.dataDirtyTracker.Settings = true
 	p.startTimer()
 }
@@ -86,13 +137,8 @@ func (p *DirtyDataService) GetDirtyDataTracker() dto.DataDirtyTracker {
 	return p.dataDirtyTracker
 }
 
-// add a callback to be called when the timer is triggered
-func (p *DirtyDataService) AddRestartCallback(callback func() errors.E) {
-	*p.restartCallbacks = append(*p.restartCallbacks, callback)
-}
-
 // Reset all dirty status to false
-func (p *DirtyDataService) ResetDirtyStatus() {
+func (p *DirtyDataService) resetDirtyStatus() {
 	p.dataDirtyTracker = dto.DataDirtyTracker{}
 	p.stopTimer()
 }

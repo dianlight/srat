@@ -102,7 +102,7 @@ func TestAddonInfoDataState_Values(t *testing.T) {
 }
 
 func TestAddonInfoData_Fields(t *testing.T) {
-	arch := []string{"amd64", "armv7"}
+	arch := []string{"amd64", "aarch64"}
 	authApi := true
 	autoUpdate := false
 	boot := Auto

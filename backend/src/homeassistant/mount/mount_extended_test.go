@@ -328,6 +328,7 @@ func TestMount_DefaultPorts(t *testing.T) {
 				Port: &tt.port,
 			}
 			assert.Equal(t, tt.port, *mount.Port)
+			assert.Equal(t, tt.mountType, *mount.Type)
 		})
 	}
 }

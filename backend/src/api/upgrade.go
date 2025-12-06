@@ -62,23 +62,23 @@ func (self *UpgradeHanler) RegisterUpgradeHanler(api huma.API) {
 //	@Failure		500	{object}	huma.ErrorModel					"Internal server error."
 //	@Router			/update [get]
 func (handler *UpgradeHanler) GetUpdateInfoHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.ReleaseAsset }, error) {
-	slog.Debug("Handling GET /update request")
+	slog.DebugContext(ctx, "Handling GET /update request")
 	asset, err := handler.upgader.GetUpgradeReleaseAsset(nil)
 	if err != nil {
 		if errors.Is(err, dto.ErrorNoUpdateAvailable) {
-			slog.Info("No update available", "error", err)
+			slog.InfoContext(ctx, "No update available", "error", err)
 			return nil, huma.Error404NotFound(err.Error())
 		}
-		slog.Error("Error getting upgrade release asset", "error", err)
+		slog.ErrorContext(ctx, "Error getting upgrade release asset", "error", err)
 		return nil, errors.Wrap(err, "failed to get upgrade release asset")
 	}
 
 	if asset == nil { // Should ideally be covered by ErrorNoUpdateAvailable
-		slog.Info("No update asset found, though no explicit error was returned.")
+		slog.InfoContext(ctx, "No update asset found, though no explicit error was returned.")
 		return nil, huma.Error404NotFound("No update asset found.")
 	}
 
-	slog.Debug("Update asset found", "release", asset.LastRelease, "asset_name", asset.ArchAsset.Name)
+	slog.DebugContext(ctx, "Update asset found", "release", asset.LastRelease, "asset_name", asset.ArchAsset.Name)
 	return &struct{ Body dto.ReleaseAsset }{Body: *asset}, nil
 }
 
@@ -96,12 +96,12 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 
 		updatePkg, err := handler.upgader.DownloadAndExtractBinaryAsset(assets.ArchAsset)
 		if err != nil {
-			slog.Error("Error downloading and extracting binary asset", "err", err)
+			slog.ErrorContext(handler.ctx, "Error downloading and extracting binary asset", "err", err)
 			return
 		}
 		err = handler.upgader.InstallUpdatePackage(updatePkg)
 		if err != nil {
-			slog.Error("Error installing update package", "err", err)
+			slog.ErrorContext(handler.ctx, "Error installing update package", "err", err)
 			return
 		}
 		// If a test has set the testDone channel, signal completion.
@@ -128,26 +128,26 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 //	@Failure		500	{object}	huma.ErrorModel						"Internal server error."
 //	@Router			/update_channels [get]
 func (handler *UpgradeHanler) GetUpdateChannelsHandler(ctx context.Context, input *struct{}) (*struct{ Body []dto.UpdateChannel }, error) {
-	slog.Debug("Handling GET /update_channels request")
+	slog.DebugContext(ctx, "Handling GET /update_channels request")
 
 	currentVersionStr := config.Version
-	slog.Debug("Current application version", "version", currentVersionStr)
+	slog.DebugContext(ctx, "Current application version", "version", currentVersionStr)
 
 	shouldFilterDevelop := false
 	version, err := semver.NewVersion(currentVersionStr)
 	if err != nil {
 		// Version is invalid semver
-		slog.Warn("Current version is not a valid semver, filtering DEVELOP channel", "version", currentVersionStr, "error", err)
+		slog.WarnContext(ctx, "Current version is not a valid semver, filtering DEVELOP channel", "version", currentVersionStr, "error", err)
 		shouldFilterDevelop = true
 	} else {
 		// Version is valid semver, check if it's a pre-release
 		if version.Prerelease() == "" {
 			// Not a pre-release (e.g., "1.0.0", "v2.3.4")
-			slog.Info("Current version is not a pre-release, filtering DEVELOP channel", "version", currentVersionStr)
+			slog.InfoContext(ctx, "Current version is not a pre-release, filtering DEVELOP channel", "version", currentVersionStr)
 			shouldFilterDevelop = true
 		} else {
 			// Is a pre-release (e.g., "1.0.0-alpha", "v2.3.4-rc.1")
-			slog.Debug("Current version is a pre-release, DEVELOP channel will be included", "version", currentVersionStr)
+			slog.DebugContext(ctx, "Current version is a pre-release, DEVELOP channel will be included", "version", currentVersionStr)
 		}
 	}
 
@@ -161,10 +161,10 @@ func (handler *UpgradeHanler) GetUpdateChannelsHandler(ctx context.Context, inpu
 				resultingChannels = append(resultingChannels, ch)
 			}
 		}
-		slog.Debug("Filtered DEVELOP channel", "resulting_channels_count", len(resultingChannels))
+		slog.DebugContext(ctx, "Filtered DEVELOP channel", "resulting_channels_count", len(resultingChannels))
 	} else {
 		resultingChannels = allChannels
-		slog.Debug("DEVELOP channel not filtered", "resulting_channels_count", len(resultingChannels))
+		slog.DebugContext(ctx, "DEVELOP channel not filtered", "resulting_channels_count", len(resultingChannels))
 	}
 
 	return &struct{ Body []dto.UpdateChannel }{Body: resultingChannels}, nil

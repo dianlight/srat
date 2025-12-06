@@ -107,9 +107,10 @@ export function VolumeDetailsPanel({
         return <ComputerIcon color="primary" />;
     };
 
-    const mountData = partition?.mount_point_data?.[0];
-    const allShares = partition?.mount_point_data?.flatMap((mpd) => mpd.shares).filter(Boolean) || [];
-    const isMounted = partition?.mount_point_data?.some((mpd) => mpd.is_mounted);
+    const mpds = Object.values(partition?.mount_point_data || {});
+    const mountData = mpds[0];
+    //const allShares = mpds.flatMap((mpd) => mpd.shares).filter(Boolean) || [];
+    const isMounted = mpds.some((mpd) => mpd.is_mounted);
 
     return (
         <Box sx={{ height: "100%", overflow: "auto", p: 2 }}>
@@ -223,7 +224,7 @@ export function VolumeDetailsPanel({
                                                 <Chip label="Removable" size="small" variant="outlined" />
                                             )}
                                             <Chip
-                                                label={`${disk.partitions?.length || 0} Partition(s)`}
+                                                label={`${Object.values(disk.partitions || {}).length || 0} Partition(s)`}
                                                 size="small"
                                                 variant="outlined"
                                             />
@@ -241,7 +242,7 @@ export function VolumeDetailsPanel({
                         <HDIdleDiskSettings disk={disk} readOnly={false} />
                         <SmartStatusPanel
                             smartInfo={disk.smart_info}
-                            diskDevicePath={disk.device_path || disk.legacy_device_path}
+                            diskId={disk.id}
                             isSmartSupported={disk.smart_info?.supported ?? false}
                             isReadOnlyMode={false}
                             onEnableSmart={enableSmart}
@@ -336,27 +337,27 @@ export function VolumeDetailsPanel({
                                 {/* Mount Information */}
                                 {isMounted && (
                                     <>
-                                        {partition.mount_point_data?.some((mpd) => mpd.disk_label) && (
+                                        {mpds.some((mpd) => mpd.disk_label) && (
                                             <Grid size={{ xs: 12, sm: 6 }}>
                                                 <Typography variant="subtitle2" color="text.secondary">
                                                     Disk Label
                                                 </Typography>
                                                 <Typography variant="body2">
-                                                    {partition.mount_point_data.find((mpd) => mpd.disk_label)?.disk_label}
+                                                    {mpds.find((mpd) => mpd.disk_label)?.disk_label}
                                                 </Typography>
                                             </Grid>
                                         )}
-                                        {partition.mount_point_data?.some((mpd) => mpd.time_machine_support) && (
+                                        {mpds.some((mpd) => mpd.time_machine_support) && (
                                             <Grid size={{ xs: 12, sm: 6 }}>
                                                 <Typography variant="subtitle2" color="text.secondary">
                                                     Time Machine Support
                                                 </Typography>
                                                 <Chip
-                                                    label={partition.mount_point_data.find((mpd) => mpd.time_machine_support)?.time_machine_support}
+                                                    label={mpds.find((mpd) => mpd.time_machine_support)?.time_machine_support}
                                                     color={
-                                                        partition.mount_point_data.find((mpd) => mpd.time_machine_support)?.time_machine_support === Time_machine_support.Supported
+                                                        mpds.find((mpd) => mpd.time_machine_support)?.time_machine_support === Time_machine_support.Supported
                                                             ? "success"
-                                                            : partition.mount_point_data.find((mpd) => mpd.time_machine_support)?.time_machine_support === Time_machine_support.Experimental
+                                                            : mpds.find((mpd) => mpd.time_machine_support)?.time_machine_support === Time_machine_support.Experimental
                                                                 ? "warning"
                                                                 : "error"
                                                     }
@@ -364,12 +365,12 @@ export function VolumeDetailsPanel({
                                                 />
                                             </Grid>
                                         )}
-                                        {partition.mount_point_data?.some((mpd) => mpd.warnings) && (
+                                        {mpds.some((mpd) => mpd.warnings) && (
                                             <Grid size={{ xs: 12 }}>
                                                 <Typography variant="subtitle2" color="warning.main">
                                                     Warnings
                                                 </Typography>
-                                                {partition.mount_point_data?.filter((mpd) => mpd.warnings)?.map(
+                                                {mpds.filter((mpd) => mpd.warnings)?.map(
                                                     (mpd, index) => (
                                                         <Typography key={index} variant="body2" color="warning.main">
                                                             {mpd.warnings}
@@ -378,24 +379,24 @@ export function VolumeDetailsPanel({
                                                 )}
                                             </Grid>
                                         )}
-                                        {partition.mount_point_data?.some((mpd) => mpd.invalid && mpd.invalid_error) && (
+                                        {mpds.some((mpd) => mpd.invalid && mpd.invalid_error) && (
                                             <Grid size={{ xs: 12 }}>
                                                 <Typography variant="subtitle2" color="error.main">
                                                     Errors
                                                 </Typography>
                                                 <Typography variant="body2" color="error.main">
-                                                    {partition.mount_point_data?.find((mpd) => mpd.invalid && mpd.invalid_error)?.invalid_error}
+                                                    {mpds.find((mpd) => mpd.invalid && mpd.invalid_error)?.invalid_error}
                                                 </Typography>
                                             </Grid>
                                         )}
                                         {/* Host Mount Information */}
-                                        {partition.mount_point_data && partition.mount_point_data.length > 0 && (
+                                        {mpds.length > 0 && (
                                             <Grid size={{ xs: 12 }}>
                                                 <Typography variant="subtitle2" color="text.secondary">
-                                                    Mount Point{partition.mount_point_data.length > 1 ? "s" : ""}
+                                                    Mount Point{mpds.length > 1 ? "s" : ""}
                                                 </Typography>
                                                 <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 0.5 }}>
-                                                    {partition.mount_point_data.map((mpd, index) => {
+                                                    {mpds.map((mpd, index) => {
                                                         const badges = [];
                                                         if (mpd?.is_to_mount_at_startup) {
                                                             badges.push("Auto-mount");
@@ -425,13 +426,13 @@ export function VolumeDetailsPanel({
                                 )}
 
                                 {/* Host Mount Information */}
-                                {partition.host_mount_point_data && partition.host_mount_point_data.length > 0 && (
+                                {Object.values(partition.host_mount_point_data || {}).length > 0 && (
                                     <Grid size={{ xs: 12 }}>
                                         <Typography variant="subtitle2" color="text.secondary">
-                                            Host Mount Point{partition.host_mount_point_data.length > 1 ? "s" : ""}
+                                            Host Mount Point{Object.values(partition.host_mount_point_data || {}).length > 1 ? "s" : ""}
                                         </Typography>
                                         <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 0.5 }}>
-                                            {partition.host_mount_point_data.map((hmpd, index) => (
+                                            {Object.values(partition.host_mount_point_data || {}).map((hmpd, index) => (
                                                 <Chip
                                                     key={index}
                                                     label={hmpd.path}
@@ -449,7 +450,7 @@ export function VolumeDetailsPanel({
                 )}
 
                 {/* Mount Settings Card */}
-                {partition && isMounted && mountData && partition.mount_point_data?.length == 1 && (
+                {partition && isMounted && mountData && Object.values(partition.mount_point_data || {}).length === 1 && (
                     <Card>
                         <CardHeader
                             title="Mount Settings"
@@ -541,8 +542,8 @@ export function VolumeDetailsPanel({
                     </Card>
                 )}
 
-                {/* Share Information Card */}
-                {partition && mountData?.shares && mountData.shares.length > 0 ? (
+                {/* Share Information Card * /}
+                {partition && mountData?.share ? (
                     <Card>
                         <CardHeader
                             title={`Related Share${allShares?.length === 1 ? "" : "s"} (${allShares?.length})`}
@@ -554,7 +555,7 @@ export function VolumeDetailsPanel({
                         />
                         <CardContent>
                             <Grid container spacing={2}>
-                                {partition.mount_point_data?.flatMap((mpd) => mpd.shares).filter(Boolean).map((share, index) => (
+                                {mpds.flatMap((mpd) => mpd.shares).filter(Boolean).map((share, index) => (
                                     <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
                                         <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                                             <CardHeader
@@ -572,7 +573,7 @@ export function VolumeDetailsPanel({
                                             />
                                             <CardContent sx={{ flex: 1 }}>
                                                 <Stack spacing={2}>
-                                                    {/* Share Properties */}
+                                                    {/* Share Properties * /}
                                                     <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                                                         {share?.usage && share?.usage !== Usage.Internal && (
                                                             <Chip
@@ -618,7 +619,7 @@ export function VolumeDetailsPanel({
                                                         )}
                                                     </Stack>
 
-                                                    {/* Users */}
+                                                    {/* Users * /}
                                                     {share?.users && share?.users.length > 0 && (
                                                         <Box>
                                                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -639,7 +640,7 @@ export function VolumeDetailsPanel({
                                                         </Box>
                                                     )}
 
-                                                    {/* Read-Only Users */}
+                                                    {/* Read-Only Users * /}
                                                     {share?.ro_users && share?.ro_users.length > 0 && (
                                                         <Box>
                                                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -691,6 +692,7 @@ export function VolumeDetailsPanel({
                         </CardContent>
                     </Card>
                 ) : null}
+                {/* Preview Button for Partition or Disk */}
             </Stack>
 
             {/* Preview dialog for disk object */}

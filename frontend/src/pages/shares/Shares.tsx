@@ -79,19 +79,18 @@ export function Shares() {
 		);
 
 		for (const disk of volumes) {
-			if (disk.partitions) {
-				for (const partition of disk.partitions) {
-					//if (partition.system) continue; // Skip system partitions
-					if (partition.mount_point_data) {
-						for (const mpd of partition.mount_point_data) {
-							if (
-								mpd?.is_mounted &&
-								mpd.path &&
-								mpd.path_hash &&
-								!usedPathHashes.has(mpd.path_hash)
-							) {
-								return true; // Found an available, unshared, mounted mount point
-							}
+			const partitions = Object.values(disk.partitions || {});
+			if (partitions.length > 0) {
+				for (const partition of partitions) {
+					const mpds = Object.values(partition.mount_point_data || {});
+					for (const mpd of mpds) {
+						if (
+							mpd?.is_mounted &&
+							mpd.path &&
+							mpd.path_hash &&
+							!usedPathHashes.has(mpd.path_hash)
+						) {
+							return true; // Found an available, unshared, mounted mount point
 						}
 					}
 				}

@@ -94,11 +94,11 @@ This document details the comprehensive test implementation for version-aware Sa
 
 | Test                            | Version | Fruit posix_rename | Server SMB Transports |
 | ------------------------------- | ------- | ------------------ | --------------------- |
-| TestCreateConfigStream_Samba421 | 4.21.0  | ✅ Present         | ❌ Not present        |
-| TestCreateConfigStream_Samba422 | 4.22.0  | ❌ Absent          | ❌ Not present        |
-| TestCreateConfigStream_Samba423 | 4.23.0  | ❌ Absent          | ✅ Present            |
-| TestCreateConfigStream_Samba424 | 4.24.0  | ❌ Absent          | ✅ Present            |
-| TestCreateConfigStream_Samba500 | 5.0.0   | ❌ Absent          | ✅ Present            |
+| TestCreateConfigStream_Samba421 | 4.21.0  | Present            | Not present           |
+| TestCreateConfigStream_Samba422 | 4.22.0  | Absent             | Not present           |
+| TestCreateConfigStream_Samba423 | 4.23.0  | Absent             | Present               |
+| TestCreateConfigStream_Samba424 | 4.24.0  | Absent             | Present               |
+| TestCreateConfigStream_Samba500 | 5.0.0   | Absent             | Present               |
 
 #### 9-11. Boundary Condition Tests
 
@@ -254,12 +254,12 @@ go test ./service -run "SambaService/Samba423" -v
 
 ## Test Coverage Matrix
 
-| Feature               | 4.20 | 4.21 | 4.22 | 4.23 | 4.24 | 5.0 | Edge Cases  |
-| --------------------- | ---- | ---- | ---- | ---- | ---- | --- | ----------- |
-| fruit:posix_rename    | ✅   | ✅   | ❌   | ❌   | ❌   | ❌  | ✅ (4.21.9) |
-| server smb transports | ❌   | ❌   | ❌   | ✅   | ✅   | ✅  | ✅ (4.23.0) |
-| Forward compatibility | N/A  | N/A  | N/A  | ✅   | ✅   | ✅  | ✅ (empty)  |
-| Invalid handling      | N/A  | N/A  | N/A  | N/A  | N/A  | N/A | ✅          |
+| Feature               | 4.20 | 4.21 | 4.22 | 4.23 | 4.24 | 5.0 | Edge Cases |
+| --------------------- | ---- | ---- | ---- | ---- | ---- | --- | ---------- |
+| fruit:posix_rename    | Y    | Y    | N    | N    | N    | N   | Y (4.21.9) |
+| server smb transports | N    | N    | N    | Y    | Y    | Y   | Y (4.23.0) |
+| Forward compatibility | N/A  | N/A  | N/A  | Y    | Y    | Y   | Y (empty)  |
+| Invalid handling      | N/A  | N/A  | N/A  | N/A  | N/A  | N/A | Y          |
 
 ## Files Modified
 

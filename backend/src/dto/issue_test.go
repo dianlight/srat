@@ -79,6 +79,8 @@ func TestIssue_Ignored(t *testing.T) {
 	}
 
 	assert.True(t, issue.Ignored)
+	assert.Equal(t, uint(1), issue.ID)
+	assert.Equal(t, "Ignored Issue", issue.Title)
 }
 
 func TestIssue_Repeating(t *testing.T) {
@@ -88,5 +90,7 @@ func TestIssue_Repeating(t *testing.T) {
 		Repeating: 5,
 	}
 
+	assert.Equal(t, uint(1), issue.ID)
+	assert.Equal(t, "Repeating Issue", issue.Title)
 	assert.Equal(t, uint(5), issue.Repeating)
 }

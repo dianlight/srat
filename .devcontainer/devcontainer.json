@@ -1,6 +1,6 @@
 {
 	"name": "SRAT",
-	"image": "ghcr.io/hassio-addons/base:18.2.1",
+	"image": "ghcr.io/hassio-addons/base:19.0.0",
 	"runArgs": [
 		"--cap-add=SYS_PTRACE",
 		"--security-opt",
@@ -96,7 +96,8 @@
 				"codezombiech.gitignore",
 				"oven.bun-vscode",
 				"SanjulaGanepola.github-local-actions",
-				"bierner.markdown-mermaid"
+				"bierner.markdown-mermaid",
+				"TypeScriptTeam.native-preview"
 			],
 			"mcp": {
 				"servers": {

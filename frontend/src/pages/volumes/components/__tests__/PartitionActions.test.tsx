@@ -354,7 +354,7 @@ describe("PartitionActions component", () => {
                 {
                     path: "/mnt/test",
                     is_mounted: true,
-                    shares: [{ name: "TestShare", disabled: false }],
+                    share: "TestShare",
                 },
             ],
         });
@@ -562,7 +562,7 @@ describe("PartitionActions component", () => {
                 {
                     path: "/mnt/test",
                     is_mounted: true,
-                    shares: [{ name: "TestShare", disabled: false }],
+                    share: "TestShare",
                 },
             ],
         });

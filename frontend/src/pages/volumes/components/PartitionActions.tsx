@@ -59,29 +59,17 @@ export function PartitionActions({
 		setAnchorEl(null);
 	};
 
-	const isMounted =
-		partition.mount_point_data &&
-		partition.mount_point_data.length > 0 &&
-		partition.mount_point_data.some((mpd) => mpd.is_mounted);
-	const hasShares =
-		partition.mount_point_data &&
-		partition.mount_point_data.length > 0 &&
-		partition.mount_point_data.some((mpd) => {
-			return (
-				mpd.shares &&
-				mpd.shares.length > 0 //&&
-				//mpd.shares.some((share) => !share.disabled)
-			);
-		});
-	const firstMountPath = partition.mount_point_data?.[0]?.path;
+	const mpds = Object.values(partition.mount_point_data || {});
+	const isMounted = mpds.some((mpd) => mpd.is_mounted);
+	const hasShares = mpds.some((mpd) => mpd.share);
+	const firstMountPath = mpds[0]?.path;
 	const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
 
 	if (
 		protected_mode ||
 		//partition.system ||
 		partition.name?.startsWith("hassos-") ||
-		(partition.host_mount_point_data &&
-			partition.host_mount_point_data.length > 0)
+		(Object.values(partition.host_mount_point_data || {}).length > 0)
 	) {
 		console.log("Partition is read-only or system partition", protected_mode, partition);
 		return null;
@@ -90,8 +78,8 @@ export function PartitionActions({
 	const actionItems = [];
 
 	// Automount Toggle Button
-	if (!hasShares && partition.mount_point_data?.[0]?.path) {
-		if (partition.mount_point_data?.[0]?.is_to_mount_at_startup) {
+	if (!hasShares && firstMountPath) {
+		if (mpds[0]?.is_to_mount_at_startup) {
 			actionItems.push({
 				key: "disable-automount",
 				title: "Disable mount at startup",

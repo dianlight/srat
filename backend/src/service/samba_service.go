@@ -14,11 +14,12 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tempio"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/lonegunmanb/go-defaults"
 	cache "github.com/patrickmn/go-cache"
 	"github.com/shirou/gopsutil/v4/process"
@@ -30,67 +31,94 @@ type SambaServiceInterface interface {
 	CreateConfigStream() (data *[]byte, err errors.E)
 	GetSambaProcess() (*dto.SambaProcessStatus, errors.E)
 	GetSambaStatus() (*dto.SambaStatus, errors.E)
-	WriteSambaConfig() errors.E
-	RestartSambaService() errors.E
-	TestSambaConfig() errors.E
-	WriteAndRestartSambaConfig() errors.E
+	WriteSambaConfig(ctx context.Context) errors.E
+	RestartSambaService(ctx context.Context) errors.E
+	TestSambaConfig(ctx context.Context) errors.E
+	WriteAndRestartSambaConfig(ctx context.Context) errors.E
 }
 
 type SambaService struct {
-	DockerInterface    string
-	DockerNet          string
-	state              *dto.ContextState
-	dirtyservice       DirtyDataServiceInterface
-	supervisor_service SupervisorServiceInterface
-	share_service      ShareServiceInterface
-	share_repo         repository.ExportedShareRepositoryInterface
-	ha_ws_service      HaWsServiceInterface
-	prop_repo          repository.PropertyRepositoryInterface
-	samba_user_repo    repository.SambaUserRepositoryInterface
-	mount_client       mount.ClientWithResponsesInterface
-	cache              *cache.Cache
-	dbomConv           converter.DtoToDbomConverterImpl
-	hdidle_service     HDIdleServiceInterface
+	//ctx             context.Context
+	//ctxCancel       context.CancelFunc
+	DockerInterface string
+	DockerNet       string
+	state           *dto.ContextState
+	//	supervisor_service SupervisorServiceInterface
+	share_service ShareServiceInterface
+	//share_repo    repository.ExportedShareRepositoryInterface
+	//	ha_ws_service      HaWsServiceInterface
+	prop_repo       repository.PropertyRepositoryInterface
+	samba_user_repo repository.SambaUserRepositoryInterface
+	mount_client    mount.ClientWithResponsesInterface
+	cache           *cache.Cache
+	dbomConv        converter.DtoToDbomConverterImpl
+	hdidle_service  HDIdleServiceInterface
+	eventBus        events.EventBusInterface
 }
 
 type SambaServiceParams struct {
 	fx.In
-
-	State               *dto.ContextState
-	Dirtyservice        DirtyDataServiceInterface
-	Share_service       ShareServiceInterface
-	Prop_repo           repository.PropertyRepositoryInterface
-	Exported_share_repo repository.ExportedShareRepositoryInterface
-	Samba_user_repo     repository.SambaUserRepositoryInterface
-	HA_ws_service       HaWsServiceInterface
-	Mount_client        mount.ClientWithResponsesInterface `optional:"true"`
-	Su                  SupervisorServiceInterface
-	Hdidle_service      HDIdleServiceInterface
+	//Ctx                 context.Context
+	//CtxCancel           context.CancelFunc
+	State         *dto.ContextState
+	Share_service ShareServiceInterface
+	Prop_repo     repository.PropertyRepositoryInterface
+	//Exported_share_repo repository.ExportedShareRepositoryInterface
+	Samba_user_repo repository.SambaUserRepositoryInterface
+	//	HA_ws_service       HaWsServiceInterface
+	Mount_client mount.ClientWithResponsesInterface `optional:"true"`
+	//	Su                  SupervisorServiceInterface
+	Hdidle_service HDIdleServiceInterface
+	EventBus       events.EventBusInterface
 }
 
-func NewSambaService(in SambaServiceParams) SambaServiceInterface {
+func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterface {
 	p := &SambaService{}
+	//p.ctx = in.Ctx
+	//p.ctxCancel = in.CtxCancel
 	p.state = in.State
-	p.dirtyservice = in.Dirtyservice
 	p.share_service = in.Share_service
 	p.prop_repo = in.Prop_repo
-	p.share_repo = in.Exported_share_repo
+	//p.share_repo = in.Exported_share_repo
 	p.samba_user_repo = in.Samba_user_repo
 	p.mount_client = in.Mount_client
-	p.supervisor_service = in.Su
+	//	p.supervisor_service = in.Su
 	p.cache = cache.New(1*time.Minute, 10*time.Minute)
-	in.Dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
-	p.ha_ws_service = in.HA_ws_service
+	p.eventBus = in.EventBus
+	//in.Dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
+	//	p.ha_ws_service = in.HA_ws_service
 	p.dbomConv = converter.DtoToDbomConverterImpl{}
 	p.hdidle_service = in.Hdidle_service
 
-	p.ha_ws_service.SubscribeToHaEvents(func(ready bool) {
-		if !ready {
-			return
+	var unsubscribe [1]func()
+	unsubscribe[0] = p.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) errors.E {
+		if event.Type == events.EventTypes.RESTART {
+			slog.InfoContext(ctx, "SambaService received RESTART event, writing and restarting Samba configuration...")
+			if err := p.WriteAndRestartSambaConfig(ctx); err != nil {
+				slog.ErrorContext(ctx, "Error writing and restarting Samba configuration", "error", err)
+				/*
+					p.eventBus.EmitSamba(events.SambaEvent{
+						Event:            events.Event{Type: events.EventTypes.ERROR},
+						DataDirtyTracker: event.DataDirtyTracker,
+					})
+				*/
+				return err
+			}
 		}
-		if e := p.mountHaStorage(); e != nil {
-			slog.Error("Error mounting HA storage", "error", e)
-		}
+		return nil
+	})
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			for _, unsub := range unsubscribe {
+				if unsub != nil {
+					unsub()
+				}
+			}
+			return nil
+		},
 	})
 
 	return p
@@ -102,9 +130,10 @@ func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, errors.E) {
 	}
 
 	cmd := exec.Command("smbstatus", "-j")
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Errorf("Error executing smbstatus: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
+		outErr, _ := cmd.CombinedOutput()
+		return nil, errors.Errorf("Error executing smbstatus: %w \n %#v", err, map[string]any{"error": err, "output": string(out), "errout": string(outErr), "cmd": cmd.String()})
 	}
 
 	// Validate that output is valid JSON before unmarshaling
@@ -159,22 +188,17 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
-	shares, err := self.share_repo.All()
+	sr, err := self.share_service.ListShares()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
 
-	sr, errS := self.dbomConv.ExportedSharesToSharedResources(shares)
-	if errS != nil {
-		return tconfig, errors.WithStack(errS)
-	}
-
-	nshare := make([]dbom.ExportedShare, 0, len(*sr))
-	for _, share := range *sr {
+	nshare := make([]dbom.ExportedShare, 0, len(sr))
+	for _, share := range sr {
 		if share.Disabled != nil && *share.Disabled {
 			continue
 		}
-		if share.Invalid != nil && *share.Invalid {
+		if share.Status != nil && !share.Status.IsValid {
 			continue
 		}
 		if share.MountPointData != nil && share.MountPointData.IsInvalid {
@@ -236,9 +260,9 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 		Srat: dto.ProcessStatus{
 			Pid: -1,
 		},
-		Hdidle: dto.ProcessStatus{
-			Pid: -1,
-		},
+		//Hdidle: dto.ProcessStatus{
+		//	Pid: -1,
+		//},
 	}
 	var conv converter.ProcessToDtoImpl
 	var allProcess, err = process.Processes()
@@ -266,18 +290,17 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 	// Get HDIdle monitoring status as a subprocess
 	// Convention: Subprocesses use negative parent PIDs to indicate they are
 	// virtual monitoring threads rather than real OS processes
-	if self.hdidle_service != nil {
-		hdidleStatus := self.hdidle_service.GetProcessStatus(spc.Srat.Pid)
-		if hdidleStatus != nil {
-			spc.Hdidle = *hdidleStatus
-		}
-	}
-
+	//if self.hdidle_service != nil {
+	//	hdidleStatus := self.hdidle_service.GetProcessStatus(spc.Srat.Pid)
+	//	if hdidleStatus != nil {
+	//		spc.Hdidle = *hdidleStatus
+	//	}
+	//}
 	return &spc, nil
 }
 
-func (self *SambaService) WriteSambaConfig() errors.E {
-	tlog.Trace("Writing Samba configuration file", "file", self.state.SambaConfigFile)
+func (self *SambaService) WriteSambaConfig(ctx context.Context) errors.E {
+	tlog.TraceContext(ctx, "Writing Samba configuration file", "file", self.state.SambaConfigFile)
 	stream, errE := self.CreateConfigStream()
 	if errE != nil {
 		return errors.WithStack(errE)
@@ -291,11 +314,10 @@ func (self *SambaService) WriteSambaConfig() errors.E {
 	return nil
 }
 
-func (self *SambaService) TestSambaConfig() errors.E {
-	tlog.Trace("Testing Samba configuration file", "file", self.state.SambaConfigFile)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+func (self *SambaService) TestSambaConfig(ctx context.Context) errors.E {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
+	tlog.TraceContext(ctx, "Testing Samba configuration file", "file", self.state.SambaConfigFile)
 
 	// Check samba configuration with exec testparm -s
 	cmd := exec.CommandContext(ctx, "testparm", "-s", self.state.SambaConfigFile)
@@ -306,59 +328,55 @@ func (self *SambaService) TestSambaConfig() errors.E {
 	return nil
 }
 
-func (self *SambaService) RestartSambaService() errors.E {
-	tlog.Trace("Restarting Samba service")
+func (self *SambaService) RestartSambaService(ctx context.Context) errors.E {
 	process, err := self.GetSambaProcess()
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	// Exec smbcontrol smbd reload-config
 	if process != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
+		tlog.TraceContext(ctx, "Restarting Samba service")
 		if process.Smbd.Pid != -1 {
-			if e := self.umountHaStorage(); e != nil {
-				slog.Error("Error unmounting HA storage", "error", e)
-			}
-			slog.Info("Reloading smbd configuration...")
+			slog.InfoContext(ctx, "Reloading smbd configuration...")
 			cmdSmbdReload := exec.CommandContext(ctx, "smbcontrol", "smbd", "reload-config")
 			outSmbd, err := cmdSmbdReload.CombinedOutput()
 			if err != nil {
 				if strings.Contains(string(outSmbd), "Can't find pid for destination") {
-					slog.Warn("Samba process (smbd) not found, skipping reload command.")
+					slog.WarnContext(ctx, "Samba process (smbd) not found, skipping reload command.")
 				} else {
-					slog.Error("Error reloading smbd config", "error", err, "output", string(outSmbd))
+					slog.ErrorContext(ctx, "Error reloading smbd config", "error", err, "output", string(outSmbd))
 				}
 			}
-			defer func() {
-				// Remount network shares on ha_core
-				// This logic might be better placed after confirming all local services are stable
-				// or if it's specifically tied to smbd/nmbd reloads.
-				e := self.mountHaStorage()
-				if e != nil {
-					slog.Error("Error mounting HA storage", "error", e)
-				}
-			}()
+			self.eventBus.EmitSamba(events.SambaEvent{
+				Event:            events.Event{Type: events.EventTypes.CLEAN},
+				DataDirtyTracker: dto.DataDirtyTracker{},
+			})
+		} else {
+			slog.WarnContext(ctx, "Samba process (smbd) not found, skipping reload commands.")
 		}
 
 		if process.Nmbd.Pid != -1 {
-			slog.Info("Reloading nmbd configuration...")
+			slog.InfoContext(ctx, "Reloading nmbd configuration...")
 			cmdNmbdReload := exec.CommandContext(ctx, "smbcontrol", "nmbd", "reload-config")
 			outNmbd, err := cmdNmbdReload.CombinedOutput()
 			if err != nil {
 				if strings.Contains(string(outNmbd), "Can't find pid for destination") {
-					slog.Warn("Samba process (nmbd) not found, skipping reload command.")
+					slog.WarnContext(ctx, "Samba process (nmbd) not found, skipping reload command.")
 				} else {
-					slog.Error("Error reloading nmbd config", "error", err, "output", string(outNmbd))
+					slog.ErrorContext(ctx, "Error reloading nmbd config", "error", err, "output", string(outNmbd))
 				}
 			}
+		} else {
+			slog.WarnContext(ctx, "Samba process (nmbd) not found, skipping reload commands.")
 		}
 
 		if process.Wsdd2.Pid != -1 {
 			// Restart wsdd2 service using s6
 			wsdd2ServicePath := "/run/s6-rc/servicedirs/wsdd2"
 			if _, statErr := os.Stat(wsdd2ServicePath); statErr == nil {
-				slog.Info("Restarting wsdd2 service...")
+				slog.InfoContext(ctx, "Restarting wsdd2 service...")
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
@@ -368,86 +386,30 @@ func (self *SambaService) RestartSambaService() errors.E {
 					return errors.Errorf("Error restarting wsdd2 service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outWsdd2)})
 				}
 			} else if os.IsNotExist(statErr) {
-				tlog.Warn("wsdd2 service path not found, skipping restart.", "path", wsdd2ServicePath)
+				tlog.WarnContext(ctx, "wsdd2 service path not found, skipping restart.", "path", wsdd2ServicePath)
 			} else {
-				tlog.Error("Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
+				tlog.ErrorContext(ctx, "Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
 			}
+		} else {
+			slog.WarnContext(ctx, "Samba process (wsdd2) not found, skipping reload commands.")
 		}
 	} else {
-		slog.Warn("Samba process (smbd) not found, skipping reload commands.")
-	}
-	return nil
-}
-
-func (self *SambaService) umountHaStorage() errors.E {
-	shares, err := self.share_service.All()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if self.state.HACoreReady {
-		mounts, err := self.supervisor_service.NetworkGetAllMounted()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		for _, share := range *shares {
-			if share.Disabled != nil && *share.Disabled {
-				continue
-			}
-			switch share.Usage {
-			case "media", "share", "backup":
-				delete(mounts, share.Name)
-			}
-		}
-		// Unmount any remaining mounts
-		slog.Info("Unmounting remaining HA mounts", "count", len(mounts))
-		for name := range mounts {
-			err := self.supervisor_service.NetworkUnmountShare(name)
-			if err != nil {
-				slog.Error("Unmounting error", "share", name, "err", err)
-			}
-		}
-	}
-	return nil
-}
-
-func (self *SambaService) mountHaStorage() errors.E {
-	shares, err := self.share_service.All()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if self.state.HACoreReady && self.state.AddonIpAddress != "" {
-		for _, share := range *shares {
-			if share.Disabled != nil && *share.Disabled {
-				continue
-			}
-			if (share.Invalid != nil && *share.Invalid) || (share.MountPointData == nil || share.MountPointData.IsInvalid) {
-				continue
-			}
-			switch share.Usage {
-			case "media", "share", "backup":
-				err = self.supervisor_service.NetworkMountShare(share)
-				if err != nil {
-					slog.Error("Mounting error", "share", share, "err", err)
-				}
-			}
-		}
+		slog.WarnContext(ctx, "Samba process (smbd) not found, skipping reload commands.")
 	}
 	return nil
 }
 
 // WriteSambaConfig Test and Restart
-func (self *SambaService) WriteAndRestartSambaConfig() errors.E {
-	err := self.WriteSambaConfig()
+func (self *SambaService) WriteAndRestartSambaConfig(ctx context.Context) errors.E {
+	err := self.WriteSambaConfig(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = self.TestSambaConfig()
+	err = self.TestSambaConfig(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = self.RestartSambaService()
+	err = self.RestartSambaService(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}

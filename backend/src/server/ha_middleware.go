@@ -65,7 +65,7 @@ func NewHAMiddleware( /*ingressClient ingress.ClientWithResponsesInterface*/ ) f
 			allowedIPs := []string{"172.30.32.2", "127.0.0.1"}
 			user_id := r.Header.Get("X-Remote-User-Id")
 			if user_id == "" {
-				slog.Error("Not in a HomeAssistant environment! X-Remote-User-Id header is missing.", "url", r.URL.String(), "header", r.Header)
+				slog.ErrorContext(r.Context(), "Not in a HomeAssistant environment! X-Remote-User-Id header is missing.", "url", r.URL.String(), "header", r.Header)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -83,7 +83,7 @@ func NewHAMiddleware( /*ingressClient ingress.ClientWithResponsesInterface*/ ) f
 			}
 
 			if !allowed {
-				slog.Error("Unauthorized access from", "IP", ip)
+				slog.ErrorContext(r.Context(), "Unauthorized access from", "IP", ip)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}

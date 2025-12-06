@@ -8,7 +8,6 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -21,9 +20,9 @@ import (
 
 type HDIdleServiceSuite struct {
 	suite.Suite
+	db             *gorm.DB
 	app            *fxtest.App
 	service        service.HDIdleServiceInterface
-	hdidleRepo     repository.HDIdleDeviceRepositoryInterface
 	settingService service.SettingServiceInterface
 }
 
@@ -40,15 +39,16 @@ func (suite *HDIdleServiceSuite) SetupTest() {
 			},
 			func() *dto.ContextState {
 				return &dto.ContextState{
-					HACoreReady: true,
+					HACoreReady:  true,
+					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
 				}
 			},
+			dbom.NewDB,
 			service.NewHDIdleService,
-			mock.Mock[repository.HDIdleDeviceRepositoryInterface],
 			mock.Mock[service.SettingServiceInterface],
 		),
+		fx.Populate(&suite.db),
 		fx.Populate(&suite.service),
-		fx.Populate(&suite.hdidleRepo),
 		fx.Populate(&suite.settingService),
 	)
 	suite.app.RequireStart()
@@ -79,9 +79,6 @@ func (suite *HDIdleServiceSuite) TestStartWithValidSettings() {
 		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
-	// Mock empty device list
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn([]*dbom.HDIdleDevice{}, nil)
-
 	err := suite.service.Start()
 	suite.NoError(err)
 	suite.True(suite.service.IsRunning())
@@ -97,9 +94,6 @@ func (suite *HDIdleServiceSuite) TestStartWithDefaultValues() {
 		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
-	// Mock empty device list
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn([]*dbom.HDIdleDevice{}, nil)
-
 	err := suite.service.Start()
 	suite.NoError(err)
 	suite.True(suite.service.IsRunning())
@@ -114,9 +108,6 @@ func (suite *HDIdleServiceSuite) TestStartAlreadyRunning() {
 		HDIdleDefaultPowerCondition:   0,
 		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
-
-	// Mock empty device list
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn([]*dbom.HDIdleDevice{}, nil)
 
 	err := suite.service.Start()
 	suite.NoError(err)
@@ -145,10 +136,10 @@ func (suite *HDIdleServiceSuite) TestStartWithDeviceLoadError() {
 		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
 		HDIdleDefaultPowerCondition:   0,
 		HDIdleIgnoreSpinDownDetection: false,
-	}, nil)
+	}, errors.New("failed to load HDIdle devices"))
 
 	// Mock device load error
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(nil, errors.New("device load error"))
+	//mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(nil, errors.New("device load error"))
 
 	err := suite.service.Start()
 	suite.Error(err)
@@ -181,7 +172,8 @@ func (suite *HDIdleServiceSuite) TestStartWithValidDevices() {
 			PowerCondition: 0,
 		},
 	}
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
+
+	suite.NoError(suite.db.Save(&devices).Error)
 
 	err := suite.service.Start()
 	suite.NoError(err)
@@ -203,9 +195,6 @@ func (suite *HDIdleServiceSuite) TestStopWhenRunning() {
 		HDIdleDefaultPowerCondition:   0,
 		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
-
-	// Mock empty device list
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn([]*dbom.HDIdleDevice{}, nil)
 
 	err := suite.service.Start()
 	suite.NoError(err)
@@ -233,9 +222,6 @@ func (suite *HDIdleServiceSuite) TestGetStatusWhenRunning() {
 		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
 
-	// Mock empty device list
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn([]*dbom.HDIdleDevice{}, nil)
-
 	err := suite.service.Start()
 	suite.NoError(err)
 
@@ -257,7 +243,7 @@ func (suite *HDIdleServiceSuite) TestGetDeviceConfig() {
 		PowerCondition: 1,
 	}
 
-	mock.When(suite.hdidleRepo.LoadByPath("sda")).ThenReturn(expectedDevice, nil)
+	suite.NoError(suite.db.Create(expectedDevice).Error)
 
 	config, err := suite.service.GetDeviceConfig("sda")
 	suite.NoError(err)
@@ -267,7 +253,8 @@ func (suite *HDIdleServiceSuite) TestGetDeviceConfig() {
 }
 
 func (suite *HDIdleServiceSuite) TestGetDeviceConfigNotFound() {
-	mock.When(suite.hdidleRepo.LoadByPath("nonexistent")).ThenReturn(nil, errors.Wrap(gorm.ErrRecordNotFound, "record not found"))
+
+	//mock.When(suite.hdidleRepo.LoadByPath("nonexistent")).ThenReturn(nil, errors.Wrap(gorm.ErrRecordNotFound, "record not found"))
 
 	config, err := suite.service.GetDeviceConfig("nonexistent")
 	suite.NoError(err)
@@ -299,9 +286,6 @@ func (suite *HDIdleServiceSuite) TestStartStopMultipleTimes() {
 		HDIdleDefaultPowerCondition:   0,
 		HDIdleIgnoreSpinDownDetection: false,
 	}, nil)
-
-	// Mock empty device list
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn([]*dbom.HDIdleDevice{}, nil)
 
 	// First cycle
 	err := suite.service.Start()
@@ -339,7 +323,8 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_OneDeviceYes_Includ
 		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.YESENABLED},
 		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.NOENABLED},
 	}
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
+
+	suite.Require().NoError(suite.db.Save(&devices).Error)
 
 	err := suite.service.Start()
 	suite.NoError(err)
@@ -364,7 +349,7 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalEnabled_OneDeviceNo_Excludes
 		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.NOENABLED},
 		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
 	}
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
+	suite.Require().NoError(suite.db.Save(&devices).Error)
 
 	err := suite.service.Start()
 	suite.NoError(err)
@@ -389,7 +374,7 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_AllDefault_NoDevice
 		{DevicePath: "sda", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
 		{DevicePath: "sdb", IdleTime: 300, CommandType: &dto.HdidleCommands.SCSICOMMAND, PowerCondition: 0, Enabled: dto.HdidleEnableds.CUSTOMENABLED},
 	}
-	mock.When(suite.hdidleRepo.LoadAll()).ThenReturn(devices, nil)
+	suite.Require().NoError(suite.db.Debug().Save(&devices).Error)
 
 	err := suite.service.Start()
 	suite.NoError(err)

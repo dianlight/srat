@@ -54,6 +54,7 @@ import { Users } from "../pages/users/Users";
 import { Volumes } from "../pages/volumes/Volumes";
 import { type LocationState, TabIDs } from "../store/locationState";
 import {
+	type DataDirtyTracker,
 	type HealthPing,
 	Update_process_state,
 	usePutApiSambaApplyMutation,
@@ -115,10 +116,9 @@ const getTabIcon = (tab: TabConfig, healthData: HealthPing | undefined) => {
 	// Priority 1: Dirty state
 	if (healthData?.dirty_tracking) {
 		const dirtyMap: Partial<
-			Record<TabIDs, keyof HealthPing["dirty_tracking"]>
+			Record<TabIDs, keyof DataDirtyTracker>
 		> = {
 			[TabIDs.SHARES]: "shares",
-			[TabIDs.VOLUMES]: "volumes",
 			[TabIDs.USERS]: "users",
 			[TabIDs.SETTINGS]: "settings",
 		};

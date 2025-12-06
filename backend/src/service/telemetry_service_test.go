@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"sync"
 	"testing"
@@ -19,11 +20,14 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/srat/templates"
+	"github.com/dianlight/tlog"
 )
 
 type TelemetryServiceSuite struct {
@@ -62,8 +66,22 @@ func (suite *TelemetryServiceSuite) SetupTest() {
 				ctx := context.WithValue(context.Background(), "wg", suite.wg)
 				return context.WithCancel(ctx)
 			},
+			func() *config.DefaultConfig {
+				var nconfig config.Config
+				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+				if err != nil {
+					log.Fatalf("Cant read default config file %#+v", err)
+				}
+				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+				if err != nil {
+					log.Fatalf("Cant load default config from buffer %#+v", err)
+				}
+				return &config.DefaultConfig{Config: nconfig}
+			},
 			service.NewTelemetryService,
+			events.NewEventBus,
 			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[service.SettingServiceInterface],
 			mock.Mock[service.HaRootServiceInterface], // Use mock for HaRootServiceInterface
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),

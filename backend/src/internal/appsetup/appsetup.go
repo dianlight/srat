@@ -2,12 +2,15 @@ package appsetup
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"net/http"
 	"strings"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/addons"
 	"github.com/dianlight/srat/homeassistant/core_api"
 	"github.com/dianlight/srat/homeassistant/hardware"
@@ -20,7 +23,8 @@ import (
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/srat/templates"
+	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v76/github"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
@@ -55,11 +59,24 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		func() *slog.Logger { return slog.Default() },
 		func() (context.Context, context.CancelFunc) { return params.Ctx, params.CancelFn },
 		func() *dto.ContextState { return params.StaticConfig },
+		func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 		func() *github.Client {
 			rateLimiter := github_ratelimit.New(nil)
 			return github.NewClient(&http.Client{
 				Transport: rateLimiter,
 			})
+		},
+		func() *config.DefaultConfig {
+			var nconfig config.Config
+			buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+			if err != nil {
+				log.Fatalf("Cant read default config file %#+v", err)
+			}
+			err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+			if err != nil {
+				log.Fatalf("Cant load default config from buffer %#+v", err)
+			}
+			return &config.DefaultConfig{Config: nconfig}
 		},
 		service.NewAddonsService,
 		service.NewHomeAssistantService,
@@ -83,12 +100,11 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewHardwareService,
 		service.NewHDIdleService,
 		service.NewSettingService,
-		repository.NewMountPointPathRepository,
-		repository.NewExportedShareRepository,
+		//repository.NewMountPointPathRepository,
+		//repository.NewExportedShareRepository,
 		repository.NewPropertyRepositoryRepository,
 		repository.NewSambaUserRepository,
 		repository.NewIssueRepository,
-		repository.NewHDIdleDeviceRepository,
 	)
 }
 
@@ -179,7 +195,7 @@ func ProvideFrontendOption() fx.Option {
 
 // ProvideCyclicDependencyWorkaroundOption provides the FX option for the ShareService/VolumeService cyclic dependency.
 func ProvideCyclicDependencyWorkaroundOption() fx.Option {
-	return fx.Invoke(func(s service.ShareServiceInterface, v service.VolumeServiceInterface) {
-		//		s.SetVolumeService(v) // Bypass block for cyclic dep in FX
+	return fx.Invoke(func() {
+		//	s.SetSupervisorService(sup)
 	})
 }

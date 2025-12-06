@@ -24,7 +24,8 @@ type ExportedShare struct {
 	TimeMachineMaxSize string
 	Usage              dto.HAMountUsage
 	MountPointDataPath string
-	MountPointData     MountPointPath `gorm:"foreignKey:MountPointDataPath;references:Path;"`
+	MountPointDataRoot string
+	MountPointData     MountPointPath `gorm:"foreignKey:MountPointDataPath,MountPointDataRoot;references:Path,Root"`
 }
 
 func (u *ExportedShare) BeforeSave(tx *gorm.DB) error {

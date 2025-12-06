@@ -45,6 +45,8 @@ func TestEntityState_AllFields(t *testing.T) {
 	assert.Equal(t, "Temperature", *entity.Name)
 	assert.Equal(t, "temperature", *entity.ObjectId)
 	assert.Equal(t, "25.5", *entity.State)
+	assert.NotNil(t, entity.LastReported)
+	assert.NotNil(t, entity.LastUpdated)
 }
 
 func TestEntityState_ZeroValues(t *testing.T) {
