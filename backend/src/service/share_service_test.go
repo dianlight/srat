@@ -38,6 +38,9 @@ func TestShareServiceSuite(t *testing.T) {
 }
 
 func (suite *ShareServiceSuite) SetupTest() {
+	// Set mock mode to skip OnStart initialization that tries to access real paths
+	os.Setenv("SRAT_MOCK", "true")
+	defer os.Unsetenv("SRAT_MOCK")
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
