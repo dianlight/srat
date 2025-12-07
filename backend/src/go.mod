@@ -4,7 +4,6 @@ go 1.25.3
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
-	github.com/google/go-github/v76 v76.0.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jpillora/overseer v1.1.6
 	github.com/maniartech/signals v1.3.1
@@ -24,6 +23,7 @@ require (
 	github.com/dianlight/tlog v0.0.5
 	github.com/fatih/color v1.18.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
+	github.com/google/go-github/v76 v76.0.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/lonegunmanb/go-defaults v1.4.0
