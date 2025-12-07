@@ -365,7 +365,7 @@ describe("Settings", () => {
         // Verify the component is interactive
         const user = userEvent.setup();
         // Click on the first General item (from the tree)
-        await user.click(generalItems[0]);
+        await user.click(generalItems[0] as HTMLElement);
 
         // Component should remain rendered after click
         expect(generalItems[0]).toBeTruthy();
