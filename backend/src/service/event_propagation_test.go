@@ -459,6 +459,11 @@ func (suite *EventPropagationTestSuite) TestEventPropagationChain() {
 			Type:     "ADDON",
 			DeviceId: "test_device_id",
 		},
+		Users: []dto.User{
+			dto.User{
+				Username: "test01",
+			},
+		},
 	}
 	_, err := suite.shareService.CreateShare(share)
 	suite.Require().NoError(err, "CreateShare should not error", "error", err)
