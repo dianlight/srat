@@ -14,7 +14,7 @@ This file highlights the must-know, discoverable rules and workflows for product
 
 SRAT is a Samba administration tool with a Go REST API backend and React frontend, designed to run within Home Assistant. Key architectural patterns:
 
-- **Backend**: Clean architecture with API handlers → Services → Repositories → Database (GORM/SQLite)
+- **Backend**: Clean architecture with API handlers → Services → Generated GORM helpers → Database (GORM/SQLite). Persistence now happens through the generated DBOM helpers rather than a handwritten repository tier.
 - **Frontend**: React + TypeScript + Material-UI + RTK Query for API state management
 - **Communication**: REST API with Server-Sent Events (SSE) or WebSockets for real-time updates
 - **Database**: SQLite with GORM ORM, embedded in production binary
@@ -26,7 +26,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 
 - **API Handlers**: `backend/src/api/*` — Use constructor `NewXHandler` and `RegisterXHandler(api huma.API)`. Handlers use Huma framework for REST API.
 - **Services**: `backend/src/service/*` — Each service has an interface and implementation wired via FX (`fx.In` param structs). Services coordinate business logic.
-- **Repositories**: `backend/src/repository/*` and `backend/src/dbom/*` — GORM models in `dbom`, repositories handle data access with mutex protection.
+- **Persistence**: Services now work directly with generated GORM helpers under `backend/src/dbom/g` (see `backend/src/service/share_service.go` for a live example of `gorm.G[dbom.ExportedShare]`). The `repository` packages no longer need to mediate persistence; generated DBOM structs and their GORM helpers deliver all read/write behavior.
 - **DTOs**: `backend/src/dto` — Define domain objects, error codes (see `dto/error_code.go`), and request/response shapes.
 - **Converters**: `backend/src/converter/*` — Goverter-generated converters for DTO↔DBOM transformations. Run `go generate` after changes.
 - **Logging**: `backend/src/tlog` — Custom logging with sensitive data masking, structured logs, and terminal color support.
