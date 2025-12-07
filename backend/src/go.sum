@@ -24,8 +24,8 @@ github.com/StackExchange/wmi v1.2.1 h1:VIkavFPXSjcnS+O8yTq7NI32k0R5Aj+v39y29VYDO
 github.com/StackExchange/wmi v1.2.1/go.mod h1:rcmrprowKIVzvc+NUiLncP2uuArMWLCbu9SBzvHz7e8=
 github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96 h1:F3e8gBPCR+3Be5CsDzG5jafyGeR0KDJv8Dgc9z6iZ2U=
 github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96/go.mod h1:ED4T0cLEFBGStNjG/lyQN3ZapvnppBXxq0iIa9ZJY7Q=
-github.com/air-verse/air v1.63.0 h1:fwcdHpwaUe4/+q349PxptzAIn8gVE6Yke8TgW0LsDxQ=
-github.com/air-verse/air v1.63.0/go.mod h1:RyCQVx2+3Zz2BzoqkukYiGmWkWXNKMf0x5ubIFcUB8Q=
+github.com/air-verse/air v1.63.4 h1:Z+R4328Bja5QKFMTP0CNeT8aVWdb3D5kbbFvnXnuRhE=
+github.com/air-verse/air v1.63.4/go.mod h1:Dnn4m4DlC9IQiNd3ir57SOdpvGJ3gnC1+OlIGMi2fJY=
 github.com/alecthomas/chroma/v2 v2.20.0 h1:sfIHpxPyR07/Oylvmcai3X/exDlE8+FA820NTz+9sGw=
 github.com/alecthomas/chroma/v2 v2.20.0/go.mod h1:e7tViK0xh/Nf4BYHl00ycY6rV7b8iXBksI9E359yNmA=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0 h1:axGnT1gRIfimI7gJifB699GoE/oq+F2MU7Dml6nw9rQ=

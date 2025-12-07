@@ -34,7 +34,7 @@ github.com/StackExchange/wmi
 github.com/adelolmo/hd-idle/diskstats
 github.com/adelolmo/hd-idle/io
 github.com/adelolmo/hd-idle/sgio
-# github.com/air-verse/air v1.63.0
+# github.com/air-verse/air v1.63.4
 ## explicit; go 1.25
 github.com/air-verse/air
 github.com/air-verse/air/runner
@@ -52,9 +52,6 @@ github.com/bep/godartsass/v2/internal/godartsasstesting
 # github.com/bep/golibsass v1.2.0
 ## explicit; go 1.13
 github.com/bep/golibsass/libsass/libsasserrors
-# github.com/creack/pty v1.1.24
-## explicit; go 1.18
-github.com/creack/pty
 # github.com/danielgtaylor/huma/v2 v2.34.1
 ## explicit; go 1.23.0
 github.com/danielgtaylor/huma/v2
