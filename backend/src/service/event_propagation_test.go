@@ -16,6 +16,7 @@ import (
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/templates"
+	"github.com/dianlight/srat/unixsamba"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -51,6 +52,8 @@ func TestEventPropagationTestSuite(t *testing.T) {
 func (suite *EventPropagationTestSuite) SetupTest() {
 	// Mock mount info to prevent osutil.IsMounted from failing
 	osutil.MockMountInfo("")
+
+	var ctrl *matchers.MockController
 
 	// Create context with WaitGroup
 	wg := &sync.WaitGroup{}
@@ -106,6 +109,7 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 		fx.Populate(&suite.mockHardwareClient),
 		fx.Populate(&suite.volumeService),
 		fx.Populate(&suite.db),
+		fx.Populate(&ctrl),
 	)
 	mock.When(suite.mockUserRepo.All()).ThenReturn(dbom.SambaUsers{dbom.SambaUser{
 		Username: "homeassistant",
@@ -163,6 +167,8 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 		*/
 	}
 
+	unixsamba.SetCommandExecutor(mock.Mock[unixsamba.CommandExecutor](ctrl))
+	unixsamba.SetOSUserLookuper(mock.Mock[unixsamba.OSUserLookuper](ctrl))
 	// Setup global mock for share repo to avoid nil pointer errors when mount point events trigger share lookups
 	//mock.When(suite.mockShareRepo.FindByMountPath(mock.Any[string]())).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
 }
@@ -458,11 +464,6 @@ func (suite *EventPropagationTestSuite) TestEventPropagationChain() {
 			Path:     "/mnt/chain",
 			Type:     "ADDON",
 			DeviceId: "test_device_id",
-		},
-		Users: []dto.User{
-			dto.User{
-				Username: "test01",
-			},
 		},
 	}
 	_, err := suite.shareService.CreateShare(share)

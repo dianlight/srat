@@ -249,7 +249,7 @@ func CreateSambaUser(username string, password string, options UserOptions) erro
 	smbPasswdInput := password + "\n" + password + "\n"
 	_, err = cmdExec.RunCommandWithInput(smbPasswdInput, "smbpasswd", "-a", "-s", username)
 	if err != nil {
-		return errors.Wrapf(err, "failed to add user '%s' to Samba or set password", username)
+		return errors.Errorf("failed to add user '%s' to Samba or set password %w", username, err)
 	}
 	return nil
 }
